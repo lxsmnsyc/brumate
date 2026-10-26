@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TemplateSwitch from './TemplateSwitch.brm';
+  let n = $signal(1);
+  let flip = $signal(false);
+</script>
+<button class="inc" onClick=(() => (n = n + 1))>Inc</button>
+<button class="flip" onClick=(() => (flip = !flip))>Flip</button>
+<TemplateSwitch value=n flip=flip a=ta b=tb />
+#template ta(v: number) {
+  <span class="ta">A{v}</span>
+}
+#template tb(v: number) {
+  <span class="tb">B{v}</span>
+}

@@ -1,0 +1,467 @@
+<script>
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import type { DateDuration, DayOfWeek } from '@internationalized/date';
+  import {
+    CalendarContext,
+    DatePickerContext,
+    alignCenter,
+    alignEnd,
+    alignStart,
+    constrain,
+    constrainStart,
+    endOf,
+    outOfRange,
+    rangeLabel,
+    toDate,
+    todayString,
+    unitDuration,
+  } from './calendar.ts';
+  import type { DateRange, DateString } from './calendar.ts';
+  import { ButtonContext, TextContext } from './contexts.ts';
+  import { LocaleContext } from './locale.ts';
+  import VisuallyHidden from './VisuallyHidden.brm';
+
+  /**
+   * A grid of the days of a month or more, to pick a date, as Calendar of React Aria Components.
+   * It holds a CalendarHeading, two Buttons with `slot="previous"` and `slot="next"`, and a
+   * CalendarGrid for each month that shows.
+   *
+   * - `value` is the selected date as `YYYY-MM-DD`, or null. `value=(date)` starts its own, and
+   *   `value=$bind(signal)` writes the caller's. `onChange` gets each change.
+   * - `minValue` and `maxValue` limit the dates, and `isDateUnavailable` marks dates that cannot
+   *   be picked.
+   * - `visibleDuration` is how much shows, such as `{ months: 2 }`. The Buttons move by all of it,
+   *   or by one month with `pageBehavior="single"`.
+   * - `focusedValue` is the date that has focus, which starts at the selected date or today.
+   * - It shows `data-disabled` and `data-invalid`.
+   * - A RangeCalendar renders it with `range`, so `value` is a range: a first press starts it,
+   *   and a second one ends it. `allowsNonContiguousRanges` lets a range hold dates that cannot
+   *   be picked. A press of the pointer on a date and a release on another one select the range
+   *   between them.
+   * - `firstDayOfWeek` starts each week on a day, such as `mon`, in place of the locale's day.
+   * - A Text with `slot="errorMessage"` describes the dates of an invalid value.
+   */
+  const {
+    minValue: ownMinValue,
+    maxValue: ownMaxValue,
+    isDateUnavailable: ownUnavailable,
+    visibleDuration = { months: 1 },
+    pageBehavior = 'visible',
+    isDisabled: ownDisabled,
+    isReadOnly: ownReadOnly,
+    isInvalid = false,
+    'aria-label': ariaLabel,
+    onChange,
+    onFocusChange,
+    range = false,
+    allowsNonContiguousRanges = false,
+    firstDayOfWeek,
+    children,
+    ...rest
+  } = $props<{
+    minValue?: DateString;
+    maxValue?: DateString;
+    isDateUnavailable?: (date: DateString, anchor: DateString | null) => boolean;
+    visibleDuration?: DateDuration;
+    pageBehavior?: 'visible' | 'single';
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isInvalid?: boolean;
+    'aria-label'?: string;
+    onChange?: ((value: DateString) => void) | ((value: DateRange) => void);
+    range?: boolean;
+    allowsNonContiguousRanges?: boolean;
+    firstDayOfWeek?: DayOfWeek;
+    onFocusChange?: (date: DateString) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = null } = $props<{ value?: Bindable<DateString | DateRange | null> }>();
+  // In a DatePicker, the picker holds the value, and a pick goes to it. The limits of the picker
+  // apply when the Calendar has none of its own.
+  const picker = $getContext(DatePickerContext);
+  const minValue = $memo(ownMinValue ?? picker?.minValue);
+  const maxValue = $memo(ownMaxValue ?? picker?.maxValue);
+  const isDisabled = $memo(ownDisabled ?? picker?.isDisabled ?? false);
+  const isReadOnly = $memo(ownReadOnly ?? picker?.isReadOnly ?? false);
+  let {
+    focusedValue = constrain(
+      toDate(firstOf(picker ? picker.value : value) ?? picker?.placeholderValue ?? todayString()),
+      minValue,
+      maxValue,
+    ).toString(),
+  } = $props<{ focusedValue?: Bindable<DateString> }>();
+  // In a range: the first date of a range that is not done, and the date that it shows the range to.
+  let anchor = $signal<DateString | null>(null);
+  let hovered = $signal<DateString | null>(null);
+  // The date where a press of the pointer started a range, until its click.
+  let pressedStart = $signal<DateString | null>(null);
+  // Focus is in a grid of this calendar.
+  let isFocused = $signal(false);
+
+  const locale = $getContext(LocaleContext);
+  const id = $id();
+  const errorId = $id();
+  const today = todayString();
+  // The first date that shows, with the focused date in the middle of the months, as React Aria
+  // starts.
+  let start = $signal(
+    alignCenter(toDate(focusedValue), visibleDuration, locale.locale, minValue, maxValue).toString(),
+  );
+  const end = $memo(endOf(toDate(start), visibleDuration).toString());
+  const visible = $memo(rangeLabel(toDate(start), toDate(end), locale.locale));
+  const label = $memo([ariaLabel, visible].filter(Boolean).join(', '));
+  const current = $memo(picker ? picker.value : value);
+  const selection = $memo(selectionOf(current, anchor, hovered));
+  // A range that is not done is not invalid yet, as in React Aria.
+  const unavailable = $memo(
+    anchor === null &&
+      selection !== null &&
+      selection.some(
+        (date) => outOfRange(toDate(date), minValue, maxValue) || isDateUnavailable(date),
+      ),
+  );
+  // After the first date of a range, the range reaches up to the nearest dates that cannot be
+  // picked on each side, as availableRange of React Aria.
+  const available = $memo(
+    range && anchor !== null && !allowsNonContiguousRanges ? availableAround(anchor) : null,
+  );
+  const reachMin = $memo(later(minValue, available?.[0]));
+  const reachMax = $memo(earlier(maxValue, available?.[1]));
+  const invalid = $memo(isInvalid || unavailable);
+  const previousDisabled = $memo(
+    isDisabled || outOfRange(toDate(start).subtract({ days: 1 }), minValue, maxValue),
+  );
+  const nextDisabled = $memo(
+    isDisabled || outOfRange(toDate(end).add({ days: 1 }), minValue, maxValue),
+  );
+
+  function cell(date: DateString) {
+    return document.querySelector<HTMLElement>(
+      `[data-calendar="${id}"][data-date="${date}"]:not([data-outside-month])`,
+    );
+  }
+
+  /**
+   * Moves focus to the cell of a date, when a cell of this calendar has it. A cell of another
+   * month renders once its code loads, so it tries again until the cell shows.
+   */
+  function focusCell(date: DateString) {
+    const active = document.activeElement as HTMLElement | null;
+    if (active?.dataset.calendar !== id) {
+      return;
+    }
+    const attempt = (tries: number) => {
+      const target = cell(date);
+      // Focus that reaches the cell calls here again from the cell, and stays.
+      if (target === document.activeElement) {
+        return;
+      }
+      if (target) {
+        target.focus();
+      } else if (tries > 0) {
+        setTimeout(() => attempt(tries - 1), 10);
+      }
+    };
+    attempt(50);
+  }
+
+  function later(a: DateString | undefined, b: DateString | undefined): DateString | undefined {
+    return a === undefined ? b : b === undefined || a > b ? a : b;
+  }
+
+  function earlier(a: DateString | undefined, b: DateString | undefined): DateString | undefined {
+    return a === undefined ? b : b === undefined || a < b ? a : b;
+  }
+
+  /** The dates around a date up to the nearest that cannot be picked, within a year each way. */
+  function availableAround(date: DateString): [DateString | undefined, DateString | undefined] {
+    const from = toDate(date);
+    let low: DateString | undefined;
+    let high: DateString | undefined;
+    for (let day = 1; day <= 366; day++) {
+      const before = from.subtract({ days: day }).toString();
+      if (low === undefined && minValue !== undefined && before < minValue) {
+        low = minValue;
+      }
+      if (low === undefined && isDateUnavailable(before)) {
+        low = from.subtract({ days: day - 1 }).toString();
+      }
+      const after = from.add({ days: day }).toString();
+      if (high === undefined && maxValue !== undefined && after > maxValue) {
+        high = maxValue;
+      }
+      if (high === undefined && isDateUnavailable(after)) {
+        high = from.add({ days: day - 1 }).toString();
+      }
+      if (low !== undefined && high !== undefined) {
+        break;
+      }
+    }
+    return [low, high];
+  }
+
+  /** Focuses a date, and moves the months that show to it. */
+  function focusDate(date: DateString) {
+    const next = constrain(toDate(date), reachMin, reachMax);
+    focusCell(next.toString());
+    focusedValue = next.toString();
+    if (anchor !== null) {
+      hovered = focusedValue;
+    }
+    onFocusChange?.(focusedValue);
+    if (next.compare(toDate(start)) < 0) {
+      start = alignEnd(next, visibleDuration, locale.locale, minValue, maxValue).toString();
+    } else if (next.compare(toDate(end)) > 0) {
+      start = alignStart(next, visibleDuration, locale.locale, minValue, maxValue).toString();
+    }
+  }
+
+  /**
+   * Focus reached the cell of a date. The call can run after focus moved on, since the code of
+   * this calendar loads when a cell first calls it. Then it does nothing.
+   */
+  function cellFocused(date: DateString) {
+    if (cell(date) === document.activeElement && date !== focusedValue) {
+      focusDate(date);
+    }
+  }
+
+  /** Moves the months that show by a page, and focus with them. */
+  function page(sign: 1 | -1) {
+    const step = pageBehavior === 'single' ? unitDuration(visibleDuration) : visibleDuration;
+    const current = toDate(focusedValue);
+    const moved = sign === 1 ? toDate(start).add(step) : toDate(start).subtract(step);
+    focusedValue = constrain(
+      sign === 1 ? current.add(step) : current.subtract(step),
+      minValue,
+      maxValue,
+    ).toString();
+    onFocusChange?.(focusedValue);
+    start = alignStart(
+      constrainStart(current, moved, step, locale.locale, minValue, maxValue),
+      step,
+      locale.locale,
+    ).toString();
+  }
+
+  /**
+   * True for a date that cannot be picked, by the Calendar's own test or the picker's. The test
+   * gets the first date of a range that is not done, as in React Aria.
+   */
+  function isDateUnavailable(date: DateString): boolean {
+    return (ownUnavailable ?? picker?.isDateUnavailable)?.(date, anchor) ?? false;
+  }
+
+  /** The first date of a value: the date, or the start of the range. */
+  function firstOf(current: DateString | DateRange | null): DateString | null {
+    return typeof current === 'object' && current !== null ? current.start : current;
+  }
+
+  /** The dates that show as selected, from the first to the last. */
+  function selectionOf(
+    current: DateString | DateRange | null,
+    first: DateString | null,
+    to: DateString | null,
+  ): [DateString, DateString] | null {
+    if (first !== null) {
+      const other = to ?? first;
+      return first <= other ? [first, other] : [other, first];
+    }
+    if (current === null) {
+      return null;
+    }
+    return typeof current === 'object' ? [current.start, current.end] : [current, current];
+  }
+
+  /** True when a date between two dates, both in, cannot be picked. */
+  function holdsUnavailable(from: DateString, to: DateString): boolean {
+    for (let date = toDate(from); date.toString() <= to; date = date.add({ days: 1 })) {
+      if (isDateUnavailable(date.toString())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function selectDate(date: DateString) {
+    if (isDisabled || isReadOnly) {
+      return;
+    }
+    const picked = toDate(date);
+    if (outOfRange(picked, reachMin, reachMax) || isDateUnavailable(date)) {
+      return;
+    }
+    focusDate(date);
+    if (range) {
+      // The first press starts a range, and the second one ends it, in either order.
+      if (anchor === null) {
+        anchor = date;
+        hovered = date;
+        return;
+      }
+      const [from, to] = anchor <= date ? [anchor, date] : [date, anchor];
+      if (!allowsNonContiguousRanges && holdsUnavailable(from, to)) {
+        return;
+      }
+      anchor = null;
+      hovered = null;
+      const next = { start: from, end: to };
+      if (picker) {
+        picker.select(next);
+        return;
+      }
+      value = next;
+      (onChange as ((value: DateRange) => void) | undefined)?.(next);
+      return;
+    }
+    if (picker) {
+      picker.select(date);
+      return;
+    }
+    if (value !== date) {
+      value = date;
+      (onChange as ((value: DateString) => void) | undefined)?.(date);
+    }
+  }
+
+  function pressed(sign: 1 | -1) {
+    page(sign);
+  }
+
+  /** After the first date of a range by the keyboard, focus moves to a date next to it. */
+  function advance(date: DateString) {
+    const from = toDate(date);
+    for (const next of [from.add({ days: 1 }), from.subtract({ days: 1 })]) {
+      const text = next.toString();
+      if (!outOfRange(next, reachMin, reachMax) && !isDateUnavailable(text)) {
+        focusDate(text);
+        return;
+      }
+    }
+  }
+
+  // A date that the caller focuses moves the months that show to it.
+  $effect(() => {
+    const date = focusedValue;
+    if ($untrack(date < start || date > end)) {
+      $untrack(
+        (start = alignCenter(toDate(date), visibleDuration, locale.locale, minValue, maxValue).toString()),
+      );
+    }
+  });
+
+  $setContext(CalendarContext, {
+    id,
+    locale: locale.locale,
+    direction: locale.direction,
+    value: typeof current === 'string' ? current : null,
+    selection,
+    highlight: (date: DateString) => {
+      // The date under the pointer takes the focus too, as highlightDate of React Aria does.
+      if (anchor !== null) {
+        focusDate(date);
+      }
+    },
+    pressStart: (date: DateString, event: PointerEvent) => {
+      if (!range || anchor !== null || isReadOnly || isDisabled || event.button !== 0) {
+        return;
+      }
+      if (event.pointerType !== 'mouse' && event.pointerType !== 'touch' && event.pointerType !== 'pen') {
+        return;
+      }
+      selectDate(date);
+      if (anchor === date) {
+        pressedStart = date;
+      }
+    },
+    pressEnd: (date: DateString) => {
+      // A release on another date than the one that started the range ends it.
+      if (pressedStart !== null && anchor !== null && date !== pressedStart) {
+        pressedStart = null;
+        selectDate(date);
+      }
+    },
+    startedBy: (date: DateString) => {
+      if (pressedStart === date) {
+        pressedStart = null;
+        return true;
+      }
+      return false;
+    },
+    isFocused,
+    firstDayOfWeek,
+    errorId,
+    available,
+    autoFocus: picker !== null,
+    cancel: () => {
+      anchor = null;
+      hovered = null;
+      pressedStart = null;
+    },
+    focusedDate: focusedValue,
+    start,
+    end,
+    visibleDuration,
+    minValue,
+    maxValue,
+    isDisabled,
+    isReadOnly,
+    isInvalid: invalid,
+    ariaLabel,
+    label,
+    today,
+    isDateUnavailable,
+    focusDate,
+    cellFocused,
+    moveFocus: (change: (focused: ReturnType<typeof toDate>) => ReturnType<typeof toDate>) =>
+      focusDate(change(toDate(focusedValue)).toString()),
+    selectDate,
+    selectFocused: () => {
+      if (isDateUnavailable(focusedValue)) {
+        return;
+      }
+      const starting = range && anchor === null;
+      selectDate(focusedValue);
+      if (starting && anchor !== null) {
+        advance(anchor);
+      }
+    },
+  });
+  $setContext(ButtonContext, {
+    slots: {
+      previous: { 'aria-label': 'Previous', isDisabled: previousDisabled, onPress: () => pressed(-1) },
+      next: { 'aria-label': 'Next', isDisabled: nextDisabled, onPress: () => pressed(1) },
+    },
+  });
+  $setContext(TextContext, { slots: { errorMessage: { id: errorId } } });
+
+  function focusIn() {
+    isFocused = true;
+  }
+
+  function focusOut(event: FocusEvent) {
+    if (!(event.currentTarget as Element).contains(event.relatedTarget as Node | null)) {
+      isFocused = false;
+    }
+  }
+</script>
+
+<div
+  role="application"
+  aria-label=label
+  data-disabled=(isDisabled || undefined)
+  data-invalid=(invalid || undefined)
+  onFocusIn=focusIn
+  onFocusOut=focusOut
+  {...rest}
+>
+  <!-- The months that show, first on the page for screen readers that read by touch. -->
+  <VisuallyHidden><h2>{label}</h2></VisuallyHidden>
+  {children}
+  <!-- A next button after the grid, for screen readers that read by touch. -->
+  <VisuallyHidden>
+    <button aria-label="Next" disabled=(nextDisabled || undefined) tabindex="-1" onClick=(() => pressed(1))></button>
+  </VisuallyHidden>
+</div>

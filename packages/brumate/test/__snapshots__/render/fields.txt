@@ -37,18 +37,11 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
 Fields.brumateId = "Fields_1cs3w3p";
 
 # Client entry
+export * from "./fields.brm?brumate-client&part=h9";
+export * from "./fields.brm?brumate-client&part=update";
 export const id = "Fields_1cs3w3p";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b5"]] }, 2: { 0: [[2, "u7"]] } };
-const update = () => import("./fields.brm?brumate-client&part=update");
-const parts = {
-  "h9": () => (update().catch(() => {}), import("./fields.brm?brumate-client&part=h9")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h9
 import * as $$b from 'brumate/client';
@@ -58,8 +51,10 @@ export const h9 = ($$s) => ($$b.set($$s, 0, [...$$b.get($$s, 0), 'Middle']));
 # Client part: update
 import * as $$b from 'brumate/client';
 
+const $$k0 = ($$item) => $$item;
+const $$k1 = [];
 export function b5($$s) {
-  $$b.list($$s, 0, $$b.listOf($$b.get($$s, 0)), ($$item) => $$item, r2, a2, undefined, []);
+  $$b.list($$s, 0, $$b.listOf($$b.get($$s, 0)), $$k0, r2, a2, undefined, $$k1);
 }
 export function a2($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -84,34 +79,24 @@ export function r2($$p, $$item, $$index) {
 
 # Render module
 import * as $$b from 'brumate/client';
+import { r2 as $$r2 } from "./fields.brm?brumate-client";
+const $$t0 = $$b.template("<label b-x=\"0\">Email</label><input b-x=\"1\"><p b-x=\"2\">We never share it.</p><!--x3--><!--/b--><button b-x=\"4\" b-on=\"click=Fields_1cs3w3p#h9\">Add</button>", 5);
 
-export default function Fields($$props: Record<string, never>): string {
+export default function Fields($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Fields_1cs3w3p");
   const id = $$b.makeId($$s1, 0);
   const hint = $$b.makeId($$s1, 1);
   let names = (['First', 'Last']);
-  $$html += "<label" + $$b.attribute("for", (id)) + ">Email</label><input" + $$b.attribute("id", (id)) + $$b.attribute("aria-describedby", (hint)) + "><p" + $$b.attribute("id", (hint)) + ">We never share it.</p>";
-  {
-    const $$list0v = ( names);
-    const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
-    $$html += "<!--b" + $$s1 + ":0-->";
-    for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {
-      const $$item1 = $$list0[$$index2];
-      const name = $$item1;
-      const $$s2 = $$b.createScope(2, $$s1);
-      $$html += "<!--i" + $$s2 + "-->";
-      const field = $$b.makeId($$s2, 0);
-      $$html += "<label" + $$b.attribute("for", (field)) + " b-b=\"" + $$s2 + ":0\">" + $$b.insert((name)) + "</label><input" + $$b.attribute("id", (field)) + ">";
-      $$b.setSlots($$s2, [name, field]);
-      $$b.setItem($$s2, $$item1);
-      $$html += "<!--/i-->";
-    }
-    $$html += "<!--/b-->";
-  }
-  $$html += "<button b-b=\"" + $$s1 + ":1\" b-on=\"click=Fields_1cs3w3p#h9\">Add</button>";
+  const $$e = $$b.clone($$t0), $$f = $$e[5];
+  $$b.setAttr($$e[0], "for", (id));
+  $$b.setAttr($$e[1], "id", (id));
+  $$b.setAttr($$e[1], "aria-describedby", (hint));
+  $$b.setAttr($$e[2], "id", (hint));
+  $$b.keep($$s1, 1, $$e[4]);
   $$b.setSlots($$s1, [names]);
-  return $$html;
+  $$b.fillList($$e[3], $$s1, 0, $$b.listOf(( names)), $$r2);
+  return $$f;
 }
 
 # HTML

@@ -1,0 +1,97 @@
+<script>
+  import { $client, $getContext, $handler, $props, $setContext, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
+  import { LocaleContext } from './locale.ts';
+  import { keepTabStop, moveFocus, rove } from './toolbar.ts';
+
+  /**
+   * ToggleButtons with one selection, as ToggleButtonGroup of React Aria Components. With
+   * `selectionMode="single"`, the default, it is a radiogroup and its buttons are radios. With
+   * "multiple", it is a toolbar, or a group inside a Toolbar. The arrow keys move focus between its buttons, as in a Toolbar.
+   * It shows `data-orientation` and `data-disabled`.
+   *
+   * `selectedKeys=([...])` starts its own selection, and `selectedKeys=$bind(signal)` writes the
+   * caller's. Each ToggleButton names itself with `id`.
+   */
+  const {
+    selectionMode = 'single',
+    disallowEmptySelection = false,
+    isDisabled = false,
+    orientation = 'horizontal',
+    onSelectionChange,
+    children,
+    ...rest
+  } = $props<{
+    selectionMode?: 'single' | 'multiple';
+    disallowEmptySelection?: boolean;
+    isDisabled?: boolean;
+    orientation?: 'horizontal' | 'vertical';
+    onSelectionChange?: (keys: string[]) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<string[]> }>();
+
+  const locale = $getContext(LocaleContext);
+  const nested = $getContext(ToolbarContext);
+
+  let element = $signal<HTMLElement>();
+  $client(() => (element ? keepTabStop(element) : undefined), 'load');
+
+  function toggle(id: string) {
+    let next: string[];
+    if (selectedKeys.includes(id)) {
+      next = selectedKeys.filter((key) => key !== id);
+      if (next.length === 0 && disallowEmptySelection) {
+        return;
+      }
+    } else {
+      next = selectionMode === 'single' ? [id] : [...selectedKeys, id];
+    }
+    selectedKeys = next;
+    onSelectionChange?.(next);
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    moveFocus(event.currentTarget as Element, event.key, orientation, locale.direction);
+  }
+
+  function focusIn(event: FocusEvent) {
+    const group = event.currentTarget as Element;
+    const target = document.activeElement;
+    if (target && group.contains(target)) {
+      rove(group, target);
+    }
+  }
+
+  // A group with one selection is a radiogroup. Another is a toolbar, or a group in a Toolbar.
+  function roleOf(mode: string, inToolbar: boolean): string {
+    if (mode === 'single') {
+      return 'radiogroup';
+    }
+    return inToolbar ? 'group' : 'toolbar';
+  }
+
+  // Only the arrow keys that move focus are prevented, as in a Toolbar.
+  function keys(vertical: boolean) {
+    return vertical
+      ? { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown')) }
+      : { onKeyDown: $handler(keyDown) };
+  }
+
+  $setContext(ToggleGroupContext, { selectionMode, selectedKeys, isDisabled, toggle });
+</script>
+
+<div
+  ref=element
+  role=(roleOf(selectionMode, nested))
+  aria-orientation=(roleOf(selectionMode, nested) === 'group' ? undefined : orientation)
+  aria-disabled=(isDisabled ? 'true' : undefined)
+  data-orientation=orientation
+  data-disabled=(isDisabled || undefined)
+  {...keys(orientation === 'vertical')}
+  onFocusIn=focusIn
+  {...rest}
+>{children}</div>

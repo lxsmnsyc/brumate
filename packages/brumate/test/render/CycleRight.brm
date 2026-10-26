@@ -1,0 +1,12 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  import CycleLeft from './CycleLeft.brm';
+
+  const { depth = 0 } = $props<{ depth?: number }>();
+  let count = $signal(0);
+</script>
+
+<button class="CycleRight" onClick=(() => count++)>{count}</button>
+#if (depth > 0) {
+  <CycleLeft depth=(depth - 1) />
+}

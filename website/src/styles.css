@@ -10,7 +10,7 @@
   --muted: #6b635b;
   --border: #e3ddd4;
   --accent: #d4612a;
-  --accent-strong: #b44d1c;
+  --accent-strong: #9f4116;
   --danger: #b3261e;
   --warn: #8a5a00;
   --success: #2da44e;
@@ -230,4 +230,14 @@ pre {
   ::view-transition-new(*) {
     animation: none;
   }
+}
+
+/* Native boxes, such as those of the demos and the live samples, take the accent of the site. */
+input[type='checkbox'],
+input[type='radio'] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--accent);
+  vertical-align: -0.15em;
 }

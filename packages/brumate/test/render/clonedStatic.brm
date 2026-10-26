@@ -1,0 +1,23 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+  let count = $signal(0);
+  const tags = ['a', 'b'];
+  const wide = true;
+</script>
+
+<button class="open" onClick=(() => (open = !open))>Open</button>
+#if (open) {
+  <div class="box">
+    #for (tag of tags) {
+      <i>{tag}</i>
+    }
+    #if (wide) {
+      <b class="wide">Wide</b>
+    } #else {
+      <b class="narrow">Narrow</b>
+    }
+    <button class="count" onClick=(() => count++)>{count}</button>
+  </div>
+}

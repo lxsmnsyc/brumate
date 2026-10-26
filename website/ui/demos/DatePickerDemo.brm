@@ -1,0 +1,36 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DatePicker from '@brumate/ui/DatePicker.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+
+  let departure = $signal<string | null>(null);
+</script>
+
+<DatePicker class="ui-field" value=$bind(departure)>
+  <Label>Departure</Label>
+  <Group class="ui-group">
+    <DateInput class="ui-input ui-date-input" />
+    <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+  </Group>
+  <Popover class="ui-popover">
+    <Dialog>
+      <Calendar class="ui-calendar">
+        <header>
+          <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+          <CalendarHeading />
+          <Button slot="next" class="ui-button ui-icon-button">›</Button>
+        </header>
+        <CalendarGrid />
+      </Calendar>
+    </Dialog>
+  </Popover>
+</DatePicker>
+<p>{departure ?? 'No date yet.'}</p>

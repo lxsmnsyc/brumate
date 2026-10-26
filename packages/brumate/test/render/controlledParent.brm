@@ -1,0 +1,22 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Controlled from './Controlled.brm';
+
+  let held = $signal(false);
+  let bound = $signal(false);
+  let seen = $signal('');
+  let more = $signal(false);
+</script>
+
+<Controlled label="free" onChange=((next) => (seen = `free ${next}`)) />
+<Controlled label="held" open=held onChange=((next) => (seen = `held ${next}`)) />
+<Controlled label="bound" open=$bind(bound) />
+<Controlled label="none" open=(undefined) />
+<p class="seen">{seen}</p>
+<p class="values">{String(held)} {String(bound)}</p>
+<button class="hold" onClick=(() => (held = true))>Hold</button>
+<button class="more" onClick=(() => (more = true))>More</button>
+#if (more) {
+  <Controlled label="later" open=bound />
+  <Controlled label="later-free" defaultOpen=(true) />
+}

@@ -1,0 +1,11 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  // An input whose value comes from a spread, which another attribute of the spread changes.
+  let draft = $signal('');
+  let count = $signal(0);
+  const attrs = $memo({ value: draft, 'data-count': String(count) });
+</script>
+
+<input class="field" {...attrs}>
+<button class="bump" onClick=(() => count++)>Bump</button>

@@ -1,0 +1,131 @@
+<script>
+  import { $effect, $getContext, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { DisclosurePanelContext } from './contexts.ts';
+  import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
+
+  /**
+   * The content of a Disclosure. It is a group that its trigger names.
+   *
+   * - `unmount=(false)`, the default, keeps the content in the page. While it is collapsed, it
+   *   is `hidden="until-found"`, so find in page and a link to an ID inside it open it. A
+   *   browser without `until-found` hides it as `hidden` does.
+   * - `unmount=(true)` removes the content while it is collapsed, and `'offscreen'` keeps it in
+   *   an `#offscreen` block, with its state. Both leave the content of a panel that starts
+   *   collapsed out of the page, so find in page does not reach it.
+   * - `transition` animates it from CSS: it shows `data-closed`, `data-enter` and `data-leave`,
+   *   waits for the animations of the panel before it hides, and is `inert` while it leaves.
+   *   `--disclosure-panel-height` holds the height of its content while it moves, so CSS can
+   *   animate the height. A TransitionChild inside moves with it.
+   */
+  const { role = 'group', transition = false, unmount = false, children, ...rest } = $props<{
+    role?: 'group' | 'region';
+    transition?: boolean;
+    unmount?: boolean | 'offscreen';
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const state = $getContext(DisclosurePanelContext);
+  const expanded = $untrack(Boolean(state?.isExpanded));
+
+  // The panel is shown: open, or closing with `transition`.
+  let shown = $signal(expanded);
+  // It has finished opening, which a TransitionChild inside waits for.
+  let rested = $signal(expanded);
+  let leaving = $signal(false);
+  let run = $signal(0);
+  let element = $signal<HTMLElement>();
+
+  $setContext(TransitionContext, { show: Boolean(state?.isExpanded), entered: rested });
+
+  async function open(token: number) {
+    shown = true;
+    if (!transition) {
+      rested = true;
+      return;
+    }
+    await nextFrame();
+    const target = element;
+    if (token === run && target) {
+      const done = await enterSteps(target, stepClasses(), {
+        current: () => token === run,
+        height: '--disclosure-panel-height',
+      });
+      if (done) {
+        rested = true;
+      }
+    }
+  }
+
+  async function close(token: number) {
+    rested = false;
+    const target = element;
+    if (!transition || !target) {
+      shown = false;
+      return;
+    }
+    const done = await leaveSteps(
+      target,
+      stepClasses(),
+      { current: () => token === run, height: '--disclosure-panel-height' },
+      () => (leaving = true),
+    );
+    if (done) {
+      leaving = false;
+      shown = false;
+    }
+  }
+
+  $effect(() => {
+    const next = Boolean(state?.isExpanded);
+    $untrack(change(next));
+  });
+
+  function change(next: boolean) {
+    run += 1;
+    if (next) {
+      leaving = false;
+      void open(run);
+    } else {
+      void close(run);
+    }
+  }
+
+  function found() {
+    state?.expand();
+  }
+
+  // A closed panel that stays in the page is hidden until find in page finds something in it.
+  // A disabled one stays closed, so it is plainly hidden.
+  function hiddenValue(open: boolean, kept: boolean, off: boolean) {
+    if (open || !kept) {
+      return undefined;
+    }
+    return off ? true : 'until-found';
+  }
+</script>
+
+#template content() {
+  <div
+    ref=element
+    id=(state?.id)
+    {role}
+    aria-labelledby=(state?.triggerId)
+    hidden=(hiddenValue(shown, unmount === false, Boolean(state?.isDisabled)))
+    inert=(leaving || undefined)
+    data-expanded=(state?.isExpanded || undefined)
+    data-closed=($untrack(transition && !rested) || undefined)
+    onBeforematch=found
+    {...rest}
+  >{children}</div>
+}
+
+#if (unmount === 'offscreen') {
+  #offscreen (shown) {
+    {content()}
+  }
+} #else {
+  #if (shown || unmount === false) {
+    {content()}
+  }
+}

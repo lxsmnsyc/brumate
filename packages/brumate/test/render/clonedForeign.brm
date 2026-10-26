@@ -1,0 +1,23 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ClonedCheck from './ClonedCheck.brm';
+  import ClonedDot from './ClonedDot.brm';
+  import ClonedIcon from './ClonedIcon.brm';
+
+  let open = $signal(false);
+  let shape = $signal('rect');
+</script>
+
+<button class="open" onClick=(() => (open = !open))>Open</button>
+#if (open) {
+  <div class="box">
+    <ClonedIcon viewBox="0 0 10 10">
+      <circle class="child" r="3" cx="5" cy="5" />
+    </ClonedIcon>
+    <svg class="dots">
+      <ClonedDot r=(2) />
+      <{shape} class="shape" width="2" height="2"></>
+    </svg>
+    <ClonedCheck label="Remember me" />
+  </div>
+}

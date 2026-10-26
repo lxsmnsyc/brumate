@@ -17,7 +17,7 @@
 <button class="rename" onClick=(() => (label = 'Pressed'))>Rename</button>
 
 <Card title="Counter">
-  <Counter start=2 label=label />
+  <Counter start=2 {label} />
 </Card>
 
 <Card title="Greeter" footer=signature>

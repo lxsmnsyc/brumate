@@ -54,20 +54,13 @@ export default async function Memos($$props: Record<string, never>, $$ctx: $$b.C
 Memos.brumateId = "Memos_1khoa0p";
 
 # Client entry
+export * from "./memos.brm?brumate-client&part=h15";
+export * from "./memos.brm?brumate-client&part=h24";
+export * from "./memos.brm?brumate-client&part=h30";
+export * from "./memos.brm?brumate-client&part=update";
 export const id = "Memos_1khoa0p";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "m4"], [1, "m7"], [1, "u16"]], 2: [[1, "m3"], [1, "m14"], [1, "u17"]], 3: [[1, "m6"], [1, "m8"], [1, "u18"]], 5: [[1, "m6"]], 7: [[1, "m8"], [1, "u22"]], 10: [[1, "m13"], [1, "u26"]], 1: [[1, "m14"]], 4: [[1, "u19"]], 6: [[1, "u21"]], 8: [[1, "u23"]], 9: [[1, "u25"]], 13: [[1, "u27"]], 11: [[1, "u28"]], 12: [[1, "u29"]], 14: [[2, "u36"]] } };
-const update = () => import("./memos.brm?brumate-client&part=update");
-const parts = {
-  "h15": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h15")),
-  "h24": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h24")),
-  "h30": () => (update().catch(() => {}), import("./memos.brm?brumate-client&part=h30")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h15
 import * as $$b from 'brumate/client';
@@ -165,8 +158,9 @@ import * as $$b from 'brumate/client';
 export function label(value: number): Promise<string> {
     return Promise.resolve(`#${value}`);
   }
+const $$t0 = $$b.template("<button b-x=\"0\" b-on=\"click=Memos_1khoa0p#h15\"></button><p b-x=\"5\" class=\"plain\"><!--x1--> <!--x2--> <!--x3--> <!--x4--> </p><p b-x=\"7\" class=\"memo\"><!--x6--> </p> <button b-x=\"8\" b-on=\"click=Memos_1khoa0p#h24\"><!--x9--> <!--x10--> <!--x11--> </button><input b-x=\"12\" b-on=\"input=Memos_1khoa0p#h30\"><p class=\"literals\">&lt;i&gt; 1.5 10  <!--x13--></p><p b-x=\"14\" class=\"late\"></p>", 15);
 
-export default function Memos($$props: Record<string, never>): string {
+export default function Memos($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Memos_1khoa0p");
   let count = (3);
@@ -184,13 +178,29 @@ export default function Memos($$props: Record<string, never>): string {
   let typed = ('');
   const same = (copy);
   const late = (items.length + double);
-  $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Memos_1khoa0p#h15\">" + $$b.insert((count)) + "</button><p class=\"plain\"><!--t" + $$s1 + ":1-->" + $$b.insert((double)) + "<!--/t--> <!--t" + $$s1 + ":2-->" + $$b.insert((quad)) + "<!--/t--> <!--t" + $$s1 + ":3-->" + $$b.insert((parity)) + "<!--/t--> " + $$b.insert((size)) + " <!--t" + $$s1 + ":4-->" + $$b.insert((text)) + "<!--/t--></p><p class=\"memo\"><!--t" + $$s1 + ":5-->" + $$b.insert((named)) + "<!--/t--> <!--t" + $$s1 + ":6-->" + $$b.insert((both)) + "<!--/t--></p> <button b-b=\"" + $$s1 + ":7\" b-on=\"click=Memos_1khoa0p#h24\"><!--t" + $$s1 + ":8-->" + $$b.insert((steps)) + "<!--/t--> <!--t" + $$s1 + ":9-->" + $$b.insert((copy)) + "<!--/t--> <!--t" + $$s1 + ":10-->" + $$b.insert((same)) + "<!--/t--> <!--t" + $$s1 + ":11-->" + $$b.insert((loaded)) + "<!--/t--></button><input" + $$b.attribute("value", (typed)) + " b-b=\"" + $$s1 + ":12\" b-on=\"input=Memos_1khoa0p#h30\"><p class=\"literals\">&lt;i&gt; 1.5 10  " + $$b.insert((-1)) + "</p>";
-  {
-    const $$s2 = $$b.createScope(2, $$s1);
-    $$html += "<p class=\"late\" b-b=\"" + $$s2 + ":0\">" + $$b.insert((late)) + "</p>";
-  }
+    const $$s2 = $$b.createScope(2, $$s1, undefined, 1);
+  const $$e = $$b.clone($$t0), $$f = $$e[15];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.setContent($$e[0], (count), $$s1);
+  $$b.keepText($$s1, 1, $$e[1], (double));
+  $$b.keepText($$s1, 2, $$e[2], (quad));
+  $$b.keepText($$s1, 3, $$e[3], (parity));
+  $$b.putText($$e[4], (size));
+  $$b.appendText($$s1, 4, $$e[5], (text));
+  $$b.keepText($$s1, 5, $$e[6], (named));
+  $$b.appendText($$s1, 6, $$e[7], (both));
+  $$b.keep($$s1, 7, $$e[8]);
+  $$b.appendText($$s1, 11, $$e[8], (loaded));
+  $$b.keepText($$s1, 8, $$e[9], (steps));
+  $$b.keepText($$s1, 9, $$e[10], (copy));
+  $$b.keepText($$s1, 10, $$e[11], (same));
+  $$b.setAttr($$e[12], "value", (typed));
+  $$b.keep($$s1, 12, $$e[12]);
+  $$b.putText($$e[13], (-1));
+  $$b.keep($$s2, 0, $$e[14]);
+  $$b.setContent($$e[14], (late), $$s2);
   $$b.setSlots($$s1, [count, items, double, quad, parity, size, text, named, both, steps, copy, loaded, typed, same, late]);
-  return $$html;
+  return $$f;
 }
 
 # HTML

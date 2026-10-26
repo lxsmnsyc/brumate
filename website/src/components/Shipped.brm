@@ -12,28 +12,26 @@
   }>();
 
   const kb = (bytes: number): string => `${(bytes / 1024).toFixed(2)} KB`;
-  const total = report.sizes
-    .filter((size) => size.module !== 'entry')
-    .reduce((sum, size) => sum + size.gzip, 0);
+  const total = report.sizes.reduce((sum, size) => sum + size.gzip, 0);
 </script>
 
 <div class="shipped">
   <table>
     <thead>
-      <tr><th>Module</th><th>Loads</th><th>gzip</th></tr>
+      <tr><th>Module</th><th>Holds</th><th>gzip</th></tr>
     </thead>
     <tbody>
       #for (size of report.sizes by size.module) {
         <tr>
           <td><code>{size.module}</code></td>
-          <td>{size.module === 'entry' ? 'on first use' : size.module === 'update' ? 'on the first change' : size.module === 'all' ? 'on the first event' : 'on its event'}</td>
+          <td>{size.module === 'entry' ? 'the tables of the component' : size.module === 'update' ? 'the updates' : size.module === 'all' ? 'all of its code' : 'a handler'}</td>
           <td class="num">{kb(size.gzip)}</td>
         </tr>
       }
     </tbody>
   </table>
   <p class="shipped-sum">
-    Before any click: <strong>0 KB</strong> of this component. After every event: <strong>{kb(total)}</strong>.{' '}
+    The page loads <strong>{kb(total)}</strong> of this component when it starts, in its bundle.{' '}
     {report.staticMarkup.elements} elements ship as HTML only.
   </p>
   <ul class="shipped-roots">

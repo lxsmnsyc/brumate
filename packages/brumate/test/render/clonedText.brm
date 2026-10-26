@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+  let name = $signal('Ada');
+  let count = $signal(1);
+</script>
+
+<button class="open" onClick=(() => (open = !open))>Open</button>
+<button class="rename" onClick=(() => { name = `${name}!`; count++; })>Rename</button>
+#if (open) {
+  <p class="hello">Hello {name}, you have {count} items.</p>
+  <p class="last">Bye {name}</p>
+}

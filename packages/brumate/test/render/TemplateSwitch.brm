@@ -1,0 +1,5 @@
+<script>
+  import { $props } from 'brumate/signals';
+  const { a, b, flip, value } = $props<{ a: (v: number) => unknown; b: (v: number) => unknown; flip: boolean; value: number }>();
+</script>
+<p class="slot">{flip ? a(value) : b(value)}</p>

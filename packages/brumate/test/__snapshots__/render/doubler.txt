@@ -26,18 +26,11 @@ export default async function Doubler($$props: Record<string, never>, $$ctx: $$b
 Doubler.brumateId = "Doubler_1bxsryb";
 
 # Client entry
+export * from "./doubler.brm?brumate-client&part=h2";
+export * from "./doubler.brm?brumate-client&part=update";
 export const id = "Doubler_1bxsryb";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m1"], [1, "u3"]], 1: [[1, "u4"], [1, "b5"]] } };
-const update = () => import("./doubler.brm?brumate-client&part=update");
-const parts = {
-  "h2": () => (update().catch(() => {}), import("./doubler.brm?brumate-client&part=h2")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h2
 import * as $$b from 'brumate/client';
@@ -57,13 +50,16 @@ export function u3($$s) {
 export function u4($$s) {
   $$b.content($$s, 1, $$b.get($$s, 1));
 }
+const $$k0 = [r2];
+const $$k1 = [2];
 export function b5($$s) {
-  $$b.branch($$s, 2, ($$b.pending($$s, 1)) ? 0 : -1, [r2], [2]);
+  $$b.branch($$s, 2, ($$b.pending($$s, 1)) ? 0 : -1, $$k0, $$k1);
 }
+const $$k2 = $$b.template("<span class=\"pending\">Loading</span>", 0);
 export function r2($$p) {
   let $$html = '';
-  $$html += "<span class=\"pending\">Loading</span>";
-  return $$html;
+  const $$e = $$b.clone($$k2), $$f = $$e[0];
+  return $$f;
 }
 
 # Client part: shared
@@ -75,23 +71,25 @@ export function double(value: number): Promise<number> {
 
 # Render module
 import * as $$b from 'brumate/client';
+import { r2 as $$r2 } from "./doubler.brm?brumate-client";
 export function double(value: number): Promise<number> {
     return new Promise((done) => setTimeout(() => done(value * 2), 150));
   }
+const $$t0 = $$b.template("<button b-x=\"0\" b-on=\"click=Doubler_1bxsryb#h2\"></button><p b-x=\"1\"></p><!--x2--><!--/b-->", 3);
 
-export default function Doubler($$props: Record<string, never>): string {
+export default function Doubler($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Doubler_1bxsryb");
   let count = (1);
   const doubled = (double(count));
-  $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=Doubler_1bxsryb#h2\">" + $$b.insert((count)) + "</button><p b-b=\"" + $$s1 + ":1\">" + $$b.insert((doubled)) + "</p>";
-  if (false) {
-    $$html += "<!--b" + $$s1 + ":2:0--><span class=\"pending\">Loading</span><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
-  }
+  const $$e = $$b.clone($$t0), $$f = $$e[3];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.setContent($$e[0], (count), $$s1);
+  $$b.keep($$s1, 1, $$e[1]);
+  $$b.setContent($$e[1], (doubled), $$s1);
   $$b.setSlots($$s1, [count, doubled]);
-  return $$html;
+  $$b.fillBranch($$e[2], $$s1, 2, (false) ? 0 : -1, [$$r2]);
+  return $$f;
 }
 
 # HTML

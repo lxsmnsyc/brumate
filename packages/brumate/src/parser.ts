@@ -11,7 +11,6 @@ import type {
   KeyBlock,
   Markup,
   Modifier,
-  PrefetchStrategy,
   Reveal,
   RevealOrder,
   SFCFile,
@@ -73,8 +72,6 @@ const BLOCK_KEYWORDS = new Set([
 const BRANCH_KEYWORDS = new Set(['else', 'catch', 'case', 'default']);
 
 const MODIFIERS = new Set<string>(['prevent', 'stop', 'passive', 'once', 'capture']);
-
-const PREFETCH_STRATEGIES = new Set<string>(['hover', 'visible', 'idle', 'none']);
 
 const CLIENT_TRIGGERS = new Set<string>(['visible', 'idle', 'load']);
 
@@ -431,6 +428,18 @@ class Parser {
       if (readIdentifier(name, 0) !== name) {
         this.fail('Expected a spread or a shorthand attribute', start);
       }
+      // `{onClick}` is a handler, the same as `onClick=onClick`, as in Svelte.
+      if (/^on[A-Z]/.test(name)) {
+        return {
+          kind: 'event',
+          start,
+          end: this.pos,
+          name,
+          event: name.slice(2).toLowerCase(),
+          modifiers: [],
+          handler: this.expression(inner.start, inner.end),
+        };
+      }
       return {
         kind: 'value',
         start,
@@ -496,7 +505,7 @@ class Parser {
       this.fail('An attribute name can have one ":" namespace', start);
     }
 
-    if (owner === 'element' && fullName === 'ref') {
+    if ((owner === 'element' || owner === 'dynamic') && fullName === 'ref') {
       this.expect('=', 'Expected the name of a signal after "ref="');
       const targetStart = this.pos;
       const target = readIdentifier(this.source, this.pos);
@@ -514,12 +523,8 @@ class Parser {
     }
 
     if (owner === 'element' && fullName === 'prefetch') {
-      this.expect('=', 'Expected a prefetch strategy');
-      const value = this.parseValue();
-      if (typeof value !== 'string' || !PREFETCH_STRATEGIES.has(value)) {
-        this.fail('prefetch must be "hover", "visible", "idle" or "none"', start);
-      }
-      return { kind: 'prefetch', start, end: this.pos, strategy: value as PrefetchStrategy };
+      // The code of the page loads when it starts, so a handler has nothing to load early.
+      this.fail('prefetch is removed. The code of the page loads when it starts', start);
     }
 
     if (this.peek() !== '=') {

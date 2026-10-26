@@ -1,0 +1,11 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Calls two functions of its parent, in this order, from one handler.
+  const { first, second } = $props<{ first: () => void; second: () => void }>();
+</script>
+
+<button class="both" onClick=(() => {
+  first();
+  second();
+})>Both</button>

@@ -1,0 +1,129 @@
+<script>
+  import { SelectionIndicatorContext } from './selection-indicator.ts';
+  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import VisuallyHidden from './VisuallyHidden.brm';
+  import { box } from './box.brm.ts';
+  import { RadioGroupContext } from './contexts.ts';
+  import { isFirstInvalid } from './fields.ts';
+
+  /**
+   * A radio of a RadioGroup, as Radio of React Aria Components: a <label> around a native radio.
+   * The label shows `data-selected`, `data-pressed`, `data-hovered`, `data-focused`,
+   * `data-focus-visible`, `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
+   */
+  const { value, isDisabled, children, ...rest } = $props<{
+    value: string;
+    isDisabled?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const group = $getContext(RadioGroupContext);
+  const selected = $memo(group?.value === value);
+  const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
+  const readOnly = $memo(Boolean(group?.isReadOnly));
+
+  const {
+    hovered,
+    pressed,
+    focused,
+    focusVisible,
+    onPointerEnter,
+    onPointerLeave,
+    onPointerDown,
+    onPointerUp,
+    onPointerCancel,
+    onKeyDown,
+    onKeyUp,
+    onFocusIn,
+    onFocusOut,
+  } = box(disabled);
+
+  // The click of a read-only box, which the wrapper prevents.
+  function keep() {}
+
+  function change(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    if (!input.checked) {
+      return;
+    }
+    // A read-only group keeps its choice. The browser checked this radio already.
+    if (readOnly) {
+      input.checked = false;
+      const checked = input.form?.querySelector<HTMLInputElement>(
+        `input[name="${CSS.escape(input.name)}"][value="${CSS.escape(group?.value ?? '')}"]`,
+      );
+      if (checked) {
+        checked.checked = true;
+      }
+      return;
+    }
+    group?.select(value);
+  }
+
+  // The first invalid field of the form gets focus, as the browser does with its own message.
+  function invalidated(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    group?.onInvalid(input.validationMessage);
+    if (isFirstInvalid(input)) {
+      input.focus();
+    }
+  }
+  // A SelectionIndicator inside marks the item while it is selected.
+  $setContext(SelectionIndicatorContext, { isSelected: selected });
+</script>
+
+<label
+  data-selected=(selected || undefined)
+  data-pressed=(pressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  data-disabled=(disabled || undefined)
+  data-readonly=(readOnly || undefined)
+  data-invalid=(group?.isInvalid || undefined)
+  data-required=(group?.isRequired || undefined)
+  {onPointerEnter}
+  {onPointerLeave}
+  {onPointerDown}
+  {onPointerUp}
+  {onPointerCancel}
+  {onKeyDown}
+  {onKeyUp}
+  {onFocusIn}
+  {onFocusOut}
+  {...rest}
+>
+  <!-- A read-only box prevents its click, so the browser never toggles it, and a screen reader
+       announces no change. -->
+  #if (readOnly) {
+    <VisuallyHidden
+      as="input"
+      type="radio"
+      name=(group?.name)
+      {value}
+      checked=selected
+      disabled=(disabled || undefined)
+      required=(group?.isRequired || undefined)
+      aria-describedby=(group?.describedBy)
+      onChange=change
+      onClick=(prevent(keep))
+      onInvalid=(prevent(invalidated))
+    />
+  } #else {
+    <VisuallyHidden
+      as="input"
+      type="radio"
+      name=(group?.name)
+      {value}
+      checked=selected
+      disabled=(disabled || undefined)
+      required=(group?.isRequired || undefined)
+      aria-describedby=(group?.describedBy)
+      onChange=change
+      onInvalid=(prevent(invalidated))
+    />
+  }
+  {children}
+</label>

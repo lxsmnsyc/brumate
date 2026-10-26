@@ -1,0 +1,181 @@
+<script>
+  import { $getContext, $handler, $memo, $props } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { ButtonContext } from './contexts.ts';
+  import type { HoverEvent, PressEvent } from './events.ts';
+  import { interact } from './interact.brm.ts';
+  import { contextAttributes, slotProps } from './slots.ts';
+
+  /**
+   * A button, as Button of React Aria Components. It presses with a pointer, Enter, Space, or a
+   * screen reader, and shows its state as data attributes: `data-pressed`, `data-hovered`,
+   * `data-focused`, `data-focus-visible`, `data-disabled` and `data-pending`.
+   */
+  const {
+    as,
+    type = 'button',
+    slot,
+    isDisabled,
+    isPending,
+    href,
+    onPress,
+    onPressStart,
+    onPressEnd,
+    onPressUp,
+    onPressChange,
+    onHoverStart,
+    onHoverEnd,
+    onHoverChange,
+    onFocusChange,
+    children,
+    ...rest
+  } = $props<{
+    /** The element or component to render. A button by default. */
+    as?: string;
+    type?: 'button' | 'submit' | 'reset';
+    /** The slot of the context of a part that holds this button, such as "increment". */
+    slot?: string | null;
+    isDisabled?: boolean;
+    /** Pending: the button keeps its focus and presses nothing, such as while a form sends. */
+    isPending?: boolean;
+    /** The link of a button that renders as `a`. A disabled button drops it, as in React Aria. */
+    href?: string;
+    onPress?: (event: PressEvent) => void;
+    onPressStart?: (event: PressEvent) => void;
+    onPressEnd?: (event: PressEvent) => void;
+    onPressUp?: (event: PressEvent) => void;
+    onPressChange?: (pressed: boolean) => void;
+    onHoverStart?: (event: HoverEvent) => void;
+    onHoverEnd?: (event: HoverEvent) => void;
+    onHoverChange?: (hovered: boolean) => void;
+    onFocusChange?: (focused: boolean) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const context = $getContext(ButtonContext);
+  const attributes = $memo(contextAttributes(slotProps(context, slot)));
+  const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
+  const pending = $memo(Boolean(isPending ?? slotProps(context, slot).isPending));
+  const inert = $memo(disabled || pending);
+  const native = $memo(as === undefined || as === 'button');
+
+  // The props that the context gives this button. A memo cannot hold its handlers, which only
+  // the browser calls, so they are read when they run.
+  function given() {
+    return slotProps(context, slot);
+  }
+
+  // The handlers of the context run first, then the button's own, as mergeProps of React Aria.
+  function pressed(event: PressEvent) {
+    given().onPress?.(event);
+    onPress?.(event);
+  }
+  function pressStarted(event: PressEvent) {
+    given().onPressStart?.(event);
+    onPressStart?.(event);
+  }
+  function pressEnded(event: PressEvent) {
+    given().onPressEnd?.(event);
+    onPressEnd?.(event);
+  }
+  function pressUp(event: PressEvent) {
+    given().onPressUp?.(event);
+    onPressUp?.(event);
+  }
+  function pressChanged(value: boolean) {
+    given().onPressChange?.(value);
+    onPressChange?.(value);
+  }
+  function hoverStarted(event: HoverEvent) {
+    given().onHoverStart?.(event);
+    onHoverStart?.(event);
+  }
+  function hoverEnded(event: HoverEvent) {
+    given().onHoverEnd?.(event);
+    onHoverEnd?.(event);
+  }
+  function hoverChanged(value: boolean) {
+    given().onHoverChange?.(value);
+    onHoverChange?.(value);
+  }
+  function focusChanged(value: boolean) {
+    given().onFocusChange?.(value);
+    onFocusChange?.(value);
+  }
+
+  const {
+    pressed: isPressed,
+    hovered,
+    focused,
+    focusVisible,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onLostPointerCapture,
+    onPointerEnter,
+    onPointerLeave,
+    onKeyDown,
+    onKeyUp,
+    onClick,
+    onFocus,
+    onBlur,
+  } = interact(
+    inert,
+    inert,
+    pressed,
+    pressStarted,
+    pressEnded,
+    pressUp,
+    pressChanged,
+    hoverStarted,
+    hoverEnded,
+    hoverChanged,
+    focusChanged,
+  );
+
+  // A submit or reset button keeps Space, so the browser clicks it and sends its form, as in
+  // React Aria. Other buttons prevent it, so the browser does not scroll the page or click them.
+  // A pending button is a plain button, so it sends nothing again.
+  function keys() {
+    return native && !pending && (type === 'submit' || type === 'reset')
+      ? { onKeyDown: $handler(onKeyDown), onKeyUp: $handler(onKeyUp) }
+      : {
+          onKeyDown: $handler(prevent(onKeyDown, 'Space')),
+          onKeyUp: $handler(prevent(onKeyUp, 'Space')),
+        };
+  }
+</script>
+
+<!--
+  A native button gets `disabled` and `type`. Another element gets the role and the focus of a
+  button. A pending button stays focusable, with aria-disabled.
+-->
+<{as ?? 'button'}
+  type=(native ? (pending ? 'button' : type) : undefined)
+  href=(disabled ? undefined : href)
+  role=(native ? undefined : 'button')
+  tabindex=(native || disabled ? undefined : 0)
+  disabled=(native && disabled ? true : undefined)
+  aria-disabled=(!native && disabled || pending ? 'true' : undefined)
+  data-pressed=(isPressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  data-disabled=(disabled || undefined)
+  data-pending=(pending || undefined)
+  {onPointerDown}
+  {onPointerMove}
+  {onPointerUp}
+  {onPointerCancel}
+  {onLostPointerCapture}
+  {onPointerEnter}
+  {onPointerLeave}
+  {...keys()}
+  {onClick}
+  {onFocus}
+  {onBlur}
+  {...attributes}
+  {...rest}
+>{children}</>

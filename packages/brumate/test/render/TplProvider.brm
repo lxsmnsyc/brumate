@@ -1,0 +1,26 @@
+<script>
+  import { $props, $setContext, $signal } from 'brumate/signals';
+  import TplReader from './TplReader.brm';
+  import { Level } from './tplContext.ts';
+
+  // Provides from the script of a template's block, to a reader in place and to children.
+  const { children } = $props<{ children?: unknown }>();
+  let count = $signal(1);
+  let shown = $signal(false);
+</script>
+
+<button class=(`bump`) onClick=(() => count++)>Bump</button>
+<button class="show" onClick=(() => (shown = true))>Show</button>
+#template body() {
+  <script>
+    $setContext(Level, count);
+  </script>
+  <div class="in-template">
+    <TplReader label=(shown ? 'later-direct' : 'direct') />
+    {children}
+  </div>
+}
+{body()}
+#if (shown) {
+  <section class="later">{body()}</section>
+}

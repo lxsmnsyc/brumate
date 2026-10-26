@@ -19,19 +19,12 @@ export default async function Shared($$props: Record<string, never>, $$ctx: $$b.
 Shared.brumateId = "Shared_1xpln25";
 
 # Client entry
+export * from "./shared.brm?brumate-client&part=h2";
+export * from "./shared.brm?brumate-client&part=h3";
+export * from "./shared.brm?brumate-client&part=update";
 export const id = "Shared_1xpln25";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u5"]] } };
-const update = () => import("./shared.brm?brumate-client&part=update");
-const parts = {
-  "h2": () => (update().catch(() => {}), import("./shared.brm?brumate-client&part=h2")),
-  "h3": () => (update().catch(() => {}), import("./shared.brm?brumate-client&part=h3")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h2
 import * as $$b from 'brumate/client';
@@ -66,17 +59,22 @@ export function bump$($$s, by: number) {
 import * as $$b from 'brumate/client';
 export const STEP = 2;
 const label = 'Count';
+const $$t0 = $$b.template("<button b-x=\"0\" class=\"one\" b-on=\"click=Shared_1xpln25#h2\">One</button><button b-x=\"1\" class=\"two\" b-on=\"click=Shared_1xpln25#h3\">Two</button><p b-x=\"3\"><!--x2-->: </p>", 4);
 
-export default function Shared($$props: Record<string, never>): string {
+export default function Shared($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Shared_1xpln25");
   let count = (0);
   function bump(by: number) {
     count += by * STEP;
   }
-  $$html += "<button class=\"one\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Shared_1xpln25#h2\">One</button><button class=\"two\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Shared_1xpln25#h3\">Two</button><p>" + $$b.insert((label)) + ": <!--t" + $$s1 + ":2-->" + $$b.insert((count)) + "<!--/t--></p>";
+  const $$e = $$b.clone($$t0), $$f = $$e[4];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.keep($$s1, 1, $$e[1]);
+  $$b.putText($$e[2], (label));
+  $$b.appendText($$s1, 2, $$e[3], (count));
   $$b.setSlots($$s1, [count]);
-  return $$html;
+  return $$f;
 }
 
 # HTML

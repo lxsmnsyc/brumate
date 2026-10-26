@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+
+  let presses = $signal(0);
+  let last = $signal('');
+</script>
+
+<Button
+  class="ui-button"
+  onPress=((event) => {
+    presses++;
+    last = event.pointerType;
+  })
+>Press me</Button>
+<Button class="ui-button" isPending>Saving</Button>
+<Button class="ui-button" isDisabled>Disabled</Button>
+<p>Pressed {presses === 1 ? 'once' : `${presses} times`}{last ? `, last with ${last}` : ''}.</p>

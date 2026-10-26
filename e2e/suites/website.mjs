@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 // The website as a static host serves it: every docs page with a live sample,
 // the home page, and client navigation between pages.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -170,6 +171,8 @@ async function clickButtons(page, figures, url) {
   await page.waitForTimeout(500);
   return clicks;
 }
+
+const axe = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 
 export async function run({ browser, url, runner }) {
   const step = (name, options, check) => runner.step('website', name, options, check);
@@ -367,6 +370,122 @@ export async function run({ browser, url, runner }) {
         'the page still shows the state page',
       );
     });
+    await page.close();
+  }
+
+  // The section of @brumate/ui, with its own header, sidebar and search.
+  {
+    const page = await browser.newPage();
+    const errors = watch(page);
+    const flow = runner.flow('website', { page, errors });
+    await flow(
+      '/ui: the link in the header navigates on the client to a section of its own',
+      async () => {
+        await page.goto(`${url}/docs`, { waitUntil: 'load' });
+        await page.evaluate(() => (window.__e2eSamePage = true));
+        await page.locator('.header-nav a', { hasText: 'UI' }).click();
+        await page.waitForURL(`${url}/ui`, { timeout: 5000 });
+        await page.locator('.ui-gallery').waitFor({ timeout: 5000 });
+        assert(
+          await page.evaluate(() => window.__e2eSamePage === true),
+          'the link loaded a new page',
+        );
+        // The root layout stays, and its header changes to the one of the section.
+        await page.waitForFunction(
+          () => {
+            const nav = document.querySelector('.header-nav')?.textContent ?? '';
+            return nav.includes('Parts') && !nav.includes('REPL');
+          },
+          null,
+          { timeout: 5000 },
+        );
+        const cards = await page.locator('.ui-card').count();
+        assert(cards >= 10, `the gallery has ${cards} cards`);
+        const sidebar = await page.locator('.sidebar').textContent();
+        assert(!sidebar.includes('Routing'), 'the sidebar shows the docs of brumate');
+      },
+    );
+    await flow('/ui: a card opens its page, and its preview takes no input', async () => {
+      const card = page.locator('.ui-card', { hasText: 'Switch' });
+      assert(
+        await card.locator('.ui-demo-stage').evaluate((stage) => stage.inert),
+        'the preview is not inert',
+      );
+      // The link covers the card, so a click on the preview opens the page. The site scrolls
+      // smoothly, so the step scrolls at once and reads the place of the preview after it.
+      const stage = card.locator('.ui-demo-stage');
+      // The view transition of the navigation takes the clicks until it ends.
+      await page.waitForFunction(() => document.getAnimations().length === 0, null, {
+        timeout: 5000,
+      });
+      await stage.evaluate((element) =>
+        element.scrollIntoView({ block: 'center', behavior: 'instant' }),
+      );
+      const box = await stage.boundingBox();
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      // Client navigation fires no load event, so the step waits for the address.
+      await page.waitForFunction(() => location.pathname === '/ui/switch', null, { timeout: 5000 });
+      await page.waitForFunction(() => document.getAnimations().length === 0, null, {
+        timeout: 5000,
+      });
+      await page.locator('.ui-demo .ui-box', { hasText: 'Wi-Fi is on' }).click();
+      await page
+        .locator('.ui-demo .ui-box', { hasText: 'Wi-Fi is off' })
+        .waitFor({ timeout: 5000 });
+    });
+    await flow('/ui: the search finds only the pages of the section', async () => {
+      await page.locator('.search input').fill('toolbar');
+      await page.locator('.search-results a').first().waitFor({ timeout: 5000 });
+      const links = await page
+        .locator('.search-results a')
+        .evaluateAll((items) => items.map((item) => item.getAttribute('href')));
+      assert(
+        links.length > 0 && links.every((href) => href.startsWith('/ui')),
+        `the results link to ${links.join(', ')}`,
+      );
+    });
+    await flow(
+      '/ui/text-field: its demos with their source, and no accessibility violations',
+      async () => {
+        await page.goto(`${url}/ui/text-field`, { waitUntil: 'load' });
+        assert((await page.locator('.ui-demo pre').count()) >= 2, 'the demos show no source');
+        await page.addScriptTag({ path: axe });
+        const violations = await page.evaluate(async () => {
+          const result = await window.axe.run(document.querySelector('article'));
+          return result.violations.map(
+            (violation) => `${violation.id}: ${violation.help} (${violation.nodes.length})`,
+          );
+        });
+        assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
+      },
+    );
+    await flow(
+      '/ui: each page of the sidebar loads, with no accessibility violations',
+      async () => {
+        await page.goto(`${url}/ui`, { waitUntil: 'load' });
+        const slugs = await page
+          .locator('nav.sidebar a[href^="/ui"]')
+          .evaluateAll((links) => [...new Set(links.map((link) => link.getAttribute('href')))]);
+        assert(slugs.length > 30, `the sidebar links to ${slugs.length} pages`);
+        const found = [];
+        for (const slug of slugs) {
+          const response = await page.goto(`${url}${slug}`, { waitUntil: 'load' });
+          if (response?.status() !== 200) {
+            found.push(`${slug}: ${response?.status()}`);
+            continue;
+          }
+          await page.addScriptTag({ path: axe });
+          const violations = await page.evaluate(async () => {
+            const result = await window.axe.run(document.querySelector('article'));
+            return result.violations.map((violation) => violation.id);
+          });
+          if (violations.length > 0) {
+            found.push(`${slug}: ${violations.join(', ')}`);
+          }
+        }
+        assert(found.length === 0, `found:\n${found.join('\n')}`);
+      },
+    );
     await page.close();
   }
 }

@@ -354,6 +354,21 @@ function shiftIds(root: Node, shift: Shift): void {
         element.setAttribute(name, add(value));
       }
     }
+    // A handler that a spread passed on names the scope of its owner after `@`, such as
+    // `change=Switch#h4@5.0` or `click=App#h2@5@%5B1%5D` with the arguments of `$handler`.
+    const on = element.getAttribute('b-on');
+    if (on?.includes('@')) {
+      element.setAttribute(
+        'b-on',
+        on
+          .split(' ')
+          .map((entry) => {
+            const [ref, scope, ...args] = entry.split('@');
+            return scope === undefined ? entry : [ref, add(scope), ...args].join('@');
+          })
+          .join(' '),
+      );
+    }
     // A `#defer` block: `<trigger>:<boundary>:<base>`. The page now renders from the new base.
     const defer = element.getAttribute('b-defer');
     if (defer) {

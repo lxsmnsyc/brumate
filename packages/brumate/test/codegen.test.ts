@@ -38,6 +38,32 @@ describe('client functions', () => {
   });
 });
 
+describe('memos of objects', () => {
+  it('keeps the key of a shorthand property that reads another memo', () => {
+    const { server, parts } = compile(
+      `<script>\n  import { $memo, $props, $signal } from 'brumate/signals';\n  const { field } = $props();\n  let count = $signal(1);\n  const id = $memo(field ?? \`n\${count}\`);\n  const props = $memo({ id, count });\n</script>\n<button onClick=(() => count++) {...props}>+</button>`,
+      { filename: 'Props.brm' },
+    );
+    expect(server).toContain('id: $$b.read($$p_id)');
+    // The browser reads the object as a value, not as a block.
+    expect(Object.values(parts).join('\n')).toMatch(/memo\(\$\$s, \d+, \(\) => \(\{/);
+    expect(parseSync('Props.brm.ts', server).errors).toEqual([]);
+  });
+});
+
+describe('the name of the component function', () => {
+  it('does not hide a name that the script imports', () => {
+    const { server, render } = compile(
+      `<script>\n  import { $getContext } from 'brumate/signals';\n  import { ButtonContext } from './contexts.ts';\n  const value = $getContext(ButtonContext);\n</script>\n<p>{value}</p>`,
+      { filename: 'button-context.brm' },
+    );
+    expect(server).toContain('export default async function ButtonContext$(');
+    expect(server).toContain('ButtonContext$.brumateId');
+    expect(server).toContain('consume(ButtonContext,');
+    expect(render).toContain('export default function ButtonContext$(');
+  });
+});
+
 describe('$untrack', () => {
   it('reads through a called function without depending on what it reads', () => {
     const { report } = inspect(
@@ -182,16 +208,39 @@ describe('client entries and handlers', () => {
     expect(code).not.toContain('.bind(');
   });
 
-  it('starts loading the updates with a handler that writes a slot that they read', () => {
+  it('exports the parts of a component from its entry, so they load with the page', () => {
     const { client } = compile(
       counterSource(
         '<button onClick=(() => bump(1))>A</button><button onClick=(() => hidden++)>B</button>',
       ),
       { filename: 'T.brm' },
     );
-    expect(client).toMatch(/"h\d+": \(\) => \(update\(\)\.catch\(\(\) => \{\}\), import\(/);
-    // `hidden` has no update, so its handler loads its own part only.
-    expect(client).toMatch(/"h\d+": \(\) => import\("\.\/T\.brm\?brumate-client&part=h\d+"\),/);
+    expect(client).toMatch(/export \* from "\.\/T\.brm\?brumate-client&part=h\d+";/);
+    expect(client).toContain('export * from "./T.brm?brumate-client&part=update";');
+    expect(client).not.toContain('import(');
+    expect(client).not.toContain('export function load');
+  });
+
+  it('keeps the constants of updates at the top of their module', () => {
+    const { parts } = compile(
+      [
+        '<script>',
+        "  import { $signal } from 'brumate/signals';",
+        '  let items = $signal([1, 2]);',
+        '  let open = $signal(true);',
+        '</script>',
+        '<button onClick=(() => (items = [...items, 3]))>Add</button>',
+        '<button onClick=(() => (open = !open))>Toggle</button>',
+        '<ul>#for (item of items by item) {<li>{item}</li>}</ul>',
+        '#if (open) {<p>Open</p>}',
+      ].join('\n'),
+      { filename: 'T.brm' },
+    );
+    const update = parts.update!;
+    // The key reads only the item, and the kinds and the renders never change.
+    expect(update).toMatch(/const \$\$k\d+ = \(\$\$item, \$\$index\) => \{/);
+    expect(update).toMatch(/, \$\$k\d+, r\d+, a\d+, undefined, \$\$k\d+\);/);
+    expect(update).toMatch(/\$\$b\.branch\(\$\$s, \d+, .+, \$\$k\d+, \$\$k\d+\)/);
   });
 
   it('puts the code of a small component into its entry', () => {
@@ -209,6 +258,24 @@ describe('client entries and handlers', () => {
     expect(client).not.toContain('export function load');
   });
 
+  it('imports the components of a template that a prop passes, in parts and in one module', () => {
+    const source = [
+      '<script>',
+      "  import Item from './Item.brm';",
+      "  import List from './List.brm';",
+      '</script>',
+      '<List item=row />',
+      '#template row(label: string) {',
+      '  <Item label=label />',
+      '}',
+    ].join('\n');
+    const split = compile(source, { filename: 'T.brm' });
+    const part = Object.entries(split.parts).find(([name]) => name.startsWith('t'))![1];
+    expect(part).toContain('import Item from "./Item.brm?brumate-render";');
+    const merged = compile(source, { filename: 'T.brm', merge: 2048 });
+    expect(merged.client).toContain('import Item from "./Item.brm?brumate-render";');
+  });
+
   it('merges a component of a few kB with the default of the Vite plugin', () => {
     // Two handlers and the updates: as large as a dashboard widget, so one module.
     expect(partsSize(widgetSource(2))).toBeGreaterThan(2048);
@@ -216,11 +283,11 @@ describe('client entries and handlers', () => {
     expect(small.parts).toEqual({});
     expect(small.client).not.toContain('export function load');
     expect(Object.keys(small.loaders)).toHaveLength(3);
-    // Eight handlers keep one module per part, so an event loads only its own.
+    // Eight handlers keep one module per part, which the entry exports.
     expect(partsSize(widgetSource(8))).toBeGreaterThan(DEFAULT_MERGE);
     const large = compile(widgetSource(8), { filename: 'T.brm', merge: DEFAULT_MERGE });
     expect(Object.keys(large.parts)).toHaveLength(9);
-    expect(large.client).toContain('export function load');
+    expect(large.client).toContain('export * from');
   });
 });
 
@@ -498,7 +565,7 @@ describe('await', () => {
     expect(modules.h5).toContain(
       'console.log(($$b.get($$s, 1)).name, $$b.update($$s, 0, 1, false))',
     );
-    expect(render).toContain('$$b.insert(((user).name))');
+    expect(render).toContain('$$b.keepText($$s1, 0, $$e[0], ((user).name));');
     for (const code of [...Object.values(modules), render]) {
       expect(parseSync('code.ts', code).errors).toEqual([]);
     }
@@ -571,7 +638,7 @@ describe('await', () => {
     );
     expect(server).toContain('const settings = await load(0);');
     expect(render).toMatch(
-      /export default function T\(\$\$props: [^)]*\): string \{\n  throw new Error\("T awaits a promise in its script or markup, so only the server can render it"\);\n\}/,
+      /export default function T\(\$\$props: [^)]*\): string \| DocumentFragment \{\n  throw new Error\("T awaits a promise in its script or markup, so only the server can render it"\);\n\}/,
     );
     expect(parseSync('render.ts', render).errors).toEqual([]);
   });
@@ -609,7 +676,7 @@ describe('await', () => {
       `${header}  const user = $memo(load(id));\n</script>\n<button onClick=(() => id++)>+</button>\n#if (id > 1) {\n  <p>{(await user).name}</p>\n}`,
       { filename: 'T.brm' },
     );
-    expect(modules.update).toContain('$$b.insert(((user).name))');
+    expect(modules.update).toContain('$$b.setContent($$e[0], ((user).name), $$s2)');
     expect(parseSync('update.ts', modules.update!).errors).toEqual([]);
   });
 

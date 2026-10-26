@@ -1,0 +1,27 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { FieldErrorContext } from './contexts.ts';
+
+  /**
+   * The errors of a field, as FieldError of React Aria Components. It renders only while the
+   * field is invalid, with the ID that the field's input names in aria-describedby. Without
+   * children, it shows the messages of the field.
+   */
+  const { as = 'span', children, ...rest } = $props<{
+    as?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const state = $getContext(FieldErrorContext);
+</script>
+
+#if (state?.isInvalid) {
+  <{as} id=(state.id) data-invalid {...(state.attributes ?? {})} {...rest}>
+    #if (children) {
+      {children}
+    } #else {
+      {state.errors.join(' ')}
+    }
+  </>
+}

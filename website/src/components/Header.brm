@@ -1,6 +1,11 @@
 <script>
+  import { $props } from 'brumate/signals';
+  import BrandMark from './BrandMark.brm';
+  import Icon from './Icon.brm';
   import Search from './Search.brm';
 
+  // The section of @brumate/ui has a header of its own, which shows only its parts.
+  const { section = 'docs' } = $props<{ section?: 'docs' | 'ui' }>();
   const base = import.meta.env.BASE_URL;
 
   // The theme is on the root element, where the inline script put the saved one.
@@ -20,32 +25,31 @@
 
 <header class="header">
   <div class="header-inner">
-    <a class="brand" href=base>
-      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-        <defs>
-          <linearGradient id="brand-fill" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#ffc38a" />
-            <stop offset=".5" stop-color="#ee7a3e" />
-            <stop offset="1" stop-color="#e0445a" />
-          </linearGradient>
-          <clipPath id="brand-pole"><rect x="7.5" y="2.5" width="8" height="27" rx="4" /></clipPath>
-        </defs>
-        <circle cx="18" cy="19.5" r="10" fill="url(#brand-fill)" clip-path="url(#brand-pole)" />
-        <g fill="none" stroke="currentColor" stroke-width="2.2">
-          <rect x="7.5" y="2.5" width="8" height="27" rx="4" />
-          <circle cx="18" cy="19.5" r="10" />
-        </g>
-      </svg>
-      brumate
-    </a>
-    <Search />
+    #if (section === 'ui') {
+      <a class="brand" href=(`${base}ui`)>
+        <BrandMark />
+        <span>brumate<span class="brand-section">/ui</span></span>
+      </a>
+    } #else {
+      <a class="brand" href=base>
+        <BrandMark />
+        brumate
+      </a>
+    }
+    <Search {section} />
     <nav class="header-nav" aria-label="Main">
-      <a href=(`${base}docs`)>Docs</a>
-      <a href=(`${base}repl`)>REPL</a>
+      #if (section === 'ui') {
+        <a href=(`${base}ui`)>Parts</a>
+        <a href=(`${base}docs`)>brumate</a>
+      } #else {
+        <a href=(`${base}docs`)>Docs</a>
+        <a href=(`${base}ui`)>UI</a>
+        <a href=(`${base}repl`)>REPL</a>
+      }
       <a href="https://github.com/lxsmnsyc/brumate" target="_blank" rel="noreferrer">GitHub</a>
       <button class="theme-toggle" type="button" aria-label="Switch theme" onClick=toggleTheme>
-        <span class="sun" aria-hidden="true">☀</span>
-        <span class="moon" aria-hidden="true">☾</span>
+        <span class="sun"><Icon name="sun" size=(17) /></span>
+        <span class="moon"><Icon name="moon" size=(17) /></span>
       </button>
     </nav>
   </div>
@@ -53,6 +57,10 @@
 
 <style>
   /* Header */
+
+  .brand-section {
+    color: var(--accent);
+  }
 
   .header {
     position: sticky;

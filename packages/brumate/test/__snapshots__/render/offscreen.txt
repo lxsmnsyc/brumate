@@ -92,26 +92,19 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
 Offscreen.brumateId = "Offscreen_1oupne3";
 
 # Client entry
+export * from "./offscreen.brm?brumate-client&part=h7";
+export * from "./offscreen.brm?brumate-client&part=h8";
+export * from "./offscreen.brm?brumate-client&part=h9";
+export * from "./offscreen.brm?brumate-client&part=h10";
+export * from "./offscreen.brm?brumate-client&part=h11";
+export * from "./offscreen.brm?brumate-client&part=h12";
+export * from "./offscreen.brm?brumate-client&part=c16";
+export * from "./offscreen.brm?brumate-client&part=h17";
+export * from "./offscreen.brm?brumate-client&part=h19";
+export * from "./offscreen.brm?brumate-client&part=update";
 export const id = "Offscreen_1oupne3";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b13"], [1, "b29"], [7, "b32"]], 1: [[2, "e15"], [3, "u22"], [2, "u24"], [2, "b25"], [4, "u26"], [5, "u27"], [2, "u28"], [6, "u30"], [8, "e33"]], 2: [[2, "b21"]], 4: [[2, "u23"]], 3: [[1, "b31"]] }, 2: { 0: [[2, "u18"], [2, "u20"]] } };
-const update = () => import("./offscreen.brm?brumate-client&part=update");
-const parts = {
-  "h7": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h7")),
-  "h8": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h8")),
-  "h9": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h9")),
-  "h10": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h10")),
-  "h11": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h11")),
-  "h12": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h12")),
-  "c16": () => import("./offscreen.brm?brumate-client&part=c16"),
-  "h17": () => import("./offscreen.brm?brumate-client&part=h17"),
-  "h19": () => (update().catch(() => {}), import("./offscreen.brm?brumate-client&part=h19")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h7
 import * as $$b from 'brumate/client';
@@ -197,8 +190,10 @@ export function u23($$s) {
 export function u24($$s) {
   $$b.text($$s, 6, $$b.get($$s.p, 1));
 }
+const $$k0 = [r4];
+const $$k1 = [4];
 export function b25($$s) {
-  $$b.branch($$s, 7, ($$b.get($$s.p, 1) > 1) ? 0 : -1, [r4], [4]);
+  $$b.branch($$s, 7, ($$b.get($$s.p, 1) > 1) ? 0 : -1, $$k0, $$k1);
 }
 export function u26($$s) {
   $$b.text($$s, 0, $$b.get($$s.p.p, 1));
@@ -215,8 +210,10 @@ export function b29($$s) {
 export function u30($$s) {
   $$b.text($$s, 0, $$b.get($$s.p, 1));
 }
+const $$k2 = [r7];
+const $$k3 = [7, 8];
 export function b31($$s) {
-  $$b.branch($$s, 8, ($$b.get($$s, 3)) ? 0 : -1, [r7], [7, 8]);
+  $$b.branch($$s, 8, ($$b.get($$s, 3)) ? 0 : -1, $$k2, $$k3);
 }
 export function b32($$s) {
   $$b.offscreen($$s, 0, $$b.get($$s.p, 0) === 'a', r8, 8);
@@ -227,6 +224,8 @@ export function e33($$s) {
           return () => log$($$s.p.p, 'removable cleanup');
         });
 }
+const $$k4 = $$b.template("<p b-x=\"0\" s-1oupne3 class=\"late\">Late </p>", 1);
+const $$k5 = $$b.template("<!--x0--><aside b-x=\"1\" s-1oupne3 class=\"portal-a\">Portal </aside><!--/P-->", 2);
 export function r2($$p) {
   let $$html = '';
   let inner = $$b.get($$p, 2);
@@ -243,20 +242,23 @@ export function r2($$p) {
     $$html += "<!--b" + $$s2 + ":4:-1--><!--/b-->";
   }
   $$html += "</section><p s-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p s-1oupne3 class=\"styled\"" + $$b.attribute("style", (look)) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + $$b.insert((count)) + "<!--/t-->";
-  if (count > 1) {
-    $$html += "<!--b" + $$s2 + ":7:0-->";
-    const $$s4 = $$b.createScope(4, $$s2);
-    $$html += "<p s-1oupne3 class=\"late\">Late <!--t" + $$s4 + ":0-->" + $$b.insert((count)) + "<!--/t--></p><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s2 + ":7:-1--><!--/b-->";
-  }
-  const $$portal0 = (() => {
+  const $$body0 = () => {
     let $$html = '';
-    const $$s5 = $$b.createScope(5, $$s2);
-    $$html += "<!--P" + $$s5 + "--><aside s-1oupne3 class=\"portal-a\">Portal <!--t" + $$s5 + ":0-->" + $$b.insert((count)) + "<!--/t--></aside><!--/P-->";
-    return $$html;
+    const $$s4 = $$b.createScope(4, $$s2, undefined, 1);
+    const $$e = $$b.clone($$k4), $$f = $$e[1];
+    $$b.appendText($$s4, 0, $$e[0], (count));
+    return $$f;
+  };
+  $$html += $$b.nodes($$b.branchNodes($$s2, 7, (count > 1) ? 0 : -1, [$$body0]));
+  const $$portal1 = (() => {
+    let $$html = '';
+    const $$s5 = $$b.createScope(5, $$s2, undefined, 1);
+    const $$e = $$b.clone($$k5), $$f = $$e[2];
+    $$b.nameComment($$e[0], "P" + $$s5);
+    $$b.appendText($$s5, 0, $$e[1], (count));
+    return $$f;
   })();
-  $$b.addPortal($$portal0);
+  $$b.addPortal($$portal1);
   $$html += $$b.component(OffscreenChild, { "value": (count) }, undefined, $$s2, 8);
   $$b.setSlots($$s2, [draft]);
   return $$html;
@@ -271,9 +273,10 @@ export function r3($$p) {
 export function r4($$p) {
   let $$html = '';
   let count = $$b.get($$p.p, 1);
-  const $$s4 = $$b.createScope(4, $$p);
-  $$html += "<p s-1oupne3 class=\"late\">Late <!--t" + $$s4 + ":0-->" + $$b.insert((count)) + "<!--/t--></p>";
-  return $$html;
+  const $$s4 = $$b.createScope(4, $$p, undefined, 1);
+  const $$e = $$b.clone($$k4), $$f = $$e[1];
+  $$b.appendText($$s4, 0, $$e[0], (count));
+  return $$f;
 }
 export function r6($$p) {
   let $$html = '';
@@ -313,11 +316,13 @@ export function log$($$s, entry: string): void {
 import * as $$b from 'brumate/client';
 import OffscreenChild from "./OffscreenChild.brm?brumate-render";
 const $$css = ".flex[s-1oupne3] {\n    display: flex;\n  }";
+const $$t0 = $$b.template("<p b-x=\"0\" s-1oupne3 class=\"late\">Late </p>", 1);
+const $$t1 = $$b.template("<!--x0--><aside b-x=\"1\" s-1oupne3 class=\"portal-a\">Portal </aside><!--/P-->", 2);
 
-export default function Offscreen($$props: Record<string, any>): string {
+export default function Offscreen($$props: Record<string, any>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Offscreen_1oupne3");
-  $$html += $$b.addStyle("Offscreen_1oupne3", $$css);
+  $$b.addStyle("Offscreen_1oupne3", $$css);
   const { first = 'a' }: { first?: 'a' | 'b' } = $$b.unbind($$props, ["first"]);
   let tab = (first);
   let count = (0);
@@ -341,20 +346,23 @@ export default function Offscreen($$props: Record<string, any>): string {
       $$html += "<!--b" + $$s2 + ":4:-1--><!--/b-->";
     }
     $$html += "</section><p s-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p s-1oupne3 class=\"styled\"" + $$b.attribute("style", (look)) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + $$b.insert((count)) + "<!--/t-->";
-    if (count > 1) {
-      $$html += "<!--b" + $$s2 + ":7:0-->";
-      const $$s4 = $$b.createScope(4, $$s2);
-      $$html += "<p s-1oupne3 class=\"late\">Late <!--t" + $$s4 + ":0-->" + $$b.insert((count)) + "<!--/t--></p><!--/b-->";
-    } else {
-      $$html += "<!--b" + $$s2 + ":7:-1--><!--/b-->";
-    }
-    const $$portal0 = (() => {
+    const $$body0 = () => {
       let $$html = '';
-      const $$s5 = $$b.createScope(5, $$s2);
-      $$html += "<!--P" + $$s5 + "--><aside s-1oupne3 class=\"portal-a\">Portal <!--t" + $$s5 + ":0-->" + $$b.insert((count)) + "<!--/t--></aside><!--/P-->";
-      return $$html;
+      const $$s4 = $$b.createScope(4, $$s2, undefined, 1);
+      const $$e = $$b.clone($$t0), $$f = $$e[1];
+      $$b.appendText($$s4, 0, $$e[0], (count));
+      return $$f;
+    };
+    $$html += $$b.nodes($$b.branchNodes($$s2, 7, (count > 1) ? 0 : -1, [$$body0]));
+    const $$portal1 = (() => {
+      let $$html = '';
+      const $$s5 = $$b.createScope(5, $$s2, undefined, 1);
+      const $$e = $$b.clone($$t1), $$f = $$e[2];
+      $$b.nameComment($$e[0], "P" + $$s5);
+      $$b.appendText($$s5, 0, $$e[1], (count));
+      return $$f;
     })();
-    $$b.addPortal($$portal0);
+    $$b.addPortal($$portal1);
     $$html += $$b.component(OffscreenChild, { "value": (count) }, undefined, $$s2, 8);
     $$b.setSlots($$s2, [draft]);
     $$html += "<!--/b-->";
@@ -368,8 +376,8 @@ export default function Offscreen($$props: Record<string, any>): string {
   } else {
     $$html += "<!--b" + $$s1 + ":7:-1--><!--/b-->";
   }
-  if (exists) {
-    $$html += "<!--b" + $$s1 + ":8:0-->";
+  const $$body2 = () => {
+    let $$html = '';
     const $$s7 = $$b.createScope(7, $$s1);
     if (tab === 'a') {
       $$html += "<!--b" + $$s7 + ":0:1-->";
@@ -378,11 +386,9 @@ export default function Offscreen($$props: Record<string, any>): string {
     } else {
       $$html += "<!--b" + $$s7 + ":0:-1--><!--/b-->";
     }
-    $$html += "<!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":8:-1--><!--/b-->";
-  }
-  $$html += "</main>";
+    return $$html;
+  };
+  $$html += $$b.nodes($$b.branchNodes($$s1, 8, (exists) ? 0 : -1, [$$body2])) + "</main>";
   $$b.setSlots($$s1, [tab, count, inner, exists, look]);
   return $$html;
 }

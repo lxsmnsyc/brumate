@@ -1,5 +1,6 @@
 import { isMacroImport } from '../macros.ts';
 import type {
+  Attribute,
   Block,
   Body,
   DynamicTagNode,
@@ -16,6 +17,8 @@ import { getPatternNames } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
+import { cloneLines } from './template.ts';
+import type { Fill } from './markup.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
@@ -42,6 +45,11 @@ export interface ClientOutput {
   loaders: Record<string, string[]>;
   /** False when nothing of the component runs in the browser. */
   clientCode: boolean;
+  /**
+   * The render functions of the client entry that fill a nested `#if` or `#for` of a clone,
+   * for the render module, which imports them.
+   */
+  fillOf: (block: Block) => Fill | undefined;
   diagnostics: Diagnostic[];
 }
 
@@ -142,6 +150,30 @@ class ClientGenerator {
     lines.push(code);
   }
 
+  /** The module constants of each part, by their code. */
+  private readonly constants = new Map<string, Map<string, string>>();
+  private constantCount = 0;
+
+  /**
+   * A constant of the module of the current part, such as a list of scope kinds or a key
+   * function that reads no scope, so an update does not make it again on each run.
+   */
+  private hoist(code: string): string {
+    let known = this.constants.get(this.part);
+    if (!known) {
+      known = new Map();
+      this.constants.set(this.part, known);
+    }
+    let name = known.get(code);
+    if (!name) {
+      // The parts of a small component share one module, so the names differ between parts.
+      name = `$$k${this.constantCount++}`;
+      known.set(code, name);
+      this.emit(`const ${name} = ${code};`);
+    }
+    return name;
+  }
+
   generate(): ClientOutput {
     this.collectRenders();
     this.checkSupport();
@@ -152,6 +184,7 @@ class ClientGenerator {
     this.part = 'update';
     this.emitUpdates();
     this.emitRenders();
+    this.emitChildrenRenders();
 
     const parts: Record<string, string> = {};
     for (const name of new Set([...this.out.keys(), ...this.reach.keys()])) {
@@ -205,37 +238,19 @@ class ClientGenerator {
         parts,
         loaders: Object.fromEntries(names.map((name) => [name, []])),
         clientCode,
+        fillOf: (block) => this.fillOf(block),
         diagnostics: this.diagnostics,
       };
     }
-    // A handler that writes a slot that the page shows loads the updates with its own part,
-    // so the write does not wait for another request.
-    const writers = this.liveWrites();
+    // The page loads every part of a component with it, so the entry exports them, and a bundle
+    // of the page holds them with the entry. The names of the parts' exports are their own.
     const loaders: Record<string, string[]> = {};
     for (const name of names) {
-      loaders[name] =
-        name !== 'update' && parts.update && writers.has(name) ? [name, 'update'] : [name];
+      loaders[name] = [name];
     }
-    const withUpdate = Object.values(loaders).some((list) => list.length > 1);
-    const lines = Object.entries(loaders).map(([name, [own, extra]]) => {
-      if (name === 'update' && withUpdate) {
-        return '  "update": update,';
-      }
-      const load = `import(${JSON.stringify(this.partPath(own!))})`;
-      return `  ${JSON.stringify(name)}: () => ${extra ? `(update().catch(() => {}), ${load})` : load},`;
-    });
     const entry = [
+      ...names.map((name) => `export * from ${JSON.stringify(this.partPath(name))};`),
       ...table,
-      ...(withUpdate
-        ? [`const update = () => import(${JSON.stringify(this.partPath('update'))});`]
-        : []),
-      'const parts = {',
-      ...lines,
-      '};',
-      '/** Imports a part of this module. */',
-      'export function load(part) {',
-      '  return parts[part]();',
-      '}',
       '',
     ];
     return {
@@ -244,36 +259,9 @@ class ClientGenerator {
       parts,
       loaders,
       clientCode,
+      fillOf: (block) => this.fillOf(block),
       diagnostics: this.diagnostics,
     };
-  }
-
-  /**
-   * The parts whose code can write a slot that an update reads, or that call
-   * shared code of a module function, which can write one.
-   */
-  private liveWrites(): Set<string> {
-    const live = new Set<Declaration>();
-    for (const edge of this.plan.graph.edges) {
-      const from = edge.from;
-      if ((from.kind === 'source' || from.kind === 'memo') && this.updates.has(edge.to)) {
-        live.add(from.declaration);
-      }
-    }
-    const result = new Set<string>();
-    for (const [name, sites] of this.reach) {
-      for (const site of sites) {
-        if (
-          site.writes.some((write) => live.has(write.declaration)) ||
-          site.reads.some((read) => read.declaration.kind === 'reset') ||
-          this.shared?.find(site.node) !== undefined
-        ) {
-          result.add(name);
-          break;
-        }
-      }
-    }
-    return result;
   }
 
   /** The import path of a part, relative to the component's file. */
@@ -370,10 +358,20 @@ class ClientGenerator {
   }
 
   /** The import statements for the names that some code reads. */
-  private importsFor(names: Set<string>, components: boolean): string[] {
-    if (components) {
-      for (const scope of this.renderedScopes()) {
-        componentNames(scope.body?.children ?? [], names);
+  private importsFor(
+    names: Set<string>,
+    components: boolean | Scope[],
+    withChildren = components === true,
+  ): string[] {
+    // `true` for the scopes that render functions render, or the scopes of a template part.
+    const rendered = components === true ? this.renderedScopes() : components || [];
+    for (const scope of rendered) {
+      componentNames(scope.body?.children ?? [], names);
+    }
+    // The renders of children are in the update part, with the components that they render.
+    if (withChildren) {
+      for (const node of this.plan.childrenRenders.keys()) {
+        componentNames(node.children, names);
       }
     }
     const result: string[] = [];
@@ -423,7 +421,7 @@ class ClientGenerator {
       .map((item) => (item.kind === 'function' ? `${item.name}$` : item.name));
     const lines = [
       "import * as $$b from 'brumate/client';",
-      ...this.importsFor(names, name === 'update'),
+      ...this.importsFor(names, name === 'update' || this.templateScopes(name)),
     ];
     if (shared.length > 0) {
       lines.push(
@@ -446,7 +444,11 @@ class ClientGenerator {
     }
     const lines = [
       "import * as $$b from 'brumate/client';",
-      ...this.importsFor(imports, true),
+      ...this.importsFor(
+        imports,
+        [...this.renderedScopes(), ...names.flatMap((name) => this.templateScopes(name))],
+        names.includes('update'),
+      ),
       '',
       ...this.serverStubs(names),
     ];
@@ -546,6 +548,31 @@ class ClientGenerator {
     return [...this.clientReads()].some((declaration) => declaration.kind === 'module');
   }
 
+  /**
+   * The scopes of the templates that a template part renders, such as a template that is passed
+   * to a component as a prop, which can render components of its own.
+   */
+  private templateScopes(part: string): Scope[] {
+    const result: Scope[] = [];
+    for (const [site, symbol] of this.plan.symbols) {
+      if (symbol !== part || !symbol.startsWith('t')) {
+        continue;
+      }
+      for (const callee of site.calls) {
+        const template =
+          callee.kind === 'template'
+            ? this.model.scopes.find(
+                (item) => item.template?.name === callee.name && item.parent === callee.scope,
+              )
+            : undefined;
+        if (template) {
+          result.push(...this.inside(template));
+        }
+      }
+    }
+    return result;
+  }
+
   /** Every scope that a render function of this module renders, including templates. */
   private renderedScopes(): Scope[] {
     const result = new Set<Scope>();
@@ -607,7 +634,17 @@ class ClientGenerator {
           }
         } else if (declarator.id.type === 'ObjectPattern') {
           for (const property of declarator.id.properties) {
-            if (property.type === 'RestElement' || property.computed) {
+            if (property.type === 'RestElement') {
+              // The rest gets the props that have no name of their own, under `...`.
+              const [name] = getPatternNames(property.argument);
+              const declaration = name && component.declarations.get(name.name);
+              const slot = declaration ? slotIndex(this.plan, declaration) : -1;
+              if (slot !== -1) {
+                entries.push(`"...": ${slot}`);
+              }
+              continue;
+            }
+            if (property.computed) {
               continue;
             }
             const key =
@@ -711,6 +748,9 @@ class ClientGenerator {
         code = `function ${code}`;
       }
       this.part = symbol;
+      if (symbol.startsWith('t')) {
+        this.emitTemplateArgs(site, symbol);
+      }
       if (site.kind === 'client') {
         this.emit(
           `export function ${symbol}($$s) {\n  $$b.effect($$s, ${JSON.stringify(symbol)}, ${code});\n}`,
@@ -792,7 +832,9 @@ class ClientGenerator {
           const slot = slotIndex(this.plan, node.declaration);
           if (slot !== -1) {
             // A promise is loaded with the old value kept until it settles. `await` needs an async function.
-            const value = site.awaits ? `(async () => (${expression()}))()` : expression();
+            const code = site.awaits ? `(async () => (${expression()}))()` : expression();
+            // An object literal needs parentheses, or the arrow reads it as a block.
+            const value = site.node.type === 'ObjectExpression' ? `(${code})` : code;
             const timing = node.declaration.timing;
             // A debounced or throttled memo computes after its wait, with the values of then.
             const call = timing
@@ -890,7 +932,6 @@ class ClientGenerator {
       !attribute ||
       attribute.kind === 'static' ||
       attribute.kind === 'ref' ||
-      attribute.kind === 'prefetch' ||
       attribute.kind === 'computed'
     ) {
       this.error('This attribute cannot change on the client yet', site.range);
@@ -921,13 +962,22 @@ class ClientGenerator {
       const own = owner.attributes.flatMap((item) =>
         item.kind === 'static' || item.kind === 'value' ? [item.name] : [],
       );
+      // The scope attribute is the element's own. Its style is not: a spread can write one, and
+      // an update writes the style variables again with whatever style the spread passes on.
       if (this.plan.styles.css) {
-        own.push(this.plan.styles.attribute, 'style');
+        own.push(this.plan.styles.attribute);
       }
-      // The element's static attributes merge with the spread in their order, as on the server.
+      // The other spreads of the element, which an update writes too. Each update tracks the
+      // attributes that it wrote, so an update of one spread alone would remove the others'.
+      const spreads = this.spreadCode(owner, attribute);
+      // The element's static attributes merge with the spreads in their order, as on the server.
       const parts = owner.attributes.flatMap((item) => {
         if (item === attribute) {
           return [expression()];
+        }
+        if (item.kind === 'spread') {
+          const code = spreads.get(item.value.ast);
+          return code ? [code] : [];
         }
         return item.kind === 'static'
           ? [
@@ -940,13 +990,55 @@ class ClientGenerator {
         `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${value}, ${JSON.stringify(own)});\n}`,
       );
     } else if (attribute.kind === 'value') {
-      const value =
+      let value =
         (attribute.name === 'class' ? classes(attribute.value.ast) : undefined) ?? expression();
+      // A class adds to the classes of the spreads of the element, as on the server, so an update
+      // of the element's own class keeps theirs.
+      if (attribute.name === 'class') {
+        const spreads = [...this.spreadCode(owner).values()];
+        if (spreads.length > 0) {
+          value = `[${[value, ...spreads.map((code) => `(${code})?.class`)].join(', ')}]`;
+        }
+      }
       this.emit(
         `export function ${name('u')}($$s) {\n  $$b.attr($$s, ${anchor}, ${JSON.stringify(attribute.name)}, ${value});\n}`,
       );
     }
     void node;
+  }
+
+  /**
+   * The code of the spreads of an element, by their node, without `except`. A spread that
+   * cannot change has code in the browser when each value that it reads has a slot, such as a
+   * rest prop that markup of the browser reads.
+   */
+  private spreadCode(
+    owner: { attributes: Attribute[] },
+    except?: Attribute,
+  ): Map<oxc.Node, string> {
+    const spreads = new Map<oxc.Node, string>();
+    for (const item of owner.attributes) {
+      if (item.kind !== 'spread' || item === except) {
+        continue;
+      }
+      const other = this.plan.graph.nodes.find(
+        (candidate) =>
+          candidate.kind !== 'source' &&
+          candidate.site.node === item.value.ast &&
+          (this.plan.graph.live.has(candidate) ||
+            candidate.site.reads.every((read) => slotIndex(this.plan, read.declaration) !== -1)),
+      );
+      if (other && other.kind !== 'source') {
+        spreads.set(
+          item.value.ast,
+          this.withTemplates(
+            other.site,
+            this.rewriter.rewrite(other.site, '$$s', instanceScope(this.plan, other.site.scope)),
+          ),
+        );
+      }
+    }
+    return spreads;
   }
 
   private findInsert(site: Site): Markup | undefined {
@@ -1006,7 +1098,7 @@ class ClientGenerator {
           this.renderName(body),
         );
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, [${renders.join(', ')}], [${this.kinds(blockBodies(block)).join(', ')}]);\n}`,
+          `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, ${this.hoist(`[${renders.join(', ')}]`)}, ${this.hoist(`[${this.kinds(blockBodies(block)).join(', ')}]`)});\n}`,
         );
         return;
       }
@@ -1017,12 +1109,14 @@ class ClientGenerator {
             ? `$$b.listOf(${header(0)})`
             : `Array.from({ length: ${header(0)} }, (_, index) => index)`;
         const key = this.keyFunction(block, base);
+        // A key that reads only the item is the same function for every update.
+        const keyName = key.includes('$$s') ? key : this.hoist(key);
         const fallback = block.fallback ? this.renderName(block.fallback) : 'undefined';
         const fallbackKinds = block.fallback ? this.kinds([block.fallback]) : [];
         this.emit(
           [
             `export function ${fn}($$s) {`,
-            `  $$b.list($$s, ${anchor}, ${items}, ${key}, ${this.renderName(block.body)}, a${this.plan.bodyScopes.get(block.body)!.id}, ${fallback}, [${fallbackKinds.join(', ')}]);`,
+            `  $$b.list($$s, ${anchor}, ${items}, ${keyName}, ${this.renderName(block.body)}, a${this.plan.bodyScopes.get(block.body)!.id}, ${fallback}, ${this.hoist(`[${fallbackKinds.join(', ')}]`)});`,
             '}',
           ].join('\n'),
         );
@@ -1045,11 +1139,15 @@ class ClientGenerator {
           `export function ${fn}($$s) {\n  $$b.offscreen($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.plan.bodyScopes.get(block.body)!.id});\n}`,
         );
         return;
-      case 'key':
+      case 'key': {
+        // The block around a dynamic tag keeps the element that the server rendered with the tag.
+        const [inner] = block.body.children;
+        const helper = inner?.kind === 'dynamic' && inner.keyed ? 'retag' : 'rekey';
         this.emit(
-          `export function ${fn}($$s) {\n  $$b.rekey($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, [${this.kinds([block.body]).join(', ')}]);\n}`,
+          `export function ${fn}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.hoist(`[${this.kinds([block.body]).join(', ')}]`)});\n}`,
         );
         return;
+      }
       default:
         return;
     }
@@ -1126,47 +1224,104 @@ class ClientGenerator {
     }
   }
 
+  /**
+   * Replaces the one `$$html +=` line of a render with a clone of a template and the writes on
+   * its elements. Returns false when the markup needs HTML.
+   */
+  private cloneRender(emitter: Emitter): boolean {
+    return cloneLines(emitter, (code) => this.hoist(code));
+  }
+
+  /**
+   * The code of the render function of a body. With `fill`, the body fills its nested blocks
+   * after it clones its template, and gives undefined when it cannot clone.
+   */
+  private emitRender(scope: Scope, body: Body, block: Block, fill: boolean): string | undefined {
+    const base = scope.parent!;
+    const inside = this.inside(scope);
+    const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
+      mode: 'client',
+      outer: { inside, base, baseVar: '$$p' },
+      fills: fill ? (nested) => this.fillOf(nested) : undefined,
+      hoist: (code) => this.hoist(code),
+    });
+    const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
+    const isCatch = block.kind === 'try' && block.fallback === body;
+    let params = '';
+    if (isItem) {
+      params = ', $$item, $$index';
+    } else if (isCatch) {
+      params = ', $$error';
+    }
+    emitter.line(`export function r${scope.id}($$p${params}) {`);
+    emitter.line(`let $$html = '';`);
+    if (block.kind === 'try' && isCatch) {
+      if (block.error) {
+        emitter.line(`const ${block.error.name} = $$error;`);
+      }
+      if (block.reset) {
+        emitter.line(`const ${block.reset.name} = undefined;`);
+      }
+    }
+    for (const line of this.prologue(inside, base)) {
+      emitter.line(line);
+    }
+    for (const template of inside.slice(1)) {
+      emitter.emitTemplate(template.template!);
+    }
+    if (isItem) {
+      emitter.emitItem(block, '$$item', '$$index');
+    } else {
+      emitter.emitBody(body);
+    }
+    emitter.flush();
+    // The body of an `#if` or a `#for` whose markup is one string clones a template.
+    const cloned = block.kind === 'if' || block.kind === 'for' ? this.cloneRender(emitter) : false;
+    if (fill && !cloned) {
+      return undefined;
+    }
+    emitter.line(emitter.returnLine(0, cloned));
+    emitter.close();
+    return emitter.lines.join('\n');
+  }
+
+  /** The name of the render function of a body, when the module has one. */
+  private renderOf(body: object | undefined): string | undefined {
+    const scope = body && this.plan.bodyScopes.get(body as never);
+    return scope && this.renders.has(scope) ? `r${scope.id}` : undefined;
+  }
+
+  /**
+   * The render functions that fill a nested `#if` or `#for` of a clone, when the module has
+   * them all. A `#for` with an `#else` renders inline.
+   */
+  private fillOf(block: Block): Fill | undefined {
+    if (block.kind === 'if') {
+      const bodies = [...block.branches.map((branch) => branch.body), block.fallback].filter(
+        (body) => body !== undefined,
+      );
+      const renders = bodies.map((body) => this.renderOf(body));
+      return renders.every((name) => name !== undefined)
+        ? { kind: 'if', renders: renders as string[] }
+        : undefined;
+    }
+    if (block.kind === 'for' && !block.fallback) {
+      const render = this.renderOf(block.body);
+      return render ? { kind: 'for', render } : undefined;
+    }
+    return undefined;
+  }
+
   private emitRenders(): void {
     for (const [scope, { body, block }] of this.renders) {
+      const clonable = block.kind === 'if' || block.kind === 'for';
+      // A body that fills its nested blocks must clone, so one that cannot renders again inline.
+      const lines =
+        (clonable && this.emitRender(scope, body, block, true)) ||
+        this.emitRender(scope, body, block, false)!;
+      this.emit(lines);
       const base = scope.parent!;
-      const inside = this.inside(scope);
-      const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
-        mode: 'client',
-        outer: { inside, base, baseVar: '$$p' },
-      });
-      const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
-      const isCatch = block.kind === 'try' && block.fallback === body;
-      let params = '';
-      if (isItem) {
-        params = ', $$item, $$index';
-      } else if (isCatch) {
-        params = ', $$error';
-      }
-      emitter.line(`export function r${scope.id}($$p${params}) {`);
-      emitter.line(`let $$html = '';`);
-      if (block.kind === 'try' && isCatch) {
-        if (block.error) {
-          emitter.line(`const ${block.error.name} = $$error;`);
-        }
-        if (block.reset) {
-          emitter.line(`const ${block.reset.name} = undefined;`);
-        }
-      }
-      for (const line of this.prologue(inside, base)) {
-        emitter.line(line);
-      }
-      for (const template of inside.slice(1)) {
-        emitter.emitTemplate(template.template!);
-      }
-      if (isItem) {
-        emitter.emitItem(block, '$$item', '$$index');
-      } else {
-        emitter.emitBody(body);
-      }
-      emitter.flush();
-      emitter.line('return $$html;');
-      emitter.close();
-      this.emit(emitter.lines.join('\n'));
+
       if (block.kind === 'portal' && block.target) {
         const header = this.model.sites.find(
           (site) => site.kind === 'block' && site.block === block,
@@ -1179,7 +1334,9 @@ class ClientGenerator {
       if (block.kind === 'client') {
         const anchor = this.plan.anchors.get(block)!;
         // The fallback's scopes go when the body renders in its place.
-        const fallback = block.fallback ? `, [${this.kinds([block.fallback]).join(', ')}]` : '';
+        const fallback = block.fallback
+          ? `, ${this.hoist(`[${this.kinds([block.fallback]).join(', ')}]`)}`
+          : '';
         this.emit(
           `export function k${scope.id}($$s) {\n  $$b.fill($$s, ${anchor}, r${scope.id}${fallback});\n}`,
         );
@@ -1188,10 +1345,122 @@ class ClientGenerator {
   }
 
   /**
+   * The renders of children, such as `n0`, which the browser calls each time a component inserts
+   * them again, so they get new scopes, as the body of a block does.
+   */
+  private emitChildrenRenders(): void {
+    for (const [node, { symbol, scope }] of this.plan.childrenRenders) {
+      const range = { start: node.children[0]!.start, end: node.children.at(-1)!.end };
+      const within = (item: { start: number; end: number } | undefined): boolean =>
+        item !== undefined && range.start <= item.start && item.end <= range.end;
+      // The scopes of the blocks in the children, and of the templates that the children call.
+      const nested = this.model.scopes.filter(
+        (item) => item.parent === scope && item.kind === 'body' && within(item.block),
+      );
+      for (const site of this.model.sites) {
+        if (site.scope !== scope || !within(site.node as { start: number; end: number })) {
+          continue;
+        }
+        // The templates that the children call, and those that they pass on, such as a prop
+        // `render=label`.
+        const used = [...site.calls, ...site.reads.map((read) => read.declaration)];
+        for (const callee of used) {
+          const template =
+            callee.kind === 'template'
+              ? this.model.scopes.find(
+                  (item) => item.template?.name === callee.name && item.parent === callee.scope,
+                )
+              : undefined;
+          if (template && !nested.includes(template)) {
+            nested.push(template);
+          }
+        }
+      }
+      const inside = [...new Set(nested.flatMap((item) => this.inside(item)))];
+      const base = instanceScope(this.plan, scope);
+      const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
+        mode: 'client',
+        outer: { inside, base, baseVar: '$$p' },
+        hoist: (code) => this.hoist(code),
+      });
+      emitter.line(`export function ${symbol}($$p) {`);
+      emitter.line(`let $$html = '';`);
+      for (const line of this.prologue(inside, base)) {
+        emitter.line(line);
+      }
+      // The values that the children read in the scope that they were written in.
+      const declarations = new Set<Declaration>();
+      for (const site of this.model.sites) {
+        if (site.scope === scope && within(site.node as { start: number; end: number })) {
+          for (const read of site.reads) {
+            if (!inside.some((item) => isWithin(read.declaration.scope, item))) {
+              declarations.add(read.declaration);
+            }
+          }
+        }
+      }
+      for (const declaration of declarations) {
+        if (['import', 'module', 'template'].includes(declaration.kind)) {
+          continue;
+        }
+        const value = this.rewriter.value(declaration, '$$p', base);
+        if (
+          value &&
+          !emitter.lines.some((line) => line.trim().startsWith(`let ${declaration.name} =`))
+        ) {
+          emitter.line(`let ${declaration.name} = ${value};`);
+        }
+      }
+      for (const template of inside.filter((item) => item.kind === 'template')) {
+        emitter.emitTemplate(template.template!);
+      }
+      emitter.emitChildrenBody(node, scope);
+      emitter.flush();
+      const cloned = cloneLines(emitter, (code) => this.hoist(code));
+      emitter.line(emitter.returnLine(0, cloned));
+      emitter.close();
+      this.emit(emitter.lines.join('\n'));
+    }
+  }
+
+  /**
    * Code that calls `#template`s, such as an insert of `{price(total)}` that
    * updates. The render module defines templates inside the component's
    * render function, so an update defines the ones that it calls itself.
    */
+  /**
+   * The slots of the arguments of a template that a prop passes, as `[slot, value]` pairs, so an
+   * insert that calls it again writes its new arguments into the scope that it rendered.
+   */
+  private emitTemplateArgs(site: Site, symbol: string): void {
+    const callee = site.reads
+      .map((read) => read.declaration)
+      .find((item) => item.kind === 'template');
+    const scope =
+      callee &&
+      this.model.scopes.find(
+        (item) => item.template?.name === callee.name && item.parent === callee.scope,
+      );
+    const template = scope?.template;
+    if (!scope || !template) {
+      return;
+    }
+    const first = template.params[0];
+    const last = template.params.at(-1);
+    const params = first && last ? copy(this.file.source, first.start, last.end) : '';
+    const slots = [...scope.declarations.values()]
+      .filter((declaration) => declaration.kind === 'template-param')
+      .map((declaration) => [slotIndex(this.plan, declaration), declaration.name] as const);
+    // An argument without a slot is not in the scope, so the template renders again instead.
+    if (slots.some(([slot]) => slot === -1)) {
+      return;
+    }
+    const pairs = slots.map(([slot, name]) => `[${slot}, ${name}]`);
+    this.emit(`export const ${symbol}a = (${params}) => [${pairs.join(', ')}];`);
+    // The ID of the template's scope, so an insert updates in place only a scope of this template.
+    this.emit(`export const ${symbol}k = ${scope.id};`);
+  }
+
   private withTemplates(site: Site, code: string): string {
     const templates: Scope[] = [];
     // The templates that the code calls, and those that it passes on, such as a prop `item=option`.

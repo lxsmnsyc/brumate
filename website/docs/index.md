@@ -1,6 +1,6 @@
 # Introduction
 
-brumate is a component language and a compiler for web apps that resume instead of hydrating. Pages arrive as HTML with their state in them, and the browser loads the code for an event only when that event happens.
+brumate is a component language and a compiler for web apps that resume instead of hydrating. Pages arrive as HTML with their state in them, and the browser loads the code of the page without running the components again.
 
 ## A component
 
@@ -29,8 +29,8 @@ Most frameworks hydrate. The server renders HTML, then the browser downloads the
 brumate resumes:
 
 - The server renders the page and writes its state into the HTML.
-- The browser loads a small loader and nothing else.
-- When an event fires, the loader loads the code for that event. The code reads the state from the page and continues from there.
+- The browser loads a small loader, which loads the core and the code of the components on the page.
+- The core reads the state from the page and continues from there. An event that comes before the code has loaded waits for it.
 - No component runs again in the browser to rebuild what the server rendered.
 
 ## What happens on the first click
@@ -38,15 +38,15 @@ brumate resumes:
 For the counter above:
 
 1. The server renders the button and the paragraph, and writes `count` and `double` into the page.
-2. The page is ready. No component code has loaded.
-3. The first click loads the click handler and the code that updates the two texts. Nothing else loads.
+2. The page is ready. The browser loads the code of the click handler and of the updates of the two texts, in one bundle with the core.
+3. The click runs the handler.
 4. The handler adds one to `count`. The texts that read `count` and `double` update.
 
 The compiler decides what each event needs when it compiles the component:
 
 - A value that only the server reads is never sent to the browser.
 - Markup that never changes ships as HTML only.
-- The code of an event handler loads when its event first fires, or earlier when the pointer moves over its element.
+- Only the code that runs in the browser ships: event handlers, effects and the updates of markup that changes.
 - A function marked `'use server'` runs on the server. In the browser it becomes a call to the server.
 
 [What runs where](./what-runs-where.md) explains these rules in detail.

@@ -106,6 +106,8 @@ export function routeModule(
   build?: string,
   /** The modules that every page loads early, from the client build. */
   hints: string[] = [],
+  /** The chunks of the bundle of each root component, by ID, from the client build. */
+  bundleHints: Record<string, string[]> = {},
 ): string {
   // Static imports in a build, because the server registry of server functions imports every
   // file anyway. In development, a route loads when a request needs it, so a file that does not
@@ -161,7 +163,7 @@ export function routeModule(
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options });`,
     '}',
   ].join('\n');
 }

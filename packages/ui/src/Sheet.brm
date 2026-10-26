@@ -1,0 +1,42 @@
+<script>
+  import { $bind, $getContext, $isPassed, $memo, $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { LocaleContext } from './locale.ts';
+  import Modal from './Modal.brm';
+
+  /**
+   * A Modal along an edge of the window, such as a menu of navigation or a panel of filters. It
+   * is a Modal with `data-sheet` and `data-side`, which CSS places. A press outside it closes it,
+   * unless `isDismissable=(false)`.
+   *
+   * `side` is `start` (the default), `end`, `top` or `bottom`. `start` and `end` follow the
+   * direction of the locale, so `data-side` is `left`, `right`, `top` or `bottom`.
+   */
+  const { side = 'start', isDismissable = true, children, ...rest } = $props<{
+    side?: 'start' | 'end' | 'top' | 'bottom';
+    isDismissable?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { isOpen } = $props<{ isOpen?: Bindable<boolean> }>();
+
+  const locale = $getContext(LocaleContext);
+  const passed = $isPassed(isOpen);
+  const physical = $memo(edge(side, locale.direction));
+
+  /** The edge of the window, with start and end read in the direction. */
+  function edge(value: typeof side, direction: 'ltr' | 'rtl') {
+    if (value === 'top' || value === 'bottom') {
+      return value;
+    }
+    return (value === 'start') === (direction === 'ltr') ? 'left' : 'right';
+  }
+</script>
+
+#if (passed) {
+  <Modal isOpen=$bind(isOpen) {isDismissable} data-sheet data-side=physical {...rest}>
+    {children}
+  </Modal>
+} #else {
+  <Modal {isDismissable} data-sheet data-side=physical {...rest}>{children}</Modal>
+}

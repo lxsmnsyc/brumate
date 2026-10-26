@@ -22,8 +22,6 @@ function printAttribute(item: Attribute): string {
       return `${item.name}${item.modifiers.map((modifier) => `:${modifier}`).join('')}=(${item.handler.code})`;
     case 'ref':
       return `ref=${item.target}`;
-    case 'prefetch':
-      return `prefetch=${quote(item.strategy)}`;
     case 'spread':
       return `{...${item.value.code}}`;
     case 'computed':

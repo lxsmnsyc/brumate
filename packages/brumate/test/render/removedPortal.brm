@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import PortalOwner from './PortalOwner.brm';
+
+  let present = $signal(true);
+</script>
+
+<button class="portal-remove" onClick=(() => (present = false))>Remove</button>
+#if (present) {
+  <PortalOwner />
+}

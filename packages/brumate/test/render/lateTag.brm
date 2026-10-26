@@ -1,0 +1,32 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  export const ready = new Promise<string>((resolve) => {
+    open = resolve;
+  });
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import RestInner from './RestInner.brm';
+
+  // A dynamic tag that streams in after an event, and an element with two spreads that change.
+  let clicks = $signal(0);
+  const tag = $memo(await ready);
+  const first = $memo({ title: `clicks ${clicks}` });
+  const second = $memo({ 'data-clicks': String(clicks) });
+</script>
+
+<button class="count" onClick=(() => clicks++)>Count</button>
+<p class="both" {...first} {...second}>Both</p>
+#loading {
+  <{tag} class="late">{clicks}</>
+  <RestInner title=String(clicks)>x</RestInner>
+  <input class="late-box" type="checkbox" checked=(clicks > 5)>
+} #else {
+  <p class="fallback">Loading</p>
+}

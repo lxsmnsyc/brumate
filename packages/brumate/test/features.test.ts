@@ -1,4 +1,5 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 import type { Rolldown } from 'vite';
@@ -41,6 +42,17 @@ const FEATURES = `<script>
 }
 `;
 
+const TITLED = `<script>
+  import { $signal } from 'brumate/signals';
+  let count = $signal(0);
+</script>
+
+#head {
+  <title>{\`Count \${count}\`}</title>
+}
+<button onClick=(() => count++)>{count}</button>
+`;
+
 interface Built {
   /** The chunk that holds the core. */
   core: Rolldown.OutputChunk;
@@ -51,11 +63,17 @@ async function buildApp(
   name: string,
   source: string,
   options: BrumateOptions = {},
+  // More files, by their paths from the root.
+  more: Record<string, string> = {},
 ): Promise<Built> {
   const root = fileURLToPath(new URL(`./.output/features/${name}/`, import.meta.url));
   rmSync(root, { recursive: true, force: true });
   mkdirSync(`${root}src`, { recursive: true });
   writeFileSync(`${root}src/App.brm`, source);
+  for (const [file, text] of Object.entries(more)) {
+    mkdirSync(path.dirname(`${root}${file}`), { recursive: true });
+    writeFileSync(`${root}${file}`, text);
+  }
   writeFileSync(`${root}src/client.ts`, "import 'virtual:brumate/start';\n");
   const result = (await build({
     root,
@@ -71,7 +89,12 @@ async function buildApp(
         'brumate/signals': runtime('signals'),
       },
     },
-    build: { write: false, minify: true, rolldownOptions: { input: 'src/client.ts' } },
+    // The chunk of the core keeps the names of its exports, so the tests can read them.
+    build: {
+      write: false,
+      minify: true,
+      rolldownOptions: { input: 'src/client.ts', output: { minifyInternalExports: false } },
+    },
   })) as Rolldown.RolldownOutput;
   const chunks = result.output.filter(
     (item): item is Rolldown.OutputChunk => item.type === 'chunk',
@@ -90,7 +113,7 @@ describe('features of the core', () => {
 
   it('leaves out what a counter without client navigation does not use', async () => {
     const { core: chunk, chunks } = await buildApp('counter', COUNTER, { navigate: false });
-    expect(chunk.exports).toEqual(expect.arrayContaining(['get', 'content', 'update', 'loader']));
+    expect(chunk.exports).toEqual(expect.arrayContaining(['get', 'content', 'update']));
     for (const name of [
       // Updates of blocks that the component has none of.
       'list',
@@ -122,13 +145,53 @@ describe('features of the core', () => {
     expect(chunk.code).not.toContain('important');
     // The code that reads the pages that navigation adds is not in the bundle.
     expect(chunks.some((item) => item.moduleIds.includes(runtime('client-routes')))).toBe(false);
+    // No component has a <title> or a #template that the browser calls, so their code is out
+    // of the core.
+    expect(chunk.code).not.toContain('title[b-t]');
+    expect(chunk.code).not.toContain('#t\\d');
+    // Nothing comes after the page, so the core does not watch it for markup.
+    expect(chunk.code).not.toContain('MutationObserver');
+  });
+
+  it('keeps the code of a <title> of a component that a component imports from outside the root', async () => {
+    const source = `<script>
+  import Titled from '../../titled-shared/Titled.brm';
+</script>
+
+<Titled />
+`;
+    const { core: chunk } = await buildApp(
+      'imported',
+      source,
+      { navigate: false },
+      {
+        '../titled-shared/Titled.brm': TITLED,
+      },
+    );
+    expect(chunk.code).toContain('title[b-t]');
+  });
+
+  it('keeps the code of markup that comes later for a route with _loading.brm', async () => {
+    const { core: chunk } = await buildApp(
+      'loading',
+      COUNTER,
+      { navigate: false },
+      {
+        'src/routes/index.brm': COUNTER,
+        'src/routes/_loading.brm': '<p>Loading</p>\n',
+      },
+    );
+    expect(chunk.code).toContain('MutationObserver');
+  });
+
+  it('keeps the code of a <title> in markup when a component has one', async () => {
+    const { core: chunk } = await buildApp('title', TITLED, { navigate: false });
+    expect(chunk.code).toContain('title[b-t]');
   });
 
   it('keeps the updates that the components call, and the code of client navigation', async () => {
     const { core: chunk, chunks } = await buildApp('features', FEATURES);
-    expect(chunk.exports).toEqual(
-      expect.arrayContaining(['list', 'branch', 'portalTo', 'leavePage', 'removeScope']),
-    );
+    expect(chunk.exports).toEqual(expect.arrayContaining(['list', 'branch', 'portalTo']));
     // Client navigation loads it with the core, after a navigation.
     const routes = chunks.find((item) => item.moduleIds.includes(runtime('client-routes')));
     expect(routes).toBeDefined();

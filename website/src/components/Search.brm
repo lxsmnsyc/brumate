@@ -1,5 +1,8 @@
 <script>
-  import { $signal } from 'brumate/signals';
+  import { $props, $signal } from 'brumate/signals';
+
+  // The docs of brumate, or the section of @brumate/ui, which has a search of its own.
+  const { section = 'docs' } = $props<{ section?: 'docs' | 'ui' }>();
 
   interface Result {
     href: string;
@@ -22,7 +25,8 @@
       results = [];
       return;
     }
-    const { index } = await import('virtual:search-index');
+    const { index } =
+      section === 'ui' ? await import('virtual:ui-search-index') : await import('virtual:search-index');
     const scored = index.flatMap((entry) => {
       const heading = entry.heading.toLowerCase();
       const text = entry.text.toLowerCase();
@@ -34,7 +38,7 @@
       return [
         {
           score,
-          href: `${base}docs${entry.page ? `/${entry.page}` : ''}${entry.id ? `#${entry.id}` : ''}`,
+          href: `${base}${section}${entry.page ? `/${entry.page}` : ''}${entry.id ? `#${entry.id}` : ''}`,
           title: entry.heading,
           page: entry.pageTitle,
           text: `${at > 0 ? '…' : ''}${entry.text.slice(at, at + 120)}…`,
@@ -55,8 +59,8 @@
 })>
   <input
     type="search"
-    placeholder="Search the docs"
-    aria-label="Search the docs"
+    placeholder=(section === 'ui' ? 'Search the parts' : 'Search the docs')
+    aria-label=(section === 'ui' ? 'Search the parts' : 'Search the docs')
     value=query
     onInput=((event) => find(event.currentTarget.value))
     onFocus=(() => (open = true))

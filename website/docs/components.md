@@ -138,6 +138,41 @@ Destructure `$props()` with `let` to write a prop. `$bind` in the parent passes 
 - A `const` prop stays read-only. Writing it is a compile error.
 - `$bind` also works on `value` and `checked` of form fields: `<input value=$bind(draft)>`.
 
+### Controlled and uncontrolled
+
+A part such as a dialog keeps its own state, or writes the state of its caller. A `let` prop does both, so the caller picks:
+
+```brm
+<script>
+  import { $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+
+  const { onChange } = $props<{ onChange?: (open: boolean) => void }>();
+  let { open = false } = $props<{ open?: Bindable<boolean> }>();
+
+  function toggle() {
+    open = !open;
+    onChange?.(open);
+  }
+</script>
+
+<button aria-expanded=open onClick=toggle>Details</button>
+```
+
+- Without `open`, or with `open=(true)`, the part keeps its own copy. A new value from the caller replaces it.
+- With `open=$bind(settingsOpen)`, the part writes the caller's signal.
+- With `open=$bind(settingsOpen, (next) => …)`, the setter decides. The part shows what the caller keeps.
+
+A part that needs to know how the caller passed a prop asks with `$isPassed` and `$isBound` from `brumate/signals`:
+
+```ts
+let { value } = $props<{ value?: Bindable<string | null> }>();
+// True for value=(null) too, so null can be a value that the caller passed.
+const passed = $isPassed(value);
+// True for value=$bind(selected).
+const bound = () => $isBound(value);
+```
+
 ### Functions as props
 
 A component cannot write the signals of its parent. To let a child change a value, the parent passes a function that writes it:
@@ -168,6 +203,7 @@ A component cannot write the signals of its parent. To let a child change a valu
 
 - The function runs in the browser, and writes the parent's signal. The parent then passes the new value down.
 - A function passed as a prop must be code that can run in the browser, such as an arrow function or a function of the parent's script.
+- The call runs at once and returns the result, as on the server, so the child can call a function prop in markup or a memo, such as a `filter`. The same holds for a function in a [context](./context.md).
 
 ### Handlers in a spread
 
@@ -298,7 +334,8 @@ A `#template` is a piece of markup with parameters. Pass one as a prop to let a 
 </ul>
 ```
 
-- The component can call the template in markup that changes in the browser, such as the items of a list, or a selected item. The browser renders the template again with the new arguments, with the code of the component that wrote it.
+- The component can call the template in markup that changes in the browser, such as the items of a list, or a selected item. The template renders with the code of the component that wrote it.
+- A call again at the same place, with new arguments, updates the markup in place, as a snippet of Svelte does. Its elements stay, and so does focus in them.
 - The template reads the values of the component that wrote it, and its markup updates when they change.
 - Its code loads in the browser with the page state, before an update needs it.
 

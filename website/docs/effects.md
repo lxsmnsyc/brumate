@@ -133,7 +133,7 @@ A preference such as the theme, a dismissed banner or the width of a panel belon
 ```
 
 - The page renders with the stored value, so nothing changes after it loads.
-- The effect never runs on load. Its code loads with the first change.
+- The effect never runs on load. It runs on the first change.
 - Encode a value that can hold `;`, `,` or spaces with `encodeURIComponent`, and decode it where you read it.
 - A server function can set the cookie too, with `event.setCookie`, when the server should check the value. See [Cookies and sessions](./server-functions.md#cookies-and-sessions).
 
@@ -158,6 +158,7 @@ A preference such as the theme, a dismissed banner or the width of a panel belon
 ```
 
 - The signal must be a `$signal` declared in the same file.
+- A dynamic tag takes `ref` too, such as `<{as} ref=panel>`. The signal gets the element that the tag renders, or nothing when the tag names a component.
 - On the server, the signal is `undefined`. Read it in handlers, effects and `$client` callbacks.
 - An element that the browser creates later, such as a new item of a `#for`, writes the signal when it is created.
 
@@ -191,9 +192,9 @@ A preference such as the theme, a dismissed banner or the width of a panel belon
 | `'load'`    | The page loads.                                                                                                                         |
 
 - The callback can return a cleanup function. It runs when the component is removed from the page.
-- `'load'` makes the browser load the code with the page, before anyone interacts with it. The compiler warns about it: prefer `'visible'` or `'idle'`.
+- `'load'` runs the callback as soon as the page loads, before anyone interacts with it. The compiler warns about it: prefer `'visible'` or `'idle'`.
 - Use `$client` for browser APIs that the server does not have, such as `window`, `localStorage` or a chart library.
-- With `'visible'`, a callback that reads an element of the same markup through `ref` waits for that element, so the code of a chart low on the page loads when the chart comes into view. See [Behaviors of an element](#behaviors-of-an-element).
+- With `'visible'`, a callback that reads an element of the same markup through `ref` waits for that element, so a chart low on the page renders when the chart comes into view. See [Behaviors of an element](#behaviors-of-an-element).
 
 ## `#client` blocks
 
@@ -263,7 +264,7 @@ export function clickOutside(element: HTMLElement, onOutside: () => void): () =>
 <textarea ref=field></textarea>
 ```
 
-- Each `$client` is a client root of its own, so the code of each behavior loads when its element comes into view.
+- Each `$client` is a client root of its own, so each behavior runs when its element comes into view.
 - The cleanup runs when the component leaves the page.
 - An element of each item of a `#for` gets its own behavior from a script in the body of the `#for`.
 - The server renders the element, so a behavior only adds to it, and the element works as plain HTML without scripts.

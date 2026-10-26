@@ -1,0 +1,20 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+
+  let query = $signal('');
+  let searched = $signal('');
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<SearchField class="ui-field" value=$bind(query) onSubmit=((value) => (searched = value))>
+  <Label>Search the parts</Label>
+  <span class="ui-group">
+    <span class="ui-input-icon"><Icon name="search" /><Input class="ui-input" /></span>
+    <Button class="ui-button ui-icon-button"><Icon name="close" /></Button>
+  </span>
+</SearchField>
+<p>{searched ? `Searched for ${searched}.` : 'Press Enter to search, Escape to clear.'}</p>

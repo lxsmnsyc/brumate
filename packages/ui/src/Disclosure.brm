@@ -1,0 +1,78 @@
+<script>
+  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { ButtonContext, DisclosureGroupContext, DisclosurePanelContext } from './contexts.ts';
+
+  /**
+   * Content that the user expands and collapses, such as a section of an FAQ. It holds a Button
+   * with `slot="trigger"`, often in a Heading, and a DisclosurePanel. The trigger gets
+   * aria-expanded and aria-controls. The element shows `data-expanded` and `data-disabled`.
+   *
+   * `isExpanded` alone starts it open, and `isExpanded=$bind(signal)` writes the caller's. In a
+   * DisclosureGroup, the group keeps the state, and `id` names the disclosure in it. Without
+   * `id`, it takes an ID of its own, as in React Aria, so it still joins the group.
+   */
+  const { id, isDisabled = false, onExpandedChange, children, ...rest } = $props<{
+    /** The key of the disclosure in a DisclosureGroup. */
+    id?: string;
+    isDisabled?: boolean;
+    onExpandedChange?: (expanded: boolean) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { isExpanded = false } = $props<{ isExpanded?: Bindable<boolean> }>();
+
+  const group = $getContext(DisclosureGroupContext);
+  const triggerId = $id();
+  const panelId = $id();
+  const ownKey = $id();
+  const key = $memo(id ?? ownKey);
+  const expanded = $memo(group ? group.expandedKeys.includes(key) : isExpanded);
+  const disabled = $memo(isDisabled || Boolean(group?.isDisabled));
+
+  function setExpanded(next: boolean) {
+    if (next === expanded) {
+      return;
+    }
+    if (group) {
+      group.toggle(key);
+    } else {
+      isExpanded = next;
+    }
+    onExpandedChange?.(next);
+  }
+
+  function toggle() {
+    setExpanded(!expanded);
+  }
+
+  // Find in page opens a collapsed panel that holds what it found, unless it is disabled.
+  function expand() {
+    if (!disabled) {
+      setExpanded(true);
+    }
+  }
+
+  // A Button without a slot, such as one in the panel, gets nothing from the disclosure.
+  $setContext(ButtonContext, {
+    slots: {
+      default: {},
+      trigger: {
+        id: triggerId,
+        'aria-expanded': expanded ? 'true' : 'false',
+        'aria-controls': panelId,
+        isDisabled: disabled,
+        onPress: toggle,
+      },
+    },
+  });
+  $setContext(DisclosurePanelContext, {
+    id: panelId,
+    triggerId,
+    isExpanded: expanded,
+    isDisabled: disabled,
+    expand,
+  });
+</script>
+
+<div data-expanded=(expanded || undefined) data-disabled=(disabled || undefined) {...rest}>{children}</div>

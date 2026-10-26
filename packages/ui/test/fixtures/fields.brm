@@ -1,0 +1,65 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import Form from '../../src/Form.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import SearchField from '../../src/SearchField.brm';
+  import Text from '../../src/Text.brm';
+  import TextArea from '../../src/TextArea.brm';
+  import TextField from '../../src/TextField.brm';
+
+  let email = $signal('');
+  let query = $signal('cats');
+  let searched = $signal('');
+</script>
+
+<Form class="form" validationErrors=({ handle: 'That handle is taken' })>
+  <TextField class="email" name="email" type="email" isRequired value=$bind(email)>
+    <Label>Email</Label>
+    <Input class="email-input" />
+    <Text slot="description">We never share it.</Text>
+    <FieldError class="email-error" />
+  </TextField>
+  <TextField class="handle" name="handle" value="ada">
+    <Label>Handle</Label>
+    <Input class="handle-input" />
+    <FieldError class="handle-error" />
+  </TextField>
+  <button class="send" type="submit">Send</button>
+</Form>
+<p class="email-value">{email}</p>
+
+<TextField class="code" validationBehavior="aria" validate=((value) => (value.length < 3 ? 'At least 3 letters' : null))>
+  <Label>Code</Label>
+  <Input class="code-input" />
+  <FieldError class="code-error" />
+</TextField>
+
+<TextField class="note">
+  <Label>Note</Label>
+  <TextArea class="note-input" />
+</TextField>
+
+<SearchField class="search" value=$bind(query) onSubmit=((value) => (searched = value))>
+  <Label>Search</Label>
+  <Input class="search-input" />
+  <Button class="clear">×</Button>
+</SearchField>
+<p class="query">{query}|{searched}</p>
+
+<TextField
+  class="from-form"
+  field=({
+    id: 'order-email',
+    name: 'email',
+    attrs: { id: 'order-email', name: 'email', value: 'ada@', 'aria-invalid': 'true' },
+    errors: ['Write a whole email address'],
+    errorAttrs: { id: 'order-email-error', role: 'alert' },
+  })
+>
+  <Label>Order email</Label>
+  <Input class="form-input" />
+  <FieldError class="form-error" />
+</TextField>

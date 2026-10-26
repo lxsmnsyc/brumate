@@ -1,0 +1,27 @@
+<script>
+  import { $isBound, $isPassed, $memo, $props, $signal } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+
+  // A part with both shapes: its own state, or the caller's.
+  const { label, defaultOpen = false, onChange } = $props<{
+    label: string;
+    defaultOpen?: boolean;
+    onChange?: (open: boolean) => void;
+  }>();
+  let { open } = $props<{ open?: Bindable<boolean | undefined> }>();
+  const controlled = $isPassed(open);
+  let own = $signal(defaultOpen);
+  const current = $memo(controlled ? open : own);
+
+  function toggle() {
+    const next = !current;
+    if (!controlled) {
+      own = next;
+    } else if ($isBound(open)) {
+      open = next;
+    }
+    onChange?.(next);
+  }
+</script>
+
+<button class=(`part ${label}`) onClick=toggle>{label}: {current ? 'open' : 'closed'}</button>

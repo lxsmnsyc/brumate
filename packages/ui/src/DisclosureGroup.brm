@@ -1,0 +1,37 @@
+<script>
+  import { $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { DisclosureGroupContext } from './contexts.ts';
+
+  /**
+   * Disclosures that open one at a time, or several with `allowsMultipleExpanded`, such as an
+   * accordion. Each Disclosure names itself with `id`. It shows `data-disabled`.
+   *
+   * `expandedKeys=([...])` starts its own state, and `expandedKeys=$bind(signal)` writes the
+   * caller's.
+   */
+  const { allowsMultipleExpanded = false, isDisabled = false, onExpandedChange, children, ...rest } =
+    $props<{
+      allowsMultipleExpanded?: boolean;
+      isDisabled?: boolean;
+      onExpandedChange?: (keys: string[]) => void;
+      children?: unknown;
+      [attribute: string]: unknown;
+    }>();
+  let { expandedKeys = [] } = $props<{ expandedKeys?: Bindable<string[]> }>();
+
+  function toggle(id: string) {
+    let next: string[];
+    if (expandedKeys.includes(id)) {
+      next = expandedKeys.filter((key) => key !== id);
+    } else {
+      next = allowsMultipleExpanded ? [...expandedKeys, id] : [id];
+    }
+    expandedKeys = next;
+    onExpandedChange?.(next);
+  }
+
+  $setContext(DisclosureGroupContext, { expandedKeys, isDisabled, toggle });
+</script>
+
+<div data-disabled=(isDisabled || undefined) {...rest}>{children}</div>

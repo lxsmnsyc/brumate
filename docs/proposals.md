@@ -11,24 +11,25 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 - Caching (`cache`, `cached` and `revalidate`), the serial entry (`src/serial.ts`), forms that run once (`idempotent`), and prerendered pages with their `#defer` bodies in one response (`shell`).
 - The reveal order of `#loading` bodies (`#reveal`), and lists that grow from a stream (`gather`).
 
-| Proposal                                                              | Area    | Value  | Cost   |
-| --------------------------------------------------------------------- | ------- | ------ | ------ |
-| [Idempotent calls](#idempotent-calls)                                 | Server  | Low    | Small  |
-| [Two-way realtime](#two-way-realtime)                                 | Server  | Medium | Medium |
-| [Embedding in other sites](#embedding-in-other-sites)                 | Build   | Medium | Medium |
-| [Named view transitions](#named-view-transitions)                     | Syntax  | Low    | Small  |
-| [Long lists](#long-lists)                                             | Syntax  | Medium | Medium |
-| [Streaming lists](#streaming-lists)                                   | Syntax  | Low    | Medium |
-| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax  | Low    | Small  |
-| [Devtools](#devtools)                                                 | Tooling | High   | Medium |
-| [Component workbench](#component-workbench)                           | Tooling | Medium | Medium |
-| [Agent support](#agent-support)                                       | Tooling | High   | Medium |
-| [Worker functions](#worker-functions)                                 | Runtime | Medium | Medium |
-| [Offline pages](#offline-pages)                                       | Runtime | Medium | Medium |
-| [Observability](#observability)                                       | Runtime | Medium | Medium |
-| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling | High   | Medium |
-| [Headless UI components](#headless-ui-components)                     | Library | High   | Large  |
-| [Markdown with components](#markdown-with-components)                 | Library | Medium | Medium |
+| Proposal                                                              | Area     | Value  | Cost   |
+| --------------------------------------------------------------------- | -------- | ------ | ------ |
+| [Idempotent calls](#idempotent-calls)                                 | Server   | Low    | Small  |
+| [Two-way realtime](#two-way-realtime)                                 | Server   | Medium | Medium |
+| [Embedding in other sites](#embedding-in-other-sites)                 | Build    | Medium | Medium |
+| [Named view transitions](#named-view-transitions)                     | Syntax   | Low    | Small  |
+| [Long lists](#long-lists)                                             | Syntax   | Medium | Medium |
+| [Streaming lists](#streaming-lists)                                   | Syntax   | Low    | Medium |
+| [Reveal order of `#defer` blocks](#reveal-order-of-defer-blocks)      | Syntax   | Low    | Small  |
+| [Devtools](#devtools)                                                 | Tooling  | High   | Medium |
+| [Component workbench](#component-workbench)                           | Tooling  | Medium | Medium |
+| [Agent support](#agent-support)                                       | Tooling  | High   | Medium |
+| [Worker functions](#worker-functions)                                 | Runtime  | Medium | Medium |
+| [Offline pages](#offline-pages)                                       | Runtime  | Medium | Medium |
+| [Observability](#observability)                                       | Runtime  | Medium | Medium |
+| [Content mappers for TypeScript 7](#content-mappers-for-typescript-7) | Tooling  | High   | Medium |
+| [Headless UI components](#headless-ui-components)                     | Library  | High   | Large  |
+| [Markdown with components](#markdown-with-components)                 | Library  | Medium | Medium |
+| [A smaller and faster client](#a-smaller-and-faster-client)           | Compiler | High   | Large  |
 
 ## Syntax
 
@@ -103,6 +104,16 @@ Cost: about 1 to 2 weeks for the server part, when a page needs a stream that st
 
 Cost: a day or two, when a page needs it.
 
+### Server-only markup
+
+Markup that renders on the server and never in the browser, such as a `#server` block or a component that is only a template. React Server Components split code this way with `'use client'`. Brumate already ships no code for markup that does not change, so the question is what such a block would add:
+
+- Code that must not reach the browser, such as a module with secrets, imported inside the block alone.
+- Markup that reads values the page state should not carry, so they are not serialized.
+- Whether a block that never updates can drop its markers and scope IDs.
+
+To study before any design.
+
 ## Data
 
 ### Worker functions
@@ -127,6 +138,8 @@ Cost: about 1 to 2 weeks, after the stubs of two-way realtime. Without them, a f
 ### Offline pages
 
 A resumed page needs the network only for the parts that its handlers load. The idle preload already knows which parts a page can reach.
+
+Note, 2026-10-25: the page's code now loads when it starts, in one bundle per root component. `prefetch` and the `preload` option were removed.
 
 - A generated service worker caches the page, the loader, the core and those parts, so a page that was loaded once works offline, and its handlers run.
 - A server function call made offline waits in a queue with an option, and goes when the connection comes back. Its result settles the same promise.
@@ -252,6 +265,7 @@ What it should show:
 
 - **Elements.** Pick an element to see its scope, its anchor, its handlers with the size of each one's part and whether it loaded, and the values that its updates read. A link opens the `.brm` file at the line of the element in the editor, from the source maps, through the dev server, as Vite's `launch-editor` does.
 - **Loading.** A timeline of every part that loaded, with why: an event, the idle preload, an element that came into view, a hover, or navigation. Each row has its size, its time and the event that waited for it. Preloads that nothing used are marked.
+  - Note, 2026-10-25: the page's code now loads when it starts, in one bundle per root component. `prefetch` and the `preload` option were removed. The devtools have no Loading tab.
 - **Page state.** The bytes of the first state record by component and by slot, and for each slot the client code that reads it, which is why it is sent. A value that is large, or sent but rarely read, stands out.
 - **Blocks.** Every `#loading`, `#defer` and `#client` block of the page with its state: fallback, waiting, streaming or rendered, its trigger, and when its body arrived and how long it took. Buttons fire a trigger now, or show a block's fallback again, to test both sides.
 - **Effects.** The `$effect`s and `$client` callbacks that are active, how often each ran, and when its cleanup ran last, so an effect that runs too often is easy to find.
@@ -277,15 +291,15 @@ A workbench helps with small components that depend only on their props, such as
 
 The project analysis classifies each component by what it depends on, itself and through the components that it renders:
 
-| Kind                  | What it depends on                                                                                                                  | In the workbench                                                |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Self-contained        | Its props, its own state, and contexts with a default                                                                               | Listed, with controls for its props                             |
-| Needs the environment | A server function, the request (`getEvent`, cookies, `locals`), the route, a context without a default, a `#defer` or a form action | Listed only with a story file that gives what it needs          |
-| Route or layout       | A file of `src/routes`                                                                                                              | Never. `visit` from `brumate/testing` and e2e tests cover these |
+| Kind                  | What it depends on                                                                                                                                     | In the workbench                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Self-contained        | Its props, its own state, and the contexts it reads                                                                                                    | Listed, with controls for its props                             |
+| Needs the environment | A server function, the request (`getEvent`, cookies, `locals`), the route, a `#defer`, a form action, or a dynamic tag with no element to fall back to | Listed only with a story file that gives what it needs          |
+| Route or layout       | A file of `src/routes`                                                                                                                                 | Never. `visit` from `brumate/testing` and e2e tests cover these |
 
 - The analyzer already sees each of these in a file, and the project analysis already knows which components each file renders. The classification combines the two.
 - The line is what a component depends on, not where it is. An app has small components, such as in `src/components`, and a package can have components that call its own server functions.
-- When the analysis cannot tell, such as for a dynamic component (`<{as}>`) whose tag comes from a prop, the component counts as one that needs the environment.
+- When the analysis cannot tell, such as for a dynamic tag (`<{as}>`) whose tag comes from a prop with no element as its default, the component counts as one that needs the environment. Every context has a default, so reading one needs no provider.
 
 #### How it works
 
@@ -391,6 +405,56 @@ A brumate component cannot go into a page that brumate did not render, such as a
 
 Cost: about 2 weeks. The request for markup reuses `#defer`, and most of the work is the build target and the cross-origin rules.
 
+## Compiler
+
+### A smaller and faster client
+
+The page code loads at the start since #113, so speed is close to Marko's and size is the gap. A run of `pnpm bench` on 2026-10-25, at the tip of the stack of the UI components:
+
+| Metric                  | brumate                | Marko 6              |
+| ----------------------- | ---------------------- | -------------------- |
+| Create 1,000 rows       | 35 ms                  | 33 ms                |
+| Replace 1,000 rows      | 31 ms                  | 26 ms                |
+| Append 1,000 rows       | 32 ms                  | 40 ms                |
+| JS before `load`, todos | 30.6 kB / 13.0 kB gzip | 9.1 kB / 4.4 kB gzip |
+
+Of the 13.0 kB, the core is 9.2 kB, the loader 2.9 kB and the app 0.9 kB. The bytes of the core are spread over many functions. Part of them is code for features that a page does not use, which the bundler keeps because the core reaches it through runtime branches.
+
+What Marko's compiler does that brumate's core does at runtime:
+
+| Work                            | Marko 6                                                                         | Brumate now                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Markup that the browser renders | A template that it clones, and a walk string that picks the nodes to update     | An HTML string, inserted and then scanned for its markers                                       |
+| The nodes that an update writes | Kept on the scope when the markup is cloned or resumed                          | Found by a marker or a `b-b` anchor, through an index that a MutationObserver keeps, or a query |
+| What a change runs              | A function for each value, which calls the functions of the values that read it | Tables of updates by slot (`g`), which `run` reads, with the order of the graph at runtime      |
+
+#### Steps
+
+Each step is a PR of its own, measured with `pnpm bench` before and after: the gzip size of the JS before `load`, the rows scenario, and the first click. Size comes first.
+
+1. **Features of the build.** The Vite plugin reads which features of the core the components of a build use, and the client build leaves out the code of the others, such as children that the browser renders, templates, titles and bindings. Done in #147: the core of todos goes from 9.2 kB to 8.3 kB gzip.
+2. **More features of the build**, with the same switches: what a page without `#loading`, `#defer` or client navigation never needs, such as the index of markup that arrives later.
+3. **Nodes on the scope, and cloned templates.** The resume scan and each client render store the nodes that updates write on their scope. A body that the browser renders compiles to a `<template>` and a walk string. The index, its MutationObserver, the HTML strings and their scans go.
+4. **Functions for values.** The compiler emits a function for each value that changes, which writes its nodes and calls the functions of the values that read it. The update tables and the code that reads them go.
+
+#### Later: fixed walks
+
+A clone finds the elements that its render writes with a walk of paths at runtime, which the browser reads from `b-x` marks in the parsed template. Solid and Svelte emit the walk as code instead, each node into a variable. The branch `exp/fixed-walk` tries it on the rows of the benchmark, on 2026-10-25:
+
+| Script of each operation |  Runtime walk |    Fixed walk | Marko 6 |
+| ------------------------ | ------------: | ------------: | ------: |
+| Create 1,000 rows        |  about 6.1 ms |  about 5.2 ms |  5.0 ms |
+| Replace 1,000 rows       | about 11.6 ms | about 11.4 ms | 10.8 ms |
+
+Creating rows takes about 0.9 ms less, and replacing them about the same. Both take about 28 ms from the click to the paint, so the gain is 2 to 3% of it. The walk is a line of code for each node on the path to an element, in each component, and the compiler must know that the parser keeps the markup as it is written, as Solid checks the nesting of elements. It waits until speed matters more than size.
+
+#### Risks
+
+- Streaming. Markup and state that arrive later, out of order, need the scan of step 1 to run on each chunk, as the index does now.
+- `#offscreen` and `#defer` rely on the markers of a body as they are now. Each step keeps their tests passing.
+- The devtools read the update tables and the index. They need the same facts from the new places.
+- A feature that the build turns off must never be needed. The plugin reads it from the compiled code, and a page state that holds a value of it throws an error that says so.
+
 ## Library
 
 ### Headless UI components
@@ -423,57 +487,104 @@ From Terracotta:
 - State as `data-*` attributes, such as `data-open` and `data-selected`, for styling with CSS or class objects.
 - The split between controlled and uncontrolled state, below.
 
+#### Decisions
+
+Settled on 2026-10-24:
+
+- **Browser support.** A part uses a feature of the platform only when at least 95% of global usage supports it. The share is the global usage of each browser version, from caniuse, summed over the versions that MDN's compatibility data marks as supporting the feature. The client of brumate will be checked against the same rule.
+- **No native popover or dialog.** Overlays follow React Aria and Terracotta, which use neither: they render with `#portal`, and the shared modules place them, keep focus in them and give it back, close them on Escape or a click outside, and hide the rest of the page from assistive technology.
+- **React Aria and Terracotta are the reference.** Where a part has a choice of how to behave, it does what they do, and their tests and docs are the specification.
+- **Nested layers.** An overlay mounts in the layer of the nearest floating part above it, such as the `Dialog` or `Popover` that it opens from, and not at the end of `<body>`. React Aria and Terracotta mount every overlay at the end of `<body>`, so this is where the parts differ from them.
+- **Unstyled.** The parts render markup, ARIA attributes and `data-*` state, and no CSS. The website shows them styled in its own style, as an example.
+- **Docs of their own.** The docs of `@brumate/ui` are on the website, at `/ui`, apart from the docs of brumate. The section has its own navigation, sidebar and search, and shows only the parts. It links to the docs of brumate for the features that the parts use, and the docs of brumate link to it once.
+- **Bindable state.** A part has one prop for each state, such as `open`, `value` and `checked`, and no `defaultOpen`. A value starts the part's own copy, and `open=$bind(settingsOpen)` controls it. See [Controlled and uncontrolled](#controlled-and-uncontrolled).
+
+#### Layers
+
+Each floating part renders a layer: an element that the part owns, and that holds the panel that the caller styles. An overlay that opens from inside a floating part mounts at the end of that part's layer, so the layers form a tree that follows the nesting of the parts.
+
+- The overlay paints above its parent, because it comes last in the parent's layer, and the parent is above the page. Only the root layer needs a `z-index`.
+- The page sees the nesting. A click in a popover of a dialog is a click inside the dialog, focus that stays in the dialog can go to its popovers, the `aria-hidden` that hides the page behind the dialog does not hide them, and closing the dialog removes them. CSS custom properties of the dialog reach them too.
+- The server renders an overlay in its place, after its parent's panel, so the browser moves nothing when the page resumes.
+
+Rules:
+
+1. An overlay mounts in its parent's layer, not in the panel. The layer has no `overflow`, `transform` or `contain`, so a panel that scrolls or animates with a transform does not clip its overlays or change where they are placed.
+2. Overlays are placed with `top` and `left`, never with `transform`, so a layer is never the containing block of the overlays in it.
+3. An overlay that is not inside a floating part mounts in the root layer, at the end of `<body>`. Toasts always do.
+4. A `container` prop overrides this: an element, a selector, or `false` to render in place.
+5. Overlays of the same layer stack in the order that they opened.
+
+A `LAYER` context holds the layer of each floating part, and its default is the root layer, so an overlay finds its layer with `$getContext(LAYER)`.
+
+What the 95% rule allows, measured on 2026-10-24:
+
+| Feature                               | Global support | Use                                                                 |
+| ------------------------------------- | -------------: | ------------------------------------------------------------------- |
+| `inert`                               |          96.4% | Yes, for the page behind a modal                                    |
+| `:focus-visible`                      |          96.5% | Yes, in place of focus-visible tracking                             |
+| `Element.checkVisibility()`           |          95.2% | Yes, for focus order                                                |
+| Popover API                           |          93.6% | No                                                                  |
+| `@starting-style`                     |          93.0% | No. Overlays animate with `Transition`.                             |
+| `transition-behavior: allow-discrete` |          91.0% | No                                                                  |
+| CSS anchor positioning                |          87.3% | No. A shared module places overlays.                                |
+| `commandfor` and `command`            |          86.2% | No                                                                  |
+| View transitions                      |          92.9% | Only where a browser without them still works, as `transition` does |
+
 #### Controlled and uncontrolled
 
-Each part that has state comes in two shapes, as in Terracotta, and the prop that the caller passes picks one:
+A part with state has one prop for it, such as `open`, and the way the caller passes it picks the shape. There is no `defaultOpen`. This is where the parts differ from React Aria and Terracotta, which have both props.
 
-| Uncontrolled     | Controlled | Parts                                                                                           |
-| ---------------- | ---------- | ----------------------------------------------------------------------------------------------- |
-| `defaultOpen`    | `open`     | `Disclosure`, `Dialog`, `Modal`, `Sheet`, `Popover`, `Tooltip`, `Menu`, `Select`, `ComboBox`    |
-| `defaultValue`   | `value`    | `Select`, `ComboBox`, `ListBox`, `RadioGroup`, `Tabs`, `Slider`, `NumberField`, the date fields |
-| `defaultChecked` | `checked`  | `Checkbox`, `Switch`                                                                            |
-| `defaultPressed` | `pressed`  | `ToggleButton`                                                                                  |
+| Prop      | Parts                                                                                           |
+| --------- | ----------------------------------------------------------------------------------------------- |
+| `open`    | `Disclosure`, `Dialog`, `Modal`, `Sheet`, `Popover`, `Tooltip`, `Menu`, `Select`, `ComboBox`    |
+| `value`   | `Select`, `ComboBox`, `ListBox`, `RadioGroup`, `Tabs`, `Slider`, `NumberField`, the date fields |
+| `checked` | `Checkbox`, `Switch`                                                                            |
+| `pressed` | `ToggleButton`                                                                                  |
 
 ```html
-<!-- Uncontrolled: the dialog keeps its own state, and onChange only reports it. -->
-<Dialog defaultOpen=(false) onChange=((open) => log(open))>…</Dialog>
+<!-- Uncontrolled: the dialog keeps its own state, which starts closed. -->
+<Dialog onChange=((open) => log(open))>…</Dialog>
 
-<!-- Controlled: the dialog never writes. Nothing moves until the parent passes a new value. -->
-<Dialog open=settingsOpen onChange=((open) => (settingsOpen = open))>…</Dialog>
+<!-- Uncontrolled, from a value: the dialog starts open and keeps its own copy. -->
+<Dialog open=(true)>…</Dialog>
 
-<!-- The same, with a bindable prop. -->
-<Dialog bind:open=settingsOpen>…</Dialog>
+<!-- Controlled: the dialog writes the caller's signal. -->
+<Dialog open=$bind(settingsOpen)>…</Dialog>
+
+<!-- Controlled, with a setter: the caller decides, and the dialog shows what it keeps. -->
+<Dialog open=$bind(settingsOpen, (next) => { if (!dirty) settingsOpen = next; })>…</Dialog>
 ```
 
-- **Uncontrolled**: the part owns a signal that starts at the default, and writes it. `onChange` tells the caller what happened.
-- **Controlled**: the part never writes its state. It calls `onChange` with the value it wants, and shows the value that the caller passes. A caller that does not write it back gets a part that does not move, and the docs say so, as Terracotta's do.
-- `bind:open=signal` is the controlled shape with an `onChange` that writes the signal, from [bindable props](#bindable-props). The parts declare `open` as bindable, so both spellings work.
-- The props type is a union of the two shapes, so passing `open` and `defaultOpen` together is a type error, as Terracotta's types do.
-- The shape is chosen once, by which prop is there: `'open' in props`, as Terracotta's `isDisclosureUncontrolled` checks `'defaultOpen' in props`. A part does not switch shape after it renders.
-- One helper in the shared `.brm.ts` module gives every part the same rule: `controllable(props, 'open', 'defaultOpen')` returns a value to read and a `set` that writes the part's own signal when it is uncontrolled, and calls `onChange` either way.
+- **A value**, such as `open=(true)` or `open=settingsOpen`, starts the part's own copy, and the part writes the copy. A new value from the caller replaces it, so the caller can still close the dialog.
+- **A binding**, `open=$bind(settingsOpen)`, makes the part write the caller's signal.
+- **A binding with a setter** calls the setter in place of the write. It can refuse or change the value, and the part shows what the caller keeps, as a controlled part of React Aria does.
+- `onChange` reports each new value in every shape.
+- This is how a `let` prop of brumate works, so a part needs no helper for it: `let { open = false } = $props<{ open?: Bindable<boolean> }>()`, and a write of `open` goes where the caller said.
+- A value of `null` or `undefined` is a value like any other, such as the `value` of a `Select` with nothing selected.
+- `$isPassed(open)` and `$isBound(open)` tell a part how the caller passed the prop, for a part that needs to know.
 
 What brumate adds to the split:
 
-- The caller's attributes are in its markup, so the compiler usually knows the shape of each use. A part that is only ever used uncontrolled does not need the code that waits for the caller, and the reverse, so the shape can decide what ships.
-- The state of an uncontrolled part is a slot of the part's own scope, which the page state sends. A controlled part's state is a slot of the caller, so the part sends nothing of its own.
-- On the server, nothing writes, so both shapes render the value that they start with: the default, or the caller's value.
+- The state of an uncontrolled part is a slot of the part's own scope, which the page state sends. A bound part's state is a slot of the caller, so the part sends nothing of its own.
+- On the server, nothing writes, so every shape renders the value that it starts with.
 
 #### How it maps to brumate
 
-| React Aria Components or Terracotta | brumate                                                                                                                   |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Context provider in `Select`        | `$setContext(POPOVER, { … })` in `Select.brm`                                                                             |
-| `useContextProps` in a part         | `$getContext(POPOVER)` merged with the part's props                                                                       |
-| `slot` prop                         | A context value keyed by slot, read as `ctx[slot]`                                                                        |
-| `triggerRef` for positioning        | CSS anchor positioning: `anchor-name` on the trigger and `position-anchor` on the popover. It needs no ref and no script. |
-| Behaviour hooks                     | Functions in a `.brm.ts` module that the parts share                                                                      |
-| Children as a render function       | A named `#template` prop, because `children` is markup that the server renders                                            |
-| `defaultOpen` and `isOpen`          | `defaultOpen`, and `open` or `bind:open`, through one `controllable` helper                                               |
-| Collections from JSX children       | An `items` prop and an item `#template`, because brumate cannot read the structure of markup                              |
-| Global listeners at startup         | CSS `:focus-visible` in place of focus-visible tracking. Listeners for a click outside are added when an overlay opens.   |
-| `@internationalized/date`, `number` | Used as they are                                                                                                          |
+| React Aria Components or Terracotta | brumate                                                                                                                               |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Context provider in `Select`        | `$setContext(POPOVER, { … })` in `Select.brm`                                                                                         |
+| `useContextProps` in a part         | `$getContext(POPOVER)` merged with the part's props                                                                                   |
+| `slot` prop                         | A context value keyed by slot, read as `ctx[slot]`                                                                                    |
+| `triggerRef` for positioning        | A function of a shared `.brm.ts` module that places the overlay next to its trigger, when it opens and as the page scrolls or resizes |
+| Behaviour hooks                     | Functions in a `.brm.ts` module that the parts share                                                                                  |
+| Children as a render function       | A named `#template` prop, because `children` is markup that the server renders                                                        |
+| `defaultOpen` and `isOpen`          | `open`, as a value or `open=$bind(…)`                                                                                                 |
+| Collections from JSX children       | An `items` prop and an item `#template`, because brumate cannot read the structure of markup                                          |
+| Global listeners at startup         | CSS `:focus-visible` in place of focus-visible tracking. Listeners for a click outside are added when an overlay opens.               |
+| `@internationalized/date`, `number` | Used as they are                                                                                                                      |
 
-Native features cover parts of the behaviour with no script: `<dialog>` with `showModal()`, the Popover API, `commandfor` and `command` on buttons, and CSS anchor positioning.
+The parts do not use `<dialog>`, the Popover API, `commandfor` or CSS anchor positioning. See [Decisions](#decisions).
 
 #### What the compiler needs first
 
@@ -499,13 +610,18 @@ Answers, from the spike in `packages/brumate/test/render/Spike*.brm` and the `Se
 
 #### Plan
 
-1. The spike above, as a test fixture or a page in `examples/`.
-2. The compiler work that the spike and the list above call for, each with tests.
-3. `packages/ui` in this repository, while the page format, IDs and spread rules still change. It moves to its own repository after 1.0 if its release pace differs from the compiler's. The parts follow the [roadmap](#roadmap).
-4. `examples/ui`, a page of every part, covered by `pnpm e2e` with an accessibility check such as axe-core.
-5. Docs in `website/docs/ui`, with live samples.
+1. **Groundwork**, about a week:
+   - `packages/ui` as `@brumate/ui`, a package of `.brm` components, as `examples/ui-kit` is.
+   - The workbench counts a context with a default and a dynamic tag with a default element as self-contained, since every part reads the context of its parent and renders `as`.
+   - Story files for the workbench, with named sets of props, so each part shows its states.
+   - Helpers for keyboard and focus in tests, and `examples/ui`, a page of every part that `pnpm e2e` covers with axe-core.
+2. **Phase 0**, the foundations, 3 to 4 weeks. The shared modules: the merge of a context with props, with chained handlers and `slot`, and press, hover and focus with their `data-*` state. `VisuallyHidden`, `Keyboard` and `I18nProvider`. It ends with `Button` on all of these, with the press tests of React Aria, in the workbench, and a guide to writing a part. It also answers whether focus passes through `as` when `as` names a component.
+3. **Phases 1, 2 and 3**, the controls and fields, the overlays, and the collections with `Select`, in that order, as the roadmap below says.
+4. **Phases 4 to 7**, as users ask for them.
 
-Cost: about 2 weeks for the compiler work, then the phases of the roadmap below.
+Each phase ships with tests that follow the behaviour of React Aria, an accessibility check, docs in the `/ui` section of the website with live samples in the style of the site, stories in the workbench, and a check that a part that is closed or unused ships close to nothing.
+
+`packages/ui` stays in this repository while the page format, IDs and spread rules still change. It moves to its own repository after 1.0 if its release pace differs from the compiler's.
 
 #### Roadmap
 
@@ -515,7 +631,7 @@ The parts come from `react-aria-components` 1.22.1 (2026-10-09). Each phase ship
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | 0. Foundations             | Press, focus and hover handling (`Pressable`, `Focusable`), `VisuallyHidden`, `Keyboard`, `I18nProvider` (locale and direction), context composition with `slot`, `as`, render props and `data-*` state                                                                                              | The `Select` spike, conditional `preventDefault`, handlers in spreads                                | 3 to 4 weeks, with the compiler work |
 | 1. Controls and fields     | `Button`, `ToggleButton`, `ToggleButtonGroup`, `Link`, `Label`, `Text`, `Input`, `TextArea`, `TextField`, `SearchField`, `Checkbox`, `CheckboxGroup`, `RadioGroup`, `Switch`, `FieldError`, `Form`, `Group`, `Separator`, `Heading`, `Toolbar`, `Breadcrumbs`, `Meter`, `ProgressBar`, `FileTrigger` | Phase 0. `Form` and `FieldError` use [`createForm`](../website/docs/forms.md#forms-with-createform). | 3 to 4 weeks                         |
-| 2. Disclosure and overlays | `Disclosure`, `DisclosureGroup`, `Popover`, `OverlayArrow`, `Dialog`, `Modal`, `Sheet`, `Tooltip`, `PreviewTrigger`, `Toast`, and `Transition` from Terracotta                                                                                                                                       | Phase 1. `<dialog>`, the Popover API, `commandfor` and CSS anchor positioning do most of the work.   | 4 to 5 weeks                         |
+| 2. Disclosure and overlays | `Disclosure`, `DisclosureGroup`, `Popover`, `OverlayArrow`, `Dialog`, `Modal`, `Sheet`, `Tooltip`, `PreviewTrigger`, `Toast`, and `Transition` from Terracotta                                                                                                                                       | Phase 1. `#portal`, and shared modules that place overlays, trap focus and close them.               | 5 to 6 weeks                         |
 | 3. Collections             | The collection model (keys, sections with `Header`, disabled keys, single and multiple selection, typeahead, focus within a list), `ListBox`, `Menu` with submenus, `Select`, `ComboBox`, `Autocomplete`, `Tabs`, `TagGroup`, `GridList`, `SelectionIndicator`                                       | Phase 2 for the popovers of menus and selects                                                        | 6 to 8 weeks                         |
 | 4. Numbers                 | `NumberField`, `Slider` with several thumbs                                                                                                                                                                                                                                                          | Phase 1, and `@internationalized/number`                                                             | 2 weeks                              |
 | 5. Dates and times         | `Calendar`, `RangeCalendar`, `DateField`, `TimeField`, `DatePicker`, `DateRangePicker`                                                                                                                                                                                                               | Phases 2 and 3, and `@internationalized/date`                                                        | 4 to 6 weeks                         |
@@ -526,11 +642,13 @@ Notes for each phase:
 
 - Phase 0 is most of the risk. It settles how a part merges its context with its props, how state reaches the caller's markup, and how `as` passes handlers and focus to a component. Every later part depends on it.
 - Phase 1 parts are mostly markup and attributes, and many need no client code until they are used. A `Checkbox` is a native `<input type="checkbox">` with labels and states.
-- Phase 2 uses the platform where it can. `Modal` and `Sheet` are `<dialog>` with `showModal()`. `Popover` and `Tooltip` use the Popover API and anchor positioning, so they need no positioning code. A click outside closes them through `popover="auto"`, or a listener that is added when they open.
-- Phase 2 animates in two ways:
-  - Overlays animate as they open and close with CSS alone. `<dialog>` and popovers are hidden, not removed, so `@starting-style` and `transition-behavior: allow-discrete` on `display` and `overlay` cover both directions.
-  - `Transition` animates content that is removed, such as an `#if` body or a toast, which CSS cannot do because the node is gone. It follows [Terracotta](https://github.com/lxsmnsyc/terracotta)'s `Transition`: it keeps the content until its leave transition ends, then removes it. It takes Terracotta's `enter`, `enterFrom`, `enterTo`, `leave`, `leaveFrom` and `leaveTo` class props, and sets `data-closed`, `data-enter` and `data-leave` for CSS without class lists, as Headless UI does. It needs no compiler or runtime change: a signal of its own keeps the content mounted, and an `#if` removes it after `transitionend` or `animationend`, with a timeout when neither fires. The server renders the content as `show` says, with no animation on load. `prefers-reduced-motion` skips the wait. Nested `TransitionChild` coordination, and leave animations for `#for` items, which need a hook in the list code of the runtime, come later.
-- Phase 3 is the largest. Collections take `items` and an item `#template`, because brumate cannot read the structure of markup the way React Aria reads its children. Keyboard movement and typeahead go in a `.brm.ts` module that every collection shares. `Select` and `ComboBox` keep a native `<select>` or `<input>` where they can, so forms post without scripts.
+- Phase 2 renders every overlay with `#portal`, so it is above the page without the top layer of the browser. Shared modules do the rest:
+  - placing a `Popover` or `Tooltip` next to its trigger, flipping it when it does not fit, when it opens and as the page scrolls or resizes;
+  - moving focus into a `Dialog` or `Modal`, keeping it there, and giving it back to the trigger when it closes, as React Aria's `FocusScope` does;
+  - closing on Escape and on a click outside, with listeners that are added when the overlay opens, as React Aria's `useInteractOutside` does;
+  - hiding the rest of the page behind a `Modal` with `aria-hidden`, as React Aria's `ariaHideOutside` does, and locking its scroll, as its `usePreventScroll` does.
+- Phase 2 animates with `Transition`, for overlays and for other content that is removed. `Transition` animates content that is removed, such as an `#if` body or a toast, which CSS cannot do because the node is gone. It follows [Terracotta](https://github.com/lxsmnsyc/terracotta)'s `Transition`: it keeps the content until its leave transition ends, then removes it. It takes Terracotta's `enter`, `enterFrom`, `enterTo`, `leave`, `leaveFrom` and `leaveTo` class props, and sets `data-closed`, `data-enter` and `data-leave` for CSS without class lists, as Headless UI does. It needs no compiler or runtime change: a signal of its own keeps the content mounted, and an `#if` removes it after `transitionend` or `animationend`, with a timeout when neither fires. The server renders the content as `show` says, with no animation on load. `prefers-reduced-motion` skips the wait. Nested `TransitionChild` coordination, and leave animations for `#for` items, which need a hook in the list code of the runtime, come later.
+- Phase 3 is the largest. Brumate cannot read the structure of markup the way React Aria reads its children, so a collection reads its items from the page: each item writes its key in `data-key`, and the order of the items is the order of their elements. Items can then come from any markup, such as a `#for` or sections, with no `items` prop. Keyboard movement, ranges and typeahead go in `collection.ts`, which every collection shares. `Select` and `ComboBox` keep a native `<select>` or `<input>` where they can, so forms post without scripts.
 - Phase 4 parses and formats numbers by locale on the server and in the browser with the same code.
 - Phase 5 keeps dates in signals as ISO strings, because the page state cannot hold `CalendarDate` class instances.
 - Phase 6 renders rows on the server. `Virtualizer` and drag and drop run only in the browser, from `$client` and handlers, so they load when used.
@@ -555,13 +673,32 @@ Markdown pages that can use brumate components and expressions, as mdsvex does f
 
 Cost: about 1 to 2 weeks, most of it for the parser integration, source maps and editor support.
 
-### Order
+## Website
+
+### The home link
+
+The home link in the header, on the docs and on `/ui`, shows a circle with a gradient where the site needs an icon. Draw a mark for brumate, and use it in the header, as the favicon, and on the home page.
+
+### A landing page for @brumate/ui
+
+`/ui` opens on the introduction and the grid of cards. It needs a landing page of its own, as the home page of brumate has:
+
+- What the parts are, and what makes them different: they resume, ship no code until used, and work without scripts where the platform allows.
+- A few parts that people can use on the page.
+- The links to start, to the parts, and to the design influences.
+
+The introduction and the grid move to pages of their own.
+
+## Order
 
 Each step lists what it holds and why it comes there. A step can start before the one above it ends, when they touch different code.
 
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
 2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them.
 3. **The component workbench and the UI components**, together. The workbench shows only self-contained components, and `@brumate/ui` is its first user, starting with the `Select` spike. The UI components are the biggest project here.
-4. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
+4. **The website**: the home link and a landing page for `@brumate/ui`, before the parts are published.
+5. **A smaller and faster client**, in the order of its steps, once the UI components of the phases that the website needs are in.
+6. **Later, to explore**: server components, server templates, or `#server` blocks. Check what the concept would give brumate: markup that renders only on the server and ships no code, such as a part that reads the database, and a `#template` or a `#server` body that the server renders when the browser asks for it. Compare it with what `#defer`, server functions and resuming do already.
+7. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.
 
 Content mappers for TypeScript 7 are in #3, which is open, so they are in no step.

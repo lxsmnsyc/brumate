@@ -1,0 +1,38 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>(null);
+</script>
+
+<DateRangePicker class="ui-field" value=$bind(stay)>
+  <Label>Stay</Label>
+  <Group class="ui-group">
+    <DateInput slot="start" class="ui-input ui-date-input" />
+    <span aria-hidden="true">–</span>
+    <DateInput slot="end" class="ui-input ui-date-input" />
+    <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+  </Group>
+  <Popover class="ui-popover">
+    <Dialog>
+      <RangeCalendar class="ui-calendar">
+        <header>
+          <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+          <CalendarHeading />
+          <Button slot="next" class="ui-button ui-icon-button">›</Button>
+        </header>
+        <CalendarGrid />
+      </RangeCalendar>
+    </Dialog>
+  </Popover>
+</DateRangePicker>
+<p>{stay ? `From ${stay.start} to ${stay.end}.` : 'No range yet.'}</p>

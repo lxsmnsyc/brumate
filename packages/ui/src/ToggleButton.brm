@@ -1,0 +1,69 @@
+<script>
+  import { SelectionIndicatorContext } from './selection-indicator.ts';
+  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import Button from './Button.brm';
+  import { ToggleButtonContext, ToggleGroupContext } from './contexts.ts';
+  import type { PressEvent } from './events.ts';
+  import { contextAttributes, slotProps } from './slots.ts';
+
+  /**
+   * A button that stays pressed, as ToggleButton of React Aria Components. It is a Button with
+   * aria-pressed and `data-selected`.
+   *
+   * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
+   */
+  const { id, slot, isDisabled, onChange, onPress, children, ...rest } = $props<{
+    /** The key of the button in a ToggleButtonGroup. */
+    id?: string;
+    slot?: string | null;
+    isDisabled?: boolean;
+    onChange?: (selected: boolean) => void;
+    onPress?: (event: PressEvent) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { isSelected = false } = $props<{ isSelected?: Bindable<boolean> }>();
+
+  const context = $getContext(ToggleButtonContext);
+  const group = $getContext(ToggleGroupContext);
+  const attributes = $memo(contextAttributes(slotProps(context, slot)));
+  // A disabled group disables every button, as in React Aria, even one with isDisabled=(false).
+  const disabled = $memo(
+    Boolean(isDisabled || group?.isDisabled || slotProps(context, slot).isDisabled),
+  );
+  // In a group, the group keeps the selection.
+  const selected = $memo(group && id !== undefined ? group.selectedKeys.includes(id) : isSelected);
+  // The buttons of a group with one selection are radios.
+  const radio = $memo(group?.selectionMode === 'single');
+
+  function toggle(event: PressEvent) {
+    const given = slotProps(context, slot);
+    // The new state, before the write changes `selected`.
+    const next = !selected;
+    if (group && id !== undefined) {
+      group.toggle(id);
+    } else {
+      isSelected = next;
+    }
+    given.onChange?.(next);
+    onChange?.(next);
+    given.onPress?.(event);
+    onPress?.(event);
+  }
+  // A SelectionIndicator inside marks the item while it is selected.
+  $setContext(SelectionIndicatorContext, { isSelected: selected });
+</script>
+
+<!-- The Button reads no ButtonContext, since this button has a context of its own. -->
+<Button
+  slot=(null)
+  isDisabled=disabled
+  role=(radio ? 'radio' : undefined)
+  aria-checked=(radio ? String(selected) : undefined)
+  aria-pressed=(radio ? undefined : String(selected))
+  data-selected=(selected || undefined)
+  onPress=toggle
+  {...attributes}
+  {...rest}
+>{children}</Button>

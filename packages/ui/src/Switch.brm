@@ -1,0 +1,109 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import VisuallyHidden from './VisuallyHidden.brm';
+  import { box } from './box.brm.ts';
+
+  /**
+   * A switch, as Switch of React Aria Components: a <label> around a native checkbox with
+   * role="switch". The label shows `data-selected`, `data-pressed`, `data-hovered`,
+   * `data-focused`, `data-focus-visible`, `data-disabled` and `data-readonly`. Draw the switch in
+   * the children, from these attributes.
+   *
+   * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
+   */
+  const { name, value, isDisabled = false, isReadOnly = false, onChange, children, ...rest } =
+    $props<{
+      name?: string;
+      value?: string;
+      isDisabled?: boolean;
+      isReadOnly?: boolean;
+      onChange?: (selected: boolean) => void;
+      children?: unknown;
+      [attribute: string]: unknown;
+    }>();
+  let { isSelected = false } = $props<{ isSelected?: Bindable<boolean> }>();
+
+  const disabled = $memo(isDisabled);
+
+  const {
+    hovered,
+    pressed,
+    focused,
+    focusVisible,
+    onPointerEnter,
+    onPointerLeave,
+    onPointerDown,
+    onPointerUp,
+    onPointerCancel,
+    onKeyDown,
+    onKeyUp,
+    onFocusIn,
+    onFocusOut,
+  } = box(disabled);
+
+  // The click of a read-only box, which the wrapper prevents.
+  function keep() {}
+
+  function change(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    // A read-only switch keeps its state. The browser toggled it already.
+    if (isReadOnly) {
+      input.checked = isSelected;
+      return;
+    }
+    isSelected = input.checked;
+    onChange?.(input.checked);
+  }
+</script>
+
+<label
+  data-selected=(isSelected || undefined)
+  data-pressed=(pressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  data-disabled=(isDisabled || undefined)
+  data-readonly=(isReadOnly || undefined)
+  {onPointerEnter}
+  {onPointerLeave}
+  {onPointerDown}
+  {onPointerUp}
+  {onPointerCancel}
+  {onKeyDown}
+  {onKeyUp}
+  {onFocusIn}
+  {onFocusOut}
+  {...rest}
+>
+  <!-- A read-only box prevents its click, so the browser never toggles it, and a screen reader
+       announces no change. -->
+  #if (isReadOnly) {
+    <VisuallyHidden
+      as="input"
+      type="checkbox"
+      role="switch"
+      {name}
+      {value}
+      checked=isSelected
+      disabled=(isDisabled || undefined)
+      aria-readonly=(isReadOnly ? 'true' : undefined)
+      onChange=change
+      onClick=(prevent(keep))
+    />
+  } #else {
+    <VisuallyHidden
+      as="input"
+      type="checkbox"
+      role="switch"
+      {name}
+      {value}
+      checked=isSelected
+      disabled=(isDisabled || undefined)
+      aria-readonly=(isReadOnly ? 'true' : undefined)
+      onChange=change
+    />
+  }
+  {children}
+</label>

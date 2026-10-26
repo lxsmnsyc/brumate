@@ -227,6 +227,9 @@ importers:
 
   e2e:
     devDependencies:
+      axe-core:
+        specifier: ^4.14.0
+        version: 4.14.0
       playwright-core:
         specifier: 1.64.1
         version: 1.64.1
@@ -358,6 +361,28 @@ importers:
       vitest:
         specifier: ^5.0.4
         version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+
+  examples/ui:
+    dependencies:
+      '@brumate/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      brumate:
+        specifier: workspace:*
+        version: link:../../packages/brumate
+    devDependencies:
+      '@brumate/tsc':
+        specifier: workspace:*
+        version: link:../../packages/tsc
+      '@types/node':
+        specifier: ^24.19.2
+        version: 24.19.2
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
 
   examples/ui-kit:
     devDependencies:
@@ -544,6 +569,34 @@ importers:
         specifier: ^7.0.2
         version: 7.0.2
 
+  packages/ui:
+    dependencies:
+      '@internationalized/date':
+        specifier: ^3.12.4
+        version: 3.12.4
+      '@internationalized/number':
+        specifier: ^3.6.9
+        version: 3.6.9
+    devDependencies:
+      '@brumate/tsc':
+        specifier: workspace:*
+        version: link:../tsc
+      brumate:
+        specifier: workspace:*
+        version: link:../brumate
+      happy-dom:
+        specifier: ^20.14.6
+        version: 20.14.6
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vite:
+        specifier: ^8.3.4
+        version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
+      vitest:
+        specifier: ^5.0.4
+        version: 5.0.5(@types/node@24.19.2)(happy-dom@20.14.6)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+
   packages/vscode:
     devDependencies:
       '@brumate/language-server':
@@ -588,6 +641,9 @@ importers:
 
   website:
     dependencies:
+      '@brumate/ui':
+        specifier: workspace:*
+        version: link:../packages/ui
       '@oxc-parser/binding-wasm32-wasi':
         specifier: 0.154.0
         version: 0.154.0
@@ -965,6 +1021,12 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@internationalized/date@3.12.4':
+    resolution: {integrity: sha512-M1dEn4c1U1HsSlaVR8upZtSqvXrTkHDfv18H01uCSJyjVLDxnBR38v/fMxecmlwXKR4i9HeZcmgQAPE6A+aGJQ==}
+
+  '@internationalized/number@3.6.9':
+    resolution: {integrity: sha512-GgWy2caO/+hV9sT/oCTWGHvbjmJMPT9kkXzoKRLnkEq7adghhR7UprhvY9sXrKfrp3NcDfhF6QQHXR1KfQbB8g==}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -2303,6 +2365,9 @@ packages:
     resolution: {integrity: sha512-LtoMMhxAlorcGhmFYI+LhPgbPZCkgP6ra1YL604EeF6U98pLlQ3iWIGMdWSC+vWmPBWBNgmDBAhnAobLROJmwg==}
     engines: {node: '>=18'}
 
+  '@swc/helpers@0.5.23':
+    resolution: {integrity: sha512-5lSsMOTXURePglDfvuAQUqkGek9Hg2kksOYay2m0+XR++b2NWYL/4sWyuvVBIs8oKnJaxkdi9whaL/sqN13afw==}
+
   '@textlint/ast-node-types@15.8.0':
     resolution: {integrity: sha512-5CiH9COYmovWmExQgs7763DzX6Gy9zjkjJ7JxCC95wyTcjwQn/8poNF6fv3qzRlmx8CRRde8DHr9FcgAAiPzgw==}
 
@@ -2727,6 +2792,10 @@ packages:
 
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
+
+  axe-core@4.14.0:
+    resolution: {integrity: sha512-9WTZxEjsZ7b13TH8JPmbV2z8CHbl80/2hm3XPEG4JgNdQLK81IBRXmSxHfMAOkSqQeRxT/0dwNDz2GOm3zzpcQ==}
+    engines: {node: '>=4'}
 
   azure-devops-node-api@12.5.0:
     resolution: {integrity: sha512-R5eFskGvOm3U/GzeAuxRkUsAl0hrAwGgWn6zAd2KrZmrEhWZVqLew4OOupbQlXUuojUzpGtq62SmdhJ06N88og==}
@@ -4856,6 +4925,14 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
+  '@internationalized/date@3.12.4':
+    dependencies:
+      '@swc/helpers': 0.5.23
+
+  '@internationalized/number@3.6.9':
+    dependencies:
+      '@swc/helpers': 0.5.23
+
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
@@ -5675,6 +5752,10 @@ snapshots:
 
   '@sindresorhus/merge-streams@2.3.0': {}
 
+  '@swc/helpers@0.5.23':
+    dependencies:
+      tslib: 2.8.1
+
   '@textlint/ast-node-types@15.8.0': {}
 
   '@textlint/linter-formatter@15.8.0(supports-color@7.2.0)':
@@ -6060,6 +6141,8 @@ snapshots:
   astral-regex@2.0.0: {}
 
   asynckit@0.4.0: {}
+
+  axe-core@4.14.0: {}
 
   azure-devops-node-api@12.5.0:
     dependencies:

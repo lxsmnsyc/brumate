@@ -1,9 +1,19 @@
 import type { oxc } from './oxc.ts';
-import type { Block, Body, ElementNode, InsertNode, Markup, SFCFile } from './ast.ts';
+import type {
+  Block,
+  Body,
+  ComponentNode,
+  DynamicTagNode,
+  ElementNode,
+  InsertNode,
+  Markup,
+  SFCFile,
+} from './ast.ts';
 import { cleanText } from './codegen/patch.ts';
 import { isFunctionValue, isTemplateValue, resetUsed, tryCatchesClient } from './graph.ts';
 import type { Graph } from './graph.ts';
 import { compileStyles } from './css.ts';
+import { forEachNode } from './project.ts';
 import type { StyleOutput } from './css.ts';
 import type { Declaration, DeclarationKind, Diagnostic, Scope, Site } from './model.ts';
 
@@ -59,6 +69,11 @@ export interface Plan {
   elementItems: Set<Block>;
   /** The export name of each client root, such as `h3`. */
   symbols: Map<Site, string>;
+  /**
+   * The children of each component and dynamic tag, which the browser renders each time the
+   * component inserts them: the export of their render, such as `n0`, and their scope.
+   */
+  childrenRenders: Map<ComponentNode | DynamicTagNode, { symbol: string; scope: Scope }>;
   /** Sites whose code runs on the client, including update code for live nodes. */
   clientSites: Set<Site>;
   /** The compiled `<style>` blocks. */
@@ -150,6 +165,40 @@ export function getComponentName(filename: string): string {
 }
 
 /**
+ * The name of the function that a component compiles to: its name, or the name with `$` when a
+ * script of the file has a top-level name of its own, such as an import of `ButtonContext` in
+ * `button-context.brm`.
+ */
+export function componentFunctionName(file: SFCFile, name: string): string {
+  const taken = new Set<string>();
+  for (const script of [file.moduleScript, file.instanceScript]) {
+    for (const statement of script?.program.body ?? []) {
+      if (statement.type === 'ImportDeclaration') {
+        for (const specifier of statement.specifiers ?? []) {
+          taken.add(specifier.local.name);
+        }
+      } else if (statement.type === 'VariableDeclaration') {
+        for (const declarator of statement.declarations) {
+          if (declarator.id.type === 'Identifier') {
+            taken.add(declarator.id.name);
+          }
+        }
+      } else if (
+        (statement.type === 'FunctionDeclaration' || statement.type === 'ClassDeclaration') &&
+        statement.id
+      ) {
+        taken.add(statement.id.name);
+      }
+    }
+  }
+  let result = name;
+  while (taken.has(result)) {
+    result += '$';
+  }
+  return result;
+}
+
+/**
  * The ID of a server function: the component or file ID, and the name of the
  * function, or a hash of it, so a production build does not show the names.
  */
@@ -177,7 +226,28 @@ export function hash(value: string): string {
  * reads, by scope. Those declarations are the slots: the server writes
  * their values into the page state.
  */
-export function clientState(graph: Graph): {
+/**
+ * The components and dynamic tags of a file that have children. The server sends their children
+ * as a reference to a render of the browser, so each insert makes new scopes, as a block does.
+ */
+export function childrenHolders(file: SFCFile): (ComponentNode | DynamicTagNode)[] {
+  const found: (ComponentNode | DynamicTagNode)[] = [];
+  const visit = (node: Markup): void => {
+    if ((node.kind === 'component' || node.kind === 'dynamic') && node.children.length > 0) {
+      found.push(node);
+    }
+  };
+  forEachNode(file.children, visit);
+  for (const template of file.templates) {
+    forEachNode(template.body.children, visit);
+  }
+  return found;
+}
+
+export function clientState(
+  graph: Graph,
+  file?: SFCFile,
+): {
   isLiveSite: (site: Site) => boolean;
   clientSites: Set<Site>;
   slots: Map<Scope, Declaration[]>;
@@ -206,6 +276,52 @@ export function clientState(graph: Graph): {
   };
   for (const site of model.sites) {
     if (graph.reached.has(site) || isLiveSite(site)) {
+      addClientSite(site);
+    }
+  }
+  // Children render in the browser each time a component inserts them, so their code is there.
+  const ranges = (file ? childrenHolders(file) : []).map((node) => ({
+    start: node.children[0]!.start,
+    end: node.children.at(-1)!.end,
+  }));
+  if (ranges.length > 0) {
+    for (const site of model.sites) {
+      const node = site.node as { start?: number; end?: number };
+      if (
+        node.start !== undefined &&
+        node.end !== undefined &&
+        ranges.some((range) => range.start <= node.start! && node.end! <= range.end)
+      ) {
+        addClientSite(site);
+      }
+    }
+  }
+  // The update of a block reads all of its header, such as each condition of `#if` and
+  // `#else if`, when one of them changes. So a condition that never changes, such as one of
+  // `$isPassed`, is read in the browser too.
+  const liveBlocks = new Set<Block>();
+  for (const site of clientSites) {
+    if (site.block) {
+      liveBlocks.add(site.block);
+    }
+  }
+  for (const site of model.sites) {
+    if (site.block && liveBlocks.has(site.block)) {
+      addClientSite(site);
+    }
+  }
+  // The spreads of an element update together, so a spread that never changes, such as a rest
+  // prop, is read in the browser when another spread of the same element changes. Without it,
+  // the update would remove the attributes that it gives, such as a class. An attribute of the
+  // element that changes reads them too, as a class of the element adds the class of a spread.
+  const liveSpreads = new Set<Site['owner']>();
+  for (const site of clientSites) {
+    if ((site.kind === 'spread' || site.kind === 'attribute') && site.owner) {
+      liveSpreads.add(site.owner);
+    }
+  }
+  for (const site of model.sites) {
+    if (site.kind === 'spread' && site.owner && liveSpreads.has(site.owner)) {
       addClientSite(site);
     }
   }
@@ -243,7 +359,11 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     }
   }
 
-  const { isLiveSite, clientSites, slots: slotLists } = clientState(graph);
+  const { isLiveSite, clientSites, slots: slotLists } = clientState(graph, file);
+  const childrenRenders = new Map<
+    ComponentNode | DynamicTagNode,
+    { symbol: string; scope: Scope }
+  >();
   const scopes = new Map<Scope, ScopePlan>();
   for (const [scope, slots] of slotLists) {
     scopes.set(scope, { scope, slots, needsId: scope.kind === 'component', anchors: 0 });
@@ -345,12 +465,10 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       case 'element':
       case 'dynamic': {
         const sites = sitesByNode.get(node) ?? [];
-        const hasRef =
-          node.kind === 'element' &&
-          node.attributes.some((attribute) => {
-            const target = attribute.kind === 'ref' ? refTargets.get(attribute) : undefined;
-            return target !== undefined && slotted.has(target);
-          });
+        const hasRef = node.attributes.some((attribute) => {
+          const target = attribute.kind === 'ref' ? refTargets.get(attribute) : undefined;
+          return target !== undefined && slotted.has(target);
+        });
         const content = node.kind === 'element' ? liveContent(node) : undefined;
         const events = sites.some((site) => site.kind === 'event');
         // `value=$bind(name)`: the core finds the scope of the name from the anchor of the element.
@@ -387,6 +505,9 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         let inner = outer;
         if (node.kind === 'dynamic') {
           inner = undefined;
+          if (node.children.length > 0) {
+            childrenRenders.set(node, { symbol: `n${childrenRenders.size}`, scope });
+          }
         } else if (anchors.has(node)) {
           inner = isStable(node) ? scope : undefined;
         }
@@ -400,6 +521,9 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         const sites = sitesByNode.get(node) ?? [];
         if (sites.some((site) => isLiveSite(site))) {
           anchor(scope, node);
+        }
+        if (node.children.length > 0) {
+          childrenRenders.set(node, { symbol: `n${childrenRenders.size}`, scope });
         }
         // Children render inside the component's elements.
         visitNodes(node.children, scope);
@@ -572,6 +696,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
     textContents,
     elementItems,
     symbols,
+    childrenRenders,
     clientSites,
     diagnostics,
   };

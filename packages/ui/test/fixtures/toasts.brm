@@ -1,0 +1,40 @@
+<script>
+  import Button from '../../src/Button.brm';
+  import Text from '../../src/Text.brm';
+  import Toast from '../../src/Toast.brm';
+  import ToastContent from '../../src/ToastContent.brm';
+  import ToastRegion from '../../src/ToastRegion.brm';
+  import { toastQueue } from '../../src/toast.ts';
+  import type { QueuedToast } from '../../src/toast.ts';
+
+  let count = 0;
+
+  function add() {
+    count += 1;
+    toastQueue<{ title: string }>('tests').add({ title: `Saved ${count}` });
+  }
+
+  // A toast with no description.
+  function addQuiet() {
+    toastQueue<{ title: string }>('tests').add({ title: 'Quiet' });
+  }
+</script>
+
+<main class="page">
+  <Button class="add" onPress=add>Save</Button>
+  <Button class="add-quiet" onPress=addQuiet>Quiet</Button>
+  <input class="field" aria-label="Field">
+</main>
+<ToastRegion queue="tests" class="region" toast=item transition />
+
+#template item(toast: QueuedToast<{ title: string }>) {
+  <Toast {toast} class="toast">
+    <ToastContent class="content">
+      <Text slot="title" class="title">{toast.content.title}</Text>
+      #if (toast.content.title !== 'Quiet') {
+        <Text slot="description" class="description">The draft is safe.</Text>
+      }
+    </ToastContent>
+    <Button slot="close" class="close">×</Button>
+  </Toast>
+}

@@ -1,0 +1,305 @@
+<script>
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $handler,
+    $id,
+    $isPassed,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $untrack,
+  } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import {
+    CollectionFocusContext,
+    ListBoxContext,
+    ListBoxGivenContext,
+    enabledItems,
+    filterItems,
+    focusItem,
+    focusedItem,
+    isTyping,
+    keyOf,
+    keysBetween,
+    lastFocusedOf,
+    movementOf,
+    moveFrom,
+    nextSelection,
+    rangeOf,
+    sameKeys,
+    setRange,
+    setLastFocused,
+    typeahead,
+  } from './collection.ts';
+  import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import { FieldInputContext } from './contexts.ts';
+  import { LocaleContext } from './locale.ts';
+
+  /**
+   * A list of options that the user selects from, as ListBox of React Aria Components. Its items
+   * are ListBoxItem elements, written out, from a `#for`, or in ListBoxSection elements.
+   *
+   * - `selectionMode` is `none` (the default), `single` or `multiple`. `selectedKeys` is the list
+   *   of the `id` of the selected items.
+   * - `selectionBehavior="toggle"`, the default, adds and removes items as checkboxes do.
+   *   `"replace"` selects the item that has focus, with Ctrl or Cmd to add, and Shift for a range.
+   * - The arrow keys, Home, End, PageUp and PageDown move focus, and letters move to the item
+   *   whose text starts with them. Space selects, Enter acts or selects, Ctrl+A selects all, and
+   *   Escape clears the selection.
+   * - Tab stops once: at the item that had focus last, or else at the first selected item, or the
+   *   first item.
+   */
+  const {
+    selectionMode = 'none',
+    selectionBehavior = 'toggle',
+    disabledKeys = [],
+    disallowEmptySelection = false,
+    shouldFocusWrap = false,
+    escapeKeyBehavior = 'clearSelection',
+    orientation = 'vertical',
+    onAction,
+    onSelectionChange,
+    children,
+    ...rest
+  } = $props<{
+    selectionMode?: SelectionMode;
+    selectionBehavior?: SelectionBehavior;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    shouldFocusWrap?: boolean;
+    escapeKeyBehavior?: 'clearSelection' | 'none';
+    orientation?: 'vertical' | 'horizontal';
+    onAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+
+  const locale = $getContext(LocaleContext);
+  // A Select around the list keeps the selection, with one item at most.
+  const given = $getContext(ListBoxGivenContext);
+  // A field around the list, such as of a ComboBox, keeps focus and can filter the items.
+  const field = $getContext(CollectionFocusContext);
+  const mode = $memo(given ? 'single' : selectionMode);
+  const chosen = $memo(given ? given.selectedKeys : selectedKeys);
+  const hasAction = $isPassed(onAction);
+  const listId = $id();
+  let root = $signal<HTMLElement>();
+
+  function setSelection(next: Key[]) {
+    if (!sameKeys(next, chosen)) {
+      selectedKeys = next;
+      onSelectionChange?.(next);
+    }
+  }
+
+  function select(key: Key, request: SelectionRequest) {
+    if (given) {
+      given.select(key);
+      return;
+    }
+    const element = root;
+    const range = element ? rangeOf(element) : undefined;
+    const shift = Boolean(element && request.shift && range);
+    const items = element ? enabledItems(element, 'option') : [];
+    setSelection(
+      nextSelection(chosen, key, {
+        mode,
+        behavior: selectionBehavior,
+        disallowEmpty: disallowEmptySelection,
+        request: { ...request, shift },
+        range: shift ? keysBetween(items, range!.anchor, key) : undefined,
+        previousRange: shift ? keysBetween(items, range!.anchor, range!.end) : undefined,
+        disabled: disabledKeys,
+      }),
+    );
+    if (element) {
+      // Shift moves the end of the range, and any other selection starts a new one.
+      setRange(element, shift ? range!.anchor : key, key);
+    }
+  }
+
+  function action(key: Key) {
+    onAction?.(key);
+  }
+
+  $setContext(ListBoxContext, {
+    selectionMode: mode,
+    selectionBehavior,
+    selectedKeys: chosen,
+    disabledKeys,
+    select,
+    action,
+    hasAction,
+    activeKey: field?.activeKey,
+    setActive: field?.setActive,
+  });
+  // The lists inside, such as in an item, have fields of their own.
+  $setContext(CollectionFocusContext, null);
+  $setContext(FieldInputContext, null);
+
+  // A part around the list, such as a ComboBox, shows only the items that match its text: when
+  // the list is on the page, and each time the text changes.
+  function applyFilter() {
+    const text = field?.filterText;
+    const element = root;
+    if (text !== undefined && element) {
+      field!.filtered?.(filterItems(element, text, field!.filter));
+    }
+  }
+  $client(() => applyFilter(), 'load');
+  $effect(() => {
+    void field?.filterText;
+    $untrack(applyFilter());
+  });
+
+  /** The item that focus goes to when the list gets it. */
+  function entry(element: HTMLElement) {
+    const items = enabledItems(element, 'option');
+    const last = lastFocusedOf(element);
+    return (
+      items.find((item) => last !== undefined && keyOf(item) === last) ??
+      items.find((item) => item.getAttribute('aria-selected') === 'true') ??
+      (given?.focusStrategy === 'last' ? items.at(-1) : items[0])
+    );
+  }
+
+  function focused(event: FocusEvent) {
+    const element = root;
+    if (field) {
+      return;
+    }
+    // The list passes its focus on to an item.
+    if (element && event.target === element && document.activeElement === element) {
+      focusItem(entry(element));
+    }
+  }
+
+  function focusIn(event: FocusEvent) {
+    const element = root;
+    const item = (event.target as Element).closest?.('[role=option][data-key]');
+    if (element && item && element.contains(item)) {
+      // While an item has focus, Tab leaves the list rather than stopping at it.
+      element.tabIndex = -1;
+      setLastFocused(element, keyOf(item)!);
+    }
+  }
+
+  function focusOut(event: FocusEvent) {
+    const element = root;
+    if (element && !element.contains(event.relatedTarget as Node | null)) {
+      element.tabIndex = 0;
+    }
+  }
+
+  function keyDown(event: KeyboardEvent) {
+    const element = root;
+    if (!element) {
+      return;
+    }
+    const items = enabledItems(element, 'option');
+    const current = focusedItem(element, 'option');
+    const key = current ? keyOf(current) : undefined;
+    const movement = movementOf(event.key, orientation, locale.direction);
+    const replace = selectionBehavior === 'replace';
+    const toggle = event.ctrlKey || event.metaKey;
+    if (movement) {
+      // Shift extends a range from the item that has focus, when no press started one.
+      if (event.shiftKey && mode === 'multiple' && key !== undefined && !rangeOf(element)) {
+        setRange(element, key);
+      }
+      const target = moveFrom(element, items, current, movement, shouldFocusWrap);
+      const targetKey = target ? keyOf(target) : undefined;
+      focusItem(target);
+      if (targetKey === undefined || mode === 'none' || given) {
+        return;
+      }
+      if (event.shiftKey && mode === 'multiple') {
+        select(targetKey, { shift: true, toggle: false });
+      } else if (replace && !toggle) {
+        // In the replace behavior, the selection follows focus.
+        select(targetKey, { shift: false, toggle: false });
+      }
+      return;
+    }
+    if (event.key === ' ' && !isTyping(element)) {
+      if (key !== undefined) {
+        select(key, { shift: event.shiftKey, toggle: !replace || toggle });
+      }
+      return;
+    }
+    if (event.key === 'Enter' && key !== undefined) {
+      // An item with `onAction` of its own acts too, as the list does with `onAction`.
+      const itemActs = current!.hasAttribute('data-action');
+      if (hasAction || itemActs) {
+        if (itemActs) {
+          current!.dispatchEvent(new CustomEvent('itemaction', { bubbles: false }));
+        }
+        action(key);
+      } else {
+        select(key, { shift: false, toggle: !replace });
+      }
+      return;
+    }
+    if (event.key === 'Tab' && given?.tab) {
+      given.tab();
+      return;
+    }
+    if ((event.key === 'a' || event.key === 'A') && toggle && mode === 'multiple') {
+      setSelection(items.map((item) => keyOf(item)!));
+      // The browser selected the text of the page too, before this handler ran.
+      window.getSelection()?.removeAllRanges();
+      return;
+    }
+    // Escape closes the popover of a Select, and keeps its selection.
+    if (event.key === 'Escape' && !given) {
+      if (
+        escapeKeyBehavior === 'clearSelection' &&
+        !disallowEmptySelection &&
+        chosen.length > 0
+      ) {
+        // The Escape clears the selection, so it does not close an overlay around the list too.
+        event.stopPropagation();
+        setSelection([]);
+      }
+      return;
+    }
+    const found = typeahead(element, items, current, event);
+    if (found) {
+      focusItem(found);
+      if (replace && mode !== 'none' && !given) {
+        select(keyOf(found)!, { shift: false, toggle: false });
+      }
+    }
+  }
+
+  // Only the arrow keys of its axis are prevented, so the others keep their default, such as
+  // scrolling the page.
+  function keys(horizontal: boolean) {
+    return horizontal
+      ? { onKeyDown: $handler(prevent(keyDown, 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown', 'Space', 'Enter')) }
+      : { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown', 'Space', 'Enter')) };
+  }
+</script>
+
+<div
+  ref=root
+  id=(field?.id ?? listId)
+  role="listbox"
+  tabindex=(field ? '-1' : '0')
+  data-collection
+  aria-multiselectable=(mode === 'multiple' ? 'true' : undefined)
+  aria-labelledby=(given?.labelledBy)
+  aria-orientation=(orientation === 'horizontal' ? 'horizontal' : undefined)
+  data-orientation=orientation
+  onFocus=focused
+  onFocusIn=focusIn
+  onFocusOut=focusOut
+  {...keys(orientation === 'horizontal')}
+  {...rest}
+>{children}</div>

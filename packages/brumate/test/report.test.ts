@@ -87,67 +87,30 @@ describe('build report', () => {
     expect(report.overBudget[1]).toMatch(/^The route \/ can load /);
   });
 
-  it('measures what the first run of each handler loads', () => {
-    const page = '/app/src/routes/index.brm';
-    const withParts = [
-      ...chunks.filter((item) => item.fileName !== 'page-part.js'),
-      chunk('page-click.js', 300, {
-        moduleIds: [`${page}?brumate-client&part=h0`],
-        imports: ['chart.js'],
-      }),
-      chunk('page-update.js', 200, { moduleIds: [`${page}?brumate-client&part=update`] }),
-      chunk('page-key.js', 100, { moduleIds: [`${page}?brumate-client&part=h1`] }),
-      chunk('chart.js', 1200, {
-        moduleIds: ['/app/node_modules/chart/index.js', '/app/src/format.ts'],
-        modules: { '/app/node_modules/chart/index.js': 9000, '/app/src/format.ts': 400 },
-      }),
-    ];
-    const size = (name: string): number =>
-      buildReport({
-        chunks: [{ ...withParts.find((item) => item.fileName === name)!, isEntry: true }],
-        sources,
-      }).loader;
-    const events = [
-      { file: page, label: 'event button.click (4:9)', parts: ['h0', 'update'] },
-      { file: page, label: 'event input.keydown (5:8)', parts: ['h1'] },
-    ];
+  it('counts the components of a bundle by the size of their modules', () => {
+    const bundle = chunk('bundle.js', 2000, {
+      moduleIds: ['/app/src/A.brm?brumate-client', '/app/src/B.brm?brumate-client&part=h0'],
+      modules: {
+        '/app/src/A.brm?brumate-client': 3000,
+        '/app/src/B.brm?brumate-client&part=h0': 1000,
+      },
+    });
     const report = buildReport({
-      chunks: withParts,
+      chunks: [chunks[0]!, chunks[1]!, chunks[2]!, bundle],
       sources,
-      events,
-      budget: { event: size('page.js') + size('page-key.js'), component: 1024 },
+      budget: { component: 100 },
       relative: (file) => file.replace('/app/', ''),
     });
-    // A handler loads the entry of its component, its part, the updates and what they import.
-    expect(report.events).toEqual([
-      {
-        file: page,
-        label: 'event button.click (4:9)',
-        bytes: size('page.js') + size('page-click.js') + size('page-update.js') + size('chart.js'),
-      },
-      {
-        file: page,
-        label: 'event input.keydown (5:8)',
-        bytes: size('page.js') + size('page-key.js'),
-      },
+    const whole = buildReport({ chunks: [{ ...bundle, isEntry: true }], sources }).loader;
+    expect(report.components).toEqual([
+      { file: '/app/src/A.brm', bytes: Math.round((whole * 3) / 4) },
+      { file: '/app/src/B.brm', bytes: Math.round(whole / 4) },
     ]);
     expect(report.overBudget).toEqual([
       expect.stringMatching(
-        /^The component src\/routes\/index\.brm ships [\d.]+ kB, over the budget of 1\.0 kB\.$/,
+        /^The component src\/A\.brm ships [\d.]+ (kB|B), over the budget of 100 B\.$/,
       ),
-      expect.stringMatching(
-        /^The handler event button\.click \(4:9\) of src\/routes\/index\.brm loads [\d.]+ kB, over the budget of [\d.]+ (kB|B)\. Its largest imports are node_modules\/chart\/index\.js, src\/format\.ts\.$/,
-      ),
-    ]);
-    expect(formatBuildReport(report, (file) => file.replace('/app/', ''))).toContain(
-      '    src/routes/index.brm event button.click (4:9): ',
-    );
-  });
-
-  it('counts each part as a handler when the build does not name them', () => {
-    const report = buildReport({ chunks, sources });
-    expect(report.events).toEqual([
-      { file: '/app/src/routes/index.brm', label: 'part 0', bytes: expect.any(Number) },
+      expect.stringMatching(/^The component src\/B\.brm ships /),
     ]);
   });
 });

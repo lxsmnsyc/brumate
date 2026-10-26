@@ -1,0 +1,91 @@
+<script>
+  import { $effect, $getContext, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { OverlayTriggerContext } from './contexts.ts';
+  import {
+    MenuContext,
+    MenuTriggerContext,
+    SubmenuContext,
+    startHoverTimer,
+    stopHoverTimer,
+  } from './menu.ts';
+  import type { FocusStrategy } from './menu.ts';
+
+  /**
+   * Opens a submenu from a MenuItem, as SubmenuTrigger of React Aria Components. Its children are
+   * the MenuItem and a Popover with the Menu of the submenu.
+   *
+   * - The item gets aria-haspopup="menu" and aria-expanded.
+   * - A press, Enter, Space, or ArrowRight (ArrowLeft right to left) opens it, with focus on its
+   *   first item. The pointer resting on the item for `delay`, 200 milliseconds by default, opens
+   *   it and leaves focus on the item.
+   * - Its Popover is not modal, and is placed at the end of the item, with its top at the top of
+   *   the item.
+   * - ArrowLeft and Escape close it, and focus goes back to the item. Focus that moves to another
+   *   item of the parent menu closes it too. An action in it closes every menu.
+   */
+  const { delay = 200, children } = $props<{ delay?: number; children?: unknown }>();
+
+  const parent = $getContext(MenuContext);
+  const parentTrigger = $getContext(MenuTriggerContext);
+  const triggerId = $id();
+  const overlayId = $id();
+  let isOpen = $signal(false);
+  let focusStrategy = $signal<FocusStrategy>('first');
+  let autoFocus = $signal(true);
+
+  function open(strategy: FocusStrategy, focus: boolean) {
+    stopHoverTimer(triggerId);
+    focusStrategy = strategy;
+    autoFocus = focus;
+    isOpen = true;
+  }
+
+  function close() {
+    stopHoverTimer(triggerId);
+    isOpen = false;
+  }
+
+  function hoverStart() {
+    stopHoverTimer(triggerId);
+    if (!isOpen) {
+      startHoverTimer(triggerId, delay, () => open('first', false));
+    }
+  }
+
+  function hoverEnd() {
+    stopHoverTimer(triggerId);
+  }
+
+  // The parent menu closes too, with its `onClose`, and the menus around it.
+  function closeAll() {
+    close();
+    if (parent?.closeAll) {
+      parent.closeAll();
+    } else {
+      parentTrigger?.closeAll();
+    }
+  }
+
+  // Another item of the parent menu took focus, so this submenu is no longer the one in use.
+  $effect(() => {
+    const focusedId = parent?.focusedId;
+    if (focusedId !== undefined && focusedId !== triggerId && $untrack(isOpen)) {
+      $untrack(close());
+    }
+  });
+
+  $setContext(SubmenuContext, { triggerId, overlayId, isOpen, open, hoverStart, hoverEnd });
+  $setContext(OverlayTriggerContext, {
+    isOpen,
+    triggerId,
+    overlayId,
+    open: () => open('first', true),
+    close,
+    isNonModal: true,
+    placement: 'end top',
+    autoFocus,
+  });
+  $setContext(MenuTriggerContext, { triggerId, focusStrategy, closeAll, isSubmenu: true });
+</script>
+
+{children}

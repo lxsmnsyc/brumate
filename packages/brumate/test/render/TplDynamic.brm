@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { as = 'i', children, ...rest } = $props<{ as?: string; children?: unknown; [name: string]: unknown }>();
+</script>
+
+<{as} {...rest}>{children}</>

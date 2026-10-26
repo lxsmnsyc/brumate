@@ -23,7 +23,7 @@ export type NeedKind =
   | 'action'
   /** A `#defer` block, whose body the server renders later. */
   | 'defer'
-  /** A dynamic tag, which can render any component. */
+  /** A dynamic tag without an element to fall back to, which can render any component. */
   | 'dynamic'
   /** A component that the analysis cannot find, such as one of a package that is not a `.brm` file. */
   | 'component';
@@ -47,6 +47,66 @@ export interface ClassifyOptions {
   resolve?: Resolve;
   /** True for an import of a function of a `'use server'` file. */
   serverImport?: (file: string, specifier: string, name: string) => boolean;
+}
+
+/** True for a string literal, such as `'button'`. */
+function isElementName(node: oxc.Node | undefined): boolean {
+  return node?.type === 'Literal' && typeof node.value === 'string';
+}
+
+/** The props that destructure with an element name as their default, such as `as = 'button'`. */
+function elementDefaults(file: SFCFile): Set<string> {
+  const names = new Set<string>();
+  for (const statement of file.instanceScript?.program.body ?? []) {
+    if (statement.type !== 'VariableDeclaration') {
+      continue;
+    }
+    for (const declarator of statement.declarations) {
+      const call = declarator.init;
+      if (
+        call?.type !== 'CallExpression' ||
+        call.callee.type !== 'Identifier' ||
+        call.callee.name !== '$props' ||
+        declarator.id.type !== 'ObjectPattern'
+      ) {
+        continue;
+      }
+      for (const property of declarator.id.properties) {
+        if (
+          property.type === 'Property' &&
+          property.value.type === 'AssignmentPattern' &&
+          property.value.left.type === 'Identifier' &&
+          isElementName(property.value.right)
+        ) {
+          names.add(property.value.left.name);
+        }
+      }
+    }
+  }
+  return names;
+}
+
+/**
+ * True for the tag of a dynamic tag that renders an element when the caller gives none: a
+ * string, `as ?? 'button'`, or a prop with an element as its default. A part such as a button
+ * that takes `as` depends only on its props this way.
+ */
+function hasElementDefault(tag: oxc.Node, defaults: Set<string>): boolean {
+  if (isElementName(tag)) {
+    return true;
+  }
+  if (tag.type === 'Identifier') {
+    return defaults.has(tag.name);
+  }
+  if (tag.type === 'LogicalExpression' && (tag.operator === '??' || tag.operator === '||')) {
+    return isElementName(tag.right) || hasElementDefault(tag.right, defaults);
+  }
+  if (tag.type === 'ConditionalExpression') {
+    return (
+      hasElementDefault(tag.consequent, defaults) && hasElementDefault(tag.alternate, defaults)
+    );
+  }
+  return tag.type === 'ParenthesizedExpression' && hasElementDefault(tag.expression, defaults);
 }
 
 /** The needs of one file, without those of the components that it renders. */
@@ -124,10 +184,11 @@ function ownNeeds(file: SFCFile, options: ClassifyOptions): Need[] {
       needs.push({ kind: 'route', name: (call.callee as oxc.IdentifierReference).name });
     }
   }
+  const defaults = elementDefaults(file);
   const visit = (node: Markup): void => {
     if (node.kind === 'defer') {
       needs.push({ kind: 'defer', name: '#defer' });
-    } else if (node.kind === 'dynamic') {
+    } else if (node.kind === 'dynamic' && !hasElementDefault(node.tag.ast, defaults)) {
       needs.push({ kind: 'dynamic', name: '<{…}>' });
     }
   };
@@ -513,7 +574,11 @@ export function propControls(file: SFCFile): Control[] | undefined {
         if (name === undefined || member.type !== 'TSPropertySignature') {
           continue;
         }
-        const control = controlOf(member.typeAnnotation?.typeAnnotation, file);
+        // The children of a part are text in the workbench, whatever their type says.
+        const control =
+          name === 'children'
+            ? { kind: 'text' as const }
+            : controlOf(member.typeAnnotation?.typeAnnotation, file);
         if (!control) {
           byName.delete(name);
           continue;

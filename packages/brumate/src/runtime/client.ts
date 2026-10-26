@@ -1,4 +1,12 @@
 import { trustedHTML } from './trusted.ts';
+import {
+  HAS_BINDINGS,
+  HAS_CHILDREN,
+  HAS_CLIENT_HTML,
+  HAS_LATE_MARKUP,
+  HAS_TEMPLATES,
+  HAS_TITLES,
+} from './features.ts';
 import { loadOnce } from './skew.ts';
 import {
   VOID_ELEMENTS,
@@ -7,6 +15,7 @@ import {
   insertValue,
   bindEntry,
   handlerEntry,
+  onValue,
   spread as spreadText,
   textValue,
 } from './html.ts';
@@ -16,6 +25,7 @@ import type { Raw } from './html.ts';
 import {
   Binding,
   CHILDREN,
+  ChildrenReference,
   ElementReference,
   FunctionReference,
   ITEM,
@@ -50,7 +60,7 @@ export {
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
 // For `client-routes.ts`, which reads the core with `import()`.
-export { ElementReference, FunctionReference, unbind } from './shared.ts';
+export { ElementReference, FunctionReference, SlotReference, unbind } from './shared.ts';
 export { createContext } from './context.ts';
 
 type Update = [kind: number, name: string];
@@ -103,6 +113,8 @@ export interface Scope {
   c?: Record<number, ScopeId>;
   /** The scope that rendered a component's root scope. */
   o?: Scope;
+  /** The root scopes of the components that this scope rendered, which go with it. */
+  owned?: Set<Scope>;
   /** For children that a component inserted, the scope where they are, for contexts. */
   t?: Scope;
   /** The values that the scope provides, by context key. */
@@ -115,7 +127,8 @@ export interface Scope {
    * or the setter of `$bind(name, fn)`, as a function or a reference.
    */
   b?: Record<number, unknown>;
-  children: Set<Scope>;
+  /** The scopes inside it, made with the first one. */
+  children?: Set<Scope>;
   /** The `b-root` of the render that the server rendered the scope in. */
   r?: string;
   cleanups?: Map<string, () => void>;
@@ -124,6 +137,11 @@ export interface Scope {
   h?: HiddenBody;
   /** Effects and `$client` callbacks to run when the `#offscreen` body around the scope shows. */
   w?: Set<string>;
+  /**
+   * The nodes that updates write, by anchor, of markup that the browser cloned: elements, and
+   * the start comments of text inserts.
+   */
+  n?: Node[];
 }
 
 export interface CoreOptions {
@@ -134,6 +152,8 @@ export interface CoreOptions {
    * has no client code, which a build leaves out.
    */
   load: (id: string) => Promise<ClientModule> | undefined;
+  /** Loads the bundle of a root component of the page, before the modules in it. */
+  loadBundle?: (id: string) => Promise<unknown> | undefined;
   /** Imports a part of a module, once for each part, as the loader preloads it. */
   loadPart?: (module: ClientModule, part: string) => Promise<Part>;
   /** Adds event listeners for the `b-on` attributes in new markup. */
@@ -193,8 +213,6 @@ export interface DevtoolsHooks {
   }): void;
   /** A handler starts for an event. */
   handler?(ref: string, element: Element, event?: Event): void;
-  /** A part of a component's client code loaded. */
-  part?(component: string, name: string): void;
   /**
    * A handler ran: when its event came, when its code was ready and the
    * handlers before it had started, when the call returned, and what it
@@ -211,11 +229,6 @@ export interface DevtoolsHooks {
   }): void;
   /** The updates of a write ran: how many, and how long they took with their effects. */
   updated?(count: number, start: number, end: number): void;
-  /**
-   * Code of a component starts to load: its entry, or a part, and why.
-   * `done` settles when it has loaded.
-   */
-  load?(component: string, part: string, reason: string, done: Promise<unknown>): void;
   /** The loader asks the server for the body of a `#defer` block. */
   defer?(template: Element, done: Promise<unknown>): void;
   /** A slot got a new value. */
@@ -308,6 +321,9 @@ function readRecord([script, code]: StateRecord): void {
   }
 }
 
+/** True while `refresh` runs the updates of scopes that the server rendered. */
+let refreshing = false;
+
 /**
  * Updates scopes that the server rendered before values changed on the
  * client, such as the body of a `#loading` block that streams in after an
@@ -331,7 +347,7 @@ function refresh(added: Scope[], memosOnly = false): void {
     }
   }
   for (const [id, list] of byModule) {
-    void loadModule(id, 'state').then(async (module) => {
+    void loadModule(id).then(async (module) => {
       // The names of the updates of each kind of scope, memos first, so the other updates read
       // their new values.
       const byKind = new Map<number, string[]>();
@@ -347,13 +363,20 @@ function refresh(added: Scope[], memosOnly = false): void {
       if (!any) {
         return;
       }
-      const updates = await loadPart(module, 'update', 'state');
-      for (const scope of list) {
-        for (const name of byKind.get(scope.k)!) {
-          if (scopes.has(scope.id)) {
-            (updates[name] as (scope: Scope) => void)(scope);
+      const updates = await loadPart(module, 'update');
+      // The updates can render templates and call functions of other components.
+      await codeReady();
+      refreshing = true;
+      try {
+        for (const scope of list) {
+          for (const name of byKind.get(scope.k)!) {
+            if (scopes.has(scope.id)) {
+              (updates[name] as (scope: Scope) => void)(scope);
+            }
           }
         }
+      } finally {
+        refreshing = false;
       }
     });
   }
@@ -449,7 +472,6 @@ function addScopes(state: PageState, root: string): Scope[] {
       v: record.v,
       x: record.x,
       b: record.b,
-      children: new Set(),
       r: root,
     };
     scopes.set(id, scope);
@@ -459,14 +481,30 @@ function addScopes(state: PageState, root: string): Scope[] {
     const record = state[scope.id]!;
     if (record.p !== undefined) {
       scope.p = scopes.get(record.p);
-      scope.p?.children.add(scope);
+      if (scope.p) {
+        (scope.p.children ??= new Set()).add(scope);
+      }
       treeChanges++;
     }
     if (record.o !== undefined) {
       scope.o = scopes.get(record.o);
+      if (scope.o) {
+        (scope.o.owned ??= new Set()).add(scope);
+      }
     }
     if (record.t !== undefined) {
       scope.t = scopes.get(record.t);
+    }
+  }
+  // The bundles of the roots first, so the components that they hold load with them.
+  for (const scope of added) {
+    if (scope.m) {
+      void options.loadBundle?.(scope.m)?.catch(() => {});
+    }
+  }
+  for (const scope of added) {
+    if (scope.m) {
+      loadComponent(scope.m);
     }
   }
   const seen = new Set<object>();
@@ -559,6 +597,8 @@ export function forget(ids: string[]): void {
   for (const id of ids) {
     modules.delete(id);
     loading.delete(id);
+    // The new code loads when a scope of the component is read or rendered again.
+    pageComponents.delete(id);
     // Deleting the entry that a loop is at is safe for a Map.
     for (const key of parts.keys()) {
       if (key.startsWith(`${id}:`)) {
@@ -677,13 +717,21 @@ export function init(value: CoreOptions): void {
   rpcPrefix = value.rpc ?? '/_brumate';
   build = value.build;
   const queue = stateQueue();
-  // Records that are still streaming settle their promises when their scripts run.
+  // Records that are still streaming settle their promises when their scripts run. A promise of
+  // the page state streams in a later record without any markup that comes later.
   queue.push = pushRecords;
   for (const record of queue.splice(0)) {
     readRecord(record);
   }
-  markerObserver = new MutationObserver(indexAdded);
-  markerObserver.observe(document, { childList: true, subtree: true });
+  if (HAS_LATE_MARKUP) {
+    markerObserver = new MutationObserver(indexAdded);
+    markerObserver.observe(document, { childList: true, subtree: true });
+  } else if (document.readyState === 'loading') {
+    // The page that the browser reads after an `async` script starts is indexed when it ends.
+    document.addEventListener('DOMContentLoaded', () => indexMarkers(document.documentElement), {
+      once: true,
+    });
+  }
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
   watchTitles(document);
@@ -707,25 +755,36 @@ const MODIFIERS = Symbol.for('brumate.modifiers');
  * made from a reference goes into `on` as a `b-on` entry, with the scope and
  * the arguments of its reference and the modifiers of its wrappers.
  */
-export function spread(attributes: Record<string, unknown>, on?: string[]): string {
+export function spread(
+  attributes: Record<string, unknown>,
+  on?: string[],
+  names?: boolean,
+): string {
   if (on) {
-    for (const [name, value] of Object.entries(attributes)) {
-      const reference =
-        /^on[A-Z]/.test(name) && typeof value === 'function'
-          ? handlerReferences.get(value)
-          : undefined;
-      if (reference) {
-        on.push(
-          handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
-        );
-      }
-      // A binding that a rest prop passed on writes its slot, or calls its setter.
-      if ((name === 'value' || name === 'checked') && isBinding(value)) {
-        on.push(bindEntry(name, value.ref, setterReference(value.set)));
-      }
+    on.push(...spreadEntries(attributes));
+  }
+  return spreadText(attributes, names);
+}
+
+/** The `b-on` entries of the handlers and bindings of an object of attributes. */
+function spreadEntries(attributes: Record<string, unknown>): string[] {
+  const on: string[] = [];
+  for (const [name, value] of Object.entries(attributes)) {
+    const reference =
+      /^on[A-Z]/.test(name) && typeof value === 'function'
+        ? handlerReferences.get(value)
+        : undefined;
+    if (reference) {
+      on.push(
+        handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
+      );
+    }
+    // A binding that a rest prop passed on writes its slot, or calls its setter.
+    if ((name === 'value' || name === 'checked') && HAS_BINDINGS && isBinding(value)) {
+      on.push(bindEntry(name, value.ref, setterReference(value.set)));
     }
   }
-  return spreadText(attributes);
+  return on;
 }
 
 /** The reference of the setter of a binding: as the state has it, or of a handler that the core made. */
@@ -738,12 +797,23 @@ function setterReference(set: unknown): FunctionReference | undefined {
 
 /** Replaces function references with functions that call them. */
 function callable(value: unknown, seen: Set<object>): unknown {
+  if (HAS_CHILDREN && value instanceof ChildrenReference) {
+    // The scope can come later in the state, such as of a page that navigation loads.
+    return new RenderedChildren(value.scope, value.ref);
+  }
   if (value instanceof FunctionReference) {
-    if (isTemplate(value.ref)) {
+    if (HAS_TEMPLATES && isTemplate(value.ref)) {
       return templateReference(value.ref, scopes.get(value.scope));
     }
-    const handler = (...args: unknown[]): unknown =>
-      call(value.ref, scopes.get(value.scope), [...(value.args ?? []), ...args]);
+    // The code of the components on the page loads with the page, and handlers and updates wait
+    // for it. So the function runs at once and returns its result, as on the server.
+    const handler = (...args: unknown[]): unknown => {
+      const fn = loadedFunction(value.ref);
+      const all = [...(value.args ?? []), ...args];
+      return fn
+        ? fn(scopes.get(value.scope), ...all)
+        : call(value.ref, scopes.get(value.scope), all);
+    };
     handlerReferences.set(handler, value);
     return handler;
   }
@@ -760,22 +830,7 @@ function callable(value: unknown, seen: Set<object>): unknown {
   return value;
 }
 
-/**
- * Why the core loads code, for the Loading tab of the devtools: an event,
- * a call of a function prop, a template, the scopes of a state record, a
- * write, an error, a reset of `#try`, or a prop of a child.
- */
-export type LoadReason =
-  | 'event'
-  | 'call'
-  | 'template'
-  | 'state'
-  | 'write'
-  | 'error'
-  | 'reset'
-  | 'prop';
-
-export function loadModule(id: string, reason: LoadReason = 'write'): Promise<ClientModule> {
+export function loadModule(id: string): Promise<ClientModule> {
   let promise = loading.get(id);
   if (!promise) {
     // A component without client code has nothing to update.
@@ -785,18 +840,11 @@ export function loadModule(id: string, reason: LoadReason = 'write'): Promise<Cl
       return module;
     });
     loading.set(id, promise);
-    if (DEV) {
-      devtools()?.load?.(id, 'entry', reason, promise);
-    }
   }
   return promise;
 }
 
-export function loadPart(
-  module: ClientModule,
-  name: string,
-  reason: LoadReason = 'write',
-): Promise<Part> {
+export function loadPart(module: ClientModule, name: string): Promise<Part> {
   const key = `${module.id}:${name}`;
   let promise = parts.get(key);
   if (!promise) {
@@ -808,15 +856,9 @@ export function loadPart(
     }
     promise = loaded.then((part) => {
       loadedParts.set(key, part);
-      if (DEV) {
-        devtools()?.part?.(module.id, name);
-      }
       return part;
     });
     parts.set(key, promise);
-    if (DEV) {
-      devtools()?.load?.(module.id, module.load ? name : 'all', reason, promise);
-    }
   }
   return promise;
 }
@@ -826,11 +868,11 @@ type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
 /** Waits forever once the page loads again, so no error shows before it goes. */
 let reloading: Promise<never> | undefined;
 
-async function resolve(ref: string, reason: LoadReason): Promise<Handler> {
+async function resolve(ref: string): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
   try {
-    const module = await loadModule(id, reason);
-    const part = await loadPart(module, partOf(name), reason);
+    const module = await loadModule(id);
+    const part = await loadPart(module, partOf(name));
     return part[name] as Handler;
   } catch (error) {
     // After a deploy, the files of a build can be gone. The page loads again, with the new code,
@@ -869,8 +911,21 @@ async function serverBuild(): Promise<string | undefined> {
   }
 }
 
-async function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
-  return (await resolve(ref, 'call'))(scope, ...args);
+// The previous call of a function prop or a provided function, once it has started.
+let lastCall: Promise<unknown> = Promise.resolve();
+
+/**
+ * Calls a function of another component, such as a function prop or a provided function. The
+ * code of each loads in parallel, but the calls start in the order that they were made, so an
+ * `onChange` that an input event calls runs before an `onKeyDown` of a later key. The result is
+ * wrapped, so a call that its code makes does not wait for the call around it.
+ */
+function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
+  const code = codeReady();
+  const loaded = code ? Promise.all([resolve(ref), code]).then(([fn]) => fn) : resolve(ref);
+  const started = lastCall.then(() => loaded).then((fn) => ({ value: fn(scope, ...args) }));
+  lastCall = started.catch(() => {});
+  return started.then((result) => result.value);
 }
 
 /** True for a reference to a `#template` that a component got as a prop, such as `Page#t3`. */
@@ -878,23 +933,59 @@ function isTemplate(ref: string): boolean {
   return /#t\d/.test(ref);
 }
 
-/** The code of templates that is still loading. Updates wait for it, since a render cannot. */
-const loadingTemplates = new Set<Promise<unknown>>();
+/**
+ * The code of the components on the page that is still loading. Handlers, updates and calls of
+ * functions of other components wait for it, so the code that they call has loaded.
+ */
+const loadingCode = new Set<Promise<unknown>>();
+
+/** The components whose code loads, or has loaded, with the page. */
+const pageComponents = new Set<string>();
+
+/** Loads the code of a component and all of its parts, as the page reads its scopes. */
+function loadComponent(id: string): void {
+  // A render module that runs before the core starts, such as in a test, has nothing to load.
+  if (options === undefined || pageComponents.has(id)) {
+    return;
+  }
+  pageComponents.add(id);
+  // The entry of a component holds all of its code. A load that fails is reported when a
+  // handler or an update needs it.
+  const code: Promise<unknown> = loadModule(id)
+    .catch(() => {})
+    .finally(() => loadingCode.delete(code));
+  loadingCode.add(code);
+}
+
+/** Resolves when the code of the components on the page has loaded. */
+function codeReady(): Promise<unknown> | undefined {
+  return loadingCode.size > 0 ? Promise.allSettled(loadingCode) : undefined;
+}
+
+/** The function of a reference, such as `Page#h3`, once its code has loaded. */
+function loadedFunction(ref: string): Handler | undefined {
+  const [id, name] = ref.split('#') as [string, string];
+  const module = modules.get(id);
+  if (!module) {
+    return undefined;
+  }
+  // A module without `load` holds every part itself.
+  const part = module.load ? loadedParts.get(`${id}:${partOf(name)}`) : (module as unknown as Part);
+  return part?.[name] as Handler | undefined;
+}
 
 /**
- * A `#template` of another component, which renders at once, as markup does.
- * Its code starts to load when the page state is read, and updates wait for it.
+ * A `#template` of another component, which renders at once, as markup does. Its code loads
+ * with the page, and updates wait for it.
  */
 function templateReference(ref: string, scope: Scope | undefined): (...args: unknown[]) => unknown {
-  let render: Handler | undefined;
-  // A template that fails to load stops holding up updates too, and its error is reported.
-  const code: Promise<unknown> = resolve(ref, 'template')
-    .then((handler) => {
-      render = handler;
-    })
-    .finally(() => loadingTemplates.delete(code));
-  loadingTemplates.add(code);
-  return (...args) => (render ? render(scope, ...args) : '');
+  // The markup renders where the component inserts it, so it reads the contexts there, as
+  // children do.
+  return (...args) =>
+    new TemplateCall(ref, scope, args, () => {
+      const render = loadedFunction(ref);
+      return render ? insertValue(render(scope, ...args)) : '';
+    });
 }
 
 // The handler of the previous event, once it has started.
@@ -928,6 +1019,12 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   const bound = encoded ? (JSON.parse(decodeURIComponent(encoded)) as unknown[]) : [];
   const anchor = owner ?? element.closest('[b-b]')?.getAttribute('b-b')?.split(':')[0];
   const scope = anchor ? scopes.get(parseId(anchor)) : undefined;
+  // A callback that the browser runs later, such as a `$client` callback for when the page is
+  // idle, does not run once its element and its scope are gone, such as after the block or the
+  // page that held it was removed.
+  if (anchor && !scope && !element.isConnected) {
+    return Promise.resolve();
+  }
   // A `<window>` or `<document>` listener in a hidden `#offscreen` body does not run.
   if (scope && hiding?.hidden(scope) && element.hasAttribute('b-listen')) {
     return Promise.resolve();
@@ -961,7 +1058,14 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   }
   // Parts load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
-  const loaded = resolve(ref, 'event');
+  // The code of the children that the handler can insert loads with it.
+  // So does the code of the page, which the handler can call.
+  const children = childrenReady(scope);
+  const code = codeReady();
+  const loaded =
+    children || code
+      ? Promise.all([resolve(ref), children, code]).then(([handler]) => handler)
+      : resolve(ref);
   const started = lastHandler
     .then(() => loaded)
     .then((handler) => {
@@ -1007,7 +1111,7 @@ export function fail(scope: Scope | undefined, error: unknown): void {
         continue;
       }
       // oxlint-disable-next-line no-await-in-loop -- Each scope can belong to another component.
-      const module = await loadModule(id, 'error');
+      const module = await loadModule(id);
       const entry = module.t?.[current.k];
       if (!entry) {
         continue;
@@ -1035,14 +1139,13 @@ async function catchInto(
   [, anchor, , fallback, kinds]: NonNullable<ClientModule['t']>[number],
   error: unknown,
 ): Promise<void> {
-  const updates = await loadPart(module, 'update', 'error');
-  const start = findComment(`b${owner.id}:${anchor}`);
+  const updates = await loadPart(module, 'update');
+  const start = blockStart(owner, anchor);
   if (!start) {
     return;
   }
   const end = rangeEnd(start);
-  disposeKinds(owner, kinds);
-  clear(start, end);
+  removeBlock(owner, kinds, start, end);
   insertHTML(end, (updates[fallback] as (parent: Scope, error: unknown) => string)(owner, error));
 }
 
@@ -1134,7 +1237,7 @@ export function bindings(
   const target = typeof scope === 'object' ? scope : scopes.get(scope);
   for (const [name, slot] of Object.entries(slots)) {
     const value = props[name];
-    if (target && isBinding(value)) {
+    if (target && HAS_BINDINGS && isBinding(value)) {
       (target.b ??= {})[slot] = value.target;
     }
   }
@@ -1449,6 +1552,11 @@ export function pending(scope: Scope, slot: number): boolean {
   return loadingSlots.has(`${scope.id}:${slot}`) || scope.s[slot] instanceof Promise;
 }
 
+/** True when a parent bound the prop of the slot with `$bind`. */
+export function isBound(scope: Scope, slot: number): boolean {
+  return scope.b?.[slot] !== undefined;
+}
+
 /** `x++`, `x--`, `++x` and `--x`. */
 export function update(scope: Scope, slot: number, delta: number, prefix: boolean): number {
   const previous = get(scope, slot) as number;
@@ -1468,16 +1576,17 @@ function trigger(scope: Scope, slot: number): void {
   const id = rootOf(scope).m!;
   const module = modules.get(id);
   const updates = loadedParts.get(`${id}:update`);
-  if (module && updates && loadingTemplates.size === 0) {
+  const children = childrenReady(scope);
+  if (module && updates && loadingCode.size === 0 && !children) {
     run(module, updates, scope, slot);
     return;
   }
   // The first write to a component loads its update code. Later writes wait in order, and
-  // for the templates that the updates can render.
+  // for the code of the page, which the updates can render and call.
   const loading = loadModule(id).then(async (loaded) => {
     if (loaded.g[scope.k]?.[slot]) {
       const code = await loadPart(loaded, 'update');
-      await Promise.allSettled(loadingTemplates);
+      await Promise.allSettled([...loadingCode, children]);
       run(loaded, code, scope, slot);
     }
   });
@@ -1590,7 +1699,7 @@ function flushEffects(): void {
 }
 
 export function descendants(scope: Scope, kind: number, result: Scope[] = []): Scope[] {
-  for (const child of scope.children) {
+  for (const child of scope.children ?? []) {
     if (child.k === kind) {
       result.push(child);
     }
@@ -1600,8 +1709,18 @@ export function descendants(scope: Scope, kind: number, result: Scope[] = []): S
 }
 
 function destroy(scope: Scope): void {
-  if (scope.children.size > 0) {
-    for (const child of Array.from(scope.children)) {
+  // A scope that a block already removed, such as one that is both owned and in the range.
+  if (scopes.get(scope.id) !== scope) {
+    return;
+  }
+  if (scope.children?.size) {
+    for (const child of Array.from(scope.children ?? [])) {
+      destroy(child);
+    }
+  }
+  // The components that it rendered have no parent, so they go through their owner.
+  if (scope.owned) {
+    for (const child of Array.from(scope.owned)) {
       destroy(child);
     }
   }
@@ -1609,6 +1728,8 @@ function destroy(scope: Scope): void {
   const start = portals > 0 ? comments.get(`P${scope.id}`) : undefined;
   if (start?.isConnected) {
     const end = rangeEnd(start);
+    // The components in it go too, such as children that a component inserted there.
+    destroyRange(scope, start, end);
     clear(start, end);
     start.remove();
     end.remove();
@@ -1644,12 +1765,64 @@ export function removeScope(scope: Scope): void {
     hiding?.bodies.delete(scope.h);
   }
   scopes.delete(scope.id);
-  scope.p?.children.delete(scope);
+  scope.p?.children?.delete(scope);
+  scope.o?.owned?.delete(scope);
   treeChanges++;
 }
 
+/**
+ * Removes the markup of a block of `scope`, between its markers, with the scopes in it: the
+ * scopes of its kinds, and the scopes whose markup is in it. Those are the components that the
+ * block rendered, whose owner can be `scope` itself, and the children that a component inserted
+ * there. A scope that holds `scope` keeps its markers in the block, so it stays.
+ */
+function removeBlock(scope: Scope, kinds: number[], start: Node, end: Node): void {
+  disposeKinds(scope, kinds);
+  destroyRange(scope, start, end);
+  clear(start, end);
+}
+
+/**
+ * Destroys the scopes whose markup is between two nodes, such as the components of a block that
+ * closes, but not the scope of the block or those around it.
+ */
+function destroyRange(scope: Scope, start: Node, end: Node): void {
+  if (scopes.size > 0 && start.nextSibling !== end) {
+    const above = new Set<Scope>();
+    for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
+      above.add(current);
+    }
+    const inside = new Set<Scope>();
+    const add = (id: string): void => {
+      const found = scopes.get(parseId(id));
+      if (found && !above.has(found)) {
+        inside.add(found);
+      }
+    };
+    for (let node = start.nextSibling; node && node !== end; node = node.nextSibling) {
+      const walker = document.createTreeWalker(
+        node,
+        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT,
+      );
+      for (let current: Node | null = walker.currentNode; current; current = walker.nextNode()) {
+        if (current.nodeType === 1) {
+          const key = (current as Element).getAttribute('b-b');
+          if (key !== null) {
+            add(key.slice(0, key.indexOf(':')));
+          }
+        } else if (MARKER.test((current as Comment).data)) {
+          add((current as Comment).data.slice(1).split(':')[0]!);
+        }
+      }
+    }
+    for (const found of inside) {
+      destroy(found);
+    }
+  }
+}
+
 function disposeKinds(scope: Scope, kinds: number[]): void {
-  for (const child of Array.from(scope.children)) {
+  for (const child of Array.from(scope.children ?? [])) {
     if (kinds.includes(child.k)) {
       destroy(child);
     }
@@ -1802,9 +1975,11 @@ function findComment(key: string): Comment | undefined {
   if (!comment?.isConnected) {
     // The index has every marker in the page once it reads the records that
     // are waiting. Before the core starts, or between pages, it reads the page.
-    if (markerObserver) {
+    // Without markup that others insert, the index has every marker of the page already, once
+    // the browser has read all of it.
+    if (HAS_LATE_MARKUP && markerObserver) {
       indexAdded(markerObserver.takeRecords());
-    } else {
+    } else if (HAS_LATE_MARKUP || document.readyState === 'loading') {
       indexMarkers(document.documentElement);
     }
     comment = comments.get(key);
@@ -1813,16 +1988,23 @@ function findComment(key: string): Comment | undefined {
 }
 
 function findElement(scope: ScopeId, anchor: number): Element | null {
+  const own = scopes.get(scope)?.n?.[anchor];
+  if (own?.isConnected) {
+    return own as Element;
+  }
   const key = `${scope}:${anchor}`;
   let element = elements.get(key);
   if (!element?.isConnected) {
     // As for markers: once the core starts, the index has every bound element in the page,
     // with those of the inserts that are waiting.
-    if (markerObserver) {
+    if (HAS_LATE_MARKUP && markerObserver) {
       indexAdded(markerObserver.takeRecords());
-      indexInserts();
-      element = elements.get(key);
     }
+    // The inserts of the core are read when an update first needs one of their elements.
+    if (HAS_CLIENT_HTML) {
+      indexInserts();
+    }
+    element = elements.get(key);
     // An insert whose first node left the page, such as the first row of a list that was
     // removed, has elements that the walk did not reach.
     if (!element?.isConnected) {
@@ -1833,6 +2015,14 @@ function findElement(scope: ScopeId, anchor: number): Element | null {
     }
   }
   return element?.isConnected ? element : null;
+}
+
+/** The start marker of a block: kept on its scope in a clone, or found in the page. */
+function blockStart(scope: Scope, anchor: number): Comment | undefined {
+  const kept = scope.n?.[anchor];
+  return kept?.isConnected && kept.nodeType === 8
+    ? (kept as Comment)
+    : findComment(`b${scope.id}:${anchor}`);
 }
 
 /** Returns the marker that ends the range that `start` opens. */
@@ -1869,23 +2059,40 @@ function clear(start: Node, end: Node): void {
  * Inserts rendered HTML before a node, or at the end of a parent, and runs
  * the work that waits for it.
  */
-function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
-  const template = document.createElement('template');
-  template.innerHTML = trustedHTML(html);
-  const fragment = template.content;
+function insertHTML(
+  before: Node | { parent: ParentNode },
+  html: string | DocumentFragment | DocumentFragment[],
+): void {
+  // A fragment that the browser cloned from a template keeps its elements on their scopes, so
+  // it is not parsed or indexed. The clones of a list go in one by one, so each node moves once.
+  const cloned = typeof html !== 'string';
+  let fragments: DocumentFragment[];
+  if (typeof html === 'string') {
+    fragments = [parseHTML(html, 'parent' in before ? before.parent : before)];
+  } else {
+    fragments = Array.isArray(html) ? html : [html];
+  }
   // Markers that others inserted first, so the new markers win over them.
-  if (markerObserver) {
+  if (HAS_LATE_MARKUP && markerObserver) {
     indexAdded(markerObserver.takeRecords());
   }
   // The scopes that the renders since the last insert made, whose markup this is.
   const client = rendered.splice(0);
   // Markup from the server, such as `children`, names scopes with IDs that are not negative.
   // Only then are the elements of the insert read for them now.
-  const fromServer = SERVER_SCOPES.test(html);
+  const fromServer = !cloned && SERVER_SCOPES.test(html);
   const ids = fromServer ? new Set<ScopeId>() : undefined;
-  indexMarkers(fragment, ids, fromServer);
-  options.listen(fragment);
-  watchTitles(fragment);
+  const markup = clonedMarkup;
+  for (const fragment of fragments) {
+    if (!cloned || markup) {
+      // The elements of HTML in a clone are read now, since the clone is not indexed later.
+      indexMarkers(fragment, ids, fromServer || cloned || !HAS_CLIENT_HTML);
+      // A clone's handlers were read from its template, unless it holds markup that it rendered.
+      options.listen(fragment);
+    }
+    watchTitles(fragment);
+  }
+  clonedMarkup = false;
   const server: Scope[] = [];
   for (const id of ids ?? []) {
     const scope = typeof id === 'number' && id < 0 ? undefined : scopes.get(id);
@@ -1893,7 +2100,8 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
       server.push(scope);
     }
   }
-  if (!fromServer && fragment.firstChild) {
+  const fragment = fragments[0]!;
+  if (HAS_CLIENT_HTML && !cloned && !fromServer && fragment.firstChild) {
     unindexed.push([fragment.firstChild, fragment.lastChild!]);
     // Many inserts that no update read are indexed at once, so they do not hold their nodes.
     if (unindexed.length > 256) {
@@ -1901,17 +2109,21 @@ function insertHTML(before: Node | { parent: ParentNode }, html: string): void {
     }
   }
   // The nodes of the insert, when hidden `#offscreen` markup can contain them.
-  const added = hiding?.bodies.size ? [...fragment.childNodes] : undefined;
-  if ('parent' in before) {
-    before.parent.append(fragment);
-  } else {
-    before.parentNode!.insertBefore(fragment, before);
+  const added = hiding?.bodies.size ? fragments.flatMap((part) => [...part.childNodes]) : undefined;
+  for (const part of fragments) {
+    if ('parent' in before) {
+      before.parent.append(part);
+    } else {
+      before.parentNode!.insertBefore(part, before);
+    }
   }
   if (added) {
     hiding!.added(added);
   }
   // The records of this insert, whose markers are indexed and whose handlers listen already.
-  markerObserver?.takeRecords();
+  if (HAS_LATE_MARKUP) {
+    markerObserver?.takeRecords();
+  }
   options.inserted?.();
   for (const fn of afterInsert.splice(0)) {
     fn();
@@ -1949,9 +2161,25 @@ export function portalTo(
 
 /** Writes an inserted value between `<!--t…-->` and `<!--/t-->`. */
 export function text(scope: Scope, anchor: number, value: unknown): void {
-  const start = findComment(`t${scope.id}:${anchor}`);
+  // A clone keeps the text node of the insert, or the start comment of its markers.
+  let kept = scope.n?.[anchor];
+  if (kept?.nodeType === 3 && kept.isConnected) {
+    if (typeof value === 'string' || typeof value === 'number') {
+      const text = String(value);
+      if ((kept as Text).data !== text) {
+        (kept as Text).data = text;
+      }
+      return;
+    }
+    // Another value needs the markers of an insert around it, which the text node gets now.
+    const start = document.createComment(`t${scope.id}:${anchor}`);
+    (kept as Text).before(start);
+    (kept as Text).after(document.createComment('/t'));
+    scope.n![anchor] = kept = start;
+  }
+  const start = kept?.isConnected ? (kept as Comment) : findComment(`t${scope.id}:${anchor}`);
   if (start) {
-    write(start.parentNode!, start.nextSibling, rangeEnd(start), value);
+    write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope, start);
   }
 }
 
@@ -1959,7 +2187,7 @@ export function text(scope: Scope, anchor: number, value: unknown): void {
 export function content(scope: Scope, anchor: number, value: unknown): void {
   const element = findElement(scope.id, anchor);
   if (element) {
-    write(element, element.firstChild, null, value);
+    write(element, element.firstChild, null, value, scope, element);
   }
 }
 
@@ -1991,7 +2219,34 @@ function write(
   first: ChildNode | null,
   end: Node | null,
   value: unknown,
+  at?: Scope,
+  key?: Node,
 ): void {
+  // The same template again at an insert updates in place, with its new arguments, as a snippet
+  // of Svelte does. Its elements and their focus stay.
+  // The server rendered what an insert shows until its first write in the browser.
+  const firstWrite = key !== undefined && !writtenInserts.has(key);
+  if (key) {
+    writtenInserts.add(key);
+  }
+  if (HAS_TEMPLATES && key && value instanceof TemplateCall) {
+    const known =
+      templateInserts.get(key) ??
+      (firstWrite
+        ? renderedTemplate(value, at, loadedFunction(`${value.ref}k`) as unknown as number)
+        : undefined);
+    // The template's `a` export gives the slots of its arguments, also of destructured ones.
+    const slotsOf = loadedFunction(`${value.ref}a`) as
+      | ((...args: unknown[]) => [number, unknown][])
+      | undefined;
+    if (known && slotsOf && known.ref === value.ref && scopes.has(known.scope.id)) {
+      templateInserts.set(key, known);
+      for (const [slot, next] of slotsOf(...value.args)) {
+        set(known.scope, slot, next);
+      }
+      return;
+    }
+  }
   if (
     (typeof value === 'string' || typeof value === 'number') &&
     first?.nodeType === 3 &&
@@ -2013,14 +2268,62 @@ function write(
     first.remove();
     first = next;
   }
-  insertHTML(end ?? { parent }, insertValue(value));
+  // Children and templates render here, at the scope of the insert, for its contexts. The first
+  // scope that a template makes is its own, which holds its arguments.
+  const made = nextId;
+  insertHTML(
+    end ?? { parent },
+    (HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children
+      ? value.render(at)
+      : insertValue(value),
+  );
+  if (HAS_TEMPLATES && key) {
+    const scope = value instanceof TemplateCall ? scopes.get(made) : undefined;
+    if (scope) {
+      templateInserts.set(key, { ref: (value as TemplateCall).ref, scope });
+    } else {
+      templateInserts.delete(key);
+    }
+  }
+}
+
+/** The scope of the template that each insert shows, by the node that marks the insert. */
+const templateInserts = new WeakMap<Node, { ref: string; scope: Scope }>();
+
+/** The inserts that the browser wrote, which no longer show what the server rendered. */
+const writtenInserts = new WeakSet<Node>();
+
+/**
+ * The scope of a template that the server rendered at an insert: the scope that the template's
+ * component made, and that finds its contexts from the insert.
+ */
+function renderedTemplate(
+  call: TemplateCall,
+  at: Scope | undefined,
+  k: number | undefined,
+): { ref: string; scope: Scope } | undefined {
+  if (k === undefined) {
+    return undefined;
+  }
+  let found: Scope | undefined;
+  for (const scope of scopes.values()) {
+    // The scope is of this template, not of another template of the same component.
+    if (call.owner && scope.p === call.owner && scope.t === at && scope.k === k) {
+      // Two templates of the same component at one insert cannot be told apart.
+      if (found) {
+        return undefined;
+      }
+      found = scope;
+    }
+  }
+  return found && { ref: call.ref, scope: found };
 }
 
 /** The `value` and `checked` that updates last wrote to each field. */
 const fieldValues = new WeakMap<Element, Map<string, unknown>>();
 
-function setAttribute(element: Element, name: string, value: unknown): void {
-  if (isBinding(value)) {
+function setAttribute(element: Element, name: string, value: unknown, spread = false): void {
+  if (HAS_BINDINGS && isBinding(value)) {
     value = value.value;
   }
   // A write of the same value changes nothing on screen, yet it still costs a style check and
@@ -2031,16 +2334,25 @@ function setAttribute(element: Element, name: string, value: unknown): void {
     // The field takes the value when it differs from the value that updates wrote last, not each
     // time an update runs, so what the user typed or checked stays while the value stays, such
     // as the posted values of a form that validation reads again. Before the first write, the
-    // field is compared as it is now.
+    // field is compared as it is now. Two first writes compare it with what the server rendered,
+    // so what the user typed or checked before the code loaded stays: an update of a scope that
+    // resumed late, and an update of a spread, which another of its attributes can start.
     const written = fieldValues.get(element) ?? new Map<string, unknown>();
     fieldValues.set(element, written);
-    const before = written.has(name) ? written.get(name) : field[name];
+    let rendered: unknown;
+    if (refreshing || spread) {
+      rendered = name === 'checked' ? field.defaultChecked : field.defaultValue;
+    }
+    const before = written.has(name) ? written.get(name) : (rendered ?? field[name]);
     written.set(name, next);
     if (!Object.is(before, next) && field[name] !== next) {
       field[name] = next;
     }
   }
-  const written = attributeText(name, value);
+  let written = attributeText(name, value);
+  if (name === 'style' && element.hasAttribute('b-v')) {
+    written = withVariables(element as HTMLElement, written);
+  }
   if (element.getAttribute(name) === (written ?? null)) {
     return;
   }
@@ -2052,6 +2364,25 @@ function setAttribute(element: Element, name: string, value: unknown): void {
   if (name === 'style') {
     hiding?.styled(element);
   }
+}
+
+/**
+ * A new style for a top-level element of a component, with the style variables of the component
+ * that the element has now, so a style that a spread passes on does not remove them.
+ */
+function withVariables(element: HTMLElement, style: string | undefined): string | undefined {
+  const variables: string[] = [];
+  for (const property of Array.from(element.style)) {
+    // A style that writes the variable itself, such as one that the element's own style
+    // attribute builds, keeps its new value alone.
+    if (/^--s-[\w-]+-\d+$/.test(property) && !style?.includes(`${property}:`)) {
+      variables.push(`${property}:${element.style.getPropertyValue(property)}`);
+    }
+  }
+  if (variables.length === 0) {
+    return style;
+  }
+  return style ? `${variables.join(';')};${style}` : variables.join(';');
 }
 
 export function attr(scope: Scope, anchor: number, name: string, value: unknown): void {
@@ -2072,15 +2403,18 @@ export function attrs(
 ): void {
   const element = findElement(scope.id, anchor);
   if (element) {
-    // The first update in the browser takes the attributes that are not the element's own, nor
-    // those of brumate, as the ones that the server's spread wrote.
+    // The first update in the browser takes the attributes that `b-s` names as the ones that
+    // the spread wrote, so it keeps the attributes that other code set, such as an
+    // `aria-controls` that a `$client` callback added. Without `b-s`, it takes the attributes
+    // that are not the element's own, nor those of brumate.
     if (!spreadNames.has(element)) {
+      const written = element.getAttribute('b-s');
       spreadNames.set(
         element,
         new Set(
-          element
-            .getAttributeNames()
-            .filter((name) => !own.includes(name) && !/^(b-|data-prefetch$)/.test(name)),
+          (written === null ? element.getAttributeNames() : written.split(' ')).filter(
+            (name) => name !== '' && !own.includes(name) && !name.startsWith('b-'),
+          ),
         ),
       );
     }
@@ -2088,7 +2422,7 @@ export function attrs(
     for (const [name, value] of Object.entries(values)) {
       if (name !== 'children' && !/^on[A-Z]/.test(name)) {
         names.add(name);
-        setAttribute(element, name, value);
+        setAttribute(element, name, value, true);
       }
     }
     for (const name of spreadNames.get(element) ?? []) {
@@ -2097,10 +2431,34 @@ export function attrs(
       }
     }
     spreadNames.set(element, names);
+    updateSpreadEntries(element, values);
   }
 }
 
-type Render = (parent: Scope, item?: unknown, index?: number) => string;
+/**
+ * Writes the handlers and bindings of a spread into `b-on` again, as they are now. The entries of
+ * a spread name their scope after `@`, and the element's own entries do not, so those stay.
+ */
+function updateSpreadEntries(element: Element, values: Record<string, unknown>): void {
+  const before = element.getAttribute('b-on') ?? '';
+  const own = before
+    .split(' ')
+    .filter((entry) => entry && !entry.includes('@'))
+    .join(' ');
+  const after = onValue(spreadEntries(values), own);
+  if (after === before) {
+    return;
+  }
+  if (after) {
+    element.setAttribute('b-on', after);
+  } else {
+    element.removeAttribute('b-on');
+  }
+  // The loader listens to the events of the new entries, and prevents what their wrappers name.
+  options.listen(element);
+}
+
+type Render = (parent: Scope, item?: unknown, index?: number) => string | DocumentFragment;
 
 /** Shows the branch at `index` of `#if` or `#switch`, or nothing for -1. */
 export function branch(
@@ -2110,7 +2468,7 @@ export function branch(
   renders: (Render | undefined)[],
   kinds: number[],
 ): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2118,8 +2476,7 @@ export function branch(
     return;
   }
   const end = rangeEnd(start);
-  disposeKinds(scope, kinds);
-  clear(start, end);
+  removeBlock(scope, kinds, start, end);
   start.data = `b${scope.id}:${anchor}:${index}`;
   const render = renders[index];
   if (render) {
@@ -2140,14 +2497,40 @@ export function rekey(
     return;
   }
   scope.keys.set(anchor, value);
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
   const end = rangeEnd(start);
-  disposeKinds(scope, kinds);
-  clear(start, end);
+  removeBlock(scope, kinds, start, end);
   insertHTML(end, render(scope));
+}
+
+/**
+ * `rekey` for the block around a dynamic tag. The first update keeps the element that the server
+ * rendered, when it has the tag already, such as an update of a scope that streams in after an
+ * event.
+ */
+export function retag(
+  scope: Scope,
+  anchor: number,
+  value: unknown,
+  render: Render,
+  kinds: number[],
+): void {
+  scope.keys ??= new Map();
+  if (!scope.keys.has(anchor) && typeof value === 'string') {
+    const start = blockStart(scope, anchor);
+    let node = start?.nextSibling;
+    while (node && node.nodeType !== 1 && node.nodeType !== 8) {
+      node = node.nextSibling;
+    }
+    if (node?.nodeType === 1 && (node as Element).localName === value.toLowerCase()) {
+      scope.keys.set(anchor, value);
+      return;
+    }
+  }
+  rekey(scope, anchor, value, render, kinds);
 }
 
 /**
@@ -2162,15 +2545,14 @@ export async function reset(
   fallback: string,
   kinds: number[],
 ): Promise<void> {
-  const updates = await loadPart(await loadModule(id, 'reset'), 'update', 'reset');
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const updates = await loadPart(await loadModule(id), 'update');
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
   const end = rangeEnd(start);
-  disposeKinds(scope, kinds);
-  clear(start, end);
-  let html: string;
+  removeBlock(scope, kinds, start, end);
+  let html: string | DocumentFragment;
   try {
     html = (updates[body] as Render)(scope);
   } catch (error) {
@@ -2187,15 +2569,14 @@ export async function reset(
  * `kinds` are the scope IDs inside the fallback, whose instances go.
  */
 export function fill(scope: Scope, anchor: number, render: Render, kinds: number[] = []): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   // A block that rendered its body has a third number.
   if (!start || start.data.split(':').length > 2) {
     return;
   }
   start.data += ':1';
   const end = rangeEnd(start);
-  disposeKinds(scope, kinds);
-  clear(start, end);
+  removeBlock(scope, kinds, start, end);
   insertHTML(end, render(scope));
 }
 
@@ -2211,7 +2592,7 @@ export function offscreen(
   render: Render,
   kind: number,
 ): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2228,7 +2609,7 @@ export function offscreen(
     return;
   }
   let body: Scope | undefined;
-  for (const child of scope.children) {
+  for (const child of scope.children ?? []) {
     if (child.k === kind) {
       body = child;
     }
@@ -2488,7 +2869,7 @@ export function list(
   fallback: Render | undefined,
   fallbackKinds: number[],
 ): void {
-  const start = findComment(`b${scope.id}:${anchor}`);
+  const start = blockStart(scope, anchor);
   if (!start) {
     return;
   }
@@ -2575,20 +2956,33 @@ export function list(
   }
   // The first node after the items placed so far.
   let cursor: Node = start.nextSibling!;
-  // New items next to each other go into the page with one insert.
+  // New items next to each other go into the page with one insert: their HTML, or the
+  // fragments that they cloned.
   let added = '';
+  let addedNodes: DocumentFragment[] | undefined;
+  const flushAdded = (): void => {
+    if (added) {
+      insertHTML(cursor, added);
+      added = '';
+    } else if (addedNodes) {
+      insertHTML(cursor, addedNodes);
+    }
+    addedNodes = undefined;
+  };
   for (let index = 0; index < count; index++) {
     const id = keys[index];
     const item = previous.get(id);
     if (!item) {
-      added += render(scope, items[index], index);
+      const out = render(scope, items[index], index);
+      if (typeof out === 'string') {
+        added += out;
+      } else {
+        (addedNodes ??= []).push(out);
+      }
       continue;
     }
     // Before the item's updates run, so they see the new items before it.
-    if (added) {
-      insertHTML(cursor, added);
-      added = '';
-    }
+    flushAdded();
     previous.delete(id);
     // Slots that keep their values do not trigger updates.
     assign(item.scope, items[index], index);
@@ -2606,9 +3000,7 @@ export function list(
       }
     }
   }
-  if (added) {
-    insertHTML(cursor, added);
-  }
+  flushAdded();
   for (const item of previous.values()) {
     destroy(item.scope);
     for (let node: Node | null = item.first; node;) {
@@ -2673,9 +3065,11 @@ export function setVar(scope: Scope, name: string, value: unknown): void {
 
 /** The scope that provides a context to `scope`: itself or the nearest one above it. */
 function findProvider(scope: Scope, key: string): Scope | undefined {
-  // Children that a component inserted find their contexts where they are, through `t`.
+  // A scope reads the contexts of the scopes above it, not its own, so a component can read a
+  // context and provide it again to the scopes inside it. Children that a component inserted
+  // find their contexts where they are, through `t`.
   for (
-    let current: Scope | undefined = scope;
+    let current: Scope | undefined = scope.t ?? scope.p ?? scope.o;
     current;
     current = current.t ?? current.p ?? current.o
   ) {
@@ -2686,7 +3080,10 @@ function findProvider(scope: Scope, key: string): Scope | undefined {
   return undefined;
 }
 
-/** Writes a provided value, and the slot of every scope that reads it from this provider. */
+/**
+ * Writes a provided value, and the slot of every scope that reads it from this provider. The
+ * provider can read the same context from above, which this does not write.
+ */
 export function updateContext(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
   scope.v ??= {};
   scope.v[context.key] = value;
@@ -2738,7 +3135,7 @@ function syncTitle(): void {
  * block that adds or removes one, or a change of its text, sets the title.
  */
 function watchTitles(root: ParentNode): void {
-  if (titleObserver || !root.querySelector(PAGE_TITLE)) {
+  if (!HAS_TITLES || titleObserver || !root.querySelector(PAGE_TITLE)) {
     return;
   }
   titleObserver = new MutationObserver((records) => {
@@ -2789,7 +3186,7 @@ export function spreadProps(
 
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
   // A prop that the parent binds passes its value. The child keeps the slot it writes from its render.
-  if (isBinding(value)) {
+  if (HAS_BINDINGS && isBinding(value)) {
     value = value.value;
   }
   const id = scope.c?.[anchor];
@@ -2813,12 +3210,23 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
     if (all !== undefined) {
       set(child, all, { ...(get(child, all) as object), [name]: value });
     }
+    // A rest prop, `...rest`, holds the props that the component does not name.
+    const rest = module.props['...'];
+    if (rest !== undefined) {
+      const next: Record<string, unknown> = { ...(get(child, rest) as object) };
+      if (value === undefined) {
+        delete next[name];
+      } else {
+        next[name] = value;
+      }
+      set(child, rest, next);
+    }
   };
   const module = modules.get(child.m);
   if (module) {
     apply(module);
   } else {
-    void loadModule(child.m, 'prop').then(apply);
+    void loadModule(child.m).then(apply);
   }
 }
 
@@ -2879,7 +3287,11 @@ export async function rpc(id: string, args: unknown[]): Promise<unknown> {
 
 /** Renders a value inserted in markup. Children render here, at `scope`, for their contexts. */
 export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
-  return value instanceof Children ? value.render(resolveScope(scope)) : insertValue(value);
+  if (!((HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children)) {
+    return insertValue(value);
+  }
+  const out = value.render(resolveScope(scope));
+  return HAS_CLIENT_HTML ? holdPlace(out) : (out as string);
 }
 
 /** Children that render where they are inserted, and the scopes that they find contexts from. */
@@ -2891,19 +3303,37 @@ const insertedChildren: { from: Scope | undefined; at: Scope }[] = [];
  * is the scope of the markup that wrote them.
  */
 class Children {
-  private readonly from: Scope | undefined;
-  private readonly html: () => string;
+  private given: Scope | ScopeId | undefined;
+  private readonly html: () => string | DocumentFragment;
 
-  constructor(from: Scope | ScopeId | undefined, html: () => string) {
-    this.from = resolveScope(from);
+  constructor(from: Scope | ScopeId | undefined, html: () => string | DocumentFragment) {
+    this.given = from;
     this.html = html;
   }
 
-  render(at: Scope | undefined): string {
+  /** The scope that the children were written in, found when they render. */
+  protected get from(): Scope | undefined {
+    const scope = resolveScope(this.given);
+    if (scope) {
+      this.given = scope;
+    }
+    return scope;
+  }
+
+  render(at: Scope | undefined): string | DocumentFragment {
     if (!at) {
       return this.html();
     }
-    const entry = { from: this.from, at };
+    // Children that a component passes on render where the component that gets them inserts
+    // them, so they find their contexts there too.
+    let target = at;
+    for (let index = insertedChildren.length - 1; index >= 0; index--) {
+      if (insertedChildren[index]!.from === at) {
+        target = insertedChildren[index]!.at;
+        break;
+      }
+    }
+    const entry = { from: this.from, at: target };
     insertedChildren.push(entry);
     try {
       return this.html();
@@ -2913,14 +3343,666 @@ class Children {
   }
 }
 
+/** A call of a `#template` of another component, which an insert can update in place. */
+class TemplateCall extends Children {
+  readonly ref: string;
+  /** The scope of the component that wrote the template. */
+  readonly owner: Scope | undefined;
+  readonly args: unknown[];
+
+  constructor(ref: string, owner: Scope | undefined, args: unknown[], html: () => string) {
+    super(owner, html);
+    this.ref = ref;
+    this.owner = owner;
+    this.args = args;
+  }
+}
+
+/**
+ * Children that the server rendered, which the browser renders with their own export each time
+ * a component inserts them, so each insert makes new scopes, as the body of a block does. The
+ * code of the export loads before the code that can insert them runs. See `childrenReady`.
+ */
+class RenderedChildren extends Children {
+  readonly ref: string;
+  private code: Handler | undefined;
+  private loading: Promise<void> | undefined;
+
+  constructor(scope: ScopeId, ref: string) {
+    // The export returns HTML, as the render of a block does.
+    super(scope, () => {
+      const out = this.code!(this.from);
+      return out instanceof DocumentFragment ? out : String(out);
+    });
+    this.ref = ref;
+  }
+
+  override render(at: Scope | undefined): string | DocumentFragment {
+    if (this.code && this.from) {
+      return super.render(at);
+    }
+    // An insert that ran before the code, such as an update that a parent ran at once, or before
+    // the state of its scope, such as markup of a page that navigation is still reading. A marker
+    // holds the place, and the children render there once both are ready, where they were
+    // inserted, so they read the contexts there.
+    const marker = `C${(nextChildren += 1)}`;
+    const fill = (tries: number): void => {
+      const node = findMarker(marker);
+      if (!node) {
+        return;
+      }
+      if (!this.from) {
+        if (tries > 0) {
+          setTimeout(() => fill(tries - 1), 0);
+        }
+        return;
+      }
+      insertHTML(node, super.render(at));
+      node.remove();
+    };
+    void this.load().then(() => fill(100));
+    return `<!--${marker}-->`;
+  }
+
+  get loaded(): boolean {
+    return this.code !== undefined;
+  }
+
+  load(): Promise<void> {
+    this.loading ??= resolve(this.ref).then((handler) => {
+      this.code = handler;
+    });
+    return this.loading;
+  }
+}
+
+/** The count of the markers of children that wait for their code. */
+let nextChildren = 0;
+
+/** The comment of a marker, such as of children that wait for their code. */
+function findMarker(data: string): Comment | undefined {
+  const walker = document.createTreeWalker(document, NodeFilter.SHOW_COMMENT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if ((node as Comment).data === data) {
+      return node as Comment;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Loads the code of the children that the scope, or a component around it, holds, so code that
+ * runs in the scope can insert them at once. Undefined when there is nothing to load.
+ */
+function childrenReady(scope: Scope | undefined): Promise<unknown> | undefined {
+  if (!HAS_CHILDREN) {
+    return undefined;
+  }
+  const waiting: Promise<void>[] = [];
+  const seen = new Set<Scope>();
+  for (let current = scope; current && !seen.has(current); current = current.p ?? current.o) {
+    seen.add(current);
+    for (const value of current.s) {
+      if (value instanceof RenderedChildren && !value.loaded) {
+        waiting.push(value.load());
+      }
+    }
+  }
+  return waiting.length > 0 ? Promise.allSettled(waiting) : undefined;
+}
+
 /** The children of a component that the client renders. See `Children`. */
-export function children(from: Scope | ScopeId | undefined, html: () => string): Children {
+export function children(
+  from: Scope | ScopeId | undefined,
+  html: () => string | DocumentFragment,
+): Children {
   return new Children(from, html);
 }
 
+/** Markup that the browser clones, and the paths to the elements that its render writes. */
+interface Template {
+  html: string;
+  /** How many elements the render writes, which have `b-x` in `html`. */
+  count: number;
+  /** `svg` or `math`, for markup whose elements are of SVG or MathML, which parses inside one. */
+  foreign?: string;
+  t?: HTMLTemplateElement;
+  /** The moves that reach the marked nodes of a clone. See `walkOf`. */
+  walk?: number[];
+}
+
+/** A template of the markup of a render, which `clone` parses once. */
+export function template(html: string, count: number, foreign?: string): Template {
+  return { html, count, foreign };
+}
+
+/**
+ * Parses a template, and finds the path to each element that it marks with `b-x`, as the parser
+ * placed it: after the parser's own changes, such as a `<tbody>` that it adds.
+ */
+function parseTemplate(source: Template): number[][] {
+  const element = document.createElement('template');
+  element.innerHTML = trustedHTML(
+    source.foreign ? `<${source.foreign}>${source.html}</${source.foreign}>` : source.html,
+  );
+  const root = element.content;
+  if (source.foreign) {
+    root.replaceChildren(...root.firstChild!.childNodes);
+  }
+  const paths: number[][] = Array.from({ length: source.count });
+  const pathOf = (marked: Node): number[] => {
+    const path: number[] = [];
+    for (let node: Node = marked; node !== root; node = node.parentNode!) {
+      let index = 0;
+      for (let before = node.previousSibling; before; before = before.previousSibling) {
+        index++;
+      }
+      path.unshift(index);
+    }
+    return path;
+  };
+  for (const marked of root.querySelectorAll('[b-x]')) {
+    paths[Number(marked.getAttribute('b-x'))] = pathOf(marked);
+    marked.removeAttribute('b-x');
+  }
+  // The start comments of text inserts, `<!--x` and an index, which each clone names.
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_COMMENT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const mark = /^x(\d+)$/.exec((node as Comment).data);
+    if (mark) {
+      paths[Number(mark[1])] = pathOf(node);
+    }
+  }
+  // The loader listens to the events of the handlers of the template once, not of each clone.
+  // A render before the core starts, such as in a test, has nothing that listens yet.
+  options?.listen(root);
+  source.t = element;
+  return paths;
+}
+
+// The moves of a walk: a number from 0 is the index of the node that the walk is at, and the
+// others move it.
+const FIRST_CHILD = -1;
+const PARENT = -2;
+// `NEXT - n` moves to the `n`th next sibling.
+const NEXT = -2;
+
+/**
+ * The moves that reach the marked nodes of a template, in the order of the markup, from one to
+ * the next: up to the ancestor that they share, along its children, and down. A clone makes
+ * them once for its template, as Marko encodes a walk, so the clones of a render do not walk
+ * from the top for each node or make an array of paths.
+ */
+function walkOf(paths: number[][]): number[] {
+  const order = paths
+    .map((path, mark) => ({ path, mark }))
+    .sort((a, b) => {
+      for (let depth = 0; depth < Math.min(a.path.length, b.path.length); depth++) {
+        if (a.path[depth] !== b.path[depth]) {
+          return a.path[depth]! - b.path[depth]!;
+        }
+      }
+      return a.path.length - b.path.length;
+    });
+  const moves: number[] = [];
+  const along = (count: number): void => {
+    if (count > 0) {
+      moves.push(NEXT - count);
+    }
+  };
+  let current: number[] = [];
+  for (const { path, mark } of order) {
+    let shared = 0;
+    while (shared < current.length && current[shared] === path[shared]) {
+      shared++;
+    }
+    let depth = shared;
+    if (shared < current.length) {
+      // Up to the child of the shared ancestor that holds the last node, then along to the
+      // child that holds this one.
+      for (let up = current.length - 1; up > shared; up--) {
+        moves.push(PARENT);
+      }
+      along(path[shared]! - current[shared]!);
+      depth++;
+    }
+    for (; depth < path.length; depth++) {
+      moves.push(FIRST_CHILD);
+      along(path[depth]!);
+    }
+    moves.push(mark);
+    current = path;
+  }
+  return moves;
+}
+
+/**
+ * A node of a clone: an element, the comment of an insert, or the fragment. The type lets the
+ * render pass each to the write that takes it.
+ */
+type ClonedNode = Element & Comment & DocumentFragment;
+
+/**
+ * Clones a template. Returns the nodes that the template marks, by their index, and the fragment
+ * after them, in one array.
+ */
+export function clone(source: Template): ClonedNode[] {
+  const walk = (source.walk ??= walkOf(parseTemplate(source)));
+  const fragment = source.t!.content.cloneNode(true);
+  // oxlint-disable-next-line unicorn/no-new-array -- A length, with no values written in yet.
+  const nodes: Node[] = new Array(source.count + 1);
+  nodes[source.count] = fragment;
+  let node: Node = fragment;
+  for (let index = 0; index < walk.length; index++) {
+    const move = walk[index]!;
+    if (move >= 0) {
+      nodes[move] = node;
+    } else if (move === FIRST_CHILD) {
+      node = node.firstChild!;
+    } else if (move === PARENT) {
+      node = node.parentNode!;
+    } else {
+      for (let step = NEXT - move; step > 0; step--) {
+        node = node.nextSibling!;
+      }
+    }
+  }
+  return nodes as ClonedNode[];
+}
+
+/**
+ * Keeps an element of cloned markup on its scope, where updates find it. An element at the top
+ * of the clone, or one with handlers, gets its `b-b` too, which `list` and the handlers read to
+ * find the scope.
+ */
+export function keep(scope: ScopeId, anchor: number, element: Element, named?: boolean): void {
+  const found = scopes.get(scope);
+  if (found) {
+    (found.n ??= [])[anchor] = element;
+  }
+  // `named`: elements inside it have handlers and find their scope from it with `closest`.
+  if (named || element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
+    element.setAttribute('b-b', `${scope}:${anchor}`);
+  }
+}
+
+/**
+ * Puts the value of a text insert of cloned markup in the place of its comment. A text value is
+ * a text node, which the scope keeps, as Solid keeps it, so an update sets its data. Other
+ * values render between the markers of an insert, as in HTML.
+ */
+export function keepText(
+  scope: ScopeId,
+  anchor: number,
+  place: Comment,
+  value: unknown,
+  at: ScopeId | Scope = scope,
+): void {
+  const found = scopes.get(scope);
+  if (typeof value === 'string' || typeof value === 'number') {
+    const node = document.createTextNode(String(value));
+    place.replaceWith(node);
+    if (found) {
+      (found.n ??= [])[anchor] = node;
+    }
+    return;
+  }
+  keepMarkers(scope, anchor, place, value, at);
+}
+
+/** Puts a text insert at the end of an element of cloned markup, as `keepText` does. */
+export function appendText(
+  scope: ScopeId,
+  anchor: number,
+  parent: Element,
+  value: unknown,
+  at: ScopeId | Scope = scope,
+): void {
+  if (typeof value === 'string' || typeof value === 'number') {
+    const node = document.createTextNode(String(value));
+    parent.append(node);
+    const found = scopes.get(scope);
+    if (found) {
+      (found.n ??= [])[anchor] = node;
+    }
+    return;
+  }
+  const place = document.createComment('');
+  parent.append(place);
+  keepMarkers(scope, anchor, place, value, at);
+}
+
+/** Gives a value that is not text the markers of an insert, and renders it between them. */
+function keepMarkers(
+  scope: ScopeId,
+  anchor: number,
+  place: Comment,
+  value: unknown,
+  at: ScopeId | Scope,
+): void {
+  const found = scopes.get(scope);
+  place.data = `t${scope}:${anchor}`;
+  place.after(document.createComment('/t'));
+  if (found) {
+    (found.n ??= [])[anchor] = place;
+  }
+  if (value !== null && value !== undefined && typeof value !== 'boolean') {
+    // Children, a template or raw HTML.
+    place.after(insertNodes(value, at, place));
+  }
+}
+
+/** Names the start marker of a nested block of cloned markup, and keeps it on its scope. */
+function keepBlock(
+  place: Comment,
+  scope: ScopeId,
+  data: string,
+  anchor: number,
+): Scope | undefined {
+  place.data = data;
+  const found = scopes.get(scope);
+  if (found) {
+    (found.n ??= [])[anchor] = place;
+  }
+  return found;
+}
+
+/** Puts what renders gave into the range that a marker of cloned markup opens. */
+function fillRange(place: Comment, html: string, nodes: DocumentFragment | undefined): void {
+  if (html) {
+    // Markup that a render gave as HTML, which the insert of the clone indexes.
+    place.after(parseHTML(html, place));
+    clonedMarkup = true;
+  } else if (nodes) {
+    place.after(nodes);
+  }
+}
+
+/**
+ * Names a comment of cloned markup that names a scope, such as the start of an item. The start
+ * of a portal, which its scope looks for when it goes, is indexed.
+ */
+export function nameComment(place: Comment, data: string): void {
+  place.data = data;
+  if (data[0] === 'P') {
+    comments.set(data, place);
+    portals++;
+  }
+}
+
+/** Names the start marker of a block whose markup is in the clone, and keeps it on its scope. */
+export function markBlock(place: Comment, scope: ScopeId, anchor: number, suffix: string): void {
+  keepBlock(place, scope, `b${scope}:${anchor}${suffix}`, anchor);
+}
+
+/**
+ * Fills a nested `#if` of cloned markup with the branch at `index`, or nothing for -1, before
+ * the clone is in the page. `branch` updates it later.
+ */
+export function fillBranch(
+  place: Comment,
+  scope: ScopeId,
+  anchor: number,
+  index: number,
+  renders: Render[],
+): void {
+  const found = keepBlock(place, scope, `b${scope}:${anchor}:${index}`, anchor);
+  const render = renders[index];
+  if (found && render) {
+    const out = render(found);
+    fillRange(place, typeof out === 'string' ? out : '', typeof out === 'string' ? undefined : out);
+  }
+}
+
+/** Fills a nested `#for` of cloned markup with its items, before the clone is in the page. */
+export function fillList(
+  place: Comment,
+  scope: ScopeId,
+  anchor: number,
+  items: unknown[],
+  render: Render,
+): void {
+  const found = keepBlock(place, scope, `b${scope}:${anchor}`, anchor);
+  if (!found) {
+    return;
+  }
+  let html = '';
+  let nodes: DocumentFragment | undefined;
+  for (let index = 0; index < items.length; index++) {
+    const out = render(found, items[index], index);
+    if (typeof out === 'string') {
+      html += out;
+    } else {
+      (nodes ??= document.createDocumentFragment()).append(out);
+    }
+  }
+  fillRange(place, html, nodes);
+}
+
+/** Writes an attribute of an element of cloned markup, as `attribute` writes it in HTML. */
+export function setAttr(element: Element, name: string, value: unknown): void {
+  const written = attributeText(name, value);
+  if (written !== undefined) {
+    element.setAttribute(name, written);
+  }
+}
+
+/** The nodes of a block that renders where it is, in HTML: a place, which the parse fills. */
+export function nodes(fragment: DocumentFragment): string {
+  return holdPlace(fragment);
+}
+
+/** What a body gave, as nodes: its clone, or its HTML, which the insert of the clone indexes. */
+function bodyNodes(out: string | DocumentFragment): DocumentFragment {
+  if (typeof out !== 'string') {
+    return out;
+  }
+  clonedMarkup = true;
+  return parseHTML(out);
+}
+
+/** The markers of a block that renders where it is, around its nodes, with the start kept. */
+function blockNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  data: string,
+  content: DocumentFragment,
+): DocumentFragment {
+  if (scope === undefined || anchor === undefined) {
+    return content;
+  }
+  const start = document.createComment(data);
+  keepBlock(start, scope, data, anchor);
+  content.prepend(start);
+  content.append(document.createComment('/b'));
+  return content;
+}
+
+/**
+ * Renders an `#if` or a `#switch` where it is: the branch at `index`, or nothing for -1, between
+ * its markers when it has them, which `branch` updates later.
+ */
+export function branchNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  index: number,
+  bodies: (() => string | DocumentFragment)[],
+): DocumentFragment {
+  const body = bodies[index];
+  const content = body ? bodyNodes(body()) : document.createDocumentFragment();
+  return blockNodes(scope, anchor, `b${scope}:${anchor}:${index}`, content);
+}
+
+/**
+ * Renders a `#for` or a `#repeat` where it is: its items, or its fallback for none, between its
+ * markers when it has them, which `list` updates later.
+ */
+export function listNodes(
+  scope: ScopeId | undefined,
+  anchor: number | undefined,
+  items: unknown[],
+  body: (item: unknown, index: number) => string | DocumentFragment,
+  fallback: (() => string | DocumentFragment) | undefined,
+): DocumentFragment {
+  const content = document.createDocumentFragment();
+  for (let index = 0; index < items.length; index++) {
+    content.append(bodyNodes(body(items[index], index)));
+  }
+  if (items.length === 0 && fallback) {
+    content.append(bodyNodes(fallback()));
+  }
+  return blockNodes(scope, anchor, `b${scope}:${anchor}`, content);
+}
+
+/** Writes attributes that code of a start tag gave as their text, as HTML has them. */
+export function setAttrText(element: Element, text: string): void {
+  if (text) {
+    // On an element of SVG or MathML, the parser gives the names their case, such as `viewBox`,
+    // and their namespace, such as of `xlink:href`.
+    const foreign = foreignOf(element);
+    const tag = foreign === 'math' ? 'mi' : 'g';
+    const parsed = parseHTML(foreign ? `<${tag}${text}/>` : `<b${text}>`, undefined, foreign)
+      .firstChild as Element;
+    // The parsed attribute moves, so a name that `setAttribute` would reject, such as `@click`,
+    // is written as the parser read it.
+    for (const attribute of Array.from(parsed.attributes)) {
+      parsed.removeAttributeNode(attribute);
+      element.setAttributeNode(attribute);
+    }
+  }
+}
+
+/** Puts a value with no markers in the place of a comment of cloned markup, as `insert` does. */
+export function putText(place: Comment, value: unknown, at?: ScopeId | Scope): void {
+  place.replaceWith(
+    typeof value === 'string' || typeof value === 'number'
+      ? document.createTextNode(String(value))
+      : insertNodes(value, at, place),
+  );
+}
+
+/** Writes the spreads of an element of cloned markup, as `spread` writes them in HTML. */
+export function setSpread(
+  element: Element,
+  attributes: Record<string, unknown>,
+  on?: string[],
+  names?: boolean,
+): void {
+  setAttrText(element, spread(attributes, on, names));
+}
+
+/** Writes the `b-on` of an element of cloned markup with spreads, as `onAttribute` does. */
+export function setOn(element: Element, on: string[], own: string): void {
+  const value = onValue(on, own);
+  if (value) {
+    // Before `keep`, which then writes the `b-b` that the handlers read.
+    element.setAttribute('b-on', value);
+    // The loader listens to the events of the handlers of the spreads.
+    options?.listen(element);
+  }
+}
+
+/** Writes the content of an element of cloned markup, as `insert` writes it in HTML. */
+export function setContent(element: Element, value: unknown, at?: ScopeId | Scope): void {
+  if (typeof value === 'string' || typeof value === 'number') {
+    element.textContent = String(value);
+    return;
+  }
+  // Children, a template or raw HTML render here. Their work after the insert waits for it.
+  element.replaceChildren(insertNodes(value, at, element));
+}
+
+/**
+ * The nodes of children, a template or raw HTML in cloned markup: the clone of children whose
+ * markup clones, or the markup, which the insert of the clone indexes, as it would in HTML.
+ */
+function insertNodes(
+  value: unknown,
+  at: ScopeId | Scope | undefined,
+  near: Node,
+): DocumentFragment {
+  const out =
+    HAS_CHILDREN && value instanceof Children && !(value instanceof TemplateCall)
+      ? value.render(resolveScope(at))
+      : insert(value, undefined, at);
+  if (typeof out !== 'string') {
+    return out;
+  }
+  clonedMarkup = true;
+  return parseHTML(out, near);
+}
+
+/** True when a clone holds markup that it rendered as HTML, whose markers its insert indexes. */
+let clonedMarkup = false;
+
 /** A component's client render function, from its `?brumate-render` module. */
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
-export type Component<P = any> = (props: P) => string;
+export type Component<P = any> = (props: P) => string | DocumentFragment;
+
+/**
+ * The clones of components that HTML holds a place for, by the number in the place,
+ * `<!--f` and the number. HTML that the browser parses gets them back in their places.
+ */
+const placed = new Map<number, DocumentFragment>();
+let placedCount = 0;
+
+/**
+ * `svg` or `math` when markup in an element, or next to a node, is SVG or MathML. HTML that the
+ * browser parses there needs one around it, as the parser of a page would have one.
+ */
+function foreignOf(near: Node | null | undefined): string | undefined {
+  const element = near?.nodeType === 1 ? (near as Element) : near?.parentNode;
+  if (element?.nodeType !== 1 || (element as Element).localName === 'foreignObject') {
+    return undefined;
+  }
+  const space = (element as Element).namespaceURI;
+  if (space === 'http://www.w3.org/2000/svg') {
+    return 'svg';
+  }
+  return space === 'http://www.w3.org/1998/Math/MathML' ? 'math' : undefined;
+}
+
+/**
+ * Parses HTML that the browser renders, with the clones that it holds places for. `near` is
+ * the element that it goes in, or a node next to where it goes.
+ */
+function parseHTML(html: string, near?: Node | null, foreign = foreignOf(near)): DocumentFragment {
+  const template = document.createElement('template');
+  template.innerHTML = trustedHTML(foreign ? `<${foreign}>${html}</${foreign}>` : html);
+  const fragment = template.content;
+  if (foreign) {
+    fragment.replaceChildren(...fragment.firstChild!.childNodes);
+  }
+  if (HAS_CLIENT_HTML && placed.size > 0 && html.includes('<!--f')) {
+    const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_COMMENT);
+    const places: Comment[] = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (/^f\d+$/.test((node as Comment).data)) {
+        places.push(node as Comment);
+      }
+    }
+    for (const place of places) {
+      const key = Number(place.data.slice(1));
+      const nodes = placed.get(key);
+      if (nodes) {
+        placed.delete(key);
+        place.replaceWith(nodes);
+      }
+    }
+  }
+  return fragment;
+}
+
+/** Puts a child component that a clone renders in the place of its comment. */
+export function place(at: Comment, out: string | Node): void {
+  if (typeof out === 'string') {
+    // A component that renders HTML: its markup, which the insert of the clone indexes.
+    at.replaceWith(parseHTML(out, at));
+    clonedMarkup = true;
+  } else {
+    at.replaceWith(out);
+  }
+}
 
 function resolveScope(scope: Scope | ScopeId | undefined): Scope | undefined {
   if (typeof scope === 'object') {
@@ -2948,7 +4030,90 @@ export function component<P>(
   if (parent) {
     setOwner(parent);
   }
+  return holdPlace(Child(props));
+}
+
+/** The markup of a render, or for a clone, a comment that holds its place, which a parse fills. */
+function holdPlace(out: string | DocumentFragment): string {
+  if (typeof out === 'string') {
+    return out;
+  }
+  const key = placedCount++;
+  placed.set(key, out);
+  return `<!--f${key}-->`;
+}
+
+/** Renders a child component for a clone: its markup as HTML, or the clone that it made. */
+export function componentNodes<P>(
+  Child: Component<P>,
+  props: P,
+  _ctx?: unknown,
+  scope?: Scope | number,
+  anchor?: number,
+): string | DocumentFragment {
+  const parent = resolveScope(scope);
+  if (parent && anchor !== undefined) {
+    parent.c ??= {};
+    parent.c[anchor] = nextId;
+  }
+  if (parent) {
+    setOwner(parent);
+  }
   return Child(props);
+}
+
+/**
+ * Renders a dynamic tag for a clone: the element, with its attributes and content, or what a
+ * component renders.
+ */
+export function dynamicNodes(
+  tag: unknown,
+  attributes: Record<string, unknown>,
+  inner: Raw | Children | undefined,
+  _ctx?: unknown,
+  scope?: Scope | number,
+  foreign?: string,
+): string | Node {
+  if (typeof tag === 'function') {
+    return componentNodes(
+      tag as Component,
+      inner ? { ...attributes, children: inner } : attributes,
+      undefined,
+      scope,
+    );
+  }
+  const name = String(tag);
+  // The start tag as HTML, so the attributes are written as `dynamic` writes them.
+  const element = parseHTML(`<${name}${spreadText(attributes)}>`, undefined, foreign)
+    .firstChild as Element;
+  const bound = element.getAttribute('b-b');
+  if (bound) {
+    const [id, anchor] = bound.split(':');
+    const kept = scopes.get(Number(id));
+    if (kept) {
+      (kept.n ??= [])[Number(anchor)] = element;
+    }
+  }
+  if (element.hasAttribute('b-on')) {
+    // The insert of the clone listens to the events of the handlers.
+    clonedMarkup = true;
+  }
+  if (inner && !VOID_ELEMENTS.has(name)) {
+    setContent(element, inner, scope);
+  }
+  return element;
+}
+
+/** `dynamicNodes` for a dynamic tag inside SVG or MathML, `svg` or `math`. */
+export function foreignNodes(
+  foreign: string,
+  tag: unknown,
+  attributes: Record<string, unknown>,
+  inner: Raw | Children | undefined,
+  ctx?: unknown,
+  scope?: Scope | number,
+): string | Node {
+  return dynamicNodes(tag, attributes, inner, ctx, scope, foreign);
 }
 
 export function dynamic(
@@ -2983,13 +4148,28 @@ let owner: Scope | undefined;
 // renders. Each is an export of its own, so a build keeps only those that its components call.
 
 /** Creates a scope for markup that the client renders, and returns its ID. */
-export function createScope(kind: number, parent?: Scope | ScopeId, module?: string): number {
+export function createScope(
+  kind: number,
+  parent?: Scope | ScopeId,
+  module?: string,
+  nodes?: number,
+): number {
   const id = nextId--;
   const parentScope = resolveScope(parent);
-  const created: Scope = { id, k: kind, p: parentScope, m: module, s: [], children: new Set() };
+  const created: Scope = { id, k: kind, p: parentScope, m: module, s: [] };
+  // A clone keeps this many nodes on the scope, so the array does not grow.
+  if (nodes) {
+    // oxlint-disable-next-line unicorn/no-new-array -- A length, with no values written in yet.
+    created.n = new Array(nodes);
+  }
   rendered.push(created);
+  // A component that the browser renders loads its code, as the components of the page do.
+  if (module !== undefined) {
+    loadComponent(module);
+  }
   if (module !== undefined && owner) {
     created.o = owner;
+    (owner.owned ??= new Set()).add(created);
     owner = undefined;
   }
   // A scope at the top of children that are inserted elsewhere finds its contexts there.
@@ -3000,7 +4180,9 @@ export function createScope(kind: number, parent?: Scope | ScopeId, module?: str
       break;
     }
   }
-  parentScope?.children.add(created);
+  if (parentScope) {
+    (parentScope.children ??= new Set()).add(created);
+  }
   treeChanges++;
   scopes.set(id, created);
   return id;
@@ -3119,12 +4301,12 @@ export function deferInBrowser(id: string): void {
 }
 
 /** Adds the markup of a `#head` block to the document's head. */
-export function addHead(html: string): void {
+export function addHead(html: string | DocumentFragment): void {
   afterInsert.push(() => insertHTML({ parent: document.head }, html));
 }
 
 /** Adds the markup of a `#portal` block at the end of the page, after the markup around it. */
-export function addPortal(html: string): void {
+export function addPortal(html: string | DocumentFragment): void {
   afterInsert.push(() => insertHTML({ parent: document.body }, html));
 }
 
@@ -3152,7 +4334,15 @@ export function handlerProp(
     return value;
   }
   const instance = resolveScope(scope);
-  const handler = (...args: unknown[]): unknown => call(ref, instance, [...bound, ...args]);
+  // The function runs at once and returns its result, as a reference in the page state does.
+  // Its export reads the current values of its scope. Before the code of its component loads,
+  // such as while the browser renders the component for the first time, the function of the
+  // render runs.
+  const handler = (...args: unknown[]): unknown => {
+    const fn = loadedFunction(ref);
+    const all = [...bound, ...args];
+    return fn ? fn(instance, ...all) : (value as (...rest: unknown[]) => unknown)(...all);
+  };
   // A spread of markup that the browser renders passes it on, with the modifiers of its wrappers.
   // A scope that is not in the page yet has its ID in `scope`.
   handlerReferences.set(

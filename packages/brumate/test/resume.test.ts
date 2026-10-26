@@ -77,6 +77,7 @@ function toRender(code: string): string {
   return code
     .replace(/\.brm\?brumate-render"/g, '.brm.render.ts"')
     .replace(/\.brm\?brumate-client&part=(\w+)"/g, '.brm.client.$1.ts"')
+    .replace(/\.brm\?brumate-client"/g, '.brm.client.ts"')
     .replace(/\.brm\.ts\?brumate-shared"/g, '.brm.ts.shared.ts"');
 }
 
@@ -133,9 +134,10 @@ afterEach(() => {
 });
 
 /** Delays loading some parts, to test the order in which handlers run. */
+/** Milliseconds that the module of each component takes to load, by ID, or `all` for every one. */
 type PartDelays = Record<string, number>;
 
-/** The parts that the loader and the core loaded, as `<component>:<part>`. */
+/** The components whose modules the loader and the core loaded, by ID. */
 const loadedParts: string[] = [];
 
 async function resume(
@@ -158,15 +160,9 @@ async function startLoader(delays: PartDelays = {}, serial?: SerialEntry): Promi
   stop = start({
     ...(serial ? { serial: async () => serial } : {}),
     load: async (id) => {
-      const module = await import(modules.get(id)!);
-      return {
-        ...module,
-        load: async (part: string) => {
-          loadedParts.push(`${id}:${part}`);
-          await new Promise((done) => setTimeout(done, delays[part] ?? 0));
-          return module.load(part);
-        },
-      };
+      loadedParts.push(id);
+      await new Promise((done) => setTimeout(done, delays[id] ?? delays.all ?? 0));
+      return import(modules.get(id)!);
     },
   });
 }
@@ -193,8 +189,8 @@ function moved(record: string): string {
 }
 
 /** Presses a key on the list of the page, and returns the event. */
-function press(key: string): KeyboardEvent {
-  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+function press(key: string, init: KeyboardEventInit = {}): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
   document.querySelector('.list')!.dispatchEvent(event);
   return event;
 }
@@ -239,15 +235,8 @@ async function failingHandlers(server: string): Promise<{
     stop = start({
       build: 'b1',
       onError: (error) => reported.push(String(error)),
-      load: async (id) => {
-        const module = await import(modules.get(id)!);
-        return {
-          ...module,
-          // The handlers fail to load, as a module that throws or a file that is gone does.
-          load: (part: string) =>
-            part.startsWith('h') ? Promise.reject(new Error('Top level')) : module.load(part),
-        };
-      },
+      // The code of the page fails to load, as a module that throws or a file that is gone does.
+      load: () => Promise.reject(new Error('Top level')),
     });
   };
   await restart();
@@ -274,6 +263,28 @@ describe('resume', () => {
     appendChunk(`<p>Inserted</p>${records[0]!}`, holder);
     // The core reads a record as soon as its script runs.
     expect(client.get(client.scopeOf(0)!, 0)).toBe(7);
+    client.dispose();
+  });
+
+  it('runs no callback of an element that left the page with its scope', async () => {
+    document.body.innerHTML = '';
+    vi.resetModules();
+    const client = await import('../src/runtime/client.ts');
+    const ran: unknown[] = [];
+    client.init({
+      load: async () => ({
+        id: 'Test',
+        props: {},
+        g: {},
+        load: async () => ({ c1: (scope: unknown) => ran.push(scope) }),
+      }),
+      listen: () => {},
+    });
+    // A `$client` callback for when the page is idle, whose page went before the browser was.
+    const template = document.createElement('template');
+    template.setAttribute('b-b', '9:0');
+    await client.handle(template, 'Test#c1');
+    expect(ran).toEqual([]);
     client.dispose();
   });
 
@@ -456,55 +467,15 @@ describe('resume', () => {
     expect(text('li:last-child')).toBe('New');
   });
 
-  it('preloads handlers when the browser is idle', async () => {
-    await resume('prefetch', {});
-    // Without a click, the idle button's handler part loads, and the other one does not.
-    await waitFor(() => expect(loadedParts).toContain('Prefetch_okfwof:h1'));
-    expect(loadedParts).not.toContain('Prefetch_okfwof:h3');
-  });
-
-  it('preloads only the handlers in view, and loads the others when they are needed', async () => {
-    // Only the toggle is near the viewport. A `$client` callback waits for its own
-    // observer, which never reports.
-    class InView {
-      readonly callback: IntersectionObserverCallback;
-      readonly near: boolean;
-      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
-        this.callback = callback;
-        this.near = options?.rootMargin !== undefined;
-      }
-      observe(target: Element): void {
-        if (this.near && target.matches('.toggle')) {
-          queueMicrotask(() =>
-            this.callback(
-              [{ target, isIntersecting: true } as IntersectionObserverEntry],
-              this as unknown as IntersectionObserver,
-            ),
-          );
-        }
-      }
-      unobserve(): void {}
-      disconnect(): void {}
-    }
-    vi.stubGlobal('IntersectionObserver', InView);
+  it('loads the code of the components on the page when it starts', async () => {
     await resume('disclosure', {});
-    window.dispatchEvent(new Event('load'));
     const id = 'Disclosure_104dejl';
-    // The toggle's part and the updates load while the page is idle. The `$client` part does
-    // not, and the button in the closed #if is not in the page yet.
-    await waitFor(() => expect(loadedParts.toSorted()).toEqual([`${id}:h4`, `${id}:update`]));
-
-    // The #if renders with the updates that the toggle's part loaded with it.
+    // The module loads without an event, with every part, also of the button in the closed #if.
+    await waitFor(() => expect(loadedParts).toEqual([id]));
     click(document.querySelector('.toggle')!);
     await waitFor(() => expect(text('.count')).toBe('0'));
-    expect(loadedParts).not.toContain(`${id}:h8`);
-    expect(loadedParts).not.toContain(`${id}:c3`);
-
-    // The button that the #if rendered loads its part on its first click.
     click(document.querySelector('.inc')!);
     await waitFor(() => expect(text('.count')).toBe('1'));
-    expect(loadedParts).toContain(`${id}:h8`);
-    expect(loadedParts).not.toContain(`${id}:c3`);
     expect(text('.seen')).toBe('0');
   });
 
@@ -621,6 +592,8 @@ describe('resume', () => {
     expect(press('ArrowDown').defaultPrevented).toBe(true);
     expect(press(' ').defaultPrevented).toBe(true);
     expect(press('Tab').defaultPrevented).toBe(false);
+    // A key of an input method that composes text keeps its default.
+    expect(press('ArrowDown', { isComposing: true }).defaultPrevented).toBe(false);
     expect(press('a').defaultPrevented).toBe(false);
     // The handler still runs for every key.
     await waitFor(() => expect(text('.last')).toBe('a'));
@@ -638,6 +611,27 @@ describe('resume', () => {
     expect(event.defaultPrevented).toBe(true);
     await waitFor(() => expect(text('.log')).toBe('parent'));
     await waitFor(() => expect(text('.forward')).toBe('Go 1'));
+  });
+
+  it('writes the handlers of a spread again when they change, and keeps the own ones', async () => {
+    await resume('spreadHandlerChange', {});
+    const field = document.querySelector('.field')!;
+    const enter = (): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      field.dispatchEvent(event);
+      return event;
+    };
+    expect(enter().defaultPrevented).toBe(false);
+    await waitFor(() => expect(text('.presses')).toBe('1'));
+    click(field);
+    await waitFor(() => expect(field.hasAttribute('data-guarded')).toBe(true));
+    expect(field.getAttribute('b-on')).toMatch(/^click=\S+ keydown:prevent\(Enter\)=\S+@\d+$/);
+    expect(enter().defaultPrevented).toBe(true);
+    await waitFor(() => expect(text('.presses')).toBe('2'));
+    // The element's own handler still runs, and the wrapper goes away again.
+    click(field);
+    await waitFor(() => expect(field.hasAttribute('data-guarded')).toBe(false));
+    expect(enter().defaultPrevented).toBe(false);
   });
 
   it('runs handlers that a script makes with $handler, with their wrappers and arguments', async () => {
@@ -693,6 +687,12 @@ describe('resume', () => {
 
   it('passes handlers through a dynamic tag, also when it names a component', async () => {
     await resume('asPage', {});
+    // The class of the caller adds to the class of the tag, for an element and for a component.
+    expect(document.querySelector('.plain')!.className).toBe('as-button plain');
+    expect(document.querySelector('.link')!.className.split(' ').toSorted()).toEqual([
+      'as-button',
+      'link',
+    ]);
     click(document.querySelector('.plain')!);
     await waitFor(() => expect(text('.outer')).toBe('1'));
     await waitFor(() => expect(text('.plain-box .own')).toBe('1'));
@@ -723,6 +723,31 @@ describe('resume', () => {
       click(document.querySelectorAll('.option')[1]!);
       await waitFor(() => expect(text('.value')).toBe('Dog'));
       expect(document.querySelector('.popover')).toBeNull();
+    });
+
+    it('gives children that a component passes on the contexts of the component that inserts them', async () => {
+      const server = await import(file('spikeWrapped.brm.ts'));
+      const { html } = await renderParts(server.default, {});
+      expect(html).toMatch(/<span class="label" id="[^"]+"/);
+      expect(html).toContain('aria-expanded="false"');
+      // In the browser, the trigger opens its select through the same context.
+      await resume('spikeWrapped', {});
+      click(document.querySelector('.trigger')!);
+      await waitFor(() =>
+        expect(document.querySelector('.trigger')!.getAttribute('aria-expanded')).toBe('true'),
+      );
+    });
+
+    it('gives children that a component passes on its contexts in markup that the browser renders', async () => {
+      await resume('spikeWrappedLater', {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.label')).not.toBeNull());
+      expect(document.querySelector('.label')!.id).not.toBe('');
+      expect(document.querySelector('.trigger')!.getAttribute('aria-expanded')).toBe('false');
+      click(document.querySelector('.trigger')!);
+      await waitFor(() =>
+        expect(document.querySelector('.trigger')!.getAttribute('aria-expanded')).toBe('true'),
+      );
     });
 
     it('gives children the contexts of the component in markup that the browser renders', async () => {
@@ -790,7 +815,7 @@ describe('resume', () => {
 
     // The body still fails, so the fallback renders again, and its button still works.
     click(document.querySelector('.retry')!);
-    await waitFor(() => expect(loadedParts).toContain('Retry_pyus3c:update'));
+    await waitFor(() => expect(loadedParts).toContain('Retry_pyus3c'));
     await waitFor(() => expect(text('.error')).toBe('Error: Not ready'));
 
     const shared = await import(file('retry.brm.client.shared.ts'));
@@ -994,17 +1019,16 @@ describe('resume', () => {
     await waitFor(() => expect(assign).toHaveBeenCalledWith('http://localhost:3000/next'));
   });
 
-  it('sends the error of a handler that fails to load to #try when the build is the same', async () => {
+  it('reports the error of code that fails to load when the build is the same', async () => {
     sessionStorage.clear();
     const { reload, skews, reported } = await failingHandlers('b1');
     click(document.querySelector('.throw')!);
-    await waitFor(() => expect(text('.caught')).toBe('Error: Top level'));
-    expect(reported).toEqual(['Error: Top level']);
+    await waitFor(() => expect(reported).toContain('Error: Top level'));
     expect(reload).not.toHaveBeenCalled();
     expect(skews).toEqual([]);
   });
 
-  it('loads the page again once for each build when the code of a handler is gone', async () => {
+  it('loads the page again once for each build when the code of the page is gone', async () => {
     sessionStorage.clear();
     const { reload, skews, reported, restart } = await failingHandlers('b2');
     click(document.querySelector('.throw')!);
@@ -1014,9 +1038,8 @@ describe('resume', () => {
     // is gone too, and the page does not load again for the same build.
     await restart();
     click(document.querySelector('.throw')!);
-    await waitFor(() => expect(text('.caught')).toBe('Error: Top level'));
+    await waitFor(() => expect(reported).toContain('Error: Top level'));
     expect(reload).toHaveBeenCalledTimes(1);
-    expect(reported).toEqual(['Error: Top level']);
   });
 
   it('loads async memos again when their inputs change', async () => {
@@ -1134,6 +1157,8 @@ describe('resume', () => {
     await waitFor(() => expect(text('.count')).toBe('1'));
     click(document.querySelector('.ten')!);
     await waitFor(() => expect(text('.count')).toBe('11'));
+    click(document.querySelector('.double')!);
+    await waitFor(() => expect(text('.count')).toBe('22'));
     click(document.querySelector('.reset')!);
     await waitFor(() => expect(text('.count')).toBe('0'));
   });
@@ -1373,8 +1398,8 @@ describe('resume', () => {
 
   it('runs handlers in the order of their events', async () => {
     vi.stubGlobal('fetch', async () => new Response(toChunkStream(undefined)));
-    // The input handler's part loads after the submit handler's part.
-    await resume('todos', { initial: [] }, { h7: 100 });
+    // The events come while the code of the page loads.
+    await resume('todos', { initial: [] }, { all: 100 });
     const field = document.querySelector('input')!;
     field.value = 'First';
     field.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1427,14 +1452,14 @@ describe('resume', () => {
       }
     });
     observer.observe(list, { childList: true });
-    // Each insert parses its markup in a template.
-    const create = vi.spyOn(document, 'createElement');
+    // Each insert puts a fragment into the list: of the template that a new item cloned.
+    const insert = vi.spyOn(list, 'insertBefore');
 
     click(document.querySelector('.fill')!);
     await waitFor(() => expect(document.querySelectorAll('li')).toHaveLength(6));
     observer.disconnect();
-    const templates = create.mock.calls.filter(([tag]) => tag === 'template');
-    create.mockRestore();
+    const inserts = insert.mock.calls.filter(([node]) => node instanceof DocumentFragment);
+    insert.mockRestore();
     expect([...list.querySelectorAll('span')].map((span) => span.textContent)).toEqual([
       'a',
       'b',
@@ -1444,9 +1469,10 @@ describe('resume', () => {
       'f',
     ]);
     expect(buttons().map((button) => button.textContent)).toEqual(['1', '2', '3', '4', '5', '6']);
-    // The items that stay are not moved, and new items next to each other go in with one insert.
+    // The items that stay are not moved. Each new item goes in with its own insert, so its nodes
+    // move once, and nothing else is inserted.
     expect(removed).toEqual([]);
-    expect(templates).toHaveLength(3);
+    expect(inserts).toHaveLength(4);
 
     // The new items resume like the others.
     click(buttons()[4]!);
@@ -2027,6 +2053,136 @@ describe('head in #loading', () => {
   });
 });
 
+describe('contexts of templates that a component renders', () => {
+  it('reads the contexts of the component that renders the template', async () => {
+    await resume('tplContextListPage', {});
+    // The server renders the first item in place too.
+    expect(text('.reader.zero')).toBe('7');
+    click(document.querySelector('.ctx-add')!);
+    await waitFor(() => expect(text('.reader.one')).toBe('7'));
+  });
+});
+
+describe('spreads that update together', () => {
+  it('keeps the attributes of a rest prop when another spread of the element changes', async () => {
+    await resume('spreadRestPage', {});
+    click(document.querySelector('.spread-bump')!);
+    await waitFor(() =>
+      expect(document.querySelector('[data-count]')!.getAttribute('data-count')).toBe('1'),
+    );
+    const element = document.querySelector('[data-count]')!;
+    expect(element.className).toBe('spread-rest');
+    expect(element.getAttribute('title')).toBe('Kept');
+  });
+});
+
+describe('templates with components', () => {
+  it('renders a component of a template that another component calls in the browser', async () => {
+    await resume('tplComponentPage', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(text('.tpl-item')).toBe('item 1'));
+    expect(document.querySelector('[data-label]')!.className).toBe('tpl-dynamic');
+  });
+});
+
+describe('conditions that never change', () => {
+  it('reads a condition of #else if that never changes, after one that does', async () => {
+    await resume('elseIfPage', {});
+    expect(text('.else-if')).toBe('first');
+    click(document.querySelector('.else-if-toggle')!);
+    await waitFor(() => expect(text('.else-if')).toBe('passed'));
+  });
+});
+
+describe('writes from effects', () => {
+  it('writes a bound prop from a listener that an effect adds', async () => {
+    await resume('effectWriterPage', {});
+    click(document.querySelector('.effect-on')!);
+    await waitFor(() => expect(text('.effect-state')).toBe('true'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    document.dispatchEvent(new Event('effect-off'));
+    await waitFor(() => expect(text('.effect-state')).toBe('false'));
+  });
+});
+
+describe('removed portals', () => {
+  it('removes the portal of a component, and runs its cleanups, when a block removes the component', async () => {
+    await resume('removedPortal', {});
+    click(document.querySelector('.portal-open')!);
+    await waitFor(() => expect(document.querySelector('.owned-portal')).not.toBeNull());
+    click(document.querySelector('.portal-remove')!);
+    await waitFor(() => expect(document.querySelector('.portal-open')).toBeNull());
+    expect(document.querySelector('.owned-portal')).toBeNull();
+    expect(document.body.dataset.cleanups).toBe('1');
+    delete document.body.dataset.cleanups;
+  });
+});
+
+describe('children that a block inserts again', () => {
+  const probe = (name: string) => document.querySelector<HTMLElement>(`.${name}`);
+  const cleanups = () => Number(document.body.dataset.cleanups ?? 0);
+
+  it('renders children of the server with new scopes each time a block shows them', async () => {
+    delete document.body.dataset.cleanups;
+    await resume('reinsertedChildren', {});
+    click(probe('inline-probe')!);
+    await waitFor(() => expect(probe('inline-probe')!.textContent).toBe('1:true'));
+    // Closing destroys them, and runs their cleanups.
+    click(document.querySelector('.toggle-inline')!);
+    await waitFor(() => expect(probe('inline-probe')).toBeNull());
+    expect(cleanups()).toBe(1);
+    // Opening renders them again, with state of their own and a ref to the new element.
+    click(document.querySelector('.toggle-inline')!);
+    await waitFor(() => expect(probe('inline-probe')).not.toBeNull());
+    expect(probe('inline-probe')!.textContent).toBe('');
+    // A template that the children pass on renders with them.
+    expect(text('.reinsert-label')).toBe('Named');
+    click(probe('inline-probe')!);
+    await waitFor(() => expect(probe('inline-probe')!.textContent).toBe('1:true'));
+    delete document.body.dataset.cleanups;
+  });
+
+  it('renders children in a portal again each time it opens', async () => {
+    delete document.body.dataset.cleanups;
+    await resume('reinsertedChildren', {});
+    for (let round = 1; round <= 2; round++) {
+      click(document.querySelector('.toggle-portal')!);
+      // oxlint-disable-next-line no-await-in-loop -- Each round opens the portal again.
+      await waitFor(() => expect(probe('portal-probe')).not.toBeNull());
+      expect(probe('portal-probe')!.textContent).toBe('');
+      click(probe('portal-probe')!);
+      // oxlint-disable-next-line no-await-in-loop -- The click reads the ref of this round.
+      await waitFor(() => expect(probe('portal-probe')!.textContent).toBe('1:true'));
+      click(document.querySelector('.toggle-portal')!);
+      // oxlint-disable-next-line no-await-in-loop -- The portal closes before the next round.
+      await waitFor(() => expect(probe('portal-probe')).toBeNull());
+      expect(cleanups()).toBe(round);
+    }
+    delete document.body.dataset.cleanups;
+  });
+});
+
+describe('a stopped loader', () => {
+  it('starts nothing from markup that the core inserts after the stop', async () => {
+    await resume('removedPortal', {});
+    click(document.querySelector('.portal-open')!);
+    await waitFor(() => expect(document.querySelector('.owned-portal')).not.toBeNull());
+    const anchor = document.querySelector('template[b-client$="#k3"]')!.getAttribute('b-b')!;
+    stop?.();
+    stop = undefined;
+    const client = await import('../src/runtime/client.ts');
+    // The core inserts markup with the hooks of the loader that started it. Started again, the
+    // template would add the portal a second time.
+    client.portalTo(
+      client.scopeOf(0)!,
+      'body',
+      () => `<template b-b="${anchor}" b-client="load=PortalOwner_1w2qt1f#k3"></template>`,
+    );
+    await new Promise((done) => setTimeout(done, 50));
+    expect(document.querySelectorAll('.owned-portal')).toHaveLength(1);
+  });
+});
+
 describe('portal targets', () => {
   it('moves the body of a #portal when its target changes', async () => {
     await resume('movingPortal', {});
@@ -2072,6 +2228,261 @@ describe('style variables on dynamic tags', () => {
   });
 });
 
+describe('classes with a spread', () => {
+  it('keeps the class of a spread when the class of the element changes', async () => {
+    await resume('classSpread', {});
+    const box = document.querySelector<HTMLElement>('.box')!;
+    expect(box.className).toBe('box caller');
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(box.className).toBe('box flag caller'));
+  });
+});
+
+describe('style variables with a spread', () => {
+  it('keeps the style that a spread passes on, next to the style variables', async () => {
+    await resume('spreadStyled', {});
+    const box = document.querySelector<HTMLElement>('div.box')!;
+    const tag = document.querySelector<HTMLElement>('section.tag')!;
+    // The style of the spread replaces the element's own, as a later attribute does.
+    expect(box.getAttribute('style')).toMatch(/^--s-\w+-0:12px;margin: 2px$/);
+    expect(tag.getAttribute('style')).toMatch(/^--s-\w+-0:12px;margin: 2px$/);
+    click(document.querySelector('.grow')!);
+    const name = box.getAttribute('style')!.split(':')[0]!;
+    await waitFor(() => expect(box.style.getPropertyValue(name)).toBe('13px'));
+    expect(tag.style.getPropertyValue(name)).toBe('13px');
+    expect(box.style.margin).toBe('2px');
+    // A new style from the spread keeps the style variables.
+    click(document.querySelector('.wider')!);
+    await waitFor(() => expect(box.style.margin).toBe('3px'));
+    await waitFor(() => expect(tag.style.margin).toBe('3px'));
+    expect(box.style.getPropertyValue(name)).toBe('13px');
+    expect(tag.style.getPropertyValue(name)).toBe('13px');
+  });
+
+  it('removes the style that a spread drops, on its first update, and keeps the variables', async () => {
+    await resume('spreadStyled', {});
+    const box = document.querySelector<HTMLElement>('div.box')!;
+    const tag = document.querySelector<HTMLElement>('section.tag')!;
+    const name = tag.getAttribute('style')!.split(':')[0]!;
+    click(document.querySelector('.flat')!);
+    await waitFor(() => expect(box.style.margin).toBe(''));
+    // The element with no style of its own drops the spread's too.
+    await waitFor(() => expect(tag.style.margin).toBe(''));
+    expect(tag.style.getPropertyValue(name)).toBe('12px');
+    expect(box.style.color).toBe('red');
+  });
+});
+
+describe('function props that return values', () => {
+  it('returns the result of a function prop in a memo, in markup and in a handler', async () => {
+    await resume('valueFilter', {});
+    const shown = document.querySelector('.shown')!;
+    const marks = () => [...document.querySelectorAll('li')].map((item) => item.textContent);
+    expect(shown.textContent).toBe('2,4');
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(marks()).toEqual(['dropped', 'kept', 'dropped', 'kept', 'dropped']));
+    expect(shown.textContent).toBe('2,4');
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(shown.textContent).toBe('2,4,6'));
+    expect(marks().at(-1)).toBe('kept');
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(document.querySelector('.picked')!.textContent).toBe('true'));
+  });
+});
+
+describe('spreads and attributes of other code', () => {
+  it('keeps an attribute that a $client callback set when the spread updates', async () => {
+    await resume('spreadKeeps', {});
+    const box = document.querySelector('.box')!;
+    expect(box.getAttribute('b-s')).toBe('class title');
+    await waitFor(() => expect(box.getAttribute('aria-controls')).toBe('menu'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(box.getAttribute('title')).toBe('count 1'));
+    expect(box.getAttribute('aria-controls')).toBe('menu');
+  });
+});
+
+describe('cloned markup', () => {
+  it('builds the blocks that never update inside a clone, and its handlers run', async () => {
+    await resume('clonedStatic', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.box i')).toBe('a'));
+    expect([...document.querySelectorAll('.box i')].map((item) => item.textContent)).toEqual([
+      'a',
+      'b',
+    ]);
+    expect(document.querySelector('.wide')).not.toBeNull();
+    expect(document.querySelector('.narrow')).toBeNull();
+    click(document.querySelector('.count')!);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+  });
+
+  it('fills the blocks inside a clone, which update in place after', async () => {
+    await resume('clonedBlocks', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.items')).toBe('ab'));
+    expect(document.querySelector('.more')).not.toBeNull();
+    const first = document.querySelector('.items li')!;
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(text('.items')).toBe('abc'));
+    // The list kept the items that stay.
+    expect(document.querySelector('.items li')).toBe(first);
+    click(document.querySelector('.less')!);
+    await waitFor(() => expect(document.querySelector('.more')).toBeNull());
+    click(document.querySelector('.less')!);
+    await waitFor(() => expect(document.querySelector('.more')).not.toBeNull());
+    // Closed and opened again, the clone fills its blocks with the values of now.
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.box')).toBeNull());
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.items')).toBe('abc'));
+  });
+
+  it('writes the text of an insert in a clone, and updates the text node that it keeps', async () => {
+    await resume('clonedText', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.hello')).toBe('Hello Ada, you have 1 items.'));
+    const hello = document.querySelector('.hello')!;
+    // The clone holds a text node in place of each insert, and no markers.
+    expect([...hello.childNodes].map((node) => node.nodeType)).toEqual([3, 3, 3, 3, 3]);
+    const name = hello.childNodes[1]!;
+    // At the end of its element, the text node is the last child, with no comment either.
+    const last = document.querySelector('.last')!;
+    expect([...last.childNodes].map((node) => node.nodeType)).toEqual([3, 3]);
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(text('.hello')).toBe('Hello Ada!, you have 2 items.'));
+    expect(hello.childNodes[1]).toBe(name);
+    expect(text('.last')).toBe('Bye Ada!');
+  });
+});
+
+describe('cloned handlers', () => {
+  it('find their scope from an element around them that has an anchor', async () => {
+    await resume('clonedHandlers', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.go')).not.toBeNull());
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.hits')).toBe('1'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('section.on')).not.toBeNull());
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.hits')).toBe('2'));
+  });
+});
+
+describe('cloned SVG', () => {
+  it('parses children, components and dynamic tags inside SVG as SVG', async () => {
+    await resume('clonedForeign', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.box')).not.toBeNull());
+    const svg = 'http://www.w3.org/2000/svg';
+    // Children that a component puts inside its <svg>.
+    expect(document.querySelector('.child')!.namespaceURI).toBe(svg);
+    // A component whose top element is an SVG element, inside an <svg>.
+    expect(document.querySelector('.dot')!.namespaceURI).toBe(svg);
+    // A dynamic tag inside an <svg>.
+    expect(document.querySelector('.shape')!.namespaceURI).toBe(svg);
+    // A spread on an SVG element keeps the case of its names.
+    expect(document.querySelector('.icon')!.getAttribute('viewBox')).toBe('0 0 10 10');
+    expect(document.querySelector('.icon')!.hasAttribute('viewbox')).toBe(false);
+  });
+
+  it('puts an insert after a void element, not inside it', async () => {
+    await resume('clonedForeign', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.check')).not.toBeNull());
+    expect(text('.check')).toBe('Remember me');
+    expect(document.querySelector('.check input')!.childNodes).toHaveLength(0);
+  });
+});
+
+describe('a spread that writes nothing on the server', () => {
+  it('keeps the attributes that other code set on its first update', async () => {
+    await resume('spreadEmpty', {});
+    const box = document.querySelector<HTMLElement>('.wrap > div')!;
+    await waitFor(() => expect(box.getAttribute('aria-controls')).toBe('menu'));
+    click(document.querySelector('.fill')!);
+    await waitFor(() => expect(box.getAttribute('title')).toBe('Full'));
+    expect(box.getAttribute('aria-controls')).toBe('menu');
+  });
+});
+
+describe('templates called again', () => {
+  it('update in place with their new arguments, and keep their elements', async () => {
+    await resume('templateInPlace', {});
+    const lines = () => [...document.querySelectorAll<HTMLElement>('.line')];
+    const first = lines()[0]!;
+    expect(lines().map((item) => item.textContent)).toEqual(['a', 'b']);
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(lines().map((item) => item.textContent)).toEqual(['a!', 'b!']));
+    // The server rendered the element, and it stays.
+    expect(lines()[0]).toBe(first);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(lines()).toHaveLength(3));
+    const added = lines()[2]!;
+    expect(added.dataset.index).toBe('2');
+    click(document.querySelector('.rename')!);
+    await waitFor(() =>
+      expect(lines().map((item) => item.textContent)).toEqual(['a!!', 'b!!', 'new!']),
+    );
+    // The browser rendered this one, and it stays too.
+    expect(lines()[2]).toBe(added);
+    expect(lines()[0]).toBe(first);
+  });
+
+  it('render again after the insert showed something else', async () => {
+    await resume('templateToggled', {});
+    const slot = () => document.querySelector('.slot')!.textContent;
+    expect(slot()).toBe('1');
+    click(document.querySelector('.tg')!);
+    await waitFor(() => expect(slot()).toBe('none'));
+    click(document.querySelector('.inc')!);
+    click(document.querySelector('.tg')!);
+    await waitFor(() => expect(slot()).toBe('2'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(slot()).toBe('3'));
+  });
+
+  it('do not update another template of the same component in place', async () => {
+    await resume('templateSwitched', {});
+    const shown = () => {
+      const element = document.querySelector('.slot > span')!;
+      return `${element.className} ${element.textContent}`;
+    };
+    expect(shown()).toBe('tb B1');
+    click(document.querySelector('.flip')!);
+    await waitFor(() => expect(shown()).toBe('ta A1'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(shown()).toBe('ta A2'));
+    click(document.querySelector('.flip')!);
+    await waitFor(() => expect(shown()).toBe('tb B2'));
+  });
+});
+
+describe('function props in markup that the browser renders', () => {
+  it('return their results, in a memo, in markup and in a handler', async () => {
+    await resume('valueFilterLater', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.shown')).toBe('2,4'));
+    const marks = () => [...document.querySelectorAll('li')].map((item) => item.textContent);
+    expect(marks()).toEqual(['dropped', 'kept', 'dropped', 'kept']);
+    click(document.querySelector('.more')!);
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.shown')).toBe('2,4,6'));
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.picked')).toBe('true'));
+  });
+});
+
+describe('shorthand handlers', () => {
+  it('runs a handler that a shorthand gives an element', async () => {
+    await resume('shorthandHandler', {});
+    expect(document.querySelector('.go')!.getAttribute('b-on')).toMatch(/^click=/);
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.go')).toBe('1'));
+  });
+});
+
 describe('effect order', () => {
   it('runs an effect once per write, after the markup updates', async () => {
     const log: string[] = [];
@@ -2081,6 +2492,21 @@ describe('effect order', () => {
     await waitFor(() => expect(log).toEqual(['2 3 1']));
     click(document.querySelector('.inc')!);
     await waitFor(() => expect(log).toEqual(['2 3 1', '4 6 2']));
+  });
+});
+
+describe('effect cleanups', () => {
+  it('does not run an effect again for a value that only its cleanup reads', async () => {
+    const log: string[] = [];
+    (globalThis as { cleanupLog?: string[] }).cleanupLog = log;
+    await resume('effectCleanup', {});
+    click(document.querySelector('.a')!);
+    await waitFor(() => expect(log).toEqual(['run 1']));
+    click(document.querySelector('.b')!);
+    await waitFor(() => expect(text('.b-value')).toBe('1'));
+    expect(log).toEqual(['run 1']);
+    click(document.querySelector('.a')!);
+    await waitFor(() => expect(log).toEqual(['run 1', 'clean 1', 'run 2']));
   });
 });
 
@@ -2454,6 +2880,47 @@ describe('bindings', () => {
   });
 });
 
+describe('calls of functions of other components', () => {
+  it('runs them in the order that they were made, also when the code of the first is slower', async () => {
+    // The calls come while the code of the page loads.
+    await resume('orderedCalls', {}, { all: 80 });
+    click(document.querySelector('.both')!);
+    await waitFor(() => expect(text('.log')).toBe('ab'));
+  });
+});
+
+describe('controlled props', () => {
+  it('tells a prop that the caller passed from a missing one, and a bound one from a copy', async () => {
+    await resume('controlledParent', {});
+    const part = (label: string): string => text(`.part.${label}`);
+    // A missing prop leaves the part its own state.
+    click(document.querySelector('.part.free')!);
+    await waitFor(() => expect(part('free')).toBe('free: open'));
+    // The parent's onChange loads its own code, so it can run after the part has updated.
+    await waitFor(() => expect(text('.seen')).toBe('free true'));
+    // A passed prop that is not bound: the part only reports, and shows what the caller keeps.
+    click(document.querySelector('.part.held')!);
+    await waitFor(() => expect(text('.seen')).toBe('held true'));
+    expect(part('held')).toBe('held: closed');
+    click(document.querySelector('.hold')!);
+    await waitFor(() => expect(part('held')).toBe('held: open'));
+    // A bound prop writes the caller's signal.
+    click(document.querySelector('.part.bound')!);
+    await waitFor(() => expect(text('.values')).toBe('true true'));
+    expect(part('bound')).toBe('bound: open');
+    // A prop passed as undefined is still passed.
+    click(document.querySelector('.part.none')!);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(part('none')).toBe('none: closed');
+    // Parts that the browser renders know it too.
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(part('later')).toBe('later: open'));
+    expect(part('later-free')).toBe('later-free: open');
+    click(document.querySelector('.part.later-free')!);
+    await waitFor(() => expect(part('later-free')).toBe('later-free: closed'));
+  });
+});
+
 describe('view transitions', () => {
   it('runs a handler of transition inside a view transition, which waits for its updates', async () => {
     const seen: { types?: string[]; html: string }[] = [];
@@ -2645,6 +3112,154 @@ describe('spreads on components', () => {
     // A spread that changes updates the props, and a later prop wins over it.
     click(document.querySelector('.relabel')!);
     await waitFor(() => expect(text('.child.second')).toBe('second: open'));
+  });
+});
+
+describe('refs of dynamic tags', () => {
+  it('writes the element that a dynamic tag renders, from the server and from the browser', async () => {
+    await resume('refDynamic', {});
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('SECTION:none'));
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.second')).not.toBeNull());
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('SECTION:ARTICLE'));
+  });
+});
+
+describe('fields in spreads', () => {
+  it('keeps what the user typed when the spread updates for another attribute', async () => {
+    await resume('spreadField', {});
+    const field = document.querySelector<HTMLInputElement>('.field')!;
+    // The user types before the code of the field loads, so no handler writes the value.
+    field.value = 'typed';
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(field.getAttribute('data-count')).toBe('1'));
+    expect(field.value).toBe('typed');
+  });
+});
+
+describe('contexts that change', () => {
+  it('updates a component that reads a context and provides it again, and the readers below it', async () => {
+    await resume('tplContextPage', {});
+    const read = () => [
+      ...['direct', 'child', 'script-direct', 'script-child'].map((label) =>
+        text(`.reader.${label}`),
+      ),
+      text('.relay'),
+      text('.reader.relayed'),
+    ];
+    expect(read()).toEqual(['1', '1', '1', '1', '1', '11']);
+    click(document.querySelector('.bump')!);
+    click(document.querySelector('.script-bump')!);
+    // The relay reads the new value from above, and its children read its new value.
+    await waitFor(() => expect(read()).toEqual(['2', '2', '2', '2', '2', '12']));
+  });
+
+  it('updates a context that the script of a template provides, in markup that the browser renders', async () => {
+    await resume('tplContextPage', {});
+    click(document.querySelector('.show')!);
+    const later = () =>
+      [...document.querySelectorAll('.later .reader')].map((element) => element.textContent);
+    await waitFor(() => expect(later()).toEqual(['1', '1']));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(later()).toEqual(['2', '2']));
+  });
+});
+
+describe('rest props', () => {
+  it('keeps the attributes of a rest that does not change when a spread next to it does', async () => {
+    await resume('mixedSpreadParent', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.mixed')).not.toBeNull());
+    click(document.querySelector('.add')!);
+    await waitFor(() =>
+      expect(document.querySelector('.mixed')!.getAttribute('data-count')).toBe('1'),
+    );
+    expect(document.querySelector('.mixed')!.getAttribute('title')).toBe('Kept');
+    expect(document.querySelector('[data-own]')!.className).toBe('count-1 mixed');
+  });
+
+  it('leaves out of a rest the props that another $props() call names', async () => {
+    await resume('twoPropsParent', {});
+    const button = document.querySelector('.two-props')!;
+    expect(button.getAttribute('title')).toBe('Open the menu');
+    expect(button.hasAttribute('open')).toBe(false);
+    expect(button.hasAttribute('label')).toBe(false);
+    click(button);
+    await waitFor(() => expect(text('.two-props')).toBe('Menu false'));
+    expect(button.hasAttribute('open')).toBe(false);
+  });
+
+  it('updates a spread of a rest prop when the parent passes a new value', async () => {
+    await resume('restOuter', {});
+    expect(document.querySelector('.dyn')!.getAttribute('title')).toBe('no');
+    click(document.querySelector('.flip')!);
+    await waitFor(() =>
+      expect(document.querySelector('.plain')!.getAttribute('title')).toBe('yes'),
+    );
+    expect(document.querySelector('.dyn')!.getAttribute('title')).toBe('yes');
+  });
+});
+
+describe('markup that streams in after a write', () => {
+  it('updates a dynamic tag and a rest prop that stream in, and keeps the attributes of two spreads', async () => {
+    const server = await import(file('lateTag.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    await startLoader();
+    click(document.querySelector('.count')!);
+    await waitFor(() =>
+      expect(document.querySelector('.both')!.getAttribute('title')).toBe('clicks 1'),
+    );
+    // The other spread keeps its attribute when one of them updates.
+    expect(document.querySelector('.both')!.getAttribute('data-clicks')).toBe('1');
+    server.release('section');
+    // The element as it streams in, before the update of its scope runs.
+    let late: Element | null = null;
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+      late ??= document.querySelector('.late');
+      // The user checks the box before the update of its scope runs.
+      const box = document.querySelector<HTMLInputElement>('.late-box');
+      if (box && !box.dataset.clicked) {
+        box.dataset.clicked = 'yes';
+        box.click();
+      }
+    }
+    late = late!;
+    expect(late.localName).toBe('section');
+    // The update of the streamed scope writes the new value into the element that is there.
+    await waitFor(() => expect(text('.late')).toBe('1'));
+    expect(late.isConnected).toBe(true);
+    await waitFor(() => expect(document.querySelector('.plain')!.getAttribute('title')).toBe('1'));
+    expect(document.querySelector('.plain')!.className).toBe('plain');
+    // The update writes what the server rendered, so the box that the user checked stays checked.
+    expect(document.querySelector<HTMLInputElement>('.late-box')!.checked).toBe(true);
+  });
+});
+
+describe('templates that stream in after a write', () => {
+  it('renders the template of a list that streams in, once its code loads', async () => {
+    const server = await import(file('lateTemplate.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    // The code of the page loads late, so the markup streams in before it.
+    await startLoader({ all: 30 });
+    click(document.querySelector('.count')!);
+    await waitFor(() => expect(text('.count')).toBe('1'));
+    server.release('apple,pear');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    const names = () =>
+      [...document.querySelectorAll('.late-list strong')].map((item) => item.textContent);
+    expect(names()).toEqual(['apple', 'pear']);
+    // The updates of the scopes that streamed in run with the code of the template.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(names()).toEqual(['apple', 'pear']);
+    click(document.querySelector('.flip')!);
+    await waitFor(() => expect(names()).toEqual(['pear', 'apple']));
   });
 });
 
@@ -3146,6 +3761,28 @@ describe('compact markup', () => {
     }
     await startLoader();
     await exercise();
+  }, 20_000);
+
+  it('keeps bindings and the handlers of spreads working after navigation moves the IDs', async () => {
+    document.body.innerHTML =
+      '<script b-state b-scopes b-next="5" b-route="root">$bR(($R,$b)=>({}))</script>';
+    const server = await import(file('bindParent.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    const page = `<!doctype html><html><body>${html}${state.replace('<script ', '<script b-route="root" ')}</body></html>`;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(page, { headers: { 'content-type': 'text/html' } })),
+    );
+    const { navigate } = await import('../src/runtime/navigate.ts');
+    await navigate({ url: '/bound', push: true, leave: async () => {}, enter: () => {} });
+    expect(document.querySelector('script[b-offset="5"]')).not.toBeNull();
+    for (const script of document.querySelectorAll('script[b-state]')) {
+      run(script);
+    }
+    await startLoader();
+    // A bound child writes the signal of its parent, whose scope moved by 5.
+    click(document.querySelector('.child.bound')!);
+    await waitFor(() => expect(text('.parent')).toBe('open'));
   }, 20_000);
 
   it('keeps working after a hot update renders the page again', async () => {

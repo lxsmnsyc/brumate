@@ -1,0 +1,53 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Header from '@brumate/ui/Header.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuSection from '@brumate/ui/MenuSection.brm';
+  import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let last = $signal<Key>('nothing yet');
+  let sort = $signal<Key[]>(['name']);
+</script>
+
+<div class="ui-row">
+  <MenuTrigger>
+    <Button class="ui-button">Edit</Button>
+    <Popover class="ui-popover" placement="bottom start">
+      <Menu class="ui-menu" onAction=((key) => (last = key))>
+        <MenuItem id="cut" class="ui-menu-item">Cut</MenuItem>
+        <MenuItem id="copy" class="ui-menu-item">Copy</MenuItem>
+        <MenuItem id="paste" class="ui-menu-item" isDisabled>Paste</MenuItem>
+        <Separator />
+        <SubmenuTrigger>
+          <MenuItem id="share" class="ui-menu-item">Share</MenuItem>
+          <Popover class="ui-popover" offset=(-4)>
+            <Menu class="ui-menu" onAction=((key) => (last = key))>
+              <MenuItem id="email" class="ui-menu-item">Email</MenuItem>
+              <MenuItem id="messages" class="ui-menu-item">Messages</MenuItem>
+            </Menu>
+          </Popover>
+        </SubmenuTrigger>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <MenuTrigger>
+    <Button class="ui-button">Sort</Button>
+    <Popover class="ui-popover" placement="bottom start">
+      <Menu class="ui-menu" selectionMode="single" selectedKeys=$bind(sort)>
+        <MenuSection>
+          <Header class="ui-listbox-header">Sort by</Header>
+          <MenuItem id="name" class="ui-menu-item">Name</MenuItem>
+          <MenuItem id="date" class="ui-menu-item">Date</MenuItem>
+          <MenuItem id="size" class="ui-menu-item">Size</MenuItem>
+        </MenuSection>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+</div>
+<p>Last action: {last}. Sorted by {sort[0]}.</p>

@@ -1,0 +1,78 @@
+<script>
+  import { $id, $isPassed, $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { nextSelection, sameKeys } from './collection.ts';
+  import type { Key, SelectionMode } from './collection.ts';
+  import { LabelContext, TextContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
+  import { TagGroupContext } from './tags.ts';
+
+  /**
+   * A group of tags, which the user can select and remove, as TagGroup of React Aria Components.
+   * It holds a Label, a TagList with Tag elements, and a Text with `slot="description"`.
+   *
+   * - `selectionMode` is `none` (the default), `single` or `multiple`. A press and Space toggle a
+   *   tag. `selectedKeys` is the list of the keys of the selected tags.
+   * - With `onRemove`, Delete and Backspace remove the tag that has focus, or the selected tags
+   *   when it is one of them, and a Button with `slot="remove"` in a tag removes it.
+   */
+  const {
+    as = 'div',
+    selectionMode = 'none',
+    disabledKeys = [],
+    disallowEmptySelection = false,
+    onRemove,
+    onSelectionChange,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    selectionMode?: SelectionMode;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    onRemove?: (keys: Key[]) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+
+  const labelId = $id();
+  const descriptionId = $id();
+  // The list names the description only while there is one.
+  const { present: hasDescription } = described(descriptionId);
+  const removable = $isPassed(onRemove);
+
+  function select(key: Key) {
+    const next = nextSelection(selectedKeys, key, {
+      mode: selectionMode,
+      behavior: 'toggle',
+      disallowEmpty: disallowEmptySelection,
+      request: { shift: false, toggle: true },
+      disabled: disabledKeys,
+    });
+    if (!sameKeys(next, selectedKeys)) {
+      selectedKeys = next;
+      onSelectionChange?.(next);
+    }
+  }
+
+  function remove(keys: Key[]) {
+    onRemove?.(keys);
+  }
+
+  $setContext(LabelContext, { id: labelId });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(TagGroupContext, {
+    selectionMode,
+    selectedKeys,
+    disabledKeys,
+    select,
+    canRemove: removable,
+    remove,
+    labelId,
+    descriptionId: hasDescription ? descriptionId : undefined,
+  });
+</script>
+
+<{as} {...rest}>{children}</>

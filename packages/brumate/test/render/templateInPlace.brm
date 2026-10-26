@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import RowList from './RowList.brm';
+
+  // A template with a destructured argument, which the list calls again with new objects.
+  let rows = $signal([
+    { id: 1, label: 'a' },
+    { id: 2, label: 'b' },
+  ]);
+</script>
+
+<button class="rename" onClick=(() => (rows = rows.map((item) => ({ ...item, label: `${item.label}!` }))))>Rename</button>
+<button class="add" onClick=(() => (rows = [...rows, { id: rows.length + 1, label: 'new' }]))>Add</button>
+<RowList rows=rows row=line />
+
+#template line({ label }: { id: number; label: string }, index: number) {
+  <span class="line" data-index=index>{label}</span>
+}

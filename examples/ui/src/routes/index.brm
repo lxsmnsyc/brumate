@@ -1,0 +1,1027 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { createForm } from 'brumate/forms';
+  import { parseSubmission } from 'brumate/server';
+  import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosureGroup from '@brumate/ui/DisclosureGroup.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import FileTrigger from '@brumate/ui/FileTrigger.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import Switch from '@brumate/ui/Switch.brm';
+  import TextArea from '@brumate/ui/TextArea.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import { Order } from '../order.ts';
+  import Breadcrumb from '@brumate/ui/Breadcrumb.brm';
+  import Breadcrumbs from '@brumate/ui/Breadcrumbs.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Keyboard from '@brumate/ui/Keyboard.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Link from '@brumate/ui/Link.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import ListBoxSection from '@brumate/ui/ListBoxSection.brm';
+  import Header from '@brumate/ui/Header.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
+  import SelectionIndicator from '@brumate/ui/SelectionIndicator.brm';
+  import Tag from '@brumate/ui/Tag.brm';
+  import TagGroup from '@brumate/ui/TagGroup.brm';
+  import TagList from '@brumate/ui/TagList.brm';
+  import GridList from '@brumate/ui/GridList.brm';
+  import GridListItem from '@brumate/ui/GridListItem.brm';
+  import ComboBox from '@brumate/ui/ComboBox.brm';
+  import NumberField from '@brumate/ui/NumberField.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+  import DateField from '@brumate/ui/DateField.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import TimeField from '@brumate/ui/TimeField.brm';
+  import DatePicker from '@brumate/ui/DatePicker.brm';
+  import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import Slider from '@brumate/ui/Slider.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderThumb from '@brumate/ui/SliderThumb.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+  import Select from '@brumate/ui/Select.brm';
+  import SelectValue from '@brumate/ui/SelectValue.brm';
+  import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
+  import Meter from '@brumate/ui/Meter.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import PreviewTrigger from '@brumate/ui/PreviewTrigger.brm';
+  import Sheet from '@brumate/ui/Sheet.brm';
+  import Toast from '@brumate/ui/Toast.brm';
+  import ToastContent from '@brumate/ui/ToastContent.brm';
+  import ToastRegion from '@brumate/ui/ToastRegion.brm';
+  import Tooltip from '@brumate/ui/Tooltip.brm';
+  import TooltipTrigger from '@brumate/ui/TooltipTrigger.brm';
+  import { toastQueue } from '@brumate/ui/toast.ts';
+  import type { QueuedToast } from '@brumate/ui/toast.ts';
+  import ProgressBar from '@brumate/ui/ProgressBar.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import Transition from '@brumate/ui/Transition.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
+  import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let presses = $signal(0);
+  let last = $signal('nothing yet');
+  let sent = $signal(0);
+  let pinned = $signal(false);
+  let query = $signal('');
+  let searched = $signal('');
+  let size = $signal<string | null>(null);
+  let toppings = $signal<string[]>([]);
+  let dark = $signal(false);
+  let align = $signal(['left']);
+  let files = $signal('No files picked.');
+  let noteShown = $signal(true);
+  let animals = $signal<Key[]>([]);
+  let menuAction = $signal<Key>('none');
+  let pet = $signal<Key | null>(null);
+  let city = $signal<Key | null>(null);
+  let quantity = $signal(1);
+  let span = $signal([20, 60]);
+  let delivery = $signal<string | null>('2026-10-15');
+  let birthday = $signal<string | null>('2026-10-15');
+  let pickup = $signal<string | null>('14:30');
+  let departure = $signal<string | null>('2026-10-15');
+  let booking = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
+  let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-14' });
+  let command = $signal<Key>('none');
+  let topics = $signal(['css', 'html', 'js', 'svg']);
+  let pickedFiles = $signal<Key[]>([]);
+  let fileOpened = $signal('none');
+  let petSent = $signal('');
+
+  async function order(form: FormData) {
+    'use server';
+    const submission = await parseSubmission(Order, form);
+    if (submission.status !== 'success') {
+      return submission.reply();
+    }
+    return submission.reply({ reset: true });
+  }
+
+  const { attrs, fields, result } = createForm(order, Order, { defaultValue: { email: '' } });
+
+  // The shop is closed on Sundays.
+  function closed(date: string) {
+    return new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
+  }
+</script>
+
+#head {
+  <title>@brumate/ui</title>
+}
+
+<h1>@brumate/ui</h1>
+<p>Every part of the package, with the styles of this page only. Tab from the top of the page to see the link that skips to the content.</p>
+
+<section aria-labelledby="visually-hidden">
+  <h2 id="visually-hidden">VisuallyHidden</h2>
+  <p>The button shows only a mark, and its name is hidden from sight.</p>
+  <button type="button" class="close">
+    <span aria-hidden="true">×</span>
+    <VisuallyHidden>Close</VisuallyHidden>
+  </button>
+</section>
+
+<section aria-labelledby="button">
+  <h2 id="button">Button</h2>
+  <p>It presses with a mouse, a touch, Enter, Space or a screen reader, and shows its state as data attributes.</p>
+  <Button
+    class="press"
+    onPress=((event) => {
+      presses++;
+      last = event.pointerType;
+    })
+  >Press me</Button>
+  <Button class="press" isDisabled>Disabled</Button>
+  <Button class="press" isPending>Saving</Button>
+  <p class="pressed" aria-live="polite">Pressed {presses} times, last with {last}.</p>
+  <form class="send" onSubmit=(prevent(() => sent++))>
+    <Button class="press" type="submit">Send</Button>
+  </form>
+  <p class="sent" aria-live="polite">Sent {sent} times.</p>
+</section>
+
+<section aria-labelledby="keyboard">
+  <h2 id="keyboard">Keyboard</h2>
+  <p>Paste with <Keyboard>⌘V</Keyboard>.</p>
+</section>
+
+<section aria-labelledby="toggle-button">
+  <h2 id="toggle-button">ToggleButton</h2>
+  <p>It stays pressed, and the page binds its state.</p>
+  <ToggleButton class="press pin" isSelected=$bind(pinned)>Pin</ToggleButton>
+  <p class="pinned">The note is {pinned ? 'pinned' : 'not pinned'}.</p>
+</section>
+
+<section aria-labelledby="link">
+  <h2 id="link">Link</h2>
+  <p>
+    <Link class="link" href="#link">This section</Link>,
+    <Link class="link" href="#main" isCurrent>the current page</Link> and
+    <Link class="link" href="#main" isDisabled>a disabled link</Link>.
+  </p>
+</section>
+
+<section aria-labelledby="group">
+  <h2 id="group">Group, Label, Text, Heading and Separator</h2>
+  <Heading level=(3)>A field of parts</Heading>
+  <Label for="amount">Amount</Label>
+  <Group class="amount" aria-label="Amount">
+    <input id="amount" class="amount-field" inputmode="numeric" aria-describedby="amount-help">
+    <Separator orientation="vertical" class="divider" />
+    <Button class="press" aria-label="Add one">+</Button>
+  </Group>
+  <Text id="amount-help" class="help">A whole number.</Text>
+  <Separator />
+</section>
+
+<section aria-labelledby="text-field">
+  <h2 id="text-field">TextField, TextArea and FieldError</h2>
+  <Form class="signup">
+    <TextField class="name-field" name="name" isRequired>
+      <Label>Name</Label>
+      <Input class="field" />
+      <Text slot="description" class="help">As it is on your card.</Text>
+      <FieldError class="error" />
+    </TextField>
+    <TextField class="bio-field" name="bio">
+      <Label>About you</Label>
+      <TextArea class="field" rows="3" />
+    </TextField>
+    <Button class="press" type="submit">Sign up</Button>
+    <Button class="press" type="reset">Start again</Button>
+  </Form>
+</section>
+
+<section aria-labelledby="create-form">
+  <h2 id="create-form">With createForm</h2>
+  <form action=order {...attrs} class="order">
+    <TextField field=(fields.email) type="email">
+      <Label>Email for the receipt</Label>
+      <Input class="field" />
+      <FieldError class="error" />
+    </TextField>
+    <Button class="press" type="submit">Order</Button>
+    #if (result?.status === 'success') {
+      <p class="ordered">Ordered.</p>
+    }
+  </form>
+</section>
+
+<section aria-labelledby="search-field">
+  <h2 id="search-field">SearchField</h2>
+  <SearchField class="search" value=$bind(query) onSubmit=((value) => (searched = value))>
+    <Label>Search the parts</Label>
+    <Input class="field" />
+    <Button class="press clear">×</Button>
+  </SearchField>
+  <p class="searched">Searched for {searched || 'nothing yet'}.</p>
+</section>
+
+<section aria-labelledby="boxes">
+  <h2 id="boxes">Checkbox, CheckboxGroup, RadioGroup and Switch</h2>
+  <Form class="pizza">
+    <CheckboxGroup class="toppings" name="toppings" value=$bind(toppings) isRequired>
+      <Label>Toppings</Label>
+      <Checkbox class="box" value="cheese"><span class="mark" aria-hidden="true"></span>Cheese</Checkbox>
+      <Checkbox class="box" value="olives"><span class="mark" aria-hidden="true"></span>Olives</Checkbox>
+      <FieldError class="error" />
+    </CheckboxGroup>
+    <RadioGroup class="sizes" name="size" value=$bind(size) orientation="horizontal">
+      <Label>Size</Label>
+      <Radio class="box" value="small"><span class="mark round" aria-hidden="true"></span>Small</Radio>
+      <Radio class="box" value="large"><span class="mark round" aria-hidden="true"></span>Large</Radio>
+    </RadioGroup>
+    <Button class="press" type="submit">Order the pizza</Button>
+  </Form>
+  <p class="pizza-value">{toppings.join(', ') || 'No toppings'}, {size ?? 'no size'}.</p>
+  <RadioGroup class="crust" name="crust" value="thin" isReadOnly orientation="horizontal">
+    <Label>Crust, set by the shop</Label>
+    <Radio class="box" value="thin"><span class="mark round" aria-hidden="true"></span>Thin</Radio>
+    <Radio class="box" value="thick"><span class="mark round" aria-hidden="true"></span>Thick</Radio>
+  </RadioGroup>
+  <Checkbox class="box sauce" isSelected isReadOnly><span class="mark" aria-hidden="true"></span>Sauce, always on</Checkbox>
+  <Switch class="box theme" isSelected=$bind(dark)><span class="track" aria-hidden="true"></span>Dark mode</Switch>
+  <p class="theme-value">Dark mode is {dark ? 'on' : 'off'}.</p>
+</section>
+
+<section aria-labelledby="toolbar">
+  <h2 id="toolbar">Toolbar and ToggleButtonGroup</h2>
+  <Toolbar class="tools" aria-label="Edit">
+    <Button class="press">Cut</Button>
+    <Button class="press">Copy</Button>
+    <Separator orientation="vertical" class="divider" />
+    <ToggleButtonGroup class="align" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection>
+      <ToggleButton id="left" class="press">Left</ToggleButton>
+      <ToggleButton id="center" class="press">Center</ToggleButton>
+    </ToggleButtonGroup>
+  </Toolbar>
+  <p class="aligned">Aligned {align[0]}.</p>
+</section>
+
+<section aria-labelledby="breadcrumbs">
+  <h2 id="breadcrumbs">Breadcrumbs</h2>
+  <nav aria-label="Trail">
+    <Breadcrumbs class="trail">
+      <Breadcrumb><Link class="link" href="#main">Home</Link></Breadcrumb>
+      <Breadcrumb><Link class="link" href="#breadcrumbs">Parts</Link></Breadcrumb>
+      <Breadcrumb isCurrent><Link class="link" href="#breadcrumbs">Breadcrumbs</Link></Breadcrumb>
+    </Breadcrumbs>
+  </nav>
+</section>
+
+<section aria-labelledby="meter">
+  <h2 id="meter">Meter and ProgressBar</h2>
+  <Meter class="bar" value=(40)><Label>Disk space</Label></Meter>
+  <ProgressBar class="bar" value=(3) maxValue=(4)><Label>Upload</Label></ProgressBar>
+</section>
+
+<section aria-labelledby="file-trigger">
+  <h2 id="file-trigger">FileTrigger</h2>
+  <FileTrigger allowsMultiple onSelect=((list) => (files = `${list?.length ?? 0} files picked.`))>
+    <Button class="press">Pick files</Button>
+  </FileTrigger>
+  <p class="files">{files}</p>
+</section>
+
+<section aria-labelledby="disclosure">
+  <h2 id="disclosure">Disclosure and Transition</h2>
+  <DisclosureGroup class="faq">
+    <Disclosure id="shipping" class="faq-item">
+      <Heading level=(3)><Button slot="trigger" class="press faq-trigger">Shipping</Button></Heading>
+      <DisclosurePanel transition class="faq-panel">Orders leave the shop in two days.</DisclosurePanel>
+    </Disclosure>
+    <Disclosure id="returns" class="faq-item">
+      <Heading level=(3)><Button slot="trigger" class="press faq-trigger">Returns</Button></Heading>
+      <DisclosurePanel class="faq-panel"><span id="return-window">Send it back within thirty days.</span></DisclosurePanel>
+    </Disclosure>
+  </DisclosureGroup>
+  <Button class="press note-toggle" onPress=(() => (noteShown = !noteShown))>Toggle the note</Button>
+  <Transition show=noteShown class="note">A note that fades out.</Transition>
+</section>
+
+<section aria-labelledby="popover">
+  <h2 id="popover">Popover and Dialog</h2>
+  <DialogTrigger>
+    <Button class="press settings-trigger">Settings</Button>
+    <Popover class="popover" placement="bottom start" transition>
+      <OverlayArrow class="arrow" />
+      <Dialog class="settings">
+        <Heading slot="title" level=(3)>Settings</Heading>
+        <TextField class="name-setting"><Label>Display name</Label><Input class="field" /></TextField>
+        <DialogTrigger>
+          <Button class="press more-trigger">More</Button>
+          <Popover class="popover more" placement="end">
+            <Dialog class="more-dialog" aria-label="More settings">
+              <Button class="press deep">A setting inside</Button>
+            </Dialog>
+          </Popover>
+        </DialogTrigger>
+        <Button slot="close" class="press done">Done</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+</section>
+
+<section aria-labelledby="modal">
+  <h2 id="modal">Modal and Sheet</h2>
+  <DialogTrigger>
+    <Button class="press delete-trigger">Delete the draft</Button>
+    <ModalOverlay class="backdrop" transition>
+      <Modal class="modal">
+        <Dialog role="alertdialog" class="confirm">
+          <Heading slot="title" level=(3)>Delete the draft?</Heading>
+          <p>It cannot come back.</p>
+          <Button slot="close" class="press cancel">Cancel</Button>
+          <Button slot="close" class="press confirm-delete">Delete</Button>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  </DialogTrigger>
+  <DialogTrigger>
+    <Button class="press menu-trigger">Menu</Button>
+    <Sheet class="sheet" transition>
+      <Dialog class="menu" aria-label="Menu">
+        <Button class="press menu-item">Home</Button>
+        <Button class="press menu-item">Settings</Button>
+        <Button slot="close" class="press menu-close">Close</Button>
+      </Dialog>
+    </Sheet>
+  </DialogTrigger>
+</section>
+
+<section aria-labelledby="listbox">
+  <h2 id="listbox">ListBox</h2>
+  <ListBox class="listbox animals" aria-label="Animals" selectionMode="multiple" selectedKeys=$bind(animals)>
+    <ListBoxSection>
+      <Header class="listbox-header">Mammals</Header>
+      #for (animal of ['Aardvark', 'Cat', 'Dog', 'Kangaroo'] by animal) {
+        <ListBoxItem id=animal class="option">{animal}</ListBoxItem>
+      }
+    </ListBoxSection>
+    <ListBoxSection>
+      <Header class="listbox-header">Birds</Header>
+      #for (animal of ['Kiwi', 'Penguin', 'Robin'] by animal) {
+        <ListBoxItem id=animal class="option">{animal}</ListBoxItem>
+      }
+    </ListBoxSection>
+  </ListBox>
+  <p class="animals-state">{animals.join(', ') || 'None'}</p>
+</section>
+
+<section aria-labelledby="menu">
+  <h2 id="menu">Menu</h2>
+  <MenuTrigger>
+    <Button class="press edit-trigger">Edit</Button>
+    <Popover class="popover" placement="bottom start">
+      <Menu class="action-menu" onAction=((key) => (menuAction = key))>
+        <MenuItem id="cut" class="option">Cut</MenuItem>
+        <MenuItem id="copy" class="option">Copy</MenuItem>
+        <MenuItem id="paste" class="option" isDisabled>Paste</MenuItem>
+        <SubmenuTrigger>
+          <MenuItem id="share" class="option share">Share</MenuItem>
+          <Popover class="popover">
+            <Menu class="action-menu share-menu" onAction=((key) => (menuAction = key))>
+              <MenuItem id="email" class="option">Email</MenuItem>
+              <MenuItem id="messages" class="option">Messages</MenuItem>
+            </Menu>
+          </Popover>
+        </SubmenuTrigger>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <p class="menu-state">{menuAction}</p>
+</section>
+
+<section aria-labelledby="select">
+  <h2 id="select">Select</h2>
+  <form
+    class="pet-form"
+    onSubmit=(prevent((event) => {
+      petSent = String(new FormData(event.currentTarget as HTMLFormElement).get('pet'));
+    }))
+  >
+    <Select class="pet-select" name="pet" isRequired selectedKey=$bind(pet)>
+      <Label>Pet</Label>
+      <Button class="press pet-trigger"><SelectValue /></Button>
+      <FieldError class="pet-error" />
+      <Popover class="popover pet-popover">
+        <ListBox class="listbox pet-list">
+          #for (name of ['Cat', 'Dog', 'Fish'] by name) {
+            <ListBoxItem id=(name.toLowerCase()) class="option">{name}</ListBoxItem>
+          }
+        </ListBox>
+      </Popover>
+    </Select>
+    <button class="press pet-send" type="submit">Send</button>
+  </form>
+  <p class="pet-state">{petSent || 'Not sent'}</p>
+</section>
+
+<section aria-labelledby="combobox">
+  <h2 id="combobox">ComboBox</h2>
+  <ComboBox class="city-box" name="city" selectedKey=$bind(city)>
+    <Label>City</Label>
+    <Input class="city-input" />
+    <Button class="press city-toggle">Show</Button>
+    <Popover class="popover city-popover">
+      <ListBox class="listbox city-list">
+        #for (name of ['Berlin', 'Bern', 'Lisbon', 'London', 'Madrid'] by name) {
+          <ListBoxItem id=(name.toLowerCase()) class="option">{name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </ComboBox>
+  <p class="city-state">{city ?? 'None'}</p>
+</section>
+
+<section aria-labelledby="autocomplete">
+  <h2 id="autocomplete">Autocomplete</h2>
+  <Autocomplete>
+    <SearchField class="command-field">
+      <Label>Command</Label>
+      <Input class="command-input" />
+    </SearchField>
+    <Menu class="command-menu" aria-label="Commands" onAction=((key) => (command = key))>
+      <MenuItem id="new" class="option">New file</MenuItem>
+      <MenuItem id="open" class="option">Open file</MenuItem>
+      <MenuItem id="save" class="option">Save</MenuItem>
+    </Menu>
+  </Autocomplete>
+  <p class="command-state">{command}</p>
+</section>
+
+<section aria-labelledby="tabs">
+  <h2 id="tabs">Tabs</h2>
+  <Tabs>
+    <TabList class="planet-tabs" aria-label="Planets">
+      <Tab id="mercury" class="planet-tab">Mercury<SelectionIndicator class="planet-bar" /></Tab>
+      <Tab id="venus" class="planet-tab">Venus<SelectionIndicator class="planet-bar" /></Tab>
+      <Tab id="earth" class="planet-tab">Earth<SelectionIndicator class="planet-bar" /></Tab>
+    </TabList>
+    <TabPanel id="mercury" class="planet-panel">The closest to the Sun.</TabPanel>
+    <TabPanel id="venus" class="planet-panel">The hottest.</TabPanel>
+    <TabPanel id="earth" class="planet-panel">Home.</TabPanel>
+  </Tabs>
+</section>
+
+<section aria-labelledby="taggroup">
+  <h2 id="taggroup">TagGroup</h2>
+  <TagGroup onRemove=((keys) => (topics = topics.filter((topic) => !keys.includes(topic))))>
+    <Label>Topics</Label>
+    <TagList class="topic-list">
+      #for (topic of topics by topic) {
+        <Tag id=topic class="topic">{topic}<Button slot="remove" class="press topic-remove">×</Button></Tag>
+      }
+    </TagList>
+  </TagGroup>
+  <p class="topic-state">{topics.join(',')}</p>
+</section>
+
+<section aria-labelledby="gridlist">
+  <h2 id="gridlist">GridList</h2>
+  <GridList class="file-grid" aria-label="Files" selectionMode="multiple" selectedKeys=$bind(pickedFiles)>
+    #for (file of ['notes', 'photos', 'music'] by file) {
+      <GridListItem id=file class="file-row" textValue=file>
+        <Checkbox slot="selection" class="file-check" aria-label=(`Select ${file}`)>{file}</Checkbox>
+        <Button class="press file-open" onPress=(() => (fileOpened = file))>Open</Button>
+      </GridListItem>
+    }
+  </GridList>
+  <p class="file-state">{pickedFiles.join(',') || 'None'} / {fileOpened}</p>
+</section>
+
+<section aria-labelledby="numberfield">
+  <h2 id="numberfield">NumberField</h2>
+  <NumberField class="quantity" name="quantity" minValue=(1) maxValue=(5) value=$bind(quantity)>
+    <Label>Quantity</Label>
+    <Group class="quantity-group">
+      <Button slot="decrement" class="press quantity-minus">-</Button>
+      <Input class="quantity-input" />
+      <Button slot="increment" class="press quantity-plus">+</Button>
+    </Group>
+  </NumberField>
+  <p class="quantity-state">{quantity}</p>
+</section>
+
+<section aria-labelledby="slider">
+  <h2 id="slider">Slider</h2>
+  <Slider class="span" step=(10) value=$bind(span)>
+    <Label>Span</Label>
+    <SliderOutput class="span-output" />
+    <SliderTrack class="span-track" style="width: 200px; height: 20px; background: #ddd">
+      <SliderThumb class="span-low" index=(0) aria-label="Start" style="top: 0; width: 20px; height: 20px; background: #333" />
+      <SliderThumb class="span-high" index=(1) aria-label="End" style="top: 0; width: 20px; height: 20px; background: #333" />
+    </SliderTrack>
+  </Slider>
+  <p class="span-state">{span.join(' ')}</p>
+</section>
+
+<section aria-labelledby="calendar">
+  <h2 id="calendar">Calendar</h2>
+  <Calendar class="delivery" aria-label="Delivery" value=$bind(delivery) minValue="2026-10-05" isDateUnavailable=closed>
+    <Button slot="previous" class="press delivery-previous">‹</Button>
+    <CalendarHeading class="delivery-heading" />
+    <Button slot="next" class="press delivery-next">›</Button>
+    <CalendarGrid class="delivery-grid" />
+  </Calendar>
+  <p class="delivery-state">{delivery ?? 'none'}</p>
+</section>
+
+<section aria-labelledby="date-field">
+  <h2 id="date-field">DateField</h2>
+  <DateField class="birthday" name="birthday" value=$bind(birthday)>
+    <Label>Birthday</Label>
+    <DateInput class="birthday-input" />
+  </DateField>
+  <p class="birthday-state">{birthday ?? 'none'}</p>
+</section>
+
+<section aria-labelledby="time-field">
+  <h2 id="time-field">TimeField</h2>
+  <TimeField class="pickup" name="pickup" value=$bind(pickup)>
+    <Label>Pickup</Label>
+    <DateInput class="pickup-input" />
+  </TimeField>
+  <p class="pickup-state">{pickup ?? 'none'}</p>
+</section>
+
+<section aria-labelledby="date-picker">
+  <h2 id="date-picker">DatePicker</h2>
+  <DatePicker class="departure" name="departure" value=$bind(departure) minValue="2026-10-05">
+    <Label>Departure</Label>
+    <Group class="departure-group">
+      <DateInput class="departure-input" />
+      <Button class="press departure-button">▾</Button>
+    </Group>
+    <Popover class="popover departure-popover">
+      <Dialog>
+        <Calendar class="departure-calendar">
+          <CalendarHeading class="departure-heading" />
+          <CalendarGrid class="departure-grid" />
+        </Calendar>
+      </Dialog>
+    </Popover>
+  </DatePicker>
+  <p class="departure-state">{departure ?? 'none'}</p>
+</section>
+
+<section aria-labelledby="date-range-picker">
+  <h2 id="date-range-picker">DateRangePicker</h2>
+  <DateRangePicker class="booking" startName="check-in" endName="check-out" value=$bind(booking)>
+    <Label>Booking</Label>
+    <Group class="booking-group">
+      <DateInput slot="start" class="booking-start" />
+      <span aria-hidden="true">–</span>
+      <DateInput slot="end" class="booking-end" />
+      <Button class="press booking-button">▾</Button>
+    </Group>
+    <Popover class="popover booking-popover">
+      <Dialog>
+        <RangeCalendar class="booking-calendar">
+          <CalendarGrid class="booking-grid" />
+        </RangeCalendar>
+      </Dialog>
+    </Popover>
+  </DateRangePicker>
+  <p class="booking-state">{booking ? `${booking.start} ${booking.end}` : 'none'}</p>
+</section>
+
+<section aria-labelledby="range-calendar">
+  <h2 id="range-calendar">RangeCalendar</h2>
+  <RangeCalendar class="stay" aria-label="Stay" value=$bind(stay) isDateUnavailable=closed>
+    <CalendarHeading class="stay-heading" />
+    <CalendarGrid class="stay-grid" />
+  </RangeCalendar>
+  <p class="stay-state">{stay ? `${stay.start} ${stay.end}` : 'none'}</p>
+</section>
+
+<section aria-labelledby="tooltip">
+  <h2 id="tooltip">Tooltip and Toast</h2>
+  <TooltipTrigger>
+    <Button class="press tip-trigger">Copy</Button>
+    <Tooltip class="tip" offset=(6)>Copy the link</Tooltip>
+  </TooltipTrigger>
+  <TooltipTrigger>
+    <Button class="press tip-other">Paste</Button>
+    <Tooltip class="tip" offset=(6)>Paste the link</Tooltip>
+  </TooltipTrigger>
+  <p>
+    Written by
+    <PreviewTrigger>
+      <Link class="link author" href="#author">Ada</Link>
+      <Popover class="popover author-card" placement="bottom start">
+        <p>Ada writes about engines.</p>
+        <Button class="press follow">Follow</Button>
+      </Popover>
+    </PreviewTrigger>
+    and reviewed by <a href="#reviewer" class="link reviewer">Grace</a>.
+  </p>
+  <Button class="press toast-trigger" onPress=(() => toastQueue<{ title: string }>().add({ title: 'Link copied' }, { timeout: 5000 }))>Notify</Button>
+</section>
+
+<ToastRegion class="toasts" toast=notice transition />
+
+#template notice(toast: QueuedToast<{ title: string }>) {
+  <Toast {toast} class="toast">
+    <ToastContent><Text slot="title">{toast.content.title}</Text></ToastContent>
+    <Button slot="close" class="press toast-close">×</Button>
+  </Toast>
+}
+
+<style>
+  /* The page's own look for the parts, from their data attributes. */
+  :global(.press) {
+    padding: 0.5rem 1rem;
+    border: 1px solid #555;
+    border-radius: 0.5rem;
+    background: #fff;
+    color: #111;
+    font: inherit;
+  }
+
+  :global(.press[data-hovered]) {
+    background: #f1f1f1;
+  }
+
+  :global(.press[data-pressed]) {
+    background: #ddd;
+  }
+
+  :global(.press[data-focus-visible]) {
+    outline: 3px solid #2457d6;
+    outline-offset: 2px;
+  }
+
+  :global(.press[data-selected]) {
+    background: #2457d6;
+    color: #fff;
+  }
+
+  :global(.link[data-current]) {
+    font-weight: 700;
+  }
+
+  :global(.link[data-disabled]) {
+    color: #595959;
+  }
+
+  :global(.amount) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem;
+    border: 1px solid #555;
+    border-radius: 0.5rem;
+  }
+
+  :global(.amount[data-focus-within]) {
+    outline: 3px solid #2457d6;
+    outline-offset: 2px;
+  }
+
+  :global(.divider) {
+    align-self: stretch;
+    width: 1px;
+    background: #555;
+  }
+
+  :global(.field) {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #555;
+    border-radius: 0.5rem;
+    font: inherit;
+  }
+
+  :global(.field[data-invalid]) {
+    border-color: #b3261e;
+  }
+
+  :global(.error) {
+    display: block;
+    color: #b3261e;
+  }
+
+  :global(.search[data-empty] .clear) {
+    visibility: hidden;
+  }
+
+  :global(.box) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-inline-end: 1rem;
+  }
+
+  :global(.mark) {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #555;
+    border-radius: 0.25rem;
+  }
+
+  :global(.mark.round) {
+    border-radius: 50%;
+  }
+
+  :global(.box[data-selected] .mark) {
+    background: #2457d6;
+    border-color: #2457d6;
+  }
+
+  :global(.box[data-focus-visible] .mark),
+  :global(.box[data-focus-visible] .track) {
+    outline: 3px solid #2457d6;
+    outline-offset: 2px;
+  }
+
+  :global(.track) {
+    width: 2rem;
+    height: 1rem;
+    border: 2px solid #555;
+    border-radius: 1rem;
+  }
+
+  :global(.theme[data-selected] .track) {
+    background: #2457d6;
+  }
+
+  :global(.tools),
+  :global(.align) {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  :global(.trail) {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  :global(.trail li + li)::before {
+    content: '/';
+    margin-inline-end: 0.5rem;
+  }
+
+  :global(.bar) {
+    display: grid;
+    gap: 0.25rem;
+    max-width: 20rem;
+    margin-block: 0.5rem;
+  }
+
+  :global(.bar)::after {
+    content: '';
+    height: 0.5rem;
+    border: 1px solid #555;
+    background: linear-gradient(to right, #2457d6 var(--percentage), transparent 0);
+  }
+
+  :global(.popover) {
+    padding: 1rem;
+    border: 1px solid #555;
+    border-radius: 0.75rem;
+    background: #fff;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 15%);
+    transition: opacity 0.2s;
+  }
+
+  :global(.popover[data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.settings) {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  :global(.settings h3) {
+    margin: 0;
+  }
+
+  :global(.listbox) {
+    display: grid;
+    max-width: 16rem;
+    max-height: 12rem;
+    overflow: auto;
+    padding: 0.25rem;
+    border: 1px solid #555;
+    border-radius: 0.5rem;
+  }
+
+  :global(.listbox:focus-visible) {
+    outline: 3px solid #2457d6;
+  }
+
+  :global(.listbox-header) {
+    padding: 0.5rem 0.5rem 0.25rem;
+    color: #595959;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  :global(.option) {
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.25rem;
+    outline: none;
+  }
+
+  :global(.planet-tab) {
+    position: relative;
+  }
+
+  :global(.planet-bar) {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: #333;
+    transition-duration: 0.2s;
+  }
+
+  :global(.action-menu),
+  :global(.command-menu) {
+    display: grid;
+    min-width: 10rem;
+    padding: 0.25rem;
+    border: 1px solid #ccc;
+    background: #fff;
+  }
+
+  :global(.action-menu .option[data-focused]),
+  :global(.command-menu .option[data-focused]) {
+    background: #eee;
+  }
+
+  :global(.option[data-hovered]) {
+    background: #f1f1f1;
+  }
+
+  :global(.option[data-focus-visible]) {
+    outline: 2px solid #2457d6;
+    outline-offset: -2px;
+  }
+
+  :global(.option[data-selected]) {
+    background: #2457d6;
+    color: #fff;
+  }
+
+  :global(.tip) {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    background: #111;
+    color: #fff;
+    font-size: 0.875rem;
+  }
+
+  :global(.toasts) {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  :global(.toast) {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background: #111;
+    color: #fff;
+    transition: opacity 0.2s, translate 0.2s;
+  }
+
+  :global(.toast[data-closed]) {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+
+  :global([data-modal-overlay]) {
+    display: grid;
+    place-items: center;
+    background: rgb(0 0 0 / 40%);
+    transition: opacity 0.15s;
+  }
+
+  :global([data-modal-overlay][data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.modal) {
+    max-width: 24rem;
+    max-height: calc(var(--visual-viewport-height) * 0.9);
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    background: #fff;
+    transition: scale 0.15s;
+  }
+
+  :global([data-closed] > .modal) {
+    scale: 0.96;
+  }
+
+  :global(.confirm),
+  :global(.menu) {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  :global(.sheet) {
+    position: fixed;
+    inset-block: 0;
+    width: min(18rem, 80vw);
+    padding: 1.25rem;
+    background: #fff;
+    transition: translate 0.2s;
+  }
+
+  :global(.sheet[data-side='left']) {
+    left: 0;
+  }
+
+  :global(.sheet[data-side='right']) {
+    right: 0;
+  }
+
+  :global([data-closed] > .sheet[data-side='left']) {
+    translate: -100% 0;
+  }
+
+  :global([data-closed] > .sheet[data-side='right']) {
+    translate: 100% 0;
+  }
+
+  :global(.arrow) {
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    background: #fff;
+    border-top: 1px solid #555;
+    border-left: 1px solid #555;
+    rotate: 45deg;
+  }
+
+  :global(.arrow[data-placement='bottom']) {
+    top: -7px;
+  }
+
+  :global(.note) {
+    transition: opacity 0.3s;
+  }
+
+  :global(.faq-panel) {
+    height: var(--disclosure-panel-height, auto);
+    overflow: clip;
+    transition: height 0.3s;
+  }
+
+  :global(.note[data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.help) {
+    display: block;
+    color: #595959;
+  }
+
+  :global(.press[data-disabled]),
+  :global(.press[data-pending]) {
+    color: #595959;
+  }
+</style>

@@ -12,6 +12,7 @@
     "check:samples": "node scripts/check-samples.ts"
   },
   "dependencies": {
+    "@brumate/ui": "workspace:*",
     "@oxc-parser/binding-wasm32-wasi": "0.154.0",
     "@twinkleplop/core": "0.3.1",
     "@twinkleplop/css": "0.1.7",

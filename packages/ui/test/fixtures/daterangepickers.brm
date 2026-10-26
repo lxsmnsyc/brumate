@@ -1,0 +1,55 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import CalendarGrid from '../../src/CalendarGrid.brm';
+  import DateInput from '../../src/DateInput.brm';
+  import DateRangePicker from '../../src/DateRangePicker.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import Group from '../../src/Group.brm';
+  import Label from '../../src/Label.brm';
+  import Popover from '../../src/Popover.brm';
+  import RangeCalendar from '../../src/RangeCalendar.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
+  let trip = $signal<{ start: string; end: string } | null>({ start: '2026-11-02', end: '2026-11-04' });
+  let need = $signal<{ start: string; end: string } | null>(null);
+</script>
+
+<main>
+  <DateRangePicker class="stay" startName="from" endName="to" value=$bind(stay)>
+    <Label class="stay-label">Stay</Label>
+    <Group class="stay-group">
+      <DateInput slot="start" class="stay-start" />
+      <span aria-hidden="true">–</span>
+      <DateInput slot="end" class="stay-end" />
+      <Button class="stay-button">▼</Button>
+    </Group>
+    <FieldError class="stay-error">The end is before the start.</FieldError>
+    <Popover class="stay-popover">
+      <Dialog>
+        <RangeCalendar class="stay-calendar">
+          <CalendarGrid class="stay-grid" />
+        </RangeCalendar>
+      </Dialog>
+    </Popover>
+  </DateRangePicker>
+  <form class="form" onSubmit=((event) => event.preventDefault())>
+    <DateRangePicker class="trip" startName="tripFrom" endName="tripTo" value=$bind(trip)>
+      <Label>Trip</Label>
+      <Group>
+        <DateInput slot="start" class="trip-start" />
+        <DateInput slot="end" class="trip-end" />
+      </Group>
+    </DateRangePicker>
+    <DateRangePicker class="need" startName="needFrom" endName="needTo" value=$bind(need) isRequired>
+      <Label>Need</Label>
+      <Group>
+        <DateInput slot="start" />
+        <DateInput slot="end" />
+      </Group>
+      <FieldError class="need-error" />
+    </DateRangePicker>
+  </form>
+  <p class="state">{JSON.stringify([stay, trip, need])}</p>
+</main>

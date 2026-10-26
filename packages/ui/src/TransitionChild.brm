@@ -1,0 +1,13 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import Transition from './Transition.brm';
+
+  /**
+   * An element that moves with the Transition around it, as TransitionChild of Terracotta. It
+   * enters once its parent has entered, or with it under `appear`, and its parent leaves once it
+   * has left. It takes the props of Transition, except `show`.
+   */
+  const { children, ...rest } = $props<{ children?: unknown; [prop: string]: unknown }>();
+</script>
+
+<Transition {...rest}>{children}</Transition>

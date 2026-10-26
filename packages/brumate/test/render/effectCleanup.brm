@@ -1,0 +1,18 @@
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+
+  // An effect that reads `a`, with a cleanup that reads `b`.
+  let a = $signal(0);
+  let b = $signal(0);
+
+  $effect(() => {
+    (globalThis as { cleanupLog?: string[] }).cleanupLog?.push(`run ${a}`);
+    return () => {
+      (globalThis as { cleanupLog?: string[] }).cleanupLog?.push(`clean ${b}`);
+    };
+  });
+</script>
+
+<button class="a" onClick=(() => a++)>A</button>
+<button class="b" onClick=(() => b++)>B</button>
+<p class="b-value">{b}</p>

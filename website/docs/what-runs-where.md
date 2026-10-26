@@ -6,8 +6,8 @@ A component runs once, on the server. The browser gets the HTML and the values t
 
 - The server runs the script of each component once, and renders the page with the values it computed.
 - The page arrives as HTML, with the values that browser code needs written into it.
-- The browser loads a small loader and nothing else. No component runs again in the browser to rebuild what the server rendered.
-- When the user does something, such as a click, the loader loads the code for that event and runs it with the values in the page.
+- The browser loads a small loader, which loads the core and the client code of the components on the page. No component runs again in the browser to rebuild what the server rendered.
+- When the user does something, such as a click, the core runs the code for that event with the values in the page.
 
 So the script of a component is server code. A `console.log` at the top of a script prints in the terminal of the server, not in the browser.
 
@@ -62,7 +62,7 @@ Open the Compiled tab of the sample: the browser code updates `label`, and has n
 
 A signal that no browser code writes keeps its server value. The page shows it as HTML, and the browser never gets it.
 
-Code also loads in small pieces. Each handler loads when its event first fires, or a little earlier when the pointer moves over its element. See [Client modules](./client-modules.md) for how the code is split.
+The code of the page loads when it starts, in one bundle for each route and layout. See [Client modules](./client-modules.md) for how the code is split.
 
 ## Values that browser code reads
 

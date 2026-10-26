@@ -424,6 +424,21 @@ export class Rewriter {
           }
           if (
             node.callee.type === 'Identifier' &&
+            node.callee.name === '$isBound' &&
+            !references.has(node.callee.start)
+          ) {
+            const prop = node.arguments[0];
+            const declaration = prop && references.get(prop.start)?.declaration;
+            const slot = declaration ? slotIndex(this.plan, declaration) : -1;
+            patch.replace(
+              node.start,
+              node.end,
+              declaration && slot !== -1 ? `$$b.isBound(${path(declaration)}, ${slot})` : 'false',
+            );
+            return;
+          }
+          if (
+            node.callee.type === 'Identifier' &&
             node.callee.name === '$isPending' &&
             !references.has(node.callee.start)
           ) {

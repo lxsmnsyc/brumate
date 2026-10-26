@@ -1,0 +1,62 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Disclosure from '../../src/Disclosure.brm';
+  import DisclosureGroup from '../../src/DisclosureGroup.brm';
+  import DisclosurePanel from '../../src/DisclosurePanel.brm';
+  import Heading from '../../src/Heading.brm';
+  import TransitionChild from '../../src/TransitionChild.brm';
+  import { logChange } from './log.ts';
+
+  let open = $signal(false);
+  let keys = $signal(['shipping']);
+</script>
+
+<Disclosure class="own" isExpanded=$bind(open)>
+  <Heading><Button slot="trigger" class="own-trigger">Details</Button></Heading>
+  <DisclosurePanel class="own-panel">
+    <p>Made of wool.</p>
+    <Button class="inner">Inside</Button>
+  </DisclosurePanel>
+</Disclosure>
+<p class="open">{String(open)}</p>
+<DisclosureGroup class="faq" expandedKeys=$bind(keys)>
+  <Disclosure id="shipping" class="shipping">
+    <Button slot="trigger" class="shipping-trigger">Shipping</Button>
+    <DisclosurePanel class="shipping-panel">Two days.</DisclosurePanel>
+  </Disclosure>
+  <Disclosure id="returns" class="returns">
+    <Button slot="trigger" class="returns-trigger">Returns</Button>
+    <DisclosurePanel class="returns-panel">Thirty days.</DisclosurePanel>
+  </Disclosure>
+</DisclosureGroup>
+<p class="keys">{keys.join(',')}</p>
+
+<Disclosure class="moving">
+  <Button slot="trigger" class="moving-trigger">Moving</Button>
+  <DisclosurePanel transition class="moving-panel">
+    <TransitionChild class="row" beforeEnter=(() => logChange('row-enter', true))>Row</TransitionChild>
+  </DisclosurePanel>
+</Disclosure>
+<Disclosure class="removed">
+  <Button slot="trigger" class="removed-trigger">Removed</Button>
+  <DisclosurePanel unmount=(true) class="removed-panel">Gone when closed</DisclosurePanel>
+</Disclosure>
+<Disclosure class="kept">
+  <Button slot="trigger" class="kept-trigger">Kept</Button>
+  <DisclosurePanel unmount="offscreen" class="kept-panel">Kept when closed</DisclosurePanel>
+</Disclosure>
+<DisclosureGroup class="anon">
+  <Disclosure class="first">
+    <Button slot="trigger" class="first-trigger">First</Button>
+    <DisclosurePanel class="first-panel">One.</DisclosurePanel>
+  </Disclosure>
+  <Disclosure class="second">
+    <Button slot="trigger" class="second-trigger">Second</Button>
+    <DisclosurePanel class="second-panel">Two.</DisclosurePanel>
+  </Disclosure>
+</DisclosureGroup>
+<Disclosure class="locked" isDisabled>
+  <Button slot="trigger" class="locked-trigger">Locked</Button>
+  <DisclosurePanel class="locked-panel">Secret.</DisclosurePanel>
+</Disclosure>

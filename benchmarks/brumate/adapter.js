@@ -7,7 +7,12 @@ export const label = 'brumate';
 
 async function entry(root) {
   const manifest = JSON.parse(await readFile(`${root}/dist/client/.vite/manifest.json`, 'utf8'));
-  return `<script type="module" async src="/${manifest['src/client.ts'].file}"></script>`;
+  // The links that a page of `handleRoute` gets from the build: the loader, the core and the
+  // bundle of the page's root component. Each app here has one root.
+  const hints = JSON.parse(await readFile(`${root}/dist/client/.brumate/hints.json`, 'utf8'));
+  const urls = [...new Set([...hints.all, ...Object.values(hints.bundles).flat()])];
+  const links = urls.map((url) => `<link rel="modulepreload" href="${url}">`).join('');
+  return `${links}<script type="module" async src="/${manifest['src/client.ts'].file}"></script>`;
 }
 
 export async function load() {
@@ -19,18 +24,14 @@ export async function load() {
   };
 }
 
-// The loader skips its idle preload when the browser asks to save data, the same check as the
-// plugin's `preload: false`. Setting it in the page turns the preload off without a second build.
-const SAVE_DATA =
-  "<script>Object.defineProperty(navigator, 'connection', { value: { saveData: true } });</script>";
-
 export async function loadDashboard() {
   const server = await import(`${dir}dashboard/dist/server/server.js`);
   const scripts = await entry(`${dir}dashboard`);
   return {
     staticDir: `${dir}dashboard/dist/client`,
-    preloadOption: true,
-    render: ({ preload = true } = {}) => server.page(preload ? scripts : SAVE_DATA + scripts),
+    // The code of the page loads when it starts. There is no preload to turn off.
+    preloadOption: false,
+    render: () => server.page(scripts),
   };
 }
 

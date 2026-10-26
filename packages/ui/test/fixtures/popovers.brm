@@ -1,0 +1,81 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import Heading from '../../src/Heading.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import OverlayArrow from '../../src/OverlayArrow.brm';
+  import Popover from '../../src/Popover.brm';
+  import SearchField from '../../src/SearchField.brm';
+
+  let open = $signal(false);
+  let present = $signal(true);
+  let shortcut = $signal(false);
+</script>
+
+<main class="page">
+  <DialogTrigger>
+    <Button class="find-trigger">Find</Button>
+    <Popover class="find-popover">
+      <Dialog class="find-dialog" aria-label="Find">
+        <SearchField class="find">
+          <Label>Find</Label>
+          <Input class="find-input" />
+        </SearchField>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <DialogTrigger>
+    <Button class="loose-trigger">Loose</Button>
+    <Popover class="loose-popover" isNonModal>
+      <Dialog class="loose-dialog" aria-label="Loose">
+        <Heading slot="title">Ignored</Heading>
+        <Button class="loose-button">Inside</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <button class="elsewhere" type="button">Elsewhere</button>
+  <button class="outside" type="button">Outside</button>
+  <DialogTrigger isOpen=$bind(open)>
+    <Button class="trigger">Settings</Button>
+    <Popover class="popover" placement="bottom start">
+      <OverlayArrow class="arrow" />
+      <Dialog class="dialog">
+        <Heading slot="title">Settings</Heading>
+        <input class="name" aria-label="Name">
+        <DialogTrigger>
+          <Button class="inner-trigger">More</Button>
+          <Popover class="inner-popover">
+            <Dialog class="inner-dialog" aria-label="More settings">
+              <Button class="inner-button">Deep</Button>
+            </Dialog>
+          </Popover>
+        </DialogTrigger>
+        <Button slot="close" class="close">Done</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <DialogTrigger>
+    <Button class="fade-trigger">Fade</Button>
+    <Popover transition class="fade" isNonModal>
+      <Dialog class="fade-dialog" aria-label="Faded">Faded</Dialog>
+    </Popover>
+  </DialogTrigger>
+  <button class="remove" type="button" onClick=(() => (present = false))>Remove</button>
+  #if (present) {
+    <DialogTrigger>
+      <Button class="removable-trigger">Removable</Button>
+      <Popover class="removable">
+        <Dialog class="removable-dialog" aria-label="Removable">Removable</Dialog>
+      </Popover>
+    </DialogTrigger>
+  }
+  <p class="text">Some text to select.</p>
+  <button class="shortcut" type="button" onClick=(() => (shortcut = true))>Open from a shortcut</button>
+  <Popover class="shortcut-popover" isOpen=$bind(shortcut)>
+    <Dialog class="shortcut-dialog" aria-label="From a shortcut">From a shortcut</Dialog>
+  </Popover>
+  <p class="state">{String(open)}</p>
+</main>

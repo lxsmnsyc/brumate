@@ -1,0 +1,161 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { LinkContext } from './contexts.ts';
+  import type { HoverEvent, PressEvent } from './events.ts';
+  import { interact } from './interact.brm.ts';
+  import { contextAttributes, slotProps } from './slots.ts';
+
+  /**
+   * A link, as Link of React Aria Components. With `href` it is an <a>, and without it an element
+   * with role="link". It presses as a Button does, and the browser follows the link. Its state
+   * is in `data-current`, `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`
+   * and `data-disabled`.
+   *
+   * A disabled link is a <span> with no `href`, so the browser does not follow it, and it leaves
+   * the order of Tab, as in React Aria, whose useLink gives it no tabindex.
+   */
+  const {
+    as,
+    href,
+    slot,
+    isDisabled,
+    isCurrent,
+    onPress,
+    onPressStart,
+    onPressEnd,
+    onPressUp,
+    onPressChange,
+    onHoverStart,
+    onHoverEnd,
+    onHoverChange,
+    onFocusChange,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    href?: string;
+    slot?: string | null;
+    isDisabled?: boolean;
+    /** The link is to the current page, as in Breadcrumbs. */
+    isCurrent?: boolean;
+    onPress?: (event: PressEvent) => void;
+    onPressStart?: (event: PressEvent) => void;
+    onPressEnd?: (event: PressEvent) => void;
+    onPressUp?: (event: PressEvent) => void;
+    onPressChange?: (pressed: boolean) => void;
+    onHoverStart?: (event: HoverEvent) => void;
+    onHoverEnd?: (event: HoverEvent) => void;
+    onHoverChange?: (hovered: boolean) => void;
+    onFocusChange?: (focused: boolean) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const context = $getContext(LinkContext);
+  const attributes = $memo(contextAttributes(slotProps(context, slot)));
+  const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
+  const current = $memo(Boolean(isCurrent ?? slotProps(context, slot).isCurrent));
+  const linked = $memo(href !== undefined && !disabled);
+  const element = $memo(as ?? (linked ? 'a' : 'span'));
+  const native = $memo(element === 'a' && linked);
+
+  function given() {
+    return slotProps(context, slot);
+  }
+  // The handlers of the context run first, then the link's own, as Button's do.
+  function pressed(event: PressEvent) {
+    given().onPress?.(event);
+    onPress?.(event);
+  }
+  function pressStarted(event: PressEvent) {
+    given().onPressStart?.(event);
+    onPressStart?.(event);
+  }
+  function pressEnded(event: PressEvent) {
+    given().onPressEnd?.(event);
+    onPressEnd?.(event);
+  }
+  function pressUp(event: PressEvent) {
+    given().onPressUp?.(event);
+    onPressUp?.(event);
+  }
+  function pressChanged(value: boolean) {
+    given().onPressChange?.(value);
+    onPressChange?.(value);
+  }
+  function hoverStarted(event: HoverEvent) {
+    given().onHoverStart?.(event);
+    onHoverStart?.(event);
+  }
+  function hoverEnded(event: HoverEvent) {
+    given().onHoverEnd?.(event);
+    onHoverEnd?.(event);
+  }
+  function hoverChanged(value: boolean) {
+    given().onHoverChange?.(value);
+    onHoverChange?.(value);
+  }
+  function focusChanged(value: boolean) {
+    given().onFocusChange?.(value);
+    onFocusChange?.(value);
+  }
+
+  const {
+    pressed: isPressed,
+    hovered,
+    focused,
+    focusVisible,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onLostPointerCapture,
+    onPointerEnter,
+    onPointerLeave,
+    onKeyDown,
+    onKeyUp,
+    onClick,
+    onFocus,
+    onBlur,
+  } = interact(
+    disabled,
+    disabled,
+    pressed,
+    pressStarted,
+    pressEnded,
+    pressUp,
+    pressChanged,
+    hoverStarted,
+    hoverEnded,
+    hoverChanged,
+    focusChanged,
+  );
+</script>
+
+<{element}
+  href=(linked ? href : undefined)
+  role=(native ? undefined : 'link')
+  tabindex=(native || disabled ? undefined : 0)
+  aria-disabled=(disabled ? 'true' : undefined)
+  aria-current=(current ? 'page' : undefined)
+  data-current=(current || undefined)
+  data-pressed=(isPressed || undefined)
+  data-hovered=(hovered || undefined)
+  data-focused=(focused || undefined)
+  data-focus-visible=(focusVisible || undefined)
+  data-disabled=(disabled || undefined)
+  {onPointerDown}
+  {onPointerMove}
+  {onPointerUp}
+  {onPointerCancel}
+  {onLostPointerCapture}
+  {onPointerEnter}
+  {onPointerLeave}
+  {onKeyDown}
+  {onKeyUp}
+  {onClick}
+  {onFocus}
+  {onBlur}
+  {...attributes}
+  {...rest}
+>{children}</>

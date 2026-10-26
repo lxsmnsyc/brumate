@@ -25,19 +25,12 @@ export default async function Themes($$props: Record<string, never>, $$ctx: $$b.
 Themes.brumateId = "Themes_945372";
 
 # Client entry
+export * from "./themes.brm?brumate-client&part=h3";
+export * from "./themes.brm?brumate-client&part=h4";
+export * from "./themes.brm?brumate-client&part=update";
 export const id = "Themes_945372";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"]], 1: [[1, "b5"]] } };
-const update = () => import("./themes.brm?brumate-client&part=update");
-const parts = {
-  "h3": () => (update().catch(() => {}), import("./themes.brm?brumate-client&part=h3")),
-  "h4": () => (update().catch(() => {}), import("./themes.brm?brumate-client&part=h4")),
-  "update": update,
-};
-/** Imports a part of this module. */
-export function load(part) {
-  return parts[part]();
-}
 
 # Client part: h3
 import * as $$b from 'brumate/client';
@@ -57,34 +50,39 @@ import { Theme } from "./theme";
 export function u2($$s) {
   $$b.updateContext($$s, Theme, $$b.get($$s, 0));
 }
+const $$k0 = [r2];
+const $$k1 = [2];
 export function b5($$s) {
-  $$b.branch($$s, 2, ($$b.get($$s, 1)) ? 0 : -1, [r2], [2]);
+  $$b.branch($$s, 2, ($$b.get($$s, 1)) ? 0 : -1, $$k0, $$k1);
 }
+const $$k2 = $$b.template("<div class=\"b\"><!--x0--></div>", 1);
 export function r2($$p) {
   let $$html = '';
-  $$html += "<div class=\"b\">" + $$b.component(Themed, {  }, undefined, $$p) + "</div>";
-  return $$html;
+  const $$e = $$b.clone($$k2), $$f = $$e[1];
+  $$b.place($$e[0], $$b.componentNodes(Themed, {  }, undefined, $$p));
+  return $$f;
 }
 
 # Render module
 import * as $$b from 'brumate/client';
 import Themed from "./Themed.brm?brumate-render";
 import { Theme } from "./theme";
+import { r2 as $$r2 } from "./themes.brm?brumate-client";
+const $$t0 = $$b.template("<button b-x=\"0\" class=\"toggle\" b-on=\"click=Themes_945372#h3\">Toggle</button><button b-x=\"1\" class=\"show\" b-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\"><!--x2--></div><!--x3--><!--/b-->", 4);
 
-export default function Themes($$props: Record<string, never>): string {
+export default function Themes($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Themes_945372");
   let theme = ('dark');
   let show = (false);
   $$b.provideValue(Theme, theme, $$s1);
-  $$html += "<button class=\"toggle\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Themes_945372#h3\">Toggle</button><button class=\"show\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Themes_945372#h4\">Show</button><div class=\"a\">" + $$b.component(Themed, {  }, undefined, $$s1) + "</div>";
-  if (show) {
-    $$html += "<!--b" + $$s1 + ":2:0--><div class=\"b\">" + $$b.component(Themed, {  }, undefined, $$s1) + "</div><!--/b-->";
-  } else {
-    $$html += "<!--b" + $$s1 + ":2:-1--><!--/b-->";
-  }
+  const $$e = $$b.clone($$t0), $$f = $$e[4];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.keep($$s1, 1, $$e[1]);
+  $$b.place($$e[2], $$b.componentNodes(Themed, {  }, undefined, $$s1));
   $$b.setSlots($$s1, [theme, show]);
-  return $$html;
+  $$b.fillBranch($$e[3], $$s1, 2, (show) ? 0 : -1, [$$r2]);
+  return $$f;
 }
 
 # HTML

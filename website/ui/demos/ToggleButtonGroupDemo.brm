@@ -1,0 +1,14 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+
+  let align = $signal(['left']);
+</script>
+
+<ToggleButtonGroup class="ui-group" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection>
+  <ToggleButton id="left" class="ui-button">Left</ToggleButton>
+  <ToggleButton id="center" class="ui-button">Center</ToggleButton>
+  <ToggleButton id="right" class="ui-button">Right</ToggleButton>
+</ToggleButtonGroup>
+<p>Aligned {align[0]}.</p>

@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  // A ref on a dynamic tag, which the server renders, and one that the browser renders.
+  let tag = $signal('section');
+  let first = $signal<HTMLElement>();
+  let second = $signal<HTMLElement>();
+  let shown = $signal(false);
+  let seen = $signal('');
+</script>
+
+<{tag} ref=first class="first">First</>
+<button class="show" onClick=(() => (shown = true))>Show</button>
+<button class="read" onClick=(() => (seen = `${first?.tagName}:${second?.tagName ?? 'none'}`))>Read</button>
+#if (shown) {
+  <{'article'} ref=second class="second">Second</>
+}
+<p class="seen">{seen}</p>

@@ -1,0 +1,37 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { SelectValueContext } from './collection.ts';
+  import type { Key } from './collection.ts';
+
+  /**
+   * The value of a Select in its Button, as SelectValue of React Aria Components. It shows the
+   * text of the selected item, or the placeholder, with `data-placeholder`.
+   *
+   * The server does not know the text of a key that the Select starts with, so the HTML shows the
+   * key until the code loads. `render`, a `#template`, names the selection in the HTML too. It
+   * gets `selectedKey`, `selectedText` and `isPlaceholder`.
+   */
+  const { render, ...rest } = $props<{
+    render?: (state: {
+      selectedKey: Key | null;
+      selectedText: string | undefined;
+      isPlaceholder: boolean;
+    }) => unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const select = $getContext(SelectValueContext);
+  const selectedKey = $memo(select?.selectedKey ?? null);
+  const isPlaceholder = $memo(selectedKey === null);
+  const selectedText = $memo(select?.selectedText);
+</script>
+
+<span id=(select?.id) data-placeholder=(isPlaceholder || undefined) {...rest}>
+  #if (render) {
+    {render({ selectedKey, selectedText, isPlaceholder })}
+  } #else if (isPlaceholder) {
+    {select?.placeholder}
+  } #else {
+    {selectedText ?? String(selectedKey)}
+  }
+</span>

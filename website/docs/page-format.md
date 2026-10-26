@@ -2,7 +2,7 @@
 
 The server writes markers into the HTML and the state into scripts. The core reads both to resume the page. This page describes that contract, for contributors and for tools that read brumate pages.
 
-The attributes that brumate writes start with `b-`, like the `s-<hash>` attribute of scoped styles. The compiler rejects an element attribute that starts with `b-`. `data-prefetch` keeps its name, because you can also write it on a link.
+The attributes that brumate writes start with `b-`, like the `s-<hash>` attribute of scoped styles. The compiler rejects an element attribute that starts with `b-`.
 
 ## Scope IDs
 
@@ -35,7 +35,6 @@ An anchor is a node that client code must find. Each anchor has an index within 
 - `b-b` is the anchor.
 - An element whose only client code is its handlers has no `b-b` when an element around it in the same scope has one. The core finds the scope of its handlers with `closest('[b-b]')`. The compiler does this only when that element is one the browser keeps whole, so not a `<p>`, a heading, a table section or a `<select>`.
 - `b-on` lists the event handlers, separated by spaces. Each entry is `<event>[:<modifier>…]=<reference>`. A handler that a spread passed on adds `@<scope>`, the scope it runs in, and one that `$handler` made adds `@<arguments>`, its arguments as JSON encoded with `encodeURIComponent`, such as `click:prevent=Page_x1#h9@3@%5B1%5D`.
-- `data-prefetch` is the `prefetch` strategy, when it is set.
 - `b-v="<scope>"` marks a top-level element of a component whose style variables can change.
 
 A reference is `<component ID>#<export name>`. The component ID is the component name and a hash of its path relative to the root. Handlers export as `h<n>`, and `$client` callbacks as `c<n>`.

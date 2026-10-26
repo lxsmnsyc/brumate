@@ -1,0 +1,182 @@
+<script>
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $untrack } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { ButtonContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
+  import type { ButtonContextProps, LinkContextProps } from './contexts.ts';
+  import type { HoverEvent, PressEvent } from './events.ts';
+  import { isFocusVisible } from './interactions.ts';
+  import { cancelLongPress, dismissed, followPreview, startLongPress } from './preview.ts';
+  import type { ContextValue } from './slots.ts';
+  import { previews } from './tooltip.ts';
+
+  /**
+   * Shows a Popover for the Link or the Button inside it, on hover, on focus from the keyboard,
+   * or on a long press, as PreviewTrigger of React Aria Components. Unlike a Tooltip, the
+   * preview can hold links and buttons.
+   *
+   * - Hover and focus show it after `delay`, 600 milliseconds by default. Once a preview has
+   *   shown, the others show at once, until none has shown for half a second.
+   * - A touch that holds the trigger for half a second shows it, and its release presses nothing.
+   * - It is not modal, and focus stays where it is. Tab on the trigger moves into it, and Tab past
+   *   its end moves on to the element after the trigger.
+   * - Leaving the trigger and the preview hides it after `closeDelay`, 200 milliseconds. Focus
+   *   that leaves both, a press of the trigger, and Escape hide it at once. Escape gives focus
+   *   back to the trigger.
+   */
+  const {
+    delay = 600,
+    closeDelay = 200,
+    isDisabled = false,
+    onOpenChange,
+    children,
+  } = $props<{
+    delay?: number;
+    closeDelay?: number;
+    isDisabled?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+  }>();
+  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+
+  const button = $getContext(ButtonContext);
+  const link = $getContext(LinkContext);
+  const ownId = $id();
+  const overlayId = $id();
+  const triggerId = $memo(idOf(button) ?? idOf(link) ?? ownId);
+
+  function idOf(value: ContextValue<ButtonContextProps | LinkContextProps> | null) {
+    return value && !('slots' in value) && typeof value.id === 'string' ? value.id : undefined;
+  }
+
+  function setOpen(next: boolean) {
+    if (next !== isOpen) {
+      isOpen = next;
+      onOpenChange?.(next);
+    }
+  }
+
+  function open(immediate: boolean) {
+    if (!isDisabled) {
+      previews.show(overlayId, delay, immediate, () => setOpen(true), () => setOpen(false));
+    }
+  }
+
+  function close(immediate: boolean) {
+    cancelLongPress(triggerId);
+    previews.hide(overlayId, closeDelay, immediate, () => setOpen(false));
+  }
+
+  function hoverStarted(event: HoverEvent) {
+    given(button)?.onHoverStart?.(event);
+    given(link)?.onHoverStart?.(event);
+    dismissed.delete(triggerId);
+    open(false);
+  }
+
+  function hoverEnded(event: HoverEvent) {
+    given(button)?.onHoverEnd?.(event);
+    given(link)?.onHoverEnd?.(event);
+    if (!isOpen) {
+      close(false);
+    }
+  }
+
+  function focusChanged(focused: boolean) {
+    given(button)?.onFocusChange?.(focused);
+    given(link)?.onFocusChange?.(focused);
+    const active = document.activeElement;
+    if (!focused) {
+      dismissed.delete(triggerId);
+    }
+    if (focused && active && isFocusVisible(active) && !dismissed.has(triggerId)) {
+      open(false);
+    } else if (!focused && !isOpen) {
+      close(true);
+    }
+  }
+
+  function pressStarted(event: PressEvent) {
+    given(button)?.onPressStart?.(event);
+    given(link)?.onPressStart?.(event);
+    if (event.pointerType === 'touch') {
+      startLongPress(triggerId, event.pointerId, () => open(true));
+    } else {
+      close(true);
+    }
+  }
+
+  function pressEnded(event: PressEvent) {
+    given(button)?.onPressEnd?.(event);
+    given(link)?.onPressEnd?.(event);
+    cancelLongPress(triggerId);
+  }
+
+  /** The props of a context around it, when it gives one part its props. */
+  function given<T extends object>(value: ContextValue<T> | null): T | undefined {
+    return value && !('slots' in value) ? value : undefined;
+  }
+
+  // A trigger that leaves the page stops its timers, so they open nothing later, and the next
+  // preview still waits for its delay.
+  $client(() => () => {
+    cancelLongPress(triggerId);
+    previews.forget(overlayId);
+  }, 'load');
+
+  // While it is open, the page decides when it closes.
+  $effect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+    return $untrack(
+      followPreview(triggerId, overlayId, {
+        keep: () => previews.keep(overlayId),
+        leave: () => close(false),
+        close: () => close(true),
+      }),
+    );
+  });
+
+  // The props of a trigger around it come first, and the handlers of both run.
+  $setContext(ButtonContext, {
+    ...given(button),
+    id: triggerId,
+    'aria-expanded': isOpen ? 'true' : 'false',
+    'aria-controls': isOpen ? overlayId : undefined,
+    onHoverStart: hoverStarted,
+    onHoverEnd: hoverEnded,
+    onFocusChange: focusChanged,
+    onPressStart: pressStarted,
+    onPressEnd: pressEnded,
+  });
+  $setContext(LinkContext, {
+    ...given(link),
+    id: triggerId,
+    'aria-expanded': isOpen ? 'true' : 'false',
+    'aria-controls': isOpen ? overlayId : undefined,
+    onHoverStart: hoverStarted,
+    onHoverEnd: hoverEnded,
+    onFocusChange: focusChanged,
+    onPressStart: pressStarted,
+    onPressEnd: pressEnded,
+  });
+  $setContext(OverlayTriggerContext, {
+    isOpen,
+    triggerId,
+    overlayId,
+    open: () => open(true),
+    // The popover closes it, such as on Escape, and gives focus back, which does not open it again.
+    // A press outside gives no focus back, so the trigger opens it again on its next focus.
+    close: () => {
+      const active = document.activeElement;
+      const layer = document.getElementById(overlayId)?.closest('[data-layer]');
+      if (active && (document.getElementById(triggerId)?.contains(active) || layer?.contains(active))) {
+        dismissed.add(triggerId);
+      }
+      close(true);
+    },
+    isPreview: true,
+  });
+</script>
+
+{children}

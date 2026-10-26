@@ -1,0 +1,283 @@
+<script>
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+  } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import {
+    ListBoxGivenContext,
+    SelectValueContext,
+    isTyping,
+    itemsOf,
+    keyOf,
+    textOfItem,
+    typeahead,
+  } from './collection.ts';
+  import type { Key } from './collection.ts';
+  import {
+    ButtonContext,
+    FieldErrorContext,
+    FormContext,
+    LabelContext,
+    OverlayTriggerContext,
+    TextContext,
+  } from './contexts.ts';
+  import { described } from './description.brm.ts';
+  import type { PressEvent } from './events.ts';
+  import { describedBy, isFirstInvalid, messagesOf } from './fields.ts';
+
+  /**
+   * A field that picks one item from a list, as Select of React Aria Components. It holds a
+   * Label, a Button with a SelectValue, a Text with `slot="description"`, a FieldError, and a
+   * Popover with a ListBox.
+   *
+   * - A press of the Button, ArrowDown and ArrowUp open the list, with focus on the selected
+   *   item, or the first. A press, Enter or Space on an item selects it and closes the list.
+   *   Escape, Tab and a press outside close it with no change.
+   * - While the list is closed, ArrowLeft and ArrowRight on the Button select the item before or
+   *   after the selected one, and typing selects the item that starts with the text.
+   * - `selectedKey=(key)` starts its own selection, and `selectedKey=$bind(signal)` writes the
+   *   caller's. `onSelectionChange` gets each new key.
+   * - `name` sends the key with its form, also before its code loads. `isRequired` asks the
+   *   browser to check it on a submit, and the FieldError shows the message.
+   * - The element shows `data-open`, `data-disabled`, `data-invalid` and `data-required`.
+   */
+  const {
+    as = 'div',
+    name,
+    placeholder = 'Select an item',
+    isDisabled = false,
+    isRequired = false,
+    isInvalid,
+    onSelectionChange,
+    onOpenChange,
+    children,
+    ...rest
+  } = $props<{
+    as?: string;
+    name?: string;
+    placeholder?: string;
+    isDisabled?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onSelectionChange?: (key: Key | null) => void;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { selectedKey = null } = $props<{ selectedKey?: Bindable<Key | null> }>();
+  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+
+  const form = $getContext(FormContext);
+  const triggerId = $id();
+  const overlayId = $id();
+  const labelId = $id();
+  const valueId = $id();
+  const inputId = $id();
+  const descriptionId = $id();
+  const errorId = $id();
+  const { present: hasDescription } = described(descriptionId);
+  // The text of the selected item, which the Button shows, and the key that it is the text of.
+  let selectedText = $signal<string>();
+  let textKey = $signal<Key | null>(null);
+  // The key that a reset of the form gives back.
+  let initialKey = $signal(selectedKey);
+  // Where focus goes in the list when nothing is selected: ArrowUp opens it at the last item.
+  let focusStrategy = $signal<'first' | 'last'>('first');
+  // The message of the browser, once the field was checked on a submit.
+  let committed = $signal(false);
+  let nativeErrors = $signal<string[]>([]);
+  let edited = $signal(false);
+  const serverErrors = $memo(
+    edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
+  );
+  const errors = $memo([...serverErrors, ...(committed ? nativeErrors : [])]);
+  const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
+
+  function setOpen(next: boolean) {
+    if (next !== isOpen && !(next && isDisabled)) {
+      isOpen = next;
+      onOpenChange?.(next);
+    }
+  }
+
+  function open(strategy: 'first' | 'last' = 'first') {
+    focusStrategy = strategy;
+    setOpen(true);
+  }
+
+  function close() {
+    setOpen(false);
+  }
+
+  /**
+   * The items of the list: those of the open list, or those that the Popover keeps out of sight
+   * while it is closed.
+   */
+  function items() {
+    const list =
+      document.getElementById(overlayId) ?? document.getElementById(`${overlayId}-closed`);
+    return list ? itemsOf(list.querySelector('[data-collection]') ?? list, 'option') : [];
+  }
+
+  /** Keeps the text of an item, which the SelectValue shows. */
+  function remember(key: Key | null) {
+    const found = key === null ? undefined : items().find((element) => keyOf(element) === key);
+    selectedText = (found && textOfItem(found)) || undefined;
+    textKey = key;
+  }
+
+  function select(key: Key) {
+    remember(key);
+    if (key !== selectedKey) {
+      selectedKey = key;
+      edited = true;
+      onSelectionChange?.(key);
+    }
+    // The browser checks the new value at once, so its message goes away.
+    nativeErrors = [];
+    close();
+  }
+
+  function invalidated(event: Event) {
+    // The browser shows its own bubble on the hidden input, so the FieldError shows it instead.
+    event.preventDefault();
+    committed = true;
+    nativeErrors = [(event.target as HTMLInputElement).validationMessage];
+    if (isFirstInvalid(event.target as HTMLInputElement)) {
+      document.getElementById(triggerId)?.focus();
+    }
+  }
+
+  // The Button keeps its own keys, so the element around it opens the list on the arrow keys.
+  // While the list is closed, ArrowLeft, ArrowRight and typing change the selection.
+  function keyDown(event: KeyboardEvent) {
+    const button = event.target as HTMLElement;
+    if (button.id !== triggerId) {
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      open(event.key === 'ArrowUp' ? 'last' : 'first');
+      return;
+    }
+    if (isOpen || isDisabled) {
+      return;
+    }
+    const enabled = items().filter((item) => item.getAttribute('aria-disabled') !== 'true');
+    const at = enabled.findIndex((item) => keyOf(item) === selectedKey);
+    let next: HTMLElement | undefined;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      // With nothing selected, both keys select the first item, as in React Aria.
+      next = at < 0 ? enabled[0] : enabled[at + (event.key === 'ArrowLeft' ? -1 : 1)];
+    } else {
+      next = typeahead(button, enabled, enabled[at], event);
+    }
+    const key = next && keyOf(next);
+    if (key !== undefined) {
+      select(key);
+    }
+  }
+
+  // The text of the selected item, once the code loads and when the caller sets another key.
+  $client(() => remember(selectedKey), 'load');
+  $effect(() => {
+    const key = selectedKey;
+    if (key !== textKey) {
+      remember(key);
+    }
+  });
+
+  // A reset of the form gives back the first key, as it does for a field of the browser.
+  $client(() => {
+    const owner = (document.getElementById(inputId) as HTMLInputElement | null)?.form;
+    if (!owner) {
+      return undefined;
+    }
+    function reset() {
+      selectedKey = initialKey;
+      committed = false;
+      nativeErrors = [];
+      edited = false;
+    }
+    owner.addEventListener('reset', reset);
+    return () => owner.removeEventListener('reset', reset);
+  }, 'load');
+
+  $setContext(LabelContext, { id: labelId });
+  $setContext(ButtonContext, {
+    id: triggerId,
+    isDisabled,
+    'aria-haspopup': 'listbox',
+    'aria-expanded': isOpen ? 'true' : 'false',
+    'aria-controls': isOpen ? overlayId : undefined,
+    'aria-labelledby': `${valueId} ${labelId}`,
+    'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
+    onPress: (event: PressEvent) => {
+      // Space adds to a typeahead that has text, so it does not open the list then.
+      if (event.pointerType === 'keyboard' && isTyping(event.target)) {
+        return;
+      }
+      if (isOpen) {
+        close();
+      } else {
+        open();
+      }
+    },
+  });
+  $setContext(OverlayTriggerContext, {
+    isOpen,
+    triggerId,
+    overlayId,
+    open: () => open(),
+    close,
+    placement: 'bottom start',
+    keepsContent: true,
+  });
+  $setContext(ListBoxGivenContext, {
+    selectedKeys: selectedKey === null ? [] : [selectedKey],
+    labelledBy: labelId,
+    select,
+    tab: close,
+    focusStrategy,
+  });
+  $setContext(SelectValueContext, {
+    id: valueId,
+    selectedKey,
+    selectedText: textKey === selectedKey ? selectedText : undefined,
+    placeholder,
+  });
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+</script>
+
+<{as}
+  data-open=(isOpen || undefined)
+  data-disabled=(isDisabled || undefined)
+  data-invalid=(invalid || undefined)
+  data-required=(isRequired || undefined)
+  {...rest}
+>
+  <div style="display: contents" onKeyDown=(prevent(keyDown, 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'))>{children}</div>
+  <!--
+    The value for the form, which posts without scripts. It is out of sight and out of the order
+    of Tab, and the browser checks it on a submit when the field is required.
+  -->
+  <input
+    id=inputId
+    {name}
+    value=(selectedKey === null ? '' : String(selectedKey))
+    required=(isRequired || undefined)
+    disabled=(isDisabled || undefined)
+    tabindex="-1"
+    aria-hidden="true"
+    style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0"
+    onInvalid=invalidated
+  >
+</>

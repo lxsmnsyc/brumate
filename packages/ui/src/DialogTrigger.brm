@@ -1,0 +1,51 @@
+<script>
+  import { $id, $props, $setContext } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { ButtonContext, OverlayTriggerContext } from './contexts.ts';
+
+  /**
+   * Opens an overlay, such as a Popover or a Modal, from a Button inside it, as DialogTrigger of
+   * React Aria Components. The Button gets aria-expanded, aria-haspopup and aria-controls, and
+   * a press toggles the overlay. It renders only its children.
+   *
+   * `isOpen` alone starts it open, and `isOpen=$bind(signal)` writes the caller's.
+   */
+  const { onOpenChange, children } = $props<{
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+  }>();
+  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+
+  const triggerId = $id();
+  const overlayId = $id();
+
+  function setOpen(next: boolean) {
+    if (next === isOpen) {
+      return;
+    }
+    isOpen = next;
+    onOpenChange?.(next);
+  }
+
+  function open() {
+    setOpen(true);
+  }
+
+  function close() {
+    setOpen(false);
+  }
+
+  function toggle() {
+    setOpen(!isOpen);
+  }
+
+  $setContext(ButtonContext, {
+    id: triggerId,
+    'aria-expanded': isOpen ? 'true' : 'false',
+    'aria-controls': isOpen ? overlayId : undefined,
+    onPress: toggle,
+  });
+  $setContext(OverlayTriggerContext, { isOpen, triggerId, overlayId, open, close });
+</script>
+
+{children}

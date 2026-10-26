@@ -1,0 +1,57 @@
+<script>
+  import { $client, $getContext, $handler, $props, $setContext, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import { LocaleContext } from './locale.ts';
+  import { ToolbarContext } from './contexts.ts';
+  import { keepTabStop, moveFocus, rove } from './toolbar.ts';
+
+  /**
+   * A toolbar, as Toolbar of React Aria Components: role="toolbar", where the arrow keys move
+   * focus between its items, Home and End go to the first and the last, and Tab stops at one
+   * item. Right to left, the arrow keys of a horizontal toolbar turn around. It shows
+   * `data-orientation`. Inside another toolbar, it is a group, as in React Aria.
+   */
+  const { orientation = 'horizontal', children, ...rest } = $props<{
+    orientation?: 'horizontal' | 'vertical';
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+
+  const locale = $getContext(LocaleContext);
+  const nested = $getContext(ToolbarContext);
+  $setContext(ToolbarContext, true);
+
+  let element = $signal<HTMLElement>();
+  $client(() => (element ? keepTabStop(element) : undefined), 'load');
+
+  function keyDown(event: KeyboardEvent) {
+    moveFocus(event.currentTarget as Element, event.key, orientation, locale.direction);
+  }
+
+  function focusIn(event: FocusEvent) {
+    const toolbar = event.currentTarget as Element;
+    const target = document.activeElement;
+    // Handlers run after the event, so focus can have moved on.
+    if (target && toolbar.contains(target)) {
+      rove(toolbar, target);
+    }
+  }
+
+  // Only the arrow keys that move focus are prevented: Up and Down of a vertical toolbar, which
+  // would scroll the page. The others keep their default, for a field inside.
+  function keys(vertical: boolean) {
+    return vertical
+      ? { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown')) }
+      : { onKeyDown: $handler(keyDown) };
+  }
+</script>
+
+<div
+  ref=element
+  role=(nested ? 'group' : 'toolbar')
+  aria-orientation=(nested ? undefined : orientation)
+  data-orientation=orientation
+  {...keys(orientation === 'vertical')}
+  onFocusIn=focusIn
+  {...rest}
+>{children}</div>

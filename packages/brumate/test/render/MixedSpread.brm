@@ -1,0 +1,17 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+
+  // A spread that changes and a rest that does not, on one element that the browser renders.
+  const { ...rest } = $props();
+  let count = $signal(0);
+  let shown = $signal(false);
+  const live = $memo({ 'data-count': String(count) });
+</script>
+
+<button class="show" onClick=(() => (shown = true))>Show</button>
+<button class="add" onClick=(() => count++)>Add</button>
+#if (shown) {
+  <p {...live} {...rest}>Mixed</p>
+}
+<!-- An own class that changes keeps the class of the spread. -->
+<p class=(`count-${count}`) {...rest} data-own>Own</p>
