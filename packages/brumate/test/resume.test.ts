@@ -3597,6 +3597,12 @@ describe('refs forwarded through components', () => {
     await waitFor(() => expect(text('.seen')).toBe('SECTION'));
   });
 
+  it('a forwarded ref reaches a component that spreads its props', async () => {
+    await resume('refForwardSpread', {});
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
+  });
+
   it('leaves the element out of the page state', async () => {
     const server = await import(file('refForward.brm.ts'));
     const { html, state } = await renderParts(server.default, {});

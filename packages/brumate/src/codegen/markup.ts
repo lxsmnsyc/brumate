@@ -1224,9 +1224,17 @@ export class Emitter {
     if (this.hasScope(node.tag, staticClasses(node.attributes))) {
       this.html(` ${this.plan.styles.attribute}`);
     }
+    const anchor = this.anchor(scope, node);
+    // With a spread, the element writes its own `b-b` before it. `spread` in html.ts still writes
+    // the inherited `b-b` on purpose, for a component with no anchor of its own. The parser keeps
+    // the first, so the element's own wins.
+    if (anchor && spreadHandlers) {
+      this.html(' b-b="');
+      this.code(anchor.scope);
+      this.html(`:${anchor.index}"`);
+    }
     const variables = this.emitVariables(node);
     const events: string[] = [];
-    const anchor = this.anchor(scope, node);
     // With spreads, the attributes are one object in their order, so a name is written once:
     // a later value wins, and classes add up.
     const merged = node.attributes.some((attribute) => attribute.kind === 'spread')
@@ -1315,7 +1323,8 @@ export class Emitter {
         `$$b.spread($$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})${spreadArguments(spreadHandlers)})`,
       );
     }
-    if (anchor) {
+    // With a spread, the own `b-b` is already written, before it.
+    if (anchor && !spreadHandlers) {
       this.html(' b-b="');
       this.code(anchor.scope);
       this.html(`:${anchor.index}"`);
