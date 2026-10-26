@@ -1,7 +1,7 @@
 ---
 id: as-collections
 title: as and ref on the collection parts
-status: active
+status: todo
 priority: should
 type: feature
 outline: false
@@ -66,3 +66,7 @@ Give the collection parts an `as` prop that takes an element name or a component
 ## Sizing
 
 M: one pattern on 13 parts. The keyboard code reads elements, so each part needs its tests run with a component target.
+
+## Log
+
+- 2026-10-26: PR #252 found four gaps in the core (see contracts/part-props.change-request.md). The change request was rejected. The node waits for the core fixes, then #252 is reworked without the ID lookups, with component targets tested in the browser. #252 also failed format:check and broke tree.test.ts "opens and closes with the chevron".
