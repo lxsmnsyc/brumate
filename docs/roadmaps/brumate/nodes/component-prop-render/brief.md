@@ -25,6 +25,15 @@ owns:
   - packages/brumate/test/render/LateEach.brm
   - packages/brumate/test/render/lateEachPage.brm
   - packages/brumate/test/__snapshots__/render/**
+  - packages/brumate/test/render/PassAs.brm
+  - packages/brumate/test/render/twoLevelAsPage.brm
+  - packages/brumate/test/render/lateAsContext.ts
+  - packages/brumate/test/render/ContextAs.brm
+  - packages/brumate/test/render/contextAsPage.brm
+  - packages/brumate/test/render/HydratedEach.brm
+  - packages/brumate/test/render/hydratedEachPage.brm
+  - packages/brumate/test/render/AsItalic.brm
+  - packages/brumate/test/render/swapAsPage.brm
 shared:
   - .changeset/*.md
   - packages/brumate/test/resume.test.ts
@@ -58,3 +67,4 @@ M: the compiler and the core both change, and the choice of how the render modul
 ## Log
 
 - 2026-10-26: owned paths corrected at review: the new #for test of the brief, and the render snapshots that gain a brumateId line. The owned paths were also split into a list, which a script of the orchestrator had joined into one line.
+- 2026-10-27: the orchestrator asked for the fixtures of the review probes (two levels, context, hydration, handler), so they are owned too.
