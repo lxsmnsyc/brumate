@@ -1,0 +1,12 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+
+  let color = $signal('hsb(210, 80%, 90%)');
+</script>
+
+<ColorArea class="ui-color-area" value=$bind(color) aria-label="Saturation and brightness">
+  <ColorThumb class="ui-color-thumb" />
+</ColorArea>
+<p>The color is {color}.</p>

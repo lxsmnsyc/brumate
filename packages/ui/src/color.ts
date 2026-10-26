@@ -464,3 +464,123 @@ export function channelGradient(
   const gradient = `linear-gradient(to ${to}, ${stops})`;
   return channel === 'alpha' ? `${gradient}, ${CHECKERBOARD}` : gradient;
 }
+
+function gradientTo(to: string, list: string[]): string {
+  return `linear-gradient(to ${to}, ${list.join(', ')})`;
+}
+
+/**
+ * The background of an area of two channels, as layers of `linear-gradient`: `x` grows toward
+ * `xTo` and `y` grows upward. The color is in the space of the area, and the channel that is
+ * neither `x` nor `y` stays as it is. `blendMode` is the `background-blend-mode` of the layers.
+ *
+ * Layers of alpha give hsb and hsl, which mix toward white, gray or black along the axes. The
+ * channels of rgb add up, so they are drawn apart and blend with `screen`.
+ */
+export function areaGradient(
+  color: Color,
+  x: ColorChannel,
+  y: ColorChannel,
+  xTo: 'right' | 'left',
+): { background: string; blendMode: string } {
+  const { space } = color;
+  const to = (channel: ColorChannel) => (channel === x ? xTo : 'top');
+  const at = (set: Partial<Record<ColorChannel, number>>, alpha = 1): string => {
+    let next: Color = { ...color, alpha };
+    for (const [channel, value] of Object.entries(set) as [ColorChannel, number][]) {
+      next = withChannelValue(next, channel, value);
+    }
+    return formatColor(next);
+  };
+  const fixed = SPACE_CHANNELS[space].find((channel) => channel !== x && channel !== y)!;
+  const fixedValue = channelValue(color, fixed);
+  const has = (channel: ColorChannel) => channel === x || channel === y;
+
+  if (space === 'rgb') {
+    const dark = { red: 0, green: 0, blue: 0 };
+    const layers = [x, y].map((channel) =>
+      gradientTo(to(channel), [at(dark), at({ ...dark, [channel]: 255 })]),
+    );
+    const base = at({ ...dark, [fixed]: fixedValue });
+    layers.push(`linear-gradient(${base}, ${base})`);
+    return { background: layers.join(', '), blendMode: 'screen' };
+  }
+
+  const hue = channelValue(color, 'hue');
+  // The channel of lightness or brightness, which darkens, and whether it lightens too.
+  const tone: ColorChannel = space === 'hsl' ? 'lightness' : 'brightness';
+  const overlay: string[] = [];
+  const base: string[] = [];
+  if (has('hue')) {
+    const hues = [0, 60, 120, 180, 240, 300, 360];
+    if (has(tone)) {
+      // The hue at full tone, under black (and white for hsl) toward the ends of the tone.
+      const middle = space === 'hsl' ? { [tone]: 50 } : { [tone]: 100 };
+      base.push(
+        gradientTo(
+          to('hue'),
+          hues.map((value) => at({ hue: value, ...middle })),
+        ),
+      );
+    } else {
+      // The hue at full saturation, under a gray of the tone that fades out with saturation.
+      base.push(
+        gradientTo(
+          to('hue'),
+          hues.map((value) => at({ hue: value, saturation: 100 })),
+        ),
+      );
+      overlay.push(
+        gradientTo(to('saturation'), [at({ hue, saturation: 0 }), at({ hue, saturation: 0 }, 0)]),
+      );
+    }
+  } else {
+    // Saturation runs from the gray of the tone to the pure hue.
+    const middle = space === 'hsl' ? { [tone]: 50 } : { [tone]: 100 };
+    base.push(
+      gradientTo(to('saturation'), [
+        at({ saturation: 0, ...middle }),
+        at({ saturation: 100, ...middle }),
+      ]),
+    );
+  }
+  if (has(tone)) {
+    overlay.push(
+      space === 'hsl'
+        ? gradientTo(to(tone), [
+            at({ saturation: 0, lightness: 0 }),
+            `${at({ saturation: 0, lightness: 0 }, 0)} 50%`,
+            `${at({ saturation: 0, lightness: 100 }, 0)} 50%`,
+            at({ saturation: 0, lightness: 100 }),
+          ])
+        : gradientTo(to(tone), [
+            at({ saturation: 0, brightness: 0 }),
+            at({ saturation: 0, brightness: 0 }, 0),
+          ]),
+    );
+  }
+  return { background: [...overlay, ...base].join(', '), blendMode: 'normal' };
+}
+
+/**
+ * The space and the two channels of an area, as React Aria picks them. Without a space, it is the
+ * first of hsb, hsl and rgb that has the channels given, or hsb. A channel that is not given is
+ * one of the others, so hsb gives saturation on x and brightness on y.
+ */
+export function areaChannels(
+  xChannel?: ColorChannel,
+  yChannel?: ColorChannel,
+  colorSpace?: ColorSpace,
+): { space: ColorSpace; x: ColorChannel; y: ColorChannel } {
+  const given = [xChannel, yChannel].filter(Boolean) as ColorChannel[];
+  const space =
+    colorSpace ??
+    (['hsb', 'hsl', 'rgb'] as const).find((candidate) =>
+      given.every((channel) => SPACE_CHANNELS[candidate].includes(channel)),
+    ) ??
+    'hsb';
+  const channels = SPACE_CHANNELS[space];
+  const x = xChannel ?? (yChannel === channels[1] ? channels[2] : channels[1]);
+  const y = yChannel ?? (x === channels[2] ? channels[1] : channels[2]);
+  return { space, x, y };
+}

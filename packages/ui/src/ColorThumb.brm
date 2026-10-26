@@ -41,6 +41,22 @@
     thumb.onChangeEnd();
   }
 
+  // An input that has `keys` gets all its keys, which the part turns into moves.
+  function keyAll(event: KeyboardEvent, index: number) {
+    if (
+      !thumb ||
+      thumb.isDisabled ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      !/^(Arrow(Up|Down|Left|Right)|Page(Up|Down)|Home|End)$/.test(event.key)
+    ) {
+      return;
+    }
+    thumb.onInputKey?.(index, event.key, event.shiftKey);
+    thumb.onChangeEnd();
+  }
+
   function pressed(event: PointerEvent) {
     if (thumb && !thumb.isDisabled && event.button === 0) {
       thumb.onPress(event);
@@ -71,25 +87,47 @@
 >
   {children}
   #for (item, index of (thumb?.inputs ?? []) by item.id) {
-    <input
-      id=(item.id)
-      type="range"
-      name=(item.name)
-      min=(item.min)
-      max=(item.max)
-      step=(item.step)
-      value=(String(item.value))
-      disabled=(thumb?.isDisabled || undefined)
-      dir=(thumb?.direction)
-      aria-label=(item.label)
-      aria-labelledby=(item.labelledBy)
-      aria-orientation=(item.orientation ?? 'horizontal')
-      aria-valuetext=(item.valueText)
-      class="input"
-      onInput=((event: Event) => input(event, index))
-      onChange=(() => thumb?.onChangeEnd())
-      onKeyDown=(prevent((event: KeyboardEvent) => keyDown(event, index), 'PageUp', 'PageDown'))
-    >
+    #if (item.keys) {
+      <input
+        id=(item.id)
+        type="range"
+        name=(item.name)
+        min=(item.min)
+        max=(item.max)
+        step=(item.step)
+        value=(String(item.value))
+        disabled=(thumb?.isDisabled || undefined)
+        dir=(thumb?.direction)
+        aria-label=(item.label)
+        aria-labelledby=(item.labelledBy)
+        aria-orientation=(item.orientation ?? 'horizontal')
+        aria-valuetext=(item.valueText)
+        class="input"
+        onInput=((event: Event) => input(event, index))
+        onChange=(() => thumb?.onChangeEnd())
+        onKeyDown=(prevent((event: KeyboardEvent) => keyAll(event, index), 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'))
+      >
+    } #else {
+      <input
+        id=(item.id)
+        type="range"
+        name=(item.name)
+        min=(item.min)
+        max=(item.max)
+        step=(item.step)
+        value=(String(item.value))
+        disabled=(thumb?.isDisabled || undefined)
+        dir=(thumb?.direction)
+        aria-label=(item.label)
+        aria-labelledby=(item.labelledBy)
+        aria-orientation=(item.orientation ?? 'horizontal')
+        aria-valuetext=(item.valueText)
+        class="input"
+        onInput=((event: Event) => input(event, index))
+        onChange=(() => thumb?.onChangeEnd())
+        onKeyDown=(prevent((event: KeyboardEvent) => keyDown(event, index), 'PageUp', 'PageDown'))
+      >
+    }
   }
 </div>
 

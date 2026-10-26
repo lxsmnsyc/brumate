@@ -58,4 +58,5 @@ A part that has a thumb of color provides a `ColorThumbState` in `ColorThumbCont
 - `inputs` lists the hidden inputs as data: `id`, `name`, `min`, `max`, `step`, `value`, `valueText`, `label`, `labelledBy` and `orientation`.
 - `isDragging`, `isFocused`, `isFocusVisible` and `isDisabled` are the states.
 - `onInputChange(index, value)` and `onInputPage(index, direction)` get what the user does to an input. `onPress(event)` gets the press on the thumb, to start a drag. `onFocusChange(focused, focusVisible)` and `onChangeEnd()` follow the focus and the end of a change.
+- An input with `keys: true` gets all its keys: the arrows, PageUp, PageDown, Home and End go to `onInputKey(index, key, shiftKey)`, and the range input does not move. A [ColorArea](./color-area.md) needs it, since Up on the input of x moves y.
 - The functions are declared in the part and not inside the lists, since the state of the page can hold a function only where the compiler can name it.

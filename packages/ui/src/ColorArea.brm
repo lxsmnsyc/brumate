@@ -1,0 +1,340 @@
+<script>
+  import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import type { Bindable } from 'brumate/signals';
+  import type { ColorChannel, ColorSpace } from './color.ts';
+  import {
+    areaChannels,
+    areaGradient,
+    channelName,
+    channelRange,
+    channelValue,
+    colorName,
+    displayColor,
+    formatChannelValue,
+    formatColor,
+    formatLike,
+    parseColor,
+    toSpace,
+    tryParseColor,
+    withChannelValue,
+  } from './color.ts';
+  import { ColorThumbContext } from './color-thumb.ts';
+  import { LocaleContext } from './locale.ts';
+  import { clamp, snapToStep } from './numbers.ts';
+  import { startDrag, thumbId } from './slider.ts';
+
+  /**
+   * An area for two channels of a color, as ColorArea of React Aria Components. It holds a
+   * ColorThumb, which gets a hidden range input for each axis.
+   *
+   * - `xChannel` and `yChannel` are the channels of the axes, and `colorSpace` is the space that
+   *   it reads them in. Without them it is saturation and brightness in hsb. A color of another
+   *   space moves to it.
+   * - `value` is a color of CSS, such as `#e2445a`. `value=(color)` starts its own, and
+   *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, and `onChangeEnd`
+   *   the color once a drag or a key ends. The color keeps the format that it was given.
+   * - Left and Right move x by a step, and Up and Down move y, on either input. PageUp and
+   *   PageDown move y by a page, and with Shift they move x. Home and End move x down and up by a
+   *   page, as React Aria does. A screen reader hears both values and the name of the color.
+   * - A press on the area moves the thumb there, and a drag follows. A press on the thumb keeps
+   *   the distance from the pointer to its center, so the thumb does not jump.
+   * - The element has `--area-background`, the gradient of the two channels, for the style of the
+   *   caller: `background: var(--area-background)`. It has `--area-background-blend-mode` too,
+   *   which is `screen` for rgb: `background-blend-mode: var(--area-background-blend-mode)`. The
+   *   element is `position: relative`, and the ColorThumb has `--color`.
+   * - Right to left, x grows toward the left.
+   * - `xName` and `yName` send the values with a form, also before the code loads. A reset of the
+   *   form gives back the first color. `isDisabled` keeps it still and shows `data-disabled`.
+   */
+  const {
+    xChannel,
+    yChannel,
+    colorSpace,
+    isDisabled = false,
+    xName,
+    yName,
+    onChange,
+    onChangeEnd,
+    children,
+    ...rest
+  } = $props<{
+    xChannel?: ColorChannel;
+    yChannel?: ColorChannel;
+    colorSpace?: ColorSpace;
+    isDisabled?: boolean;
+    xName?: string;
+    yName?: string;
+    onChange?: (value: string) => void;
+    onChangeEnd?: (value: string) => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }>();
+  let { value = '#000000' } = $props<{ value?: Bindable<string> }>();
+
+  const locale = $getContext(LocaleContext);
+  // The color that a reset of the form gives back.
+  let initialValue = $signal(value);
+  let dragging = $signal(false);
+  let focused = $signal(false);
+  let focusVisible = $signal(false);
+  const id = $id();
+  const rtl = $memo(locale.direction === 'rtl');
+  const axes = $memo(areaChannels(xChannel, yChannel, colorSpace));
+  const xRange = $memo(channelRange(axes.x));
+  const yRange = $memo(channelRange(axes.y));
+  // The color in the space of the area. A value that is no color reads as black.
+  const color = $memo(toSpace(tryParseColor(value) ?? parseColor('#000000'), axes.space));
+  const xValue = $memo(
+    snapToStep(
+      clamp(channelValue(color, axes.x), xRange.minValue, xRange.maxValue),
+      xRange.minValue,
+      xRange.maxValue,
+      xRange.step,
+    ),
+  );
+  const yValue = $memo(
+    snapToStep(
+      clamp(channelValue(color, axes.y), yRange.minValue, yRange.maxValue),
+      yRange.minValue,
+      yRange.maxValue,
+      yRange.step,
+    ),
+  );
+  // Screen readers get both values and what color they make, on both inputs.
+  const valueText = $memo(
+    `${channelName(axes.x)} ${formatChannelValue(color, axes.x, locale.locale)}, ` +
+      `${channelName(axes.y)} ${formatChannelValue(color, axes.y, locale.locale)}, ` +
+      colorName(color),
+  );
+  const xPercent = $memo(
+    ((xValue - xRange.minValue) / (xRange.maxValue - xRange.minValue)) * 100,
+  );
+  const yPercent = $memo(
+    ((yValue - yRange.minValue) / (yRange.maxValue - yRange.minValue)) * 100,
+  );
+  const gradient = $memo(areaGradient(color, axes.x, axes.y, rtl ? 'left' : 'right'));
+
+  // Moves the thumb to a value for each axis, on a step and in the range.
+  function setAxes(x: number, y: number) {
+    if (isDisabled) {
+      return;
+    }
+    const next = withChannelValue(
+      withChannelValue(
+        color,
+        axes.x,
+        snapToStep(x, xRange.minValue, xRange.maxValue, xRange.step),
+      ),
+      axes.y,
+      snapToStep(y, yRange.minValue, yRange.maxValue, yRange.step),
+    );
+    const text = formatLike(next, value);
+    if (text === value) {
+      return;
+    }
+    value = text;
+    onChange?.(value);
+  }
+
+  function setDragging(next: boolean) {
+    dragging = next;
+    if (!next) {
+      onChangeEnd?.(value);
+    }
+  }
+
+  // Where a point is on the area, from 0 to 1 for each axis, or past the ends. Y grows upward.
+  function pointAt(area: Element, clientX: number, clientY: number): [number, number] {
+    const box = area.getBoundingClientRect();
+    const x = box.width > 0 ? (clientX - box.left) / box.width : 0;
+    const y = box.height > 0 ? (clientY - box.top) / box.height : 0;
+    return [rtl ? 1 - x : x, 1 - y];
+  }
+
+  function moveTo(
+    area: Element,
+    move: { clientX: number; clientY: number },
+    offsetX: number,
+    offsetY: number,
+  ) {
+    const [x, y] = pointAt(area, move.clientX, move.clientY);
+    setAxes(
+      xRange.minValue + clamp(x - offsetX, 0, 1) * (xRange.maxValue - xRange.minValue),
+      yRange.minValue + clamp(y - offsetY, 0, 1) * (yRange.maxValue - yRange.minValue),
+    );
+  }
+
+  // Focuses the thumb and follows the pointer until it goes up.
+  function begin(area: Element, event: PointerEvent, offsetX: number, offsetY: number) {
+    document.getElementById(thumbId({ id }, 0))?.focus({ preventScroll: true });
+    setDragging(true);
+    startDrag(
+      event.pointerId,
+      (move) => moveTo(area, move, offsetX, offsetY),
+      () => setDragging(false),
+      event.currentTarget as Element,
+    );
+  }
+
+  // A press on the thumb keeps the distance to the pointer, as in React Aria.
+  function press(event: PointerEvent) {
+    const area = (event.currentTarget as Element).closest('[data-color-area]');
+    if (!area) {
+      return;
+    }
+    const [x, y] = pointAt(area, event.clientX, event.clientY);
+    begin(
+      area,
+      event,
+      x - (xValue - xRange.minValue) / (xRange.maxValue - xRange.minValue),
+      y - (yValue - yRange.minValue) / (yRange.maxValue - yRange.minValue),
+    );
+  }
+
+  // A press on the area moves the thumb to the pointer.
+  function pressArea(event: PointerEvent) {
+    if (
+      isDisabled ||
+      event.button !== 0 ||
+      event.ctrlKey ||
+      event.metaKey ||
+      dragging ||
+      (event.target as Element).closest?.('[data-color-thumb]')
+    ) {
+      return;
+    }
+    const area = event.currentTarget as Element;
+    moveTo(area, event, 0, 0);
+    begin(area, event, 0, 0);
+  }
+
+  function inputChange(index: number, next: number) {
+    if (index === 0) {
+      setAxes(next, yValue);
+    } else {
+      setAxes(xValue, next);
+    }
+  }
+
+  function inputPage(_index: number, direction: 1 | -1) {
+    setAxes(xValue, yValue + direction * yRange.pageSize);
+  }
+
+  // The arrows move a step, the pages move y or, with Shift, x, and Home and End move x a page.
+  function inputKey(_index: number, key: string, shiftKey: boolean) {
+    const sign = rtl ? -1 : 1;
+    switch (key) {
+      case 'ArrowRight':
+        setAxes(xValue + sign * xRange.step, yValue);
+        break;
+      case 'ArrowLeft':
+        setAxes(xValue - sign * xRange.step, yValue);
+        break;
+      case 'ArrowUp':
+        setAxes(xValue, yValue + yRange.step);
+        break;
+      case 'ArrowDown':
+        setAxes(xValue, yValue - yRange.step);
+        break;
+      case 'PageUp':
+        setAxes(xValue + (shiftKey ? xRange.pageSize : 0), yValue + (shiftKey ? 0 : yRange.pageSize));
+        break;
+      case 'PageDown':
+        setAxes(xValue - (shiftKey ? xRange.pageSize : 0), yValue - (shiftKey ? 0 : yRange.pageSize));
+        break;
+      case 'End':
+        setAxes(xValue + sign * xRange.pageSize, yValue);
+        break;
+      case 'Home':
+        setAxes(xValue - sign * xRange.pageSize, yValue);
+        break;
+    }
+  }
+
+  function focusChange(isFocused: boolean, isFocusVisible: boolean) {
+    focused = isFocused;
+    focusVisible = isFocusVisible;
+  }
+
+  function end() {
+    setDragging(false);
+  }
+
+  // A reset of the form gives back the first color, as it does for a field of the browser.
+  $client(() => {
+    const owner = (document.getElementById(thumbId({ id }, 0)) as HTMLInputElement | null)?.form;
+    if (!owner) {
+      return undefined;
+    }
+    function reset() {
+      value = initialValue;
+    }
+    owner.addEventListener('reset', reset);
+    return () => owner.removeEventListener('reset', reset);
+  }, 'load');
+
+  $setContext(ColorThumbContext, {
+    color: formatColor(displayColor(color, 'red')),
+    left: rtl ? 100 - xPercent : xPercent,
+    top: 100 - yPercent,
+    inputs: [
+      {
+        id: thumbId({ id }, 0),
+        name: xName,
+        min: xRange.minValue,
+        max: xRange.maxValue,
+        step: xRange.step,
+        value: xValue,
+        valueText,
+        label: channelName(axes.x),
+        orientation: 'horizontal',
+        keys: true,
+      },
+      {
+        id: thumbId({ id }, 1),
+        name: yName,
+        min: yRange.minValue,
+        max: yRange.maxValue,
+        step: yRange.step,
+        value: yValue,
+        valueText,
+        label: channelName(axes.y),
+        orientation: 'vertical',
+        keys: true,
+      },
+    ],
+    isDragging: dragging,
+    isFocused: focused,
+    isFocusVisible: focusVisible,
+    isDisabled,
+    onInputChange: inputChange,
+    onInputPage: inputPage,
+    onInputKey: inputKey,
+    onPress: press,
+    onFocusChange: focusChange,
+    onChangeEnd: end,
+    direction: locale.direction,
+  });
+</script>
+
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
+<div
+  role="group"
+  aria-label="Color area"
+  class="area"
+  data-color-area
+  data-disabled=(isDisabled || undefined)
+  onPointerDown=(prevent(pressArea))
+  {...rest}
+>{children}</div>
+
+<style>
+  /* The thumb is placed in the area, and a drag on it does not scroll the page. */
+  .area {
+    --area-background: ${gradient.background};
+    --area-background-blend-mode: ${gradient.blendMode};
+    position: relative;
+    touch-action: none;
+  }
+</style>

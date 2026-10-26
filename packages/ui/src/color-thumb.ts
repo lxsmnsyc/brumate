@@ -36,6 +36,12 @@ export interface ColorThumbInput {
   /** The IDs of the elements that name it, for `aria-labelledby`. It wins over `label`. */
   labelledBy?: string;
   orientation?: 'horizontal' | 'vertical';
+  /**
+   * The part takes all the keys of this input: the arrows, PageUp, PageDown, Home and End go to
+   * `onInputKey`, and the range input does not move. An area needs it, since Up on the input of
+   * x moves y. Without it, the arrows and Home and End move the input as a range input does.
+   */
+  keys?: boolean;
 }
 
 /** What a part tells a ColorThumb. */
@@ -66,6 +72,11 @@ export interface ColorThumbState {
   onInputChange: (index: number, value: number) => void;
   /** PageUp (`1`) or PageDown (`-1`) was pressed on an input. The range input has no page. */
   onInputPage: (index: number, direction: 1 | -1) => void;
+  /**
+   * A key was pressed on an input that has `keys`: `key` is an arrow, `PageUp`, `PageDown`, `Home`
+   * or `End`, and `shiftKey` tells whether Shift was down. Not called while the thumb is disabled.
+   */
+  onInputKey?: (index: number, key: string, shiftKey: boolean) => void;
   /**
    * The primary pointer went down on the thumb. The part focuses the first input and starts the
    * drag. It keeps the distance from the pointer to the center of the thumb, so the thumb does

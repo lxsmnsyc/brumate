@@ -1,0 +1,36 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorArea from '../../src/ColorArea.brm';
+  import ColorThumb from '../../src/ColorThumb.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
+
+  let hsb = $signal('hsb(210, 50%, 80%)');
+  let rgb = $signal('#336699');
+  let rtl = $signal('hsb(0, 20%, 50%)');
+  let locked = $signal('hsl(120, 50%, 50%)');
+  let form = $signal('hsb(0, 100%, 100%)');
+  let ended = $signal<unknown>(null);
+</script>
+
+<main class="page">
+  <ColorArea class="hsb" value=$bind(hsb) onChangeEnd=((next: unknown) => (ended = next))>
+    <ColorThumb class="hsb-thumb" />
+  </ColorArea>
+  <ColorArea class="rgb" xChannel="red" yChannel="green" colorSpace="rgb" value=$bind(rgb)>
+    <ColorThumb class="rgb-thumb" />
+  </ColorArea>
+  <I18nProvider locale="ar-EG">
+    <ColorArea class="rtl" value=$bind(rtl)>
+      <ColorThumb class="rtl-thumb" />
+    </ColorArea>
+  </I18nProvider>
+  <ColorArea class="locked" xChannel="saturation" yChannel="lightness" colorSpace="hsl" value=$bind(locked) isDisabled>
+    <ColorThumb class="locked-thumb" />
+  </ColorArea>
+  <form class="form">
+    <ColorArea class="posted" value=$bind(form) xName="s" yName="b">
+      <ColorThumb class="posted-thumb" />
+    </ColorArea>
+  </form>
+  <p class="state">{JSON.stringify([hsb, rgb, rtl, locked, form, ended])}</p>
+</main>

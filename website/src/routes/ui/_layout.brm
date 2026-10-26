@@ -1094,6 +1094,15 @@
     outline-offset: 2px;
   }
 
+  /* An area of a color: the gradient of two channels, with the thumb on it. */
+  :global(.ui-color-area) {
+    width: 12rem;
+    height: 12rem;
+    border-radius: 0.375rem;
+    background: var(--area-background);
+    background-blend-mode: var(--area-background-blend-mode);
+  }
+
   /* A date field: segments in a row, each shaded while it has focus. */
   :global(.ui-date-input) {
     display: inline-flex;
