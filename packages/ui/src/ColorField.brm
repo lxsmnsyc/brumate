@@ -1,4 +1,32 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
+  import type { Color, ColorChannel, ColorSpace } from './color.ts';
+
+  export interface ColorFieldOwnProps {
+    name?: string;
+    channel?: ColorChannel;
+    colorSpace?: ColorSpace;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    isWheelDisabled?: boolean;
+    onChange?: (value: string | null) => void;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
+    children?: unknown;
+    value?: Bindable<string | null>;
+  }
+
+  /**
+   * The props of ColorField. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type ColorFieldProps<T extends AsTarget = 'div'> = AsProps<T, ColorFieldOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
   import {
     $client,
     $effect,
@@ -12,7 +40,6 @@
     $signal,
     $untrack,
   } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { NumberFormatter, NumberParser } from '@internationalized/number';
   import {
@@ -37,7 +64,6 @@
     tryParseColor,
     withChannelValue,
   } from './color.ts';
-  import type { Color, ColorChannel, ColorSpace } from './color.ts';
   import { described } from './description.brm.ts';
   import { describedBy, messagesOf } from './fields.ts';
   import { LocaleContext } from './locale.ts';
@@ -89,23 +115,8 @@
     'aria-labelledby': ariaLabelledBy,
     children,
     ...rest
-  } = $props<{
-    as?: string;
-    name?: string;
-    channel?: ColorChannel;
-    colorSpace?: ColorSpace;
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    isWheelDisabled?: boolean;
-    onChange?: (value: string | null) => void;
-    'aria-label'?: string;
-    'aria-labelledby'?: string;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = null } = $props<{ value?: Bindable<string | null> }>();
+  } = $props<ColorFieldProps<T>>();
+  let { value = null } = $props<ColorFieldProps<T>>();
 
   // Inside a ColorPicker, a field without a `value` shows the color of the picker and writes it.
   const picker = $getContext(ColorPickerContext);

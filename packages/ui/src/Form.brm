@@ -1,3 +1,12 @@
+<script module>
+  export interface FormProps {
+    validationBehavior?: 'native' | 'aria';
+    validationErrors?: Record<string, string | string[]>;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $memo, $props, $setContext } from 'brumate/signals';
   import { FormContext } from './contexts.ts';
@@ -10,12 +19,7 @@
    * With `validationBehavior="aria"`, the form has `novalidate`, so the browser never blocks it,
    * as in React Aria. The fields show their errors themselves.
    */
-  const { validationBehavior = 'native', validationErrors = {}, children, ...rest } = $props<{
-    validationBehavior?: 'native' | 'aria';
-    validationErrors?: Record<string, string | string[]>;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { validationBehavior = 'native', validationErrors = {}, children, ...rest } = $props<FormProps>();
 
   const state = $memo({ validationBehavior, validationErrors });
   $setContext(FormContext, state);

@@ -1,6 +1,45 @@
-<script>
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
+
+  export interface TextFieldOwnProps {
+    name?: string;
+    type?: string;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    validate?: (value: string) => string | string[] | true | null | undefined;
+    validationBehavior?: 'native' | 'aria';
+    autoComplete?: string;
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    inputMode?: string;
+    placeholder?: string;
+    /** A field of createForm, such as `fields.email`. */
+    field?: {
+      id: string;
+      name: string;
+      attrs: object;
+      errors?: string[];
+      errorAttrs?: object;
+    };
+    onChange?: (value: string) => void;
+    onBlur?: () => void;
+    children?: unknown;
+    value?: Bindable<string>;
+  }
+
+  /**
+   * The props of TextField. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TextFieldProps<T extends AsTarget = 'div'> = AsProps<T, TextFieldOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import {
     FieldErrorContext,
     FormContext,
@@ -34,7 +73,6 @@
    * handlers.
    */
   const {
-    as = 'div',
     name,
     type = 'text',
     isDisabled = false,
@@ -54,39 +92,11 @@
     onBlur,
     children,
     ...rest
-  } = $props<{
-    as?: string;
-    name?: string;
-    type?: string;
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    validate?: (value: string) => string | string[] | true | null | undefined;
-    validationBehavior?: 'native' | 'aria';
-    autoComplete?: string;
-    minLength?: number;
-    maxLength?: number;
-    pattern?: string;
-    inputMode?: string;
-    placeholder?: string;
-    /** A field of createForm, such as `fields.email`. */
-    field?: {
-      id: string;
-      name: string;
-      attrs: object;
-      errors?: string[];
-      errorAttrs?: object;
-    };
-    onChange?: (value: string) => void;
-    onBlur?: () => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<TextFieldOwnProps>();
+  // The props of the target of `as`, for the type of the component.
+  const { as = 'div' } = $props<TextFieldProps<T>>();
   // A field of createForm gives the value that was posted, or its default value.
-  let { value = ((field?.attrs as { value?: string } | undefined)?.value) ?? '' } = $props<{
-    value?: Bindable<string>;
-  }>();
+  let { value = ((field?.attrs as { value?: string } | undefined)?.value) ?? '' } = $props<TextFieldProps<T>>();
   // The value that a reset of the form gives back.
   let initial = $signal(value);
 

@@ -1,10 +1,24 @@
+<script module>
+  import type { Placement } from './position.ts';
+
+  export interface TooltipProps {
+    placement?: Placement;
+    offset?: number;
+    crossOffset?: number;
+    shouldFlip?: boolean;
+    containerPadding?: number;
+    transition?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $effect, $getContext, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
   import { followTrigger } from './position.ts';
-  import type { Placement } from './position.ts';
   import { TooltipTriggerContext, keepStops, runStops } from './tooltip.ts';
   import { enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
@@ -30,16 +44,7 @@
     transition = false,
     children,
     ...rest
-  } = $props<{
-    placement?: Placement;
-    offset?: number;
-    crossOffset?: number;
-    shouldFlip?: boolean;
-    containerPadding?: number;
-    transition?: boolean;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<TooltipProps>();
 
   const trigger = $getContext(TooltipTriggerContext);
   const parentLayer = $getContext(LayerContext);

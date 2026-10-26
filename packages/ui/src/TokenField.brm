@@ -1,10 +1,27 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { TokenSegment } from './token-field.ts';
+
+  export interface TokenFieldProps {
+    pattern?: string;
+    placeholder?: string;
+    allowsNewlines?: boolean;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    role?: 'textbox' | 'searchbox';
+    name?: string;
+    onChange?: (value: TokenSegment[]) => void;
+    children?: unknown;
+    value?: Bindable<TokenSegment[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $id, $memo, $props, $setContext } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { TokenFieldContext, sameSegments, segmentsText } from './token-field.ts';
-  import type { TokenSegment } from './token-field.ts';
 
   /**
    * A field of text with tokens in it, such as tags, mentions or commands, as TokenField of React
@@ -29,19 +46,8 @@
     onChange,
     children,
     ...rest
-  } = $props<{
-    pattern?: string;
-    placeholder?: string;
-    allowsNewlines?: boolean;
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    role?: 'textbox' | 'searchbox';
-    name?: string;
-    onChange?: (value: TokenSegment[]) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = [] } = $props<{ value?: Bindable<TokenSegment[]> }>();
+  } = $props<TokenFieldProps>();
+  let { value = [] } = $props<TokenFieldProps>();
 
   const labelId = $id();
   const descriptionId = $id();

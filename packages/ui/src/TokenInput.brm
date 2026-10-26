@@ -1,3 +1,12 @@
+<script module>
+  import type { TokenSegment } from './token-field.ts';
+
+  export interface TokenInputProps {
+    token?: (segment: TokenSegment) => unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $effect, $getContext, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -12,7 +21,6 @@
     sameSegments,
     tokenize,
   } from './token-field.ts';
-  import type { TokenSegment } from './token-field.ts';
 
   /**
    * The box of a TokenField that the user types in, as TokenInput of React Aria Components: an
@@ -26,10 +34,7 @@
    * - It shows `data-focused`, `data-focus-visible`, `data-disabled`, `data-readonly` and
    *   `data-empty`, with the placeholder in `data-placeholder` for CSS.
    */
-  const { token, ...rest } = $props<{
-    token?: (segment: TokenSegment) => unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { token, ...rest } = $props<TokenInputProps>();
 
   const field = $getContext(TokenFieldContext);
   if (!field) {

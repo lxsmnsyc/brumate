@@ -1,9 +1,36 @@
-<script>
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
+  import type { DateString } from './calendar.ts';
+
+  export interface DateFieldOwnProps {
+    name?: string;
+    minValue?: DateString;
+    maxValue?: DateString;
+    placeholderValue?: DateString;
+    isDateUnavailable?: (date: DateString) => boolean;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onChange?: (value: DateString | null) => void;
+    /** The ID of the Label, from a DatePicker around the field, which names its Button too. */
+    labelId?: string;
+    children?: unknown;
+    value?: Bindable<DateString | null>;
+  }
+
+  /**
+   * The props of DateField. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type DateFieldProps<T extends AsTarget = 'div'> = AsProps<T, DateFieldOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { constrain, outOfRange, toDate, todayString } from './calendar.ts';
-  import type { DateString } from './calendar.ts';
   import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, messagesOf } from './fields.ts';
@@ -42,24 +69,8 @@
     labelId: givenLabelId,
     children,
     ...rest
-  } = $props<{
-    as?: string;
-    name?: string;
-    minValue?: DateString;
-    maxValue?: DateString;
-    placeholderValue?: DateString;
-    isDateUnavailable?: (date: DateString) => boolean;
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    onChange?: (value: DateString | null) => void;
-    /** The ID of the Label, from a DatePicker around the field, which names its Button too. */
-    labelId?: string;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = null } = $props<{ value?: Bindable<DateString | null> }>();
+  } = $props<DateFieldProps<T>>();
+  let { value = null } = $props<DateFieldProps<T>>();
 
   const locale = $getContext(LocaleContext);
   const form = $getContext(FormContext);

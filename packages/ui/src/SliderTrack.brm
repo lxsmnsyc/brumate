@@ -1,3 +1,10 @@
+<script module>
+  export interface SliderTrackProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -9,7 +16,7 @@
    * press on it moves the nearest thumb there, and a drag moves it on. It shows
    * `data-orientation` and `data-disabled`.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<SliderTrackProps>();
 
   const slider = $getContext(SliderContext);
   const locale = $getContext(LocaleContext);

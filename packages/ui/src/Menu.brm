@@ -1,3 +1,23 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Key, SelectionMode } from './collection.ts';
+
+  export interface MenuProps {
+    selectionMode?: SelectionMode;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    shouldFocusWrap?: boolean;
+    shouldCloseOnSelect?: boolean;
+    onAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    onClose?: () => void;
+    'aria-label'?: string;
+    children?: unknown;
+    selectedKeys?: Bindable<Key[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import {
     $client,
@@ -9,7 +29,6 @@
     $signal,
     $untrack,
   } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     CollectionFocusContext,
@@ -24,7 +43,6 @@
     sameKeys,
     typeahead,
   } from './collection.ts';
-  import type { Key, SelectionMode } from './collection.ts';
   import { DialogContext, FieldInputContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import { MENU_ITEMS, MenuContext, MenuTriggerContext, SubmenuContext } from './menu.ts';
@@ -56,20 +74,8 @@
     'aria-label': label,
     children,
     ...rest
-  } = $props<{
-    selectionMode?: SelectionMode;
-    disabledKeys?: Key[];
-    disallowEmptySelection?: boolean;
-    shouldFocusWrap?: boolean;
-    shouldCloseOnSelect?: boolean;
-    onAction?: (key: Key) => void;
-    onSelectionChange?: (keys: Key[]) => void;
-    onClose?: () => void;
-    'aria-label'?: string;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+  } = $props<MenuProps>();
+  let { selectedKeys = [] } = $props<MenuProps>();
 
   const trigger = $getContext(MenuTriggerContext);
   // A field around the menu, such as of an Autocomplete, keeps focus and can filter the items.

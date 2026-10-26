@@ -1,11 +1,24 @@
-<script>
-  import { $client, $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+<script module>
   import type { Bindable } from 'brumate/signals';
-  import { ButtonContext } from './contexts.ts';
   import type { ButtonContextProps } from './contexts.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
-  import { isFocusVisible } from './interactions.ts';
   import type { ContextValue } from './slots.ts';
+
+  export interface TooltipTriggerProps {
+    delay?: number;
+    closeDelay?: number;
+    trigger?: 'focus';
+    isDisabled?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    isOpen?: Bindable<boolean>;
+  }
+</script>
+
+<script>
+  import { $client, $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { ButtonContext } from './contexts.ts';
+  import { isFocusVisible } from './interactions.ts';
   import { TooltipTriggerContext, pressedTriggers, tooltips } from './tooltip.ts';
 
   /**
@@ -27,15 +40,8 @@
     isDisabled = false,
     onOpenChange,
     children,
-  } = $props<{
-    delay?: number;
-    closeDelay?: number;
-    trigger?: 'focus';
-    isDisabled?: boolean;
-    onOpenChange?: (open: boolean) => void;
-    children?: unknown;
-  }>();
-  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+  } = $props<TooltipTriggerProps>();
+  let { isOpen = false } = $props<TooltipTriggerProps>();
 
   const parent = $getContext(ButtonContext);
   const ownId = $id();

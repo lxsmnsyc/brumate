@@ -1,8 +1,28 @@
-<script>
-  import { $id, $isPassed, $props, $setContext } from 'brumate/signals';
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
-  import { nextSelection, sameKeys } from './collection.ts';
   import type { Key, SelectionMode } from './collection.ts';
+
+  export interface TagGroupOwnProps {
+    selectionMode?: SelectionMode;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    onRemove?: (keys: Key[]) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    children?: unknown;
+    selectedKeys?: Bindable<Key[]>;
+  }
+
+  /**
+   * The props of TagGroup. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TagGroupProps<T extends AsTarget = 'div'> = AsProps<T, TagGroupOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
+  import { $id, $isPassed, $props, $setContext } from 'brumate/signals';
+  import { nextSelection, sameKeys } from './collection.ts';
   import { LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { TagGroupContext } from './tags.ts';
@@ -25,17 +45,8 @@
     onSelectionChange,
     children,
     ...rest
-  } = $props<{
-    as?: string;
-    selectionMode?: SelectionMode;
-    disabledKeys?: Key[];
-    disallowEmptySelection?: boolean;
-    onRemove?: (keys: Key[]) => void;
-    onSelectionChange?: (keys: Key[]) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
+  } = $props<TagGroupProps<T>>();
+  let { selectedKeys = [] } = $props<TagGroupProps<T>>();
 
   const labelId = $id();
   const descriptionId = $id();

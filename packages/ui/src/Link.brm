@@ -1,38 +1,8 @@
-<script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
-  import { LinkContext } from './contexts.ts';
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
-  import { interact } from './interact.brm.ts';
-  import { contextAttributes, slotProps } from './slots.ts';
 
-  /**
-   * A link, as Link of React Aria Components. With `href` it is an <a>, and without it an element
-   * with role="link". It presses as a Button does, and the browser follows the link. Its state
-   * is in `data-current`, `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`
-   * and `data-disabled`.
-   *
-   * A disabled link is a <span> with no `href`, so the browser does not follow it, and it leaves
-   * the order of Tab, as in React Aria, whose useLink gives it no tabindex.
-   */
-  const {
-    as,
-    href,
-    slot,
-    isDisabled,
-    isCurrent,
-    onPress,
-    onPressStart,
-    onPressEnd,
-    onPressUp,
-    onPressChange,
-    onHoverStart,
-    onHoverEnd,
-    onHoverChange,
-    onFocusChange,
-    children,
-    ...rest
-  } = $props<{
-    as?: string;
+  export interface LinkOwnProps {
     href?: string;
     slot?: string | null;
     isDisabled?: boolean;
@@ -48,15 +18,56 @@
     onHoverChange?: (hovered: boolean) => void;
     onFocusChange?: (focused: boolean) => void;
     children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  }
+
+  /**
+   * The props of Link. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type LinkProps<T extends AsTarget = 'a'> = AsProps<T, LinkOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'a'">
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { LinkContext } from './contexts.ts';
+  import { interact } from './interact.brm.ts';
+  import { contextAttributes, slotProps } from './slots.ts';
+
+  /**
+   * A link, as Link of React Aria Components. With `href` it is an <a>, and without it an element
+   * with role="link". It presses as a Button does, and the browser follows the link. Its state
+   * is in `data-current`, `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`
+   * and `data-disabled`.
+   *
+   * A disabled link is a <span> with no `href`, so the browser does not follow it, and it leaves
+   * the order of Tab, as in React Aria, whose useLink gives it no tabindex.
+   */
+  const {
+    href,
+    slot,
+    isDisabled,
+    isCurrent,
+    onPress,
+    onPressStart,
+    onPressEnd,
+    onPressUp,
+    onPressChange,
+    onHoverStart,
+    onHoverEnd,
+    onHoverChange,
+    onFocusChange,
+    children,
+    ...rest
+  } = $props<LinkOwnProps>();
+  // The props of the target of `as`, for the type of the component.
+  const { as } = $props<LinkProps<T>>();
 
   const context = $getContext(LinkContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
   const current = $memo(Boolean(isCurrent ?? slotProps(context, slot).isCurrent));
   const linked = $memo(href !== undefined && !disabled);
-  const element = $memo(as ?? (linked ? 'a' : 'span'));
+  const element = $memo((as ?? (linked ? 'a' : 'span')) as AsTarget);
   const native = $memo(element === 'a' && linked);
 
   function given() {

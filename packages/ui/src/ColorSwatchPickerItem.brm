@@ -1,3 +1,12 @@
+<script module>
+  export interface ColorSwatchPickerItemProps {
+    color?: string;
+    isDisabled?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $memo, $props, $setContext } from 'brumate/signals';
   import { ColorSwatchContext } from './contexts.ts';
@@ -18,12 +27,7 @@
     isDisabled = false,
     children,
     ...rest
-  } = $props<{
-    color?: string;
-    isDisabled?: boolean;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<ColorSwatchPickerItemProps>();
 
   const parsed = $memo(tryParseColor(color));
   // Equal colors have the same key.

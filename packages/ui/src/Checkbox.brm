@@ -1,6 +1,23 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface CheckboxProps {
+    name?: string;
+    value?: string;
+    isIndeterminate?: boolean;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onChange?: (selected: boolean) => void;
+    children?: unknown;
+    isSelected?: Bindable<boolean>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $getContext, $memo, $props, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
@@ -28,19 +45,8 @@
     onChange,
     children,
     ...rest
-  } = $props<{
-    name?: string;
-    value?: string;
-    isIndeterminate?: boolean;
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    onChange?: (selected: boolean) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { isSelected = false } = $props<{ isSelected?: Bindable<boolean> }>();
+  } = $props<CheckboxProps>();
+  let { isSelected = false } = $props<CheckboxProps>();
 
   const group = $getContext(CheckboxGroupContext);
   const selected = $memo(group ? group.value.includes(value ?? '') : isSelected);

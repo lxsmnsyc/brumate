@@ -1,8 +1,19 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { DateRange } from './calendar.ts';
+
+  export interface RangeCalendarProps {
+    allowsNonContiguousRanges?: boolean;
+    onChange?: (value: DateRange) => void;
+    children?: unknown;
+    value?: Bindable<DateRange | null>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $bind, $props } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import Calendar from './Calendar.brm';
-  import type { DateRange } from './calendar.ts';
 
   /**
    * A grid of the days of a month or more, to pick a range of dates, as RangeCalendar of React
@@ -17,13 +28,8 @@
    * - A range cannot hold a date that cannot be picked, unless `allowsNonContiguousRanges`.
    * - The other props are those of Calendar.
    */
-  const { allowsNonContiguousRanges = false, onChange, children, ...rest } = $props<{
-    allowsNonContiguousRanges?: boolean;
-    onChange?: (value: DateRange) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = null } = $props<{ value?: Bindable<DateRange | null> }>();
+  const { allowsNonContiguousRanges = false, onChange, children, ...rest } = $props<RangeCalendarProps>();
+  let { value = null } = $props<RangeCalendarProps>();
 </script>
 
 <Calendar

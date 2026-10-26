@@ -1,10 +1,25 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { PressEvent } from './events.ts';
+
+  export interface ToggleButtonProps {
+    /** The key of the button in a ToggleButtonGroup. */
+    id?: string;
+    slot?: string | null;
+    isDisabled?: boolean;
+    onChange?: (selected: boolean) => void;
+    onPress?: (event: PressEvent) => void;
+    children?: unknown;
+    isSelected?: Bindable<boolean>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import Button from './Button.brm';
   import { ToggleButtonContext, ToggleGroupContext } from './contexts.ts';
-  import type { PressEvent } from './events.ts';
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
@@ -13,17 +28,8 @@
    *
    * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
    */
-  const { id, slot, isDisabled, onChange, onPress, children, ...rest } = $props<{
-    /** The key of the button in a ToggleButtonGroup. */
-    id?: string;
-    slot?: string | null;
-    isDisabled?: boolean;
-    onChange?: (selected: boolean) => void;
-    onPress?: (event: PressEvent) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { isSelected = false } = $props<{ isSelected?: Bindable<boolean> }>();
+  const { id, slot, isDisabled, onChange, onPress, children, ...rest } = $props<ToggleButtonProps>();
+  let { isSelected = false } = $props<ToggleButtonProps>();
 
   const context = $getContext(ToggleButtonContext);
   const group = $getContext(ToggleGroupContext);

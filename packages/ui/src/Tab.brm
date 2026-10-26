@@ -1,8 +1,18 @@
+<script module>
+  import type { Key } from './collection.ts';
+
+  export interface TabProps {
+    id: Key;
+    isDisabled?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
-  import type { Key } from './collection.ts';
   import { interact } from './interact.brm.ts';
   import { TabsContext, selectedOf, tabId } from './tabs.ts';
 
@@ -19,7 +29,7 @@
     isDisabled = false,
     children,
     ...rest
-  } = $props<{ id: Key; isDisabled?: boolean; children?: unknown; [attribute: string]: unknown }>();
+  } = $props<TabProps>();
 
   const tabs = $getContext(TabsContext);
   // The first tab is the one that is selected when Tabs hold no key.

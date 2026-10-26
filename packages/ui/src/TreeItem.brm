@@ -1,3 +1,13 @@
+<script module>
+  export interface TreeItemProps {
+    textValue?: string;
+    isDisabled?: boolean;
+    onAction?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
@@ -25,13 +35,7 @@
     onAction,
     children,
     ...rest
-  } = $props<{
-    textValue?: string;
-    isDisabled?: boolean;
-    onAction?: () => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<TreeItemProps>();
 
   const tree = $getContext(TreeRowContext);
   // The attributes of a part around it, such as a NavigationTreeItem, which its own win over.

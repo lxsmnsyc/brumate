@@ -1,3 +1,14 @@
+<script module>
+  export interface NavigationTreeItemProps {
+    href?: string;
+    textValue?: string;
+    isDisabled?: boolean;
+    onAction?: () => void;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import { ListBoxContext } from './collection.ts';
@@ -14,14 +25,7 @@
    * - It shows `data-href`, `data-current` when `href` is the route of the tree, and
    *   `data-current-ancestor` while it is closed and holds the current item.
    */
-  const { href, textValue, isDisabled, onAction, children, ...rest } = $props<{
-    href?: string;
-    textValue?: string;
-    isDisabled?: boolean;
-    onAction?: () => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { href, textValue, isDisabled, onAction, children, ...rest } = $props<NavigationTreeItemProps>();
 
   const tree = $getContext(NavigationTreeContext);
   const place = $getContext(TreeRowContext);

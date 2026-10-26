@@ -1,8 +1,17 @@
+<script module>
+  import type { DateFieldState, Segment } from './segments.ts';
+
+  export interface DateInputProps {
+    segment?: (segment: Segment) => unknown;
+    slot?: 'start' | 'end';
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $props, $setContext } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { DateFieldContext, DateRangeFieldContext, focusSegment } from './segments.ts';
-  import type { DateFieldState, Segment } from './segments.ts';
   import DateSegment from './DateSegment.brm';
 
   /**
@@ -16,11 +25,7 @@
    *   segment, as useDatePickerGroup of React Aria does.
    * - It shows `data-disabled` and `data-invalid`.
    */
-  const { segment, slot, ...rest } = $props<{
-    segment?: (segment: Segment) => unknown;
-    slot?: 'start' | 'end';
-    [attribute: string]: unknown;
-  }>();
+  const { segment, slot, ...rest } = $props<DateInputProps>();
 
   const range = $getContext(DateRangeFieldContext);
   const single = $getContext(DateFieldContext);

@@ -1,3 +1,11 @@
+<script module>
+  export interface DialogProps {
+    role?: 'dialog' | 'alertdialog';
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $id, $props, $setContext } from 'brumate/signals';
   import { ButtonContext, DialogContext, HeadingContext, OverlayTriggerContext } from './contexts.ts';
@@ -10,11 +18,7 @@
    * React Aria, and a dialog without a Heading leaves out aria-labelledby once the browser is idle.
    * In the overlay of a DatePicker, its Button and Label name it then.
    */
-  const { role = 'dialog', children, ...rest } = $props<{
-    role?: 'dialog' | 'alertdialog';
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { role = 'dialog', children, ...rest } = $props<DialogProps>();
 
   const overlay = $getContext(DialogContext);
   const trigger = $getContext(OverlayTriggerContext);

@@ -1,6 +1,24 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Color } from './color.ts';
+
+  export interface ColorWheelProps {
+    outerRadius: number;
+    innerRadius: number;
+    isDisabled?: boolean;
+    name?: string;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
+    onChange?: (value: string) => void;
+    onChangeEnd?: (value: string) => void;
+    children?: unknown;
+    value?: Bindable<string>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import {
     channelName,
     channelRange,
@@ -17,7 +35,6 @@
     tryParseColor,
     withChannelValue,
   } from './color.ts';
-  import type { Color } from './color.ts';
   import { ColorPickerContext } from './contexts.ts';
   import { ColorThumbContext } from './color-thumb.ts';
   import { ColorWheelContext, hueDown, hueToPoint, hueUp, pointToHue, wrapHue } from './color-wheel.ts';
@@ -62,19 +79,8 @@
     onChangeEnd,
     children,
     ...rest
-  } = $props<{
-    outerRadius: number;
-    innerRadius: number;
-    isDisabled?: boolean;
-    name?: string;
-    'aria-label'?: string;
-    'aria-labelledby'?: string;
-    onChange?: (value: string) => void;
-    onChangeEnd?: (value: string) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = 'hsl(0, 100%, 50%)' } = $props<{ value?: Bindable<string> }>();
+  } = $props<ColorWheelProps>();
+  let { value = 'hsl(0, 100%, 50%)' } = $props<ColorWheelProps>();
 
   // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
   const picker = $getContext(ColorPickerContext);

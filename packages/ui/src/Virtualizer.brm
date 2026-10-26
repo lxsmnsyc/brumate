@@ -1,3 +1,11 @@
+<script module>
+  export interface VirtualizerProps {
+    rowHeight?: number;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $props, $setContext } from 'brumate/signals';
   import { VirtualizerContext } from './virtualizer.ts';
@@ -11,11 +19,7 @@
    * - The rows of a GridList, a ListBox or a Table come from a `#for` of the caller, which takes
    *   `window(rowHeight)` for the same. See the windowed lists of `#for`.
    */
-  const { rowHeight = 32, children, ...rest } = $props<{
-    rowHeight?: number;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { rowHeight = 32, children, ...rest } = $props<VirtualizerProps>();
 
   $setContext(VirtualizerContext, { rowHeight });
 </script>

@@ -1,6 +1,23 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface SliderProps {
+    minValue?: number;
+    maxValue?: number;
+    step?: number;
+    orientation?: 'horizontal' | 'vertical';
+    isDisabled?: boolean;
+    formatOptions?: Intl.NumberFormatOptions;
+    onChange?: (value: number | number[]) => void;
+    onChangeEnd?: (value: number | number[]) => void;
+    children?: unknown;
+    value?: Bindable<number | number[]>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { NumberFormatter } from '@internationalized/number';
   import { LabelContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
@@ -31,19 +48,8 @@
     onChangeEnd,
     children,
     ...rest
-  } = $props<{
-    minValue?: number;
-    maxValue?: number;
-    step?: number;
-    orientation?: 'horizontal' | 'vertical';
-    isDisabled?: boolean;
-    formatOptions?: Intl.NumberFormatOptions;
-    onChange?: (value: number | number[]) => void;
-    onChangeEnd?: (value: number | number[]) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = minValue } = $props<{ value?: Bindable<number | number[]> }>();
+  } = $props<SliderProps>();
+  let { value = minValue } = $props<SliderProps>();
 
   const locale = $getContext(LocaleContext);
   // The values that a reset of the form gives back.

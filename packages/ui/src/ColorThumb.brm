@@ -1,3 +1,10 @@
+<script module>
+  export interface ColorThumbProps {
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -18,7 +25,7 @@
    * - A drag takes the thumb from where the pointer was, so it does not jump to the pointer.
    * - It shows `data-dragging`, `data-focused`, `data-focus-visible` and `data-disabled`.
    */
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  const { children, ...rest } = $props<ColorThumbProps>();
 
   const thumb = $getContext(ColorThumbContext);
 

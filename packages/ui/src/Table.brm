@@ -1,6 +1,45 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type {
+    Key,
+    Movement,
+    SelectionBehavior,
+    SelectionMode,
+    SelectionRequest,
+  } from './collection.ts';
+  import type { SortDescriptor, TableColumn } from './table.ts';
+
+  export interface TableProps {
+    selectionMode?: SelectionMode;
+    selectionBehavior?: SelectionBehavior;
+    disabledKeys?: Key[];
+    disallowEmptySelection?: boolean;
+    escapeKeyBehavior?: 'clearSelection' | 'none';
+    onRowAction?: (key: Key) => void;
+    onSelectionChange?: (keys: Key[]) => void;
+    onSortChange?: (descriptor: SortDescriptor) => void;
+    /**
+     * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
+     * A Virtualizer around the table gives it too. It needs `items`.
+     */
+    rowHeight?: number;
+    /**
+     * The text that typeahead matches for an item, for the rows out of view of a windowed table.
+     * The rows in view use their own `textValue` or text.
+     */
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Table are the caller's.
+    getTextValue?: (item: any) => string;
+    /** The data of the rows, each with an `id`. The `item` template of the TableBody renders each. */
+    items?: readonly { id: Key }[];
+    children?: unknown;
+    selectedKeys?: Bindable<Key[]>;
+    sortDescriptor?: Bindable<SortDescriptor | null>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -19,19 +58,11 @@
     setRange,
     typeahead,
   } from './collection.ts';
-  import type {
-    Key,
-    Movement,
-    SelectionBehavior,
-    SelectionMode,
-    SelectionRequest,
-  } from './collection.ts';
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
   import { VirtualizerContext } from './virtualizer.ts';
   import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
   import { TableContext, TableResizeContext, nextSort } from './table.ts';
-  import type { SortDescriptor, TableColumn } from './table.ts';
 
   /**
    * A table of rows and columns that the user can move through, select and sort, as Table of
@@ -73,33 +104,9 @@
     items,
     children,
     ...rest
-  } = $props<{
-    selectionMode?: SelectionMode;
-    selectionBehavior?: SelectionBehavior;
-    disabledKeys?: Key[];
-    disallowEmptySelection?: boolean;
-    escapeKeyBehavior?: 'clearSelection' | 'none';
-    onRowAction?: (key: Key) => void;
-    onSelectionChange?: (keys: Key[]) => void;
-    onSortChange?: (descriptor: SortDescriptor) => void;
-    /**
-     * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
-     * A Virtualizer around the table gives it too. It needs `items`.
-     */
-    rowHeight?: number;
-    /**
-     * The text that typeahead matches for an item, for the rows out of view of a windowed table.
-     * The rows in view use their own `textValue` or text.
-     */
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Table are the caller's.
-    getTextValue?: (item: any) => string;
-    /** The data of the rows, each with an `id`. The `item` template of the TableBody renders each. */
-    items?: readonly { id: Key }[];
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { selectedKeys = [] } = $props<{ selectedKeys?: Bindable<Key[]> }>();
-  let { sortDescriptor = null } = $props<{ sortDescriptor?: Bindable<SortDescriptor | null> }>();
+  } = $props<TableProps>();
+  let { selectedKeys = [] } = $props<TableProps>();
+  let { sortDescriptor = null } = $props<TableProps>();
 
   const locale = $getContext(LocaleContext);
   const virtualizer = $getContext(VirtualizerContext);

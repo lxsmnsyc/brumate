@@ -1,7 +1,17 @@
+<script module>
+  import type { Key } from './collection.ts';
+
+  export interface TabPanelProps {
+    id: Key;
+    shouldForceMount?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $effect, $getContext, $memo, $props, $signal, $untrack } from 'brumate/signals';
   import { tabbables } from './overlay.ts';
-  import type { Key } from './collection.ts';
   import { TabsContext, selectedOf, tabId } from './tabs.ts';
 
   /**
@@ -16,12 +26,7 @@
     shouldForceMount = false,
     children,
     ...rest
-  } = $props<{
-    id: Key;
-    shouldForceMount?: boolean;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  } = $props<TabPanelProps>();
 
   const tabs = $getContext(TabsContext);
   const selected = $memo(Boolean(tabs) && selectedOf(tabs!) === id);

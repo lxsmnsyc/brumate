@@ -1,4 +1,19 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface SeparatorOwnProps {
+    orientation?: 'horizontal' | 'vertical';
+    slot?: string | null;
+  }
+
+  /**
+   * The props of Separator. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type SeparatorProps<T extends AsTarget = 'hr'> = AsProps<T, SeparatorOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'hr'">
   import { $getContext, $memo, $props } from 'brumate/signals';
   import { SeparatorContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
@@ -7,17 +22,14 @@
    * A line between parts of the content, as Separator of React Aria Components. Horizontal, it is
    * an <hr>. Vertical, it is an element with role="separator" and aria-orientation.
    */
-  const { as, orientation, slot, ...rest } = $props<{
-    as?: string;
-    orientation?: 'horizontal' | 'vertical';
-    slot?: string | null;
-    [attribute: string]: unknown;
-  }>();
+  const { orientation, slot, ...rest } = $props<SeparatorOwnProps>();
+  // The props of the target of `as`, for the type of the component.
+  const { as } = $props<SeparatorProps<T>>();
 
   const context = $getContext(SeparatorContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const direction = $memo(orientation ?? slotProps(context, slot).orientation ?? 'horizontal');
-  const element = $memo(as ?? (direction === 'vertical' ? 'div' : 'hr'));
+  const element = $memo((as ?? (direction === 'vertical' ? 'div' : 'hr')) as AsTarget);
 </script>
 
 <{element}

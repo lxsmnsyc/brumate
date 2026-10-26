@@ -1,6 +1,33 @@
-<script>
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
+  import type { DateParts, SegmentType, TimeGranularity, TimeString } from './segments.ts';
+
+  export interface TimeFieldOwnProps {
+    name?: string;
+    minValue?: TimeString;
+    maxValue?: TimeString;
+    placeholderValue?: TimeString;
+    granularity?: TimeGranularity;
+    hourCycle?: 12 | 24;
+    isDisabled?: boolean;
+    isReadOnly?: boolean;
+    isRequired?: boolean;
+    isInvalid?: boolean;
+    onChange?: (value: TimeString | null) => void;
+    children?: unknown;
+    value?: Bindable<TimeString | null>;
+  }
+
+  /**
+   * The props of TimeField. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TimeFieldProps<T extends AsTarget = 'div'> = AsProps<T, TimeFieldOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'div'">
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { formField } from './date-field.brm.ts';
@@ -19,7 +46,6 @@
     typeTime,
     usesDayPeriod,
   } from './segments.ts';
-  import type { DateParts, SegmentType, TimeGranularity, TimeString } from './segments.ts';
 
   /**
    * A time of day that the user edits segment by segment, as TimeField of React Aria Components.
@@ -55,23 +81,8 @@
     onChange,
     children,
     ...rest
-  } = $props<{
-    as?: string;
-    name?: string;
-    minValue?: TimeString;
-    maxValue?: TimeString;
-    placeholderValue?: TimeString;
-    granularity?: TimeGranularity;
-    hourCycle?: 12 | 24;
-    isDisabled?: boolean;
-    isReadOnly?: boolean;
-    isRequired?: boolean;
-    isInvalid?: boolean;
-    onChange?: (value: TimeString | null) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = null } = $props<{ value?: Bindable<TimeString | null> }>();
+  } = $props<TimeFieldProps<T>>();
+  let { value = null } = $props<TimeFieldProps<T>>();
 
   const locale = $getContext(LocaleContext);
   const form = $getContext(FormContext);

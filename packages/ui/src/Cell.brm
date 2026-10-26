@@ -1,3 +1,11 @@
+<script module>
+  export interface CellProps {
+    textValue?: string;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $props } from 'brumate/signals';
   import { TableContext, TableRowContext } from './table.ts';
@@ -7,11 +15,7 @@
    * names its row: it is a `th` with `role="rowheader"`. Others are `td` elements with
    * `role="gridcell"`. It takes focus, or its first control does.
    */
-  const { textValue, children, ...rest } = $props<{
-    textValue?: string;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { textValue, children, ...rest } = $props<CellProps>();
 
   const table = $getContext(TableContext);
   const row = $getContext(TableRowContext);

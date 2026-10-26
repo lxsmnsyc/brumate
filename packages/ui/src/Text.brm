@@ -1,4 +1,19 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface TextOwnProps {
+    slot?: string | null;
+    children?: unknown;
+  }
+
+  /**
+   * The props of Text. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TextProps<T extends AsTarget = 'span'> = AsProps<T, TextOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'span'">
   import { $getContext, $memo, $props } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
@@ -7,12 +22,7 @@
    * Text of a field, as Text of React Aria Components. A field gives it an ID by its slot, such
    * as `slot="description"`, so the field's input names it in aria-describedby.
    */
-  const { as = 'span', slot, children, ...rest } = $props<{
-    as?: string;
-    slot?: string | null;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { as = 'span', slot, children, ...rest } = $props<TextProps<T>>();
 
   const context = $getContext(TextContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));

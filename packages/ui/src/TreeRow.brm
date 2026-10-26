@@ -1,17 +1,22 @@
+<script module>
+  import type { TreeRow } from './tree.ts';
+
+  export interface TreeRowProps {
+    row: TreeRow;
+    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Tree are the caller's.
+    item: (node: any) => unknown;
+  }
+</script>
+
 <script>
   import { $props, $setContext } from 'brumate/signals';
   import { TreeRowContext } from './tree.ts';
-  import type { TreeRow } from './tree.ts';
 
   /**
    * One row of a Tree: it gives the TreeItem that the `item` template of the Tree renders its
    * place in the tree. The Tree renders it for each row that shows.
    */
-  const { row, item } = $props<{
-    row: TreeRow;
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Tree are the caller's.
-    item: (node: any) => unknown;
-  }>();
+  const { row, item } = $props<TreeRowProps>();
 
   $setContext(TreeRowContext, { row });
 </script>

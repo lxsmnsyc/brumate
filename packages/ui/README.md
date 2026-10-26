@@ -54,13 +54,14 @@ A part is a `.brm` component in `src`, with a `.stories.ts` file, a test in `tes
 ### Props
 
 - Name the props as React Aria does: `isDisabled`, `onPress`, `onHoverChange`.
-- Take `as`, and render `<{as ?? 'button'} …>`, so the caller can pick the element.
+- Export `<Name>Props` from `<script module>`, and use it in `$props<NameProps>()`, so apps can import it. See [Props types](../../website/docs/typescript.md#props-types).
+- Take `as`, and render `<{as ?? 'button'} …>`, so the caller can pick the element. Its type is `AsProps` of `src/as.ts`, as `ButtonProps` shows: the other props are those of the element or the component.
 - End the element with `{...rest}`, so the caller's attributes come last. Its `class` adds to the part's, and its handlers run after the part's own.
 - Show state as `data-*` attributes, with `undefined` for false, so `[data-pressed]` matches only a pressed part.
 
 ### State
 
-Give each state one `let` prop, typed `Bindable`, such as `let { pressed = false } = $props<{ pressed?: Bindable<boolean> }>()`. Write it, and call `onChange`:
+Give each state one `let` prop, typed `Bindable`, such as `let { pressed = false } = $props<ToggleProps>()`, with `pressed?: Bindable<boolean>` in `ToggleProps`. Write it, and call `onChange`:
 
 - `pressed` alone starts the part's own copy as on.
 - `pressed=$bind(signal)` writes the caller's signal.

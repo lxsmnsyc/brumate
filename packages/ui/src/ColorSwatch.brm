@@ -1,3 +1,12 @@
+<script module>
+  export interface ColorSwatchProps {
+    color?: string;
+    colorName?: string;
+    'aria-label'?: string;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $memo, $props } from 'brumate/signals';
   import { ColorPickerContext, ColorSwatchContext } from './contexts.ts';
@@ -15,12 +24,7 @@
    * - The background shows the color over a checkerboard, so its alpha shows. The element has
    *   `--color` for CSS.
    */
-  const { color: given, colorName: name, 'aria-label': ariaLabel, ...rest } = $props<{
-    color?: string;
-    colorName?: string;
-    'aria-label'?: string;
-    [attribute: string]: unknown;
-  }>();
+  const { color: given, colorName: name, 'aria-label': ariaLabel, ...rest } = $props<ColorSwatchProps>();
 
   const item = $getContext(ColorSwatchContext);
   const picker = $getContext(ColorPickerContext);

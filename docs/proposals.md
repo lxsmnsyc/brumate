@@ -1310,34 +1310,6 @@ The pages of the parts are bare next to Terracotta, React Aria and Headless UI. 
 
 Compare the pages of each part with those of the three libraries before writing them.
 
-### A guide to props types
-
-Other files need the props type of a component, such as a wrapper that passes props on, a story, or a test. A component can export it from `<script module>`, and its instance script uses it:
-
-```brm
-<script module>
-  export interface ButtonProps {
-    label: string;
-    isDisabled?: boolean;
-  }
-</script>
-
-<script>
-  import { $props } from 'brumate/signals';
-
-  const { label, isDisabled } = $props<ButtonProps>();
-</script>
-```
-
-Another file then imports it with `import type { ButtonProps } from './Button.brm'`. Nothing documents this yet. A guide in `website/docs/typescript.md` should cover:
-
-- Exporting the props type, and importing it in a `.brm`, a `.ts` and a test.
-- That it works where the TypeScript plugin of brumate runs, in the editor and `brumate-tsc`. Plain `tsc` reads `.brm` imports through `declare module '*.brm'` and sees `any`.
-- Extending the props of another component, such as a part that adds to the props of a `Button`.
-- A generic component, whose props type takes its type parameter.
-
-The parts of `@brumate/ui` export their props types the same way, so apps can use them, and the props tables of their pages can come from them.
-
 ### `$client` in markup that the browser renders
 
 The docs of `$client` describe the triggers for a page that loads. They do not say when the callback runs for a component that the browser renders, such as in an `#if` that opens. Add a section to `website/docs/effects.md`:
@@ -1377,7 +1349,7 @@ Each step lists what it holds and why it comes there. A step can start before th
 1. **Caching**: done. Keys for calls that the browser sends again wait for the offline queue, and one render for all the holes of a prerendered page waits for a page with many.
 2. **Streaming and tools**: reveal order, lists that grow in the browser and the devtools are done, except the history and a browser extension of the devtools, which wait for someone who needs them.
 3. **The component workbench and the UI components**, together. The workbench shows only self-contained components, and `@brumate/ui` is its first user, starting with the `Select` spike. The UI components are the biggest project here.
-4. **The website**: the fixes of the home link, the shop demo, the highlighting and the error section first, since they are small. Then the guide to props types, the docs and examples of `@brumate/ui`, and a landing page for it, before the parts are published.
+4. **The website**: the fixes of the home link, the shop demo, the highlighting and the error section first, since they are small. Then the docs and examples of `@brumate/ui`, and a landing page for it, before the parts are published.
 5. **A smaller and faster client**, in the order of its steps, once the UI components of the phases that the website needs are in.
 6. **Server components**: a spike that measures them against server functions, memos and `refresh`, with two cases of the website. Then the design of server components, `#server`, the render again, and children that keep their state.
 7. **When an app or the website needs them**: named view transitions, Markdown with components, two-way realtime, worker functions, offline pages, embedding, long lists, observability. Persisted signals are a cookie and an effect.

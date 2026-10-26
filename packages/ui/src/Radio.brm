@@ -1,3 +1,12 @@
+<script module>
+  export interface RadioProps {
+    value: string;
+    isDisabled?: boolean;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
@@ -12,12 +21,7 @@
    * The label shows `data-selected`, `data-pressed`, `data-hovered`, `data-focused`,
    * `data-focus-visible`, `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
    */
-  const { value, isDisabled, children, ...rest } = $props<{
-    value: string;
-    isDisabled?: boolean;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { value, isDisabled, children, ...rest } = $props<RadioProps>();
 
   const group = $getContext(RadioGroupContext);
   const selected = $memo(group?.value === value);

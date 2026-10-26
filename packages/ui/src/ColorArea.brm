@@ -1,8 +1,27 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { Color, ColorChannel, ColorSpace } from './color.ts';
+
+  export interface ColorAreaProps {
+    xChannel?: ColorChannel;
+    yChannel?: ColorChannel;
+    colorSpace?: ColorSpace;
+    isDisabled?: boolean;
+    xName?: string;
+    yName?: string;
+    'aria-label'?: string;
+    'aria-labelledby'?: string;
+    onChange?: (value: string) => void;
+    onChangeEnd?: (value: string) => void;
+    children?: unknown;
+    value?: Bindable<string>;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import type { Bindable } from 'brumate/signals';
-  import type { Color, ColorChannel, ColorSpace } from './color.ts';
   import {
     areaChannels,
     areaGradient,
@@ -79,21 +98,8 @@
     onChangeEnd,
     children,
     ...rest
-  } = $props<{
-    xChannel?: ColorChannel;
-    yChannel?: ColorChannel;
-    colorSpace?: ColorSpace;
-    isDisabled?: boolean;
-    xName?: string;
-    yName?: string;
-    'aria-label'?: string;
-    'aria-labelledby'?: string;
-    onChange?: (value: string) => void;
-    onChangeEnd?: (value: string) => void;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
-  let { value = '#ffffff' } = $props<{ value?: Bindable<string> }>();
+  } = $props<ColorAreaProps>();
+  let { value = '#ffffff' } = $props<ColorAreaProps>();
 
   // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
   const picker = $getContext(ColorPickerContext);

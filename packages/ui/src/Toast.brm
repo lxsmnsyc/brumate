@@ -1,9 +1,18 @@
+<script module>
+  import type { QueuedToast } from './toast.ts';
+
+  export interface ToastProps {
+    toast: QueuedToast<unknown>;
+    children?: unknown;
+    [attribute: string]: unknown;
+  }
+</script>
+
 <script>
   import { $getContext, $id, $props, $setContext } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { ToastContext, ToastRegionContext, toastQueue } from './toast.ts';
-  import type { QueuedToast } from './toast.ts';
 
   /**
    * A toast of a ToastRegion, as Toast of React Aria Components. It is an `alertdialog` that is
@@ -13,11 +22,7 @@
    *   after the ToastContent, so a screen reader reads the content first.
    * - It takes focus with Tab and F6, and has `data-toast-key`.
    */
-  const { toast, children, ...rest } = $props<{
-    toast: QueuedToast<unknown>;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { toast, children, ...rest } = $props<ToastProps>();
 
   const region = $getContext(ToastRegionContext);
   const titleId = $id();

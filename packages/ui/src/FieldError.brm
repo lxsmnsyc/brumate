@@ -1,4 +1,18 @@
-<script>
+<script module>
+  import type { AsProps, AsTarget } from './as.ts';
+
+  export interface FieldErrorOwnProps {
+    children?: unknown;
+  }
+
+  /**
+   * The props of FieldError. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type FieldErrorProps<T extends AsTarget = 'span'> = AsProps<T, FieldErrorOwnProps>;
+</script>
+
+<script generics="T extends AsTarget = 'span'">
   import { $getContext, $props } from 'brumate/signals';
   import { FieldErrorContext } from './contexts.ts';
 
@@ -7,11 +21,7 @@
    * field is invalid, with the ID that the field's input names in aria-describedby. Without
    * children, it shows the messages of the field.
    */
-  const { as = 'span', children, ...rest } = $props<{
-    as?: string;
-    children?: unknown;
-    [attribute: string]: unknown;
-  }>();
+  const { as = 'span', children, ...rest } = $props<FieldErrorProps<T>>();
 
   const state = $getContext(FieldErrorContext);
 </script>

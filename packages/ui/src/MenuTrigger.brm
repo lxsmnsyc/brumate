@@ -1,11 +1,20 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { PressEvent } from './events.ts';
+  import type { FocusStrategy } from './menu.ts';
+
+  export interface MenuTriggerProps {
+    onOpenChange?: (open: boolean) => void;
+    children?: unknown;
+    isOpen?: Bindable<boolean>;
+  }
+</script>
+
 <script>
   import { $id, $props, $setContext, $signal } from 'brumate/signals';
-  import type { Bindable } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, OverlayTriggerContext } from './contexts.ts';
-  import type { PressEvent } from './events.ts';
   import { MenuTriggerContext } from './menu.ts';
-  import type { FocusStrategy } from './menu.ts';
 
   /**
    * Opens a Menu in a Popover from a Button inside it, as MenuTrigger of React Aria Components.
@@ -17,11 +26,8 @@
    * - ArrowDown on the Button opens the menu at its first item, and ArrowUp at its last.
    * - `isOpen` alone starts it open, and `isOpen=$bind(signal)` writes the caller's.
    */
-  const { onOpenChange, children } = $props<{
-    onOpenChange?: (open: boolean) => void;
-    children?: unknown;
-  }>();
-  let { isOpen = false } = $props<{ isOpen?: Bindable<boolean> }>();
+  const { onOpenChange, children } = $props<MenuTriggerProps>();
+  let { isOpen = false } = $props<MenuTriggerProps>();
 
   const triggerId = $id();
   const overlayId = $id();

@@ -50,7 +50,7 @@ export interface CheckOutput {
  */
 const HELPERS = `/// <reference types="brumate/types" />
 type $$Component<P> = (props: P, ...rest: any[]) => unknown;
-declare function $$dynamic(tag: string | $$Component<any>, props: Record<string, unknown>): void;
+declare function $$dynamic(tag: string | ((props: never, ...rest: never[]) => unknown), props: Record<string, unknown>): void;
 type $$Event<K, M> = K extends keyof M ? M[K] : Event;
 type $$Element<T> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement;
 declare function $$on<T extends string, K extends string>(tag: T, event: K, handler: (event: $$Event<K, HTMLElementEventMap> & { currentTarget: $$Element<T> }) => unknown): void;
