@@ -436,7 +436,7 @@ describe('resume', () => {
     // The block that the client renders gets the current values.
     const big = document.querySelector<HTMLElement>('.big')!;
     expect(big.style.getPropertyValue('--s-9wx0az-0')).toBe('red');
-    expect(big.hasAttribute('s-9wx0az')).toBe(true);
+    expect(big.hasAttribute('b-c-9wx0az')).toBe(true);
   });
 
   it('adds the stylesheet when the client renders a component first', async () => {
@@ -2365,6 +2365,25 @@ describe('spreads and attributes of other code', () => {
     click(document.querySelector('.inc')!);
     await waitFor(() => expect(box.getAttribute('title')).toBe('count 1'));
     expect(box.getAttribute('aria-controls')).toBe('menu');
+  });
+});
+
+describe('b- attributes in data', () => {
+  it('are not written by a spread, on the server or in the browser', async () => {
+    await resume('spreadForged', {});
+    const box = document.querySelector('.box')!;
+    const forwarded = document.querySelector('.forwarded')!;
+    for (const element of [box, forwarded]) {
+      expect(element.getAttribute('title')).toBe('count 0');
+      expect(element.getAttribute('b-on') ?? '').not.toContain('Other');
+      expect(element.getAttribute('b-b') ?? '').not.toMatch(/^0:9$/);
+    }
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(box.getAttribute('title')).toBe('count 1'));
+    for (const element of [box, forwarded]) {
+      expect(element.getAttribute('b-on') ?? '').not.toContain('Other');
+      expect(element.getAttribute('b-b') ?? '').not.toMatch(/^0:10$/);
+    }
   });
 });
 
