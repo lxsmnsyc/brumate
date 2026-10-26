@@ -20,7 +20,7 @@ Proposed map, which split-client-runtime confirms or changes before it freezes t
 | client/updates.ts  | `run`, `memo`, `writeSlot`, `flushEffects`, the `g` tables           | ordered-updates (batching shares it) |
 | client/resume.ts   | `init`, `parseId`, `readRecord`, `addScopes`, the bound-field writes | fields-typed-early                   |
 | client/handlers.ts | `handle`, `call`, `resolve`, `fail`                                  | batching                             |
-| client/blocks.ts   | the marker observer, inserts, blocks                                 | client-size/drop-marker-index        |
+| client/blocks.ts   | the marker observer, inserts, blocks                                 | drop-marker-index                    |
 | client.ts          | re-exports, so callers do not change                                 |                                      |
 
 ## Behavior
