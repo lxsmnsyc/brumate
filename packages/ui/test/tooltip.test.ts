@@ -89,7 +89,8 @@ it('shows the next one at once once one has shown, and one at a time', async () 
 it('hides on Escape and on a press of its trigger', async () => {
   const page = await tooltips();
   pointer('pointerenter', page.get('.save'));
-  await page.waitFor(() => expect(find('.tip')).not.toBeNull());
+  // The tooltip places itself and starts to listen for Escape a frame after it shows.
+  await page.waitFor(() => expect(find('.tip')?.closest('[data-placement]')).toBeTruthy());
   press('Escape', document.body);
   await page.waitFor(() => expect(find('.tip')).toBeNull());
   pointer('pointerleave', page.get('.save'));
