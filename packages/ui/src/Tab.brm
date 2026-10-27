@@ -1,15 +1,22 @@
 <script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Key } from './collection.ts';
 
-  export interface TabProps {
+  export interface TabOwnProps {
     id: Key;
     isDisabled?: boolean;
     children?: unknown;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of Tab. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TabProps<T extends AsTarget = 'div'> = AsProps<T, TabOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
@@ -25,11 +32,13 @@
    *   `data-focus-visible`.
    */
   const {
+    as,
     id,
     isDisabled = false,
     children,
     ...rest
-  } = $props<TabProps>();
+  } = $props<TabProps<T>>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const tabs = $getContext(TabsContext);
   // The first tab is the one that is selected when Tabs hold no key.
@@ -79,7 +88,8 @@
   $setContext(SelectionIndicatorContext, { isSelected: selected });
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   id=(tabs ? tabId(tabs, id, 'tab') : undefined)
   role="tab"
   data-key=(keyAttribute(id))
@@ -105,4 +115,4 @@
   {onFocus}
   {onBlur}
   {...rest}
->{children}</div>
+>{children}</>

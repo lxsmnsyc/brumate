@@ -1,14 +1,21 @@
 <script module>
-  export interface TreeItemProps {
+  import type { Bindable } from 'brumate/signals';
+  import type { AsProps, AsTarget } from './as.ts';
+  export interface TreeItemOwnProps {
     textValue?: string;
     isDisabled?: boolean;
     onAction?: () => void;
     children?: unknown;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of TreeItem. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TreeItemProps<T extends AsTarget = 'div'> = AsProps<T, TreeItemOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { ListBoxContext, focusItem, keyAttribute } from './collection.ts';
@@ -30,12 +37,14 @@
    *   `--tree-item-level` CSS variable, and the states of a GridListItem.
    */
   const {
+    as,
     textValue,
     isDisabled = false,
     onAction,
     children,
     ...rest
-  } = $props<TreeItemProps>();
+  } = $props<TreeItemProps<T>>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const tree = $getContext(TreeRowContext);
   // The attributes of a part around it, such as a NavigationTreeItem, which its own win over.
@@ -160,7 +169,8 @@
   $setContext(SelectionIndicatorContext, { isSelected: selected });
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   id=rowId
   role="row"
   tabindex="-1"
@@ -194,10 +204,10 @@
   {onBlur}
   {...given}
   {...rest}
-><div role="gridcell" style="display: contents">{children}</div></div>
+><div role="gridcell" style="display: contents">{children}</div></>
 
 <style>
-  div[role='row'] {
+  [role='row'] {
     --tree-item-level: ${row.level};
   }
 </style>

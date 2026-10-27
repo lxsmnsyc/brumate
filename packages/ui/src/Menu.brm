@@ -1,8 +1,9 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { Key, SelectionMode } from './collection.ts';
 
-  export interface MenuProps {
+  export interface MenuOwnProps {
     selectionMode?: SelectionMode;
     disabledKeys?: Key[];
     disallowEmptySelection?: boolean;
@@ -14,16 +15,22 @@
     'aria-label'?: string;
     children?: unknown;
     selectedKeys?: Bindable<Key[]>;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of Menu. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type MenuProps<T extends AsTarget = 'div'> = AsProps<T, MenuOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import {
     $client,
     $effect,
     $getContext,
     $id,
+    $memo,
     $props,
     $setContext,
     $signal,
@@ -63,6 +70,7 @@
    * - In a submenu, ArrowLeft closes it, and focus goes back to the item that opened it.
    */
   const {
+    as,
     selectionMode = 'none',
     disabledKeys = [],
     disallowEmptySelection = false,
@@ -74,8 +82,9 @@
     'aria-label': label,
     children,
     ...rest
-  } = $props<MenuProps>();
-  let { selectedKeys = [] } = $props<MenuProps>();
+  } = $props<MenuProps<T>>();
+  let { selectedKeys = [] } = $props<MenuOwnProps>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const trigger = $getContext(MenuTriggerContext);
   // A field around the menu, such as of an Autocomplete, keeps focus and can filter the items.
@@ -83,8 +92,7 @@
   const dialog = $getContext(DialogContext);
   const locale = $getContext(LocaleContext);
   const menuId = $id();
-  let root = $signal<HTMLElement>();
-  let focusedId = $signal<string>();
+    let focusedId = $signal<string>();
 
   function action(key: Key) {
     if (disabledKeys.includes(key)) {
@@ -132,7 +140,7 @@
   // page, and each time the text changes.
   function applyFilter() {
     const text = field?.filterText;
-    const element = root;
+    const element = ref;
     if (text !== undefined && element) {
       field!.filtered?.(filterItems(element, text, field!.filter, MENU_ITEMS));
     }
@@ -146,7 +154,7 @@
   $setContext(SubmenuContext, null);
 
   function focused(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     // The menu passes its focus on to an item, as its trigger asks. After a press with a pointer,
     // it keeps focus, and the arrow keys move to an item. A menu on the page starts at its first.
     if (!element || field || event.target !== element || document.activeElement !== element) {
@@ -161,7 +169,7 @@
 
   function focusIn(event: FocusEvent) {
     const item = (event.target as Element).closest?.('[data-key]');
-    const element = root;
+    const element = ref;
     if (item && element?.contains(item) && item.closest('[data-collection]') === element) {
       focusedId = item.id;
       // While an item of a menu on the page has focus, Tab leaves the menu.
@@ -172,14 +180,14 @@
   }
 
   function focusOut(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     if (!trigger && element && !element.contains(event.relatedTarget as Node | null)) {
       element.tabIndex = 0;
     }
   }
 
   function keyDown(event: KeyboardEvent) {
-    const element = root;
+    const element = ref;
     if (!element) {
       return;
     }
@@ -213,8 +221,8 @@
   }
 </script>
 
-<div
-  ref=$bind(root)
+<{as ?? 'div'}
+  ref=$bind(ref)
   id=(field?.id ?? menuId)
   role="menu"
   tabindex=(trigger || field ? '-1' : '0')
@@ -226,4 +234,4 @@
   onFocusOut=focusOut
   onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Space', 'Enter'))
   {...rest}
->{children}</div>
+>{children}</>
