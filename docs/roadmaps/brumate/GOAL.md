@@ -1,6 +1,6 @@
 ---
 milestones: [core-correct, ui-0.1, agent-skill, types, smaller-client, features, backlog]
-review: auto  # self for S, docs and chore nodes, a fresh reviewer for the rest
+review: fresh  # the maintainer's choice, 2026-10-27: one fresh reviewer for every pull request that changes code
 merge:
   # The user chose auto-merge on 2026-10-26. The orchestrator merges the pull requests that pass
   # plan.py can-merge, and the rest wait for the user.
@@ -54,6 +54,8 @@ The core is correct and safe to change, agents write good .brm files with a skil
 - Moving packages/ui to its own repository.
 
 ## Verification
+
+- Reviews: every pull request that changes code gets one fresh reviewer (the pr-review skill), whatever its size. Docs, chore and test-only nodes may be reviewed by a fresh agent that the worker spawns itself; a reply without a review verdict counts as unreviewed. At most 3 workers run at once (`plan.py ready --max-parallel 3`), since more make the ui suite flaky under load.
 
 - Fast check (safe in parallel worktrees): `pnpm lint && pnpm format:check && pnpm typecheck`, then the tests of the node.
 - Full check (after merging): `pnpm build && pnpm test && node e2e/run.mjs`, about 10 minutes, with Chrome. `pnpm bench` runs one at a time (exclusive: bench).
