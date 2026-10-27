@@ -15,7 +15,7 @@ import { prop, spreadProps } from './props.ts';
 import { afterInsert, disposeKinds, inPlace, nextId } from './scopes.ts';
 import { hiding, options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
-import { get, set } from './updates.ts';
+import { set } from './updates.ts';
 
 /**
  * Renders a `#portal` body into its target, between markers with its scope
@@ -296,12 +296,11 @@ export function attr(scope: Scope, anchor: number, name: string, value: unknown)
 const spreadNames = new WeakMap<Element, Set<string>>();
 
 /** Gives the element of a spread to the signal that a `ref` in its attributes is bound to. */
-function forwardRef(scope: ScopeId, anchor: number, values: Record<string, unknown>): void {
+function forwardRef(element: Element | null, values: Record<string, unknown>): void {
   const bound = values.ref;
-  const element = findElement(scope, anchor);
   const target = HAS_BINDINGS && isBinding(bound) && isSlotReference(bound.target) && bound.target;
   const owner = target && scopes.get(target.scope);
-  if (owner && element && get(owner, target.slot) !== element) {
+  if (owner && element) {
     set(owner, target.slot, element);
   }
 }
@@ -312,7 +311,7 @@ export function restRef<T extends Record<string, unknown>>(
   scope: ScopeId,
   anchor: number,
 ): T {
-  afterInsert.push(() => forwardRef(scope, anchor, values));
+  afterInsert.push(() => forwardRef(findElement(scope, anchor), values));
   return values;
 }
 
@@ -364,7 +363,7 @@ export function attrs(
     }
     spreadNames.set(element, names);
     updateSpreadEntries(element, values);
-    forwardRef(scope.id, anchor, values);
+    forwardRef(element, values);
   }
 }
 

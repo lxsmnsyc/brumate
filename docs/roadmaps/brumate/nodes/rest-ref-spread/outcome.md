@@ -34,12 +34,12 @@
 ## Verification
 
 - `pnpm --filter brumate exec vitest run test/resume.test.ts -t "a ref left in the rest props"` equivalent (`vitest run -t "rest props"` with the config above): 4 passed.
-- packages/brumate full suite: 1033 passed, 1 expected fail, 8 failed in testing.test.ts and vite.test.ts, the same 8 as on main in a worktree under .git.
+- packages/brumate full suite: 1041 passed, 1 expected fail (run from a worktree outside .git).
 - packages/ui: 57 files, 537 passed, 1 expected fail.
 - `oxlint` exit 0, `oxfmt --check` pass, `tsc --noEmit -p .` in packages/brumate pass, `brumate-tsc --noEmit` in packages/ui pass.
 - Not run: `pnpm bench`, `node e2e/run.mjs`.
 
 ## Size
 
-- Chunks of dist (`npx tsdown`), minified with esbuild, gzip -9, main then head: client 16575 to 16675, produce 1995 to 1994. The eager core grows by 99 B, within 0.1 kB.
+- Chunks of dist (`npx tsdown`), minified with esbuild, gzip -9, main then head: client 16575 to 16657, produce 1995 to 1994. The eager core grows by 81 B, within 0.1 kB.
 - Estimated S, actual S.
