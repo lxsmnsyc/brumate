@@ -310,8 +310,12 @@ export function restRef<T extends Record<string, unknown>>(
   values: T,
   scope: ScopeId,
   anchor: number,
+  tag?: unknown,
 ): T {
-  afterInsert.push(() => forwardRef(findElement(scope, anchor), values));
+  // A tag that names a component passes `ref` on as a prop.
+  if (typeof tag !== 'function') {
+    afterInsert.push(() => forwardRef(findElement(scope, anchor), values));
+  }
   return values;
 }
 

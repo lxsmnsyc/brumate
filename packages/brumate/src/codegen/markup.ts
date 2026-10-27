@@ -1337,19 +1337,7 @@ export class Emitter {
     }
     if (merged) {
       // A `ref` that a rest prop holds is a binding of the parent's signal. The element goes to it.
-      const forwards =
-        anchor !== undefined &&
-        !node.attributes.some((attribute) => attribute.kind === 'ref') &&
-        node.attributes.some((attribute) =>
-          attribute.kind === 'spread'
-            ? this.sitesByNode
-                .get(attribute.value.ast)
-                ?.reads.some(
-                  (read) =>
-                    read.declaration.kind === 'prop' || read.declaration.kind === 'props-rest',
-                )
-            : false,
-        );
+      const forwards = anchor !== undefined && this.spreadsRest(node.attributes);
       const attributes = `$$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})`;
       this.code(
         `$$b.spread(${forwards ? `${this.helper('restRef')}(${attributes}, ${anchor.scope}, ${anchor.index})` : attributes}${spreadArguments(spreadHandlers)})`,
@@ -1380,6 +1368,23 @@ export class Emitter {
     this.elements.pop();
     this.nesting--;
     this.html(`</${node.tag}>`);
+  }
+
+  /** True when no `ref` is written, and a spread reads the props of the component. */
+  private spreadsRest(attributes: Attribute[]): boolean {
+    return (
+      !attributes.some((attribute) => attribute.kind === 'ref') &&
+      attributes.some((attribute) =>
+        attribute.kind === 'spread'
+          ? this.sitesByNode
+              .get(attribute.value.ast)
+              ?.reads.some(
+                (read) =>
+                  read.declaration.kind === 'prop' || read.declaration.kind === 'props-rest',
+              )
+          : false,
+      )
+    );
   }
 
   /**
@@ -1748,7 +1753,8 @@ export class Emitter {
     const tag = this.expression(node.tag);
     let tagName = tag;
     let binding = '';
-    if (refs.length > 0 && anchor) {
+    const forwards = anchor !== undefined && this.spreadsRest(node.attributes);
+    if ((refs.length > 0 || forwards) && anchor) {
       // A plain name is read again where the element is written. The code of another tag
       // is read once, which keeps a block from cloning, so only such tags pay for it.
       if (!/^\([^\s()+\-*/?:,;'"`[\]{}!&|<>=]+\)$/.test(tag)) {
@@ -1760,9 +1766,17 @@ export class Emitter {
         binding = `, ${this.bindingOf(declaration)}`;
       }
     }
+    let props = spreadVariables
+      ? `$$b.mergeAttributes([${this.dynamicProps(attributes, scope, extra)}], ${spreadVariables})`
+      : this.dynamicProps(attributes, scope, extra);
+    if (forwards && anchor) {
+      // A `ref` in the rest props goes to the element, when the tag names one. A component
+      // gets it as a prop and forwards it.
+      props = `${this.helper('restRef')}(${props}, ${anchor.scope}, ${anchor.index}, ${tagName})`;
+    }
     this.code(
       this.ready(
-        `$$b.dynamic(${tagName}, ${spreadVariables ? `$$b.mergeAttributes([${this.dynamicProps(attributes, scope, extra)}], ${spreadVariables})` : this.dynamicProps(attributes, scope, extra)}, ${childrenName ?? 'undefined'}, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}${binding})`,
+        `$$b.dynamic(${tagName}, ${props}, ${childrenName ?? 'undefined'}, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}${binding})`,
       ),
     );
     // `ref` gets the element that the tag renders, when it names an element.
