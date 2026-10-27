@@ -3,7 +3,9 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface DialogOwnProps<T extends AsTarget = 'section'> {
+    /** The role of the dialog. Use `alertdialog` for one that needs an answer. */
     role?: 'dialog' | 'alertdialog';
+    /** The content of the dialog, such as a `Heading` with `slot="title"` and a `Button` with `slot="close"`. */
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

@@ -4,9 +4,13 @@
   import type { QueuedToast } from './toast.ts';
 
   export interface ToastRegionOwnProps<V = unknown, T extends AsTarget = 'div'> {
+    /** The name of the queue that the region renders. */
     queue?: string;
+    /** A `#template` that renders each toast of the queue. */
     toast: (item: QueuedToast<V>) => unknown;
+    /** Lets CSS animate each toast, with `data-closed`, `data-enter` and `data-leave`. */
     transition?: boolean;
+    /** The name of the landmark. */
     'aria-label'?: string;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

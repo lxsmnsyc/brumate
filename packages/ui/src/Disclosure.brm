@@ -5,9 +5,13 @@
   export interface DisclosureOwnProps<T extends AsTarget = 'div'> {
     /** The key of the disclosure in a DisclosureGroup. */
     id?: string;
+    /** Disables the trigger. */
     isDisabled?: boolean;
+    /** Runs with each change of whether it is expanded. */
     onExpandedChange?: (expanded: boolean) => void;
+    /** A `Button` with `slot="trigger"` and a `DisclosurePanel`. */
     children?: unknown;
+    /** Whether it is expanded. Alone it starts expanded, and `$bind` writes your signal. */
     isExpanded?: Bindable<boolean>;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

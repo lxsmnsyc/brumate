@@ -1,6 +1,8 @@
 <script module>
   export interface I18nProviderProps {
+    /** A language tag, such as `ar-EG`, for the parts inside. */
     locale?: string;
+    /** The parts that read the locale. */
     children?: unknown;
   }
 </script>

@@ -19,10 +19,46 @@ A preview of a link or a button, such as a card of the author behind a name. It 
 - Focus that leaves both hides it at once, and so do a press of the trigger and a press outside.
 - Escape hides it, and gives focus back to the trigger. That focus does not show it again.
 
+## Anatomy
+
+```html
+<PreviewTrigger>
+  <Link />
+  <Popover>
+    <OverlayArrow />
+  </>
+</>
+```
+
+The trigger is a `Link` or a `Button`. The `OverlayArrow` is optional.
+
+## Props
+
+```props PreviewTrigger
+
+```
+
+## Data attributes
+
+A `PreviewTrigger` sets no data attributes. The [Popover](./popover.md#data-attributes) shows its own, and the trigger shows those of a [Link](./link.md#data-attributes) or a [Button](./button.md#data-attributes).
+
 ## Keyboard
 
-The preview renders at the end of the page, in a [layer](./layers.md), so Tab moves between it and the page as if it came right after the trigger:
+| Key                | Action                                                                                        |
+| ------------------ | --------------------------------------------------------------------------------------------- |
+| `Tab`              | Moves focus to the trigger. Focus from the keyboard shows the preview after `delay`.          |
+| `Tab`              | On the trigger of a preview that shows, moves focus into the preview.                         |
+| `Tab`              | At the end of the preview, moves focus to the element after the trigger.                      |
+| `Shift + Tab`      | At the start of the preview, moves focus back to the trigger.                                 |
+| `Enter` or `Space` | Presses the trigger, and hides the preview. A link follows its `href`.                        |
+| `Escape`           | Hides the preview wherever focus is. From inside the preview, focus goes back to the trigger. |
 
-- Tab on the trigger moves into the preview.
-- Tab past the end of the preview moves on to the element after the trigger.
-- Shift+Tab before its start goes back to the trigger.
+The preview renders at the end of the page, in a [layer](./layers.md), so Tab moves between it and the page as if it came right after the trigger.
+
+## Controlled and uncontrolled
+
+`isOpen` holds whether the preview shows. `isOpen=(true)` starts it shown, and `isOpen=$bind(signal)` writes your signal. `onOpenChange` gets each new state. See [State](./state.md).
+
+## Styling
+
+Style the preview as a [Popover](./popover.md#styling). See [Styling](./styling.md).

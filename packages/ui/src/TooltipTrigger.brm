@@ -5,12 +5,19 @@
   import type { ContextValue } from './slots.ts';
 
   export interface TooltipTriggerProps {
+    /** The time in milliseconds that hover waits before the tooltip shows. */
     delay?: number;
+    /** The time in milliseconds between the pointer leaving and the tooltip hiding. */
     closeDelay?: number;
+    /** With `focus`, only focus shows the tooltip, and hover does not. */
     trigger?: 'focus';
+    /** Never shows the tooltip. */
     isDisabled?: boolean;
+    /** Runs with each change of whether the tooltip shows. */
     onOpenChange?: (open: boolean) => void;
+    /** A `Button` and a `Tooltip`. */
     children?: unknown;
+    /** Whether the tooltip shows. Alone it starts shown, and `$bind` writes your signal. */
     isOpen?: Bindable<boolean>;
   }
 </script>

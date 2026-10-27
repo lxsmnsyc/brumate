@@ -39,3 +39,69 @@ An arrow from the popover to its trigger. The popover places it along its side, 
   rotate: 45deg;
 }
 ```
+
+## Anatomy
+
+```html
+<DialogTrigger>
+  <Button />
+  <Popover>
+    <OverlayArrow />
+    <Dialog>
+      <Heading slot="title" />
+    </>
+  </>
+</>
+```
+
+The `OverlayArrow` and the `Heading` are optional. The `DialogTrigger` is optional too when the `Popover` has its own `isOpen`.
+
+## Props
+
+### Popover
+
+```props Popover
+
+```
+
+### OverlayArrow
+
+```props OverlayArrow
+
+```
+
+## Data attributes
+
+### Popover
+
+| Attribute         | When                                                                    |
+| ----------------- | ----------------------------------------------------------------------- |
+| `data-placement`  | It is placed, with the side of the trigger that it took, such as `top`. |
+| `data-closed`     | It has `transition`, and it is closed or about to open.                 |
+| `data-enter`      | It has `transition`, and its enter is running.                          |
+| `data-leave`      | It has `transition`, and its leave is running.                          |
+| `data-transition` | It has `transition`, and it is entering or leaving.                     |
+
+### OverlayArrow
+
+| Attribute        | When                                                              |
+| ---------------- | ----------------------------------------------------------------- |
+| `data-placement` | The popover is placed, with the side of the trigger that it took. |
+
+## Keyboard
+
+| Key                | Action                                                                                                         |
+| ------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `Tab`              | Moves focus to the trigger button.                                                                             |
+| `Enter` or `Space` | Presses the trigger button, which opens or closes the popover.                                                 |
+| `Tab`              | In the popover, moves focus to the next element. A modal popover wraps at its end.                             |
+| `Shift + Tab`      | In the popover, moves focus to the previous element. A modal popover wraps at its start.                       |
+| `Escape`           | Closes the popover when focus is inside it. A part inside that used the key, such as a search field, keeps it. |
+
+## Controlled and uncontrolled
+
+Inside a `DialogTrigger`, the trigger holds whether the popover is open, with `isOpen` and `onOpenChange`. A `Popover` with its own `isOpen` ignores the trigger: `isOpen=(true)` starts it open, and `isOpen=$bind(signal)` writes your signal. Its `onOpenChange` then runs when the popover closes itself. See [State](./state.md).
+
+## Styling
+
+Style the popover with the data attributes above, such as `[data-placement='top']` and `[data-closed]`. It sets the CSS custom properties `--trigger-width`, the width of the trigger, and `--available-height`, the height that is left in the window. See [Styling](./styling.md).

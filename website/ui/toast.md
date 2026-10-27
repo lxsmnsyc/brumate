@@ -33,3 +33,69 @@ toastQueue().close(key);
 - A `Toast` is an `alertdialog` that is not modal. Its `ToastContent` is an `alert`, so a screen reader reads it when it shows.
 - A `Text` with `slot="title"` names the toast, and one with `slot="description"` describes it.
 - A `Button` with `slot="close"` closes the toast, and is named "Close". Put it after the ToastContent, so a screen reader reads the content first.
+
+## Anatomy
+
+```html
+<ToastRegion>
+  <Toast>
+    <ToastContent>
+      <Text slot="title" />
+      <Text slot="description" />
+    </>
+    <Button slot="close" />
+  </>
+</>
+```
+
+The `Text` with `slot="description"` and the close `Button` are optional. The `Toast` is the root of the `toast` template of the region.
+
+## Props
+
+### ToastRegion
+
+```props ToastRegion
+
+```
+
+### Toast
+
+```props Toast
+
+```
+
+### ToastContent
+
+```props ToastContent
+
+```
+
+## Data attributes
+
+### ToastRegion
+
+| Attribute    | When                                                      |
+| ------------ | --------------------------------------------------------- |
+| `data-queue` | Always, with the name of the queue that the region shows. |
+
+### Toast
+
+| Attribute         | When                                                                   |
+| ----------------- | ---------------------------------------------------------------------- |
+| `data-toast-key`  | Always, with the key of the toast in the queue.                        |
+| `data-closed`     | The region has `transition`, and the toast is closed or about to open. |
+| `data-enter`      | The region has `transition`, and the enter of the toast is running.    |
+| `data-leave`      | The region has `transition`, and the leave of the toast is running.    |
+| `data-transition` | The region has `transition`, and the toast is entering or leaving.     |
+
+## Keyboard
+
+| Key                | Action                                                                                              |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| `F6`               | Moves focus to the newest toast that stays. In the region, gives focus back to where it was before. |
+| `Tab`              | Moves focus between the toasts and their buttons, in the order of the page.                         |
+| `Enter` or `Space` | On the close button, closes the toast.                                                              |
+
+## Styling
+
+Style a toast with the data attributes above, such as `[data-closed]` while it comes in. The region has no style of its own, so place it with CSS, such as `position: fixed` in a corner. See [Styling](./styling.md).

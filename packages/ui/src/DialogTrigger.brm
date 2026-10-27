@@ -2,8 +2,11 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface DialogTriggerProps {
+    /** Runs with each change of whether the overlay is open. */
     onOpenChange?: (open: boolean) => void;
+    /** A `Button` and an overlay, such as a `Popover` or a `Modal`. */
     children?: unknown;
+    /** Whether the overlay is open. Alone it starts open, and `$bind` writes your signal. */
     isOpen?: Bindable<boolean>;
   }
 </script>
@@ -14,7 +17,7 @@
 
   /**
    * Opens an overlay, such as a Popover or a Modal, from a Button inside it. The Button gets
-   * aria-expanded, aria-haspopup and aria-controls, and a press toggles the overlay. It renders
+   * aria-expanded and aria-controls, and a press toggles the overlay. It gets no aria-haspopup. It renders
    * only its children.
    *
    * `isOpen` alone starts it open, and `isOpen=$bind(signal)` writes the caller's.
