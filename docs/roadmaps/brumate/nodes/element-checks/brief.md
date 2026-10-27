@@ -1,7 +1,7 @@
 ---
 id: element-checks
 title: Check the attributes of plain elements, and type children and templates
-status: active
+status: done
 priority: should
 type: feature
 outline: false
