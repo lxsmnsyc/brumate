@@ -1,9 +1,10 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { DragItem, DropTarget, ReorderEvent } from './drop.ts';
   import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
 
-  export interface GridListProps {
+  export interface GridListOwnProps {
     selectionMode?: SelectionMode;
     selectionBehavior?: SelectionBehavior;
     disabledKeys?: Key[];
@@ -30,11 +31,16 @@
     item?: (item: any) => unknown;
     children?: unknown;
     selectedKeys?: Bindable<Key[]>;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of GridList. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type GridListProps<T extends AsTarget = 'div'> = AsProps<T, GridListOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ROWS_TYPE, setDragData } from './drop.ts';
@@ -87,6 +93,7 @@
    *   focus leaving the list cancel.
    */
   const {
+    as,
     selectionMode = 'none',
     selectionBehavior = 'toggle',
     disabledKeys = [],
@@ -102,8 +109,9 @@
     item,
     children,
     ...rest
-  } = $props<GridListProps>();
-  let { selectedKeys = [] } = $props<GridListProps>();
+  } = $props<GridListProps<T>>();
+  let { selectedKeys = [] } = $props<GridListOwnProps>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const locale = $getContext(LocaleContext);
   const virtualizer = $getContext(VirtualizerContext);
@@ -119,7 +127,6 @@
   let byKeys = $signal(false);
   let announcement = $signal('');
   const gridId = $id();
-  let root = $signal<HTMLElement>();
 
   function setSelection(next: Key[]) {
     if (!sameKeys(next, selectedKeys)) {
@@ -148,7 +155,7 @@
   }
 
   function select(key: Key, request: SelectionRequest) {
-    const element = root;
+    const element = ref;
     const range = element ? rangeOf(element) : undefined;
     const shift = Boolean(element && request.shift && range);
     setSelection(
@@ -177,7 +184,7 @@
    */
   function draggedKeys(key: Key): Key[] {
     const chosen = selectedKeys.includes(key) ? selectedKeys : [key];
-    const element = root;
+    const element = ref;
     const ordered = element
       ? itemsOf(element, 'row')
           .map((item) => keyOf(item)!)
@@ -187,13 +194,13 @@
   }
 
   function rowWith(key: Key): HTMLElement | undefined {
-    const element = root;
+    const element = ref;
     return element ? itemsOf(element, 'row').find((item) => keyOf(item) === key) : undefined;
   }
 
   /** Where a drop can go from the keys: before each row that does not move, and after the last. */
   function dropTargets(): DropTarget[] {
-    const element = root;
+    const element = ref;
     if (!element) {
       return [];
     }
@@ -209,7 +216,7 @@
 
   /** True when a drop of the rows at the target changes the order of the list. */
   function moves(keys: Key[], target: DropTarget): boolean {
-    const element = root;
+    const element = ref;
     if (!element) {
       return true;
     }
@@ -269,7 +276,7 @@
   // The keys that scroll the page are prevented at once, by a native listener, since the handler
   // of the markup can load after the key. A field in a row keeps its own keys.
   $client(() => {
-    const element = root;
+    const element = ref;
     if (!element) {
       return undefined;
     }
@@ -310,7 +317,7 @@
   // which run at once, take the drags. Only a drag that the list started is taken, so a drag
   // from elsewhere, such as a file, keeps its default.
   $client(() => {
-    const element = root;
+    const element = ref;
     if (!element || !isDraggable) {
       return undefined;
     }
@@ -413,7 +420,7 @@
   });
 
   function rowOf(target: EventTarget | null) {
-    const element = root;
+    const element = ref;
     const row = (target as Element | null)?.closest?.('[role=row][data-key]') as HTMLElement | null;
     return row && element?.contains(row) && row.closest('[data-collection]') === element
       ? row
@@ -421,7 +428,7 @@
   }
 
   function focused(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     // The list passes its focus on to a row.
     if (element && event.target === element && document.activeElement === element) {
       const rendered = enabledItems(element, 'row');
@@ -435,7 +442,7 @@
   }
 
   function focusIn(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     const row = rowOf(event.target);
     if (element && row) {
       // While a row has focus, Tab leaves the list rather than stopping at it.
@@ -445,7 +452,7 @@
   }
 
   function focusOut(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     if (element && !element.contains(event.relatedTarget as Node | null)) {
       element.tabIndex = 0;
       // A drag from the keys ends when focus leaves the list, as in React Aria.
@@ -479,14 +486,14 @@
 
   /** Focuses the row of a key. A windowed list may not render it, so it scrolls it into view. */
   function focusKey(key: Key | undefined) {
-    const element = root;
+    const element = ref;
     if (element && key !== undefined) {
       focusKeyIn(element, 'row', order(), key, windowHeight, focusItem);
     }
   }
 
   function keyDown(event: KeyboardEvent) {
-    const element = root;
+    const element = ref;
     const target = event.target as HTMLElement;
     const row = rowOf(target);
     if (!element || !row) {
@@ -633,8 +640,8 @@
   }
 </script>
 
-<div
-  ref=$bind(root)
+<{as ?? 'div'}
+  ref=$bind(ref)
   id=gridId
   role="grid"
   tabindex="0"
@@ -659,5 +666,5 @@
       }
     }
   }
-</div>
+</>
 <VisuallyHidden><span aria-live="assertive">{announcement}</span></VisuallyHidden>

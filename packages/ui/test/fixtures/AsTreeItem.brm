@@ -1,0 +1,11 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import TreeItem from '../../src/TreeItem.brm';
+  import AsTarget from './AsTarget.brm';
+
+  // A TreeItem with the component in `as`. A page that names the component itself in the
+  // template of a Tree fails in the browser (see the test "a template that names the component").
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+</script>
+
+<TreeItem as=AsTarget {...rest}>{children}</TreeItem>

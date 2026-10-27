@@ -1,8 +1,10 @@
 <script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { AsProps, AsTarget } from './as.ts';
   import type { PressEvent } from './events.ts';
   import type { Key } from './collection.ts';
 
-  export interface ListBoxItemProps {
+  export interface ListBoxItemOwnProps {
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
@@ -12,11 +14,16 @@
     hasDescription?: boolean;
     onAction?: () => void;
     children?: unknown;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of ListBoxItem. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type ListBoxItemProps<T extends AsTarget = 'div'> = AsProps<T, ListBoxItemOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $id, $isPassed, $memo, $props, $setContext } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
@@ -34,6 +41,7 @@
    *   and `data-focus-visible`.
    */
   const {
+    as,
     id,
     textValue,
     isDisabled = false,
@@ -42,7 +50,8 @@
     onAction,
     children,
     ...rest
-  } = $props<ListBoxItemProps>();
+  } = $props<ListBoxItemProps<T>>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const list = $getContext(ListBoxContext);
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.
@@ -112,7 +121,8 @@
   $setContext(SelectionIndicatorContext, { isSelected: selected });
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   id=optionId
   role="option"
   data-action=(acts || undefined)
@@ -140,4 +150,4 @@
   {onFocus}
   {onBlur}
   {...rest}
->{children}</div>
+>{children}</>

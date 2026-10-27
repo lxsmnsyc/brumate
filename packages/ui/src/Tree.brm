@@ -1,9 +1,10 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import type { TreeNode } from './tree.ts';
 
-  export interface TreeProps {
+  export interface TreeOwnProps {
     selectionMode?: SelectionMode;
     selectionBehavior?: SelectionBehavior;
     disabledKeys?: Key[];
@@ -33,11 +34,16 @@
     item: (node: any) => unknown;
     selectedKeys?: Bindable<Key[]>;
     expandedKeys?: Bindable<Key[]>;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of Tree. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TreeProps<T extends AsTarget = 'div'> = AsProps<T, TreeOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
@@ -83,6 +89,7 @@
    *   press open and close a row with children.
    */
   const {
+    as,
     selectionMode = 'none',
     selectionBehavior = 'toggle',
     disabledKeys = [],
@@ -97,9 +104,10 @@
     items,
     item,
     ...rest
-  } = $props<TreeProps>();
-  let { selectedKeys = [] } = $props<TreeProps>();
-  let { expandedKeys = [] } = $props<TreeProps>();
+  } = $props<TreeProps<T>>();
+  let { selectedKeys = [] } = $props<TreeOwnProps>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { expandedKeys = [] } = $props<TreeOwnProps>();
 
   // The rows that show, in order: each item, then its children while it is open.
   const rows = $memo(visibleRows(items, expandedKeys));
@@ -130,7 +138,6 @@
   $setContext(TreeContext, { toggle: toggleExpanded, windowed: Boolean(windowHeight) });
   const hasAction = $isPassed(onAction);
   const gridId = $id();
-  let root = $signal<HTMLElement>();
 
   function setSelection(next: Key[]) {
     if (!sameKeys(next, selectedKeys)) {
@@ -148,7 +155,7 @@
   }
 
   function select(key: Key, request: SelectionRequest) {
-    const element = root;
+    const element = ref;
     const range = element ? rangeOf(element) : undefined;
     const shift = Boolean(element && request.shift && range);
     const order = element ? enabledKeys(element) : [];
@@ -184,7 +191,7 @@
   });
 
   function rowOf(target: EventTarget | null) {
-    const element = root;
+    const element = ref;
     const row = (target as Element | null)?.closest?.('[role=row][data-key]') as HTMLElement | null;
     return row && element?.contains(row) && row.closest('[data-collection]') === element
       ? row
@@ -192,7 +199,7 @@
   }
 
   function focused(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     // The list passes its focus on to a row.
     if (element && event.target === element && document.activeElement === element) {
       const items = enabledItems(element, 'row');
@@ -206,7 +213,7 @@
   }
 
   function focusIn(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     const row = rowOf(event.target);
     if (tabMode && row && element) {
       setLastFocused(element, keyOf(row)!);
@@ -220,7 +227,7 @@
   }
 
   function focusOut(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     // In tab mode the tree is no stop of its own, since its links are.
     if (element && !tabMode && !element.contains(event.relatedTarget as Node | null)) {
       element.tabIndex = 0;
@@ -239,7 +246,7 @@
   // A row that has focus can leave without a focusout, such as when its parent closes from
   // outside. The tree is a stop of Tab again when no row has focus.
   $client(() => {
-    const element = root;
+    const element = ref;
     if (!element || tabMode) {
       return undefined;
     }
@@ -262,7 +269,7 @@
    * view first, and focuses it when it renders. `plain` focuses the row, not its first control.
    */
   function focusKey(key: Key | undefined, plain = false) {
-    const element = root;
+    const element = ref;
     if (element && key !== undefined) {
       focusKeyIn(
         element,
@@ -294,7 +301,7 @@
   }
 
   function keyDown(event: KeyboardEvent) {
-    const element = root;
+    const element = ref;
     const target = event.target as HTMLElement;
     const row = rowOf(target);
     if (!element || !row) {
@@ -448,8 +455,8 @@
   }
 </script>
 
-<div
-  ref=$bind(root)
+<{as ?? 'div'}
+  ref=$bind(ref)
   id=gridId
   role="treegrid"
   tabindex=(tabMode ? undefined : '0')
@@ -471,4 +478,4 @@
       <TreeRow {row} {item} />
     }
   }
-</div>
+</>
