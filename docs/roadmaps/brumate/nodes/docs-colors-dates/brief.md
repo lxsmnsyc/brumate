@@ -1,7 +1,7 @@
 ---
 id: docs-colors-dates
 title: Complete the docs of Colors and Dates
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
