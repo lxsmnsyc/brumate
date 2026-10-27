@@ -119,7 +119,7 @@ When a value that the memo reads changes in the browser, the memo runs again:
 - The page keeps the old value until the new one arrives, so content does not disappear while it loads.
 - Only the latest run is written. When you type quickly, an older answer that arrives late is dropped.
 - A newer run aborts the server function calls of the older one. A server function sees this on [the request](./server-functions.md#the-request), with `getEvent().signal`.
-- If the promise rejects, the memo keeps its old value and the error is logged. Handle errors in the function when the page should show them, such as by returning `{ error }`.
+- If the promise rejects, the memo holds the error until it computes again, and each read of it throws. A `#try` around the read renders its `#catch` body, and code that does not read the memo runs as usual. See [Errors in the browser](./effects.md#errors-in-the-browser). The function can also return `{ error }` when the page should show the failure as a value.
 
 ## Waiting for a pause
 

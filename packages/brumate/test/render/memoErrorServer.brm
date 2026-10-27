@@ -1,0 +1,18 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let n = $signal(1);
+</script>
+
+<p class="before">before</p>
+#try {
+  <script>
+    const bad = $memo(n > 0 ? (() => {
+      throw new Error(`Bad ${n}`);
+    })() : 'ok');
+  </script>
+  <p class="data">{bad}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}
+<p class="after">after</p>

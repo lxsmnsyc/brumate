@@ -286,7 +286,7 @@ Handlers are often enough. A value that a handler writes updates the page by its
 
 ## Errors in the browser
 
-Code that runs in the browser can throw: a handler, the promise that an async handler returns, an effect, a `$client` callback, or a memo whose load rejects. The error goes to the nearest `#try` around the scope that the code belongs to, which renders its `#catch` body with the error and `reset`:
+Code that runs in the browser can throw: a handler, the promise that an async handler returns, an effect, or a `$client` callback. The error goes to the nearest `#try` around the scope that the code belongs to, which renders its `#catch` body with the error and `reset`:
 
 ```brm
 #try {
@@ -299,4 +299,6 @@ Code that runs in the browser can throw: a handler, the promise that an async ha
 
 - Without a `#try` around it, the page gets a `brumate:error` event on `window`, with `error` and the `scope` of the code in `detail`, and the error is logged. An app can report it from there.
 - `onError(error, info)` of the loader receives every error first, such as for a reporting service, also the ones that a `#try` catches. `info.scope` is the ID of the scope of the code.
-- A memo that fails keeps its old value, as before. A handler that throws stops there.
+- A memo that throws, or whose promise rejects, holds the error as its value. Each read of it throws, so the error goes to the nearest `#try` around the code that read it: an insert, a binding, another memo, an effect or a handler. Code that does not read the memo runs as usual, also in the same write. When the memo computes again without a throw, it holds the value again. A memo that nothing reads keeps its error, and in development the console warns about it.
+- On the server the same holds: a memo that throws fails where it is read, and the `#catch` body of a `#try` around the read renders. A memo declared outside the `#try` still fails where it is declared.
+- A handler that throws stops there.
