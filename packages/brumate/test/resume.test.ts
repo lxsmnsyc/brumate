@@ -1122,6 +1122,21 @@ describe('resume', () => {
     expect(document.querySelector('.a')).toBeNull();
   });
 
+  it('holds the memo error until a read: a script read throws on the server', async () => {
+    const server = await import(file('memoErrorServerScript.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('<p class="seen">caught Error: Bad 1</p>');
+    expect(html).toContain('<p class="caught"');
+    expect(html).not.toContain('class="data"');
+  });
+
+  it('pins the reads of a memo next to $isPending, and a read that two sites hold', async () => {
+    const server = await import(file('memoErrorServerPending.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('<p class="flag">n</p>');
+    expect(html).toContain('<p class="value">2</p>');
+  });
+
   it('holds the memo error until a read: an awaited memo declared outside the #try throws at its declaration on the server', async () => {
     await expect(resume('memoErrorAwaitOutside', {})).rejects.toThrow('Bar failed');
     expect(document.querySelector('.caught')).toBeNull();

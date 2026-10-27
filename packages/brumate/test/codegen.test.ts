@@ -530,6 +530,18 @@ describe('await', () => {
     expect(server).not.toContain('$$b.waitAll(');
   });
 
+  it('reads a memo in place once, and leaves $isPending as false', () => {
+    const { server } = compile(
+      `${header.replace('$memo,', '$isPending, $memo,')}  const user = $memo(load(id));\n</script>\n<p>{$isPending(user) ? 'p' : 'n'}</p>\n<p>{user.name}</p>\n<{user.tag} />`,
+      { filename: 'T.brm' },
+    );
+    expect(server).toContain("$$b.insert((false ? 'p' : 'n'))");
+    expect(server).toContain('$$b.insert(($$b.read($$p_user).name)');
+    expect(server).toContain('$$b.dynamic(($$b.read($$p_user).tag)');
+    expect(server).not.toContain('$$b.read($$p_user)$$b.read');
+    expect(server).not.toContain('false$$b.read');
+  });
+
   it('waits for one awaited declaration where it is, and reads it after other statements', () => {
     const { server } = compile(
       `${header}  const user = await $memo(load(id));\n  let count = $signal(0);\n  const tags = await $memo(loadTags(user));\n</script>\n<p>{user.name} {tags.length} {count}</p>`,
