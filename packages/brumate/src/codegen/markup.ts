@@ -2184,7 +2184,10 @@ export class Emitter {
           this.line(`$$ctx.restore(${mark});`);
         }
         if (block.error) {
-          this.line(`const ${block.error.name} = ${error};`);
+          // On the server the page state carries this value, so production sends a safe error.
+          this.line(
+            `const ${block.error.name} = ${server ? `$$b.caught(${error}, $$ctx)` : error};`,
+          );
         }
         if (block.reset) {
           this.line(`const ${block.reset.name} = undefined;`);
