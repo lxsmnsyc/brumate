@@ -59,5 +59,6 @@ packages/ui/test/props-types.ts, checked by `pnpm --filter @brumate/ui typecheck
 
 ## Changes
 
+- v1.2 (as-sound): as.ts reads `Elements`, `ElementProps` and `Component` of `brumate/elements`. The names and type parameters of `AsTarget`, `TargetProps` and `AsProps` are unchanged, so the version stays 1. `ElementTag` now includes SVG tags. A field that is not an attribute is an error.
 - v1: from #242 (as #245) and #243.
 - v1.1: `<Name>OwnProps` for parts with `as`, and the rule for a part that reads its own root (from the adversarial review).
