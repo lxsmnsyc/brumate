@@ -155,12 +155,31 @@ function withTarget(event: Event, element: Element): Event {
   });
 }
 
+/** Whether an input is a checkbox or a radio, which a binding reads by `checked`. */
+export function isBox(field: HTMLInputElement): boolean {
+  return /^(checkbox|radio)$/i.test(field.type);
+}
+
+/** The value a binding writes: of a field of a part, whether a box is checked, or the value. */
+function fieldValue(element: Element, typed?: { value: unknown }): unknown {
+  const field = element as HTMLInputElement;
+  if (typed) {
+    return typed.value;
+  }
+  return isBox(field) ? field.checked : field.value;
+}
+
 /**
  * Runs the handler `ref` for an element. The scope comes from the element's
  * `b-b` anchor, or from the nearest element around it that has one, which
  * the compiler checks is in the same scope.
  */
-export function handle(element: Element, entry: string, event?: Event): Promise<unknown> {
+export function handle(
+  element: Element,
+  entry: string,
+  event?: Event,
+  typed?: { value: unknown },
+): Promise<unknown> {
   // A handler that a spread passed on, such as `Parent#h1@3`, runs in the scope of its owner.
   // A handler that `$handler` made has its arguments after another `@`.
   const [ref, owner, encoded] = entry.split('@') as [string, string | undefined, string?];
@@ -181,11 +200,9 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
   // from the element's scope, from the value of the element, or whether a box is checked.
   // `value=$bind(name, fn)`: the setter takes the value of the element. A ref names its scope
   // after `@`, so the prefix is `$set:`.
+  // `typed` is a value that `readFields` took from a field of a part, in place of the element's own.
   if (ref.startsWith('$set:')) {
-    const field = element as HTMLInputElement;
-    return call(ref.slice(5), scope, [
-      /^(checkbox|radio)$/i.test(field.type) ? field.checked : field.value,
-    ]);
+    return call(ref.slice(5), scope, [fieldValue(element, typed)]);
   }
   if (ref.startsWith('$bind#')) {
     const [hops = 0, slot = 0] = ref.slice(6).split('.').map(Number);
@@ -193,9 +210,8 @@ export function handle(element: Element, entry: string, event?: Event): Promise<
     for (let hop = 0; hop < hops; hop++) {
       target = target?.p;
     }
-    const field = element as HTMLInputElement;
     if (target) {
-      set(target, slot, /^(checkbox|radio)$/i.test(field.type) ? field.checked : field.value);
+      set(target, slot, fieldValue(element, typed));
     }
     return Promise.resolve();
   }

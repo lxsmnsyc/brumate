@@ -18,7 +18,7 @@ import type { PackedState, PageState, ScopeId, ScopeState } from '../shared.ts';
 import { indexMarkers, observeMarkers, rendered, stopObserving, unindexed } from './blocks.ts';
 import { loadComponent, pageComponents } from './code.ts';
 import { leaveGuesses, settled } from './guesses.ts';
-import { callable, handle, resetHandler } from './handlers.ts';
+import { callable, handle, isBox, resetHandler } from './handlers.ts';
 import { refresh } from './insert.ts';
 import { removeScope, resetIds, treeChanged } from './scopes.ts';
 import {
@@ -397,6 +397,61 @@ export function leavePage(): void {
   resetHandler();
 }
 
+/**
+ * Whether the user changed a field since the server rendered it. The server's value is in
+ * `defaultValue`, `defaultChecked` and `defaultSelected`. This runs only when the core starts,
+ * before any update wrote the field. A value that the browser cleans, such as a number or a
+ * range input, can differ from `defaultValue` without the user, and counts as typed.
+ */
+function typedInto(element: Element): boolean {
+  const field = element as HTMLInputElement;
+  if (element instanceof HTMLSelectElement) {
+    // The last `selected` option wins. Without one, a single select shows its first option that
+    // is not disabled, also by a disabled optgroup (`:disabled` knows, `option.disabled` does not), and a list box or a `multiple` select shows none. The test DOM has no
+    // `defaultSelected`, so the `selected` attribute is read.
+    let expected = -1;
+    let first = -1;
+    let changed = false;
+    for (let i = 0; i < element.options.length; i++) {
+      const option = element.options[i]!;
+      const rendered = option.hasAttribute('selected');
+      if (rendered) {
+        expected = i;
+      }
+      if (first < 0 && !option.matches(':disabled')) {
+        first = i;
+      }
+      changed ||= option.selected !== rendered;
+    }
+    if (element.multiple) {
+      return changed;
+    }
+    const shown = Number(element.getAttribute('size')) > 1 ? -1 : first;
+    return element.selectedIndex !== (expected >= 0 ? expected : shown);
+  }
+  return isBox(field) ? field.checked !== field.defaultChecked : field.value !== field.defaultValue;
+}
+
+/**
+ * Writes the signal of each bound field that the user changed before the code loaded, as an
+ * `input` event would. The text is in the DOM, and the first update would write the old value
+ * back. A field that still has the value the server rendered is not read.
+ */
+function readFields(): void {
+  for (const element of document.querySelectorAll('[b-on*="=$bind#"],[b-on*="=$set:"]')) {
+    const custom = hooks.field?.(element);
+    if (custom === false || (!custom && !typedInto(element))) {
+      continue;
+    }
+    for (const entry of element.getAttribute('b-on')!.split(' ')) {
+      const ref = entry.slice(entry.indexOf('=') + 1);
+      if (/^\$(bind#|set:)/.test(ref)) {
+        void handle(element, ref, undefined, custom || undefined);
+      }
+    }
+  }
+}
+
 /** Reads the page state. The loader calls it once, before the first handler. */
 export function init(value: CoreOptions): void {
   configure(value);
@@ -420,6 +475,7 @@ export function init(value: CoreOptions): void {
   }
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
+  readFields();
   watchTitles(document);
   if (DEV) {
     devtools()?.attach?.({ scopes, set, handle });
