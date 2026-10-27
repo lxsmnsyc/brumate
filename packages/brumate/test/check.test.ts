@@ -130,10 +130,10 @@ describe('toTypeScript', () => {
 <{as ?? 'div'} ref=$bind(box) tabindex="0" {...rest} onClick=(() => {})>text</>`;
     const { code, mappings } = toTypeScript(source, 'Card.brm');
     expect(code).toContain(
-      'const $$tag = (as ?? \'div\');\n$$dynamic($$tag)({ ref: $$bind(box), tabindex: "0", ...$$present(rest), onClick: $$handler($$tag)("click", (() => {})), children: $$markup, });',
+      'const $$tag = (as ?? \'div\');\n$$dynamic($$tag)({ ref: $$bind(box), tabindex: "0", onClick: $$handler($$tag)("click", (() => {})), children: $$markup, }, {...$$present(rest) });',
     );
-    // The braces of the object stand for the ends of the opening tag, and `children` for the
-    // children.
+    // The braces of the object stand for the ends of the opening tag, `children` for the
+    // children, and the braces of a spread's argument for the spread.
     const at = (text: string) => {
       const start = code.lastIndexOf(text);
       const mapping = mappings.find((item) => item.generated === start)!;
@@ -142,6 +142,7 @@ describe('toTypeScript', () => {
     expect(at('{ ref')).toBe('<');
     expect(at('"click"')).toBe('onClick');
     expect(at('children')).toBe('t');
+    expect(at('{...$$present')).toBe('{');
   });
 
   it('maps the names of attributes, also quoted ones, and the children of a component', () => {

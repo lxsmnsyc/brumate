@@ -80,22 +80,16 @@ declare function $$bind<T>(signal: T): import('brumate/signals').BoundSignal<T>;
 // typed by \`$$handler\`, since a union of element names gives a union of handlers, which types
 // no parameter. The first overload takes any string, not \`keyof Elements\`: a tag such as
 // \`AsTarget\` fails it at once, where a failed \`keyof Elements\` cost about 50 ms for each call.
-/** The attributes of a tag. A declaration with a generic \`T\` leaves the conditional unresolved. */
-type $$Attributes<T> = T extends keyof $$Elements ? $$Elements[T] : Record<string, unknown>;
+// The types live in \`brumate/check\`, so TypeScript resolves them once, not in each file.
 type $$AnyTag = keyof $$Elements | import('brumate/elements').Component;
-type $$AnyAttributes = Omit<import('brumate/elements').GlobalAttributes<HTMLElement | SVGElement>, 'ref'> & { ref?: import('brumate/signals').BindableMark<unknown>; [name: string]: unknown };
-declare function $$dynamic<T extends string>(tag: T): (attributes: $$Attributes<T> & { children?: $$Markup }) => void;
-declare function $$dynamic<P>(tag: $$Component<P>): (props: P) => void;
-declare function $$dynamic(tag: $$AnyTag): (attributes: $$AnyAttributes) => void;
-/**
- * Types a handler of a dynamic tag from its tag: the event of its name on the element. Another
- * name keeps the type of the handler, and the object of the attributes checks it, so a component
- * types it from its prop.
- */
-type $$Handle<E> = { <K extends keyof $$Events & string>(event: K, handler: (event: $$Events[K] & { currentTarget: E }) => unknown): (event: $$Events[K] & { currentTarget: E }) => unknown; <H>(event: string, handler: H): H };
-declare function $$handler<T extends string>(tag: T): $$Handle<$$Element<T>>;
+declare function $$dynamic<T extends string>(tag: T): (attributes: import('brumate/check').DynamicAttributes<T> & { children?: $$Markup }, ...spreads: import('brumate/check').DynamicAttributes<T>[]) => void;
+declare function $$dynamic<P>(tag: $$Component<P>): import('brumate/check').DynamicProps<P>;
+// The spreads of a tag that can be either are not checked: a part spreads its rest, whose type
+// depends on the tag, and attributes of a context, typed as any.
+declare function $$dynamic(tag: $$AnyTag): (attributes: import('brumate/check').AnyTagAttributes, ...spreads: object[]) => void;
+declare function $$handler<T extends string>(tag: T): import('brumate/check').DynamicHandle<$$Element<T>>;
 declare function $$handler(tag: $$Component<never>): <H>(event: string, handler: H) => H;
-declare function $$handler(tag: $$AnyTag): $$Handle<HTMLElement | SVGElement>;
+declare function $$handler(tag: $$AnyTag): import('brumate/check').DynamicHandle<HTMLElement | SVGElement>;
 type $$Events = import('brumate/elements').ElementEvents;
 type $$Element<T> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement;
 declare function $$on<T extends string, K extends keyof $$Events & string>(tag: T, event: K, handler: (event: $$Events[K] & { currentTarget: $$Element<T> }) => unknown): void;
@@ -900,8 +894,8 @@ class Generator {
    * Checks the attributes of a dynamic tag as one object against the type of its tag: the
    * attributes of an element name, or the props of a component. The tag is read once into a
    * constant, so an error in it is reported once. Handlers are typed by `$$handler`. The values
-   * of a spread are checked in the object, but not its names: a check of the names, as
-   * `$$spread` does on an element, cost TypeScript ten times the time of the whole check.
+   * of each spread are checked as an argument after the object, but not its names: a check of the
+   * names, as `$$spread` does on an element, cost TypeScript ten times the time of the whole check.
    */
   private dynamic(node: DynamicTagNode): void {
     const { out } = this;
@@ -929,12 +923,6 @@ class Generator {
           out.event(attribute);
           out.text(', ');
           out.expression(attribute.handler);
-          out.text('),');
-          break;
-        case 'spread':
-          // A falsy value spreads nothing, and the object part is checked.
-          out.text(' ...$$present(');
-          out.copy(attribute.value);
           out.text('),');
           break;
         case 'ref':
@@ -973,6 +961,18 @@ class Generator {
     out.text(' ');
     const end = this.openTagEnd(node);
     out.stand({ start: end - 1, end }, '}');
+    // Each spread is an argument of its own, whose braces stand for the spread, so an error in
+    // its values is at the spread. A falsy value spreads nothing, and the object part is checked.
+    for (const attribute of node.attributes) {
+      if (attribute.kind === 'spread') {
+        out.text(', ');
+        out.stand({ start: attribute.start, end: attribute.start + 1 }, '{');
+        out.text('...$$present(');
+        out.copy(attribute.value);
+        out.text(') ');
+        out.stand({ start: attribute.end - 1, end: attribute.end }, '}');
+      }
+    }
     out.text(');\n}\n');
   }
 

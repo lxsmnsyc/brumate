@@ -30,7 +30,7 @@ it('reports type errors in .brm files at their place in the file', () => {
     // A dynamic tag: a handler typed from an element name, a wrong attribute and a wrong ref. A
     // union of names types the handler and checks the names. A component types its handler, and
     // checks its props and children. A generic tag of either kind types the handler with HTML and
-    // SVG elements. An unknown event, and a wrong value in a spread of `c && { ... }`, at the tag.
+    // SVG elements. An unknown event, and a wrong value in a spread of `c && { ... }`, at the spread.
     "Dynamic.brm(13,53): error TS2339: Property 'nope' does not exist on type 'string'.",
     "Dynamic.brm(14,8): error TS2322: Type 'number' is not assignable to type 'Attr<string>'.",
     "Dynamic.brm(15,8): error TS2322: Type 'BoundSignal<HTMLButtonElement | undefined>' is not assignable to type 'BindableMark<unknown> & WritableMark<HTMLAnchorElement>'.",
@@ -41,7 +41,7 @@ it('reports type errors in .brm files at their place in the file', () => {
     "Dynamic.brm(20,11): error TS2353: Object literal may only specify known properties, and 'children' does not exist in type 'ToggleProps'.",
     "Dynamic.brm(21,47): error TS2339: Property 'nope' does not exist on type '(EventTarget & HTMLElement) | (EventTarget & SVGElement)'.",
     "Dynamic.brm(22,10): error TS2353: Object literal may only specify known properties, and 'onFooBar' does not exist in type '{ onInput? ...",
-    "Dynamic.brm(23,1): error TS2345: Argument of type '{ tabindex: \"x\"; }' is not assignable to parameter of type '{ onInput? ...",
+    'Dynamic.brm(23,10): error TS2345: Argument of type \'{ tabindex: "x"; }\' is not assignable to parameter of type \'Html<"div", {}>\'.',
     // The attributes of a plain element, each at its place: an unknown one, a wrong value, a ref
     // of another element, a wrong value in a spread and a computed name. Then children given to a
     // component that takes none, at the children. `autocorrect`,

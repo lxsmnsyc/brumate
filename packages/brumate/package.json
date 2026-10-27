@@ -18,6 +18,7 @@
     "dist",
     "types.d.ts",
     "elements.d.ts",
+    "check.d.ts",
     "forms",
     "skills"
   ],
@@ -112,6 +113,9 @@
     },
     "./elements": {
       "types": "./elements.d.ts"
+    },
+    "./check": {
+      "types": "./check.d.ts"
     },
     "./package.json": "./package.json"
   },
