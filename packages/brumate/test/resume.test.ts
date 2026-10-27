@@ -4047,13 +4047,39 @@ describe('refs forwarded through components', () => {
     await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
   });
 
-  // A component that leaves `ref` in its rest props gets no element: the binding does not cross
-  // the spread. The parts of @brumate/ui destructure `ref` instead (node ref-reaches-element).
-  it.fails('a ref left in the rest props reaches the element that spreads them', async () => {
+  // A component that leaves `ref` in its rest props gives the element to the signal that the
+  // parent bound.
+  it('a ref left in the rest props reaches the element that spreads them', async () => {
     await resume('restRefPage', {});
     click(document.querySelector('.read')!);
     await new Promise((done) => setTimeout(done, 300));
     expect(text('.seen')).toBe('BUTTON');
+  });
+
+  it('a ref left in the rest props reaches the element of a spread in a block that the browser renders', async () => {
+    await resume('restRefBlockPage', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.inner')).not.toBeNull());
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+    click(document.querySelector('.retitle')!);
+    await waitFor(() =>
+      expect(document.querySelector('.inner')!.getAttribute('title')).toBe('two'),
+    );
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON:two'));
+    expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
+  });
+
+  it('keeps the ref of the rest props when the rest changes after the first render', async () => {
+    await resume('restRefChangePage', {});
+    click(document.querySelector('.retitle')!);
+    await waitFor(() =>
+      expect(document.querySelector('.inner')!.getAttribute('title')).toBe('two'),
+    );
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON:two'));
+    expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
   });
 
   it('leaves the element out of the page state', async () => {

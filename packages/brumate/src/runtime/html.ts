@@ -167,6 +167,10 @@ function switchWords(name: string): readonly [string, string] | undefined {
 export function attributeText(name: string, value: unknown): string | undefined {
   // `value=$bind(name)` on an element renders the value of the name.
   if (typeof value === 'object' && value !== null && BOUND in value) {
+    // A `ref` is no attribute: the element goes to its signal.
+    if (name === 'ref') {
+      return undefined;
+    }
     value = (value as unknown as { value: unknown }).value;
   }
   if (value === null || value === undefined || typeof value === 'function') {

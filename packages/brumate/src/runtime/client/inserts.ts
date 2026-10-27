@@ -3,7 +3,8 @@
 
 import { HAS_BINDINGS, HAS_CHILDREN, HAS_TEMPLATES } from '../features.ts';
 import { attributeText, insertValue, onValue, textValue } from '../html.ts';
-import { isBinding } from '../shared.ts';
+import { isBinding, isSlotReference } from '../shared.ts';
+import type { ScopeId } from '../shared.ts';
 import { findComment, findElement, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
 import { Children, RenderedChildren, TemplateCall } from './children.ts';
@@ -11,7 +12,7 @@ import { loadedFunction } from './code.ts';
 import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
 import { prop, spreadProps } from './props.ts';
-import { disposeKinds, inPlace, nextId } from './scopes.ts';
+import { afterInsert, disposeKinds, inPlace, nextId } from './scopes.ts';
 import { hiding, options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
 import { set } from './updates.ts';
@@ -294,6 +295,26 @@ export function attr(scope: Scope, anchor: number, name: string, value: unknown)
 /** The attributes that the last update of a spread wrote, so the next one removes those it drops. */
 const spreadNames = new WeakMap<Element, Set<string>>();
 
+/** Gives the element of a spread to the signal that a `ref` in its attributes is bound to. */
+function forwardRef(element: Element | null, values: Record<string, unknown>): void {
+  const bound = values.ref;
+  const target = HAS_BINDINGS && isBinding(bound) && isSlotReference(bound.target) && bound.target;
+  const owner = target && scopes.get(target.scope);
+  if (owner && element) {
+    set(owner, target.slot, element);
+  }
+}
+
+/** The element of a spread in markup that the browser renders goes to the `ref` of its attributes. */
+export function restRef<T extends Record<string, unknown>>(
+  values: T,
+  scope: ScopeId,
+  anchor: number,
+): T {
+  afterInsert.push(() => forwardRef(findElement(scope, anchor), values));
+  return values;
+}
+
 export function attrs(
   scope: Scope,
   anchor: number,
@@ -325,7 +346,12 @@ export function attrs(
     const names = new Set<string>();
     for (const [name, value] of Object.entries(values)) {
       // Brumate writes its own `b-` attributes apart, and data cannot write them.
-      if (name !== 'children' && !/^on[A-Z]/.test(name) && !name.startsWith('b-')) {
+      if (
+        name !== 'children' &&
+        !/^on[A-Z]/.test(name) &&
+        !name.startsWith('b-') &&
+        !(name === 'ref' && isBinding(value))
+      ) {
         names.add(name);
         setAttribute(element, name, value, true);
       }
@@ -337,6 +363,7 @@ export function attrs(
     }
     spreadNames.set(element, names);
     updateSpreadEntries(element, values);
+    forwardRef(element, values);
   }
 }
 
