@@ -1,7 +1,7 @@
 ---
 id: memo-errors-server
 title: A memo that throws on the server renders the nearest #catch
-status: active
+status: done
 priority: must
 type: fix
 outline: false

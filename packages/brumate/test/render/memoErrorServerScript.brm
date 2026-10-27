@@ -1,0 +1,22 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let n = $signal(1);
+  const bad = $memo(n > 0 ? (() => {
+    throw new Error(`Bad ${n}`);
+  })() : 'ok');
+  let seen = 'none';
+  try {
+    seen = String(bad);
+  } catch (error) {
+    seen = `caught ${String(error)}`;
+  }
+</script>
+
+<button class="bump" onClick=(() => n++)>{n}</button>
+<p class="seen">{seen}</p>
+#try {
+  <p class="data">{bad}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

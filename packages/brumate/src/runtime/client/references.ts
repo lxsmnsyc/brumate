@@ -53,6 +53,13 @@ async function serverBuild(): Promise<string | undefined> {
   }
 }
 
+// Runs a call as a pass. `updates.ts` sets it, since it imports this module.
+let inPass: <T>(run: () => T) => T = (run) => run();
+
+export function setPass(pass: <T>(run: () => T) => T): void {
+  inPass = pass;
+}
+
 // The previous call of a function prop or a provided function, once it has started.
 let lastCall: Promise<unknown> = Promise.resolve();
 
@@ -65,7 +72,9 @@ let lastCall: Promise<unknown> = Promise.resolve();
 export function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
   const code = codeReady();
   const loaded = code ? Promise.all([resolve(ref), code]).then(([fn]) => fn) : resolve(ref);
-  const started = lastCall.then(() => loaded).then((fn) => ({ value: fn(scope, ...args) }));
+  const started = lastCall
+    .then(() => loaded)
+    .then((fn) => ({ value: inPass(() => fn(scope, ...args)) }));
   lastCall = started.catch(() => {});
   return started.then((result) => result.value);
 }

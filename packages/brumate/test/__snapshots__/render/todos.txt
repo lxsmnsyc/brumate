@@ -22,7 +22,8 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
   let todos = (initial);
   let draft = ('');
   const $$p_left = $$b.memo(() => (todos.filter((todo) => !todo.done).length), $$ctx, "left");
-  const left = (($$t = $$b.ready($$p_left)) instanceof Promise ? await $$t : $$t);
+  let left;
+  try { left = (($$t = $$b.ready($$p_left)) instanceof Promise ? await $$t : $$t); } catch {}
   async function add() {
     todos = [...todos, { id: crypto.randomUUID(), title: draft, done: false, at: new Date() }];
     draft = '';
@@ -49,7 +50,7 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
     $$html += "<!--/b-->";
   }
   $$ctx.leave();
-  $$html += "</ul><footer>Built with brumate</footer><p><!--t" + $$s1 + ":3-->" + (typeof ($$t = $$b.insert((left), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> left</p>";
+  $$html += "</ul><footer>Built with brumate</footer><p><!--t" + $$s1 + ":3-->" + (typeof ($$t = $$b.insert(($$b.read($$p_left)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "<!--/t--> left</p>";
   $$ctx.slots($$s1, [todos, draft, left], ["todos","draft","left"]);
   return $$html;
 }

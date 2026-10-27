@@ -214,3 +214,12 @@ export function $handler<A extends unknown[]>(
 export function $handler(): never {
   return compileTimeOnly('$handler');
 }
+
+/**
+ * Writes what the writes of the handler so far changed to the page, so the code after it can read
+ * the DOM, such as to focus or measure what a write rendered. A handler is one pass, and the page
+ * changes when it returns. Does nothing outside a handler, and on the server.
+ */
+export function flush(): void {
+  (globalThis as { [key: symbol]: (() => void) | undefined })[Symbol.for('brumate.flush')]?.();
+}

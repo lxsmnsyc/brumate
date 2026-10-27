@@ -1,4 +1,10 @@
-import { MACROS, checkMacroImports, isMacroImport, resolveMacros } from './macros.ts';
+import {
+  MACROS,
+  SIGNALS_MODULE,
+  checkMacroImports,
+  isMacroImport,
+  resolveMacros,
+} from './macros.ts';
 import type {
   Block,
   Body,
@@ -585,6 +591,18 @@ class Analyzer {
     }
     for (const specifier of statement.specifiers) {
       if (specifier.type === 'ImportSpecifier' && specifier.importKind === 'type') {
+        continue;
+      }
+      // An import of `brumate/signals` that also takes `flush` stays, without its compile-time functions.
+      if (
+        specifier.type === 'ImportSpecifier' &&
+        statement.source.value === SIGNALS_MODULE &&
+        MACROS.has(
+          specifier.imported.type === 'Identifier'
+            ? specifier.imported.name
+            : specifier.imported.value,
+        )
+      ) {
         continue;
       }
       const declaration = this.addDeclaration(

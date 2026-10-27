@@ -1110,9 +1110,36 @@ describe('resume', () => {
     expect(text('.after')).toBe('after');
   });
 
-  it.fails('holds the memo error until a read: the server render shows the #catch when the memo is declared outside the #try', async () => {
+  it('holds the memo error until a read: the server render shows the #catch when the memo is declared outside the #try', async () => {
     await resume('memoErrorServerOutside', {});
     expect(text('.caught')).toBe('Error: Bad 1');
+  });
+
+  it('holds the memo error until a read: a memo read in two #try blocks renders each #catch on the server', async () => {
+    await resume('memoErrorServerTwo', {});
+    expect(text('.first')).toBe('first Error: Bad');
+    expect(text('.second')).toBe('second Error: Bad');
+    expect(document.querySelector('.a')).toBeNull();
+  });
+
+  it('holds the memo error until a read: a script read throws on the server', async () => {
+    const server = await import(file('memoErrorServerScript.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('<p class="seen">caught Error: Bad 1</p>');
+    expect(html).toContain('<p class="caught"');
+    expect(html).not.toContain('class="data"');
+  });
+
+  it('pins the reads of a memo next to $isPending, and a read that two sites hold', async () => {
+    const server = await import(file('memoErrorServerPending.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('<p class="flag">n</p>');
+    expect(html).toContain('<p class="value">2</p>');
+  });
+
+  it('holds the memo error until a read: an awaited memo declared outside the #try throws at its declaration on the server', async () => {
+    await expect(resume('memoErrorAwaitOutside', {})).rejects.toThrow('Bar failed');
+    expect(document.querySelector('.caught')).toBeNull();
   });
 
   it('holds the memo error until a read: a memo that reads a failed memo holds its error, not a stale one', async () => {
@@ -5755,5 +5782,100 @@ describe('a spread on a component tag', () => {
     await waitFor(() => expect(el().getAttribute('data-y')).toBe('moved'));
     expect(el().hasAttribute('data-x')).toBe(false);
     expect(el().getAttribute('title')).toBe('a');
+  });
+});
+
+describe('batching', () => {
+  afterEach(() => {
+    delete (globalThis as { __batching?: string[] }).__batching;
+  });
+
+  async function changesOf(selector: string, shown: string): Promise<number> {
+    const element = document.querySelector(selector)!;
+    let changes = 0;
+    const watcher = new MutationObserver((records) => {
+      changes += records.length;
+    });
+    watcher.observe(element, { childList: true, characterData: true, subtree: true });
+    onTestFinished(() => watcher.disconnect());
+    click(document.querySelector('.write, .pick')!);
+    await waitFor(() => expect(text(selector)).toBe(shown));
+    await new Promise((done) => setTimeout(done, 40));
+    return changes + watcher.takeRecords().length;
+  }
+
+  it('writes the DOM once for two writes in a handler', async () => {
+    await resume('batchingWrites', {});
+    expect(await changesOf('.name', 'Ada Lovelace')).toBe(1);
+  });
+
+  it('writes the DOM once for two writes in a handler whose update code loads', async () => {
+    await resume('batchingWait', {}, { all: 15 });
+    expect(await changesOf('.name', 'Ada Lovelace')).toBe(1);
+  });
+
+  it('writes the DOM once for two writes in a function prop that a child calls', async () => {
+    await resume('batchingCall', {}, { all: 15 });
+    expect(await changesOf('.ab', '7:7')).toBe(1);
+  });
+
+  it('keeps the writes of a handler that throws, and the error reaches the #try', async () => {
+    await resume('batchingHandlerThrows', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Stop'));
+    expect(text('.a')).toBe('1');
+  });
+
+  it('writes at once after an await, since each write is a pass of its own', async () => {
+    await resume('batchingAwait', {});
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.seen')).toBe('5'));
+  });
+
+  it('runs an effect that reads both once', async () => {
+    await resume('batchingWrites', {});
+    const log = () => (globalThis as { __batching?: string[] }).__batching ?? [];
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.name')).toBe('Ada Lovelace'));
+    expect(log()).not.toContain('Ada Hopper');
+    expect(log().filter((entry) => entry === 'Ada Lovelace')).toHaveLength(1);
+  });
+
+  it('does not throw from a state between two writes', async () => {
+    await resume('batchingThrow', {}, { all: 15 });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.item')).toBe('c'));
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('flush() runs the waiting bindings at once', async () => {
+    await resume('batchingFlush', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.found')).toBe('yes'));
+  });
+
+  it('without flush() the bindings wait for the end of the handler', async () => {
+    await resume('batchingFlush', {});
+    click(document.querySelector('.lazy')!);
+    await waitFor(() => expect(text('.found')).toBe('no'));
+    expect(document.querySelector('.body')).not.toBeNull();
+  });
+
+  it('flush() sees the DOM when the update code loads at the same time as the handler', async () => {
+    await resume('batchingFlush', {}, { all: 15 });
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.found')).toBe('yes'));
+  });
+
+  it('reads a memo of a signal that the handler wrote', async () => {
+    await resume('batchingMemo', {});
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.seen')).toBe('4'));
+    expect(text('.double')).toBe('4');
+    expect(text('.count')).toBe('2');
   });
 });

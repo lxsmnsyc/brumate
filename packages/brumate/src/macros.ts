@@ -42,8 +42,54 @@ export const RENAMED_MACROS: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** True for `import … from 'brumate/signals'`, which the compiler removes. */
-export function isMacroImport(statement: oxc.Node): boolean {
+export function isSignalsImport(statement: oxc.Node): boolean {
   return statement.type === 'ImportDeclaration' && statement.source.value === SIGNALS_MODULE;
+}
+
+/**
+ * True for an import of `brumate/signals` that holds compile-time functions only, which the
+ * compiler removes. One that also imports a function of the runtime, such as `flush`, stays.
+ */
+export function isMacroImport(statement: oxc.Node): boolean {
+  if (!isSignalsImport(statement)) {
+    return false;
+  }
+  for (const specifier of (statement as oxc.ImportDeclaration).specifiers) {
+    if (specifier.type !== 'ImportSpecifier' || specifier.importKind === 'type') {
+      continue;
+    }
+    const name =
+      specifier.imported.type === 'Identifier' ? specifier.imported.name : specifier.imported.value;
+    if (!MACROS.has(name) && !RENAMED_MACROS.has(name)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * The source of an import for the output. An import of `brumate/signals` that also names `flush`
+ * keeps `flush` only, since the compile-time functions are gone.
+ */
+export function importSource(source: string, statement: oxc.ImportDeclaration): string {
+  const text = source.slice(statement.start, statement.end);
+  if (!isSignalsImport(statement)) {
+    return text;
+  }
+  const named: string[] = [];
+  for (const specifier of statement.specifiers) {
+    if (specifier.type !== 'ImportSpecifier' || specifier.importKind === 'type') {
+      continue;
+    }
+    const imported =
+      specifier.imported.type === 'Identifier' ? specifier.imported.name : specifier.imported.value;
+    if (!MACROS.has(imported) && !RENAMED_MACROS.has(imported)) {
+      named.push(
+        imported === specifier.local.name ? imported : `${imported} as ${specifier.local.name}`,
+      );
+    }
+  }
+  return `import { ${named.join(', ')} } from '${SIGNALS_MODULE}';`;
 }
 
 /** Calls every AST node inside a value of the file, such as a script or an expression. */
@@ -87,7 +133,7 @@ export function resolveMacros(file: SFCFile): {
   const aliases = new Map<string, string>();
   const diagnostics: Diagnostic[] = [];
   walk(file, (node) => {
-    if (!isMacroImport(node)) {
+    if (!isSignalsImport(node)) {
       return;
     }
     for (const specifier of (node as oxc.ImportDeclaration).specifiers) {

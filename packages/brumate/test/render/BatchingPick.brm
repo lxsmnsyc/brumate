@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { onPick } = $props<{ onPick: (value: number) => void }>();
+</script>
+
+<button class="pick" onClick=(() => onPick(7))>Pick</button>
