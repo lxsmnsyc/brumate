@@ -1,7 +1,7 @@
 ---
 id: memo-errors-at-read
 title: A memo that throws holds the error, and a read of it throws
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -66,3 +66,5 @@ A memo whose compute throws, or whose promise rejects, holds the error as its va
 ## Sizing
 
 M: the read path of memos on the client and the server, the removal of the pass's error rule, and the docs.
+
+PR: #287

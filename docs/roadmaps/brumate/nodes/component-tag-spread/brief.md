@@ -1,7 +1,7 @@
 ---
 id: component-tag-spread
 title: A live spread on a dynamic tag that names a component reaches the component
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -60,3 +60,5 @@ depends_on:
 ## Sizing
 
 M: three forms through the analysis and the client spread path.
+
+PR: #288
