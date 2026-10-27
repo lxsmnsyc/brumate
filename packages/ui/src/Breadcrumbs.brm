@@ -1,6 +1,8 @@
 <script module>
   export interface BreadcrumbsProps {
+    /** Disables every link of the trail. */
     isDisabled?: boolean;
+    /** The `Breadcrumb` elements. */
     children?: unknown;
     [attribute: string]: unknown;
   }

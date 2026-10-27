@@ -2,11 +2,17 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface ModalProps {
+    /** Closes it on a press on the overlay, outside the box. */
     isDismissable?: boolean;
+    /** Stops Escape from closing it. */
     isKeyboardDismissDisabled?: boolean;
+    /** Lets CSS animate the overlay and the box, with `data-closed`, `data-enter` and `data-leave`. */
     transition?: boolean;
+    /** Runs when it closes, for one with its own `isOpen`. With a trigger, the trigger reports the change. */
     onOpenChange?: (open: boolean) => void;
+    /** The content of the box, often a `Dialog`. */
     children?: unknown;
+    /** Whether it is open, in place of the `DialogTrigger` around it. `$bind` writes your signal. */
     isOpen?: Bindable<boolean | undefined>;
     [attribute: string]: unknown;
   }

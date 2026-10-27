@@ -2,20 +2,35 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface TransitionOwnProps {
+    /** Runs the enter when the browser first renders the content. */
     appear?: boolean;
+    /** What happens once it has left: `true` removes the content, `false` hides it, and `offscreen` keeps it with its state. */
     unmount?: boolean | 'offscreen';
+    /** The classes for the whole length of the enter. */
     enter?: string;
+    /** The classes for the start of the enter. */
     enterFrom?: string;
+    /** The classes for the end of the enter. */
     enterTo?: string;
+    /** The classes that stay once it has entered. */
     entered?: string;
+    /** The classes for the whole length of the leave. */
     leave?: string;
+    /** The classes for the start of the leave. */
     leaveFrom?: string;
+    /** The classes for the end of the leave. */
     leaveTo?: string;
+    /** Runs when an enter starts. */
     beforeEnter?: () => void;
+    /** Runs when an enter ends. */
     afterEnter?: () => void;
+    /** Runs when a leave starts. */
     beforeLeave?: () => void;
+    /** Runs when a leave ends. */
     afterLeave?: () => void;
+    /** The content to move in and out. */
     children?: unknown;
+    /** Whether the content is shown. Without it, the element moves with the transition around it. */
     show?: boolean;
   }
 

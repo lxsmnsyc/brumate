@@ -1,5 +1,6 @@
 <script module>
   export interface TransitionChildProps {
+    /** The content that moves with the transition around it. */
     children?: unknown;
     [prop: string]: unknown;
   }

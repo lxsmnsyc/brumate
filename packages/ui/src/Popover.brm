@@ -4,15 +4,25 @@
   import type { Placement } from './position.ts';
 
   export interface PopoverOwnProps<T extends AsTarget = 'div'> {
+    /** The side of its trigger that it opens on, such as `bottom start`. Without it, the placement that the trigger asks for applies. */
     placement?: Placement;
+    /** The space between the trigger and the popover, in pixels. */
     offset?: number;
+    /** A shift along the side of the trigger, in pixels. */
     crossOffset?: number;
+    /** Whether it flips to the other side when it does not fit. */
     shouldFlip?: boolean;
+    /** The space that it keeps from the edges of the window, in pixels. */
     containerPadding?: number;
+    /** Leaves the rest of the page active, and closes the popover when focus leaves it. */
     isNonModal?: boolean;
+    /** Lets CSS animate it, with `data-closed`, `data-enter` and `data-leave`. */
     transition?: boolean;
+    /** Runs when it closes, for one with its own `isOpen`. With a trigger, the trigger reports the change. */
     onOpenChange?: (open: boolean) => void;
+    /** The content of the popover, often a `Dialog`. */
     children?: unknown;
+    /** Whether it is open, in place of the `DialogTrigger` around it. `$bind` writes your signal. */
     isOpen?: Bindable<boolean>;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

@@ -2,7 +2,9 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface SeparatorOwnProps {
+    /** The direction of the line. A vertical one is not an `<hr>`. */
     orientation?: 'horizontal' | 'vertical';
+    /** The slot of the context of a part that holds this one. */
     slot?: string | null;
   }
 

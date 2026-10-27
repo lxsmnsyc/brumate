@@ -2,9 +2,13 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface SheetProps {
+    /** The edge of the window that it sits on. `start` and `end` follow the direction of the locale. */
     side?: 'start' | 'end' | 'top' | 'bottom';
+    /** Closes it on a press outside it. */
     isDismissable?: boolean;
+    /** The content of the sheet, often a `Dialog`. */
     children?: unknown;
+    /** Whether it is open, in place of the `DialogTrigger` around it. `$bind` writes your signal. */
     isOpen?: Bindable<boolean>;
     [attribute: string]: unknown;
   }
