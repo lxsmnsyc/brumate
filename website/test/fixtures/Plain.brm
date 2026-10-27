@@ -1,0 +1,14 @@
+<script module>
+  export type PlainProps = {
+    /** The <title> & more. */
+    title?: string;
+  };
+</script>
+
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { title = '' } = $props<PlainProps>();
+</script>
+
+<p>{title}</p>

@@ -1,18 +1,25 @@
-// Compiles every live sample of the docs, so a sample that stops compiling,
+// Compiles every live sample of the docs and of the pages of @brumate/ui, so a sample that stops compiling,
 // or that the compiler warns about, fails the check.
 import { readFileSync, readdirSync } from 'node:fs';
 import { analyzeProject, compile } from 'brumate';
 import MarkdownIt from 'markdown-it';
 
-const folder = new URL('../docs/', import.meta.url);
+const folders = [new URL('../docs/', import.meta.url), new URL('../ui/', import.meta.url)];
 const parser = new MarkdownIt();
 let failures = 0;
 let samples = 0;
 
-for (const name of readdirSync(folder)
-  .filter((file) => file.endsWith('.md'))
-  .toSorted()) {
-  const tokens = parser.parse(readFileSync(new URL(name, folder), 'utf8'), {});
+const pages = folders.flatMap((folder) =>
+  readdirSync(folder)
+    .filter((file) => file.endsWith('.md'))
+    .toSorted()
+    .map((file) => ({ folder, file })),
+);
+
+for (const { folder, file: page } of pages) {
+  // A sample of a page of @brumate/ui is named with its folder.
+  const name = folder.pathname.endsWith('/ui/') ? `ui/${page}` : page;
+  const tokens = parser.parse(readFileSync(new URL(page, folder), 'utf8'), {});
   const groups: { line: number; files: Map<string, string> }[] = [];
   let previous = -2;
   tokens.forEach((token, index) => {
