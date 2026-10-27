@@ -392,7 +392,7 @@ export class Context {
   private rpcPrefix = '/_brumate';
   /** The ID of the build, for forms that post to server functions. See `RenderOptions`. */
   build: string | undefined;
-  /** True in development, where a memo that failed sends its error to the browser. */
+  /** True in development, where a memo that failed or a `#catch` sends its error to the browser. */
   development = false;
 
   /** Results of server functions that a form posted to this page, for `$action`. */
@@ -1292,7 +1292,7 @@ function heldError(error: unknown, ctx?: Context): MemoError {
   if (ctx?.isDev()) {
     sent = error instanceof Error ? error : new Error(String(error));
   } else {
-    sent = new Error(errorAnswer(error, 'The page could not compute a value').message);
+    sent = safeError(error, 'The page could not compute a value');
   }
   // The mark is what the serial plugin tests, as `brumate.slot` is for slot references.
   return Object.assign(new MemoError(sent), { [Symbol.for('brumate.held')]: true });
@@ -2713,6 +2713,43 @@ function errorAnswer(error: unknown, fallback: string): { message: string; statu
   }
   console.error(error);
   return { message: fallback, status: 500 };
+}
+
+/** Errors that `safeError` logged, so a failure read in two places logs once. */
+const logged = new WeakSet<object>();
+
+/**
+ * The error that the page state may carry in production: a plain `Error` with the message of a
+ * `ServerError`, or `fallback`, and no stack, which holds paths of the server. Any other error is
+ * logged once. A thrown value that is not an object is logged each time.
+ */
+function safeError(error: unknown, fallback: string): Error {
+  let message = fallback;
+  if (error instanceof ServerError) {
+    message = error.message;
+  } else if (typeof error !== 'object' || error === null) {
+    console.error(error);
+  } else if (!logged.has(error)) {
+    logged.add(error);
+    console.error(error);
+  }
+  const safe = new Error(message);
+  safe.stack = '';
+  return safe;
+}
+
+/**
+ * The error that a `#catch` body gets on the server, which the page state carries to the
+ * browser. In development it is the error itself, for debugging. In production it is a plain
+ * `Error` with the message of a `ServerError`, or a generic message, and the real error is
+ * logged, as for a server function that fails. The body renders with this value too, so the
+ * HTML cannot print what the state does not carry.
+ */
+export function caught(error: unknown, ctx: Context): unknown {
+  if (ctx.isDev()) {
+    return error;
+  }
+  return safeError(error, 'The page could not render this part');
 }
 
 /** True for a request that a `<form>` sent, without client code. */
