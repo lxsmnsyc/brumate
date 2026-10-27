@@ -5641,4 +5641,13 @@ describe('a spread on a component tag', () => {
     expect(el().getAttribute('data-x')).toBe('kept');
     expect(el().classList.contains('el')).toBe(true);
   });
+
+  it('renames a computed attribute next to a spread', async () => {
+    await resume('tagSpreadMixed', {});
+    const el = () => document.querySelector('p.el')!;
+    click(document.querySelector('.other')!);
+    await waitFor(() => expect(el().getAttribute('data-y')).toBe('moved'));
+    expect(el().hasAttribute('data-x')).toBe(false);
+    expect(el().getAttribute('title')).toBe('a');
+  });
 });
