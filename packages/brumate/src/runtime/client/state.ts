@@ -164,6 +164,12 @@ export const hooks: {
   record?: (script: Element, state: PageState) => PageState;
   /** Runs after the scopes of a state record are added. */
   added?: (added: Scope[]) => void;
+  /**
+   * Reads a bound element that a part owns, such as a `contenteditable`, when the core starts.
+   * Returns `{ value }` when the user changed it since the server rendered it, `false` when
+   * not, and nothing for an element of the core, which it reads itself.
+   */
+  field?: (element: Element) => { value: unknown } | false | undefined;
 } = {};
 
 /** What the devtools overlay hears from the core. It is set only in development. */

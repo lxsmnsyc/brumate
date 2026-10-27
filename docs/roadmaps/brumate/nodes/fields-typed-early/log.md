@@ -1,0 +1,2 @@
+- Branch fix/fields-typed-early. The loader already writes a `$bind` signal on an `input` event, but text typed before its listeners exist, or a field the browser restored, never reached the signal. Added `readFields` to `init`.
+- Baseline todos gzip (all JS of dist/assets, level 9): 28181. After: 28418.

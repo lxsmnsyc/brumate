@@ -397,6 +397,51 @@ export function leavePage(): void {
   resetHandler();
 }
 
+/**
+ * Whether the user changed a field since the server rendered it. The server's value is in
+ * `defaultValue`, `defaultChecked` and `defaultSelected`. This runs only when the core starts,
+ * before any update wrote the field.
+ */
+function typedInto(element: Element): boolean {
+  const field = element as HTMLInputElement;
+  if (element instanceof HTMLSelectElement) {
+    // A select with no `selected` option shows its first, and the last `selected` one wins.
+    let expected = 0;
+    let changed = false;
+    for (let i = 0; i < element.options.length; i++) {
+      const option = element.options[i]!;
+      if (option.defaultSelected) {
+        expected = i;
+      }
+      changed ||= option.selected !== option.defaultSelected;
+    }
+    return element.multiple ? changed : element.selectedIndex !== expected;
+  }
+  return /^(checkbox|radio)$/i.test(field.type)
+    ? field.checked !== field.defaultChecked
+    : field.value !== field.defaultValue;
+}
+
+/**
+ * Writes the signal of each bound field that the user changed before the code loaded, as an
+ * `input` event would. The text is in the DOM, and the first update would write the old value
+ * back. A field that still has the value the server rendered is not read.
+ */
+function readFields(): void {
+  for (const element of document.querySelectorAll('[b-on*="=$bind#"],[b-on*="=$set:"]')) {
+    const custom = hooks.field?.(element);
+    if (custom === false || (!custom && !typedInto(element))) {
+      continue;
+    }
+    for (const entry of element.getAttribute('b-on')!.split(' ')) {
+      const ref = entry.slice(entry.indexOf('=') + 1);
+      if (/^\$(bind#|set:)/.test(ref)) {
+        void handle(element, ref, undefined, custom || undefined);
+      }
+    }
+  }
+}
+
 /** Reads the page state. The loader calls it once, before the first handler. */
 export function init(value: CoreOptions): void {
   configure(value);
@@ -420,6 +465,7 @@ export function init(value: CoreOptions): void {
   }
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
+  readFields();
   watchTitles(document);
   if (DEV) {
     devtools()?.attach?.({ scopes, set, handle });
