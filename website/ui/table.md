@@ -139,31 +139,31 @@ The `ResizableTableContainer`, the `ColumnResizer` and the Checkbox elements wit
 
 ### ColumnResizer
 
-| Attribute                  | When                                                                  |
-| -------------------------- | --------------------------------------------------------------------- |
-| `data-resizing`            | A drag or the keys are resizing the column.                           |
-| `data-resizable-direction` | `left` at the least width and `right` at the most. Else it is absent. |
-| `data-hovered`             | A mouse or a pen is over it.                                          |
-| `data-focused`             | It has focus.                                                         |
-| `data-focus-visible`       | Its focus shows as a ring.                                            |
+| Attribute                  | When                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `data-resizing`            | A drag or the keys are resizing the column.                                                                   |
+| `data-resizable-direction` | `both` by default, `left` at the least width and `right` at the most. Right to left, `left` and `right` swap. |
+| `data-hovered`             | A mouse or a pen is over it.                                                                                  |
+| `data-focused`             | It has focus.                                                                                                 |
+| `data-focus-visible`       | Its focus shows as a ring.                                                                                    |
 
 ## Keyboard
 
 Right to left, Left and Right turn around.
 
-| Key                           | Action                                                                                                                            |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `Tab`                         | Moves focus to the table, at the row or the cell that had focus last, else the first selected row, else the first row.            |
-| `ArrowDown` or `ArrowUp`      | Moves to the next or the previous row, or to the cell of the same column in it. Up from the first row goes to the column headers. |
-| `ArrowRight` or `ArrowLeft`   | Moves from a row to its cells, along them, and back to the row. On the column headers, moves between the columns.                 |
-| `PageUp` or `PageDown`        | Moves a page of rows up or down, keeping the column of a cell.                                                                    |
-| `Home` or `End`               | Moves to the first or the last row, or to the first or the last cell of the row.                                                  |
-| `Ctrl + Home` or `Ctrl + End` | On a cell, moves to the first cell of the first row, or the last cell of the last row.                                            |
-| `Space`                       | Selects the row. With Shift it extends a range.                                                                                   |
-| `Enter`                       | Acts on the row, or sorts the column that has focus.                                                                              |
-| `Ctrl + A` or `Cmd + A`       | Selects all the rows that are not disabled.                                                                                       |
-| `Escape`                      | Clears the selection, unless `disallowEmptySelection`.                                                                            |
-| A letter                      | Moves focus to the row whose text starts with what was typed.                                                                     |
+| Key                                           | Action                                                                                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`                                         | Moves focus to the table, at the row or the cell that had focus last, else the first selected row, else the first row.                |
+| `ArrowDown` or `ArrowUp`                      | Moves to the next or the previous row, or to the cell of the same column in it. Up from the first row goes to the column headers.     |
+| `ArrowRight` or `ArrowLeft`                   | Moves from a row to its cells, along them, and back to the row. On the column headers, moves between the columns.                     |
+| `PageUp` or `PageDown`                        | Moves a page of rows up or down, keeping the column of a cell. On a column header, `PageDown` goes to the first row.                  |
+| `Home` or `End`                               | Moves to the first or the last row, or to the first or the last cell of the row. On a column header, to the first or the last column. |
+| `Ctrl + Home` or `Ctrl + End`, or with `Meta` | On a cell, moves to the first cell of the first row, or the last cell of the last row.                                                |
+| `Space`                                       | Selects the row. With Shift it extends a range. On a sortable column header, sorts the column.                                        |
+| `Enter`                                       | Acts on the row, or sorts the column that has focus.                                                                                  |
+| `Ctrl + A` or `Meta + A`                      | Selects all the rows that are not disabled.                                                                                           |
+| `Escape`                                      | Clears the selection, unless `disallowEmptySelection`.                                                                                |
+| `a` to `z`                                    | Moves focus to the row whose text starts with what was typed.                                                                         |
 
 ## Controlled and uncontrolled
 
@@ -244,4 +244,4 @@ The Table renders a `table` with `role="grid"`, a `thead` and a `tbody` with `ro
 - The resizer holds a hidden range input, which a screen reader reads as the width in pixels. Its value is the width of the column, and a change of it from assistive technology sets the width.
 - A Column that sorts or has a resizer takes the focus itself first, and Enter or Space sorts it. Left and Right then move through its controls, such as the resizer, before they move to the next column.
 - On the input, Enter starts a resize, the arrow keys change the width by 10 pixels, and Escape, Enter, Space, Tab or a blur end it.
-- A resizer shows `data-resizing`, `data-resizable-direction`, which is `left` at the least width and `right` at the most, `data-hovered`, `data-focused` and `data-focus-visible`. A Column shows `data-resizing` while it resizes.
+- A resizer shows `data-resizing`, `data-resizable-direction`, which is `both` by default, `left` at the least width and `right` at the most (swapped right to left), `data-hovered`, `data-focused` and `data-focus-visible`. A Column shows `data-resizing` while it resizes.

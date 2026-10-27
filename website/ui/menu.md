@@ -109,8 +109,8 @@ These are the attributes of a `MenuItem`. The `Button` of the trigger shows [its
 | `Home` or `End`    | Moves focus to the first or the last item.                                                                      |
 | `ArrowRight`       | On an item with a submenu, opens it. Right to left, `ArrowLeft` does.                                           |
 | `ArrowLeft`        | In a submenu, closes it. Right to left, `ArrowRight` does.                                                      |
-| `Escape`           | Closes the menu and puts focus back on the Button.                                                              |
-| A letter           | Moves focus to the item whose text starts with what was typed.                                                  |
+| `Escape`           | Closes the menu and puts focus back on the Button. In a submenu, closes only the submenu.                       |
+| `a` to `z`         | Moves focus to the item whose text starts with what was typed.                                                  |
 
 ## Controlled and uncontrolled
 

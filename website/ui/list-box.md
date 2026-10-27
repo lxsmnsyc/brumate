@@ -89,9 +89,9 @@ The keys act while an item has focus. With `orientation="horizontal"`, Left and 
 | `Shift + ArrowDown` or `Shift + ArrowUp` | Selects a range, in a multiple selection.                                                                    |
 | `Space`                                  | Toggles the item, or selects it with `selectionBehavior="replace"`.                                          |
 | `Enter`                                  | Acts on the item when there is an action, and else selects it.                                               |
-| `Ctrl + A` or `Cmd + A`                  | Selects all the items that are not disabled, in a multiple selection.                                        |
+| `Ctrl + A` or `Meta + A`                 | Selects all the items that are not disabled, in a multiple selection.                                        |
 | `Escape`                                 | Clears the selection, unless `escapeKeyBehavior="none"` or `disallowEmptySelection`.                         |
-| A letter                                 | Moves focus to the item whose text starts with what was typed.                                               |
+| `a` to `z`                               | Moves focus to the item whose text starts with what was typed.                                               |
 
 ## Controlled and uncontrolled
 

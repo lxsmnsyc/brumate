@@ -92,7 +92,7 @@ The items show [the attributes of a ListBoxItem](./list-box.md#data-attributes).
 | `ArrowLeft` or `ArrowRight` | On the Button of a closed list, selects the item before or after the selected one.                               |
 | `Home` or `End`             | In the list, moves focus to the first or the last item.                                                          |
 | `Escape`                    | Closes the list with no change.                                                                                  |
-| A letter                    | On the Button of a closed list, selects the item that starts with the text. In the open list, moves focus to it. |
+| `a` to `z`                  | On the Button of a closed list, selects the item that starts with the text. In the open list, moves focus to it. |
 
 ## Controlled and uncontrolled
 

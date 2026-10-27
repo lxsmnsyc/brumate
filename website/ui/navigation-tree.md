@@ -89,7 +89,7 @@ Right to left, Left and Right turn around.
 | `ArrowRight`             | Opens a closed row.                                           |
 | `ArrowLeft`              | Closes an open row, else moves to the row that holds it.      |
 | `Enter`                  | Follows the link.                                             |
-| A letter                 | Moves to the row whose text starts with what was typed.       |
+| `a` to `z`               | Moves to the row whose text starts with what was typed.       |
 
 ## Controlled and uncontrolled
 

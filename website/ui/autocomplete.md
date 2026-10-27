@@ -59,7 +59,7 @@ Focus stays in the field. `aria-activedescendant` on the input names the active 
 | `ArrowUp`   | Makes the previous item active, round the ends.                                  |
 | `Enter`     | Presses the active item. A Menu acts on it, and a ListBox selects or acts on it. |
 | `Escape`    | In a SearchField, clears the field, and then all the items show again.           |
-| A letter    | Types in the field, which filters the items.                                     |
+| `a` to `z`  | Types in the field, which filters the items.                                     |
 
 ## Controlled and uncontrolled
 

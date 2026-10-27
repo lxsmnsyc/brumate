@@ -8,7 +8,7 @@
     disabledKeys?: Key[];
     /** Disables all the tabs. */
     isDisabled?: boolean;
-    /** The axis of the tabs: `horizontal` uses Left and Right, and `vertical` uses Up and Down. */
+    /** The axis of the tabs: `horizontal` uses Left and Right, and `vertical` uses all four arrows. */
     orientation?: 'horizontal' | 'vertical';
     /** `automatic` selects the tab that the arrow keys move to. `manual` selects it with Enter or Space. */
     keyboardActivation?: 'automatic' | 'manual';

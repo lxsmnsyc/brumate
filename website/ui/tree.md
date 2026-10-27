@@ -82,9 +82,9 @@ Right to left, Left and Right turn around.
 | `PageUp` or `PageDown`   | Moves a page up or down.                                                                                  |
 | `Space`                  | Selects the row. With Shift it extends a range.                                                           |
 | `Enter`                  | Acts on the row. With no action and nothing selectable, opens or closes the row.                          |
-| `Ctrl + A` or `Cmd + A`  | Selects all the rows.                                                                                     |
+| `Ctrl + A` or `Meta + A` | Selects all the rows that are not disabled, in a multiple selection.                                      |
 | `Escape`                 | Clears the selection.                                                                                     |
-| A letter                 | Moves to the row whose text starts with what was typed.                                                   |
+| `a` to `z`               | Moves to the row whose text starts with what was typed.                                                   |
 
 ## Controlled and uncontrolled
 

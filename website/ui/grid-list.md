@@ -84,9 +84,19 @@ The Checkbox with `slot="selection"` and the Button with `slot="drag"` are optio
 | `PageUp` or `PageDown`      | Moves focus by the height of the list.                                                                    |
 | `Space`                     | Selects the row. With Shift it extends a range.                                                           |
 | `Enter`                     | Acts on the row.                                                                                          |
-| `Ctrl + A` or `Cmd + A`     | Selects all the rows that are not disabled.                                                               |
+| `Ctrl + A` or `Meta + A`    | Selects all the rows that are not disabled.                                                               |
 | `Escape`                    | Clears the selection, also from a control in a row.                                                       |
-| A letter                    | Moves focus to the row whose text starts with what was typed.                                             |
+| `a` to `z`                  | Moves focus to the row whose text starts with what was typed.                                             |
+
+## Drag from the keys
+
+With `onReorder`, the Button with `slot="drag"` starts a drag from the keys. Then the keys act on the drag.
+
+| Key                      | Action                                                |
+| ------------------------ | ----------------------------------------------------- |
+| `ArrowDown` or `ArrowUp` | Moves the drop place to the next or the previous one. |
+| `Enter`                  | Drops the rows at the place.                          |
+| `Escape` or `Tab`        | Cancels the drag.                                     |
 
 ## Controlled and uncontrolled
 

@@ -74,7 +74,7 @@ Focus stays in the input. `aria-activedescendant` names the active item.
 | `ArrowUp`   | Opens the list with all its items, and moves the active item up, round the ends.                       |
 | `Enter`     | Picks the active item. With no active item, closes the list. While the list is closed, sends the form. |
 | `Escape`    | Closes the list, and puts back the text of the selected item, or clears the input.                     |
-| A letter    | Types in the input, which opens the list and filters the items.                                        |
+| `a` to `z`  | Types in the input, which opens the list and filters the items.                                        |
 
 ## Controlled and uncontrolled
 

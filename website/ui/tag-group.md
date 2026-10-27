@@ -78,9 +78,10 @@ Right to left, Left and Right turn around.
 | Key                         | Action                                                                                 |
 | --------------------------- | -------------------------------------------------------------------------------------- |
 | `Tab`                       | Moves focus to the list, at the tag that had focus last, else the first one.           |
-| `ArrowRight` or `ArrowLeft` | Moves to the next or the previous tag.                                                 |
+| `ArrowDown` or `ArrowUp`    | Moves to the next or the previous tag.                                                 |
+| `ArrowRight` or `ArrowLeft` | Moves to the next or the previous tag. Right to left, they turn around.                |
 | `Home` or `End`             | Moves to the first or the last tag.                                                    |
-| `Space`                     | Toggles the tag, with a `selectionMode`.                                               |
+| `Enter` or `Space`          | Toggles the tag, with a `selectionMode`.                                               |
 | `Delete` or `Backspace`     | Removes the tag, or all the selected tags when it is one of them. It needs `onRemove`. |
 
 ## Controlled and uncontrolled
@@ -102,7 +103,7 @@ With `onRemove`, the group can remove tags. It gets the keys, and the caller rem
 ## Focus and keys
 
 - Tab stops at the list once, at the tag that had focus last, or else the first one.
-- The arrow keys move to the next and the previous tag, and Home and End go to the ends. Right to left, Left and Right turn around.
+- Up, Down, Left and Right move to the next and the previous tag, and Home and End go to the ends. Right to left, Left and Right turn around.
 
 ## Tags
 
