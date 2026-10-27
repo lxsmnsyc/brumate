@@ -35,6 +35,7 @@
   <p class="ok">{fail(kind)}</p>
 } #catch (error) {
   <p class="caught">{String(error)}</p>
+  <p class="stack">{error.stack}</p>
   <button class="show" onClick=(() => (shown = String(error)))>Show</button>
   <p class="shown">{shown}</p>
 }

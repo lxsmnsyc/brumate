@@ -2715,12 +2715,27 @@ function errorAnswer(error: unknown, fallback: string): { message: string; statu
   return { message: fallback, status: 500 };
 }
 
+/** Errors that `safeError` logged, so a failure read in two places logs once. */
+const logged = new WeakSet<object>();
+
 /**
  * The error that the page state may carry in production: a plain `Error` with the message of a
- * `ServerError`, or `fallback`. Any other error is logged.
+ * `ServerError`, or `fallback`, and no stack, which holds paths of the server. Any other error is
+ * logged once. A thrown value that is not an object is logged each time.
  */
 function safeError(error: unknown, fallback: string): Error {
-  return new Error(errorAnswer(error, fallback).message);
+  let message = fallback;
+  if (error instanceof ServerError) {
+    message = error.message;
+  } else if (typeof error !== 'object' || error === null) {
+    console.error(error);
+  } else if (!logged.has(error)) {
+    logged.add(error);
+    console.error(error);
+  }
+  const safe = new Error(message);
+  safe.stack = '';
+  return safe;
 }
 
 /**

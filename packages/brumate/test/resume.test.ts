@@ -1005,6 +1005,11 @@ describe('resume', () => {
         }
         expect(result).toContain('class="caught"');
         expect(result).toContain('The page could not render this part');
+        // The stack of the safe error is empty, so no path of the server reaches the page.
+        expect(result).toContain('<p class="stack"></p>');
+        for (const leak of ['safeError', 'server.ts', process.cwd()]) {
+          expect(result).not.toContain(leak);
+        }
         // The real error is logged once.
         expect(log).toHaveBeenCalledTimes(1);
         log.mockRestore();
@@ -1016,6 +1021,15 @@ describe('resume', () => {
       const result = await page('server');
       expect(result).toContain('Shown to visitors');
       expect(log).not.toHaveBeenCalled();
+      log.mockRestore();
+    });
+
+    it('logs an error once when it is read in two #try blocks', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const server = await import(file('memoErrorServerTwo.brm.ts'));
+      const { html } = await renderParts(server.default, {});
+      expect(html.split('Error: The page could not render this part')).toHaveLength(3);
+      expect(log).toHaveBeenCalledTimes(1);
       log.mockRestore();
     });
 
