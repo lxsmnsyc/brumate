@@ -41,6 +41,12 @@ depends_on:
   - on: ui-generics
     kind: hard
     why: it fixes callers across the parts, which ui-generics rewrites
+  - on: element-values
+    kind: hard
+    why: without the widened element types, the check reports false errors (reviews/type-parity.md, item 12)
+  - on: event-names
+    kind: hard
+    why: both edit the helpers of check.ts
   - on: as-sound
     kind: hard
     why: the parts take attributes through as.ts, which as-sound rebuilds
@@ -56,10 +62,13 @@ The type check checks the attributes of a plain element against its element type
 
 - check.ts writes `$$use` for most element attributes, and `children: undefined as any` for the children of a component.
 - Source: Request of the user, 2026-10-26
+- The audit of 2026-10-27, [reviews/type-parity.md](../../reviews/type-parity.md), section 1 items 1, 2, 7 and 8, and section 4 D and E, lists what this node covers: static, value, spread and computed attributes and `ref=$bind` on plain elements, checked as one object literal against `ElementProps<tag>`. Children are written as `Markup` and mapped to their range, because today the error at `children: undefined as any` is dropped by the language plugin, so a component that takes no children accepts them.
+- Dynamic tags are the node dynamic-tag-types, after this one.
 
 ## Acceptance
 
 - [ ] The brumate-tsc fixture reports an unknown attribute and a wrong attribute type on a plain element, at the attribute.
+- [ ] It reports a wrong `ref=$bind(x)` on an element (a button signal on a div), a wrong value in a spread, and children given to a component that takes none, each at its place.
 - [ ] `pnpm typecheck` exits 0 in every package, the website and the examples.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
