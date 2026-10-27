@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import DiamondLiftKid from './DiamondLiftKid.brm';
+
+  const { onTpl } = $props<{ onTpl: (tpl: () => unknown) => void }>();
+</script>
+
+<DiamondLiftKid {onTpl} />

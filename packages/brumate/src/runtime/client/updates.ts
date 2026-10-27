@@ -379,10 +379,8 @@ export function update(scope: Scope, slot: number, delta: number, prefix: boolea
 
 function trigger(scope: Scope, slot: number): void {
   const id = rootOf(scope).m!;
-  const module = modules.get(id);
-  const updates = loadedParts.get(`${id}:update`);
   const children = childrenReady(scope);
-  if (module && updates && loadingCode.size === 0 && !children) {
+  if (modules.has(id) && loadedParts.has(`${id}:update`) && loadingCode.size === 0 && !children) {
     pass(() => queueWrite(scope, slot));
     return;
   }
@@ -406,16 +404,11 @@ function trigger(scope: Scope, slot: number): void {
       waits.push(load);
     }
     await Promise.allSettled(waits);
-    try {
-      pass(() => {
-        for (const [target, at] of list) {
-          queueWrite(target, at);
-        }
-      });
-    } catch (error) {
-      // The error goes to the nearest `#try` around the first write, as a handler's would.
-      fail(scope, error);
-    }
+    pass(() => {
+      for (const [target, at] of list) {
+        queueWrite(target, at);
+      }
+    });
   });
   loadingUpdates.add(loading);
   void loading.finally(() => loadingUpdates.delete(loading));
@@ -458,8 +451,6 @@ export const pendingEffects: Map<string, () => void> = new Map();
 interface Level {
   /** The memos, in buckets by rank. */
   m: Map<string, () => void>[];
-  /** The lowest rank that can have a memo, unset before the first. */
-  a?: number;
   /** The bindings. */
   b: Map<string, () => void>;
   /** The effects. */
@@ -508,6 +499,7 @@ function pass(write: () => void): void {
       }
       levels = [];
       waiting = undefined;
+      runs = 0;
     }
   }
   if (running === 0) {
@@ -529,21 +521,9 @@ function queueWrite(scope: Scope, slot: number): void {
   if (!module || !updates) {
     return;
   }
-  // The descendants of each kind, found once.
-  const found = new Map<number, Scope[]>();
   for (const [kind, name] of module.g[scope.k]?.[slot] ?? []) {
-    const fn = updates[name] as (scope: Scope) => void;
-    if (kind === scope.k) {
-      queue(fn, name, scope);
-      continue;
-    }
-    let targets = found.get(kind);
-    if (!targets) {
-      targets = descendants(scope, kind);
-      found.set(kind, targets);
-    }
-    for (const target of targets) {
-      queue(fn, name, target);
+    for (const target of kind === scope.k ? [scope] : descendants(scope, kind)) {
+      queue(updates[name] as (scope: Scope) => void, name, target);
     }
   }
 }
@@ -554,34 +534,47 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
     updateCount++;
   }
   const key = `${target.id}:${name}`;
-  // An update of a scope that left the page in the pass does not run.
+  // An update of a scope that left the page in the pass does not run. An error goes to the
+  // nearest `#try` around the update, whether its write ran at once or waited for code.
   const later = (): void => {
     if (scopes.get(target.id) === target) {
-      fn(target);
+      try {
+        // A limit for updates that keep writing what they read. Past it, each update that waits
+        // fails without running, so the pass ends.
+        if (++runs > 1e6) {
+          throw new Error(
+            DEV
+              ? 'The updates of a write did not settle after a million runs. An update writes a value that it reads, such as through ref=$bind.'
+              : 'Update loop',
+          );
+        }
+        fn(target);
+      } catch (error) {
+        fail(target, error);
+      }
     }
   };
-  // The depth through the scopes where contexts are found, so children that a provider inserts
-  // run after its bindings.
-  let depth = 0;
-  for (
-    let current = target.t ?? target.p ?? target.o;
-    current;
-    current = current.t ?? current.p ?? current.o
-  ) {
-    depth++;
-  }
+  const depth = depthOf(target);
   const level = (levels[depth] ??= { m: [], b: new Map(), e: new Map() });
   if (name[0] === 'm') {
-    const rank = +name.slice(1);
-    (level.m[rank] ??= new Map()).set(key, later);
-    // True too while `a` is unset.
-    if (!(rank >= level.a!)) {
-      level.a = rank;
-    }
+    (level.m[+name.slice(1)] ??= new Map()).set(key, later);
   } else {
     (name[0] === 'e' ? level.e : level.b).set(key, later);
   }
 }
+
+/**
+ * The depth of a scope: one more than the deeper of the scope where it renders, for children
+ * and templates that another component inserts, and of its parent. So children that a provider
+ * inserts come after the provider, and a template that a shallower component renders comes after
+ * the component that wrote it.
+ */
+function depthOf(scope: Scope | undefined): number {
+  return scope ? 1 + Math.max(depthOf(scope.t), depthOf(scope.p ?? scope.o)) : -1;
+}
+
+// The updates that ran in the pass.
+let runs = 0;
 
 /**
  * Runs what waits, the lowest depth first: its memo of the lowest rank, until
@@ -590,7 +583,6 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
  * write into a parent.
  */
 function drain(): void {
-  let rounds = 0;
   let depth = 0;
   while (depth < levels.length) {
     const level = levels[depth];
@@ -598,39 +590,32 @@ function drain(): void {
       depth++;
       continue;
     }
+    // The bucket of the lowest rank. Each runs whole, so the scan is short.
     const memos = level.m;
-    while (level.a! < memos.length && !memos[level.a!]?.size) {
-      level.a!++;
+    let rank = 0;
+    while (rank < memos.length && !memos[rank]?.size) {
+      rank++;
     }
-    const bucket = memos[level.a!];
+    const bucket = memos[rank];
     if (bucket) {
-      // A memo queues only later ranks of its scope or updates of deeper scopes, so the whole
-      // bucket runs in one loop, with the memos that join it while it runs.
+      // The whole bucket runs in one loop, with the memos that join it while it runs. A memo that
+      // queues a lower rank or a lower depth, such as of a template that a shallower component
+      // renders, runs after the bucket, since the scan starts again.
       for (const [key, compute] of bucket) {
         bucket.delete(key);
         compute();
       }
-      depth = 0;
-      continue;
-    }
-    if (level.b.size > 0) {
-      // A limit for updates that keep writing what they read.
-      if (++rounds > 10_000) {
-        throw new Error(
-          DEV
-            ? 'The updates of a write did not settle after 10000 rounds. An update writes a value that it reads, such as through ref=$bind.'
-            : 'Update loop',
-        );
-      }
+    } else if (level.b.size > 0) {
       const round = [...level.b.values()];
       level.b.clear();
       for (const waiter of round) {
         waiter();
       }
-      depth = 0;
+    } else {
+      depth++;
       continue;
     }
-    depth++;
+    depth = 0;
   }
 }
 

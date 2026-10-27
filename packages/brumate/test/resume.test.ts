@@ -563,6 +563,26 @@ describe('resume', () => {
       expect(errors).not.toHaveBeenCalled();
     });
 
+    it('computes the memo of a template that a shallower component renders after the memos it reads', async () => {
+      await resume('diamondLift', {});
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      click(document.querySelector('.lift')!);
+      await vi.waitFor(() => expect(text('.lift-pick')).toBe('C'), { timeout: 500 });
+      const steps: [string, string][] = [
+        ['B', 'liftPick 2 1'],
+        ['A', 'liftPick 1 0'],
+      ];
+      for (const [shown, run] of steps) {
+        clearRuns();
+        click(document.querySelector('.cut')!);
+        // oxlint-disable-next-line no-await-in-loop -- Each click waits for the one before.
+        await vi.waitFor(() => expect(text('.lift-pick')).toBe(shown), { timeout: 500 });
+        expect(runsOf('liftPick')).toEqual([run]);
+      }
+      expect(errors).not.toHaveBeenCalled();
+    });
+
     it('computes a memo of a child once when it writes a bound prop that the parent passes back a memo of', async () => {
       await resume('diamondBind', {});
       const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -1003,6 +1023,16 @@ describe('resume', () => {
     click(document.querySelector('.count-up')!);
     click(document.querySelector('.count-up')!);
     await waitFor(() => expect(text('.caught')).toBe('Error: Effect at 3'));
+  });
+
+  it('catches the error of a memo in the #try around it, also when the write waited for the code', async () => {
+    await resume('tryWaitingUpdate', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    // The first click writes before the update code has loaded.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+    expect(errors).not.toHaveBeenCalled();
   });
 
   it('reports an error outside every #try with an event, and to onError first', async () => {

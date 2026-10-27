@@ -1,0 +1,17 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+</script>
+
+#try {
+  <script>
+    const checked = $memo(count > 0 ? (() => {
+      throw new Error(`Bad ${count}`);
+    })() : 'ok');
+  </script>
+  <button class="bump" onClick=(() => count++)>Bump</button>
+  <p class="checked">{checked}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

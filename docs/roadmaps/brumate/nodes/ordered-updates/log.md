@@ -43,3 +43,9 @@ No compiler change: `g` keeps its lists. The queues do what the transitive lists
 - `drain` runs a whole bucket in one loop. One iterator per memo skipped the holes of deleted entries each time. 10000 rows: 31-43 ms against 25-31 ms on main.
 - A throw in a waiting pass goes to `fail`. +6 B.
 - CI failed on oxfmt of outcome.md: I had edited it after the last format run.
+
+## 2026-10-27: round 3 of #282
+
+- `t ?? p ?? o` gave a template that a deep component hands up to the page a lower depth than its writer, so its memo read the old `last` and threw. The depth is now 1 + max(depth of `t`, depth of `p ?? o`). Test added (`diamondLift`).
+- An error in a waiting pass went to `fail` on the signal's scope and skipped the `#try` around the memo. Each update now runs in a try and fails on its own scope. The limit moved into the same try, counting runs. Test added (`tryWaitingUpdate`).
+- Size went to +313. Dropping the descendants cache, the rank cursor (buckets run whole now) and the extra lookups in `trigger` brought it to +291.
