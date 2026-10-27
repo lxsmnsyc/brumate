@@ -19,7 +19,7 @@ export function isLink(element: Element): boolean {
 }
 
 /** True for an `<a>` with an `href`, which the browser follows on a click. */
-export function isAnchor(element: Element): boolean {
+export function isAnchor(element: Element): element is HTMLAnchorElement {
   return element.tagName === 'A' && element.hasAttribute('href');
 }
 

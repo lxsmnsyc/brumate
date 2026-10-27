@@ -8,6 +8,7 @@ import type {
   Block,
   Body,
   ComponentNode,
+  DynamicTagNode,
   ElementNode,
   EventAttribute,
   Expression,
@@ -73,7 +74,28 @@ declare function $$spread(tag: string): (value: object | $$Falsy) => void;
 declare function $$present<T>(value: T): Exclude<T, $$Falsy>;
 /** \`$bind\` of a \`ref\`, which needs no import in markup. */
 declare function $$bind<T>(signal: T): import('brumate/signals').BoundSignal<T>;
-declare function $$dynamic(tag: string | ((props: never, ...rest: never[]) => unknown), props: Record<string, unknown>): void;
+// A dynamic tag. The helpers are curried, as those of elements: an element name checks the
+// attributes of its element, a component its props, and a tag that can be either, such as a
+// generic \`T extends AsTarget\`, the global attributes of an HTML or SVG element. A handler is
+// typed by \`$$handler\`, since a union of element names gives a union of handlers, which types
+// no parameter. The first overload takes any string, not \`keyof Elements\`: a tag such as
+// \`AsTarget\` fails it at once, where a failed \`keyof Elements\` cost about 50 ms for each call.
+/** The attributes of a tag. A declaration with a generic \`T\` leaves the conditional unresolved. */
+type $$Attributes<T> = T extends keyof $$Elements ? $$Elements[T] : Record<string, unknown>;
+type $$AnyTag = keyof $$Elements | import('brumate/elements').Component;
+type $$AnyAttributes = Omit<import('brumate/elements').GlobalAttributes<HTMLElement | SVGElement>, 'ref'> & { ref?: import('brumate/signals').BindableMark<unknown>; [name: string]: unknown };
+declare function $$dynamic<T extends string>(tag: T): (attributes: $$Attributes<T> & { children?: $$Markup }) => void;
+declare function $$dynamic<P>(tag: $$Component<P>): (props: P) => void;
+declare function $$dynamic(tag: $$AnyTag): (attributes: $$AnyAttributes) => void;
+/**
+ * Types a handler of a dynamic tag from its tag: the event of its name on the element. Another
+ * name keeps the type of the handler, and the object of the attributes checks it, so a component
+ * types it from its prop.
+ */
+type $$Handle<E> = { <K extends keyof $$Events & string>(event: K, handler: (event: $$Events[K] & { currentTarget: E }) => unknown): (event: $$Events[K] & { currentTarget: E }) => unknown; <H>(event: string, handler: H): H };
+declare function $$handler<T extends string>(tag: T): $$Handle<$$Element<T>>;
+declare function $$handler(tag: $$Component<never>): <H>(event: string, handler: H) => H;
+declare function $$handler(tag: $$AnyTag): $$Handle<HTMLElement | SVGElement>;
 type $$Events = import('brumate/elements').ElementEvents;
 type $$Element<T> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement;
 declare function $$on<T extends string, K extends keyof $$Events & string>(tag: T, event: K, handler: (event: $$Events[K] & { currentTarget: $$Element<T> }) => unknown): void;
@@ -749,12 +771,7 @@ class Generator {
         this.nodes(node.children);
         return;
       case 'dynamic':
-        this.passedNames(node.attributes);
-        out.text('$$dynamic(');
-        out.expression(node.tag);
-        out.text(', {');
-        this.props(node.attributes);
-        out.text('});\n');
+        this.dynamic(node);
         this.nodes(node.children);
         return;
       case 'fragment':
@@ -879,6 +896,86 @@ class Generator {
     out.text(');\n');
   }
 
+  /**
+   * Checks the attributes of a dynamic tag as one object against the type of its tag: the
+   * attributes of an element name, or the props of a component. The tag is read once into a
+   * constant, so an error in it is reported once. Handlers are typed by `$$handler`. The values
+   * of a spread are checked in the object, but not its names: a check of the names, as
+   * `$$spread` does on an element, cost TypeScript ten times the time of the whole check.
+   */
+  private dynamic(node: DynamicTagNode): void {
+    const { out } = this;
+    this.passedNames(node.attributes);
+    out.text('{\nconst $$tag = ');
+    out.expression(node.tag);
+    out.text(';\n');
+    out.text('$$dynamic($$tag)(');
+    // A missing prop is reported on the object, so its brace stands for the `<` of the tag.
+    out.stand({ start: node.start, end: node.start + 1 }, '{');
+    for (const attribute of node.attributes) {
+      switch (attribute.kind) {
+        case 'static':
+          this.propName(attribute);
+          out.text(`${attribute.value === true ? 'true' : JSON.stringify(attribute.value)},`);
+          break;
+        case 'value':
+          this.propName(attribute);
+          this.propValue(attribute.value);
+          out.text(',');
+          break;
+        case 'event':
+          this.propName(attribute);
+          out.text('$$handler($$tag)(');
+          out.event(attribute);
+          out.text(', ');
+          out.expression(attribute.handler);
+          out.text('),');
+          break;
+        case 'spread':
+          // A falsy value spreads nothing, and the object part is checked.
+          out.text(' ...$$present(');
+          out.copy(attribute.value);
+          out.text('),');
+          break;
+        case 'ref':
+          out.text(' ');
+          out.stand({ start: attribute.start, end: attribute.start + 3 }, 'ref');
+          out.text(': $$bind(');
+          out.copy(attribute.targetRange);
+          out.text('),');
+          break;
+        case 'computed': {
+          const close = this.file.source.indexOf(']', attribute.name.end);
+          out.text(' ');
+          out.stand({ start: attribute.start, end: attribute.start + 1 }, '[');
+          out.copy(attribute.name);
+          out.stand({ start: close, end: close + 1 }, ']');
+          out.text(': ');
+          if (attribute.value === true) {
+            out.text('true');
+          } else {
+            out.expression(attribute.value);
+          }
+          out.text(',');
+          break;
+        }
+        default:
+          break;
+      }
+    }
+    if (node.children.length > 0) {
+      // Children are markup. The name stands for the children, so a component that takes none
+      // reports the error there.
+      out.text(' ');
+      out.key({ start: node.children[0]!.start, end: node.children.at(-1)!.end }, 'children');
+      out.text(': $$markup,');
+    }
+    out.text(' ');
+    const end = this.openTagEnd(node);
+    out.stand({ start: end - 1, end }, '}');
+    out.text(');\n}\n');
+  }
+
   /** Writes a prop name, mapped to the attribute, so errors about the prop point at it. */
   private propName(attribute: Range & { name: string }): void {
     const { out } = this;
@@ -892,7 +989,25 @@ class Generator {
     out.text(': ');
   }
 
-  /** Writes the attributes of a component or a dynamic tag as the properties of an object. */
+  /**
+   * Writes the value of a prop. A template passed by name is written in its place, so the type of
+   * the prop types its parameters.
+   */
+  private propValue(value: Expression): void {
+    const { out } = this;
+    const template = this.passed(value);
+    if (template) {
+      this.writing.add(template);
+      out.text('(async ');
+      this.template(template);
+      out.text(')');
+      this.writing.delete(template);
+    } else {
+      out.expression(value);
+    }
+  }
+
+  /** Writes the attributes of a component as the properties of an object. */
   private props(attributes: Attribute[], children?: Range): void {
     const { out } = this;
     for (const attribute of attributes) {
@@ -901,21 +1016,11 @@ class Generator {
           this.propName(attribute);
           out.text(`${attribute.value === true ? 'true' : JSON.stringify(attribute.value)},`);
           break;
-        case 'value': {
+        case 'value':
           this.propName(attribute);
-          const template = this.passed(attribute.value);
-          if (template) {
-            this.writing.add(template);
-            out.text('(async ');
-            this.template(template);
-            out.text(')');
-            this.writing.delete(template);
-          } else {
-            out.expression(attribute.value);
-          }
+          this.propValue(attribute.value);
           out.text(',');
           break;
-        }
         case 'event':
           this.propName(attribute);
           out.expression(attribute.handler);
@@ -979,10 +1084,15 @@ class Generator {
   }
 
   /** The offset after the `>` that ends the opening tag of an element or a component. */
-  private openTagEnd(node: ElementNode | ComponentNode): number {
-    const last =
-      node.attributes.at(-1)?.end ??
-      node.start + 1 + ('name' in node ? node.name : node.tag).length;
+  private openTagEnd(node: ElementNode | ComponentNode | DynamicTagNode): number {
+    let tagEnd: number;
+    if (node.kind === 'dynamic') {
+      // After the `}` of `<{tag}`.
+      tagEnd = this.file.source.indexOf('}', node.tag.end) + 1;
+    } else {
+      tagEnd = node.start + 1 + (node.kind === 'component' ? node.name : node.tag).length;
+    }
+    const last = node.attributes.at(-1)?.end ?? tagEnd;
     return this.file.source.indexOf('>', last) + 1;
   }
 

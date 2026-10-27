@@ -81,7 +81,7 @@ export interface ColorThumbState {
    * drag. It keeps the distance from the pointer to the center of the thumb, so the thumb does
    * not jump to the pointer, as a SliderThumb does. Not called while the thumb is disabled.
    */
-  onPress: (event: PointerEvent) => void;
+  onPress: (event: PointerEvent & { currentTarget: Element }) => void;
   /**
    * An input got or lost the focus. The part keeps `isFocused` and `isFocusVisible`. `index` is
    * the input that got it, or `-1` when the focus left the thumb. A move between two inputs of the

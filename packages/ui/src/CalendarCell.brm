@@ -75,13 +75,13 @@
   const label = $memo(calendar ? cellLabel(calendar, date, selected) : date);
   const number = $memo(calendar ? dayNumber(date, calendar.locale) : String(Number(date.slice(8))));
 
-  function pressed(event: MouseEvent) {
+  function pressed(event: MouseEvent & { currentTarget: HTMLElement }) {
     if (!calendar || !selectable) {
       return;
     }
     // The press of the pointer that started a range already selected this date.
     if (calendar.startedBy(date)) {
-      (event.currentTarget as HTMLElement).focus({ preventScroll: true });
+      event.currentTarget.focus({ preventScroll: true });
       return;
     }
     if (calendar.isReadOnly) {
@@ -89,11 +89,11 @@
       return;
     }
     calendar.selectDate(date);
-    (event.currentTarget as HTMLElement).focus({ preventScroll: true });
+    event.currentTarget.focus({ preventScroll: true });
   }
 
-  function focusIn(event: FocusEvent) {
-    const target = event.currentTarget as HTMLElement;
+  function focusIn(event: FocusEvent & { currentTarget: HTMLElement }) {
+    const target = event.currentTarget;
     // The handler can run after its code loads, when a key has moved focus on. Only the cell that
     // still has focus moves the focused date.
     if (target !== document.activeElement) {
@@ -105,8 +105,8 @@
     }
   }
 
-  function focusOut(event: FocusEvent) {
-    (event.currentTarget as HTMLElement).removeAttribute('data-focus-visible');
+  function focusOut(event: FocusEvent & { currentTarget: HTMLElement }) {
+    event.currentTarget.removeAttribute('data-focus-visible');
   }
 
   // After the first press of a range, the date under the pointer ends the range that shows.
@@ -116,20 +116,20 @@
     }
   }
 
-  function pointerDown(event: PointerEvent) {
-    const target = event.currentTarget as HTMLElement;
+  function pointerDown(event: PointerEvent & { currentTarget: HTMLElement }) {
+    const target = event.currentTarget;
     target.setAttribute('data-pressed', '');
     if (calendar && selectable) {
       calendar.pressStart(date, event);
     }
   }
 
-  function pointerUp(event: PointerEvent) {
-    (event.currentTarget as HTMLElement).removeAttribute('data-pressed');
+  function pointerUp(event: PointerEvent & { currentTarget: HTMLElement }) {
+    event.currentTarget.removeAttribute('data-pressed');
   }
 
   // A release on a date after a press on another one ends the range there.
-  function released(event: PointerEvent) {
+  function released(event: PointerEvent & { currentTarget: HTMLElement }) {
     pointerUp(event);
     if (calendar && selectable) {
       calendar.pressEnd(date);

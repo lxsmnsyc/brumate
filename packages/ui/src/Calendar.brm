@@ -484,8 +484,8 @@
     isFocused = true;
   }
 
-  function focusOut(event: FocusEvent) {
-    if (!(event.currentTarget as Element).contains(event.relatedTarget as Node | null)) {
+  function focusOut(event: FocusEvent & { currentTarget: Element }) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
       isFocused = false;
     }
   }

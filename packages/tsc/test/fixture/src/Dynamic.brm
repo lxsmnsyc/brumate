@@ -1,0 +1,25 @@
+<script generics="T extends keyof Elements | Component">
+  import { $props, $signal } from 'brumate/signals';
+  import type { Component, Elements } from 'brumate/elements';
+  import Toggle from './Toggle.brm';
+
+  const { as } = $props<{ as: T }>();
+  const Pressable = null! as Component<{ onPress?: (event: { x: number }) => void }>;
+  const tag = Math.random() > 0.5 ? 'button' : 'a';
+  const c = Math.random() > 0.5;
+  let button = $signal<HTMLButtonElement>();
+</script>
+
+<{'a'} onClick=((event) => event.currentTarget.href.nope)></>
+<{'a'} href=(1)></>
+<{'a'} ref=$bind(button)></>
+<{tag} onClick=((event) => event.currentTarget.focus()) foo="x"></>
+<{Pressable} onPress=((event) => event.x.nope)></>
+<{Toggle} size="x"></>
+<{Toggle} bogus=(1)></>
+<{Toggle}>text</>
+<{as} onClick=((event) => event.currentTarget.nope)></>
+<{'div'} onFooBar=(() => 1)></>
+<{'div'} {...(c && { tabindex: 'x' })}></>
+<{'div'} {...(c && { id: 'a' })} {...undefined} {...(c ? { title: 'a' } : null)}>text</>
+<{as} ref=$bind(button) data-x=(1) {...(c && { id: 'a' })}>text</>

@@ -110,13 +110,13 @@
     return Boolean(control) && control !== event.currentTarget;
   }
 
-  function onPointerDown(event: PointerEvent) {
+  function onPointerDown(event: PointerEvent & { currentTarget: HTMLElement | SVGElement }) {
     if (!fromControl(event)) {
       pressDown(event);
     }
   }
 
-  function onClick(event: MouseEvent) {
+  function onClick(event: MouseEvent & { currentTarget: Element }) {
     if (!fromControl(event)) {
       pressClick(event);
     }

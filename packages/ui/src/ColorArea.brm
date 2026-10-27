@@ -289,7 +289,7 @@
   }
 
   // Focuses the thumb and follows the pointer until it goes up.
-  function begin(area: Element, event: PointerEvent, offsetX: number, offsetY: number) {
+  function begin(area: Element, event: PointerEvent & { currentTarget: Element }, offsetX: number, offsetY: number) {
     changedByKey = false;
     focusAxis(0);
     setDragging(true);
@@ -301,13 +301,13 @@
         setDragging(false);
         focusAxis(0);
       },
-      event.currentTarget as Element,
+      event.currentTarget,
     );
   }
 
   // A press on the thumb keeps the distance to the pointer.
-  function press(event: PointerEvent) {
-    const area = (event.currentTarget as Element).closest('[data-color-area]');
+  function press(event: PointerEvent & { currentTarget: Element }) {
+    const area = event.currentTarget.closest('[data-color-area]');
     if (!area) {
       return;
     }
@@ -321,7 +321,7 @@
   }
 
   // A press on the area moves the thumb to the pointer.
-  function pressArea(event: PointerEvent) {
+  function pressArea(event: PointerEvent & { currentTarget: Element }) {
     if (
       isDisabled ||
       event.button !== 0 ||
@@ -333,7 +333,7 @@
     ) {
       return;
     }
-    const area = event.currentTarget as Element;
+    const area = event.currentTarget;
     moveTo(area, event, 0, 0);
     begin(area, event, 0, 0);
   }

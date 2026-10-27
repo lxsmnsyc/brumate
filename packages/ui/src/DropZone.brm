@@ -189,9 +189,9 @@
       aria-labelledby=(`${buttonId} ${textId}`)
       disabled=(isDisabled || undefined)
       onPaste=(prevent(() => {}))
-      onFocus=((event: FocusEvent) => {
+      onFocus=((event) => {
         focused = true;
-        focusVisible = (event.currentTarget as Element).matches?.(':focus-visible') ?? false;
+        focusVisible = event.currentTarget.matches?.(':focus-visible') ?? false;
       })
       onBlur=(() => {
         focused = false;

@@ -201,7 +201,7 @@
 
   // A press on the thumb keeps the distance to the pointer: the pointer moves
   // the thumb by its own distance.
-  function press(event: PointerEvent) {
+  function press(event: PointerEvent & { currentTarget: Element }) {
     focusInput();
     const start = hueToPoint(hue, (innerRadius + outerRadius) / 2);
     const from = { x: event.clientX, y: event.clientY };
@@ -211,11 +211,11 @@
       (move) =>
         setHue(pointToHue(start.x + move.clientX - from.x, start.y + move.clientY - from.y)),
       () => setDragging(false),
-      event.currentTarget as Element,
+      event.currentTarget,
     );
   }
 
-  function pressTrack(event: PointerEvent) {
+  function pressTrack(event: PointerEvent & { currentTarget: Element }) {
     if (
       dragging ||
       (event.pointerType === 'mouse' &&
@@ -223,7 +223,7 @@
     ) {
       return;
     }
-    const track = event.currentTarget as Element;
+    const track = event.currentTarget;
     const box = track.getBoundingClientRect();
     const x = event.clientX - box.x - box.width / 2;
     const y = event.clientY - box.y - box.height / 2;

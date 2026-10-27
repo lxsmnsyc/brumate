@@ -46,17 +46,17 @@ export function interact(
     onPointerDown: ringPointerDown,
   } = focusRing(undefined, undefined, onFocusChange);
 
-  function pointerDown(event: PointerEvent) {
+  function pointerDown(event: PointerEvent & { currentTarget: HTMLElement | SVGElement }) {
     ringPointerDown();
     pressPointerDown(event);
   }
 
-  function keyDown(event: KeyboardEvent) {
+  function keyDown(event: KeyboardEvent & { currentTarget: Element }) {
     ringKeyDown(event);
     pressKeyDown(event);
   }
 
-  function blur(event: FocusEvent) {
+  function blur(event: FocusEvent & { currentTarget: Element }) {
     pressBlur(event);
     ringBlur(event);
   }

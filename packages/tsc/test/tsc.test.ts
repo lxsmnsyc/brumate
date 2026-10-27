@@ -12,7 +12,9 @@ it('reports type errors in .brm files at their place in the file', () => {
     .filter((line) => line.includes('error TS'))
     .map((line) => line.replace(/^.*src\//, ''))
     // The union of the event names is long and changes with the DOM types.
-    .map((line) => line.replace(/(parameter of type '"input" \|).*$/, '$1 ...'));
+    .map((line) => line.replace(/(parameter of type '"input" \|).*$/, '$1 ...'))
+    // So is the type of the attributes of an element.
+    .map((line) => line.replace(/(type '\{ onInput\?).*$/, '$1 ...'));
   // `sign-in.brm` imports `SignIn`, the name that its file name gives the component, with no error.
   expect(errors).toEqual([
     // A prop with the wrong type, at the prop.
@@ -25,6 +27,21 @@ it('reports type errors in .brm files at their place in the file', () => {
     "Bind.brm(10,9): error TS2322: Type 'BoundSignal<number>' is not assignable to type 'number'.",
     // The value of an input is a string, so a signal of a number does not bind it.
     "Bind.brm(11,8): error TS2322: Type 'BoundSignal<number>' is not assignable to type 'Attr<string | number | BoundValue>'.",
+    // A dynamic tag: a handler typed from an element name, a wrong attribute and a wrong ref. A
+    // union of names types the handler and checks the names. A component types its handler, and
+    // checks its props and children. A generic tag of either kind types the handler with HTML and
+    // SVG elements. An unknown event, and a wrong value in a spread of `c && { ... }`, at the tag.
+    "Dynamic.brm(13,53): error TS2339: Property 'nope' does not exist on type 'string'.",
+    "Dynamic.brm(14,8): error TS2322: Type 'number' is not assignable to type 'Attr<string>'.",
+    "Dynamic.brm(15,8): error TS2322: Type 'BoundSignal<HTMLButtonElement | undefined>' is not assignable to type 'BindableMark<unknown> & WritableMark<HTMLAnchorElement>'.",
+    'Dynamic.brm(16,57): error TS2353: Object literal may only specify known properties, and \'foo\' does not exist in type \'(Html<"a", AnchorOwn> | Html<"button", ButtonOwn>) & { children?: Markup | undefined; }\'.',
+    "Dynamic.brm(17,42): error TS2339: Property 'nope' does not exist on type 'number'.",
+    "Dynamic.brm(18,11): error TS2322: Type 'string' is not assignable to type 'number'.",
+    "Dynamic.brm(19,11): error TS2353: Object literal may only specify known properties, and 'bogus' does not exist in type 'ToggleProps'.",
+    "Dynamic.brm(20,11): error TS2353: Object literal may only specify known properties, and 'children' does not exist in type 'ToggleProps'.",
+    "Dynamic.brm(21,47): error TS2339: Property 'nope' does not exist on type '(EventTarget & HTMLElement) | (EventTarget & SVGElement)'.",
+    "Dynamic.brm(22,10): error TS2353: Object literal may only specify known properties, and 'onFooBar' does not exist in type '{ onInput? ...",
+    "Dynamic.brm(23,1): error TS2345: Argument of type '{ tabindex: \"x\"; }' is not assignable to parameter of type '{ onInput? ...",
     // The attributes of a plain element, each at its place: an unknown one, a wrong value, a ref
     // of another element, a wrong value in a spread and a computed name. Then children given to a
     // component that takes none, at the children. `autocorrect`,

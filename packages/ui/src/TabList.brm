@@ -40,6 +40,7 @@
   const orientation = $memo(tabs?.orientation ?? 'horizontal');
 
   function keyDown(event: KeyboardEvent) {
+    // moveFrom reads the height of an HTML element, and the tag of a part can name any element.
     const list = event.currentTarget as HTMLElement;
     // Vertical tabs move with Left and Right too.
     const movement =

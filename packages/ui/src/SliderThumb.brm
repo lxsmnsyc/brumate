@@ -55,11 +55,11 @@
   const disabled = $memo(Boolean(slider?.isDisabled) || isDisabled);
   const dragging = $memo(Boolean(slider?.dragging.includes(index)));
 
-  function input(event: Event) {
+  function input(event: Event & { currentTarget: HTMLInputElement }) {
     if (disabled) {
       return;
     }
-    slider?.setThumb(index, Number((event.currentTarget as HTMLInputElement).value));
+    slider?.setThumb(index, Number(event.currentTarget.value));
   }
 
   function changed() {
@@ -75,11 +75,11 @@
     slider.setDragging(index, false);
   }
 
-  function pressed(event: PointerEvent) {
+  function pressed(event: PointerEvent & { currentTarget: Element }) {
     if (!slider || disabled || event.button !== 0) {
       return;
     }
-    const track = (event.currentTarget as Element).closest('[data-slider-track]');
+    const track = event.currentTarget.closest('[data-slider-track]');
     document.getElementById(thumbId(slider, index))?.focus({ preventScroll: true });
     if (!track) {
       return;
@@ -91,7 +91,7 @@
       event.pointerId,
       (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl, offset)),
       () => slider.setDragging(index, false),
-      event.currentTarget as Element,
+      event.currentTarget,
     );
   }
 

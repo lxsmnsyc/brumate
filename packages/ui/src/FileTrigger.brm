@@ -48,8 +48,8 @@
     }
   }
 
-  function change(event: Event) {
-    onSelect?.((event.currentTarget as HTMLInputElement).files);
+  function change(event: Event & { currentTarget: HTMLInputElement }) {
+    onSelect?.(event.currentTarget.files);
   }
 
   $setContext(ButtonContext, { onPress: open });

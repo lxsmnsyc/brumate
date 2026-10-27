@@ -156,9 +156,9 @@
     document.execCommand('insertText', false, lines);
   }
 
-  function focus(event: FocusEvent) {
+  function focus(event: FocusEvent & { currentTarget: Element }) {
     focused = true;
-    focusVisible = (event.currentTarget as Element).matches?.(':focus-visible') ?? false;
+    focusVisible = event.currentTarget.matches?.(':focus-visible') ?? false;
   }
 
   function blur() {

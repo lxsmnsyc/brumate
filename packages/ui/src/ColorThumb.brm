@@ -35,11 +35,11 @@
     return parsed ? formatColor(parsed) : 'transparent';
   }
 
-  function input(event: Event, index: number) {
+  function input(event: Event & { currentTarget: HTMLInputElement }, index: number) {
     if (!thumb || thumb.isDisabled) {
       return;
     }
-    thumb.onInputChange(index, Number((event.currentTarget as HTMLInputElement).value));
+    thumb.onInputChange(index, Number(event.currentTarget.value));
   }
 
   // The input gets all its keys, which the part turns into moves. A key with a modifier is left
@@ -60,7 +60,7 @@
   }
 
   // A press with Alt, Ctrl or Meta moves nothing.
-  function pressed(event: PointerEvent) {
+  function pressed(event: PointerEvent & { currentTarget: Element }) {
     if (
       thumb &&
       !thumb.isDisabled &&
@@ -83,9 +83,9 @@
   }
 
   // The focus that moves from one input of the thumb to the other is not leaving it.
-  function focusOut(event: FocusEvent) {
+  function focusOut(event: FocusEvent & { currentTarget: Element }) {
     const next = event.relatedTarget as Node | null;
-    if (next && (event.currentTarget as Element).contains(next)) {
+    if (next && event.currentTarget.contains(next)) {
       return;
     }
     thumb?.onFocusChange(false, false, -1);
@@ -125,7 +125,7 @@
       aria-roledescription=(item.roleDescription)
       aria-valuetext=(item.valueText)
       class="input"
-      onInput=((event: Event) => input(event, index))
+      onInput=((event) => input(event, index))
       onChange=(() => thumb?.onChangeEnd())
       onKeyDown=(prevent((event: KeyboardEvent) => keyAll(event, index), 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'))
     >

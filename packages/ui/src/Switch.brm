@@ -60,8 +60,8 @@
   // The click of a read-only box, which the wrapper prevents.
   function keep() {}
 
-  function change(event: Event) {
-    const input = event.currentTarget as HTMLInputElement;
+  function change(event: Event & { currentTarget: HTMLInputElement }) {
+    const input = event.currentTarget;
     // A read-only switch keeps its state. The browser toggled it already.
     if (isReadOnly) {
       input.checked = isSelected;

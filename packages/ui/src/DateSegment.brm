@@ -77,9 +77,9 @@
   }
 
   // The browser does not change the text. Each digit types into the part.
-  function beforeInput(event: InputEvent) {
+  function beforeInput(event: InputEvent & { currentTarget: HTMLElement }) {
     const type = part();
-    const element = event.currentTarget as HTMLElement;
+    const element = event.currentTarget;
     if (!field || !type) {
       return;
     }
@@ -97,12 +97,12 @@
     }
   }
 
-  function focusIn(event: FocusEvent) {
-    (event.currentTarget as HTMLElement).setAttribute('data-focused', '');
+  function focusIn(event: FocusEvent & { currentTarget: HTMLElement }) {
+    event.currentTarget.setAttribute('data-focused', '');
   }
 
-  function focusOut(event: FocusEvent) {
-    (event.currentTarget as HTMLElement).removeAttribute('data-focused');
+  function focusOut(event: FocusEvent & { currentTarget: HTMLElement }) {
+    event.currentTarget.removeAttribute('data-focused');
     field?.settle();
   }
 </script>

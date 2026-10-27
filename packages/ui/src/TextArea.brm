@@ -39,13 +39,13 @@
   const { focused, focusVisible, onFocus, onBlur: ringBlur, onKeyDown: ringKeyDown, onPointerDown } =
     focusRing(undefined, undefined, undefined);
 
-  function input(event: Event) {
-    given().onChange?.((event.currentTarget as HTMLTextAreaElement).value);
+  function input(event: Event & { currentTarget: HTMLTextAreaElement }) {
+    given().onChange?.(event.currentTarget.value);
   }
 
   // The browser shows no message of its own. The field shows it in its FieldError.
-  function invalidated(event: Event) {
-    const field = event.currentTarget as HTMLTextAreaElement;
+  function invalidated(event: Event & { currentTarget: HTMLTextAreaElement }) {
+    const field = event.currentTarget;
     given().onInvalid?.(field.validationMessage, isFirstInvalid(field));
   }
 

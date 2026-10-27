@@ -52,8 +52,8 @@ export function box(disabled: boolean) {
     }
   }
 
-  function focusIn(event: FocusEvent) {
-    const label = event.currentTarget as Element;
+  function focusIn(event: FocusEvent & { currentTarget: Element }) {
+    const label = event.currentTarget;
     const target = document.activeElement;
     // Handlers run after the event, so focus can have moved on.
     if (!target || !label.contains(target)) {
@@ -63,8 +63,8 @@ export function box(disabled: boolean) {
     focusVisible = isFocusVisible(target);
   }
 
-  function focusOut(event: FocusEvent) {
-    const label = event.currentTarget as Element;
+  function focusOut(event: FocusEvent & { currentTarget: Element }) {
+    const label = event.currentTarget;
     if (document.activeElement && label.contains(document.activeElement)) {
       return;
     }

@@ -183,8 +183,8 @@
     }
   }
 
-  function press(event: PointerEvent) {
-    const track = (event.currentTarget as Element).closest('[data-slider-track]');
+  function press(event: PointerEvent & { currentTarget: Element }) {
+    const track = event.currentTarget.closest('[data-slider-track]');
     document.getElementById(thumbId({ id }, 0))?.focus({ preventScroll: true });
     if (!track) {
       return;
@@ -201,7 +201,7 @@
       event.pointerId,
       (move) => setThumb(0, at(move, offset)),
       () => setDragging(0, false),
-      event.currentTarget as Element,
+      event.currentTarget,
     );
   }
 
