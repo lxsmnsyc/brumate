@@ -64,8 +64,10 @@ type $$Elements = import('brumate/elements').Elements;
 declare function $$element<T extends keyof $$Elements>(tag: T): (attributes: $$Elements[T]) => void;
 declare function $$element(tag: string): (attributes: Record<string, unknown>) => void;
 /** Checks the names of a spread onto a plain element, which has no excess check. \`$$element\` checks its values. */
-declare function $$spread<T extends keyof $$Elements>(tag: T): <S>(value: S & { [K in Exclude<keyof S, keyof $$Elements[T]>]: { [M in \`\${K & string} is not an attribute of <\${T}>\`]: never } }) => void;
-declare function $$spread(tag: string): (value: object) => void;
+declare function $$spread<T extends keyof $$Elements>(tag: T): <S>(value: (S & { [K in Exclude<keyof S, keyof $$Elements[T]>]: { [M in \`\${K & string} is not an attribute of <\${T}>\`]: never } }) | null | undefined) => void;
+declare function $$spread(tag: string): (value: object | null | undefined) => void;
+/** A spread value without \`null\` and \`undefined\`, which spread nothing, so its object part is checked. */
+declare function $$present<T>(value: T): T & {};
 /** \`$bind\` of a \`ref\`, which needs no import in markup. */
 declare function $$bind<T>(signal: T): import('brumate/signals').BoundSignal<T>;
 declare function $$dynamic(tag: string | ((props: never, ...rest: never[]) => unknown), props: Record<string, unknown>): void;
@@ -507,9 +509,9 @@ class Generator {
         // The values, as an object of the spread alone, whose braces are those of the spread.
         out.text(`$$element(${JSON.stringify(node.tag)})(`);
         out.stand({ start: attribute.start, end: attribute.start + 1 }, '{');
-        out.text('...');
+        out.text('...$$present(');
         out.copy(attribute.value);
-        out.text(' ');
+        out.text(') ');
         out.stand({ start: attribute.end - 1, end: attribute.end }, '}');
         out.text(');\n');
       }
