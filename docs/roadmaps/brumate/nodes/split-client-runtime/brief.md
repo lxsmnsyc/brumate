@@ -1,7 +1,7 @@
 ---
 id: split-client-runtime
 title: Split the client runtime by feature
-status: todo
+status: active
 priority: must
 type: refactor
 outline: false
