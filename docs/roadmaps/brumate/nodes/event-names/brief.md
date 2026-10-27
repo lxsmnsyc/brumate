@@ -1,7 +1,7 @@
 ---
 id: event-names
 title: Handlers read ElementEvents, and an unknown event is an error
-status: active
+status: done
 priority: should
 type: fix
 outline: false

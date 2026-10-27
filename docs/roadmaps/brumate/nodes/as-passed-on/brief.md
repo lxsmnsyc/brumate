@@ -1,7 +1,7 @@
 ---
 id: as-passed-on
 title: Live props reach a component that one part passes on to another in as
-status: active
+status: done
 priority: must
 type: fix
 outline: false
