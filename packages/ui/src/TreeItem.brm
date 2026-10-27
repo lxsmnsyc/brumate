@@ -23,7 +23,7 @@
   import { ListBoxContext, focusItem, keyAttribute } from './collection.ts';
   import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
-  import { TreeContext, TreeItemAttributesContext, TreeRowContext } from './tree.ts';
+  import { TreeContext, TreeRowContext } from './tree.ts';
 
   /**
    * A row of a Tree, as TreeItem of React Aria Components. The `item` template of a Tree renders
@@ -49,8 +49,6 @@
   let { ref } = $props<TreeItemOwnProps<T>>();
 
   const tree = $getContext(TreeRowContext);
-  // The attributes of a part around it, such as a NavigationTreeItem, which its own win over.
-  const given = $getContext(TreeItemAttributesContext);
   const state = $getContext(TreeContext);
   const list = $getContext(ListBoxContext);
   if (!tree) {
@@ -204,7 +202,6 @@
   {onClick}
   {onFocus}
   {onBlur}
-  {...given}
   {...rest}
 ><div role="gridcell" style="display: contents">{children}</div></>
 

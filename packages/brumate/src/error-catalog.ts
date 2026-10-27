@@ -568,6 +568,11 @@ const SCRIPT: ErrorEntry[] = [
     'let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();',
   ),
   entry(
+    '"{name}" is the props object, so read one key at a time, destructure it, or spread it in markup',
+    'The props object or the rest of `$props()` is spread in code, or passed to a function, `$memo`, `$setContext`, a signal or a variable. The copy loses the `ref` and the live props.',
+    'const { class: className, ...rest } = $props();\n<button {...rest} class=className>',
+  ),
+  entry(
     'Cannot assign to {kind} "{name}"',
     'Code writes a memo, a const prop or another value that cannot change.',
     'let count = $signal(0);\ncount = 5;',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toTypeScript } from '../src/index.ts';
+import { compile, toTypeScript } from '../src/index.ts';
 
 /** The generated code without the helper declarations at the top. */
 function body(source: string): string {
@@ -166,5 +166,61 @@ describe('signals that bind to a ref', () => {
   it('checks a signal that another prop binds', () => {
     const code = body(`${script}<Toolbar value=$bind(fn) />`);
     expect(code).toContain('$$sendable(fn');
+  });
+});
+
+describe('props used as a whole', () => {
+  const message = 'is the props object, so read one key at a time';
+
+  function page(script: string, markup = '<p>x</p>'): string {
+    return `<script>
+  import { $props, $memo, $signal, $setContext, $createContext } from 'brumate/signals';
+${script}
+</script>
+
+${markup}`;
+  }
+
+  const banned: [string, string][] = [
+    [
+      'a spread in script code',
+      'const { id, ...rest } = $props();\n  const all = { ...rest, id };',
+    ],
+    [
+      'a spread in $memo',
+      'const { ...rest } = $props();\n  const all = $memo({ ...rest, class: "box" });',
+    ],
+    ['a call', 'const { ...rest } = $props();\n  console.log(rest);'],
+    ['$memo', 'const { ...rest } = $props();\n  const all = $memo(rest);'],
+    ['$setContext', 'const { ...rest } = $props();\n  $setContext(Context, rest);'],
+    ['a signal', 'const { ...rest } = $props();\n  let copy = $signal(rest);'],
+    ['a variable', 'const { ...rest } = $props();\n  const more = rest;'],
+    ['the props object', 'const props = $props();\n  const more = props;'],
+  ];
+
+  for (const [name, script] of banned) {
+    it(`rejects ${name}`, () => {
+      expect(() => compile(page(script), { filename: 'Card.brm' })).toThrow(message);
+    });
+  }
+
+  it('rejects the rest as a value in markup', () => {
+    expect(() =>
+      compile(page('const { ...rest } = $props();', '<p title=rest>x</p>'), {
+        filename: 'Card.brm',
+      }),
+    ).toThrow(message);
+  });
+
+  it('allows a markup spread, a key read and destructuring', () => {
+    expect(() =>
+      compile(
+        page(
+          "const { id, ...rest } = $props();\n  const props = $props();\n  const label = $memo(rest['aria-label'] ?? props.title ?? rest.id);",
+          '<button {...rest} {...props} class="box">{label}</button>\n<section></section>',
+        ),
+        { filename: 'Card.brm' },
+      ),
+    ).not.toThrow();
   });
 });

@@ -65,6 +65,8 @@ export interface Declaration {
    * `const { user: { name } } = $props()`. Undefined for the props object.
    */
   propKey?: string;
+  /** True for the props object (`const props = $props()`) and the rest of `$props()`. */
+  whole?: boolean;
   /** For `const result = $action(fn)`, the name of the server function. */
   action?: string;
   /** True for a server function that a server function refreshes with `refresh(fn)`. */

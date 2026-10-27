@@ -1,0 +1,25 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import NavigationTree from '../../src/NavigationTree.brm';
+  import NavigationTreeItem from '../../src/NavigationTreeItem.brm';
+  import NavigationTreeItemLink from '../../src/NavigationTreeItemLink.brm';
+  import type { NavigationNode } from '../../src/navigation-tree.ts';
+
+  interface Page extends NavigationNode {
+    title: string;
+  }
+
+  const pages: Page[] = [{ id: 'start', title: 'Start', href: '#start' }];
+  let row = $signal<HTMLElement>();
+  let seen = $signal('');
+</script>
+
+<NavigationTree class="nav" aria-label="Pages" items=pages item=page />
+<button class="read" onClick=(() => (seen = row?.getAttribute('role') ?? 'none'))>Read</button>
+<p class="seen">{seen}</p>
+
+#template page(page: Page) {
+  <NavigationTreeItem ref=$bind(row) href=(page.href) textValue=(page.title)>
+    <NavigationTreeItemLink>{page.title}</NavigationTreeItemLink>
+  </NavigationTreeItem>
+}

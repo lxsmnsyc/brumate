@@ -2,6 +2,7 @@
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Navigation from './fixtures/nav-tree-page.brm?brumate-server';
+import NavigationRef from './fixtures/nav-tree-ref-page.brm?brumate-server';
 import { press, pressWith } from './interact.ts';
 import { ancestorsOf } from '../src/navigation-tree.ts';
 
@@ -83,4 +84,11 @@ it('renders the link of a disabled item as a span that no one can focus or follo
     expect(page.get(`.item-${name}`).getAttribute('aria-disabled')).toBe('true');
   }
   expect(page.get('.link-api').tagName).toBe('A');
+});
+
+it('gives the ref of an item to its row', async () => {
+  const page = await mount(NavigationRef, {});
+  unmount = page.unmount;
+  page.get('.read').click();
+  await page.waitFor(() => expect(page.text('.seen')).toBe('row'));
 });

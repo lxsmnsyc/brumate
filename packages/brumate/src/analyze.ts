@@ -745,7 +745,7 @@ class Analyzer {
         for (const property of id.properties) {
           if (property.type === 'RestElement') {
             for (const binding of getPatternNames(property.argument)) {
-              this.addDeclaration(scope, binding.name, 'props-rest', binding);
+              this.addDeclaration(scope, binding.name, 'props-rest', binding).whole = true;
             }
           } else {
             let key: string | undefined;
@@ -766,7 +766,7 @@ class Analyzer {
         }
         this.createDefaultSites(id, scope);
       } else if (id.type === 'Identifier') {
-        this.addDeclaration(scope, id.name, 'prop', id);
+        this.addDeclaration(scope, id.name, 'prop', id).whole = true;
       } else {
         this.report('error', 'Assign $props() to a name or an object pattern', id);
       }
@@ -1768,9 +1768,21 @@ class Resolver {
 
   private visit(node: oxc.Node): void {
     switch (node.type) {
-      case 'Identifier':
-        this.reference(node, 'read');
+      case 'Identifier': {
+        const reference = this.reference(node, 'read');
+        // A spread in markup is the only use of the whole object, so a ref in it reaches the element.
+        if (
+          reference?.declaration.whole &&
+          !(this.site.kind === 'spread' && node === this.site.node)
+        ) {
+          this.analyzer.report(
+            'error',
+            `"${node.name}" is the props object, so read one key at a time, destructure it, or spread it in markup`,
+            node,
+          );
+        }
         return;
+      }
       case 'ReturnStatement':
         // The cleanup that an effect returns runs later, so what it reads is not what the effect
         // depends on, as in Svelte and Solid.
@@ -1788,7 +1800,12 @@ class Resolver {
         this.visitChildren(node);
         return;
       case 'MemberExpression':
-        this.visit(node.object);
+        // Reading a key of the props is the one use of the object besides a spread.
+        if (node.object.type === 'Identifier') {
+          this.reference(node.object, 'read');
+        } else {
+          this.visit(node.object);
+        }
         if (node.computed) {
           this.visit(node.property);
         }

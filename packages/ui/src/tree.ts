@@ -82,10 +82,3 @@ export const TreeContext: Context<TreeState | null> = createContext<TreeState | 
   'brumate-ui:tree',
   null,
 );
-
-/**
- * Attributes that a part around a TreeItem gives its row, such as a NavigationTreeItem. A context
- * passes them, not a spread on the TreeItem, so the TreeItem keeps its own props as they are.
- */
-export const TreeItemAttributesContext: Context<Record<string, unknown> | null> =
-  createContext<Record<string, unknown> | null>('brumate-ui:tree-item-attributes', null);

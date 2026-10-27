@@ -1055,6 +1055,15 @@ A `let` prop is used as a `ref` and its type is not `Bindable`.
 let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();
 ```
 
+## "{name}" is the props object, so read one key at a time, destructure it, or spread it in markup
+
+The props object or the rest of `$props()` is spread in code, or passed to a function, `$memo`, `$setContext`, a signal or a variable. The copy loses the `ref` and the live props.
+
+```brm fragment
+const { class: className, ...rest } = $props();
+<button {...rest} class=className>
+```
+
 ## Cannot assign to {kind} "{name}"
 
 Code writes a memo, a const prop or another value that cannot change.
