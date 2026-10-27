@@ -7,6 +7,7 @@ import type {
   ElementOf,
   ElementProps,
   Elements,
+  EventHandler,
   Markup,
   PropsOf,
   Template,
@@ -140,6 +141,43 @@ export const listTypo: Promise<Markup> = List({
 // @ts-expect-error A template answers markup, not a string.
 export const stringTemplate: Template = () => 'text';
 
+// Values that the runtime and the syntax accept (runtime/html.ts, `attributeText`, `classValue`,
+// `styleValue`; codegen/markup.ts, `formAction`; analyze.ts, `$bind` on a field).
+declare const on: boolean;
+export const classArray: ElementProps<'div'> = {
+  class: ['task', on && 'on', null, undefined, ['nested', { active: on }]],
+};
+export const classObject: ElementProps<'div'> = { class: { task: true, on, off: 0 } };
+export const styleObject: ElementProps<'div'> = {
+  style: { color: 'red', fontSize: '12px', opacity: 0.5, width: null, '--gap': '4px' },
+};
+export const selectValue: ElementProps<'select'> = { value: 'a' };
+export const selectBound: ElementProps<'select'> = { value: $bind($signal('')) };
+export const inputBound: ElementProps<'input'> = {
+  value: $bind($signal('')),
+  checked: $bind($signal(false)),
+};
+export const textareaBound: ElementProps<'textarea'> = { value: $bind($signal('')) };
+export const optionalBound: ElementProps<'input'> = { value: $bind($signal<string>()) };
+declare function save(data: FormData): Promise<void>;
+export const formAction: ElementProps<'form'> = { action: save };
+export const buttonAction: ElementProps<'button'> = { formaction: save };
+export const inputAction: ElementProps<'input'> = { formaction: save };
+export const staticNumbers: ElementProps<'div'> = { tabindex: '-1' };
+export const staticInput: ElementProps<'input'> = { maxlength: '4', minlength: '1', size: '10' };
+export const staticTextarea: ElementProps<'textarea'> = { rows: '3', cols: '40' };
+export const staticCell: ElementProps<'td'> = { colspan: '2', rowspan: '1' };
+export const staticOther: ElementProps<'li'> = { value: '3' };
+export const autocompleteBoolean: ElementProps<'input'> = { autocomplete: false };
+export const autocompleteForm: ElementProps<'form'> = { autocomplete: true };
+export const keyPress: ElementProps<'input'> = {
+  onKeyPress: (event) => event.key,
+  onKeypress: (event) => event.key,
+};
+export const handler: EventHandler<HTMLButtonElement, MouseEvent> = (event) =>
+  event.currentTarget.value;
+export const handlerProp: ElementProps<'button'> = { onClick: handler };
+
 // What the types forbid.
 
 // @ts-expect-error `a` has no `src`.
@@ -174,3 +212,21 @@ export const anyCall: Promise<Markup> = Any({ nonsense: 1 });
 export const stringComponent: Component = Object.assign(async () => 'text', { brumateId: '' });
 // @ts-expect-error A tag that is not an element.
 export const noTag: ElementProps<'nope'> = {};
+// @ts-expect-error `class` takes a class value, not a number.
+export const wrongClass: ElementProps<'div'> = { class: 1 };
+// @ts-expect-error A class object holds booleans by name, and an array holds class values.
+export const wrongClassItem: ElementProps<'div'> = { class: [() => {}] };
+// @ts-expect-error A style object has CSS names, and `colour` is not one.
+export const wrongStyleName: ElementProps<'div'> = { style: { colour: 'red' } };
+// @ts-expect-error A style name is camel case or a `--` variable, not kebab case.
+export const kebabStyle: ElementProps<'div'> = { style: { 'font-size': '12px' } };
+// @ts-expect-error `checked` is a boolean or a binding, not a string.
+export const wrongChecked: ElementProps<'input'> = { checked: 'true' };
+// @ts-expect-error A binding of `value` writes a string, so a signal of a number is wrong.
+export const wrongBoundValue: ElementProps<'input'> = { value: $bind($signal(0)) };
+// @ts-expect-error A binding of `checked` writes a boolean, so a signal of a string is wrong.
+export const wrongBoundChecked: ElementProps<'input'> = { checked: $bind($signal('')) };
+// @ts-expect-error `action` takes a string or a server function, not a number.
+export const wrongAction: ElementProps<'form'> = { action: 1 };
+// @ts-expect-error A static number attribute is a number or a numeric string.
+export const wrongStaticNumber: ElementProps<'textarea'> = { rows: 'three' };

@@ -46,8 +46,64 @@ type Attr<T> = T | null | undefined;
  */
 export interface ElementEvents extends HTMLElementEventMap {}
 
-/** The element that an event handler reads as `event.currentTarget`. */
-type Handler<Ev, E> = (event: Ev & { currentTarget: E }) => unknown;
+/** A value of an attribute that takes a number. A static attribute is a string, so `"0"` is one. */
+type Num = number | `${number}`;
+
+/**
+ * A handler of the event `Ev` on the element `E`, which is `event.currentTarget`. Use it to type
+ * a function that a handler prop takes: `EventHandler<HTMLButtonElement, MouseEvent>`.
+ */
+export type EventHandler<E, Ev = Event> = (event: Ev & { currentTarget: E }) => unknown;
+
+/**
+ * A value of `class`: a string, or an array or an object of them. An array holds class values,
+ * and `false`, `null` and `undefined` add nothing, so `on && 'on'` fits. An object adds the names
+ * with a true value. See `classValue` in runtime/html.ts.
+ */
+export type ClassValue =
+  | string
+  | false
+  | null
+  | undefined
+  | readonly ClassValue[]
+  | Readonly<Record<string, unknown>>;
+
+// The names of the style properties that hold a string. `cssText` and `cssFloat` are not CSS
+// names, and the runtime writes `webkitX` as `webkit-x`, which is not a property.
+type StyleName = {
+  [K in keyof CSSStyleDeclaration]: K extends string
+    ? K extends 'cssText' | 'cssFloat' | `webkit${string}`
+      ? never
+      : CSSStyleDeclaration[K] extends string
+        ? K
+        : never
+    : never;
+}[keyof CSSStyleDeclaration];
+
+/**
+ * A value of `style` as an object: camel-case names, or `--` variables. A value of `null`,
+ * `undefined` or `false` leaves the property out. See `styleValue` in runtime/html.ts.
+ */
+export type StyleObject = {
+  [K in StyleName]?: string | number | false | null | undefined;
+} & {
+  [variable: `--${string}`]: string | number | false | null | undefined;
+};
+
+/**
+ * A server function, which a form posts to: `<form action=save>`. The server function of the
+ * file, or one that a `'use server'` file exports, is async. The types cannot tell it from
+ * another async function, and the compiler reports that.
+ */
+// oxlint-disable-next-line typescript/no-explicit-any -- It takes the arguments of any function.
+export type ServerFunction = (...args: any[]) => Promise<unknown>;
+
+/** What `value=$bind(name)` takes: a binding that can hold the string the field writes. */
+type BoundValue = BindableMark<unknown> & WritableMark<string>;
+/** What `checked=$bind(name)` takes: a binding that can hold the boolean the field writes. */
+type BoundChecked = BindableMark<unknown> & WritableMark<boolean>;
+
+type Handler<Ev, E> = EventHandler<E, Ev>;
 
 // The events whose name has more than one word. The markup can write them in camel case, as
 // `onKeyDown`, or as `onKeydown`. The compiler lower-cases the name.
@@ -83,6 +139,7 @@ type CamelEvent =
   | 'FullscreenError'
   | 'GotPointerCapture'
   | 'KeyDown'
+  | 'KeyPress'
   | 'KeyUp'
   | 'LoadedData'
   | 'LoadedMetadata'
@@ -111,7 +168,6 @@ type CamelEvent =
   | 'SelectStart'
   | 'SlotChange'
   | 'TimeUpdate'
-  | 'ToggleEnd'
   | 'TouchCancel'
   | 'TouchEnd'
   | 'TouchMove'
@@ -141,8 +197,8 @@ export type GlobalAttributes<E> = Handlers<E> & {
    * of it such as `HTMLElement | undefined`, or `null`. A signal of another element is an error.
    */
   ref?: BindableMark<unknown> & WritableMark<E>;
-  class?: Attr<string>;
-  style?: Attr<string>;
+  class?: Attr<ClassValue>;
+  style?: Attr<string | StyleObject>;
   id?: Attr<string>;
   slot?: Attr<string>;
   part?: Attr<string>;
@@ -163,7 +219,7 @@ export type GlobalAttributes<E> = Handlers<E> & {
   inputmode?: Attr<'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search'>;
   popover?: Attr<boolean | 'auto' | 'manual' | 'hint'>;
   spellcheck?: Attr<boolean | 'true' | 'false'>;
-  tabindex?: Attr<number>;
+  tabindex?: Attr<Num>;
   translate?: Attr<'yes' | 'no'>;
   writingsuggestions?: Attr<boolean | 'true' | 'false'>;
   [attribute: `data-${string}`]: unknown;
@@ -222,7 +278,7 @@ interface FormControlOwn {
 interface ButtonOwn extends FormControlOwn {
   type?: Attr<'button' | 'submit' | 'reset'>;
   value?: Attr<string | number>;
-  formaction?: Attr<string>;
+  formaction?: Attr<string | ServerFunction>;
   formenctype?: Attr<'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain'>;
   formmethod?: Attr<'get' | 'post' | 'dialog'>;
   formnovalidate?: Attr<boolean>;
@@ -258,29 +314,29 @@ interface InputOwn extends FormControlOwn {
     | 'url'
     | 'week'
   >;
-  value?: Attr<string | number>;
-  checked?: Attr<boolean>;
+  value?: Attr<string | number | BoundValue>;
+  checked?: Attr<boolean | BoundChecked>;
   accept?: Attr<string>;
   alt?: Attr<string>;
-  autocomplete?: Attr<string>;
+  autocomplete?: Attr<boolean | string>;
   capture?: Attr<boolean | 'user' | 'environment'>;
   dirname?: Attr<string>;
   list?: Attr<string>;
   max?: Attr<number | string>;
-  maxlength?: Attr<number>;
+  maxlength?: Attr<Num>;
   min?: Attr<number | string>;
-  minlength?: Attr<number>;
+  minlength?: Attr<Num>;
   multiple?: Attr<boolean>;
   pattern?: Attr<string>;
   placeholder?: Attr<string>;
   readonly?: Attr<boolean>;
   required?: Attr<boolean>;
-  size?: Attr<number>;
+  size?: Attr<Num>;
   src?: Attr<string>;
   step?: Attr<number | string>;
   width?: Attr<Size>;
   height?: Attr<Size>;
-  formaction?: Attr<string>;
+  formaction?: Attr<string | ServerFunction>;
   formenctype?: Attr<'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain'>;
   formmethod?: Attr<'get' | 'post' | 'dialog'>;
   formnovalidate?: Attr<boolean>;
@@ -290,22 +346,22 @@ interface InputOwn extends FormControlOwn {
 }
 
 interface TextareaOwn extends FormControlOwn {
-  autocomplete?: Attr<string>;
-  cols?: Attr<number>;
+  autocomplete?: Attr<boolean | string>;
+  cols?: Attr<Num>;
   dirname?: Attr<string>;
-  maxlength?: Attr<number>;
-  minlength?: Attr<number>;
+  maxlength?: Attr<Num>;
+  minlength?: Attr<Num>;
   placeholder?: Attr<string>;
   readonly?: Attr<boolean>;
   required?: Attr<boolean>;
-  rows?: Attr<number>;
+  rows?: Attr<Num>;
   wrap?: Attr<'hard' | 'soft' | 'off'>;
-  value?: Attr<string>;
+  value?: Attr<string | BoundValue>;
 }
 
 interface TableCellOwn {
-  colspan?: Attr<number>;
-  rowspan?: Attr<number>;
+  colspan?: Attr<Num>;
+  rowspan?: Attr<Num>;
   headers?: Attr<string>;
 }
 
@@ -494,8 +550,8 @@ export interface Elements {
   caption: Html<'caption'>;
   cite: Html<'cite'>;
   code: Html<'code'>;
-  col: Html<'col', { span?: Attr<number> }>;
-  colgroup: Html<'colgroup', { span?: Attr<number> }>;
+  col: Html<'col', { span?: Attr<Num> }>;
+  colgroup: Html<'colgroup', { span?: Attr<Num> }>;
   data: Html<'data', { value?: Attr<string> }>;
   datalist: Html<'datalist'>;
   dd: Html<'dd'>;
@@ -518,12 +574,12 @@ export interface Elements {
   form: Html<
     'form',
     {
-      action?: Attr<string>;
+      action?: Attr<string | ServerFunction>;
       method?: Attr<'get' | 'post' | 'dialog'>;
       enctype?: Attr<'application/x-www-form-urlencoded' | 'multipart/form-data' | 'text/plain'>;
       target?: Attr<string>;
       novalidate?: Attr<boolean>;
-      autocomplete?: Attr<'on' | 'off'>;
+      autocomplete?: Attr<boolean | 'on' | 'off'>;
       name?: Attr<string>;
       rel?: Attr<string>;
       'accept-charset'?: Attr<string>;
@@ -579,7 +635,7 @@ export interface Elements {
   kbd: Html<'kbd'>;
   label: Html<'label', { for?: Attr<string>; form?: Attr<string> }>;
   legend: Html<'legend'>;
-  li: Html<'li', { value?: Attr<number> }>;
+  li: Html<'li', { value?: Attr<Num> }>;
   link: Html<
     'link',
     {
@@ -618,12 +674,12 @@ export interface Elements {
   meter: Html<
     'meter',
     {
-      value?: Attr<number>;
-      min?: Attr<number>;
-      max?: Attr<number>;
-      low?: Attr<number>;
-      high?: Attr<number>;
-      optimum?: Attr<number>;
+      value?: Attr<Num>;
+      min?: Attr<Num>;
+      max?: Attr<Num>;
+      low?: Attr<Num>;
+      high?: Attr<Num>;
+      optimum?: Attr<Num>;
     }
   >;
   nav: Html<'nav'>;
@@ -641,7 +697,7 @@ export interface Elements {
   >;
   ol: Html<
     'ol',
-    { reversed?: Attr<boolean>; start?: Attr<number>; type?: Attr<'1' | 'a' | 'A' | 'i' | 'I'> }
+    { reversed?: Attr<boolean>; start?: Attr<Num>; type?: Attr<'1' | 'a' | 'A' | 'i' | 'I'> }
   >;
   optgroup: Html<'optgroup', { disabled?: Attr<boolean>; label?: Attr<string> }>;
   option: Html<
@@ -657,7 +713,7 @@ export interface Elements {
   p: Html<'p'>;
   picture: Html<'picture'>;
   pre: Html<'pre'>;
-  progress: Html<'progress', { value?: Attr<number>; max?: Attr<number> }>;
+  progress: Html<'progress', { value?: Attr<Num>; max?: Attr<Num> }>;
   q: Html<'q', { cite?: Attr<string> }>;
   rp: Html<'rp'>;
   rt: Html<'rt'>;
@@ -684,10 +740,11 @@ export interface Elements {
   select: Html<
     'select',
     FormControlOwn & {
-      autocomplete?: Attr<string>;
+      autocomplete?: Attr<boolean | string>;
       multiple?: Attr<boolean>;
       required?: Attr<boolean>;
-      size?: Attr<number>;
+      size?: Attr<Num>;
+      value?: Attr<string | number | BoundValue>;
     }
   >;
   slot: Html<'slot', { name?: Attr<string> }>;
