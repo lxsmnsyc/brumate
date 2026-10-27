@@ -1,0 +1,6 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  const { as, children, ...rest } = $props();
+  let on = $signal(false);
+</script>
+<{as ?? 'div'} role="tab" aria-selected=(on) onClick=(() => (on = !on)) {...rest}>{children}</>

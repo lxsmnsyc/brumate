@@ -403,6 +403,16 @@ class ClientGenerator {
     const rendered = components === true ? this.renderedScopes() : components || [];
     for (const scope of rendered) {
       componentNames(scope.body?.children ?? [], names);
+      // A component named in an attribute value, such as `as=Link`, is a read of the markup.
+      for (const site of this.model.sites) {
+        if (isWithin(site.scope, scope) && !DEFERRED_SITES.has(site.kind)) {
+          for (const read of site.reads) {
+            if (read.declaration.kind === 'import') {
+              names.add(read.declaration.name);
+            }
+          }
+        }
+      }
     }
     // The renders of children are in the update part, with the components that they render.
     if (withChildren) {

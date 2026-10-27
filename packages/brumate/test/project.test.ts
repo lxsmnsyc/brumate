@@ -21,6 +21,14 @@ describe('analyzeProject', () => {
     expect(live.get('blocks.brm')!.size).toBe(0);
   });
 
+  it('gives the live props of a part to the component that a page passes in as', () => {
+    const live = analyzeProject(sources);
+    // GapPart sends `aria-selected` to the tag that `as` names, and gapPropsComponent gives it GapTarget.
+    expect([...live.get('GapTarget.brm')!]).toEqual(['aria-selected']);
+    // Nothing gives Tag to a part, so its props stay as they are.
+    expect(live.get('Tag.brm')!.has('aria-selected')).toBe(false);
+  });
+
   it('removes update code for props that do not change', () => {
     const live = analyzeProject(sources);
     const source = sources.get('Badge.brm')!;

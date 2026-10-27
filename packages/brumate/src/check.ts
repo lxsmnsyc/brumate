@@ -63,6 +63,9 @@ type $$Plain = string | number | boolean | bigint | null | undefined | Date | Er
 type $$Sendable<T> = T extends $$Plain | import('brumate/serial').AppValue ? T : T extends { brumateId: string } ? T : T extends RegExp ? { 'A regular expression cannot be sent to the client. Send its source and flags': never } : T extends (...args: any[]) => any ? { 'A function cannot be sent to the client. Keep it out of the signal or memo': never } : T extends Promise<infer U> ? Promise<$$Sendable<U>> : T extends ReadonlyMap<infer K, infer V> ? ReadonlyMap<$$Sendable<K>, $$Sendable<V>> : T extends ReadonlySet<infer V> ? ReadonlySet<$$Sendable<V>> : T extends object ? { [K in keyof T]: $$Sendable<T[K]> } : T;
 /** Checks a value that the page state sends to the client. */
 declare function $$sendable<T>(value: T & $$Sendable<T>): void;
+/** Checks a signal that only a ref binds: the browser fills it with an element, and anything else is sent. */
+type $$SendableRef<T> = T extends Element | null | undefined ? T : $$Sendable<T>;
+declare function $$sendableRef<T>(value: T & $$SendableRef<T>): void;
 `;
 
 class Writer {
@@ -193,7 +196,9 @@ class Generator {
     out.text('\n');
     for (const declaration of this.sent) {
       if (declaration.range.start >= statement.start && declaration.range.end <= statement.end) {
-        out.text('$$sendable(');
+        // The `ref` of a component fills a signal with an element, if that is all that binds it.
+        const refOnly = declaration.boundAs?.size === 1 && declaration.boundAs.has('ref');
+        out.text(refOnly ? '$$sendableRef(' : '$$sendable(');
         out.copy(declaration.range);
         out.text(');\n');
       }

@@ -1,7 +1,7 @@
 ---
 id: as-live-props
 title: Live props reach a component that a page gives to a part in as
-status: active
+status: done
 priority: must
 type: fix
 outline: false

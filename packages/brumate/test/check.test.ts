@@ -118,3 +118,35 @@ describe('await', () => {
     expect(code).toContain('async function row(n: number): Promise<$$Markup> {');
   });
 });
+
+describe('signals that bind to a ref', () => {
+  const script = `<script>
+  import { $signal } from 'brumate/signals';
+  import Toolbar from './Toolbar.brm';
+  let el = $signal<HTMLElement>();
+  let fn = $signal<() => void>();
+</script>
+`;
+
+  it('lets a signal that only a ref of a component binds hold an element', () => {
+    const code = body(`${script}<Toolbar ref=$bind(el) />`);
+    expect(code).not.toContain('$$sendable(el');
+    expect(code).toContain('$$sendableRef(el');
+  });
+
+  it('still checks a function in a signal that only a ref of a component binds', () => {
+    const code = body(`${script}<Toolbar ref=$bind(fn) />`);
+    expect(code).not.toContain('$$sendable(fn');
+    expect(code).toContain('$$sendableRef(fn');
+  });
+
+  it('checks a signal that a ref of a component and another prop bind', () => {
+    const code = body(`${script}<Toolbar ref=$bind(el) other=$bind(el) />`);
+    expect(code).toContain('$$sendable(el');
+  });
+
+  it('checks a signal that another prop binds', () => {
+    const code = body(`${script}<Toolbar value=$bind(fn) />`);
+    expect(code).toContain('$$sendable(fn');
+  });
+});

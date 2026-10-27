@@ -1,0 +1,9 @@
+<script>
+  import GapTarget from './GapTarget.brm';
+  import GapTemplateHost from './gapTemplateHost.brm';
+  import TplList from './TplList.brm';
+</script>
+<TplList item=row />
+#template row(label: string) {
+  <GapTemplateHost icon=GapTarget>{label}</GapTemplateHost>
+}

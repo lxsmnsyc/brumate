@@ -909,7 +909,8 @@ describe('resume', () => {
       const server = await import(file('spikePage.brm.ts'));
       const { html } = await renderParts(server.default, {});
       // SpikeLink writes class="spike-link", and the spread of SpikeButton writes class="trigger".
-      expect(html).toContain('<a class="spike-link trigger"');
+      // The link has live props now, so it carries an anchor before its class.
+      expect(html).toMatch(/<a [^>]*class="spike-link trigger"/);
     });
   });
 
@@ -5311,5 +5312,57 @@ describe('a dynamic tag that names a component', () => {
     await waitFor(() => expect(text('em.tag')).toBe('a'));
     click(document.querySelector('.set')!);
     await waitFor(() => expect(text('em.tag')).toBe('b'));
+  });
+});
+
+describe('a component that a page gives to a part in as', () => {
+  for (const name of ['gapPropsElement', 'gapPropsComponent']) {
+    it(`updates a prop that a part sends to its target: ${name}`, async () => {
+      await resume(name, {});
+      const item = () => document.querySelector('.item')!;
+      expect(item().getAttribute('aria-selected')).toBe('false');
+      click(item());
+      await waitFor(() => expect(item().getAttribute('aria-selected')).toBe('true'));
+    });
+  }
+});
+
+describe('a template that names a component only in an attribute value', () => {
+  /** The source of the client parts that hold the markup of the templates of a page. */
+  function templateParts(name: string): string {
+    return readdirSync(output)
+      .filter((file) => file.startsWith(`${name}.brm.client.t`))
+      .map((file) => readFileSync(join(output, file), 'utf8'))
+      .join('\n');
+  }
+
+  it('gapTemplate: renders a component in `as=`', async () => {
+    await resume('gapTemplate', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(document.querySelector('.gap-row')).not.toBeNull());
+    expect(document.querySelector('.gap-row')!.hasAttribute('data-target')).toBe(true);
+  });
+
+  it('gapTemplate: renders a component in another prop', async () => {
+    await resume('gapTemplateProp', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(document.querySelector('.host')).not.toBeNull());
+    expect(document.querySelector('.host')!.hasAttribute('data-target')).toBe(true);
+  });
+
+  it('gapTemplate: renders the components of an expression', async () => {
+    await resume('gapTemplateChoice', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(document.querySelector('.gap-row')).not.toBeNull());
+    expect(document.querySelector('.gap-row')!.hasAttribute('data-target')).toBe(true);
+  });
+
+  it('gapTemplate: leaves an import that the template does not use out of the part', async () => {
+    await resume('gapTemplateUnused', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(document.querySelector('.gap-row')).not.toBeNull());
+    const code = templateParts('gapTemplateUnused');
+    expect(code).toContain('GapTarget');
+    expect(code).not.toContain('AsLink');
   });
 });
