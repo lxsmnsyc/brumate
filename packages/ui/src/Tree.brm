@@ -4,7 +4,7 @@
   import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import type { TreeNode } from './tree.ts';
 
-  export interface TreeOwnProps<T extends AsTarget = 'div'> {
+  export interface TreeOwnProps<V extends TreeNode = TreeNode, T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
     selectionMode?: SelectionMode;
@@ -26,14 +26,12 @@
      * The text that typeahead matches for an item, for the rows out of view of a windowed Tree.
      * The rows in view use their own `textValue` or text.
      */
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Tree are the caller's.
-    getTextValue?: (node: any) => string;
+    getTextValue?: (node: V) => string;
     onAction?: (key: Key) => void;
     onSelectionChange?: (keys: Key[]) => void;
     onExpandedChange?: (keys: Key[]) => void;
-    items: readonly TreeNode[];
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Tree are the caller's.
-    item: (node: any) => unknown;
+    items: readonly V[];
+    item: (node: V) => unknown;
     selectedKeys?: Bindable<Key[]>;
     expandedKeys?: Bindable<Key[]>;
   }
@@ -42,10 +40,10 @@
    * The props of Tree. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type TreeProps<T extends AsTarget = 'div'> = AsProps<T, TreeOwnProps<T>>;
+  export type TreeProps<V extends TreeNode = TreeNode, T extends AsTarget = 'div'> = AsProps<T, TreeOwnProps<V, T>>;
 </script>
 
-<script generics="T extends AsTarget = 'div'">
+<script generics="V extends TreeNode, T extends AsTarget = 'div'">
   import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
@@ -106,13 +104,13 @@
     items,
     item,
     ...rest
-  } = $props<TreeProps<T>>();
-  let { selectedKeys = [] } = $props<TreeOwnProps<T>>();
-  let { ref } = $props<TreeOwnProps<T>>();
-  let { expandedKeys = [] } = $props<TreeOwnProps<T>>();
+  } = $props<TreeProps<V, T>>();
+  let { selectedKeys = [] } = $props<TreeOwnProps<V, T>>();
+  let { ref } = $props<TreeOwnProps<V, T>>();
+  let { expandedKeys = [] } = $props<TreeOwnProps<V, T>>();
 
   // The rows that show, in order: each item, then its children while it is open.
-  const rows = $memo(visibleRows(items, expandedKeys));
+  const rows = $memo(visibleRows<TreeNode>(items, expandedKeys));
 
   function setExpanded(next: Key[]) {
     if (!sameKeys(next, expandedKeys)) {

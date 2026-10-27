@@ -9,7 +9,7 @@
   } from './collection.ts';
   import type { SortDescriptor, TableColumn } from './table.ts';
 
-  export interface TableProps {
+  export interface TableProps<V extends { id: Key } = { id: Key }> {
     selectionMode?: SelectionMode;
     selectionBehavior?: SelectionBehavior;
     disabledKeys?: Key[];
@@ -27,10 +27,9 @@
      * The text that typeahead matches for an item, for the rows out of view of a windowed table.
      * The rows in view use their own `textValue` or text.
      */
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Table are the caller's.
-    getTextValue?: (item: any) => string;
+    getTextValue?: (item: V) => string;
     /** The data of the rows, each with an `id`. The `item` template of the TableBody renders each. */
-    items?: readonly { id: Key }[];
+    items?: readonly V[];
     children?: unknown;
     selectedKeys?: Bindable<Key[]>;
     sortDescriptor?: Bindable<SortDescriptor | null>;
@@ -38,7 +37,7 @@
   }
 </script>
 
-<script>
+<script generics="V extends { id: Key }">
   import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
@@ -104,9 +103,9 @@
     items,
     children,
     ...rest
-  } = $props<TableProps>();
-  let { selectedKeys = [] } = $props<TableProps>();
-  let { sortDescriptor = null } = $props<TableProps>();
+  } = $props<TableProps<V>>();
+  let { selectedKeys = [] } = $props<TableProps<V>>();
+  let { sortDescriptor = null } = $props<TableProps<V>>();
 
   const locale = $getContext(LocaleContext);
   const virtualizer = $getContext(VirtualizerContext);
