@@ -29,6 +29,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: memo-errors-at-read
+    kind: hard
+    why: both change updates.ts, and batching builds on its error rule
   - on: ordered-updates
     kind: hard
     why: a pass uses the binding queue that ordered updates adds
