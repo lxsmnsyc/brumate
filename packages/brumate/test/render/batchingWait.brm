@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let first = $signal('Grace');
+  let last = $signal('Hopper');
+</script>
+
+<button class="write" onClick=(() => {
+  first = 'Ada';
+  last = 'Lovelace';
+})>Write</button>
+<p class="name">{first + ' ' + last}</p>

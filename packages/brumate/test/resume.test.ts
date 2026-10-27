@@ -5784,3 +5784,98 @@ describe('a spread on a component tag', () => {
     expect(el().getAttribute('title')).toBe('a');
   });
 });
+
+describe('batching', () => {
+  afterEach(() => {
+    delete (globalThis as { __batching?: string[] }).__batching;
+  });
+
+  async function changesOf(selector: string, shown: string): Promise<number> {
+    const element = document.querySelector(selector)!;
+    let changes = 0;
+    const watcher = new MutationObserver((records) => {
+      changes += records.length;
+    });
+    watcher.observe(element, { childList: true, characterData: true, subtree: true });
+    onTestFinished(() => watcher.disconnect());
+    click(document.querySelector('.write, .pick')!);
+    await waitFor(() => expect(text(selector)).toBe(shown));
+    await new Promise((done) => setTimeout(done, 40));
+    return changes + watcher.takeRecords().length;
+  }
+
+  it('writes the DOM once for two writes in a handler', async () => {
+    await resume('batchingWrites', {});
+    expect(await changesOf('.name', 'Ada Lovelace')).toBe(1);
+  });
+
+  it('writes the DOM once for two writes in a handler whose update code loads', async () => {
+    await resume('batchingWait', {}, { all: 15 });
+    expect(await changesOf('.name', 'Ada Lovelace')).toBe(1);
+  });
+
+  it('writes the DOM once for two writes in a function prop that a child calls', async () => {
+    await resume('batchingCall', {}, { all: 15 });
+    expect(await changesOf('.ab', '7:7')).toBe(1);
+  });
+
+  it('keeps the writes of a handler that throws, and the error reaches the #try', async () => {
+    await resume('batchingHandlerThrows', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Stop'));
+    expect(text('.a')).toBe('1');
+  });
+
+  it('writes at once after an await, since each write is a pass of its own', async () => {
+    await resume('batchingAwait', {});
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.seen')).toBe('5'));
+  });
+
+  it('runs an effect that reads both once', async () => {
+    await resume('batchingWrites', {});
+    const log = () => (globalThis as { __batching?: string[] }).__batching ?? [];
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.name')).toBe('Ada Lovelace'));
+    expect(log()).not.toContain('Ada Hopper');
+    expect(log().filter((entry) => entry === 'Ada Lovelace')).toHaveLength(1);
+  });
+
+  it('does not throw from a state between two writes', async () => {
+    await resume('batchingThrow', {}, { all: 15 });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.item')).toBe('c'));
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('flush() runs the waiting bindings at once', async () => {
+    await resume('batchingFlush', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.found')).toBe('yes'));
+  });
+
+  it('without flush() the bindings wait for the end of the handler', async () => {
+    await resume('batchingFlush', {});
+    click(document.querySelector('.lazy')!);
+    await waitFor(() => expect(text('.found')).toBe('no'));
+    expect(document.querySelector('.body')).not.toBeNull();
+  });
+
+  it('flush() sees the DOM when the update code loads at the same time as the handler', async () => {
+    await resume('batchingFlush', {}, { all: 15 });
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.found')).toBe('yes'));
+  });
+
+  it('reads a memo of a signal that the handler wrote', async () => {
+    await resume('batchingMemo', {});
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.seen')).toBe('4'));
+    expect(text('.double')).toBe('4');
+    expect(text('.count')).toBe('2');
+  });
+});

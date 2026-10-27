@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let list = $signal([{ name: 'a' }, { name: 'b' }]);
+  let index = $signal(1);
+</script>
+
+<button class="write" onClick=(() => {
+  list = [{ name: 'c' }];
+  index = 0;
+})>Write</button>
+<p class="item">{list[index].name}</p>

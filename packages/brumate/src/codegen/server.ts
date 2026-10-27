@@ -1,4 +1,4 @@
-import { isMacroImport } from '../macros.ts';
+import { importSource, isMacroImport } from '../macros.ts';
 import type { SFCFile } from '../ast.ts';
 import type { Declaration } from '../model.ts';
 import type { oxc } from '../oxc.ts';
@@ -71,7 +71,11 @@ export function generateServer(file: SFCFile, plan: Plan): string {
       if (isMacroImport(statement)) {
         continue;
       }
-      (statement.type === 'ImportDeclaration' ? header : moduleBody).push(source(statement));
+      if (statement.type === 'ImportDeclaration') {
+        header.push(importSource(file.source, statement));
+      } else {
+        moduleBody.push(source(statement));
+      }
     }
   }
 
@@ -84,7 +88,7 @@ export function generateServer(file: SFCFile, plan: Plan): string {
     if (isMacroImport(statement)) {
       continue;
     } else if (statement.type === 'ImportDeclaration') {
-      header.push(source(statement));
+      header.push(importSource(file.source, statement));
     } else if (TYPE_DECLARATIONS.has(statement.type) || isTypeExport(statement)) {
       moduleBody.push(source(statement));
     } else if (!isServerStatement(statement, serverNodes)) {
@@ -94,7 +98,7 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   for (const scope of model.scopes) {
     for (const statement of scope.body?.script?.program.body ?? []) {
       if (statement.type === 'ImportDeclaration' && !isMacroImport(statement)) {
-        hoisted.push(source(statement));
+        hoisted.push(importSource(file.source, statement));
       }
     }
   }

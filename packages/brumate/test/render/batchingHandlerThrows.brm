@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let a = $signal(0);
+</script>
+
+<p class="a">{a}</p>
+#try {
+  <button class="write" onClick=(() => {
+    a = 1;
+    throw new Error('Stop');
+  })>Write</button>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

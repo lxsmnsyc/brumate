@@ -1,0 +1,22 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { flush } from 'brumate/signals';
+
+  let open = $signal(false);
+  let found = $signal('none');
+  let memoSeen = $signal('none');
+</script>
+
+<button class="open" onClick=(() => {
+  open = true;
+  flush();
+  found = document.querySelector('.body') ? 'yes' : 'no';
+})>Open</button>
+<button class="lazy" onClick=(() => {
+  open = true;
+  found = document.querySelector('.body') ? 'yes' : 'no';
+})>Lazy</button>
+<p class="found">{found}</p>
+#if (open) {
+  <p class="body">Body</p>
+}

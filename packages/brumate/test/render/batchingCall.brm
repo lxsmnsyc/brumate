@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import BatchingPick from './BatchingPick.brm';
+
+  let a = $signal(0);
+  let b = $signal(0);
+
+  function pick(value: number) {
+    a = value;
+    b = value;
+  }
+</script>
+
+<p class="ab">{a + ':' + b}</p>
+<BatchingPick onPick=(pick) />
