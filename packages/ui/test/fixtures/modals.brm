@@ -12,6 +12,8 @@
   let open = $signal(false);
   let sheet = $signal(false);
   let shown = $signal(true);
+  let own = $signal(false);
+  let changes = $signal(0);
 </script>
 
 <main class="page">
@@ -73,5 +75,12 @@
       <Button slot="close" class="sheet-close">Close</Button>
     </Dialog>
   </Sheet>
+  <button class="own-trigger" type="button" onClick=(() => (own = true))>Own</button>
+  <ModalOverlay class="own-overlay" isOpen=$bind(own) transition onOpenChange=(() => (changes += 1))>
+    <Modal class="own-modal">
+      <Dialog class="own-dialog" aria-label="Own">Own</Dialog>
+    </Modal>
+  </ModalOverlay>
+  <p class="changes">{changes}</p>
   <p class="state">{String(open)} {String(sheet)}</p>
 </main>

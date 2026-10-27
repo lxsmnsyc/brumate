@@ -54,6 +54,7 @@
   import {
     blurOutside,
     containTab,
+    escapeOutside,
     focusInto,
     hold,
     inertOutside,
@@ -188,6 +189,9 @@
       stops.push(pressOutside(holder, anchor, close));
     } else {
       stops.push(blurOutside(holder, anchor, close));
+      if (isNonModal) {
+        stops.push(escapeOutside(holder, anchor, close));
+      }
     }
     if (transition && !(await enterSteps(element, stepClasses(), { current: () => token === run }))) {
       return;

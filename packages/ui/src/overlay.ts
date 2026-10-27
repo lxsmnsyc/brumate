@@ -197,6 +197,39 @@ export function blurOutside(
   return () => document.removeEventListener('focusin', listener, true);
 }
 
+/** The layers of the open overlays that close on Escape from outside, the topmost last. */
+const escapable: Element[] = [];
+
+/**
+ * Calls `close` on Escape while focus is outside the layer, for an overlay that is not modal:
+ * when focus is on its trigger, or on nothing. Focus in a field or in another layer keeps the
+ * key, and so does a key that a part used. Only the topmost such overlay closes. Returns a
+ * function that stops.
+ */
+export function escapeOutside(
+  layer: Element,
+  trigger: Element | null,
+  close: () => void,
+): () => void {
+  escapable.push(layer);
+  const listener = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape' || event.defaultPrevented || escapable.at(-1) !== layer) {
+      return;
+    }
+    const active = document.activeElement;
+    const free = !active || active === document.body;
+    const onTrigger = Boolean(trigger?.contains(active)) && !active?.closest('[data-layer]');
+    if (free || onTrigger) {
+      close();
+    }
+  };
+  document.addEventListener('keydown', listener);
+  return () => {
+    document.removeEventListener('keydown', listener);
+    escapable.splice(escapable.indexOf(layer), 1);
+  };
+}
+
 /** What an open overlay holds on the page, which closing gives back, by its element. */
 interface Held {
   stops: (() => void)[];

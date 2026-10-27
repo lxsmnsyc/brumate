@@ -24,6 +24,10 @@
   <Button class="up">Up</Button>
   <Button class="down">Down</Button>
 </Toolbar>
+<Toolbar class="notes" aria-label="Notes" orientation="vertical">
+  <Button class="note-button">Note</Button>
+  <textarea class="area" aria-label="Notes"></textarea>
+</Toolbar>
 <Toolbar class="fields" aria-label="Fields">
   <Button class="before">Before</Button>
   <input class="field" aria-label="Field" />

@@ -285,3 +285,44 @@ it('closes with a Button of the close slot each time it opens', async () => {
   pressWith(find('.close')!);
   await page.waitFor(() => expect(find('.popover')).toBeNull());
 });
+
+it('closes a non-modal popover on Escape while focus stays on its trigger', async () => {
+  const page = await popovers();
+  const trigger = page.get('.loose-trigger');
+  pressWith(trigger);
+  await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+  trigger.focus();
+  press('Escape', trigger);
+  await page.waitFor(() => expect(find('.loose-popover')).toBeNull());
+});
+
+it('closes a non-modal popover on Escape while nothing has focus', async () => {
+  const page = await popovers();
+  pressWith(page.get('.loose-trigger'));
+  await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+  (document.activeElement as HTMLElement).blur();
+  press('Escape', document.body);
+  await page.waitFor(() => expect(find('.loose-popover')).toBeNull());
+});
+
+it('leaves Escape to a field outside a non-modal popover', async () => {
+  const page = await popovers();
+  const trigger = page.get('.loose-trigger');
+  pressWith(trigger);
+  await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+  const field = document.createElement('input');
+  field.setAttribute('aria-label', 'Search');
+  trigger.parentElement!.append(field);
+  try {
+    // The field is a layer-less element beside the trigger: focus there closes the popover on
+    // blur, so only the key is checked once the popover is open again.
+    field.focus();
+    await page.waitFor(() => expect(find('.loose-popover')).toBeNull());
+    pressWith(trigger);
+    await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+    press('Escape', field);
+    expect(find('.loose-popover')).not.toBeNull();
+  } finally {
+    field.remove();
+  }
+});

@@ -160,3 +160,50 @@ it('runs the steps of a transition on each toast as it comes and goes', async ()
   await page.waitFor(() => expect(all('.toast')).toHaveLength(0));
   expect(flags.some((step) => step.includes('data-leave') && step.includes('inert'))).toBe(true);
 });
+
+async function twoToasts() {
+  const page = await toasts();
+  pressWith(page.get('.add'));
+  await page.waitFor(() => expect(all('.toast')).toHaveLength(1));
+  return page;
+}
+
+function f6(target: Element, shiftKey: boolean): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    key: 'F6',
+    shiftKey,
+    bubbles: true,
+    cancelable: true,
+  });
+  target.dispatchEvent(event);
+  return event;
+}
+
+it('does not jump into the toasts on Shift+F6 from outside', async () => {
+  const page = await twoToasts();
+  const field = page.get('.field');
+  field.focus();
+  const event = f6(field, true);
+  expect(event.defaultPrevented).toBe(false);
+  expect(document.activeElement).toBe(field);
+});
+
+it('gives focus back on Shift+F6 inside the toasts', async () => {
+  const page = await twoToasts();
+  const field = page.get('.field');
+  field.focus();
+  expect(f6(field, false).defaultPrevented).toBe(true);
+  await page.waitFor(() => expect(document.activeElement).toBe(all('.toast')[0]));
+  expect(f6(document.activeElement!, true).defaultPrevented).toBe(true);
+  expect(document.activeElement).toBe(field);
+});
+
+it('leaves F6 to the browser when the toasts cannot take focus', async () => {
+  const page = await twoToasts();
+  const field = page.get('.field');
+  field.focus();
+  const toast = all('.toast')[0]!;
+  toast.focus = () => {};
+  expect(f6(field, false).defaultPrevented).toBe(false);
+  expect(document.activeElement).toBe(field);
+});

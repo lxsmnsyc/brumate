@@ -19,8 +19,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $getContext, $handler, $props, $setContext } from 'brumate/signals';
-  import { prevent } from 'brumate/events';
+  import { $client, $getContext, $props, $setContext } from 'brumate/signals';
   import { LocaleContext } from './locale.ts';
   import { ToolbarContext } from './contexts.ts';
   import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
@@ -63,14 +62,8 @@
     }
   }
 
-  // The arrow keys that move focus are prevented: Up and Down of a vertical toolbar, which
-  // would scroll the page. The others keep their default, for a field inside. Home and End are
-  // prevented by preventEdges, unless a field has focus.
-  function keys(vertical: boolean) {
-    return vertical
-      ? { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown')) }
-      : { onKeyDown: $handler(keyDown) };
-  }
+  // The keys that move focus keep their default for a field inside. preventEdges prevents Home and
+  // End, and Up and Down of a vertical toolbar, unless a field has focus.
 </script>
 
 <{as ?? 'div'}
@@ -78,7 +71,7 @@
   role=(nested ? 'group' : 'toolbar')
   aria-orientation=(nested ? undefined : orientation)
   data-orientation=orientation
-  {...keys(orientation === 'vertical')}
+  onKeyDown=keyDown
   onFocusIn=focusIn
   {...rest}
 >{children}</>

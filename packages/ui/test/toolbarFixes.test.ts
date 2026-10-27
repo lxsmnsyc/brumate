@@ -37,9 +37,13 @@ it('keeps a toolbar in the order of Tab when the item that held it becomes disab
 
 it('prevents only the arrow keys of its orientation', async () => {
   const page = await fixes();
-  expect(key(page.get('.undo'), 'ArrowDown').defaultPrevented).toBe(false);
-  expect(key(page.get('.up'), 'ArrowDown').defaultPrevented).toBe(true);
-  expect(key(page.get('.up'), 'ArrowRight').defaultPrevented).toBe(false);
+  const undo = page.get('.undo');
+  undo.focus();
+  expect(key(undo, 'ArrowDown').defaultPrevented).toBe(false);
+  const up = page.get('.up');
+  up.focus();
+  await page.waitFor(() => expect(key(up, 'ArrowDown').defaultPrevented).toBe(true));
+  expect(key(up, 'ArrowRight').defaultPrevented).toBe(false);
 });
 
 it('makes a toolbar inside a toolbar a group', async () => {
@@ -123,4 +127,20 @@ it('leaves Home and End to a text field inside a toggle button group', async () 
   field.focus();
   expect(key(field, 'Home').defaultPrevented).toBe(false);
   expect(key(field, 'End').defaultPrevented).toBe(false);
+});
+
+it('leaves Up and Down to a text area of a vertical toolbar', async () => {
+  const page = await fixes();
+  const area = page.get('.area') as HTMLElement;
+  area.focus();
+  // A button still moves focus, and the key is prevented. This also shows the listener is on.
+  const button = page.get('.note-button');
+  await page.waitFor(() => {
+    button.focus();
+    expect(key(button, 'ArrowDown').defaultPrevented).toBe(true);
+  });
+  area.focus();
+  expect(key(area, 'ArrowDown').defaultPrevented).toBe(false);
+  expect(key(area, 'ArrowUp').defaultPrevented).toBe(false);
+  expect(document.activeElement).toBe(area);
 });
