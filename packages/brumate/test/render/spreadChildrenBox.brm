@@ -1,0 +1,13 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // A component that renders its children, in `as` or a div. spreadChildrenWrap spreads onto it,
+  // so all of its props can change, `as` and its children too.
+  const {
+    as,
+    class: className,
+    children,
+  } = $props<{ as?: unknown; class?: string; children?: unknown }>();
+</script>
+
+<{as ?? 'div'} class=(className)>{children}</>

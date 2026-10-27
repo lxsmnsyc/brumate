@@ -1,0 +1,20 @@
+<script module>
+  import { createContext } from 'brumate/context';
+  import type { Context } from 'brumate/context';
+
+  /** Whether spreadChildrenPick shows its children, as a function that reads the value now. */
+  export const Shown: Context<{ shown: () => boolean } | undefined> = createContext<
+    { shown: () => boolean } | undefined
+  >('spread-children-shown', undefined);
+</script>
+
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+
+  // Renders its children only when the context says so, so the server can render other text in
+  // their place. It reads the function directly, with no memo in between.
+  const { children } = $props<{ children?: unknown }>();
+  const ctx = $getContext(Shown);
+</script>
+
+<div class="sc-pick">{ctx!.shown() ? children : 'none'}</div>

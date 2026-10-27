@@ -191,17 +191,32 @@ const InternalPlugin = createPlugin<Internal, { a: SerovalNode }>({
 });
 
 /** Children of a component, as the export that renders them in the browser. */
-const ChildrenPlugin = createPlugin<object, { a: SerovalNode; b: SerovalNode }>({
+const ChildrenPlugin = createPlugin<object, ReferenceNode>({
   tag: 'brumate/children',
   skipPlainObjects: true,
   test: (value) => typeof value === 'object' && value !== null && CHILDREN_REF in value,
   parse: parsers((value) => {
     const reference = (value as { [CHILDREN_REF]: ChildrenReference })[CHILDREN_REF];
-    return { a: reference.ref, b: reference.scope };
+    const node: Record<string, unknown> = { a: reference.ref, b: reference.scope };
+    // The scope and the anchor of the insert where the server rendered them.
+    if (reference.at !== undefined) {
+      node.c = reference.at;
+      node.d = reference.anchor;
+    }
+    return node as Record<'a' | 'b' | 'c' | 'd', unknown>;
   }),
-  serialize: (node, ctx) => `$b.n(${ctx.serialize(node.a)},${ctx.serialize(node.b)})`,
+  serialize: (node, ctx) =>
+    `$b.n(${[node.a, node.b, node.c, node.d]
+      .filter((part) => part !== undefined)
+      .map((part) => ctx.serialize(part!))
+      .join(',')})`,
   deserialize: (node, ctx) =>
-    stateValues.n(ctx.deserialize<string>(node.a), ctx.deserialize<ScopeId>(node.b)),
+    stateValues.n(
+      ctx.deserialize<string>(node.a),
+      ctx.deserialize<ScopeId>(node.b!),
+      node.c === undefined ? undefined : ctx.deserialize<ScopeId>(node.c),
+      node.d === undefined ? undefined : ctx.deserialize<number>(node.d),
+    ),
 });
 
 /** HTML, such as the `children` of a component, so the client can insert it again. */

@@ -956,9 +956,16 @@ export class Emitter {
           );
         // Children in a table body or a list get the tag of the spacers of a windowed list in them.
         const spacer = this.parentSpacer();
+        // On the server, children also get the anchor of the insert, so the browser knows that
+        // the server rendered them here.
+        const server = this.options.mode === 'server' && readsProp;
+        let rest = server && spacer !== undefined ? `, ${JSON.stringify(spacer)}` : '';
+        if (server && anchor) {
+          rest = `${rest || ', undefined'}, ${anchor.index}`;
+        }
         const at =
           this.options.mode === 'server' || readsProp
-            ? `, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}${this.options.mode === 'server' && readsProp && spacer !== undefined ? `, ${JSON.stringify(spacer)}` : ''}`
+            ? `, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}${rest}`
             : '';
         // A primitive renders as text, so it needs neither the place of the insert nor an await.
         const value = this.isPrimitiveInsert(node.expression)

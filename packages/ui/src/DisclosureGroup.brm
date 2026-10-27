@@ -1,22 +1,22 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
 
-  export interface DisclosureGroupOwnProps {
+  export interface DisclosureGroupOwnProps<T extends AsTarget = 'div'> {
     allowsMultipleExpanded?: boolean;
     isDisabled?: boolean;
     onExpandedChange?: (keys: string[]) => void;
     children?: unknown;
     expandedKeys?: Bindable<string[]>;
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
   }
 
   /**
    * The props of DisclosureGroup. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type DisclosureGroupProps<T extends AsTarget = 'div'> = AsProps<T, DisclosureGroupOwnProps>;
+  export type DisclosureGroupProps<T extends AsTarget = 'div'> = AsProps<T, DisclosureGroupOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -38,8 +38,8 @@
     children,
     ...rest
   } = $props<DisclosureGroupProps<T>>();
-  let { expandedKeys = [] } = $props<DisclosureGroupOwnProps>();
-  let { ref } = $props<DisclosureGroupOwnProps>();
+  let { expandedKeys = [] } = $props<DisclosureGroupOwnProps<T>>();
+  let { ref } = $props<DisclosureGroupOwnProps<T>>();
 
   function toggle(id: string) {
     let next: string[];

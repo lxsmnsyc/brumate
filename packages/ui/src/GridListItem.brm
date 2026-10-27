@@ -1,11 +1,11 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Key } from './collection.ts';
 
-  export interface GridListItemOwnProps {
+  export interface GridListItemOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
@@ -17,7 +17,7 @@
    * The props of GridListItem. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type GridListItemProps<T extends AsTarget = 'div'> = AsProps<T, GridListItemOwnProps>;
+  export type GridListItemProps<T extends AsTarget = 'div'> = AsProps<T, GridListItemOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -51,7 +51,7 @@
     children,
     ...rest
   } = $props<GridListItemProps<T>>();
-  let { ref } = $props<GridListItemOwnProps>();
+  let { ref } = $props<GridListItemOwnProps<T>>();
 
   const list = $getContext(ListBoxContext);
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.

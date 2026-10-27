@@ -4,6 +4,13 @@
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
 
+declare module 'brumate/elements' {
+  interface ElementEvents {
+    /** A queue sends it to its regions when a toast is added, updated or closed. */
+    toastchange: Event;
+  }
+}
+
 /** A toast of a queue: its key, and the content that the region renders. */
 export interface QueuedToast<T> {
   key: string;

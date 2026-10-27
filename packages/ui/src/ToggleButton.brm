@@ -1,9 +1,9 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { PressEvent } from './events.ts';
 
-  export interface ToggleButtonOwnProps {
+  export interface ToggleButtonOwnProps<T extends AsTarget = 'button'> {
     /** The key of the button in a ToggleButtonGroup. */
     id?: string;
     slot?: string | null;
@@ -13,14 +13,14 @@
     children?: unknown;
     isSelected?: Bindable<boolean>;
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
   }
 
   /**
    * The props of ToggleButton. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type ToggleButtonProps<T extends AsTarget = 'button'> = AsProps<T, ToggleButtonOwnProps>;
+  export type ToggleButtonProps<T extends AsTarget = 'button'> = AsProps<T, ToggleButtonOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'button'">
@@ -37,8 +37,8 @@
    * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
    */
   const { as, id, slot, isDisabled, onChange, onPress, children, ...rest } = $props<ToggleButtonProps<T>>();
-  let { isSelected = false } = $props<ToggleButtonOwnProps>();
-  let { ref } = $props<ToggleButtonOwnProps>();
+  let { isSelected = false } = $props<ToggleButtonOwnProps<T>>();
+  let { ref } = $props<ToggleButtonOwnProps<T>>();
 
   const context = $getContext(ToggleButtonContext);
   const group = $getContext(ToggleGroupContext);

@@ -1,9 +1,9 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { ProgressState } from './progress.ts';
 
-  export interface MeterOwnProps {
+  export interface MeterOwnProps<T extends AsTarget = 'div'> {
     value?: number;
     minValue?: number;
     maxValue?: number;
@@ -13,14 +13,14 @@
     content?: (state: ProgressState) => unknown;
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
   }
 
   /**
    * The props of Meter. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type MeterProps<T extends AsTarget = 'div'> = AsProps<T, MeterOwnProps>;
+  export type MeterProps<T extends AsTarget = 'div'> = AsProps<T, MeterOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -47,7 +47,7 @@
     children,
     ...rest
   } = $props<MeterProps<T>>();
-  let { ref } = $props<MeterOwnProps>();
+  let { ref } = $props<MeterOwnProps<T>>();
 
   const locale = $getContext(LocaleContext);
   const labelId = $id();

@@ -1,9 +1,9 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
-  export interface TreeItemOwnProps {
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
+  export interface TreeItemOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     textValue?: string;
     isDisabled?: boolean;
     onAction?: () => void;
@@ -14,7 +14,7 @@
    * The props of TreeItem. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type TreeItemProps<T extends AsTarget = 'div'> = AsProps<T, TreeItemOwnProps>;
+  export type TreeItemProps<T extends AsTarget = 'div'> = AsProps<T, TreeItemOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -46,7 +46,7 @@
     children,
     ...rest
   } = $props<TreeItemProps<T>>();
-  let { ref } = $props<TreeItemOwnProps>();
+  let { ref } = $props<TreeItemOwnProps<T>>();
 
   const tree = $getContext(TreeRowContext);
   // The attributes of a part around it, such as a NavigationTreeItem, which its own win over.

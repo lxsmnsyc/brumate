@@ -26,8 +26,8 @@
   let open = $signal<Key[]>(['docs']);
   let section = $signal<Key | null>(null);
   let tags = $signal(['news', 'travel', 'gaming']);
-  let listRef = $signal<HTMLElement>();
-  let itemRef = $signal<HTMLElement>();
+  let listRef = $signal<HTMLUListElement>();
+  let itemRef = $signal<HTMLLIElement>();
   let seen = $signal('');
   const files = [
     { id: 'docs', name: 'Documents', children: [{ id: 'cv', name: 'cv.pdf' }] },

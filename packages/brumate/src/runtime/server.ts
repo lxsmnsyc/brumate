@@ -1292,7 +1292,12 @@ const LAZY: unique symbol = Symbol.for('brumate.lazy');
 
 /** Markup that renders where it is inserted, so it can read the contexts there. */
 export interface Lazy {
-  [LAZY]: (ctx: Context, scope: ScopeId | undefined, tag?: string) => Promise<string>;
+  [LAZY]: (
+    ctx: Context,
+    scope: ScopeId | undefined,
+    tag?: string,
+    anchor?: number,
+  ) => Promise<string>;
 }
 
 /**
@@ -1318,7 +1323,7 @@ const RAW: unique symbol = Symbol.for('brumate.raw') as never;
  * class instances.
  */
 class Children implements Lazy {
-  readonly [LAZY]: (ctx: Context, at: ScopeId | undefined, tag?: string) => Promise<string>;
+  readonly [LAZY]: Lazy[typeof LAZY];
   /** The HTML of the first render, under the symbol of raw HTML. */
   [RAW]?: string;
   /**
@@ -1331,7 +1336,13 @@ class Children implements Lazy {
     if (ref !== undefined) {
       this[CHILDREN_REF] = new ChildrenReference(ref, from);
     }
-    this[LAZY] = async (ctx, at, tag) => {
+    this[LAZY] = async (ctx, at, tag, anchor) => {
+      // The browser keeps what the server rendered at this insert, when it reads the page later.
+      const reference = this[CHILDREN_REF];
+      if (reference && reference.at === undefined && anchor !== undefined) {
+        reference.at = at;
+        reference.anchor = anchor;
+      }
       const html = await (at === undefined
         ? renderBody(ctx)
         : ctx.children(from, at, () => renderBody(ctx), tag));
@@ -1388,14 +1399,15 @@ export function actionResult(ctx: Context, fn: unknown): unknown {
 }
 
 /**
- * Renders a value inserted in markup. `ctx` and `scope` are where it is
- * inserted, for markup that renders there.
+ * Renders a value inserted in markup. `ctx`, `scope` and `anchor` are where it
+ * is inserted, for markup that renders there.
  */
 export function insert(
   value: unknown,
   ctx?: Context,
   scope?: ScopeId,
   tag?: string,
+  anchor?: number,
 ): string | Promise<string> {
   // A value that is ready renders without a promise, because most inserts are plain text.
   if (
@@ -1403,10 +1415,10 @@ export function insert(
     (typeof value === 'object' || typeof value === 'function') &&
     typeof (value as PromiseLike<unknown>).then === 'function'
   ) {
-    return Promise.resolve(value).then((resolved) => insert(resolved, ctx, scope, tag));
+    return Promise.resolve(value).then((resolved) => insert(resolved, ctx, scope, tag, anchor));
   }
   if (isLazy(value) && ctx) {
-    return value[LAZY](ctx, scope, tag);
+    return value[LAZY](ctx, scope, tag, anchor);
   }
   if (Array.isArray(value)) {
     const parts = value.map((item) => insert(item, ctx, scope, tag));

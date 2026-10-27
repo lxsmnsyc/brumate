@@ -109,16 +109,21 @@ export class TemplateCall extends Children {
  */
 export class RenderedChildren extends Children {
   readonly ref: string;
+  /** The scope and the anchor of the insert where the server rendered them, if it did. */
+  readonly at: ScopeId | undefined;
+  readonly anchor: number | undefined;
   private code: Handler | undefined;
   private loading: Promise<void> | undefined;
 
-  constructor(scope: ScopeId, ref: string) {
+  constructor(scope: ScopeId, ref: string, at?: ScopeId, anchor?: number) {
     // The export returns HTML, as the render of a block does.
     super(scope, () => {
       const out = this.code!(this.from);
       return out instanceof DocumentFragment ? out : String(out);
     });
     this.ref = ref;
+    this.at = at;
+    this.anchor = anchor;
   }
 
   override render(at: Scope | undefined): string | DocumentFragment {

@@ -1,11 +1,11 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
 
-  export interface ListBoxOwnProps {
+  export interface ListBoxOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     selectionMode?: SelectionMode;
     selectionBehavior?: SelectionBehavior;
     disabledKeys?: Key[];
@@ -38,7 +38,7 @@
    * The props of ListBox. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type ListBoxProps<T extends AsTarget = 'div'> = AsProps<T, ListBoxOwnProps>;
+  export type ListBoxProps<T extends AsTarget = 'div'> = AsProps<T, ListBoxOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -122,8 +122,8 @@
     children,
     ...rest
   } = $props<ListBoxProps<T>>();
-  let { selectedKeys = [] } = $props<ListBoxOwnProps>();
-  let { ref } = $props<ListBoxOwnProps>();
+  let { selectedKeys = [] } = $props<ListBoxOwnProps<T>>();
+  let { ref } = $props<ListBoxOwnProps<T>>();
 
   const locale = $getContext(LocaleContext);
   // A Select around the list keeps the selection, with one item at most.
@@ -169,7 +169,7 @@
 
   /** Focuses the option of a key. A windowed list may not render it, so it scrolls it into view. */
   function focusKey(key: Key | undefined) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (element && key !== undefined) {
       focusKeyIn(element, 'option', order(), key, windowHeight, focusItem);
     }
@@ -180,7 +180,7 @@
       given.select(key);
       return;
     }
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     const range = element ? rangeOf(element) : undefined;
     const shift = Boolean(element && request.shift && range);
     setSelection(
@@ -223,7 +223,7 @@
   // the list is on the page, and each time the text changes.
   function applyFilter() {
     const text = field?.filterText;
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (text !== undefined && element) {
       field!.filtered?.(filterItems(element, text, field!.filter));
     }
@@ -237,22 +237,22 @@
   function focused(event: FocusEvent) {
     // A field around the list keeps the focus.
     if (!field) {
-      passFocus(ref, event, 'option', (options) =>
+      passFocus(ref as HTMLElement | undefined, event, 'option', (options) =>
         given?.focusStrategy === 'last' ? options.at(-1) : options[0],
       );
     }
   }
 
   function focusIn(event: FocusEvent) {
-    trackFocusIn(ref, event, 'option');
+    trackFocusIn(ref as HTMLElement | undefined, event, 'option');
   }
 
   function focusOut(event: FocusEvent) {
-    trackFocusOut(ref, event);
+    trackFocusOut(ref as HTMLElement | undefined, event);
   }
 
   function keyDown(event: KeyboardEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (!element) {
       return;
     }

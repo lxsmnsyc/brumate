@@ -1,0 +1,11 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { Shown } from './spreadChildrenPick.brm';
+
+  // Renders its children at a first insert, and at a second one when the context says so.
+  const { children } = $props<{ children?: unknown }>();
+  const ctx = $getContext(Shown);
+</script>
+
+<div class="sc-twice-1">{children}</div>
+<div class="sc-twice-2">{ctx!.shown() ? children : 'none'}</div>

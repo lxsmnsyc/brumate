@@ -1,11 +1,11 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Movement } from './collection.ts';
 
-  export interface TagListOwnProps {
+  export interface TagListOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     children?: unknown;
   }
 
@@ -13,7 +13,7 @@
    * The props of TagList. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type TagListProps<T extends AsTarget = 'div'> = AsProps<T, TagListOwnProps>;
+  export type TagListProps<T extends AsTarget = 'div'> = AsProps<T, TagListOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -40,7 +40,7 @@
    *   to left, and Home and End go to the ends.
    */
   const { as, children, ...rest } = $props<TagListProps<T>>();
-  let { ref } = $props<TagListOwnProps>();
+  let { ref } = $props<TagListOwnProps<T>>();
 
   const group = $getContext(TagGroupContext);
   const locale = $getContext(LocaleContext);
@@ -67,7 +67,7 @@
   }
 
   function keyDown(event: KeyboardEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     const movement = movementOf(event.key);
     if (!element || !movement) {
       return;
@@ -77,7 +77,7 @@
   }
 
   function focused(event: FocusEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     // The list passes its focus on to a tag.
     if (element && event.target === element && document.activeElement === element) {
       const items = enabledItems(element, 'row');
@@ -87,7 +87,7 @@
   }
 
   function focusIn(event: FocusEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     const item = (event.target as Element).closest?.('[role=row][data-key]');
     if (element && item && element.contains(item)) {
       // While a tag has focus, Tab leaves the list rather than stopping at it.
@@ -97,7 +97,7 @@
   }
 
   function focusOut(event: FocusEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (element && !element.contains(event.relatedTarget as Node | null)) {
       element.tabIndex = 0;
     }

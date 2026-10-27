@@ -1,7 +1,7 @@
 ---
 id: ref-from-as
 title: The ref of a part takes the element type of its as target
-status: active
+status: done
 priority: should
 type: feature
 outline: false

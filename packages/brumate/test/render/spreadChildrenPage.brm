@@ -1,0 +1,17 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import SpreadChildrenBox from './spreadChildrenBox.brm';
+  import SpreadChildrenList from './spreadChildrenList.brm';
+  import SpreadChildrenWrap from './spreadChildrenWrap.brm';
+
+  let tone = $signal('sc-a');
+</script>
+
+<button class="sc-tone" onClick=(() => (tone = 'sc-b'))>Tone</button>
+<SpreadChildrenWrap class=(tone)>Wrapped</SpreadChildrenWrap>
+<SpreadChildrenBox class=(tone)><input class="sc-direct" /></SpreadChildrenBox>
+<SpreadChildrenList items=(['one']) item=row />
+
+#template row(label: string, open: boolean) {
+  <SpreadChildrenBox class=(open ? 'sc-open' : 'sc-closed')><input class="sc-input" aria-label=label /></SpreadChildrenBox>
+}

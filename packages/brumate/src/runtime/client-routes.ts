@@ -43,9 +43,14 @@ export function shiftState(ids: Core['scopeIds'], state: PageState, by: number):
     // A reference is copied with its own fields, and its scope moved.
     for (const type of references) {
       if (value instanceof type) {
-        return Object.assign(Object.create(Object.getPrototypeOf(value)), value, {
+        const moved = Object.assign(Object.create(Object.getPrototypeOf(value)), value, {
           scope: shiftId(value.scope, by),
         });
+        // Children name the scope where the server rendered them too.
+        if (moved.at !== undefined) {
+          moved.at = shiftId(moved.at, by);
+        }
+        return moved;
       }
     }
     // A holder is copied with every field moved.

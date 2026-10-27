@@ -1,0 +1,5 @@
+<script>
+  import GapPassOnPart from './gapPassOnPart.brm';
+  import GapPassOnTarget from './gapPassOnTarget.brm';
+</script>
+<GapPassOnPart as=GapPassOnTarget class="item">Item</GapPassOnPart>

@@ -96,7 +96,7 @@ function setterReference(setter: unknown): FunctionReference | undefined {
 export function callable(value: unknown, seen: Set<object>): unknown {
   if (HAS_CHILDREN && value instanceof ChildrenReference) {
     // The scope can come later in the state, such as of a page that navigation loads.
-    return new RenderedChildren(value.scope, value.ref);
+    return new RenderedChildren(value.scope, value.ref, value.at, value.anchor);
   }
   if (value instanceof FunctionReference) {
     if (HAS_TEMPLATES && isTemplate(value.ref)) {
