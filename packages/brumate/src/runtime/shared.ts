@@ -3,7 +3,7 @@
 // The plugins that write and read these values are in `serial.ts`.
 
 import { HAS_BINDINGS, HAS_CHILDREN } from './features.ts';
-import { ownValue, raw } from './html.ts';
+import { Internal, ownValue, raw } from './html.ts';
 import type { Raw } from './html.ts';
 import type { SerialEntry, ValuePlugin } from './values.ts';
 
@@ -290,6 +290,8 @@ export const stateValues: {
   ) => FunctionReference;
   /** The parts of a merged handler, which `callable` makes one handler of. */
   m: (parts: FunctionReference[]) => FunctionReference[];
+  /** A value of an attribute that brumate writes, such as the scope attribute of a style. */
+  i: (value: unknown) => Internal;
   /** HTML that the client may insert again. */
   r: (html: string) => Raw;
   /** Children, by the export that renders them and their scope. */
@@ -310,6 +312,7 @@ export const stateValues: {
   e: (scope, anchor) => new ElementReference(scope, anchor),
   f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
   m: (parts) => Object.assign(parts, { [PARTS]: parts }),
+  i: (value) => new Internal(value),
   r: raw,
   n: HAS_CHILDREN ? (ref, scope) => new ChildrenReference(ref, scope) : unused,
   c: (id) => Object.assign(() => '', { brumateId: id }),

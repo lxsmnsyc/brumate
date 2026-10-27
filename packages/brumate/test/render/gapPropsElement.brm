@@ -1,0 +1,4 @@
+<script>
+  import GapPart from './GapPart.brm';
+</script>
+<GapPart as="div" class="item">Item</GapPart>

@@ -82,8 +82,8 @@ it('presses a ToggleButton that is a component with Enter', async () => {
   await page.waitFor(() => expect(page.text('.pinned')).toBe('true'));
 });
 
-// A part cannot update the attributes of a component in `as`: the project analysis gives live
-// props only to the components that a file imports, and `as` comes from a prop. See the outcome.
+// ToggleButton gives `as` on to a Button, and its attributes come from a spread. The project
+// analysis follows a component that a page gives to a part, not one that a part gives to another.
 it.fails('updates the ARIA of a ToggleButton that is a component', async () => {
   const page = await controls();
   const toggle = page.get('.toggle');
@@ -133,7 +133,7 @@ it('expands a Disclosure and its panel when both are components', async () => {
   expect(panel.getAttribute('aria-labelledby')).toBe(trigger.id);
 });
 
-it.fails('updates the attributes of a Disclosure and its panel that are components', async () => {
+it('updates the attributes of a Disclosure and its panel that are components', async () => {
   const page = await controls();
   pressWith(page.get('.disclosure-trigger'));
   await page.waitFor(() => expect(page.text('.open')).toBe('true'));

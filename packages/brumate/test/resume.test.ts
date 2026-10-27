@@ -909,7 +909,8 @@ describe('resume', () => {
       const server = await import(file('spikePage.brm.ts'));
       const { html } = await renderParts(server.default, {});
       // SpikeLink writes class="spike-link", and the spread of SpikeButton writes class="trigger".
-      expect(html).toContain('<a class="spike-link trigger"');
+      // The link has live props now, so it carries an anchor before its class.
+      expect(html).toMatch(/<a [^>]*class="spike-link trigger"/);
     });
   });
 
@@ -5303,6 +5304,18 @@ describe('a dynamic tag that names a component', () => {
     click(document.querySelector('.set')!);
     await waitFor(() => expect(text('em.tag')).toBe('b'));
   });
+});
+
+describe('a component that a page gives to a part in as', () => {
+  for (const name of ['gapPropsElement', 'gapPropsComponent']) {
+    it(`updates a prop that a part sends to its target: ${name}`, async () => {
+      await resume(name, {});
+      const item = () => document.querySelector('.item')!;
+      expect(item().getAttribute('aria-selected')).toBe('false');
+      click(item());
+      await waitFor(() => expect(item().getAttribute('aria-selected')).toBe('true'));
+    });
+  }
 });
 
 describe('a template that names a component only in an attribute value', () => {
