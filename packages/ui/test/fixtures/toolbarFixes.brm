@@ -37,6 +37,10 @@
   <ToggleButton id="a" class="va">A</ToggleButton>
   <ToggleButton id="b" class="vb">B</ToggleButton>
 </ToggleButtonGroup>
+<ToggleButtonGroup class="vnotes" aria-label="Vertical notes" selectionMode="multiple" orientation="vertical">
+  <ToggleButton id="n" class="vn">N</ToggleButton>
+  <textarea class="varea" aria-label="Notes"></textarea>
+</ToggleButtonGroup>
 <ToggleButtonGroup class="withfield" aria-label="With field" selectionMode="multiple">
   <ToggleButton id="x" class="wx">X</ToggleButton>
   <input class="gfield" aria-label="Group field" />

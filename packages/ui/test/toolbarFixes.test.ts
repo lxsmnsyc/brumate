@@ -144,3 +144,17 @@ it('leaves Up and Down to a text area of a vertical toolbar', async () => {
   expect(key(area, 'ArrowUp').defaultPrevented).toBe(false);
   expect(document.activeElement).toBe(area);
 });
+
+it('leaves Up and Down to a text area of a vertical toggle button group', async () => {
+  const page = await fixes();
+  const button = page.get('.vn');
+  const area = page.get('.varea');
+  await page.waitFor(() => {
+    button.focus();
+    expect(key(button, 'ArrowDown').defaultPrevented).toBe(true);
+  });
+  area.focus();
+  expect(key(area, 'ArrowDown').defaultPrevented).toBe(false);
+  expect(key(area, 'ArrowUp').defaultPrevented).toBe(false);
+  expect(document.activeElement).toBe(area);
+});
