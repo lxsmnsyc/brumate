@@ -26,10 +26,11 @@
   const { level, slot, children, ...rest } = $props<HeadingOwnProps>();
   // The props of the target of `as`, for the type of the component.
   const { as } = $props<HeadingProps<T>>();
+  let { ref } = $props<HeadingOwnProps>();
 
   const context = $getContext(HeadingContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const element = $memo((as ?? `h${level ?? slotProps(context, slot).level ?? 3}`) as AsTarget);
 </script>
 
-<{element} {...attributes} {...rest}>{children}</>
+<{element} ref=$bind(ref) {...attributes} {...rest}>{children}</>

@@ -25,7 +25,7 @@ import type {
   StreamParsePluginContext,
   SyncParsePluginContext,
 } from 'seroval';
-import { isRaw, rawHTML } from './html.ts';
+import { Internal, isRaw, rawHTML } from './html.ts';
 import type { Raw } from './html.ts';
 import { functionReferences, isBlob } from './calls.ts';
 import { MODIFIERS } from './events.ts';
@@ -176,6 +176,20 @@ const MergedPlugin = createPlugin<object, { a: SerovalNode }>({
   deserialize: (node, ctx) => stateValues.m(ctx.deserialize(node.a)),
 });
 
+/**
+ * A value of an attribute that brumate writes, which a live rest prop can hold. The ones that
+ * reach the page state are the scoped style attribute and `b-v`. The error "holds a Internal"
+ * no longer catches any other, so a new one needs a check of its own.
+ */
+const InternalPlugin = createPlugin<Internal, { a: SerovalNode }>({
+  tag: 'brumate/internal',
+  skipPlainObjects: true,
+  test: (value) => value instanceof Internal,
+  parse: parsers((value) => ({ a: value.value })),
+  serialize: (node, ctx) => `$b.i(${ctx.serialize(node.a)})`,
+  deserialize: (node, ctx) => stateValues.i(ctx.deserialize(node.a)),
+});
+
 /** Children of a component, as the export that renders them in the browser. */
 const ChildrenPlugin = createPlugin<object, { a: SerovalNode; b: SerovalNode }>({
   tag: 'brumate/children',
@@ -284,6 +298,7 @@ const valuePlugins: Plugin<any, any>[] = [
   BindingPlugin,
   FunctionPlugin,
   MergedPlugin,
+  InternalPlugin,
   ChildrenPlugin,
   RawPlugin,
   ComponentPlugin,

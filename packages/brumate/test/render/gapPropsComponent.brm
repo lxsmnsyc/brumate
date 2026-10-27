@@ -1,0 +1,5 @@
+<script>
+  import GapPart from './GapPart.brm';
+  import GapTarget from './GapTarget.brm';
+</script>
+<GapPart as=GapTarget class="item">Item</GapPart>

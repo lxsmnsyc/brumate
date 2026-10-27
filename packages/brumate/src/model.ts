@@ -92,6 +92,11 @@ export interface Declaration {
   writable?: boolean;
   /** True for a signal or a writable prop that `$bind` passes to a child, which needs a slot. */
   bound?: boolean;
+  /**
+   * The props of components that the binding passes the declaration to, and `value` or `checked`
+   * of an input. A signal that only `ref` binds holds an element that the browser fills.
+   */
+  boundAs?: Set<string>;
   /** True for `const name = await $memo(value)`: the render waits for the memo where it is declared. */
   awaited?: boolean;
   /** For `const name = $id()`, the position of the call among the `$id` calls of its scope. */

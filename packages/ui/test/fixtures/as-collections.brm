@@ -26,11 +26,8 @@
   let open = $signal<Key[]>(['docs']);
   let section = $signal<Key | null>(null);
   let tags = $signal(['news', 'travel', 'gaming']);
-  // The signals of elements are `any`, since a signal cannot take the type that `ref` of a part asks for yet.
-  // oxlint-disable-next-line typescript/no-explicit-any
-  let listRef = $signal<any>();
-  // oxlint-disable-next-line typescript/no-explicit-any
-  let itemRef = $signal<any>();
+  let listRef = $signal<HTMLElement>();
+  let itemRef = $signal<HTMLElement>();
   let seen = $signal('');
   const files = [
     { id: 'docs', name: 'Documents', children: [{ id: 'cv', name: 'cv.pdf' }] },

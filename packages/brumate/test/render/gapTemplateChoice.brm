@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import AsLink from './AsLink.brm';
+  import GapPart from './GapPart.brm';
+  import GapTarget from './GapTarget.brm';
+  import TplList from './TplList.brm';
+
+  let flag = $signal(true);
+</script>
+<TplList item=row />
+#template row(label: string) {
+  <GapPart as=(flag ? GapTarget : AsLink) class="gap-row">{label}</GapPart>
+}
