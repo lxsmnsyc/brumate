@@ -1,7 +1,7 @@
 ---
 id: dynamic-tag-types
 title: A dynamic tag checks its attributes and types its handlers from its tag
-status: active
+status: done
 priority: should
 type: feature
 outline: false
