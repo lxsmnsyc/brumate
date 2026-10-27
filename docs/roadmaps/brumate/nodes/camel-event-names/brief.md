@@ -1,7 +1,7 @@
 ---
 id: camel-event-names
 title: Event attributes are written in camel case only
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

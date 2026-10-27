@@ -1,7 +1,7 @@
 ---
 id: ui-landing
 title: A landing page for @brumate/ui
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
