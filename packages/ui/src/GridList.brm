@@ -5,6 +5,8 @@
   import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
 
   export interface GridListOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     selectionMode?: SelectionMode;
     selectionBehavior?: SelectionBehavior;
     disabledKeys?: Key[];
@@ -111,7 +113,7 @@
     ...rest
   } = $props<GridListProps<T>>();
   let { selectedKeys = [] } = $props<GridListOwnProps>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<GridListOwnProps>();
 
   const locale = $getContext(LocaleContext);
   const virtualizer = $getContext(VirtualizerContext);

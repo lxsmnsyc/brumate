@@ -1,8 +1,11 @@
 <script module>
+  import type { Bindable } from 'brumate/signals';
   import type { AsProps, AsTarget } from './as.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
 
   export interface LinkOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     href?: string;
     slot?: string | null;
     isDisabled?: boolean;

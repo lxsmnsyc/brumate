@@ -5,6 +5,8 @@
   import type { TreeNode } from './tree.ts';
 
   export interface TreeOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     selectionMode?: SelectionMode;
     selectionBehavior?: SelectionBehavior;
     disabledKeys?: Key[];
@@ -106,7 +108,7 @@
     ...rest
   } = $props<TreeProps<T>>();
   let { selectedKeys = [] } = $props<TreeOwnProps>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<TreeOwnProps>();
   let { expandedKeys = [] } = $props<TreeOwnProps>();
 
   // The rows that show, in order: each item, then its children while it is open.

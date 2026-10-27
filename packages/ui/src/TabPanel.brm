@@ -4,6 +4,8 @@
   import type { Key } from './collection.ts';
 
   export interface TabPanelOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     id: Key;
     shouldForceMount?: boolean;
     children?: unknown;
@@ -35,7 +37,7 @@
     children,
     ...rest
   } = $props<TabPanelProps<T>>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<TabPanelOwnProps>();
 
   const tabs = $getContext(TabsContext);
   const selected = $memo(Boolean(tabs) && selectedOf(tabs!) === id);

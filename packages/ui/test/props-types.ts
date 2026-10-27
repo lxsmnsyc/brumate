@@ -148,3 +148,29 @@ void Button({ as: 'blink-me' });
 void Button({ as: Link, href: '/x', isCurrent: true });
 // @ts-expect-error A Link has no `value`.
 void Button({ as: Link, value: 'x' });
+
+// ref-type-parts: a caller's `$signal<HTMLElement>()` is `HTMLElement | undefined`, and `ref` of a
+// part takes it through `$bind`. It is declared in the own props, so an element target does not
+// need a `ref` of its own.
+import { $bind } from 'brumate/signals';
+
+declare const bound: HTMLElement | undefined;
+void Link({ href: '/x', ref: $bind(bound) });
+void Button({ ref: $bind(bound) });
+void Heading({ level: 2, ref: $bind(bound) });
+void ListBox({ 'aria-label': 'Fruit', ref: $bind(bound) });
+void ListBoxItem({ id: 'a', ref: $bind(bound) });
+void Menu({ 'aria-label': 'Actions', ref: $bind(bound) });
+void MenuItem({ id: 'a', ref: $bind(bound) });
+void GridList({ 'aria-label': 'Files', ref: $bind(bound) });
+void GridListItem({ id: 'a', ref: $bind(bound) });
+void Tree({ items: [], item: () => '', ref: $bind(bound) });
+void TreeItem({ id: 'a', ref: $bind(bound) });
+void TabList({ ref: $bind(bound) });
+void Tab({ id: 'a', ref: $bind(bound) });
+void TabPanel({ id: 'a', ref: $bind(bound) });
+void TagList({ 'aria-label': 'Tags', ref: $bind(bound) });
+void Tag({ id: 'a', ref: $bind(bound) });
+void Link({ href: '/x', as: 'span', ref: $bind(bound) });
+// @ts-expect-error A signal of a string is not an element.
+void Link({ href: '/x', ref: $bind('a') });

@@ -4,6 +4,8 @@
   import type { Key, SelectionMode } from './collection.ts';
 
   export interface MenuOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     selectionMode?: SelectionMode;
     disabledKeys?: Key[];
     disallowEmptySelection?: boolean;
@@ -84,7 +86,7 @@
     ...rest
   } = $props<MenuProps<T>>();
   let { selectedKeys = [] } = $props<MenuOwnProps>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<MenuOwnProps>();
 
   const trigger = $getContext(MenuTriggerContext);
   // A field around the menu, such as of an Autocomplete, keeps focus and can filter the items.

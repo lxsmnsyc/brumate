@@ -4,6 +4,8 @@
   import type { Key } from './collection.ts';
 
   export interface TagOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
@@ -44,7 +46,7 @@
     children,
     ...rest
   } = $props<TagProps<T>>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<TagOwnProps>();
 
   const group = $getContext(TagGroupContext);
   const rowId = $id();
