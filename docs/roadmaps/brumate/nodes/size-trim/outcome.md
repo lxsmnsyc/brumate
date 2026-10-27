@@ -15,8 +15,10 @@
 
 ## Deviations
 
-- The goal of 0.1 kB of the baseline is not met. Todos before `load`: baseline 14,227 B, main 14,823 B (+596), after 14,768 B (+541). Main before the rebase was 14,836 B.
-- Most of the gap is features: `readFields` is 254 B, `settle` about 50 B, merged handlers about 45 B. See `docs/performance.md`. Cutting more means dropping or reshaping a feature, which is a decision for the maintainer.
+- The goal of 0.1 kB of the baseline is not met. Todos before `load`: baseline 14,227 B, main 14,825 B (+598), after 14,763 B (+536). Main before the rebase was 14,836 B.
+- Most of the gap is features: `readFields` is about 256 B, `settle` about 50 B, merged handlers about 45 B. See `docs/performance.md`. Cutting more means dropping or reshaping a feature, The maintainer accepted the remaining size over the baseline on 2026-10-27, as this accounting explains it.
+
+- Review fixes: `settle` keeps its early return (`if (dirty.delete(scope))`), so a read of a clean scope walks no bucket. `updateReady` is `async` again, so a synchronous throw of `load` rejects. The regex merge in `readFields` was not done. I did not rerun the memo-chain timing probe; the memo and batching tests pass.
 
 ## Stubs left
 

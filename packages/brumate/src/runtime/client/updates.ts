@@ -466,10 +466,10 @@ function loadUpdate(scope: Scope, slot?: number): Promise<unknown> {
  * Loads the update code of a component and of the components above it, which a write of a bound
  * prop reaches, so the writes of a handler run before it returns. A handler waits for it.
  */
-export function updateReady(scope: Scope | undefined): Promise<unknown> {
-  return scope
-    ? Promise.all([loadUpdate(scope), updateReady(scope.p ?? scope.o), updateReady(scope.t)])
-    : Promise.resolve();
+export async function updateReady(scope: Scope | undefined): Promise<unknown> {
+  return (
+    scope && Promise.all([loadUpdate(scope), updateReady(scope.p ?? scope.o), updateReady(scope.t)])
+  );
 }
 
 /** The writes of the pass that runs that wait for code, to run as one pass of their own. */
@@ -581,13 +581,14 @@ const dirty: Set<Scope> = new Set();
 
 /** Computes the memos of a scope that wait, so code that reads one in a handler reads the new value. */
 function settle(scope: Scope): void {
-  dirty.delete(scope);
   // A memo that reads another memo of the scope settles it through `get`, so the order here does not matter.
-  for (const [rank, bucket] of (levels[depthOf(scope)]?.m ?? []).entries()) {
-    const key = `${scope.id}:m${rank}`;
-    const compute = bucket?.get(key);
-    bucket?.delete(key);
-    compute?.();
+  if (dirty.delete(scope)) {
+    for (const [rank, bucket] of (levels[depthOf(scope)]?.m ?? []).entries()) {
+      const key = `${scope.id}:m${rank}`;
+      const compute = bucket?.get(key);
+      bucket?.delete(key);
+      compute?.();
+    }
   }
 }
 

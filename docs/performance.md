@@ -35,12 +35,12 @@ Todos, JS before `load`, gzip bytes from `benchmarks/results/*.json` (`browser.b
 | Build                                                  | Raw (B) | Gzip (B) | Against the baseline |
 | ------------------------------------------------------ | ------: | -------: | -------------------: |
 | Baseline, `f45a5c74` rebuilt                           |  33,607 |   14,227 |                    0 |
-| Main before size-trim (`eb30de16`, with #295 and #296) |  35,132 |   14,823 |                 +596 |
-| After size-trim                                        |  35,009 |   14,768 |                 +541 |
+| Main before size-trim (`eb30de16`, with #295 and #296) |  35,132 |   14,825 |                 +596 |
+| After size-trim                                        |  35,009 |   14,763 |                 +541 |
 
-Only the large `client` chunk moved (25,150 B raw at the baseline). The goal of 0.1 kB is not met. What the rest buys, from removing each feature in turn:
+Only the large `client` chunk moved (25,150 B raw at the baseline). The goal of 0.1 kB is not met, and the maintainer accepted the remaining size on 2026-10-27, as the list below accounts for it. What the rest buys, from removing each feature in turn:
 
-- `readFields` and `typedInto` (fields typed before the code loads): 254 B.
+- `readFields` and `typedInto` (fields typed before the code loads): about 256 B.
 - `settle`, the read of a memo that waits in a pass (batching): about 50 B.
 - The merged handlers (`mergeHandlers` in `callable` and `addEntryHandlers`): about 45 B. They were already in the baseline.
 - Held memo errors in `get`: 8 B. `updateReady`: 11 B.
