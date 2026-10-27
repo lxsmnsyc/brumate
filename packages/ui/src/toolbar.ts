@@ -92,6 +92,30 @@ export function moveFocus(
 }
 
 /**
+ * Prevents the default of Home and End while the toolbar moves focus with them, so the page does
+ * not scroll. A text field keeps them, since they move its caret. The check needs the focused
+ * item, so it cannot be a fixed key list of the handler. Returns a function that stops.
+ */
+export function preventEdges(toolbar: Element): () => void {
+  const listener = (event: Event): void => {
+    const { key, ctrlKey, metaKey, altKey } = event as KeyboardEvent;
+    if ((key !== 'Home' && key !== 'End') || ctrlKey || metaKey || altKey || isNested(toolbar)) {
+      return;
+    }
+    const active = document.activeElement;
+    if (
+      active &&
+      toolbarItems(toolbar).includes(active as HTMLElement) &&
+      !movesCaret(active, key)
+    ) {
+      event.preventDefault();
+    }
+  };
+  toolbar.addEventListener('keydown', listener);
+  return () => toolbar.removeEventListener('keydown', listener);
+}
+
+/**
  * Keeps one item in the order of Tab while the items change. An item that held it can become
  * disabled or leave the toolbar, such as a button that a press disables, and then Tab would skip
  * the toolbar. Returns a function that stops.

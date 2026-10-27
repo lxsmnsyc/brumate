@@ -96,11 +96,12 @@
     return inToolbar ? 'group' : 'toolbar';
   }
 
-  // Only the arrow keys that move focus are prevented, as in a Toolbar.
+  // Only the keys that move focus are prevented: Home and End, and Up and Down when vertical.
+  // The group has no text fields, so they never need their default.
   function keys(vertical: boolean) {
     return vertical
-      ? { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown')) }
-      : { onKeyDown: $handler(keyDown) };
+      ? { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'Home', 'End')) }
+      : { onKeyDown: $handler(prevent(keyDown, 'Home', 'End')) };
   }
 
   $setContext(ToggleGroupContext, { selectionMode, selectedKeys, isDisabled, toggle });
