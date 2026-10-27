@@ -4,13 +4,19 @@
   import type { ProgressState } from './progress.ts';
 
   export interface MeterOwnProps<T extends AsTarget = 'div'> {
+    /** The current value. */
     value?: number;
+    /** The smallest value of the range. */
     minValue?: number;
+    /** The largest value of the range. */
     maxValue?: number;
     /** The text of the value, in place of the formatted number. */
     valueLabel?: string;
+    /** The options of `Intl.NumberFormat` for the text of the value. */
     formatOptions?: Intl.NumberFormatOptions;
+    /** A template that gets the percentage and the text of the value, to draw the bar. */
     content?: (state: ProgressState) => unknown;
+    /** A `Label`, and what the meter shows. */
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

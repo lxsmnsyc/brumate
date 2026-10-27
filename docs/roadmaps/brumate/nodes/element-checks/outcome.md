@@ -4,18 +4,20 @@
 
 - packages/brumate/src/check.ts:
   - A plain element writes `$$element(tag, { ... })`, typed by `Elements[tag]` (`Record<string, unknown>` for a tag outside `Elements`). Static attributes are string literals or `true`, value attributes their expression, `ref=$bind(x)` is `ref: $$bind(x)` (a local helper typed `BoundSignal<T>`), and computed attributes `[name]: value`. Handlers stay in `$$on`, which checks the event name. An element with no such attribute writes nothing.
-  - Each spread is checked apart, `$$spread(tag, value)`: every key must be an attribute of the tag, with its type. An object spread in a literal has no excess check, so this is the only way to report `{...{ foo: 1 }}`.
+  - Each spread is checked apart: `$$spread(tag)(value)` checks its names (an object spread in a literal has no excess check, so this is the only way to report `{...{ foo: 1 }}`; the error names the attribute, `"foo is not an attribute of <div>"`), and `$$element(tag)({...value})` checks its values, with the braces mapped to the spread.
+  - The helpers are curried and constrained by `keyof Elements`, with a second overload for other tags. See Verification for the time.
+  - A namespaced attribute (`xlink:href`, `xmlns:xlink`) is not in the element types, so only its value is checked, as on main.
   - `Writer.key` maps a property name to its attribute: identifiers are copied, other names (`aria-label`) are quoted with the quotes mapped to the ends of the name. Before, errors at such names were dropped. Computed brackets are mapped too.
   - Children of a component are `children: $$markup` (`Markup`), with the name mapped to the range of the children, so a component that takes none, or takes another type, reports at the children.
   - `#template` already answered `Promise<Markup>` (element-types); no change.
   - A `$props<T>()` call with a rest writes `$props<$$Omit<T, "other">>()`, where the names are those the other `$props` calls destructure. This matches the runtime (`$$b.unbind`, codegen/patch.ts). Without it a rest held the bindable props of the other call (`isSelected`, `value`, `isOpen`) and every spread of it failed.
-- packages/tsc/test/fixture/src/Elements.brm and 7 new expected errors in packages/tsc/test/tsc.test.ts: unknown attribute, wrong value, a button signal bound to a div ref, a wrong value in a spread, a computed attribute, children given to Badge, and the existing `<input value=$bind(size)>` of Bind.brm (a number signal on `value`, an error by the contract).
+- packages/tsc/test/fixture/src/Elements.brm and 7 new expected errors in packages/tsc/test/tsc.test.ts: unknown attribute, wrong value, a button signal bound to a div ref, a wrong value in a spread, a computed attribute, children given to Badge, and the existing `<input value=$bind(size)>` of Bind.brm. `value=$bind(numberSignal)` on an input is an error by the contract: the binding writes the string of the field, so the signal must take a string. The fixture also shows `autocorrect`, `webkitdirectory`, `xmlns:xlink` and `xlink:href` type-check.
 - packages/brumate/test/check.test.ts: 3 tests for the generated element call, the mappings of quoted names, brackets and children, and the rest omit.
-- Changeset .changeset/element-checks.md (minor brumate, patch @brumate/ui).
+- Changeset .changeset/element-checks.md (minor brumate, minor @brumate/ui: the stricter props types are a type break, said in the changeset).
 
 Callers fixed: 51 errors in 48 files.
 
-- 45 parts in packages/ui/src took `[attribute: string]: unknown` and spread the rest onto a plain element. Their props interface now `extends ElementProps<'tag'>` (the element it spreads onto). 14 of them omit own props that clash: `onChange` (Calendar, Checkbox, ColorArea, ColorSlider, ColorSwatchPicker, ColorWheel, Slider, Switch, TokenField), `id` (Column, Row), `onDrop` (DropZone), `onResize` (ResizableTableContainer), `onSelectionChange` (Table). NavigationTreeItemLink spreads onto an `a` or a `span`, so it takes `GlobalAttributes<HTMLElement>`. Cell spreads onto `th` or `td` and takes `ElementProps<'td'>`.
+- 45 parts in packages/ui/src took `[attribute: string]: unknown` and spread the rest onto a plain element. Their props interface now `extends ElementProps<'tag'>` (the element it spreads onto). 14 of them omit own props that clash: `onChange` (Calendar, Checkbox, ColorArea, ColorSlider, ColorSwatchPicker, ColorWheel, Slider, Switch, TokenField), `id` (Column, Row), `onDrop` (DropZone), `onResize` (ResizableTableContainer), `onSelectionChange` (Table). NavigationTreeItemLink extends `ElementProps<'a'>`, so `href`, `rel`, `target` and `download` still pass, and casts the rest to `ElementProps<'span'>` at the span of a disabled item. Cell extends `ElementProps<'th'>` (a superset of `td`) and casts the rest to `ElementProps<'td'>` at the `td`.
 - Input and TextArea spread attributes from contexts typed `Record<string, unknown>`: a cast at the spread to `ElementProps<'input'>` / `<'textarea'>`.
 - packages/ui/test/fixtures/AsTarget.brm: rest typed `Omit<ElementProps<'div'>, 'ref'>`.
 - website/src/components/Icon.brm: rest typed `Omit<ElementProps<'svg'>, 'name' | 'size'>`.
@@ -50,8 +52,10 @@ Callers fixed: 51 errors in 48 files.
 - `npx tsdown` in packages/brumate, language-core, tsc (and language-server, for vscode).
 - `npx tsc --noEmit` in brumate (and `-p tsconfig.elements.json`), language-core, language-server, typescript-plugin, vscode, tsc: exit 0.
 - `npx brumate-tsc --noEmit` in packages/ui, website and the 7 examples: exit 0. Before the caller fixes: ui 55 errors, website 2, examples/ui 53, tracker 1.
-- `npx vitest run` in packages/brumate: 1088 passed (after the rebase on main). packages/tsc: 1 passed. packages/ui (`--maxWorkers=2`): 540 passed, 1 expected fail.
+- `npx vitest run` in packages/brumate: 1098 passed (after merging main). packages/tsc: 1 passed. packages/ui (`--maxWorkers=2`): 544 passed, 1 expected fail.
 - `npx oxlint`: exit 0 (warnings only). Root `npx oxfmt --check`: exit 0.
+
+- Time of `brumate-tsc --noEmit --extendedDiagnostics` in packages/ui (see the log for the cause): main 7.3M instantiations; the first version of this node 21.6M, about 3x the time; now 7.7M. Three paired runs, main against head: real 9.7/10.4, 12.3/14.2, 12.2/12.5 s; user 13.4/14.1, 14.8/16.0, 14.4/15.2 s (1.05x to 1.15x, the machine was shared).
 
 ## Size
 

@@ -1,7 +1,7 @@
 ---
 id: docs-overlays
 title: Complete the docs of Overlays, Navigation, Status, Layout, Animation and Utilities
-status: active
+status: done
 priority: should
 type: docs
 outline: false

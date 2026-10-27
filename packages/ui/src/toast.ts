@@ -155,8 +155,9 @@ export class ToastQueue<T> {
 const queues = new Map<string, ToastQueue<unknown>>();
 
 /**
- * The queue of toasts with a name, `default` by default. The first call makes it, with the most
- * toasts that show at a time.
+ * The queue of toasts with a name, `default` by default. The first call makes it. A call that
+ * passes `maxVisibleToasts`, the most toasts that show at a time, sets it, also on a queue that
+ * another call made.
  */
 export function toastQueue<T = unknown>(
   name = 'default',

@@ -57,11 +57,15 @@ declare const $$markup: $$Markup;
 /** \`Omit\` that keeps the index signatures, for the rest of a \`$props\` call. */
 type $$Omit<T, K> = { [P in keyof T as P extends K ? never : P]: T[P] };
 type $$Elements = import('brumate/elements').Elements;
+// The helpers of elements are curried and constrained by \`keyof Elements\`, with a second overload
+// for other tags. A parameter typed from a generic \`T extends string\` made TypeScript resolve the
+// attributes of every tag, in the call and in the declaration of each file, which tripled the time.
 /** Checks the attributes of a plain element against its type. A tag that \`Elements\` lacks takes any. */
-type $$Props<T> = T extends keyof $$Elements ? $$Elements[T] : Record<string, unknown>;
-declare function $$element<T extends string>(tag: T, attributes: $$Props<T>): void;
-/** Checks a spread onto a plain element: each value, and each name, since a spread has no excess check. */
-declare function $$spread<T extends string, S>(tag: T, value: S & { [K in keyof S]: K extends keyof $$Props<T> ? $$Props<T>[K] : never }): void;
+declare function $$element<T extends keyof $$Elements>(tag: T): (attributes: $$Elements[T]) => void;
+declare function $$element(tag: string): (attributes: Record<string, unknown>) => void;
+/** Checks the names of a spread onto a plain element, which has no excess check. \`$$element\` checks its values. */
+declare function $$spread<T extends keyof $$Elements>(tag: T): <S>(value: S & { [K in Exclude<keyof S, keyof $$Elements[T]>]: { [M in \`\${K & string} is not an attribute of <\${T}>\`]: never } }) => void;
+declare function $$spread(tag: string): (value: object) => void;
 /** \`$bind\` of a \`ref\`, which needs no import in markup. */
 declare function $$bind<T>(signal: T): import('brumate/signals').BoundSignal<T>;
 declare function $$dynamic(tag: string | ((props: never, ...rest: never[]) => unknown), props: Record<string, unknown>): void;
@@ -497,25 +501,48 @@ class Generator {
     for (const attribute of node.attributes) {
       if (attribute.kind === 'spread') {
         // Without parentheses, so that the error is at the spread.
-        out.text(`$$spread(${JSON.stringify(node.tag)}, `);
+        out.text(`$$spread(${JSON.stringify(node.tag)})(`);
         out.copy(attribute.value);
+        out.text(');\n');
+        // The values, as an object of the spread alone, whose braces are those of the spread.
+        out.text(`$$element(${JSON.stringify(node.tag)})(`);
+        out.stand({ start: attribute.start, end: attribute.start + 1 }, '{');
+        out.text('...');
+        out.copy(attribute.value);
+        out.text(' ');
+        out.stand({ start: attribute.end - 1, end: attribute.end }, '}');
+        out.text(');\n');
+      }
+    }
+    // A namespaced name, such as `xlink:href` or `xmlns:xlink`, is not in the element types, so
+    // only its value is checked.
+    const namespaced = (attribute: Attribute): boolean =>
+      (attribute.kind === 'static' || attribute.kind === 'value') && attribute.name.includes(':');
+    for (const attribute of node.attributes) {
+      if (namespaced(attribute) && attribute.kind === 'value') {
+        out.text('$$use(');
+        out.expression(attribute.value);
         out.text(');\n');
       }
     }
     if (
       !node.attributes.some(
-        (attribute) => attribute.kind !== 'event' && attribute.kind !== 'spread',
+        (attribute) =>
+          attribute.kind !== 'event' && attribute.kind !== 'spread' && !namespaced(attribute),
       )
     ) {
       return;
     }
-    out.text(`$$element(${JSON.stringify(node.tag)}, `);
+    out.text(`$$element(${JSON.stringify(node.tag)})(`);
     // An error of the whole object, such as a computed name of any string, spans the opening tag.
     out.stand({ start: node.start, end: node.start + 1 }, '{');
     for (const attribute of node.attributes) {
       switch (attribute.kind) {
         case 'static':
         case 'value':
+          if (namespaced(attribute)) {
+            break;
+          }
           this.propName(attribute);
           if (attribute.kind === 'value') {
             out.expression(attribute.value);

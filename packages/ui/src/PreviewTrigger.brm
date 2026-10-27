@@ -5,11 +5,17 @@
   import type { ContextValue } from './slots.ts';
 
   export interface PreviewTriggerProps {
+    /** The time in milliseconds that hover or focus waits before the preview shows. */
     delay?: number;
+    /** The time in milliseconds between the pointer leaving and the preview hiding. */
     closeDelay?: number;
+    /** Never shows the preview. */
     isDisabled?: boolean;
+    /** Runs with each change of whether the preview shows. */
     onOpenChange?: (open: boolean) => void;
+    /** A `Link` or a `Button`, and a `Popover`. */
     children?: unknown;
+    /** Whether the preview shows. Alone it starts shown, and `$bind` writes your signal. */
     isOpen?: Bindable<boolean>;
   }
 </script>

@@ -2,6 +2,7 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface OverlayArrowProps extends ElementProps<'div'> {
+    /** The shape of the arrow, if it is not drawn with CSS. */
     children?: unknown;
   }
 </script>

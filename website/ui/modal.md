@@ -16,6 +16,74 @@ A dialog over the page, which the user deals with before they go on, such as a c
 - A Modal inside a Modal opens an overlay of its own, over the first, and Escape closes only the top one.
 - A [Sheet](./sheet.md) is a Modal along an edge of the window.
 
+## Anatomy
+
+```html
+<DialogTrigger>
+  <Button />
+  <ModalOverlay>
+    <Modal>
+      <Dialog>
+        <Heading slot="title" />
+        <Button slot="close" />
+      </>
+    </>
+  </>
+</>
+```
+
+The `ModalOverlay` is optional: a `Modal` renders one around itself. The `DialogTrigger` is optional when the overlay has its own `isOpen`.
+
+## Props
+
+### ModalOverlay
+
+```props ModalOverlay
+
+```
+
+### Modal
+
+```props Modal
+
+```
+
+## Data attributes
+
+### ModalOverlay
+
+| Attribute            | When                                                    |
+| -------------------- | ------------------------------------------------------- |
+| `data-modal-overlay` | Always.                                                 |
+| `data-closed`        | It has `transition`, and it is closed or about to open. |
+| `data-enter`         | It has `transition`, and its enter is running.          |
+| `data-leave`         | It has `transition`, and its leave is running.          |
+| `data-transition`    | It has `transition`, and it is entering or leaving.     |
+
+### Modal
+
+| Attribute    | When    |
+| ------------ | ------- |
+| `data-modal` | Always. |
+
+## Keyboard
+
+| Key                | Action                                                                                                                                               |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`              | Moves focus to the trigger button.                                                                                                                   |
+| `Enter` or `Space` | Presses the trigger button, which opens the modal.                                                                                                   |
+| `Tab`              | In the modal, moves focus to the next element, and wraps at the end.                                                                                 |
+| `Shift + Tab`      | In the modal, moves focus to the previous element, and wraps at the start.                                                                           |
+| `Escape`           | Closes the modal when focus is inside it, unless `isKeyboardDismissDisabled` is set or a part inside used the key. A tooltip that shows hides first. |
+
+## Controlled and uncontrolled
+
+Inside a `DialogTrigger`, the trigger holds whether the modal is open, with `isOpen` and `onOpenChange`. A modal with its own `isOpen` ignores the trigger: `isOpen=(true)` starts it open, and `isOpen=$bind(signal)` writes your signal. Its `onOpenChange` then runs when the modal closes itself. See [State](./state.md).
+
+## Styling
+
+Style the overlay and the box with the data attributes above, such as `[data-closed]` on the overlay. The overlay sets `--visual-viewport-height`. See [Styling](./styling.md).
+
 ## Animating it
 
 `transition` on the overlay lets CSS animate the overlay and the Modal, with `data-closed`, `data-enter` and `data-leave` on the overlay. It waits for the animations of both:

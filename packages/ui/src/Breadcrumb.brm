@@ -2,7 +2,9 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface BreadcrumbProps extends ElementProps<'li'> {
+    /** Marks the step for the page that is open, and disables its link. */
     isCurrent?: boolean;
+    /** A `Link`. */
     children?: unknown;
   }
 </script>
@@ -14,8 +16,8 @@
 
   /**
    * One step of Breadcrumbs: an <li> around a Link.
-   * `isCurrent` marks the page that the trail ends at. Its link gets aria-current="page". React
-   * Aria finds the last step itself, from a collection. Here the caller marks it. It shows
+   * `isCurrent` marks the page that the trail ends at. Its link gets aria-current="page". A part
+   * cannot read the structure of its children, so the caller marks it. It shows
    * `data-current` and `data-disabled`. The current step is disabled, so its
    * link does not load the page that is open.
    */

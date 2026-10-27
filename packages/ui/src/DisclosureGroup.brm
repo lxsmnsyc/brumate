@@ -3,10 +3,15 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface DisclosureGroupOwnProps<T extends AsTarget = 'div'> {
+    /** Lets several disclosures be expanded at once. */
     allowsMultipleExpanded?: boolean;
+    /** Disables every disclosure in the group. */
     isDisabled?: boolean;
+    /** Runs with the keys of the expanded disclosures on each change. */
     onExpandedChange?: (keys: string[]) => void;
+    /** The `Disclosure` elements. */
     children?: unknown;
+    /** The keys of the expanded disclosures. Alone it starts them, and `$bind` writes your signal. */
     expandedKeys?: Bindable<string[]>;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

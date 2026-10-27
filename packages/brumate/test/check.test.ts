@@ -108,11 +108,17 @@ describe('toTypeScript', () => {
 <div ref=$bind(box) tabindex="0" hidden aria-label=(key) [key]=('x') {...rest} onClick=(() => {})></div>
 <p></p>`);
     expect(code).toContain('$$on("div", "click", (() => {}));');
-    expect(code).toContain('$$spread("div", rest);');
+    expect(code).toContain('$$spread("div")(rest);\n$$element("div")({...rest });');
     expect(code).toContain(
-      '$$element("div", { ref: $$bind(box), tabindex: "0", hidden: true, "aria-label": (key), [key]: (\'x\'), });',
+      '$$element("div")({ ref: $$bind(box), tabindex: "0", hidden: true, "aria-label": (key), [key]: (\'x\'), });',
     );
     expect(code).not.toContain('$$element("p"');
+    // A namespaced name is not in the element types, so only its value is checked.
+    const svg = body(
+      '<svg xmlns:xlink="http://www.w3.org/1999/xlink"><use xlink:href=(href) /></svg>',
+    );
+    expect(svg).toContain('$$use((href));');
+    expect(svg).not.toContain('xlink');
   });
 
   it('maps the names of attributes, also quoted ones, and the children of a component', () => {

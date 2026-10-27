@@ -2,6 +2,7 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface ToastContentProps extends ElementProps<'div'> {
+    /** The text of the toast, with `Text` elements that have `slot="title"` and `slot="description"`. */
     children?: unknown;
   }
 </script>

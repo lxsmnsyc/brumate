@@ -2,7 +2,9 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface BreadcrumbsProps extends ElementProps<'ol'> {
+    /** Disables every link of the trail. */
     isDisabled?: boolean;
+    /** The `Breadcrumb` elements. */
     children?: unknown;
   }
 </script>

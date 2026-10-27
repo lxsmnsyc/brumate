@@ -6,6 +6,72 @@ A notice that comes and goes, such as "Draft saved".
 
 ```
 
+## Anatomy
+
+```html
+<ToastRegion>
+  <Toast>
+    <ToastContent>
+      <Text slot="title" />
+      <Text slot="description" />
+    </>
+    <Button slot="close" />
+  </>
+</>
+```
+
+The `Text` with `slot="description"` and the close `Button` are optional. The `Toast` is the root of the `toast` template of the region.
+
+## Props
+
+### ToastRegion
+
+```props ToastRegion
+
+```
+
+### Toast
+
+```props Toast
+
+```
+
+### ToastContent
+
+```props ToastContent
+
+```
+
+## Data attributes
+
+### ToastRegion
+
+| Attribute    | When                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| `data-queue` | The region shows toasts, with the name of its queue. It is absent while the queue is empty. |
+
+### Toast
+
+| Attribute         | When                                                                   |
+| ----------------- | ---------------------------------------------------------------------- |
+| `data-toast-key`  | Always, with the key of the toast in the queue.                        |
+| `data-closed`     | The region has `transition`, and the toast is closed or about to open. |
+| `data-enter`      | The region has `transition`, and the enter of the toast is running.    |
+| `data-leave`      | The region has `transition`, and the leave of the toast is running.    |
+| `data-transition` | The region has `transition`, and the toast is entering or leaving.     |
+
+## Keyboard
+
+| Key                  | Action                                                                                                                     |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `F6` or `Shift + F6` | Moves focus to the newest toast that stays. In the region, gives focus back to where it was before. Shift changes nothing. |
+| `Tab`                | Moves focus between the toasts and their buttons, in the order of the page.                                                |
+| `Enter` or `Space`   | On the close button, closes the toast.                                                                                     |
+
+## Styling
+
+Style a toast with the data attributes above, such as `[data-closed]` while it comes in. The region has no style of its own, so place it with CSS, such as `position: fixed` in a corner. See [Styling](./styling.md).
+
 ## The queue
 
 A queue holds the toasts. `toastQueue(name)` returns the queue with that name, `default` by default, so any handler can add to it:
@@ -18,7 +84,7 @@ toastQueue().close(key);
 ```
 
 - `timeout` closes a toast after that many milliseconds, at least 5000. The time stops while the pointer or focus is in the region. Leave it out for a notice that people must not miss.
-- `maxVisibleToasts`, the second argument of the first `toastQueue` call, is how many show at a time, 5 by default. The others wait.
+- `maxVisibleToasts`, the second argument of `toastQueue`, is how many show at a time, 5 by default. Any call that passes it sets it. The others wait.
 
 ## The region
 

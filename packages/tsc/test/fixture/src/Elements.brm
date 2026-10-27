@@ -19,3 +19,4 @@
 </div>
 <span autocorrect="off" contenteditable="true"></span>
 <input type="file" webkitdirectory>
+<svg xmlns:xlink="http://www.w3.org/1999/xlink"><use xlink:href="#icon" /></svg>
