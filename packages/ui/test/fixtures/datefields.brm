@@ -14,6 +14,8 @@
   let german = $signal<string | null>('2026-10-15');
   let sent = $signal<string | null>('2026-03-10');
   let need = $signal<string | null>(null);
+  let thai = $signal<string | null>('2026-10-15');
+  let arabic = $signal<string | null>('2026-10-15');
 </script>
 
 <main>
@@ -33,6 +35,18 @@
       <DateInput class="german-input" />
     </DateField>
   </I18nProvider>
+  <I18nProvider locale="th-TH">
+    <DateField class="thai" value=$bind(thai)>
+      <Label>วันที่</Label>
+      <DateInput class="thai-input" />
+    </DateField>
+  </I18nProvider>
+  <I18nProvider locale="ar-SA">
+    <DateField class="arabic" value=$bind(arabic)>
+      <Label>التاريخ</Label>
+      <DateInput class="arabic-input" />
+    </DateField>
+  </I18nProvider>
   <form class="form" onSubmit=((event) => event.preventDefault())>
     <DateField class="sent" name="sent" value=$bind(sent)>
       <Label>Sent</Label>
@@ -44,6 +58,7 @@
       <FieldError class="need-error" />
     </DateField>
   </form>
+  <p class="locale-state">{JSON.stringify([thai, arabic])}</p>
   <p class="state">{JSON.stringify([due, empty, german, sent, need])}</p>
 </main>
 

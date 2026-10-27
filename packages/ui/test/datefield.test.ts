@@ -194,3 +194,56 @@ it('checks isRequired on a submit, and gives back the first date on a reset', as
   await page.waitFor(() => expect(state(page)[3]).toBe('2026-03-10'));
   expect(page.get('.need').hasAttribute('data-invalid')).toBe(false);
 });
+
+it('leaves ArrowLeft and ArrowRight with Ctrl, Alt or Meta to the browser', async () => {
+  const page = await fields();
+  const input = page.get('.due-input');
+  const month = segment(page, '.due-input', 'month');
+  month.focus();
+  // The bare arrow moves, which shows that the handler has loaded.
+  press('ArrowRight', month);
+  await page.waitFor(() => expect(document.activeElement).toBe(segment(page, '.due-input', 'day')));
+  month.focus();
+  for (const init of [{ altKey: true }, { ctrlKey: true }, { metaKey: true }]) {
+    for (const key of ['ArrowRight', 'ArrowLeft']) {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+      month.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+      // Focus moves a moment after the key, so wait before checking that it stayed.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(document.activeElement).toBe(month);
+    }
+  }
+  expect(input.contains(document.activeElement)).toBe(true);
+  // The bare arrow moves, and is prevented.
+  const event = new KeyboardEvent('keydown', {
+    key: 'ArrowRight',
+    bubbles: true,
+    cancelable: true,
+  });
+  month.dispatchEvent(event);
+  await page.waitFor(() => expect(document.activeElement).toBe(segment(page, '.due-input', 'day')));
+  expect(event.defaultPrevented).toBe(true);
+});
+
+it('shows the Gregorian year in a locale with another calendar, and types it back', async () => {
+  const page = await fields();
+  // Thai uses the Buddhist calendar, in which 2026 is 2569.
+  expect(segments(page, '.thai-input').join('')).toContain('2026');
+  expect(segments(page, '.thai-input').join('')).not.toContain('2569');
+  segment(page, '.thai-input', 'year').focus();
+  type('2027');
+  await page.waitFor(() => expect(JSON.parse(page.text('.locale-state'))[0]).toBe('2027-10-15'));
+  expect(segment(page, '.thai-input', 'year').textContent).toBe('2027');
+});
+
+it('types ASCII digits into a segment that shows Arabic-Indic digits', async () => {
+  const page = await fields();
+  // ar-SA uses the Islamic calendar, and its own digits.
+  const year = segment(page, '.arabic-input', 'year');
+  expect(year.textContent).toBe('٢٠٢٦');
+  year.focus();
+  type('2027');
+  await page.waitFor(() => expect(JSON.parse(page.text('.locale-state'))[1]).toBe('2027-10-15'));
+  expect(year.textContent).toBe('٢٠٢٧');
+});
