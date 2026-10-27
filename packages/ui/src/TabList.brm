@@ -4,6 +4,7 @@
   export interface TabListOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** The `Tab` elements. */
     children?: unknown;
   }
 

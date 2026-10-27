@@ -2,6 +2,7 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface SelectionIndicatorOwnProps {
+    /** The content of the indicator. */
     children?: unknown;
   }
 

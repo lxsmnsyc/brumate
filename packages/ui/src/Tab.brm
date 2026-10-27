@@ -6,8 +6,11 @@
   export interface TabOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** The key of the tab, which its `TabPanel` shares. */
     id: Key;
+    /** Keeps the tab from selection. */
     isDisabled?: boolean;
+    /** The content of the tab. */
     children?: unknown;
   }
 

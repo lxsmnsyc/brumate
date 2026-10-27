@@ -1,6 +1,8 @@
 <script module>
   export interface MenuSectionProps {
+    /** A `Header` and the `MenuItem` elements of the section. */
     children?: unknown;
+    /** Names a section that has no Header. */
     'aria-label'?: string;
     [attribute: string]: unknown;
   }

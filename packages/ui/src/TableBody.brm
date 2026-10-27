@@ -2,7 +2,9 @@
   import type { Key } from './collection.ts';
 
   export interface TableBodyProps<V extends { id: Key } = { id: Key }> {
+    /** A template that renders a `Row` for each of the `items` of the Table. */
     item?: (item: V) => unknown;
+    /** The `Row` elements. */
     children?: unknown;
     [attribute: string]: unknown;
   }

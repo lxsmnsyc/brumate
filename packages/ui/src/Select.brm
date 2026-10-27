@@ -5,15 +5,25 @@
   import type { PressEvent } from './events.ts';
 
   export interface SelectOwnProps {
+    /** The name that sends the selected key with the form. */
     name?: string;
+    /** The text of `SelectValue` while nothing is selected. */
     placeholder?: string;
+    /** Keeps the list closed. */
     isDisabled?: boolean;
+    /** Asks the browser to check that an item is selected when the form is sent. */
     isRequired?: boolean;
+    /** Marks the field invalid. */
     isInvalid?: boolean;
+    /** Runs with each new key, or `null`. */
     onSelectionChange?: (key: Key | null) => void;
+    /** Runs with each change of whether the list is open. */
     onOpenChange?: (open: boolean) => void;
+    /** A `Label`, a `Button` with a `SelectValue`, a `Popover` with a `ListBox`, and optionally a `Text` and a `FieldError`. */
     children?: unknown;
+    /** The key of the selected item, or `null`. Starts its own state, or binds with `$bind`. */
     selectedKey?: Bindable<Key | null>;
+    /** Whether the list is open. Alone it starts the list open, and `$bind` writes your signal. */
     isOpen?: Bindable<boolean>;
   }
 

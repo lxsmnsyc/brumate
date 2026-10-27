@@ -32,6 +32,164 @@ Rows and columns of data, which the user can move through with the keys, select 
 - A `Checkbox` with `slot="selection"` in a Cell shows whether its row is selected, and toggles it. One in a Column selects every row, or none, and shows a mixed state while some are selected. The browser counts the rows that can be selected when the page loads, so the box is right from then on, and as rows come and go.
 - `onRowAction` gets the key of a row that Enter acts on, or a press when nothing is selectable.
 
+## Anatomy
+
+```html
+<ResizableTableContainer>
+  <Table>
+    <TableHeader>
+      <Column>
+        <Checkbox slot="selection" />
+        <ColumnResizer />
+      </>
+    </>
+    <TableBody>
+      <Row>
+        <Cell>
+          <Checkbox slot="selection" />
+        </>
+      </>
+    </>
+  </>
+</>
+```
+
+The `ResizableTableContainer`, the `ColumnResizer` and the Checkbox elements with `slot="selection"` are optional. A Row has a Cell for each Column.
+
+## Props
+
+### Table
+
+```props Table
+
+```
+
+### TableHeader
+
+```props TableHeader
+
+```
+
+### Column
+
+```props Column
+
+```
+
+### TableBody
+
+```props TableBody
+
+```
+
+### Row
+
+```props Row
+
+```
+
+### Cell
+
+```props Cell
+
+```
+
+### ResizableTableContainer
+
+```props ResizableTableContainer
+
+```
+
+### ColumnResizer
+
+```props ColumnResizer
+
+```
+
+## Data attributes
+
+### Table
+
+| Attribute        | When                                         |
+| ---------------- | -------------------------------------------- |
+| `data-resizable` | The Table is in a `ResizableTableContainer`. |
+
+### Column
+
+| Attribute             | When                                                             |
+| --------------------- | ---------------------------------------------------------------- |
+| `data-allows-sorting` | The column has `allowsSorting`.                                  |
+| `data-sort-direction` | The table is sorted by this column, `ascending` or `descending`. |
+| `data-resizing`       | A resizer is moving the column.                                  |
+| `data-pressed`        | A pointer or a key holds it down.                                |
+| `data-hovered`        | A mouse or a pen is over it.                                     |
+| `data-focused`        | It has focus.                                                    |
+| `data-focus-visible`  | Its focus shows as a ring.                                       |
+
+### Row
+
+| Attribute            | When                              |
+| -------------------- | --------------------------------- |
+| `data-selected`      | The row is selected.              |
+| `data-disabled`      | The row is disabled.              |
+| `data-pressed`       | A pointer or a key holds it down. |
+| `data-hovered`       | A mouse or a pen is over it.      |
+| `data-focused`       | It has focus.                     |
+| `data-focus-visible` | Its focus shows as a ring.        |
+
+### ColumnResizer
+
+| Attribute                  | When                                                                  |
+| -------------------------- | --------------------------------------------------------------------- |
+| `data-resizing`            | A drag or the keys are resizing the column.                           |
+| `data-resizable-direction` | `left` at the least width and `right` at the most. Else it is absent. |
+| `data-hovered`             | A mouse or a pen is over it.                                          |
+| `data-focused`             | It has focus.                                                         |
+| `data-focus-visible`       | Its focus shows as a ring.                                            |
+
+## Keyboard
+
+Right to left, Left and Right turn around.
+
+| Key                           | Action                                                                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`                         | Moves focus to the table, at the row or the cell that had focus last, else the first selected row, else the first row.            |
+| `ArrowDown` or `ArrowUp`      | Moves to the next or the previous row, or to the cell of the same column in it. Up from the first row goes to the column headers. |
+| `ArrowRight` or `ArrowLeft`   | Moves from a row to its cells, along them, and back to the row. On the column headers, moves between the columns.                 |
+| `PageUp` or `PageDown`        | Moves a page of rows up or down, keeping the column of a cell.                                                                    |
+| `Home` or `End`               | Moves to the first or the last row, or to the first or the last cell of the row.                                                  |
+| `Ctrl + Home` or `Ctrl + End` | On a cell, moves to the first cell of the first row, or the last cell of the last row.                                            |
+| `Space`                       | Selects the row. With Shift it extends a range.                                                                                   |
+| `Enter`                       | Acts on the row, or sorts the column that has focus.                                                                              |
+| `Ctrl + A` or `Cmd + A`       | Selects all the rows that are not disabled.                                                                                       |
+| `Escape`                      | Clears the selection, unless `disallowEmptySelection`.                                                                            |
+| A letter                      | Moves focus to the row whose text starts with what was typed.                                                                     |
+
+## Controlled and uncontrolled
+
+`selectedKeys` holds the keys of the selected rows, and `sortDescriptor` holds the sort, `{ column, direction }`. `selectedKeys=(['a'])` and `sortDescriptor=({ column: 'name', direction: 'ascending' })` start the table's own state, and `$bind(signal)` writes your signal. `onSelectionChange` and `onSortChange` get each change. The Table does not reorder the rows: sort them by `sortDescriptor`. See [State](./state.md).
+
+## Styling
+
+Style a row with the data attributes above, such as `[data-selected]`, and a column with `[data-sort-direction]`. A resizer shows `[data-resizing]`. See [Styling](./styling.md).
+
+## Rows from data
+
+Pass `items` to the Table and an `item` template to its `TableBody`. A template parameter takes a type, such as `item: File`.
+
+```html
+<Table aria-label="Files" items=files>
+  <TableHeader>…</TableHeader>
+  <TableBody item=row />
+</Table>
+
+#template row(item: File) {
+  <Row id=(item.id)>
+    <Cell>{item.name}</Cell>
+  </Row>
+}
+```
+
 ## Sorting
 
 A Column with an `id` and `allowsSorting` sorts the table on a press, or Enter. `sortDescriptor` holds the column and the direction, `{ column, direction }`, and `onSortChange` hears of changes. A press sorts ascending, then descending. The Table does not reorder the rows: sort them by `sortDescriptor`, as the demo does.
@@ -47,7 +205,7 @@ A sortable Column shows `aria-sort`, `data-allows-sorting` and `data-sort-direct
 
 The Table renders a `table` with `role="grid"`, a `thead` and a `tbody` with `role="rowgroup"`, and `tr` rows. A Column is a `th` with `role="columnheader"`. A Cell is a `td` with `role="gridcell"`, or a `th` with `role="rowheader"` in the row header column. A Row shows the states of a GridListItem, and a Column shows `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
 
-## Keyboard
+## Focus and keys
 
 - Tab stops at the table once, at the row or the cell that had focus last, or else the first selected row, or the first row. Tab from inside the table leaves it.
 - Up and Down move between rows, and from a cell to the cell of the same column in the row above or below. Up from the first row goes to the column headers, and Down from a header to its column in the first row.

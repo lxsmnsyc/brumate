@@ -6,14 +6,23 @@
   export interface ListBoxOwnProps<V extends { id: Key } = { id: Key }, T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** How many items can be selected: `none`, `single` or `multiple`. */
     selectionMode?: SelectionMode;
+    /** `toggle` adds and removes items as checkboxes do. `replace` makes the pressed item the selection. */
     selectionBehavior?: SelectionBehavior;
+    /** The keys of the items that cannot take focus or selection. */
     disabledKeys?: Key[];
+    /** Keeps one item selected. */
     disallowEmptySelection?: boolean;
+    /** Moves focus from the last item to the first, and back. */
     shouldFocusWrap?: boolean;
+    /** What Escape does: `clearSelection` clears the selection, and `none` does nothing. */
     escapeKeyBehavior?: 'clearSelection' | 'none';
+    /** The axis of the list: `vertical` uses Up and Down, and `horizontal` uses Left and Right. */
     orientation?: 'vertical' | 'horizontal';
+    /** Runs with the key of an item that a press or Enter acts on. */
     onAction?: (key: Key) => void;
+    /** Runs with the keys of the selected items after each change. */
     onSelectionChange?: (keys: Key[]) => void;
     /**
      * The height of an option in pixels, which renders only the options in view, as in a
@@ -27,8 +36,11 @@
     getTextValue?: (item: V) => string;
     /** The data of the options, each with an `id`. The `item` template renders each one. */
     items?: readonly V[];
+    /** A template that renders a `ListBoxItem` for each of `items`. */
     item?: (item: V) => unknown;
+    /** The `ListBoxItem` and `ListBoxSection` elements. */
     children?: unknown;
+    /** The keys of the selected items. Starts its own state, or binds with `$bind`. */
     selectedKeys?: Bindable<Key[]>;
   }
 

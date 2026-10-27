@@ -24,7 +24,91 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 - A `Checkbox` with `slot="selection"` and no `value` in a row shows whether the row is selected, and toggles it.
 - `onAction` gets the key of a row that Enter acts on, or a press when nothing is selectable. `onAction` on a row runs too.
 
+## Anatomy
+
+```html
+<GridList>
+  <GridListItem>
+    <Checkbox slot="selection" />
+    <Button slot="drag" />
+    <Button />
+  </>
+</>
+```
+
+The Checkbox with `slot="selection"` and the Button with `slot="drag"` are optional, and a row can hold any other control.
+
+## Props
+
+### GridList
+
+```props GridList
+
+```
+
+### GridListItem
+
+```props GridListItem
+
+```
+
+## Data attributes
+
+### GridList
+
+| Attribute       | When                               |
+| --------------- | ---------------------------------- |
+| `data-dragging` | A drag is moving rows of the list. |
+
+### GridListItem
+
+| Attribute            | When                                               |
+| -------------------- | -------------------------------------------------- |
+| `data-selected`      | The row is selected.                               |
+| `data-disabled`      | The row is disabled.                               |
+| `data-pressed`       | A pointer or a key holds it down.                  |
+| `data-hovered`       | A mouse or a pen is over it.                       |
+| `data-focused`       | It has focus.                                      |
+| `data-focus-visible` | Its focus shows as a ring.                         |
+| `data-dragging`      | A drag is moving it.                               |
+| `data-drop-target`   | A drag would drop by it, with `before` or `after`. |
+
 ## Keyboard
+
+| Key                         | Action                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `Tab`                       | Moves focus to the list, at the row that had focus last, else the first selected row, else the first row. |
+| `ArrowDown` or `ArrowUp`    | Moves focus to the next or the previous row.                                                              |
+| `ArrowRight` or `ArrowLeft` | Moves focus through the controls in the row, and back to the row. Right to left, they turn around.        |
+| `Home` or `End`             | Moves focus to the first or the last row.                                                                 |
+| `PageUp` or `PageDown`      | Moves focus by the height of the list.                                                                    |
+| `Space`                     | Selects the row. With Shift it extends a range.                                                           |
+| `Enter`                     | Acts on the row.                                                                                          |
+| `Ctrl + A` or `Cmd + A`     | Selects all the rows that are not disabled.                                                               |
+| `Escape`                    | Clears the selection, also from a control in a row.                                                       |
+| A letter                    | Moves focus to the row whose text starts with what was typed.                                             |
+
+## Controlled and uncontrolled
+
+`selectedKeys` holds the keys of the selected rows. `selectedKeys=(['a'])` starts the list's own selection, and `selectedKeys=$bind(signal)` writes your signal. `onSelectionChange` gets the keys after each change. See [State](./state.md).
+
+## Styling
+
+Style a row with the data attributes above, such as `[data-selected]` and `[data-drop-target]`. See [Styling](./styling.md).
+
+## Rows from data
+
+Pass `items` and an `item` template that renders a `GridListItem` for each. A template parameter takes a type, such as `item: File`.
+
+```html
+<GridList aria-label="Files" items=files item=row />
+
+#template row(item: File) {
+  <GridListItem id=(item.id) textValue=(item.name)>{item.name}</GridListItem>
+}
+```
+
+## Focus and keys
 
 - Tab stops at the list once, at the row that had focus last, or else the first selected row, or the first row. Tab from inside the list leaves it.
 - Up and Down move between rows, and Home and End go to the first and the last row. Letters move to the row whose text starts with them. `textValue` sets that text for a row whose content is more than text.

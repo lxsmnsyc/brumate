@@ -6,16 +6,27 @@
   export interface MenuOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** How many items can be selected: `none`, `single` or `multiple`. */
     selectionMode?: SelectionMode;
+    /** The keys of the items that cannot take focus or selection. */
     disabledKeys?: Key[];
+    /** Keeps one item selected. */
     disallowEmptySelection?: boolean;
+    /** Moves focus from the last item to the first, and back. */
     shouldFocusWrap?: boolean;
+    /** Whether an action closes the menu. The default is `true`, and `false` for a multiple selection. */
     shouldCloseOnSelect?: boolean;
+    /** Runs with the key of an item that is acted on. */
     onAction?: (key: Key) => void;
+    /** Runs with the keys of the selected items after each change. */
     onSelectionChange?: (keys: Key[]) => void;
+    /** Runs when an action closes the menu. */
     onClose?: () => void;
+    /** Names the menu, when the trigger does not. */
     'aria-label'?: string;
+    /** The `MenuItem`, `MenuSection` and `SubmenuTrigger` elements. */
     children?: unknown;
+    /** The keys of the selected items. Starts its own state, or binds with `$bind`. */
     selectedKeys?: Bindable<Key[]>;
   }
 

@@ -10,13 +10,21 @@
   import type { SortDescriptor, TableColumn } from './table.ts';
 
   export interface TableProps<V extends { id: Key } = { id: Key }> {
+    /** How many items can be selected: `none`, `single` or `multiple`. */
     selectionMode?: SelectionMode;
+    /** `toggle` adds and removes items as checkboxes do. `replace` makes the pressed item the selection. */
     selectionBehavior?: SelectionBehavior;
+    /** The keys of the items that cannot take focus or selection. */
     disabledKeys?: Key[];
+    /** Keeps one item selected. */
     disallowEmptySelection?: boolean;
+    /** What Escape does: `clearSelection` clears the selection, and `none` does nothing. */
     escapeKeyBehavior?: 'clearSelection' | 'none';
+    /** Runs with the key of a row that Enter acts on, or a press when nothing is selectable. */
     onRowAction?: (key: Key) => void;
+    /** Runs with the keys of the selected items after each change. */
     onSelectionChange?: (keys: Key[]) => void;
+    /** Runs with the new `sortDescriptor` when a Column is sorted. */
     onSortChange?: (descriptor: SortDescriptor) => void;
     /**
      * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
@@ -30,8 +38,11 @@
     getTextValue?: (item: V) => string;
     /** The data of the rows, each with an `id`. The `item` template of the TableBody renders each. */
     items?: readonly V[];
+    /** A `TableHeader` and a `TableBody`. */
     children?: unknown;
+    /** The keys of the selected items. Starts its own state, or binds with `$bind`. */
     selectedKeys?: Bindable<Key[]>;
+    /** The column and the direction of the sort, as `{ column, direction }`, or `null`. Starts its own state, or binds with `$bind`. */
     sortDescriptor?: Bindable<SortDescriptor | null>;
     [attribute: string]: unknown;
   }

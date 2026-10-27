@@ -1,5 +1,6 @@
 <script module>
   export interface ColumnResizerProps {
+    /** Names the resizer. The default is `Resizer`. */
     'aria-label'?: string;
     [attribute: string]: unknown;
   }

@@ -14,6 +14,105 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 - A key is a string or a number, and stays one: `id=(2)` selects `2`, not `'2'`.
 - Inside a [Select](./select.md), the Select keeps the selection, and a press picks one item.
 
+## Anatomy
+
+```html
+<ListBox>
+  <ListBoxSection>
+    <Header />
+    <ListBoxItem>
+      <Text slot="label" />
+      <Text slot="description" />
+    </>
+  </>
+  <ListBoxItem />
+</>
+```
+
+The sections, and the `Text` elements in an item, are optional.
+
+## Props
+
+### ListBox
+
+```props ListBox
+
+```
+
+### ListBoxItem
+
+```props ListBoxItem
+
+```
+
+### ListBoxSection
+
+```props ListBoxSection
+
+```
+
+### Header
+
+```props Header
+
+```
+
+## Data attributes
+
+### ListBox
+
+| Attribute          | When                                                    |
+| ------------------ | ------------------------------------------------------- |
+| `data-orientation` | The value of `orientation`, `vertical` or `horizontal`. |
+
+### ListBoxItem
+
+| Attribute            | When                                               |
+| -------------------- | -------------------------------------------------- |
+| `data-selected`      | The item is selected.                              |
+| `data-disabled`      | The item is disabled.                              |
+| `data-pressed`       | A pointer or a key holds it down.                  |
+| `data-hovered`       | A mouse or a pen is over it.                       |
+| `data-focused`       | It has focus, or it is the active item of a field. |
+| `data-focus-visible` | Its focus shows as a ring.                         |
+
+## Keyboard
+
+The keys act while an item has focus. With `orientation="horizontal"`, Left and Right replace Up and Down, and turn around right to left.
+
+| Key                                      | Action                                                                                                       |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `Tab`                                    | Moves focus to the list, to the item that had focus last, else the first selected item, else the first item. |
+| `ArrowDown` or `ArrowUp`                 | Moves focus to the next or the previous item.                                                                |
+| `Home` or `End`                          | Moves focus to the first or the last item.                                                                   |
+| `PageUp` or `PageDown`                   | Moves focus a page up or down.                                                                               |
+| `Shift + ArrowDown` or `Shift + ArrowUp` | Selects a range, in a multiple selection.                                                                    |
+| `Space`                                  | Toggles the item, or selects it with `selectionBehavior="replace"`.                                          |
+| `Enter`                                  | Acts on the item when there is an action, and else selects it.                                               |
+| `Ctrl + A` or `Cmd + A`                  | Selects all the items that are not disabled, in a multiple selection.                                        |
+| `Escape`                                 | Clears the selection, unless `escapeKeyBehavior="none"` or `disallowEmptySelection`.                         |
+| A letter                                 | Moves focus to the item whose text starts with what was typed.                                               |
+
+## Controlled and uncontrolled
+
+`selectedKeys` holds the keys of the selected items. `selectedKeys=(['cat'])` starts the list's own selection, and `selectedKeys=$bind(signal)` writes your signal. `onSelectionChange` gets the keys after each change. The list is read only with `selectionMode="none"`, the default. See [State](./state.md).
+
+## Styling
+
+Style an item with the data attributes above, such as `[data-selected]` and `[data-focus-visible]`, and the list with `[data-orientation]`. See [Styling](./styling.md).
+
+## Items from data
+
+Instead of writing the items out, pass `items` and an `item` template that renders a `ListBoxItem` for each. A template parameter takes a type, such as `item: Animal`, so the template knows the fields of the item.
+
+```html
+<ListBox aria-label="Animals" items=animals item=row />
+
+#template row(item: Animal) {
+  <ListBoxItem id=(item.id)>{item.name}</ListBoxItem>
+}
+```
+
 ## Selection
 
 - `selectionBehavior="toggle"`, the default, adds and removes items as checkboxes do. A press, Space and Enter toggle the item.
@@ -26,7 +125,7 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 
 With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets its key, and `onAction` on the item runs too. With a selection, Enter acts when the ListBox or the item has `onAction`, and selects when neither has.
 
-## Keyboard
+## Focus and keys
 
 - Tab stops at the list once. Focus goes to the item that had focus last, or else to the first selected item, or the first item.
 - The arrow keys move focus, and Home, End, PageUp and PageDown go further. `orientation="horizontal"` uses Left and Right, which turn around right to left. `shouldFocusWrap` goes from the last item to the first.
