@@ -2,10 +2,10 @@
 
 ## Built
 
-- A signal that only the `ref` of a component binds is no longer checked with `$$sendable`. `<Toolbar ref=$bind(el)>` with `let el = $signal<HTMLElement>()` type checks, as `<div ref=$bind(el)>` did.
+- A signal that only the `ref` of a component binds is checked with `$$sendableRef`, which passes an `Element`, `null` or `undefined` and checks anything else as page state. `<Toolbar ref=$bind(el)>` with `let el = $signal<HTMLElement>()` type checks, as `<div ref=$bind(el)>` did.
 - packages/brumate/src/analyze.ts, `declareBinding`: records the prop name of each binding in the new `Declaration.boundAs` (packages/brumate/src/model.ts).
-- packages/brumate/src/check.ts, `sentDeclarations`: leaves out a declaration whose `boundAs` is exactly `{ref}`. A signal that also another prop binds (or a client read of a function) is still checked, so a function in it still errors.
-- Tests in packages/brumate/test/check.test.ts ("signals that bind to a ref"): ref only is not checked, ref plus another prop is checked, another prop alone is checked. The first failed on main.
+- packages/brumate/src/check.ts, `sentDeclarations`: a declaration whose `boundAs` is exactly `{ref}` gets `$$sendableRef`, so a function in it still errors, also when a component types its `ref` as `Bindable<() => void>`. A signal that another prop also binds gets `$$sendable`.
+- Tests in packages/brumate/test/check.test.ts ("signals that bind to a ref"): ref only uses `$$sendableRef`, a function bound only to `ref` too, ref plus another prop or another prop alone use `$$sendable`. A probe in packages/ui showed the function error at its declaration. The first failed on main.
 - packages/ui/test/fixtures/asControls.brm: the 15 element signals are `$signal<HTMLElement>()`.
 
 ## Deviations

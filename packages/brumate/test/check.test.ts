@@ -128,9 +128,16 @@ describe('signals that bind to a ref', () => {
 </script>
 `;
 
-  it('does not check a signal that only a ref of a component binds', () => {
+  it('lets a signal that only a ref of a component binds hold an element', () => {
     const code = body(`${script}<Toolbar ref=$bind(el) />`);
     expect(code).not.toContain('$$sendable(el');
+    expect(code).toContain('$$sendableRef(el');
+  });
+
+  it('still checks a function in a signal that only a ref of a component binds', () => {
+    const code = body(`${script}<Toolbar ref=$bind(fn) />`);
+    expect(code).not.toContain('$$sendable(fn');
+    expect(code).toContain('$$sendableRef(fn');
   });
 
   it('checks a signal that a ref of a component and another prop bind', () => {
