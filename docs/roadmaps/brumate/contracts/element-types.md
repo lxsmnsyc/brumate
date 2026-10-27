@@ -1,6 +1,6 @@
 ---
 name: element-types
-version: 1.1
+version: 1.2
 status: frozen
 defined_by: element-types
 ---
@@ -108,3 +108,4 @@ packages/brumate/test/elements-types.ts, checked by `tsc --noEmit -p .` in packa
 - v1, second review: the write side of `ref` is required, `BoundSignal<T>` is the return type of `$bind`.
 - v1, review fixes: `ref` is `BindableMark<unknown> & WritableMark<E>`; added `Template`; `Component` has `brumateId` and defaults to `never`; check.ts, types.d.ts and the typecheck script changed as above; added the camel events `onContextLost`, `onContextRestored` and `onPointerRawUpdate`.
 - v1: frozen by element-types. From the proposal it changes: `Component<P>` answers `Promise<Markup>` and defaults to `never`; `Elements` has the SVG tags; added `ElementOf`, `ElementEvents`, `Handlers` and `GlobalAttributes`; `Markup` and `Component` names are kept.
+- v1.2, element-checks (change request accepted on 2026-10-27): `autocorrect?: Attr<boolean | 'on' | 'off'>` in `GlobalAttributes`, and `webkitdirectory?: Attr<boolean>` on `input`. `focusable` on `svg` is not added: only IE11 and old Edge used it, so the website's Icon drops it.
