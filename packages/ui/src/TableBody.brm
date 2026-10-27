@@ -19,6 +19,7 @@
    */
   const { item, children, ...rest } = $props<TableBodyProps<V>>();
 
+  // The cast to `V` is unchecked: `V` must be the type of the `items` of the Table.
   const table = $getContext(TableContext);
 </script>
 

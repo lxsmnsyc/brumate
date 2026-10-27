@@ -19,7 +19,7 @@
 
 ## Gotchas
 
-- A `#template` parameter has no context type. `#template animal(a: Animal)` types it, and then `V` is inferred from `items` and checked against it. Without the annotation `a` is an implicit any.
+- A `#template` parameter has no context type. `#template animal(a: Animal)` types it, and then `V` is inferred from `items` and checked against it. Until the core fix (node template-context-types) lands, a template parameter needs this annotation. Without it `a` is an implicit any: an error under `noImplicitAny` about the missing annotation, and a silent `any` otherwise. The field is not checked.
 - A Table does not infer the `V` of its TableBody, since they share a context. Annotate the template of the TableBody.
 - ToastRegion cannot infer `V` from the queue (it is found by name). Pass the type in a call in `.ts` (`ToastRegion<string>({ ... })`), or annotate the template.
 - `$signal` and `$memo` reject a generic `V` (not `$$Sendable`). Keep the state typed by the constraint and cast where the value goes back to the caller's template.

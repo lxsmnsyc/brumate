@@ -54,6 +54,7 @@
   } = $props<ToastRegionProps<V, T>>();
   let { ref } = $props<ToastRegionOwnProps<V, T>>();
 
+  // The cast to `V` in the template call is unchecked: `V` must be what the queue holds.
   let shown = $signal<QueuedToast<unknown>[]>([]);
 
   $setContext(ToastRegionContext, { queue });
