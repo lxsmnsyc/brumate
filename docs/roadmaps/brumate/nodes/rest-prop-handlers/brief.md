@@ -1,7 +1,7 @@
 ---
 id: rest-prop-handlers
 title: A live rest prop keeps the scope of handlers in a component tag
-status: todo
+status: done
 priority: must
 type: fix
 outline: false
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "a component in a prop"
 exclusive: []
-fulfilled_by:
+fulfilled_by: "#264"
 gate: false
 added: 2026-10-27
 owns:
@@ -44,11 +44,15 @@ Once any page passes a component a live prop, such as `<AsLink title=(String(fla
 
 ## Acceptance
 
-- [ ] A test that passes AsLink a live prop on one page, and renders AsLink through a dynamic tag on another, fails on main and passes with the fix.
-- [ ] The six tests of "a component in a prop" pass with that page in the project.
-- [ ] The gzip size of the eager core grows by at most 0.05 kB.
-- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+- [x] A test that passes AsLink a live prop on one page, and renders AsLink through a dynamic tag on another, fails on main and passes with the fix.
+- [x] The six tests of "a component in a prop" pass with that page in the project.
+- [x] The gzip size of the eager core grows by at most 0.05 kB.
+- [x] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 
 S: one path, with a known repro.
+
+## Log
+
+- 2026-10-27: fulfilled by #264, whose fixture restLiveProp.brm gives AsLink a live prop. The six tests of "a component in a prop" pass.

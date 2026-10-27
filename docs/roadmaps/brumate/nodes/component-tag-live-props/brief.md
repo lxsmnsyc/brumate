@@ -1,7 +1,7 @@
 ---
 id: component-tag-live-props
 title: A dynamic tag that names a component updates its live props
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "updates its live props"
 exclusive: []
-fulfilled_by:
+fulfilled_by: "#264"
 gate: false
 added: 2026-10-26
 owns:
@@ -44,11 +44,15 @@ A live prop of a dynamic tag whose tag is a component, such as `<{as} class=(cls
 
 ## Acceptance
 
-- [ ] The repro is a test, and it fails on main.
-- [ ] With the fix, the component's element gets the new value, in both cases.
-- [ ] The gzip size of the eager core grows by at most 0.05 kB.
-- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+- [x] The repro is a test, and it fails on main.
+- [x] With the fix, the component's element gets the new value, in both cases.
+- [x] The gzip size of the eager core grows by at most 0.05 kB.
+- [x] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 
 S: the prop update of a component already exists for components written by name.
+
+## Log
+
+- 2026-10-27: merged in #264. The maintainer chose to merge handlers of one event into one function, as Headless UI and Terracotta do, in place of a second key. The size budget was raised for this node: unminified gzip grew 174 B in `client-*.js` and 578 B in `produce-*.js`, against 50 B. The node handler-merge-trim measures and trims it. #264 also fixed rest prop handlers that a block render lost.
