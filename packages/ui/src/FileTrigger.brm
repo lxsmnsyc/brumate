@@ -15,8 +15,9 @@
   import { ButtonContext } from './contexts.ts';
 
   /**
-   * Opens the file picker of the browser from a Button inside. `onSelect` gets the files that the user picked. The input is hidden, so the
-   * picker needs scripts. For a form that works without them, use a visible file input.
+   * Opens the file picker of the browser from a Button inside. `onSelect` gets the files that the
+   * user picked. The input is hidden, so the picker needs scripts. For a form that works without
+   * them, use a visible file input.
    */
   const {
     acceptedFileTypes,

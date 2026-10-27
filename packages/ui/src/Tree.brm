@@ -77,8 +77,8 @@
    *
    * - `expandedKeys` holds the keys of the open items, and `onExpandedChange` hears of changes.
    *   The children of a closed item do not render.
-   * - Up and Down move between rows, Home and End to the ends, PageUp and PageDown by a page, and letters to the row whose text
-   *   starts with them.
+   * - Up and Down move between rows, Home and End to the ends, PageUp and PageDown by a page, and
+   *   letters to the row whose text starts with them.
    * - Right opens a closed row. Left closes an open row, or else moves to the row that holds it.
    *   Otherwise Left and Right move through the controls in a row and back to the row, right to
    *   left the other way round.

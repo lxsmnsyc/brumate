@@ -43,7 +43,7 @@
    * and `data-disabled`.
    *
    * A disabled link is a <span> with no `href`, so the browser does not follow it, and it leaves
-   * the order of Tab.
+   * the order of Tab, since it has no `tabindex`.
    */
   const {
     href,

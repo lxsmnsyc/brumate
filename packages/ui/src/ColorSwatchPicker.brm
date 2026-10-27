@@ -43,7 +43,8 @@
   import { LocaleContext } from './locale.ts';
 
   /**
-   * A list of color swatches that the user picks one from. Its items are ColorSwatchPickerItem elements.
+   * A list of color swatches that the user picks one from. Its items are ColorSwatchPickerItem
+   * elements.
    *
    * - Inside a ColorPicker, it reads and writes the color of the picker, unless it has a `value`.
    * - `value` is a color of CSS. The item whose color equals it is selected: the colors are

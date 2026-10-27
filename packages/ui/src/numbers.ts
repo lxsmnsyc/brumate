@@ -63,7 +63,7 @@ export function snapToStep(
 }
 
 /**
- * The value a step up or down from `value`, as a NumberField takes it. A value off the
+ * The value a step up or down from `value`, in the direction of the change. A value off the
  * steps first moves to the nearest step, when that is in the direction of the change. With no
  * value, it starts at the minimum or the maximum, or at 0.
  */

@@ -15,8 +15,8 @@
   }
 
   /**
-   * The props of SearchField. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of SearchField. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type SearchFieldProps<T extends AsTarget = 'div'> = AsProps<T, SearchFieldOwnProps>;
 </script>

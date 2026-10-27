@@ -14,8 +14,8 @@
   }
 
   /**
-   * The props of Disclosure. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of Disclosure. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type DisclosureProps<T extends AsTarget = 'div'> = AsProps<T, DisclosureOwnProps<T>>;
 </script>

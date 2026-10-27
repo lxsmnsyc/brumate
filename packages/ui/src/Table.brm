@@ -64,9 +64,10 @@
   import { TableContext, TableResizeContext, nextSort } from './table.ts';
 
   /**
-   * A table of rows and columns that the user can move through, select and sort. It holds a TableHeader of Column elements and a TableBody of Row
-   * elements, each with a Cell for each column, written out or from a `#for`. Or it takes `items`,
-   * and its TableBody renders a Row for each with its `item` template.
+   * A table of rows and columns that the user can move through, select and sort. It holds a
+   * TableHeader of Column elements and a TableBody of Row elements, each with a Cell for each
+   * column, written out or from a `#for`. Or it takes `items`, and its TableBody renders a Row for
+   * each with its `item` template.
    *
    * - With `items` and a `rowHeight`, or in a Virtualizer, it renders only the rows in view. Its
    *   keys then read the data of all the items, so Home, End, the page keys, Ctrl+A, the box in

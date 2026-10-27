@@ -70,8 +70,9 @@
   import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
 
   /**
-   * A list of rows that can hold buttons, checkboxes and links. Its items are GridListItem elements, written out or from a `#for`. Or it takes
-   * `items`, as Tree does, and renders each with the `item` template.
+   * A list of rows that can hold buttons, checkboxes and links. Its items are GridListItem
+   * elements, written out or from a `#for`. Or it takes `items`, as Tree does, and renders each
+   * with the `item` template.
    *
    * - With `items` and a `rowHeight`, or in a Virtualizer, it renders only the rows in view. Its
    *   keys then read the data of all the items, so Home, End, the page keys, Ctrl+A, ranges with

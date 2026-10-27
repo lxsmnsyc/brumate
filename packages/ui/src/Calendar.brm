@@ -99,7 +99,8 @@
       maxValue,
     ).toString(),
   } = $props<CalendarProps>();
-  // In a range: the first date of a range that is not done, and the date that it shows the range to.
+  // In a range: the first date of a range that is not done, and the date that it shows the range
+  // to.
   let anchor = $signal<DateString | null>(null);
   let hovered = $signal<DateString | null>(null);
   // The date where a press of the pointer started a range, until its click.

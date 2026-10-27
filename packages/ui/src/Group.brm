@@ -31,8 +31,8 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * Parts that belong together, such as an input and its buttons. It shows `data-hovered`, `data-focus-within`, `data-focus-visible`,
-   * `data-disabled` and `data-invalid`.
+   * Parts that belong together, such as an input and its buttons. It shows `data-hovered`,
+   * `data-focus-within`, `data-focus-visible`, `data-disabled` and `data-invalid`.
    */
   const {
     role = 'group',

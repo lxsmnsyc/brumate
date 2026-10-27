@@ -13,8 +13,8 @@
   }
 
   /**
-   * The props of ToastRegion. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of ToastRegion. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type ToastRegionProps<V = unknown, T extends AsTarget = 'div'> = AsProps<T, ToastRegionOwnProps<V, T>>;
 </script>

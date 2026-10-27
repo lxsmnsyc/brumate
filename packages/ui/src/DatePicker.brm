@@ -26,8 +26,9 @@
   import DateField from './DateField.brm';
 
   /**
-   * A DateField with a Button that opens a Calendar in a Popover. It holds a Label, a Group with a DateInput and a Button, a Popover with a Dialog
-   * and a Calendar, and a Text with `slot="description"` and a FieldError.
+   * A DateField with a Button that opens a Calendar in a Popover. It holds a Label, a Group with a
+   * DateInput and a Button, a Popover with a Dialog and a Calendar, and a Text with
+   * `slot="description"` and a FieldError.
    *
    * - `value` is the date as `YYYY-MM-DD`, or null. `value=(date)` starts its own, and
    *   `value=$bind(signal)` writes the caller's. `onChange` gets each change, typed or picked.

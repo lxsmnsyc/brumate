@@ -206,7 +206,9 @@ export const leavingToasts = new Set<string>();
 let landmarks = false;
 
 /**
- * F6 moves focus to the newest toast, and F6 or Shift+F6 in the toasts gives it back, as for a ToastRegion. It starts with the first toast.
+ * F6 moves focus to the newest toast, and F6 or Shift+F6 in the toasts gives it back to the
+ * element that had it. This lets a keyboard user reach a ToastRegion, which is not in the order of
+ * Tab. It starts with the first toast.
  */
 export function listenForF6(): void {
   if (landmarks) {

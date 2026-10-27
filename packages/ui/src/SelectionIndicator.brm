@@ -6,8 +6,8 @@
   }
 
   /**
-   * The props of SelectionIndicator. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of SelectionIndicator. `as` takes an element name or a component, and the other props
+   * are those of the target.
    */
   export type SelectionIndicatorProps<T extends AsTarget = 'span'> = AsProps<T, SelectionIndicatorOwnProps>;
 </script>
@@ -17,8 +17,8 @@
   import { SelectionIndicatorContext, moveIndicator } from './selection-indicator.ts';
 
   /**
-   * A mark of the selected item, such as a bar under the selected Tab. Put it in a Tab, a ToggleButton of a group, a Radio, a ListBoxItem, a
-   * GridListItem or a Tag.
+   * A mark of the selected item, such as a bar under the selected Tab. Put it in a Tab, a
+   * ToggleButton of a group, a Radio, a ListBoxItem, a GridListItem or a Tag.
    *
    * - It renders only in the selected item, with `data-selected`.
    * - When the selection moves, the new one moves from where the last one was, with the

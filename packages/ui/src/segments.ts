@@ -1,7 +1,7 @@
-// The segments of a DateField and a TimeField: the month, the day and the year, or the hour, the minute, the second and AM or PM,
-// in the order and with the separators of the locale. Each segment is set or empty. The field has
-// a value once every segment is set. Dates and times are ISO strings, such as `2026-10-15` and
-// `14:30`.
+// The segments of a DateField and a TimeField: the month, the day and the year, or the hour, the
+// minute, the second and AM or PM, in the order and with the separators of the locale. Each segment
+// is set or empty. The field has a value once every segment is set. Dates and times are ISO
+// strings, such as `2026-10-15` and `14:30`.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
 import { CalendarDate, DateFormatter, endOfMonth } from '@internationalized/date';

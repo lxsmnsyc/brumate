@@ -19,8 +19,8 @@
   }
 
   /**
-   * The props of ListBoxItem. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of ListBoxItem. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type ListBoxItemProps<T extends AsTarget = 'div'> = AsProps<T, ListBoxItemOwnProps<T>>;
 </script>

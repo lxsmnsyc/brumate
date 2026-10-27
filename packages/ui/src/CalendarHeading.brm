@@ -17,7 +17,8 @@
   import { CalendarContext, rangeLabel, toDate } from './calendar.ts';
 
   /**
-   * The months that a Calendar shows, such as `October 2026`. It is hidden from screen readers, which read the name of the Calendar.
+   * The months that a Calendar shows, such as `October 2026`. It is hidden from screen readers,
+   * which read the name of the Calendar.
    */
   const { as = 'h2', ...rest } = $props<CalendarHeadingProps<T>>();
 

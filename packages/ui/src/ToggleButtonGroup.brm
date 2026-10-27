@@ -15,8 +15,8 @@
   }
 
   /**
-   * The props of ToggleButtonGroup. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of ToggleButtonGroup. `as` takes an element name or a component, and the other props
+   * are those of the target.
    */
   export type ToggleButtonGroupProps<T extends AsTarget = 'div'> = AsProps<T, ToggleButtonGroupOwnProps<T>>;
 </script>
@@ -29,10 +29,10 @@
   import { keepTabStop, moveFocus, rove } from './toolbar.ts';
 
   /**
-   * ToggleButtons with one selection. With
-   * `selectionMode="single"`, the default, it is a radiogroup and its buttons are radios. With
-   * "multiple", it is a toolbar, or a group inside a Toolbar. The arrow keys move focus between its buttons, as in a Toolbar.
-   * It shows `data-orientation` and `data-disabled`.
+   * ToggleButtons with one selection. With `selectionMode="single"`, the default, it is a
+   * radiogroup and its buttons are radios. With "multiple", it is a toolbar, or a group inside a
+   * Toolbar. The arrow keys move focus between its buttons, as in a Toolbar. It shows
+   * `data-orientation` and `data-disabled`.
    *
    * `selectedKeys=([...])` starts its own selection, and `selectedKeys=$bind(signal)` writes the
    * caller's. Each ToggleButton names itself with `id`.

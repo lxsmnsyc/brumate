@@ -6,8 +6,8 @@
   }
 
   /**
-   * The props of FieldError. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of FieldError. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type FieldErrorProps<T extends AsTarget = 'span'> = AsProps<T, FieldErrorOwnProps>;
 </script>

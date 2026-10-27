@@ -179,7 +179,8 @@ export function pressOutside(
 }
 
 /**
- * Calls `close` when focus moves outside the layer and the trigger, for an overlay that is not modal. Returns the function that stops it.
+ * Calls `close` when focus moves outside the layer and the trigger, for an overlay that is not
+ * modal. Returns the function that stops it.
  */
 export function blurOutside(
   layer: Element,
@@ -351,10 +352,9 @@ let scrollLocks = 0;
 let unlockScroll: (() => void) | undefined;
 
 /**
- * Stops the page from scrolling while a modal overlay is open
- * does. The root gets `overflow: hidden`, and a padding as wide as the scrollbar that it hid, so
- * the page does not move sideways. Nested overlays share one lock. Returns the function that
- * gives it back.
+ * Stops the page from scrolling while a modal overlay is open. The root gets `overflow: hidden`,
+ * and a padding as wide as the scrollbar that it hid, so the page does not move sideways. Nested
+ * overlays share one lock. Returns the function that gives it back.
  */
 export function lockScroll(): () => void {
   if (scrollLocks++ === 0) {

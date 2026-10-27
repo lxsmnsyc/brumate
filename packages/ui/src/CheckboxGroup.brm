@@ -16,8 +16,8 @@
   }
 
   /**
-   * The props of CheckboxGroup. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of CheckboxGroup. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type CheckboxGroupProps<T extends AsTarget = 'div'> = AsProps<T, CheckboxGroupOwnProps<T>>;
 </script>

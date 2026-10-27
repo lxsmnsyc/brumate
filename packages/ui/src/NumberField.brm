@@ -22,8 +22,8 @@
   }
 
   /**
-   * The props of NumberField. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of NumberField. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type NumberFieldProps<T extends AsTarget = 'div'> = AsProps<T, NumberFieldOwnProps>;
 </script>

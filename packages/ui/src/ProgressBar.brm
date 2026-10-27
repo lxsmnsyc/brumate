@@ -18,8 +18,8 @@
   }
 
   /**
-   * The props of ProgressBar. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of ProgressBar. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type ProgressBarProps<T extends AsTarget = 'div'> = AsProps<T, ProgressBarOwnProps<T>>;
 </script>
@@ -32,11 +32,10 @@
   import { progressOf } from './progress.ts';
 
   /**
-   * The progress of a task:
-   * role="progressbar" with the value, the range and its text in the locale. A Label inside names it.
-   * The element has `--percentage` for CSS, from 0% to 100%. A `content` template gets the
-   * percentage and the text, to draw the bar. `isIndeterminate` is a task of no known length:
-   * it has no value, and shows `data-indeterminate`.
+   * The progress of a task: role="progressbar" with the value, the range and its text in the
+   * locale. A Label inside names it. The element has `--percentage` for CSS, from 0% to 100%. A
+   * `content` template gets the percentage and the text, to draw the bar. `isIndeterminate` is a
+   * task of no known length: it has no value, and shows `data-indeterminate`.
    */
   const {
     as,

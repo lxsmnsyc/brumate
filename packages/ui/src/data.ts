@@ -1,4 +1,5 @@
-// The changes of the list and tree data of `data.brm.ts`. Each takes the items and gives new ones, so a signal that holds them updates.
+// The changes of the list and tree data of `data.brm.ts`. Each takes the items and gives new ones,
+// so a signal that holds them updates.
 import type { Key } from './collection.ts';
 
 /** The key of an item: its `id`, or else its `key`. */

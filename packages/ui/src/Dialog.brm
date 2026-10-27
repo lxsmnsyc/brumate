@@ -22,10 +22,11 @@
   import { described } from './description.brm.ts';
 
   /**
-   * A dialog, inside a Popover or a Modal. A Heading with
-   * `slot="title"` names it, and a Button with `slot="close"` closes it. The overlay around it
-   * moves focus into it when it opens. `aria-label` names it in place of the Heading, and a dialog without a Heading leaves out aria-labelledby once the browser is idle.
-   * In the overlay of a DatePicker, its Button and Label name it then.
+   * A dialog, inside a Popover or a Modal. A Heading with `slot="title"` names it, and a Button
+   * with `slot="close"` closes it. The overlay around it moves focus into it when it opens.
+   * `aria-label` names it in place of the Heading, and a dialog without a Heading leaves out
+   * aria-labelledby once the browser is idle. In the overlay of a DatePicker, its Button and Label
+   * name it then.
    */
   const {
     as,

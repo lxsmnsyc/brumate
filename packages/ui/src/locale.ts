@@ -63,7 +63,8 @@ export function localeOf(locale: string): Locale {
 
 /**
  * The locale of the parts inside an I18nProvider. The default is `en-US`, so the server and the
- * browser format the same way. A language of the browser would differ from the server, which does not know it.
+ * browser format the same way. A language of the browser would differ from the server, which does
+ * not know it.
  */
 export const LocaleContext: Context<Locale> = createContext<Locale>(
   'brumate-ui:locale',

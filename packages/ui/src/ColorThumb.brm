@@ -12,8 +12,8 @@
   import { ColorThumbContext } from './color-thumb.ts';
 
   /**
-   * The thumb of a ColorSlider, a ColorArea or a ColorWheel. It works only inside one of them, which gives it its state in
-   * `ColorThumbContext`, see `color-thumb.ts`.
+   * The thumb of a ColorSlider, a ColorArea or a ColorWheel. It works only inside one of them,
+   * which gives it its state in `ColorThumbContext`, see `color-thumb.ts`.
    *
    * - It is placed at the position that its parent gives, and has `--color` and a background of
    *   the color over a checkerboard, so its alpha shows.

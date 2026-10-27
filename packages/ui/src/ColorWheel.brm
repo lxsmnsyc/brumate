@@ -65,7 +65,8 @@
    * - A press on the ring moves the thumb to that angle, and a drag follows it. A press on the
    *   thumb takes it where it is, so it does not jump to the pointer. A press off the ring does
    *   nothing.
-   * - It sets `aria-label` of the input to `Hue`, unless `aria-label` or `aria-labelledby` is given.
+   * - It sets `aria-label` of the input to `Hue`, unless `aria-label` or `aria-labelledby` is
+   *   given.
    * - It shows `data-disabled`. A reset of the form gives back the first color.
    */
   const {

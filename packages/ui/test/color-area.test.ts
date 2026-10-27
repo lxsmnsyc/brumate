@@ -280,7 +280,8 @@ it('has one tab stop, and hides the input of y from screen readers until it has 
   expect(y.getAttribute('tabindex')).toBe('-1');
   expect(y.getAttribute('aria-hidden')).toBe('true');
   expect(tabbables(page.get('.hsb'))).toEqual([x]);
-  // Up on x moves y, and the focus follows it. Both inputs are then exposed, until the focus leaves.
+  // Up on x moves y, and the focus follows it. Both inputs are then exposed, until the focus
+  // leaves.
   x.focus();
   await page.waitFor(() => expect(y.getAttribute('aria-hidden')).toBe('true'));
   press('ArrowUp', x);
