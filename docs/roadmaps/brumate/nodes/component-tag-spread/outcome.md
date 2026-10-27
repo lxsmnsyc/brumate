@@ -23,8 +23,10 @@
 ## Gotchas
 
 - Why `~` and not `*`: `*` makes `children` of the target live, so a write to the target waits for the code of its children. The Tabs `check()` in packages/ui reads the DOM in a microtask after a selection, and the second tab's `aria-selected` then arrived after it, so the selection went back to the first tab (as-collections tests "moves between tabs" and "updates the attributes that a part gives to a component in as"). That is the load-time race that ordered-updates noted. Leaving `children` out keeps the write synchronous. If a later node removes the race (batching), `~` could become `*`.
-- A computed attribute that is written next to a spread on a plain element is tracked by `attrs` as one of the names the spread wrote, but only when the element has no `b-s`, so a rename may leave the old attribute when the same element also has a server-rendered spread. Not covered by a test.
-- The name of a computed attribute, or its value, that cannot change and has no slot in the browser leaves the whole computed attribute out of the update, as a spread does.
+- A computed attribute on an element with a spread merges into the same `$$b.spread` call on the server, so a rename removes the old attribute (the reviewer checked).
+- A computed attribute whose name or value has no code in the browser (a plain `const`, a signal that nothing writes) keeps the compile error "This attribute cannot change on the client yet", for the computed attribute itself and for any spread or computed attribute next to it, since an update without it would remove the attribute. Tests: project.test.ts (rename-only) and resume.test.ts ("keeps a computed attribute when only the spread next to it changes").
+- `spreadProps` skips `b-` names for all callers. The other callers are spreads onto static components; `b-` names are reserved for brumate, so no prop uses them. `attrs` passes `[]` as `after` and ignores `own` for a component: the merged object is already in source order, and `own` names element attributes only.
+- `inspect.ts` looks up `~` too, so the diagnostic names the parent of a prop that a dynamic tag's spread makes live.
 - Analysis of packages/ui: only `test/fixtures/AsTarget.brm` gets a new live prop (`~`).
 
 ## Proposed learnings
@@ -42,4 +44,5 @@
 ## Size
 
 - Todos of benchmarks/brumate (`vite build --outDir dist/client`, all JS of dist/client concatenated, gzip -9): 26372 on main to 26391 with the change, +19 B, within 0.1 kB. `pnpm bench` was not run.
+- After the review fixes, `pnpm bench --only brumate --scenario todos --metrics dist`: 28184 B gzip (the reviewer measured main 28191 and the first head 28189 with the same command).
 - Estimated M, actual M.

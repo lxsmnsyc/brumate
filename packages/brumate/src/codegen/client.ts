@@ -1028,6 +1028,19 @@ class ClientGenerator {
       // The other spreads of the element, which an update writes too. Each update tracks the
       // attributes that it wrote, so an update of one spread alone would remove the others'.
       const spreads = this.spreadCode(owner, attribute);
+      // A computed attribute whose name or value has no code in the browser would drop out of the
+      // update, and the attribute with it.
+      for (const item of owner.attributes) {
+        if (item.kind !== 'computed') {
+          continue;
+        }
+        const code =
+          item === attribute ? this.computedCode(item, site) : spreads.get(item.name.ast);
+        if (code === undefined) {
+          this.error('This attribute cannot change on the client yet', site.range);
+          return;
+        }
+      }
       // The element's static attributes merge with the spreads in their order, as on the server.
       const parts = owner.attributes.flatMap((item) => {
         if (item === attribute) {

@@ -90,4 +90,19 @@ describe('analyzeProject', () => {
     expect(result.clientCode).toBe(false);
     expect(result.client).not.toContain('export function');
   });
+
+  it('refuses a computed attribute whose name changes and whose value has no code in the browser', () => {
+    const source = `<script>
+  import { $signal } from 'brumate/signals';
+  let name = $signal('title');
+  const value = 'v';
+</script>
+
+<button class="rename" onClick=(() => (name = 'data-x'))>Rename</button>
+<p class="el" [name]=(value)>hi</p>
+`;
+    expect(() => compile(source, { filename: 'Rename.brm' })).toThrow(
+      /cannot change on the client/,
+    );
+  });
 });

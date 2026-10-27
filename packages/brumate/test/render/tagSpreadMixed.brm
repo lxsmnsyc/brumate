@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  // A spread and a computed attribute on one element. The test changes only the spread.
+  let props = $signal<Record<string, string>>({ title: 'a' });
+  let name = $signal('data-x');
+  let value = $signal('kept');
+</script>
+
+<button class="set" onClick=(() => (props = { title: 'b' }))>Set</button>
+<button class="other" onClick=(() => ((name = 'data-y'), (value = 'moved')))>Other</button>
+<p class="el" {...props} [name]=(value)>hi</p>
