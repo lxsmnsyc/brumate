@@ -17,6 +17,6 @@
   <Tree class="ui-tree" aria-label="5000 photos" items=files item=file />
 </Virtualizer>
 
-#template file(file: File) {
+#template file(file) {
   <TreeItem class="ui-treerow" textValue=(file.name)>{file.name}</TreeItem>
 }

@@ -103,12 +103,12 @@ Style an item with the data attributes above, such as `[data-selected]` and `[da
 
 ## Items from data
 
-Instead of writing the items out, pass `items` and an `item` template that renders a `ListBoxItem` for each. A template parameter takes a type, such as `item: Animal`, so the template knows the fields of the item.
+Instead of writing the items out, pass `items` and an `item` template that renders a `ListBoxItem` for each. The template's parameter takes its type from `items`, so the template knows the fields of the item. A type on the parameter, such as `item: Animal`, is allowed too.
 
 ```html
 <ListBox aria-label="Animals" items=animals item=row />
 
-#template row(item: Animal) {
+#template row(item) {
   <ListBoxItem id=(item.id)>{item.name}</ListBoxItem>
 }
 ```

@@ -32,7 +32,7 @@
 <Tree class="ui-tree" aria-label="Files" items=files item=file selectionMode="multiple" selectedKeys=$bind(picked) expandedKeys=$bind(open) />
 <p>Selected: {picked.join(', ') || 'none'}. Open: {open.join(', ') || 'none'}.</p>
 
-#template file(file: File) {
+#template file(file) {
   <TreeItem class="ui-treerow" textValue=(file.name)>
     #if (file.children) {
       <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>

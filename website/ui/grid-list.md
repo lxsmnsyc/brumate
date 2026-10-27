@@ -108,12 +108,12 @@ Style a row with the data attributes above, such as `[data-selected]` and `[data
 
 ## Rows from data
 
-Pass `items` and an `item` template that renders a `GridListItem` for each. A template parameter takes a type, such as `item: File`.
+Pass `items` and an `item` template that renders a `GridListItem` for each. The template's parameter takes its type from `items`.
 
 ```html
 <GridList aria-label="Files" items=files item=row />
 
-#template row(item: File) {
+#template row(item) {
   <GridListItem id=(item.id) textValue=(item.name)>{item.name}</GridListItem>
 }
 ```

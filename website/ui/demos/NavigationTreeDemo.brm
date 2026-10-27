@@ -39,7 +39,7 @@
   <NavigationTree class="ui-tree" aria-label="Guide" items=pages item=page selectedRoute="#tables" expandedKeys=$bind(open) />
 </nav>
 
-#template page(page: Page) {
+#template page(page) {
   <NavigationTreeItem class="ui-treerow ui-navrow" textValue=(page.title) href=(page.href)>
     #if (page.children) {
       <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>

@@ -350,7 +350,7 @@ A `#template` is a piece of markup with parameters. Pass one as a prop to let a 
 
 <List items=fruits item=fruit />
 
-#template fruit(name: string) {
+#template fruit(name) {
   <strong>{name}</strong>
 }
 ```
@@ -369,6 +369,7 @@ A `#template` is a piece of markup with parameters. Pass one as a prop to let a 
 </ul>
 ```
 
+- A parameter without a type takes it from the prop, here `string` from `item`. A type on the parameter, such as `name: string`, is allowed too. A template that the code calls, or passes in another way, needs the types of its parameters.
 - The component can call the template in markup that changes in the browser, such as the items of a list, or a selected item. The template renders with the code of the component that wrote it.
 - A call again at the same place, with new arguments, updates the markup in place, as a snippet of Svelte does. Its elements stay, and so does focus in them.
 - The template reads the values of the component that wrote it, and its markup updates when they change.

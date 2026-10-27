@@ -175,7 +175,7 @@ Style a row with the data attributes above, such as `[data-selected]`, and a col
 
 ## Rows from data
 
-Pass `items` to the Table and an `item` template to its `TableBody`. A template parameter takes a type, such as `item: File`.
+Pass `items` to the Table and an `item` template to its `TableBody`. The TableBody does not get the type of the items from the Table, so give the template's parameter a type, such as `item: File`.
 
 ```html
 <Table aria-label="Files" items=files>
