@@ -1150,6 +1150,52 @@ describe('resume', () => {
     await waitFor(() => expect(text('.seen')).toBe('ok2'));
   });
 
+  it('holds the server error after resume: a handler that reads a failed memo throws to the #try', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    const server = await import(file('memoErrorResume.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    // The page state holds no stack and no message of the error, and nothing is left to stream.
+    expect(state).not.toContain('Server failed');
+    expect(state).not.toContain('memoErrorResume');
+    expect(state).not.toContain('stack');
+    const chunks: string[] = [];
+    for await (const chunk of pending) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual([]);
+    // The server logs the error, as for a server function that fails.
+    expect(errors).toHaveBeenCalledTimes(1);
+    show(html + state);
+    await startLoader();
+    click(document.querySelector('.warm')!);
+    await waitFor(() => expect(text('.m')).toBe('1'));
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: The page could not compute a value'));
+    expect(text('.seen')).toBe('none');
+  }, 15000);
+
+  it('holds the server error after resume: development sends the name and message, never a stack', async () => {
+    const server = await import(file('memoErrorResume.brm.ts'));
+    const { html, state } = await renderParts(server.default, {}, { dev: true });
+    expect(state).toContain('Server failed');
+    expect(state).not.toContain('at ');
+    show(html + state);
+    await startLoader();
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Server failed'));
+  }, 15000);
+
+  it('holds the server error after resume: a ServerError sends its message in production', async () => {
+    const server = await import(file('memoErrorResumeShown.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    expect(state).toContain('Out of stock');
+    show(html + state);
+    await startLoader();
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Out of stock'));
+  }, 15000);
+
   it('holds the memo error until a read: a rejected async memo throws at its read', async () => {
     await resume('memoErrorAsync', {});
     expect(text('.data')).toBe('ok0');

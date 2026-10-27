@@ -34,6 +34,7 @@ import {
   PARTS,
   PREFIX,
   SOURCE,
+  MemoError,
   SlotReference,
   addEntryHandlers,
   isAsyncIterable,
@@ -391,7 +392,7 @@ export class Context {
   private rpcPrefix = '/_brumate';
   /** The ID of the build, for forms that post to server functions. See `RenderOptions`. */
   build: string | undefined;
-  /** True in development, where the error of a `#catch` keeps its details. */
+  /** True in development, where a memo that failed or a `#catch` sends its error to the browser. */
   development = false;
 
   /** Results of server functions that a form posted to this page, for `$action`. */
@@ -1264,16 +1265,37 @@ export function ready(node: Memo): unknown {
 
 /**
  * The value of a memo for the page state: its value when it is ready, or
- * a promise of it while it loads. A memo that fails gives a rejected
- * promise either way, so the page renders and the failure reaches the
- * browser as the load that failed.
+ * a promise of it while it loads. A memo that fails gives a `MemoError`
+ * either way, so the page renders, the stream goes on, and a read in the
+ * browser throws the error as a memo that failed there.
  */
 export function stateValue(node: Memo): unknown {
   try {
     return read(node);
   } catch (error) {
-    return error instanceof NotReady ? wait(node) : Promise.reject(error);
+    if (error instanceof NotReady) {
+      return wait(node).catch((failure: unknown) => heldError(failure, node.ctx));
+    }
+    return heldError(error, node.ctx);
   }
+}
+
+/**
+ * The error of a memo for the page state. In development it is the error as seroval
+ * writes it: its name, message, own properties, `cause` and the `errors` of an `AggregateError`,
+ * and no stack (the serial options leave stacks out). In production it is the message of
+ * a `ServerError`, which the app chose to show, or else a generic message, and the error is
+ * logged, as for a server function that fails.
+ */
+function heldError(error: unknown, ctx?: Context): MemoError {
+  let sent: Error;
+  if (ctx?.isDev()) {
+    sent = error instanceof Error ? error : new Error(String(error));
+  } else {
+    sent = safeError(error, 'The page could not compute a value');
+  }
+  // The mark is what the serial plugin tests, as `brumate.slot` is for slot references.
+  return Object.assign(new MemoError(sent), { [Symbol.for('brumate.held')]: true });
 }
 
 /**
@@ -2694,6 +2716,14 @@ function errorAnswer(error: unknown, fallback: string): { message: string; statu
 }
 
 /**
+ * The error that the page state may carry in production: a plain `Error` with the message of a
+ * `ServerError`, or `fallback`. Any other error is logged.
+ */
+function safeError(error: unknown, fallback: string): Error {
+  return new Error(errorAnswer(error, fallback).message);
+}
+
+/**
  * The error that a `#catch` body gets on the server, which the page state carries to the
  * browser. In development it is the error itself, for debugging. In production it is a plain
  * `Error` with the message of a `ServerError`, or a generic message, and the real error is
@@ -2704,7 +2734,7 @@ export function caught(error: unknown, ctx: Context): unknown {
   if (ctx.isDev()) {
     return error;
   }
-  return new Error(errorAnswer(error, 'The page could not render this part').message);
+  return safeError(error, 'The page could not render this part');
 }
 
 /** True for a request that a `<form>` sent, without client code. */

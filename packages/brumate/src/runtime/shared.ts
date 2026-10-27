@@ -270,6 +270,18 @@ export function unbind(
   return result ?? props;
 }
 
+/**
+ * What the slot of a memo holds while its compute throws or its promise rejects, and a memo that
+ * failed on the server holds from the page state. Each read of the slot throws the error.
+ */
+export class MemoError {
+  readonly error: unknown;
+
+  constructor(error: unknown) {
+    this.error = error;
+  }
+}
+
 /** A component, which the compiler marks with its ID. */
 export type ComponentValue = ((...args: never[]) => unknown) & { brumateId: string };
 
@@ -311,6 +323,8 @@ export const stateValues: {
   l: (scope: ScopeId, slot: number) => SlotReference;
   /** A binding that a rest prop holds, with its value and its slot. */
   b: (value: unknown, scope: ScopeId, slot: number, set?: unknown) => Binding;
+  /** The error of a memo that failed on the server. See `MemoError`. */
+  x: (error: unknown) => MemoError;
   /** A value of the app, which a plugin of the entry makes from its data. */
   u: (tag: string, data: unknown) => unknown;
 } = {
@@ -327,6 +341,7 @@ export const stateValues: {
   b: HAS_BINDINGS
     ? (value, scope, slot, set) => new Binding(value, new SlotReference(scope, slot), set)
     : unused,
+  x: (error) => new MemoError(error),
   u: (tag, data) => {
     const plugin = valuePlugins.get(tag);
     if (!plugin) {
