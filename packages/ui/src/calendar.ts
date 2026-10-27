@@ -16,6 +16,7 @@ import {
   today,
 } from '@internationalized/date';
 import type { CalendarDate, DateDuration, DayOfWeek } from '@internationalized/date';
+import type { DateStrings } from './date-strings.ts';
 
 /** A date as `YYYY-MM-DD`. */
 export type DateString = string;
@@ -25,6 +26,12 @@ export interface DateRange {
   start: DateString;
   end: DateString;
 }
+
+/** The strings that the Calendar and its cells use. */
+export type CalendarStrings = Pick<
+  DateStrings,
+  'previous' | 'next' | 'today' | 'selected' | 'firstAvailable' | 'lastAvailable'
+>;
 
 export interface CalendarState {
   /** The ID that the IDs of the cells start with. */
@@ -76,8 +83,10 @@ export interface CalendarState {
   ariaLabel?: string;
   /** The name of the Calendar and its visible months, such as `Due date, October 2026`. */
   label: string;
-  /** Today, in the time zone of the page. */
+  /** Today, in the time zone of the app, or of the browser. */
   today: DateString;
+  /** The words of the labels, in the language of the calendar. */
+  strings: CalendarStrings | null;
   isDateUnavailable?: (date: DateString) => boolean;
   /** Moves focus to a date, and moves the visible months to show it. */
   focusDate: (date: DateString) => void;
@@ -124,8 +133,35 @@ export function toDate(value: DateString): CalendarDate {
   return parseDate(value);
 }
 
-export function todayString(): DateString {
-  return today(getLocalTimeZone()).toString();
+/**
+ * Today in a time zone, such as `Asia/Tokyo`. Without one, the time zone of where the code runs:
+ * the server's while it renders, and the browser's after that.
+ */
+export function todayString(timeZone?: string): DateString {
+  return today(timeZone ?? getLocalTimeZone()).toString();
+}
+
+/**
+ * Calls `update` with today in a time zone: now, when the tab shows again, and at each minute
+ * just after it starts. Every zone changes day on a minute, so the date moves within a moment of
+ * midnight, with no time zone math and on days of 23 or 25 hours too. Returns what stops it.
+ */
+export function watchToday(timeZone: string | undefined, update: (today: DateString) => void) {
+  let timer: ReturnType<typeof setTimeout>;
+  const run = () => {
+    clearTimeout(timer);
+    // A hidden tab catches up when it shows again.
+    if (!document.hidden) {
+      update(todayString(timeZone));
+    }
+    timer = setTimeout(run, 60_050 - (Date.now() % 60_000));
+  };
+  run();
+  document.addEventListener('visibilitychange', run);
+  return () => {
+    clearTimeout(timer);
+    document.removeEventListener('visibilitychange', run);
+  };
 }
 
 /** Whether a date is before the minimum or after the maximum. */
@@ -358,16 +394,19 @@ export function cellLabel(calendar: CalendarState, date: DateString, selected: b
     calendar: 'gregory',
     timeZone: 'UTC',
   });
+  const { strings } = calendar;
   let label = formatter.format(toDate(date).toDate('UTC'));
+  const fill = (text: string) => text.replace('{date}', label);
   if (date === calendar.today) {
-    label = selected ? `Today, ${label} selected` : `Today, ${label}`;
-  } else if (selected) {
-    label = `${label} selected`;
+    label = fill(strings?.today ?? 'Today, {date}');
+  }
+  if (selected) {
+    label = fill(strings?.selected ?? '{date} selected');
   }
   if (date === calendar.minValue) {
-    label += ', First available date';
+    label = fill(strings?.firstAvailable ?? '{date}, First available date');
   } else if (date === calendar.maxValue) {
-    label += ', Last available date';
+    label = fill(strings?.lastAvailable ?? '{date}, Last available date');
   }
   return label;
 }

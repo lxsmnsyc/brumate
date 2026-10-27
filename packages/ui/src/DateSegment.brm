@@ -119,13 +119,13 @@
     autocorrect="off"
     spellcheck="false"
     enterkeyhint="next"
-    aria-label=(SEGMENT_NAMES[segment.type])
+    aria-label=((field?.segmentNames ?? SEGMENT_NAMES)[segment.type])
     aria-labelledby=(field ? `${id} ${field.labelId}` : undefined)
     aria-describedby=(field?.describedBy)
     aria-valuenow=(segment.value)
     aria-valuemin=(segment.min)
     aria-valuemax=(segment.max)
-    aria-valuetext=(segment.isPlaceholder ? 'Empty' : segment.text)
+    aria-valuetext=(segment.isPlaceholder ? (field?.empty ?? 'Empty') : segment.text)
     aria-required=(field?.isRequired || undefined)
     aria-invalid=(field?.isInvalid || undefined)
     aria-readonly=(field?.isReadOnly || undefined)

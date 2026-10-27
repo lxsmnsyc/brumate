@@ -2,6 +2,13 @@
   export interface I18nProviderProps {
     /** A language tag, such as `ar-EG`, for the parts inside. */
     locale?: string;
+    /** An IANA time zone, such as `Asia/Tokyo`, that decides what today is in the date parts. The zone of the browser by default. */
+    timeZone?: string;
+    /**
+     * The words of the date parts: the placeholders, the names of the segments and the labels.
+     * Replaces the whole set that the locale gives. See `DateStrings`.
+     */
+    strings?: DateStrings;
     /** The parts that read the locale. */
     children?: unknown;
   }
@@ -9,15 +16,20 @@
 
 <script>
   import { $memo, $props, $setContext } from 'brumate/signals';
+  import { DateStringsContext, stringsOf } from './date-strings.ts';
+  import type { DateStrings } from './date-strings.ts';
   import { LocaleContext, localeOf } from './locale.ts';
 
   /**
    * Gives the parts inside it a locale, and its direction.
    * It renders only its children. Put `lang` and `dir` on an element yourself, such as <html>.
    */
-  const { locale = 'en-US', children } = $props<I18nProviderProps>();
-  const value = $memo(localeOf(locale));
+  const { locale = 'en-US', timeZone, strings, children } = $props<I18nProviderProps>();
+  const value = $memo(timeZone === undefined ? localeOf(locale) : { ...localeOf(locale), timeZone });
   $setContext(LocaleContext, value);
+  // The strings of the locale, unless the app gives its own.
+  const words = $memo(strings ?? stringsOf(locale));
+  $setContext(DateStringsContext, words);
 </script>
 
 {children}

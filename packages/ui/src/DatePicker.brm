@@ -32,9 +32,10 @@
 </script>
 
 <script>
-  import { $bind, $id, $props, $setContext } from 'brumate/signals';
+  import { $bind, $getContext, $id, $props, $setContext } from 'brumate/signals';
   import { DatePickerContext } from './calendar.ts';
   import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
+  import { DateStringsContext } from './date-strings.ts';
   import DateField from './DateField.brm';
 
   /**
@@ -69,6 +70,7 @@
   let { value = null } = $props<DatePickerProps>();
   let { isOpen = false } = $props<DatePickerProps>();
 
+  const strings = $getContext(DateStringsContext);
   const triggerId = $id();
   const overlayId = $id();
   const labelId = $id();
@@ -95,7 +97,7 @@
 
   $setContext(ButtonContext, {
     id: triggerId,
-    'aria-label': 'Calendar',
+    'aria-label': strings?.calendar ?? 'Calendar',
     'aria-labelledby': `${triggerId} ${labelId}`,
     'aria-haspopup': 'dialog',
     'aria-expanded': isOpen ? 'true' : 'false',

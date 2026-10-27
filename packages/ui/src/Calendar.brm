@@ -29,6 +29,8 @@
     range?: boolean;
     /** Lets a range hold dates that cannot be picked. Those dates do not show as selected. */
     allowsNonContiguousRanges?: boolean;
+    /** An IANA time zone, such as `Asia/Tokyo`, that decides today. Else the one of an I18nProvider, or of the browser. */
+    timeZone?: string;
     /** The day that each week starts on, such as `mon`. Without it, the locale picks. */
     firstDayOfWeek?: DayOfWeek;
     /** Runs with the date each time one gets focus. */
@@ -43,7 +45,7 @@
 </script>
 
 <script>
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import {
     CalendarContext,
     DatePickerContext,
@@ -58,7 +60,9 @@
     toDate,
     todayString,
     unitDuration,
+    watchToday,
   } from './calendar.ts';
+  import { DateStringsContext } from './date-strings.ts';
   import { ButtonContext, TextContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
@@ -98,6 +102,7 @@
     range = false,
     allowsNonContiguousRanges = false,
     firstDayOfWeek,
+    timeZone: ownTimeZone,
     children,
     ...rest
   } = $props<CalendarProps>();
@@ -105,13 +110,17 @@
   // In a DatePicker, the picker holds the value, and a pick goes to it. The limits of the picker
   // apply when the Calendar has none of its own.
   const picker = $getContext(DatePickerContext);
+  const locale = $getContext(LocaleContext);
+  const timeZone = ownTimeZone ?? locale.timeZone;
   const minValue = $memo(ownMinValue ?? picker?.minValue);
   const maxValue = $memo(ownMaxValue ?? picker?.maxValue);
   const isDisabled = $memo(ownDisabled ?? picker?.isDisabled ?? false);
   const isReadOnly = $memo(ownReadOnly ?? picker?.isReadOnly ?? false);
   let {
     focusedValue = constrain(
-      toDate(firstOf(picker ? picker.value : value) ?? picker?.placeholderValue ?? todayString()),
+      toDate(
+        firstOf(picker ? picker.value : value) ?? picker?.placeholderValue ?? todayString(timeZone),
+      ),
       minValue,
       maxValue,
     ).toString(),
@@ -125,10 +134,19 @@
   // Focus is in a grid of this calendar.
   let isFocused = $signal(false);
 
-  const locale = $getContext(LocaleContext);
+  const strings = $getContext(DateStringsContext);
+  // The server writes its date, so the first render of the browser matches the HTML. The browser
+  // then takes its own, and keeps it up to date.
+  let today = $signal(todayString(timeZone));
+  $client(
+    () =>
+      watchToday(timeZone, (date) => {
+        today = date;
+      }),
+    'idle',
+  );
   const id = $id();
   const errorId = $id();
-  const today = todayString();
   // The first date that shows, with the focused date in the middle of the months.
   let start = $signal(
     alignCenter(toDate(focusedValue), visibleDuration, locale.locale, minValue, maxValue).toString(),
@@ -436,6 +454,7 @@
     ariaLabel,
     label,
     today,
+    strings,
     isDateUnavailable,
     focusDate,
     cellFocused,
@@ -455,8 +474,8 @@
   });
   $setContext(ButtonContext, {
     slots: {
-      previous: { 'aria-label': 'Previous', isDisabled: previousDisabled, onPress: () => pressed(-1) },
-      next: { 'aria-label': 'Next', isDisabled: nextDisabled, onPress: () => pressed(1) },
+      previous: { 'aria-label': strings?.previous ?? 'Previous', isDisabled: previousDisabled, onPress: () => pressed(-1) },
+      next: { 'aria-label': strings?.next ?? 'Next', isDisabled: nextDisabled, onPress: () => pressed(1) },
     },
   });
   $setContext(TextContext, { slots: { errorMessage: { id: errorId } } });
@@ -486,6 +505,6 @@
   {children}
   <!-- A next button after the grid, for screen readers that read by touch. -->
   <VisuallyHidden>
-    <button aria-label="Next" disabled=(nextDisabled || undefined) tabindex="-1" onClick=(() => pressed(1))></button>
+    <button aria-label=(strings?.next ?? 'Next') disabled=(nextDisabled || undefined) tabindex="-1" onClick=(() => pressed(1))></button>
   </VisuallyHidden>
 </div>

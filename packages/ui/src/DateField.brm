@@ -46,6 +46,7 @@
   import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, messagesOf } from './fields.ts';
+  import { DateStringsContext } from './date-strings.ts';
   import { LocaleContext } from './locale.ts';
   import { dateSegments, formField } from './date-field.brm.ts';
   import { DateFieldContext } from './segments.ts';
@@ -92,8 +93,9 @@
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
   // The date that a segment starts at, in the range.
+  const strings = $getContext(DateStringsContext);
   const placeholder = $memo(
-    constrain(toDate(placeholderValue ?? todayString()), minValue, maxValue).toString(),
+    constrain(toDate(placeholderValue ?? todayString(locale.timeZone)), minValue, maxValue).toString(),
   );
   const inputId = $id();
   // The date that a reset of the form gives back.
@@ -102,6 +104,7 @@
     value,
     placeholder,
     locale.locale,
+    strings?.placeholders,
     isDisabled,
     isReadOnly,
   );
@@ -144,6 +147,8 @@
     isRequired,
     isInvalid: invalid,
     direction: locale.direction,
+    segmentNames: strings?.segmentNames,
+    empty: strings?.empty,
     step,
     jump,
     type,
