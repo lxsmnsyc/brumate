@@ -11,18 +11,22 @@
 </script>
 
 <script>
-  import { $memo, $signal } from 'brumate/signals';
+  import { $memo, $setContext, $signal } from 'brumate/signals';
   import SpreadChildrenBox from './spreadChildrenBox.brm';
+  import SpreadChildrenPick, { Shown } from './spreadChildrenPick.brm';
   import SpreadChildrenTarget from './spreadChildrenTarget.brm';
 
   let tone = $signal('sc-a');
   const label = $memo(await ready);
+
+  $setContext(Shown, { shown: () => tone === 'sc-b' });
 </script>
 
 <button class="sc-tone" onClick=(() => (tone = 'sc-b'))>{tone}</button>
 #loading {
   <SpreadChildrenBox class=(tone)><input class="sc-streamed" aria-label=(label) /></SpreadChildrenBox>
   <SpreadChildrenBox as=SpreadChildrenTarget class=(tone)><input class="sc-target" /></SpreadChildrenBox>
+  <SpreadChildrenPick><b class="sc-picked">Picked</b></SpreadChildrenPick>
 } #else {
   <p class="sc-fallback">Loading</p>
 }

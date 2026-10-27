@@ -2,7 +2,6 @@
   import { $signal } from 'brumate/signals';
   import SpreadChildrenBox from './spreadChildrenBox.brm';
   import SpreadChildrenList from './spreadChildrenList.brm';
-  import SpreadChildrenTarget from './spreadChildrenTarget.brm';
   import SpreadChildrenWrap from './spreadChildrenWrap.brm';
 
   let tone = $signal('sc-a');
@@ -10,8 +9,6 @@
 
 <button class="sc-tone" onClick=(() => (tone = 'sc-b'))>Tone</button>
 <SpreadChildrenWrap class=(tone)>Wrapped</SpreadChildrenWrap>
-<!-- A live class, so the class that spreadChildrenBox passes to it in `as` reaches it. -->
-<SpreadChildrenTarget class=(tone)>Target</SpreadChildrenTarget>
 <SpreadChildrenBox class=(tone)><input class="sc-direct" /></SpreadChildrenBox>
 <SpreadChildrenList items=(['one']) item=row />
 

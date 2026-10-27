@@ -13,3 +13,12 @@
 - spreadChildrenTarget gets no live props from the box (as-live-props), so the test page renders it once with a live class, so its rest is live and the class arrives.
 - The ToastRegion `it.fails` of as-controls still fails: AsTarget's children are static (as-live-props), not this cause.
 - Size: client chunk minified, gzip -9, 15679 to 15738 (+59 B).
+
+## 2026-10-27, review fix
+
+- Review: the refresh kept any `RenderedChildren` on its first write, also where the server rendered something else, such as `{ctx!.shown() ? children : 'none'}` with a change before the body streams in. Probe added as a test (spreadChildrenPick in spreadChildrenStream, with a context in the module script of spreadChildrenPick). It fails with the first change and passes on main.
+- A context that holds a number did not show it: the page does not refresh its own updates, so the context slot of the body keeps the server value on main too. A function in the context, read directly, does.
+- The client cannot tell from the DOM which children the server rendered: a content insert has no marker around them, and a text insert's `<!--t-->` marks the insert, not the children. Rendering them again to compare has side effects (`keep`, new scopes).
+- Fix: the server records on the reference of the children the scope where it first rendered them, `$b.n(ref, scope, at)`. The client keeps the nodes only when the insert is at that scope. Navigation shifts `at` with `scope`. A reference sent in a record before the server renders it has no `at`, so the client renders it again, as on main.
+- Merged origin/main (#278, as-live-props). The live class workaround for spreadChildrenTarget is gone; all tests pass without it.
+- Size, minified, gzip -9, against main: client 15681 to 15758 (+77), produce 2016 to 2019 (+3), client-routes 1009 to 1027 (+18, loads with navigation).

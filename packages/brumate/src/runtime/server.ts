@@ -1332,6 +1332,11 @@ class Children implements Lazy {
       this[CHILDREN_REF] = new ChildrenReference(ref, from);
     }
     this[LAZY] = async (ctx, at, tag) => {
+      // The browser keeps what the server rendered at this scope, when it reads the page later.
+      const reference = this[CHILDREN_REF];
+      if (reference && reference.at === undefined) {
+        reference.at = at;
+      }
       const html = await (at === undefined
         ? renderBody(ctx)
         : ctx.children(from, at, () => renderBody(ctx), tag));

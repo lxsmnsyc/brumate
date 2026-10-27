@@ -102,10 +102,13 @@ export const CHILDREN_REF: unique symbol = Symbol.for('brumate.children') as nev
 export class ChildrenReference {
   readonly ref: string;
   readonly scope: ScopeId;
+  /** The scope that inserted them where the server rendered them, if it did. */
+  at: ScopeId | undefined;
 
-  constructor(ref: string, scope: ScopeId) {
+  constructor(ref: string, scope: ScopeId, at?: ScopeId) {
     this.ref = ref;
     this.scope = scope;
+    this.at = at;
   }
 }
 
@@ -295,7 +298,7 @@ export const stateValues: {
   /** HTML that the client may insert again. */
   r: (html: string) => Raw;
   /** Children, by the export that renders them and their scope. */
-  n: (ref: string, scope: ScopeId) => ChildrenReference;
+  n: (ref: string, scope: ScopeId, at?: ScopeId) => ChildrenReference;
   /**
    * A component, such as the value of a dynamic tag. The client gets a
    * function with the same ID that renders nothing. The client code that
@@ -314,7 +317,7 @@ export const stateValues: {
   m: (parts) => Object.assign(parts, { [PARTS]: parts }),
   i: (value) => new Internal(value),
   r: raw,
-  n: HAS_CHILDREN ? (ref, scope) => new ChildrenReference(ref, scope) : unused,
+  n: HAS_CHILDREN ? (ref, scope, at) => new ChildrenReference(ref, scope, at) : unused,
   c: (id) => Object.assign(() => '', { brumateId: id }),
   l: (scope, slot) => new SlotReference(scope, slot),
   b: HAS_BINDINGS

@@ -2311,6 +2311,21 @@ describe('a spread onto a component', () => {
     expect(document.activeElement).toBe(input);
   });
 
+  it('renders children that the server did not render at an insert, in a body that streams in later', async () => {
+    const server = await import(file('spreadChildrenStream.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    await startLoader();
+    // The server renders 'none' in the body, and the change before it streams in shows the children.
+    click(document.querySelector('.sc-tone')!);
+    await waitFor(() => expect(text('.sc-tone')).toBe('sc-b'));
+    server.release('Ada');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    await waitFor(() => expect(text('.sc-pick')).toBe('Picked'));
+  });
+
   it('keeps the component in `as` that the server rendered, in a body that streams in later', async () => {
     const server = await import(file('spreadChildrenStream.brm.ts'));
     const { html, state, pending } = await renderParts(server.default, {});
