@@ -177,6 +177,7 @@ const inBatches = async <T, R>(list: T[], run: (item: T) => Promise<R>): Promise
     for (const item of list.slice(start, start + BATCH)) {
       batch.push(run(item));
     }
+    // oxlint-disable-next-line no-await-in-loop -- Each batch waits for the one before, to bound open files.
     results.push(...(await Promise.all(batch)));
   }
   return results;

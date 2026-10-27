@@ -1,0 +1,11 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { items } = $props<{ items: string[] }>();
+</script>
+
+<ol>
+  #for (item of items) {
+    <li class="prop">{item}</li>
+  }
+</ol>

@@ -1,0 +1,67 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+  import SourcedList from './SourcedList.brm';
+
+  interface Todo { id: string; title: string; done: boolean }
+  interface Group { id: string; children: string[] }
+  const { initial } = $props<{ initial: Todo[] }>();
+  let todos = $signal(initial);
+  let picked = $signal(new Set(['a', 'b']));
+  let names = $signal(['x', 'y']);
+  let labels = $signal(['L1', 'L2']);
+  let groups = $signal<Group[]>([{ id: 'g1', children: ['c1', 'c2'] }, { id: 'g2', children: ['c3', 'c4'] }]);
+  const finished = $memo(todos.filter((todo) => todo.done));
+</script>
+
+<button class="reverse" onClick=(() => (todos = [...todos].reverse()))>Reverse</button>
+<button class="add" onClick=(() => (todos = [...todos, { id: String(todos.length + 1), title: `New ${todos.length + 1}`, done: true }]))>Add</button>
+<button class="drop" onClick=(() => (todos = todos.slice(1)))>Drop</button>
+<button class="pick" onClick=(() => (picked = new Set([...picked, 'c'])))>Pick</button>
+<button class="rename" onClick=(() => (names = ['z', 'y', 'x']))>Rename</button>
+<button class="relabel" onClick=(() => (labels = ['L2', 'L1', 'L3']))>Relabel</button>
+<button class="regroup" onClick=(() => (groups = [...groups].reverse()))>Regroup</button>
+<ul class="todos">
+  #for (todo of todos by todo.id) {
+    <script>
+      function toggle() {
+        todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
+      }
+    </script>
+    <li class={ done: todo.done }>
+      <button class="toggle" onClick=toggle>{todo.title}</button>
+      #for (label of labels) {
+        <span class="label">{todo.id}{label}</span>
+      }
+    </li>
+  }
+</ul>
+<ul class="finished">
+  #for (todo of finished by todo.id) {
+    <li>{todo.title}</li>
+  }
+</ul>
+<ul class="picked">
+  #for (name of picked) {
+    <li>{name}</li>
+  }
+</ul>
+<ul class="names">
+  #for (name of names) {
+    <li>name</li>
+  }
+</ul>
+<ul class="open">
+  #for (todo of todos.filter((todo) => !todo.done) by todo.id) {
+    <li>{todo.title}</li>
+  }
+</ul>
+<ul class="groups">
+  #for (group of groups by group.id) {
+    <li>
+      #for (child of group.children) {
+        <b>{child}</b>
+      }
+    </li>
+  }
+</ul>
+<SourcedList items=names />
