@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Leaves `ref` in the rest props and spreads them onto its button.
+  const { label = 'Rest', ...rest } = $props<{ label?: string; [name: string]: unknown }>();
+</script>
+
+<button class="inner" {...rest}>{label}</button>

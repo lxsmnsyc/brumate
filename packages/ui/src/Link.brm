@@ -64,6 +64,7 @@
   } = $props<LinkOwnProps>();
   // The props of the target of `as`, for the type of the component.
   const { as } = $props<LinkProps<T>>();
+  let { ref } = $props<LinkOwnProps>();
 
   const context = $getContext(LinkContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
@@ -147,6 +148,7 @@
 </script>
 
 <{element}
+  ref=$bind(ref)
   href=(linked ? href : undefined)
   role=(native ? undefined : 'link')
   tabindex=(native || disabled ? undefined : 0)
