@@ -1,0 +1,7 @@
+<script>
+  import GapPart from './GapPart.brm';
+  import GapPassOnTargetA from './gapPassOnTargetA.brm';
+  import GapPassOnTargetB from './gapPassOnTargetB.brm';
+  const first = false;
+</script>
+<GapPart as=(first ? GapPassOnTargetA : GapPassOnTargetB) class="item">Item</GapPart>

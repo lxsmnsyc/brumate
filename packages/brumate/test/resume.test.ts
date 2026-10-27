@@ -5327,6 +5327,18 @@ describe('a component that a page gives to a part in as', () => {
   }
 });
 
+describe('a part that passes on the component of as to another part', () => {
+  for (const name of ['gapPassOnComponent', 'gapPassOnChoice', 'gapPassOnChoiceOther']) {
+    it(`updates a prop that the other part sends to its target: ${name}`, async () => {
+      await resume(name, {});
+      const item = () => document.querySelector('.item')!;
+      expect(item().getAttribute('aria-selected')).toBe('false');
+      click(item());
+      await waitFor(() => expect(item().getAttribute('aria-selected')).toBe('true'));
+    });
+  }
+});
+
 describe('a template that names a component only in an attribute value', () => {
   /** The source of the client parts that hold the markup of the templates of a page. */
   function templateParts(name: string): string {

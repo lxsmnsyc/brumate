@@ -1,0 +1,6 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import GapPart from './GapPart.brm';
+  const { as, children, ...rest } = $props();
+</script>
+<GapPart {as} {...rest}>{children}</GapPart>
