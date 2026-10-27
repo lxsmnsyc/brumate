@@ -1,7 +1,10 @@
 <script module>
+  import type { Bindable } from 'brumate/signals';
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface HeadingOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     level?: 1 | 2 | 3 | 4 | 5 | 6;
     slot?: string | null;
     children?: unknown;

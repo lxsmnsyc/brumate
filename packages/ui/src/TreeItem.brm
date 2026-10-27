@@ -2,6 +2,8 @@
   import type { Bindable } from 'brumate/signals';
   import type { AsProps, AsTarget } from './as.ts';
   export interface TreeItemOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     textValue?: string;
     isDisabled?: boolean;
     onAction?: () => void;
@@ -44,7 +46,7 @@
     children,
     ...rest
   } = $props<TreeItemProps<T>>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<TreeItemOwnProps>();
 
   const tree = $getContext(TreeRowContext);
   // The attributes of a part around it, such as a NavigationTreeItem, which its own win over.

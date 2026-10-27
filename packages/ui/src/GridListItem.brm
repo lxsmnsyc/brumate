@@ -4,6 +4,8 @@
   import type { Key } from './collection.ts';
 
   export interface GridListItemOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
@@ -49,7 +51,7 @@
     children,
     ...rest
   } = $props<GridListItemProps<T>>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<GridListItemOwnProps>();
 
   const list = $getContext(ListBoxContext);
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.

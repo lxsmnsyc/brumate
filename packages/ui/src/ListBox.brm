@@ -4,6 +4,8 @@
   import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
 
   export interface ListBoxOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     selectionMode?: SelectionMode;
     selectionBehavior?: SelectionBehavior;
     disabledKeys?: Key[];
@@ -121,7 +123,7 @@
     ...rest
   } = $props<ListBoxProps<T>>();
   let { selectedKeys = [] } = $props<ListBoxOwnProps>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<ListBoxOwnProps>();
 
   const locale = $getContext(LocaleContext);
   // A Select around the list keeps the selection, with one item at most.
