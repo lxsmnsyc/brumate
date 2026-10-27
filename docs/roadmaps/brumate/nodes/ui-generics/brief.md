@@ -1,7 +1,7 @@
 ---
 id: ui-generics
 title: Type parameters for the values of the parts
-status: todo
+status: active
 priority: should
 type: feature
 outline: false

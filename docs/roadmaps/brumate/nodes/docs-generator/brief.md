@@ -1,7 +1,7 @@
 ---
 id: docs-generator
 title: Generate the props tables of the ui docs from the exported types
-status: todo
+status: active
 priority: should
 type: feature
 outline: false
