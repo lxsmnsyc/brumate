@@ -1281,8 +1281,9 @@ export function stateValue(node: Memo): unknown {
 }
 
 /**
- * The error of a memo for the page state. In development it is the error, with its name and
- * message and no stack (the serial options leave stacks out). In production it is the message of
+ * The error of a memo for the page state. In development it is the error as seroval
+ * writes it: its name, message, own properties, `cause` and the `errors` of an `AggregateError`,
+ * and no stack (the serial options leave stacks out). In production it is the message of
  * a `ServerError`, which the app chose to show, or else a generic message, and the error is
  * logged, as for a server function that fails.
  */
