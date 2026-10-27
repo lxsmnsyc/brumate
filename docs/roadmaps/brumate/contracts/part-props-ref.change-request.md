@@ -1,7 +1,7 @@
 # Change request: part-props v1.2 to v1.3
 
 - From node: as-controls
-- Status: open
+- Status: accepted
 
 ## Problem
 
@@ -34,3 +34,5 @@ as-collections, as-sound, docs-generator (the props table gets a `ref` row), vis
 as-controls declares `ref?: Bindable<HTMLElement | undefined>` in the own props of its 15 parts. Its test fixture types the signals that components bind as `$signal<any>()`, because of the check of the core above.
 
 ## Decision
+
+Accepted by the maintainer on 2026-10-27, as part-props v1.3. The node ref-type-parts applies it to the parts that as-collections rewrote, and to Link, Button and Heading. The second error, in the check of the core, is the node bound-element-signal.

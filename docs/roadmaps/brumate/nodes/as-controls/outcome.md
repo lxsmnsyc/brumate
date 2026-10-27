@@ -11,7 +11,7 @@
 
 ## Deviations
 
-- `ref` is declared in the own props of each part as `Bindable<HTMLElement | undefined>`, not as the contract's `Bindable<HTMLElement>` read from a separate `$props` type. With the contract's type a caller's `$signal<HTMLElement>()` does not type-check, and an element target has no `ref`. Change request: contracts/part-props.change-request-ref.md. The existing `part-props.change-request.md` (as-collections, rejected) is untouched.
+- `ref` is declared in the own props of each part as `Bindable<HTMLElement | undefined>`, not as the contract's `Bindable<HTMLElement>` read from a separate `$props` type. With the contract's type a caller's `$signal<HTMLElement>()` does not type-check, and an element target has no `ref`. Change request: contracts/part-props-ref.change-request.md. The existing `part-props.change-request.md` (as-collections, rejected) is untouched.
 - ToggleButton spreads `state(radio, selected)` in place of three attributes with `undefined` values. Otherwise `role=undefined` replaced the role that Button gives a component target. This is a small behavior fix, with no change for an element target.
 - Dialog destructures `'aria-label'` and writes it, since the typed rest has no string index.
 - Added test/fixtures/asControls.brm, outside the brief's owned list (a new file in the test folder).
