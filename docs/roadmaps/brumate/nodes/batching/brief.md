@@ -54,3 +54,10 @@ Freeze the update-pass contract first, with the signatures of `flush`, and of a 
 ## Sizing
 
 M: the queue exists after ordered updates. The audit of the ui handlers is the larger part.
+
+## Notes from ordered-updates (#282)
+
+- `pass(fn)` in packages/brumate/src/runtime/client/updates.ts is where a whole handler can become one pass.
+- The maintainer accepted ordered-updates at +335 B gzip for the todos app, over its 300 B budget, on 2026-10-27, to be trimmed later. Measure updates.ts before and after this node, and trim where the batching change allows.
+- A write that waits for code can race a handler's code that loads at the same time (main has the same race). Making a whole handler one pass is the real fix; add a test for it here.
+- A write is about 1.4x main at 10000 rows. Do not make it slower; measure the rows probe of the reviews of #282.
