@@ -1,9 +1,10 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { DateDuration, DayOfWeek } from '@internationalized/date';
   import type { DateRange, DateString } from './calendar.ts';
 
-  export interface CalendarProps {
+  export interface CalendarProps extends Omit<ElementProps<'div'>, 'onChange'> {
     minValue?: DateString;
     maxValue?: DateString;
     isDateUnavailable?: (date: DateString, anchor: DateString | null) => boolean;
@@ -21,7 +22,6 @@
     children?: unknown;
     value?: Bindable<DateString | DateRange | null>;
     focusedValue?: Bindable<DateString>;
-    [attribute: string]: unknown;
   }
 </script>
 

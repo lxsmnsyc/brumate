@@ -1,8 +1,9 @@
 <script module>
-  export interface BreadcrumbsProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface BreadcrumbsProps extends ElementProps<'ol'> {
     isDisabled?: boolean;
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

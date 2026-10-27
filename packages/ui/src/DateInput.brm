@@ -1,10 +1,10 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { DateFieldState, Segment } from './segments.ts';
 
-  export interface DateInputProps {
+  export interface DateInputProps extends ElementProps<'div'> {
     segment?: (segment: Segment) => unknown;
     slot?: 'start' | 'end';
-    [attribute: string]: unknown;
   }
 </script>
 

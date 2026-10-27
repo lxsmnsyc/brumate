@@ -1,13 +1,13 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { Key } from './collection.ts';
 
-  export interface ColorSwatchPickerProps {
+  export interface ColorSwatchPickerProps extends Omit<ElementProps<'div'>, 'onChange'> {
     layout?: 'grid' | 'stack';
     onChange?: (value: string) => void;
     children?: unknown;
     value?: Bindable<string>;
-    [attribute: string]: unknown;
   }
 </script>
 

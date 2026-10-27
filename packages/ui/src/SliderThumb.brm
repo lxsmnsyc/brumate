@@ -1,11 +1,12 @@
 <script module>
-  export interface SliderThumbProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface SliderThumbProps extends ElementProps<'div'> {
     index?: number;
     name?: string;
     isDisabled?: boolean;
     'aria-label'?: string;
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

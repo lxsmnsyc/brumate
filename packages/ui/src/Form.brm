@@ -1,9 +1,10 @@
 <script module>
-  export interface FormProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface FormProps extends ElementProps<'form'> {
     validationBehavior?: 'native' | 'aria';
     validationErrors?: Record<string, string | string[]>;
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

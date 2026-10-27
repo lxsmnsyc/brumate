@@ -1,13 +1,13 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Key } from './collection.ts';
 
-  export interface RowProps {
+  export interface RowProps extends Omit<ElementProps<'tr'>, 'id'> {
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
     onAction?: () => void;
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

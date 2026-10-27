@@ -1,9 +1,10 @@
 <script module>
-  export interface RadioProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface RadioProps extends ElementProps<'label'> {
     value: string;
     isDisabled?: boolean;
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

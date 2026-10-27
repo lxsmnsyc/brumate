@@ -1,9 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { TokenSegment } from './token-field.ts';
 
-  export interface TokenInputProps {
+  export interface TokenInputProps extends ElementProps<'div'> {
     token?: (segment: TokenSegment) => unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

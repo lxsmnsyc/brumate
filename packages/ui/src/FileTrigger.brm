@@ -57,6 +57,6 @@
   accept=(acceptedFileTypes?.join(','))
   multiple=(allowsMultiple || undefined)
   capture=defaultCamera
-  webkitdirectory=(acceptDirectory || undefined)
+  {...({ webkitdirectory: acceptDirectory || undefined } as {})}
   onChange=change
 >

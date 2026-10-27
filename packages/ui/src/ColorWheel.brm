@@ -1,8 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { Color } from './color.ts';
 
-  export interface ColorWheelProps {
+  export interface ColorWheelProps extends Omit<ElementProps<'div'>, 'onChange'> {
     outerRadius: number;
     innerRadius: number;
     isDisabled?: boolean;
@@ -13,7 +14,6 @@
     onChangeEnd?: (value: string) => void;
     children?: unknown;
     value?: Bindable<string>;
-    [attribute: string]: unknown;
   }
 </script>
 

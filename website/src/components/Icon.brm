@@ -1,4 +1,5 @@
 <script>
+  import type { ElementProps } from 'brumate/elements';
   import { $props } from 'brumate/signals';
 
   /**
@@ -19,8 +20,7 @@
       | 'chevron'
       | 'grip';
     size?: number;
-    [attribute: string]: unknown;
-  }>();
+  } & Omit<ElementProps<'svg'>, 'name' | 'size'>>();
 </script>
 
 <svg
@@ -34,7 +34,7 @@
   stroke-linecap="round"
   stroke-linejoin="round"
   aria-hidden="true"
-  focusable="false"
+  {...({ focusable: 'false' } as {})}
   {...rest}
 >
   #switch {

@@ -1,14 +1,14 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
 
-  export interface ModalOverlayProps {
+  export interface ModalOverlayProps extends ElementProps<'div'> {
     isDismissable?: boolean;
     isKeyboardDismissDisabled?: boolean;
     transition?: boolean;
     onOpenChange?: (open: boolean) => void;
     children?: unknown;
     isOpen?: Bindable<boolean | undefined>;
-    [attribute: string]: unknown;
   }
 </script>
 

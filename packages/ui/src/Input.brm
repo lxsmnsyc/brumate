@@ -1,7 +1,8 @@
 <script module>
-  export interface InputProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface InputProps extends ElementProps<'input'> {
     slot?: string | null;
-    [attribute: string]: unknown;
   }
 </script>
 
@@ -92,7 +93,7 @@
   {...keys(enterPrevented, escapePrevented)}
   onInput=input
   onInvalid=(prevent(invalidated))
-  {...outerAttributes}
-  {...attributes}
+  {...(outerAttributes as ElementProps<'input'>)}
+  {...(attributes as ElementProps<'input'>)}
   {...rest}
 >

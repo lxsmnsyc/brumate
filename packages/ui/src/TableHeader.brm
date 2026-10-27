@@ -1,7 +1,8 @@
 <script module>
-  export interface TableHeaderProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface TableHeaderProps extends ElementProps<'thead'> {
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

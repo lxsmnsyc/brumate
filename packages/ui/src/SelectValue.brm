@@ -1,13 +1,13 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Key } from './collection.ts';
 
-  export interface SelectValueProps {
+  export interface SelectValueProps extends ElementProps<'span'> {
     render?: (state: {
       selectedKey: Key | null;
       selectedText: string | undefined;
       isPlaceholder: boolean;
     }) => unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

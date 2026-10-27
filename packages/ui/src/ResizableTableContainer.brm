@@ -1,9 +1,10 @@
 <script module>
-  export interface ResizableTableContainerProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface ResizableTableContainerProps extends Omit<ElementProps<'div'>, 'onResize'> {
     onResize?: (widths: Map<string, number>) => void;
     onResizeEnd?: (widths: Map<string, number>) => void;
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

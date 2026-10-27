@@ -1,8 +1,9 @@
 <script module>
-  export interface CellProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface CellProps extends ElementProps<'td'> {
     textValue?: string;
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

@@ -1,4 +1,5 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type {
     Key,
@@ -9,7 +10,7 @@
   } from './collection.ts';
   import type { SortDescriptor, TableColumn } from './table.ts';
 
-  export interface TableProps<V extends { id: Key } = { id: Key }> {
+  export interface TableProps<V extends { id: Key } = { id: Key }> extends Omit<ElementProps<'table'>, 'onSelectionChange'> {
     selectionMode?: SelectionMode;
     selectionBehavior?: SelectionBehavior;
     disabledKeys?: Key[];
@@ -33,7 +34,6 @@
     children?: unknown;
     selectedKeys?: Bindable<Key[]>;
     sortDescriptor?: Bindable<SortDescriptor | null>;
-    [attribute: string]: unknown;
   }
 </script>
 

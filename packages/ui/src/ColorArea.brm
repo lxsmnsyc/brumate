@@ -1,8 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { Color, ColorChannel, ColorSpace } from './color.ts';
 
-  export interface ColorAreaProps {
+  export interface ColorAreaProps extends Omit<ElementProps<'div'>, 'onChange'> {
     xChannel?: ColorChannel;
     yChannel?: ColorChannel;
     colorSpace?: ColorSpace;
@@ -15,7 +16,6 @@
     onChangeEnd?: (value: string) => void;
     children?: unknown;
     value?: Bindable<string>;
-    [attribute: string]: unknown;
   }
 </script>
 

@@ -1,7 +1,8 @@
 <script module>
-  export interface ColumnResizerProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface ColumnResizerProps extends ElementProps<'div'> {
     'aria-label'?: string;
-    [attribute: string]: unknown;
   }
 </script>
 

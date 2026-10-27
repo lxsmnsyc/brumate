@@ -1,10 +1,10 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Key } from './collection.ts';
 
-  export interface TableBodyProps<V extends { id: Key } = { id: Key }> {
+  export interface TableBodyProps<V extends { id: Key } = { id: Key }> extends ElementProps<'tbody'> {
     item?: (item: V) => unknown;
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

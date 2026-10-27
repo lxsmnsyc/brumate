@@ -1,8 +1,9 @@
 <script module>
-  export interface VirtualizerProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface VirtualizerProps extends ElementProps<'div'> {
     rowHeight?: number;
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

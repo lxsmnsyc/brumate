@@ -1,7 +1,8 @@
 <script module>
-  export interface ToastContentProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface ToastContentProps extends ElementProps<'div'> {
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

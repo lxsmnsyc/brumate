@@ -1,8 +1,9 @@
 <script module>
-  export interface ListBoxSectionProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface ListBoxSectionProps extends ElementProps<'section'> {
     children?: unknown;
     'aria-label'?: string;
-    [attribute: string]: unknown;
   }
 </script>
 

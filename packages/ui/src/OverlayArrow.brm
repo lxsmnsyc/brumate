@@ -1,7 +1,8 @@
 <script module>
-  export interface OverlayArrowProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface OverlayArrowProps extends ElementProps<'div'> {
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

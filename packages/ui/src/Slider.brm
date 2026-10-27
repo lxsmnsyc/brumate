@@ -1,7 +1,8 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
 
-  export interface SliderProps {
+  export interface SliderProps extends Omit<ElementProps<'div'>, 'onChange'> {
     minValue?: number;
     maxValue?: number;
     step?: number;
@@ -12,7 +13,6 @@
     onChangeEnd?: (value: number | number[]) => void;
     children?: unknown;
     value?: Bindable<number | number[]>;
-    [attribute: string]: unknown;
   }
 </script>
 

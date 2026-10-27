@@ -1,7 +1,8 @@
 <script module>
-  export interface SliderTrackProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface SliderTrackProps extends ElementProps<'div'> {
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

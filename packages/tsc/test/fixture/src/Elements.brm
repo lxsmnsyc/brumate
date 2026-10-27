@@ -1,0 +1,19 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Badge from './Badge.brm';
+
+  let button = $signal<HTMLButtonElement>();
+  let element = $signal<HTMLElement>();
+  const rest = { tabindex: 'x' };
+  const name = 'title';
+</script>
+
+<div foo="x"></div>
+<img loading="soon">
+<div ref=$bind(button)></div>
+<div {...rest}></div>
+<div [name]=(5)></div>
+<Badge label="a" count=(1)>hello</Badge>
+<div ref=$bind(element) tabindex="0" class=(['a', false && 'b']) aria-label=(1) data-x=(2) hidden>
+  <button ref=$bind(button) type="button" title=name></button>
+</div>

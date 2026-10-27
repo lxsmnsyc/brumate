@@ -1,9 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Segment, SegmentType } from './segments.ts';
 
-  export interface DateSegmentProps {
+  export interface DateSegmentProps extends ElementProps<'span'> {
     segment: Segment;
-    [attribute: string]: unknown;
   }
 </script>
 
@@ -115,7 +115,7 @@
     tabindex=(field?.isDisabled ? undefined : '0')
     contenteditable=(field?.isDisabled || field?.isReadOnly ? undefined : 'true')
     inputmode=(segment.type === 'dayPeriod' ? 'text' : 'numeric')
-    autocorrect="off"
+    {...({ autocorrect: 'off' } as {})}
     spellcheck="false"
     enterkeyhint="next"
     aria-label=(SEGMENT_NAMES[segment.type])

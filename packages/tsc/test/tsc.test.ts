@@ -23,6 +23,17 @@ it('reports type errors in .brm files at their place in the file', () => {
     "App.brm(11,10): error TS2551: Property 'toFixed' does not exist on type 'string'. Did you mean 'fixed'?",
     // `$bind` on a prop that is not `Bindable`, at the prop.
     "Bind.brm(10,9): error TS2322: Type 'BoundSignal<number>' is not assignable to type 'number'.",
+    // The value of an input is a string, so a signal of a number does not bind it.
+    "Bind.brm(11,8): error TS2322: Type 'BoundSignal<number>' is not assignable to type 'Attr<string | number | BoundValue>'.",
+    // The attributes of a plain element, each at its place: an unknown one, a wrong value, a ref
+    // of another element, a wrong value in a spread and a computed name. Then children given to a
+    // component that takes none, at the children.
+    "Elements.brm(11,6): error TS2353: Object literal may only specify known properties, and 'foo' does not exist in type 'Html<\"div\", {}>'.",
+    'Elements.brm(12,6): error TS2322: Type \'"soon"\' is not assignable to type \'Attr<"eager" | "lazy">\'.',
+    "Elements.brm(13,6): error TS2322: Type 'BoundSignal<HTMLButtonElement | undefined>' is not assignable to type 'BindableMark<unknown> & WritableMark<HTMLDivElement>'.",
+    "Elements.brm(14,10): error TS2345: Argument of type '{ tabindex: string; }' is not assignable to parameter of type '{ tabindex: string; } & { tabindex: Attr<Num>; }'.",
+    "Elements.brm(15,6): error TS2418: Type of computed property's value is 'number', which is not assignable to type 'Attr<string>'.",
+    "Elements.brm(16,28): error TS2353: Object literal may only specify known properties, and 'children' does not exist in type '{ label: string; count: number; }'.",
     // An event that no element fires, at the attribute, on an element, `<window>` and
     // `<document>`. `onItemAction` is typed from `ElementEvents` and has no error.
     'Events.brm(10,6): error TS2345: Argument of type \'"foobar"\' is not assignable to parameter of type \'"input" | ...',

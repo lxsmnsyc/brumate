@@ -1,9 +1,10 @@
 <script module>
-  export interface ColorSwatchProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface ColorSwatchProps extends ElementProps<'div'> {
     color?: string;
     colorName?: string;
     'aria-label'?: string;
-    [attribute: string]: unknown;
   }
 </script>
 

@@ -8,6 +8,7 @@ import type {
   Block,
   Body,
   ComponentNode,
+  ElementNode,
   EventAttribute,
   Expression,
   Markup,
@@ -53,6 +54,16 @@ const HELPERS = `/// <reference types="brumate/types" />
 type $$Component<P> = (props: P, ...rest: any[]) => unknown;
 type $$Markup = import('brumate/elements').Markup;
 declare const $$markup: $$Markup;
+/** \`Omit\` that keeps the index signatures, for the rest of a \`$props\` call. */
+type $$Omit<T, K> = { [P in keyof T as P extends K ? never : P]: T[P] };
+type $$Elements = import('brumate/elements').Elements;
+/** Checks the attributes of a plain element against its type. A tag that \`Elements\` lacks takes any. */
+type $$Props<T> = T extends keyof $$Elements ? $$Elements[T] : Record<string, unknown>;
+declare function $$element<T extends string>(tag: T, attributes: $$Props<T>): void;
+/** Checks a spread onto a plain element: each value, and each name, since a spread has no excess check. */
+declare function $$spread<T extends string, S>(tag: T, value: S & { [K in keyof S]: K extends keyof $$Props<T> ? $$Props<T>[K] : never }): void;
+/** \`$bind\` of a \`ref\`, which needs no import in markup. */
+declare function $$bind<T>(signal: T): import('brumate/signals').BoundSignal<T>;
 declare function $$dynamic(tag: string | ((props: never, ...rest: never[]) => unknown), props: Record<string, unknown>): void;
 type $$Events = import('brumate/elements').ElementEvents;
 type $$Element<T> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement;
@@ -107,6 +118,23 @@ class Writer {
   event(attribute: EventAttribute): void {
     const start = this.source[attribute.start] === '{' ? attribute.handler.start : attribute.start;
     this.stand({ start, end: start + attribute.name.length }, JSON.stringify(attribute.event));
+  }
+
+  /**
+   * Writes a property name that stands for a range of the file. A name that is not an identifier
+   * is quoted, and its quotes are mapped to the first and last characters of the range, so an
+   * error at the name spans the range. So is a name whose length differs from the range, such as
+   * `children` for the children of a component.
+   */
+  key(range: Range, name: string): void {
+    if (/^[A-Za-z_$][\w$]*$/.test(name) && this.source.slice(range.start, range.end) === name) {
+      this.copy(range);
+      return;
+    }
+    const text = /^[A-Za-z_$][\w$]*$/.test(name) ? name : JSON.stringify(name);
+    this.stand({ start: range.start, end: range.start + 1 }, text[0]!);
+    this.text(text.slice(1, -1));
+    this.stand({ start: range.end - 1, end: range.end }, text.at(-1)!);
   }
 
   /** Copies an expression in parentheses. */
@@ -165,6 +193,68 @@ function propsTypes(program: oxc.Program | undefined): Range[] {
 }
 
 /**
+ * Finds the `$props<T>()` calls whose pattern has a rest element, and the names that the other
+ * calls destructure. At runtime the rest leaves those names out, so the type of the call leaves
+ * them out too: a rest that is spread onto an element must not carry a prop of another call.
+ * Returns the names by the range of the type argument.
+ */
+function restOmits(program: oxc.Program | undefined): Map<Range, string[]> {
+  const names = new Map<oxc.Node, string[]>();
+  const types = new Map<oxc.Node, Range>();
+  const rests = new Set<oxc.Node>();
+  for (const statement of program?.body ?? []) {
+    if (statement.type !== 'VariableDeclaration') {
+      continue;
+    }
+    for (const declarator of statement.declarations) {
+      const init = declarator.init;
+      if (
+        init?.type !== 'CallExpression' ||
+        init.callee.type !== 'Identifier' ||
+        init.callee.name !== '$props' ||
+        declarator.id.type !== 'ObjectPattern'
+      ) {
+        continue;
+      }
+      const own: string[] = [];
+      for (const property of declarator.id.properties) {
+        if (property.type === 'RestElement') {
+          rests.add(init);
+        } else if (!property.computed && property.key.type === 'Identifier') {
+          own.push(property.key.name);
+        } else if (!property.computed && property.key.type === 'Literal') {
+          own.push(String(property.key.value));
+        }
+      }
+      names.set(init, own);
+      const type = (init as { typeArguments?: { params: Range[] } }).typeArguments?.params[0];
+      if (type) {
+        types.set(init, type);
+      }
+    }
+  }
+  const omits = new Map<Range, string[]>();
+  for (const call of rests) {
+    const type = types.get(call);
+    const own = new Set(names.get(call));
+    const others = new Set<string>();
+    for (const [other, list] of names) {
+      if (other !== call) {
+        for (const name of list) {
+          if (!own.has(name)) {
+            others.add(name);
+          }
+        }
+      }
+    }
+    if (type && others.size > 0) {
+      omits.set(type, [...others]);
+    }
+  }
+  return omits;
+}
+
+/**
  * Returns the signals and memos whose values the page state sends to the
  * client, because client code reads them. Element refs are sent as
  * references, so they are left out.
@@ -192,17 +282,29 @@ class Generator {
   private readonly out: Writer;
   private readonly hoisted: oxc.Node[] = [];
   private readonly sent: Declaration[];
+  private readonly omits: Map<Range, string[]>;
 
   constructor(file: SFCFile, out: Writer) {
     this.file = file;
     this.out = out;
     this.sent = sentDeclarations(file);
+    this.omits = restOmits(file.instanceScript?.program);
   }
 
   /** Copies a statement, and checks the values it declares that the client receives. */
   private statement(statement: oxc.Node): void {
     const { out } = this;
-    out.copy(statement);
+    let start = statement.start;
+    for (const [type, names] of this.omits) {
+      if (type.start >= statement.start && type.end <= statement.end) {
+        out.copy({ start, end: type.start });
+        out.text('$$Omit<');
+        out.copy(type);
+        out.text(`, ${names.map((name) => JSON.stringify(name)).join(' | ')}>`);
+        start = type.end;
+      }
+    }
+    out.copy({ start, end: statement.end });
     out.text('\n');
     for (const declaration of this.sent) {
       if (declaration.range.start >= statement.start && declaration.range.end <= statement.end) {
@@ -342,7 +444,7 @@ class Generator {
         out.text(');\n');
         return;
       case 'element':
-        this.elementAttributes(node.tag, node.attributes);
+        this.element(node);
         this.nodes(node.children);
         return;
       case 'component':
@@ -376,62 +478,101 @@ class Generator {
     }
   }
 
-  private elementAttributes(tag: string, attributes: Attribute[]): void {
+  /**
+   * Checks the attributes of a plain element as one object against the type of its tag, so an
+   * unknown attribute and a wrong value are errors at the attribute. Handlers are checked apart,
+   * by `$$on`, which also checks the name of the event.
+   */
+  private element(node: ElementNode): void {
     const { out } = this;
-    for (const attribute of attributes) {
+    for (const attribute of node.attributes) {
+      if (attribute.kind === 'event') {
+        out.text(`$$on(${JSON.stringify(node.tag)}, `);
+        out.event(attribute);
+        out.text(', ');
+        out.expression(attribute.handler);
+        out.text(');\n');
+      }
+    }
+    for (const attribute of node.attributes) {
+      if (attribute.kind === 'spread') {
+        // Without parentheses, so that the error is at the spread.
+        out.text(`$$spread(${JSON.stringify(node.tag)}, `);
+        out.copy(attribute.value);
+        out.text(');\n');
+      }
+    }
+    if (
+      !node.attributes.some(
+        (attribute) => attribute.kind !== 'event' && attribute.kind !== 'spread',
+      )
+    ) {
+      return;
+    }
+    out.text(`$$element(${JSON.stringify(node.tag)}, `);
+    // An error of the whole object, such as a computed name of any string, spans the opening tag.
+    out.stand({ start: node.start, end: node.start + 1 }, '{');
+    for (const attribute of node.attributes) {
       switch (attribute.kind) {
+        case 'static':
         case 'value':
-        case 'spread':
-          out.text('$$use(');
-          out.expression(attribute.value);
-          out.text(');\n');
-          break;
-        case 'event':
-          out.text(`$$on(${JSON.stringify(tag)}, `);
-          out.event(attribute);
-          out.text(', ');
-          out.expression(attribute.handler);
-          out.text(');\n');
+          this.propName(attribute);
+          if (attribute.kind === 'value') {
+            out.expression(attribute.value);
+          } else {
+            out.text(attribute.value === true ? 'true' : JSON.stringify(attribute.value));
+          }
+          out.text(',');
           break;
         case 'ref':
-          out.text('$$use(');
+          out.text(' ');
+          out.stand({ start: attribute.start, end: attribute.start + 3 }, 'ref');
+          out.text(': $$bind(');
           out.copy(attribute.targetRange);
-          out.text(');\n');
+          out.text('),');
           break;
-        case 'computed':
-          out.text('$$use(');
-          out.expression(attribute.name);
-          if (attribute.value !== true) {
-            out.text(', ');
+        case 'computed': {
+          // Without parentheses, so that a name of a literal type is a known property. The
+          // brackets are mapped, so an error at the name is at the attribute.
+          const close = this.file.source.indexOf(']', attribute.name.end);
+          out.text(' ');
+          out.stand({ start: attribute.start, end: attribute.start + 1 }, '[');
+          out.copy(attribute.name);
+          out.stand({ start: close, end: close + 1 }, ']');
+          out.text(': ');
+          if (attribute.value === true) {
+            out.text('true');
+          } else {
             out.expression(attribute.value);
           }
-          out.text(');\n');
+          out.text(',');
           break;
+        }
         default:
           break;
       }
     }
+    out.text(' ');
+    const end = this.openTagEnd(node);
+    out.stand({ start: end - 1, end }, '}');
+    out.text(');\n');
   }
 
   /** Writes a prop name, mapped to the attribute, so errors about the prop point at it. */
   private propName(attribute: Range & { name: string }): void {
     const { out } = this;
     out.text(' ');
-    if (/^[A-Za-z_$][\w$]*$/.test(attribute.name)) {
-      // A shorthand, such as `{page}`, has its name after the brace.
-      const start =
-        this.file.source[attribute.start] === '{'
-          ? this.file.source.indexOf(attribute.name, attribute.start)
-          : attribute.start;
-      out.copy({ start, end: start + attribute.name.length });
-    } else {
-      out.text(JSON.stringify(attribute.name));
-    }
+    // A shorthand, such as `{page}`, has its name after the brace.
+    const start =
+      this.file.source[attribute.start] === '{'
+        ? this.file.source.indexOf(attribute.name, attribute.start)
+        : attribute.start;
+    out.key({ start, end: start + attribute.name.length }, attribute.name);
     out.text(': ');
   }
 
   /** Writes the attributes of a component or a dynamic tag as the properties of an object. */
-  private props(attributes: Attribute[], children = false): void {
+  private props(attributes: Attribute[], children?: Range): void {
     const { out } = this;
     for (const attribute of attributes) {
       switch (attribute.kind) {
@@ -459,7 +600,11 @@ class Generator {
       }
     }
     if (children) {
-      out.text(' children: undefined as any,');
+      // Children are markup. The name stands for the children, so a component that takes none,
+      // or takes another type, reports the error there.
+      out.text(' ');
+      out.key(children, 'children');
+      out.text(': $$markup,');
     }
   }
 
@@ -472,16 +617,23 @@ class Generator {
     out.text('(');
     // A missing prop is reported on the object, so its brace stands for the `<` of the tag.
     out.stand({ start: node.start, end: node.start + 1 }, '{');
-    this.props(node.attributes, node.children.length > 0);
+    this.props(
+      node.attributes,
+      node.children.length > 0
+        ? { start: node.children[0]!.start, end: node.children.at(-1)!.end }
+        : undefined,
+    );
     // The closing brace stands for the end of the opening tag, so the error spans the tag.
     out.text(' ');
     out.stand({ start: this.openTagEnd(node) - 1, end: this.openTagEnd(node) }, '}');
     out.text(');\n');
   }
 
-  /** The offset after the `>` that ends the opening tag of a component. */
-  private openTagEnd(node: ComponentNode): number {
-    const last = node.attributes.at(-1)?.end ?? node.start + 1 + node.name.length;
+  /** The offset after the `>` that ends the opening tag of an element or a component. */
+  private openTagEnd(node: ElementNode | ComponentNode): number {
+    const last =
+      node.attributes.at(-1)?.end ??
+      node.start + 1 + ('name' in node ? node.name : node.tag).length;
     return this.file.source.indexOf('>', last) + 1;
   }
 

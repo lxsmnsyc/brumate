@@ -1,8 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { TokenSegment } from './token-field.ts';
 
-  export interface TokenFieldProps {
+  export interface TokenFieldProps extends Omit<ElementProps<'div'>, 'onChange'> {
     pattern?: string;
     placeholder?: string;
     allowsNewlines?: boolean;
@@ -13,7 +14,6 @@
     onChange?: (value: TokenSegment[]) => void;
     children?: unknown;
     value?: Bindable<TokenSegment[]>;
-    [attribute: string]: unknown;
   }
 </script>
 

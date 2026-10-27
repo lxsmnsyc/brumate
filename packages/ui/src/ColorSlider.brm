@@ -1,8 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { Color, ColorChannel, ColorSpace } from './color.ts';
 
-  export interface ColorSliderProps {
+  export interface ColorSliderProps extends Omit<ElementProps<'div'>, 'onChange'> {
     channel: ColorChannel;
     colorSpace?: ColorSpace;
     orientation?: 'horizontal' | 'vertical';
@@ -12,7 +13,6 @@
     onChangeEnd?: (value: string) => void;
     children?: unknown;
     value?: Bindable<string>;
-    [attribute: string]: unknown;
   }
 </script>
 
