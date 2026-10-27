@@ -4,12 +4,19 @@
   import type { Key, SelectionMode } from './collection.ts';
 
   export interface TagGroupOwnProps {
+    /** How many items can be selected: `none`, `single` or `multiple`. */
     selectionMode?: SelectionMode;
+    /** The keys of the tags that cannot take focus, selection or removal. */
     disabledKeys?: Key[];
+    /** Keeps one item selected. */
     disallowEmptySelection?: boolean;
+    /** Runs with the keys of the tags to remove. It lets the group remove tags, and you remove them from your list. */
     onRemove?: (keys: Key[]) => void;
+    /** Runs with the keys of the selected items after each change. */
     onSelectionChange?: (keys: Key[]) => void;
+    /** A `Label`, a `TagList`, and optionally a `Text` with `slot="description"`. */
     children?: unknown;
+    /** The keys of the selected items. Starts its own state, or binds with `$bind`. */
     selectedKeys?: Bindable<Key[]>;
   }
 

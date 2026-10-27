@@ -1,5 +1,6 @@
 <script module>
   export interface NavigationTreeItemLinkProps {
+    /** The text of the link. */
     children?: unknown;
     [attribute: string]: unknown;
   }

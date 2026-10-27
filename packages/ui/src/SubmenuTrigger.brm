@@ -2,7 +2,9 @@
   import type { FocusStrategy } from './menu.ts';
 
   export interface SubmenuTriggerProps {
+    /** The time in milliseconds that the pointer rests on the item before the submenu opens. */
     delay?: number;
+    /** A `MenuItem` and a `Popover` with the `Menu` of the submenu. */
     children?: unknown;
   }
 </script>

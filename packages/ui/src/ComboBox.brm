@@ -4,10 +4,15 @@
   import type { Key } from './collection.ts';
 
   export interface ComboBoxOwnProps {
+    /** The name that sends the value with the form. */
     name?: string;
+    /** Disables the input and the Button. */
     isDisabled?: boolean;
+    /** Makes the input required. */
     isRequired?: boolean;
+    /** Marks the field invalid. */
     isInvalid?: boolean;
+    /** Keeps text that is not the text of an item, and clears the selection when the text differs. */
     allowsCustomValue?: boolean;
     /** What the form gets: the key of the selection, or the text of the input. */
     formValue?: 'key' | 'text';
@@ -15,12 +20,19 @@
     menuTrigger?: 'input' | 'focus' | 'manual';
     /** Whether an item's text matches what was typed. By default, it contains it. */
     defaultFilter?: (text: string, input: string) => boolean;
+    /** Runs with each new key, or `null`. */
     onSelectionChange?: (key: Key | null) => void;
+    /** Runs with each change of the text in the input. */
     onInputChange?: (value: string) => void;
+    /** Runs with each change of whether the list is open. */
     onOpenChange?: (open: boolean) => void;
+    /** A `Label`, an `Input`, a `Button`, a `Popover` with a `ListBox`, and optionally a `Text` and a `FieldError`. */
     children?: unknown;
+    /** The key of the selected item, or `null`. Starts its own state, or binds with `$bind`. */
     selectedKey?: Bindable<Key | null>;
+    /** The text in the input. Starts its own state, or binds with `$bind`. */
     inputValue?: Bindable<string>;
+    /** Whether the list is open. Alone it starts the list open, and `$bind` writes your signal. */
     isOpen?: Bindable<boolean>;
   }
 

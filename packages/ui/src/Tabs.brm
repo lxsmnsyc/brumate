@@ -4,12 +4,19 @@
   import type { Key } from './collection.ts';
 
   export interface TabsOwnProps {
+    /** The keys of the tabs that cannot be selected. */
     disabledKeys?: Key[];
+    /** Disables all the tabs. */
     isDisabled?: boolean;
+    /** The axis of the tabs: `horizontal` uses Left and Right, and `vertical` uses all four arrows. */
     orientation?: 'horizontal' | 'vertical';
+    /** `automatic` selects the tab that the arrow keys move to. `manual` selects it with Enter or Space. */
     keyboardActivation?: 'automatic' | 'manual';
+    /** Runs with the key of each newly selected tab. */
     onSelectionChange?: (key: Key) => void;
+    /** A `TabList` and the `TabPanel` elements. */
     children?: unknown;
+    /** The key of the selected tab. Starts its own state, or binds with `$bind`. */
     selectedKey?: Bindable<Key | null>;
   }
 

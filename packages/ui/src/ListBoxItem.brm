@@ -7,14 +7,19 @@
   export interface ListBoxItemOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** The key of the item. */
     id: Key;
+    /** The text that typing matches, for an item whose content is more than text. */
     textValue?: string;
+    /** Keeps the item from focus and selection. */
     isDisabled?: boolean;
     /** It has a Text with `slot="label"`, which names it. */
     hasLabel?: boolean;
     /** It has a Text with `slot="description"`, which describes it. */
     hasDescription?: boolean;
+    /** Runs when a press or Enter acts on the item. */
     onAction?: () => void;
+    /** The content of the item. */
     children?: unknown;
   }
 

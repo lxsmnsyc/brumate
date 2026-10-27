@@ -6,8 +6,11 @@
   export interface TabPanelOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** The key of the tab that shows this panel. */
     id: Key;
+    /** Keeps the panel on the page, hidden, while its tab is not selected. */
     shouldForceMount?: boolean;
+    /** The content of the panel. */
     children?: unknown;
   }
 

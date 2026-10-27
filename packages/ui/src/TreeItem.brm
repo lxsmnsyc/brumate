@@ -4,9 +4,13 @@
   export interface TreeItemOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** The text that typing matches, for an item whose content is more than text. */
     textValue?: string;
+    /** Keeps the row from focus and selection. */
     isDisabled?: boolean;
+    /** Runs when a press or Enter acts on the row. */
     onAction?: () => void;
+    /** The content of the row, such as a chevron Button, a Checkbox and text. */
     children?: unknown;
   }
 

@@ -2,6 +2,7 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface HeaderOwnProps {
+    /** The text that names a section. */
     children?: unknown;
   }
 

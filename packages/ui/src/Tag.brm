@@ -6,9 +6,13 @@
   export interface TagOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** The key of the tag. */
     id: Key;
+    /** The text that typing matches, and the name of its remove button. */
     textValue?: string;
+    /** Keeps the tag from focus, selection and removal. */
     isDisabled?: boolean;
+    /** The text of the tag, and a `Button` with `slot="remove"`. */
     children?: unknown;
   }
 

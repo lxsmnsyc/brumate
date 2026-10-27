@@ -4,8 +4,11 @@
   import type { FocusStrategy } from './menu.ts';
 
   export interface MenuTriggerProps {
+    /** Runs with each change of whether the menu is open. */
     onOpenChange?: (open: boolean) => void;
+    /** A `Button` and a `Popover` with a `Menu`. */
     children?: unknown;
+    /** Whether the menu is open. Alone it starts the menu open, and `$bind` writes your signal. */
     isOpen?: Bindable<boolean>;
   }
 </script>

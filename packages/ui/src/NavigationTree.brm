@@ -4,10 +4,15 @@
   import type { NavigationNode } from './navigation-tree.ts';
 
   export interface NavigationTreeProps<V extends NavigationNode = NavigationNode> {
+    /** The route of the page that shows. The item whose `href` is that route is the current one. */
     selectedRoute?: string | null;
+    /** The data of the rows, each with an `id` and an optional `href`. An item with `children` is a parent. */
     items: readonly V[];
+    /** A template that renders a `NavigationTreeItem` for each item that shows. */
     item: (node: V) => unknown;
+    /** Runs with the keys of the open items after each change. */
     onExpandedChange?: (keys: Key[]) => void;
+    /** The keys of the open items. Starts its own state, or binds with `$bind`. */
     expandedKeys?: Bindable<Key[]>;
     [attribute: string]: unknown;
   }

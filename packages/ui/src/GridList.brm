@@ -7,14 +7,23 @@
   export interface GridListOwnProps<V extends { id: Key } = { id: Key }, T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** How many items can be selected: `none`, `single` or `multiple`. */
     selectionMode?: SelectionMode;
+    /** `toggle` adds and removes items as checkboxes do. `replace` makes the pressed item the selection. */
     selectionBehavior?: SelectionBehavior;
+    /** The keys of the items that cannot take focus or selection. */
     disabledKeys?: Key[];
+    /** Keeps one item selected. */
     disallowEmptySelection?: boolean;
+    /** What Escape does: `clearSelection` clears the selection, and `none` does nothing. */
     escapeKeyBehavior?: 'clearSelection' | 'none';
+    /** Runs with the key of a row that Enter acts on, or a press when nothing is selectable. */
     onAction?: (key: Key) => void;
+    /** Runs with the keys of the selected items after each change. */
     onSelectionChange?: (keys: Key[]) => void;
+    /** Runs when rows are dropped in a new place. Its event has the `keys` that move and the `target`. */
     onReorder?: (event: ReorderEvent) => void;
+    /** Returns the drag data of the rows that a drag moves, as a string for each type such as `text/plain`. */
     getItems?: (keys: Key[]) => DragItem[];
     /**
      * The height of a row in pixels, which renders only the rows in view, as in a Virtualizer.
@@ -28,8 +37,11 @@
     getTextValue?: (item: V) => string;
     /** The data of the rows, each with an `id`. The `item` template renders each one. */
     items?: readonly V[];
+    /** A template that renders a `GridListItem` for each of `items`. */
     item?: (item: V) => unknown;
+    /** The `GridListItem` elements. */
     children?: unknown;
+    /** The keys of the selected items. Starts its own state, or binds with `$bind`. */
     selectedKeys?: Bindable<Key[]>;
   }
 

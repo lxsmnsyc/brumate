@@ -21,6 +21,8 @@ State for the items of a collection that an app changes: the items, a selection,
 <Button onPress=removeSelectedItems>Remove selected</Button>
 ```
 
+The `item` template of the Tree takes a type for its parameter, such as `node: TreeDataNode<File>`.
+
 Both are [reactive modules](../docs/reactive-modules.md): a component calls one at the top level of its script and destructures what it needs. The items and the selection are signals of the component, so the page state holds them and the server renders them.
 
 ## `listData`

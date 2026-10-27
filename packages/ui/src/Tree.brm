@@ -7,10 +7,15 @@
   export interface TreeOwnProps<V extends TreeNode = TreeNode, T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** How many items can be selected: `none`, `single` or `multiple`. */
     selectionMode?: SelectionMode;
+    /** `toggle` adds and removes items as checkboxes do. `replace` makes the pressed item the selection. */
     selectionBehavior?: SelectionBehavior;
+    /** The keys of the items that cannot take focus or selection. */
     disabledKeys?: Key[];
+    /** Keeps one item selected. */
     disallowEmptySelection?: boolean;
+    /** What Escape does: `clearSelection` clears the selection, and `none` does nothing. */
     escapeKeyBehavior?: 'clearSelection' | 'none';
     /**
      * `'tab'` keeps the controls of the rows, such as links, in the order of Tab, and gives
@@ -27,12 +32,19 @@
      * The rows in view use their own `textValue` or text.
      */
     getTextValue?: (node: V) => string;
+    /** Runs with the key of a row that Enter acts on, or a press when nothing is selectable. */
     onAction?: (key: Key) => void;
+    /** Runs with the keys of the selected items after each change. */
     onSelectionChange?: (keys: Key[]) => void;
+    /** Runs with the keys of the open items after each change. */
     onExpandedChange?: (keys: Key[]) => void;
+    /** The data of the rows, each with an `id`. An item with `children` is a parent. */
     items: readonly V[];
+    /** A template that renders a `TreeItem` for each item that shows. */
     item: (node: V) => unknown;
+    /** The keys of the selected items. Starts its own state, or binds with `$bind`. */
     selectedKeys?: Bindable<Key[]>;
+    /** The keys of the open items. Starts its own state, or binds with `$bind`. */
     expandedKeys?: Bindable<Key[]>;
   }
 

@@ -1,6 +1,8 @@
 <script module>
   export interface ListBoxSectionProps {
+    /** A `Header` and the `ListBoxItem` elements of the section. */
     children?: unknown;
+    /** Names a section that has no Header. */
     'aria-label'?: string;
     [attribute: string]: unknown;
   }
