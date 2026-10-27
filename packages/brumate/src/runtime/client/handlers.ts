@@ -155,13 +155,18 @@ function withTarget(event: Event, element: Element): Event {
   });
 }
 
+/** Whether an input is a checkbox or a radio, which a binding reads by `checked`. */
+export function isBox(field: HTMLInputElement): boolean {
+  return /^(checkbox|radio)$/i.test(field.type);
+}
+
 /** The value a binding writes: of a field of a part, whether a box is checked, or the value. */
 function fieldValue(element: Element, typed?: { value: unknown }): unknown {
   const field = element as HTMLInputElement;
   if (typed) {
     return typed.value;
   }
-  return /^(checkbox|radio)$/i.test(field.type) ? field.checked : field.value;
+  return isBox(field) ? field.checked : field.value;
 }
 
 /**

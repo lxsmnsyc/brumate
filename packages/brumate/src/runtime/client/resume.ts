@@ -18,7 +18,7 @@ import type { PackedState, PageState, ScopeId, ScopeState } from '../shared.ts';
 import { indexMarkers, observeMarkers, rendered, stopObserving, unindexed } from './blocks.ts';
 import { loadComponent, pageComponents } from './code.ts';
 import { leaveGuesses, settled } from './guesses.ts';
-import { callable, handle, resetHandler } from './handlers.ts';
+import { callable, handle, isBox, resetHandler } from './handlers.ts';
 import { refresh } from './insert.ts';
 import { removeScope, resetIds, treeChanged } from './scopes.ts';
 import {
@@ -407,18 +407,18 @@ function typedInto(element: Element): boolean {
   const field = element as HTMLInputElement;
   if (element instanceof HTMLSelectElement) {
     // The last `selected` option wins. Without one, a single select shows its first option that
-    // is not disabled, and a list box or a `multiple` select shows none.
+    // is not disabled, also by a disabled optgroup (`:disabled` knows, `option.disabled` does not), and a list box or a `multiple` select shows none. The test DOM has no
+    // `defaultSelected`, so the `selected` attribute is read.
     let expected = -1;
     let first = -1;
     let changed = false;
     for (let i = 0; i < element.options.length; i++) {
       const option = element.options[i]!;
-      // The `selected` attribute is what the server rendered. The test DOM has no `defaultSelected`.
       const rendered = option.hasAttribute('selected');
       if (rendered) {
         expected = i;
       }
-      if (first < 0 && !option.disabled && !option.parentElement?.matches('optgroup[disabled]')) {
+      if (first < 0 && !option.matches(':disabled')) {
         first = i;
       }
       changed ||= option.selected !== rendered;
@@ -429,9 +429,7 @@ function typedInto(element: Element): boolean {
     const shown = Number(element.getAttribute('size')) > 1 ? -1 : first;
     return element.selectedIndex !== (expected >= 0 ? expected : shown);
   }
-  return /^(checkbox|radio)$/i.test(field.type)
-    ? field.checked !== field.defaultChecked
-    : field.value !== field.defaultValue;
+  return isBox(field) ? field.checked !== field.defaultChecked : field.value !== field.defaultValue;
 }
 
 /**
