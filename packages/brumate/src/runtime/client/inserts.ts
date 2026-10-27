@@ -268,16 +268,15 @@ function setAttribute(element: Element, name: string, value: unknown, spread = f
 function withVariables(element: HTMLElement, style: string | undefined): string | undefined {
   const variables: string[] = [];
   for (const property of Array.from(element.style)) {
-    // A style that writes the variable itself, such as one that the element's own style
-    // attribute builds, keeps its new value alone.
-    if (/^--s-[\w-]+-\d+$/.test(property) && !style?.includes(`${property}:`)) {
+    if (/^--s-[\w-]+-\d+$/.test(property)) {
       variables.push(`${property}:${element.style.getPropertyValue(property)}`);
     }
   }
   if (variables.length === 0) {
     return style;
   }
-  return style ? `${variables.join(';')};${style}` : variables.join(';');
+  // After the style: the variable has the live value, and a style that holds an older one loses.
+  return style ? `${style};${variables.join(';')}` : variables.join(';');
 }
 
 export function attr(scope: Scope, anchor: number, name: string, value: unknown): void {
