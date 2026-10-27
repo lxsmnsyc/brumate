@@ -745,7 +745,7 @@ class Analyzer {
         for (const property of id.properties) {
           if (property.type === 'RestElement') {
             for (const binding of getPatternNames(property.argument)) {
-              this.addDeclaration(scope, binding.name, 'props-rest', binding);
+              this.addDeclaration(scope, binding.name, 'props-rest', binding).whole = true;
             }
           } else {
             let key: string | undefined;
@@ -766,7 +766,7 @@ class Analyzer {
         }
         this.createDefaultSites(id, scope);
       } else if (id.type === 'Identifier') {
-        this.addDeclaration(scope, id.name, 'prop', id);
+        this.addDeclaration(scope, id.name, 'prop', id).whole = true;
       } else {
         this.report('error', 'Assign $props() to a name or an object pattern', id);
       }
@@ -1768,9 +1768,21 @@ class Resolver {
 
   private visit(node: oxc.Node): void {
     switch (node.type) {
-      case 'Identifier':
-        this.reference(node, 'read');
+      case 'Identifier': {
+        const reference = this.reference(node, 'read');
+        // A spread in markup is the only use of the whole object, so a ref in it reaches the element.
+        if (
+          reference?.declaration.whole &&
+          !(this.site.kind === 'spread' && node === unwrapTypes(this.site.node))
+        ) {
+          this.analyzer.report(
+            'error',
+            `"${node.name}" is the props object, so read one key at a time, destructure it, or spread it in markup`,
+            node,
+          );
+        }
         return;
+      }
       case 'ReturnStatement':
         // The cleanup that an effect returns runs later, so what it reads is not what the effect
         // depends on, as in Svelte and Solid.
@@ -1788,7 +1800,12 @@ class Resolver {
         this.visitChildren(node);
         return;
       case 'MemberExpression':
-        this.visit(node.object);
+        // Reading a key of the props is the one use of the object besides a spread.
+        if (unwrapTypes(node.object).type === 'Identifier') {
+          this.reference(unwrapTypes(node.object) as oxc.Node & { name: string }, 'read');
+        } else {
+          this.visit(node.object);
+        }
         if (node.computed) {
           this.visit(node.property);
         }
@@ -1879,12 +1896,20 @@ class Resolver {
           }
         }
         return;
+      case 'UnaryExpression':
+        if (node.operator === 'delete') {
+          this.checkPropsWrite(node.argument);
+        }
+        this.visitChildren(node);
+        return;
       case 'AssignmentExpression':
+        this.checkPropsWrite(node.left);
         this.checkMutation(node.left, node);
         this.visitTarget(node.left, node.operator === '=' ? 'write' : 'update');
         this.visit(node.right);
         return;
       case 'UpdateExpression':
+        this.checkPropsWrite(node.argument);
         this.checkMutation(node.argument, node);
         if (node.argument.type === 'Identifier') {
           this.reference(node.argument, 'update');
@@ -2112,7 +2137,25 @@ class Resolver {
     }
   }
 
-  /** Visits the target of an assignment. */
+  /** Reports a write to a key of the props object or of the rest of `$props()`. */
+  private checkPropsWrite(target: oxc.Node): void {
+    const node = unwrapTypes(target);
+    if (node.type !== 'MemberExpression') {
+      return;
+    }
+    const object = unwrapTypes(node.object);
+    if (object.type !== 'Identifier' || this.isLocal(object.name)) {
+      return;
+    }
+    if (lookup(this.site.scope, object.name)?.whole) {
+      this.analyzer.report(
+        'error',
+        `"${object.name}" is the props object, and props are read-only. Copy the key to a $signal or a $memo to change it`,
+        target,
+      );
+    }
+  }
+
   /**
    * Warns when code changes a reactive value in place, such as
    * `todos.push(todo)` or `todo.done = true`. The value does not change, so
@@ -2141,6 +2184,7 @@ class Resolver {
     );
   }
 
+  /** Visits the target of an assignment. */
   private visitTarget(target: oxc.Node, mode: 'write' | 'update'): void {
     switch (target.type) {
       case 'Identifier':
@@ -2180,6 +2224,14 @@ class Resolver {
         }
     }
   }
+}
+
+/** Strips parentheses and type casts: `(rest as T)` is `rest`. */
+function unwrapTypes(node: oxc.Node): oxc.Node {
+  while (node.type === 'ParenthesizedExpression' || TYPE_WRAPPERS.has(node.type)) {
+    node = (node as { expression: oxc.Node }).expression;
+  }
+  return node;
 }
 
 /** Returns the names that statements declare in their own block. */

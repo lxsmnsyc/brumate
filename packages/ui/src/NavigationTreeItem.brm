@@ -13,7 +13,7 @@
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import { ListBoxContext } from './collection.ts';
   import { NavigationLinkContext, NavigationTreeContext } from './navigation-tree.ts';
-  import { TreeItemAttributesContext, TreeRowContext } from './tree.ts';
+  import { TreeRowContext } from './tree.ts';
   import TreeItem from './TreeItem.brm';
 
   /**
@@ -38,13 +38,14 @@
     Boolean(place && !place.row.isExpanded && tree?.ancestors.includes(place.row.key)),
   );
   $setContext(NavigationLinkContext, { href, isCurrent: current, isDisabled: disabled });
-  // The row gets its attributes through a context, so the TreeItem's own props stay as they are.
-  $setContext(TreeItemAttributesContext, {
-    'data-href': href || undefined,
-    'data-current': current || undefined,
-    'data-current-ancestor': ancestor || undefined,
-    ...rest,
-  });
 </script>
 
-<TreeItem {textValue} {isDisabled} {onAction}>{children}</TreeItem>
+<TreeItem
+  {textValue}
+  {isDisabled}
+  {onAction}
+  data-href=(href || undefined)
+  data-current=(current || undefined)
+  data-current-ancestor=(ancestor || undefined)
+  {...rest}
+>{children}</TreeItem>

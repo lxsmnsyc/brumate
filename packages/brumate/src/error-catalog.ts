@@ -568,6 +568,16 @@ const SCRIPT: ErrorEntry[] = [
     'let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();',
   ),
   entry(
+    '"{name}" is the props object, so read one key at a time, destructure it, or spread it in markup',
+    'The props object or the rest of `$props()` is used as a whole outside a markup spread: spread in code, passed to a function, `$memo`, `$setContext`, a signal or a variable, or given as a value in markup, such as `title=rest` or `<Badge {rest} />`. The copy loses the `ref` and the live props.',
+    'const { class: className, ...rest } = $props();\n<button {...rest} class=className>',
+  ),
+  entry(
+    '"{name}" is the props object, and props are read-only. Copy the key to a $signal or a $memo to change it',
+    'Code assigns to, updates or deletes a key of the props object or of the rest of `$props()`.',
+    "let title = $signal('');\ntitle = 'New';",
+  ),
+  entry(
     'Cannot assign to {kind} "{name}"',
     'Code writes a memo, a const prop or another value that cannot change.',
     'let count = $signal(0);\ncount = 5;',

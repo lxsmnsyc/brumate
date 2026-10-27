@@ -1,0 +1,11 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import RestRefCastBox from './RestRefCastBox.brm';
+
+  let root = $signal<HTMLElement>();
+  let seen = $signal('');
+</script>
+
+<RestRefCastBox ref=$bind(root) />
+<button class="read" onClick=(() => (seen = root?.tagName ?? 'none'))>Read</button>
+<p class="seen">{seen}</p>
