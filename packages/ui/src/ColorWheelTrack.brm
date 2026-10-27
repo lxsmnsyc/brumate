@@ -1,5 +1,6 @@
 <script module>
   export interface ColorWheelTrackProps {
+    /** Content inside the ring. */
     children?: unknown;
     [attribute: string]: unknown;
   }

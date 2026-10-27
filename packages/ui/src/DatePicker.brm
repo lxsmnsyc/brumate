@@ -3,17 +3,29 @@
   import type { DateRange, DateString } from './calendar.ts';
 
   export interface DatePickerProps {
+    /** The earliest date. The field and the Calendar both follow it. */
     minValue?: DateString;
+    /** The latest date. The field and the Calendar both follow it. */
     maxValue?: DateString;
+    /** Returns true for a date that cannot be picked. The field and the Calendar both follow it. */
     isDateUnavailable?: (date: DateString) => boolean;
+    /** The date that an empty segment starts at, and that the Calendar shows when the field is empty. Today by default. */
     placeholderValue?: DateString;
+    /** Disables the field and the Button. */
     isDisabled?: boolean;
+    /** Keeps the user from changing the date. The Button does not open the Popover. */
     isReadOnly?: boolean;
+    /** Closes the Popover when a date is picked. It is true by default. */
     shouldCloseOnSelect?: boolean;
+    /** Runs with the date as `YYYY-MM-DD`, or `null`, each time it changes, whether typed or picked. */
     onChange?: (value: DateString | null) => void;
+    /** Runs with the new state each time the Popover opens or closes. */
     onOpenChange?: (isOpen: boolean) => void;
+    /** The Label, Group, Popover, description Text and FieldError. */
     children?: unknown;
+    /** The date as `YYYY-MM-DD`, or `null`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<DateString | null>;
+    /** Whether the Popover shows. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     isOpen?: Bindable<boolean>;
     [attribute: string]: unknown;
   }

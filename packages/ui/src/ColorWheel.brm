@@ -3,15 +3,25 @@
   import type { Color } from './color.ts';
 
   export interface ColorWheelProps {
+    /** The outer radius of the ring in pixels. The wheel is a square of twice this size. */
     outerRadius: number;
+    /** The inner radius of the ring in pixels. */
     innerRadius: number;
+    /** Disables the thumb and keeps the wheel still. */
     isDisabled?: boolean;
+    /** The name that sends the hue with a form. */
     name?: string;
+    /** The name of the hue input. Without it and without `aria-labelledby`, the name is `Hue`. */
     'aria-label'?: string;
+    /** The ID of an element that names the hue input. */
     'aria-labelledby'?: string;
+    /** Runs with the color as text each time an edit makes another color. */
     onChange?: (value: string) => void;
+    /** Runs with the color as text when a drag or a key ends. */
     onChangeEnd?: (value: string) => void;
+    /** The ColorWheelTrack and the ColorThumb. */
     children?: unknown;
+    /** A color of CSS, such as `hsl(120, 50%, 40%)`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string>;
     [attribute: string]: unknown;
   }

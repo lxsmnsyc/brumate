@@ -1,7 +1,10 @@
 <script module>
   export interface ColorSwatchProps {
+    /** A color of CSS, such as `#e2445a`. Without it, the swatch shows the color of its ColorSwatchPickerItem, or else of its ColorPicker. */
     color?: string;
+    /** The name that screen readers hear. Without it, a short name in English names the color. */
     colorName?: string;
+    /** A name that adds to the name of the color, such as `dark blue, Brand`. */
     'aria-label'?: string;
     [attribute: string]: unknown;
   }

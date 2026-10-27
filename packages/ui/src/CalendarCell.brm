@@ -2,7 +2,9 @@
   import type { DateString } from './calendar.ts';
 
   export interface CalendarCellProps {
+    /** The date as `YYYY-MM-DD`. */
     date: DateString;
+    /** The content of the date. Without it, the cell shows the number of the day. */
     children?: unknown;
     [attribute: string]: unknown;
   }

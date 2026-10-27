@@ -27,6 +27,77 @@ A slider for one channel of a color.
 - The ColorSlider is a group that its Label names. Without a Label, the name of the channel names it, such as `Hue`. It shows `data-orientation` and `data-disabled`.
 - A reset of the form gives back the first color.
 
+## Anatomy
+
+```html
+<ColorSlider>
+  <Label />
+  <SliderOutput />
+  <SliderTrack>
+    <ColorThumb />
+  </>
+</>
+```
+
+The `Label` and the `SliderOutput` are optional.
+
+## Props
+
+### ColorSlider
+
+```props ColorSlider
+
+```
+
+### ColorThumb
+
+```props ColorThumb
+
+```
+
+## Data attributes
+
+### ColorSlider and SliderTrack
+
+| Attribute                       | When                        |
+| ------------------------------- | --------------------------- |
+| `data-orientation="horizontal"` | The track lies in a row.    |
+| `data-orientation="vertical"`   | The track lies in a column. |
+| `data-disabled`                 | The slider is disabled.     |
+
+### ColorThumb
+
+| Attribute            | When                       |
+| -------------------- | -------------------------- |
+| `data-dragging`      | A pointer drags it.        |
+| `data-focused`       | Its input has focus.       |
+| `data-focus-visible` | Its focus shows as a ring. |
+| `data-disabled`      | The slider is disabled.    |
+
+## Keyboard
+
+The keys act on the thumb. A key with Ctrl, Meta or Alt moves nothing.
+
+| Key          | Action                                                                              |
+| ------------ | ----------------------------------------------------------------------------------- |
+| `Tab`        | Moves focus to the thumb. A disabled slider is skipped.                             |
+| `ArrowRight` | Raises the channel by a step, or by a page with Shift. Right to left, it lowers it. |
+| `ArrowLeft`  | Lowers the channel by a step, or by a page with Shift. Right to left, it raises it. |
+| `ArrowUp`    | Raises the channel by a step, or by a page with Shift.                              |
+| `ArrowDown`  | Lowers the channel by a step, or by a page with Shift.                              |
+| `PageUp`     | Raises the channel by a page.                                                       |
+| `PageDown`   | Lowers the channel by a page.                                                       |
+| `Home`       | Goes to the least value of the channel.                                             |
+| `End`        | Goes to the greatest value of the channel.                                          |
+
+## Controlled and uncontrolled
+
+`value` holds a color of CSS. A plain `value` starts the slider's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the color as text each time an edit makes another color, and `onChangeEnd` gets it once a drag or a key ends. Inside a [ColorPicker](./color-picker.md), a slider without a `value` reads and writes the color of the picker. A reset of the form gives back the first color. See [State](./state.md).
+
+## Styling
+
+Style the track with `background: var(--track-background)`, and the thumb with the data attributes above. The thumb has `--color`. The track is `position: relative` and the thumb is `position: absolute`, so give both a size. See [Styling](./styling.md).
+
 ## Channel
 
 - The arrows move a step, and a page with Shift. Up raises the value and Down lowers it. Left and Right do the same on a slider of either orientation, and right to left they are mirrored. Home and End go to the ends. A key with Ctrl, Meta or Alt moves nothing.

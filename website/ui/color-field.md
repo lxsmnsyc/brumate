@@ -26,6 +26,59 @@ A field for a color, as hex or as one channel.
 - `isRequired` asks the browser to check the field on a submit, and the `FieldError` shows the message.
 - It shows `data-channel`, which is `hex` without a channel, and `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
 
+## Anatomy
+
+```html
+<ColorField>
+  <Label />
+  <Input />
+  <Text slot="description" />
+  <FieldError />
+</>
+```
+
+The `Label`, the description `Text` and the `FieldError` are optional.
+
+## Props
+
+```props ColorField
+
+```
+
+## Data attributes
+
+| Attribute            | When                                                      |
+| -------------------- | --------------------------------------------------------- |
+| `data-channel="hex"` | The field edits the color as hex.                         |
+| `data-channel="hue"` | The field edits a channel. The value is the channel name. |
+| `data-disabled`      | The field is disabled.                                    |
+| `data-readonly`      | The field is read only.                                   |
+| `data-invalid`       | The field is invalid.                                     |
+| `data-required`      | The field is required.                                    |
+
+## Keyboard
+
+The keys act while the input has focus. A key with Shift, Ctrl, Alt or Meta is left to the browser. A disabled or read only field takes none of them.
+
+| Key         | Action                                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| `Tab`       | Moves focus to the input. Leaving the input commits the text.                                                   |
+| `ArrowUp`   | Raises the hex number by 1, or the channel by a step. An empty field starts at black, or at the least value.    |
+| `ArrowDown` | Lowers the hex number by 1, or the channel by a step. An empty field starts at white, or at the greatest value. |
+| `PageUp`    | Raises the hex number by 16, or the channel by a page.                                                          |
+| `PageDown`  | Lowers the hex number by 16, or the channel by a page.                                                          |
+| `Home`      | Goes to `#000000`, or to the least value of the channel.                                                        |
+| `End`       | Goes to `#FFFFFF`, or to the greatest value of the channel.                                                     |
+| `Enter`     | Commits the text.                                                                                               |
+
+## Controlled and uncontrolled
+
+`value` holds a color of CSS, or `null` when the field is empty. A plain `value` starts the field's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the color as text, or `null`, each time an edit makes another value. Inside a [ColorPicker](./color-picker.md), a field without a `value` reads and writes the color of the picker. A reset of the form gives back the first value. See [State](./state.md).
+
+## Styling
+
+Style the field with the data attributes above. The `Input` and the `Label` are the parts of [TextField](./text-field.md). See [Styling](./styling.md).
+
 ## Hex
 
 - Typing keeps only text that can become hex. When focus leaves the input, or on Enter, `abc` becomes `#AABBCC`.

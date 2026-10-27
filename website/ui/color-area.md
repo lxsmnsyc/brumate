@@ -23,6 +23,63 @@ An area for two channels of a color.
 - `xName` and `yName` send the two values with a form, also before the code of the page loads. A reset of the form gives back the first color.
 - The area is a group. Give it an `aria-label` or an `aria-labelledby`, such as `Saturation and brightness`. The group and both inputs say that label and `Color picker`, such as `Saturation and brightness, Color picker`, and the inputs are `Color picker` without a label. An `aria-labelledby` reaches the group and both inputs, each with its own ID first.
 
+## Anatomy
+
+```html
+<ColorArea>
+  <ColorThumb />
+</>
+```
+
+## Props
+
+### ColorArea
+
+```props ColorArea
+
+```
+
+## Data attributes
+
+### ColorArea
+
+| Attribute       | When                  |
+| --------------- | --------------------- |
+| `data-disabled` | The area is disabled. |
+
+### ColorThumb
+
+| Attribute            | When                       |
+| -------------------- | -------------------------- |
+| `data-dragging`      | A pointer drags it.        |
+| `data-focused`       | An input of it has focus.  |
+| `data-focus-visible` | Its focus shows as a ring. |
+| `data-disabled`      | The area is disabled.      |
+
+## Keyboard
+
+The keys act on either input of the thumb. A key with Ctrl, Meta or Alt moves nothing.
+
+| Key          | Action                                                                   |
+| ------------ | ------------------------------------------------------------------------ |
+| `Tab`        | Moves focus to the thumb. One input is a tab stop at a time.             |
+| `ArrowRight` | Raises x by a step, or by a page with Shift. Right to left, it lowers x. |
+| `ArrowLeft`  | Lowers x by a step, or by a page with Shift. Right to left, it raises x. |
+| `ArrowUp`    | Raises y by a step, or by a page with Shift.                             |
+| `ArrowDown`  | Lowers y by a step, or by a page with Shift.                             |
+| `PageUp`     | Raises y by a page.                                                      |
+| `PageDown`   | Lowers y by a page.                                                      |
+| `End`        | Raises x by a page. Right to left, it lowers x.                          |
+| `Home`       | Lowers x by a page. Right to left, it raises x.                          |
+
+## Controlled and uncontrolled
+
+`value` holds a color of CSS, `#ffffff` without one. A plain `value` starts the area's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the color as text each time an edit makes another color, and `onChangeEnd` gets it once a drag or a key ends. Inside a [ColorPicker](./color-picker.md), an area without a `value` reads and writes the color of the picker. A reset of the form gives back the first color. See [State](./state.md).
+
+## Styling
+
+Style the area with `background: var(--area-background)` and `background-blend-mode: var(--area-background-blend-mode)`, and the thumb with the data attributes above. The area is `position: relative`, so give it a size. The thumb has `--color`. See [Styling](./styling.md).
+
 ## Keys
 
 The thumb has a hidden `<input type="range">` for each axis. The keys work on either of them.

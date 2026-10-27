@@ -18,6 +18,16 @@ A sample of a color, named for screen readers.
 - The background shows the color over a checkerboard, so its alpha shows.
 - The element has `--color`, the color, for CSS. Give it a size.
 
+## Props
+
+```props ColorSwatch
+
+```
+
+## Styling
+
+A ColorSwatch has no data attributes. The element has the custom property `--color`, the color it shows, and a background of that color over a checkerboard. Give it a size and a shape. See [Styling](./styling.md).
+
 ## Colors in the state
 
 The color parts keep a color as a string of CSS, such as `#e2445a`, because the state of the page cannot hold an object of a class. `@brumate/ui/color.ts` parses and formats them:

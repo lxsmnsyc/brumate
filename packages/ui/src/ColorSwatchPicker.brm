@@ -3,9 +3,13 @@
   import type { Key } from './collection.ts';
 
   export interface ColorSwatchPickerProps {
+    /** How the items lie. In a grid the arrow keys move in two dimensions, and in a stack only Up and Down move. */
     layout?: 'grid' | 'stack';
+    /** Runs with the color of the item that the user picks, in the format of the item. */
     onChange?: (value: string) => void;
+    /** The ColorSwatchPickerItem elements. */
     children?: unknown;
+    /** A color of CSS. The item whose color equals it is selected. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string>;
     [attribute: string]: unknown;
   }

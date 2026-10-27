@@ -4,22 +4,39 @@
   import type { DateRange, DateString } from './calendar.ts';
 
   export interface CalendarProps {
+    /** The earliest date that can be picked. The Buttons stop at it. */
     minValue?: DateString;
+    /** The latest date that can be picked. The Buttons stop at it. */
     maxValue?: DateString;
+    /** Returns true for a date that cannot be picked. In a range, its second argument is the first date of the range that is not done, or `null`. */
     isDateUnavailable?: (date: DateString, anchor: DateString | null) => boolean;
+    /** How much shows at once, such as `{ months: 2 }`. Give each month a CalendarGrid. */
     visibleDuration?: DateDuration;
+    /** How far the Buttons move: by everything that shows, or by one month. */
     pageBehavior?: 'visible' | 'single';
+    /** Disables the Buttons and every date. */
     isDisabled?: boolean;
+    /** Keeps the value, while focus can still move between the dates. */
     isReadOnly?: boolean;
+    /** Marks the selected date as invalid. */
     isInvalid?: boolean;
+    /** The name of the Calendar. The months that show follow it, such as `Delivery date, October 2026`. */
     'aria-label'?: string;
+    /** Runs with the date, or with the range in a RangeCalendar, each time one is picked. */
     onChange?: ((value: DateString) => void) | ((value: DateRange) => void);
+    /** Makes the value a range. A RangeCalendar sets it. */
     range?: boolean;
+    /** Lets a range hold dates that cannot be picked. Those dates do not show as selected. */
     allowsNonContiguousRanges?: boolean;
+    /** The day that each week starts on, such as `mon`. Without it, the locale picks. */
     firstDayOfWeek?: DayOfWeek;
+    /** Runs with the date each time one gets focus. */
     onFocusChange?: (date: DateString) => void;
+    /** The CalendarHeading, the Buttons and a CalendarGrid for each month that shows. */
     children?: unknown;
+    /** The selected date as `YYYY-MM-DD`, or the range as `{ start, end }`, or `null`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<DateString | DateRange | null>;
+    /** The date that has focus. It starts at the selected date, or today. A new value moves the months that show to it. */
     focusedValue?: Bindable<DateString>;
     [attribute: string]: unknown;
   }

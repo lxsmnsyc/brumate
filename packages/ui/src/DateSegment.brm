@@ -2,6 +2,7 @@
   import type { Segment, SegmentType } from './segments.ts';
 
   export interface DateSegmentProps {
+    /** The segment to show, from the `segment` template of the DateInput. */
     segment: Segment;
     [attribute: string]: unknown;
   }

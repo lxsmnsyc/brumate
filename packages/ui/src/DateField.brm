@@ -4,19 +4,31 @@
   import type { DateString } from './calendar.ts';
 
   export interface DateFieldOwnProps {
+    /** The name that posts the date with a form, from a hidden input. */
     name?: string;
+    /** The earliest date. A date before it makes the field invalid. */
     minValue?: DateString;
+    /** The latest date. A date after it makes the field invalid. */
     maxValue?: DateString;
+    /** The date that an empty segment starts at when a key steps it. Today by default. */
     placeholderValue?: DateString;
+    /** Returns true for a date that cannot be picked. Such a date makes the field invalid. */
     isDateUnavailable?: (date: DateString) => boolean;
+    /** Disables the segments and keeps the date out of the form. */
     isDisabled?: boolean;
+    /** Keeps the user from changing the date, while the segments can be focused. */
     isReadOnly?: boolean;
+    /** Asks the browser to check on a submit that the field has a date. */
     isRequired?: boolean;
+    /** Marks the field as invalid, whatever its date. */
     isInvalid?: boolean;
+    /** Runs with the date as `YYYY-MM-DD`, or `null` when a segment is emptied, each time the date changes. */
     onChange?: (value: DateString | null) => void;
     /** The ID of the Label, from a DatePicker around the field, which names its Button too. */
     labelId?: string;
+    /** The Label, DateInput, description Text and FieldError. */
     children?: unknown;
+    /** The date as `YYYY-MM-DD`, or `null` until every segment is set. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<DateString | null>;
   }
 

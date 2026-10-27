@@ -2,6 +2,7 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface CalendarHeadingOwnProps {
+    /** Not used: the heading always shows the months that the Calendar shows. */
     children?: unknown;
   }
 

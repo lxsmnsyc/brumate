@@ -1,5 +1,6 @@
 <script module>
   export interface ColorThumbProps {
+    /** Content inside the thumb, such as a mark. */
     children?: unknown;
     [attribute: string]: unknown;
   }

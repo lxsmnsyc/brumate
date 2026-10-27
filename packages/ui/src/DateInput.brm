@@ -2,7 +2,9 @@
   import type { DateFieldState, Segment } from './segments.ts';
 
   export interface DateInputProps {
+    /** A `#template` that gets each segment, to render your own DateSegment. */
     segment?: (segment: Segment) => unknown;
+    /** In a DateRangePicker, picks the date that the input edits, `start` or `end`. */
     slot?: 'start' | 'end';
     [attribute: string]: unknown;
   }

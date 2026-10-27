@@ -21,6 +21,35 @@ Holds one color for the color parts inside it.
 - A part with a `value` of its own keeps it: `value=(x)` or `value=$bind(signal)` makes the part independent of the picker.
 - A part outside a picker works as before.
 
+## Anatomy
+
+```html
+<ColorPicker>
+  <ColorArea />
+  <ColorSlider />
+  <ColorWheel />
+  <ColorField />
+  <ColorSwatchPicker />
+  <ColorSwatch />
+</>
+```
+
+Every part inside is optional.
+
+## Props
+
+```props ColorPicker
+
+```
+
+## Controlled and uncontrolled
+
+`value` holds a color of CSS. A plain `value` starts the picker's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the color as text each time an edit from any part makes another color. See [State](./state.md).
+
+## Styling
+
+A ColorPicker has no element, so it has no data attributes and no classes. Style the parts inside it. See [Styling](./styling.md).
+
 ## Format
 
 - The picker keeps its color at full precision, which hex cannot hold, such as the hue of a gray. The parts edit that color and share it. It gives back the format of the caller, and writes `value`, `$bind` and `onChange` only when an edit makes another color. When `value` changes from outside, the color follows it.

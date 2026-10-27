@@ -1,7 +1,10 @@
 <script module>
   export interface ColorSwatchPickerItemProps {
+    /** The color of the option, as a color of CSS. The picker gives it back as written when the option is picked. */
     color?: string;
+    /** Skips the option with the keys and keeps a press from selecting it. */
     isDisabled?: boolean;
+    /** The content of the option, such as a ColorSwatch. */
     children?: unknown;
     [attribute: string]: unknown;
   }
