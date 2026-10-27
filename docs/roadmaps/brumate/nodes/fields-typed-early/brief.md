@@ -1,7 +1,7 @@
 ---
 id: fields-typed-early
 title: Fields typed before the code loads
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

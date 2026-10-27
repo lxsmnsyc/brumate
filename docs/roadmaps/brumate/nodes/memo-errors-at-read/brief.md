@@ -1,7 +1,7 @@
 ---
 id: memo-errors-at-read
 title: A memo that throws holds the error, and a read of it throws
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

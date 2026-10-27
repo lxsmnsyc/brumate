@@ -1,7 +1,7 @@
 ---
 id: component-tag-spread
 title: A live spread on a dynamic tag that names a component reaches the component
-status: todo
+status: active
 priority: must
 type: fix
 outline: false
