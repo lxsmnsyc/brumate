@@ -1,7 +1,7 @@
 ---
 id: memo-error-resume
 title: A memo that failed on the server holds its error in the browser
-status: active
+status: done
 priority: should
 type: fix
 outline: false
