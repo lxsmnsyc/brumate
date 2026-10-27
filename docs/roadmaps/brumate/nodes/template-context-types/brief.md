@@ -39,6 +39,8 @@ depends_on:
 
 ## Context
 
+- The fix round of #300 found more: a wrong field inside a template body, `(a.nope)`, gave no error even with a typed parameter `#template row(a: Animal)`. Check first whether template bodies are type-checked at all. If they aren't, that is part of this node and probably the larger part; say so in the outcome, and resize if needed.
+
 - Found in the review of ui-generics (#300). The code is in check.ts, `templates()` (about lines 302-316) and `props()` (about line 434).
 - A likely shape: when a prop value is a bare identifier that names a template with an unannotated parameter, emit that template inline at the use site as `async (a) => { ... }`. Annotated templates keep the hoisted form.
 - Hard parts: source mappings for the body at the use site, a template used in several places (emitted once per use), and names of an enclosing `#for` or `#if` that could shadow what the template reads.
@@ -46,6 +48,7 @@ depends_on:
 
 ## Acceptance
 
+- [ ] A wrong field in the body of a typed template is an error.
 - [ ] An untyped template passed to a generic part's prop types its parameter from the other props: a wrong field is an error, in a .brm test checked by the type checker.
 - [ ] Errors in a template body point at the right line and column in the .brm file.
 - [ ] A template used twice, and one used inside `#for`, check correctly.
