@@ -1433,6 +1433,7 @@ An element has a computed attribute, as in `[name]=(value)`, and a spread or ano
 let name = $signal('data-x');
 let value = $signal('on');
 
+<button onClick=(() => ((name = 'data-y'), (value = 'off')))>Change</button>
 <p {...props} [name]=(value)></p>
 <p {...props} data-x="on"></p>
 ```
