@@ -591,7 +591,7 @@ function settle(scope: Scope): void {
   const names = dirty.get(scope);
   if (names?.size) {
     const buckets = levels[depthOf(scope)]?.m;
-    // They were queued in the order of their ranks.
+    // A memo that reads another memo of the scope settles it through `get`, so the order here does not matter.
     for (const name of names) {
       const bucket = buckets?.[+name.slice(1)];
       const key = `${scope.id}:${name}`;
