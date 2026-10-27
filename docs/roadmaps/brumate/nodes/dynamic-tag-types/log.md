@@ -13,3 +13,10 @@
 - New errors in packages/ui, all real: `onItemaction` (ListBoxItem, GridListItem) is a custom event that `ElementEvents` lacked, now merged in collection.ts. Group spread a rest with `'aria-disabled'?: unknown` over its own `aria-disabled`, now an ARIA value type.
 - Merged origin/main (template-context-types): its passed templates write the template in place of a prop value. The dynamic tag shares that through `propValue`.
 - After the merge, origin/main 81fa174b: 7,716,577 instantiations, 225,111 types, 272k relations. Head: 7,780,015 (+0.8%), 272,028 types, 334k relations (+23%). The machine was shared by other workers, so times varied from 8 s to 24 s for the same code; see the outcome for paired runs.
+
+## 2026-10-28, review fixes
+
+- The review found the cause of the +15%: `$$Attributes<T>`, a conditional alias over `keyof Elements` in the prelude, which TypeScript instantiates in each of about 190 generated files. The attribute types, the global attributes and the handler type moved to packages/brumate/check.d.ts, exported as `brumate/check` (types only, internal, not part of the element-types contract), and the prelude uses them by `import('brumate/check')`. tsconfig.elements.json checks the file too.
+- Spreads of a dynamic tag are arguments after the object, `{...$$present(value) }` with braces that stand for the spread, so a wrong value is reported at the spread, not at `<`. A component checks its props whole without a spread, and `Partial` for the object and each spread with one, since a spread can hold required props. A tag that can be either leaves spreads unchecked (`object`): a part spreads its rest, and the attributes of a context are `Record<string, unknown>`, which fails the global handler types on its own.
+- Checked alone, Dialog's `aria-label=label` failed: `label` came from the target's props, a generic `aria-${string}` type. DialogOwnProps now has `'aria-label'?: string`.
+- origin/main 81fa174b against head b8497dab, packages/ui: instantiations 7,716,577 / 7,770,748 (+0.7%), types 225,111 / 235,752, assignability cache 272k / 312k. Paired check time 8.64/7.94, 7.77/7.98, 7.70/8.00 s.
