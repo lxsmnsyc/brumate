@@ -2,7 +2,7 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface CalendarHeadingOwnProps {
-    /** Not used: the heading always shows the months that the Calendar shows. */
+    /** Shown in place of the months that the Calendar shows, such as `October 2026`. */
     children?: unknown;
   }
 
@@ -21,9 +21,9 @@
    * The months that a Calendar shows, such as `October 2026`. It is hidden from screen readers,
    * which read the name of the Calendar.
    */
-  const { as = 'h2', ...rest } = $props<CalendarHeadingProps<T>>();
+  const { as = 'h2', children, ...rest } = $props<CalendarHeadingProps<T>>();
 
   const calendar = $getContext(CalendarContext);
 </script>
 
-<{as} aria-hidden="true" {...rest}>{calendar ? rangeLabel(toDate(calendar.start), toDate(calendar.end), calendar.locale, false) : ''}</>
+<{as} aria-hidden="true" {...rest}>{children ?? (calendar ? rangeLabel(toDate(calendar.start), toDate(calendar.end), calendar.locale, false) : '')}</>

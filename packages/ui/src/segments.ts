@@ -155,6 +155,7 @@ export function segmentsOf(parts: DateParts, placeholder: DateString, locale: st
     year: 'numeric',
     month: 'numeric',
     day: 'numeric',
+    calendar: 'gregory',
     timeZone: 'UTC',
   });
   return formatter.formatToParts(shown.toDate('UTC')).map((part, index) => {
