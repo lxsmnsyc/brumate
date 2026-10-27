@@ -82,10 +82,10 @@ it('presses a ToggleButton that is a component with Enter', async () => {
   await page.waitFor(() => expect(page.text('.pinned')).toBe('true'));
 });
 
-// ToggleButton gives `as` on to a Button, and its attributes come from a spread. The project
-// analysis follows the component through the prop, but Button writes `aria-pressed` and
-// `data-selected` through the `...rest` spread of a dynamic tag, which stays static for a component.
-it.fails('updates the ARIA of a ToggleButton that is a component', async () => {
+// ToggleButton gives `as` on to a Button, and its attributes come from a spread. Button writes
+// `aria-pressed` and `data-selected` through the `...rest` spread of a dynamic tag, which reaches
+// the component as props.
+it('updates the ARIA of a ToggleButton that is a component', async () => {
   const page = await controls();
   const toggle = page.get('.toggle');
   pressWith(toggle);

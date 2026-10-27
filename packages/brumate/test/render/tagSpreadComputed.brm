@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TagSpreadRest from './tagSpreadRest.brm';
+
+  // A computed attribute on a dynamic tag that names a component.
+  let as = $signal<any>(TagSpreadRest);
+  let name = $signal('title');
+  let value = $signal('a');
+</script>
+
+<button class="set" onClick=(() => (value = 'b'))>Set</button>
+<button class="rename" onClick=(() => (name = 'data-x'))>Rename</button>
+<{as} [name]=(value)>hi</>

@@ -39,7 +39,7 @@ function declaresProp(model: SemanticModel, name: string): boolean {
     if (
       declaration.kind === 'props-rest' ||
       (declaration.kind === 'prop' &&
-        (declaration.propKey === undefined || declaration.propKey === name))
+        (declaration.propKey === undefined || declaration.propKey === name || name === '~'))
     ) {
       return true;
     }
@@ -149,6 +149,14 @@ export function forEachNode(nodes: Markup[], visit: (node: Markup) => void): voi
   }
 }
 
+/**
+ * The live prop that a dynamic tag gives to the component it names. A spread or a computed name
+ * can hold any prop, but `children` come from the body of the tag, so they are left out: `~`.
+ */
+function tagProp(name: string | undefined): string | undefined {
+  return name === '*' ? '~' : name;
+}
+
 /** Returns a function that names the prop of an attribute when its value can change. */
 function liveChecker(graph: Graph): (attribute: Attribute) => string | undefined {
   const live = new Set<Site>();
@@ -193,7 +201,7 @@ export function dynamicTags(file: SFCFile, graph: Graph): DynamicTagUsage[] {
     }
     const liveProps = new Set<string>();
     for (const attribute of node.attributes) {
-      const name = attribute.kind === 'value' ? liveProp(attribute) : undefined;
+      const name = tagProp(liveProp(attribute));
       if (name) {
         liveProps.add(name);
       }
@@ -258,7 +266,7 @@ export function summarize(file: SFCFile, graph: Graph): ComponentUsage[] {
       // file reads as a value gets the props that can change.
       const liveProps = new Set<string>();
       for (const attribute of node.attributes) {
-        const name = attribute.kind === 'value' ? liveProp(attribute) : undefined;
+        const name = tagProp(liveProp(attribute));
         if (name) {
           liveProps.add(name);
         }

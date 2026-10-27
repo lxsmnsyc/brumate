@@ -5602,3 +5602,33 @@ describe('a template that names a component only in an attribute value', () => {
     expect(code).not.toContain('AsLink');
   });
 });
+
+describe('a spread on a component tag', () => {
+  it('updates the props of a live spread', async () => {
+    await resume('tagSpreadSpread', {});
+    expect(text('em.tag')).toBe('a');
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(text('em.tag')).toBe('b'));
+  });
+
+  it('updates a handler that can change', async () => {
+    await resume('tagSpreadHandler', {});
+    click(document.querySelector('a.tag')!);
+    await waitFor(() => expect(text('.n')).toBe('1'));
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(document.querySelector('a.tag')).not.toBeNull());
+    click(document.querySelector('a.tag')!);
+    await waitFor(() => expect(text('.n')).toBe('11'));
+  });
+
+  it('updates a computed attribute', async () => {
+    await resume('tagSpreadComputed', {});
+    const link = () => document.querySelector('a.tag')!;
+    expect(link().getAttribute('title')).toBe('a');
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('b'));
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(link().getAttribute('data-x')).toBe('b'));
+    expect(link().hasAttribute('title')).toBe(false);
+  });
+});

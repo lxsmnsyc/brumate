@@ -10,7 +10,7 @@ import { Children, RenderedChildren, TemplateCall } from './children.ts';
 import { loadedFunction } from './code.ts';
 import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
-import { prop } from './props.ts';
+import { prop, spreadProps } from './props.ts';
 import { disposeKinds, inPlace, nextId } from './scopes.ts';
 import { hiding, options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
@@ -300,6 +300,11 @@ export function attrs(
   values: Record<string, unknown>,
   own: string[] = [],
 ): void {
+  // A dynamic tag that names a component passes the attributes on as props.
+  if (scope.c?.[anchor] !== undefined) {
+    spreadProps(scope, anchor, values, []);
+    return;
+  }
   const element = findElement(scope.id, anchor);
   if (element) {
     // The first update in the browser takes the attributes that `b-s` names as the ones that
