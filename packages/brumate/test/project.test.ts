@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { analyzeProject, compile } from '../src/index.ts';
+import { analyzeProject, analyzeProjectProps, compile } from '../src/index.ts';
 
 const directory = new URL('./render/', import.meta.url);
 const sources = new Map(
@@ -27,6 +27,28 @@ describe('analyzeProject', () => {
     expect([...live.get('GapTarget.brm')!]).toEqual(['aria-selected']);
     // Nothing gives Tag to a part, so its props stay as they are.
     expect(live.get('Tag.brm')!.has('aria-selected')).toBe(false);
+  });
+
+  it('follows a component that a part passes on to another part in as', () => {
+    const live = analyzeProjectProps(
+      new Map([
+        ['Pass.brm', sources.get('gapPassOnPart.brm')!],
+        ['GapPart.brm', sources.get('GapPart.brm')!],
+        ['Target.brm', sources.get('GapTarget.brm')!],
+        [
+          'Page.brm',
+          "<script>import Pass from './Pass.brm'; import Target from './Target.brm';</script><Pass as=Target />",
+        ],
+      ]),
+    );
+    expect([...live.get('Target.brm')!.keys()]).toEqual(['aria-selected']);
+  });
+
+  it('follows a component in a branch of as=(cond ? A : B)', () => {
+    const live = analyzeProject(sources);
+    // Only gapPassOnChoice and gapPassOnChoiceOther name them, in the two branches of a condition.
+    expect([...live.get('gapPassOnTargetA.brm')!]).toEqual(['aria-selected']);
+    expect([...live.get('gapPassOnTargetB.brm')!]).toEqual(['aria-selected']);
   });
 
   it('removes update code for props that do not change', () => {

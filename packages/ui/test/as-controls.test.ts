@@ -83,7 +83,8 @@ it('presses a ToggleButton that is a component with Enter', async () => {
 });
 
 // ToggleButton gives `as` on to a Button, and its attributes come from a spread. The project
-// analysis follows a component that a page gives to a part, not one that a part gives to another.
+// analysis follows the component through the prop, but Button writes `aria-pressed` and
+// `data-selected` through the `...rest` spread of a dynamic tag, which stays static for a component.
 it.fails('updates the ARIA of a ToggleButton that is a component', async () => {
   const page = await controls();
   const toggle = page.get('.toggle');

@@ -3,6 +3,7 @@ import type { Attribute, Markup, SFCFile } from './ast.ts';
 import { buildGraph } from './graph.ts';
 import type { Graph } from './graph.ts';
 import type { SemanticModel, Site } from './model.ts';
+import type { oxc } from './oxc.ts';
 import { parse } from './parser.ts';
 
 /** A component that a file renders, and the props it passes that can change. */
@@ -13,8 +14,16 @@ export interface ComponentUsage {
   liveProps: Set<string>;
   /** True for a dynamic tag, which can name the component. Only a component that declares the prop takes it. */
   dynamic?: boolean;
-  /** The props whose value is a `.brm` import, such as `as=Target`: the prop name and the import specifier. */
-  components?: Map<string, string>;
+  /**
+   * The props whose value names `.brm` imports, such as `as=Target` or `as=(flag ? A : B)`: the
+   * prop name and the import specifiers.
+   */
+  components?: Map<string, string[]>;
+  /**
+   * The props whose value is a prop of this file, such as `{as}`: the prop name and the names of
+   * this file's props. `*` means the whole props object.
+   */
+  passed?: Map<string, string[]>;
 }
 
 /** A dynamic tag of a file, with the props that name its tag and the props that can change. */
@@ -36,6 +45,32 @@ function declaresProp(model: SemanticModel, name: string): boolean {
     }
   }
   return false;
+}
+
+/** The names a value can be: the identifiers of an expression and of the branches of a condition. */
+function valueNames(node: oxc.Expression, names: string[] = []): string[] {
+  switch (node.type) {
+    case 'Identifier':
+      names.push(node.name);
+      break;
+    case 'ConditionalExpression':
+      valueNames(node.consequent, names);
+      valueNames(node.alternate, names);
+      break;
+    case 'LogicalExpression':
+      valueNames(node.left, names);
+      valueNames(node.right, names);
+      break;
+    case 'ParenthesizedExpression':
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSNonNullExpression':
+      valueNames(node.expression, names);
+      break;
+    default:
+      break;
+  }
+  return names;
 }
 
 /** Returns the import specifier of a name that the file imports. */
@@ -188,6 +223,15 @@ export function dynamicTags(file: SFCFile, graph: Graph): DynamicTagUsage[] {
   return tags;
 }
 
+function append(map: Map<string, string[]>, key: string, value: string): void {
+  const list = map.get(key);
+  if (list) {
+    list.push(value);
+  } else {
+    map.set(key, [value]);
+  }
+}
+
 /** Lists the components that a file renders, and the props it passes that can change. */
 export function summarize(file: SFCFile, graph: Graph): ComponentUsage[] {
   const liveProp = liveChecker(graph);
@@ -230,20 +274,30 @@ export function summarize(file: SFCFile, graph: Graph): ComponentUsage[] {
       return;
     }
     const liveProps = new Set<string>();
-    const components = new Map<string, string>();
+    const components = new Map<string, string[]>();
+    const passed = new Map<string, string[]>();
     for (const attribute of node.attributes) {
       const name = liveProp(attribute);
       if (name) {
         liveProps.add(name);
       }
-      if (attribute.kind === 'value' && attribute.value.ast.type === 'Identifier') {
-        const named = importSource(file, attribute.value.ast.name);
+      if (attribute.kind !== 'value') {
+        continue;
+      }
+      for (const local of valueNames(attribute.value.ast)) {
+        const named = importSource(file, local);
         if (named?.endsWith('.brm')) {
-          components.set(attribute.name, named);
+          append(components, attribute.name, named);
+          continue;
+        }
+        for (const declaration of graph.model.declarations) {
+          if (declaration.kind === 'prop' && declaration.name === local) {
+            append(passed, attribute.name, declaration.propKey ?? '*');
+          }
         }
       }
     }
-    usages.push({ source, liveProps, components });
+    usages.push({ source, liveProps, components, passed });
   };
   forEachNode(file.children, visit);
   for (const template of file.templates) {
@@ -286,6 +340,8 @@ export function analyzeProjectProps(
     }
   }
   const result: ProjectProps = new Map();
+  // For each file and prop, the files of the components that parents give to it, such as `as=Target`.
+  const given = new Map<string, Map<string, Set<string>>>();
   const models = new Map<string, SemanticModel>();
   for (const [filename, file] of parsed) {
     result.set(filename, new Map());
@@ -315,6 +371,24 @@ export function analyzeProjectProps(
       }
       parents.add(parent);
     };
+    const give = (target: string, prop: string, components: Iterable<string>): void => {
+      let props = given.get(target);
+      if (!props) {
+        props = new Map();
+        given.set(target, props);
+      }
+      let set = props.get(prop);
+      if (!set) {
+        set = new Set();
+        props.set(prop, set);
+      }
+      for (const component of components) {
+        if (!set.has(component)) {
+          set.add(component);
+          changed = true;
+        }
+      }
+    };
     for (const [filename, file] of parsed) {
       const liveProps = new Set(result.get(filename)!.keys());
       const graph = buildGraph(models.get(filename)!, { liveProps });
@@ -330,22 +404,39 @@ export function analyzeProjectProps(
           }
           add(target!, name, filename);
         }
-        // A page that gives a component to a prop, such as `as=Target`, sends the live props of
-        // the dynamic tags that read that prop to the component.
-        if (usage.components?.size) {
-          for (const tag of tagsFor(target!)) {
-            for (const [prop, specifier] of usage.components) {
-              if (!tag.tagProps.has(prop) && !tag.tagProps.has('*')) {
-                continue;
+        // A page that gives a component to a prop, such as `as=Target`, or a part that passes on
+        // the component it was given, such as `{as}`, sends the live props of the dynamic tags
+        // that read that prop to the component.
+        for (const [prop, specifiers] of usage.components ?? []) {
+          for (const specifier of specifiers) {
+            const named = resolve(specifier, filename);
+            if (named !== undefined && result.has(named)) {
+              give(target!, prop, [named]);
+            }
+          }
+        }
+        const received = given.get(filename);
+        for (const [prop, names] of usage.passed ?? []) {
+          for (const name of names) {
+            for (const [key, components] of received ?? []) {
+              if (name === '*' || name === key) {
+                give(target!, prop, components);
               }
-              const named = resolve(specifier, filename);
-              if (named === undefined || !result.has(named)) {
-                continue;
-              }
-              for (const name of tag.liveProps) {
-                if (declaresProp(models.get(named)!, name)) {
-                  add(named, name, target!);
-                }
+            }
+          }
+        }
+      }
+    }
+    for (const [target, props] of given) {
+      for (const tag of tagsFor(target)) {
+        for (const [prop, components] of props) {
+          if (!tag.tagProps.has(prop) && !tag.tagProps.has('*')) {
+            continue;
+          }
+          for (const named of components) {
+            for (const name of tag.liveProps) {
+              if (declaresProp(models.get(named)!, name)) {
+                add(named, name, target);
               }
             }
           }
