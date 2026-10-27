@@ -1057,11 +1057,20 @@ let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();
 
 ## "{name}" is the props object, so read one key at a time, destructure it, or spread it in markup
 
-The props object or the rest of `$props()` is spread in code, or passed to a function, `$memo`, `$setContext`, a signal or a variable. The copy loses the `ref` and the live props.
+The props object or the rest of `$props()` is used as a whole outside a markup spread: spread in code, passed to a function, `$memo`, `$setContext`, a signal or a variable, or given as a value in markup, such as `title=rest` or `<Badge {rest} />`. The copy loses the `ref` and the live props.
 
 ```brm fragment
 const { class: className, ...rest } = $props();
 <button {...rest} class=className>
+```
+
+## "{name}" is the props object, and props are read-only. Copy the key to a $signal or a $memo to change it
+
+Code assigns to, updates or deletes a key of the props object or of the rest of `$props()`.
+
+```brm fragment
+let title = $signal('');
+title = 'New';
 ```
 
 ## Cannot assign to {kind} "{name}"

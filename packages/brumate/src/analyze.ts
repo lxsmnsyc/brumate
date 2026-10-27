@@ -1801,8 +1801,8 @@ class Resolver {
         return;
       case 'MemberExpression':
         // Reading a key of the props is the one use of the object besides a spread.
-        if (node.object.type === 'Identifier') {
-          this.reference(node.object, 'read');
+        if (unwrapTypes(node.object).type === 'Identifier') {
+          this.reference(unwrapTypes(node.object) as oxc.Node & { name: string }, 'read');
         } else {
           this.visit(node.object);
         }
@@ -1896,12 +1896,20 @@ class Resolver {
           }
         }
         return;
+      case 'UnaryExpression':
+        if (node.operator === 'delete') {
+          this.checkPropsWrite(node.argument);
+        }
+        this.visitChildren(node);
+        return;
       case 'AssignmentExpression':
+        this.checkPropsWrite(node.left);
         this.checkMutation(node.left, node);
         this.visitTarget(node.left, node.operator === '=' ? 'write' : 'update');
         this.visit(node.right);
         return;
       case 'UpdateExpression':
+        this.checkPropsWrite(node.argument);
         this.checkMutation(node.argument, node);
         if (node.argument.type === 'Identifier') {
           this.reference(node.argument, 'update');
@@ -2135,6 +2143,25 @@ class Resolver {
    * `todos.push(todo)` or `todo.done = true`. The value does not change, so
    * nothing that reads it updates.
    */
+  /** Reports a write to a key of the props object or of the rest of `$props()`. */
+  private checkPropsWrite(target: oxc.Node): void {
+    const node = unwrapTypes(target);
+    if (node.type !== 'MemberExpression') {
+      return;
+    }
+    const object = unwrapTypes(node.object);
+    if (object.type !== 'Identifier' || this.isLocal(object.name)) {
+      return;
+    }
+    if (lookup(this.site.scope, object.name)?.whole) {
+      this.analyzer.report(
+        'error',
+        `"${object.name}" is the props object, and props are read-only. Copy the key to a $signal or a $memo to change it`,
+        target,
+      );
+    }
+  }
+
   private checkMutation(target: oxc.Node, at: oxc.Node): void {
     // Writing a variable itself is how values change. Only writes into the value are in place.
     if (at.type !== 'CallExpression' && target.type !== 'MemberExpression') {
@@ -2197,6 +2224,14 @@ class Resolver {
         }
     }
   }
+}
+
+/** Strips parentheses and type casts: `(rest as T)` is `rest`. */
+function unwrapTypes(node: oxc.Node): oxc.Node {
+  while (node.type === 'ParenthesizedExpression' || TYPE_WRAPPERS.has(node.type)) {
+    node = (node as { expression: oxc.Node }).expression;
+  }
+  return node;
 }
 
 /** Returns the names that statements declare in their own block. */

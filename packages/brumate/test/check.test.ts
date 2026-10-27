@@ -212,6 +212,67 @@ ${markup}`;
     ).toThrow(message);
   });
 
+  it('rejects a rest in markup as a shorthand value', () => {
+    expect(() =>
+      compile(
+        page(
+          "import Badge from './Badge.brm';\n  const { ...rest } = $props();",
+          '<Badge {rest} />',
+        ),
+        { filename: 'Card.brm' },
+      ),
+    ).toThrow(message);
+  });
+
+  it('rejects a cast of the whole object', () => {
+    expect(() =>
+      compile(page('const { ...rest } = $props();\n  const x = rest as Record<string, unknown>;'), {
+        filename: 'Card.brm',
+      }),
+    ).toThrow(message);
+  });
+
+  it('allows a key read through a cast or parentheses', () => {
+    for (const read of [
+      '(rest as any).key',
+      '(rest satisfies object).key',
+      'rest!.key',
+      '(rest).key',
+    ]) {
+      expect(() =>
+        compile(page(`const { ...rest } = $props();\n  const k = $memo(${read});`), {
+          filename: 'Card.brm',
+        }),
+      ).not.toThrow();
+    }
+  });
+
+  it('rejects a write to a key of the props', () => {
+    for (const write of [
+      'rest.a = 1',
+      "rest['a'] = 1",
+      'rest.a += 1',
+      'rest.a++',
+      '--rest.a',
+      'delete rest.a',
+      'props.a = 1',
+      '(rest as any).a = 1',
+    ]) {
+      let error: unknown;
+      try {
+        compile(
+          page(
+            `const { ...rest } = $props();\n  const props = $props();\n  function f() { ${write}; }`,
+          ),
+          { filename: 'Card.brm' },
+        );
+      } catch (caught) {
+        error = caught;
+      }
+      expect(`${write}: ${String((error as Error)?.message)}`).toContain('props are read-only');
+    }
+  });
+
   it('allows a markup spread, a key read and destructuring', () => {
     expect(() =>
       compile(
