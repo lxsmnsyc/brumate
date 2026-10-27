@@ -3,7 +3,7 @@
   import type { Bindable } from 'brumate/signals';
   import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
 
-  export interface ListBoxOwnProps<T extends AsTarget = 'div'> {
+  export interface ListBoxOwnProps<V extends { id: Key } = { id: Key }, T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
     selectionMode?: SelectionMode;
@@ -24,12 +24,10 @@
      * The text that typeahead matches for an item, for the options out of view of a windowed list.
      * The options in view use their own `textValue` or text.
      */
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a ListBox are the caller's.
-    getTextValue?: (item: any) => string;
+    getTextValue?: (item: V) => string;
     /** The data of the options, each with an `id`. The `item` template renders each one. */
-    items?: readonly { id: Key }[];
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a ListBox are the caller's.
-    item?: (item: any) => unknown;
+    items?: readonly V[];
+    item?: (item: V) => unknown;
     children?: unknown;
     selectedKeys?: Bindable<Key[]>;
   }
@@ -38,10 +36,13 @@
    * The props of ListBox. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type ListBoxProps<T extends AsTarget = 'div'> = AsProps<T, ListBoxOwnProps<T>>;
+  export type ListBoxProps<V extends { id: Key } = { id: Key }, T extends AsTarget = 'div'> = AsProps<
+    T,
+    ListBoxOwnProps<V, T>
+  >;
 </script>
 
-<script generics="T extends AsTarget = 'div'">
+<script generics="V extends { id: Key }, T extends AsTarget = 'div'">
   import {
     $client,
     $effect,
@@ -121,9 +122,9 @@
     item,
     children,
     ...rest
-  } = $props<ListBoxProps<T>>();
-  let { selectedKeys = [] } = $props<ListBoxOwnProps<T>>();
-  let { ref } = $props<ListBoxOwnProps<T>>();
+  } = $props<ListBoxProps<V, T>>();
+  let { selectedKeys = [] } = $props<ListBoxOwnProps<V, T>>();
+  let { ref } = $props<ListBoxOwnProps<V, T>>();
 
   const locale = $getContext(LocaleContext);
   // A Select around the list keeps the selection, with one item at most.

@@ -3,9 +3,9 @@
   import type { Bindable } from 'brumate/signals';
   import type { QueuedToast } from './toast.ts';
 
-  export interface ToastRegionOwnProps<T extends AsTarget = 'div'> {
+  export interface ToastRegionOwnProps<V = unknown, T extends AsTarget = 'div'> {
     queue?: string;
-    toast: (item: QueuedToast<any>) => unknown;
+    toast: (item: QueuedToast<V>) => unknown;
     transition?: boolean;
     'aria-label'?: string;
     /** The element, bound with `ref=$bind(signal)`. */
@@ -16,10 +16,10 @@
    * The props of ToastRegion. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type ToastRegionProps<T extends AsTarget = 'div'> = AsProps<T, ToastRegionOwnProps<T>>;
+  export type ToastRegionProps<V = unknown, T extends AsTarget = 'div'> = AsProps<T, ToastRegionOwnProps<V, T>>;
 </script>
 
-<script generics="T extends AsTarget = 'div'">
+<script generics="V, T extends AsTarget = 'div'">
   import { $props, $setContext, $signal } from 'brumate/signals';
   import {
     ToastRegionContext,
@@ -51,9 +51,10 @@
     transition = false,
     'aria-label': label = 'Notifications',
     ...rest
-  } = $props<ToastRegionProps<T>>();
-  let { ref } = $props<ToastRegionOwnProps<T>>();
+  } = $props<ToastRegionProps<V, T>>();
+  let { ref } = $props<ToastRegionOwnProps<V, T>>();
 
+  // The cast to `V` in the template call is unchecked: `V` must be what the queue holds.
   let shown = $signal<QueuedToast<unknown>[]>([]);
 
   $setContext(ToastRegionContext, { queue });
@@ -163,7 +164,7 @@
         {...rest}
       >
         #for (item of shown by item.key) {
-          {toast(item)}
+          {toast(item as QueuedToast<V>)}
         }
       </>
     }

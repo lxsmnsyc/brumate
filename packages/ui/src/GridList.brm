@@ -4,7 +4,7 @@
   import type { DragItem, DropTarget, ReorderEvent } from './drop.ts';
   import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
 
-  export interface GridListOwnProps<T extends AsTarget = 'div'> {
+  export interface GridListOwnProps<V extends { id: Key } = { id: Key }, T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
     selectionMode?: SelectionMode;
@@ -25,12 +25,10 @@
      * The text that typeahead matches for an item, for the rows out of view of a windowed list.
      * The rows in view use their own `textValue` or text.
      */
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a GridList are the caller's.
-    getTextValue?: (item: any) => string;
+    getTextValue?: (item: V) => string;
     /** The data of the rows, each with an `id`. The `item` template renders each one. */
-    items?: readonly { id: Key }[];
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a GridList are the caller's.
-    item?: (item: any) => unknown;
+    items?: readonly V[];
+    item?: (item: V) => unknown;
     children?: unknown;
     selectedKeys?: Bindable<Key[]>;
   }
@@ -39,10 +37,10 @@
    * The props of GridList. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type GridListProps<T extends AsTarget = 'div'> = AsProps<T, GridListOwnProps<T>>;
+  export type GridListProps<V extends { id: Key } = { id: Key }, T extends AsTarget = 'div'> = AsProps<T, GridListOwnProps<V, T>>;
 </script>
 
-<script generics="T extends AsTarget = 'div'">
+<script generics="V extends { id: Key }, T extends AsTarget = 'div'">
   import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ROWS_TYPE, setDragData } from './drop.ts';
@@ -111,9 +109,9 @@
     item,
     children,
     ...rest
-  } = $props<GridListProps<T>>();
-  let { selectedKeys = [] } = $props<GridListOwnProps<T>>();
-  let { ref } = $props<GridListOwnProps<T>>();
+  } = $props<GridListProps<V, T>>();
+  let { selectedKeys = [] } = $props<GridListOwnProps<V, T>>();
+  let { ref } = $props<GridListOwnProps<V, T>>();
 
   const locale = $getContext(LocaleContext);
   const virtualizer = $getContext(VirtualizerContext);

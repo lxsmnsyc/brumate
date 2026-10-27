@@ -89,11 +89,15 @@ import Tree from '../src/Tree.brm';
 import TreeItem from '../src/TreeItem.brm';
 import AsTarget from './fixtures/AsTarget.brm';
 
-export const list: ListBoxProps<'ul'> = { as: 'ul', selectionMode: 'single', class: 'list' };
+export const list: ListBoxProps<{ id: string }, 'ul'> = {
+  as: 'ul',
+  selectionMode: 'single',
+  class: 'list',
+};
 // @ts-expect-error `selectionMode` is one of three strings.
 export const listMode: ListBoxProps = { selectionMode: 'some' };
 // @ts-expect-error A `ul` has no `foo`.
-export const listFoo: ListBoxProps<'ul'> = { as: 'ul', foo: true };
+export const listFoo: ListBoxProps<{ id: string }, 'ul'> = { as: 'ul', foo: true };
 void ListBox({ as: 'ul', 'aria-label': 'Fruit' });
 void ListBox({ as: AsTarget, 'aria-label': 'Fruit', 'data-x': 1 });
 void ListBoxItem({ id: 'a', as: 'li', title: 'Apple' });
