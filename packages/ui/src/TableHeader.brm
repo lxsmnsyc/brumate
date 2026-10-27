@@ -2,6 +2,7 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface TableHeaderProps extends ElementProps<'thead'> {
+    /** The `Column` elements. */
     children?: unknown;
   }
 </script>

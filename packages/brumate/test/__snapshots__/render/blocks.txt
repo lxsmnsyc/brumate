@@ -81,7 +81,7 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   } catch ($$error11) {
     $$html = $$before10;
     $$ctx.restore($$mark12);
-    const error = $$error11;
+    const error = $$b.caught($$error11, $$ctx);
     $$html += "<p>" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   }
   $$ctx.leave();
@@ -324,7 +324,7 @@ Blocks.brumateId = "Blocks_jlmev2";
 <span>y</span>
 <b>0</b>
 <b>10</b>
-<p>Error: Broken</p>
+<p>Error: The page could not render this part</p>
 <template b-b="0:5" b-client="idle=Blocks_jlmev2#k11">
 </template>
 <!--b0:5-->

@@ -20,3 +20,4 @@
 - Checked in a temporary ui test (deleted) that `webkitdirectory` and `autocorrect="off"` still render after the spread workaround.
 - Templates: a probe with `#template row(item)` gave TS7006 for `item` (strict) and reported `foo` on a `<p>` and `.nope` inside the body. Template bodies are checked; untyped parameters are `any`.
 - No element call is written for an element with no attributes, so the generated code stays as small as before for plain markup.
+- Change request accepted (element-types v1.2). Merged origin/main (the docs nodes had added comments to the parts' props, 27 conflicts, each resolved by taking main's file and applying the same type change). Added `autocorrect` and `webkitdirectory` to elements.d.ts, reverted the two spread workarounds, dropped `focusable` from the website's Icon, and added both attributes to the fixture.

@@ -4,14 +4,23 @@
   import type { ColumnSize } from './table.ts';
 
   export interface ColumnProps extends Omit<ElementProps<'th'>, 'id'> {
+    /** The key of the column, which `sortDescriptor` and the resize events use. */
     id?: Key;
+    /** Makes the cells of the column name their rows. */
     isRowHeader?: boolean;
+    /** Lets a press or Enter sort the table by this column. */
     allowsSorting?: boolean;
+    /** The text that names the column, for a column whose content is more than text. */
     textValue?: string;
+    /** The width in a ResizableTableContainer: pixels, a percentage, or `fr`. */
     width?: ColumnSize | null;
+    /** The starting width in a ResizableTableContainer: pixels, a percentage, or `fr`. */
     defaultWidth?: ColumnSize | null;
+    /** The least width in pixels. */
     minWidth?: number | null;
+    /** The greatest width in pixels. */
     maxWidth?: number | null;
+    /** The content of the column header. */
     children?: unknown;
   }
 </script>

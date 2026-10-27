@@ -2,6 +2,7 @@
   import type { GlobalAttributes } from 'brumate/elements';
 
   export interface NavigationTreeItemLinkProps extends GlobalAttributes<HTMLElement> {
+    /** The text of the link. */
     children?: unknown;
   }
 </script>

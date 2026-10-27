@@ -2,7 +2,9 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface CellProps extends ElementProps<'td'> {
+    /** The text of the cell, for a cell whose content is more than text. */
     textValue?: string;
+    /** The content of the cell. */
     children?: unknown;
   }
 </script>

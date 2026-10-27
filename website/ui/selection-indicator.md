@@ -26,6 +26,33 @@ A mark of the selected item, such as a bar under the selected tab, which moves t
 - It renders only in the selected item, with `data-selection-indicator` and `data-selected`, and is hidden from screen readers, since the item says that it is selected.
 - `as` sets its element, a `<span>` by default.
 
+## Anatomy
+
+```html
+<Tab>
+  <SelectionIndicator />
+</>
+```
+
+It goes in any item that can be selected.
+
+## Props
+
+```props SelectionIndicator
+
+```
+
+## Data attributes
+
+| Attribute                  | When                                          |
+| -------------------------- | --------------------------------------------- |
+| `data-selection-indicator` | Always. It marks the element.                 |
+| `data-selected`            | Always. It renders only in the selected item. |
+
+## Styling
+
+Style the indicator with its own CSS, such as `position`, `transition-duration` and `transition-timing-function`. It has no state of its own and takes no keys. See [Styling](./styling.md).
+
 ## The move
 
 When the selection changes, the indicator of the new item moves from where the last one was, in the same list or group.

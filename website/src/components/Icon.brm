@@ -34,7 +34,6 @@
   stroke-linecap="round"
   stroke-linejoin="round"
   aria-hidden="true"
-  {...({ focusable: 'false' } as {})}
   {...rest}
 >
   #switch {

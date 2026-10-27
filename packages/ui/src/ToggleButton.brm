@@ -6,11 +6,17 @@
   export interface ToggleButtonOwnProps<T extends AsTarget = 'button'> {
     /** The key of the button in a ToggleButtonGroup. */
     id?: string;
+    /** The slot of the context of a part that holds this button. */
     slot?: string | null;
+    /** Disables the button. A disabled group disables its buttons too. */
     isDisabled?: boolean;
+    /** Runs with the new state when the user toggles the button. */
     onChange?: (selected: boolean) => void;
+    /** Runs when a press ends on the button. */
     onPress?: (event: PressEvent) => void;
+    /** The content of the button. */
     children?: unknown;
+    /** Whether the button is on. A plain value starts its own state, and `$bind(signal)` writes the caller's. A group keeps the state of its buttons. */
     isSelected?: Bindable<boolean>;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

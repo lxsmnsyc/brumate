@@ -115,7 +115,7 @@
     tabindex=(field?.isDisabled ? undefined : '0')
     contenteditable=(field?.isDisabled || field?.isReadOnly ? undefined : 'true')
     inputmode=(segment.type === 'dayPeriod' ? 'text' : 'numeric')
-    {...({ autocorrect: 'off' } as {})}
+    autocorrect="off"
     spellcheck="false"
     enterkeyhint="next"
     aria-label=(SEGMENT_NAMES[segment.type])

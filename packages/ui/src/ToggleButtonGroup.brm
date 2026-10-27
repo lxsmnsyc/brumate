@@ -3,12 +3,19 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface ToggleButtonGroupOwnProps<T extends AsTarget = 'div'> {
+    /** `single` allows one button on, as radios. `multiple` allows several, as a toolbar. */
     selectionMode?: 'single' | 'multiple';
+    /** Keeps at least one button on. */
     disallowEmptySelection?: boolean;
+    /** Disables every button of the group. */
     isDisabled?: boolean;
+    /** The direction of the buttons. It picks the arrow keys that move focus. */
     orientation?: 'horizontal' | 'vertical';
+    /** Runs with the keys of the buttons that are on, when the user changes them. */
     onSelectionChange?: (keys: string[]) => void;
+    /** The ToggleButtons of the group. */
     children?: unknown;
+    /** The `id` of each button that is on. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     selectedKeys?: Bindable<string[]>;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
@@ -26,7 +33,7 @@
   import { prevent } from 'brumate/events';
   import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
-  import { keepTabStop, moveFocus, rove } from './toolbar.ts';
+  import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
 
   /**
    * ToggleButtons with one selection. With `selectionMode="single"`, the default, it is a
@@ -53,7 +60,17 @@
   const locale = $getContext(LocaleContext);
   const nested = $getContext(ToolbarContext);
 
-  $client(() => (ref ? keepTabStop(ref) : undefined), 'load');
+  $client(() => {
+    if (!ref) {
+      return undefined;
+    }
+    const stops = [keepTabStop(ref), preventEdges(ref)];
+    return () => {
+      for (const stop of stops) {
+        stop();
+      }
+    };
+  }, 'load');
 
   function toggle(id: string) {
     let next: string[];
@@ -89,7 +106,8 @@
     return inToolbar ? 'group' : 'toolbar';
   }
 
-  // Only the arrow keys that move focus are prevented, as in a Toolbar.
+  // Up and Down of a vertical group are prevented. Home and End are prevented by preventEdges,
+  // unless a text field has focus.
   function keys(vertical: boolean) {
     return vertical
       ? { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown')) }

@@ -2,6 +2,7 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface TextAreaProps extends ElementProps<'textarea'> {
+    /** The slot of the context of a part that holds this text area. */
     slot?: string | null;
   }
 </script>

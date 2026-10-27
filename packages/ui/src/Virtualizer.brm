@@ -2,7 +2,9 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface VirtualizerProps extends ElementProps<'div'> {
+    /** The height of a row in pixels. The default is 32. */
     rowHeight?: number;
+    /** The collection to scroll. */
     children?: unknown;
   }
 </script>
@@ -15,10 +17,9 @@
    * A box that scrolls a long collection and renders only the rows in view, in a list layout. Give
    * it a height.
    *
-   * - A Tree in it takes `rowHeight`, the height of a row in pixels, and renders only the rows in
-   *   view.
-   * - The rows of a GridList, a ListBox or a Table come from a `#for` of the caller, which takes
-   *   `window(rowHeight)` for the same. See the windowed lists of `#for`.
+   * - A Tree, a GridList, a ListBox or a Table with `items` in it renders only the rows in view.
+   *   Rows that a caller writes out or renders from a `#for` take `window(rowHeight)` on the
+   *   `#for` for the same.
    */
   const { rowHeight = 32, children, ...rest } = $props<VirtualizerProps>();
 

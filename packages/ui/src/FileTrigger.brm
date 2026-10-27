@@ -1,11 +1,18 @@
 <script module>
   export interface FileTriggerProps {
+    /** The types the picker offers, such as `image/png` or `.pdf`. */
     acceptedFileTypes?: string[];
+    /** Lets the user pick more than one file. */
     allowsMultiple?: boolean;
+    /** On a device with a camera, the one to capture with: `user` or `environment`. */
     defaultCamera?: 'user' | 'environment';
+    /** Lets the user pick a folder in place of files. */
     acceptDirectory?: boolean;
+    /** The name of the file input. */
     name?: string;
+    /** Runs with the files that the user picked. */
     onSelect?: (files: FileList | null) => void;
+    /** A Button, which opens the picker when pressed. */
     children?: unknown;
   }
 </script>
@@ -57,6 +64,6 @@
   accept=(acceptedFileTypes?.join(','))
   multiple=(allowsMultiple || undefined)
   capture=defaultCamera
-  {...({ webkitdirectory: acceptDirectory || undefined } as {})}
+  webkitdirectory=(acceptDirectory || undefined)
   onChange=change
 >

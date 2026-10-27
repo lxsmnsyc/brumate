@@ -3,19 +3,33 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface TextFieldOwnProps {
+    /** The name of the input, posted with the form. */
     name?: string;
+    /** The `type` of the input, such as `email` or `password`. */
     type?: string;
+    /** Disables the field and its input. */
     isDisabled?: boolean;
+    /** Makes the input read only. The user can focus and select it, but not edit it. */
     isReadOnly?: boolean;
+    /** Asks the browser to check that the input has a value when its form is sent. */
     isRequired?: boolean;
+    /** Marks the field as invalid, and blocks its form in the native behavior. */
     isInvalid?: boolean;
+    /** Returns a message, a list of messages, or `true` or nothing for a valid value. */
     validate?: (value: string) => string | string[] | true | null | undefined;
+    /** `native` lets the browser check the field when its form is sent. `aria` shows the errors of `validate` at once and never blocks the form. A Form sets the default. */
     validationBehavior?: 'native' | 'aria';
+    /** The `autocomplete` of the input. */
     autoComplete?: string;
+    /** The least number of characters that the browser accepts. */
     minLength?: number;
+    /** The most number of characters that the input takes. */
     maxLength?: number;
+    /** A regular expression, as a string, that the text must match. */
     pattern?: string;
+    /** The `inputmode` of the input, which picks the keyboard of a touch device. */
     inputMode?: string;
+    /** The hint that the input shows while it is empty. */
     placeholder?: string;
     /** A field of createForm, such as `fields.email`. */
     field?: {
@@ -25,9 +39,13 @@
       errors?: string[];
       errorAttrs?: object;
     };
+    /** Runs with the text each time the user edits it. */
     onChange?: (value: string) => void;
+    /** Runs when the input loses focus. */
     onBlur?: () => void;
+    /** The Label, Input or TextArea, Text and FieldError of the field. */
     children?: unknown;
+    /** The text. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string>;
   }
 

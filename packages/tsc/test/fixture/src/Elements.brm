@@ -17,3 +17,5 @@
 <div ref=$bind(element) tabindex="0" class=(['a', false && 'b']) aria-label=(1) data-x=(2) hidden>
   <button ref=$bind(button) type="button" title=name></button>
 </div>
+<span autocorrect="off" contenteditable="true"></span>
+<input type="file" webkitdirectory>

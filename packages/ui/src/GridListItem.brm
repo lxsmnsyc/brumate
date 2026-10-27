@@ -6,10 +6,15 @@
   export interface GridListItemOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** The key of the row. */
     id: Key;
+    /** The text that typing matches, for an item whose content is more than text. */
     textValue?: string;
+    /** Keeps the row from focus and selection. */
     isDisabled?: boolean;
+    /** Runs when a press or Enter acts on the row. */
     onAction?: () => void;
+    /** The content of the row, such as text, a Checkbox and a Button. */
     children?: unknown;
   }
 

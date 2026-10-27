@@ -1,9 +1,14 @@
 <script module>
   export interface NavigationTreeItemProps {
+    /** The link of the item. Without it, the link part shows only the text. */
     href?: string;
+    /** The text that typing matches, for an item whose content is more than text. */
     textValue?: string;
+    /** Keeps the item from focus, and turns its link into a disabled one. */
     isDisabled?: boolean;
+    /** Runs when the item is acted on. */
     onAction?: () => void;
+    /** A chevron `Button` and a `NavigationTreeItemLink`. */
     children?: unknown;
     [attribute: string]: unknown;
   }

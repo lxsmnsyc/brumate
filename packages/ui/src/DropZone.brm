@@ -3,12 +3,19 @@
   import type { DropEvent, DropOperation } from './drop.ts';
 
   export interface DropZoneProps extends Omit<ElementProps<'div'>, 'onDrop'> {
+    /** Runs with the items of a drop or of a paste. */
     onDrop?: (event: DropEvent) => void;
+    /** Runs when a drag that the area takes comes over it. */
     onDropEnter?: () => void;
+    /** Runs when that drag leaves, or drops. */
     onDropExit?: () => void;
+    /** Picks the operation for the types of a drag and the operations its source allows, or `cancel` to refuse it. */
     getDropOperation?: (types: Set<string>, allowed: DropOperation[]) => DropOperation;
+    /** Refuses every drop and disables the paste button. */
     isDisabled?: boolean;
+    /** The name of the paste button. A `Text` with `slot="label"` adds to it. */
     'aria-label'?: string;
+    /** The content of the area, such as a `Text` label and a `FileTrigger`. */
     children?: unknown;
   }
 </script>

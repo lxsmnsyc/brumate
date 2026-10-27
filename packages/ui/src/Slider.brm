@@ -3,15 +3,25 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface SliderProps extends Omit<ElementProps<'div'>, 'onChange'> {
+    /** The least value, 0 by default. */
     minValue?: number;
+    /** The greatest value, 100 by default. */
     maxValue?: number;
+    /** The distance between the values a thumb can take, 1 by default. */
     step?: number;
+    /** The direction of the track. A vertical slider places its thumbs with `bottom`. */
     orientation?: 'horizontal' | 'vertical';
+    /** Disables every thumb and the track. */
     isDisabled?: boolean;
+    /** The options of `Intl.NumberFormat` that format the values. */
     formatOptions?: Intl.NumberFormatOptions;
+    /** Runs with the value, or the list of values, each time it changes. */
     onChange?: (value: number | number[]) => void;
+    /** Runs with the value, or the list of values, when a drag or a key ends. */
     onChangeEnd?: (value: number | number[]) => void;
+    /** The Label, SliderOutput and SliderTrack. */
     children?: unknown;
+    /** A number for one thumb, or a list of numbers for several. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<number | number[]>;
   }
 </script>

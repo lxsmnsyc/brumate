@@ -19,17 +19,16 @@ Callers fixed: 51 errors in 48 files.
 - Input and TextArea spread attributes from contexts typed `Record<string, unknown>`: a cast at the spread to `ElementProps<'input'>` / `<'textarea'>`.
 - packages/ui/test/fixtures/AsTarget.brm: rest typed `Omit<ElementProps<'div'>, 'ref'>`.
 - website/src/components/Icon.brm: rest typed `Omit<ElementProps<'svg'>, 'name' | 'size'>`.
-- 3 attributes missing from `Elements` (see Deviations).
+- 3 attributes missing from `Elements`: the change request was accepted (element-types v1.2). packages/brumate/elements.d.ts has `autocorrect` in `GlobalAttributes` and `webkitdirectory` on `input`; DateSegment and FileTrigger write them as plain attributes. website Icon.brm drops `focusable` (only IE11 and old Edge read it).
 - examples/tracker (`{...fields.title.attrs}`, an interface) needed no change once the spread check took interfaces.
 
 ## Deviations
 
-- `autocorrect` (DateSegment.brm), `webkitdirectory` (FileTrigger.brm) and `focusable` (website Icon.brm) are not in `Elements`, and elements.d.ts is not this node's file. Each is written as `{...({ name: value } as {})}`, which renders the same attribute (checked in a temporary ui test) and skips the check. Change request: contracts/element-types-attributes.change-request.md. Revert to plain attributes once the types have them.
+- `autocorrect`, `webkitdirectory` and `focusable` were not in `Elements`. Change request contracts/element-types-attributes.change-request.md, accepted as element-types v1.2: this node edited packages/brumate/elements.d.ts (outside its owned paths) to add the first two, and dropped `focusable` from the website's Icon, which changes its HTML.
 - The parts' props types changed (any attribute to the element's attributes). That is a type change of public props, not of behavior; callers in the repo needed no change.
 
 ## Stubs left
 
-- The three spread workarounds above, until missing-attributes or the change request adds the attributes.
 - The casts in Input.brm and TextArea.brm, until `FieldInputContext` and `contextAttributes` (contexts.ts, slots.ts) are typed as input attributes.
 
 ## Gotchas

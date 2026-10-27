@@ -6,6 +6,7 @@
   export interface TagListOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** The `Tag` elements. */
     children?: unknown;
   }
 

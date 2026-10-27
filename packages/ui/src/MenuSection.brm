@@ -2,7 +2,9 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface MenuSectionProps extends ElementProps<'section'> {
+    /** A `Header` and the `MenuItem` elements of the section. */
     children?: unknown;
+    /** Names a section that has no Header. */
     'aria-label'?: string;
   }
 </script>

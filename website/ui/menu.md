@@ -24,6 +24,102 @@ A list of actions or options that opens from a button, with the keyboard, a poin
 - `disabledKeys`, or `isDisabled` on an item, keeps items from focus and action.
 - `isOpen` alone starts the menu open, and `isOpen=$bind(signal)` writes the caller's. `onOpenChange` gets each change.
 
+## Anatomy
+
+```html
+<MenuTrigger>
+  <Button />
+  <Popover>
+    <Menu>
+      <MenuSection>
+        <Header />
+        <MenuItem>
+          <Text slot="label" />
+          <Text slot="description" />
+        </>
+      </>
+      <Separator />
+      <SubmenuTrigger>
+        <MenuItem />
+        <Popover>
+          <Menu />
+        </>
+      </>
+    </>
+  </>
+</>
+```
+
+The sections, the Separator, the submenus and the `Text` elements are optional. A Menu can also stand on the page with no trigger.
+
+## Props
+
+### MenuTrigger
+
+```props MenuTrigger
+
+```
+
+### Menu
+
+```props Menu
+
+```
+
+### MenuItem
+
+```props MenuItem
+
+```
+
+### MenuSection
+
+```props MenuSection
+
+```
+
+### SubmenuTrigger
+
+```props SubmenuTrigger
+
+```
+
+## Data attributes
+
+| Attribute            | When                                             |
+| -------------------- | ------------------------------------------------ |
+| `data-selected`      | The item is checked, in a menu with a selection. |
+| `data-disabled`      | The item is disabled.                            |
+| `data-pressed`       | A pointer or a key holds it down.                |
+| `data-hovered`       | A mouse or a pen is over it.                     |
+| `data-focused`       | It has focus.                                    |
+| `data-focus-visible` | Its focus shows as a ring.                       |
+| `data-open`          | Its submenu is open.                             |
+
+These are the attributes of a `MenuItem`. The `Button` of the trigger shows [its own](./button.md#data-attributes), and the `Popover` [its own](./popover.md).
+
+## Keyboard
+
+| Key                | Action                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `Tab`              | Moves focus to the Button, or to the first item of a Menu with no trigger. In an open menu, it closes the menu. |
+| `Enter` or `Space` | On the Button, opens the menu at its first item. On an item, acts on it.                                        |
+| `ArrowDown`        | On the Button, opens the menu at its first item. In the menu, moves to the next item.                           |
+| `ArrowUp`          | On the Button, opens the menu at its last item. In the menu, moves to the previous item.                        |
+| `Home` or `End`    | Moves focus to the first or the last item.                                                                      |
+| `ArrowRight`       | On an item with a submenu, opens it. Right to left, `ArrowLeft` does.                                           |
+| `ArrowLeft`        | In a submenu, closes it. Right to left, `ArrowRight` does.                                                      |
+| `Escape`           | Closes the menu and puts focus back on the Button. In a submenu, closes only the submenu.                       |
+| `a` to `z`         | Moves focus to the item whose text starts with what was typed.                                                  |
+
+## Controlled and uncontrolled
+
+`isOpen` on the `MenuTrigger` holds whether the menu is open. `isOpen` alone starts it open, and `isOpen=$bind(signal)` writes your signal. `onOpenChange` gets each change. `selectedKeys` on the `Menu` holds the checked items in a menu with `selectionMode`, and starts its own state or binds with `$bind`. `onSelectionChange` gets the keys after each change. See [State](./state.md).
+
+## Styling
+
+Style an item with the data attributes above, such as `[data-focused]` and `[data-open]`. The position and the size of the menu belong to its [Popover](./popover.md). See [Styling](./styling.md).
+
 ## Opening and closing
 
 - A press of the Button opens the menu. From a key, focus goes to the first item. From a pointer, focus goes to the menu, and an arrow key moves to an item.
@@ -31,7 +127,7 @@ A list of actions or options that opens from a button, with the keyboard, a poin
 - An action closes the menu, and focus goes back to the Button. `shouldCloseOnSelect=(false)` keeps it open.
 - Escape, Tab and a press outside close it too.
 
-## Keyboard
+## Focus and keys
 
 - The arrow keys move focus, and go from the last item to the first. `shouldFocusWrap=(false)` stops at the ends.
 - Home and End move to the first and the last item.

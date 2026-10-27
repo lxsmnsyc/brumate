@@ -25,6 +25,65 @@ A text field with a list of suggestions, which shows the items that match what w
 - `onSelectionChange`, `onInputChange` and `onOpenChange` get each change.
 - The ComboBox shows `data-open`, `data-disabled`, `data-invalid` and `data-required`.
 
+## Anatomy
+
+```html
+<ComboBox>
+  <Label />
+  <Input />
+  <Button />
+  <Text slot="description" />
+  <FieldError />
+  <Popover>
+    <ListBox>
+      <ListBoxItem />
+    </>
+  </>
+</>
+```
+
+The `Text` and the `FieldError` are optional.
+
+## Props
+
+```props ComboBox
+
+```
+
+The [Label, Input, Text and FieldError](./text-field.md#props) are those of a TextField, the [Button](./button.md#props) is a Button, the [Popover](./popover.md) is a Popover, and the [ListBox](./list-box.md#props) holds the items.
+
+## Data attributes
+
+| Attribute       | When                   |
+| --------------- | ---------------------- |
+| `data-open`     | The list is open.      |
+| `data-disabled` | The field is disabled. |
+| `data-invalid`  | The field has errors.  |
+| `data-required` | The field is required. |
+
+The input and the items show their own attributes, and the items [those of a ListBoxItem](./list-box.md#data-attributes).
+
+## Keyboard
+
+Focus stays in the input. `aria-activedescendant` names the active item.
+
+| Key         | Action                                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| `Tab`       | Moves focus to the input. The Button is skipped. Leaving closes the list.                              |
+| `ArrowDown` | Opens the list with all its items, and moves the active item down, round the ends.                     |
+| `ArrowUp`   | Opens the list with all its items, and moves the active item up, round the ends.                       |
+| `Enter`     | Picks the active item. With no active item, closes the list. While the list is closed, sends the form. |
+| `Escape`    | Closes the list, and puts back the text of the selected item, or clears the input.                     |
+| `a` to `z`  | Types in the input, which opens the list and filters the items.                                        |
+
+## Controlled and uncontrolled
+
+`selectedKey` holds the key of the selected item, or `null`, and `inputValue` holds the text in the input. `selectedKey=(key)` and `inputValue=(text)` start the field's own state, and `$bind(signal)` writes your signal. `isOpen` holds whether the list is open in the same way. `onSelectionChange`, `onInputChange` and `onOpenChange` get each change. See [State](./state.md).
+
+## Styling
+
+Style the field with the data attributes above, such as `[data-open]` and `[data-invalid]`. The input, the Button and the items show their own attributes. See [Styling](./styling.md).
+
 ## Typing and choosing
 
 - Typing opens the list, and it shows the items whose text contains what was typed, in any case. The list closes when no item matches.

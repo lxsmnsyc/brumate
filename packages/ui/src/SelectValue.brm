@@ -3,6 +3,7 @@
   import type { Key } from './collection.ts';
 
   export interface SelectValueProps extends ElementProps<'span'> {
+    /** A template that shows the selection. It gets `selectedKey`, `selectedText` and `isPlaceholder`. */
     render?: (state: {
       selectedKey: Key | null;
       selectedText: string | undefined;

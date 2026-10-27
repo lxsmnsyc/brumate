@@ -2,10 +2,15 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface SliderThumbProps extends ElementProps<'div'> {
+    /** The position of the value in the list that this thumb moves, 0 by default. */
     index?: number;
+    /** The name of the range input, posted with the form. */
     name?: string;
+    /** Keeps this thumb still. */
     isDisabled?: boolean;
+    /** The name of the thumb. The Label of the Slider names it too. */
     'aria-label'?: string;
+    /** The content drawn on the thumb. */
     children?: unknown;
   }
 </script>

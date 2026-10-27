@@ -2,6 +2,7 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface InputProps extends ElementProps<'input'> {
+    /** The slot of the context of a part that holds this input. */
     slot?: string | null;
   }
 </script>

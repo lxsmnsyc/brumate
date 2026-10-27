@@ -2,6 +2,7 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface SliderTrackProps extends ElementProps<'div'> {
+    /** The SliderThumbs. */
     children?: unknown;
   }
 </script>

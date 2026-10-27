@@ -1,7 +1,7 @@
 # Change request: element-types, three attributes
 
 - From node: element-checks
-- Status: proposed
+- Status: accepted (element-types v1.2)
 
 ## Problem
 
@@ -21,4 +21,8 @@ element-checks, missing-attributes.
 
 ## Workaround in place
 
-Each attribute is written as a spread of an object cast to `{}`, such as `{...({ autocorrect: 'off' } as {})}`, which renders the same attribute and skips the check. Revert each to a plain attribute once the types have it.
+None. element-checks wrote each attribute as a spread cast to `{}` until this was accepted, then reverted them.
+
+## Decision
+
+Accepted by the maintainer on 2026-10-27 as proposed: `autocorrect` and `webkitdirectory` are added (element-types v1.2), and the website's Icon drops `focusable`.

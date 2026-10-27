@@ -24,6 +24,19 @@
   <Button class="up">Up</Button>
   <Button class="down">Down</Button>
 </Toolbar>
+<Toolbar class="fields" aria-label="Fields">
+  <Button class="before">Before</Button>
+  <input class="field" aria-label="Field" />
+  <Button class="after">After</Button>
+</Toolbar>
+<ToggleButtonGroup class="vgroup" aria-label="Vertical group" selectionMode="multiple" orientation="vertical">
+  <ToggleButton id="a" class="va">A</ToggleButton>
+  <ToggleButton id="b" class="vb">B</ToggleButton>
+</ToggleButtonGroup>
+<ToggleButtonGroup class="withfield" aria-label="With field" selectionMode="multiple">
+  <ToggleButton id="x" class="wx">X</ToggleButton>
+  <input class="gfield" aria-label="Group field" />
+</ToggleButtonGroup>
 <ToggleButtonGroup class="off" aria-label="Off" isDisabled=(true)>
   <ToggleButton id="on" class="forced" isDisabled=(false)>On</ToggleButton>
 </ToggleButtonGroup>

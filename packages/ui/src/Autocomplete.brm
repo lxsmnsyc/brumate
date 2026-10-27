@@ -5,8 +5,11 @@
   export interface AutocompleteProps {
     /** Whether an item's text matches what was typed. By default, it contains it. */
     filter?: (text: string, input: string) => boolean;
+    /** Runs with each change of the text in the field. */
     onInputChange?: (value: string) => void;
+    /** A `SearchField` or a `TextField`, and a `Menu` or a `ListBox`. */
     children?: unknown;
+    /** The text in the field. Starts its own state, or binds with `$bind`. */
     inputValue?: Bindable<string>;
   }
 </script>

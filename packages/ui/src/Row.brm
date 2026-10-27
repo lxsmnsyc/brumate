@@ -3,10 +3,15 @@
   import type { Key } from './collection.ts';
 
   export interface RowProps extends Omit<ElementProps<'tr'>, 'id'> {
+    /** The key of the row. */
     id: Key;
+    /** The text that typing matches, for an item whose content is more than text. */
     textValue?: string;
+    /** Keeps the row from focus and selection. */
     isDisabled?: boolean;
+    /** Runs when a press or Enter acts on the row. */
     onAction?: () => void;
+    /** The `Cell` elements, one for each column. */
     children?: unknown;
   }
 </script>
