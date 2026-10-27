@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import RestLink from './RestLink.brm';
+
+  // Three handlers of one event on a dynamic tag that names a component, with a live prop.
+  let as = $signal<any>(RestLink);
+  let flag = $signal(true);
+</script>
+
+<button class="toggle" onClick=(() => (flag = !flag))>Toggle</button>
+<{as} title=(String(flag)) class="h" onClick=(() => (globalThis as any).order.push('a')) onClick=(() => (globalThis as any).order.push('b')) onClick=(() => (globalThis as any).order.push('c'))>hi</>

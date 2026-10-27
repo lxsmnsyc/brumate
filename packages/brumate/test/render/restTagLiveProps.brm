@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import RestLink from './RestLink.brm';
+
+  // A dynamic tag that names a component that spreads its rest props, with live props.
+  let as = $signal<any>(RestLink);
+  let flag = $signal(true);
+</script>
+
+<button class="toggle" onClick=(() => (flag = !flag))>Toggle</button>
+<{as} title=(String(flag)) class={ on: flag, base: true } href="/x">hi</>

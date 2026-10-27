@@ -3,7 +3,7 @@
 // The plugins that write and read these values are in `serial.ts`.
 
 import { HAS_BINDINGS, HAS_CHILDREN } from './features.ts';
-import { raw } from './html.ts';
+import { ownValue, raw } from './html.ts';
 import type { Raw } from './html.ts';
 import type { SerialEntry, ValuePlugin } from './values.ts';
 
@@ -126,6 +126,62 @@ export class FunctionReference {
   }
 }
 
+/** The handlers that a merged handler calls, in order. A symbol of the registry. */
+export const PARTS: unique symbol = Symbol.for('brumate.parts');
+
+// oxlint-disable-next-line typescript/no-explicit-any -- Handlers take any event.
+type Handler = (...args: any[]) => unknown;
+
+/**
+ * One handler that calls each of `handlers` in order, with the same arguments. A prop holds one
+ * handler per event, and the browser takes one `b-on` entry for each part. Merged handlers in
+ * `handlers` give their parts, so the list stays flat.
+ */
+export function mergeHandlers(handlers: Handler[]): Handler {
+  const parts: Handler[] = [];
+  for (const handler of handlers) {
+    parts.push(...((handler as { [PARTS]?: Handler[] })[PARTS] ?? [handler]));
+  }
+  return Object.assign(
+    (...args: unknown[]): void => {
+      for (const part of parts) {
+        part(...args);
+      }
+    },
+    { [PARTS]: parts },
+  );
+}
+
+/**
+ * Adds a handler prop, such as `onClick`, for each entry of the scoped `b-on` of a dynamic tag
+ * that names a component. `make` makes the handler of a reference. A handler of the same event in
+ * `props`, such as a rest prop passed on, is merged with it and runs first.
+ */
+export function addEntryHandlers(
+  props: Record<string, unknown>,
+  entries: unknown,
+  scope: ScopeId | undefined,
+  make: (reference: FunctionReference) => Handler,
+): void {
+  for (const entry of (ownValue('b-on', entries) as string | undefined)?.split(' ') ?? []) {
+    const [event, target] = entry.split('=') as [string, string];
+    const [name, ...modifiers] = event.split(':') as [string, ...string[]];
+    const [ref, at] = target.split('@') as [string, string?];
+    const handler = make(
+      new FunctionReference(
+        ref,
+        at === undefined || !/^\d+$/.test(at) ? (at ?? scope!) : Number(at),
+        undefined,
+        modifiers.length > 0 ? modifiers : undefined,
+      ),
+    );
+    const key = `on${name[0]!.toUpperCase()}${name.slice(1)}`;
+    const before = props[key];
+    props[key] =
+      typeof before === 'function' ? mergeHandlers([before as Handler, handler]) : handler;
+  }
+}
+
 // Brands of bindings and slot references, under keys of the registry, so two copies of the
 // runtime, such as a component's and the render context's, know each other's.
 const BINDING = Symbol.for('brumate.binding');
@@ -232,6 +288,8 @@ export const stateValues: {
     args?: unknown[] | null,
     modifiers?: string[],
   ) => FunctionReference;
+  /** The parts of a merged handler, which `callable` makes one handler of. */
+  m: (parts: FunctionReference[]) => FunctionReference[];
   /** HTML that the client may insert again. */
   r: (html: string) => Raw;
   /** Children, by the export that renders them and their scope. */
@@ -251,6 +309,7 @@ export const stateValues: {
 } = {
   e: (scope, anchor) => new ElementReference(scope, anchor),
   f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
+  m: (parts) => Object.assign(parts, { [PARTS]: parts }),
   r: raw,
   n: HAS_CHILDREN ? (ref, scope) => new ChildrenReference(ref, scope) : unused,
   c: (id) => Object.assign(() => '', { brumateId: id }),

@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import RestMerge from './RestMerge.brm';
+
+  // The same tags, in a block that the browser opens.
+  let as = $signal<any>(RestMerge);
+  let open = $signal(false);
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  <{as} class="h" onClick=(() => (globalThis as any).order.push('a')) onClick=(() => (globalThis as any).order.push('b'))>hi</>
+}

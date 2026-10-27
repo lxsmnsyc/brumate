@@ -34,12 +34,15 @@ import {
   ITEM_SLOT,
   MODULE,
   OWNER,
+  PARTS,
   PREFIX,
   SOURCE,
   SlotReference,
+  addEntryHandlers,
   isAsyncIterable,
   isBinding,
   isSlotReference,
+  mergeHandlers,
   useSerialEntry,
   parseId,
   stateValues,
@@ -797,14 +800,18 @@ function spreadEntries(attributes: Record<string, unknown>): string[] {
     if (name === 'b-on' && ownValue(name, value)) {
       on.unshift(ownValue(name, value) as string);
     }
-    const reference =
+    // A merged handler writes one entry for each of its parts.
+    const parts =
       /^on[A-Z]/.test(name) && typeof value === 'function'
-        ? handlerReferences.get(value)
-        : undefined;
-    if (reference) {
-      on.push(
-        handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
-      );
+        ? ((value as { [PARTS]?: object[] })[PARTS] ?? [value])
+        : [];
+    for (const part of parts) {
+      const reference = handlerReferences.get(part);
+      if (reference) {
+        on.push(
+          handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
+        );
+      }
     }
     // A binding that a rest prop passed on writes its slot, or calls its setter.
     if ((name === 'value' || name === 'checked') && HAS_BINDINGS && isBinding(value)) {
@@ -851,6 +858,10 @@ function callable(value: unknown, seen: Set<object>): unknown {
       const record = value as Record<string, unknown>;
       for (const key of Object.keys(record)) {
         record[key] = callable(record[key], seen);
+      }
+      // The parts of a merged handler.
+      if (PARTS in record) {
+        return mergeHandlers(value as ((...args: unknown[]) => unknown)[]);
       }
     }
   }
@@ -2432,6 +2443,11 @@ function withVariables(element: HTMLElement, style: string | undefined): string 
 }
 
 export function attr(scope: Scope, anchor: number, name: string, value: unknown): void {
+  // A dynamic tag that names a component passes the value on as a prop.
+  if (scope.c?.[anchor] !== undefined) {
+    prop(scope, anchor, name, value);
+    return;
+  }
   const element = findElement(scope.id, anchor);
   if (element) {
     setAttribute(element, name, value);
@@ -4419,14 +4435,28 @@ export function dynamicNodes(
   foreign?: string,
 ): string | Node {
   if (typeof tag === 'function') {
-    if (ref !== undefined) {
-      attributes = { ...attributes, ref };
+    // The anchor links the component to the tag, so updates reach its props. It is no prop.
+    const {
+      'b-b': bound,
+      'b-on': entries,
+      ...props
+    } = ref === undefined ? attributes : { ...attributes, ref };
+    // Its handlers reach the component as props, as the server passes them.
+    addEntryHandlers(
+      props,
+      entries,
+      typeof scope === 'object' ? scope.id : scope,
+      (reference) => callable(reference, new Set()) as (...args: unknown[]) => unknown,
+    );
+    if (inner) {
+      props.children = inner;
     }
     return componentNodes(
       valueRenders[(tag as ComponentValue).brumateId] ?? (tag as Component),
-      inner ? { ...attributes, children: inner } : attributes,
+      props,
       undefined,
       scope,
+      bound ? Number((ownValue('b-b', bound) as string).split(':')[1]) : undefined,
     );
   }
   const name = String(tag);
@@ -4473,14 +4503,8 @@ export function dynamic(
   ref?: unknown,
 ): string {
   if (typeof tag === 'function') {
-    if (ref !== undefined) {
-      attributes = { ...attributes, ref };
-    }
-    return component(
-      valueRenders[(tag as ComponentValue).brumateId] ?? (tag as Component),
-      inner ? { ...attributes, children: inner } : attributes,
-      undefined,
-      scope,
+    return holdPlace(
+      dynamicNodes(tag, attributes, inner, _ctx, scope, ref) as string | DocumentFragment,
     );
   }
   const name = String(tag);

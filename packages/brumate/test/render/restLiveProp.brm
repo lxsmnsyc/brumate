@@ -1,0 +1,10 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import AsLink from './AsLink.brm';
+
+  // A page that gives AsLink a live prop, so its rest props are live in the whole project.
+  let flag = $signal(true);
+</script>
+
+<button class="toggle" onClick=(() => (flag = !flag))>Toggle</button>
+<AsLink title=(String(flag)) href="/q">hi</AsLink>

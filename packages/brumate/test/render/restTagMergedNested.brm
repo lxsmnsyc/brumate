@@ -1,0 +1,9 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import RestMerge from './RestMerge.brm';
+
+  // Two handlers of the page and one of RestMerge, which passes on its rest to a dynamic tag.
+  let as = $signal<any>(RestMerge);
+</script>
+
+<{as} class="h" onClick=(() => (globalThis as any).order.push('a')) onClick=(() => (globalThis as any).order.push('b'))>hi</>

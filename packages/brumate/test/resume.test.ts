@@ -5137,3 +5137,170 @@ describe('#offscreen', () => {
     );
   });
 });
+
+describe('a dynamic tag that names a component', () => {
+  it('updates its live props', async () => {
+    await resume('componentTagLiveProps', {});
+    expect(text('em.tag')).toBe('a');
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(text('em.tag')).toBe('b'));
+  });
+
+  it('updates the live props of a component that spreads its rest', async () => {
+    await resume('restTagLiveProps', {});
+    const link = () => document.querySelector('a')!;
+    expect(link().getAttribute('title')).toBe('true');
+    expect(link().classList.contains('on')).toBe(true);
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('false'));
+    expect(link().classList.contains('on')).toBe(false);
+    expect(link().classList.contains('base')).toBe(true);
+    expect(link().getAttribute('href')).toBe('/x');
+  });
+
+  it('keeps the handler of the tag through a live prop', async () => {
+    await resume('restTagHandler', {});
+    const link = () => document.querySelector('a.h')!;
+    click(link());
+    await waitFor(() => expect(text('.n')).toBe('1'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('false'));
+    click(link());
+    await waitFor(() => expect(text('.n')).toBe('2'));
+    // The own anchor of the element stays out of the attributes that a spread wrote.
+    expect(link().getAttribute('b-s')).not.toContain('b-b');
+  });
+
+  it('keeps the handler of the tag through a live prop, in a block', async () => {
+    await resume('restTagHandlerLate', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.h')).not.toBeNull());
+    const link = () => document.querySelector('a.h')!;
+    click(link());
+    await waitFor(() => expect(text('.n')).toBe('1'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('false'));
+    click(link());
+    await waitFor(() => expect(text('.n')).toBe('2'));
+  });
+
+  it('runs three handlers of one event of a component tag, in order', async () => {
+    const order: string[] = [];
+    (globalThis as { order?: string[] }).order = order;
+    await resume('restTagMerged', {});
+    const link = () => document.querySelector('a.h')!;
+    click(link());
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c']));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('false'));
+    click(link());
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c', 'a', 'b', 'c']));
+  });
+
+  it('runs three handlers of one event of a component tag, in a block', async () => {
+    const order: string[] = [];
+    (globalThis as { order?: string[] }).order = order;
+    await resume('restTagMergedLate', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.h')).not.toBeNull());
+    const link = () => document.querySelector('a.h')!;
+    click(link());
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c']));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('false'));
+    click(link());
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c', 'a', 'b', 'c']));
+  });
+
+  it('merges the handlers of a rest prop with those of a tag it passes them to', async () => {
+    const order: string[] = [];
+    (globalThis as { order?: string[] }).order = order;
+    await resume('restTagMergedNested', {});
+    click(document.querySelector('a.h')!);
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c']));
+    click(document.querySelector('a.h')!);
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c', 'a', 'b', 'c']));
+  });
+
+  it('merges the handlers of a rest prop with those of a tag, in a block', async () => {
+    const order: string[] = [];
+    (globalThis as { order?: string[] }).order = order;
+    await resume('restTagMergedNestedLate', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.h')).not.toBeNull());
+    click(document.querySelector('a.h')!);
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c']));
+    click(document.querySelector('a.h')!);
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c', 'a', 'b', 'c']));
+  });
+
+  it('runs every merged handler when the component calls its prop', async () => {
+    const order: string[] = [];
+    (globalThis as { order?: string[] }).order = order;
+    await resume('restTagMergedCalls', {});
+    const own = () => document.querySelector('.own')!;
+    click(own());
+    await waitFor(() => expect(order).toEqual(['a', 'b']));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(order).toEqual(['a', 'b']));
+    click(own());
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'a', 'b']));
+  });
+
+  it('updates the live props of a component that spreads its rest, in a block', async () => {
+    await resume('restTagLivePropsLate', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a')!.getAttribute('title')).toBe('true'));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('a')!.getAttribute('title')).toBe('false'));
+    expect(document.querySelector('a')!.classList.contains('on')).toBe(false);
+  });
+
+  it('gives the live props only to the components that declare them', () => {
+    const props = analyzeProject(
+      new Map([
+        [
+          'Page.brm',
+          `<script>
+  import { $signal } from 'brumate/signals';
+  import TagY from './TagY.brm';
+  import Other from './Other.brm';
+  let as = $signal<any>(TagY);
+  let label = $signal('a');
+  const choices = [TagY, Other];
+</script>
+<button onClick=(() => (label = 'b'))>Set</button>
+<{as} label=(label) />
+<Other label="static" size=(3) />`,
+        ],
+        [
+          'TagY.brm',
+          `<script>
+  import { $props } from 'brumate/signals';
+  const { label } = $props<{ label: string }>();
+</script>
+<em>{label}</em>`,
+        ],
+        [
+          'Other.brm',
+          `<script>
+  import { $props } from 'brumate/signals';
+  const { size } = $props<{ size: number }>();
+</script>
+<i>{size}</i>`,
+        ],
+      ]),
+      (specifier) => `${specifier.slice(2)}`,
+    );
+    expect([...props.get('TagY.brm')!]).toEqual(['label']);
+    expect([...(props.get('Other.brm') ?? [])]).toEqual([]);
+  });
+
+  it('updates its live props in a block that the browser opens', async () => {
+    await resume('componentTagLivePropsLate', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('em.tag')).toBe('a'));
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(text('em.tag')).toBe('b'));
+  });
+});

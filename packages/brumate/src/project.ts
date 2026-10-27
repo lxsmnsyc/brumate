@@ -2,7 +2,7 @@ import { analyze } from './analyze.ts';
 import type { Attribute, Markup, SFCFile } from './ast.ts';
 import { buildGraph } from './graph.ts';
 import type { Graph } from './graph.ts';
-import type { Site } from './model.ts';
+import type { SemanticModel, Site } from './model.ts';
 import { parse } from './parser.ts';
 
 /** A component that a file renders, and the props it passes that can change. */
@@ -11,6 +11,22 @@ export interface ComponentUsage {
   source: string;
   /** The props whose values can change on the client. `*` means every prop. */
   liveProps: Set<string>;
+  /** True for a dynamic tag, which can name the component. Only a component that declares the prop takes it. */
+  dynamic?: boolean;
+}
+
+/** True if a component declares a prop by name, or takes the rest or the whole props object. */
+function declaresProp(model: SemanticModel, name: string): boolean {
+  for (const declaration of model.declarations) {
+    if (
+      declaration.kind === 'props-rest' ||
+      (declaration.kind === 'prop' &&
+        (declaration.propKey === undefined || declaration.propKey === name))
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Returns the import specifier of a name that the file imports. */
@@ -120,7 +136,35 @@ export function summarize(file: SFCFile, graph: Graph): ComponentUsage[] {
   };
 
   const usages: ComponentUsage[] = [];
+  // The components that the file reads as values. A dynamic tag can name any of them.
+  const valueSources: string[] = [];
+  for (const declaration of graph.model.declarations) {
+    if (
+      declaration.kind === 'import' &&
+      declaration.imported?.source.endsWith('.brm') &&
+      declaration.reads.length > 0
+    ) {
+      valueSources.push(declaration.imported.source);
+    }
+  }
   const visit = (node: Markup): void => {
+    if (node.kind === 'dynamic') {
+      // The props of a dynamic tag reach the component that it names, so each component that the
+      // file reads as a value gets the props that can change.
+      const liveProps = new Set<string>();
+      for (const attribute of node.attributes) {
+        const name = attribute.kind === 'value' ? liveProp(attribute) : undefined;
+        if (name) {
+          liveProps.add(name);
+        }
+      }
+      if (liveProps.size > 0) {
+        for (const source of valueSources) {
+          usages.push({ source, liveProps, dynamic: true });
+        }
+      }
+      return;
+    }
     if (node.kind !== 'component') {
       return;
     }
@@ -178,15 +222,17 @@ export function analyzeProjectProps(
     }
   }
   const result: ProjectProps = new Map();
-  for (const filename of parsed.keys()) {
+  const models = new Map<string, SemanticModel>();
+  for (const [filename, file] of parsed) {
     result.set(filename, new Map());
+    models.set(filename, analyze(file));
   }
   // Each round can only add props, so this ends.
   for (let changed = true; changed;) {
     changed = false;
     for (const [filename, file] of parsed) {
       const liveProps = new Set(result.get(filename)!.keys());
-      const graph = buildGraph(analyze(file), { liveProps });
+      const graph = buildGraph(models.get(filename)!, { liveProps });
       for (const usage of summarize(file, graph)) {
         const target = resolve(usage.source, filename);
         const props = target === undefined ? undefined : result.get(target);
@@ -194,6 +240,9 @@ export function analyzeProjectProps(
           continue;
         }
         for (const name of usage.liveProps) {
+          if (usage.dynamic && !declaresProp(models.get(target!)!, name)) {
+            continue;
+          }
           const parents = props.get(name) ?? new Set<string>();
           if (!props.has(name)) {
             props.set(name, parents);

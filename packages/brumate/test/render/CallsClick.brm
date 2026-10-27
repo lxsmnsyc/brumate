@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { onClick } = $props<{ onClick?: (event: unknown) => void }>();
+</script>
+
+<button class="own" onClick=(() => onClick?.('x'))>go</button>

@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Tag from './Tag.brm';
+
+  // The same tag, in a block that the browser opens.
+  let as = $signal<any>(Tag);
+  let label = $signal('a');
+  let open = $signal(false);
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+<button class="set" onClick=(() => (label = 'b'))>Set</button>
+#if (open) {
+  <{as} label=(label) />
+}

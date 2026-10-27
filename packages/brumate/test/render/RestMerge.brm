@@ -1,0 +1,9 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import RestLink from './RestLink.brm';
+
+  const { children, ...rest } = $props();
+  const link = RestLink;
+</script>
+
+<{link} {...rest} onClick=(() => (globalThis as any).order.push('c'))>{children}</>

@@ -31,9 +31,11 @@ import {
   ITEM_SLOT,
   MODULE,
   OWNER,
+  PARTS,
   PREFIX,
   SOURCE,
   SlotReference,
+  addEntryHandlers,
   isAsyncIterable,
   isBinding,
   isSlotReference,
@@ -1472,7 +1474,27 @@ export function dynamic(
     if (ref !== undefined) {
       attributes = { ...attributes, ref };
     }
-    return component(tag, content ? { ...attributes, children: content } : attributes, ctx, scope);
+    // The anchor links the component to the tag, so updates reach its props. It is no prop.
+    const { 'b-b': bound, 'b-on': entries, ...passed } = attributes;
+    // The handlers of the tag reach the component as `onClick` props that refer to the client
+    // functions, as those of a component written by name do. A `b-on` that a live rest held
+    // would not go to the browser. A handler of the same event that a rest prop passed on is
+    // merged with them.
+    addEntryHandlers(passed, entries, scope, (reference) => {
+      const handler = Object.assign(
+        () => {},
+        reference.modifiers ? { [MODIFIERS]: reference.modifiers } : {},
+      );
+      functionReferences.set(handler, reference);
+      return handler;
+    });
+    return component(
+      tag,
+      content ? { ...passed, children: content } : passed,
+      ctx,
+      scope,
+      bound === undefined ? undefined : Number((ownValue('b-b', bound) as string).split(':')[1]),
+    );
   }
   // The handlers of a dynamic element, and those that its props pass on, go into one `b-on`.
   const on: string[] = [];
@@ -3745,13 +3767,17 @@ export function spread(
     return spread(rest, on, names);
   }
   for (const [name, value] of Object.entries(attributes)) {
-    const reference =
+    // A merged handler writes one entry for each of its parts.
+    const parts =
       on && /^on[A-Z]/.test(name) && typeof value === 'function'
-        ? functionReferences.get(value)
-        : undefined;
-    if (reference) {
-      const modifiers = (value as { [MODIFIERS]?: string[] })[MODIFIERS];
-      on!.push(handlerEntry(name, reference.ref, reference.scope, modifiers, reference.args));
+        ? ((value as { [PARTS]?: object[] })[PARTS] ?? [value])
+        : [];
+    for (const part of parts) {
+      const reference = functionReferences.get(part);
+      if (reference) {
+        const modifiers = (part as { [MODIFIERS]?: string[] })[MODIFIERS];
+        on!.push(handlerEntry(name, reference.ref, reference.scope, modifiers, reference.args));
+      }
     }
     // A binding that a rest prop passed on writes its slot, or calls its setter.
     if (on && (name === 'value' || name === 'checked') && isBinding(value)) {
