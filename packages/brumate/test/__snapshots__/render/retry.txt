@@ -25,7 +25,7 @@ export default async function Retry($$props: Record<string, never>, $$ctx: $$b.C
   } catch ($$error1) {
     $$html = $$before0;
     $$ctx.restore($$mark2);
-    const error = $$error1;
+    const error = $$b.caught($$error1, $$ctx);
     const reset = undefined;
     const $$s3 = $$ctx.scope(3, $$s1);
     $$html += "<p class=\"error\" b-b=\"" + $$s3 + ":0\">" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s3)) === 'string' ? $$t : await $$t) + "</p><button class=\"retry\" b-b=\"" + $$s3 + ":1\" b-on=\"click=Retry_pyus3c#h2\">Try again</button>";
@@ -121,9 +121,9 @@ Retry.brumateId = "Retry_pyus3c";
 
 # HTML
 <!--b0:0-->
-<p class="error" b-b="0.0:0">Error: Not ready</p>
+<p class="error" b-b="0.0:0">Error: The page could not render this part</p>
 <button class="retry" b-b="0.0:1" b-on="click=Retry_pyus3c#h2">Try again</button>
 <!--/b-->
 
 # State
-<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Retry_pyus3c"},"0.0":{k:3,p:0,s:[new Error("Not ready")]}})))</script>
+<script b-state b-scopes b-next="1">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Retry_pyus3c"},"0.0":{k:3,p:0,s:[new Error("The page could not render this part")]}})))</script>

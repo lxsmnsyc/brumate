@@ -391,6 +391,8 @@ export class Context {
   private rpcPrefix = '/_brumate';
   /** The ID of the build, for forms that post to server functions. See `RenderOptions`. */
   build: string | undefined;
+  /** True in development, where the error of a `#catch` keeps its details. */
+  development = false;
 
   /** Results of server functions that a form posted to this page, for `$action`. */
   actions: Map<unknown, unknown> = new Map();
@@ -489,6 +491,11 @@ export class Context {
   /** Returns the URL prefix of server function calls. */
   rpc(): string {
     return this.root.rpcPrefix;
+  }
+
+  /** True when the render is in development. */
+  isDev(): boolean {
+    return this.root.development;
   }
 
   /** Returns the ID of the build, when the render has one. */
@@ -2202,6 +2209,7 @@ export async function render<P>(
     ctx.params = options.params;
   }
   ctx.build = options.build;
+  ctx.development = options.dev === true;
   if (options.defer) {
     ctx.target = { ...options.defer };
   }
@@ -2683,6 +2691,20 @@ function errorAnswer(error: unknown, fallback: string): { message: string; statu
   }
   console.error(error);
   return { message: fallback, status: 500 };
+}
+
+/**
+ * The error that a `#catch` body gets on the server, which the page state carries to the
+ * browser. In development it is the error itself, for debugging. In production it is a plain
+ * `Error` with the message of a `ServerError`, or a generic message, and the real error is
+ * logged, as for a server function that fails. The body renders with this value too, so the
+ * HTML cannot print what the state does not carry.
+ */
+export function caught(error: unknown, ctx: Context): unknown {
+  if (ctx.isDev()) {
+    return error;
+  }
+  return new Error(errorAnswer(error, 'The page could not render this part').message);
 }
 
 /** True for a request that a `<form>` sent, without client code. */

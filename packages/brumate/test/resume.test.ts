@@ -145,9 +145,11 @@ async function resume(
   props: unknown,
   delays: PartDelays = {},
   serial?: SerialEntry,
+  /** `dev` keeps the real error in a `#catch`. Production sends a safe one. */
+  options: { dev?: boolean } = {},
 ): Promise<void> {
   const server = await import(file(`${name}.brm.ts`));
-  const { html, state } = await renderParts(server.default, props);
+  const { html, state } = await renderParts(server.default, props, options);
   show(html + state);
   await startLoader(delays, serial);
 }
@@ -977,8 +979,61 @@ describe('resume', () => {
     });
   });
 
+  describe('the error of a #catch on the server', () => {
+    const secrets = [
+      'SECRET-message',
+      'SECRET-cause',
+      'SECRET-own-property',
+      'SECRET-inner',
+      'SECRET-string',
+      'SECRET-object',
+    ];
+
+    async function page(kind: string, dev?: boolean): Promise<string> {
+      const server = await import(file('catchLeak.brm.ts'));
+      const { html, state } = await renderParts(server.default, { kind }, dev ? { dev } : {});
+      return html + state;
+    }
+
+    it.each(['error', 'cause', 'class', 'aggregate', 'string', 'object'])(
+      'keeps the details of a thrown %s out of the page in production',
+      async (kind) => {
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const result = await page(kind);
+        for (const secret of secrets) {
+          expect(result).not.toContain(secret);
+        }
+        expect(result).toContain('class="caught"');
+        expect(result).toContain('The page could not render this part');
+        // The real error is logged once.
+        expect(log).toHaveBeenCalledTimes(1);
+        log.mockRestore();
+      },
+    );
+
+    it('shows the message of a ServerError in production, without logging it', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const result = await page('server');
+      expect(result).toContain('Shown to visitors');
+      expect(log).not.toHaveBeenCalled();
+      log.mockRestore();
+    });
+
+    it('sends the same error to the server HTML and to the resumed page', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await resume('catchLeak', { kind: 'error' });
+      expect(text('.caught')).toBe('Error: The page could not render this part');
+      log.mockRestore();
+    });
+
+    it('keeps the error as it is in development', async () => {
+      const result = await page('cause', true);
+      expect(result).toContain('SECRET-cause');
+    });
+  });
+
   it('renders a #try body again with reset', async () => {
-    await resume('retry', {});
+    await resume('retry', {}, {}, undefined, { dev: true });
     expect(text('.error')).toBe('Error: Not ready');
 
     // The body still fails, so the fallback renders again, and its button still works.
@@ -1103,7 +1158,7 @@ describe('resume', () => {
   });
 
   it('holds the memo error until a read: the server render shows the #catch when the memo is declared inside the #try', async () => {
-    await resume('memoErrorServer', {});
+    await resume('memoErrorServer', {}, {}, undefined, { dev: true });
     expect(text('.before')).toBe('before');
     expect(text('.caught')).toBe('Error: Bad 1');
     expect(document.querySelector('.data')).toBeNull();
@@ -1111,12 +1166,12 @@ describe('resume', () => {
   });
 
   it('holds the memo error until a read: the server render shows the #catch when the memo is declared outside the #try', async () => {
-    await resume('memoErrorServerOutside', {});
+    await resume('memoErrorServerOutside', {}, {}, undefined, { dev: true });
     expect(text('.caught')).toBe('Error: Bad 1');
   });
 
   it('holds the memo error until a read: a memo read in two #try blocks renders each #catch on the server', async () => {
-    await resume('memoErrorServerTwo', {});
+    await resume('memoErrorServerTwo', {}, {}, undefined, { dev: true });
     expect(text('.first')).toBe('first Error: Bad');
     expect(text('.second')).toBe('second Error: Bad');
     expect(document.querySelector('.a')).toBeNull();
@@ -1162,7 +1217,7 @@ describe('resume', () => {
   });
 
   it('holds the memo error until a read: an awaited memo that rejects on the server renders the #catch and the rest', async () => {
-    await resume('memoErrorAwaitServer', {});
+    await resume('memoErrorAwaitServer', {}, {}, undefined, { dev: true });
     expect(text('.before')).toBe('before');
     expect(text('.caught')).toBe('Error: Bar failed');
     expect(text('.after')).toBe('after');
