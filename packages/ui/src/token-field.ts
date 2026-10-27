@@ -1,4 +1,4 @@
-// The value of a TokenField: text and tokens in order, after TokenFieldValue of React Aria. It is
+// The value of a TokenField: text and tokens in order. It is
 // an array of plain objects, so the page state holds it.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
@@ -9,7 +9,7 @@ export interface TokenSegment {
   text: string;
 }
 
-/** The text of a value, with each token as its text, as `toString` of React Aria gives it. */
+/** The text of a value, with each token as its text. */
 export function segmentsText(segments: readonly TokenSegment[]): string {
   return segments.map((segment) => segment.text).join('');
 }
@@ -35,8 +35,7 @@ export function normalize(segments: readonly TokenSegment[]): TokenSegment[] {
 
 /**
  * The value with the text that matches `pattern` made into tokens. A match becomes a token only
- * when whitespace follows it, so a word that the user is still typing stays text, as the
- * tokenizing values of React Aria do.
+ * when whitespace follows it, so a word that the user is still typing stays text.
  */
 export function tokenize(
   segments: readonly TokenSegment[],

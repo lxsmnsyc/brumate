@@ -1,5 +1,5 @@
-// The state that a part with a thumb of color shares with its ColorThumb, after the thumb of
-// React Aria Components. ColorSlider, ColorArea and ColorWheel each hold one or two ColorThumbs.
+// The state that a part with a thumb of color shares with its ColorThumb. ColorSlider, ColorArea
+// and ColorWheel each hold one or two ColorThumbs.
 //
 // How a part uses it:
 //

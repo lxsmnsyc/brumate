@@ -17,8 +17,8 @@
   }
 
   /**
-   * The props of ToggleButton. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of ToggleButton. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type ToggleButtonProps<T extends AsTarget = 'button'> = AsProps<T, ToggleButtonOwnProps<T>>;
 </script>
@@ -31,10 +31,11 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * A button that stays pressed, as ToggleButton of React Aria Components. It is a Button with
+   * A button that stays pressed. It is a Button with
    * aria-pressed and `data-selected`.
    *
-   * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
+   * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the
+   * caller's.
    */
   const { as, id, slot, isDisabled, onChange, onPress, children, ...rest } = $props<ToggleButtonProps<T>>();
   let { isSelected = false } = $props<ToggleButtonOwnProps<T>>();
@@ -43,7 +44,7 @@
   const context = $getContext(ToggleButtonContext);
   const group = $getContext(ToggleGroupContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
-  // A disabled group disables every button, as in React Aria, even one with isDisabled=(false).
+  // A disabled group disables every button, even one with isDisabled=(false).
   const disabled = $memo(
     Boolean(isDisabled || group?.isDisabled || slotProps(context, slot).isDisabled),
   );

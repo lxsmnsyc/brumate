@@ -1,4 +1,4 @@
-// List and tree data, after useListData and useTreeData of React Stately: items in a signal, with
+// List and tree data: items in a signal, with
 // the changes that apps make to them, and a selection, for the collection parts.
 import { $memo, $signal } from 'brumate/signals';
 import type { Key } from './collection.ts';
@@ -25,7 +25,7 @@ export interface ListDataOptions<T> {
 }
 
 /**
- * Items of a list that an app changes, as useListData of React Stately. `items` are those that
+ * Items of a list that an app changes. `items` are those that
  * the filter keeps, and the changes take keys and values.
  *
  * - `getKey` gives the key of an item. Its `id`, or else its `key`, by default.
@@ -155,7 +155,7 @@ export interface TreeDataOptions<T> {
 }
 
 /**
- * Items of a tree that an app changes, as useTreeData of React Stately. `items` are nodes with
+ * Items of a tree that an app changes. `items` are nodes with
  * an `id`, the key of their parent, their `value` and their `children`, which a Tree takes.
  *
  * - `getKey` gives the key of an item. Its `id`, or else its `key`, by default.

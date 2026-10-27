@@ -24,10 +24,10 @@
   import { keepTabStop, moveFocus, rove } from './toolbar.ts';
 
   /**
-   * A toolbar, as Toolbar of React Aria Components: role="toolbar", where the arrow keys move
+   * A toolbar: role="toolbar", where the arrow keys move
    * focus between its items, Home and End go to the first and the last, and Tab stops at one
    * item. Right to left, the arrow keys of a horizontal toolbar turn around. It shows
-   * `data-orientation`. Inside another toolbar, it is a group, as in React Aria.
+   * `data-orientation`. Inside another toolbar, it is a group.
    */
   const { as, orientation = 'horizontal', children, ...rest } = $props<ToolbarProps<T>>();
   let { ref } = $props<ToolbarOwnProps<T>>();

@@ -8,7 +8,7 @@ The loader catches an event, loads the code of its handler, and runs it once the
 
 - **A press keeps its pointer.** A button takes pointer capture when a press starts, so its `pointerup` reaches it even when the pointer ends outside, and the press ends.
 - **Space is prevented by key, and Enter keeps its default.** Space never scrolls the page. On Enter, a link follows and a submit button sends its form without any code, and the click that the browser sends after Enter does not press again.
-- **A disabled link has no `href`,** so there is nothing for the browser to follow. It leaves the order of Tab, as in React Aria.
+- **A disabled link has no `href`,** so there is nothing for the browser to follow. It leaves the order of Tab.
 - **A read-only box prevents its click** with the wrapper, so the browser never toggles it, and a screen reader announces no change.
 - **Tab stops at one item of a toolbar,** the one that had focus last. The other items leave the order of Tab, which is the roving tabindex of the WAI-ARIA toolbar.
 - **A toolbar prevents only Up and Down,** so the page does not scroll. Home and End can scroll the page while they move focus.

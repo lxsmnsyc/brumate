@@ -20,12 +20,13 @@
   import { box } from './box.brm.ts';
 
   /**
-   * A switch, as Switch of React Aria Components: a <label> around a native checkbox with
+   * A switch: a <label> around a native checkbox with
    * role="switch". The label shows `data-selected`, `data-pressed`, `data-hovered`,
    * `data-focused`, `data-focus-visible`, `data-disabled` and `data-readonly`. Draw the switch in
    * the children, from these attributes.
    *
-   * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
+   * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the
+   * caller's.
    */
   const { name, value, isDisabled = false, isReadOnly = false, onChange, children, ...rest } =
     $props<SwitchProps>();

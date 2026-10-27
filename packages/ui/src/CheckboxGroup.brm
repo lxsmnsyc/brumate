@@ -16,8 +16,8 @@
   }
 
   /**
-   * The props of CheckboxGroup. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of CheckboxGroup. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type CheckboxGroupProps<T extends AsTarget = 'div'> = AsProps<T, CheckboxGroupOwnProps<T>>;
 </script>
@@ -34,7 +34,7 @@
   import { describedBy } from './fields.ts';
 
   /**
-   * A group of checkboxes, as CheckboxGroup of React Aria Components. It holds a Label, its
+   * A group of checkboxes. It holds a Label, its
    * Checkboxes, a Text with `slot="description"` and a FieldError. Its value is the values of
    * the checked boxes. The element shows `data-disabled`, `data-readonly`, `data-invalid` and
    * `data-required`.

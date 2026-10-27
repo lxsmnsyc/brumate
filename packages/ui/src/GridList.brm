@@ -70,9 +70,9 @@
   import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
 
   /**
-   * A list of rows that can hold buttons, checkboxes and links, as GridList of React Aria
-   * Components. Its items are GridListItem elements, written out or from a `#for`. Or it takes
-   * `items`, as Tree does, and renders each with the `item` template.
+   * A list of rows that can hold buttons, checkboxes and links. Its items are GridListItem
+   * elements, written out or from a `#for`. Or it takes `items`, as Tree does, and renders each
+   * with the `item` template.
    *
    * - With `items` and a `rowHeight`, or in a Virtualizer, it renders only the rows in view. Its
    *   keys then read the data of all the items, so Home, End, the page keys, Ctrl+A, ranges with
@@ -455,7 +455,7 @@
     const element = ref as HTMLElement | undefined;
     if (element && !element.contains(event.relatedTarget as Node | null)) {
       element.tabIndex = 0;
-      // A drag from the keys ends when focus leaves the list, as in React Aria.
+      // A drag from the keys ends when focus leaves the list.
       if (byKeys) {
         endDrag('Drag canceled.');
       }

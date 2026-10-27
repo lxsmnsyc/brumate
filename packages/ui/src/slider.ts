@@ -1,5 +1,5 @@
 // The state that a Slider shares with its output, its track and its thumbs, and the drag of a
-// thumb, after the slider of React Aria.
+// thumb.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
 import { clamp, snapToStep } from './numbers.ts';
@@ -86,7 +86,7 @@ export function valueAt(
 
 /**
  * The thumb that a press on the track moves: the nearest one, or the one after it when two are
- * on top of each other, as React Aria picks it.
+ * on top of each other.
  */
 export function closestThumb(values: number[], value: number): number {
   const split = values.findIndex((item) => value - item < 0);

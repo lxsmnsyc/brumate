@@ -1,4 +1,4 @@
-// Hover handling for the parts, after useHover of React Aria. Only a mouse or a pen hovers: a
+// Hover handling for the parts. Only a mouse or a pen hovers: a
 // touch screen sends pointer events when a finger taps, which are no hover.
 import { $signal } from 'brumate/signals';
 import type { HoverEvent } from './events.ts';

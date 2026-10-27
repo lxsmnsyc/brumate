@@ -16,7 +16,7 @@
   import { SelectValueContext } from './collection.ts';
 
   /**
-   * The value of a Select in its Button, as SelectValue of React Aria Components. It shows the
+   * The value of a Select in its Button. It shows the
    * text of the selected item, or the placeholder, with `data-placeholder`.
    *
    * The server does not know the text of a key that the Select starts with, so the HTML shows the

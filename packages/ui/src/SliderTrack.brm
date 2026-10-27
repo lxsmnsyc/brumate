@@ -12,7 +12,7 @@
   import { SliderContext, closestThumb, startDrag, thumbId, valueAt } from './slider.ts';
 
   /**
-   * The track of a Slider, as SliderTrack of React Aria Components. It holds the SliderThumbs. A
+   * The track of a Slider. It holds the SliderThumbs. A
    * press on it moves the nearest thumb there, and a drag moves it on. It shows
    * `data-orientation` and `data-disabled`.
    */
@@ -24,7 +24,7 @@
   function pressed(event: PointerEvent) {
     const track = event.currentTarget as HTMLElement;
     // A press on a thumb is the thumb's own. A press with a modifier, or while a thumb is dragged,
-    // moves nothing, as in React Aria.
+    // moves nothing.
     if (
       !slider ||
       slider.isDisabled ||

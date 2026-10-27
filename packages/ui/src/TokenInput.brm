@@ -23,7 +23,7 @@
   } from './token-field.ts';
 
   /**
-   * The box of a TokenField that the user types in, as TokenInput of React Aria Components: an
+   * The box of a TokenField that the user types in: an
    * element with `contenteditable`. `token`, a `#template`, renders a Token for each token. Without
    * it, each token is a Token with its text.
    *

@@ -1,4 +1,4 @@
-// The tests of TooltipTrigger and Tooltip follow the tests of Tooltip in React Aria.
+// The tests of TooltipTrigger and Tooltip.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Tooltips from './fixtures/tooltips.brm?brumate-server';

@@ -14,7 +14,7 @@
   import { colorName, formatColor, tryParseColor } from './color.ts';
 
   /**
-   * An option of a ColorSwatchPicker, as ColorSwatchPickerItem of React Aria Components.
+   * An option of a ColorSwatchPicker.
    *
    * - `color` is its color of CSS. A ColorSwatch inside shows it.
    * - A press selects it. Its `textValue`, for typeahead and for the name, is the name of the

@@ -1,4 +1,4 @@
-// The tests of ModalOverlay, Modal and Sheet follow the tests of Modal in React Aria.
+// The tests of ModalOverlay, Modal and Sheet.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import { lockScroll } from '../src/overlay.ts';

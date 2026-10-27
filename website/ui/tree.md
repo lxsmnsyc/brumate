@@ -27,7 +27,7 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 
 ## Rows
 
-- The Tree is a treegrid, and its rows are flat, as in React Aria. Each TreeItem is a row with one cell, with `aria-level`, `aria-posinset` and `aria-setsize`, and `aria-expanded` when it has children. The server renders them all, so the page is right before its code loads.
+- The Tree is a treegrid, and its rows are flat. Each TreeItem is a row with one cell, with `aria-level`, `aria-posinset` and `aria-setsize`, and `aria-expanded` when it has children. The server renders them all, so the page is right before its code loads.
 - A `Button` with `slot="chevron"` opens and closes its row. It is not a tab stop, and its label says Expand or Collapse, with the name of the row.
 - A `Checkbox` with `slot="selection"` and no `value` shows whether the row is selected, and toggles it.
 - A row shows `data-expanded`, `data-has-child-items`, `data-level`, `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`. Its level is in the `--tree-item-level` CSS variable too, to indent it:

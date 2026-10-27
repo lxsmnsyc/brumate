@@ -1,4 +1,4 @@
-// The tests of ColorSlider and ColorThumb follow the tests of ColorSlider in React Aria.
+// The tests of ColorSlider and ColorThumb.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import ColorSliders from './fixtures/color-sliders.brm?brumate-server';
@@ -192,7 +192,7 @@ it('moves a step with the arrows, a page with Shift, and to the ends with Home a
   press('ArrowLeft', input);
   press('ArrowDown', input);
   await page.waitFor(() => expect(state(page)[1]).toBe('#336699'));
-  // Shift moves a page, as in React Aria.
+  // Shift moves a page.
   press('ArrowRight', input, { shiftKey: true });
   await page.waitFor(() => expect(state(page)[1]).toBe('#446699'));
   press('ArrowLeft', input, { shiftKey: true });

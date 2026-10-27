@@ -19,7 +19,7 @@
   import ModalOverlay from './ModalOverlay.brm';
 
   /**
-   * The box of a modal, which holds a Dialog, as Modal of React Aria Components. Inside a
+   * The box of a modal, which holds a Dialog. Inside a
    * ModalOverlay, it renders only its box. On its own, it renders a ModalOverlay around itself,
    * with the props of the overlay: `isOpen`, `isDismissable`, `isKeyboardDismissDisabled`,
    * `transition` and `onOpenChange`.
@@ -37,7 +37,7 @@
 
   const overlay = $getContext(ModalOverlayContext);
   const passed = $isPassed(isOpen);
-  // A Modal inside this one is not its box, so it opens an overlay of its own, as in React Aria.
+  // A Modal inside this one is not its box, so it opens an overlay of its own.
   $setContext(ModalOverlayContext, null);
 </script>
 

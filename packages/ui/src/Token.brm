@@ -10,7 +10,7 @@
   import { TokenContext } from './token-field.ts';
 
   /**
-   * A token of a TokenInput, as Token of React Aria Components. The `token` template of a
+   * A token of a TokenInput. The `token` template of a
    * TokenInput renders one for each token. It shows `data-selected` while the selection covers it,
    * and `data-disabled`.
    */

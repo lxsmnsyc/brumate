@@ -26,7 +26,7 @@
   import CalendarCell from './CalendarCell.brm';
 
   /**
-   * The days of a month in a Calendar, as a table, as CalendarGrid of React Aria Components. The
+   * The days of a month in a Calendar, as a table. The
    * first row holds the days of the week, hidden from screen readers. A CalendarCell shows each
    * date, or `cell`, a `#template` that gets the date.
    *

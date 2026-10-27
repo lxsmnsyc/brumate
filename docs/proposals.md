@@ -846,13 +846,13 @@ Creating rows takes about 0.9 ms less, and replacing them about the same. Both t
 
 ### Headless UI components
 
-A package of accessible, unstyled components, `@brumate/ui`. It takes its behaviour and its way of composing parts from [React Aria Components](https://react-spectrum.adobe.com/react-aria/components.html), and its API features from [Terracotta](https://github.com/lxsmnsyc/terracotta). It is written in brumate. No React code runs.
+A package of accessible, unstyled components, `@brumate/ui`. It takes its behaviour from the WAI-ARIA patterns, its way of composing parts from generic parts that share contexts, and its API features from [Terracotta](https://github.com/lxsmnsyc/terracotta). It is written in brumate. No React code runs.
 
 #### What it takes from each
 
-From React Aria Components:
+From the WAI-ARIA patterns and their usual behaviour:
 
-- The behaviour: press handling, focus and keyboard rules, typeahead, selection in collections, overlay dismissal, and the WAI-ARIA patterns. React Aria's tests and docs are the specification. Its code is Apache-2.0, so ported parts keep its notice.
+- The behaviour: press handling, focus and keyboard rules, typeahead, selection in collections, overlay dismissal, and the WAI-ARIA patterns. The tests of the parts are the specification. The code is written for brumate, not ported.
 - Composition from generic parts. A `Select` is not one closed component. It is built from the same `Label`, `Button`, `Popover` and `ListBox` that work on their own:
 
   ```html
@@ -879,9 +879,9 @@ From Terracotta:
 Settled on 2026-10-24:
 
 - **Browser support.** A part uses a feature of the platform only when at least 95% of global usage supports it. The share is the global usage of each browser version, from caniuse, summed over the versions that MDN's compatibility data marks as supporting the feature. The client of brumate will be checked against the same rule.
-- **No native popover or dialog.** Overlays follow React Aria and Terracotta, which use neither: they render with `#portal`, and the shared modules place them, keep focus in them and give it back, close them on Escape or a click outside, and hide the rest of the page from assistive technology.
-- **React Aria and Terracotta are the reference.** Where a part has a choice of how to behave, it does what they do, and their tests and docs are the specification.
-- **Nested layers.** An overlay mounts in the layer of the nearest floating part above it, such as the `Dialog` or `Popover` that it opens from, and not at the end of `<body>`. React Aria and Terracotta mount every overlay at the end of `<body>`, so this is where the parts differ from them.
+- **No native popover or dialog.** Overlays use neither, as Terracotta does not: they render with `#portal`, and the shared modules place them, keep focus in them and give it back, close them on Escape or a click outside, and hide the rest of the page from assistive technology.
+- **The WAI-ARIA patterns and Terracotta are the reference.** Where a part has a choice of how to behave, it does what they describe, and the tests of the parts are the specification.
+- **Nested layers.** An overlay mounts in the layer of the nearest floating part above it, such as the `Dialog` or `Popover` that it opens from, and not at the end of `<body>`. Terracotta mounts every overlay at the end of `<body>`, so this is where the parts differ from it.
 - **Unstyled.** The parts render markup, ARIA attributes and `data-*` state, and no CSS. The website shows them styled in its own style, as an example.
 - **Docs of their own.** The docs of `@brumate/ui` are on the website, at `/ui`, apart from the docs of brumate. The section has its own navigation, sidebar and search, and shows only the parts. It links to the docs of brumate for the features that the parts use, and the docs of brumate link to it once.
 - **Bindable state.** A part has one prop for each state, such as `open`, `value` and `checked`, and no `defaultOpen`. A value starts the part's own copy, and `open=$bind(settingsOpen)` controls it. See [Controlled and uncontrolled](#controlled-and-uncontrolled).
@@ -920,7 +920,7 @@ What the 95% rule allows, measured on 2026-10-24:
 
 #### Controlled and uncontrolled
 
-A part with state has one prop for it, such as `open`, and the way the caller passes it picks the shape. There is no `defaultOpen`. This is where the parts differ from React Aria and Terracotta, which have both props.
+A part with state has one prop for it, such as `open`, and the way the caller passes it picks the shape. There is no `defaultOpen`. This is where the parts differ from Terracotta, which has both props.
 
 | Prop      | Parts                                                                                           |
 | --------- | ----------------------------------------------------------------------------------------------- |
@@ -945,7 +945,7 @@ A part with state has one prop for it, such as `open`, and the way the caller pa
 
 - **A value**, such as `open=(true)` or `open=settingsOpen`, starts the part's own copy, and the part writes the copy. A new value from the caller replaces it, so the caller can still close the dialog.
 - **A binding**, `open=$bind(settingsOpen)`, makes the part write the caller's signal.
-- **A binding with a setter** calls the setter in place of the write. It can refuse or change the value, and the part shows what the caller keeps, as a controlled part of React Aria does.
+- **A binding with a setter** calls the setter in place of the write. It can refuse or change the value, and the part shows what the caller keeps, as a controlled part does.
 - `onChange` reports each new value in every shape.
 - This is how a `let` prop of brumate works, so a part needs no helper for it: `let { open = false } = $props<{ open?: Bindable<boolean> }>()`, and a write of `open` goes where the caller said.
 - A value of `null` or `undefined` is a value like any other, such as the `value` of a `Select` with nothing selected.
@@ -958,18 +958,18 @@ What brumate adds to the split:
 
 #### How it maps to brumate
 
-| React Aria Components or Terracotta | brumate                                                                                                                               |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Context provider in `Select`        | `$setContext(POPOVER, { … })` in `Select.brm`                                                                                         |
-| `useContextProps` in a part         | `$getContext(POPOVER)` merged with the part's props                                                                                   |
-| `slot` prop                         | A context value keyed by slot, read as `ctx[slot]`                                                                                    |
-| `triggerRef` for positioning        | A function of a shared `.brm.ts` module that places the overlay next to its trigger, when it opens and as the page scrolls or resizes |
-| Behaviour hooks                     | Functions in a `.brm.ts` module that the parts share                                                                                  |
-| Children as a render function       | A named `#template` prop, because `children` is markup that the server renders                                                        |
-| `defaultOpen` and `isOpen`          | `open`, as a value or `open=$bind(…)`                                                                                                 |
-| Collections from JSX children       | An `items` prop and an item `#template`, because brumate cannot read the structure of markup                                          |
-| Global listeners at startup         | CSS `:focus-visible` in place of focus-visible tracking. Listeners for a click outside are added when an overlay opens.               |
-| `@internationalized/date`, `number` | Used as they are                                                                                                                      |
+| Libraries of components, or Terracotta | brumate                                                                                                                               |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Context provider in `Select`           | `$setContext(POPOVER, { … })` in `Select.brm`                                                                                         |
+| A hook that merges a context           | `$getContext(POPOVER)` merged with the part's props                                                                                   |
+| `slot` prop                            | A context value keyed by slot, read as `ctx[slot]`                                                                                    |
+| `triggerRef` for positioning           | A function of a shared `.brm.ts` module that places the overlay next to its trigger, when it opens and as the page scrolls or resizes |
+| Behaviour hooks                        | Functions in a `.brm.ts` module that the parts share                                                                                  |
+| Children as a render function          | A named `#template` prop, because `children` is markup that the server renders                                                        |
+| `defaultOpen` and `isOpen`             | `open`, as a value or `open=$bind(…)`                                                                                                 |
+| Collections from JSX children          | An `items` prop and an item `#template`, because brumate cannot read the structure of markup                                          |
+| Global listeners at startup            | CSS `:focus-visible` in place of focus-visible tracking. Listeners for a click outside are added when an overlay opens.               |
+| `@internationalized/date`, `number`    | Used as they are                                                                                                                      |
 
 The parts do not use `<dialog>`, the Popover API, `commandfor` or CSS anchor positioning. See [Decisions](#decisions).
 
@@ -1002,17 +1002,17 @@ Answers, from the spike in `packages/brumate/test/render/Spike*.brm` and the `Se
    - The workbench counts a context with a default and a dynamic tag with a default element as self-contained, since every part reads the context of its parent and renders `as`.
    - Story files for the workbench, with named sets of props, so each part shows its states.
    - Helpers for keyboard and focus in tests, and `examples/ui`, a page of every part that `pnpm e2e` covers with axe-core.
-2. **Phase 0**, the foundations, 3 to 4 weeks. The shared modules: the merge of a context with props, with chained handlers and `slot`, and press, hover and focus with their `data-*` state. `VisuallyHidden`, `Keyboard` and `I18nProvider`. It ends with `Button` on all of these, with the press tests of React Aria, in the workbench, and a guide to writing a part. It also answers whether focus passes through `as` when `as` names a component.
+2. **Phase 0**, the foundations, 3 to 4 weeks. The shared modules: the merge of a context with props, with chained handlers and `slot`, and press, hover and focus with their `data-*` state. `VisuallyHidden`, `Keyboard` and `I18nProvider`. It ends with `Button` on all of these, with tests of pressing, in the workbench, and a guide to writing a part. It also answers whether focus passes through `as` when `as` names a component.
 3. **Phases 1, 2 and 3**, the controls and fields, the overlays, and the collections with `Select`, in that order, as the roadmap below says.
 4. **Phases 4 to 7**, as users ask for them.
 
-Each phase ships with tests that follow the behaviour of React Aria, an accessibility check, docs in the `/ui` section of the website with live samples in the style of the site, stories in the workbench, and a check that a part that is closed or unused ships close to nothing.
+Each phase ships with tests of the behaviour, an accessibility check, docs in the `/ui` section of the website with live samples in the style of the site, stories in the workbench, and a check that a part that is closed or unused ships close to nothing.
 
 `packages/ui` stays in this repository while the page format, IDs and spread rules still change. It moves to its own repository after 1.0 if its release pace differs from the compiler's.
 
 #### Roadmap
 
-The parts come from `react-aria-components` 1.22.1 (2026-10-09). Each phase ships when its parts have tests that follow React Aria's behaviour, an accessibility check, docs and live samples. A phase builds on the ones before it.
+Each phase ships when its parts have tests of their behaviour, an accessibility check, docs and live samples. A phase builds on the ones before it.
 
 | Phase                      | Parts                                                                                                                                                                                                                                                                                                | Needs                                                                                                | Cost                                 |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------ |
@@ -1031,11 +1031,11 @@ Notes for each phase:
 - Phase 1 parts are mostly markup and attributes, and many need no client code until they are used. A `Checkbox` is a native `<input type="checkbox">` with labels and states.
 - Phase 2 renders every overlay with `#portal`, so it is above the page without the top layer of the browser. Shared modules do the rest:
   - placing a `Popover` or `Tooltip` next to its trigger, flipping it when it does not fit, when it opens and as the page scrolls or resizes;
-  - moving focus into a `Dialog` or `Modal`, keeping it there, and giving it back to the trigger when it closes, as React Aria's `FocusScope` does;
-  - closing on Escape and on a click outside, with listeners that are added when the overlay opens, as React Aria's `useInteractOutside` does;
-  - hiding the rest of the page behind a `Modal` with `aria-hidden`, as React Aria's `ariaHideOutside` does, and locking its scroll, as its `usePreventScroll` does.
+  - moving focus into a `Dialog` or `Modal`, keeping it there, and giving it back to the trigger when it closes;
+  - closing on Escape and on a click outside, with listeners that are added when the overlay opens;
+  - hiding the rest of the page behind a `Modal` with `aria-hidden`, and locking its scroll.
 - Phase 2 animates with `Transition`, for overlays and for other content that is removed. `Transition` animates content that is removed, such as an `#if` body or a toast, which CSS cannot do because the node is gone. It follows [Terracotta](https://github.com/lxsmnsyc/terracotta)'s `Transition`: it keeps the content until its leave transition ends, then removes it. It takes Terracotta's `enter`, `enterFrom`, `enterTo`, `leave`, `leaveFrom` and `leaveTo` class props, and sets `data-closed`, `data-enter` and `data-leave` for CSS without class lists, as Headless UI does. It needs no compiler or runtime change: a signal of its own keeps the content mounted, and an `#if` removes it after `transitionend` or `animationend`, with a timeout when neither fires. The server renders the content as `show` says, with no animation on load. `prefers-reduced-motion` skips the wait. Nested `TransitionChild` coordination, and leave animations for `#for` items, which need a hook in the list code of the runtime, come later.
-- Phase 3 is the largest. Brumate cannot read the structure of markup the way React Aria reads its children, so a collection reads its items from the page: each item writes its key in `data-key`, and the order of the items is the order of their elements. Items can then come from any markup, such as a `#for` or sections, with no `items` prop. Keyboard movement, ranges and typeahead go in `collection.ts`, which every collection shares. `Select` and `ComboBox` keep a native `<select>` or `<input>` where they can, so forms post without scripts.
+- Phase 3 is the largest. Brumate cannot read the structure of markup the way a framework for React reads its children, so a collection reads its items from the page: each item writes its key in `data-key`, and the order of the items is the order of their elements. Items can then come from any markup, such as a `#for` or sections, with no `items` prop. Keyboard movement, ranges and typeahead go in `collection.ts`, which every collection shares. `Select` and `ComboBox` keep a native `<select>` or `<input>` where they can, so forms post without scripts.
 - Phase 4 parses and formats numbers by locale on the server and in the browser with the same code.
 - Phase 5 keeps dates in signals as ISO strings, because the page state cannot hold `CalendarDate` class instances.
 - Phase 6 renders rows on the server. `Virtualizer` and drag and drop run only in the browser, from `$client` and handlers, so they load when used.
@@ -1049,7 +1049,7 @@ Not ported:
 
 Order of value: phases 0 to 3 cover most of what apps use, in about 4 to 5 months. Phases 4 to 7 can follow what users ask for.
 
-Not planned: running React Aria, Radix or Headless UI, which need React; an adapter for Zag.js state machines, whose state does not resume and which costs 14 to 27 kB gzip per widget; and wrappers for TanStack Query or TanStack Form, which overlap with `$memo`, `refresh`, `$action` and `parseForm`.
+Not planned: running a library of React components, such as Radix or Headless UI, which need React; an adapter for Zag.js state machines, whose state does not resume and which costs 14 to 27 kB gzip per widget; and wrappers for TanStack Query or TanStack Form, which overlap with `$memo`, `refresh`, `$action` and `parseForm`.
 
 ### What to take from Terracotta and Headless UI
 
@@ -1071,7 +1071,7 @@ Out of scope here, since other work covers them: exporting the props types of th
 - **Adopt.**
   - Set `max-height` on the overlay to the room that is left, unless the author's CSS sets one. The author keeps control with `--anchor-max-height`.
   - Read `--popover-offset`, `--popover-cross-offset` and `--popover-padding` as the fallback of the three props.
-  - Skip `anchor="selection"`: React Aria does not have it, and the 95% rule keeps the Select simple.
+  - Skip `anchor="selection"`: it is rare, and the 95% rule keeps the Select simple.
 - **Cost.** Small. `position.ts` already measures the room. A style written by the author must win, so the check is a computed `max-height` of `none`.
 
 #### 3. Disabled and labels that flow down a `Fieldset` or `Field`
@@ -1089,7 +1089,7 @@ Out of scope here, since other work covers them: exporting the props types of th
 - **They do.** Terracotta has `ContextMenu` with a boundary that opens on `contextmenu` and puts the panel at the cursor (`components/context-menu`, doc "Positioning at the cursor", "Letting the browser menu through"). It has `CommandBar`, a dialog that installs Cmd or Ctrl+K on `window` and can yield the shortcut to a handler that wants it (`components/command-bar`, doc "Yielding the shortcut to another handler"). Headless UI has neither.
 - **We do.** A `MenuTrigger` opens from a press. `preview.ts` listens for `contextmenu` only for a `PreviewTrigger`. There is no right-click menu, and a command palette is an `Autocomplete` with a `Menu` that the author puts in a `Modal` and opens by hand (`website/ui/autocomplete.md`).
 - **Adopt.**
-  - `trigger="contextmenu"` on `MenuTrigger`, which places the menu at the pointer, and a long press on touch, as React Aria's `trigger="longPress"` does. The menu stays a real Menu, with its keys.
+  - `trigger="contextmenu"` on `MenuTrigger`, which places the menu at the pointer, and a long press on touch. The menu stays a real Menu, with its keys.
   - A `shortcut="Mod+K"` prop on `DialogTrigger`, which uses the same key syntax as `prevent`. It skips the shortcut while an input has focus unless the author says otherwise. Add a command palette recipe to `autocomplete.md`.
   - Leave out Terracotta's separate `CommandBar` parts. The existing parts compose to the same thing.
 - **Cost.** Small for the shortcut, medium for the context menu: placing at a point needs `position.ts` to take a point in place of a trigger.
@@ -1099,7 +1099,7 @@ Out of scope here, since other work covers them: exporting the props types of th
 - **It does.** Terracotta's `ColorSchemeProvider` keeps a light, dark or system preference in `localStorage`, toggles `dark` on `<html>`, follows `prefers-color-scheme`, and syncs tabs through the `storage` event (`docs/components/color-scheme.md`). Its docs say the server cannot know the saved scheme, so the first paint flashes, and give a head script as the fix (`docs/guides/ssr.md`).
 - **We do.** Nothing. The parts have no help for it, and each app writes its own switch.
 - **Adopt.** A `ColorScheme` part and a `colorScheme()` helper in `@brumate/ui`. Store the preference in a cookie, so the server renders the class with the first response and there is no flash and no head script. Fall back to `prefers-color-scheme` when there is no cookie, with a small `#head` script for that case only. The preference is a bindable `value`, as everywhere else.
-- **Cost.** Small to medium. Reading a cookie in a component needs request locals, which shipped in 0.2.0. It is not in React Aria, so it is optional, but every app that ships these parts needs it.
+- **Cost.** Small to medium. Reading a cookie in a component needs request locals, which shipped in 0.2.0. It is not needed by the parts themselves, so it is optional, but every app that ships these parts needs it.
 
 #### 6. `PopoverGroup`, for popovers that share focus
 
@@ -1302,7 +1302,7 @@ The list of bundles next to the shop demo shows every script the page loaded, in
 
 ### The docs of @brumate/ui
 
-The pages of the parts are bare next to Terracotta, React Aria and Headless UI. Each page needs:
+The pages of the parts are bare next to Terracotta and Headless UI. Each page needs:
 
 - A table of the props, with their types, defaults and what they do.
 - Examples of common uses.

@@ -98,7 +98,7 @@ it('moves the hue of a gray wheel with the keys', async () => {
   await wait();
   press('ArrowRight', input!, { shiftKey: true });
   await wait();
-  // Shift moves to a multiple of the page, as in React Aria.
+  // Shift moves to a multiple of the page.
   expect(input!.value).toBe('15');
   expect(state(page).wheel).toBe('#808080');
 });

@@ -22,7 +22,7 @@
   import { TabsContext } from './tabs.ts';
 
   /**
-   * The list of the tabs of Tabs, as TabList of React Aria Components. It needs `aria-label`, or
+   * The list of the tabs of Tabs. It needs `aria-label`, or
    * `aria-labelledby`.
    *
    * - Tab stops at the selected tab once. The arrow keys move to the next and the previous tab,
@@ -40,7 +40,7 @@
 
   function keyDown(event: KeyboardEvent) {
     const list = event.currentTarget as HTMLElement;
-    // Vertical tabs move with Left and Right too, as in React Aria.
+    // Vertical tabs move with Left and Right too.
     const movement =
       movementOf(event.key, orientation, locale.direction) ??
       (orientation === 'vertical' ? movementOf(event.key, 'horizontal', locale.direction) : undefined);

@@ -44,4 +44,4 @@ A field for a color, as hex or as one channel.
 
 ## Names
 
-`aria-label` and `aria-labelledby` on the field name its input. A channel field has the role description "Number field", as in React Aria.
+`aria-label` and `aria-labelledby` on the field name its input. A channel field has the role description "Number field".

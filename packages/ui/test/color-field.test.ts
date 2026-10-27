@@ -1,4 +1,4 @@
-// The tests of ColorField follow the tests of ColorField in React Aria.
+// The tests of ColorField.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import ColorFields from './fixtures/colorfields.brm?brumate-server';

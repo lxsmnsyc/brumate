@@ -1,4 +1,4 @@
-// The tests of drags in a GridList follow the tests of useDragAndDrop in React Aria.
+// The tests of drags in a GridList.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import DragOut from './fixtures/drag-out.brm?brumate-server';

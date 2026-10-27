@@ -1,4 +1,4 @@
-// The tests of RangeCalendar follow the tests of RangeCalendar in React Aria.
+// The tests of RangeCalendar.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import RangeCalendars from './fixtures/rangeCalendars.brm?brumate-server';
@@ -79,7 +79,7 @@ it('selects a range with the keys, and Escape drops one that is not done', async
   const grid = page.get('.stay-grid');
   cell(page, '.stay-grid', '2026-10-12').focus();
   press('Enter', grid);
-  // Focus moves on to the next date, as in React Aria, so the range shows to it.
+  // Focus moves on to the next date, so the range shows to it.
   await page.waitFor(() =>
     expect(selected(page, '.stay-grid')).toEqual(['2026-10-12', '2026-10-13']),
   );

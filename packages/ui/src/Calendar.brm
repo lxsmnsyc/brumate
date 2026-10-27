@@ -47,7 +47,7 @@
   import VisuallyHidden from './VisuallyHidden.brm';
 
   /**
-   * A grid of the days of a month or more, to pick a date, as Calendar of React Aria Components.
+   * A grid of the days of a month or more, to pick a date.
    * It holds a CalendarHeading, two Buttons with `slot="previous"` and `slot="next"`, and a
    * CalendarGrid for each month that shows.
    *
@@ -99,7 +99,8 @@
       maxValue,
     ).toString(),
   } = $props<CalendarProps>();
-  // In a range: the first date of a range that is not done, and the date that it shows the range to.
+  // In a range: the first date of a range that is not done, and the date that it shows the range
+  // to.
   let anchor = $signal<DateString | null>(null);
   let hovered = $signal<DateString | null>(null);
   // The date where a press of the pointer started a range, until its click.
@@ -111,8 +112,7 @@
   const id = $id();
   const errorId = $id();
   const today = todayString();
-  // The first date that shows, with the focused date in the middle of the months, as React Aria
-  // starts.
+  // The first date that shows, with the focused date in the middle of the months.
   let start = $signal(
     alignCenter(toDate(focusedValue), visibleDuration, locale.locale, minValue, maxValue).toString(),
   );
@@ -121,7 +121,7 @@
   const label = $memo([ariaLabel, visible].filter(Boolean).join(', '));
   const current = $memo(picker ? picker.value : value);
   const selection = $memo(selectionOf(current, anchor, hovered));
-  // A range that is not done is not invalid yet, as in React Aria.
+  // A range that is not done is not invalid yet.
   const unavailable = $memo(
     anchor === null &&
       selection !== null &&
@@ -130,7 +130,7 @@
       ),
   );
   // After the first date of a range, the range reaches up to the nearest dates that cannot be
-  // picked on each side, as availableRange of React Aria.
+  // picked on each side.
   const available = $memo(
     range && anchor !== null && !allowsNonContiguousRanges ? availableAround(anchor) : null,
   );
@@ -255,7 +255,7 @@
 
   /**
    * True for a date that cannot be picked, by the Calendar's own test or the picker's. The test
-   * gets the first date of a range that is not done, as in React Aria.
+   * gets the first date of a range that is not done.
    */
   function isDateUnavailable(date: DateString): boolean {
     return (ownUnavailable ?? picker?.isDateUnavailable)?.(date, anchor) ?? false;
@@ -366,7 +366,7 @@
     value: typeof current === 'string' ? current : null,
     selection,
     highlight: (date: DateString) => {
-      // The date under the pointer takes the focus too, as highlightDate of React Aria does.
+      // The date under the pointer takes the focus too.
       if (anchor !== null) {
         focusDate(date);
       }

@@ -1,4 +1,4 @@
-// The tests of Calendar follow the tests of Calendar in React Aria.
+// The tests of Calendar.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Calendars from './fixtures/calendars.brm?brumate-server';

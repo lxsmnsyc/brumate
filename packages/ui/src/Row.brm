@@ -20,7 +20,7 @@
   import { TableRowContext } from './table.ts';
 
   /**
-   * A row of a Table, as Row of React Aria Components: a Cell for each column. `id` is its key.
+   * A row of a Table: a Cell for each column. `id` is its key.
    *
    * - A press selects it, as the Table says, or acts on it when nothing is selectable.
    * - A Checkbox with `slot="selection"` in a Cell shows its selection and toggles it.

@@ -26,7 +26,7 @@
   import { TreeContext, TreeRowContext } from './tree.ts';
 
   /**
-   * A row of a Tree, as TreeItem of React Aria Components. The `item` template of a Tree renders
+   * A row of a Tree. The `item` template of a Tree renders
    * one for each item that shows, and the Tree gives it its key and its place in the tree.
    *
    * - A Button with `slot="chevron"` opens and closes it. It is not a tab stop, and its label
@@ -79,7 +79,7 @@
     onInvalid: () => {},
   });
 
-  // The chevron opens and closes the row, and focus stays on the row, as in React Aria.
+  // The chevron opens and closes the row, and focus stays on the row.
   $setContext(ButtonContext, {
     slots: {
       default: {},

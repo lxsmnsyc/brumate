@@ -15,7 +15,7 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * A text input, as Input of React Aria Components. A field gives it its attributes and value.
+   * A text input. A field gives it its attributes and value.
    * It shows `data-hovered`, `data-focused`, `data-focus-visible`, `data-disabled` and
    * `data-invalid`.
    */

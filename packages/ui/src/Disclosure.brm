@@ -14,8 +14,8 @@
   }
 
   /**
-   * The props of Disclosure. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of Disclosure. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type DisclosureProps<T extends AsTarget = 'div'> = AsProps<T, DisclosureOwnProps<T>>;
 </script>
@@ -31,7 +31,7 @@
    *
    * `isExpanded` alone starts it open, and `isExpanded=$bind(signal)` writes the caller's. In a
    * DisclosureGroup, the group keeps the state, and `id` names the disclosure in it. Without
-   * `id`, it takes an ID of its own, as in React Aria, so it still joins the group.
+   * `id`, it takes an ID of its own, so it still joins the group.
    */
   const { as, id, isDisabled = false, onExpandedChange, children, ...rest } = $props<DisclosureProps<T>>();
   let { isExpanded = false } = $props<DisclosureOwnProps<T>>();

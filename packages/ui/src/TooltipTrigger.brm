@@ -22,7 +22,7 @@
   import { TooltipTriggerContext, pressedTriggers, tooltips } from './tooltip.ts';
 
   /**
-   * Shows a Tooltip for the Button inside it, as TooltipTrigger of React Aria Components.
+   * Shows a Tooltip for the Button inside it.
    *
    * - Hover shows it after `delay`, 1500 milliseconds by default. Once a tooltip has shown, the
    *   others show at once, until none has shown for half a second.
@@ -87,7 +87,7 @@
 
   function hoverEnded(event: HoverEvent) {
     plain()?.onHoverEnd?.(event);
-    // A tooltip that only focus shows stays while the trigger has focus, as in React Aria.
+    // A tooltip that only focus shows stays while the trigger has focus.
     if (trigger !== 'focus') {
       close(false);
     }
@@ -96,7 +96,7 @@
   function focusChanged(focused: boolean) {
     plain()?.onFocusChange?.(focused);
     const active = document.activeElement;
-    // A press focuses the button, and the press hides the tooltip, as in React Aria.
+    // A press focuses the button, and the press hides the tooltip.
     if (focused && active && isFocusVisible(active) && !pressedTriggers.has(active)) {
       open(true);
     } else if (!focused) {

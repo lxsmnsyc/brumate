@@ -2,9 +2,9 @@
 
 The parts take their ideas from the projects below. Each one decided some of what the parts do, and how you use them.
 
-## React Aria
+## How the parts behave
 
-[React Aria](https://react-spectrum.adobe.com/react-aria/) by Adobe is the reference for behavior. Its components and their tests decide how a part responds to a pointer, a key and a screen reader:
+The parts follow the WAI-ARIA patterns, and the tests of the parts decide how a part responds to a pointer, a key and a screen reader:
 
 - Press handling that is the same for a mouse, a touch, a pen, a key and a screen reader, with `onPressStart`, `onPressEnd` and `onPress`.
 - Hover that ignores touch, and a focus ring that shows only for the keyboard.

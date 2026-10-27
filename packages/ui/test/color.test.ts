@@ -1,4 +1,4 @@
-// The tests of the color model follow the tests of Color in React Stately.
+// The tests of the color model check the color model.
 import { describe, expect, it } from 'vitest';
 import {
   areaChannels,
@@ -98,7 +98,7 @@ describe('formatColor', () => {
 });
 
 describe('channels', () => {
-  it('has the ranges of React Stately', () => {
+  it('has the ranges of the channels', () => {
     expect(channelRange('hue')).toEqual({ minValue: 0, maxValue: 360, step: 1, pageSize: 15 });
     expect(channelRange('red')).toEqual({ minValue: 0, maxValue: 255, step: 1, pageSize: 17 });
     expect(channelRange('alpha')).toEqual({ minValue: 0, maxValue: 1, step: 0.01, pageSize: 0.1 });

@@ -3,7 +3,7 @@ import type { PointerKind, PressEvent } from './events.ts';
 
 /**
  * True for the keys that press an element: Enter, and Space for what is not a link. A link has
- * the role `link`, or is an `<a href>` without a role, as React Aria counts it.
+ * the role `link`, or is an `<a href>` without a role.
  */
 export function isPressKey(event: KeyboardEvent, element: Element): boolean {
   if (event.key === 'Enter') {
@@ -37,7 +37,7 @@ export function clicksOnEnter(element: Element): boolean {
   return isAnchor(element) || isNativeButton(element);
 }
 
-/** True when a point of a pointer is over the element, as React Aria counts it. */
+/** True when a point of a pointer is over the element. */
 export function isOver(event: PointerEvent, element: Element): boolean {
   const rect = element.getBoundingClientRect();
   const width = (event.width || 0) / 2;
@@ -77,7 +77,7 @@ export const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock']
 
 /**
  * True for a key with Meta or Control, or with Alt off a Mac: a shortcut, which shows no focus
- * ring, as isValidKey of React Aria.
+ * ring.
  */
 export function shortcut(event: KeyboardEvent): boolean {
   const mac = /^Mac/i.test(globalThis.navigator?.platform ?? '');

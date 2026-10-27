@@ -41,7 +41,7 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * A button, as Button of React Aria Components. It presses with a pointer, Enter, Space, or a
+   * A button. It presses with a pointer, Enter, Space, or a
    * screen reader, and shows its state as data attributes: `data-pressed`, `data-hovered`,
    * `data-focused`, `data-focus-visible`, `data-disabled` and `data-pending`.
    */
@@ -79,7 +79,7 @@
     return slotProps(context, slot);
   }
 
-  // The handlers of the context run first, then the button's own, as mergeProps of React Aria.
+  // The handlers of the context run first, then the button's own.
   function pressed(event: PressEvent) {
     given().onPress?.(event);
     onPress?.(event);
@@ -148,8 +148,8 @@
     focusChanged,
   );
 
-  // A submit or reset button keeps Space, so the browser clicks it and sends its form, as in
-  // React Aria. Other buttons prevent it, so the browser does not scroll the page or click them.
+  // A submit or reset button keeps Space, so the browser clicks it and sends its form.
+  // Other buttons prevent it, so the browser does not scroll the page or click them.
   // A pending button is a plain button, so it sends nothing again.
   function keys() {
     return native && !pending && (type === 'submit' || type === 'reset')

@@ -1,4 +1,4 @@
-// The color of the color parts, after the Color of React Stately. A color goes in the state of the
+// The color of the color parts. A color goes in the state of the
 // page as a string of CSS, such as `#e2445a` or `hsl(355, 74%, 58%)`, since the page state cannot
 // hold an instance of a class. The parts parse it with `parseColor`, and give back a string.
 //
@@ -42,7 +42,7 @@ export const SPACE_CHANNELS: Record<ColorSpace, [ColorChannel, ColorChannel, Col
   hsb: ['hue', 'saturation', 'brightness'],
 };
 
-/** The range of a channel, its step, and the step of PageUp and PageDown, as in React Stately. */
+/** The range of a channel, its step, and the step of PageUp and PageDown. */
 export interface ChannelRange {
   minValue: number;
   maxValue: number;
@@ -285,7 +285,7 @@ function spaceOf(channel: ColorChannel, preferred?: ColorSpace): ColorSpace {
 
 /**
  * The color with a channel at a value, kept in its range. The color keeps its space, unless the
- * space has no such channel, and then it moves to one that has it, as React Stately does.
+ * space has no such channel, and then it moves to one that has it.
  */
 export function withChannelValue(color: Color, channel: ColorChannel, value: number): Color {
   const range = RANGES[channel];
@@ -436,7 +436,7 @@ const HUES: [number, string][] = [
 
 /**
  * A short name of a color in English, such as `dark blue` or `light gray, 50% transparent`, for a
- * swatch that its caller does not name. React Aria names colors in the language of the locale.
+ * swatch that its caller does not name. It names colors in English only.
  */
 export function colorName(color: Color): string {
   const [hue, saturation, lightness] = toSpace(color, 'hsl').values;
@@ -472,7 +472,7 @@ export function swatchBackground(color: string): string {
 }
 
 /**
- * The color that a slider of a channel shows on its thumb, as React Stately does: a hue at full
+ * The color that a slider of a channel shows on its thumb: a hue at full
  * saturation, and the color without its alpha for the other channels, except alpha.
  */
 export function displayColor(color: Color, channel: ColorChannel): Color {
@@ -606,7 +606,7 @@ export function areaGradient(
 }
 
 /**
- * The space and the two channels of an area, as React Aria picks them. Without a space, it is the
+ * The space and the two channels of an area. Without a space, it is the
  * space of the value when that has the channels given, else the first of hsb, hsl and rgb that
  * has them. A channel that is not given is the first channel of the space that the other is not,
  * so hsb gives hue on x and saturation on y, and rgb gives red and green. The value is white

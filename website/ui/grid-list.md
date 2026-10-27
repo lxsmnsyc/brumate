@@ -36,7 +36,7 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 
 ## Rows
 
-The GridList is a grid, and each GridListItem is a row with one cell, as in React Aria. A press on a control in a row, such as a Button, is the control's own, and does not select the row. A row shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
+The GridList is a grid, and each GridListItem is a row with one cell. A press on a control in a row, such as a Button, is the control's own, and does not select the row. A row shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
 
 ## Drag and drop
 

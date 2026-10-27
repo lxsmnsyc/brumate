@@ -1,4 +1,4 @@
-// The tests of column resizing follow the tests of ResizableTableContainer in React Aria.
+// The tests of column resizing.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Resizable from './fixtures/resizable.brm?brumate-server';

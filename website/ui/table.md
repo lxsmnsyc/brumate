@@ -81,7 +81,7 @@ The Table renders a `table` with `role="grid"`, a `thead` and a `tbody` with `ro
 
 - A `ResizableTableContainer` around a Table lets its columns resize. It scrolls the Table when the Table is wider than it.
 - In it, a Column takes `width` or `defaultWidth`, in pixels, a percentage, or `'1fr'`, which shares the width that is left with the other columns. `minWidth` and `maxWidth` bound it, in pixels.
-- A `ColumnResizer` in a Column resizes it with a drag. When a resize starts, every column keeps its width in pixels, as in React Aria, and the Table is as wide as its columns.
+- A `ColumnResizer` in a Column resizes it with a drag. When a resize starts, every column keeps its width in pixels, and the Table is as wide as its columns.
 - `onResize` hears of the widths while a resizer moves, and `onResizeEnd` when it stops, as a `Map` from the key of a column to its width.
 - The resizer holds a hidden range input, which a screen reader reads as the width in pixels. Its value is the width of the column, and a change of it from assistive technology sets the width.
 - A Column that sorts or has a resizer takes the focus itself first, and Enter or Space sorts it. Left and Right then move through its controls, such as the resizer, before they move to the next column.

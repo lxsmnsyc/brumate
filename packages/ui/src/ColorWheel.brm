@@ -43,7 +43,7 @@
   import { thumbId } from './slider.ts';
 
   /**
-   * A circular track for the hue of a color, as ColorWheel of React Aria Components. It holds a
+   * A circular track for the hue of a color. It holds a
    * ColorWheelTrack and a ColorThumb, which it gives the state of its thumb.
    *
    * - `outerRadius` and `innerRadius` are the radii of the ring in pixels. The element is a square
@@ -59,13 +59,14 @@
    *   `onChange` are left alone while the edit makes no other color. When `value` changes from
    *   outside, such as from a reset of the form, the color follows it.
    * - The thumb has one hidden range input, from 0 to 360, named by `name`. The wheel takes its
-   *   keys, as React Aria does: Right and Up raise the hue by 1, and Left and Down lower it, by 15
+   *   keys: Right and Up raise the hue by 1, and Left and Down lower it, by 15
    *   with Shift. A hue past either end starts over, so Left at 0 goes to 359. PageUp and PageDown
    *   move to a multiple of 15. Home goes to 0, and End to 360, which is 0.
    * - A press on the ring moves the thumb to that angle, and a drag follows it. A press on the
    *   thumb takes it where it is, so it does not jump to the pointer. A press off the ring does
    *   nothing.
-   * - It sets `aria-label` of the input to `Hue`, unless `aria-label` or `aria-labelledby` is given.
+   * - It sets `aria-label` of the input to `Hue`, unless `aria-label` or `aria-labelledby` is
+   *   given.
    * - It shows `data-disabled`. A reset of the form gives back the first color.
    */
   const {
@@ -160,7 +161,7 @@
     }
   }
 
-  // The wheel takes the keys of its input, as React Aria moves the hue: Right and Up raise it,
+  // The wheel takes the keys of its input to move the hue: Right and Up raise it,
   // Left and Down lower it, by a page with Shift, and a hue past either end starts over. PageUp
   // and PageDown move to a multiple of a page. Home goes to 0, and End to 360, which is 0.
   function inputKey(_index: number, key: string, shiftKey: boolean) {
@@ -188,7 +189,7 @@
     document.getElementById(thumbId({ id }, 0))?.focus({ preventScroll: true });
   }
 
-  // A press on the thumb keeps the distance to the pointer, as in React Aria: the pointer moves
+  // A press on the thumb keeps the distance to the pointer: the pointer moves
   // the thumb by its own distance.
   function press(event: PointerEvent) {
     focusInput();

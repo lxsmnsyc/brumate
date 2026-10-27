@@ -17,7 +17,7 @@
   import { MenuTriggerContext } from './menu.ts';
 
   /**
-   * Opens a Menu in a Popover from a Button inside it, as MenuTrigger of React Aria Components.
+   * Opens a Menu in a Popover from a Button inside it.
    * The Button gets aria-haspopup="menu", aria-expanded and aria-controls. It renders its
    * children in an element with no box of its own.
    *

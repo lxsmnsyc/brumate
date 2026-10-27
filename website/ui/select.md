@@ -60,4 +60,4 @@ A reset of the form gives back the key that the Select started with.
 
 ## Names
 
-The Button is named by the value and the Label, as in React Aria, so a screen reader reads "Cat, Favorite animal". The ListBox is named by the Label. The Button gets `aria-haspopup="listbox"`, `aria-expanded` and `aria-controls`, and `aria-describedby` names the description and the error.
+The Button is named by the value and the Label, so a screen reader reads "Cat, Favorite animal". The ListBox is named by the Label. The Button gets `aria-haspopup="listbox"`, `aria-expanded` and `aria-controls`, and `aria-describedby` names the description and the error.

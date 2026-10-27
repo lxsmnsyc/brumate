@@ -1,5 +1,4 @@
-// The tests of the fixes of Toolbar, Meter, ProgressBar and the toggle buttons follow useToolbar,
-// useMeter, useProgressBar and ToggleButtonGroup of React Aria.
+// The tests of the fixes of Toolbar, Meter, ProgressBar and the toggle buttons.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import ToolbarFixes from './fixtures/toolbarFixes.brm?brumate-server';

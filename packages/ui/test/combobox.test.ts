@@ -1,4 +1,4 @@
-// The tests of ComboBox follow the tests of ComboBox in React Aria.
+// The tests of ComboBox.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import ComboBoxes from './fixtures/comboboxes.brm?brumate-server';
@@ -109,7 +109,7 @@ it('puts the text of the selection back on Escape and on blur, and keeps the sel
   press('ArrowDown', input);
   press('Enter', input);
   await page.waitFor(() => expect(state(page)[0]).toBe('banana'));
-  // Escape closes the list and puts the selected text back, as revert of React Aria does.
+  // Escape closes the list and puts the selected text back.
   type(input, 'Banan');
   await page.waitFor(() => expect(find('.list')).not.toBeNull());
   press('Escape', input);

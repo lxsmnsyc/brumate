@@ -10,7 +10,7 @@
   import { NavigationLinkContext } from './navigation-tree.ts';
 
   /**
-   * The link of a NavigationTreeItem, as NavigationTreeItemLink of React Aria Components. It
+   * The link of a NavigationTreeItem. It
    * links to the `href` of its item, and has `aria-current="page"` and `data-current` when that
    * is the route of the tree. An item without an `href` shows its text, with no link. A disabled
    * item shows a span with `aria-disabled` and `data-disabled`, as a disabled Link does: it has no

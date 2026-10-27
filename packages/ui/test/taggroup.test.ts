@@ -1,4 +1,4 @@
-// The tests of TagGroup follow the tests of TagGroup in React Aria.
+// The tests of TagGroup.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import TagGroups from './fixtures/taggroups.brm?brumate-server';

@@ -21,7 +21,7 @@ An overlay beside its trigger, such as a menu of settings.
 ## Focus
 
 - It is modal: the rest of the page is `inert` and does not scroll, and focus stays inside. Tab and Shift+Tab wrap at its ends, and focus that lands outside or on nothing, such as when the focused element is removed, goes back to the last element that had it.
-- `isNonModal` leaves the page and focus as they are. A press outside does not close it, and focus that leaves it does, as in React Aria.
+- `isNonModal` leaves the page and focus as they are. A press outside does not close it, and focus that leaves it does.
 - Focus moves into it once it has entered. When it closes, focus goes back:
   - to the element that had focus before it opened;
   - or, when that element is gone, to the trigger with the same ID, such as a trigger that rendered again;

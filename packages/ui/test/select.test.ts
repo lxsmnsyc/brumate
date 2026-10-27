@@ -1,4 +1,4 @@
-// The tests of Select follow the tests of Select in React Aria.
+// The tests of Select.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Selects from './fixtures/selects.brm?brumate-server';

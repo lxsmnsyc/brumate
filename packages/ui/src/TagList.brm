@@ -32,8 +32,8 @@
   import { TagGroupContext } from './tags.ts';
 
   /**
-   * The list of the tags of a TagGroup, as TagList of React Aria Components. It is a grid, and
-   * each Tag is a row, as in React Aria, so a screen reader can reach the Button that removes it.
+   * The list of the tags of a TagGroup. It is a grid, and
+   * each Tag is a row, so a screen reader can reach the Button that removes it.
    *
    * - Tab stops once, at the tag that had focus last, or else the first one.
    * - The arrow keys move to the next and the previous tag, Left and Right turning around right

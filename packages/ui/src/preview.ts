@@ -45,7 +45,7 @@ export function followPreview(
       handlers.keep();
     } else if (!inside(document.activeElement)) {
       // Focus on the trigger or in the preview keeps it open, as a hover end does not close it
-      // while the trigger has focus in React Aria.
+      // while the trigger has focus.
       handlers.leave();
     }
   };
@@ -129,7 +129,7 @@ export const dismissed = new Set<string>();
 const presses = new Map<string, ReturnType<typeof setTimeout>>();
 
 /**
- * Opens the preview when a touch holds the trigger for a moment, as useLongPress of React Aria.
+ * Opens the preview when a touch holds the trigger for a moment.
  * The press of the trigger is cancelled, so the release that follows presses nothing, and its
  * click is swallowed, so a link does not navigate. The menu of the browser for a held link does
  * not show.

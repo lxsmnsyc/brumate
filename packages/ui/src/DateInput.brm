@@ -15,14 +15,14 @@
   import DateSegment from './DateSegment.brm';
 
   /**
-   * The segments of a DateField, as DateInput of React Aria Components: a group that its Label
+   * The segments of a DateField: a group that its Label
    * names, with a DateSegment for each part of the date and the text between them.
    *
    * - `segment` is a `#template` that gets each segment, to render your own DateSegment.
    * - In a DateRangePicker, `slot="start"` and `slot="end"` pick the date that it edits.
    * - ArrowLeft and ArrowRight move focus between the segments, the other way right to left.
    * - A press of the pointer on the group, or on the text between two segments, focuses the last
-   *   segment, as useDatePickerGroup of React Aria does.
+   *   segment.
    * - It shows `data-disabled` and `data-invalid`.
    */
   const { segment, slot, ...rest } = $props<DateInputProps>();

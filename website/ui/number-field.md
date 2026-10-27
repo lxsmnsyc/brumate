@@ -42,4 +42,4 @@ A field for a number, in the format of the locale, with buttons that step it.
 
 ## Names
 
-The Buttons are named "Increase" and "Decrease" with the Label, or with the `aria-label` of the field, such as "Increase Quantity". `aria-label` and `aria-labelledby` on the field name its input. The Buttons are out of the order of Tab, and control the input. The input has the role of a text box with the description "Number field", as in React Aria, since a spin button cannot take focus with VoiceOver.
+The Buttons are named "Increase" and "Decrease" with the Label, or with the `aria-label` of the field, such as "Increase Quantity". `aria-label` and `aria-labelledby` on the field name its input. The Buttons are out of the order of Tab, and control the input. The input has the role of a text box with the description "Number field", since a spin button cannot take focus with VoiceOver.

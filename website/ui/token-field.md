@@ -19,7 +19,7 @@ A field of text with tokens in it, such as mentions, tags or commands, which the
 ```
 
 - A `TokenField` holds a `Label`, a `TokenInput` and a `Text` with `slot="description"`. The input is named by the label and described by the text.
-- `value` is an array of segments, each `{ type: 'text' | 'token', text }`, which the page state holds. `onChange` hears of changes. React Aria's `TokenFieldValue` is a class, which the page state cannot hold, so the value is the array of its segments.
+- `value` is an array of segments, each `{ type: 'text' | 'token', text }`, which the page state holds. `onChange` hears of changes. A class could not be held by the page state, so the value is the array of its segments.
 - `pattern` is a regular expression, as a string. Text that matches it becomes a token once a space follows it, so a word that the user is still typing stays text.
 - `token` is a `#template` that renders a `Token` for each token. Without it, a token is a Token with its text.
 - With `name`, a form sends the text of the value, with each token as its text.
