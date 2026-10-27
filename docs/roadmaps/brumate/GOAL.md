@@ -1,5 +1,5 @@
 ---
-milestones: [core-correct, agent-skill, ui-0.1, smaller-client, features, backlog]
+milestones: [core-correct, ui-0.1, agent-skill, types, smaller-client, features, backlog]
 review: auto  # self for S, docs and chore nodes, a fresh reviewer for the rest
 merge:
   # The user chose auto-merge on 2026-10-26. The orchestrator merges the pull requests that pass
@@ -33,8 +33,10 @@ The core is correct and safe to change, agents write good .brm files with a skil
 
 ## Milestones
 
-- core-correct, agent-skill: the must work.
-- ui-0.1: @brumate/ui ready to publish.
+- core-correct: the must work of the core, including the gaps that the `as` work found, and the size baseline and trim.
+- ui-0.1: @brumate/ui ready to publish, starting with the ui pages of the website once the core fixes land (the maintainer's priority, 2026-10-27).
+- agent-skill: the tools around the .brm skill.
+- types: the type check of plain elements and dynamic tags, from the type audit (reviews/type-parity.md). Core work, so ui-0.1 does not wait for it.
 - smaller-client: step 3 of the smaller client, and the spikes for step 4 and inlining.
 - features: `$searchParam`.
 - backlog: outlines, refined when a milestone takes them.

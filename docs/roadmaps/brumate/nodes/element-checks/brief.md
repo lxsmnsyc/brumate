@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: feature
 outline: false
-milestone: ui-0.1
+milestone: types
 target:
 from:
 size: L

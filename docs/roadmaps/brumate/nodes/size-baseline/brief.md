@@ -2,10 +2,10 @@
 id: size-baseline
 title: Record the size and speed baseline
 status: todo
-priority: should
+priority: must
 type: chore
 outline: false
-milestone: smaller-client
+milestone: core-correct
 target:
 from:
 size: S
