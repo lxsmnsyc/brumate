@@ -9,3 +9,4 @@
 - Wrote 125 doc comments with a script that inserts the comment line above the prop, then read the props tables through readProps: no empty Description.
 - ColorSwatch and ColorPicker set no data attributes and take no keys, so those sections are left out.
 - Checked: website check:samples, vite build (client and ssr), website tests, brumate-tsc in packages/ui and website, ui suite, oxlint, root oxfmt.
+- Review round: fixed the claims on Calendar paging, the hue snap with Shift, DateInput arrows with modifiers, ColorArea aria and tab order, Calendar comments (onChange, focusedValue), and removed Keys prose that repeated the tables.

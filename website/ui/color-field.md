@@ -69,7 +69,7 @@ The keys act while the input has focus. A key with Shift, Ctrl, Alt or Meta is l
 | `PageDown`  | Lowers the hex number by 16, or the channel by a page.                                                          |
 | `Home`      | Goes to `#000000`, or to the least value of the channel.                                                        |
 | `End`       | Goes to `#FFFFFF`, or to the greatest value of the channel.                                                     |
-| `Enter`     | Commits the text.                                                                                               |
+| `Enter`     | Commits the text. It is not prevented, so it also submits a form.                                               |
 
 ## Controlled and uncontrolled
 
@@ -83,8 +83,6 @@ Style the field with the data attributes above. The `Input` and the `Label` are 
 
 - Typing keeps only text that can become hex. When focus leaves the input, or on Enter, `abc` becomes `#AABBCC`.
 - Text that is not a color reverts. An empty field clears the value to `null`.
-- ArrowUp and ArrowDown add or take 1 from the hex number, and PageUp and PageDown 16. Home goes to `#000000` and End to `#FFFFFF`.
-- An empty field starts at `#000000` going up, and at `#FFFFFF` going down.
 - The wheel steps the color while the input has focus, unless `isWheelDisabled`.
 
 ## Channel
@@ -93,7 +91,7 @@ Style the field with the data attributes above. The `Input` and the `Label` are 
 - The field behaves as a [NumberField](./number-field.md) with the range, the step and the page size of the channel: 0 to 255 for red, 0 to 360 for hue, 0 to 100 for the others, and 0 to 1 by 0.01 for alpha.
 - The number shows in the format of the locale, such as `120°` or `50%`.
 - A channel cannot be empty, so an empty field reverts.
-- An input without a `Label` or `aria-label` is named by its channel, such as "Hue".
+- An input without a `Label`, `aria-label` or `aria-labelledby` is named by its channel, such as "Hue".
 
 ## Names
 

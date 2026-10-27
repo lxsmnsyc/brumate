@@ -97,21 +97,23 @@ The attributes are on the button inside the cell.
 
 The keys act in the CalendarGrid, on the date that has focus. A key with Ctrl, Alt or Meta is left to the browser. An arrow key with Shift moves nothing.
 
-| Key                | Action                                                                                            |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| `Tab`              | Moves focus to the Buttons, then to the date that has focus. Only that date is a tab stop.        |
-| `ArrowRight`       | Moves focus to the next day. Right to left, it moves to the day before.                           |
-| `ArrowLeft`        | Moves focus to the day before. Right to left, it moves to the next day.                           |
-| `ArrowDown`        | Moves focus to the same day of the next week.                                                     |
-| `ArrowUp`          | Moves focus to the same day of the week before.                                                   |
-| `PageDown`         | Moves focus one month ahead, or one unit of `visibleDuration`, such as 1 week for `{ weeks: 2 }`. |
-| `PageUp`           | Moves focus a month back, or all the months that show with `visibleDuration`.                     |
-| `Shift + PageDown` | Moves focus a year ahead.                                                                         |
-| `Shift + PageUp`   | Moves focus a year back.                                                                          |
-| `Home`             | Moves focus to the first day of the month.                                                        |
-| `End`              | Moves focus to the last day of the month.                                                         |
-| `Enter` or `Space` | Selects the date that has focus.                                                                  |
-| `Escape`           | Drops the first date of a range that is not done. It is not prevented, so a Popover closes.       |
+| Key                | Action                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| `Tab`              | Moves focus to the Buttons, then to the date that has focus. Only that date is a tab stop.  |
+| `ArrowRight`       | Moves focus to the next day. Right to left, it moves to the day before.                     |
+| `ArrowLeft`        | Moves focus to the day before. Right to left, it moves to the next day.                     |
+| `ArrowDown`        | Moves focus to the same day of the next week.                                               |
+| `ArrowUp`          | Moves focus to the same day of the week before.                                             |
+| `PageDown`         | Moves focus one unit of `visibleDuration` ahead, such as one month for `{ months: 2 }`.     |
+| `PageUp`           | Moves focus one unit of `visibleDuration` back.                                             |
+| `Shift + PageDown` | Moves focus a year ahead.                                                                   |
+| `Shift + PageUp`   | Moves focus a year back.                                                                    |
+| `Home`             | Moves focus to the first day of the month.                                                  |
+| `End`              | Moves focus to the last day of the month.                                                   |
+| `Enter` or `Space` | Selects the date that has focus.                                                            |
+| `Escape`           | Drops the first date of a range that is not done. It is not prevented, so a Popover closes. |
+
+The Calendar has `role="application"`, and a hidden Next button follows the grids for screen readers that read by touch. The dates, the weeks and the keys use the Gregorian calendar. Names and numbers follow the locale.
 
 ## Controlled and uncontrolled
 
@@ -133,15 +135,9 @@ Style the dates with the data attributes above. The grid is a table, so style it
 ## Months
 
 - `visibleDuration` is how much shows, such as `{ months: 2 }`. Give each month a CalendarGrid, and an `offset`, such as `offset=({ months: 1 })` for the second.
-- The Buttons move by all the months that show, or by one with `pageBehavior="single"`.
+- The Buttons move by all the months that show, or by one unit of `visibleDuration` with `pageBehavior="single"`.
 - The CalendarHeading shows the months, such as `October 2026`.
 
-## Keys
-
-- The arrow keys move focus by a day and by a week. Right to left, Left and Right swap. A key with Ctrl, Alt or Meta, or an arrow key with Shift, moves nothing.
-- PageUp and PageDown move by a month, or by a year with Shift.
-- Home and End go to the start and the end of the month.
-- Enter and Space select the date that has focus.
 - Focus that leaves the months that show moves them with it.
 
 ## Cells

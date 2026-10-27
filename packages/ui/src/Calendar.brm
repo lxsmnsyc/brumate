@@ -12,7 +12,7 @@
     isDateUnavailable?: (date: DateString, anchor: DateString | null) => boolean;
     /** How much shows at once, such as `{ months: 2 }`. Give each month a CalendarGrid. */
     visibleDuration?: DateDuration;
-    /** How far the Buttons move: by everything that shows, or by one month. */
+    /** How far the Buttons move: by everything that shows, or by one unit of `visibleDuration`. */
     pageBehavior?: 'visible' | 'single';
     /** Disables the Buttons and every date. */
     isDisabled?: boolean;
@@ -22,7 +22,7 @@
     isInvalid?: boolean;
     /** The name of the Calendar. The months that show follow it, such as `Delivery date, October 2026`. */
     'aria-label'?: string;
-    /** Runs with the date, or with the range in a RangeCalendar, each time one is picked. */
+    /** Runs with the date, or with the range in a RangeCalendar, each time one is picked. It does not run inside a DatePicker, nor when the same date is picked again. */
     onChange?: ((value: DateString) => void) | ((value: DateRange) => void);
     /** Makes the value a range. A RangeCalendar sets it. */
     range?: boolean;
@@ -36,7 +36,7 @@
     children?: unknown;
     /** The selected date as `YYYY-MM-DD`, or the range as `{ start, end }`, or `null`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<DateString | DateRange | null>;
-    /** The date that has focus. It starts at the selected date, or today. A new value moves the months that show to it. */
+    /** The date that has focus. It starts at the selected date, or today. A new value moves the months that show only when the date is outside them. */
     focusedValue?: Bindable<DateString>;
     [attribute: string]: unknown;
   }
@@ -73,7 +73,7 @@
    * - `minValue` and `maxValue` limit the dates, and `isDateUnavailable` marks dates that cannot
    *   be picked.
    * - `visibleDuration` is how much shows, such as `{ months: 2 }`. The Buttons move by all of it,
-   *   or by one month with `pageBehavior="single"`.
+   *   or by one unit of it with `pageBehavior="single"`.
    * - `focusedValue` is the date that has focus, which starts at the selected date or today.
    * - It shows `data-disabled` and `data-invalid`.
    * - A RangeCalendar renders it with `range`, so `value` is a range: a first press starts it,

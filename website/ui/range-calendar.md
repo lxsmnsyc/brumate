@@ -67,6 +67,8 @@ The keys are those of a [Calendar](./calendar.md#keyboard). In a range, these di
 
 Between the first press and the second, every key that moves focus also moves the end of the range that shows.
 
+The dates use the Gregorian calendar. Names and numbers follow the locale.
+
 ## Controlled and uncontrolled
 
 `value` holds the selected range as `{ start, end }` of `YYYY-MM-DD` dates, or `null`. A plain `value` starts the calendar's own state, and `value=$bind(signal)` writes your signal. `onChange` gets each range that is picked. See [State](./state.md).
@@ -79,10 +81,8 @@ Style the dates with `data-selected`, `data-selection-start` and `data-selection
 
 - A first press, or Enter or Space, starts a range at a date. A second one ends it, before or after the first.
 - A press of the pointer on a date and a release on another one select the range between them.
-- After Enter or Space starts a range, focus moves to the next date, or the one before.
 - In between, the dates show the range to the date under the pointer, or to the date that has focus. The date under the pointer takes the focus.
 - The range reaches up to the nearest dates that cannot be picked. The dates past them show `data-invalid` and cannot be picked or focused, and the Calendar is not invalid until the range is done. `isDateUnavailable` gets the first date of the range as its second argument.
-- Escape drops a range that is not done, and the range that was selected shows again.
 - A range cannot hold a date that `isDateUnavailable` marks. `allowsNonContiguousRanges` lets it, and those dates do not show as selected.
 
 ## Cells

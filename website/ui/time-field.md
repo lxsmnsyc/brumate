@@ -54,7 +54,7 @@ The field sets the same attributes as a [DateField](./date-field.md). Its segmen
 
 ## Keyboard
 
-The keys act on the segment that has focus. A segment takes none of them while the field is disabled or read only. A key with Ctrl, Alt or Meta is left to the browser.
+The keys act on the segment that has focus. A segment takes none of them while the field is disabled or read only. A key with Ctrl, Alt or Meta is left to the browser, except `ArrowLeft` and `ArrowRight`, which move focus whatever the modifiers.
 
 | Key                     | Action                                                                                                                                 |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -86,14 +86,11 @@ Style the segments with `data-type`, `data-placeholder` and `data-focused`, and 
 - A segment that is not set shows `––`, and AM and PM show the period of `placeholderValue`.
 - The order of the segments and the separators come from the locale. The times have no time zone.
 
-## Keys
+## Values
 
-- Digits type into the hour, the minute and the second, and move on when a segment is full. On a 12-hour clock, the hour keeps its period.
-- AM and PM are a segment of their own, which must be set for the field to have a value. A letter that starts the text of AM or PM in the locale sets it, such as `a` and `p` in `en-US`. Backspace empties it.
-- ArrowUp and ArrowDown step a segment around the clock. On a 12-hour clock, the hour goes around within AM or PM, so 11 AM goes to 12 AM. On AM and PM, they move the time by 12 hours. An empty segment starts at `placeholderValue`, midnight by default.
-- PageUp, PageDown, Home and End work as in a DateField. Home and End on the hour of a 12-hour clock go to 12 and 11.
+- AM and PM are a segment of their own, which must be set for the field to have a value.
+- On a 12-hour clock, the hour keeps its period when it is typed.
 - `minValue` and `maxValue` compare times by their seconds, so `09:30:00` is not past `09:30`.
-- Backspace and ArrowLeft and ArrowRight work as in a DateField.
 
 ## Validation
 

@@ -21,7 +21,7 @@ An area for two channels of a color.
 - The area edits a color at full precision, and gives back the format of the caller. Hex cannot hold the hue of a gray, nor hsl the saturation of black, so a drag to saturation 0 and back keeps the hue. `value` and `onChange` change only when an edit makes another color. When `value` changes from outside, such as from a reset of the form, the color follows it.
 - `isDisabled` keeps it still and shows `data-disabled`.
 - `xName` and `yName` send the two values with a form, also before the code of the page loads. A reset of the form gives back the first color.
-- The area is a group. Give it an `aria-label` or an `aria-labelledby`, such as `Saturation and brightness`. The group and both inputs say that label and `Color picker`, such as `Saturation and brightness, Color picker`, and the inputs are `Color picker` without a label. An `aria-labelledby` reaches the group and both inputs, each with its own ID first.
+- The area is a group. Give it an `aria-label` or an `aria-labelledby`, such as `Saturation and brightness`. With an `aria-label`, the group and both inputs say it with `Color picker`, such as `Saturation and brightness, Color picker`, and the group's own ID comes first in `aria-labelledby`. Without one, the inputs are named `Color picker`. An `aria-labelledby` reaches the group and both inputs, each input with its own ID first.
 
 ## Anatomy
 
@@ -80,17 +80,10 @@ The keys act on either input of the thumb. A key with Ctrl, Meta or Alt moves no
 
 Style the area with `background: var(--area-background)` and `background-blend-mode: var(--area-background-blend-mode)`, and the thumb with the data attributes above. The area is `position: relative`, so give it a size. The thumb has `--color`. See [Styling](./styling.md).
 
-## Keys
+## Keys and screen readers
 
-The thumb has a hidden `<input type="range">` for each axis. The keys work on either of them.
-
-- Left and Right move x by a step. Up and Down move y.
-- With Shift, the arrow keys move by a page.
-- PageUp and PageDown move y by a page.
-- Home and End move x down and up by a page.
-- Right to left, x is mirrored: Left moves toward the larger values, and Home goes to the right.
+- There is one tab stop. When focus was last on the y input, the x input is out of the tab order (`tabindex="-1"`) and hidden from screen readers (`aria-hidden="true"`). The y input is out of both until it has the focus or a key changed the value.
 - The focus goes to the input of the axis that a key moved.
-- There is one tab stop: the input of y is out of the tab order and hidden from screen readers (`tabindex="-1"` and `aria-hidden="true"`), until it has the focus or a key changed the value. The input that had the focus last is the tab stop.
 - A screen reader hears the value of the input, the other axis and the third channel, and a name of the color without its alpha, such as `Saturation 50%, Brightness 80%, Hue 210°, blue`. After a change from a key it hears only the input and the color, such as `Saturation 51%, blue`, until the focus leaves.
 - A key with Ctrl, Meta or Alt moves nothing. Until the loader of the page matches the modifiers, such a key is still prevented, so Cmd+Left does not go back.
 

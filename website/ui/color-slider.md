@@ -100,7 +100,6 @@ Style the track with `background: var(--track-background)`, and the thumb with t
 
 ## Channel
 
-- The arrows move a step, and a page with Shift. Up raises the value and Down lowers it. Left and Right do the same on a slider of either orientation, and right to left they are mirrored. Home and End go to the ends. A key with Ctrl, Meta or Alt moves nothing.
 - The range, the step and the page of PageUp and PageDown are those of the channel: hue goes to 360 in steps of 1 and pages of 15, and alpha goes to 1 in steps of 0.01 and pages of 0.1.
 - The SliderOutput shows the channel in the format of the locale, such as `210°`, `50%` or `128`. Alpha shows as a percent.
 - A screen reader hears the value and a name of the color it makes, such as `210°, blue`. The color is named without its alpha.

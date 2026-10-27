@@ -67,15 +67,15 @@ A circular track for the hue of a color.
 
 The keys act on the thumb. A key with Ctrl, Meta or Alt moves nothing.
 
-| Key                        | Action                                                                   |
-| -------------------------- | ------------------------------------------------------------------------ |
-| `Tab`                      | Moves focus to the thumb. A disabled wheel is skipped.                   |
-| `ArrowRight` or `ArrowUp`  | Raises the hue by 1, or by 15 with Shift. After 359 it starts over at 0. |
-| `ArrowLeft` or `ArrowDown` | Lowers the hue by 1, or by 15 with Shift. Below 0 it goes to 359.        |
-| `PageUp`                   | Raises the hue by 15, to a multiple of 15.                               |
-| `PageDown`                 | Lowers the hue by 15, to a multiple of 15. From 0 it goes to 345.        |
-| `Home`                     | Goes to a hue of 0.                                                      |
-| `End`                      | Goes to a hue of 360, which is 0.                                        |
+| Key                        | Action                                                                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`                      | Moves focus to the thumb. A disabled wheel is skipped.                                                                        |
+| `ArrowRight` or `ArrowUp`  | Raises the hue by 1. With Shift it goes by 15 and snaps to a multiple of 15, so 10 goes to 30. After 359 it starts over at 0. |
+| `ArrowLeft` or `ArrowDown` | Lowers the hue by 1. With Shift it goes by 15 and snaps to a multiple of 15. Below 0 it goes to 359.                          |
+| `PageUp`                   | Raises the hue by 15, to a multiple of 15.                                                                                    |
+| `PageDown`                 | Lowers the hue by 15, to a multiple of 15. From 0 it goes to 345.                                                             |
+| `Home`                     | Goes to a hue of 0.                                                                                                           |
+| `End`                      | Goes to a hue of 360, which is 0.                                                                                             |
 
 ## Controlled and uncontrolled
 
@@ -95,10 +95,3 @@ Style the thumb with the data attributes above. The ring is the CSS of the Color
 
 - The ColorThumb sits on the middle of the ring at the angle of the hue, with `--color` set to the hue at full saturation. See [ColorThumb](./color-slider.md#colorthumb) for its attributes.
 - A press on the thumb takes it where it is, so it does not jump to the pointer.
-
-## Keys
-
-- The thumb has one hidden `<input type="range">` from 0 to 360. The arrow keys step the hue by 1, Right and Up up and Left and Down down. Home goes to 0, and End goes to 360, which is 0.
-- The hue is a circle. A step up from 359 gives 0, and a step down from 0 gives 359.
-- PageUp and PageDown move by 15, to a multiple of 15. A page down from 0 gives 345.
-- With Shift, the arrow keys move by 15.

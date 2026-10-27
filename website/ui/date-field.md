@@ -88,7 +88,7 @@ The `DateSegment` elements are optional, since the DateInput renders one for eac
 
 ## Keyboard
 
-The keys act on the segment that has focus. A segment takes none of them while the field is disabled or read only. A key with Ctrl, Alt or Meta is left to the browser.
+The keys act on the segment that has focus. A segment takes none of them while the field is disabled or read only. A key with Ctrl, Alt or Meta is left to the browser, except `ArrowLeft` and `ArrowRight`, which move focus whatever the modifiers.
 
 | Key                     | Action                                                                                    |
 | ----------------------- | ----------------------------------------------------------------------------------------- |
@@ -135,13 +135,8 @@ Style the segments with `data-type`, `data-placeholder` and `data-focused`, and 
 - Today, the start of a segment that is not set, is the date in the time zone of the browser.
 - Each segment shows `data-type`, such as `month`, and `data-focused`, `data-readonly`, `data-disabled` and `data-invalid`.
 
-## Keys
+## Input
 
-- Digits type into a segment. Once no other digit could follow, such as after `12` in a month, focus moves to the next segment.
-- Backspace takes the last digit away. In an empty segment, it moves back to the one before.
-- ArrowUp and ArrowDown step a segment, around its range. An empty segment starts at `placeholderValue`, today by default.
-- PageUp and PageDown step further: 5 years, 2 months, 7 days, 2 hours, or 15 minutes or seconds. Home and End go to the ends of the range of a segment.
-- ArrowLeft and ArrowRight move between the segments, the other way right to left.
 - A press on the DateInput, or on the text between two segments, focuses the last segment.
 - A segment is editable text, so a touch keyboard shows its digits.
 

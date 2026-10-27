@@ -21,7 +21,7 @@
    *   or 15 minutes, and Home and End go to the ends of its range.
    * - Digits type into it, and `a` or `p` into AM or PM. Once no other digit could follow, focus
    *   moves to the next part.
-   *   Backspace takes the last digit away, and moves back from an empty part.
+   *   Backspace or Delete takes the last digit away, and moves back from an empty part.
    * - It is editable text, so a touch keyboard shows its digits. The browser does not change the
    *   text itself.
    * - It shows `data-type`, `data-placeholder`, `data-focused`, `data-readonly`, `data-disabled`
