@@ -2,7 +2,9 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface LabelOwnProps {
+    /** The slot of the context of a part that holds this label. */
     slot?: string | null;
+    /** The text of the label. */
     children?: unknown;
   }
 

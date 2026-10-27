@@ -1,5 +1,6 @@
 <script module>
   export interface SliderOutputProps {
+    /** Not rendered. The output shows the values of the Slider. */
     children?: unknown;
     [attribute: string]: unknown;
   }

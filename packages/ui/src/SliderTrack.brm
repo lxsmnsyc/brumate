@@ -1,5 +1,6 @@
 <script module>
   export interface SliderTrackProps {
+    /** The SliderThumbs. */
     children?: unknown;
     [attribute: string]: unknown;
   }

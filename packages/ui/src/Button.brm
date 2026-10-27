@@ -6,23 +6,35 @@
   export interface ButtonOwnProps<T extends AsTarget = 'button'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** The `type` of a native button. A pending button is always `button`. */
     type?: 'button' | 'submit' | 'reset';
     /** The slot of the context of a part that holds this button, such as "increment". */
     slot?: string | null;
+    /** Disables the button. It sets `disabled` on a native button. */
     isDisabled?: boolean;
     /** Pending: the button keeps its focus and presses nothing, such as while a form sends. */
     isPending?: boolean;
     /** The link of a button that renders as `a`. A disabled button drops it. */
     href?: string;
+    /** Runs when a press ends on the button. */
     onPress?: (event: PressEvent) => void;
+    /** Runs when a press starts. */
     onPressStart?: (event: PressEvent) => void;
+    /** Runs when a press ends, on the button or off it. */
     onPressEnd?: (event: PressEvent) => void;
+    /** Runs when a pointer or a key is released over the button. */
     onPressUp?: (event: PressEvent) => void;
+    /** Runs when the button starts or stops being pressed. */
     onPressChange?: (pressed: boolean) => void;
+    /** Runs when a mouse or a pen moves over the button. */
     onHoverStart?: (event: HoverEvent) => void;
+    /** Runs when a mouse or a pen leaves the button. */
     onHoverEnd?: (event: HoverEvent) => void;
+    /** Runs when the button starts or stops being hovered. */
     onHoverChange?: (hovered: boolean) => void;
+    /** Runs when the button gains or loses focus. */
     onFocusChange?: (focused: boolean) => void;
+    /** The content of the button. */
     children?: unknown;
   }
 

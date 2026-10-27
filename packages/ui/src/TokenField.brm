@@ -3,15 +3,25 @@
   import type { TokenSegment } from './token-field.ts';
 
   export interface TokenFieldProps {
+    /** A regular expression, as a string. Text that matches it becomes a token once a space follows it. */
     pattern?: string;
+    /** The hint that the box shows while it is empty. */
     placeholder?: string;
+    /** Lets Enter add a new line. */
     allowsNewlines?: boolean;
+    /** Disables the field. */
     isDisabled?: boolean;
+    /** Makes the field read only. */
     isReadOnly?: boolean;
+    /** `textbox`, or `searchbox` for a field that searches. */
     role?: 'textbox' | 'searchbox';
+    /** The name of a hidden input that posts the text of the value with the form. */
     name?: string;
+    /** Runs with the segments each time the value changes. */
     onChange?: (value: TokenSegment[]) => void;
+    /** The Label, TokenInput and Text of the field. */
     children?: unknown;
+    /** The segments, each `{ type: 'text' | 'token', text }`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<TokenSegment[]>;
     [attribute: string]: unknown;
   }

@@ -2,6 +2,7 @@
   import type { TokenSegment } from './token-field.ts';
 
   export interface TokenInputProps {
+    /** A `#template` that renders a Token for each token. Without it, a token shows its text. */
     token?: (segment: TokenSegment) => unknown;
     [attribute: string]: unknown;
   }

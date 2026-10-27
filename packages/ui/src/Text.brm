@@ -2,7 +2,9 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface TextOwnProps {
+    /** The slot that picks the text a part gives its ID to, such as `description`. */
     slot?: string | null;
+    /** The text. */
     children?: unknown;
   }
 

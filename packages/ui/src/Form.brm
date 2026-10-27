@@ -1,7 +1,10 @@
 <script module>
   export interface FormProps {
+    /** The default of its fields. With `aria`, the form has `novalidate`, so the browser never blocks it. */
     validationBehavior?: 'native' | 'aria';
+    /** The errors of the server by the name of a field. A field shows them until the user edits it. */
     validationErrors?: Record<string, string | string[]>;
+    /** The fields and buttons of the form. */
     children?: unknown;
     [attribute: string]: unknown;
   }

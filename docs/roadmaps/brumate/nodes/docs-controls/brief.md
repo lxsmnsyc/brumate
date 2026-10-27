@@ -1,7 +1,7 @@
 ---
 id: docs-controls
 title: Complete the docs of Buttons and Forms
-status: active
+status: done
 priority: should
 type: docs
 outline: false

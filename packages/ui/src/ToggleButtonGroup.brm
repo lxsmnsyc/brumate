@@ -3,12 +3,19 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface ToggleButtonGroupOwnProps<T extends AsTarget = 'div'> {
+    /** `single` allows one button on, as radios. `multiple` allows several, as a toolbar. */
     selectionMode?: 'single' | 'multiple';
+    /** Keeps at least one button on. */
     disallowEmptySelection?: boolean;
+    /** Disables every button of the group. */
     isDisabled?: boolean;
+    /** The direction of the buttons. It picks the arrow keys that move focus. */
     orientation?: 'horizontal' | 'vertical';
+    /** Runs with the keys of the buttons that are on, when the user changes them. */
     onSelectionChange?: (keys: string[]) => void;
+    /** The ToggleButtons of the group. */
     children?: unknown;
+    /** The `id` of each button that is on. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     selectedKeys?: Bindable<string[]>;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

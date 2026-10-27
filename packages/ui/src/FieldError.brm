@@ -2,6 +2,7 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface FieldErrorOwnProps {
+    /** What to show in place of the messages of the field. */
     children?: unknown;
   }
 
