@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import markdown from '../plugins/markdown.ts';
 import { PART_FILES, SECTIONS, readProps, renderProps } from '../plugins/props-table.ts';
 
 const fixture = (name: string): URL => new URL(`./fixtures/${name}.brm`, import.meta.url);
@@ -105,5 +106,20 @@ describe('the button page', () => {
     const known = headings.filter((heading) => SECTIONS.includes(heading));
     expect(known).toEqual(SECTIONS.filter((section) => known.includes(section)));
     expect(known).toContain('Props');
+  });
+});
+
+describe('the markdown plugin', () => {
+  it('replaces a `props Name` fence with the table', () => {
+    const plugin = markdown();
+    const transform = plugin.transform as (this: unknown, code: string, id: string) => unknown;
+    const result = transform.call(
+      { addWatchFile() {} },
+      '# Title\n\n```props Button\n```\n',
+      new URL('../ui/button.md', import.meta.url).pathname,
+    ) as { code: string };
+    expect(result.code).toContain('props-table');
+    expect(result.code).toContain('Renders another element or a component');
+    expect(result.code).not.toContain('```props');
   });
 });

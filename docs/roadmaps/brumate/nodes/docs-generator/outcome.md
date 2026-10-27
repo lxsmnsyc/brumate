@@ -12,7 +12,7 @@
 ## Deviations
 
 - No PropsTable.brm and no change to DocPage.brm: the table is HTML in a `raw` part, which costs no client code. The two files stay owned by this node.
-- vitest is not in website/package.json. The config aliases it to packages/ui, and `test` runs that binary. `pnpm --filter website exec vitest run ...` (the verify line of the brief) needs vitest as a devDependency of website. Add `"vitest": "^5.0.4"` and install in the main checkout to use it, then the aliases of `vitest` can go.
+- vitest is a devDependency of website (`^5.0.4`), added after the review. The lockfile is updated by the maintainer.
 
 ## Stubs left
 
@@ -20,11 +20,11 @@
 
 ## Gotchas
 
-- Most props of the parts have no doc comment, so their description cell is empty. The docs nodes add the comments in packages/ui.
+- Most props have no doc comment yet, so the docs nodes must write them in packages/ui.
 - Button.brm's comment for `href` says "as in React Aria". The table prints it. Remove it in packages/ui.
 - A part type that extends another interface lists only its own members. A type that is not an interface or an object type alias is an error.
 - The formatter adds a blank line inside the empty `props` fence. The generator and the contract allow it.
-- website tsconfig does not include test/, because vitest does not resolve from website.
+- website tsconfig does not include test/.
 
 ## Proposed learnings
 

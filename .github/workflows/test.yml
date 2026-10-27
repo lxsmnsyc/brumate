@@ -33,5 +33,7 @@ jobs:
       - run: pnpm test
       # Every live sample of the docs compiles without warnings.
       - run: pnpm --filter website check:samples
+      # The plugins of the website, such as the props tables.
+      - run: pnpm --filter website test
       # The website builds every page with the packages, so it checks them together.
       - run: pnpm --filter website build

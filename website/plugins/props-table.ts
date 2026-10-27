@@ -138,12 +138,13 @@ export function readProps(part: string, file = new URL(`${part}.brm`, PART_FILES
     rows.push({
       name: 'as',
       type: 'AsTarget',
-      default: root ?? '',
+      default: root ?? 'none',
       required: false,
       description: AS_DESCRIPTION,
     });
   }
   for (const member of list) {
+    // Index signatures and method signatures get no row (the props-table contract).
     if (member.type !== 'TSPropertySignature') {
       continue;
     }
