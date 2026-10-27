@@ -778,6 +778,11 @@ const OUTPUT: ErrorEntry[] = [
     '<div class=(open ? "open" : "closed")></div>',
   ),
   entry(
+    'This computed attribute has a name or value with no code in the browser, so it cannot stay when the attributes of the element update',
+    'An element has a computed attribute, as in `[name]=(value)`, and a spread or another computed attribute that can change. The name or the value is a constant, or a signal that nothing writes, so the browser has no code for it, and an update of the element would remove the attribute. Make both a signal that the page writes, or write the attribute without brackets.',
+    "let name = $signal('data-x');\nlet value = $signal('on');\n\n<p {...props} [name]=(value)></p>\n<p {...props} data-x=\"on\"></p>",
+  ),
+  entry(
     'Destructuring assignment to a signal is not supported in client code yet',
     'Code that runs in the browser writes a signal in a destructuring assignment.',
     '[first, second] = pair;\n// Write each signal on its own:\nfirst = pair[0];\nsecond = pair[1];',

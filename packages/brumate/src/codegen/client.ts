@@ -1037,7 +1037,10 @@ class ClientGenerator {
         const code =
           item === attribute ? this.computedCode(item, site) : spreads.get(item.name.ast);
         if (code === undefined) {
-          this.error('This attribute cannot change on the client yet', site.range);
+          this.error(
+            'This computed attribute has a name or value with no code in the browser, so it cannot stay when the attributes of the element update',
+            site.range,
+          );
           return;
         }
       }

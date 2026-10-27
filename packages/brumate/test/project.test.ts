@@ -101,8 +101,21 @@ describe('analyzeProject', () => {
 <button class="rename" onClick=(() => (name = 'data-x'))>Rename</button>
 <p class="el" [name]=(value)>hi</p>
 `;
-    expect(() => compile(source, { filename: 'Rename.brm' })).toThrow(
-      /cannot change on the client/,
+    expect(() => compile(source, { filename: 'Rename.brm' })).toThrow(/no code in the browser/);
+  });
+
+  it('says why a constant computed attribute next to a spread that changes fails', () => {
+    const source = `<script>
+  import { $signal } from 'brumate/signals';
+  const n = 'data-x';
+  let props = $signal<Record<string, string>>({ title: 'a' });
+</script>
+
+<button class="set" onClick=(() => (props = { title: 'b' }))>Set</button>
+<p {...props} [n]=(n)>hi</p>
+`;
+    expect(() => compile(source, { filename: 'Constant.brm' })).toThrow(
+      /name or value with no code in the browser/,
     );
   });
 });
