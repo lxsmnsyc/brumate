@@ -216,17 +216,34 @@ export function escapeOutside(
     if (event.key !== 'Escape' || event.defaultPrevented || escapable.at(-1) !== layer) {
       return;
     }
+    // A layer that comes later in the page, such as a dialog or a menu, is above this one.
+    for (const other of document.querySelectorAll('[data-layer]')) {
+      if (
+        other !== layer &&
+        layer.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING
+      ) {
+        return;
+      }
+    }
     const active = document.activeElement;
     const free = !active || active === document.body;
-    const onTrigger = Boolean(trigger?.contains(active)) && !active?.closest('[data-layer]');
+    // The trigger can be in a layer of its own, such as a dialog. That layer is not above.
+    const onTrigger =
+      Boolean(trigger?.contains(active)) &&
+      active?.closest('[data-layer]') === trigger?.closest('[data-layer]');
     if (free || onTrigger) {
+      // This runs first, so the layer around the trigger sees a key that is used, and stays.
+      event.preventDefault();
       close();
     }
   };
-  document.addEventListener('keydown', listener);
+  document.addEventListener('keydown', listener, true);
   return () => {
-    document.removeEventListener('keydown', listener);
-    escapable.splice(escapable.indexOf(layer), 1);
+    document.removeEventListener('keydown', listener, true);
+    const at = escapable.indexOf(layer);
+    if (at >= 0) {
+      escapable.splice(at, 1);
+    }
   };
 }
 

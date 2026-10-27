@@ -94,8 +94,8 @@ export function moveFocus(
 /**
  * Prevents the default of Home and End, and of Up and Down in a vertical toolbar, while the
  * toolbar moves focus with them, so the page does not scroll. A text field keeps the keys that
- * move its caret, and a text area keeps all of them. The check needs the focused
- * item, so it cannot be a fixed key list of the handler. Returns a function that stops.
+ * move its caret, and a text area keeps all of them. The check needs the focused item, so it
+ * cannot be a fixed key list of the handler. Returns a function that stops.
  */
 export function preventEdges(toolbar: Element): () => void {
   const listener = (event: Event): void => {

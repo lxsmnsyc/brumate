@@ -42,13 +42,13 @@ The items are any parts that take focus, such as buttons, links and fields. The 
 
 ## Keyboard
 
-| Key                         | Action                                                                                               |
-| --------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `Tab`                       | Moves focus to the item that had it last, or to the first item. The next `Tab` leaves the toolbar.   |
-| `ArrowRight` or `ArrowLeft` | In a horizontal toolbar, moves focus to the next or the previous item. Right to left, the keys swap. |
-| `ArrowDown` or `ArrowUp`    | In a vertical toolbar, moves focus to the next or the previous item. A text area keeps them.         |
-| `Home`                      | Moves focus to the first item.                                                                       |
-| `End`                       | Moves focus to the last item.                                                                        |
+| Key                         | Action                                                                                                                                                           |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`                       | Moves focus to the item that had it last, or to the first item. The next `Tab` leaves the toolbar.                                                               |
+| `ArrowRight` or `ArrowLeft` | In a horizontal toolbar, moves focus to the next or the previous item. Right to left, the keys swap.                                                             |
+| `ArrowDown` or `ArrowUp`    | In a vertical toolbar, moves focus to the next or the previous item. A text area keeps them. Like Home and End, the page prevents them once its code has loaded. |
+| `Home`                      | Moves focus to the first item.                                                                                                                                   |
+| `End`                       | Moves focus to the last item.                                                                                                                                    |
 
 Focus stops at the first and the last item. A text field keeps the keys that move its caret.
 
