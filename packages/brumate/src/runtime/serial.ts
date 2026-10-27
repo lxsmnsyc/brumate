@@ -32,6 +32,7 @@ import { MODIFIERS } from './events.ts';
 import {
   CHILDREN_REF,
   ElementReference,
+  PARTS,
   isBinding,
   isSlotReference,
   onSerialOptions,
@@ -157,6 +158,24 @@ const FunctionPlugin = createPlugin<object, ReferenceNode>({
     ),
 });
 
+/** A handler that merges the handlers of one event, as the parts that refer to client functions. */
+const MergedPlugin = createPlugin<object, { a: SerovalNode }>({
+  tag: 'brumate/merged',
+  skipPlainObjects: true,
+  test: (value) => typeof value === 'function' && PARTS in value,
+  parse: parsers((value) => {
+    const parts: object[] = [];
+    for (const part of (value as { [PARTS]: object[] })[PARTS]) {
+      if (functionReferences.has(part)) {
+        parts.push(part);
+      }
+    }
+    return { a: parts };
+  }),
+  serialize: (node, ctx) => `$b.m(${ctx.serialize(node.a)})`,
+  deserialize: (node, ctx) => stateValues.m(ctx.deserialize(node.a)),
+});
+
 /** Children of a component, as the export that renders them in the browser. */
 const ChildrenPlugin = createPlugin<object, { a: SerovalNode; b: SerovalNode }>({
   tag: 'brumate/children',
@@ -264,6 +283,7 @@ const valuePlugins: Plugin<any, any>[] = [
   SlotPlugin,
   BindingPlugin,
   FunctionPlugin,
+  MergedPlugin,
   ChildrenPlugin,
   RawPlugin,
   ComponentPlugin,

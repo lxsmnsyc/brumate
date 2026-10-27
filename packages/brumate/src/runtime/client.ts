@@ -34,12 +34,15 @@ import {
   ITEM_SLOT,
   MODULE,
   OWNER,
+  PARTS,
   PREFIX,
   SOURCE,
   SlotReference,
+  addEntryHandlers,
   isAsyncIterable,
   isBinding,
   isSlotReference,
+  mergeHandlers,
   useSerialEntry,
   parseId,
   stateValues,
@@ -797,14 +800,18 @@ function spreadEntries(attributes: Record<string, unknown>): string[] {
     if (name === 'b-on' && ownValue(name, value)) {
       on.unshift(ownValue(name, value) as string);
     }
-    const reference =
+    // A merged handler writes one entry for each of its parts.
+    const parts =
       /^on[A-Z]/.test(name) && typeof value === 'function'
-        ? handlerReferences.get(value)
-        : undefined;
-    if (reference) {
-      on.push(
-        handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
-      );
+        ? ((value as { [PARTS]?: object[] })[PARTS] ?? [value])
+        : [];
+    for (const part of parts) {
+      const reference = handlerReferences.get(part);
+      if (reference) {
+        on.push(
+          handlerEntry(name, reference.ref, reference.scope, reference.modifiers, reference.args),
+        );
+      }
     }
     // A binding that a rest prop passed on writes its slot, or calls its setter.
     if ((name === 'value' || name === 'checked') && HAS_BINDINGS && isBinding(value)) {
@@ -851,6 +858,10 @@ function callable(value: unknown, seen: Set<object>): unknown {
       const record = value as Record<string, unknown>;
       for (const key of Object.keys(record)) {
         record[key] = callable(record[key], seen);
+      }
+      // The parts of a merged handler.
+      if (PARTS in record) {
+        return mergeHandlers(value as ((...args: unknown[]) => unknown)[]);
       }
     }
   }
@@ -4425,7 +4436,18 @@ export function dynamicNodes(
 ): string | Node {
   if (typeof tag === 'function') {
     // The anchor links the component to the tag, so updates reach its props. It is no prop.
-    const { 'b-b': bound, ...props } = ref === undefined ? attributes : { ...attributes, ref };
+    const {
+      'b-b': bound,
+      'b-on': entries,
+      ...props
+    } = ref === undefined ? attributes : { ...attributes, ref };
+    // Its handlers reach the component as props, as the server passes them.
+    addEntryHandlers(
+      props,
+      entries,
+      typeof scope === 'object' ? scope.id : scope,
+      (reference) => callable(reference, new Set()) as (...args: unknown[]) => unknown,
+    );
     if (inner) {
       props.children = inner;
     }

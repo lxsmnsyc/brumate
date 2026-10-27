@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import RestLink from './RestLink.brm';
+
+  // The same tag, in a block that the browser opens.
+  let as = $signal<any>(RestLink);
+  let flag = $signal(true);
+  let open = $signal(false);
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+<button class="toggle" onClick=(() => (flag = !flag))>Toggle</button>
+#if (open) {
+  <{as} title=(String(flag)) class="h" onClick=(() => (globalThis as any).order.push('a')) onClick=(() => (globalThis as any).order.push('b')) onClick=(() => (globalThis as any).order.push('c'))>hi</>
+}

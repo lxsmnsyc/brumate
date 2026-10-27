@@ -5184,6 +5184,69 @@ describe('a dynamic tag that names a component', () => {
     await waitFor(() => expect(text('.n')).toBe('2'));
   });
 
+  it('runs three handlers of one event of a component tag, in order', async () => {
+    const order: string[] = [];
+    (globalThis as { order?: string[] }).order = order;
+    await resume('restTagMerged', {});
+    const link = () => document.querySelector('a.h')!;
+    click(link());
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c']));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('false'));
+    click(link());
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c', 'a', 'b', 'c']));
+  });
+
+  it('runs three handlers of one event of a component tag, in a block', async () => {
+    const order: string[] = [];
+    (globalThis as { order?: string[] }).order = order;
+    await resume('restTagMergedLate', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.h')).not.toBeNull());
+    const link = () => document.querySelector('a.h')!;
+    click(link());
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c']));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('false'));
+    click(link());
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c', 'a', 'b', 'c']));
+  });
+
+  it('merges the handlers of a rest prop with those of a tag it passes them to', async () => {
+    const order: string[] = [];
+    (globalThis as { order?: string[] }).order = order;
+    await resume('restTagMergedNested', {});
+    click(document.querySelector('a.h')!);
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c']));
+    click(document.querySelector('a.h')!);
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c', 'a', 'b', 'c']));
+  });
+
+  it('merges the handlers of a rest prop with those of a tag, in a block', async () => {
+    const order: string[] = [];
+    (globalThis as { order?: string[] }).order = order;
+    await resume('restTagMergedNestedLate', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('a.h')).not.toBeNull());
+    click(document.querySelector('a.h')!);
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c']));
+    click(document.querySelector('a.h')!);
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'c', 'a', 'b', 'c']));
+  });
+
+  it('runs every merged handler when the component calls its prop', async () => {
+    const order: string[] = [];
+    (globalThis as { order?: string[] }).order = order;
+    await resume('restTagMergedCalls', {});
+    const own = () => document.querySelector('.own')!;
+    click(own());
+    await waitFor(() => expect(order).toEqual(['a', 'b']));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(order).toEqual(['a', 'b']));
+    click(own());
+    await waitFor(() => expect(order).toEqual(['a', 'b', 'a', 'b']));
+  });
+
   it('updates the live props of a component that spreads its rest, in a block', async () => {
     await resume('restTagLivePropsLate', {});
     click(document.querySelector('.open')!);
