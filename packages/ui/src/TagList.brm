@@ -1,14 +1,21 @@
 <script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Movement } from './collection.ts';
 
-  export interface TagListProps {
+  export interface TagListOwnProps {
     children?: unknown;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of TagList. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TagListProps<T extends AsTarget = 'div'> = AsProps<T, TagListOwnProps>;
 </script>
 
-<script>
-  import { $getContext, $props, $signal } from 'brumate/signals';
+<script generics="T extends AsTarget = 'div'">
+  import { $getContext, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     enabledItems,
@@ -30,11 +37,11 @@
    * - The arrow keys move to the next and the previous tag, Left and Right turning around right
    *   to left, and Home and End go to the ends.
    */
-  const { children, ...rest } = $props<TagListProps>();
+  const { as, children, ...rest } = $props<TagListProps<T>>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const group = $getContext(TagGroupContext);
   const locale = $getContext(LocaleContext);
-  let root = $signal<HTMLElement>();
 
   /** The movement of a key: Left and Right follow the direction, Up and Down do not. */
   function movementOf(key: string): Movement | undefined {
@@ -58,7 +65,7 @@
   }
 
   function keyDown(event: KeyboardEvent) {
-    const element = root;
+    const element = ref;
     const movement = movementOf(event.key);
     if (!element || !movement) {
       return;
@@ -68,7 +75,7 @@
   }
 
   function focused(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     // The list passes its focus on to a tag.
     if (element && event.target === element && document.activeElement === element) {
       const items = enabledItems(element, 'row');
@@ -78,7 +85,7 @@
   }
 
   function focusIn(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     const item = (event.target as Element).closest?.('[role=row][data-key]');
     if (element && item && element.contains(item)) {
       // While a tag has focus, Tab leaves the list rather than stopping at it.
@@ -88,15 +95,15 @@
   }
 
   function focusOut(event: FocusEvent) {
-    const element = root;
+    const element = ref;
     if (element && !element.contains(event.relatedTarget as Node | null)) {
       element.tabIndex = 0;
     }
   }
 </script>
 
-<div
-  ref=$bind(root)
+<{as ?? 'div'}
+  ref=$bind(ref)
   role="grid"
   tabindex="0"
   data-collection
@@ -108,4 +115,4 @@
   onFocusOut=focusOut
   onKeyDown=(prevent(keyDown, 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'))
   {...rest}
->{children}</div>
+>{children}</>

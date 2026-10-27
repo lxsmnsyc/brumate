@@ -1,8 +1,9 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
 
-  export interface ListBoxProps {
+  export interface ListBoxOwnProps {
     selectionMode?: SelectionMode;
     selectionBehavior?: SelectionBehavior;
     disabledKeys?: Key[];
@@ -29,11 +30,16 @@
     item?: (item: any) => unknown;
     children?: unknown;
     selectedKeys?: Bindable<Key[]>;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of ListBox. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type ListBoxProps<T extends AsTarget = 'div'> = AsProps<T, ListBoxOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import {
     $client,
     $effect,
@@ -97,6 +103,7 @@
    *   first item.
    */
   const {
+    as,
     selectionMode = 'none',
     selectionBehavior = 'toggle',
     disabledKeys = [],
@@ -112,8 +119,9 @@
     item,
     children,
     ...rest
-  } = $props<ListBoxProps>();
-  let { selectedKeys = [] } = $props<ListBoxProps>();
+  } = $props<ListBoxProps<T>>();
+  let { selectedKeys = [] } = $props<ListBoxOwnProps>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const locale = $getContext(LocaleContext);
   // A Select around the list keeps the selection, with one item at most.
@@ -130,7 +138,6 @@
   const chosen = $memo(given ? given.selectedKeys : selectedKeys);
   const hasAction = $isPassed(onAction);
   const listId = $id();
-  let root = $signal<HTMLElement>();
 
   function setSelection(next: Key[]) {
     if (!sameKeys(next, chosen)) {
@@ -160,7 +167,7 @@
 
   /** Focuses the option of a key. A windowed list may not render it, so it scrolls it into view. */
   function focusKey(key: Key | undefined) {
-    const element = root;
+    const element = ref;
     if (element && key !== undefined) {
       focusKeyIn(element, 'option', order(), key, windowHeight, focusItem);
     }
@@ -171,7 +178,7 @@
       given.select(key);
       return;
     }
-    const element = root;
+    const element = ref;
     const range = element ? rangeOf(element) : undefined;
     const shift = Boolean(element && request.shift && range);
     setSelection(
@@ -214,7 +221,7 @@
   // the list is on the page, and each time the text changes.
   function applyFilter() {
     const text = field?.filterText;
-    const element = root;
+    const element = ref;
     if (text !== undefined && element) {
       field!.filtered?.(filterItems(element, text, field!.filter));
     }
@@ -228,22 +235,22 @@
   function focused(event: FocusEvent) {
     // A field around the list keeps the focus.
     if (!field) {
-      passFocus(root, event, 'option', (options) =>
+      passFocus(ref, event, 'option', (options) =>
         given?.focusStrategy === 'last' ? options.at(-1) : options[0],
       );
     }
   }
 
   function focusIn(event: FocusEvent) {
-    trackFocusIn(root, event, 'option');
+    trackFocusIn(ref, event, 'option');
   }
 
   function focusOut(event: FocusEvent) {
-    trackFocusOut(root, event);
+    trackFocusOut(ref, event);
   }
 
   function keyDown(event: KeyboardEvent) {
-    const element = root;
+    const element = ref;
     if (!element) {
       return;
     }
@@ -353,8 +360,8 @@
   }
 </script>
 
-<div
-  ref=$bind(root)
+<{as ?? 'div'}
+  ref=$bind(ref)
   id=(field?.id ?? listId)
   role="listbox"
   tabindex=(field ? '-1' : '0')
@@ -381,4 +388,4 @@
       }
     }
   }
-</div>
+</>

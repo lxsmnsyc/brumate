@@ -1,16 +1,23 @@
 <script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Key } from './collection.ts';
 
-  export interface TagProps {
+  export interface TagOwnProps {
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
     children?: unknown;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of Tag. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TagProps<T extends AsTarget = 'div'> = AsProps<T, TagOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -30,12 +37,14 @@
    *   `data-hovered`, `data-focused` and `data-focus-visible`.
    */
   const {
+    as,
     id,
     textValue,
     isDisabled = false,
     children,
     ...rest
-  } = $props<TagProps>();
+  } = $props<TagProps<T>>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const group = $getContext(TagGroupContext);
   const rowId = $id();
@@ -130,7 +139,8 @@
   $setContext(SelectionIndicatorContext, { isSelected: selected });
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   id=rowId
   role="row"
   tabindex="-1"
@@ -157,4 +167,4 @@
   {onFocus}
   {onBlur}
   {...rest}
-><div role="gridcell" style="display: contents">{children}</div></div>
+><div role="gridcell" style="display: contents">{children}</div></>

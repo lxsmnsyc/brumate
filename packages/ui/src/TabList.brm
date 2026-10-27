@@ -1,11 +1,18 @@
 <script module>
-  export interface TabListProps {
+  import type { Bindable } from 'brumate/signals';
+  import type { AsProps, AsTarget } from './as.ts';
+  export interface TabListOwnProps {
     children?: unknown;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of TabList. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TabListProps<T extends AsTarget = 'div'> = AsProps<T, TabListOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $getContext, $handler, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { enabledItems, focusItem, keyOf, movementOf, moveFrom } from './collection.ts';
@@ -22,7 +29,8 @@
    *   four.
    * - With automatic activation, the tab that the keys move to is selected.
    */
-  const { children, ...rest } = $props<TabListProps>();
+  const { as, children, ...rest } = $props<TabListProps<T>>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const tabs = $getContext(TabsContext);
   const locale = $getContext(LocaleContext);
@@ -60,11 +68,12 @@
   }
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   role="tablist"
   data-collection
   aria-orientation=(orientation === 'vertical' ? 'vertical' : undefined)
   data-orientation=orientation
   {...keys(orientation === 'vertical')}
   {...rest}
->{children}</div>
+>{children}</>
