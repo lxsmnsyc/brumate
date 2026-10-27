@@ -45,6 +45,7 @@
   import { prevent } from 'brumate/events';
   import { described } from './description.brm.ts';
   import { describedBy, messagesOf } from './fields.ts';
+  import { DateStringsContext } from './date-strings.ts';
   import { LocaleContext } from './locale.ts';
   import { DateRangeFieldContext } from './segments.ts';
 
@@ -96,8 +97,9 @@
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
+  const strings = $getContext(DateStringsContext);
   const placeholder = $memo(
-    constrain(toDate(placeholderValue ?? todayString()), minValue, maxValue).toString(),
+    constrain(toDate(placeholderValue ?? todayString(locale.timeZone)), minValue, maxValue).toString(),
   );
   // The date of each field, which the field follows, and which the range follows once both are set.
   let startValue = $signal<DateString | null>(value?.start ?? null);
@@ -110,7 +112,7 @@
     type: startType,
     erase: startErase,
     settle: startSettle,
-  } = dateSegments(startValue, placeholder, locale.locale, isDisabled, isReadOnly);
+  } = dateSegments(startValue, placeholder, locale.locale, strings?.placeholders, isDisabled, isReadOnly);
   const {
     segments: endSegments,
     date: endDate,
@@ -119,7 +121,7 @@
     type: endType,
     erase: endErase,
     settle: endSettle,
-  } = dateSegments(endValue, placeholder, locale.locale, isDisabled, isReadOnly);
+  } = dateSegments(endValue, placeholder, locale.locale, strings?.placeholders, isDisabled, isReadOnly);
   let edited = $signal(false);
   const { committed, nativeErrors, invalidated, changed } = formField(startId, () => {
     value = initialValue;
@@ -215,6 +217,8 @@
       isRequired,
       isInvalid: invalid,
       direction: locale.direction,
+      segmentNames: strings?.segmentNames,
+      empty: strings?.empty,
       step: startStep,
       jump: startJump,
       type: startType,
@@ -230,6 +234,8 @@
       isRequired,
       isInvalid: invalid,
       direction: locale.direction,
+      segmentNames: strings?.segmentNames,
+      empty: strings?.empty,
       step: endStep,
       jump: endJump,
       type: endType,
@@ -239,7 +245,7 @@
   });
   $setContext(ButtonContext, {
     id: triggerId,
-    'aria-label': 'Calendar',
+    'aria-label': strings?.calendar ?? 'Calendar',
     'aria-labelledby': `${triggerId} ${labelId}`,
     'aria-haspopup': 'dialog',
     'aria-expanded': isOpen ? 'true' : 'false',

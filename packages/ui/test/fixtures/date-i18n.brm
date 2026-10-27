@@ -1,0 +1,54 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Calendar from '../../src/Calendar.brm';
+  import CalendarGrid from '../../src/CalendarGrid.brm';
+  import CalendarHeading from '../../src/CalendarHeading.brm';
+  import DateField from '../../src/DateField.brm';
+  import DateInput from '../../src/DateInput.brm';
+  import DatePicker from '../../src/DatePicker.brm';
+  import Group from '../../src/Group.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
+  import Label from '../../src/Label.brm';
+  import TimeField from '../../src/TimeField.brm';
+  import { stringsOf } from '../../src/date-strings.ts';
+
+  const { locale = 'en-US', timeZone, strings, focused = '2026-10-15', min, max } = $props<{
+    locale?: string;
+    timeZone?: string;
+    strings?: ReturnType<typeof stringsOf>;
+    focused?: string;
+    min?: string;
+    max?: string;
+  }>();
+</script>
+
+<I18nProvider {locale} {timeZone} {strings}>
+  <DateField class="field" value="2026-10-15" minValue=min maxValue=max>
+    <Label>Date</Label>
+    <DateInput class="input" />
+  </DateField>
+  <DateField class="empty-field">
+    <Label>Blank</Label>
+    <DateInput class="empty-input" />
+  </DateField>
+  <TimeField class="time">
+    <Label>Time</Label>
+    <DateInput class="time-input" />
+  </TimeField>
+  <Calendar class="calendar" focusedValue=focused minValue=min maxValue=max>
+    <header>
+      <Button slot="previous" class="previous">‹</Button>
+      <CalendarHeading class="heading" />
+      <Button slot="next" class="next">›</Button>
+    </header>
+    <CalendarGrid class="grid" />
+  </Calendar>
+  <DatePicker class="picker">
+    <Label>Picker</Label>
+    <Group>
+      <DateInput />
+      <Button class="picker-button">▼</Button>
+    </Group>
+  </DatePicker>
+</I18nProvider>
