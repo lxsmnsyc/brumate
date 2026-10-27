@@ -1,7 +1,7 @@
 ---
 id: template-value-imports
 title: A template imports a component named only in an attribute value
-status: active
+status: done
 priority: must
 type: fix
 outline: false
