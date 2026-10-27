@@ -64,6 +64,7 @@
     children,
     ...rest
   } = $props<ButtonProps<T>>();
+  let { ref } = $props<ButtonOwnProps>();
 
   const context = $getContext(ButtonContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
@@ -165,6 +166,7 @@
   button. A pending button stays focusable, with aria-disabled.
 -->
 <{as ?? 'button'}
+  ref=$bind(ref)
   type=(native ? (pending ? 'button' : type) : undefined)
   href=(disabled ? undefined : href)
   role=(native ? undefined : 'button')

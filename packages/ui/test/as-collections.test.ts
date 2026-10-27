@@ -161,12 +161,9 @@ it('moves between tags, and removes one with Delete', async () => {
   await page.waitFor(() => expect(state(page)[7]).toEqual(['news', 'gaming']));
 });
 
-// The two `it.fails` tests below show gaps of the core. They pass as `it.fails` while the gap is open, and
-// become `it` when it is fixed.
-
-// The props that a part gives to a component in `as` stay static when a page passes the component:
-// the part sends `aria-selected=(selected)`, and the component never gets the new value.
-it.fails('updates the attributes that a part gives to a component in as', async () => {
+// The props that a part gives to a component in `as` reach it when they change: the part sends
+// `aria-selected=(selected)`, and the component gets the new value.
+it('updates the attributes that a part gives to a component in as', async () => {
   const page = await collections();
   page.get('.tab-intro').focus();
   press('ArrowRight');
@@ -176,7 +173,7 @@ it.fails('updates the attributes that a part gives to a component in as', async 
   );
 });
 
-it.fails('updates the checked attribute of a menu item with a component in as', async () => {
+it('updates the checked attribute of a menu item with a component in as', async () => {
   const page = await collections();
   page.get('.copy').focus();
   press('ArrowDown');
