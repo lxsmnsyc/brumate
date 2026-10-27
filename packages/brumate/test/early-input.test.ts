@@ -26,6 +26,15 @@ const sources = new Map<string, string>([
   let first = $signal('');
   let many = $signal('a');
   let writes = $signal(0);
+  let holder = $signal('');
+  let holderWrites = $signal(0);
+  let list = $signal('');
+  let listWrites = $signal(0);
+  let ra = $signal(true);
+  let rb = $signal(false);
+  let rbWrites = $signal(0);
+  let raWrites = $signal(0);
+  let multi = $signal('a');
 </script>
 
 <input class="text" aria-label="Text" value=$bind(text)>
@@ -42,6 +51,22 @@ const sources = new Map<string, string>([
   <option value="x">X</option>
 </select>
 <input class="count" aria-label="Count" value=$bind(text, (next: string) => (writes = writes + 1))>
+<select class="holder" aria-label="Holder" value=$bind(holder, (next: string) => { holder = next; holderWrites = holderWrites + 1; })>
+  <option value="" disabled>Pick one</option>
+  <option value="p">P</option>
+</select>
+<select class="list" size="3" aria-label="List" value=$bind(list, (next: string) => { list = next; listWrites = listWrites + 1; })>
+  <option value="l">L</option>
+  <option value="m">M</option>
+</select>
+<input class="ra" aria-label="RA" type="radio" name="r" checked=$bind(ra, (next: boolean) => { ra = next; raWrites = raWrites + 1; })>
+<input class="rb" aria-label="RB" type="radio" name="r" checked=$bind(rb, (next: boolean) => { rb = next; rbWrites = rbWrites + 1; })>
+<select class="multi" multiple aria-label="Multi" value=$bind(multi)>
+  <option value="a" selected>A</option>
+  <option value="b">B</option>
+  <option value="c">C</option>
+</select>
+<p class="out2">{holder}|{holderWrites}|{list}|{listWrites}|{String(ra)}|{raWrites}|{String(rb)}|{rbWrites}|{multi}</p>
 <p class="out">{text}|{note}|{String(done)}|{String(checked)}|{choice}|{first}|{writes}</p>
 `,
   ],
@@ -115,6 +140,7 @@ async function start(ready?: (hooks: { field?: unknown }) => void): Promise<void
 
 const field = <T extends Element>(selector: string): T => document.querySelector<T>(selector)!;
 const out = (): string => field('.out').textContent!;
+const out2 = (): string => field('.out2').textContent!;
 
 describe('fields typed before the code loads', () => {
   it('starts with the values the server rendered', async () => {
@@ -161,6 +187,40 @@ describe('fields typed before the code loads', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(out()).toContain('|b||');
     expect(field<HTMLSelectElement>('.first').value).toBe('');
+  });
+
+  it('does not read a select whose first option is disabled, or a list box', async () => {
+    await show();
+    // A browser shows no option of a list box that has none selected. The test DOM selects the first.
+    field<HTMLSelectElement>('.list').selectedIndex = -1;
+    await start();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(out2()).toBe('|0||0|true|0|false|0|a');
+  });
+
+  it('reads a list box that the user picked from', async () => {
+    await show();
+    field<HTMLSelectElement>('.list').value = 'm';
+    await start();
+    await vi.waitFor(() => expect(out2()).toContain('|m|1|'));
+  });
+
+  it('writes each radio of a group once when the user chose another radio', async () => {
+    await show();
+    field<HTMLInputElement>('.rb').checked = true;
+    await start();
+    await vi.waitFor(() => expect(out2()).toContain('|true|1|'));
+    expect(out2().split('|').slice(4, 8)).toEqual(['false', '1', 'true', '1']);
+  });
+
+  it('writes the first selected option of a select with multiple, as an input event would', async () => {
+    await show();
+    const select = field<HTMLSelectElement>('.multi');
+    select.options[0]!.selected = false;
+    select.options[1]!.selected = true;
+    select.options[2]!.selected = true;
+    await start();
+    await vi.waitFor(() => expect(out2().endsWith('|b')).toBe(true));
   });
 
   it('calls the setter of a field with its own setter', async () => {

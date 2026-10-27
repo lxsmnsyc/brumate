@@ -400,22 +400,34 @@ export function leavePage(): void {
 /**
  * Whether the user changed a field since the server rendered it. The server's value is in
  * `defaultValue`, `defaultChecked` and `defaultSelected`. This runs only when the core starts,
- * before any update wrote the field.
+ * before any update wrote the field. A value that the browser cleans, such as a number or a
+ * range input, can differ from `defaultValue` without the user, and counts as typed.
  */
 function typedInto(element: Element): boolean {
   const field = element as HTMLInputElement;
   if (element instanceof HTMLSelectElement) {
-    // A select with no `selected` option shows its first, and the last `selected` one wins.
-    let expected = 0;
+    // The last `selected` option wins. Without one, a single select shows its first option that
+    // is not disabled, and a list box or a `multiple` select shows none.
+    let expected = -1;
+    let first = -1;
     let changed = false;
     for (let i = 0; i < element.options.length; i++) {
       const option = element.options[i]!;
-      if (option.defaultSelected) {
+      // The `selected` attribute is what the server rendered. The test DOM has no `defaultSelected`.
+      const rendered = option.hasAttribute('selected');
+      if (rendered) {
         expected = i;
       }
-      changed ||= option.selected !== option.defaultSelected;
+      if (first < 0 && !option.disabled && !option.parentElement?.matches('optgroup[disabled]')) {
+        first = i;
+      }
+      changed ||= option.selected !== rendered;
     }
-    return element.multiple ? changed : element.selectedIndex !== expected;
+    if (element.multiple) {
+      return changed;
+    }
+    const shown = Number(element.getAttribute('size')) > 1 ? -1 : first;
+    return element.selectedIndex !== (expected >= 0 ? expected : shown);
   }
   return /^(checkbox|radio)$/i.test(field.type)
     ? field.checked !== field.defaultChecked

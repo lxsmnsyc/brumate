@@ -155,6 +155,15 @@ function withTarget(event: Event, element: Element): Event {
   });
 }
 
+/** The value a binding writes: of a field of a part, whether a box is checked, or the value. */
+function fieldValue(element: Element, typed?: { value: unknown }): unknown {
+  const field = element as HTMLInputElement;
+  if (typed) {
+    return typed.value;
+  }
+  return /^(checkbox|radio)$/i.test(field.type) ? field.checked : field.value;
+}
+
 /**
  * Runs the handler `ref` for an element. The scope comes from the element's
  * `b-b` anchor, or from the nearest element around it that has one, which
@@ -187,13 +196,8 @@ export function handle(
   // `value=$bind(name, fn)`: the setter takes the value of the element. A ref names its scope
   // after `@`, so the prefix is `$set:`.
   // `typed` is a value that `readFields` took from a field of a part, in place of the element's own.
-  const field = element as HTMLInputElement;
-  let fieldValue = typed ? typed.value : field.value;
-  if (!typed && /^(checkbox|radio)$/i.test(field.type)) {
-    fieldValue = field.checked;
-  }
   if (ref.startsWith('$set:')) {
-    return call(ref.slice(5), scope, [fieldValue]);
+    return call(ref.slice(5), scope, [fieldValue(element, typed)]);
   }
   if (ref.startsWith('$bind#')) {
     const [hops = 0, slot = 0] = ref.slice(6).split('.').map(Number);
@@ -202,7 +206,7 @@ export function handle(
       target = target?.p;
     }
     if (target) {
-      set(target, slot, fieldValue);
+      set(target, slot, fieldValue(element, typed));
     }
     return Promise.resolve();
   }
