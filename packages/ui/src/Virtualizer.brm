@@ -1,10 +1,11 @@
 <script module>
-  export interface VirtualizerProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface VirtualizerProps extends ElementProps<'div'> {
     /** The height of a row in pixels. The default is 32. */
     rowHeight?: number;
     /** The collection to scroll. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

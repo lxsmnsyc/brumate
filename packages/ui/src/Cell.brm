@@ -1,10 +1,11 @@
 <script module>
-  export interface CellProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface CellProps extends ElementProps<'th'> {
     /** The text of the cell, for a cell whose content is more than text. */
     textValue?: string;
     /** The content of the cell. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 
@@ -29,5 +30,5 @@
 #if (header) {
   <th role="rowheader" scope="row" tabindex="-1" data-text-value=textValue {...rest}>{children}</th>
 } #else {
-  <td role="gridcell" tabindex="-1" data-text-value=textValue {...rest}>{children}</td>
+  <td role="gridcell" tabindex="-1" data-text-value=textValue {...(rest as ElementProps<'td'>)}>{children}</td>
 }

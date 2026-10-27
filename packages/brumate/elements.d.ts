@@ -264,6 +264,7 @@ export type GlobalAttributes<E> = Handlers<E> & {
   tabindex?: Attr<Num>;
   translate?: Attr<'yes' | 'no'>;
   writingsuggestions?: Attr<boolean | 'true' | 'false'>;
+  autocorrect?: Attr<boolean | 'on' | 'off'>;
   [attribute: `data-${string}`]: unknown;
   [attribute: `aria-${string}`]: Attr<string | number | boolean>;
 };
@@ -363,6 +364,7 @@ interface InputOwn extends FormControlOwn {
   autocomplete?: Attr<boolean | string>;
   capture?: Attr<boolean | 'user' | 'environment'>;
   dirname?: Attr<string>;
+  webkitdirectory?: Attr<boolean>;
   list?: Attr<string>;
   max?: Attr<number | string>;
   maxlength?: Attr<Num>;

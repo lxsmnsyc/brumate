@@ -98,6 +98,65 @@ describe('toTypeScript', () => {
     expect(code).toContain('$$use((tab === 1));\n{\n$$use((tab));\n}');
   });
 
+  it('checks the attributes of a plain element as one object, and its spreads apart', () => {
+    const code = body(`<script>
+  let box = $signal<HTMLElement>();
+  const rest = { id: 'a' };
+  const key = 'title';
+</script>
+
+<div ref=$bind(box) tabindex="0" hidden aria-label=(key) [key]=('x') {...rest} onClick=(() => {})></div>
+<p></p>`);
+    expect(code).toContain('$$on("div", "click", (() => {}));');
+    expect(code).toContain('$$spread("div")(rest);\n$$element("div")({...$$present(rest) });');
+    expect(code).toContain(
+      '$$element("div")({ ref: $$bind(box), tabindex: "0", hidden: true, "aria-label": (key), [key]: (\'x\'), });',
+    );
+    expect(code).not.toContain('$$element("p"');
+    // A namespaced name is not in the element types, so only its value is checked.
+    const svg = body(
+      '<svg xmlns:xlink="http://www.w3.org/1999/xlink"><use xlink:href=(href) /></svg>',
+    );
+    expect(svg).toContain('$$use((href));');
+    expect(svg).not.toContain('xlink');
+  });
+
+  it('maps the names of attributes, also quoted ones, and the children of a component', () => {
+    const source =
+      '<script>\n  import Badge from \'./Badge.brm\';\n</script>\n\n<p aria-label="a" [title]=(1)></p><Badge>some <b>text</b></Badge>';
+    const { code, mappings } = toTypeScript(source, 'Card.brm');
+    /** The source range that a generated range maps to, from its first and last characters. */
+    const spanOf = (text: string) => {
+      const start = code.indexOf(text);
+      const end = start + text.length;
+      const first = mappings.find(
+        (item) => item.generated <= start && start < item.generated + item.length,
+      )!;
+      const last = mappings.find(
+        (item) => item.generated < end && end <= item.generated + item.length,
+      )!;
+      return source.slice(
+        first.source + start - first.generated,
+        last.source + end - last.generated,
+      );
+    };
+    expect(spanOf('"aria-label"')).toBe('aria-label');
+    expect(spanOf('[title]')).toBe('[title]');
+    expect(spanOf('children')).toBe('some <b>text</b>');
+    expect(code).toContain('Badge({ children: $$markup, });');
+  });
+
+  it('leaves the names of the other $props calls out of the type of a rest', () => {
+    const code = body(`<script>
+  const { label, ...rest } = $props<{ label: string; open?: Bindable<boolean> }>();
+  let { open } = $props<{ open?: Bindable<boolean> }>();
+</script>`);
+    expect(code).toContain(
+      'const { label, ...rest } = $props<$$Omit<{ label: string; open?: Bindable<boolean> }, "open">>();',
+    );
+    expect(code).toContain('let { open } = $props<{ open?: Bindable<boolean> }>();');
+  });
+
   it('maps copied code to the file', () => {
     const source =
       "<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(0);\n</script>\n\n<p>{count + 1}</p>";

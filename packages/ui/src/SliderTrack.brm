@@ -1,8 +1,9 @@
 <script module>
-  export interface SliderTrackProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface SliderTrackProps extends ElementProps<'div'> {
     /** The SliderThumbs. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

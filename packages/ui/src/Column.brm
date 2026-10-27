@@ -1,8 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Key } from './collection.ts';
   import type { ColumnSize } from './table.ts';
 
-  export interface ColumnProps {
+  export interface ColumnProps extends Omit<ElementProps<'th'>, 'id'> {
     /** The key of the column, which `sortDescriptor` and the resize events use. */
     id?: Key;
     /** Makes the cells of the column name their rows. */
@@ -21,7 +22,6 @@
     maxWidth?: number | null;
     /** The content of the column header. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

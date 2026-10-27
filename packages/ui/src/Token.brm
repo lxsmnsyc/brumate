@@ -1,8 +1,9 @@
 <script module>
-  export interface TokenProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface TokenProps extends ElementProps<'span'> {
     /** The content of the token, such as its text. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

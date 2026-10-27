@@ -1,13 +1,13 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { DateDuration } from '@internationalized/date';
   import type { DateString } from './calendar.ts';
 
-  export interface CalendarGridProps {
+  export interface CalendarGridProps extends ElementProps<'table'> {
     /** The month to show after the first one that the Calendar shows, such as `{ months: 1 }`. */
     offset?: DateDuration;
     /** A `#template` that gets each date, to render your own CalendarCell. */
     cell?: (date: DateString) => unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

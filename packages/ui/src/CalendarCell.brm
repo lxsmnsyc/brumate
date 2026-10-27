@@ -1,12 +1,12 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { DateString } from './calendar.ts';
 
-  export interface CalendarCellProps {
+  export interface CalendarCellProps extends ElementProps<'div'> {
     /** The date as `YYYY-MM-DD`. */
     date: DateString;
     /** The content of the date. Without it, the cell shows the number of the day. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

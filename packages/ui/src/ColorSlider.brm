@@ -1,8 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { Color, ColorChannel, ColorSpace } from './color.ts';
 
-  export interface ColorSliderProps {
+  export interface ColorSliderProps extends Omit<ElementProps<'div'>, 'onChange'> {
     /** The channel that the slider adjusts, such as `hue` or `alpha`. */
     channel: ColorChannel;
     /** The space that the slider reads the channel in. A color of another space moves to it. Without it, the color keeps its own space when that space has the channel. */
@@ -21,7 +22,6 @@
     children?: unknown;
     /** A color of CSS, such as `#e2445a`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string>;
-    [attribute: string]: unknown;
   }
 </script>
 

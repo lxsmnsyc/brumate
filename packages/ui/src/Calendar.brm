@@ -1,9 +1,10 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { DateDuration, DayOfWeek } from '@internationalized/date';
   import type { DateRange, DateString } from './calendar.ts';
 
-  export interface CalendarProps {
+  export interface CalendarProps extends Omit<ElementProps<'div'>, 'onChange'> {
     /** The earliest date that can be picked. The Buttons stop at it. */
     minValue?: DateString;
     /** The latest date that can be picked. The Buttons stop at it. */
@@ -38,7 +39,6 @@
     value?: Bindable<DateString | DateRange | null>;
     /** The date that has focus. It starts at the selected date, or today. A new value moves the months that show only when the date is outside them. */
     focusedValue?: Bindable<DateString>;
-    [attribute: string]: unknown;
   }
 </script>
 

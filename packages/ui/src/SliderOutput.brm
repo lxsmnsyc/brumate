@@ -1,8 +1,9 @@
 <script module>
-  export interface SliderOutputProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface SliderOutputProps extends ElementProps<'output'> {
     /** Not rendered. The output shows the values of the Slider. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

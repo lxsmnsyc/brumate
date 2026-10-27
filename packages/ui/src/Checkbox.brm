@@ -1,7 +1,8 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
 
-  export interface CheckboxProps {
+  export interface CheckboxProps extends Omit<ElementProps<'label'>, 'onChange'> {
     /** The name of the input, posted with the form. */
     name?: string;
     /** The value that the input posts. In a CheckboxGroup, it names the box in the group. */
@@ -22,7 +23,6 @@
     children?: unknown;
     /** Whether the box is checked. A plain value starts its own state, and `$bind(signal)` writes the caller's. A group keeps the state of its boxes. */
     isSelected?: Bindable<boolean>;
-    [attribute: string]: unknown;
   }
 </script>
 

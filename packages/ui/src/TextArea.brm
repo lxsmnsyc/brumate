@@ -1,8 +1,9 @@
 <script module>
-  export interface TextAreaProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface TextAreaProps extends ElementProps<'textarea'> {
     /** The slot of the context of a part that holds this text area. */
     slot?: string | null;
-    [attribute: string]: unknown;
   }
 </script>
 
@@ -73,7 +74,7 @@
   onKeyDown=keyDown
   onInput=input
   onInvalid=(prevent(invalidated))
-  {...outerAttributes}
-  {...attributes}
+  {...(outerAttributes as ElementProps<'textarea'>)}
+  {...(attributes as ElementProps<'textarea'>)}
   {...rest}
 >{attributes.value ?? ''}</textarea>

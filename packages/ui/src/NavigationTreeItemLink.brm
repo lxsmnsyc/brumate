@@ -1,8 +1,9 @@
 <script module>
-  export interface NavigationTreeItemLinkProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface NavigationTreeItemLinkProps extends ElementProps<'a'> {
     /** The text of the link. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 
@@ -34,6 +35,6 @@
     role=(link?.href ? 'link' : undefined)
     aria-disabled=(link?.isDisabled ? 'true' : undefined)
     data-disabled=(link?.isDisabled || undefined)
-    {...rest}
+    {...(rest as ElementProps<'span'>)}
   >{children}</span>
 }

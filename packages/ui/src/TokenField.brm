@@ -1,8 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { TokenSegment } from './token-field.ts';
 
-  export interface TokenFieldProps {
+  export interface TokenFieldProps extends Omit<ElementProps<'div'>, 'onChange'> {
     /** A regular expression, as a string. Text that matches it becomes a token once a space follows it. */
     pattern?: string;
     /** The hint that the box shows while it is empty. */
@@ -23,7 +24,6 @@
     children?: unknown;
     /** The segments, each `{ type: 'text' | 'token', text }`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<TokenSegment[]>;
-    [attribute: string]: unknown;
   }
 </script>
 

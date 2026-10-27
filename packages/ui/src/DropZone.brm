@@ -1,7 +1,8 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { DropEvent, DropOperation } from './drop.ts';
 
-  export interface DropZoneProps {
+  export interface DropZoneProps extends Omit<ElementProps<'div'>, 'onDrop'> {
     /** Runs with the items of a drop or of a paste. */
     onDrop?: (event: DropEvent) => void;
     /** Runs when a drag that the area takes comes over it. */
@@ -16,7 +17,6 @@
     'aria-label'?: string;
     /** The content of the area, such as a `Text` label and a `FileTrigger`. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

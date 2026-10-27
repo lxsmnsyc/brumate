@@ -1,8 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { Color } from './color.ts';
 
-  export interface ColorWheelProps {
+  export interface ColorWheelProps extends Omit<ElementProps<'div'>, 'onChange'> {
     /** The outer radius of the ring in pixels. The wheel is a square of twice this size. */
     outerRadius: number;
     /** The inner radius of the ring in pixels. */
@@ -23,7 +24,6 @@
     children?: unknown;
     /** A color of CSS, such as `hsl(120, 50%, 40%)`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string>;
-    [attribute: string]: unknown;
   }
 </script>
 

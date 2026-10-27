@@ -1,8 +1,9 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
   import type { Color, ColorChannel, ColorSpace } from './color.ts';
 
-  export interface ColorAreaProps {
+  export interface ColorAreaProps extends Omit<ElementProps<'div'>, 'onChange'> {
     /** The channel of the horizontal axis. Without it, it is the first channel of the space. */
     xChannel?: ColorChannel;
     /** The channel of the vertical axis, which grows upward. Without it, it is the first channel of the space that is left. */
@@ -27,7 +28,6 @@
     children?: unknown;
     /** A color of CSS, such as `#e2445a`. It is `#ffffff` without one. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string>;
-    [attribute: string]: unknown;
   }
 </script>
 

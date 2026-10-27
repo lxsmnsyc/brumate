@@ -1,10 +1,11 @@
 <script module>
-  export interface BreadcrumbProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface BreadcrumbProps extends ElementProps<'li'> {
     /** Marks the step for the page that is open, and disables its link. */
     isCurrent?: boolean;
     /** A `Link`. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

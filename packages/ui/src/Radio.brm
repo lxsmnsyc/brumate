@@ -1,12 +1,13 @@
 <script module>
-  export interface RadioProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface RadioProps extends ElementProps<'label'> {
     /** The value of the radio. It names the radio in its group. */
     value: string;
     /** Disables the radio. A disabled group disables its radios too. */
     isDisabled?: boolean;
     /** The content of the label. Draw the circle here. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

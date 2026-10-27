@@ -1,7 +1,8 @@
 <script module>
+  import type { ElementProps } from 'brumate/elements';
   import type { Key } from './collection.ts';
 
-  export interface RowProps {
+  export interface RowProps extends Omit<ElementProps<'tr'>, 'id'> {
     /** The key of the row. */
     id: Key;
     /** The text that typing matches, for an item whose content is more than text. */
@@ -12,7 +13,6 @@
     onAction?: () => void;
     /** The `Cell` elements, one for each column. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

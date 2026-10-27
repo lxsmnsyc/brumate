@@ -1,8 +1,9 @@
 <script module>
-  export interface ColorWheelTrackProps {
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface ColorWheelTrackProps extends ElementProps<'div'> {
     /** Content inside the ring. */
     children?: unknown;
-    [attribute: string]: unknown;
   }
 </script>
 

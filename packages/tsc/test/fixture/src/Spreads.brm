@@ -1,0 +1,21 @@
+<script>
+  interface Attrs { id?: string; title?: string }
+  const o: { attrs?: Attrs } = {};
+  const c = Math.random() > 0.5;
+  const u: Attrs | undefined = c ? { id: 'a' } : undefined;
+  const n: Attrs | null = c ? { id: 'a' } : null;
+  const bad: { attrs?: { tabindex: 'x'; foo: 1 } } = {};
+  const count: number = 1;
+  const label: string = 'a';
+</script>
+
+<div {...o.attrs}></div>
+<div {...(c ? { id: 'a' } : undefined)}></div>
+<div {...u}></div>
+<div {...n}></div>
+<div {...undefined}></div>
+<div {...bad.attrs}></div>
+<div {...(c && { id: 'a' })}></div>
+<div {...(count && { id: 'a' })}></div>
+<div {...(label && { id: 'a' })}></div>
+<div {...(c && { nope: 1 })}></div>
