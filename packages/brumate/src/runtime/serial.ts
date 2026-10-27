@@ -39,7 +39,7 @@ import {
   onValuePlugin,
   stateValues,
 } from './shared.ts';
-import type { ChildrenReference, ScopeId } from './shared.ts';
+import type { ChildrenReference, MemoError, ScopeId } from './shared.ts';
 import type { ValuePlugin } from './values.ts';
 import type { Binding, SlotReference } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
@@ -219,6 +219,22 @@ const ChildrenPlugin = createPlugin<object, ReferenceNode>({
     ),
 });
 
+/**
+ * A memo that failed on the server. The page state holds its error, so a read in the browser
+ * throws it, as a memo that failed there. The server writes the error that is safe to send. See
+ * `stateValue`.
+ */
+const MemoErrorPlugin = createPlugin<MemoError, { e: SerovalNode }>({
+  tag: 'brumate/memo-error',
+  skipPlainObjects: true,
+  // The server marks the errors it holds, so the copies of the runtime agree on them.
+  test: (value) =>
+    typeof value === 'object' && value !== null && Symbol.for('brumate.held') in value,
+  parse: parsers((value) => ({ e: value.error })),
+  serialize: (node, ctx) => `$b.x(${ctx.serialize(node.e)})`,
+  deserialize: (node, ctx) => stateValues.x(ctx.deserialize(node.e)),
+});
+
 /** HTML, such as the `children` of a component, so the client can insert it again. */
 const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
   tag: 'brumate/raw',
@@ -314,6 +330,7 @@ const valuePlugins: Plugin<any, any>[] = [
   FunctionPlugin,
   MergedPlugin,
   InternalPlugin,
+  MemoErrorPlugin,
   ChildrenPlugin,
   RawPlugin,
   ComponentPlugin,
