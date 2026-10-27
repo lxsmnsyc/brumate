@@ -1,0 +1,13 @@
+<script>
+  import './events-aug';
+
+  function show(detail: string) {
+    console.log(detail);
+  }
+</script>
+
+<div onItemAction=((event) => show(event.detail))></div>
+<div onFooBar=(() => {})></div>
+<div onDoubleClick=(() => {})></div>
+<window onFooBar=(() => {}) />
+<document onFooBar=(() => {}) />

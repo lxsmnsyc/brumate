@@ -10,7 +10,9 @@ it('reports type errors in .brm files at their place in the file', () => {
   const errors = result.stdout
     .split('\n')
     .filter((line) => line.includes('error TS'))
-    .map((line) => line.replace(/^.*src\//, ''));
+    .map((line) => line.replace(/^.*src\//, ''))
+    // The union of the event names is long and changes with the DOM types.
+    .map((line) => line.replace(/(parameter of type '"input" \|).*$/, '$1 ...'));
   // `sign-in.brm` imports `SignIn`, the name that its file name gives the component, with no error.
   expect(errors).toEqual([
     // A prop with the wrong type, at the prop.
@@ -21,6 +23,12 @@ it('reports type errors in .brm files at their place in the file', () => {
     "App.brm(11,10): error TS2551: Property 'toFixed' does not exist on type 'string'. Did you mean 'fixed'?",
     // `$bind` on a prop that is not `Bindable`, at the prop.
     "Bind.brm(10,9): error TS2322: Type 'BoundSignal<number>' is not assignable to type 'number'.",
+    // An event that no element fires, at the attribute, on an element, `<window>` and
+    // `<document>`. `onItemAction` is typed from `ElementEvents` and has no error.
+    'Events.brm(10,6): error TS2345: Argument of type \'"foobar"\' is not assignable to parameter of type \'"input" | ...',
+    'Events.brm(11,6): error TS2345: Argument of type \'"doubleclick"\' is not assignable to parameter of type \'"input" | ...',
+    'Events.brm(12,9): error TS2345: Argument of type \'"foobar"\' is not assignable to parameter of type \'"input" | ...',
+    'Events.brm(13,11): error TS2345: Argument of type \'"foobar"\' is not assignable to parameter of type \'"input" | ...',
     // A key of `prevent` that is not a key name.
     "Keys.brm(9,56): error TS2345: Argument of type '\"ArowUp\"' is not assignable to parameter of type 'KeyName'.",
     // A prop that the component does not take, at the prop. The bindable prop of a second

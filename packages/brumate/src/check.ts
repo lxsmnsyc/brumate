@@ -8,6 +8,7 @@ import type {
   Block,
   Body,
   ComponentNode,
+  EventAttribute,
   Expression,
   Markup,
   Range,
@@ -53,11 +54,11 @@ type $$Component<P> = (props: P, ...rest: any[]) => unknown;
 type $$Markup = import('brumate/elements').Markup;
 declare const $$markup: $$Markup;
 declare function $$dynamic(tag: string | ((props: never, ...rest: never[]) => unknown), props: Record<string, unknown>): void;
-type $$Event<K, M> = K extends keyof M ? M[K] : Event;
+type $$Events = import('brumate/elements').ElementEvents;
 type $$Element<T> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement;
-declare function $$on<T extends string, K extends string>(tag: T, event: K, handler: (event: $$Event<K, HTMLElementEventMap> & { currentTarget: $$Element<T> }) => unknown): void;
-declare function $$onWindow<K extends string>(event: K, handler: (event: $$Event<K, WindowEventMap> & { currentTarget: Window }) => unknown): void;
-declare function $$onDocument<K extends string>(event: K, handler: (event: $$Event<K, DocumentEventMap> & { currentTarget: Document }) => unknown): void;
+declare function $$on<T extends string, K extends keyof $$Events & string>(tag: T, event: K, handler: (event: $$Events[K] & { currentTarget: $$Element<T> }) => unknown): void;
+declare function $$onWindow<K extends keyof WindowEventMap & string>(event: K, handler: (event: WindowEventMap[K] & { currentTarget: Window }) => unknown): void;
+declare function $$onDocument<K extends keyof DocumentEventMap & string>(event: K, handler: (event: DocumentEventMap[K] & { currentTarget: Document }) => unknown): void;
 declare function $$use(...values: unknown[]): void;
 type $$Plain = string | number | boolean | bigint | null | undefined | Date | Error | URL | URLSearchParams | ArrayBuffer | ArrayBufferView | Headers | FormData | Request | Response | ReadableStream<any> | AbortSignal | Event | DOMException | ImageData;
 type $$Sendable<T> = T extends $$Plain | import('brumate/serial').AppValue ? T : T extends { brumateId: string } ? T : T extends RegExp ? { 'A regular expression cannot be sent to the client. Send its source and flags': never } : T extends (...args: any[]) => any ? { 'A function cannot be sent to the client. Keep it out of the signal or memo': never } : T extends Promise<infer U> ? Promise<$$Sendable<U>> : T extends ReadonlyMap<infer K, infer V> ? ReadonlyMap<$$Sendable<K>, $$Sendable<V>> : T extends ReadonlySet<infer V> ? ReadonlySet<$$Sendable<V>> : T extends object ? { [K in keyof T]: $$Sendable<T[K]> } : T;
@@ -97,6 +98,15 @@ class Writer {
   stand(range: Range, text: string): void {
     this.mappings.push({ source: range.start, generated: this.code.length, length: text.length });
     this.code += text;
+  }
+
+  /**
+   * Writes the name of an event as a string. It stands in place of the attribute name, which has
+   * the same length, so that the error of an unknown event is at the attribute.
+   */
+  event(attribute: EventAttribute): void {
+    const start = this.source[attribute.start] === '{' ? attribute.handler.start : attribute.start;
+    this.stand({ start, end: start + attribute.name.length }, JSON.stringify(attribute.event));
   }
 
   /** Copies an expression in parentheses. */
@@ -353,7 +363,9 @@ class Generator {
       case 'listener': {
         const helper = node.target === 'window' ? '$$onWindow' : '$$onDocument';
         for (const attribute of node.attributes) {
-          out.text(`${helper}(${JSON.stringify(attribute.event)}, `);
+          out.text(`${helper}(`);
+          out.event(attribute);
+          out.text(', ');
           out.expression(attribute.handler);
           out.text(');\n');
         }
@@ -375,7 +387,9 @@ class Generator {
           out.text(');\n');
           break;
         case 'event':
-          out.text(`$$on(${JSON.stringify(tag)}, ${JSON.stringify(attribute.event)}, `);
+          out.text(`$$on(${JSON.stringify(tag)}, `);
+          out.event(attribute);
+          out.text(', ');
           out.expression(attribute.handler);
           out.text(');\n');
           break;

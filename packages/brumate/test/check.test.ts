@@ -68,6 +68,24 @@ describe('toTypeScript', () => {
     expect(code).toContain('} catch (error) {\nconst reset = (): void => {};');
   });
 
+  it('maps the event name to the attribute, also for a shorthand', () => {
+    const source =
+      '<script>\n  function save() {}\n</script>\n\n<p onDoubleClick=(save) /><button {save} /><b {onClick} />';
+    const { code, mappings } = toTypeScript(source, 'Card.brm');
+    for (const [name, event] of [
+      ['onDoubleClick', 'doubleclick'],
+      ['onClick', 'click'],
+    ]) {
+      const mapping = mappings.find(
+        (item) =>
+          source.startsWith(name, item.source) && code.startsWith(`"${event}"`, item.generated),
+      );
+      expect(mapping).toBeDefined();
+      expect(mapping!.length).toBe(name.length);
+    }
+    expect(code).toContain('$$on("p", "doubleclick", (save));');
+  });
+
   it('checks the expression and the body of #offscreen', () => {
     const code = body(`<script>
   import { $signal } from 'brumate/signals';
