@@ -42,6 +42,7 @@ owns:
   - website/ui/demos/DatePicker*.brm
 shared:
   - .changeset/*.md
+  - packages/ui/src/*.brm
 reserves: []
 provides: []
 depends_on:
@@ -60,6 +61,7 @@ Bring each page of Colors and Dates in website/ui to the shape of the Terracotta
 
 - Pages: color-picker, color-swatch, color-slider, color-area, color-wheel, color-field, color-swatch-picker, calendar, range-calendar, date-field, time-field, date-picker.
 - The props table comes from the generator of docs-generator, through the props-table contract. Do not write props tables by hand.
+- Write against the frozen props-table contract (contracts/props-table.md). Most props have no doc comment yet, so their Description cells are empty: write a one-sentence doc comment for each prop of your parts in packages/ui/src, and never name React Aria. See nodes/docs-generator/outcome.md.
 - The parts and their behavior are in packages/ui/src. Read the doc comment at the top of each part for its attributes and keys.
 - Source: [Props tables, anatomy and keyboard tables in the docs](../../../../proposals.md#1-props-tables-anatomy-and-keyboard-tables-in-the-docs)
 - Source: [The docs of @brumate/ui](../../../../proposals.md#the-docs-of-brumateui)
