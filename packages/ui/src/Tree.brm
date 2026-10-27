@@ -1,12 +1,12 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
   import type { TreeNode } from './tree.ts';
 
-  export interface TreeOwnProps {
+  export interface TreeOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     selectionMode?: SelectionMode;
     selectionBehavior?: SelectionBehavior;
     disabledKeys?: Key[];
@@ -42,7 +42,7 @@
    * The props of Tree. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type TreeProps<T extends AsTarget = 'div'> = AsProps<T, TreeOwnProps>;
+  export type TreeProps<T extends AsTarget = 'div'> = AsProps<T, TreeOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -107,9 +107,9 @@
     item,
     ...rest
   } = $props<TreeProps<T>>();
-  let { selectedKeys = [] } = $props<TreeOwnProps>();
-  let { ref } = $props<TreeOwnProps>();
-  let { expandedKeys = [] } = $props<TreeOwnProps>();
+  let { selectedKeys = [] } = $props<TreeOwnProps<T>>();
+  let { ref } = $props<TreeOwnProps<T>>();
+  let { expandedKeys = [] } = $props<TreeOwnProps<T>>();
 
   // The rows that show, in order: each item, then its children while it is open.
   const rows = $memo(visibleRows(items, expandedKeys));
@@ -157,7 +157,7 @@
   }
 
   function select(key: Key, request: SelectionRequest) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     const range = element ? rangeOf(element) : undefined;
     const shift = Boolean(element && request.shift && range);
     const order = element ? enabledKeys(element) : [];
@@ -193,7 +193,7 @@
   });
 
   function rowOf(target: EventTarget | null) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     const row = (target as Element | null)?.closest?.('[role=row][data-key]') as HTMLElement | null;
     return row && element?.contains(row) && row.closest('[data-collection]') === element
       ? row
@@ -201,7 +201,7 @@
   }
 
   function focused(event: FocusEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     // The list passes its focus on to a row.
     if (element && event.target === element && document.activeElement === element) {
       const items = enabledItems(element, 'row');
@@ -215,7 +215,7 @@
   }
 
   function focusIn(event: FocusEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     const row = rowOf(event.target);
     if (tabMode && row && element) {
       setLastFocused(element, keyOf(row)!);
@@ -229,7 +229,7 @@
   }
 
   function focusOut(event: FocusEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     // In tab mode the tree is no stop of its own, since its links are.
     if (element && !tabMode && !element.contains(event.relatedTarget as Node | null)) {
       element.tabIndex = 0;
@@ -248,7 +248,7 @@
   // A row that has focus can leave without a focusout, such as when its parent closes from
   // outside. The tree is a stop of Tab again when no row has focus.
   $client(() => {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (!element || tabMode) {
       return undefined;
     }
@@ -271,7 +271,7 @@
    * view first, and focuses it when it renders. `plain` focuses the row, not its first control.
    */
   function focusKey(key: Key | undefined, plain = false) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (element && key !== undefined) {
       focusKeyIn(
         element,
@@ -303,7 +303,7 @@
   }
 
   function keyDown(event: KeyboardEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     const target = event.target as HTMLElement;
     const row = rowOf(target);
     if (!element || !row) {

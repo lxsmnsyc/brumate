@@ -1,21 +1,21 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
 
-  export interface DisclosurePanelOwnProps {
+  export interface DisclosurePanelOwnProps<T extends AsTarget = 'div'> {
     role?: 'group' | 'region';
     transition?: boolean;
     unmount?: boolean | 'offscreen';
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
   }
 
   /**
    * The props of DisclosurePanel. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type DisclosurePanelProps<T extends AsTarget = 'div'> = AsProps<T, DisclosurePanelOwnProps>;
+  export type DisclosurePanelProps<T extends AsTarget = 'div'> = AsProps<T, DisclosurePanelOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -45,7 +45,7 @@
     children,
     ...rest
   } = $props<DisclosurePanelProps<T>>();
-  let { ref } = $props<DisclosurePanelOwnProps>();
+  let { ref } = $props<DisclosurePanelOwnProps<T>>();
 
   const state = $getContext(DisclosurePanelContext);
   const expanded = $untrack(Boolean(state?.isExpanded));
@@ -66,7 +66,7 @@
       return;
     }
     await nextFrame();
-    const target = ref;
+    const target = ref as HTMLElement | undefined;
     if (token === run && target) {
       const done = await enterSteps(target, stepClasses(), {
         current: () => token === run,
@@ -80,7 +80,7 @@
 
   async function close(token: number) {
     rested = false;
-    const target = ref;
+    const target = ref as HTMLElement | undefined;
     if (!transition || !target) {
       shown = false;
       return;

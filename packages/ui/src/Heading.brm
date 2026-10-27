@@ -1,10 +1,10 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
 
-  export interface HeadingOwnProps {
+  export interface HeadingOwnProps<T extends AsTarget = 'h3'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     level?: 1 | 2 | 3 | 4 | 5 | 6;
     slot?: string | null;
     children?: unknown;
@@ -14,7 +14,7 @@
    * The props of Heading. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type HeadingProps<T extends AsTarget = 'h3'> = AsProps<T, HeadingOwnProps>;
+  export type HeadingProps<T extends AsTarget = 'h3'> = AsProps<T, HeadingOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'h3'">
@@ -23,10 +23,10 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /** A heading of a level, 3 by default, as Heading of React Aria Components. */
-  const { level, slot, children, ...rest } = $props<HeadingOwnProps>();
+  const { level, slot, children, ...rest } = $props<HeadingOwnProps<T>>();
   // The props of the target of `as`, for the type of the component.
   const { as } = $props<HeadingProps<T>>();
-  let { ref } = $props<HeadingOwnProps>();
+  let { ref } = $props<HeadingOwnProps<T>>();
 
   const context = $getContext(HeadingContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));

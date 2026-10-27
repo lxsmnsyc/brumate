@@ -1,9 +1,9 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { ProgressBarState } from './progress.ts';
 
-  export interface ProgressBarOwnProps {
+  export interface ProgressBarOwnProps<T extends AsTarget = 'div'> {
     value?: number;
     isIndeterminate?: boolean;
     minValue?: number;
@@ -14,14 +14,14 @@
     content?: (state: ProgressBarState) => unknown;
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
   }
 
   /**
    * The props of ProgressBar. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type ProgressBarProps<T extends AsTarget = 'div'> = AsProps<T, ProgressBarOwnProps>;
+  export type ProgressBarProps<T extends AsTarget = 'div'> = AsProps<T, ProgressBarOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -50,7 +50,7 @@
     children,
     ...rest
   } = $props<ProgressBarProps<T>>();
-  let { ref } = $props<ProgressBarOwnProps>();
+  let { ref } = $props<ProgressBarOwnProps<T>>();
 
   const locale = $getContext(LocaleContext);
   const labelId = $id();

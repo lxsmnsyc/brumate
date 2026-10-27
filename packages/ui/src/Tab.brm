@@ -1,11 +1,11 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Key } from './collection.ts';
 
-  export interface TabOwnProps {
+  export interface TabOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     id: Key;
     isDisabled?: boolean;
     children?: unknown;
@@ -15,7 +15,7 @@
    * The props of Tab. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type TabProps<T extends AsTarget = 'div'> = AsProps<T, TabOwnProps>;
+  export type TabProps<T extends AsTarget = 'div'> = AsProps<T, TabOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -40,7 +40,7 @@
     children,
     ...rest
   } = $props<TabProps<T>>();
-  let { ref } = $props<TabOwnProps>();
+  let { ref } = $props<TabOwnProps<T>>();
 
   const tabs = $getContext(TabsContext);
   // The first tab is the one that is selected when Tabs hold no key.

@@ -1,8 +1,8 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
 
-  export interface CheckboxGroupOwnProps {
+  export interface CheckboxGroupOwnProps<T extends AsTarget = 'div'> {
     name?: string;
     isDisabled?: boolean;
     isReadOnly?: boolean;
@@ -12,14 +12,14 @@
     children?: unknown;
     value?: Bindable<string[]>;
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
   }
 
   /**
    * The props of CheckboxGroup. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type CheckboxGroupProps<T extends AsTarget = 'div'> = AsProps<T, CheckboxGroupOwnProps>;
+  export type CheckboxGroupProps<T extends AsTarget = 'div'> = AsProps<T, CheckboxGroupOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -57,8 +57,8 @@
     children,
     ...rest
   } = $props<CheckboxGroupProps<T>>();
-  let { value = [] } = $props<CheckboxGroupOwnProps>();
-  let { ref } = $props<CheckboxGroupOwnProps>();
+  let { value = [] } = $props<CheckboxGroupOwnProps<T>>();
+  let { ref } = $props<CheckboxGroupOwnProps<T>>();
 
   const labelId = $id();
   const descriptionId = $id();

@@ -1,12 +1,12 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Key } from './collection.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
 
-  export interface MenuItemOwnProps {
+  export interface MenuItemOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
@@ -22,7 +22,7 @@
    * The props of MenuItem. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type MenuItemProps<T extends AsTarget = 'div'> = AsProps<T, MenuItemOwnProps>;
+  export type MenuItemProps<T extends AsTarget = 'div'> = AsProps<T, MenuItemOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -57,7 +57,7 @@
     children,
     ...rest
   } = $props<MenuItemProps<T>>();
-  let { ref } = $props<MenuItemOwnProps>();
+  let { ref } = $props<MenuItemOwnProps<T>>();
 
   const menu = $getContext(MenuContext);
   const submenu = $getContext(SubmenuContext);

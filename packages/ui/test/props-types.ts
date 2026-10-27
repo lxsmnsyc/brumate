@@ -149,28 +149,61 @@ void Button({ as: Link, href: '/x', isCurrent: true });
 // @ts-expect-error A Link has no `value`.
 void Button({ as: Link, value: 'x' });
 
-// ref-type-parts: a caller's `$signal<HTMLElement>()` is `HTMLElement | undefined`, and `ref` of a
-// part takes it through `$bind`. It is declared in the own props, so an element target does not
-// need a `ref` of its own.
+// ref-type-parts: `ref` of a part takes a caller's signal through `$bind`. It is declared in the own
+// props, so an element target does not need a `ref` of its own.
 import { $bind } from 'brumate/signals';
 
-declare const bound: HTMLElement | undefined;
-void Link({ href: '/x', ref: $bind(bound) });
-void Button({ ref: $bind(bound) });
-void Heading({ level: 2, ref: $bind(bound) });
-void ListBox({ 'aria-label': 'Fruit', ref: $bind(bound) });
-void ListBoxItem({ id: 'a', ref: $bind(bound) });
-void Menu({ 'aria-label': 'Actions', ref: $bind(bound) });
-void MenuItem({ id: 'a', ref: $bind(bound) });
-void GridList({ 'aria-label': 'Files', ref: $bind(bound) });
-void GridListItem({ id: 'a', ref: $bind(bound) });
-void Tree({ items: [], item: () => '', ref: $bind(bound) });
-void TreeItem({ id: 'a', ref: $bind(bound) });
-void TabList({ ref: $bind(bound) });
-void Tab({ id: 'a', ref: $bind(bound) });
-void TabPanel({ id: 'a', ref: $bind(bound) });
-void TagList({ 'aria-label': 'Tags', ref: $bind(bound) });
-void Tag({ id: 'a', ref: $bind(bound) });
-void Link({ href: '/x', as: 'span', ref: $bind(bound) });
+declare const buttonEl: HTMLButtonElement | undefined;
+declare const anchorEl: HTMLAnchorElement | undefined;
+declare const divEl: HTMLDivElement | undefined;
+declare const headingEl: HTMLHeadingElement | undefined;
+void Link({ href: '/x', ref: $bind(anchorEl) });
+void Button({ ref: $bind(buttonEl) });
+void Heading({ level: 2, ref: $bind(headingEl) });
+void ListBox({ 'aria-label': 'Fruit', ref: $bind(divEl) });
+void ListBoxItem({ id: 'a', ref: $bind(divEl) });
+void Menu({ 'aria-label': 'Actions', ref: $bind(divEl) });
+void MenuItem({ id: 'a', ref: $bind(divEl) });
+void GridList({ 'aria-label': 'Files', ref: $bind(divEl) });
+void GridListItem({ id: 'a', ref: $bind(divEl) });
+void Tree({ items: [], item: () => '', ref: $bind(divEl) });
+void TreeItem({ id: 'a', ref: $bind(divEl) });
+void TabList({ ref: $bind(divEl) });
+void Tab({ id: 'a', ref: $bind(divEl) });
+void TabPanel({ id: 'a', ref: $bind(divEl) });
+void TagList({ 'aria-label': 'Tags', ref: $bind(divEl) });
+void Tag({ id: 'a', ref: $bind(divEl) });
+declare const spanEl: HTMLSpanElement | undefined;
+void Link({ href: '/x', as: 'span', ref: $bind(spanEl) });
 // @ts-expect-error A signal of a string is not an element.
 void Link({ href: '/x', ref: $bind('a') });
+
+// ref-from-as: the ref of a part takes the element of its `as` target.
+import type { TargetElement } from '../src/as.ts';
+
+void Button({ ref: $bind(buttonEl) });
+void Button({ as: 'a', ref: $bind(anchorEl) });
+// @ts-expect-error A button signal does not fit the ref of `<Button as="a">`.
+void Button({ as: 'a', ref: $bind(buttonEl) });
+// @ts-expect-error An anchor signal does not fit the ref of a default Button.
+void Button({ ref: $bind(anchorEl) });
+export const elementOfTag: TargetElement<'a'> = document.createElement('a');
+// A component target gives the element of its own `ref`, and `Element` when its `ref` is not typed.
+export const elementOfComponent: TargetElement<typeof AsTarget> = document.createElement('div');
+// @ts-expect-error The `ref` of AsTarget is an HTMLElement, so a plain Element is not one.
+export const elementOfComponentWide: TargetElement<typeof AsTarget> = document.createElementNS(
+  'http://www.w3.org/2000/svg',
+  'svg',
+);
+export const elementOfPlain: TargetElement<typeof Switch> = document.createElementNS(
+  'http://www.w3.org/2000/svg',
+  'svg',
+);
+export const elementOfSvg: TargetElement<'svg'> = document.createElementNS(
+  'http://www.w3.org/2000/svg',
+  'svg',
+);
+declare const componentEl: HTMLElement | undefined;
+void Button({ as: AsTarget, ref: $bind(componentEl) });
+// @ts-expect-error A signal of a string is not an element.
+void Button({ as: AsTarget, ref: $bind('a') });

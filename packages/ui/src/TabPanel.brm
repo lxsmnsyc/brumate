@@ -1,11 +1,11 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Key } from './collection.ts';
 
-  export interface TabPanelOwnProps {
+  export interface TabPanelOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     id: Key;
     shouldForceMount?: boolean;
     children?: unknown;
@@ -15,7 +15,7 @@
    * The props of TabPanel. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type TabPanelProps<T extends AsTarget = 'div'> = AsProps<T, TabPanelOwnProps>;
+  export type TabPanelProps<T extends AsTarget = 'div'> = AsProps<T, TabPanelOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -37,7 +37,7 @@
     children,
     ...rest
   } = $props<TabPanelProps<T>>();
-  let { ref } = $props<TabPanelOwnProps>();
+  let { ref } = $props<TabPanelOwnProps<T>>();
 
   const tabs = $getContext(TabsContext);
   const selected = $memo(Boolean(tabs) && selectedOf(tabs!) === id);
