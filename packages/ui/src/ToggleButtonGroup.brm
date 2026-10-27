@@ -29,8 +29,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $getContext, $handler, $props, $setContext } from 'brumate/signals';
-  import { prevent } from 'brumate/events';
+  import { $client, $getContext, $props, $setContext } from 'brumate/signals';
   import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
@@ -106,13 +105,8 @@
     return inToolbar ? 'group' : 'toolbar';
   }
 
-  // Up and Down of a vertical group are prevented. Home and End are prevented by preventEdges,
-  // unless a text field has focus.
-  function keys(vertical: boolean) {
-    return vertical
-      ? { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown')) }
-      : { onKeyDown: $handler(keyDown) };
-  }
+  // preventEdges prevents Home and End, and Up and Down of a vertical group, unless a text field
+  // or area has the keys for its caret.
 
   $setContext(ToggleGroupContext, { selectionMode, selectedKeys, isDisabled, toggle });
 </script>
@@ -124,7 +118,7 @@
   aria-disabled=(isDisabled ? 'true' : undefined)
   data-orientation=orientation
   data-disabled=(isDisabled || undefined)
-  {...keys(orientation === 'vertical')}
+  onKeyDown=keyDown
   onFocusIn=focusIn
   {...rest}
 >{children}</>

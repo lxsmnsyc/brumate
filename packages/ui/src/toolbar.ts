@@ -92,14 +92,20 @@ export function moveFocus(
 }
 
 /**
- * Prevents the default of Home and End while the toolbar moves focus with them, so the page does
- * not scroll. A text field keeps them, since they move its caret. The check needs the focused
- * item, so it cannot be a fixed key list of the handler. Returns a function that stops.
+ * Prevents the default of Home and End, and of Up and Down in a vertical toolbar, while the
+ * toolbar moves focus with them, so the page does not scroll. A text field keeps the keys that
+ * move its caret, and a text area keeps all of them. The check needs the focused item, so it
+ * cannot be a fixed key list of the handler. Returns a function that stops.
  */
 export function preventEdges(toolbar: Element): () => void {
   const listener = (event: Event): void => {
     const { key, ctrlKey, metaKey, altKey } = event as KeyboardEvent;
-    if ((key !== 'Home' && key !== 'End') || ctrlKey || metaKey || altKey || isNested(toolbar)) {
+    const vertical = toolbar.getAttribute('data-orientation') === 'vertical';
+    const arrow = vertical && (key === 'ArrowUp' || key === 'ArrowDown');
+    if ((key !== 'Home' && key !== 'End' && !arrow) || ctrlKey || metaKey || altKey) {
+      return;
+    }
+    if (isNested(toolbar)) {
       return;
     }
     const active = document.activeElement;

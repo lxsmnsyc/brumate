@@ -62,13 +62,13 @@ The `OverlayArrow` and the `Heading` are optional. The `DialogTrigger` is option
 
 ## Keyboard
 
-| Key                | Action                                                                                                                                           |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Tab`              | Moves focus to the trigger button.                                                                                                               |
-| `Enter` or `Space` | Presses the trigger button, which opens or closes the popover.                                                                                   |
-| `Tab`              | In the popover, moves focus to the next element. A modal popover wraps at its end.                                                               |
-| `Shift + Tab`      | In the popover, moves focus to the previous element. A modal popover wraps at its start.                                                         |
-| `Escape`           | Closes the popover when focus is inside it. A part inside that used the key, such as a search field, keeps it. A tooltip that shows hides first. |
+| Key                | Action                                                                                                                                                                                                                                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`              | Moves focus to the trigger button.                                                                                                                                                                                                                                                                    |
+| `Enter` or `Space` | Presses the trigger button, which opens or closes the popover.                                                                                                                                                                                                                                        |
+| `Tab`              | In the popover, moves focus to the next element. A modal popover wraps at its end.                                                                                                                                                                                                                    |
+| `Shift + Tab`      | In the popover, moves focus to the previous element. A modal popover wraps at its start.                                                                                                                                                                                                              |
+| `Escape`           | Closes the popover when focus is inside it. A part inside that used the key, such as a search field, keeps it. A tooltip that shows hides first. With `isNonModal`, it also closes the topmost popover when focus is on its trigger or on nothing, and not when focus is in a field or another layer. |
 
 ## Controlled and uncontrolled
 
