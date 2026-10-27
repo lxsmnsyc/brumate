@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // A component for `as` of spreadChildrenBox.
+  const { children, ...rest } = $props<{ children?: unknown; [name: string]: unknown }>();
+</script>
+
+<section data-target {...rest}>{children}</section>

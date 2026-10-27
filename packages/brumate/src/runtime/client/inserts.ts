@@ -6,7 +6,7 @@ import { attributeText, insertValue, onValue, textValue } from '../html.ts';
 import { isBinding } from '../shared.ts';
 import { findComment, findElement, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
-import { Children, TemplateCall } from './children.ts';
+import { Children, RenderedChildren, TemplateCall } from './children.ts';
 import { loadedFunction } from './code.ts';
 import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
@@ -59,7 +59,7 @@ export function text(scope: Scope, anchor: number, value: unknown): void {
   }
   const start = kept?.isConnected ? (kept as Comment) : findComment(`t${scope.id}:${anchor}`);
   if (start) {
-    write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope, start);
+    write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope, start, anchor);
   }
 }
 
@@ -67,7 +67,7 @@ export function text(scope: Scope, anchor: number, value: unknown): void {
 export function content(scope: Scope, anchor: number, value: unknown): void {
   const element = findElement(scope.id, anchor);
   if (element) {
-    write(element, element.firstChild, null, value, scope, element);
+    write(element, element.firstChild, null, value, scope, element, anchor);
   }
 }
 
@@ -101,11 +101,25 @@ function write(
   value: unknown,
   at?: Scope,
   key?: Node,
+  anchor?: number,
 ): void {
   // The same template again at an insert updates in place, with its new arguments, as a snippet
   // of Svelte does. Its elements and their focus stay.
   // The server rendered what an insert shows until its first write in the browser.
   const firstWrite = key !== undefined && !writtenInserts.has(key);
+  // A refresh of markup from the server keeps the children that the server rendered at this
+  // insert, so their nodes and focus stay. Their scopes refresh on their own.
+  if (
+    HAS_CHILDREN &&
+    refreshing &&
+    firstWrite &&
+    value instanceof RenderedChildren &&
+    value.at !== undefined &&
+    value.at === at?.id &&
+    value.anchor === anchor
+  ) {
+    return;
+  }
   if (key) {
     writtenInserts.add(key);
   }

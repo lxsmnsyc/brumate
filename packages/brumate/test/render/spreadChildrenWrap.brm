@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import SpreadChildrenBox from './spreadChildrenBox.brm';
+
+  const { children, ...rest } = $props<{ children?: unknown; [name: string]: unknown }>();
+</script>
+
+<SpreadChildrenBox {...rest}>{children}</SpreadChildrenBox>
