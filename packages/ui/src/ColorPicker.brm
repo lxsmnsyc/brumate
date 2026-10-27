@@ -3,8 +3,11 @@
   import type { Color } from './color.ts';
 
   export interface ColorPickerProps {
+    /** Runs with the color as text each time an edit from any part makes another color. */
     onChange?: (value: string) => void;
+    /** The color parts that share the color. */
     children?: unknown;
+    /** A color of CSS, such as `#e2445a`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string>;
   }
 </script>

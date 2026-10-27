@@ -4,18 +4,31 @@
   import type { DateParts, SegmentType, TimeGranularity, TimeString } from './segments.ts';
 
   export interface TimeFieldOwnProps {
+    /** The name that posts the time with a form, from a hidden input. */
     name?: string;
+    /** The earliest time, as `HH:MM`. A time before it makes the field invalid. */
     minValue?: TimeString;
+    /** The latest time, as `HH:MM`. A time after it makes the field invalid. */
     maxValue?: TimeString;
+    /** The time that an empty segment starts at when a key steps it. `00:00` by default. */
     placeholderValue?: TimeString;
+    /** The smallest segment to show: `hour`, `minute` or `second`. */
     granularity?: TimeGranularity;
+    /** Shows a 12-hour or a 24-hour clock. Without it, the locale picks. */
     hourCycle?: 12 | 24;
+    /** Disables the segments and keeps the time out of the form. */
     isDisabled?: boolean;
+    /** Keeps the user from changing the time, while the segments can be focused. */
     isReadOnly?: boolean;
+    /** Asks the browser to check on a submit that the field has a time. */
     isRequired?: boolean;
+    /** Marks the field as invalid, whatever its time. */
     isInvalid?: boolean;
+    /** Runs with the time as `HH:MM`, or `HH:MM:SS` with seconds, or `null` when a segment is emptied, each time the time changes. */
     onChange?: (value: TimeString | null) => void;
+    /** The Label, DateInput, description Text and FieldError. */
     children?: unknown;
+    /** The time as `HH:MM`, or `HH:MM:SS` with seconds, or `null` until every segment is set. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<TimeString | null>;
   }
 

@@ -3,7 +3,9 @@
   import type { DateString } from './calendar.ts';
 
   export interface CalendarGridProps {
+    /** The month to show after the first one that the Calendar shows, such as `{ months: 1 }`. */
     offset?: DateDuration;
+    /** A `#template` that gets each date, to render your own CalendarCell. */
     cell?: (date: DateString) => unknown;
     [attribute: string]: unknown;
   }
@@ -32,7 +34,7 @@
    *
    * - `offset` is the month that it shows after the first one that the Calendar shows, such as
    *   `{ months: 1 }`.
-   * - The arrow keys move focus by a day and a week, PageUp and PageDown by a month, or a year
+   * - The arrow keys move focus by a day and a week, PageUp and PageDown by one unit of the visible duration, or a year
    *   with Shift, and Home and End to the start and the end of the month. Enter and Space select
    *   the date. Escape drops the first date of a range that is not done.
    */
