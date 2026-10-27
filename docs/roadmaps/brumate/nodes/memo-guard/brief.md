@@ -1,6 +1,6 @@
 ---
 id: memo-guard
-title: A memo with a guard on its new value
+title: "$gate: a memo with a guard on its new value"
 status: todo
 priority: could
 type: feature
@@ -10,13 +10,13 @@ target:
 from:
 size: M
 spike: false
-verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "guard"
+verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "gate"
 exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-27
 owns:
-  - packages/brumate/test/render/guard*.brm
+  - packages/brumate/test/render/gate*.brm
 shared:
   - .changeset/*.md
   - packages/brumate/src/runtime/signals.ts
@@ -42,18 +42,18 @@ depends_on:
 
 ## Goal
 
-A new compile-time function, `$filter(value, (prev, next) => boolean)` (name to be confirmed by the maintainer before the PR, see Name), is a memo whose new value is taken only when the guard returns true. Otherwise it keeps its previous value and its readers do not run. One function covers a gate and a custom equality:
+A new compile-time function, `$gate(value, (prev, next) => boolean)`, is a memo whose new value is taken only when the guard returns true. Otherwise it keeps its previous value and its readers do not run. One function covers a gate and a custom equality:
 
 ```ts
-const query = $filter(input, (_, next) => next.length >= 2);
-const items = $filter(list.filter(done), (prev, next) => !sameItems(prev, next));
+const query = $gate(input, (_, next) => next.length >= 2);
+const items = $gate(list.filter(done), (prev, next) => !sameItems(prev, next));
 ```
 
 `$memo` keeps one argument; there is no options object.
 
 ## Rules (the maintainer, 2026-10-27)
 
-1. The guard returns true to let the new value through. A plain `$memo` is `$filter(x, (a, b) => !Object.is(a, b))`.
+1. The guard returns true to let the new value through. A plain `$memo` is `$gate(x, (a, b) => !Object.is(a, b))`.
 2. The first value always passes and skips the guard. The guard runs only on changes, with the previous value. On the server, with no history, the value is the source's value; the browser guards from it after resume.
 3. The first argument is any expression, tracked like `$memo`'s.
 4. Async is not supported: a promise or async iterable as the value is a compile error with a catalog entry. Loading belongs to `$memo`.
@@ -62,7 +62,7 @@ const items = $filter(list.filter(done), (prev, next) => !sameItems(prev, next))
 
 ## Name
 
-The orchestrator suggested `$gate` over `$filter`: `filter` reads as filtering the items of an array (`list.filter`), and `$guard` reads as a TypeScript type guard. The maintainer decides; use the chosen name everywhere.
+`$gate`, chosen by the maintainer on 2026-10-27 over `$filter`, which reads as filtering the items of an array, and `$guard`, which reads as a TypeScript type guard.
 
 ## Acceptance
 
