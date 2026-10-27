@@ -9,34 +9,34 @@
 
 Sections per page (A anatomy, P props, D data attributes, K keyboard, C controlled and uncontrolled, S styling). x = written, - = left out on purpose.
 
-| Page            | A   | P   | D   | K   | C   | S   |
-| --------------- | --- | --- | --- | --- | --- | --- |
-| dialog          | x   | x   | -   | x   | x   | x   |
-| popover         | x   | x   | x   | x   | x   | x   |
-| modal           | x   | x   | x   | x   | x   | x   |
-| sheet           | x   | x   | x   | x   | x   | x   |
-| tooltip         | x   | x   | x   | x   | x   | x   |
-| preview-trigger | x   | x   | x   | x   | x   | x   |
-| toast           | x   | x   | x   | x   | -   | x   |
-| disclosure      | x   | x   | x   | x   | x   | x   |
-| disclosure-group| x   | x   | x   | x   | x   | x   |
-| breadcrumbs     | x   | x   | x   | x   | -   | x   |
-| toolbar         | x   | x   | x   | x   | -   | x   |
-| meter           | x   | x   | x   | -   | -   | x   |
-| progress-bar    | x   | x   | x   | -   | -   | x   |
-| group           | x   | x   | x   | x   | -   | x   |
-| separator       | -   | x   | x   | -   | -   | x   |
-| heading         | -   | x   | x   | -   | -   | -   |
-| transition      | x   | x   | x   | -   | -   | x   |
-| visually-hidden | -   | x   | x   | x   | -   | x   |
-| keyboard        | -   | x   | x   | -   | -   | x   |
-| i18n-provider   | -   | x   | -   | -   | -   | x   |
+| Page             | A   | P   | D   | K   | C   | S   |
+| ---------------- | --- | --- | --- | --- | --- | --- |
+| dialog           | x   | x   | -   | x   | x   | x   |
+| popover          | x   | x   | x   | x   | x   | x   |
+| modal            | x   | x   | x   | x   | x   | x   |
+| sheet            | x   | x   | x   | x   | x   | x   |
+| tooltip          | x   | x   | x   | x   | x   | x   |
+| preview-trigger  | x   | x   | x   | x   | x   | x   |
+| toast            | x   | x   | x   | x   | -   | x   |
+| disclosure       | x   | x   | x   | x   | x   | x   |
+| disclosure-group | x   | x   | x   | x   | x   | x   |
+| breadcrumbs      | x   | x   | x   | x   | -   | x   |
+| toolbar          | x   | x   | x   | x   | -   | x   |
+| meter            | x   | x   | x   | -   | -   | x   |
+| progress-bar     | x   | x   | x   | -   | -   | x   |
+| group            | x   | x   | x   | x   | -   | x   |
+| separator        | -   | x   | x   | -   | -   | x   |
+| heading          | -   | x   | x   | -   | -   | -   |
+| transition       | x   | x   | x   | -   | -   | x   |
+| visually-hidden  | -   | x   | x   | x   | -   | x   |
+| keyboard         | -   | x   | x   | -   | -   | x   |
+| i18n-provider    | -   | x   | -   | -   | -   | x   |
 
 Left out: Anatomy for a single part. Data attributes for Dialog, DialogTrigger and I18nProvider (they set none). Keyboard for parts that take no keys. Controlled and uncontrolled for parts with no state (Toast keeps its state in the queue, not in a prop). Styling for Heading, which sets nothing to style. Where a part sets no data attributes but the page has the section, the page says so in a sentence (meter, heading, keyboard, preview-trigger).
 
 ## Deviations
 
-- The old prose stays under the demo, as on the other docs pages. The old `## Keyboard` prose of preview-trigger.md moved into the keyboard table, with one line of prose after it.
+- The old prose stays under the demo, as on the other docs pages. The older extra sections (DialogTrigger, Placement, Focus, OverlayArrow, Animating it, Keeping the content, The queue, The region) now come after Styling, as the contract says. The old `## Keyboard` prose of preview-trigger.md moved into the keyboard table, with one line of prose after it.
 - Props of Modal, ModalOverlay, Sheet, Group and others that take `[attribute: string]: unknown` do not list the attributes they pass on. Sheet's page says it also takes the props of a Modal.
 - Demos are unchanged.
 
@@ -50,7 +50,7 @@ Left out: Anatomy for a single part. Data attributes for Dialog, DialogTrigger a
 - Popover and ModalOverlay call `onOpenChange` only when they close themselves with their own `isOpen`. With a DialogTrigger, the trigger reports the change. The comments say so.
 - Escape closes a Popover or a Modal only when focus is inside it (the handler is on the element). Not run in a browser.
 - The keys of the tables follow the handlers (overlay.ts, preview.ts, toast.ts, toolbar.ts) and were not checked one by one in a browser.
-- Toast: F6 acts on the first toast that is not inert, not strictly the newest while another leaves. Shift + F6 behaves like F6 in the code, so the table lists F6 only.
+- Toast: F6 acts on the first toast that is not inert, not strictly the newest while another leaves. Shift + F6 behaves like F6 in the code, so the table lists both as one row.
 - Toolbar focus stops at the first and the last item. It does not wrap.
 - Group takes `as` in a separate `$props` call, so its default shows as `'div'` only because the generator reads it. TransitionChild shows only `children`, since it forwards the rest.
 - ToastRegion needs `toast` and its type shows `QueuedToast<V>`.

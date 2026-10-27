@@ -7,7 +7,7 @@
     id?: string;
     /** Disables the trigger. */
     isDisabled?: boolean;
-    /** Runs with each change of whether it is expanded. */
+    /** Runs when it expands or collapses by itself. In a group, one that the group collapses does not run it. */
     onExpandedChange?: (expanded: boolean) => void;
     /** A `Button` with `slot="trigger"` and a `DisclosurePanel`. */
     children?: unknown;

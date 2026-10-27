@@ -32,7 +32,7 @@
    *
    * - `unmount=(false)`, the default, keeps the content in the page. While it is collapsed, it
    *   is `hidden="until-found"`, so find in page and a link to an ID inside it open it. A
-   *   browser without `until-found` hides it as `hidden` does.
+   *   browser without `until-found` hides it as `hidden` does, and so does a disabled disclosure.
    * - `unmount=(true)` removes the content while it is collapsed, and `'offscreen'` keeps it in
    *   an `#offscreen` block, with its state. Both leave the content of a panel that starts
    *   collapsed out of the page, so find in page does not reach it.

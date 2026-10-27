@@ -10,6 +10,8 @@ A toolbar where the arrow keys move focus between its items.
 - Right to left, as in an [I18nProvider](./i18n-provider.md) of `ar` or `he`, Left and Right turn around.
 - Tab stops at one item, the one that had focus last, and the next Tab leaves the toolbar. This is the roving tabindex of the WAI-ARIA toolbar.
 - A text field inside keeps the keys that move its caret.
+- The arrow keys skip items that are disabled or have `aria-disabled="true"`, such as a pending button.
+- It is `role="toolbar"` with `aria-orientation`, and a `group` when it is inside another toolbar. Name it with `aria-label` or `aria-labelledby`.
 - A [ToggleButtonGroup](./toggle-button-group.md) inside leaves the keys to the toolbar.
 
 ## Anatomy

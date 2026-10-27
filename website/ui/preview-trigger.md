@@ -16,7 +16,7 @@ A preview of a link or a button, such as a card of the author behind a name. It 
 ## Closing
 
 - Leaving the trigger and the preview hides it after `closeDelay`, 200 milliseconds by default. The pointer can move from the trigger onto the preview.
-- Focus that leaves both hides it at once, and so do a press of the trigger and a press outside.
+- Focus that leaves both hides it at once, and so does a press of the trigger. A press on plain content outside moves no focus, so it hides nothing.
 - Escape hides it, and gives focus back to the trigger. That focus does not show it again.
 
 ## Anatomy
