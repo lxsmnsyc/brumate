@@ -1,0 +1,10 @@
+<script>
+  import { $props, type Bindable } from 'brumate/signals';
+
+  // A component for the tests of `as`: it forwards `ref` to its root, and spreads the rest of its
+  // props, so a part that renders it gets its element and its attributes.
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+</script>
+
+<div ref=$bind(ref) data-as-target {...rest}>{children}</div>

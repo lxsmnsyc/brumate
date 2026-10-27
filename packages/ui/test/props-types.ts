@@ -48,3 +48,26 @@ void Link({ href: '/x', as: 'span' });
 
 // A part with no `as` keeps the attributes that it spreads onto its element.
 void Switch({ name: 'a', 'data-x': 1 });
+
+// The controls, overlays and status parts take `as` too.
+import Disclosure from '../src/Disclosure.brm';
+import Popover from '../src/Popover.brm';
+import type { PopoverProps } from '../src/Popover.brm';
+import Toolbar from '../src/Toolbar.brm';
+import type { ToolbarProps } from '../src/Toolbar.brm';
+
+export const toolbar: ToolbarProps<'nav'> = {
+  as: 'nav',
+  orientation: 'vertical',
+  'aria-label': 'Tools',
+};
+// @ts-expect-error `orientation` is horizontal or vertical.
+export const toolbarOrientation: ToolbarProps = { orientation: 'diagonal' };
+// @ts-expect-error A nav has no `foo`.
+export const toolbarFoo: ToolbarProps<'nav'> = { as: 'nav', foo: true };
+export const popover: PopoverProps<'aside'> = { as: 'aside', placement: 'top', isOpen: true };
+void Toolbar({ as: 'section', 'aria-label': 'Tools' });
+// @ts-expect-error `as` takes an element name or a component.
+void Toolbar({ as: 'nothing' });
+void Popover({ as: 'aside', placement: 'top' });
+void Disclosure({ as: 'details', id: 'one', onExpandedChange: (expanded) => expanded });

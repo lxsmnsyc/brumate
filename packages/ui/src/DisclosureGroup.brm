@@ -1,17 +1,25 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
 
-  export interface DisclosureGroupProps {
+  export interface DisclosureGroupOwnProps {
     allowsMultipleExpanded?: boolean;
     isDisabled?: boolean;
     onExpandedChange?: (keys: string[]) => void;
     children?: unknown;
     expandedKeys?: Bindable<string[]>;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of DisclosureGroup. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type DisclosureGroupProps<T extends AsTarget = 'div'> = AsProps<T, DisclosureGroupOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $props, $setContext } from 'brumate/signals';
   import { DisclosureGroupContext } from './contexts.ts';
 
@@ -22,9 +30,16 @@
    * `expandedKeys=([...])` starts its own state, and `expandedKeys=$bind(signal)` writes the
    * caller's.
    */
-  const { allowsMultipleExpanded = false, isDisabled = false, onExpandedChange, children, ...rest } =
-    $props<DisclosureGroupProps>();
-  let { expandedKeys = [] } = $props<DisclosureGroupProps>();
+  const {
+    as,
+    allowsMultipleExpanded = false,
+    isDisabled = false,
+    onExpandedChange,
+    children,
+    ...rest
+  } = $props<DisclosureGroupProps<T>>();
+  let { expandedKeys = [] } = $props<DisclosureGroupOwnProps>();
+  let { ref } = $props<DisclosureGroupOwnProps>();
 
   function toggle(id: string) {
     let next: string[];
@@ -40,4 +55,4 @@
   $setContext(DisclosureGroupContext, { expandedKeys, isDisabled, toggle });
 </script>
 
-<div data-disabled=(isDisabled || undefined) {...rest}>{children}</div>
+<{as ?? 'div'} ref=$bind(ref) data-disabled=(isDisabled || undefined) {...rest}>{children}</>

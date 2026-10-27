@@ -1,7 +1,8 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
 
-  export interface CheckboxGroupProps {
+  export interface CheckboxGroupOwnProps {
     name?: string;
     isDisabled?: boolean;
     isReadOnly?: boolean;
@@ -10,11 +11,18 @@
     onChange?: (value: string[]) => void;
     children?: unknown;
     value?: Bindable<string[]>;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of CheckboxGroup. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type CheckboxGroupProps<T extends AsTarget = 'div'> = AsProps<T, CheckboxGroupOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import {
     CheckboxGroupContext,
@@ -39,6 +47,7 @@
    * checked. Without scripts, the form posts with no box checked, and the server checks it.
    */
   const {
+    as,
     name,
     isDisabled = false,
     isReadOnly = false,
@@ -47,8 +56,9 @@
     onChange,
     children,
     ...rest
-  } = $props<CheckboxGroupProps>();
-  let { value = [] } = $props<CheckboxGroupProps>();
+  } = $props<CheckboxGroupProps<T>>();
+  let { value = [] } = $props<CheckboxGroupOwnProps>();
+  let { ref } = $props<CheckboxGroupOwnProps>();
 
   const labelId = $id();
   const descriptionId = $id();
@@ -93,7 +103,8 @@
   });
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   role="group"
   aria-labelledby=labelId
   aria-describedby=(describedBy(hasDescription && descriptionId, invalid && errorId))
@@ -102,4 +113,4 @@
   data-invalid=(invalid || undefined)
   data-required=(isRequired || undefined)
   {...rest}
->{children}</div>
+>{children}</>

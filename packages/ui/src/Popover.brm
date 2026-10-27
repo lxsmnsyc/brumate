@@ -1,8 +1,9 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { Placement } from './position.ts';
 
-  export interface PopoverProps {
+  export interface PopoverOwnProps {
     placement?: Placement;
     offset?: number;
     crossOffset?: number;
@@ -13,11 +14,18 @@
     onOpenChange?: (open: boolean) => void;
     children?: unknown;
     isOpen?: Bindable<boolean>;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of Popover. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type PopoverProps<T extends AsTarget = 'div'> = AsProps<T, PopoverOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import {
     $effect,
     $getContext,
@@ -67,6 +75,7 @@
    *   Select knows its items.
    */
   const {
+    as,
     placement = 'bottom',
     offset = 8,
     crossOffset = 0,
@@ -77,8 +86,9 @@
     onOpenChange,
     children,
     ...rest
-  } = $props<PopoverProps>();
-  let { isOpen } = $props<PopoverProps>();
+  } = $props<PopoverProps<T>>();
+  let { isOpen } = $props<PopoverOwnProps>();
+  let { ref } = $props<PopoverOwnProps>();
 
   const trigger = $getContext(OverlayTriggerContext);
   const parentLayer = $getContext(LayerContext);
@@ -95,7 +105,6 @@
   let rested = $signal(false);
   let leaving = $signal(false);
   let run = $signal(0);
-  let panel = $signal<HTMLElement>();
   let layer = $signal<HTMLElement>();
 
   $setContext(LayerContext, { id: layerId });
@@ -124,7 +133,7 @@
     mounted = true;
     const returnTo = document.activeElement;
     await nextFrame();
-    const element = panel;
+    const element = ref;
     const holder = layer;
     // The popover can leave the page within the frame, such as on a route change.
     if (token !== run || !element?.isConnected || !holder) {
@@ -188,7 +197,7 @@
 
   async function hide(token: number) {
     rested = false;
-    const element = panel;
+    const element = ref;
     if (transition && element) {
       const done = await leaveSteps(element, stepClasses(), { current: () => token === run }, () => {
         leaving = true;
@@ -210,7 +219,7 @@
     // When the popover leaves the page while it is open, such as with an #if around it, its
     // panel goes with it, and what it held on the page is given back.
     return () => {
-      const element = panel;
+      const element = ref;
       if (element && !element.isConnected) {
         release(element, layer);
       }
@@ -240,15 +249,15 @@
   }
 
   function trap(event: KeyboardEvent) {
-    if (panel) {
-      containTab(panel, event);
+    if (ref) {
+      containTab(ref, event);
     }
   }
 </script>
 
 #template content() {
-  <div
-    ref=$bind(panel)
+  <{as ?? 'div'}
+    ref=$bind(ref)
     id=(trigger?.overlayId ?? ownId)
     tabindex="-1"
     style="position: fixed; top: 0; left: 0"
@@ -256,7 +265,7 @@
     data-closed=($untrack(transition || undefined))
     onKeyDown=keyDown
     {...rest}
-  >{children}</div>
+  >{children}</>
 }
 
 #if (mounted) {

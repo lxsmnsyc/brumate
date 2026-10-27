@@ -1,16 +1,25 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
   import type { QueuedToast } from './toast.ts';
 
-  export interface ToastRegionProps {
+  export interface ToastRegionOwnProps {
     queue?: string;
     toast: (item: QueuedToast<any>) => unknown;
     transition?: boolean;
     'aria-label'?: string;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of ToastRegion. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type ToastRegionProps<T extends AsTarget = 'div'> = AsProps<T, ToastRegionOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $props, $setContext, $signal } from 'brumate/signals';
   import {
     ToastRegionContext,
@@ -36,21 +45,22 @@
    *   stays until its animations end.
    */
   const {
+    as,
     queue = 'default',
     toast,
     transition = false,
     'aria-label': label = 'Notifications',
     ...rest
-  } = $props<ToastRegionProps>();
+  } = $props<ToastRegionProps<T>>();
+  let { ref } = $props<ToastRegionOwnProps>();
 
   let shown = $signal<QueuedToast<unknown>[]>([]);
-  let region = $signal<HTMLElement>();
 
   $setContext(ToastRegionContext, { queue });
 
   /** The element of a toast, by its key. */
   function toastElement(key: string) {
-    return region?.querySelector<HTMLElement>(`[data-toast-key="${CSS.escape(key)}"]`) ?? null;
+    return ref?.querySelector<HTMLElement>(`[data-toast-key="${CSS.escape(key)}"]`) ?? null;
   }
 
   async function sync() {
@@ -63,7 +73,7 @@
     // The toast with focus, when it closes.
     const focused = document.activeElement?.closest<HTMLElement>('[data-toast-key]');
     // Its place among the toasts that stay, which `next` holds, without those that leave.
-    const closing = focused && region?.contains(focused) && !keys.has(focused.dataset.toastKey!)
+    const closing = focused && ref?.contains(focused) && !keys.has(focused.dataset.toastKey!)
       ? old
           .filter((item) => keys.has(item.key) || item.key === focused.dataset.toastKey)
           .findIndex((item) => item.key === focused.dataset.toastKey)
@@ -115,7 +125,7 @@
   }
 
   function resume() {
-    const element = region;
+    const element = ref;
     if (element && !element.matches(':hover') && !element.contains(document.activeElement)) {
       toastQueue(queue).resumeAll();
     }
@@ -123,14 +133,14 @@
 
   function focusIn(event: FocusEvent) {
     const from = event.relatedTarget as Element | null;
-    if (!region?.contains(from)) {
+    if (!ref?.contains(from)) {
       rememberFocus(queue, from);
     }
     pause();
   }
 
   function focusOut(event: FocusEvent) {
-    if (!region?.contains(event.relatedTarget as Node | null)) {
+    if (!ref?.contains(event.relatedTarget as Node | null)) {
       resume();
     }
   }
@@ -140,8 +150,8 @@
   <!-- The queue sends `toastchange` here, so the code of the region loads with its first toast. -->
   <div data-toast-region=queue style="display: contents" onToastchange=sync>
     #if (shown.length > 0) {
-      <div
-        ref=$bind(region)
+      <{as ?? 'div'}
+        ref=$bind(ref)
         role="region"
         aria-label=label
         data-queue=queue
@@ -155,7 +165,7 @@
         #for (item of shown by item.key) {
           {toast(item)}
         }
-      </div>
+      </>
     }
   </div>
 }

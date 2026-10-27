@@ -1,12 +1,22 @@
 <script module>
-  export interface DialogProps {
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
+
+  export interface DialogOwnProps {
     role?: 'dialog' | 'alertdialog';
     children?: unknown;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of Dialog. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type DialogProps<T extends AsTarget = 'section'> = AsProps<T, DialogOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'section'">
   import { $getContext, $id, $props, $setContext } from 'brumate/signals';
   import { ButtonContext, DialogContext, HeadingContext, OverlayTriggerContext } from './contexts.ts';
   import { described } from './description.brm.ts';
@@ -18,7 +28,14 @@
    * React Aria, and a dialog without a Heading leaves out aria-labelledby once the browser is idle.
    * In the overlay of a DatePicker, its Button and Label name it then.
    */
-  const { role = 'dialog', children, ...rest } = $props<DialogProps>();
+  const {
+    as,
+    role = 'dialog',
+    'aria-label': label,
+    children,
+    ...rest
+  } = $props<DialogProps<T>>();
+  let { ref } = $props<DialogOwnProps>();
 
   const overlay = $getContext(DialogContext);
   const trigger = $getContext(OverlayTriggerContext);
@@ -38,9 +55,11 @@
   $setContext(ButtonContext, { slots: { default: {}, close: { onPress: close } } });
 </script>
 
-<section
+<{as ?? 'section'}
+  ref=$bind(ref)
   {role}
   tabindex="-1"
-  aria-labelledby=(rest['aria-label'] !== undefined ? undefined : titled ? titleId : overlay?.labelledBy)
+  aria-label=label
+  aria-labelledby=(label !== undefined ? undefined : titled ? titleId : overlay?.labelledBy)
   {...rest}
->{children}</section>
+>{children}</>

@@ -1,7 +1,9 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
   import type { ProgressBarState } from './progress.ts';
 
-  export interface ProgressBarProps {
+  export interface ProgressBarOwnProps {
     value?: number;
     isIndeterminate?: boolean;
     minValue?: number;
@@ -11,11 +13,18 @@
     formatOptions?: Intl.NumberFormatOptions;
     content?: (state: ProgressBarState) => unknown;
     children?: unknown;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of ProgressBar. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type ProgressBarProps<T extends AsTarget = 'div'> = AsProps<T, ProgressBarOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { LabelContext } from './contexts.ts';
   import { described } from './description.brm.ts';
@@ -30,6 +39,7 @@
    * it has no value, and shows `data-indeterminate`.
    */
   const {
+    as,
     value = 0,
     isIndeterminate = false,
     minValue = 0,
@@ -39,7 +49,8 @@
     content,
     children,
     ...rest
-  } = $props<ProgressBarProps>();
+  } = $props<ProgressBarProps<T>>();
+  let { ref } = $props<ProgressBarOwnProps>();
 
   const locale = $getContext(LocaleContext);
   const labelId = $id();
@@ -56,7 +67,8 @@
   }
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   role="progressbar"
   aria-valuenow=(isIndeterminate ? undefined : state.value)
   aria-valuemin=minValue
@@ -71,4 +83,4 @@
   #if (content) {
     {content(contentState(isIndeterminate, state.percentage, valueLabel ?? state.valueText))}
   }
-</div>
+</>

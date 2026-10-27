@@ -1,7 +1,9 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
   import type { ProgressState } from './progress.ts';
 
-  export interface MeterProps {
+  export interface MeterOwnProps {
     value?: number;
     minValue?: number;
     maxValue?: number;
@@ -10,11 +12,18 @@
     formatOptions?: Intl.NumberFormatOptions;
     content?: (state: ProgressState) => unknown;
     children?: unknown;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of Meter. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type MeterProps<T extends AsTarget = 'div'> = AsProps<T, MeterOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { LabelContext } from './contexts.ts';
   import { described } from './description.brm.ts';
@@ -28,6 +37,7 @@
    * percentage and the text, to draw the bar.
    */
   const {
+    as,
     value = 0,
     minValue = 0,
     maxValue = 100,
@@ -36,7 +46,8 @@
     content,
     children,
     ...rest
-  } = $props<MeterProps>();
+  } = $props<MeterProps<T>>();
+  let { ref } = $props<MeterOwnProps>();
 
   const locale = $getContext(LocaleContext);
   const labelId = $id();
@@ -46,7 +57,8 @@
   $setContext(LabelContext, { id: labelId });
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   role="meter"
   aria-valuenow=state.value
   aria-valuemin=minValue
@@ -60,4 +72,4 @@
   #if (content) {
     {content({ ...state, valueText: valueLabel ?? state.valueText })}
   }
-</div>
+</>

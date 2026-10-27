@@ -1,18 +1,26 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
 
-  export interface DisclosureProps {
+  export interface DisclosureOwnProps {
     /** The key of the disclosure in a DisclosureGroup. */
     id?: string;
     isDisabled?: boolean;
     onExpandedChange?: (expanded: boolean) => void;
     children?: unknown;
     isExpanded?: Bindable<boolean>;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of Disclosure. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type DisclosureProps<T extends AsTarget = 'div'> = AsProps<T, DisclosureOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { ButtonContext, DisclosureGroupContext, DisclosurePanelContext } from './contexts.ts';
 
@@ -25,8 +33,9 @@
    * DisclosureGroup, the group keeps the state, and `id` names the disclosure in it. Without
    * `id`, it takes an ID of its own, as in React Aria, so it still joins the group.
    */
-  const { id, isDisabled = false, onExpandedChange, children, ...rest } = $props<DisclosureProps>();
-  let { isExpanded = false } = $props<DisclosureProps>();
+  const { as, id, isDisabled = false, onExpandedChange, children, ...rest } = $props<DisclosureProps<T>>();
+  let { isExpanded = false } = $props<DisclosureOwnProps>();
+  let { ref } = $props<DisclosureOwnProps>();
 
   const group = $getContext(DisclosureGroupContext);
   const triggerId = $id();
@@ -81,4 +90,9 @@
   });
 </script>
 
-<div data-expanded=(expanded || undefined) data-disabled=(disabled || undefined) {...rest}>{children}</div>
+<{as ?? 'div'}
+  ref=$bind(ref)
+  data-expanded=(expanded || undefined)
+  data-disabled=(disabled || undefined)
+  {...rest}
+>{children}</>
