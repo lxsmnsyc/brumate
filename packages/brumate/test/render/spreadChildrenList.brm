@@ -1,0 +1,12 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  // Calls a template of its caller for each item, with a value that the browser changes.
+  const { items, item } = $props<{ items: string[]; item: (label: string, open: boolean) => unknown }>();
+  let open = $signal(false);
+</script>
+
+<button class="sc-toggle" onClick=(() => (open = !open))>Toggle</button>
+#for (label of items) {
+  {item(label, open)}
+}

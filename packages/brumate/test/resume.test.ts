@@ -2262,6 +2262,77 @@ describe('spreads that update together', () => {
   });
 });
 
+describe('a spread onto a component', () => {
+  // spreadChildrenWrap spreads its rest onto spreadChildrenBox, so every prop of the box can
+  // change in the project, its children too.
+  it('keeps the children of the component when another prop changes', async () => {
+    await resume('spreadChildrenPage', {});
+    const input = document.querySelector<HTMLInputElement>('.sc-direct')!;
+    input.focus();
+    click(document.querySelector('.sc-tone')!);
+    await waitFor(() => expect(input.parentElement!.className).toBe('sc-b'));
+    expect(document.querySelector('.sc-direct')).toBe(input);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('keeps the children of the component in a template when the template updates', async () => {
+    await resume('spreadChildrenPage', {});
+    const input = document.querySelector<HTMLInputElement>('.sc-input')!;
+    input.focus();
+    click(document.querySelector('.sc-toggle')!);
+    await waitFor(() =>
+      expect(document.querySelector('.sc-input')!.parentElement!.className).toBe('sc-open'),
+    );
+    expect(document.querySelector('.sc-input')).toBe(input);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('keeps the children of the component in a body that streams in after a change', async () => {
+    const server = await import(file('spreadChildrenStream.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    await startLoader();
+    // A change before the body streams in, so the body updates from older values when it comes.
+    click(document.querySelector('.sc-tone')!);
+    await waitFor(() => expect(text('.sc-tone')).toBe('sc-b'));
+    server.release('Ada');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    const input = document.querySelector<HTMLInputElement>('.sc-streamed')!;
+    input.focus();
+    // The box gets the new class, and keeps the children that the server rendered.
+    await waitFor(() =>
+      expect(document.querySelector('.sc-streamed')!.parentElement!.className).toBe('sc-b'),
+    );
+    await new Promise((done) => setTimeout(done, 20));
+    expect(document.querySelector('.sc-streamed')).toBe(input);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('keeps the component in `as` that the server rendered, in a body that streams in later', async () => {
+    const server = await import(file('spreadChildrenStream.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    await startLoader();
+    click(document.querySelector('.sc-tone')!);
+    await waitFor(() => expect(text('.sc-tone')).toBe('sc-b'));
+    server.release('Ada');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    const target = document.querySelector('[data-target]')!;
+    const input = document.querySelector<HTMLInputElement>('.sc-target')!;
+    expect(input.parentElement).toBe(target);
+    input.focus();
+    await waitFor(() => expect(document.querySelector('[data-target]')!.className).toBe('sc-b'));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(document.querySelector('[data-target]')).toBe(target);
+    expect(document.querySelector('.sc-target')).toBe(input);
+    expect(document.activeElement).toBe(input);
+  });
+});
+
 describe('templates with components', () => {
   it('renders a component of a template that another component calls in the browser', async () => {
     await resume('tplComponentPage', {});

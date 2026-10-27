@@ -2,6 +2,7 @@
 // and `#offscreen`.
 
 import { parseId } from '../shared.ts';
+import type { ComponentValue } from '../shared.ts';
 import { blockStart, rangeEnd } from './blocks.ts';
 import { loadModule, loadPart } from './code.ts';
 import { insertHTML } from './insert.ts';
@@ -86,6 +87,19 @@ export function retag(
     if (node?.nodeType === 1 && (node as Element).localName === value.toLowerCase()) {
       scope.keys.set(anchor, value);
       return;
+    }
+  }
+  // A component in the tag: the first update keeps it when the block holds the same component.
+  if (!scope.keys.has(anchor) && typeof value === 'function') {
+    for (const block of scopes.values()) {
+      if (block.p === scope && kinds.includes(block.k)) {
+        for (const id of Object.values(block.c ?? {})) {
+          if (scopes.get(id)?.m === (value as ComponentValue).brumateId) {
+            scope.keys.set(anchor, value);
+            return;
+          }
+        }
+      }
     }
   }
   rekey(scope, anchor, value, render, kinds, holderKind, holderAnchor);

@@ -1,0 +1,28 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  export const ready = new Promise<string>((resolve) => {
+    open = resolve;
+  });
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import SpreadChildrenBox from './spreadChildrenBox.brm';
+  import SpreadChildrenTarget from './spreadChildrenTarget.brm';
+
+  let tone = $signal('sc-a');
+  const label = $memo(await ready);
+</script>
+
+<button class="sc-tone" onClick=(() => (tone = 'sc-b'))>{tone}</button>
+#loading {
+  <SpreadChildrenBox class=(tone)><input class="sc-streamed" aria-label=(label) /></SpreadChildrenBox>
+  <SpreadChildrenBox as=SpreadChildrenTarget class=(tone)><input class="sc-target" /></SpreadChildrenBox>
+} #else {
+  <p class="sc-fallback">Loading</p>
+}

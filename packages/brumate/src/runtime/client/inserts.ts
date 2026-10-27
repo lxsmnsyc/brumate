@@ -6,7 +6,7 @@ import { attributeText, insertValue, onValue, textValue } from '../html.ts';
 import { isBinding } from '../shared.ts';
 import { findComment, findElement, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
-import { Children, TemplateCall } from './children.ts';
+import { Children, RenderedChildren, TemplateCall } from './children.ts';
 import { loadedFunction } from './code.ts';
 import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
@@ -106,6 +106,11 @@ function write(
   // of Svelte does. Its elements and their focus stay.
   // The server rendered what an insert shows until its first write in the browser.
   const firstWrite = key !== undefined && !writtenInserts.has(key);
+  // A refresh of markup from the server keeps the children that the server rendered there, so
+  // their nodes and focus stay. Their scopes refresh on their own.
+  if (HAS_CHILDREN && refreshing && firstWrite && value instanceof RenderedChildren) {
+    return;
+  }
   if (key) {
     writtenInserts.add(key);
   }
