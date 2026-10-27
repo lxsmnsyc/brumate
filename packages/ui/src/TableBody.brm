@@ -1,13 +1,14 @@
 <script module>
-  export interface TableBodyProps {
-    // oxlint-disable-next-line typescript/no-explicit-any -- The items of a Table are the caller's.
-    item?: (item: any) => unknown;
+  import type { Key } from './collection.ts';
+
+  export interface TableBodyProps<V extends { id: Key } = { id: Key }> {
+    item?: (item: V) => unknown;
     children?: unknown;
     [attribute: string]: unknown;
   }
 </script>
 
-<script>
+<script generics="V extends { id: Key }">
   import { $getContext, $props } from 'brumate/signals';
   import { TableContext } from './table.ts';
 
@@ -16,8 +17,9 @@
    * a `#for`. Or, when the Table has `items`, the `item` template renders a Row for each one, and
    * only the rows in view when the Table is windowed.
    */
-  const { item, children, ...rest } = $props<TableBodyProps>();
+  const { item, children, ...rest } = $props<TableBodyProps<V>>();
 
+  // The cast to `V` is unchecked: `V` must be the type of the `items` of the Table.
   const table = $getContext(TableContext);
 </script>
 
@@ -26,11 +28,11 @@
   #if (table?.items && item) {
     #if (table.windowHeight) {
       #for (entry of table.items by entry.id) window(table.windowHeight) {
-        {item(entry)}
+        {item(entry as V)}
       }
     } #else {
       #for (entry of table.items by entry.id) {
-        {item(entry)}
+        {item(entry as V)}
       }
     }
   }

@@ -19,7 +19,7 @@ export interface QueuedToast<T> {
 
 export interface ToastOptions {
   /**
-   * Closes the toast after this many milliseconds, at least 5000, as React Aria asks for. The
+   * Closes the toast after this many milliseconds, at least 5000. The
    * time stops while the pointer or focus is in the region. Without it, the toast stays until
    * it is closed.
    */
