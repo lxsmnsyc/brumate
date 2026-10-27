@@ -3,16 +3,25 @@
   import type { HoverEvent } from './events.ts';
 
   export interface GroupOwnProps {
+    /** The role of the group, `group` by default. */
     role?: 'group' | 'region' | 'presentation';
+    /** The slot of the context of a part that holds this one. */
     slot?: string | null;
+    /** Disables the group, and sets `data-disabled`. */
     isDisabled?: boolean;
+    /** Marks the group invalid, and sets `data-invalid`. */
     isInvalid?: boolean;
+    /** Runs when a mouse or a pen moves over the group. */
     onHoverStart?: (event: HoverEvent) => void;
+    /** Runs when a mouse or a pen leaves the group. */
     onHoverEnd?: (event: HoverEvent) => void;
+    /** Runs when the group starts or stops being hovered. */
     onHoverChange?: (hovered: boolean) => void;
-    /** `aria-disabled` and `aria-invalid` of the caller give the state too. */
+    /** The `aria-disabled` of the caller gives the state too. */
     'aria-disabled'?: unknown;
+    /** The `aria-invalid` of the caller gives the state too. */
     'aria-invalid'?: unknown;
+    /** The parts of the group. */
     children?: unknown;
   }
 

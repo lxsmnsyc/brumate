@@ -1,5 +1,6 @@
 <script module>
   export interface ToastContentProps {
+    /** The text of the toast, with `Text` elements that have `slot="title"` and `slot="description"`. */
     children?: unknown;
     [attribute: string]: unknown;
   }

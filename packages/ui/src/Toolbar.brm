@@ -3,7 +3,9 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface ToolbarOwnProps<T extends AsTarget = 'div'> {
+    /** The direction of its items, which decides the arrow keys that move focus. */
     orientation?: 'horizontal' | 'vertical';
+    /** The items of the toolbar, such as buttons. */
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

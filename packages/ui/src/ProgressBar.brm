@@ -4,14 +4,21 @@
   import type { ProgressBarState } from './progress.ts';
 
   export interface ProgressBarOwnProps<T extends AsTarget = 'div'> {
+    /** The current value. */
     value?: number;
+    /** Marks a task of no known length. The bar has no value. */
     isIndeterminate?: boolean;
+    /** The smallest value of the range. */
     minValue?: number;
+    /** The largest value of the range. */
     maxValue?: number;
     /** The text of the value, in place of the formatted number. */
     valueLabel?: string;
+    /** The options of `Intl.NumberFormat` for the text of the value. */
     formatOptions?: Intl.NumberFormatOptions;
+    /** A template that gets the percentage and the text of the value, to draw the bar. */
     content?: (state: ProgressBarState) => unknown;
+    /** A `Label`, and what the bar shows. */
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

@@ -9,9 +9,72 @@ A section that the user expands and collapses, such as a question of an FAQ.
 - A `Disclosure` holds a `Button` with `slot="trigger"`, often in a `Heading`, and a `DisclosurePanel`.
 - The trigger gets `aria-expanded` and `aria-controls`. The panel is a group that the trigger names.
 - `isExpanded` is the state. See [State](./state.md).
-- While it is collapsed, the panel is `hidden="until-found"`, so find in page reaches its text and opens it. A browser without `until-found` hides it as `hidden` does.
+- While it is collapsed, the panel is `hidden="until-found"`, so find in page reaches its text and opens it. A browser without `until-found` hides it as `hidden` does. A disabled disclosure has a plain `hidden` panel, so find in page does not open it.
 - The element shows `data-expanded` and `data-disabled`. The panel shows `data-expanded`.
 - A [DisclosureGroup](./disclosure-group.md) opens several of them one at a time.
+
+## Anatomy
+
+```html
+<Disclosure>
+  <Heading>
+    <Button slot="trigger" />
+  </>
+  <DisclosurePanel />
+</>
+```
+
+The `Heading` is optional.
+
+## Props
+
+### Disclosure
+
+```props Disclosure
+
+```
+
+### DisclosurePanel
+
+```props DisclosurePanel
+
+```
+
+## Data attributes
+
+### Disclosure
+
+| Attribute       | When            |
+| --------------- | --------------- |
+| `data-expanded` | It is expanded. |
+| `data-disabled` | It is disabled. |
+
+### DisclosurePanel
+
+| Attribute         | When                                                    |
+| ----------------- | ------------------------------------------------------- |
+| `data-expanded`   | Its disclosure is expanded.                             |
+| `data-closed`     | It has `transition`, and it is closed or about to open. |
+| `data-enter`      | It has `transition`, and its enter is running.          |
+| `data-leave`      | It has `transition`, and its leave is running.          |
+| `data-transition` | It has `transition`, and it is entering or leaving.     |
+
+The trigger shows the data attributes of a [Button](./button.md#data-attributes).
+
+## Keyboard
+
+| Key                | Action                                                        |
+| ------------------ | ------------------------------------------------------------- |
+| `Tab`              | Moves focus to the trigger. A disabled disclosure is skipped. |
+| `Enter` or `Space` | Presses the trigger, which expands or collapses the panel.    |
+
+## Controlled and uncontrolled
+
+`isExpanded` holds the state. `isExpanded=(true)` starts the disclosure expanded, and `isExpanded=$bind(signal)` writes your signal. `onExpandedChange` gets each new state. In a [DisclosureGroup](./disclosure-group.md), the group holds the state, and a disclosure that the group collapses, because another one opened, does not run its own `onExpandedChange`. The `onExpandedChange` of the group does. See [State](./state.md).
+
+## Styling
+
+Style the disclosure and its panel with the data attributes above, such as `[data-expanded]`. See [Animating the panel](#animating-the-panel) for `--disclosure-panel-height`, and [Styling](./styling.md).
 
 ## Animating the panel
 

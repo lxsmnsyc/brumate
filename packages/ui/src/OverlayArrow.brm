@@ -1,5 +1,6 @@
 <script module>
   export interface OverlayArrowProps {
+    /** The shape of the arrow, if it is not drawn with CSS. */
     children?: unknown;
     [attribute: string]: unknown;
   }

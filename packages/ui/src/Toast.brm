@@ -4,7 +4,9 @@
   import type { QueuedToast } from './toast.ts';
 
   export interface ToastOwnProps<T extends AsTarget = 'div'> {
+    /** The toast of the queue that this element shows, as the region gives it to the template. */
     toast: QueuedToast<unknown>;
+    /** A `ToastContent` and, after it, an optional `Button` with `slot="close"`. */
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

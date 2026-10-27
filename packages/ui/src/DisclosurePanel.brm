@@ -3,9 +3,13 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface DisclosurePanelOwnProps<T extends AsTarget = 'div'> {
+    /** The role of the panel. Use `region` for a landmark. */
     role?: 'group' | 'region';
+    /** Lets CSS animate the panel, with `data-closed`, `data-enter`, `data-leave` and `--disclosure-panel-height`. */
     transition?: boolean;
+    /** What happens to the content while it is collapsed: `false` keeps it, `true` removes it, and `offscreen` keeps it with its state. */
     unmount?: boolean | 'offscreen';
+    /** The content of the panel. */
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
@@ -28,7 +32,7 @@
    *
    * - `unmount=(false)`, the default, keeps the content in the page. While it is collapsed, it
    *   is `hidden="until-found"`, so find in page and a link to an ID inside it open it. A
-   *   browser without `until-found` hides it as `hidden` does.
+   *   browser without `until-found` hides it as `hidden` does, and so does a disabled disclosure.
    * - `unmount=(true)` removes the content while it is collapsed, and `'offscreen'` keeps it in
    *   an `#offscreen` block, with its state. Both leave the content of a panel that starts
    *   collapsed out of the page, so find in page does not reach it.

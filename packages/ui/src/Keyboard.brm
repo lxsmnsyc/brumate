@@ -2,6 +2,7 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface KeyboardOwnProps {
+    /** The keys of the shortcut. */
     children?: unknown;
   }
 

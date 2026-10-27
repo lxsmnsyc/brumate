@@ -2,7 +2,9 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface VisuallyHiddenOwnProps {
+    /** Shows the content while it or an element in it has focus. */
     focusable?: boolean;
+    /** The content to hide from sight. */
     children?: unknown;
   }
 
@@ -17,9 +19,8 @@
   import { $props } from 'brumate/signals';
 
   /**
-   * Hides its content from sight and keeps it for screen readers, as `VisuallyHidden` of React
-   * Aria does. With `focusable`, the content shows while it or an element in it has focus, such
-   * as a link to skip to the content.
+   * Hides its content from sight and keeps it for screen readers. With `focusable`, the content
+   * shows while it or an element in it has focus, such as a link to skip to the content.
    */
   const { as = 'span', focusable = false, children, ...rest } = $props<VisuallyHiddenProps<T>>();
 </script>

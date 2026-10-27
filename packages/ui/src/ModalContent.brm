@@ -1,5 +1,6 @@
 <script module>
   export interface ModalContentProps {
+    /** The content of the box of a `Modal`. */
     children?: unknown;
   }
 </script>

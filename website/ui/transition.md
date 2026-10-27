@@ -52,3 +52,42 @@ An element inside a `Transition`, or inside a part with `transition`, that moves
   <TransitionChild class="panel">The panel slides in after the backdrop fades in.</TransitionChild>
 </Transition>
 ```
+
+## Anatomy
+
+```html
+<Transition>
+  <TransitionChild>The content.</>
+</>
+```
+
+The `TransitionChild` is optional.
+
+## Props
+
+### Transition
+
+```props Transition
+
+```
+
+### TransitionChild
+
+```props TransitionChild
+
+```
+
+A `TransitionChild` takes the props of `Transition`, except `show`.
+
+## Data attributes
+
+| Attribute         | When                                    |
+| ----------------- | --------------------------------------- |
+| `data-closed`     | The content is closed or about to open. |
+| `data-enter`      | Its enter is running.                   |
+| `data-leave`      | Its leave is running.                   |
+| `data-transition` | It is entering or leaving.              |
+
+## Styling
+
+Style the content with the attributes above, or with the classes of `enter`, `enterFrom` and the other class props. See [Styling](./styling.md).
