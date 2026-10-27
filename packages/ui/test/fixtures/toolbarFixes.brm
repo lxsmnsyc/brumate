@@ -24,6 +24,10 @@
   <Button class="up">Up</Button>
   <Button class="down">Down</Button>
 </Toolbar>
+<Toolbar class="notes" aria-label="Notes" orientation="vertical">
+  <Button class="note-button">Note</Button>
+  <textarea class="area" aria-label="Notes"></textarea>
+</Toolbar>
 <Toolbar class="fields" aria-label="Fields">
   <Button class="before">Before</Button>
   <input class="field" aria-label="Field" />
@@ -32,6 +36,10 @@
 <ToggleButtonGroup class="vgroup" aria-label="Vertical group" selectionMode="multiple" orientation="vertical">
   <ToggleButton id="a" class="va">A</ToggleButton>
   <ToggleButton id="b" class="vb">B</ToggleButton>
+</ToggleButtonGroup>
+<ToggleButtonGroup class="vnotes" aria-label="Vertical notes" selectionMode="multiple" orientation="vertical">
+  <ToggleButton id="n" class="vn">N</ToggleButton>
+  <textarea class="varea" aria-label="Notes"></textarea>
 </ToggleButtonGroup>
 <ToggleButtonGroup class="withfield" aria-label="With field" selectionMode="multiple">
   <ToggleButton id="x" class="wx">X</ToggleButton>

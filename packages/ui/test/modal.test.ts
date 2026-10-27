@@ -259,3 +259,15 @@ it('keeps the page inert until the last of two overlays gives it back, in any or
   second.remove();
   late.remove();
 });
+
+it('reports a close once while the overlay leaves', async () => {
+  const page = await modals();
+  pressWith(page.get('.own-trigger'));
+  await page.waitFor(() => expect(find('.own-overlay')).not.toBeNull());
+  const overlay = find('.own-overlay')!;
+  // The second key comes before the leave ends.
+  press('Escape', overlay);
+  press('Escape', overlay);
+  await page.waitFor(() => expect(find('.own-overlay')).toBeNull());
+  expect(page.text('.changes')).toBe('1');
+});

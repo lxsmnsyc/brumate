@@ -208,8 +208,9 @@ let landmarks = false;
 
 /**
  * F6 moves focus to the newest toast, and F6 or Shift+F6 in the toasts gives it back to the
- * element that had it. This lets a keyboard user reach a ToastRegion, which is not in the order of
- * Tab. It starts with the first toast.
+ * element that had it. Shift+F6 outside the toasts does nothing. The key is prevented only when
+ * focus moves. This lets a keyboard user reach a ToastRegion, which is not in the order of Tab.
+ * It starts with the first toast.
  */
 export function listenForF6(): void {
   if (landmarks) {
@@ -223,8 +224,15 @@ export function listenForF6(): void {
     const active = document.activeElement;
     const inside = active?.closest<HTMLElement>('[role=region][data-queue]');
     if (inside) {
-      event.preventDefault();
       restoreFocus(inside.dataset.queue!);
+      // Without an element to give focus back to, the key keeps its default.
+      if (document.activeElement !== active) {
+        event.preventDefault();
+      }
+      return;
+    }
+    // Shift+F6 outside the toasts is not for them.
+    if (event.shiftKey) {
       return;
     }
     // A toast that leaves is inert, so F6 goes to the first one that stays.
@@ -232,9 +240,12 @@ export function listenForF6(): void {
       ...document.querySelectorAll<HTMLElement>('[role=region][data-queue] [data-toast-key]'),
     ].find((element) => !element.closest('[inert]'));
     if (toast) {
-      event.preventDefault();
-      rememberFocus(toast.closest<HTMLElement>('[data-queue]')!.dataset.queue!, active);
       toast.focus();
+      // A toast that cannot take focus leaves the key to the browser.
+      if (document.activeElement === toast) {
+        event.preventDefault();
+        rememberFocus(toast.closest<HTMLElement>('[data-queue]')!.dataset.queue!, active);
+      }
     }
   });
 }

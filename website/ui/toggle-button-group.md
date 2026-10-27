@@ -47,13 +47,13 @@ The buttons show [their own attributes](./toggle-button.md#data-attributes).
 
 Only one button of the group is in the order of Tab. It is the one that had focus last.
 
-| Key                         | Action                                                                                                 |
-| --------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `Tab`                       | Moves focus into the group, to the button that had focus last.                                         |
-| `ArrowRight` or `ArrowLeft` | Moves focus to the next or previous button of a horizontal group. Right to left, the keys turn around. |
-| `ArrowDown` or `ArrowUp`    | Moves focus to the next or previous button of a vertical group.                                        |
-| `Home` or `End`             | Moves focus to the first or the last button.                                                           |
-| `Enter` or `Space`          | Toggles the focused button.                                                                            |
+| Key                         | Action                                                                                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`                       | Moves focus into the group, to the button that had focus last.                                                                                            |
+| `ArrowRight` or `ArrowLeft` | Moves focus to the next or previous button of a horizontal group. Right to left, the keys turn around.                                                    |
+| `ArrowDown` or `ArrowUp`    | Moves focus to the next or previous button of a vertical group. A text area in the group keeps them, and the page prevents them once its code has loaded. |
+| `Home` or `End`             | Moves focus to the first or the last button.                                                                                                              |
+| `Enter` or `Space`          | Toggles the focused button.                                                                                                                               |
 
 ## Controlled and uncontrolled
 

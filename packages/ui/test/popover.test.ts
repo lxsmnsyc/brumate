@@ -285,3 +285,75 @@ it('closes with a Button of the close slot each time it opens', async () => {
   pressWith(find('.close')!);
   await page.waitFor(() => expect(find('.popover')).toBeNull());
 });
+
+it('closes a non-modal popover on Escape while focus stays on its trigger', async () => {
+  const page = await popovers();
+  const trigger = page.get('.loose-trigger');
+  pressWith(trigger);
+  await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+  trigger.focus();
+  press('Escape', trigger);
+  await page.waitFor(() => expect(find('.loose-popover')).toBeNull());
+});
+
+it('closes a non-modal popover on Escape while nothing has focus', async () => {
+  const page = await popovers();
+  pressWith(page.get('.loose-trigger'));
+  await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+  (document.activeElement as HTMLElement).blur();
+  press('Escape', document.body);
+  await page.waitFor(() => expect(find('.loose-popover')).toBeNull());
+});
+
+it('leaves Escape to a field outside a non-modal popover', async () => {
+  const page = await popovers();
+  const trigger = page.get('.loose-trigger');
+  pressWith(trigger);
+  await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+  const field = document.createElement('input');
+  field.setAttribute('aria-label', 'Search');
+  trigger.parentElement!.append(field);
+  try {
+    // The field is a layer-less element beside the trigger: focus there closes the popover on
+    // blur, so only the key is checked once the popover is open again.
+    field.focus();
+    await page.waitFor(() => expect(find('.loose-popover')).toBeNull());
+    pressWith(trigger);
+    await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+    press('Escape', field);
+    expect(find('.loose-popover')).not.toBeNull();
+  } finally {
+    field.remove();
+  }
+});
+
+it('closes a non-modal popover on Escape from a trigger inside a dialog, and keeps the dialog', async () => {
+  const page = await popovers();
+  pressWith(page.get('.host-trigger'));
+  await page.waitFor(() => expect(find('.host')).not.toBeNull());
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.host-dialog')));
+  const trigger = find('.host-loose-trigger')!;
+  pressWith(trigger);
+  await page.waitFor(() => expect(find('.host-loose')).not.toBeNull());
+  trigger.focus();
+  press('Escape', trigger);
+  await page.waitFor(() => expect(find('.host-loose')).toBeNull());
+  expect(find('.host')).not.toBeNull();
+});
+
+it('leaves Escape to a layer that is open above a non-modal popover', async () => {
+  const page = await popovers();
+  pressWith(page.get('.loose-trigger'));
+  await page.waitFor(() => expect(find('.loose-popover')).not.toBeNull());
+  const above = document.createElement('div');
+  above.setAttribute('data-layer', '');
+  document.body.append(above);
+  try {
+    (document.activeElement as HTMLElement).blur();
+    press('Escape', document.body);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(find('.loose-popover')).not.toBeNull();
+  } finally {
+    above.remove();
+  }
+});

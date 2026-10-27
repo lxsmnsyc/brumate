@@ -62,11 +62,11 @@ The `Text` with `slot="description"` and the close `Button` are optional. The `T
 
 ## Keyboard
 
-| Key                  | Action                                                                                                                     |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `F6` or `Shift + F6` | Moves focus to the newest toast that stays. In the region, gives focus back to where it was before. Shift changes nothing. |
-| `Tab`                | Moves focus between the toasts and their buttons, in the order of the page.                                                |
-| `Enter` or `Space`   | On the close button, closes the toast.                                                                                     |
+| Key                  | Action                                                                                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `F6` or `Shift + F6` | `F6` outside the region moves focus to the newest toast that stays. In the region, both give focus back to where it was before. `Shift + F6` outside the region does nothing. The key is prevented only when focus moves. |
+| `Tab`                | Moves focus between the toasts and their buttons, in the order of the page.                                                                                                                                               |
+| `Enter` or `Space`   | On the close button, closes the toast.                                                                                                                                                                                    |
 
 ## Styling
 

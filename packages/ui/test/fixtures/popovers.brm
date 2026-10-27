@@ -58,6 +58,19 @@
     </Popover>
   </DialogTrigger>
   <DialogTrigger>
+    <Button class="host-trigger">Host</Button>
+    <Popover class="host">
+      <Dialog class="host-dialog" aria-label="Host">
+        <DialogTrigger>
+          <Button class="host-loose-trigger">Loose</Button>
+          <Popover class="host-loose" isNonModal>
+            <Dialog class="host-loose-dialog" aria-label="Host loose">Loose</Dialog>
+          </Popover>
+        </DialogTrigger>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <DialogTrigger>
     <Button class="fade-trigger">Fade</Button>
     <Popover transition class="fade" isNonModal>
       <Dialog class="fade-dialog" aria-label="Faded">Faded</Dialog>
