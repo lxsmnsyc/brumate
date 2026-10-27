@@ -28,6 +28,26 @@ The rows report has no `JS before load` row. The page loads all of its client co
 
 The benchmarks README, from 2026-10-22, has 2.1 kB gzip before `load` for todos and 3.1 kB for the dashboard. Now they are 13.9 kB and 23.6 kB. The likely cause is the change of 2026-10-25 that loads all page code at the start (not checked here). These are the numbers that the next steps have to bring down. Marko 6 loads 4.4 kB and 10.5 kB.
 
+### Size after size-trim, 2026-10-27
+
+Todos, JS before `load`, gzip bytes from `benchmarks/results/*.json` (`browser.boot.jsGzip`), built in one worktree for each row. The 13.9 kB of the baseline is KiB: 14,227 B when rebuilt at `f45a5c74`.
+
+| Build                                                  | Raw (B) | Gzip (B) | Against the baseline |
+| ------------------------------------------------------ | ------: | -------: | -------------------: |
+| Baseline, `f45a5c74` rebuilt                           |  33,607 |   14,227 |                    0 |
+| Main before size-trim (`eb30de16`, with #295 and #296) |  35,132 |   14,825 |                 +596 |
+| After size-trim                                        |  35,009 |   14,763 |                 +541 |
+
+Only the large `client` chunk moved (25,150 B raw at the baseline). The goal of 0.1 kB is not met, and the maintainer accepted the remaining size on 2026-10-27, as the list below accounts for it. What the rest buys, from removing each feature in turn:
+
+- `readFields` and `typedInto` (fields typed before the code loads): about 256 B.
+- `settle`, the read of a memo that waits in a pass (batching): about 50 B.
+- The merged handlers (`mergeHandlers` in `callable` and `addEntryHandlers`): about 45 B. They were already in the baseline.
+- Held memo errors in `get`: 8 B. `updateReady`: 11 B.
+- The rest, about 190 B, is spread over the pass and the effect run, `hold`, `forwardRef` and `restRef`, the live props of a dynamic tag and `call` inside a pass, with no single piece over 30 B.
+
+Rows probe (`#for` of N rows, each a component with `$memo(item + count)`, `count++`, happy-dom, 6 clicks, 3 runs each, ms per click after the first): 1,000 rows 5 to 6 on both; 4,000 rows 10 to 14 on both; 10,000 rows 31 to 52 on main, 31 to 39 after. No write is slower.
+
 ### Speed
 
 The timings were taken under load: other agents ran tests and builds on the machine during every run. The load average was 6.5 to 8.9 on 8 cores at the start and end of each run. The min to max ranges are wide. Compare them only with runs on the same machine, ideally with an idle one. The ratios to Marko 6 inside one run are the safest thing to compare.
