@@ -92,7 +92,7 @@
   const dialog = $getContext(DialogContext);
   const locale = $getContext(LocaleContext);
   const menuId = $id();
-    let focusedId = $signal<string>();
+  let focusedId = $signal<string>();
 
   function action(key: Key) {
     if (disabledKeys.includes(key)) {

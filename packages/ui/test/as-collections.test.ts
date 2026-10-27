@@ -161,7 +161,7 @@ it('moves between tags, and removes one with Delete', async () => {
   await page.waitFor(() => expect(state(page)[7]).toEqual(['news', 'gaming']));
 });
 
-// The three tests below show gaps of the core. They pass as `it.fails` while the gap is open, and
+// The three `it.fails` tests below show gaps of the core. They pass as `it.fails` while the gap is open, and
 // become `it` when it is fixed.
 
 // The props that a part gives to a component in `as` stay static when a page passes the component:
@@ -202,8 +202,8 @@ it.fails('renders a template that names the component, for a folder that opens',
 });
 
 // After the code of a first page has loaded, a second page in the same code renders the rows of
-// its Tree without the component, and the keys do not move the focus to them.
-it.fails('renders a second page in the same loaded code', async () => {
+// its Tree with the component, and the keys move the focus to them.
+it('renders a second page in the same loaded code', async () => {
   const first = await collections();
   pressWith(first.get('.read'));
   await first.waitFor(() => expect(first.text('.refs')).toBe('UL LI'));

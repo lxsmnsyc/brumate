@@ -5,7 +5,13 @@
 
   // A TreeItem with the component in `as`. A page that names the component itself in the
   // template of a Tree fails in the browser (see the test "a template that names the component").
-  const { children, ...rest } = $props<{ children?: unknown; [attribute: string]: unknown }>();
+  // It passes its props by name: a spread onto a component makes all of its props live, and that
+  // changes how every TreeItem of the project renders its children (an open issue of the core).
+  const { class: className, textValue, children } = $props<{
+    class?: string;
+    textValue?: string;
+    children?: unknown;
+  }>();
 </script>
 
-<TreeItem as=AsTarget {...rest}>{children}</TreeItem>
+<TreeItem as=AsTarget class=(className) {textValue}>{children}</TreeItem>
