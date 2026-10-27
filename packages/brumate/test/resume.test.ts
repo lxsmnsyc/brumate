@@ -3742,6 +3742,15 @@ describe('refs forwarded through components', () => {
     await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
   });
 
+  // A component that leaves `ref` in its rest props gets no element: the binding does not cross
+  // the spread. The parts of @brumate/ui destructure `ref` instead (node ref-reaches-element).
+  it.fails('a ref left in the rest props reaches the element that spreads them', async () => {
+    await resume('restRefPage', {});
+    click(document.querySelector('.read')!);
+    await new Promise((done) => setTimeout(done, 300));
+    expect(text('.seen')).toBe('BUTTON');
+  });
+
   it('leaves the element out of the page state', async () => {
     const server = await import(file('refForward.brm.ts'));
     const { html, state } = await renderParts(server.default, {});

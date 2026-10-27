@@ -1,0 +1,44 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Heading from '../../src/Heading.brm';
+  import Link from '../../src/Link.brm';
+  import AsTarget from './AsTarget.brm';
+
+  // The elements that the parts give back through `ref`. They are `any`, because the check of a
+  // signal that a component binds takes an element for data that the server cannot send.
+  // oxlint-disable-next-line typescript/no-explicit-any
+  let linkRef = $signal<any>();
+  // oxlint-disable-next-line typescript/no-explicit-any
+  let buttonRef = $signal<any>();
+  // oxlint-disable-next-line typescript/no-explicit-any
+  let headingRef = $signal<any>();
+  // oxlint-disable-next-line typescript/no-explicit-any
+  let asLinkRef = $signal<any>();
+  // oxlint-disable-next-line typescript/no-explicit-any
+  let asButtonRef = $signal<any>();
+  // oxlint-disable-next-line typescript/no-explicit-any
+  let asHeadingRef = $signal<any>();
+  let plain = $signal('');
+  let targeted = $signal('');
+
+  // The tag of each element, or '-' while the signal is empty.
+  function probe() {
+    plain = [linkRef, buttonRef, headingRef].map((el) => el?.tagName ?? '-').join(' ');
+    targeted = [asLinkRef, asButtonRef, asHeadingRef]
+      .map((el) => (el?.hasAttribute('data-as-target') ? 'target' : '-'))
+      .join(' ');
+  }
+</script>
+
+<main>
+  <Link ref=$bind(linkRef) class="link" href="/a">Link</Link>
+  <Button ref=$bind(buttonRef) class="button">Button</Button>
+  <Heading ref=$bind(headingRef) class="heading">Heading</Heading>
+  <Link as=AsTarget ref=$bind(asLinkRef) class="as-link" href="/a">Link</Link>
+  <Button as=AsTarget ref=$bind(asButtonRef) class="as-button">Button</Button>
+  <Heading as=AsTarget ref=$bind(asHeadingRef) class="as-heading">Heading</Heading>
+  <button class="probe" onClick=probe>Probe</button>
+  <p class="plain">{plain}</p>
+  <p class="targeted">{targeted}</p>
+</main>
