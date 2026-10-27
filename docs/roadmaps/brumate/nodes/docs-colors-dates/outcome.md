@@ -40,7 +40,7 @@ Left out: Anatomy for ColorSwatch (single part). Data attributes for ColorPicker
 ## Gotchas
 
 - CalendarHeading has `children` in its type, but renders only the months. The comment says "Not used". Either the prop should go or the heading should render it.
-- PageUp and PageDown in a CalendarGrid move one unit of `visibleDuration` (`unitDuration`), while the previous and next Buttons move all the months that show. The table says so. Not run in a browser.
+- PageUp and PageDown in a CalendarGrid, and the Buttons with `pageBehavior="single"`, move one unit of `visibleDuration`. Not run in a browser.
 - Calendars other than Gregorian are not handled by the code. Dates are Gregorian `YYYY-MM-DD` strings, and the grid is built on `@internationalized/date` Gregorian dates. Month names, day names and numbers come from `DateFormatter(locale)`, so a locale whose default calendar is not Gregorian (such as `th-TH`) may show a year or a month name of that calendar next to a Gregorian grid. The pages do not claim support. Not run.
 - Segment placeholders (`mm`, `dd`, `yyyy`, `––`) and the screen reader names (`year`, `month`, `AM/PM`, `Previous`, `Next`, `Calendar`, `Color picker`, `Hue`) are English whatever the locale. The pages say so for the placeholders.
 - "Today" (the default `placeholderValue`, `data-today`) is the date in the time zone of the browser. Dates and times have no time zone.
