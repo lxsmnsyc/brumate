@@ -1,7 +1,7 @@
 ---
 id: ordered-updates
 title: Ordered updates
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
