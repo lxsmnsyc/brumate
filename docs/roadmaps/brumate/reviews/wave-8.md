@@ -3,7 +3,7 @@
 ## Merged
 
 - ui-generics (#300): the parts that take values have a type parameter `V` (`<V, T>` with `as`). No `any` is left in their props. A `#template` parameter needs a type until template-context-types lands.
-- docs-generator (#298): a ```` ```props Name ```` block becomes a props table from the exported type, as plain HTML (no browser code). The props-table contract v1 is frozen (the maintainer approved it). The website has its own vitest, and CI runs its tests.
+- docs-generator (#298): a ` ```props Name ` block becomes a props table from the exported type, as plain HTML (no browser code). The props-table contract v1 is frozen (the maintainer approved it). The website has its own vitest, and CI runs its tests.
 - rest-ref-local-error (#299): props and rest are destructured, spread in markup, or read by key; any other use of the whole object is an error, and a write to a key is an error (props are read-only). Casts are allowed in a key read and in a markup spread. The only hit, NavigationTreeItem, now passes its attributes in markup, so a ref reaches its row.
 - Not roadmap nodes: #301 (a React Aria mention removed from Button.brm, since the props table prints doc comments).
 
