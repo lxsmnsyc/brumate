@@ -4109,6 +4109,63 @@ describe('refs forwarded through components', () => {
     expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
   });
 
+  // The pattern of the parts that take `as`: the rest props, with `ref`, spread onto a dynamic tag.
+  describe('a dynamic tag that spreads the rest props', () => {
+    it('a ref left in the rest props reaches a dynamic tag that spreads the rest', async () => {
+      await resume('restRefTagPage', {});
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
+    });
+
+    it('a ref left in the rest props reaches a dynamic tag in a block that the browser renders', async () => {
+      await resume('restRefTagPageBlock', {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.inner')).not.toBeNull());
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
+      expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
+    });
+
+    it('gives the new element when as changes between two elements', async () => {
+      await resume('restRefTagPageSwap', {});
+      click(document.querySelector('.swap')!);
+      await waitFor(() => expect(document.querySelector('section.inner')).not.toBeNull());
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('SECTION'));
+    });
+
+    // A component in `as` gets `ref` as a prop and forwards its own element. The dynamic tag
+    // must not also forward its own, so the signal never holds another element.
+    it('gives the element of a component in as, and of an element after as changes', async () => {
+      await resume('restRefTagPageComponent', {});
+      const read = async () => {
+        click(document.querySelector('.read')!);
+        await new Promise((done) => setTimeout(done, 100));
+        return text('.seen');
+      };
+      // A component that drops `ref` leaves the signal empty.
+      expect(await read()).toBe('none');
+      click(document.querySelector('.article')!);
+      await waitFor(() => expect(document.querySelector('article.inner')).not.toBeNull());
+      expect(await read()).toBe('ARTICLE');
+      expect(document.querySelectorAll('.inner')).toHaveLength(1);
+      click(document.querySelector('.section')!);
+      await waitFor(() => expect(document.querySelector('section.inner')).not.toBeNull());
+      expect(await read()).toBe('SECTION');
+      click(document.querySelector('.article')!);
+      await waitFor(() => expect(document.querySelector('article.inner')).not.toBeNull());
+      expect(await read()).toBe('ARTICLE');
+      expect(document.querySelectorAll('.inner')).toHaveLength(1);
+    });
+
+    it('leaves the element out of the page state', async () => {
+      const server = await import(file('restRefTagPage.brm.ts'));
+      const { html, state } = await renderParts(server.default, {});
+      expect(html).toContain('class="inner"');
+      expect(state).not.toMatch(/HTMLElement|\[object /);
+    });
+  });
+
   it('leaves the element out of the page state', async () => {
     const server = await import(file('refForward.brm.ts'));
     const { html, state } = await renderParts(server.default, {});

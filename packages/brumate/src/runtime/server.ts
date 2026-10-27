@@ -846,9 +846,14 @@ export class Context {
    * A `ref` that the rest props of a component hold is a binding of a signal above. The element
    * that spreads them goes to that signal, as when the component names `ref` itself.
    */
-  restRef<T extends Record<string, unknown>>(attributes: T, scope: ScopeId, anchor: number): T {
+  restRef<T extends Record<string, unknown>>(
+    attributes: T,
+    scope: ScopeId,
+    anchor: number,
+    tag?: unknown,
+  ): T {
     const value = attributes.ref;
-    if (isBinding(value) && isSlotReference(value.target)) {
+    if (typeof tag !== 'function' && isBinding(value) && isSlotReference(value.target)) {
       this.forward(value.target, new ElementReference(scope, anchor));
     }
     return attributes;
