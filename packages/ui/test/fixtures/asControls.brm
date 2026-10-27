@@ -27,24 +27,22 @@
   import type { QueuedToast } from '../../src/toast.ts';
   import AsTarget from './AsTarget.brm';
 
-  // The elements that the parts give back through `ref`. They are `any`, because the type check
-  // of a signal that a component binds takes an element for data that the server cannot send.
-  let toggleRef = $signal<any>();
-  let toolbarRef = $signal<any>();
-  let groupRef = $signal<any>();
-  let disclosureRef = $signal<any>();
-  let setRef = $signal<any>();
-  let panelRef = $signal<any>();
-  let radiosRef = $signal<any>();
-  let boxesRef = $signal<any>();
-  let meterRef = $signal<any>();
-  let barRef = $signal<any>();
-  let regionRef = $signal<any>();
-  let toastRef = $signal<any>();
-  let dialogRef = $signal<any>();
-  let popoverRef = $signal<any>();
-  let tipRef = $signal<any>();
-
+  // The elements that the parts give back through `ref`.
+  let toggleRef = $signal<HTMLElement>();
+  let toolbarRef = $signal<HTMLElement>();
+  let groupRef = $signal<HTMLElement>();
+  let disclosureRef = $signal<HTMLElement>();
+  let setRef = $signal<HTMLElement>();
+  let panelRef = $signal<HTMLElement>();
+  let radiosRef = $signal<HTMLElement>();
+  let boxesRef = $signal<HTMLElement>();
+  let meterRef = $signal<HTMLElement>();
+  let barRef = $signal<HTMLElement>();
+  let regionRef = $signal<HTMLElement>();
+  let toastRef = $signal<HTMLElement>();
+  let dialogRef = $signal<HTMLElement>();
+  let popoverRef = $signal<HTMLElement>();
+  let tipRef = $signal<HTMLElement>();
   let pinned = $signal(false);
   let choice = $signal<string[]>([]);
   let open = $signal(false);

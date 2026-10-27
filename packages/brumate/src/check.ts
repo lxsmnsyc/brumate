@@ -154,7 +154,8 @@ function propsTypes(program: oxc.Program | undefined): Range[] {
 /**
  * Returns the signals and memos whose values the page state sends to the
  * client, because client code reads them. Element refs are sent as
- * references, so they are left out.
+ * references, so they are left out. So is a signal that only the `ref` of a
+ * component binds: the browser fills it with an element.
  */
 function sentDeclarations(file: SFCFile): Declaration[] {
   try {
@@ -166,7 +167,8 @@ function sentDeclarations(file: SFCFile): Declaration[] {
           (declaration.kind === 'signal' ||
             declaration.kind === 'memo' ||
             declaration.kind === 'async-memo') &&
-          declaration.refs.length === 0,
+          declaration.refs.length === 0 &&
+          !(declaration.boundAs?.size === 1 && declaration.boundAs.has('ref')),
       );
   } catch {
     // A file that the analyzer cannot read is still checked as TypeScript.
