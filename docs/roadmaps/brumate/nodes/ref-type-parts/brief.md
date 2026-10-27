@@ -1,7 +1,7 @@
 ---
 id: ref-type-parts
 title: The forwarded ref of the collection parts, Link, Button and Heading takes an optional element
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

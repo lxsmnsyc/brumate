@@ -8,6 +8,7 @@ Rules for agents working on a node:
 - Do not edit other briefs, `status` fields, contracts or `GOAL.md`. The orchestrator owns them.
 - If a contract is wrong, write `contracts/<name>.change-request.md` and adapt locally. Do not edit the contract.
 - Use only the numbers reserved in your brief for migrations, decision records and other numbered files.
+- If your node relies on a core feature that no test covers end to end yet, probe it first: write the smallest page that uses it the way your node will, against main, before you change many files. A gap then costs one failing test, not a reworked PR.
 - Keep notes in your `log.md`. Finish by writing `outcome.md` from the template.
 - Read the outcomes of your direct dependencies. Do not read other nodes' logs.
 
