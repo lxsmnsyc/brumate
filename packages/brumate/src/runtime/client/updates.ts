@@ -16,7 +16,7 @@ import { findElement } from './blocks.ts';
 import { childrenReady } from './children.ts';
 import { loadModule, loadPart, loadingCode } from './code.ts';
 import { fail } from './errors.ts';
-import { call } from './references.ts';
+import { call, setPass } from './references.ts';
 import { afterInsert, descendants, rootOf } from './scopes.ts';
 import {
   DEV,
@@ -450,9 +450,16 @@ function trigger(scope: Scope, slot: number): void {
 
 /** Loads the code of a component, its update code when something reads the slot, and its children. */
 async function updateCode(scope: Scope, slot: number): Promise<unknown> {
-  const loaded = await loadModule(rootOf(scope).m!);
-  await (loaded.g[scope.k]?.[slot] && loadPart(loaded, 'update'));
+  await loadUpdate(scope, slot);
   return childrenReady(scope);
+}
+
+/** Loads the module of a component and its update code, when something reads the slot. */
+function loadUpdate(scope: Scope, slot?: number): Promise<unknown> {
+  return loadModule(rootOf(scope).m!).then((loaded) => {
+    const reads = loaded.g[scope.k];
+    return (slot === undefined ? reads : reads?.[slot]) && loadPart(loaded, 'update');
+  });
 }
 
 /**
@@ -461,13 +468,9 @@ async function updateCode(scope: Scope, slot: number): Promise<unknown> {
  */
 export async function updateReady(scope: Scope | undefined): Promise<void> {
   const loads: Promise<unknown>[] = [];
-  const seen = new Set<Scope>();
   const visit = (at: Scope | undefined): void => {
-    if (at && !seen.has(at)) {
-      seen.add(at);
-      loads.push(
-        loadModule(rootOf(at).m!).then((loaded) => loaded.g[at.k] && loadPart(loaded, 'update')),
-      );
+    if (at) {
+      loads.push(loadUpdate(at));
       visit(at.p ?? at.o);
       visit(at.t);
     }
@@ -544,18 +547,13 @@ export function pass<T>(write: () => T): T {
   let held = false;
   try {
     result = write();
+  } finally {
+    // The writes of a handler that throws still reach the page.
     if (running === 1) {
       drain();
-      const hooks = [...passEnd];
-      passEnd.length = 0;
-      for (const hook of hooks) {
-        hook();
-      }
     }
-  } finally {
     if (--running === 0) {
-      // A pass that throws drops the memos and bindings that wait. Its effects run with the next.
-      // The deepest first. An effect that waits already keeps its place.
+      // The deepest effects first. An effect that waits already keeps its place.
       // oxlint-disable-next-line unicorn/no-array-reverse -- The levels are dropped right after.
       for (const level of levels.reverse()) {
         for (const [key, runEffect] of level?.e ?? []) {
@@ -569,7 +567,6 @@ export function pass<T>(write: () => T): T {
       depths.clear();
       failed = false;
       stuck = false;
-      passEnd.length = 0;
       dirty.clear();
     }
   }
@@ -584,17 +581,23 @@ export function pass<T>(write: () => T): T {
   return result;
 }
 
-// The memos that wait in the pass, by scope, so a read computes the ones of its scope first.
-const dirty: Map<Scope, Map<string, [number, Map<string, () => void>]>> = new Map();
+setPass(pass);
+
+// The names of the memos that wait in the pass, by scope, so a read computes the ones of its scope.
+const dirty: Map<Scope, Set<string>> = new Map();
 
 /** Computes the memos of a scope that wait, so code that reads one in a handler reads the new value. */
 function settle(scope: Scope): void {
-  const waits = dirty.get(scope);
-  if (waits?.size) {
-    for (const [key, [, bucket]] of [...waits].sort((a, b) => a[1][0] - b[1][0])) {
-      const compute = bucket.get(key);
-      bucket.delete(key);
-      waits.delete(key);
+  const names = dirty.get(scope);
+  if (names?.size) {
+    const buckets = levels[depthOf(scope)]?.m;
+    // They were queued in the order of their ranks.
+    for (const name of names) {
+      const bucket = buckets?.[+name.slice(1)];
+      const key = `${scope.id}:${name}`;
+      const compute = bucket?.get(key);
+      bucket?.delete(key);
+      names.delete(name);
       compute?.();
     }
   }
@@ -602,14 +605,6 @@ function settle(scope: Scope): void {
 
 // True while `drain` runs.
 let draining = false;
-
-// The hooks for the end of the pass, which run after its queue and before its effects.
-const passEnd: (() => void)[] = [];
-
-/** Runs `hook` once, after the queue of the pass that runs has run, and before its effects. */
-export function onPassEnd(hook: () => void): void {
-  passEnd.push(hook);
-}
 
 /**
  * Runs the memos and bindings that wait in the pass at once, such as for a handler that must focus
@@ -650,7 +645,7 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
   // An update of a scope that left the page in the pass does not run. An error goes to the
   // nearest `#try` around the update, whether its write ran at once or waited for code.
   const later = (): void => {
-    dirty.get(target)?.delete(key);
+    dirty.get(target)?.delete(name);
     if (!failed && scopes.get(target.id) === target) {
       try {
         // Past the limit of rounds, the next update fails in place of running.
@@ -674,11 +669,11 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
   if (name[0] === 'm') {
     const bucket = (level.m[+name.slice(1)] ??= new Map());
     bucket.set(key, later);
-    let waits = dirty.get(target);
-    if (!waits) {
-      dirty.set(target, (waits = new Map()));
+    let names = dirty.get(target);
+    if (!names) {
+      dirty.set(target, (names = new Set()));
     }
-    waits.set(key, [+name.slice(1), bucket]);
+    names.add(name);
   } else {
     (name[0] === 'e' ? level.e : level.b).set(key, later);
   }

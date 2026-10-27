@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let a = $signal(0);
+  let seen = $signal('none');
+</script>
+
+<button class="write" onClick=(async () => {
+  await 0;
+  a = 5;
+  seen = document.querySelector('.a')!.textContent!;
+})>Write</button>
+<p class="a">{a}</p>
+<p class="seen">{seen}</p>

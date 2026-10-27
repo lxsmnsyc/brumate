@@ -16,10 +16,11 @@ queue runs when the outermost pass ends, in the order of ordered updates, and ef
 
 ### Units that are a pass
 
-- A handler, up to its first `await`. Each part after an `await` is a pass of its own.
+- A handler, up to its first `await`.
+- A function prop or provided function that another component calls (`call`).
 - A run of effects (`$effect`, `$client` callbacks): all the effects that wait run as one pass.
 - A value that settles: an async memo, a value that the server streams, an `$optimistic` guess.
-- A write outside every pass (a timer, code that the framework does not start) is a pass of its own.
+- A write outside every pass is a pass of its own. So after an `await`, each write is its own pass and shows at once, unless the code runs inside another pass. There is no batching across `await`, and `flush()` after an `await` does nothing.
 - A `$bind` write from a child joins the pass that runs.
 
 ### Signatures
@@ -58,19 +59,18 @@ export function flush(): void;
 - A handler runs after the update code of its scope has loaded, so its writes are never held back
   to run after the handler returns.
 
-### End-of-pass hook
+### End-of-pass hook (reserved)
 
 ```ts
 /** Runs after the queue of a pass has run, and before the effects. */
 export function onPassEnd(hook: () => void): void;
 ```
 
-Not exported to pages. The core uses it to run work once for the whole pass (the `$bind` of the
-URL in `search-params` takes one write of the URL for each pass). The hook list clears after it runs.
+Not built. `search-params` builds it in `updates.ts` when it needs one write of the URL for each pass. It must run the hook list after `drain()` of the outermost pass and clear the list when the pass ends.
 
 ## Stub
 
-None. `onPassEnd` and `flush` are real in `packages/brumate/src/runtime/client/updates.ts`.
+None. `pass` and `flush` are real in `packages/brumate/src/runtime/client/updates.ts`. `onPassEnd` is reserved.
 
 ## Contract tests
 

@@ -745,3 +745,25 @@ describe('anchors', () => {
     }
   });
 });
+
+describe('imports of brumate/signals', () => {
+  it('keeps flush only, in the server and client output', () => {
+    const source = `<script>
+  import { $memo, $signal, flush } from 'brumate/signals';
+
+  let a = $signal(0);
+  const b = $memo(a + 1);
+</script>
+
+<button onClick=(() => { a++; flush(); console.log(b); })>Go</button>
+<p>{b}</p>
+`;
+    const output = compile(source, { filename: 'Mixed.brm' });
+    expect(output.server).toContain("import { flush } from 'brumate/signals';");
+    expect(output.server).not.toMatch(/import \{[^}]*\$(signal|memo)/);
+    for (const code of [output.client, ...Object.values(output.parts)]) {
+      expect(code).not.toMatch(/import \{[^}]*\$(signal|memo)/);
+    }
+    expect(Object.values(output.parts).join('\n') + output.client).toContain('flush');
+  });
+});

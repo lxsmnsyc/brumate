@@ -67,6 +67,31 @@ export function isMacroImport(statement: oxc.Node): boolean {
   return true;
 }
 
+/**
+ * The source of an import for the output. An import of `brumate/signals` that also names `flush`
+ * keeps `flush` only, since the compile-time functions are gone.
+ */
+export function importSource(source: string, statement: oxc.ImportDeclaration): string {
+  const text = source.slice(statement.start, statement.end);
+  if (!isSignalsImport(statement)) {
+    return text;
+  }
+  const named: string[] = [];
+  for (const specifier of statement.specifiers) {
+    if (specifier.type !== 'ImportSpecifier' || specifier.importKind === 'type') {
+      continue;
+    }
+    const imported =
+      specifier.imported.type === 'Identifier' ? specifier.imported.name : specifier.imported.value;
+    if (!MACROS.has(imported) && !RENAMED_MACROS.has(imported)) {
+      named.push(
+        imported === specifier.local.name ? imported : `${imported} as ${specifier.local.name}`,
+      );
+    }
+  }
+  return `import { ${named.join(', ')} } from '${SIGNALS_MODULE}';`;
+}
+
 /** Calls every AST node inside a value of the file, such as a script or an expression. */
 export function walk(
   value: unknown,

@@ -5737,20 +5737,48 @@ describe('batching', () => {
     delete (globalThis as { __batching?: string[] }).__batching;
   });
 
-  it('writes the DOM once for two writes in a handler', async () => {
-    await resume('batchingWrites', {});
-    const name = document.querySelector('.name')!;
+  async function changesOf(selector: string, shown: string): Promise<number> {
+    const element = document.querySelector(selector)!;
     let changes = 0;
     const watcher = new MutationObserver((records) => {
       changes += records.length;
     });
-    watcher.observe(name, { childList: true, characterData: true, subtree: true });
+    watcher.observe(element, { childList: true, characterData: true, subtree: true });
     onTestFinished(() => watcher.disconnect());
+    click(document.querySelector('.write, .pick')!);
+    await waitFor(() => expect(text(selector)).toBe(shown));
+    await new Promise((done) => setTimeout(done, 40));
+    return changes + watcher.takeRecords().length;
+  }
+
+  it('writes the DOM once for two writes in a handler', async () => {
+    await resume('batchingWrites', {});
+    expect(await changesOf('.name', 'Ada Lovelace')).toBe(1);
+  });
+
+  it('writes the DOM once for two writes in a handler whose update code loads', async () => {
+    await resume('batchingWait', {}, { all: 15 });
+    expect(await changesOf('.name', 'Ada Lovelace')).toBe(1);
+  });
+
+  it('writes the DOM once for two writes in a function prop that a child calls', async () => {
+    await resume('batchingCall', {}, { all: 15 });
+    expect(await changesOf('.ab', '7:7')).toBe(1);
+  });
+
+  it('keeps the writes of a handler that throws, and the error reaches the #try', async () => {
+    await resume('batchingHandlerThrows', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
     click(document.querySelector('.write')!);
-    await waitFor(() => expect(text('.name')).toBe('Ada Lovelace'));
-    await new Promise((done) => setTimeout(done, 20));
-    changes += watcher.takeRecords().length;
-    expect(changes).toBe(1);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Stop'));
+    expect(text('.a')).toBe('1');
+  });
+
+  it('writes at once after an await, since each write is a pass of its own', async () => {
+    await resume('batchingAwait', {});
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.seen')).toBe('5'));
   });
 
   it('runs an effect that reads both once', async () => {
@@ -5763,7 +5791,7 @@ describe('batching', () => {
   });
 
   it('does not throw from a state between two writes', async () => {
-    await resume('batchingThrow', {});
+    await resume('batchingThrow', {}, { all: 15 });
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     onTestFinished(() => errors.mockRestore());
     click(document.querySelector('.write')!);
