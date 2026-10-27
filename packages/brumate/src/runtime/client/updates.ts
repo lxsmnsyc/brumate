@@ -75,12 +75,6 @@ function hold(scope: Scope, slot: number, key: string, error: unknown): void {
   loadingSlots.delete(key);
   loads.delete(key);
   guesses?.map.delete(key);
-  if (DEV) {
-    const module = modules.get(rootOf(scope).m!);
-    if (module && !module.g[scope.k]?.[slot]) {
-      console.warn(`A memo threw and nothing reads it. It holds the error.`, error);
-    }
-  }
   set(scope, slot, new MemoError(error));
 }
 

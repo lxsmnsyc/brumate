@@ -1,0 +1,21 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let n = $signal(0);
+  let m = $signal(0);
+</script>
+
+<button class="warm" onClick=(() => m++)>Warm</button>
+<p class="m">{m}</p>
+#try {
+  <script>
+    const bad = $memo(n > 0 ? (() => {
+      throw new Error(`Bad ${n}`);
+    })() : 'ok');
+    const both = $memo(`${n}/${bad}`);
+  </script>
+  <button class="bump" onClick=(() => n++)>Bump</button>
+  <p class="both">{both}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

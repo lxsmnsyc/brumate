@@ -1,0 +1,11 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let n = $signal(0);
+  const bad = $memo(n % 2 === 1 ? (() => {
+    throw new Error(`Bad ${n}`);
+  })() : `ok${n}`);
+</script>
+
+<button class="bump" onClick=(() => n++)>Bump</button>
+<p class="shown">{bad}</p>

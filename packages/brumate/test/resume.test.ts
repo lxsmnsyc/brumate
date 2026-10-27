@@ -1102,12 +1102,36 @@ describe('resume', () => {
     await waitFor(() => expect(text('.caught')).toBe('Error: Rejected 1'));
   });
 
-  it('holds the memo error until a read: the server render shows the #catch of the #try around the read', async () => {
+  it('holds the memo error until a read: the server render shows the #catch when the memo is declared inside the #try', async () => {
     await resume('memoErrorServer', {});
     expect(text('.before')).toBe('before');
     expect(text('.caught')).toBe('Error: Bad 1');
     expect(document.querySelector('.data')).toBeNull();
     expect(text('.after')).toBe('after');
+  });
+
+  it.fails('holds the memo error until a read: the server render shows the #catch when the memo is declared outside the #try', async () => {
+    await resume('memoErrorServerOutside', {});
+    expect(text('.caught')).toBe('Error: Bad 1');
+  });
+
+  it('holds the memo error until a read: a memo that reads a failed memo holds its error, not a stale one', async () => {
+    await resume('memoErrorChain', {});
+    click(document.querySelector('.warm')!);
+    await waitFor(() => expect(text('.m')).toBe('1'));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+  });
+
+  it('holds the memo error until a read: an insert shows the value again after a compute without a throw', async () => {
+    await resume('memoErrorRecoverInsert', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    expect(text('.shown')).toBe('ok0');
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.shown')).toBe('ok2'));
   });
 
   it('stops updates that keep writing what they read, with one error, and the page goes on', async () => {
