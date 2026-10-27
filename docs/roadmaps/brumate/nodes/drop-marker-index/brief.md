@@ -22,6 +22,9 @@ owns:
 shared:
   - .changeset/*.md
   - packages/brumate/src/runtime/client.ts
+  - packages/brumate/src/runtime/client/insert.ts
+  - packages/brumate/src/runtime/client/children.ts
+  - packages/brumate/src/runtime/client/templates.ts
 reserves: []
 provides: []
 depends_on:

@@ -8,8 +8,8 @@ The `it.fails` tests in packages/ui/test/as-collections.test.ts and as-controls.
 
 From the review of #272, section (a):
 
-
 GapPart.brm
+
 ```brm
 <script>
   import { $props, $signal } from 'brumate/signals';
@@ -18,6 +18,7 @@ GapPart.brm
 </script>
 <{as ?? 'div'} role="tab" aria-selected=(on) onClick=(() => (on = !on)) {...rest}>{children}</>
 ```
+
 GapTarget.brm: `<div data-target {...rest}>{children}</div>` (with `const { children, ...rest } = $props();`)
 gapPropsComponent.brm: `<GapPart as=GapTarget class="item">Item</GapPart>`
 gapPropsElement.brm: the same with `as="div"`.
@@ -33,8 +34,8 @@ for (const name of ['gapPropsElement', 'gapPropsComponent']) {
   });
 }
 ```
-Result: the element passes; the component stays `aria-selected="false"` (the part's handler runs, the attribute never changes). The part is written as the contract says. The project analysis (`analyzeProject` liveProps) does not mark the props of a component that reaches a part through the value of `as=`.
 
+Result: the element passes; the component stays `aria-selected="false"` (the part's handler runs, the attribute never changes). The part is written as the contract says. The project analysis (`analyzeProject` liveProps) does not mark the props of a component that reaches a part through the value of `as=`.
 
 ## 2. A template's client part misses a component named only in an attribute value (template-value-imports)
 
@@ -51,13 +52,14 @@ From the review of #272, section (b):
   <GapPart as=GapTarget class="gap-row">{label}</GapPart>
 }
 ```
+
 ```ts
 await resume('gapTemplate', {});
 click(document.querySelector('.tpl-add')!);
 await waitFor(() => expect(document.querySelector('.gap-row')).not.toBeNull());
 ```
-Fails with `ReferenceError: GapTarget is not defined` at test/.output/resume/gapTemplate.brm.client.t2.ts:15 (`$$b.component(GapPart, { "as": (GapTarget), ...`). The client part of the template imports `GapPart`, but not the component that an attribute value names. The worker's "smaller fixture did not reproduce it" is explained: it needs a component named only in an attribute value (`as=X`) inside a template that the browser renders.
 
+Fails with `ReferenceError: GapTarget is not defined` at test/.output/resume/gapTemplate.brm.client.t2.ts:15 (`$$b.component(GapPart, { "as": (GapTarget), ...`). The client part of the template imports `GapPart`, but not the component that an attribute value names. The worker's "smaller fixture did not reproduce it" is explained: it needs a component named only in an attribute value (`as=X`) inside a template that the browser renders.
 
 ## 3. A bound element signal on a component prop fails the type check (bound-element-signal)
 
