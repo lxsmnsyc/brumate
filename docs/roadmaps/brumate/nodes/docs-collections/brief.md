@@ -1,7 +1,7 @@
 ---
 id: docs-collections
 title: Complete the docs of Collections and Data
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
