@@ -359,3 +359,134 @@ ${markup}`;
     ).not.toThrow();
   });
 });
+
+describe('templates passed to a prop', () => {
+  const script = `<script>
+  import List from './List.brm';
+  const items = [{ id: 'a' }];
+  const label = 'outer';
+</script>
+`;
+
+  it('writes an untyped template at its use, so the prop types its parameter', () => {
+    const code = body(`${script}<List {items} item=row />
+<List {items} item=(row) />
+
+#template row(a) {
+  <p>{a.id}</p>
+}`);
+    expect(code).not.toContain('function row');
+    expect(code).toContain(
+      'List({ items: (items), item: (async (a): Promise<$$Markup> => {\n$$use((a.id));\nreturn $$markup;\n}), });',
+    );
+    expect(code.match(/async \(a\)/g)).toHaveLength(2);
+  });
+
+  it('writes a shorthand use, and one in #for and #if, at the use', () => {
+    const code = body(`${script}#for (group of [items]) {
+  #if (group.length) {
+    <List items=(group) {row} />
+  }
+}
+
+#template row(a) {
+  <p>{a.id} {label}</p>
+}`);
+    expect(code).not.toContain('function row');
+    expect(code).toContain('List({ items: (group), row: (async (a): Promise<$$Markup> => {');
+  });
+
+  it('maps the body at each use to the file', () => {
+    const source = `${script}<List {items} item=row />
+<List {items} item=row />
+
+#template row(a) {
+  <p>{a.id}</p>
+}`;
+    const { code, mappings } = toTypeScript(source, 'Card.brm');
+    const read = source.indexOf('a.id');
+    const copies = mappings.filter((item) => item.source === read);
+    expect(copies).toHaveLength(2);
+    for (const copy of copies) {
+      expect(code.slice(copy.generated, copy.generated + copy.length)).toBe('a.id');
+    }
+    const param = source.indexOf('row(a)') + 4;
+    expect(mappings.filter((item) => item.source === param)).toHaveLength(2);
+  });
+
+  it('keeps a typed template, or one without parameters, declared', () => {
+    const code = body(`${script}<List {items} item=row heading=title />
+
+#template row(a: { id: string }) {
+  <p>{a.id}</p>
+}
+#template title() {
+  <h2>Items</h2>
+}`);
+    expect(code).toContain('async function row(a: { id: string }): Promise<$$Markup> {');
+    expect(code).toContain('async function title(): Promise<$$Markup> {');
+    expect(code).toContain('item: (row),');
+  });
+
+  it('keeps a template declared that the code reads in another way', () => {
+    for (const markup of [
+      '<List {items} item=row />\n<p>{row({ id: "b" })}</p>',
+      '<List {items} item=(cond ? row : row) />',
+      '<List {items} item=row />\n<div title=row></div>',
+    ]) {
+      const code = body(`${script}${markup}
+
+#template row(a) {
+  <p>{a.id}</p>
+}`);
+      expect(code).toContain('async function row(a): Promise<$$Markup> {');
+    }
+  });
+
+  it('keeps a template declared when a name at the use hides a name it reads', () => {
+    const code = body(`${script}#for (label of ['x']) {
+  <List {items} item=row />
+}
+
+#template row(a) {
+  <p>{a.id} {label}</p>
+}`);
+    expect(code).toContain('async function row(a): Promise<$$Markup> {');
+    expect(code).toContain('item: (row),');
+  });
+
+  it('writes a template at a use inside another template written at its use', () => {
+    const code = body(`${script}<List {items} item=outer />
+
+#template outer(a) {
+  <List items=([a]) item=inner />
+}
+#template inner(b) {
+  <p>{b.id}</p>
+}`);
+    expect(code).not.toContain('function outer');
+    expect(code).not.toContain('function inner');
+    expect(code).toContain('item: (async (b): Promise<$$Markup> => {');
+  });
+
+  it('keeps a template declared that passes itself', () => {
+    const code = body(`${script}<List {items} item=tree />
+
+#template tree(a) {
+  <List items=(a.children) item=tree />
+}`);
+    expect(code).toContain('async function tree(a): Promise<$$Markup> {');
+  });
+
+  it('writes a template of a block at its use in the block', () => {
+    const code = body(`${script}#if (items.length) {
+  <List {items} item=row />
+
+  #template row(a) {
+    <p>{a.id}</p>
+  }
+}`);
+    expect(code).not.toContain('function row');
+    expect(code).toContain('item: (async (a): Promise<$$Markup> => {');
+  });
+});
