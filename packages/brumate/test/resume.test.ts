@@ -1134,6 +1134,20 @@ describe('resume', () => {
     await waitFor(() => expect(text('.shown')).toBe('ok2'));
   });
 
+  it('holds the memo error until a read: an awaited memo that rejects on the server renders the #catch and the rest', async () => {
+    await resume('memoErrorAwaitServer', {});
+    expect(text('.before')).toBe('before');
+    expect(text('.caught')).toBe('Error: Bar failed');
+    expect(text('.after')).toBe('after');
+  });
+
+  it('holds the memo error until a read: an awaited memo that recomputes into a rejection shows the #catch', async () => {
+    await resume('memoErrorAwaitClient', {});
+    expect(text('.data')).toBe('ok0');
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Rejected 1'));
+  });
+
   it('stops updates that keep writing what they read, with one error, and the page goes on', async () => {
     await resume('refLoop', {});
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});

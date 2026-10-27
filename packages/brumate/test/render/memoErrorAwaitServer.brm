@@ -1,0 +1,19 @@
+<script>
+  import { $memo } from 'brumate/signals';
+
+  async function bar(): Promise<string> {
+    await Promise.resolve();
+    throw new Error('Bar failed');
+  }
+</script>
+
+<p class="before">before</p>
+#try {
+  <script>
+    const foo = await $memo(bar());
+  </script>
+  <p class="data">{foo}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}
+<p class="after">after</p>

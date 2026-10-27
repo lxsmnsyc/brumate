@@ -1,2 +1,3 @@
 - Probed: the server holds errors already; top-level memo declaration throws on the server (codegen). The #try table needs tryCatchesClient to count memo reads. Bench todos 28180 -> 28222.
 - Review round: dropped the DEV warning, added it.fails for the server gap, chain and insert-recovery tests, measured the #try cost (+139 B on a small fixture). Todos 28229.
+- Added awaited-memo tests (server in #try, client recompute into rejection); both pass.
