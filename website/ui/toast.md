@@ -88,7 +88,7 @@ toastQueue().close(key);
 
 ## The region
 
-- A `ToastRegion` renders the toasts of its queue at the end of the page, newest first. `toast` is a `#template` that gets each toast, with its `key` and `content`.
+- A `ToastRegion` renders the toasts of its queue at the end of the page, newest first. `toast` is a `#template` that gets each toast, with its `key` and `content`. The region does not get the type of the content from its queue, so give the template's parameter a type, such as `toast: QueuedToast<Notice>`.
 - The region is a landmark named "Notifications" while it has toasts. F6 moves focus to the newest toast, and F6 again gives focus back. When the toast with focus closes, focus moves to the next toast, or back to where it was.
 - `transition` animates each toast with `data-closed`, `data-enter` and `data-leave`, as a [Transition](./transition.md) does, and a toast stays until its leave ends.
 - The code of the region loads with the first toast of its queue, not with the page.

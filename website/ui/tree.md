@@ -9,7 +9,7 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 ```html
 <Tree aria-label="Files" items=files item=file selectedKeys=$bind(picked) expandedKeys=$bind(open) selectionMode="multiple" />
 
-#template file(file: File) {
+#template file(file) {
   <TreeItem textValue=(file.name)>
     <Button slot="chevron">▸</Button>
     <Checkbox slot="selection" aria-label=(`Select ${file.name}`) />
@@ -19,7 +19,7 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 ```
 
 - A `Tree` takes `items`, each with an `id`, its key. An item with `children` is a parent, even when the array is empty. It needs `aria-label` or `aria-labelledby`.
-- `item` is a `#template` that renders a `TreeItem` for an item. A template parameter takes a type, such as `file: File`. The Tree renders it for each item that shows, and gives the TreeItem its key and its place in the tree.
+- `item` is a `#template` that renders a `TreeItem` for an item. Its parameter takes its type from `items`. The Tree renders it for each item that shows, and gives the TreeItem its key and its place in the tree.
 - `expandedKeys` holds the keys of the open items, and `onExpandedChange` hears of changes. The children of a closed item do not render.
 - Selection is as in a [GridList](./grid-list.md): `selectionMode`, `selectionBehavior`, `selectedKeys`, `disabledKeys` and `onSelectionChange`.
 - `rowHeight` renders only the rows in view, as in a [Virtualizer](./virtualizer.md), which gives it too. `getTextValue` returns the text of an item for the letters that move to a row, for the rows out of view.

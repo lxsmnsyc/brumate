@@ -22,6 +22,7 @@ import { parse } from './parser.ts';
 import { analyze } from './analyze.ts';
 import { buildGraph } from './graph.ts';
 import type { Declaration } from './model.ts';
+import { getPatternNames } from './oxc.ts';
 import { blockBodies, clientState } from './plan.ts';
 
 /**
@@ -79,6 +80,8 @@ declare function $$on<T extends string, K extends keyof $$Events & string>(tag: 
 declare function $$onWindow<K extends keyof WindowEventMap & string>(event: K, handler: (event: WindowEventMap[K] & { currentTarget: Window }) => unknown): void;
 declare function $$onDocument<K extends keyof DocumentEventMap & string>(event: K, handler: (event: DocumentEventMap[K] & { currentTarget: Document }) => unknown): void;
 declare function $$use(...values: unknown[]): void;
+/** The type of the name of a template that is written at each use. Only its name is read. */
+declare const $$template: (...args: any[]) => Promise<$$Markup>;
 type $$Plain = string | number | boolean | bigint | null | undefined | Date | Error | URL | URLSearchParams | ArrayBuffer | ArrayBufferView | Headers | FormData | Request | Response | ReadableStream<any> | AbortSignal | Event | DOMException | ImageData;
 type $$Sendable<T> = T extends $$Plain | import('brumate/serial').AppValue ? T : T extends { brumateId: string } ? T : T extends RegExp ? { 'A regular expression cannot be sent to the client. Send its source and flags': never } : T extends (...args: any[]) => any ? { 'A function cannot be sent to the client. Keep it out of the signal or memo': never } : T extends Promise<infer U> ? Promise<$$Sendable<U>> : T extends ReadonlyMap<infer K, infer V> ? ReadonlyMap<$$Sendable<K>, $$Sendable<V>> : T extends ReadonlySet<infer V> ? ReadonlySet<$$Sendable<V>> : T extends object ? { [K in keyof T]: $$Sendable<T[K]> } : T;
 /** Checks a value that the page state sends to the client. */
@@ -90,11 +93,17 @@ declare function $$sendableRef<T>(value: T & $$SendableRef<T>): void;
 
 class Writer {
   code = '';
-  readonly mappings: CheckMapping[] = [];
+  mappings: CheckMapping[] = [];
   private readonly source: string;
 
   constructor(source: string) {
     this.source = source;
+  }
+
+  /** Starts the code again, to write the file another way. */
+  reset(): void {
+    this.code = '';
+    this.mappings = [];
   }
 
   text(value: string): void {
@@ -285,18 +294,183 @@ function sentDeclarations(file: SFCFile): Declaration[] {
   }
 }
 
+/**
+ * Visits the nodes of the file and of the oxc trees in it. `visit` returns false to skip the
+ * children of a node.
+ */
+function walk(node: unknown, visit: (node: Record<string, unknown>) => boolean): void {
+  if (typeof node !== 'object' || node === null) {
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      walk(item, visit);
+    }
+    return;
+  }
+  const value = node as Record<string, unknown>;
+  if (visit(value) === false) {
+    return;
+  }
+  for (const key in value) {
+    if (key !== 'parent') {
+      walk(value[key], visit);
+    }
+  }
+}
+
+/** The names that a node reads or declares, as identifiers and component tags. */
+function namesIn(node: unknown): Set<string> {
+  const found = new Set<string>();
+  walk(node, (value) => {
+    if (value.type === 'Identifier' && typeof value.name === 'string') {
+      found.add(value.name);
+    } else if (value.kind === 'component' && typeof value.name === 'string') {
+      found.add(value.name.split('.')[0]!);
+    }
+    return true;
+  });
+  return found;
+}
+
+/** The names that the parameters of a template declare. */
+function paramNames(template: TemplateDecl): string[] {
+  const found: string[] = [];
+  for (const param of template.params) {
+    const pattern = param.type === 'TSParameterProperty' ? param.parameter : param;
+    for (const name of getPatternNames(
+      pattern.type === 'RestElement' ? pattern.argument : pattern,
+    )) {
+      found.push(name.name);
+    }
+  }
+  return found;
+}
+
+/** Whether a parameter of a template has no type, so it can only get one from where it is passed. */
+function untyped(template: TemplateDecl): boolean {
+  for (const param of template.params) {
+    const pattern = (param.type === 'AssignmentPattern' ? param.left : param) as {
+      typeAnnotation?: unknown;
+    };
+    if (!pattern.typeAnnotation) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** The name of a template that an attribute value passes as it is, such as `item=row`. */
+function passedName(value: Expression): string | undefined {
+  return passedIdentifier(value)?.name;
+}
+
+/** The identifier of `passedName`, with its range in the file. */
+function passedIdentifier(value: Expression): (Range & { name: string }) | undefined {
+  let node: oxc.Node = value.ast;
+  while (node.type === 'ParenthesizedExpression') {
+    node = node.expression;
+  }
+  return node.type === 'Identifier' ? node : undefined;
+}
+
+/**
+ * Finds the templates with an untyped parameter whose every use passes it to a prop of a component,
+ * such as `item=row`. They are written at each use, so the prop types the parameter. A template
+ * that the code reads in another way, or passes to an element, keeps its function declaration.
+ */
+function inlineTemplates(file: SFCFile): Set<TemplateDecl> {
+  const found = new Set<TemplateDecl>();
+  const scope = (root: unknown, templates: TemplateDecl[]): void => {
+    for (const template of templates) {
+      if (template.params.length === 0 || !untyped(template)) {
+        continue;
+      }
+      let reads = 0;
+      let passed = 0;
+      walk(root, (value) => {
+        // A body that declares a template of the same name hides this one.
+        if (value !== root && Array.isArray(value.templates)) {
+          for (const other of value.templates as TemplateDecl[]) {
+            if (other !== template && other.name === template.name) {
+              return false;
+            }
+          }
+        }
+        // So does a parameter of the same name, such as `#template item(item)`, in its template.
+        if (
+          value.kind === 'template' &&
+          paramNames(value as unknown as TemplateDecl).includes(template.name)
+        ) {
+          return false;
+        }
+        if (value.type === 'Identifier' && value.name === template.name) {
+          reads++;
+        } else if (value.kind === 'component' && value.name === template.name) {
+          reads++;
+        }
+        if (value.kind === 'component' || value.kind === 'dynamic') {
+          for (const attribute of value.attributes as Attribute[]) {
+            if (attribute.kind === 'value' && passedName(attribute.value) === template.name) {
+              passed++;
+            }
+          }
+        }
+        return true;
+      });
+      if (passed > 0 && reads === passed) {
+        found.add(template);
+      }
+    }
+  };
+  scope(file, file.templates);
+  walk(file.children, (value) => {
+    if (Array.isArray(value.templates) && Array.isArray(value.children)) {
+      scope(value, value.templates as TemplateDecl[]);
+    }
+    return true;
+  });
+  for (const template of file.templates) {
+    walk(template.body, (value) => {
+      if (Array.isArray(value.templates) && Array.isArray(value.children)) {
+        scope(value, value.templates as TemplateDecl[]);
+      }
+      return true;
+    });
+  }
+  return found;
+}
+
+/** Thrown when a template cannot be written at a use. It is then written as a declaration. */
+class Hoist {
+  readonly template: TemplateDecl;
+
+  constructor(template: TemplateDecl) {
+    this.template = template;
+  }
+}
+
 class Generator {
   private readonly file: SFCFile;
   private readonly out: Writer;
   private readonly hoisted: oxc.Node[] = [];
   private readonly sent: Declaration[];
   private readonly omits: Map<Range, string[]>;
+  /** The templates that are written at each use. See `inlineTemplates`. */
+  private readonly inline: Set<TemplateDecl>;
+  /** The names that each block of the generated code declares, outermost first. */
+  private scopes: Set<string>[] = [];
+  /** The templates in scope, with the number of blocks at their declaration. */
+  private visible: { template: TemplateDecl; depth: number }[] = [];
+  /** The templates being written at a use, to find one that passes itself. */
+  private writing = new Set<TemplateDecl>();
 
   constructor(file: SFCFile, out: Writer) {
     this.file = file;
     this.out = out;
     this.sent = sentDeclarations(file);
     this.omits = restOmits(file.instanceScript?.program);
+    this.inline = inlineTemplates(file);
   }
 
   /** Copies a statement, and checks the values it declares that the client receives. */
@@ -326,6 +500,26 @@ class Generator {
   }
 
   generate(): void {
+    // A template that cannot be written at one of its uses is declared instead, and the file is
+    // written again. Each pass declares one more template, so this ends.
+    for (;;) {
+      try {
+        this.write();
+        return;
+      } catch (error) {
+        if (!(error instanceof Hoist)) {
+          throw error;
+        }
+        this.inline.delete(error.template);
+        this.out.reset();
+        this.scopes = [];
+        this.visible = [];
+        this.writing = new Set();
+      }
+    }
+  }
+
+  private write(): void {
     const { file, out } = this;
     out.text(HELPERS);
     for (const statement of file.moduleScript?.program.body ?? []) {
@@ -376,8 +570,10 @@ class Generator {
         out.text(');\n');
       }
     }
+    this.enter(new Set(), file.templates);
     this.templates(file.templates);
     this.nodes(file.children);
+    this.leave();
     out.text('return $$markup;\n}\n');
     // Components are sent to the client by their ID, as the compiled ones are.
     out.text(`${COMPONENT}.brumateId = '';\n`);
@@ -409,23 +605,115 @@ class Generator {
     }
   }
 
-  private templates(templates: TemplateDecl[]): void {
-    const { out } = this;
+  /** Opens a block of the generated code that declares names and templates. */
+  private enter(declared: Set<string>, templates: TemplateDecl[] = []): void {
     for (const template of templates) {
-      // Templates can await memos, as the component function can.
-      out.text('async function ');
-      out.copy(template.nameRange);
-      out.text('(');
-      if (template.params.length > 0) {
-        out.copy({ start: template.params[0]!.start, end: template.params.at(-1)!.end });
-      }
-      out.text('): Promise<$$Markup> {\n');
-      this.body(template.body);
-      out.text('return $$markup;\n}\n');
+      declared.add(template.name);
+    }
+    this.scopes.push(declared);
+    for (const template of templates) {
+      this.visible.push({ template, depth: this.scopes.length });
     }
   }
 
-  private body(body: Body): void {
+  private leave(): void {
+    const depth = this.scopes.length;
+    this.scopes.pop();
+    while (this.visible.at(-1) && this.visible.at(-1)!.depth >= depth) {
+      this.visible.pop();
+    }
+  }
+
+  private templates(templates: TemplateDecl[]): void {
+    const { out } = this;
+    for (const template of templates) {
+      if (this.inline.has(template)) {
+        // The name stays declared, so that hover, go to definition, references and rename reach
+        // the template from its uses. Its type is not used.
+        out.text('const ');
+        out.copy(template.nameRange);
+        out.text(' = $$template;\n');
+        continue;
+      }
+      // Templates can await memos, as the component function can.
+      out.text('async function ');
+      out.copy(template.nameRange);
+      this.template(template);
+      out.text('\n');
+    }
+  }
+
+  /** Writes the parameters and the body of a template, after its name or `async`. */
+  private template(template: TemplateDecl): void {
+    const { out } = this;
+    out.text('(');
+    if (template.params.length > 0) {
+      out.copy({ start: template.params[0]!.start, end: template.params.at(-1)!.end });
+    }
+    out.text('): Promise<$$Markup> ');
+    out.text(this.inline.has(template) ? '=> {\n' : '{\n');
+    this.enter(new Set(paramNames(template)));
+    this.body(template.body);
+    this.leave();
+    out.text('return $$markup;\n}');
+  }
+
+  /**
+   * Finds the template that a prop value passes, if it is written at each use. An unannotated
+   * parameter of a function declaration has no type, and one of an arrow function in a prop takes
+   * the type of the prop, so the template is written there as `async (a) => { ... }`. The body is
+   * copied, with its mappings, at each use. Throws `Hoist` if a name declared between the
+   * template and the use would hide a name that the template reads, or if the template passes
+   * itself.
+   */
+  private passed(value: Expression): TemplateDecl | undefined {
+    const name = passedName(value);
+    if (name === undefined) {
+      return undefined;
+    }
+    for (let index = this.visible.length - 1; index >= 0; index--) {
+      const { template, depth } = this.visible[index]!;
+      if (template.name !== name) {
+        continue;
+      }
+      if (!this.inline.has(template)) {
+        return undefined;
+      }
+      if (this.writing.has(template)) {
+        throw new Hoist(template);
+      }
+      const read = namesIn([template.params, template.body]);
+      for (const param of paramNames(template)) {
+        read.delete(param);
+      }
+      for (const scope of this.scopes.slice(depth)) {
+        for (const declared of scope) {
+          if (declared === name || read.has(declared)) {
+            throw new Hoist(template);
+          }
+        }
+      }
+      return template;
+    }
+    return undefined;
+  }
+
+  private body(body: Body, declared = new Set<string>()): void {
+    for (const statement of body.script?.program.body ?? []) {
+      if (statement.type === 'VariableDeclaration') {
+        for (const declarator of statement.declarations) {
+          for (const name of getPatternNames(declarator.id)) {
+            declared.add(name.name);
+          }
+        }
+      } else if (
+        (statement.type === 'FunctionDeclaration' || statement.type === 'ClassDeclaration') &&
+        statement.id
+      ) {
+        declared.add(statement.id.name);
+      }
+    }
+    this.enter(declared, body.templates);
     for (const statement of body.script?.program.body ?? []) {
       if (statement.type !== 'ImportDeclaration') {
         this.statement(statement);
@@ -433,6 +721,7 @@ class Generator {
     }
     this.templates(body.templates);
     this.nodes(body.children);
+    this.leave();
   }
 
   private nodes(nodes: Markup[]): void {
@@ -460,6 +749,7 @@ class Generator {
         this.nodes(node.children);
         return;
       case 'dynamic':
+        this.passedNames(node.attributes);
         out.text('$$dynamic(');
         out.expression(node.tag);
         out.text(', {');
@@ -611,11 +901,21 @@ class Generator {
           this.propName(attribute);
           out.text(`${attribute.value === true ? 'true' : JSON.stringify(attribute.value)},`);
           break;
-        case 'value':
+        case 'value': {
           this.propName(attribute);
-          out.expression(attribute.value);
+          const template = this.passed(attribute.value);
+          if (template) {
+            this.writing.add(template);
+            out.text('(async ');
+            this.template(template);
+            out.text(')');
+            this.writing.delete(template);
+          } else {
+            out.expression(attribute.value);
+          }
           out.text(',');
           break;
+        }
         case 'event':
           this.propName(attribute);
           out.expression(attribute.handler);
@@ -639,8 +939,26 @@ class Generator {
     }
   }
 
+  /**
+   * Reads the name of each template that a prop passes and that is written at the use, mapped to
+   * the name at the use, so the use reaches the template in an editor. It is a statement of its own
+   * before the call: in the prop, next to the arrow function, it would change how the call infers
+   * its type parameters.
+   */
+  private passedNames(attributes: Attribute[]): void {
+    for (const attribute of attributes) {
+      if (attribute.kind === 'value' && this.passed(attribute.value)) {
+        const name = passedIdentifier(attribute.value)!;
+        this.out.text('$$use(');
+        this.out.copy(name);
+        this.out.text(');\n');
+      }
+    }
+  }
+
   private component(node: ComponentNode): void {
     const { out } = this;
+    this.passedNames(node.attributes);
     const nameStart = node.start + 1;
     // A direct call checks the props as a fresh object, so an unknown prop is reported, and the
     // type parameters of a generic component are inferred from them.
@@ -705,7 +1023,7 @@ class Generator {
           out.expression(block.key);
           out.text(');\n');
         }
-        this.body(block.body);
+        this.body(block.body, namesIn([block.item, block.index]));
         out.text('}\n');
         this.fallback(block.fallback);
         return;
@@ -719,7 +1037,7 @@ class Generator {
           out.copy(block.index);
           out.text(' = $$i;\n');
         }
-        this.body(block.body);
+        this.body(block.body, namesIn(block.index));
         out.text('}\n');
         this.fallback(block.fallback);
         return;
@@ -753,7 +1071,7 @@ class Generator {
           out.copy(block.reset);
           out.text(' = (): void => {};\n');
         }
-        this.body(block.fallback);
+        this.body(block.fallback, namesIn([block.error, block.reset]));
         out.text('}\n');
         return;
       case 'loading':

@@ -147,3 +147,52 @@ export function createBrumateLanguagePlugin<T>(
     },
   };
 }
+
+/** The fields of a TypeScript diagnostic that `dedupeDiagnostics` reads. */
+export interface DiagnosticLike {
+  file?: { fileName: string } | undefined;
+  start?: number | undefined;
+  length?: number | undefined;
+  code: number;
+  messageText: string | MessageChain;
+}
+
+interface MessageChain {
+  messageText: string;
+  next?: MessageChain[];
+}
+
+function messageKey(message: string | MessageChain): string {
+  if (typeof message === 'string') {
+    return message;
+  }
+  let key = message.messageText;
+  for (const next of message.next ?? []) {
+    key += `\n${messageKey(next)}`;
+  }
+  return key;
+}
+
+/**
+ * Drops each diagnostic that repeats an earlier one: the same file, place, code and message. The
+ * type check copies a template that is passed to props at each use, so an error in its body that
+ * does not depend on the prop is reported once for each use, at the same place in the `.brm` file.
+ */
+export function dedupeDiagnostics<T extends DiagnosticLike>(diagnostics: readonly T[]): T[] {
+  const seen = new Set<string>();
+  const kept: T[] = [];
+  for (const diagnostic of diagnostics) {
+    const key = [
+      diagnostic.file?.fileName,
+      diagnostic.start,
+      diagnostic.length,
+      diagnostic.code,
+      messageKey(diagnostic.messageText),
+    ].join('\0');
+    if (!seen.has(key)) {
+      seen.add(key);
+      kept.push(diagnostic);
+    }
+  }
+  return kept;
+}

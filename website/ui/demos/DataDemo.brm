@@ -4,7 +4,6 @@
   import Tree from '@brumate/ui/Tree.brm';
   import TreeItem from '@brumate/ui/TreeItem.brm';
   import { treeData } from '@brumate/ui/data.brm.ts';
-  import type { TreeDataNode } from '@brumate/ui/data.ts';
   import Icon from '../../src/components/Icon.brm';
 
   interface File {
@@ -33,7 +32,7 @@
   <Button class="ui-button" onPress=removeSelectedItems>Remove selected</Button>
 </p>
 
-#template file(node: TreeDataNode<File>) {
+#template file(node) {
   <TreeItem class="ui-treerow" textValue=(node.value.name)>
     #if (node.children) {
       <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>

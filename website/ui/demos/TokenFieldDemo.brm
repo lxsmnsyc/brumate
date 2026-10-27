@@ -24,6 +24,6 @@
 </TokenField>
 <p>Tokens: {tokens.join(', ') || 'none'}.</p>
 
-#template chip(segment: TokenSegment) {
+#template chip(segment) {
   <Token class=(segment.text.startsWith('@') ? 'ui-token ui-mention' : 'ui-token')>{segment.text}</Token>
 }

@@ -13,7 +13,7 @@ A field of text with tokens in it, such as mentions, tags or commands, which the
   <Text slot="description">Type a @name or a #tag, then a space.</Text>
 </TokenField>
 
-#template chip(segment: TokenSegment) {
+#template chip(segment) {
   <Token>{segment.text}</Token>
 }
 ```

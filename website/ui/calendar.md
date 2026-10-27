@@ -149,7 +149,7 @@ Style the dates with the data attributes above. The grid is a table, so style it
 ```html
 <CalendarGrid cell=day />
 
-#template day(date: string) {
+#template day(date) {
   <CalendarCell date=date>{Number(date.slice(8))}.</CalendarCell>
 }
 ```

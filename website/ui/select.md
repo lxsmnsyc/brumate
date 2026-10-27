@@ -115,12 +115,12 @@ Style the field with the data attributes above, such as `[data-open]` and `[data
 
 `SelectValue` shows the text of the selected item, or `placeholder` of the Select, `Select an item` by default. It shows `data-placeholder` while nothing is selected.
 
-The server does not know the text of a key that the Select starts with, so the HTML shows the key until the code loads. `render`, a `#template`, names the selection in the HTML too. It gets `selectedKey`, `selectedText` and `isPlaceholder`. A template parameter takes a type, such as `state: { selectedKey: Key | null }`.
+The server does not know the text of a key that the Select starts with, so the HTML shows the key until the code loads. `render`, a `#template`, names the selection in the HTML too. It gets `selectedKey`, `selectedText` and `isPlaceholder`.
 
 ```html
 <Button><SelectValue render=sizeName /></Button>
 
-#template sizeName(state: { selectedKey: Key | null }) {
+#template sizeName(state) {
   {sizes.find((size) => size.id === state.selectedKey)?.name ?? 'None'}
 }
 ```
