@@ -166,6 +166,22 @@ export interface BrumateOptions {
 }
 
 /** `import 'virtual:brumate/start'` in the client entry starts the loader. */
+/** How many files a build reads or compiles at once, so a large project does not run out of file handles. */
+const BATCH = 32;
+
+/** Runs `run` for each item, one batch at a time. */
+const inBatches = async <T, R>(list: T[], run: (item: T) => Promise<R>): Promise<R[]> => {
+  const results: R[] = [];
+  for (let start = 0; start < list.length; start += BATCH) {
+    const batch: Promise<R>[] = [];
+    for (const item of list.slice(start, start + BATCH)) {
+      batch.push(run(item));
+    }
+    results.push(...(await Promise.all(batch)));
+  }
+  return results;
+};
+
 const START = 'virtual:brumate/start';
 /** Exports `load(id)`, which imports the client module of a component. */
 const MANIFEST = 'virtual:brumate/manifest';
@@ -557,15 +573,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   // Props are analyzed across the project, so a change to one file can change the output of others.
   const analyze = async (): Promise<void> => {
     const list = [...files.values()];
-    const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
+    const contents = await inBatches(list, (file) => readFile(file, 'utf8'));
     const sources = new Map(list.map((file, index) => [file, contents[index]!]));
     liveProps = analyzeProject(sources, resolveComponent);
     // The server functions that the app refreshes, from its components and its scripts.
     const scripts = await findScripts(root, exclude);
-    const scriptSources = await Promise.all(
-      [...new Set([...scripts, ...serverFiles.values()])].map((file) =>
-        readFile(file, 'utf8').catch(() => ''),
-      ),
+    const scriptSources = await inBatches(
+      [...new Set([...scripts, ...serverFiles.values()])],
+      (file) => readFile(file, 'utf8').catch(() => ''),
     );
     refreshed = refreshedNames([...contents, ...scriptSources]);
     compiled.clear();
@@ -594,9 +609,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         const imported = importedComponents(result.file)
           .map((specifier) => resolveComponent(specifier, file))
           .filter((target): target is string => target !== undefined && existsSync(target));
-        await Promise.all(imported.map(visit));
+        await inBatches(imported, visit);
       };
-      await Promise.all([...files.values()].map(visit));
+      await inBatches([...files.values()], visit);
       const features = joinFeatures(all);
       // Client navigation inserts the pages that it loads, and a route with `_loading.brm`
       // streams its body after the page.
@@ -704,15 +719,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
    */
   const bundles = async (kept: Set<string>): Promise<Map<string, string[]>> => {
     const imports = new Map<string, string[]>();
-    await Promise.all(
-      [...files.values()].map(async (file) => {
-        try {
-          imports.set(file, await componentImports(file));
-        } catch {
-          imports.set(file, []);
-        }
-      }),
-    );
+    await inBatches([...files.values()], async (file) => {
+      try {
+        imports.set(file, await componentImports(file));
+      } catch {
+        imports.set(file, []);
+      }
+    });
     const imported = new Set([...imports.values()].flat());
     const result = new Map<string, string[]>();
     // The components that a bundle holds so far.
@@ -763,8 +776,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   /** A bundle module: the client modules of a root component and of those it renders. */
   const bundleModule = async (root: string): Promise<string> => {
     const list = [...files];
-    const needed = await Promise.all(
-      list.map(async ([, file]) => (await compileFile(file)).result.clientCode),
+    const needed = await inBatches(
+      list,
+      async ([, file]) => (await compileFile(file)).result.clientCode,
     );
     const kept = new Set(list.filter((_, index) => needed[index]).map(([, file]) => file));
     const members = (await bundles(kept)).get(root) ?? [];
@@ -795,8 +809,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     // A build leaves out the components that have no client code. The core treats a
     // component that `load` does not know as one with nothing to update. The dev server
     // keeps every component, because an edit can give one client code.
-    const needed = await Promise.all(
-      list.map(async ([, file]) => isServe || (await compileFile(file)).result.clientCode),
+    const needed = await inBatches(
+      list,
+      async ([, file]) => isServe || (await compileFile(file)).result.clientCode,
     );
     const kept = list.filter((_, index) => needed[index]);
     if (!isServe) {
@@ -1169,7 +1184,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   ): Promise<{ file: string; selfContained: boolean; [key: string]: unknown }[]> => {
     const routes = `${routesDirectory()}/`;
     const list = [...new Set(files.values())];
-    const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
+    const contents = await inBatches(list, (file) => readFile(file, 'utf8'));
     const sources = new Map(list.map((file, index) => [file, contents[index]!]));
     const classes = classifyComponents(sources, {
       resolve: resolveComponent,
@@ -1177,7 +1192,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     });
     const relative = (file: string): string => normalizePath(path.relative(root, file));
     const shown = list.filter((file) => !file.startsWith(routes) && classes.has(file));
-    const stories = await Promise.all(shown.map((file) => workbenchStories(server, file)));
+    const stories = await inBatches(shown, (file) => workbenchStories(server, file));
     return shown
       .map((file, index) => {
         const found = classes.get(file)!;
@@ -1608,7 +1623,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       }
       const list = [...files.values()];
-      const contents = await Promise.all(list.map((file) => readFile(file, 'utf8')));
+      const contents = await inBatches(list, (file) => readFile(file, 'utf8'));
       const measured = buildReport({
         chunks,
         sources: new Map(list.map((file, index) => [file, contents[index]!])),
