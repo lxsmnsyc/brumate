@@ -29,7 +29,7 @@
   import { keepTabStop, moveFocus, rove } from './toolbar.ts';
 
   /**
-   * ToggleButtons with one selection, as ToggleButtonGroup of React Aria Components. With
+   * ToggleButtons with one selection. With
    * `selectionMode="single"`, the default, it is a radiogroup and its buttons are radios. With
    * "multiple", it is a toolbar, or a group inside a Toolbar. The arrow keys move focus between its buttons, as in a Toolbar.
    * It shows `data-orientation` and `data-disabled`.

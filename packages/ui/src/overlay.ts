@@ -1,6 +1,5 @@
 // The page around an open overlay: what is inert behind it, where focus goes in it, and when a
-// press outside closes it. These follow FocusScope, ariaHideOutside and useInteractOutside of
-// React Aria, with `inert` in place of aria-hidden.
+// press outside closes it. They hide the page with `inert` in place of aria-hidden.
 
 const FOCUSABLE =
   'a[href], area[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), iframe, summary, [contenteditable], [tabindex]';
@@ -17,7 +16,7 @@ export function tabbables(root: Element): HTMLElement[] {
 
 /**
  * Moves focus into the overlay: to the element with `autofocus`, or else to the overlay itself,
- * as the Dialog of React Aria does, so a screen reader starts at its label.
+ * so a screen reader starts at its label.
  */
 export function focusInto(overlay: HTMLElement): void {
   const target = overlay.querySelector<HTMLElement>('[autofocus]') ?? overlay;
@@ -50,7 +49,7 @@ export function containTab(overlay: HTMLElement, event: KeyboardEvent): void {
 /** How many open overlays made each element inert, so the last one to close gives it back. */
 const inertCounts = new Map<Element, number>();
 
-/** True for an element that a modal leaves alone. The toasts stay usable, as in React Aria. */
+/** True for an element that a modal leaves alone. The toasts stay usable. */
 function keepsUsable(element: Element): boolean {
   return (
     element.hasAttribute('data-toast-region') ||
@@ -81,7 +80,7 @@ function removeInert(element: Element): void {
 
 /**
  * Makes every element of the page inert except the layer of the overlay and the elements that
- * hold it, as ariaHideOutside of React Aria does. Each element counts the overlays that made it
+ * hold it. Each element counts the overlays that made it
  * inert, so overlays can close in any order. Elements that come into the page while it is open
  * become inert too. Returns the function that gives them back what they had.
  */
@@ -134,7 +133,7 @@ const dismissable: Element[] = [];
 
 /**
  * Calls `close` on a press outside the layer, except on the trigger, which toggles the overlay
- * itself. As useInteractOutside of React Aria, the press is a pointerdown and a pointerup of the
+ * itself. The press is a pointerdown and a pointerup of the
  * first button, and only the topmost overlay closes. A layer holds the layers of the overlays
  * that open inside it, so a press in one of them is inside. Returns the function that stops it.
  */
@@ -180,8 +179,7 @@ export function pressOutside(
 }
 
 /**
- * Calls `close` when focus moves outside the layer and the trigger, as shouldCloseOnBlur of
- * React Aria does for an overlay that is not modal. Returns the function that stops it.
+ * Calls `close` when focus moves outside the layer and the trigger, for an overlay that is not modal. Returns the function that stops it.
  */
 export function blurOutside(
   layer: Element,
@@ -308,7 +306,7 @@ export function release(overlay: Element, layer: Element | undefined): void {
 }
 
 /**
- * Keeps focus in a modal overlay, as the `contain` of FocusScope in React Aria does. Focus that
+ * Keeps focus in a modal overlay. Focus that
  * lands outside its layer, or on nothing, such as when the focused element is removed, goes
  * back to the last element that had focus in the layer, or to the overlay. Returns the
  * function that stops it.
@@ -353,7 +351,7 @@ let scrollLocks = 0;
 let unlockScroll: (() => void) | undefined;
 
 /**
- * Stops the page from scrolling while a modal overlay is open, as usePreventScroll of React Aria
+ * Stops the page from scrolling while a modal overlay is open
  * does. The root gets `overflow: hidden`, and a padding as wide as the scrollbar that it hid, so
  * the page does not move sideways. Nested overlays share one lock. Returns the function that
  * gives it back.

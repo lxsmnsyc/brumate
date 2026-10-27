@@ -1,5 +1,4 @@
-// The tests of the list and tree data follow the tests of useListData and useTreeData in React
-// Stately.
+// The tests of the list and tree data check the changes of list and tree data.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Data from './fixtures/data.brm?brumate-server';

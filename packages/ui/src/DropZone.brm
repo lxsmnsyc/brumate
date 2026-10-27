@@ -21,7 +21,7 @@
   import VisuallyHidden from './VisuallyHidden.brm';
 
   /**
-   * An area that takes drops of text and files, as DropZone of React Aria Components.
+   * An area that takes drops of text and files.
    *
    * - `onDrop` gets the items of a drop: text, with `getText(type)`, and files, with `getFile()`.
    *   `onDropEnter` and `onDropExit` hear of a drag over it.

@@ -1,5 +1,5 @@
-// Focus that the arrow keys move between the items of a toolbar, as useToolbar of React Aria
-// does. Tab stops at one item of the toolbar: the one that had focus last. React Aria moves
+// Focus that the arrow keys move between the items of a toolbar.
+// Tab stops at one item of the toolbar: the one that had focus last. A common way is to move
 // focus to the edge of the toolbar just before Tab moves it on, which needs a handler that runs
 // during the event. brumate runs handlers after it, so the other items leave the order of Tab
 // instead, as the roving tabindex of WAI-ARIA does.
@@ -9,7 +9,7 @@ const FOCUSABLE =
 
 /**
  * True for a toolbar inside another one, such as a ToggleButtonGroup in a Toolbar. The outer one
- * moves focus between the items of both, as in React Aria, so the inner one does nothing.
+ * moves focus between the items of both, so the inner one does nothing.
  */
 export function isNested(toolbar: Element): boolean {
   return toolbar.parentElement?.closest('[role=toolbar]') != null;

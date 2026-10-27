@@ -40,7 +40,7 @@
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
   /**
-   * The layer under a Modal, which covers the page, as ModalOverlay of React Aria Components. It
+   * The layer under a Modal, which covers the page. It
    * opens from a DialogTrigger, or from its own `isOpen`.
    *
    * - It renders a layer at the end of the layer of the floating part around it, or at the end
@@ -126,8 +126,7 @@
       lockScroll(),
       followViewport(element),
     );
-    // A press on the overlay itself is outside the Modal. A press in a layer inside is not. As
-    // useInteractOutside of React Aria, it is a pointerdown and a pointerup of the first button,
+    // A press on the overlay itself is outside the Modal. A press in a layer inside is not. It is a pointerdown and a pointerup of the first button,
     // so the page under a touch is not clicked once the overlay is gone.
     let started = false;
     const down = (event: PointerEvent): void => {

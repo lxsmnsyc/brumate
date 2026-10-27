@@ -27,7 +27,7 @@ Tabs that show one panel at a time.
 - Tab stops once, at the selected tab, and then moves into its panel.
 - The arrow keys move to the next and the previous tab, past disabled ones, and go round at the ends. Home and End go to the first and the last tab. Right to left, Left and Right turn around.
 - `keyboardActivation="automatic"`, the default, selects the tab that the keys move to. `"manual"` selects it with Enter or Space.
-- Horizontal tabs use Left and Right, and leave Up and Down to the page. `orientation="vertical"` uses Up and Down, and Left and Right too, as in React Aria. Tabs and the TabList show `data-orientation`.
+- Horizontal tabs use Left and Right, and leave Up and Down to the page. `orientation="vertical"` uses Up and Down, and Left and Right too. Tabs and the TabList show `data-orientation`.
 
 ## Panels
 

@@ -1,4 +1,4 @@
-// The tests of ColorArea follow the tests of ColorArea in React Aria.
+// The tests of ColorArea.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import ColorAreas from './fixtures/color-areas.brm?brumate-server';
@@ -54,7 +54,7 @@ it('is a group with an input for each axis, saturation and brightness by default
   expect(y.value).toBe('80');
   expect(x.getAttribute('aria-orientation')).toBe('horizontal');
   expect(y.getAttribute('aria-orientation')).toBe('vertical');
-  // The value, the other axis, the third channel and the name of the color, as in React Aria.
+  // The value, the other axis, the third channel and the name of the color.
   expect(x.getAttribute('aria-valuetext')).toBe('Saturation 50%, Brightness 80%, Hue 210°, blue');
   expect(y.getAttribute('aria-valuetext')).toBe('Brightness 80%, Saturation 50%, Hue 210°, blue');
 });
@@ -91,7 +91,7 @@ it('moves x with Left and Right and y with Up and Down, on either input', async 
   press('ArrowLeft', x);
   press('ArrowLeft', x);
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 49%, 80%)'));
-  // Up on the input of x moves y, as in React Aria.
+  // Up on the input of x moves y.
   press('ArrowUp', x);
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 49%, 81%)'));
   y.focus();
@@ -116,7 +116,7 @@ it('moves y a page with PageUp and PageDown, and a page with Shift and an arrow'
   press('PageDown', x);
   press('PageDown', x);
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 50%, 70%)'));
-  // Shift with PageUp moves y too, as in React Aria.
+  // Shift with PageUp moves y too.
   press('PageUp', x, { shiftKey: true });
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 50%, 80%)'));
   press('ArrowRight', x, { shiftKey: true });
@@ -289,7 +289,7 @@ it('has one tab stop, and hides the input of y from screen readers until it has 
   expect(y.hasAttribute('tabindex')).toBe(false);
   expect(x.getAttribute('tabindex')).toBe('-1');
   expect(x.hasAttribute('aria-hidden')).toBe(false);
-  // When the focus leaves, the input that was used last stays the tab stop, as in React Aria, and
+  // When the focus leaves, the input that was used last stays the tab stop, and
   // the other one is hidden again.
   y.blur();
   await page.waitFor(() => expect(x.getAttribute('aria-hidden')).toBe('true'));
@@ -311,7 +311,7 @@ it('says less after a change from the keys', async () => {
   );
 });
 
-it('names the inputs as React Aria does, from the label of the caller', async () => {
+it('names the inputs, from the label of the caller', async () => {
   const page = await areas();
   // Without a label, the inputs are the color picker, and the group has no name.
   const plain = inputs(page, '.hsb');

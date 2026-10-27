@@ -19,7 +19,7 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * The label of a field, as Label of React Aria Components. A field gives it an ID and the `for`
+   * The label of a field. A field gives it an ID and the `for`
    * of its input. The caller's `id` and `for` win.
    */
   const { as = 'label', slot, children, ...rest } = $props<LabelProps<T>>();

@@ -50,8 +50,8 @@ With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets 
 - An item is an `option`. It shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
 - A `Text` with `slot="label"` names an item, and one with `slot="description"` describes it. A part cannot read its children, so add `hasLabel` and `hasDescription` to the item that has them.
 - The list shows `data-orientation`.
-- An option is read as one piece of text, so it holds no fields or buttons. The list takes the keys of a field inside, as in React Aria. A [GridList](./grid-list.md) holds rows with controls.
+- An option is read as one piece of text, so it holds no fields or buttons. The list takes the keys of a field inside. A [GridList](./grid-list.md) holds rows with controls.
 
 ## How it reads the items
 
-React Aria reads the items from the children of the list. A part of brumate cannot read its children, so the ListBox reads its items from the page: each item writes its key in `data-key`, and the order of the items is the order of their elements. This is why items can come from any markup, a `#for` or sections, with no `items` prop. A list that renders only the items in view has no page to read, so it takes `items` and reads their data.
+A part of brumate cannot read its children, so the ListBox reads its items from the page: each item writes its key in `data-key`, and the order of the items is the order of their elements. This is why items can come from any markup, a `#for` or sections, with no `items` prop. A list that renders only the items in view has no page to read, so it takes `items` and reads their data.

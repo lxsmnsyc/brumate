@@ -16,8 +16,7 @@
   import Calendar from './Calendar.brm';
 
   /**
-   * A grid of the days of a month or more, to pick a range of dates, as RangeCalendar of React
-   * Aria Components. It holds the same parts as a Calendar: a CalendarHeading, two Buttons with
+   * A grid of the days of a month or more, to pick a range of dates. It holds the same parts as a Calendar: a CalendarHeading, two Buttons with
    * `slot="previous"` and `slot="next"`, and a CalendarGrid for each month that shows.
    *
    * - `value` is the selected range, as `{ start, end }` of `YYYY-MM-DD` dates, or null.

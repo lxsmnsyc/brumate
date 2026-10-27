@@ -31,7 +31,7 @@
   import { progressOf } from './progress.ts';
 
   /**
-   * A value in a range, such as the space left on a disk, as Meter of React Aria Components:
+   * A value in a range, such as the space left on a disk:
    * role="meter" with the value, the range and its text in the locale. A Label inside names it.
    * The element has `--percentage` for CSS, from 0% to 100%. A `content` template gets the
    * percentage and the text, to draw the bar.

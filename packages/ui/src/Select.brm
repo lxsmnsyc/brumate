@@ -57,7 +57,7 @@
   import { describedBy, isFirstInvalid, messagesOf } from './fields.ts';
 
   /**
-   * A field that picks one item from a list, as Select of React Aria Components. It holds a
+   * A field that picks one item from a list. It holds a
    * Label, a Button with a SelectValue, a Text with `slot="description"`, a FieldError, and a
    * Popover with a ListBox.
    *
@@ -186,7 +186,7 @@
     const at = enabled.findIndex((item) => keyOf(item) === selectedKey);
     let next: HTMLElement | undefined;
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      // With nothing selected, both keys select the first item, as in React Aria.
+      // With nothing selected, both keys select the first item.
       next = at < 0 ? enabled[0] : enabled[at + (event.key === 'ArrowLeft' ? -1 : 1)];
     } else {
       next = typeahead(button, enabled, enabled[at], event);

@@ -64,8 +64,7 @@
   import { TableContext, TableResizeContext, nextSort } from './table.ts';
 
   /**
-   * A table of rows and columns that the user can move through, select and sort, as Table of
-   * React Aria Components. It holds a TableHeader of Column elements and a TableBody of Row
+   * A table of rows and columns that the user can move through, select and sort. It holds a TableHeader of Column elements and a TableBody of Row
    * elements, each with a Cell for each column, written out or from a `#for`. Or it takes `items`,
    * and its TableBody renders a Row for each with its `item` template.
    *
@@ -295,7 +294,7 @@
 
   /**
    * Focuses a row, or a cell or a column header, or its first stop, or its last one when the
-   * focus comes from after it, as React Aria focuses a cell's children.
+   * focus comes from after it. This is how the children of a cell get focus.
    */
   function focusOn(item: HTMLElement | undefined, fromAfter = false) {
     if (!item) {

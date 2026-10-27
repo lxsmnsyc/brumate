@@ -11,7 +11,7 @@
   import { TableContext, TableRowContext } from './table.ts';
 
   /**
-   * A cell of a Row, as Cell of React Aria Components. A cell in a column with `isRowHeader`
+   * A cell of a Row. A cell in a column with `isRowHeader`
    * names its row: it is a `th` with `role="rowheader"`. Others are `td` elements with
    * `role="gridcell"`. It takes focus, or its first control does.
    */

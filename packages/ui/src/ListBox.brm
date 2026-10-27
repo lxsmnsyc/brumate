@@ -86,7 +86,7 @@
   import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
 
   /**
-   * A list of options that the user selects from, as ListBox of React Aria Components. Its items
+   * A list of options that the user selects from. Its items
    * are ListBoxItem elements, written out, from a `#for`, or in ListBoxSection elements. Or it
    * takes `items`, as Tree does, and renders each with the `item` template.
    *

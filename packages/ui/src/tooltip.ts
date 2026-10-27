@@ -1,4 +1,4 @@
-// The timing of tooltips and previews, after useTooltipTriggerState of React Aria, and the
+// The timing of tooltips and previews, and the
 // context of a TooltipTrigger.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
@@ -39,7 +39,7 @@ export interface Timing {
 }
 
 /**
- * The timing of a kind of overlay, after useTooltipTriggerState of React Aria. Once one has shown,
+ * The timing of a kind of overlay. Once one has shown,
  * the others show at once, until none has shown for a moment. One shows at a time.
  */
 export function timing(): Timing {
@@ -142,7 +142,7 @@ export const tooltips: Timing = timing();
 /** The triggers that a press holds down. The focus that a press gives them shows no tooltip. */
 export const pressedTriggers: WeakSet<Element> = new WeakSet();
 
-/** The timing of previews, apart from tooltips, as in React Aria. */
+/** The timing of previews, apart from tooltips. */
 export const previews: Timing = timing();
 
 /** The functions that stop what an open tooltip started, by its element. */

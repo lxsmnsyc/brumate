@@ -1,4 +1,4 @@
-// The tests of TimeField follow the tests of TimeField in React Aria.
+// The tests of TimeField.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import TimeFields from './fixtures/timefields.brm?brumate-server';
@@ -52,7 +52,7 @@ function type(text: string) {
 it('shows the segments of the clock of the locale, or of hourCycle', async () => {
   const page = await fields();
   expect(segments(page, '.meeting-input')).toEqual(['2', ':', '30', ' ', 'PM']);
-  // The hour has no leading zero, as React Aria shows it without `shouldForceLeadingZeros`.
+  // The hour has no leading zero without `shouldForceLeadingZeros`.
   expect(segments(page, '.alarm-input')).toEqual(['7', ':', '05']);
   expect(segments(page, '.forced-input')).toEqual(['14', ':', '30']);
   expect(segments(page, '.empty-input')).toEqual(['––', ':', '––', ':', '––', ' ', 'AM']);
@@ -118,7 +118,7 @@ it('steps a 12-hour hour within its period, and Home, End and PageUp go to the e
   const hour = segment(page, '.late-input', 'hour');
   hour.focus();
   press('ArrowUp', hour);
-  // 11 AM goes to 12 AM, as in React Aria, not to 12 PM.
+  // 11 AM goes to 12 AM, not to 12 PM.
   await page.waitFor(() => expect(state(page)[4]).toBe('00:00'));
   press('End', hour);
   await page.waitFor(() => expect(state(page)[4]).toBe('11:00'));

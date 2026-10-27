@@ -1,8 +1,7 @@
-// The changes of the list and tree data of `data.brm.ts`, after useListData and useTreeData of
-// React Stately. Each takes the items and gives new ones, so a signal that holds them updates.
+// The changes of the list and tree data of `data.brm.ts`. Each takes the items and gives new ones, so a signal that holds them updates.
 import type { Key } from './collection.ts';
 
-/** The key of an item: its `id`, or else its `key`, as React Stately reads it. */
+/** The key of an item: its `id`, or else its `key`. */
 export function defaultKey(item: unknown): Key {
   const value = item as { id?: Key; key?: Key };
   return (value.id ?? value.key)!;
@@ -25,7 +24,7 @@ export function removeKeys<T>(
 
 /**
  * The items with those of the keys moved together, in their order, to sit before or after the
- * item with `target`, as moveBefore and moveAfter of React Stately do.
+ * item with `target`.
  */
 export function moveKeys<T>(
   items: readonly T[],

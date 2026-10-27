@@ -1,4 +1,4 @@
-// The tests of DateField follow the tests of DateField in React Aria.
+// The tests of DateField.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import DateFields from './fixtures/datefields.brm?brumate-server';
@@ -129,7 +129,7 @@ it('takes digits away with Backspace, empties the date, and moves back from an e
   year.focus();
   backspace();
   await page.waitFor(() => expect(year.textContent).toBe('202'));
-  // Year 202 is a year too, as in React Aria.
+  // Year 202 is a year too.
   expect(state(page)[0]).toBe('0202-10-15');
   backspace();
   backspace();

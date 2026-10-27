@@ -1,4 +1,4 @@
-// Places an overlay next to its trigger, as useOverlayPosition of React Aria does: on a side of
+// Places an overlay next to its trigger: on a side of
 // the trigger, flipped to the other side when it does not fit, and kept inside the viewport.
 // The overlay is `position: fixed` and placed with `top` and `left`, never with a transform, so
 // the layer of an overlay is never the containing block of the overlays inside it.
@@ -132,7 +132,7 @@ export function computePosition(
     top = clamp(top + options.crossOffset, pad, viewport.height - pad - overlay.height);
   }
   // The arrow points at the middle of the trigger, from the edge of the overlay. It stays on the
-  // overlay, as in React Aria, when the overlay is pushed away from the edge of the viewport.
+  // overlay, when the overlay is pushed away from the edge of the viewport.
   const arrow = vertical
     ? clamp(trigger.left + trigger.width / 2 - left, 0, overlay.width)
     : clamp(trigger.top + trigger.height / 2 - top, 0, overlay.height);

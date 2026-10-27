@@ -1,4 +1,4 @@
-// The tests of the fields follow the tests of TextField, SearchField and Form in React Aria.
+// The tests of the fields.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Fields from './fixtures/fields.brm?brumate-server';

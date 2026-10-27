@@ -29,7 +29,7 @@
   import { interact } from './interact.brm.ts';
 
   /**
-   * A row of a GridList, as GridListItem of React Aria Components. `id` is its key. It can hold
+   * A row of a GridList. `id` is its key. It can hold
    * buttons, links and checkboxes, which Left and Right reach.
    *
    * - A press selects it, as the GridList says, or acts on it when nothing is selectable.

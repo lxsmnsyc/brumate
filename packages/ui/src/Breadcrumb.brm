@@ -12,10 +12,10 @@
   import { slotProps } from './slots.ts';
 
   /**
-   * One step of Breadcrumbs, as Breadcrumb of React Aria Components: an <li> around a Link.
+   * One step of Breadcrumbs: an <li> around a Link.
    * `isCurrent` marks the page that the trail ends at. Its link gets aria-current="page". React
    * Aria finds the last step itself, from a collection. Here the caller marks it. It shows
-   * `data-current` and `data-disabled`. The current step is disabled, as in React Aria, so its
+   * `data-current` and `data-disabled`. The current step is disabled, so its
    * link does not load the page that is open.
    */
   const { isCurrent = false, children, ...rest } = $props<BreadcrumbProps>();

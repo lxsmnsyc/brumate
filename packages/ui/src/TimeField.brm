@@ -48,7 +48,7 @@
   } from './segments.ts';
 
   /**
-   * A time of day that the user edits segment by segment, as TimeField of React Aria Components.
+   * A time of day that the user edits segment by segment.
    * It holds the same parts as a DateField: a Label, a DateInput of DateSegments, and a Text with
    * `slot="description"` and a FieldError.
    *

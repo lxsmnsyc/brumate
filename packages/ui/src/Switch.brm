@@ -20,7 +20,7 @@
   import { box } from './box.brm.ts';
 
   /**
-   * A switch, as Switch of React Aria Components: a <label> around a native checkbox with
+   * A switch: a <label> around a native checkbox with
    * role="switch". The label shows `data-selected`, `data-pressed`, `data-hovered`,
    * `data-focused`, `data-focus-visible`, `data-disabled` and `data-readonly`. Draw the switch in
    * the children, from these attributes.

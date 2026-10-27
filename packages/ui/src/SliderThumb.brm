@@ -16,7 +16,7 @@
   import { SliderContext, percentOf, pointAt, startDrag, thumbId, thumbRange, valueAt } from './slider.ts';
 
   /**
-   * A thumb of a Slider, as SliderThumb of React Aria Components. `index` is the value that it
+   * A thumb of a Slider. `index` is the value that it
    * moves, 0 by default. It holds an `<input type="range">` out of sight, which a screen reader
    * reads, the keys move, and a form sends with `name`, also before the code loads.
    *
@@ -78,7 +78,7 @@
     if (!track) {
       return;
     }
-    // The thumb keeps the distance to the pointer, as in React Aria.
+    // The thumb keeps the distance to the pointer.
     const offset = pointAt(slider, track, event.clientX, event.clientY, rtl) - percentOf(slider, value);
     slider.setDragging(index, true);
     startDrag(

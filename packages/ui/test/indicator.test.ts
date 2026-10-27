@@ -1,4 +1,4 @@
-// The tests of SelectionIndicator follow the tests of SelectionIndicator in React Aria.
+// The tests of SelectionIndicator.
 import { afterEach, expect, it, vi } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Indicators from './fixtures/indicators.brm?brumate-server';

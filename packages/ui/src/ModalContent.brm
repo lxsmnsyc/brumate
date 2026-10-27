@@ -10,7 +10,7 @@
 
   /**
    * The content of the box of a Modal. A Modal inside it is not the box of this overlay, so it
-   * opens an overlay of its own, as in React Aria.
+   * opens an overlay of its own.
    */
   const { children } = $props<ModalContentProps>();
 

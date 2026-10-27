@@ -70,7 +70,7 @@
   import { addStep, clamp, listenToWheel, snapToStep, stopWheel } from './numbers.ts';
 
   /**
-   * A field for a color, as ColorField of React Aria Components. It holds a Label, an Input, a
+   * A field for a color. It holds a Label, an Input, a
    * Text with `slot="description"` and a FieldError.
    *
    * - Without `channel`, it edits the color as hex. Typing commits on blur and on Enter. Text that
@@ -282,7 +282,7 @@
   });
 
   function changed(next: string) {
-    // Only text that can become a color stays, such as `#12` or `-`, as React Aria keeps it.
+    // Only text that can become a color stays, such as `#12` or `-`.
     if (channel ? next === '' || parser().isValidPartialNumber(next) : /^#?[0-9a-f]{0,6}$/i.test(next)) {
       text = next;
       return;

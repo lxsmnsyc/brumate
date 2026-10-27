@@ -1,4 +1,4 @@
-// The events that the handlers of the parts get, after the events of React Aria.
+// The events that the handlers of the parts get.
 
 /** What started a press. `virtual` is a click with no pointer, such as from a screen reader. */
 export type PointerKind = 'mouse' | 'pen' | 'touch' | 'keyboard' | 'virtual';

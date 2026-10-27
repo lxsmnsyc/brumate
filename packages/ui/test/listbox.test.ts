@@ -1,4 +1,4 @@
-// The tests of ListBox follow the tests of ListBox in React Aria.
+// The tests of ListBox.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import ListBoxes from './fixtures/listboxes.brm?brumate-server';

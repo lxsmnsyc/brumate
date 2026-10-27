@@ -1,4 +1,4 @@
-// The tests of DatePicker follow the tests of DatePicker in React Aria.
+// The tests of DatePicker.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import DatePickers from './fixtures/datepickers.brm?brumate-server';

@@ -1,6 +1,6 @@
 # List and tree data
 
-State for the items of a collection that an app changes: the items, a selection, and the changes that add, move and remove them. They follow `useListData` and `useTreeData` of React Stately.
+State for the items of a collection that an app changes: the items, a selection, and the changes that add, move and remove them. They hold the items of a list or a tree in a signal.
 
 ```brm demo DataDemo
 
@@ -71,7 +71,7 @@ It gives:
 - `update(key, item)`, which builds the node again from the item, with its children.
 - `setSelectedKeys(keys)`.
 
-## Differences from React Stately
+## Notes on the data
 
 - A selection is an array of keys, as the parts take it, not a `Set`, and there is no `'all'`.
 - A node of tree data has an `id`, not a `key`, as the items of a Tree have.

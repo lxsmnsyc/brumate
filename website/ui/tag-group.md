@@ -36,4 +36,4 @@ With `onRemove`, the group can remove tags. It gets the keys, and the caller rem
 
 ## Tags
 
-The TagList is a grid, and each Tag is a row with one cell, as in React Aria, so a screen reader reaches the Button inside a tag. A Tag shows `data-selected`, `data-disabled`, `data-allows-removing`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
+The TagList is a grid, and each Tag is a row with one cell, so a screen reader reaches the Button inside a tag. A Tag shows `data-selected`, `data-disabled`, `data-allows-removing`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.

@@ -57,7 +57,7 @@
   import { MENU_ITEMS, MenuContext, MenuTriggerContext, SubmenuContext } from './menu.ts';
 
   /**
-   * A list of actions or options, as Menu of React Aria Components. It opens in a Popover from a
+   * A list of actions or options. It opens in a Popover from a
    * MenuTrigger, or stands on the page. Its items are MenuItem elements, written out, from a
    * `#for`, or in MenuSection elements.
    *

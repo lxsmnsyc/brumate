@@ -19,7 +19,7 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * A line between parts of the content, as Separator of React Aria Components. Horizontal, it is
+   * A line between parts of the content. Horizontal, it is
    * an <hr>. Vertical, it is an element with role="separator" and aria-orientation.
    */
   const { orientation, slot, ...rest } = $props<SeparatorOwnProps>();

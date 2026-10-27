@@ -1,5 +1,4 @@
-// The segments of a DateField and a TimeField, after useDateFieldState and useTimeFieldState of
-// React Aria: the month, the day and the year, or the hour, the minute, the second and AM or PM,
+// The segments of a DateField and a TimeField: the month, the day and the year, or the hour, the minute, the second and AM or PM,
 // in the order and with the separators of the locale. Each segment is set or empty. The field has
 // a value once every segment is set. Dates and times are ISO strings, such as `2026-10-15` and
 // `14:30`.
@@ -14,7 +13,7 @@ export type SegmentType = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second
 
 /**
  * The parts that are set. A part that is not set shows its placeholder. The hour is 0 to 23, and
- * on a 12-hour clock `dayPeriod` is a part of its own, 0 for AM and 1 for PM, as in React Aria.
+ * on a 12-hour clock `dayPeriod` is a part of its own, 0 for AM and 1 for PM.
  */
 export type DateParts = Partial<Record<SegmentType, number>>;
 
@@ -81,7 +80,7 @@ function getDaysInMonth(date: CalendarDate): number {
   return endOfMonth(date).day;
 }
 
-/** The text of a part that is not set, as React Aria shows it in English. */
+/** The text of a part that is not set in English. */
 const PLACEHOLDERS: Record<SegmentType, string> = {
   year: 'yyyy',
   month: 'mm',
@@ -188,7 +187,7 @@ export function isDatePart(type: SegmentType): type is DateSegmentType {
   return type === 'year' || type === 'month' || type === 'day';
 }
 
-/** How far PageUp and PageDown step each part, as in React Aria. */
+/** How far PageUp and PageDown step each part. */
 export const PAGE_STEP: Record<SegmentType, number> = {
   year: 5,
   month: 2,
@@ -223,7 +222,7 @@ export function stepPart(
     return { ...parts, [type]: base[type] };
   }
   const [min, max] = rangeOf(type, parts, base);
-  // Years do not go around, as in React Aria.
+  // Years do not go around.
   if (type === 'year') {
     return { ...parts, year: Math.min(max, Math.max(min, current + delta)) };
   }
@@ -406,7 +405,7 @@ function withPeriod(parts: DateParts, period: number): DateParts {
 
 /**
  * A part of a time stepped by `delta`, around its range. On a 12-hour clock the hour goes around
- * within AM or PM, and AM and PM are a part of their own, as cycle of React Aria does.
+ * within AM or PM, and AM and PM are a part of their own.
  */
 export function stepTime(
   parts: DateParts,
@@ -436,7 +435,7 @@ export function stepTime(
 
 /**
  * A part of a time set to the lowest or the highest number of its range. On a 12-hour clock the
- * hour goes to 12 or 11 of its period, as React Aria does.
+ * hour goes to 12 or 11 of its period.
  */
 export function jumpTime(
   parts: DateParts,
@@ -485,7 +484,7 @@ export function typeTime(
   const base = timePartsOf(placeholder);
   const period = periodOf(parts, base);
   if (type === 'dayPeriod') {
-    // A letter picks AM or PM by the start of its text in the locale, as in React Aria.
+    // A letter picks AM or PM by the start of its text in the locale.
     const letter = char.toLocaleLowerCase(locale);
     const [am, pm] = dayPeriodNames(locale).map((name) => name.toLocaleLowerCase(locale));
     if (am!.startsWith(letter)) {

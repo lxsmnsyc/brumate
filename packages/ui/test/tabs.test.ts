@@ -1,4 +1,4 @@
-// The tests of Tabs follow the tests of Tabs in React Aria.
+// The tests of Tabs.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import TabsFixture from './fixtures/tabs.brm?brumate-server';

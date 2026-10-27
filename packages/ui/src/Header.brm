@@ -16,7 +16,7 @@
   import { $getContext, $props } from 'brumate/signals';
   import { SectionContext } from './collection.ts';
 
-  /** The header of a section of a collection, as Header of React Aria Components. It names it. */
+  /** The header of a section of a collection. It names it. */
   const { as = 'header', children, ...rest } = $props<HeaderProps<T>>();
 
   const section = $getContext(SectionContext);

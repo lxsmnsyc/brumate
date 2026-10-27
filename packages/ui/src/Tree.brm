@@ -71,7 +71,7 @@
   import TreeRow from './TreeRow.brm';
 
   /**
-   * A list of rows that nest and open and close, as Tree of React Aria Components. It renders a
+   * A list of rows that nest and open and close. It renders a
    * row for each item of `items` that shows, with the `item` template, which renders a TreeItem.
    * An item with `children` is a parent, even when it is empty.
    *
@@ -401,7 +401,7 @@
           return;
         }
       }
-      // In tab mode, Left and Right only open and close rows, as in React Aria.
+      // In tab mode, Left and Right only open and close rows.
       if (!tabMode) {
         across(row, target, expand);
       }

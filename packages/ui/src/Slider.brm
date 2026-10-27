@@ -25,7 +25,7 @@
   import { SliderContext, thumbId } from './slider.ts';
 
   /**
-   * A slider with one thumb or several, as Slider of React Aria Components. It holds a Label, a
+   * A slider with one thumb or several. It holds a Label, a
    * SliderOutput, and a SliderTrack with a SliderThumb for each value.
    *
    * - `value` is a number for one thumb, or a list of numbers for several. `value=(n)` starts its

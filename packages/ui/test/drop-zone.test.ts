@@ -1,4 +1,4 @@
-// The tests of DropZone follow the tests of DropZone in React Aria.
+// The tests of DropZone.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import DropZones from './fixtures/drop-zones.brm?brumate-server';

@@ -17,7 +17,7 @@
   import TreeItem from './TreeItem.brm';
 
   /**
-   * A row of a NavigationTree, as NavigationTreeItem of React Aria Components. It is a TreeItem
+   * A row of a NavigationTree. It is a TreeItem
    * with an `href`, which its NavigationTreeItemLink links to.
    *
    * - A disabled item, by `isDisabled` or the `disabledKeys` of the tree, has a link that does not

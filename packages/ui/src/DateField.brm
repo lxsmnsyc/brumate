@@ -39,7 +39,7 @@
   import { DateFieldContext } from './segments.ts';
 
   /**
-   * A date that the user edits segment by segment, as DateField of React Aria Components. It
+   * A date that the user edits segment by segment. It
    * holds a Label, a DateInput of DateSegments, and a Text with `slot="description"` and a
    * FieldError, as a TextField does.
    *

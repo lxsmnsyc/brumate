@@ -17,8 +17,7 @@
   import { SelectionIndicatorContext, moveIndicator } from './selection-indicator.ts';
 
   /**
-   * A mark of the selected item, such as a bar under the selected Tab, as SelectionIndicator of
-   * React Aria Components. Put it in a Tab, a ToggleButton of a group, a Radio, a ListBoxItem, a
+   * A mark of the selected item, such as a bar under the selected Tab. Put it in a Tab, a ToggleButton of a group, a Radio, a ListBoxItem, a
    * GridListItem or a Tag.
    *
    * - It renders only in the selected item, with `data-selected`.

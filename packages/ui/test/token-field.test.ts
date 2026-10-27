@@ -1,4 +1,4 @@
-// The tests of TokenField follow the tests of TokenField in React Aria.
+// The tests of TokenField.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import TokenFields from './fixtures/token-fields.brm?brumate-server';

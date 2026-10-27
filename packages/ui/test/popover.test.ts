@@ -1,5 +1,4 @@
-// The tests of Popover and Dialog follow the tests of Popover, Dialog and DialogTrigger in
-// React Aria.
+// The tests of Popover, Dialog and DialogTrigger.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Popovers from './fixtures/popovers.brm?brumate-server';
@@ -34,7 +33,7 @@ async function open(page: Awaited<ReturnType<typeof popovers>>) {
 it('links the trigger to the popover, and renders nothing while it is closed', async () => {
   const page = await popovers();
   const trigger = page.get('.trigger');
-  // As in React Aria, a dialog trigger is no popup button, which screen readers read as a menu.
+  // A dialog trigger is no popup button, which screen readers read as a menu.
   expect(trigger.hasAttribute('aria-haspopup')).toBe(false);
   expect(trigger.getAttribute('aria-expanded')).toBe('false');
   expect(find('.popover')).toBeNull();

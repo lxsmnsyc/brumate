@@ -12,8 +12,7 @@
   import { ColorThumbContext } from './color-thumb.ts';
 
   /**
-   * The thumb of a ColorSlider, a ColorArea or a ColorWheel, as ColorThumb of React Aria
-   * Components. It works only inside one of them, which gives it its state in
+   * The thumb of a ColorSlider, a ColorArea or a ColorWheel. It works only inside one of them, which gives it its state in
    * `ColorThumbContext`, see `color-thumb.ts`.
    *
    * - It is placed at the position that its parent gives, and has `--color` and a background of
@@ -58,7 +57,7 @@
     thumb.onChangeEnd();
   }
 
-  // A press with Alt, Ctrl or Meta moves nothing, as in React Aria.
+  // A press with Alt, Ctrl or Meta moves nothing.
   function pressed(event: PointerEvent) {
     if (
       thumb &&

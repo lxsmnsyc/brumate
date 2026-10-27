@@ -1,4 +1,4 @@
-// The locale of the parts, after I18nProvider and useLocale of React Aria.
+// The locale of the parts, for the I18nProvider.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
 
@@ -8,7 +8,7 @@ export interface Locale {
   direction: 'ltr' | 'rtl';
 }
 
-// The scripts and languages that are written right to left, from React Aria.
+// The scripts and languages that are written right to left.
 const RTL_SCRIPTS = new Set([
   'Arab',
   'Syrc',
@@ -63,8 +63,7 @@ export function localeOf(locale: string): Locale {
 
 /**
  * The locale of the parts inside an I18nProvider. The default is `en-US`, so the server and the
- * browser format the same way. React Aria starts from the language of the browser, which the
- * server does not know.
+ * browser format the same way. A language of the browser would differ from the server, which does not know it.
  */
 export const LocaleContext: Context<Locale> = createContext<Locale>(
   'brumate-ui:locale',

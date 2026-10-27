@@ -56,7 +56,7 @@
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
   /**
-   * An overlay next to its trigger, as Popover of React Aria Components. It opens from a
+   * An overlay next to its trigger. It opens from a
    * DialogTrigger, and holds a Dialog or another part.
    *
    * - It renders a layer at the end of the layer of the floating part around it, or at the end
@@ -168,7 +168,7 @@
       );
     }
     // A preview is never modal, and a submenu is not either. A modal popover makes the page inert
-    // and locks its scroll, and closes on a press outside, as usePopover of React Aria. One that
+    // and locks its scroll, and closes on a press outside. One that
     // is not modal closes when focus leaves it.
     const modal = !isNonModal && !trigger?.isNonModal;
     if (modal && !trigger?.isPreview) {

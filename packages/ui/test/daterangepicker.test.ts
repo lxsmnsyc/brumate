@@ -1,4 +1,4 @@
-// The tests of DateRangePicker follow the tests of DateRangePicker in React Aria.
+// The tests of DateRangePicker.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import DateRangePickers from './fixtures/daterangepickers.brm?brumate-server';

@@ -45,5 +45,5 @@ A value, or a range of values, that thumbs move on a track.
 ## Track
 
 - A press on the SliderTrack moves the nearest thumb there, and a drag moves it on. The thumb shows `data-dragging` meanwhile.
-- A press with Alt, Ctrl or Meta, a press while a thumb is dragged, and a press nearest a disabled thumb move nothing, as in React Aria.
+- A press with Alt, Ctrl or Meta, a press while a thumb is dragged, and a press nearest a disabled thumb move nothing.
 - The track is `position: relative`, so the thumbs sit on it. Give it a size.

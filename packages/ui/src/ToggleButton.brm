@@ -31,7 +31,7 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * A button that stays pressed, as ToggleButton of React Aria Components. It is a Button with
+   * A button that stays pressed. It is a Button with
    * aria-pressed and `data-selected`.
    *
    * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
@@ -43,7 +43,7 @@
   const context = $getContext(ToggleButtonContext);
   const group = $getContext(ToggleGroupContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
-  // A disabled group disables every button, as in React Aria, even one with isDisabled=(false).
+  // A disabled group disables every button, even one with isDisabled=(false).
   const disabled = $memo(
     Boolean(isDisabled || group?.isDisabled || slotProps(context, slot).isDisabled),
   );

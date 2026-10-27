@@ -11,8 +11,7 @@
   import { VirtualizerContext } from './virtualizer.ts';
 
   /**
-   * A box that scrolls a long collection and renders only the rows in view, as Virtualizer of
-   * React Aria Components with a ListLayout. Give it a height.
+   * A box that scrolls a long collection and renders only the rows in view, in a list layout. Give it a height.
    *
    * - A Tree in it takes `rowHeight`, the height of a row in pixels, and renders only the rows in
    *   view.

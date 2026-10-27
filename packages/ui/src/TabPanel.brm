@@ -24,11 +24,11 @@
   import { TabsContext, selectedOf, tabId } from './tabs.ts';
 
   /**
-   * The panel of a tab, as TabPanel of React Aria Components. `id` is the key of its Tab.
+   * The panel of a tab. `id` is the key of its Tab.
    *
    * - Only the panel of the selected tab renders its content. Showing it again renders it anew,
    *   with new state. `shouldForceMount` keeps it on the page, hidden.
-   * - It takes Tab when it has no content that does, so it can be reached, as in React Aria.
+   * - It takes Tab when it has no content that does, so it can be reached.
    */
   const {
     as,

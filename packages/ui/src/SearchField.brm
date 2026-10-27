@@ -28,11 +28,11 @@
   import { describedBy } from './fields.ts';
 
   /**
-   * A search field, as SearchField of React Aria Components. It holds a Label, an Input and a
+   * A search field. It holds a Label, an Input and a
    * Button that clears it. Escape clears it too, and Enter calls `onSubmit`. It shows
    * `data-empty` and `data-disabled`.
    *
-   * As in React Aria, Enter sends no form, and Escape on a field with text clears it and keeps
+   * Enter sends no form, and Escape on a field with text clears it and keeps
    * its default, so it closes no dialog. A read-only or disabled field does neither.
    *
    * `value=(text)` starts its own value, and `value=$bind(signal)` writes the caller's.
@@ -95,7 +95,7 @@
     isEnterPrevented: true,
     isEscapePrevented: !empty && !isDisabled && !isReadOnly,
   });
-  // The button that clears the field stays out of the order of Tab, as in React Aria.
+  // The button that clears the field stays out of the order of Tab.
   $setContext(ButtonContext, {
     'aria-label': 'Clear search',
     tabindex: -1,

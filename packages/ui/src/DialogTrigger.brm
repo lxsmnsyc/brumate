@@ -13,8 +13,7 @@
   import { ButtonContext, OverlayTriggerContext } from './contexts.ts';
 
   /**
-   * Opens an overlay, such as a Popover or a Modal, from a Button inside it, as DialogTrigger of
-   * React Aria Components. The Button gets aria-expanded, aria-haspopup and aria-controls, and
+   * Opens an overlay, such as a Popover or a Modal, from a Button inside it. The Button gets aria-expanded, aria-haspopup and aria-controls, and
    * a press toggles the overlay. It renders only its children.
    *
    * `isOpen` alone starts it open, and `isOpen=$bind(signal)` writes the caller's.

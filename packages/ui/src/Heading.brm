@@ -22,7 +22,7 @@
   import { HeadingContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
 
-  /** A heading of a level, 3 by default, as Heading of React Aria Components. */
+  /** A heading of a level, 3 by default. */
   const { level, slot, children, ...rest } = $props<HeadingOwnProps<T>>();
   // The props of the target of `as`, for the type of the component.
   const { as } = $props<HeadingProps<T>>();

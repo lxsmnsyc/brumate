@@ -24,8 +24,7 @@
   import { TokenFieldContext, sameSegments, segmentsText } from './token-field.ts';
 
   /**
-   * A field of text with tokens in it, such as tags, mentions or commands, as TokenField of React
-   * Aria Components. It holds a Label, a TokenInput, and a Text with `slot="description"`.
+   * A field of text with tokens in it, such as tags, mentions or commands. It holds a Label, a TokenInput, and a Text with `slot="description"`.
    *
    * - `value` is an array of segments, `{ type: 'text' | 'token', text }`, which the page state
    *   holds. `onChange` hears of changes.

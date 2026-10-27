@@ -67,7 +67,7 @@
   } from './numbers.ts';
 
   /**
-   * A field for a number, as NumberField of React Aria Components. It holds a Label, a Group
+   * A field for a number. It holds a Label, a Group
    * with an Input and two Buttons with `slot="decrement"` and `slot="increment"`, a Text with
    * `slot="description"` and a FieldError.
    *
@@ -119,7 +119,7 @@
   const { present: hasLabel } = described(labelId);
   // The number that a reset of the form gives back.
   let initialValue = $signal(value);
-  // A percent counts in hundredths, as in React Aria.
+  // A percent counts in hundredths.
   const stepSize = $memo(step ?? (formatOptions?.style === 'percent' ? 0.01 : 1));
   // The text in the input, which is the formatted number until the user types.
   let text = $signal(format(value));
@@ -140,7 +140,7 @@
   const locked = $memo(isDisabled || isReadOnly);
   // The number as it reads in the input, before it is committed.
   const typedValue = $memo(text.trim() === '' ? Number.NaN : parser().parse(text));
-  // A Button can step when a step stays in the range, as in React Aria.
+  // A Button can step when a step stays in the range.
   const canIncrement = $memo(
     !locked &&
       (Number.isNaN(typedValue) ||
@@ -196,7 +196,7 @@
   });
 
   function typed(next: string) {
-    // Only text that can become a number stays, such as `-` or `1.`, as React Aria keeps it.
+    // Only text that can become a number stays, such as `-` or `1.`.
     if (next === '' || parser().isValidPartialNumber(next, minValue, maxValue)) {
       text = next;
       return;
@@ -218,7 +218,7 @@
       text = format(value);
       return;
     }
-    // A number moves to a step only when the field has one, as in React Aria. Otherwise it only
+    // A number moves to a step only when the field has one. Otherwise it only
     // stays in the range.
     const snapped =
       step === undefined ? clamp(parsed, minValue, maxValue) : snapToStep(parsed, minValue, maxValue, step);

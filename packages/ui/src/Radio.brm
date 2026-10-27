@@ -17,7 +17,7 @@
   import { isFirstInvalid } from './fields.ts';
 
   /**
-   * A radio of a RadioGroup, as Radio of React Aria Components: a <label> around a native radio.
+   * A radio of a RadioGroup: a <label> around a native radio.
    * The label shows `data-selected`, `data-pressed`, `data-hovered`, `data-focused`,
    * `data-focus-visible`, `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
    */

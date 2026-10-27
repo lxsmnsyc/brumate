@@ -24,11 +24,11 @@
   const { as = 'span', focusable = false, children, ...rest } = $props<VisuallyHiddenProps<T>>();
 </script>
 
-<!-- The attributes of the caller come last, so its class adds to the part's, as mergeProps of React Aria does. -->
+<!-- The attributes of the caller come last, so its class adds to the part's. -->
 <{as} class={ 'visually-hidden': true, focusable } data-focusable=(focusable || undefined) {...rest}>{children}</>
 
 <style>
-  /* The styles of React Aria's VisuallyHidden, which hide the content and keep its size out of the layout. */
+  /* The styles that hide the content and keep its size out of the layout. */
   .visually-hidden {
     position: absolute;
     width: 1px;

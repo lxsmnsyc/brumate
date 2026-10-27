@@ -19,7 +19,7 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * Text of a field, as Text of React Aria Components. A field gives it an ID by its slot, such
+   * Text of a field. A field gives it an ID by its slot, such
    * as `slot="description"`, so the field's input names it in aria-describedby.
    */
   const { as = 'span', slot, children, ...rest } = $props<TextProps<T>>();

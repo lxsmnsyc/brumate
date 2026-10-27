@@ -19,7 +19,7 @@
   } from './menu.ts';
 
   /**
-   * Opens a submenu from a MenuItem, as SubmenuTrigger of React Aria Components. Its children are
+   * Opens a submenu from a MenuItem. Its children are
    * the MenuItem and a Popover with the Menu of the submenu.
    *
    * - The item gets aria-haspopup="menu" and aria-expanded.

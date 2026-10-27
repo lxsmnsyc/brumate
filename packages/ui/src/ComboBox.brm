@@ -56,7 +56,7 @@
   import { describedBy, messagesOf } from './fields.ts';
 
   /**
-   * A text field with a list of suggestions, as ComboBox of React Aria Components. It holds a
+   * A text field with a list of suggestions. It holds a
    * Label, an Input, a Button, a Text with `slot="description"`, a FieldError, and a Popover with
    * a ListBox.
    *
@@ -238,7 +238,7 @@
 
   /**
    * Closes the list, and puts the text of the selected item back in the input, or '' when
-   * nothing is selected, as revert of React Aria does. With `allowsCustomValue`, the text stays,
+   * nothing is selected. With `allowsCustomValue`, the text stays,
    * and the selection goes when the text is not its item's.
    */
   function commit() {

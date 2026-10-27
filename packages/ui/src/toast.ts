@@ -1,4 +1,4 @@
-// The queue of toasts, after ToastQueue of React Aria. A queue lives in the browser's memory, by
+// The queue of toasts. A queue lives in the browser's memory, by
 // its name, so any handler can add a toast. Each change sends a `toastchange` event to the
 // ToastRegion elements of the queue, so the code of a region loads with its first toast.
 import { createContext } from 'brumate/context';
@@ -206,8 +206,7 @@ export const leavingToasts = new Set<string>();
 let landmarks = false;
 
 /**
- * F6 moves focus to the newest toast, and F6 or Shift+F6 in the toasts gives it back, as the
- * landmark navigation of React Aria does for a ToastRegion. It starts with the first toast.
+ * F6 moves focus to the newest toast, and F6 or Shift+F6 in the toasts gives it back, as for a ToastRegion. It starts with the first toast.
  */
 export function listenForF6(): void {
   if (landmarks) {

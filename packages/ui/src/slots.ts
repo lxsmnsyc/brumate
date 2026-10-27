@@ -1,4 +1,4 @@
-// Context composition with slots, after useContextProps of React Aria. A part that holds other
+// Context composition with slots. A part that holds other
 // parts, such as a Select, provides the props of each part type in a context. A context value is
 // the props of the part, or `{ slots }`, the props of each slot. A part with `slot="increment"`
 // reads the props of that slot.
@@ -11,7 +11,7 @@ export const DEFAULT_SLOT = 'default';
 
 /**
  * The props that a context gives a part with a slot. `null` and `undefined` give nothing. A slot
- * that the context does not have is an error, as it is in React Aria, so a typo does not go
+ * that the context does not have is an error, so a typo does not go
  * unseen. `slot={null}` opts out of the context.
  */
 export function slotProps<T extends object>(
@@ -37,7 +37,7 @@ export function slotProps<T extends object>(
   return found;
 }
 
-/** Calls each handler that is a function, in order, as mergeProps of React Aria chains them. */
+/** Calls each handler that is a function, in order. */
 export function chain<A extends unknown[]>(
   ...handlers: (((...args: A) => unknown) | undefined | null | false)[]
 ): (...args: A) => void {

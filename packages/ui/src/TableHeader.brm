@@ -11,7 +11,7 @@
   import { TableContext } from './table.ts';
 
   /**
-   * The header of a Table, as TableHeader of React Aria Components: a row of Column elements.
+   * The header of a Table: a row of Column elements.
    * A Checkbox with `slot="selection"` in a Column selects every row, or none. It shows a mixed
    * state while some rows are selected.
    */

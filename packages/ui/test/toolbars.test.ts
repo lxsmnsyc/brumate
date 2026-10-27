@@ -1,5 +1,4 @@
-// The tests of these parts follow the tests of Toolbar, ToggleButtonGroup, Breadcrumbs, Meter,
-// ProgressBar and FileTrigger in React Aria.
+// The tests of Toolbar, ToggleButtonGroup, Breadcrumbs, Meter, ProgressBar and FileTrigger.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Toolbars from './fixtures/toolbars.brm?brumate-server';

@@ -32,7 +32,7 @@
   import { progressOf } from './progress.ts';
 
   /**
-   * The progress of a task, as ProgressBar of React Aria Components:
+   * The progress of a task:
    * role="progressbar" with the value, the range and its text in the locale. A Label inside names it.
    * The element has `--percentage` for CSS, from 0% to 100%. A `content` template gets the
    * percentage and the text, to draw the bar. `isIndeterminate` is a task of no known length:
@@ -59,7 +59,7 @@
   const state = $memo(progressOf(value, minValue, maxValue, locale.locale, formatOptions));
   $setContext(LabelContext, { id: labelId });
 
-  // An indeterminate bar has no value, so its content gets none, as in React Aria.
+  // An indeterminate bar has no value, so its content gets none.
   function contentState(indeterminate: boolean, percentage: number, valueText: string) {
     return indeterminate
       ? { percentage: undefined, valueText: undefined, isIndeterminate: true }

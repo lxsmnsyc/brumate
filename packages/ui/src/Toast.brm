@@ -24,7 +24,7 @@
   import { ToastContext, ToastRegionContext, toastQueue } from './toast.ts';
 
   /**
-   * A toast of a ToastRegion, as Toast of React Aria Components. It is an `alertdialog` that is
+   * A toast of a ToastRegion. It is an `alertdialog` that is
    * not modal, named by the title of its ToastContent and described by its description.
    *
    * - A Button with `slot="close"` closes it, and is named "Close" unless it has a name. Put it

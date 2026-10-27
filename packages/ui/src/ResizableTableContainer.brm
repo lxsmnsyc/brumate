@@ -12,12 +12,11 @@
   import { TableResizeContext, clampWidth } from './table.ts';
 
   /**
-   * A box around a Table whose columns resize, as ResizableTableContainer of React Aria
-   * Components. It scrolls the Table when it is wider than the box.
+   * A box around a Table whose columns resize. It scrolls the Table when it is wider than the box.
    *
    * - A Column takes `width`, `defaultWidth`, `minWidth` and `maxWidth`: pixels, a percentage
    *   or `'1fr'`, which shares the width that is left.
-   * - When a resize starts, every column keeps its width in pixels, as in React Aria.
+   * - When a resize starts, every column keeps its width in pixels.
    * - `onResize` hears of the widths as a ColumnResizer moves, and `onResizeEnd` when it stops,
    *   as a map from the key of a column to its width.
    */

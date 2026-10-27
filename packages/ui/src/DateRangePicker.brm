@@ -49,8 +49,7 @@
   import { DateRangeFieldContext } from './segments.ts';
 
   /**
-   * Two dates that the user types or picks as a range, as DateRangePicker of React Aria
-   * Components. It holds a Label, a Group with a DateInput with `slot="start"`, one with
+   * Two dates that the user types or picks as a range. It holds a Label, a Group with a DateInput with `slot="start"`, one with
    * `slot="end"` and a Button, a Popover with a Dialog and a RangeCalendar, and a Text with
    * `slot="description"` and a FieldError.
    *

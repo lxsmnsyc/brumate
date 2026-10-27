@@ -1,4 +1,4 @@
-// The tests of ToastRegion, Toast and ToastContent follow the tests of Toast in React Aria.
+// The tests of ToastRegion, Toast and ToastContent.
 import { afterEach, expect, it, vi } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import { ToastQueue, toastQueue } from '../src/toast.ts';

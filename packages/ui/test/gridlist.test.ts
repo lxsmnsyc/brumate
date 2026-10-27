@@ -1,4 +1,4 @@
-// The tests of GridList follow the tests of GridList in React Aria.
+// The tests of GridList.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import GridLists from './fixtures/gridlists.brm?brumate-server';

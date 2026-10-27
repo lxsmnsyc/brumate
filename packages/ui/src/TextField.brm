@@ -52,7 +52,7 @@
   import { describedBy, firstErrors, messagesOf } from './fields.ts';
 
   /**
-   * A text field, as TextField of React Aria Components. It holds a Label, an Input or a
+   * A text field. It holds a Label, an Input or a
    * TextArea, a Text with `slot="description"` and a FieldError, and gives each one its IDs and
    * state. The element shows `data-disabled`, `data-invalid`, `data-readonly` and
    * `data-required`.
@@ -64,7 +64,7 @@
    * types. `validate`, the errors of the server and `isInvalid` block the form too, from the first
    * value. With "aria", the field is never blocked, and `validate` shows its errors at once.
    *
-   * It shows one source of errors at a time, as React Aria does: those of `field`, then those of
+   * It shows one source of errors at a time: those of `field`, then those of
    * the server, then those of `validate` in the aria behavior, then those of the browser.
    *
    * A reset of its form gives it back its first value.
@@ -143,7 +143,7 @@
     onChange?.(next);
   }
 
-  // The message that blocks the form in the native behavior, as React Aria sets it: the errors
+  // The message that blocks the form in the native behavior: the errors
   // of the server and of `validate`, or a message of its own for `isInvalid`.
   function customMessage(text: string): string {
     const messages = [...serverErrors, ...(validate ? messagesOf(validate(text)) : [])];
@@ -153,7 +153,7 @@
     return isInvalid ? 'Invalid value.' : '';
   }
 
-  // The value blocks the form in the native behavior, from the first one, as React Aria sets it
+  // The value blocks the form in the native behavior, from the first one
   // on each render. An effect runs only after a change, so the first one is set at load.
   $effect(() => {
     if (behavior === 'native') {
