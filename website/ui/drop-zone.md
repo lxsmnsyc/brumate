@@ -19,13 +19,26 @@ An area that takes drops of text and files, and pastes from keyboard users.
 - `isDisabled` refuses every drop.
 - A [FileTrigger](./file-trigger.md) in it picks files from the device, for users who do not drag.
 
-## Keyboard and screen readers
+## Anatomy
 
-- A hidden button in the area takes the focus. A click on the area, not on a control in it, focuses it.
-- A paste on the button drops the text or files of the clipboard.
-- A `Text` with `slot="label"` names the button. `aria-label` names it too, "DropZone" by default.
+```html
+<DropZone>
+  <Text slot="label" />
+  <FileTrigger>
+    <Button />
+  </>
+</>
+```
 
-## Styles
+The `Text` and the `FileTrigger` are optional.
+
+## Props
+
+```props DropZone
+
+```
+
+## Data attributes
 
 | Attribute            | When                                    |
 | -------------------- | --------------------------------------- |
@@ -36,3 +49,18 @@ An area that takes drops of text and files, and pastes from keyboard users.
 | `data-disabled`      | It refuses drops.                       |
 
 Drops need scripts. The server renders the area and its label.
+
+## Keyboard
+
+A hidden button in the area takes the focus. A click on the area, not on a control in it, focuses it.
+
+| Key                      | Action                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| `Tab`                    | Moves focus to the hidden button.                                               |
+| `Ctrl + V` or `Meta + V` | Pastes the text or files of the clipboard as a drop, with the `copy` operation. |
+
+A `Text` with `slot="label"` names the button. `aria-label` names it too, "DropZone" by default.
+
+## Styling
+
+Style the area with the data attributes above, such as `[data-drop-target]` for a drag over it. See [Styling](./styling.md).

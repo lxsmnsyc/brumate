@@ -4,20 +4,35 @@
   import type { PressEvent } from './events.ts';
 
   export interface NumberFieldOwnProps {
+    /** The name of a hidden input that posts the number with the form. */
     name?: string;
+    /** The least number. The field keeps the number at or above it. */
     minValue?: number;
+    /** The greatest number. The field keeps the number at or below it. */
     maxValue?: number;
+    /** The size of a step, 1 by default, or 1% for a percent. A number off the steps moves to the nearest one. */
     step?: number;
+    /** The options of `Intl.NumberFormat` that format the number, such as a currency or a percent. */
     formatOptions?: Intl.NumberFormatOptions;
+    /** Disables the field, its input and its buttons. */
     isDisabled?: boolean;
+    /** Makes the input read only and disables the step buttons. */
     isReadOnly?: boolean;
+    /** Asks the browser to check that the field has a number when its form is sent. */
     isRequired?: boolean;
+    /** Marks the field as invalid. */
     isInvalid?: boolean;
+    /** Stops the mouse wheel from stepping the number. */
     isWheelDisabled?: boolean;
+    /** Runs with the number each time it changes. An empty field gives `NaN`. */
     onChange?: (value: number) => void;
+    /** The name of the input when there is no Label. */
     'aria-label'?: string;
+    /** The ID of the element that names the input when there is no Label. */
     'aria-labelledby'?: string;
+    /** The Label, Group, Text and FieldError of the field. */
     children?: unknown;
+    /** The number, or `NaN` when the field is empty. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<number>;
   }
 

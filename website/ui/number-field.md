@@ -24,6 +24,63 @@ A field for a number, in the format of the locale, with buttons that step it.
 - `isRequired` asks the browser to check the field on a submit, and the `FieldError` shows the message.
 - It shows `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
 
+## Anatomy
+
+```html
+<NumberField>
+  <Label />
+  <Group>
+    <Button slot="decrement" />
+    <Input />
+    <Button slot="increment" />
+  </>
+  <Text slot="description" />
+  <FieldError />
+</>
+```
+
+The `Text` and the `FieldError` are optional.
+
+## Props
+
+```props NumberField
+
+```
+
+The [Label, Input, Text and FieldError](./text-field.md#props) are those of a TextField, the [Group](./group.md) is a Group, and the [Buttons](./button.md#props) are Buttons.
+
+## Data attributes
+
+| Attribute       | When                    |
+| --------------- | ----------------------- |
+| `data-disabled` | The field is disabled.  |
+| `data-readonly` | The field is read only. |
+| `data-invalid`  | The field has errors.   |
+| `data-required` | The field is required.  |
+
+The input, the buttons and the group show [their own attributes](./text-field.md#input-and-textarea).
+
+## Keyboard
+
+Keys act while the input has focus. A key with Shift, Ctrl, Alt or Meta does not step.
+
+| Key                       | Action                                                          |
+| ------------------------- | --------------------------------------------------------------- |
+| `Tab`                     | Moves focus to the input. The buttons are skipped.              |
+| `ArrowUp` or `PageUp`     | Steps the number up by `step`.                                  |
+| `ArrowDown` or `PageDown` | Steps the number down by `step`.                                |
+| `Home`                    | Goes to `minValue`, when there is one. Else it moves the caret. |
+| `End`                     | Goes to `maxValue`, when there is one. Else it moves the caret. |
+| `Enter`                   | Reads the number, keeps it in range and formats it again.       |
+
+## Controlled and uncontrolled
+
+`value` holds the number, or `NaN` when the field is empty. `value=(n)` starts the field's own value, and `value=$bind(signal)` writes your signal. `onChange` gets each change. A reset of the form gives back the first number. See [State](./state.md).
+
+## Styling
+
+Style the field with the data attributes above, and the buttons with `[data-disabled]`, which they show at the ends of the range. See [Styling](./styling.md).
+
 ## Format
 
 - The number shows in the format of the locale, from an [I18nProvider](./i18n-provider.md), and of `formatOptions`, the options of `Intl.NumberFormat`, such as `{ style: 'currency', currency: 'EUR' }` or `{ style: 'percent' }`.

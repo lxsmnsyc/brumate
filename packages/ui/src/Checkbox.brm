@@ -2,15 +2,25 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface CheckboxProps {
+    /** The name of the input, posted with the form. */
     name?: string;
+    /** The value that the input posts. In a CheckboxGroup, it names the box in the group. */
     value?: string;
+    /** Shows that some of a list is selected. It sets the state of the input to indeterminate. */
     isIndeterminate?: boolean;
+    /** Disables the box. A disabled group disables its boxes too. */
     isDisabled?: boolean;
+    /** Keeps the state: a click does not toggle the box. */
     isReadOnly?: boolean;
+    /** Asks the browser to check the box when its form is sent. */
     isRequired?: boolean;
+    /** Marks the box as invalid. */
     isInvalid?: boolean;
+    /** Runs with the new state when the user toggles the box. */
     onChange?: (selected: boolean) => void;
+    /** The content of the label. Draw the box here. */
     children?: unknown;
+    /** Whether the box is checked. A plain value starts its own state, and `$bind(signal)` writes the caller's. A group keeps the state of its boxes. */
     isSelected?: Bindable<boolean>;
     [attribute: string]: unknown;
   }

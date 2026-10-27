@@ -6,20 +6,33 @@
   export interface LinkOwnProps<T extends AsTarget = 'a'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** The address to follow. Without it, the link is an element with `role="link"`. */
     href?: string;
+    /** The slot of the context of a part that holds this link. */
     slot?: string | null;
+    /** Disables the link. A disabled link renders with no `href` and leaves the order of Tab. */
     isDisabled?: boolean;
     /** The link is to the current page, as in Breadcrumbs. */
     isCurrent?: boolean;
+    /** Runs when a press ends on the link. */
     onPress?: (event: PressEvent) => void;
+    /** Runs when a press starts. */
     onPressStart?: (event: PressEvent) => void;
+    /** Runs when a press ends, on the link or off it. */
     onPressEnd?: (event: PressEvent) => void;
+    /** Runs when a pointer or a key is released over the link. */
     onPressUp?: (event: PressEvent) => void;
+    /** Runs when the link starts or stops being pressed. */
     onPressChange?: (pressed: boolean) => void;
+    /** Runs when a mouse or a pen moves over the link. */
     onHoverStart?: (event: HoverEvent) => void;
+    /** Runs when a mouse or a pen leaves the link. */
     onHoverEnd?: (event: HoverEvent) => void;
+    /** Runs when the link starts or stops being hovered. */
     onHoverChange?: (hovered: boolean) => void;
+    /** Runs when the link gains or loses focus. */
     onFocusChange?: (focused: boolean) => void;
+    /** The content of the link. */
     children?: unknown;
   }
 
