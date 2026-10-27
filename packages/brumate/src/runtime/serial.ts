@@ -176,7 +176,11 @@ const MergedPlugin = createPlugin<object, { a: SerovalNode }>({
   deserialize: (node, ctx) => stateValues.m(ctx.deserialize(node.a)),
 });
 
-/** A value of an attribute that brumate writes, which a live rest prop can hold. */
+/**
+ * A value of an attribute that brumate writes, which a live rest prop can hold. The ones that
+ * reach the page state are the scoped style attribute and `b-v`. The error "holds a Internal"
+ * no longer catches any other, so a new one needs a check of its own.
+ */
 const InternalPlugin = createPlugin<Internal, { a: SerovalNode }>({
   tag: 'brumate/internal',
   skipPlainObjects: true,

@@ -32,7 +32,7 @@
 - `npx vitest run` in packages/brumate: 975 passed, 5 expected fail.
 - `npx vitest run --maxWorkers=2` in packages/ui: 532 passed, 4 expected fail.
 - `npx tsc --noEmit -p .` in packages/brumate: exit 0. `npx oxlint`: warnings only.
-- `npx oxfmt --check`: fails only on docs/roadmaps/brumate/reviews/core-gaps-2.md, which is on main and not changed here.
+- `npx oxfmt --check`: exit 0.
 
 ## Size
 
