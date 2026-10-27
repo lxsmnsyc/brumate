@@ -1,0 +1,41 @@
+<script module>
+  import { ServerError } from 'brumate/server';
+
+  class Secret extends Error {
+    token = 'SECRET-own-property';
+  }
+
+  export function fail(kind: string): string {
+    switch (kind) {
+      case 'error':
+        throw new Error('SECRET-message');
+      case 'cause':
+        throw new Error('outer', { cause: new Error('SECRET-cause') });
+      case 'class':
+        throw new Secret('class');
+      case 'aggregate':
+        throw new AggregateError([new Error('SECRET-inner')], 'aggregate');
+      case 'string':
+        throw 'SECRET-string';
+      case 'object':
+        throw { password: 'SECRET-object' };
+      default:
+        throw new ServerError('Shown to visitors', { status: 418 });
+    }
+  }
+</script>
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { kind } = $props();
+  let shown = $signal('');
+</script>
+
+#try {
+  <p class="ok">{fail(kind)}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+  <p class="stack">{error.stack}</p>
+  <button class="show" onClick=(() => (shown = String(error)))>Show</button>
+  <p class="shown">{shown}</p>
+}
