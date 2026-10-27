@@ -33,7 +33,7 @@
   import { prevent } from 'brumate/events';
   import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
-  import { keepTabStop, moveFocus, rove } from './toolbar.ts';
+  import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
 
   /**
    * ToggleButtons with one selection. With `selectionMode="single"`, the default, it is a
@@ -60,7 +60,17 @@
   const locale = $getContext(LocaleContext);
   const nested = $getContext(ToolbarContext);
 
-  $client(() => (ref ? keepTabStop(ref) : undefined), 'load');
+  $client(() => {
+    if (!ref) {
+      return undefined;
+    }
+    const stops = [keepTabStop(ref), preventEdges(ref)];
+    return () => {
+      for (const stop of stops) {
+        stop();
+      }
+    };
+  }, 'load');
 
   function toggle(id: string) {
     let next: string[];
@@ -96,7 +106,8 @@
     return inToolbar ? 'group' : 'toolbar';
   }
 
-  // Only the arrow keys that move focus are prevented, as in a Toolbar.
+  // Up and Down of a vertical group are prevented. Home and End are prevented by preventEdges,
+  // unless a text field has focus.
   function keys(vertical: boolean) {
     return vertical
       ? { onKeyDown: $handler(prevent(keyDown, 'ArrowUp', 'ArrowDown')) }
