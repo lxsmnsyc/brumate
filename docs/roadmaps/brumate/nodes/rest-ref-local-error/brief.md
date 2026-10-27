@@ -1,7 +1,7 @@
 ---
 id: rest-ref-local-error
 title: A compile error for props used as a whole outside a markup spread
-status: active
+status: done
 priority: should
 type: fix
 outline: false
