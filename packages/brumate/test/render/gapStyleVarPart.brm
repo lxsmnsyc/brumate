@@ -1,0 +1,14 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  const { as, children, ...rest } = $props();
+  let size = $signal(12);
+</script>
+
+<style>
+  [role='row'] {
+    --size: ${size}px;
+  }
+</style>
+
+<{as ?? 'div'} role="row" aria-selected=(size > 12) {...rest}>{children}</>
+<button class="grow" onClick=(() => size++)>Grow</button>

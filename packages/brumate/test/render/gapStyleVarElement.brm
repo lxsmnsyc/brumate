@@ -1,0 +1,4 @@
+<script>
+  import GapStyleVarPart from './gapStyleVarPart.brm';
+</script>
+<GapStyleVarPart class="item">Item</GapStyleVarPart>
