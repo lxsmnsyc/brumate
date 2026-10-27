@@ -5,6 +5,7 @@ import { HAS_BINDINGS } from '../features.ts';
 import {
   Binding,
   ElementReference,
+  MemoError,
   FunctionReference,
   SlotReference,
   isAsyncIterable,
@@ -58,15 +59,6 @@ export function get(scope: Scope, slot: number): any {
     return element ?? undefined;
   }
   return value;
-}
-
-/** What the slot of a memo holds while its compute throws or its promise rejects. */
-class MemoError {
-  readonly error: unknown;
-
-  constructor(error: unknown) {
-    this.error = error;
-  }
 }
 
 /**

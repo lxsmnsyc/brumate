@@ -1,0 +1,21 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { ServerError } from 'brumate/server';
+
+  let m = $signal(0);
+  let seen = $signal('none');
+  const bad = $memo((() => {
+    throw new ServerError('Out of stock');
+  })());
+</script>
+
+<button class="warm" onClick=(() => m++)>Warm</button>
+<p class="m">{m}</p>
+<p class="seen">{seen}</p>
+#try {
+  <button class="read" onClick=(() => {
+    seen = String(bad);
+  })>Read</button>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

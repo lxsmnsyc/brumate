@@ -34,6 +34,7 @@ import {
   PARTS,
   PREFIX,
   SOURCE,
+  MemoError,
   SlotReference,
   addEntryHandlers,
   isAsyncIterable,
@@ -391,6 +392,8 @@ export class Context {
   private rpcPrefix = '/_brumate';
   /** The ID of the build, for forms that post to server functions. See `RenderOptions`. */
   build: string | undefined;
+  /** True in development, where a memo that failed sends its error to the browser. */
+  development = false;
 
   /** Results of server functions that a form posted to this page, for `$action`. */
   actions: Map<unknown, unknown> = new Map();
@@ -489,6 +492,11 @@ export class Context {
   /** Returns the URL prefix of server function calls. */
   rpc(): string {
     return this.root.rpcPrefix;
+  }
+
+  /** True when the render is in development. */
+  isDev(): boolean {
+    return this.root.development;
   }
 
   /** Returns the ID of the build, when the render has one. */
@@ -1257,16 +1265,36 @@ export function ready(node: Memo): unknown {
 
 /**
  * The value of a memo for the page state: its value when it is ready, or
- * a promise of it while it loads. A memo that fails gives a rejected
- * promise either way, so the page renders and the failure reaches the
- * browser as the load that failed.
+ * a promise of it while it loads. A memo that fails gives a `MemoError`
+ * either way, so the page renders, the stream goes on, and a read in the
+ * browser throws the error as a memo that failed there.
  */
 export function stateValue(node: Memo): unknown {
   try {
     return read(node);
   } catch (error) {
-    return error instanceof NotReady ? wait(node) : Promise.reject(error);
+    if (error instanceof NotReady) {
+      return wait(node).catch((failure: unknown) => heldError(failure, node.ctx));
+    }
+    return heldError(error, node.ctx);
   }
+}
+
+/**
+ * The error of a memo for the page state. In development it is the error, with its name and
+ * message and no stack (the serial options leave stacks out). In production it is the message of
+ * a `ServerError`, which the app chose to show, or else a generic message, and the error is
+ * logged, as for a server function that fails.
+ */
+function heldError(error: unknown, ctx?: Context): MemoError {
+  let sent: Error;
+  if (ctx?.isDev()) {
+    sent = error instanceof Error ? error : new Error(String(error));
+  } else {
+    sent = new Error(errorAnswer(error, 'The page could not compute a value').message);
+  }
+  // The mark is what the serial plugin tests, as `brumate.slot` is for slot references.
+  return Object.assign(new MemoError(sent), { [Symbol.for('brumate.held')]: true });
 }
 
 /**
@@ -2202,6 +2230,7 @@ export async function render<P>(
     ctx.params = options.params;
   }
   ctx.build = options.build;
+  ctx.development = options.dev === true;
   if (options.defer) {
     ctx.target = { ...options.defer };
   }
