@@ -58,7 +58,10 @@ function valueNames(node: oxc.Expression, names: string[] = []): string[] {
       valueNames(node.alternate, names);
       break;
     case 'LogicalExpression':
-      valueNames(node.left, names);
+      // The right side of `&&` is the value. Its left side is a condition.
+      if (node.operator !== '&&') {
+        valueNames(node.left, names);
+      }
       valueNames(node.right, names);
       break;
     case 'ParenthesizedExpression':
@@ -223,6 +226,7 @@ export function dynamicTags(file: SFCFile, graph: Graph): DynamicTagUsage[] {
   return tags;
 }
 
+/** Adds a value to the list under a key. */
 function append(map: Map<string, string[]>, key: string, value: string): void {
   const list = map.get(key);
   if (list) {

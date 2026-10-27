@@ -44,6 +44,21 @@ describe('analyzeProject', () => {
     expect([...live.get('Target.brm')!.keys()]).toEqual(['aria-selected']);
   });
 
+  it('gives nothing when a part passes on another prop than the one its tag reads', () => {
+    const live = analyzeProjectProps(
+      new Map([
+        ['Pass.brm', sources.get('gapPassOnPart.brm')!.replace('{as}', 'foo={as}')],
+        ['GapPart.brm', sources.get('GapPart.brm')!],
+        ['Target.brm', sources.get('GapTarget.brm')!],
+        [
+          'Page.brm',
+          "<script>import Pass from './Pass.brm'; import Target from './Target.brm';</script><Pass as=Target />",
+        ],
+      ]),
+    );
+    expect(live.get('Target.brm')!.size).toBe(0);
+  });
+
   it('follows a component in a branch of as=(cond ? A : B)', () => {
     const live = analyzeProject(sources);
     // Only gapPassOnChoice and gapPassOnChoiceOther name them, in the two branches of a condition.

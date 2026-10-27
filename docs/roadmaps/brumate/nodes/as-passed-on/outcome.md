@@ -18,6 +18,7 @@
 - The ToggleButton test needs more than the analysis. ToggleButton's `aria-pressed` and `data-selected` reach Button's `...rest`, which Button's dynamic tag spreads. A spread on a component tag stays static in the browser (gap 2 of component-tag-live-props), and in ui `AsTarget` already has every live prop of Button's value attributes. In the ui project the analysis result does not change.
 - Tried, and reverted: counting a live spread in `dynamicTags`, and routing `attrs` of a component anchor to `spreadProps`. Together they make the Toolbar focus test, the Disclosure test and the ToggleButton test fail, because the rest of the target becomes live.
 - The fixtures use targets that no other fixture names, since the test project analyzes all of `test/render` together.
+- A spread (`{...props}`) does not pass a component on. A local with the name of a prop (a loop variable, a parameter) counts as the prop, which can only add live props.
 - Only the identifiers, `?:`, `??`, `||` and parenthesized or typed forms are followed. A component behind a call, a member or an object is not.
 
 ## Proposed learnings
@@ -26,7 +27,7 @@
 
 ## Verification
 
-- `npx vitest run test/resume.test.ts test/project.test.ts -t "passes on|follows"` in packages/brumate: the 5 new tests fail on main, pass with the change.
+- `npx vitest run test/resume.test.ts test/project.test.ts -t "passes on|follows|gives nothing"` in packages/brumate: the 5 new tests fail on main, pass with the change.
 - `npx vitest run` in packages/brumate: 988 passed, 6 expected fail.
 - `npx vitest run --maxWorkers=2` in packages/ui: 536 passed, 2 expected fail.
 - `npx tsc --noEmit -p .` in packages/brumate, `npx oxlint` (warnings only) and `npx oxfmt --check`: exit 0.
