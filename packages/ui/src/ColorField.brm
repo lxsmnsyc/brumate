@@ -4,18 +4,31 @@
   import type { Color, ColorChannel, ColorSpace } from './color.ts';
 
   export interface ColorFieldOwnProps {
+    /** The name that sends the hex, or the channel value as the input reads it, with a form. */
     name?: string;
+    /** The channel to edit as a number. Without it, the field edits the color as hex. */
     channel?: ColorChannel;
+    /** The space that the channel is read in. Without it, the color keeps its own space when that space has the channel. */
     colorSpace?: ColorSpace;
+    /** Disables the input and keeps the field out of the form. */
     isDisabled?: boolean;
+    /** Keeps the user from changing the value, while the input can still be focused. */
     isReadOnly?: boolean;
+    /** Asks the browser to check on a submit that the field has a value. */
     isRequired?: boolean;
+    /** Marks the field as invalid, whatever its value. */
     isInvalid?: boolean;
+    /** Keeps the mouse wheel from stepping the value while the input has focus. */
     isWheelDisabled?: boolean;
+    /** Runs with the color as text, or `null` when the field is cleared, each time an edit makes another value. */
     onChange?: (value: string | null) => void;
+    /** The name of the input when there is no Label. A channel field with none is named by its channel. */
     'aria-label'?: string;
+    /** The ID of an element that names the input, which adds to the Label. */
     'aria-labelledby'?: string;
+    /** The Label, Input, description Text and FieldError. */
     children?: unknown;
+    /** A color of CSS, such as `#e2445a`, or `null` when empty. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string | null>;
   }
 

@@ -4,14 +4,23 @@
   import type { Color, ColorChannel, ColorSpace } from './color.ts';
 
   export interface ColorSliderProps extends Omit<ElementProps<'div'>, 'onChange'> {
+    /** The channel that the slider adjusts, such as `hue` or `alpha`. */
     channel: ColorChannel;
+    /** The space that the slider reads the channel in. A color of another space moves to it. Without it, the color keeps its own space when that space has the channel. */
     colorSpace?: ColorSpace;
+    /** The direction of the track. */
     orientation?: 'horizontal' | 'vertical';
+    /** Disables the thumb and the track. */
     isDisabled?: boolean;
+    /** The name that sends the value of the channel with a form. */
     name?: string;
+    /** Runs with the color as text each time an edit makes another color. */
     onChange?: (value: string) => void;
+    /** Runs with the color as text when a drag or a key ends. */
     onChangeEnd?: (value: string) => void;
+    /** The Label, SliderOutput and SliderTrack. */
     children?: unknown;
+    /** A color of CSS, such as `#e2445a`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string>;
   }
 </script>

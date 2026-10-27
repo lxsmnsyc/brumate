@@ -34,6 +34,61 @@ A DateField with a button that opens a Calendar.
 - The other props are those of DateField, such as `name`, `minValue`, `maxValue` and `isDateUnavailable`.
 - It shows `data-open`, and the states of a DateField.
 
+## Anatomy
+
+```html
+<DatePicker>
+  <Label />
+  <Group>
+    <DateInput />
+    <Button />
+  </>
+  <Popover>
+    <Dialog>
+      <Calendar />
+    </>
+  </>
+  <Text slot="description" />
+  <FieldError />
+</>
+```
+
+The `Label`, the description `Text` and the `FieldError` are optional.
+
+## Props
+
+```props DatePicker
+
+```
+
+## Data attributes
+
+| Attribute       | When                                                          |
+| --------------- | ------------------------------------------------------------- |
+| `data-open`     | The Popover shows.                                            |
+| `data-disabled` | The picker is disabled.                                       |
+| `data-readonly` | The picker is read only.                                      |
+| `data-invalid`  | The picker is invalid, such as when its date is out of range. |
+| `data-required` | The picker is required.                                       |
+
+## Keyboard
+
+The segments of the DateInput take the keys of a [DateField](./date-field.md#keyboard), and the Calendar takes the keys of a [Calendar](./calendar.md#keyboard).
+
+| Key                | Action                                                                                    |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| `Tab`              | Moves focus through the segments, then to the Button.                                     |
+| `Enter` or `Space` | On the Button, opens the Popover. In the Calendar, picks the date and closes the Popover. |
+| `Escape`           | Closes the Popover.                                                                       |
+
+## Controlled and uncontrolled
+
+`value` holds the date as `YYYY-MM-DD`, or `null`. A plain `value` starts the picker's own state, and `value=$bind(signal)` writes your signal. `isOpen` holds whether the Popover shows in the same way, and `onOpenChange` gets each change. `onChange` gets the date each time it changes, typed or picked. See [State](./state.md).
+
+## Styling
+
+Style the picker with the data attributes above, and the parts inside it with their own. See [DateField](./date-field.md), [Calendar](./calendar.md), [Popover](./popover.md) and [Styling](./styling.md).
+
 ## The Calendar
 
 - The Button opens the Popover. The Calendar shows the date of the field, or `placeholderValue` when the field is empty, and that date takes focus.

@@ -2,6 +2,7 @@
   import type { ElementProps } from 'brumate/elements';
 
   export interface ColorThumbProps extends ElementProps<'div'> {
+    /** Content inside the thumb, such as a mark. */
     children?: unknown;
   }
 </script>

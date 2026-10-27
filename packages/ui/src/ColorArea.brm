@@ -4,17 +4,29 @@
   import type { Color, ColorChannel, ColorSpace } from './color.ts';
 
   export interface ColorAreaProps extends Omit<ElementProps<'div'>, 'onChange'> {
+    /** The channel of the horizontal axis. Without it, it is the first channel of the space. */
     xChannel?: ColorChannel;
+    /** The channel of the vertical axis, which grows upward. Without it, it is the first channel of the space that is left. */
     yChannel?: ColorChannel;
+    /** The space that the area reads the channels in. A color of another space moves to it. Without it, the space is that of the value. */
     colorSpace?: ColorSpace;
+    /** Disables the thumb and keeps the area still. */
     isDisabled?: boolean;
+    /** The name that sends the value of the horizontal axis with a form. */
     xName?: string;
+    /** The name that sends the value of the vertical axis with a form. */
     yName?: string;
+    /** The name of the group and of both inputs, which say it before `Color picker`. */
     'aria-label'?: string;
+    /** The ID of an element that names the group and both inputs. */
     'aria-labelledby'?: string;
+    /** Runs with the color as text each time an edit makes another color. */
     onChange?: (value: string) => void;
+    /** Runs with the color as text when a drag or a key ends. */
     onChangeEnd?: (value: string) => void;
+    /** The ColorThumb. */
     children?: unknown;
+    /** A color of CSS, such as `#e2445a`. It is `#ffffff` without one. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string>;
   }
 </script>

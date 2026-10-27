@@ -3,9 +3,13 @@
   import type { DateRange } from './calendar.ts';
 
   export interface RangeCalendarProps {
+    /** Lets a range hold dates that cannot be picked. Those dates do not show as selected. */
     allowsNonContiguousRanges?: boolean;
+    /** Runs with the range as `{ start, end }` each time one is picked. */
     onChange?: (value: DateRange) => void;
+    /** The CalendarHeading, the Buttons and a CalendarGrid for each month that shows. */
     children?: unknown;
+    /** The selected range as `{ start, end }` of `YYYY-MM-DD` dates, or `null`. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<DateRange | null>;
     [attribute: string]: unknown;
   }
