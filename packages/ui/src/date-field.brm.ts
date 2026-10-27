@@ -4,6 +4,7 @@
 import { $client, $effect, $memo, $signal, $untrack } from 'brumate/signals';
 import { isFirstInvalid } from './fields.ts';
 import type { DateString } from './calendar.ts';
+import type { DatePlaceholders } from './date-strings.ts';
 import {
   dateOf,
   erasePart,
@@ -25,13 +26,14 @@ export function dateSegments(
   value: DateString | null,
   placeholder: DateString,
   locale: string,
+  placeholders: DatePlaceholders | undefined,
   isDisabled: boolean,
   isReadOnly: boolean,
 ) {
   // The parts that are set, and the digits typed into the segment that has focus.
   let parts = $signal<DateParts>(partsOf(value));
   let typed = $signal('');
-  const segments = $memo(segmentsOf(parts, placeholder, locale));
+  const segments = $memo(segmentsOf(parts, placeholder, locale, placeholders));
   const date = $memo(dateOf(parts));
 
   $effect(() => {

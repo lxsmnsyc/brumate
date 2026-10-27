@@ -7,6 +7,7 @@ import type { Context } from 'brumate/context';
 import { CalendarDate, DateFormatter, endOfMonth } from '@internationalized/date';
 import type { DateString } from './calendar.ts';
 import { toDate } from './calendar.ts';
+import type { DatePlaceholders } from './date-strings.ts';
 
 /** A part of a date or a time that a segment edits. */
 export type SegmentType = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'second' | 'dayPeriod';
@@ -50,6 +51,10 @@ export interface DateFieldState {
   isRequired: boolean;
   isInvalid: boolean;
   direction: 'ltr' | 'rtl';
+  /** The name of each segment for screen readers, in the language of the field. English without. */
+  segmentNames?: Record<SegmentType, string>;
+  /** The spoken value of a segment that is not set. `Empty` without. */
+  empty?: string;
   /** Steps a part by `delta`, around its range. A part that is not set starts at the placeholder. */
   step: (type: SegmentType, delta: number) => void;
   /** Sets a part to the lowest or the highest number of its range, as Home and End do. */
@@ -80,18 +85,10 @@ function getDaysInMonth(date: CalendarDate): number {
   return endOfMonth(date).day;
 }
 
-/** The text of a part that is not set in English. */
-const PLACEHOLDERS: Record<SegmentType, string> = {
-  year: 'yyyy',
-  month: 'mm',
-  day: 'dd',
-  hour: '––',
-  minute: '––',
-  second: '––',
-  dayPeriod: 'AM',
-};
+/** The text of a year, a month and a day that is not set, in English. */
+export const PLACEHOLDERS: DatePlaceholders = { year: 'yyyy', month: 'mm', day: 'dd' };
 
-/** The name of a part for screen readers. */
+/** The name of a part for screen readers, in English. */
 export const SEGMENT_NAMES: Record<SegmentType, string> = {
   year: 'year',
   month: 'month',
@@ -101,6 +98,9 @@ export const SEGMENT_NAMES: Record<SegmentType, string> = {
   second: 'second',
   dayPeriod: 'AM/PM',
 };
+
+/** What a time segment that is not set shows, in every language. */
+const TIME_PLACEHOLDER = '––';
 
 /** The parts of a date, or none for no date. */
 export function partsOf(value: DateString | null): DateParts {
@@ -141,7 +141,12 @@ function rangeOf(
 }
 
 /** The segments of a date in a locale, with the parts that are set. */
-export function segmentsOf(parts: DateParts, placeholder: DateString, locale: string): Segment[] {
+export function segmentsOf(
+  parts: DateParts,
+  placeholder: DateString,
+  locale: string,
+  placeholders: DatePlaceholders = PLACEHOLDERS,
+): Segment[] {
   const base = toDate(placeholder);
   const shown = new CalendarDate(
     parts.year ?? base.year,
@@ -167,7 +172,7 @@ export function segmentsOf(parts: DateParts, placeholder: DateString, locale: st
     const value = parts[type];
     return {
       type,
-      text: value === undefined ? PLACEHOLDERS[type] : part.value,
+      text: value === undefined ? placeholders[type] : part.value,
       value,
       min,
       max,
@@ -377,7 +382,7 @@ export function timeSegmentsOf(
     const shownValue = type === 'hour' && twelve && value !== undefined ? value % 12 || 12 : value;
     return {
       type,
-      text: value === undefined ? PLACEHOLDERS[type] : part.value,
+      text: value === undefined ? TIME_PLACEHOLDER : part.value,
       value: shownValue,
       min: type === 'hour' && twelve ? 1 : 0,
       max: type === 'hour' && twelve ? 12 : TIME_MAX[type],

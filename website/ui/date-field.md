@@ -129,11 +129,12 @@ Style the segments with `data-type`, `data-placeholder` and `data-focused`, and 
 }
 ```
 
-- A segment that is not set shows its placeholder in English: `mm`, `dd` or `yyyy`. It shows `data-placeholder`.
+- A segment that is not set shows its placeholder in the language of the [I18nProvider](./i18n-provider.md), as the date input of a browser does: `mm`, `dd` and `yyyy` in English, `tt`, `mm` and `jjjj` in German. It shows `data-placeholder`. The time segments of a [TimeField](./time-field.md) show `––` in every language.
 - The order of the segments and the text between them come from the locale, such as `10/15/2026` in `en-US` and `15.10.2026` in `de-DE`.
 - The segments show the Gregorian date in every locale, so `th-TH` shows 2026 and not 2569. The digits follow the locale, such as the Arabic-Indic digits of `ar-SA`, and typing takes the digits `0` to `9`.
 - The values are Gregorian dates with no time zone. A day is limited by the month and year that are set, and the year goes from 1 to 9999 and does not wrap. A date that does not fit its month, such as the 31st of a month with 30 days, gives the last day of the month.
-- Today, the start of a segment that is not set, is the date in the time zone of the browser.
+- Today, the start of a segment that is not set, is the date in the `timeZone` of the I18nProvider, or else the date of the server that rendered the page.
+- A screen reader hears the name of each segment (`Tag`, `Monat`, `Jahr` in German) from `Intl.DisplayNames`, with the English names where the browser has none, and `Empty` in the language for a segment that is not set. These words come from the table of languages, which [I18nProvider](./i18n-provider.md) describes.
 - Each segment shows `data-type`, such as `month`, and `data-focused`, `data-readonly`, `data-disabled` and `data-invalid`.
 
 ## Input

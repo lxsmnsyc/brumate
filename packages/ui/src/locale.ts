@@ -6,6 +6,8 @@ export interface Locale {
   /** A BCP 47 language tag, such as `en-US` or `ar-EG`. */
   locale: string;
   direction: 'ltr' | 'rtl';
+  /** An IANA time zone, such as `Asia/Tokyo`, that decides today. Else the zone of the browser. */
+  timeZone?: string;
 }
 
 // The scripts and languages that are written right to left.

@@ -86,7 +86,7 @@ The attributes are on the button inside the cell.
 | `data-focused`               | The date is the one that has focus, and focus is in the Calendar.                                               |
 | `data-focus-visible`         | The date has focus and the focus shows as a ring.                                                               |
 | `data-pressed`               | A pointer is held down on it.                                                                                   |
-| `data-today`                 | The date is today, in the time zone of the browser.                                                             |
+| `data-today`                 | The date is today, in the `timeZone` of the Calendar or of the I18nProvider, else the one of the browser.       |
 | `data-disabled`              | The Calendar is disabled, the date is outside the month of its grid, or it is out of `minValue` and `maxValue`. |
 | `data-unavailable`           | `isDateUnavailable` returns true for the date.                                                                  |
 | `data-outside-month`         | The date is outside the month of its grid.                                                                      |
@@ -130,6 +130,8 @@ Style the dates with the data attributes above. The grid is a table, so style it
 - `isDisabled` disables the whole Calendar. `isReadOnly` keeps the value but lets focus move.
 - `isInvalid` marks the selected date as invalid.
 - The days of the week, the names of the months and the first day of the week follow the locale of an [I18nProvider](./i18n-provider.md). `firstDayOfWeek`, such as `"mon"`, starts each week on another day.
+- The words that a screen reader hears follow the locale too: the `aria-label` of the Buttons with `slot="previous"` and `slot="next"`, and the cell labels, such as `Heute, Donnerstag, 15. Oktober 2026` and its `ausgewählt`.
+- Today comes from `timeZone`, such as `"Asia/Tokyo"`, or from the `timeZone` of the I18nProvider. The server renders its own date, in that time zone, so the first render of the browser matches the HTML. Without a time zone, the browser then takes its own date. It checks again when the tab shows and at each new minute, so the highlight moves at midnight.
 - A `Text` with `slot="errorMessage"` describes the dates of an invalid value, which name it in `aria-describedby`.
 
 ## Months
