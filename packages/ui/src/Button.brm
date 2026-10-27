@@ -12,7 +12,7 @@
     isDisabled?: boolean;
     /** Pending: the button keeps its focus and presses nothing, such as while a form sends. */
     isPending?: boolean;
-    /** The link of a button that renders as `a`. A disabled button drops it, as in React Aria. */
+    /** The link of a button that renders as `a`. A disabled button drops it. */
     href?: string;
     onPress?: (event: PressEvent) => void;
     onPressStart?: (event: PressEvent) => void;

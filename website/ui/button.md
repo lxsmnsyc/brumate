@@ -13,7 +13,13 @@ A button that presses with a mouse, a touch, a pen, Enter, Space, or a screen re
 - `as` renders another element, such as `as="a"`, with `role="button"` and a place in the order of Tab. `as` takes the name of an element or a component, and the other props are those of the target, so `as="a"` takes `href`, and a prop that the target does not take is a type error. `ButtonProps` is the props type. See [Props types](../docs/typescript.md#props-types).
 - A press that leaves the button ends without `onPress`, and starts again when the pointer comes back. Space never scrolls the page.
 
-## Attributes
+## Props
+
+```props Button
+
+```
+
+## Data attributes
 
 | Attribute            | When                              |
 | -------------------- | --------------------------------- |
