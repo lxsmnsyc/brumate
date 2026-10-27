@@ -49,3 +49,12 @@ No compiler change: `g` keeps its lists. The queues do what the transitive lists
 - `t ?? p ?? o` gave a template that a deep component hands up to the page a lower depth than its writer, so its memo read the old `last` and threw. The depth is now 1 + max(depth of `t`, depth of `p ?? o`). Test added (`diamondLift`).
 - An error in a waiting pass went to `fail` on the signal's scope and skipped the `#try` around the memo. Each update now runs in a try and fails on its own scope. The limit moved into the same try, counting runs. Test added (`tryWaitingUpdate`).
 - Size went to +313. Dropping the descendants cache, the rank cursor (buckets run whole now) and the extra lookups in `trigger` brought it to +291.
+
+## 2026-10-27: round 4 of #282
+
+- The limit of 1e6 runs let a `ref=$bind` cycle run out of heap. Back to 10000 binding rounds; past them `stuck` makes the next update fail in its own try, so the error still reaches its `#try`. Test added (`refLoop`), 0.4 s.
+- `depthOf` doubled with each level of nested children in blocks. Depths of scopes with `t` are kept for the pass. r4NestIf20: 1.3 ms, as on main.
+- After a memo threw, the rest of the pass ran with its old value. `failed` now skips the rest of the pass; effects still run. Tests added (`memoThrows`, `memoThrowsTry`).
+- A test of mine started two loaders in one test, so the first kept its listeners and broke 28 later tests; it stops the first now.
+- A per-key run count was first: it cost 10-20 ms at 10000 rows, so rounds again.
+- Size +335, over the budget; the maintainer decides.

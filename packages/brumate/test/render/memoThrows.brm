@@ -1,0 +1,17 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { ran } from './runs.ts';
+
+  let count = $signal(0);
+  let other = $signal(0);
+  const bad = $memo(count > 0 ? (() => {
+    throw new Error(`Bad ${count}`);
+  })() : `ok${count}`);
+  const both = $memo(ran('both', `${count} ${bad}`) && `${count}/${bad}`);
+</script>
+
+<button class="warm" onClick=(() => other++)>Warm</button>
+<p class="other">{other}</p>
+<button class="bump" onClick=(() => count++)>Bump</button>
+<p class="count">{count}</p>
+<p class="both">{both}</p>

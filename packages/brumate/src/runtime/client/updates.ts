@@ -481,7 +481,10 @@ function pass(write: () => void): void {
     updateCount = 0;
     updateStart = performance.now();
   }
-  running++;
+  // Effects run after the pass, so an error of one stops the effects after it until a pass starts.
+  if (running++ === 0) {
+    failed = false;
+  }
   try {
     write();
     if (running === 1) {
@@ -499,7 +502,9 @@ function pass(write: () => void): void {
       }
       levels = [];
       waiting = undefined;
-      runs = 0;
+      depths.clear();
+      failed = false;
+      stuck = false;
     }
   }
   if (running === 0) {
@@ -536,20 +541,22 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
   const key = `${target.id}:${name}`;
   // An update of a scope that left the page in the pass does not run. An error goes to the
   // nearest `#try` around the update, whether its write ran at once or waited for code.
+  // After an error, the rest of the pass does not run, so no update reads the old value of a memo
+  // that threw. Its effects still run.
   const later = (): void => {
-    if (scopes.get(target.id) === target) {
+    if (!failed && scopes.get(target.id) === target) {
       try {
-        // A limit for updates that keep writing what they read. Past it, each update that waits
-        // fails without running, so the pass ends.
-        if (++runs > 1e6) {
+        // Past the limit of rounds, the next update fails in place of running.
+        if (stuck) {
           throw new Error(
             DEV
-              ? 'The updates of a write did not settle after a million runs. An update writes a value that it reads, such as through ref=$bind.'
+              ? 'The updates of a write did not settle after 10000 rounds. An update writes a value that it reads, such as through ref=$bind.'
               : 'Update loop',
           );
         }
         fn(target);
       } catch (error) {
+        failed = true;
         fail(target, error);
       }
     }
@@ -570,11 +577,29 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
  * the component that wrote it.
  */
 function depthOf(scope: Scope | undefined): number {
-  return scope ? 1 + Math.max(depthOf(scope.t), depthOf(scope.p ?? scope.o)) : -1;
+  if (!scope) {
+    return -1;
+  }
+  if (!scope.t) {
+    return 1 + depthOf(scope.p ?? scope.o);
+  }
+  // Kept for the pass, since the scope where it renders and its parent can reach the same scope.
+  let depth = depths.get(scope);
+  if (depth === undefined) {
+    depth = 1 + Math.max(depthOf(scope.t), depthOf(scope.p ?? scope.o));
+    depths.set(scope, depth);
+  }
+  return depth;
 }
 
-// The updates that ran in the pass.
-let runs = 0;
+// The depths of the scopes of the pass.
+const depths: Map<Scope, number> = new Map();
+
+// True once an update of the pass threw.
+let failed = false;
+
+// True once the pass ran 10000 rounds of bindings, for updates that keep writing what they read.
+let stuck = false;
 
 /**
  * Runs what waits, the lowest depth first: its memo of the lowest rank, until
@@ -583,6 +608,7 @@ let runs = 0;
  * write into a parent.
  */
 function drain(): void {
+  let rounds = 0;
   let depth = 0;
   while (depth < levels.length) {
     const level = levels[depth];
@@ -606,6 +632,7 @@ function drain(): void {
         compute();
       }
     } else if (level.b.size > 0) {
+      stuck = ++rounds > 10_000;
       const round = [...level.b.values()];
       level.b.clear();
       for (const waiter of round) {

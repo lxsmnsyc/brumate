@@ -1035,6 +1035,53 @@ describe('resume', () => {
     expect(errors).not.toHaveBeenCalled();
   });
 
+  it('drops the rest of the updates of a write when a memo throws, so no reader sees its old value', async () => {
+    await resume('memoThrows', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    clearRuns();
+    // The first click writes before the update code has loaded, the second after.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: Bad 1');
+    click(document.querySelector('.warm')!);
+    await waitFor(() => expect(text('.other')).toBe('1'));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(2));
+    expect(String(errors.mock.calls[1]![0])).toBe('Error: Bad 2');
+    expect(text('.count')).toBe('0');
+    expect(text('.both')).toBe('0/ok0');
+    expect(runsOf('both')).toEqual([]);
+  });
+
+  it('shows the error of the memo that threw in its #try, not one of a memo that read its old value', async () => {
+    // The write waits for the update code.
+    await resume('memoThrowsTry', {});
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+    stop?.();
+    // The update code has loaded before the write.
+    await resume('memoThrowsTry', {});
+    click(document.querySelector('.warm')!);
+    await waitFor(() => expect(text('.other')).toBe('1'));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+  });
+
+  it('stops updates that keep writing what they read, with one error, and the page goes on', async () => {
+    await resume('refLoop', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.double')).toBe('2'));
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    expect(String(errors.mock.calls[0]![0])).toContain('did not settle');
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.double')).toBe('4'));
+    expect(errors).toHaveBeenCalledTimes(1);
+  });
+
   it('reports an error outside every #try with an event, and to onError first', async () => {
     const server = await import(file('boom.brm.ts'));
     const { html, state } = await renderParts(server.default, {});
