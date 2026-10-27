@@ -43,6 +43,10 @@ export function get(scope: Scope, slot: number): any {
   if (computing > 0 && value instanceof Promise) {
     throw new NotReady(value);
   }
+  // A memo that threw holds its error, and each read of it throws.
+  if (value instanceof MemoError) {
+    throw value.error;
+  }
   if (value instanceof ElementReference) {
     const element = findElement(value.scope, value.anchor);
     if (element) {
@@ -51,6 +55,27 @@ export function get(scope: Scope, slot: number): any {
     return element ?? undefined;
   }
   return value;
+}
+
+/** What the slot of a memo holds while its compute throws or its promise rejects. */
+class MemoError {
+  readonly error: unknown;
+
+  constructor(error: unknown) {
+    this.error = error;
+  }
+}
+
+/**
+ * A memo that threw holds the error in place of a value, and its readers update. Each one that
+ * reads it throws into the nearest `#try` around it, and the code that does not read it runs as
+ * usual. A memo that computes again without a throw holds its value again.
+ */
+function hold(scope: Scope, slot: number, key: string, error: unknown): void {
+  loadingSlots.delete(key);
+  loads.delete(key);
+  guesses?.map.delete(key);
+  set(scope, slot, new MemoError(error));
 }
 
 // The number of writes since the page loaded, so scopes that stream in later know to update.
@@ -235,23 +260,21 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
   const load = ++loadCount;
   loads.set(key, load);
   startLoading(scope, slot, key);
-  const settle = (value?: unknown, failed = false): void => {
+  const settle = (value?: unknown): void => {
     if (loads.get(key) !== load) {
       return;
     }
     loadingSlots.delete(key);
-    if (!failed && !Object.is(scope.s[slot], value)) {
+    if (!Object.is(scope.s[slot], value)) {
       set(scope, slot, value);
     } else {
       trigger(scope, slot);
     }
   };
   const failed = (error: unknown): void => {
-    // A newer load of the memo aborted this one. The memo keeps its value, and the error goes
-    // to the nearest `#try` around the memo.
+    // A newer load of the memo aborted this one, so only the latest load holds its error.
     if (loads.get(key) === load) {
-      fail(scope, error);
-      settle(undefined, true);
+      hold(scope, slot, key, error);
     }
   };
   promise.then((value) => {
@@ -313,6 +336,7 @@ export function memoSignal(): AbortSignal | undefined {
  * Computes a memo. A promise loads, and the memo keeps its value until it
  * settles. A memo that reads a value that is still loading keeps its value
  * too, and is pending until that value arrives and the memo computes again.
+ * A throw is held as the value of the memo, and its readers throw.
  */
 export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   const key = `${scope.id}:${slot}`;
@@ -326,6 +350,7 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
     return;
   }
   let value: unknown;
+  let threw = false;
   // Server function calls of the last compute are aborted, because their answers are out of date.
   memoControllers.get(key)?.abort();
   memoControllers.delete(key);
@@ -335,14 +360,20 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   try {
     value = compute();
   } catch (error) {
-    if (!(error instanceof NotReady)) {
-      throw error;
+    if (error instanceof NotReady) {
+      startLoading(scope, slot, key);
+      return;
     }
-    startLoading(scope, slot, key);
-    return;
+    threw = true;
+    value = error;
   } finally {
     computing--;
     memoKey = outer;
+  }
+  // Held after the compute ends, since the write runs the readers.
+  if (threw) {
+    hold(scope, slot, key, value);
+    return;
   }
   if (isThenable(value) || isAsyncIterable(value)) {
     asyncMemo(scope, slot, Promise.resolve(value));
@@ -541,13 +572,13 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
   const key = `${target.id}:${name}`;
   // An update of a scope that left the page in the pass does not run. An error goes to the
   // nearest `#try` around the update, whether its write ran at once or waited for code.
-  // After an error, the rest of the pass does not run, so no update reads the old value of a memo
-  // that threw. Its effects still run.
   const later = (): void => {
     if (!failed && scopes.get(target.id) === target) {
       try {
         // Past the limit of rounds, the next update fails in place of running.
         if (stuck) {
+          // The rest of the pass does not run.
+          failed = true;
           throw new Error(
             DEV
               ? 'The updates of a write did not settle after 10000 rounds. An update writes a value that it reads, such as through ref=$bind.'
@@ -556,7 +587,6 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
         }
         fn(target);
       } catch (error) {
-        failed = true;
         fail(target, error);
       }
     }
@@ -595,7 +625,7 @@ function depthOf(scope: Scope | undefined): number {
 // The depths of the scopes of the pass.
 const depths: Map<Scope, number> = new Map();
 
-// True once an update of the pass threw.
+// True once the pass was stopped for running too many rounds.
 let failed = false;
 
 // True once the pass ran 10000 rounds of bindings, for updates that keep writing what they read.

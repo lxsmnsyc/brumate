@@ -96,20 +96,35 @@ const CLIENT_CODE = new Set(['event', 'effect', 'client']);
 
 /**
  * True if the body of a `#try` holds code that runs in the browser: a
- * handler, an effect, a `$client` callback or a memo that loads. An error
- * in it renders the `#catch` body in the browser, so both bodies ship.
+ * handler, an effect, a `$client` callback, a memo that loads, or a read of a
+ * memo, which throws when the memo holds an error. An error in it renders
+ * the `#catch` body in the browser, so both bodies ship.
  */
 export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 'try' }): boolean {
   const body = model.scopes.find((scope) => scope.block === block && scope.body === block.body);
-  return (
-    body !== undefined &&
-    model.sites.some(
-      (site) =>
-        (CLIENT_CODE.has(site.kind) ||
-          (site.kind === 'memo' && site.declaration?.kind === 'async-memo')) &&
-        isWithin(site.scope, body),
-    )
-  );
+  if (body === undefined) {
+    return false;
+  }
+  for (const site of model.sites) {
+    if (
+      (CLIENT_CODE.has(site.kind) ||
+        (site.kind === 'memo' && site.declaration?.kind === 'async-memo')) &&
+      isWithin(site.scope, body)
+    ) {
+      return true;
+    }
+  }
+  // A memo that threw holds its error, so each read of it throws.
+  for (const declaration of model.declarations) {
+    if (isMemoKind(declaration.kind)) {
+      for (const read of declaration.reads) {
+        if (isWithin(read.site.scope, body)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 /** True if a site's expression is a function, such as a function passed as a prop. */

@@ -1,0 +1,19 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let n = $signal(0);
+  const data = $memo((async () => {
+    await Promise.resolve();
+    if (n > 0) {
+      throw new Error(`Rejected ${n}`);
+    }
+    return `ok${n}`;
+  })());
+</script>
+
+<button class="bump" onClick=(() => n++)>Bump</button>
+#try {
+  <p class="data">{data}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

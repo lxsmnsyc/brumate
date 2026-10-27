@@ -1035,37 +1035,117 @@ describe('resume', () => {
     expect(errors).not.toHaveBeenCalled();
   });
 
-  it('drops the rest of the updates of a write when a memo throws, so no reader sees its old value', async () => {
-    await resume('memoThrows', {});
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-    onTestFinished(() => errors.mockRestore());
+  it('holds the memo error until a read: an effect in a #try throws, and never sees the old value', async () => {
+    await resume('memoErrorEffect', {});
     clearRuns();
-    // The first click writes before the update code has loaded, the second after.
-    click(document.querySelector('.bump')!);
-    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
-    expect(String(errors.mock.calls[0]![0])).toBe('Error: Bad 1');
     click(document.querySelector('.warm')!);
     await waitFor(() => expect(text('.other')).toBe('1'));
     click(document.querySelector('.bump')!);
-    await waitFor(() => expect(errors).toHaveBeenCalledTimes(2));
-    expect(String(errors.mock.calls[1]![0])).toBe('Error: Bad 2');
-    expect(text('.count')).toBe('0');
-    expect(text('.both')).toBe('0/ok0');
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
     expect(runsOf('both')).toEqual([]);
   });
 
-  it('shows the error of the memo that threw in its #try, not one of a memo that read its old value', async () => {
-    // The write waits for the update code.
-    await resume('memoThrowsTry', {});
-    click(document.querySelector('.bump')!);
-    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
-    stop?.();
-    // The update code has loaded before the write.
-    await resume('memoThrowsTry', {});
+  it('holds the memo error until a read: only the insert that reads it shows the #catch', async () => {
+    await resume('memoErrorSplit', {});
     click(document.querySelector('.warm')!);
     await waitFor(() => expect(text('.other')).toBe('1'));
     click(document.querySelector('.bump')!);
     await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+    expect(text('.b')).toBe('1');
+    expect(text('.c')).toBe('1');
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.b')).toBe('2'));
+    expect(text('.caught')).toBe('Error: Bad 1');
+  });
+
+  it('holds the memo error until a read: the #try catches it also when the write waited for the code', async () => {
+    await resume('tryWaitingUpdate', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    // The first click writes before the update code has loaded.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('holds the memo error until a read: a handler that writes goes on, and one that reads it throws', async () => {
+    await resume('memoErrorHandler', {});
+    click(document.querySelector('.warm')!);
+    await waitFor(() => expect(text('.m')).toBe('1'));
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.after')).toBe('yes'));
+    expect(document.querySelector('.caught')).toBeNull();
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+    expect(text('.seen')).toBe('none');
+  });
+
+  it('holds the memo error until a read: the memo holds its value again after a compute without a throw', async () => {
+    await resume('memoErrorRecover', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.seen')).toBe('none'));
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: Bad 1');
+    expect(text('.seen')).toBe('none');
+    click(document.querySelector('.bump')!);
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.seen')).toBe('ok2'));
+  });
+
+  it('holds the memo error until a read: a rejected async memo throws at its read', async () => {
+    await resume('memoErrorAsync', {});
+    expect(text('.data')).toBe('ok0');
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Rejected 1'));
+  });
+
+  it('holds the memo error until a read: the server render shows the #catch when the memo is declared inside the #try', async () => {
+    await resume('memoErrorServer', {});
+    expect(text('.before')).toBe('before');
+    expect(text('.caught')).toBe('Error: Bad 1');
+    expect(document.querySelector('.data')).toBeNull();
+    expect(text('.after')).toBe('after');
+  });
+
+  it.fails('holds the memo error until a read: the server render shows the #catch when the memo is declared outside the #try', async () => {
+    await resume('memoErrorServerOutside', {});
+    expect(text('.caught')).toBe('Error: Bad 1');
+  });
+
+  it('holds the memo error until a read: a memo that reads a failed memo holds its error, not a stale one', async () => {
+    await resume('memoErrorChain', {});
+    click(document.querySelector('.warm')!);
+    await waitFor(() => expect(text('.m')).toBe('1'));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+  });
+
+  it('holds the memo error until a read: an insert shows the value again after a compute without a throw', async () => {
+    await resume('memoErrorRecoverInsert', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    expect(text('.shown')).toBe('ok0');
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.shown')).toBe('ok2'));
+  });
+
+  it('holds the memo error until a read: an awaited memo that rejects on the server renders the #catch and the rest', async () => {
+    await resume('memoErrorAwaitServer', {});
+    expect(text('.before')).toBe('before');
+    expect(text('.caught')).toBe('Error: Bar failed');
+    expect(text('.after')).toBe('after');
+  });
+
+  it('holds the memo error until a read: an awaited memo that recomputes into a rejection shows the #catch', async () => {
+    await resume('memoErrorAwaitClient', {});
+    expect(text('.data')).toBe('ok0');
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Rejected 1'));
   });
 
   it('stops updates that keep writing what they read, with one error, and the page goes on', async () => {

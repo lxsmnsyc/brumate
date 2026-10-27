@@ -1,0 +1,27 @@
+<script>
+  import { $effect, $memo, $signal } from 'brumate/signals';
+  import { ran } from './runs.ts';
+
+  let count = $signal(0);
+  let other = $signal(0);
+  const bad = $memo(count > 0 ? (() => {
+    throw new Error(`Bad ${count}`);
+  })() : `ok${count}`);
+</script>
+
+<button class="warm" onClick=(() => other++)>Warm</button>
+<p class="other">{other}</p>
+<button class="bump" onClick=(() => count++)>Bump</button>
+#try {
+  <script>
+    $effect(() => {
+      ran('both', `${count} ${bad}`);
+    });
+    $effect(() => {
+      ran('count', `${count}`);
+    });
+  </script>
+  <p class="c">{count}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

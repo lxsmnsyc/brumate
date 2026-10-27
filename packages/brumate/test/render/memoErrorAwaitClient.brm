@@ -1,0 +1,21 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  async function load(n: number): Promise<string> {
+    await Promise.resolve();
+    if (n % 2 === 1) {
+      throw new Error(`Rejected ${n}`);
+    }
+    return `ok${n}`;
+  }
+
+  let n = $signal(0);
+  const foo = await $memo(load(n));
+</script>
+
+<button class="bump" onClick=(() => n++)>Bump</button>
+#try {
+  <p class="data">{foo}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}
