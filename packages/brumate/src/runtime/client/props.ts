@@ -42,6 +42,8 @@ export function spreadProps(
 
 export function prop(scope: Scope, anchor: number, name: string, value: unknown): void {
   // A prop that the parent binds passes its value. The child keeps the slot it writes from its render.
+  // A rest prop keeps the binding, for the element that spreads it.
+  const bound = value;
   if (HAS_BINDINGS && isBinding(value)) {
     value = value.value;
   }
@@ -73,7 +75,7 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
       if (value === undefined) {
         delete next[name];
       } else {
-        next[name] = value;
+        next[name] = bound;
       }
       set(child, rest, next);
     }

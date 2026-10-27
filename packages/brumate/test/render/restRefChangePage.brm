@@ -1,0 +1,13 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import RestRefBox from './RestRefBox.brm';
+
+  let title = $signal('one');
+  let root = $signal<HTMLElement>();
+  let seen = $signal('');
+</script>
+
+<RestRefBox ref=$bind(root) {title} />
+<button class="retitle" onClick=(() => (title = 'two'))>Retitle</button>
+<button class="read" onClick=(() => (seen = root ? `${root.tagName}:${root.getAttribute('title')}` : 'none'))>Read</button>
+<p class="seen">{seen}</p>

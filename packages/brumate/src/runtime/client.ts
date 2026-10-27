@@ -56,7 +56,7 @@ export {
 export { fail } from './client/errors.ts';
 export { guess, track } from './client/guesses.ts';
 export { action, handle, handlerProp, rpc, spread, submitAction } from './client/handlers.ts';
-export { attr, attrs, content, portalTo, text, writeText } from './client/inserts.ts';
+export { attr, attrs, content, portalTo, restRef, text, writeText } from './client/inserts.ts';
 export { list, listOf, windowList, windowStart } from './client/lists.ts';
 export { addHead, addPortal, addStyle, deferInBrowser, setVar } from './client/page.ts';
 export { prop, spreadProps } from './client/props.ts';
