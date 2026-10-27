@@ -5304,3 +5304,43 @@ describe('a dynamic tag that names a component', () => {
     await waitFor(() => expect(text('em.tag')).toBe('b'));
   });
 });
+
+describe('a template that names a component only in an attribute value', () => {
+  /** The source of the client parts that hold the markup of the templates of a page. */
+  function templateParts(name: string): string {
+    return readdirSync(output)
+      .filter((file) => file.startsWith(`${name}.brm.client.t`))
+      .map((file) => readFileSync(join(output, file), 'utf8'))
+      .join('\n');
+  }
+
+  it('gapTemplate: renders a component in `as=`', async () => {
+    await resume('gapTemplate', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(document.querySelector('.gap-row')).not.toBeNull());
+    expect(document.querySelector('.gap-row')!.hasAttribute('data-target')).toBe(true);
+  });
+
+  it('gapTemplate: renders a component in another prop', async () => {
+    await resume('gapTemplateProp', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(document.querySelector('.host')).not.toBeNull());
+    expect(document.querySelector('.host')!.hasAttribute('data-target')).toBe(true);
+  });
+
+  it('gapTemplate: renders the components of an expression', async () => {
+    await resume('gapTemplateChoice', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(document.querySelector('.gap-row')).not.toBeNull());
+    expect(document.querySelector('.gap-row')!.hasAttribute('data-target')).toBe(true);
+  });
+
+  it('gapTemplate: leaves an import that the template does not use out of the part', async () => {
+    await resume('gapTemplateUnused', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(document.querySelector('.gap-row')).not.toBeNull());
+    const code = templateParts('gapTemplateUnused');
+    expect(code).toContain('GapTarget');
+    expect(code).not.toContain('AsLink');
+  });
+});
