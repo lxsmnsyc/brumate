@@ -27,3 +27,12 @@ No compiler change: `g` keeps its lists. The queues do what the transitive lists
 - A first try joined every write that waits, also of separate clicks. That ran the `count++` and the `tab = 'a'` of the `#offscreen` test in one pass, so the effect of the body ran once it showed. Joining is now only for writes inside a pass. A second try made writes wait behind the waiting ones; that left memos stale in the ui parts (Slider `onChangeEnd` read the old value), so it is gone. The waiting path keeps the awaits of main, so the order of waiting writes is as before.
 - ui: Transition "leaves the parent after its child" failed. On main, the effect of the child ran before the one of the parent, because a write ran its updates depth first. The pass now runs the effects of a later round before those of earlier rounds, which gives the same order.
 - Size: todos +212 B gzip (27938 to 28150), budget 300.
+
+## 2026-10-27: review of #282
+
+- Blocking: `drain` scanned every queued memo for each pick, so a `#for` with a memo per row was rows² (10000 rows: 378-649 ms against 21-40 ms on main). The queue is now one level per scope depth, with memos in buckets by rank and a cursor: 49-59 ms at 10000 rows.
+- Context plus prop, and `$bind` back with a memo of it: the queue runs by scope depth, the shallowest first, so the bindings of a parent reach the components inside before their memos compute. `set` of a bound slot writes both slots in one pass. Both cases have tests now, failing on main.
+- The effects of a depth run deepest first, which keeps the child-before-parent order. On a throw they stay for the next pass.
+- A limit of 10000 rounds of bindings per pass throws.
+- The waiting path is sensitive to the number of awaits: an extra tick or two made the ColorSlider `onChangeEnd` tests and the `#offscreen` test fail. Each write that joins a waiting list starts its load when it joins.
+- Size had grown to +408 B. One-letter fields of `Level`, a DEV-only long message, the code lookups in `queueWrite` and a scan from depth 0 in place of a cursor brought it to +284 to +288.

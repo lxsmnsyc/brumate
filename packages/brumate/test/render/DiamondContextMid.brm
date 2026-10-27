@@ -1,0 +1,9 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import DiamondContextLeaf from './DiamondContextLeaf.brm';
+
+  const { letters } = $props<{ letters: string[] }>();
+  const upper = $memo(letters.map((letter) => letter.toUpperCase()));
+</script>
+
+<DiamondContextLeaf list=(upper) />

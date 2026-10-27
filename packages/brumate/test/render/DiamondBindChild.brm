@@ -1,0 +1,13 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import type { Bindable } from 'brumate/signals';
+  import { ran } from './runs.ts';
+
+  const { len } = $props<{ len: number }>();
+  let { value = '' } = $props<{ value?: Bindable<string> }>();
+  // It throws when the length that the parent passes back is past the end of the value.
+  const lastChar = $memo(ran('lastChar', `${value} ${len}`) && value[len - 1]!.toUpperCase());
+</script>
+
+<button class="cut" onClick=(() => (value = 'a'))>Cut</button>
+<p class="last">{lastChar}</p>

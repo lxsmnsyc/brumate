@@ -294,7 +294,9 @@ Cost: a spike of about a week, then the design.
 
 ### Ordered updates
 
-A write runs the updates that read its slot at once, in the order of the `g` table of the module. Memos run before bindings, and a memo comes after the memos it reads, because it is declared after them. Three cases follow, which the tests under "updates of a signal and a memo of it" in `test/resume.test.ts` show:
+Built (#282). A write now queues the updates that read its slot, each once. It runs them by the depth of their scope: at each depth the memos in the order they are declared, then the bindings. So a child gets every new prop and context value before its memos compute, and a `$bind` write from a child changes both slots in one pass. Effects run after, those of a child first. The `g` tables did not change. The rest of this section is the proposal as it was.
+
+Before, a write ran the updates that read its slot at once, in the order of the `g` table of the module. Memos ran before bindings, and a memo came after the memos it reads, because it is declared after them. Three cases followed, which the tests under "updates of a signal and a memo of it" in `test/resume.test.ts` show:
 
 - A memo that reads a signal and a memo of that signal computes twice, once for each.
 - A binding that reads a signal and a memo of it runs twice.

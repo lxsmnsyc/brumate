@@ -1,0 +1,10 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import DiamondBindChild from './DiamondBindChild.brm';
+
+  let text = $signal('ab');
+  const len = $memo(text.length);
+</script>
+
+<p class="text">{text}</p>
+<DiamondBindChild value=$bind(text) {len} />

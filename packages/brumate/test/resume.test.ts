@@ -529,6 +529,31 @@ describe('resume', () => {
       await vi.waitFor(() => expect(text('.shout')).toBe('D'), { timeout: 500 });
       expect(errors).not.toHaveBeenCalled();
     });
+
+    it('gives a child a value through a context and another through a prop of a child between', async () => {
+      await resume('diamondContext', {});
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      clearRuns();
+      click(document.querySelector('.grow')!);
+      await vi.waitFor(() => expect(text('.pick')).toBe('c'), { timeout: 500 });
+      expect(runsOf('pick')).toEqual(['pick 3 2']);
+      click(document.querySelector('.grow')!);
+      await vi.waitFor(() => expect(text('.pick')).toBe('d'), { timeout: 500 });
+      expect(errors).not.toHaveBeenCalled();
+    });
+
+    it('computes a memo of a child once when it writes a bound prop that the parent passes back a memo of', async () => {
+      await resume('diamondBind', {});
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      clearRuns();
+      click(document.querySelector('.cut')!);
+      await vi.waitFor(() => expect(text('.last')).toBe('A'), { timeout: 500 });
+      expect(text('.text')).toBe('a');
+      expect(runsOf('lastChar')).toEqual(['lastChar a 1']);
+      expect(errors).not.toHaveBeenCalled();
+    });
   });
 
   it('loads the code of the components on the page when it starts', async () => {

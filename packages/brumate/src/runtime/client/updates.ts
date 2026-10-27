@@ -32,7 +32,7 @@ import {
   scopes,
   timers,
 } from './state.ts';
-import type { ClientModule, Part, Scope } from './state.ts';
+import type { Scope } from './state.ts';
 
 // Slots
 
@@ -71,10 +71,15 @@ export function resetWrites(): void {
 export function set<T>(scope: Scope, slot: number, value: T): T {
   const bound = scope.b?.[slot];
   if (bound === undefined || isSlotReference(bound)) {
-    writeSlot(scope, slot, value);
     const target = bound && scopes.get(bound.scope);
     if (target) {
-      set(target, bound.slot, value);
+      // Both slots change in one pass, so the memos of each read both new values.
+      pass(() => {
+        writeSlot(scope, slot, value);
+        set(target, bound.slot, value);
+      });
+    } else {
+      writeSlot(scope, slot, value);
     }
   } else if (bound instanceof FunctionReference) {
     void call(bound.ref, scopes.get(bound.scope), [...(bound.args ?? []), value]);
@@ -378,34 +383,32 @@ function trigger(scope: Scope, slot: number): void {
   const updates = loadedParts.get(`${id}:update`);
   const children = childrenReady(scope);
   if (module && updates && loadingCode.size === 0 && !children) {
-    pass(() => queueWrite(module, updates, scope, slot));
+    pass(() => queueWrite(scope, slot));
     return;
   }
   // The first write to a component loads its update code. Later writes wait in order, and for
   // the code of the page, which the updates can render and call. The writes of one pass that
   // wait, such as the props of a child, join its list and run as one pass, so a child computes once.
-  if (running > 0 && waiting) {
-    waiting.push([scope, slot]);
+  // `waiting` is set only while a pass runs.
+  if (waiting) {
+    // Its code starts to load now, so the pass waits no longer than the first write.
+    waiting.push([scope, slot, updateCode(scope, slot)]);
     return;
   }
-  const list: [Scope, number][] = [[scope, slot]];
+  const list: [Scope, number, Promise<unknown>?][] = [[scope, slot]];
   if (running > 0) {
     waiting = list;
   }
   const loading = loadModule(id).then(async (loaded) => {
     await (loaded.g[scope.k]?.[slot] && loadPart(loaded, 'update'));
     const waits: unknown[] = [...loadingCode, children];
-    for (const [target, at] of list.slice(1)) {
-      waits.push(updateCode(target, at));
+    for (const [, , load] of list) {
+      waits.push(load);
     }
     await Promise.allSettled(waits);
     pass(() => {
       for (const [target, at] of list) {
-        const owner = rootOf(target).m!;
-        const code = loadedParts.get(`${owner}:update`);
-        if (modules.has(owner) && code) {
-          queueWrite(modules.get(owner)!, code, target, at);
-        }
+        queueWrite(target, at);
       }
     });
   });
@@ -421,7 +424,7 @@ async function updateCode(scope: Scope, slot: number): Promise<unknown> {
 }
 
 /** The writes of the pass that runs that wait for code, to run as one pass of their own. */
-let waiting: [Scope, number][] | undefined;
+let waiting: [Scope, number, Promise<unknown>?][] | undefined;
 
 /** The updates that wait for their code. */
 const loadingUpdates = new Set<Promise<unknown>>();
@@ -442,29 +445,40 @@ export async function updated(): Promise<void> {
 // Effects wait until every other update of a write has run, and run once each.
 export const pendingEffects: Map<string, () => void> = new Map();
 
-// The memos and the bindings that wait in the pass, by scope and update, so each runs once. A memo
-// has its rank, the number in its name: memos are numbered in the order they are declared, after
-// the memos they read.
-const pendingMemos: Map<string, [number, () => void]> = new Map();
+/**
+ * The updates that wait in the pass at one depth of scopes, so each runs once.
+ * A memo has its rank, the number in its name: memos are numbered in the
+ * order they are declared, after the memos they read.
+ */
+interface Level {
+  /** The memos, in buckets by rank. */
+  m: Map<string, () => void>[];
+  /** The lowest rank that can have a memo, unset before the first. */
+  a?: number;
+  /** The bindings. */
+  b: Map<string, () => void>;
+  /** The effects. */
+  e: Map<string, () => void>;
+}
 
-const pendingUpdates: Map<string, () => void> = new Map();
-
-// The effects that the memos of the pass queued since the last round of bindings.
-const roundEffects: Map<string, () => void> = new Map();
+let levels: Level[] = [];
 
 let running = 0;
 
 let flushing = false;
 
-/** The updates that ran since the outermost `run` started, and when it started, for the devtools. */
+/** The updates that ran since the outermost pass started, and when it started, for the devtools. */
 let updateCount = 0;
 
 let updateStart = 0;
 
 /**
- * Runs a pass: `write` queues updates. The outermost pass runs the memos
- * that wait in the order of their ranks, then the bindings that wait as one
- * round, and again until none waits. Effects run after them.
+ * Runs a pass: `write` queues updates. The outermost pass runs them by the
+ * depth of their scope, so the bindings of a component, such as its props
+ * and contexts, reach the components inside before their memos compute. At
+ * each depth, the memos in the order of their ranks, then the bindings as
+ * one round. Effects run after them, the deepest first, so the effects of
+ * a child run before those of its parent.
  */
 function pass(write: () => void): void {
   if (DEV && running === 0) {
@@ -478,12 +492,17 @@ function pass(write: () => void): void {
       drain();
     }
   } finally {
-    // A pass that throws drops the updates that wait.
     if (--running === 0) {
+      // A pass that throws drops the memos and bindings that wait. Its effects run with the next.
+      // The deepest first. An effect that waits already keeps its place.
+      // oxlint-disable-next-line unicorn/no-array-reverse -- The levels are dropped right after.
+      for (const level of levels.reverse()) {
+        for (const [key, runEffect] of level?.e ?? []) {
+          pendingEffects.set(key, runEffect);
+        }
+      }
+      levels = [];
       waiting = undefined;
-      pendingMemos.clear();
-      pendingUpdates.clear();
-      roundEffects.clear();
     }
   }
   if (running === 0) {
@@ -494,8 +513,17 @@ function pass(write: () => void): void {
   }
 }
 
-/** Queues the updates that read a slot, on the scope and on its descendants of each kind. */
-function queueWrite(module: ClientModule, updates: Part, scope: Scope, slot: number): void {
+/**
+ * Queues the updates that read a slot, on the scope and on its descendants of
+ * each kind, once the code of the component has loaded.
+ */
+function queueWrite(scope: Scope, slot: number): void {
+  const id = rootOf(scope).m!;
+  const module = modules.get(id);
+  const updates = loadedParts.get(`${id}:update`);
+  if (!module || !updates) {
+    return;
+  }
   // The descendants of each kind, found once.
   const found = new Map<number, Scope[]>();
   for (const [kind, name] of module.g[scope.k]?.[slot] ?? []) {
@@ -527,49 +555,70 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
       fn(target);
     }
   };
+  let depth = 0;
+  for (let current = target.p ?? target.o; current; current = current.p ?? current.o) {
+    depth++;
+  }
+  const level = (levels[depth] ??= { m: [], b: new Map(), e: new Map() });
   if (name[0] === 'm') {
-    pendingMemos.set(key, [+name.slice(1), later]);
+    const rank = +name.slice(1);
+    (level.m[rank] ??= new Map()).set(key, later);
+    // True too while `a` is unset.
+    if (!(rank >= level.a!)) {
+      level.a = rank;
+    }
   } else {
-    (name[0] === 'e' ? roundEffects : pendingUpdates).set(key, later);
+    (name[0] === 'e' ? level.e : level.b).set(key, later);
   }
 }
 
 /**
- * Runs the memos that wait, the one of the lowest rank first, so each computes
- * once, after the memos it reads. Then the bindings that wait, as one round:
- * the props that the round writes reach a child before its memos compute.
- * The effects of a round run before those of the rounds before it, so the
- * effects of a child run before those of its parent.
+ * Runs what waits, the lowest depth first: its memo of the lowest rank, until
+ * none waits, then its bindings as one round. After each, it looks again from
+ * the top, since a write can queue updates of a lower depth, such as a `$bind`
+ * write into a parent.
  */
 function drain(): void {
-  const effects: [string, () => void][][] = [];
-  for (;;) {
-    let next: [string, [number, () => void]] | undefined;
-    for (const entry of pendingMemos) {
-      if (!next || entry[1][0] < next[1][0]) {
-        next = entry;
-      }
-    }
-    if (next) {
-      pendingMemos.delete(next[0]);
-      next[1][1]();
+  let rounds = 0;
+  let depth = 0;
+  while (depth < levels.length) {
+    const level = levels[depth];
+    if (!level) {
+      depth++;
       continue;
     }
-    effects.unshift([...roundEffects]);
-    roundEffects.clear();
-    if (pendingUpdates.size === 0) {
-      break;
+    const memos = level.m;
+    while (level.a! < memos.length && !memos[level.a!]?.size) {
+      level.a!++;
     }
-    const round = [...pendingUpdates.values()];
-    pendingUpdates.clear();
-    for (const waiter of round) {
-      waiter();
+    const bucket = memos[level.a!];
+    if (bucket) {
+      for (const [key, compute] of bucket) {
+        bucket.delete(key);
+        compute();
+        break;
+      }
+      depth = 0;
+      continue;
     }
-  }
-  for (const [key, runEffect] of effects.flat()) {
-    if (!pendingEffects.has(key)) {
-      pendingEffects.set(key, runEffect);
+    if (level.b.size > 0) {
+      // A limit for updates that keep writing what they read.
+      if (++rounds > 10_000) {
+        throw new Error(
+          DEV
+            ? 'The updates of a write did not settle after 10000 rounds. An update writes a value that it reads, such as through ref=$bind.'
+            : 'Update loop',
+        );
+      }
+      const round = [...level.b.values()];
+      level.b.clear();
+      for (const waiter of round) {
+        waiter();
+      }
+      depth = 0;
+      continue;
     }
+    depth++;
   }
 }
 
