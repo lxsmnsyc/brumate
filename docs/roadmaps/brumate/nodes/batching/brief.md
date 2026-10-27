@@ -1,7 +1,7 @@
 ---
 id: batching
 title: Batching and flush()
-status: todo
+status: active
 priority: must
 type: feature
 outline: false

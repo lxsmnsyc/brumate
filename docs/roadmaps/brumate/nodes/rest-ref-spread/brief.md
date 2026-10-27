@@ -1,7 +1,7 @@
 ---
 id: rest-ref-spread
 title: A ref in the rest props reaches the element that spreads them
-status: todo
+status: active
 priority: must
 type: fix
 outline: false
