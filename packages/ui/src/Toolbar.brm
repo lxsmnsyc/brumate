@@ -49,12 +49,12 @@
     };
   }, 'load');
 
-  function keyDown(event: KeyboardEvent) {
-    moveFocus(event.currentTarget as Element, event.key, orientation, locale.direction);
+  function keyDown(event: KeyboardEvent & { currentTarget: Element }) {
+    moveFocus(event.currentTarget, event.key, orientation, locale.direction);
   }
 
-  function focusIn(event: FocusEvent) {
-    const toolbar = event.currentTarget as Element;
+  function focusIn(event: FocusEvent & { currentTarget: Element }) {
+    const toolbar = event.currentTarget;
     const target = document.activeElement;
     // Handlers run after the event, so focus can have moved on.
     if (target && toolbar.contains(target)) {

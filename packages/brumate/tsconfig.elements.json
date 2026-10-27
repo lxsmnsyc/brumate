@@ -9,5 +9,5 @@
     "skipLibCheck": false,
     "noEmit": true
   },
-  "files": ["elements.d.ts"]
+  "files": ["elements.d.ts", "check.d.ts"]
 }

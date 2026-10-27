@@ -121,13 +121,38 @@ describe('toTypeScript', () => {
     expect(svg).not.toContain('xlink');
   });
 
+  it('checks the attributes of a dynamic tag against its tag, and types its handlers', () => {
+    const source = `<script>
+  let box = $signal<HTMLElement>();
+  const rest = { id: 'a' };
+</script>
+
+<{as ?? 'div'} ref=$bind(box) tabindex="0" {...rest} onClick=(() => {})>text</>`;
+    const { code, mappings } = toTypeScript(source, 'Card.brm');
+    expect(code).toContain(
+      'const $$tag = (as ?? \'div\');\n$$dynamic($$tag)({ ref: $$bind(box), tabindex: "0", onClick: $$handler($$tag)("click", (() => {})), children: $$markup, }, {...$$present(rest) });',
+    );
+    // The braces of the object stand for the ends of the opening tag, `children` for the
+    // children, and the braces of a spread's argument for the spread.
+    const at = (text: string) => {
+      const start = code.lastIndexOf(text);
+      const mapping = mappings.find((item) => item.generated === start)!;
+      return source.slice(mapping.source, mapping.source + mapping.length);
+    };
+    expect(at('{ ref')).toBe('<');
+    expect(at('"click"')).toBe('onClick');
+    expect(at('children')).toBe('t');
+    expect(at('{...$$present')).toBe('{');
+  });
+
   it('maps the names of attributes, also quoted ones, and the children of a component', () => {
     const source =
       '<script>\n  import Badge from \'./Badge.brm\';\n</script>\n\n<p aria-label="a" [title]=(1)></p><Badge>some <b>text</b></Badge>';
     const { code, mappings } = toTypeScript(source, 'Card.brm');
     /** The source range that a generated range maps to, from its first and last characters. */
     const spanOf = (text: string) => {
-      const start = code.indexOf(text);
+      // The last one, after the declarations of the helpers.
+      const start = code.lastIndexOf(text);
       const end = start + text.length;
       const first = mappings.find(
         (item) => item.generated <= start && start < item.generated + item.length,

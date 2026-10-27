@@ -12,23 +12,23 @@ export function hover(
 ) {
   let hovered = $signal(false);
 
-  function enter(event: PointerEvent) {
+  function enter(event: PointerEvent & { currentTarget: Element }) {
     if (disabled || hovered || event.pointerType === 'touch') {
       return;
     }
     hovered = true;
     const pointerType = event.pointerType === 'pen' ? 'pen' : 'mouse';
-    onHoverStart?.({ type: 'hoverstart', pointerType, target: event.currentTarget as Element });
+    onHoverStart?.({ type: 'hoverstart', pointerType, target: event.currentTarget });
     onHoverChange?.(true);
   }
 
-  function leave(event: PointerEvent) {
+  function leave(event: PointerEvent & { currentTarget: Element }) {
     if (!hovered) {
       return;
     }
     hovered = false;
     const pointerType = event.pointerType === 'pen' ? 'pen' : 'mouse';
-    onHoverEnd?.({ type: 'hoverend', pointerType, target: event.currentTarget as Element });
+    onHoverEnd?.({ type: 'hoverend', pointerType, target: event.currentTarget });
     onHoverChange?.(false);
   }
 

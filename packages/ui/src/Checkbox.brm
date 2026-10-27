@@ -88,8 +88,8 @@
   // The click of a read-only box, which the wrapper prevents.
   function keep() {}
 
-  function change(event: Event) {
-    const input = event.currentTarget as HTMLInputElement;
+  function change(event: Event & { currentTarget: HTMLInputElement }) {
+    const input = event.currentTarget;
     // A read-only box keeps its state. The browser toggled it already.
     if (readOnly) {
       input.checked = selected;
@@ -108,8 +108,8 @@
 
   // The browser shows no message of its own. The group shows it in its FieldError.
   // The first invalid field of the form gets focus, as the browser does with its own message.
-  function invalidated(event: Event) {
-    const input = event.currentTarget as HTMLInputElement;
+  function invalidated(event: Event & { currentTarget: HTMLInputElement }) {
+    const input = event.currentTarget;
     failed = true;
     group?.onInvalid(input.validationMessage);
     if (isFirstInvalid(input)) {

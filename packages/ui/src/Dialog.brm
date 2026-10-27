@@ -9,6 +9,8 @@
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
+    /** Names the dialog in place of its Heading. */
+    'aria-label'?: string;
   }
 
   /**

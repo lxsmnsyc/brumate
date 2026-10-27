@@ -18,9 +18,9 @@
     /** Runs when the group starts or stops being hovered. */
     onHoverChange?: (hovered: boolean) => void;
     /** The `aria-disabled` of the caller gives the state too. */
-    'aria-disabled'?: unknown;
+    'aria-disabled'?: string | number | boolean | null;
     /** The `aria-invalid` of the caller gives the state too. */
-    'aria-invalid'?: unknown;
+    'aria-invalid'?: string | number | boolean | null;
     /** The parts of the group. */
     children?: unknown;
   }
@@ -81,8 +81,8 @@
   let focusWithin = $signal(false);
   let focusVisible = $signal(false);
 
-  function focusIn(event: FocusEvent) {
-    const group = event.currentTarget as Element;
+  function focusIn(event: FocusEvent & { currentTarget: Element }) {
+    const group = event.currentTarget;
     const target = document.activeElement;
     // Handlers run after the event, so focus can have moved on.
     if (!target || !group.contains(target)) {
@@ -92,8 +92,8 @@
     focusVisible = isFocusVisible(target);
   }
 
-  function focusOut(event: FocusEvent) {
-    const group = event.currentTarget as Element;
+  function focusOut(event: FocusEvent & { currentTarget: Element }) {
+    const group = event.currentTarget;
     if (document.activeElement && group.contains(document.activeElement)) {
       return;
     }

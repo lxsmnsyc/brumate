@@ -65,7 +65,7 @@
       : (header(target)?.getBoundingClientRect().width ?? 0);
   }
 
-  function focusIn(event: FocusEvent) {
+  function focusIn(event: FocusEvent & { currentTarget: Element }) {
     ringFocus(event);
     const size = header(event.currentTarget)?.getBoundingClientRect().width;
     if (size) {
@@ -117,8 +117,8 @@
   }
 
   // A range input changes by its own keys too, such as those of a screen reader.
-  function changed(event: Event) {
-    const input = event.currentTarget as HTMLInputElement;
+  function changed(event: Event & { currentTarget: HTMLInputElement }) {
+    const input = event.currentTarget;
     const next = Number(input.value);
     if (resizing) {
       sizes!.resize(key, next);

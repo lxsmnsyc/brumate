@@ -63,8 +63,8 @@ export function press(
     }
   }
 
-  function pointerDown(event: PointerEvent) {
-    const target = event.currentTarget as HTMLElement;
+  function pointerDown(event: PointerEvent & { currentTarget: HTMLElement | SVGElement }) {
+    const target = event.currentTarget;
     if (disabled || event.button !== 0 || pointer !== undefined) {
       return;
     }
@@ -82,8 +82,8 @@ export function press(
     start(event.pointerType as PointerKind, target, event);
   }
 
-  function pointerMove(event: PointerEvent) {
-    const target = event.currentTarget as Element;
+  function pointerMove(event: PointerEvent & { currentTarget: Element }) {
+    const target = event.currentTarget;
     if (event.pointerId !== pointer) {
       return;
     }
@@ -96,8 +96,8 @@ export function press(
     }
   }
 
-  function pointerUp(event: PointerEvent) {
-    const target = event.currentTarget as Element;
+  function pointerUp(event: PointerEvent & { currentTarget: Element }) {
+    const target = event.currentTarget;
     if (event.pointerId !== pointer) {
       return;
     }
@@ -113,22 +113,22 @@ export function press(
     end(target, event, inside);
   }
 
-  function pointerCancel(event: PointerEvent) {
+  function pointerCancel(event: PointerEvent & { currentTarget: Element }) {
     if (event.pointerId !== pointer) {
       return;
     }
     pointer = undefined;
     over = false;
-    end(event.currentTarget as Element, event, false);
+    end(event.currentTarget, event, false);
   }
 
   // The element lost the pointer during a press, such as when it left the page.
-  function lostCapture(event: PointerEvent) {
+  function lostCapture(event: PointerEvent & { currentTarget: Element }) {
     pointerCancel(event);
   }
 
-  function keyDown(event: KeyboardEvent) {
-    const target = event.currentTarget as Element;
+  function keyDown(event: KeyboardEvent & { currentTarget: Element }) {
+    const target = event.currentTarget;
     if (event.repeat) {
       // The browser clicks a button again for each repeat of Enter, which must not press again.
       if (event.key === key && event.key === 'Enter' && clicksOnEnter(target)) {
@@ -147,8 +147,8 @@ export function press(
     start('keyboard', target, event);
   }
 
-  function keyUp(event: KeyboardEvent) {
-    const target = event.currentTarget as HTMLElement;
+  function keyUp(event: KeyboardEvent & { currentTarget: Element }) {
+    const target = event.currentTarget;
     if (event.key !== key) {
       return;
     }
@@ -166,16 +166,16 @@ export function press(
   }
 
   // Focus left during a press by a key, so its keyup goes to another element.
-  function blur(event: FocusEvent) {
+  function blur(event: FocusEvent & { currentTarget: Element }) {
     if (key === undefined) {
       return;
     }
     key = undefined;
-    end(event.currentTarget as Element, event, false);
+    end(event.currentTarget, event, false);
   }
 
-  function click(event: MouseEvent) {
-    const target = event.currentTarget as Element;
+  function click(event: MouseEvent & { currentTarget: Element }) {
+    const target = event.currentTarget;
     if (ignoreClick) {
       ignoreClick = false;
       return;

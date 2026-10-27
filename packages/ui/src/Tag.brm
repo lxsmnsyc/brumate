@@ -137,7 +137,7 @@
     () => {},
   );
 
-  function keyDownAll(event: KeyboardEvent) {
+  function keyDownAll(event: KeyboardEvent & { currentTarget: Element }) {
     pressKeyDown(event);
     keyDown(event);
   }

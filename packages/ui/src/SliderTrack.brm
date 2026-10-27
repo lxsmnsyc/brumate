@@ -23,8 +23,8 @@
   const slider = $getContext(SliderContext);
   const locale = $getContext(LocaleContext);
 
-  function pressed(event: PointerEvent) {
-    const track = event.currentTarget as HTMLElement;
+  function pressed(event: PointerEvent & { currentTarget: HTMLElement }) {
+    const track = event.currentTarget;
     // A press on a thumb is the thumb's own. A press with a modifier, or while a thumb is dragged,
     // moves nothing.
     if (
@@ -54,7 +54,7 @@
       event.pointerId,
       (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
       () => slider.setDragging(index, false),
-      event.currentTarget as Element,
+      event.currentTarget,
     );
   }
 </script>

@@ -17,8 +17,8 @@ export function focusRing(
   let focused = $signal(false);
   let focusVisible = $signal(false);
 
-  function focus(event: FocusEvent) {
-    const target = event.currentTarget as Element;
+  function focus(event: FocusEvent & { currentTarget: Element }) {
+    const target = event.currentTarget;
     // Handlers run after the event, so focus can have moved on.
     if (document.activeElement !== target) {
       return;

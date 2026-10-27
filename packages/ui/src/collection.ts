@@ -6,6 +6,13 @@
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
 
+declare module 'brumate/elements' {
+  interface ElementEvents {
+    /** A ListBox or a GridList sends it to an item with an action of its own on Enter. */
+    itemaction: CustomEvent;
+  }
+}
+
 /** The key of an item: its `id`, a string or a number. */
 export type Key = string | number;
 

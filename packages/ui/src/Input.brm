@@ -42,13 +42,13 @@
   const { focused, focusVisible, onFocus, onBlur: ringBlur, onKeyDown: ringKeyDown, onPointerDown } =
     focusRing(undefined, undefined, undefined);
 
-  function input(event: Event) {
-    given().onChange?.((event.currentTarget as HTMLInputElement).value);
+  function input(event: Event & { currentTarget: HTMLInputElement }) {
+    given().onChange?.(event.currentTarget.value);
   }
 
   // The browser shows no message of its own. The field shows it in its FieldError.
-  function invalidated(event: Event) {
-    const field = event.currentTarget as HTMLInputElement;
+  function invalidated(event: Event & { currentTarget: HTMLInputElement }) {
+    const field = event.currentTarget;
     given().onInvalid?.(field.validationMessage, isFirstInvalid(field));
   }
 
@@ -69,7 +69,7 @@
     return { onKeyDown: $handler(keyDown) };
   }
 
-  function focus(event: FocusEvent) {
+  function focus(event: FocusEvent & { currentTarget: Element }) {
     onFocus(event);
     given().onFocus?.();
   }

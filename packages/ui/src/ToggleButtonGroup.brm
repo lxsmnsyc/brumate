@@ -85,12 +85,12 @@
     onSelectionChange?.(next);
   }
 
-  function keyDown(event: KeyboardEvent) {
-    moveFocus(event.currentTarget as Element, event.key, orientation, locale.direction);
+  function keyDown(event: KeyboardEvent & { currentTarget: Element }) {
+    moveFocus(event.currentTarget, event.key, orientation, locale.direction);
   }
 
-  function focusIn(event: FocusEvent) {
-    const group = event.currentTarget as Element;
+  function focusIn(event: FocusEvent & { currentTarget: Element }) {
+    const group = event.currentTarget;
     const target = document.activeElement;
     if (target && group.contains(target)) {
       rove(group, target);

@@ -38,7 +38,7 @@
   // The segments edit the date of this input.
   $setContext(DateFieldContext, picked());
 
-  function keyDown(event: KeyboardEvent) {
+  function keyDown(event: KeyboardEvent & { currentTarget: HTMLElement }) {
     const field = picked();
     if (
       !field ||
@@ -51,15 +51,15 @@
     }
     // Alt with an arrow is back or forward in some browsers, so only the bare arrows are taken.
     event.preventDefault();
-    const group = event.currentTarget as HTMLElement;
+    const group = event.currentTarget;
     const editable = [...group.querySelectorAll<HTMLElement>('[data-segment]:not([data-type="literal"])')];
     const at = editable.indexOf(document.activeElement as HTMLElement);
     const forward = (event.key === 'ArrowRight') !== (field.direction === 'rtl');
     focusSegment(editable[at + (forward ? 1 : -1)]);
   }
 
-  function pointerDown(event: PointerEvent) {
-    const group = event.currentTarget as HTMLElement;
+  function pointerDown(event: PointerEvent & { currentTarget: HTMLElement }) {
+    const group = event.currentTarget;
     const target = event.target as HTMLElement;
     if (event.button !== 0 || target.closest('[role="spinbutton"]')) {
       return;
