@@ -1,7 +1,7 @@
 ---
 id: style-vars-target
 title: A live style variable of a part updates on a component in as
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

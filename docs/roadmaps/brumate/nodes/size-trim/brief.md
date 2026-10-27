@@ -1,7 +1,7 @@
 ---
 id: size-trim
 title: Bring the client size back near the baseline
-status: todo
+status: active
 priority: must
 type: refactor
 outline: false

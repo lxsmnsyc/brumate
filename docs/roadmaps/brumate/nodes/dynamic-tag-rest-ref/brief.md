@@ -1,7 +1,7 @@
 ---
 id: dynamic-tag-rest-ref
 title: A ref in the rest props reaches a dynamic tag that spreads them
-status: todo
+status: active
 priority: must
 type: fix
 outline: false
