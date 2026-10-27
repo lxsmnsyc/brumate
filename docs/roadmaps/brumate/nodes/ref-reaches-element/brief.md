@@ -1,7 +1,7 @@
 ---
 id: ref-reaches-element
 title: A ref bound on Link, Button or Heading reaches its element
-status: active
+status: done
 priority: should
 type: fix
 outline: false
