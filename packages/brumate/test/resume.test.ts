@@ -482,12 +482,10 @@ describe('resume', () => {
     expect(text('li:last-child')).toBe('New');
   });
 
-  // A write runs the readers of each slot that it changes, one slot after another. An
-  // update that reads two of those slots runs once for each, and a child can get one
-  // new prop before the other. `it.fails` marks what ordered updates in
-  // docs/proposals.md would fix.
+  // A write runs the memos it reaches in the order they are declared, each once, then
+  // the bindings, each once. A child gets every new prop before its memos compute.
   describe('updates of a signal and a memo of it', () => {
-    it.fails('computes a memo that reads both once', async () => {
+    it('computes a memo that reads both once', async () => {
       await resume('diamond', {});
       clearRuns();
       click(document.querySelector('.add')!);
@@ -495,7 +493,7 @@ describe('resume', () => {
       expect(runsOf('sum')).toEqual(['sum 2 + 4']);
     });
 
-    it.fails('computes a memo of that memo once', async () => {
+    it('computes a memo of that memo once', async () => {
       await resume('diamond', {});
       clearRuns();
       click(document.querySelector('.add')!);
@@ -503,7 +501,7 @@ describe('resume', () => {
       expect(runsOf('label')).toEqual(['label 2 + 4 of 4']);
     });
 
-    it.fails('runs a binding that reads both once', async () => {
+    it('runs a binding that reads both once', async () => {
       await resume('diamond', {});
       clearRuns();
       click(document.querySelector('.add')!);
@@ -511,7 +509,7 @@ describe('resume', () => {
       expect(runsOf('both')).toEqual(['both 2 4']);
     });
 
-    it.fails('computes a memo of a child that gets both as props once', async () => {
+    it('computes a memo of a child that gets both as props once', async () => {
       await resume('diamond', {});
       clearRuns();
       click(document.querySelector('.grow')!);
@@ -519,7 +517,7 @@ describe('resume', () => {
       expect(runsOf('shout')).toEqual(['shout 3 2']);
     });
 
-    it.fails('gives a child the new list with the new index', async () => {
+    it('gives a child the new list with the new index', async () => {
       await resume('diamond', {});
       const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
       onTestFinished(() => errors.mockRestore());

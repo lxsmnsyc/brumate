@@ -17,7 +17,7 @@ import { childrenReady } from './children.ts';
 import { loadModule, loadPart, loadingCode } from './code.ts';
 import { fail } from './errors.ts';
 import { call } from './references.ts';
-import { afterInsert, descendants, rootOf, treeChanges } from './scopes.ts';
+import { afterInsert, descendants, rootOf } from './scopes.ts';
 import {
   DEV,
   devtools,
@@ -378,21 +378,50 @@ function trigger(scope: Scope, slot: number): void {
   const updates = loadedParts.get(`${id}:update`);
   const children = childrenReady(scope);
   if (module && updates && loadingCode.size === 0 && !children) {
-    run(module, updates, scope, slot);
+    pass(() => queueWrite(module, updates, scope, slot));
     return;
   }
-  // The first write to a component loads its update code. Later writes wait in order, and
-  // for the code of the page, which the updates can render and call.
+  // The first write to a component loads its update code. Later writes wait in order, and for
+  // the code of the page, which the updates can render and call. The writes of one pass that
+  // wait, such as the props of a child, join its list and run as one pass, so a child computes once.
+  if (running > 0 && waiting) {
+    waiting.push([scope, slot]);
+    return;
+  }
+  const list: [Scope, number][] = [[scope, slot]];
+  if (running > 0) {
+    waiting = list;
+  }
   const loading = loadModule(id).then(async (loaded) => {
-    if (loaded.g[scope.k]?.[slot]) {
-      const code = await loadPart(loaded, 'update');
-      await Promise.allSettled([...loadingCode, children]);
-      run(loaded, code, scope, slot);
+    await (loaded.g[scope.k]?.[slot] && loadPart(loaded, 'update'));
+    const waits: unknown[] = [...loadingCode, children];
+    for (const [target, at] of list.slice(1)) {
+      waits.push(updateCode(target, at));
     }
+    await Promise.allSettled(waits);
+    pass(() => {
+      for (const [target, at] of list) {
+        const owner = rootOf(target).m!;
+        const code = loadedParts.get(`${owner}:update`);
+        if (modules.has(owner) && code) {
+          queueWrite(modules.get(owner)!, code, target, at);
+        }
+      }
+    });
   });
   loadingUpdates.add(loading);
   void loading.finally(() => loadingUpdates.delete(loading));
 }
+
+/** Loads the code of a component, its update code when something reads the slot, and its children. */
+async function updateCode(scope: Scope, slot: number): Promise<unknown> {
+  const loaded = await loadModule(rootOf(scope).m!);
+  await (loaded.g[scope.k]?.[slot] && loadPart(loaded, 'update'));
+  return childrenReady(scope);
+}
+
+/** The writes of the pass that runs that wait for code, to run as one pass of their own. */
+let waiting: [Scope, number][] | undefined;
 
 /** The updates that wait for their code. */
 const loadingUpdates = new Set<Promise<unknown>>();
@@ -413,6 +442,16 @@ export async function updated(): Promise<void> {
 // Effects wait until every other update of a write has run, and run once each.
 export const pendingEffects: Map<string, () => void> = new Map();
 
+// The memos and the bindings that wait in the pass, by scope and update, so each runs once. A memo
+// has its rank, the number in its name: memos are numbered in the order they are declared, after
+// the memos they read.
+const pendingMemos: Map<string, [number, () => void]> = new Map();
+
+const pendingUpdates: Map<string, () => void> = new Map();
+
+// The effects that the memos of the pass queued since the last round of bindings.
+const roundEffects: Map<string, () => void> = new Map();
+
 let running = 0;
 
 let flushing = false;
@@ -422,38 +461,30 @@ let updateCount = 0;
 
 let updateStart = 0;
 
-function run(module: ClientModule, updates: Part, scope: Scope, slot: number): void {
+/**
+ * Runs a pass: `write` queues updates. The outermost pass runs the memos
+ * that wait in the order of their ranks, then the bindings that wait as one
+ * round, and again until none waits. Effects run after them.
+ */
+function pass(write: () => void): void {
   if (DEV && running === 0) {
     updateCount = 0;
     updateStart = performance.now();
   }
   running++;
-  // The descendants of each kind, found once while the tree does not change.
-  let found: Map<number, Scope[]> | undefined;
-  let foundAt = treeChanges;
   try {
-    for (const [kind, name] of module.g[scope.k]?.[slot] ?? []) {
-      const fn = updates[name] as (scope: Scope) => void;
-      if (kind === scope.k) {
-        runUpdate(fn, name, scope);
-        continue;
-      }
-      if (foundAt !== treeChanges) {
-        found = undefined;
-        foundAt = treeChanges;
-      }
-      found ??= new Map();
-      let targets = found.get(kind);
-      if (!targets) {
-        targets = descendants(scope, kind);
-        found.set(kind, targets);
-      }
-      for (const target of targets) {
-        runUpdate(fn, name, target);
-      }
+    write();
+    if (running === 1) {
+      drain();
     }
   } finally {
-    running--;
+    // A pass that throws drops the updates that wait.
+    if (--running === 0) {
+      waiting = undefined;
+      pendingMemos.clear();
+      pendingUpdates.clear();
+      roundEffects.clear();
+    }
   }
   if (running === 0) {
     flushEffects();
@@ -463,19 +494,82 @@ function run(module: ClientModule, updates: Part, scope: Scope, slot: number): v
   }
 }
 
-/** Runs an update on a scope. An effect waits until the other updates have run. */
-function runUpdate(fn: (scope: Scope) => void, name: string, target: Scope): void {
+/** Queues the updates that read a slot, on the scope and on its descendants of each kind. */
+function queueWrite(module: ClientModule, updates: Part, scope: Scope, slot: number): void {
+  // The descendants of each kind, found once.
+  const found = new Map<number, Scope[]>();
+  for (const [kind, name] of module.g[scope.k]?.[slot] ?? []) {
+    const fn = updates[name] as (scope: Scope) => void;
+    if (kind === scope.k) {
+      queue(fn, name, scope);
+      continue;
+    }
+    let targets = found.get(kind);
+    if (!targets) {
+      targets = descendants(scope, kind);
+      found.set(kind, targets);
+    }
+    for (const target of targets) {
+      queue(fn, name, target);
+    }
+  }
+}
+
+/** Queues an update of a scope, once. */
+function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
   if (DEV) {
     updateCount++;
   }
-  if (name[0] === 'e') {
-    pendingEffects.set(`${target.id}:${name}`, () => {
-      if (scopes.has(target.id)) {
-        fn(target);
-      }
-    });
+  const key = `${target.id}:${name}`;
+  // An update of a scope that left the page in the pass does not run.
+  const later = (): void => {
+    if (scopes.get(target.id) === target) {
+      fn(target);
+    }
+  };
+  if (name[0] === 'm') {
+    pendingMemos.set(key, [+name.slice(1), later]);
   } else {
-    fn(target);
+    (name[0] === 'e' ? roundEffects : pendingUpdates).set(key, later);
+  }
+}
+
+/**
+ * Runs the memos that wait, the one of the lowest rank first, so each computes
+ * once, after the memos it reads. Then the bindings that wait, as one round:
+ * the props that the round writes reach a child before its memos compute.
+ * The effects of a round run before those of the rounds before it, so the
+ * effects of a child run before those of its parent.
+ */
+function drain(): void {
+  const effects: [string, () => void][][] = [];
+  for (;;) {
+    let next: [string, [number, () => void]] | undefined;
+    for (const entry of pendingMemos) {
+      if (!next || entry[1][0] < next[1][0]) {
+        next = entry;
+      }
+    }
+    if (next) {
+      pendingMemos.delete(next[0]);
+      next[1][1]();
+      continue;
+    }
+    effects.unshift([...roundEffects]);
+    roundEffects.clear();
+    if (pendingUpdates.size === 0) {
+      break;
+    }
+    const round = [...pendingUpdates.values()];
+    pendingUpdates.clear();
+    for (const waiter of round) {
+      waiter();
+    }
+  }
+  for (const [key, runEffect] of effects.flat()) {
+    if (!pendingEffects.has(key)) {
+      pendingEffects.set(key, runEffect);
+    }
   }
 }
 
