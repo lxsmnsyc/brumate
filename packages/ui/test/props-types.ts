@@ -48,3 +48,38 @@ void Link({ href: '/x', as: 'span' });
 
 // A part with no `as` keeps the attributes that it spreads onto its element.
 void Switch({ name: 'a', 'data-x': 1 });
+
+// as-sound: `as` reads the element types and the `Component` of brumate.
+// A field of the DOM interface that is not an attribute is an error: `tabIndex` is `tabindex`.
+// @ts-expect-error `tabIndex` is a field, the attribute is `tabindex`.
+export const soundTabIndex: ButtonProps<'a'> = { as: 'a', tabIndex: 1 };
+export const soundTabindex: ButtonProps<'a'> = { as: 'a', tabindex: 1 };
+// @ts-expect-error `innerHTML` is a field, not an attribute.
+export const soundInner: ButtonProps<'a'> = { as: 'a', innerHTML: '<b></b>' };
+// @ts-expect-error `className` is a field, the attribute is `class`.
+export const soundClassName: ButtonProps<'a'> = { as: 'a', className: 'x' };
+// @ts-expect-error `scrollTop` is a field, not an attribute.
+export const soundScroll: ButtonProps<'a'> = { as: 'a', scrollTop: 1 };
+// @ts-expect-error `tabindex` is a number.
+export const soundTabindexType: ButtonProps<'a'> = { as: 'a', tabindex: 'one' };
+// Attributes with a closed set of values.
+export const soundTarget: ButtonProps<'a'> = { as: 'a', target: '_blank', rel: 'noopener' };
+// @ts-expect-error `loading` of an image is `eager` or `lazy`.
+export const soundLoading: ButtonProps<'img'> = { as: 'img', loading: 'soon' };
+// A handler has the element as `currentTarget`.
+void Button({ as: 'a', onClick: (event) => event.currentTarget.href });
+// @ts-expect-error An anchor event has no `value` on its `currentTarget`.
+void Button({ as: 'a', onClick: (event) => event.currentTarget.value });
+// An SVG element is a target.
+export const soundSvg: ButtonProps<'svg'> = { as: 'svg', viewBox: '0 0 1 1', 'stroke-width': 2 };
+// @ts-expect-error An SVG element has no `foo`.
+export const soundSvgFoo: ButtonProps<'svg'> = { as: 'svg', foo: true };
+// A component needs `brumateId`: a plain function is not a target.
+// @ts-expect-error A function without `brumateId` is not a component.
+void Button({ as: (props: { href?: string }) => Promise.resolve(props) });
+// @ts-expect-error A name that is not an element is not a target.
+void Button({ as: 'blink-me' });
+// The props of a component target come from the component.
+void Button({ as: Link, href: '/x', isCurrent: true });
+// @ts-expect-error A Link has no `value`.
+void Button({ as: Link, value: 'x' });
