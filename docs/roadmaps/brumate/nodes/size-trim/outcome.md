@@ -11,7 +11,7 @@
 | `updateReady` without closure          |                 20 |
 | `dirty` set of scopes, `settle` by key |                 32 |
 | `addEntryHandlers` regex, `custom`     |                  3 |
-| Total                                  |                 55 |
+| Total                                  |                 62 |
 
 ## Deviations
 
