@@ -16,7 +16,8 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
   const $$s1 = $$ctx.scope(1, undefined, "Search_s4k9u0");
   let query = ('');
   const $$p_results = $$b.memo(() => (search(query)), $$ctx, "results");
-  const results = (($$t = $$b.ready($$p_results)) instanceof Promise ? await $$t : $$t);
+  let results;
+  try { results = (($$t = $$b.ready($$p_results)) instanceof Promise ? await $$t : $$t); } catch {}
   $$html += "<input" + $$b.attribute("value", (query)) + " b-b=\"" + $$s1 + ":0\" b-on=\"input=Search_s4k9u0#h4\">";
   $$ctx.enter();
   if (false) {
@@ -28,7 +29,7 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
   $$html += "<ul>";
   $$ctx.enter();
   {
-    const $$list0v = ( results);
+    const $$list0v = ( $$b.read($$p_results));
     const $$list0 = Array.isArray($$list0v) ? $$list0v : Array.from($$list0v);
     $$html += "<!--b" + $$s1 + ":2-->";
     for (let $$index2 = 0; $$index2 < $$list0.length; $$index2++) {

@@ -1,0 +1,18 @@
+<script>
+  import { $memo } from 'brumate/signals';
+
+  const bad = $memo((() => {
+    throw new Error('Bad');
+  })());
+</script>
+
+#try {
+  <p class="a">{bad}</p>
+} #catch (error) {
+  <p class="first">first {String(error)}</p>
+}
+#try {
+  <p class="b">{bad}</p>
+} #catch (error) {
+  <p class="second">second {String(error)}</p>
+}

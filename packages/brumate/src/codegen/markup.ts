@@ -607,6 +607,15 @@ export class Emitter {
     return declarations.length === 0 ? undefined : { declarations, awaited };
   }
 
+  /**
+   * Waits for a memo that the markup reads, and keeps its error for the read: the markup reads
+   * the memo in place, so the `#try` around the read gets the error.
+   */
+  private awaitHeld(declaration: Declaration): void {
+    this.line(`let ${declaration.name};`);
+    this.line(`try { ${declaration.name} = ${this.memoValue(declaration.name)}; } catch {}`);
+  }
+
   /** Waits for the memos of a run of declarations, and gives each its value. */
   private awaitRun(run: Declaration[]): void {
     if (run.length === 1) {
@@ -640,7 +649,7 @@ export class Emitter {
       if (blocking) {
         this.raw(this.patch.slice(statement.start, statement.end), statement.start);
         for (const declaration of blocking.declarations) {
-          this.awaitRun([declaration]);
+          this.awaitHeld(declaration);
         }
         continue;
       }

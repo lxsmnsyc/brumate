@@ -1110,9 +1110,36 @@ describe('resume', () => {
     expect(text('.after')).toBe('after');
   });
 
-  it.fails('holds the memo error until a read: the server render shows the #catch when the memo is declared outside the #try', async () => {
+  it('holds the memo error until a read: the server render shows the #catch when the memo is declared outside the #try', async () => {
     await resume('memoErrorServerOutside', {});
     expect(text('.caught')).toBe('Error: Bad 1');
+  });
+
+  it('holds the memo error until a read: a memo read in two #try blocks renders each #catch on the server', async () => {
+    await resume('memoErrorServerTwo', {});
+    expect(text('.first')).toBe('first Error: Bad');
+    expect(text('.second')).toBe('second Error: Bad');
+    expect(document.querySelector('.a')).toBeNull();
+  });
+
+  it('holds the memo error until a read: a script read throws on the server', async () => {
+    const server = await import(file('memoErrorServerScript.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('<p class="seen">caught Error: Bad 1</p>');
+    expect(html).toContain('<p class="caught"');
+    expect(html).not.toContain('class="data"');
+  });
+
+  it('pins the reads of a memo next to $isPending, and a read that two sites hold', async () => {
+    const server = await import(file('memoErrorServerPending.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('<p class="flag">n</p>');
+    expect(html).toContain('<p class="value">2</p>');
+  });
+
+  it('holds the memo error until a read: an awaited memo declared outside the #try throws at its declaration on the server', async () => {
+    await expect(resume('memoErrorAwaitOutside', {})).rejects.toThrow('Bar failed');
+    expect(document.querySelector('.caught')).toBeNull();
   });
 
   it('holds the memo error until a read: a memo that reads a failed memo holds its error, not a stale one', async () => {
