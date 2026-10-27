@@ -4083,6 +4083,13 @@ describe('refs forwarded through components', () => {
     expect(text('.seen')).toBe('BUTTON');
   });
 
+  it('a ref left in the rest props reaches the element of a spread through a cast', async () => {
+    await resume('restRefCastPage', {});
+    click(document.querySelector('.read')!);
+    await new Promise((done) => setTimeout(done, 300));
+    expect(text('.seen')).toBe('BUTTON');
+  });
+
   it('a ref left in the rest props reaches the element of a spread in a block that the browser renders', async () => {
     await resume('restRefBlockPage', {});
     click(document.querySelector('.show')!);

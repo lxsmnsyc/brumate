@@ -1773,7 +1773,7 @@ class Resolver {
         // A spread in markup is the only use of the whole object, so a ref in it reaches the element.
         if (
           reference?.declaration.whole &&
-          !(this.site.kind === 'spread' && node === this.site.node)
+          !(this.site.kind === 'spread' && node === unwrapTypes(this.site.node))
         ) {
           this.analyzer.report(
             'error',
@@ -2137,12 +2137,6 @@ class Resolver {
     }
   }
 
-  /** Visits the target of an assignment. */
-  /**
-   * Warns when code changes a reactive value in place, such as
-   * `todos.push(todo)` or `todo.done = true`. The value does not change, so
-   * nothing that reads it updates.
-   */
   /** Reports a write to a key of the props object or of the rest of `$props()`. */
   private checkPropsWrite(target: oxc.Node): void {
     const node = unwrapTypes(target);
@@ -2162,6 +2156,11 @@ class Resolver {
     }
   }
 
+  /**
+   * Warns when code changes a reactive value in place, such as
+   * `todos.push(todo)` or `todo.done = true`. The value does not change, so
+   * nothing that reads it updates.
+   */
   private checkMutation(target: oxc.Node, at: oxc.Node): void {
     // Writing a variable itself is how values change. Only writes into the value are in place.
     if (at.type !== 'CallExpression' && target.type !== 'MemberExpression') {
@@ -2185,6 +2184,7 @@ class Resolver {
     );
   }
 
+  /** Visits the target of an assignment. */
   private visitTarget(target: oxc.Node, mode: 'write' | 'update'): void {
     switch (target.type) {
       case 'Identifier':

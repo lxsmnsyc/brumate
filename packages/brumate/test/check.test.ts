@@ -273,6 +273,21 @@ ${markup}`;
     }
   });
 
+  it('allows a markup spread through a cast or parentheses', () => {
+    for (const value of [
+      '(rest as Record<string, unknown>)',
+      '(rest!)',
+      '(rest)',
+      '(rest satisfies object)',
+    ]) {
+      expect(() =>
+        compile(page('const { ...rest } = $props();', `<button {...${value}}>x</button>`), {
+          filename: 'Card.brm',
+        }),
+      ).not.toThrow();
+    }
+  });
+
   it('allows a markup spread, a key read and destructuring', () => {
     expect(() =>
       compile(

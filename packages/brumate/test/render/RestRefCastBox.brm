@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Spreads the rest props through casts: a cast does not hide the props from the ref.
+  const { label = 'Rest', ...rest } = $props<{ label?: string; [name: string]: unknown }>();
+</script>
+
+<button class="inner" {...(rest as Record<string, unknown>)}>{label}</button>
