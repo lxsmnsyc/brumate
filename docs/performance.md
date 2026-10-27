@@ -24,9 +24,9 @@ Sizes do not depend on load. They were the same in all three runs (the 3-todo HT
 | Dashboard | JS on the first click and on scroll     |     0 |                              0 B |
 | Dashboard | Client JS emitted in dist               |     6 |               155.8 kB / 37.3 kB |
 
-The rows report has no `JS before load` row. The page loads all of its client code when it starts, so the 27.3 kB of the build output is the ceiling for what loads. The first click of the todos and dashboard pages fetches nothing, since the page loads its code at the start (see "Client loading").
+The rows report has no `JS before load` row. The page loads all of its client code when it starts, so the 27.3 kB of the build output is the most it can load. The first click of the todos and dashboard pages fetches nothing, since the page loads its code at the start (see "Client loading").
 
-The benchmarks README, from 2026-10-22, has 2.1 kB gzip before `load` for todos and 3.1 kB for the dashboard. Now they are 13.9 kB and 23.6 kB. The likely cause is the change of 2026-10-25 that loads all page code at the start (not checked here). These are the numbers that the next steps have to bring down. Marko 6 loads 4.4 kB and 10.5 kB.
+The benchmarks README, from 2026-10-22, has 2.1 kB gzip before `load` for todos and 3.1 kB for the dashboard. Now they are 13.9 kB and 23.6 kB. The likely cause is the change of 2026-10-25 that loads all page code at the start. I did not check it. These are the numbers that the next steps have to bring down. Marko 6 loads 4.4 kB and 10.5 kB.
 
 ### Size after size-trim, 2026-10-27
 
@@ -71,7 +71,7 @@ Three runs of `pnpm bench --scenario todos,dashboard`, then one run of `--scenar
 | Dashboard first click, 150 ms RTT, after idle, ms     |    129 |     421 |    103 |    129 |
 | Dashboard first click, 150 ms RTT, cold, ms           |    442 |     431 |    445 |    442 |
 
-Run 1 had the highest SSR rates. Runs 2 and 3 had up to 2.6 times fewer renders per second, and the click timings moved by up to 6 times. The load explains this. In run 1, brumate rendered 3 todos at 121,476 per second against 134,625 for Marko 6, and 100 todos at 11,714 against 8,449.
+Run 1 had the highest SSR rates. Runs 2 and 3 had up to 2.6 times fewer renders per second, and the click timings moved by up to 12 times. The load explains this. In run 1, brumate rendered 3 todos at 121,476 per second against 134,625 for Marko 6, and 100 todos at 11,714 against 8,449.
 
 The rows scenario ran once, with a load average of 8.14 at the start and 3.69 at the end. The table gives the main thread time from the click to the paint in ms, as the median of 10 with the min to max:
 
@@ -95,14 +95,14 @@ The full tables of every run are in `benchmarks/results/`, which git ignores.
 
 The numbers below are from earlier runs. The baseline above replaces them as the reference.
 
-On the todos scenario, at commit `3e95739`:
+On the todos scenario, at commit `3e95739` (before the change of 2026-10-25 that loads all page code at the start):
 
 - HTML per extra todo is 165 B raw and 20 B gzip. Marko 6 is 153 B and 23 B.
 - The 100-todo page is 2.5 kB gzip. Marko 6 is 2.8 kB.
 - JS before `load` is 2.1 kB gzip. A click after idle needs no requests.
 - SSR is about 2× slower than Marko 6. Serializing the state is 60% of the render time at 3 todos and 75% at 100.
 
-On the dashboard scenario, brumate loads the least before `load` (3.1 kB gzip against 10.5 kB for Marko 6). After three widgets it has loaded 23.5 kB gzip in 46 files, against 10.5 kB in one file for Marko 6.
+On the dashboard scenario at that commit, brumate loaded the least before `load` (3.1 kB gzip against 10.5 kB for Marko 6). After three widgets it has loaded 23.5 kB gzip in 46 files, against 10.5 kB in one file for Marko 6.
 
 ## SSR
 

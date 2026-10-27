@@ -19,7 +19,7 @@
 ## Gotchas
 
 - The baseline for the smaller-client acceptance is 13.9 kB gzip, not the 2.1 kB of the benchmarks README (2026-10-22). The README table is older than the eager loading of 2026-10-25.
-- Timings moved by 2 to 6 times between runs under load. Compare sizes across machines. Compare timings only inside one run, or on an idle machine.
+- Timings moved by 2 to 12 times between runs under load. Compare sizes across machines. Compare timings only inside one run, or on an idle machine.
 - In this worktree, a command with `git` in its path is refused by the sandbox hook, which includes `/Users/alexis/Documents/GitHub/...`. Use `/usr/bin/git` and relative paths.
 
 ## Proposed learnings
@@ -29,7 +29,7 @@
 ## Verification
 
 - `pnpm install --frozen-lockfile`, then `pnpm bench --scenario todos,dashboard` three times and `pnpm bench --scenario rows` once: all passed.
-- `pnpm lint && pnpm format:check && pnpm typecheck`: see the PR.
+- `pnpm lint && pnpm format:check && pnpm typecheck`: passed (after `pnpm build`, which typecheck needs).
 
 ## Size
 
