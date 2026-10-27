@@ -1,7 +1,7 @@
 ---
 id: fields-typed-early
 title: Fields typed before the code loads
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -53,3 +53,5 @@ When the core resumes a field whose `value` or `checked` is bound, it reads the 
 ## Sizing
 
 M: known pattern, several kinds of field.
+
+PR: #286
