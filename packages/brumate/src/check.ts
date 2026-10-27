@@ -57,6 +57,8 @@ declare const $$markup: $$Markup;
 /** \`Omit\` that keeps the index signatures, for the rest of a \`$props\` call. */
 type $$Omit<T, K> = { [P in keyof T as P extends K ? never : P]: T[P] };
 type $$Elements = import('brumate/elements').Elements;
+/** The values that a spread can get and that spread nothing. */
+type $$Falsy = false | 0 | '' | 0n | null | undefined;
 // The helpers of elements are curried and constrained by \`keyof Elements\`, with a second overload
 // for other tags. A parameter typed from a generic \`T extends string\` made TypeScript resolve the
 // attributes of every tag, in the call and in the declaration of each file, which tripled the time.
@@ -64,10 +66,10 @@ type $$Elements = import('brumate/elements').Elements;
 declare function $$element<T extends keyof $$Elements>(tag: T): (attributes: $$Elements[T]) => void;
 declare function $$element(tag: string): (attributes: Record<string, unknown>) => void;
 /** Checks the names of a spread onto a plain element, which has no excess check. \`$$element\` checks its values. */
-declare function $$spread<T extends keyof $$Elements>(tag: T): <S>(value: (S & { [K in Exclude<keyof S, keyof $$Elements[T]>]: { [M in \`\${K & string} is not an attribute of <\${T}>\`]: never } }) | null | undefined) => void;
-declare function $$spread(tag: string): (value: object | null | undefined) => void;
-/** A spread value without \`null\` and \`undefined\`, which spread nothing, so its object part is checked. */
-declare function $$present<T>(value: T): T & {};
+declare function $$spread<T extends keyof $$Elements>(tag: T): <S>(value: (S & { [K in Exclude<keyof S, keyof $$Elements[T]>]: { [M in \`\${K & string} is not an attribute of <\${T}>\`]: never } }) | $$Falsy) => void;
+declare function $$spread(tag: string): (value: object | $$Falsy) => void;
+/** A spread value without its falsy part, which spreads nothing, such as \`false\` of \`cond && { ... }\`. Its object part is checked. */
+declare function $$present<T>(value: T): Exclude<T, $$Falsy>;
 /** \`$bind\` of a \`ref\`, which needs no import in markup. */
 declare function $$bind<T>(signal: T): import('brumate/signals').BoundSignal<T>;
 declare function $$dynamic(tag: string | ((props: never, ...rest: never[]) => unknown), props: Record<string, unknown>): void;

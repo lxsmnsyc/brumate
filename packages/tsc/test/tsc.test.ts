@@ -50,10 +50,12 @@ it('reports type errors in .brm files at their place in the file', () => {
     "Sent.brm(18,7): error TS2345: Argument of type 'Point' is not assignable to parameter of type 'Point & { x: number; move: { 'A function cannot be sent to the client. Keep it out of the signal or memo': never; }; }'.",
     "Sent.brm(19,7): error TS2345: Argument of type '(value: number) => string' is not assignable to parameter of type '((value: number) => string) & { 'A function cannot be sent to the client. Keep it out of the signal or memo': never; }'.",
     "Sent.brm(21,7): error TS2345: Argument of type 'RegExp' is not assignable to parameter of type 'RegExp & { 'A regular expression cannot be sent to the client. Send its source and flags': never; }'.",
-    // A spread of a value that can be null or undefined is valid. Inside an optional object, an
+    // A spread of a value that can be null, undefined or another falsy value is valid. Inside an optional object, an
     // unknown name and a wrong value are errors at the spread.
-    'Spreads.brm(15,6): error TS2345: Argument of type \'{ tabindex: "x"; foo: 1; }\' is not assignable to parameter of type \'Html<"div", {}>\'.',
-    'Spreads.brm(15,10): error TS2345: Argument of type \'{ tabindex: "x"; foo: 1; } | undefined\' is not assignable to parameter of type \'({ tabindex: "x"; foo: 1; } & { foo: { "foo is not an attribute of <div>": never; }; }) | null | undefined\'.',
+    'Spreads.brm(17,6): error TS2345: Argument of type \'{ tabindex: "x"; foo: 1; }\' is not assignable to parameter of type \'Html<"div", {}>\'.',
+    'Spreads.brm(17,10): error TS2345: Argument of type \'{ tabindex: "x"; foo: 1; } | undefined\' is not assignable to parameter of type \'$$Falsy | ({ tabindex: "x"; foo: 1; } & { foo: { "foo is not an attribute of <div>": never; }; })\'.',
+    // A falsy value of `cond && { ... }` spreads nothing, and the object part is still checked.
+    "Spreads.brm(21,11): error TS2345: Argument of type 'false | { nope: number; }' is not assignable to parameter of type '$$Falsy | ({ nope: number; } & { nope: { \"nope is not an attribute of <div>\": never; }; })'.",
   ]);
   expect(result.status).not.toBe(0);
 });
