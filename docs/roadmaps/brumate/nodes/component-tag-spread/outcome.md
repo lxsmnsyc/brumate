@@ -47,4 +47,5 @@
 
 - Todos of benchmarks/brumate (`vite build --outDir dist/client`, all JS of dist/client concatenated, gzip -9): 26372 on main to 26391 with the change, +19 B, within 0.1 kB. `pnpm bench` was not run.
 - After the review fixes, `pnpm bench --only brumate --scenario todos --metrics dist`: 28186 B gzip after round 2 (28184 after round 1; the reviewer measured main 28191 and the first head 28189 with the same command).
+- After the rebase onto main with #286: main 28462 B, branch 28448 B (same command).
 - Estimated M, actual M.

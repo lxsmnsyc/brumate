@@ -7,3 +7,4 @@
 - Review fixes: compile error kept when a computed attribute has no browser code; inspect.ts looks up '~'; tests added; outcome corrected.
 - Round 2: kept the error message (catalog needs an entry per message); inspect.ts skips ~ for children; rename test uses the Other button.
 - Round 3: own catalog entry and message for the computed attribute with no browser code; errors.md regenerated; project.test.ts checks the constant case.
+- Round 4: catalog sample writes its signals; rebased onto main with #286; main 28462 B, branch 28448 B.
