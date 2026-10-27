@@ -1,0 +1,19 @@
+<script module>
+  export interface SampleOwnProps<T extends AsTarget = 'section'> {
+    /** The label. A `string` or `null`,
+     * on two lines. */
+    label?: string | null;
+    mode: 'a' | 'b' | ((value: number) => void);
+    count?: number;
+    [attribute: string]: unknown;
+    children?: unknown;
+  }
+</script>
+
+<script generics="T extends AsTarget = 'section'">
+  import { $props } from 'brumate/signals';
+
+  const { as, label = 'none', count = 2 + 1, children, ...rest } = $props<SampleOwnProps<T>>();
+</script>
+
+<{as ?? 'section'} {...rest}>{children}</>

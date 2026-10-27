@@ -2,7 +2,8 @@
  * Turns the Markdown files of the documentation into modules that export
  * their HTML, title and headings. Code blocks are highlighted with
  * twinkleplop, and `html` blocks, which hold `.brm` code, use the `.brm`
- * language of the site. The HTML is a `raw` value, so markup inserts it as is.
+ * language of the site. The HTML is a `raw` value, so markup inserts it as is. A `props Name` block
+ * is the props table of a part.
  */
 import { language as bash } from '@twinkleplop/bash';
 import { language as css } from '@twinkleplop/css';
@@ -16,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import MarkdownIt from 'markdown-it';
 import type { Plugin } from 'vite';
 import { language as brm } from '../src/highlight/brm.ts';
+import { PART_FILES, readProps, renderProps } from './props-table.ts';
 
 const REPOSITORY = 'https://github.com/lxsmnsyc/brumate';
 
@@ -298,6 +300,17 @@ export default function markdown(): Plugin {
         if (token.type === 'fence' && /^(?:brm|html)\s+gallery\b/.test(token.info.trim())) {
           flush(index);
           parts.push('{ gallery: true }');
+          index++;
+          start = index;
+          continue;
+        }
+        // ```` ```props Button ```` is the props table of a part, from its exported type.
+        const props =
+          token.type === 'fence' ? /^props\s+(\w+)$/.exec(token.info.trim())?.[1] : undefined;
+        if (props) {
+          flush(index);
+          this.addWatchFile(fileURLToPath(new URL(`${props}.brm`, PART_FILES)));
+          parts.push(`{ html: raw(${JSON.stringify(renderProps(readProps(props)))}) }`);
           index++;
           start = index;
           continue;

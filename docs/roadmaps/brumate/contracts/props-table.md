@@ -22,7 +22,7 @@ A page writes the props table of a part as an empty code block with the info str
 ```
 ````
 
-The name is the file of the part in packages/ui/src without `.brm`. The generator reads the module script of that file (the part-props contract), so the table follows the exported type. A part that has `as` is read from `<Name>OwnProps`, and any other part from `<Name>Props`. The block is replaced by the table, as `brm demo` is replaced by a demo.
+The name is the file of the part in packages/ui/src without `.brm`. The generator reads the module script of that file (the part-props contract), so the table follows the exported type. A part that has `as` is read from `<Name>OwnProps`, and any other part from `<Name>Props`. The block may hold a blank line, which the formatter adds. The block is replaced by the table, as `brm demo` is replaced by a demo.
 
 ### The sections of a page
 
@@ -34,7 +34,7 @@ Every section is an `##` heading, in this order. A page leaves out a section tha
 4. `## Data attributes`: the data attribute table.
 5. `## Keyboard`: the keyboard table.
 6. `## Controlled and uncontrolled`: prose. Which props hold the state (`isOpen`, `value`), which one starts it (`defaultValue`), and the change handler. Left out for a part with no state.
-7. `## Styling`: prose. The data attributes and CSS custom properties to style, and the classes. A part with a section for styling links to [Styling](../../website/ui/styling.md) instead of repeating it.
+7. `## Styling`: prose. The data attributes and CSS custom properties to style, and the classes. A part with a section for styling links to the Styling page of the section instead of repeating it.
 
 Other sections (`## In other parts`, and so on) come after these.
 

@@ -9,7 +9,8 @@
     "build": "vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server",
     "preview": "node scripts/preview.ts",
     "typecheck": "brumate-tsc --noEmit",
-    "check:samples": "node scripts/check-samples.ts"
+    "check:samples": "node scripts/check-samples.ts",
+    "test": "node ../packages/ui/node_modules/vitest/vitest.mjs run"
   },
   "dependencies": {
     "@brumate/ui": "workspace:*",
