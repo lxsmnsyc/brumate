@@ -298,7 +298,12 @@ export function rangeLabel(
   locale: string,
   spoken = true,
 ): string {
-  const months = new DateFormatter(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const months = new DateFormatter(locale, {
+    month: 'long',
+    year: 'numeric',
+    calendar: 'gregory',
+    timeZone: 'UTC',
+  });
   const from = start.toDate('UTC');
   if (start.compare(startOfMonth(start)) === 0 && end.compare(endOfMonth(start)) === 0) {
     return months.format(from);
@@ -312,6 +317,7 @@ export function rangeLabel(
     month: 'long',
     year: 'numeric',
     day: 'numeric',
+    calendar: 'gregory',
     timeZone: 'UTC',
   });
   return spoken
@@ -349,6 +355,7 @@ export function cellLabel(calendar: CalendarState, date: DateString, selected: b
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    calendar: 'gregory',
     timeZone: 'UTC',
   });
   let label = formatter.format(toDate(date).toDate('UTC'));
@@ -367,7 +374,11 @@ export function cellLabel(calendar: CalendarState, date: DateString, selected: b
 
 /** The number of the day of a date in the locale, such as `25`. */
 export function dayNumber(date: DateString, locale: string): string {
-  const formatter = new DateFormatter(locale, { day: 'numeric', timeZone: 'UTC' });
+  const formatter = new DateFormatter(locale, {
+    day: 'numeric',
+    calendar: 'gregory',
+    timeZone: 'UTC',
+  });
   return (
     formatter.formatToParts(toDate(date).toDate('UTC')).find((part) => part.type === 'day')
       ?.value ?? String(toDate(date).day)

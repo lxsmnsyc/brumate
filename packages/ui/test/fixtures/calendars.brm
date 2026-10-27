@@ -32,6 +32,16 @@
       <CalendarGrid class="second" offset=({ months: 1 }) cell=day />
     </Calendar>
   </I18nProvider>
+  <I18nProvider locale="th-TH">
+    <Calendar class="thai" aria-label="Thai" focusedValue="2026-10-25">
+      <CalendarHeading class="thai-heading" />
+      <CalendarGrid class="thai-grid" />
+    </Calendar>
+  </I18nProvider>
+  <Calendar class="titled" aria-label="Titled" focusedValue="2026-10-25">
+    <CalendarHeading class="titled-heading">Pick a day</CalendarHeading>
+    <CalendarGrid class="titled-grid" />
+  </Calendar>
   <p class="state">{JSON.stringify([date, trip])}</p>
 </main>
 

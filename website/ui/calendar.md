@@ -113,7 +113,7 @@ The keys act in the CalendarGrid, on the date that has focus. A key with Ctrl, A
 | `Enter` or `Space` | Selects the date that has focus.                                                            |
 | `Escape`           | Drops the first date of a range that is not done. It is not prevented, so a Popover closes. |
 
-The Calendar has `role="application"`, and a hidden Next button follows the grids for screen readers that read by touch. The dates, the weeks and the keys use the Gregorian calendar. Names and numbers follow the locale.
+The Calendar has `role="application"`, and a hidden Next button follows the grids for screen readers that read by touch. The dates, the weeks and the keys use the Gregorian calendar. Names and numbers follow the locale, but the year is the Gregorian one, so `th-TH` shows 2026 and not 2569.
 
 ## Controlled and uncontrolled
 
@@ -136,7 +136,7 @@ Style the dates with the data attributes above. The grid is a table, so style it
 
 - `visibleDuration` is how much shows, such as `{ months: 2 }`. Give each month a CalendarGrid, and an `offset`, such as `offset=({ months: 1 })` for the second.
 - The Buttons move by all the months that show, or by one unit of `visibleDuration` with `pageBehavior="single"`.
-- The CalendarHeading shows the months, such as `October 2026`.
+- The CalendarHeading shows the months, such as `October 2026`. Children replace that text.
 
 - Focus that leaves the months that show moves them with it.
 

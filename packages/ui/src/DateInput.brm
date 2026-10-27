@@ -12,7 +12,6 @@
 
 <script>
   import { $getContext, $props, $setContext } from 'brumate/signals';
-  import { prevent } from 'brumate/events';
   import { DateFieldContext, DateRangeFieldContext, focusSegment } from './segments.ts';
   import DateSegment from './DateSegment.brm';
 
@@ -41,9 +40,17 @@
 
   function keyDown(event: KeyboardEvent) {
     const field = picked();
-    if (!field || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) {
+    if (
+      !field ||
+      (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') ||
+      event.ctrlKey ||
+      event.altKey ||
+      event.metaKey
+    ) {
       return;
     }
+    // Alt with an arrow is back or forward in some browsers, so only the bare arrows are taken.
+    event.preventDefault();
     const group = event.currentTarget as HTMLElement;
     const editable = [...group.querySelectorAll<HTMLElement>('[data-segment]:not([data-type="literal"])')];
     const at = editable.indexOf(document.activeElement as HTMLElement);
@@ -68,7 +75,7 @@
   aria-describedby=(picked()?.describedBy)
   data-disabled=(picked()?.isDisabled || undefined)
   data-invalid=(picked()?.isInvalid || undefined)
-  onKeyDown=(prevent(keyDown, 'ArrowLeft', 'ArrowRight'))
+  onKeyDown=keyDown
   onPointerDown=pointerDown
   {...rest}
 >

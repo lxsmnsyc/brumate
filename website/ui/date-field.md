@@ -88,7 +88,7 @@ The `DateSegment` elements are optional, since the DateInput renders one for eac
 
 ## Keyboard
 
-The keys act on the segment that has focus. A segment takes none of them while the field is disabled or read only. A key with Ctrl, Alt or Meta is left to the browser, except `ArrowLeft` and `ArrowRight`, which move focus whatever the modifiers.
+The keys act on the segment that has focus. A segment takes none of them while the field is disabled or read only. A key with Ctrl, Alt or Meta is left to the browser, except `ArrowLeft` and `ArrowRight`, which move focus only without them, so Alt with an arrow stays back and forward in the browser.
 
 | Key                     | Action                                                                                    |
 | ----------------------- | ----------------------------------------------------------------------------------------- |
@@ -131,6 +131,7 @@ Style the segments with `data-type`, `data-placeholder` and `data-focused`, and 
 
 - A segment that is not set shows its placeholder in English: `mm`, `dd` or `yyyy`. It shows `data-placeholder`.
 - The order of the segments and the text between them come from the locale, such as `10/15/2026` in `en-US` and `15.10.2026` in `de-DE`.
+- The segments show the Gregorian date in every locale, so `th-TH` shows 2026 and not 2569. The digits follow the locale, such as the Arabic-Indic digits of `ar-SA`, and typing takes the digits `0` to `9`.
 - The values are Gregorian dates with no time zone. A day is limited by the month and year that are set, and the year goes from 1 to 9999 and does not wrap. A date that does not fit its month, such as the 31st of a month with 30 days, gives the last day of the month.
 - Today, the start of a segment that is not set, is the date in the time zone of the browser.
 - Each segment shows `data-type`, such as `month`, and `data-focused`, `data-readonly`, `data-disabled` and `data-invalid`.
