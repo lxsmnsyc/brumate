@@ -1,9 +1,9 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { Placement } from './position.ts';
 
-  export interface TooltipOwnProps {
+  export interface TooltipOwnProps<T extends AsTarget = 'div'> {
     placement?: Placement;
     offset?: number;
     crossOffset?: number;
@@ -12,14 +12,14 @@
     transition?: boolean;
     children?: unknown;
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
   }
 
   /**
    * The props of Tooltip. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type TooltipProps<T extends AsTarget = 'div'> = AsProps<T, TooltipOwnProps>;
+  export type TooltipProps<T extends AsTarget = 'div'> = AsProps<T, TooltipOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -55,7 +55,7 @@
     children,
     ...rest
   } = $props<TooltipProps<T>>();
-  let { ref } = $props<TooltipOwnProps>();
+  let { ref } = $props<TooltipOwnProps<T>>();
 
   const trigger = $getContext(TooltipTriggerContext);
   const parentLayer = $getContext(LayerContext);
@@ -73,7 +73,7 @@
   async function show(token: number) {
     mounted = true;
     await nextFrame();
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     const anchor = trigger ? document.getElementById(trigger.triggerId) : null;
     if (token !== run || !element) {
       return;
@@ -116,7 +116,7 @@
   }
 
   async function hide(token: number) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (transition && element) {
       if (!(await leaveSteps(element, stepClasses(), { current: () => token === run }))) {
         return;
@@ -132,8 +132,9 @@
     const next = Boolean(trigger?.isOpen);
     $untrack(change(next));
     return () => {
-      if (ref && !ref.isConnected) {
-        runStops(ref);
+      const element = ref as HTMLElement | undefined;
+      if (element && !element.isConnected) {
+        runStops(element);
       }
     };
   });

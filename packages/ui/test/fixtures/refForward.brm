@@ -6,9 +6,9 @@
   import AsTarget from './AsTarget.brm';
 
   // The elements that the parts give back through `ref`.
-  let linkRef = $signal<HTMLElement>();
-  let buttonRef = $signal<HTMLElement>();
-  let headingRef = $signal<HTMLElement>();
+  let linkRef = $signal<HTMLAnchorElement>();
+  let buttonRef = $signal<HTMLButtonElement>();
+  let headingRef = $signal<HTMLHeadingElement>();
   let asLinkRef = $signal<HTMLElement>();
   let asButtonRef = $signal<HTMLElement>();
   let asHeadingRef = $signal<HTMLElement>();

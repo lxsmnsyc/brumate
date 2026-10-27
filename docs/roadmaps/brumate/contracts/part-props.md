@@ -1,6 +1,6 @@
 ---
 name: part-props
-version: 1.3
+version: 1.4
 status: frozen
 defined_by: props-types-main
 ---
@@ -16,25 +16,25 @@ How a part of @brumate/ui exports its props, takes `as`, and forwards `ref`. The
 ```brm
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
 
-  export interface LinkOwnProps {
+  export interface LinkOwnProps<T extends AsTarget = 'a'> {
     href?: string;
     /** A doc comment on a prop becomes its description in the props table. */
     isDisabled?: boolean;
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     children?: unknown;
   }
 
-  export type LinkProps<T extends AsTarget = 'a'> = AsProps<T, LinkOwnProps>;
+  export type LinkProps<T extends AsTarget = 'a'> = AsProps<T, LinkOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'a'">
   import { $props } from 'brumate/signals';
 
   const { as, href, isDisabled, children, ...rest } = $props<LinkProps<T>>();
-  let { ref } = $props<LinkOwnProps>();
+  let { ref } = $props<LinkOwnProps<T>>();
 </script>
 
 <{as ?? 'a'} ref=$bind(ref) {href} {...rest}>{children}</>
@@ -42,8 +42,10 @@ How a part of @brumate/ui exports its props, takes `as`, and forwards `ref`. The
 
 - A part with `as` exports `<Name>OwnProps`, its own props, and `<Name>Props<T>`, which adds the target's. The props table reads `<Name>OwnProps`.
 - A part without `as` exports `<Name>Props` as one interface, and keeps `[attribute: string]: unknown` when it spreads attributes onto its element.
-- `AsTarget`, `TargetProps` and `AsProps` are in packages/ui/src/as.ts.
-- A part forwards `ref` with a `ref?: Bindable<HTMLElement | undefined>` in its own props and `ref=$bind(ref)` on its root (#243). The own prop wins over the target's, and a caller's `$signal<HTMLElement>()` fits it.
+- `AsTarget`, `TargetProps`, `AsProps` and `TargetElement` are in packages/ui/src/as.ts.
+- A part forwards `ref` with a `ref?: Bindable<TargetElement<T> | undefined>` in its own props and `ref=$bind(ref)` on its root (#243). `<Name>OwnProps` takes the type parameter `T`, with the default of the part, and the part reads `$props<<Name>OwnProps<T>>()`. The own prop wins over the target's.
+- `TargetElement<T>` is the element that the target renders: `ElementOf<T>` for an element name (`a` gives `HTMLAnchorElement`), the element in the `Bindable<E>` of the `ref` prop of a component target (`undefined` removed), and `Element` for a component with no typed `ref`. So a caller's signal must hold the element of the target or a subtype of it, as `Bindable` is covariant: `$signal<HTMLButtonElement>()` fits `<Button>`, not `<Button as="a">`. A signal of a wider type, such as `$signal<HTMLElement>()`, no longer fits a part with a narrower element.
+- Inside the part, `T` is generic and `TargetElement<T>` is not an `HTMLElement`. Code that focuses or measures the root reads it with a local `ref as HTMLElement | undefined`, and the prop type stays as it is.
 
 ## Behavior
 
@@ -62,6 +64,7 @@ packages/ui/test/props-types.ts, checked by `pnpm --filter @brumate/ui typecheck
 
 ## Changes
 
+- v1.4 (ref-from-as, requested by the maintainer on 2026-10-27): `ref` is `Bindable<TargetElement<T> | undefined>`, so the type of the signal follows `as`. `<Name>OwnProps` takes `T`. `TargetElement` is new in as.ts. The contract test has the cases. A signal of a wider element, such as `HTMLElement`, no longer fits a part with a narrower element.
 - v1.3 (as-controls, accepted 2026-10-27): `ref` is declared in the own props as `Bindable<HTMLElement | undefined>`. The old `Bindable<HTMLElement>` rejected a caller's `$signal<HTMLElement>()`, and an element target has no `ref` prop. as-controls uses it; ref-type-parts applies it to the collection parts, Link, Button and Heading.
 - v1.2 (as-sound): as.ts reads `Elements`, `ElementProps` and `Component` of `brumate/elements`. The names and type parameters of `AsTarget`, `TargetProps` and `AsProps` are unchanged, so the version stays 1. `ElementTag` now includes SVG tags. A field that is not an attribute is an error.
 - v1: from #242 (as #245) and #243.

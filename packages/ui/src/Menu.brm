@@ -1,11 +1,11 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { Key, SelectionMode } from './collection.ts';
 
-  export interface MenuOwnProps {
+  export interface MenuOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     selectionMode?: SelectionMode;
     disabledKeys?: Key[];
     disallowEmptySelection?: boolean;
@@ -23,7 +23,7 @@
    * The props of Menu. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type MenuProps<T extends AsTarget = 'div'> = AsProps<T, MenuOwnProps>;
+  export type MenuProps<T extends AsTarget = 'div'> = AsProps<T, MenuOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -85,8 +85,8 @@
     children,
     ...rest
   } = $props<MenuProps<T>>();
-  let { selectedKeys = [] } = $props<MenuOwnProps>();
-  let { ref } = $props<MenuOwnProps>();
+  let { selectedKeys = [] } = $props<MenuOwnProps<T>>();
+  let { ref } = $props<MenuOwnProps<T>>();
 
   const trigger = $getContext(MenuTriggerContext);
   // A field around the menu, such as of an Autocomplete, keeps focus and can filter the items.
@@ -142,7 +142,7 @@
   // page, and each time the text changes.
   function applyFilter() {
     const text = field?.filterText;
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (text !== undefined && element) {
       field!.filtered?.(filterItems(element, text, field!.filter, MENU_ITEMS));
     }
@@ -156,7 +156,7 @@
   $setContext(SubmenuContext, null);
 
   function focused(event: FocusEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     // The menu passes its focus on to an item, as its trigger asks. After a press with a pointer,
     // it keeps focus, and the arrow keys move to an item. A menu on the page starts at its first.
     if (!element || field || event.target !== element || document.activeElement !== element) {
@@ -171,7 +171,7 @@
 
   function focusIn(event: FocusEvent) {
     const item = (event.target as Element).closest?.('[data-key]');
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (item && element?.contains(item) && item.closest('[data-collection]') === element) {
       focusedId = item.id;
       // While an item of a menu on the page has focus, Tab leaves the menu.
@@ -182,14 +182,14 @@
   }
 
   function focusOut(event: FocusEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (!trigger && element && !element.contains(event.relatedTarget as Node | null)) {
       element.tabIndex = 0;
     }
   }
 
   function keyDown(event: KeyboardEvent) {
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (!element) {
       return;
     }

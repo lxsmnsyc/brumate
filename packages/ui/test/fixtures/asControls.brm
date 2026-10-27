@@ -39,7 +39,7 @@
   let meterRef = $signal<HTMLElement>();
   let barRef = $signal<HTMLElement>();
   let regionRef = $signal<HTMLElement>();
-  let toastRef = $signal<HTMLElement>();
+  let toastRef = $signal<HTMLDivElement>();
   let dialogRef = $signal<HTMLElement>();
   let popoverRef = $signal<HTMLElement>();
   let tipRef = $signal<HTMLElement>();

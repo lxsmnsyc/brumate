@@ -1,11 +1,11 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
 
-  export interface ButtonOwnProps {
+  export interface ButtonOwnProps<T extends AsTarget = 'button'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     type?: 'button' | 'submit' | 'reset';
     /** The slot of the context of a part that holds this button, such as "increment". */
     slot?: string | null;
@@ -30,7 +30,7 @@
    * The props of Button. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type ButtonProps<T extends AsTarget = 'button'> = AsProps<T, ButtonOwnProps>;
+  export type ButtonProps<T extends AsTarget = 'button'> = AsProps<T, ButtonOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'button'">
@@ -64,7 +64,7 @@
     children,
     ...rest
   } = $props<ButtonProps<T>>();
-  let { ref } = $props<ButtonOwnProps>();
+  let { ref } = $props<ButtonOwnProps<T>>();
 
   const context = $getContext(ButtonContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));

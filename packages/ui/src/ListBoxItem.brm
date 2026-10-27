@@ -1,12 +1,12 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { PressEvent } from './events.ts';
   import type { Key } from './collection.ts';
 
-  export interface ListBoxItemOwnProps {
+  export interface ListBoxItemOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
@@ -22,7 +22,7 @@
    * The props of ListBoxItem. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type ListBoxItemProps<T extends AsTarget = 'div'> = AsProps<T, ListBoxItemOwnProps>;
+  export type ListBoxItemProps<T extends AsTarget = 'div'> = AsProps<T, ListBoxItemOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -53,7 +53,7 @@
     children,
     ...rest
   } = $props<ListBoxItemProps<T>>();
-  let { ref } = $props<ListBoxItemOwnProps>();
+  let { ref } = $props<ListBoxItemOwnProps<T>>();
 
   const list = $getContext(ListBoxContext);
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.

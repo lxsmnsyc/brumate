@@ -1,9 +1,9 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
-  export interface TabListOwnProps {
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
+  export interface TabListOwnProps<T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     children?: unknown;
   }
 
@@ -11,7 +11,7 @@
    * The props of TabList. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type TabListProps<T extends AsTarget = 'div'> = AsProps<T, TabListOwnProps>;
+  export type TabListProps<T extends AsTarget = 'div'> = AsProps<T, TabListOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -32,7 +32,7 @@
    * - With automatic activation, the tab that the keys move to is selected.
    */
   const { as, children, ...rest } = $props<TabListProps<T>>();
-  let { ref } = $props<TabListOwnProps>();
+  let { ref } = $props<TabListOwnProps<T>>();
 
   const tabs = $getContext(TabsContext);
   const locale = $getContext(LocaleContext);

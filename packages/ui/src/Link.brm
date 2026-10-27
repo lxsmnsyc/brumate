@@ -1,11 +1,11 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
 
-  export interface LinkOwnProps {
+  export interface LinkOwnProps<T extends AsTarget = 'a'> {
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
     href?: string;
     slot?: string | null;
     isDisabled?: boolean;
@@ -27,7 +27,7 @@
    * The props of Link. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type LinkProps<T extends AsTarget = 'a'> = AsProps<T, LinkOwnProps>;
+  export type LinkProps<T extends AsTarget = 'a'> = AsProps<T, LinkOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'a'">
@@ -61,10 +61,10 @@
     onFocusChange,
     children,
     ...rest
-  } = $props<LinkOwnProps>();
+  } = $props<LinkOwnProps<T>>();
   // The props of the target of `as`, for the type of the component.
   const { as } = $props<LinkProps<T>>();
-  let { ref } = $props<LinkOwnProps>();
+  let { ref } = $props<LinkOwnProps<T>>();
 
   const context = $getContext(LinkContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));

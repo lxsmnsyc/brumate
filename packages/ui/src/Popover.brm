@@ -1,9 +1,9 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { Placement } from './position.ts';
 
-  export interface PopoverOwnProps {
+  export interface PopoverOwnProps<T extends AsTarget = 'div'> {
     placement?: Placement;
     offset?: number;
     crossOffset?: number;
@@ -15,14 +15,14 @@
     children?: unknown;
     isOpen?: Bindable<boolean>;
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
   }
 
   /**
    * The props of Popover. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type PopoverProps<T extends AsTarget = 'div'> = AsProps<T, PopoverOwnProps>;
+  export type PopoverProps<T extends AsTarget = 'div'> = AsProps<T, PopoverOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -87,8 +87,8 @@
     children,
     ...rest
   } = $props<PopoverProps<T>>();
-  let { isOpen } = $props<PopoverOwnProps>();
-  let { ref } = $props<PopoverOwnProps>();
+  let { isOpen } = $props<PopoverOwnProps<T>>();
+  let { ref } = $props<PopoverOwnProps<T>>();
 
   const trigger = $getContext(OverlayTriggerContext);
   const parentLayer = $getContext(LayerContext);
@@ -133,7 +133,7 @@
     mounted = true;
     const returnTo = document.activeElement;
     await nextFrame();
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     const holder = layer;
     // The popover can leave the page within the frame, such as on a route change.
     if (token !== run || !element?.isConnected || !holder) {
@@ -197,7 +197,7 @@
 
   async function hide(token: number) {
     rested = false;
-    const element = ref;
+    const element = ref as HTMLElement | undefined;
     if (transition && element) {
       const done = await leaveSteps(element, stepClasses(), { current: () => token === run }, () => {
         leaving = true;
@@ -219,7 +219,7 @@
     // When the popover leaves the page while it is open, such as with an #if around it, its
     // panel goes with it, and what it held on the page is given back.
     return () => {
-      const element = ref;
+      const element = ref as HTMLElement | undefined;
       if (element && !element.isConnected) {
         release(element, layer);
       }
@@ -249,8 +249,9 @@
   }
 
   function trap(event: KeyboardEvent) {
-    if (ref) {
-      containTab(ref, event);
+    const element = ref as HTMLElement | undefined;
+    if (element) {
+      containTab(element, event);
     }
   }
 </script>

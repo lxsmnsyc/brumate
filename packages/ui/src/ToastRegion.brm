@@ -1,22 +1,22 @@
 <script module>
-  import type { AsProps, AsTarget } from './as.ts';
+  import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { QueuedToast } from './toast.ts';
 
-  export interface ToastRegionOwnProps {
+  export interface ToastRegionOwnProps<T extends AsTarget = 'div'> {
     queue?: string;
     toast: (item: QueuedToast<any>) => unknown;
     transition?: boolean;
     'aria-label'?: string;
     /** The element, bound with `ref=$bind(signal)`. */
-    ref?: Bindable<HTMLElement | undefined>;
+    ref?: Bindable<TargetElement<T> | undefined>;
   }
 
   /**
    * The props of ToastRegion. `as` takes an element name or a component, and the other props are those
    * of the target.
    */
-  export type ToastRegionProps<T extends AsTarget = 'div'> = AsProps<T, ToastRegionOwnProps>;
+  export type ToastRegionProps<T extends AsTarget = 'div'> = AsProps<T, ToastRegionOwnProps<T>>;
 </script>
 
 <script generics="T extends AsTarget = 'div'">
@@ -52,7 +52,7 @@
     'aria-label': label = 'Notifications',
     ...rest
   } = $props<ToastRegionProps<T>>();
-  let { ref } = $props<ToastRegionOwnProps>();
+  let { ref } = $props<ToastRegionOwnProps<T>>();
 
   let shown = $signal<QueuedToast<unknown>[]>([]);
 
