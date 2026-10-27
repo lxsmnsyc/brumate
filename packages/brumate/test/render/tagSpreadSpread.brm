@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TagSpreadLabel from './tagSpreadLabel.brm';
+
+  // A live spread on a dynamic tag that names a component.
+  let as = $signal<any>(TagSpreadLabel);
+  let props = $signal<Record<string, string>>({ label: 'a' });
+</script>
+
+<button class="set" onClick=(() => (props = { label: 'b' }))>Set</button>
+<{as} {...props} />

@@ -1425,6 +1425,19 @@ The name or the value of an attribute with a computed name, as in `[name]=value`
 <div class=(open ? "open" : "closed")></div>
 ```
 
+## This computed attribute has a name or value with no code in the browser, so it cannot stay when the attributes of the element update
+
+An element has a computed attribute, as in `[name]=(value)`, and a spread or another computed attribute that can change. The name or the value is a constant, or a signal that nothing writes, so the browser has no code for it, and an update of the element would remove the attribute. Make both a signal that the page writes, or write the attribute without brackets.
+
+```brm fragment
+let name = $signal('data-x');
+let value = $signal('on');
+
+<button onClick=(() => ((name = 'data-y'), (value = 'off')))>Change</button>
+<p {...props} [name]=(value)></p>
+<p {...props} data-x="on"></p>
+```
+
 ## Destructuring assignment to a signal is not supported in client code yet
 
 Code that runs in the browser writes a signal in a destructuring assignment.

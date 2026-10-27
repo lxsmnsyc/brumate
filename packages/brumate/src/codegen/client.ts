@@ -982,13 +982,15 @@ class ClientGenerator {
       (item) =>
         (item.kind === 'value' && item.value.ast === site.node) ||
         (item.kind === 'event' && item.handler.ast === site.node) ||
-        (item.kind === 'spread' && item.value.ast === site.node),
+        (item.kind === 'spread' && item.value.ast === site.node) ||
+        (item.kind === 'computed' &&
+          (item.name.ast === site.node || (item.value !== true && item.value.ast === site.node))),
     );
     if (
       !attribute ||
       attribute.kind === 'static' ||
       attribute.kind === 'ref' ||
-      attribute.kind === 'computed'
+      (attribute.kind === 'computed' && owner.kind === 'component')
     ) {
       this.error('This attribute cannot change on the client yet', site.range);
       return;
@@ -1013,7 +1015,7 @@ class ClientGenerator {
       );
       return;
     }
-    if (attribute.kind === 'spread') {
+    if (attribute.kind === 'spread' || attribute.kind === 'computed') {
       // The attributes that are the element's own, which the spread does not remove.
       const own = owner.attributes.flatMap((item) =>
         item.kind === 'static' || item.kind === 'value' ? [item.name] : [],
@@ -1026,13 +1028,30 @@ class ClientGenerator {
       // The other spreads of the element, which an update writes too. Each update tracks the
       // attributes that it wrote, so an update of one spread alone would remove the others'.
       const spreads = this.spreadCode(owner, attribute);
+      // A computed attribute whose name or value has no code in the browser would drop out of the
+      // update, and the attribute with it.
+      for (const item of owner.attributes) {
+        if (item.kind !== 'computed') {
+          continue;
+        }
+        const code =
+          item === attribute ? this.computedCode(item, site) : spreads.get(item.name.ast);
+        if (code === undefined) {
+          this.error(
+            'This computed attribute has a name or value with no code in the browser, so it cannot stay when the attributes of the element update',
+            site.range,
+          );
+          return;
+        }
+      }
       // The element's static attributes merge with the spreads in their order, as on the server.
       const parts = owner.attributes.flatMap((item) => {
         if (item === attribute) {
-          return [expression()];
+          const code = item.kind === 'computed' ? this.computedCode(item, site) : expression();
+          return code ? [code] : [];
         }
-        if (item.kind === 'spread') {
-          const code = spreads.get(item.value.ast);
+        if (item.kind === 'spread' || item.kind === 'computed') {
+          const code = spreads.get(item.kind === 'spread' ? item.value.ast : item.name.ast);
           return code ? [code] : [];
         }
         return item.kind === 'static'
@@ -1047,7 +1066,8 @@ class ClientGenerator {
       if (events.length > 0) {
         parts.push(`{ "b-on": $$b.internal(${events.join(' + " " + ')}) }`);
       }
-      const value = parts.length > 1 ? `$$b.mergeAttributes([${parts.join(', ')}])` : expression();
+      const value =
+        parts.length > 1 ? `$$b.mergeAttributes([${parts.join(', ')}])` : (parts[0] ?? '{}');
       this.emit(
         `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${value}, ${JSON.stringify(own)});\n}`,
       );
@@ -1097,27 +1117,50 @@ class ClientGenerator {
   ): Map<oxc.Node, string> {
     const spreads = new Map<oxc.Node, string>();
     for (const item of owner.attributes) {
-      if (item.kind !== 'spread' || item === except) {
+      if (item === except) {
         continue;
       }
-      const other = this.plan.graph.nodes.find(
-        (candidate) =>
-          candidate.kind !== 'source' &&
-          candidate.site.node === item.value.ast &&
-          (this.plan.graph.live.has(candidate) ||
-            candidate.site.reads.every((read) => slotIndex(this.plan, read.declaration) !== -1)),
-      );
-      if (other && other.kind !== 'source') {
-        spreads.set(
-          item.value.ast,
-          this.withTemplates(
-            other.site,
-            this.rewriter.rewrite(other.site, '$$s', instanceScope(this.plan, other.site.scope)),
-          ),
-        );
+      if (item.kind === 'spread') {
+        const code = this.valueCode(item.value.ast);
+        if (code !== undefined) {
+          spreads.set(item.value.ast, code);
+        }
+      } else if (item.kind === 'computed') {
+        const code = this.computedCode(item);
+        if (code !== undefined) {
+          spreads.set(item.name.ast, code);
+        }
       }
     }
     return spreads;
+  }
+
+  /** The code of a computed attribute, as an object, when the code of its name and value is known. */
+  private computedCode(item: Attribute & { kind: 'computed' }, site?: Site): string | undefined {
+    const part = (ast: oxc.Node): string | undefined =>
+      site?.node === ast ? this.rewrittenCode(site) : this.valueCode(ast);
+    const name = part(item.name.ast);
+    const value = item.value === true ? 'true' : part(item.value.ast);
+    return name === undefined || value === undefined ? undefined : `{ [${name}]: ${value} }`;
+  }
+
+  /** The code of an expression of the browser, or undefined when it has no code there. */
+  private valueCode(ast: oxc.Node): string | undefined {
+    const other = this.plan.graph.nodes.find(
+      (candidate) =>
+        candidate.kind !== 'source' &&
+        candidate.site.node === ast &&
+        (this.plan.graph.live.has(candidate) ||
+          candidate.site.reads.every((read) => slotIndex(this.plan, read.declaration) !== -1)),
+    );
+    return other && other.kind !== 'source' ? this.rewrittenCode(other.site) : undefined;
+  }
+
+  private rewrittenCode(site: Site): string {
+    return this.withTemplates(
+      site,
+      this.rewriter.rewrite(site, '$$s', instanceScope(this.plan, site.scope)),
+    );
   }
 
   private findInsert(site: Site): Markup | undefined {

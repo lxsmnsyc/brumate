@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TagSpreadRest from './tagSpreadRest.brm';
+
+  // A handler on a dynamic tag that names a component that spreads its rest, and that can change.
+  let as = $signal<any>(TagSpreadRest);
+  let n = $signal(0);
+  let big = $signal(false);
+</script>
+
+<button class="set" onClick=(() => (big = true))>Set</button>
+<{as} onClick=(big ? () => (n += 10) : () => (n += 1))>go</>
+<p class="n">{n}</p>

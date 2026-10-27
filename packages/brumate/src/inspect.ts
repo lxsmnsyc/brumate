@@ -223,7 +223,9 @@ function sourceReason(
       if (!liveProps) {
         return 'compiled alone, so every prop can change';
       }
-      const keys = declaration.propKey ? [declaration.propKey, '*'] : [...(parents?.keys() ?? [])];
+      const keys = declaration.propKey
+        ? [declaration.propKey, '*', ...(declaration.propKey === 'children' ? [] : ['~'])]
+        : [...(parents?.keys() ?? [])];
       const files = new Set<string>();
       for (const key of keys) {
         for (const file of parents?.get(key) ?? []) {

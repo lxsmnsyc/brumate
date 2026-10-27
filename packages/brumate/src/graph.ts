@@ -78,7 +78,9 @@ function isLiveProp(declaration: Declaration, liveProps: Set<string> | undefined
     // The props object, or a computed key.
     return liveProps.size > 0;
   }
-  return liveProps.has(declaration.propKey);
+  return (
+    liveProps.has(declaration.propKey) || (liveProps.has('~') && declaration.propKey !== 'children')
+  );
 }
 
 /** True if client code reads the `reset` function of a `#try` block. */

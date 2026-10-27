@@ -5682,3 +5682,52 @@ describe('a template that names a component only in an attribute value', () => {
     expect(code).not.toContain('AsLink');
   });
 });
+
+describe('a spread on a component tag', () => {
+  it('updates the props of a live spread', async () => {
+    await resume('tagSpreadSpread', {});
+    expect(text('em.tag')).toBe('a');
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(text('em.tag')).toBe('b'));
+  });
+
+  it('updates a handler that can change', async () => {
+    await resume('tagSpreadHandler', {});
+    click(document.querySelector('a.tag')!);
+    await waitFor(() => expect(text('.n')).toBe('1'));
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(document.querySelector('a.tag')).not.toBeNull());
+    click(document.querySelector('a.tag')!);
+    await waitFor(() => expect(text('.n')).toBe('11'));
+  });
+
+  it('updates a computed attribute', async () => {
+    await resume('tagSpreadComputed', {});
+    const link = () => document.querySelector('a.tag')!;
+    expect(link().getAttribute('title')).toBe('a');
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(link().getAttribute('title')).toBe('b'));
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(link().getAttribute('data-x')).toBe('b'));
+    expect(link().hasAttribute('title')).toBe(false);
+  });
+
+  it('keeps a computed attribute when only the spread next to it changes', async () => {
+    await resume('tagSpreadMixed', {});
+    const el = () => document.querySelector('p.el')!;
+    expect(el().getAttribute('data-x')).toBe('kept');
+    click(document.querySelector('.set')!);
+    await waitFor(() => expect(el().getAttribute('title')).toBe('b'));
+    expect(el().getAttribute('data-x')).toBe('kept');
+    expect(el().classList.contains('el')).toBe(true);
+  });
+
+  it('renames a computed attribute next to a spread', async () => {
+    await resume('tagSpreadMixed', {});
+    const el = () => document.querySelector('p.el')!;
+    click(document.querySelector('.other')!);
+    await waitFor(() => expect(el().getAttribute('data-y')).toBe('moved'));
+    expect(el().hasAttribute('data-x')).toBe(false);
+    expect(el().getAttribute('title')).toBe('a');
+  });
+});
