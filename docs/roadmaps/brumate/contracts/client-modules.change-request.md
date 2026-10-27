@@ -1,7 +1,7 @@
 # Change request: client-modules v1 to v2
 
 - From node: split-client-runtime
-- Status: open # open | accepted | rejected
+- Status: accepted # open | accepted | rejected
 
 ## Problem
 
@@ -63,4 +63,4 @@ The PR of this node builds this layout. The contract file is not edited.
 
 ## Decision
 
-<Filled in by the orchestrator: accepted or rejected, and why.>
+Accepted by the maintainer on 2026-10-27, when #274 merged.

@@ -21,6 +21,7 @@ owns:
 shared:
   - .changeset/*.md
   - packages/brumate/src/runtime/client.ts
+  - packages/brumate/src/runtime/client/state.ts
 reserves: []
 provides: []
 depends_on:
