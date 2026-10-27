@@ -543,6 +543,26 @@ describe('resume', () => {
       expect(errors).not.toHaveBeenCalled();
     });
 
+    it('gives children inserted into a provider the new context with the new prop', async () => {
+      await resume('diamondChildren', {});
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      const steps: [string, string, string][] = [
+        ['.grow', 'D', 'kidPick 4 3'],
+        ['.grow', 'E', 'kidPick 5 4'],
+        ['.cut', 'D', 'kidPick 4 3'],
+        ['.cut', 'C', 'kidPick 3 2'],
+      ];
+      for (const [button, shown, run] of steps) {
+        clearRuns();
+        click(document.querySelector(button)!);
+        // oxlint-disable-next-line no-await-in-loop -- Each click waits for the one before.
+        await vi.waitFor(() => expect(text('.kid-pick')).toBe(shown), { timeout: 500 });
+        expect(runsOf('kidPick')).toEqual([run]);
+      }
+      expect(errors).not.toHaveBeenCalled();
+    });
+
     it('computes a memo of a child once when it writes a bound prop that the parent passes back a memo of', async () => {
       await resume('diamondBind', {});
       const errors = vi.spyOn(console, 'error').mockImplementation(() => {});

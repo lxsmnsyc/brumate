@@ -406,11 +406,16 @@ function trigger(scope: Scope, slot: number): void {
       waits.push(load);
     }
     await Promise.allSettled(waits);
-    pass(() => {
-      for (const [target, at] of list) {
-        queueWrite(target, at);
-      }
-    });
+    try {
+      pass(() => {
+        for (const [target, at] of list) {
+          queueWrite(target, at);
+        }
+      });
+    } catch (error) {
+      // The error goes to the nearest `#try` around the first write, as a handler's would.
+      fail(scope, error);
+    }
   });
   loadingUpdates.add(loading);
   void loading.finally(() => loadingUpdates.delete(loading));
@@ -555,8 +560,14 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
       fn(target);
     }
   };
+  // The depth through the scopes where contexts are found, so children that a provider inserts
+  // run after its bindings.
   let depth = 0;
-  for (let current = target.p ?? target.o; current; current = current.p ?? current.o) {
+  for (
+    let current = target.t ?? target.p ?? target.o;
+    current;
+    current = current.t ?? current.p ?? current.o
+  ) {
     depth++;
   }
   const level = (levels[depth] ??= { m: [], b: new Map(), e: new Map() });
@@ -593,10 +604,11 @@ function drain(): void {
     }
     const bucket = memos[level.a!];
     if (bucket) {
+      // A memo queues only later ranks of its scope or updates of deeper scopes, so the whole
+      // bucket runs in one loop, with the memos that join it while it runs.
       for (const [key, compute] of bucket) {
         bucket.delete(key);
         compute();
-        break;
       }
       depth = 0;
       continue;

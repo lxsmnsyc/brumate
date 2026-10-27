@@ -36,3 +36,10 @@ No compiler change: `g` keeps its lists. The queues do what the transitive lists
 - A limit of 10000 rounds of bindings per pass throws.
 - The waiting path is sensitive to the number of awaits: an extra tick or two made the ColorSlider `onChangeEnd` tests and the `#offscreen` test fail. Each write that joins a waiting list starts its load when it joins.
 - Size had grown to +408 B. One-letter fields of `Level`, a DEV-only long message, the code lookups in `queueWrite` and a scan from depth 0 in place of a cursor brought it to +284 to +288.
+
+## 2026-10-27: round 2 of #282
+
+- The depth now counts `t ?? p ?? o`, as `findProvider` does. Children that a provider inserts were at the provider's depth, so its context binding ran after their memos: `kidPick 4 2` then `kidPick 4 3`. Test added.
+- `drain` runs a whole bucket in one loop. One iterator per memo skipped the holes of deleted entries each time. 10000 rows: 31-43 ms against 25-31 ms on main.
+- A throw in a waiting pass goes to `fail`. +6 B.
+- CI failed on oxfmt of outcome.md: I had edited it after the last format run.

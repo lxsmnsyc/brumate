@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import DiamondChildrenKid from './DiamondChildrenKid.brm';
+  import DiamondChildrenWrap from './DiamondChildrenWrap.brm';
+
+  let letters = $signal(['a', 'b', 'c']);
+</script>
+
+<button class="grow" onClick=(() => (letters = [...letters, String.fromCharCode(97 + letters.length)]))>Grow</button>
+<button class="cut" onClick=(() => (letters = letters.slice(0, -1)))>Cut</button>
+<DiamondChildrenWrap {letters}>
+  <DiamondChildrenKid list=(letters) />
+</DiamondChildrenWrap>
