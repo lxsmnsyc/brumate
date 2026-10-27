@@ -1,7 +1,8 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
 
-  export interface RadioGroupProps {
+  export interface RadioGroupOwnProps {
     name?: string;
     orientation?: 'horizontal' | 'vertical';
     isDisabled?: boolean;
@@ -11,11 +12,18 @@
     onChange?: (value: string) => void;
     children?: unknown;
     value?: Bindable<string | null>;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of RadioGroup. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type RadioGroupProps<T extends AsTarget = 'div'> = AsProps<T, RadioGroupOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { FieldErrorContext, LabelContext, RadioGroupContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
@@ -31,6 +39,7 @@
    * is no choice.
    */
   const {
+    as,
     name,
     orientation = 'vertical',
     isDisabled = false,
@@ -40,8 +49,9 @@
     onChange,
     children,
     ...rest
-  } = $props<RadioGroupProps>();
-  let { value = null } = $props<RadioGroupProps>();
+  } = $props<RadioGroupProps<T>>();
+  let { value = null } = $props<RadioGroupOwnProps>();
+  let { ref } = $props<RadioGroupOwnProps>();
 
   // The radios of a group share a name, which makes them one group for the browser.
   const ownName = $id();
@@ -78,7 +88,8 @@
   });
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   role="radiogroup"
   aria-labelledby=labelId
   aria-describedby=(describedBy(hasDescription && descriptionId, invalid && errorId))
@@ -93,4 +104,4 @@
   data-invalid=(invalid || undefined)
   data-required=(isRequired || undefined)
   {...rest}
->{children}</div>
+>{children}</>

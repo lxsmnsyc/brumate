@@ -1,17 +1,24 @@
 <script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Key } from './collection.ts';
 
-  export interface GridListItemProps {
+  export interface GridListItemOwnProps {
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
     onAction?: () => void;
     children?: unknown;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of GridListItem. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type GridListItemProps<T extends AsTarget = 'div'> = AsProps<T, GridListItemOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import { $getContext, $isPassed, $memo, $props, $setContext } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
@@ -34,13 +41,15 @@
    *   and `data-focus-visible`.
    */
   const {
+    as,
     id,
     textValue,
     isDisabled = false,
     onAction,
     children,
     ...rest
-  } = $props<GridListItemProps>();
+  } = $props<GridListItemProps<T>>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const list = $getContext(ListBoxContext);
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.
@@ -143,7 +152,8 @@
   $setContext(SelectionIndicatorContext, { isSelected: selected });
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   role="row"
   data-action=(acts || undefined)
   onItemaction=(() => onAction?.())
@@ -171,4 +181,4 @@
   {onFocus}
   {onBlur}
   {...rest}
-><div role="gridcell" style="display: contents">{children}</div></div>
+><div role="gridcell" style="display: contents">{children}</div></>

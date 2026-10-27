@@ -1,13 +1,23 @@
 <script module>
-  export interface ToolbarProps {
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
+
+  export interface ToolbarOwnProps {
     orientation?: 'horizontal' | 'vertical';
     children?: unknown;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of Toolbar. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type ToolbarProps<T extends AsTarget = 'div'> = AsProps<T, ToolbarOwnProps>;
 </script>
 
-<script>
-  import { $client, $getContext, $handler, $props, $setContext, $signal } from 'brumate/signals';
+<script generics="T extends AsTarget = 'div'">
+  import { $client, $getContext, $handler, $props, $setContext } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { LocaleContext } from './locale.ts';
   import { ToolbarContext } from './contexts.ts';
@@ -19,14 +29,14 @@
    * item. Right to left, the arrow keys of a horizontal toolbar turn around. It shows
    * `data-orientation`. Inside another toolbar, it is a group, as in React Aria.
    */
-  const { orientation = 'horizontal', children, ...rest } = $props<ToolbarProps>();
+  const { as, orientation = 'horizontal', children, ...rest } = $props<ToolbarProps<T>>();
+  let { ref } = $props<ToolbarOwnProps>();
 
   const locale = $getContext(LocaleContext);
   const nested = $getContext(ToolbarContext);
   $setContext(ToolbarContext, true);
 
-  let element = $signal<HTMLElement>();
-  $client(() => (element ? keepTabStop(element) : undefined), 'load');
+  $client(() => (ref ? keepTabStop(ref) : undefined), 'load');
 
   function keyDown(event: KeyboardEvent) {
     moveFocus(event.currentTarget as Element, event.key, orientation, locale.direction);
@@ -50,12 +60,12 @@
   }
 </script>
 
-<div
-  ref=$bind(element)
+<{as ?? 'div'}
+  ref=$bind(ref)
   role=(nested ? 'group' : 'toolbar')
   aria-orientation=(nested ? undefined : orientation)
   data-orientation=orientation
   {...keys(orientation === 'vertical')}
   onFocusIn=focusIn
   {...rest}
->{children}</div>
+>{children}</>

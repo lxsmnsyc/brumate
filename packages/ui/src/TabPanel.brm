@@ -1,15 +1,22 @@
 <script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Key } from './collection.ts';
 
-  export interface TabPanelProps {
+  export interface TabPanelOwnProps {
     id: Key;
     shouldForceMount?: boolean;
     children?: unknown;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of TabPanel. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TabPanelProps<T extends AsTarget = 'div'> = AsProps<T, TabPanelOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $client, $effect, $getContext, $memo, $props, $signal, $untrack } from 'brumate/signals';
   import { tabbables } from './overlay.ts';
   import { TabsContext, selectedOf, tabId } from './tabs.ts';
@@ -22,20 +29,21 @@
    * - It takes Tab when it has no content that does, so it can be reached, as in React Aria.
    */
   const {
+    as,
     id,
     shouldForceMount = false,
     children,
     ...rest
-  } = $props<TabPanelProps>();
+  } = $props<TabPanelProps<T>>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const tabs = $getContext(TabsContext);
   const selected = $memo(Boolean(tabs) && selectedOf(tabs!) === id);
   // Whether the content takes Tab, which the browser checks. The server renders the panel as one
   // that takes Tab itself.
   let hasTabbable = $signal(false);
-  let panel = $signal<HTMLElement>();
   function measure() {
-    const element = panel;
+    const element = ref;
     hasTabbable = Boolean(element && tabbables(element).length > 0);
   }
   $client(() => measure(), 'visible');
@@ -46,13 +54,13 @@
 </script>
 
 #if (selected || shouldForceMount) {
-  <div
+  <{as ?? 'div'}
     id=(tabs ? tabId(tabs, id, 'panel') : undefined)
-    ref=$bind(panel)
+    ref=$bind(ref)
     role="tabpanel"
     tabindex=(hasTabbable ? undefined : '0')
     aria-labelledby=(tabs ? tabId(tabs, id, 'tab') : undefined)
     hidden=(!selected || undefined)
     {...rest}
-  >{children}</div>
+  >{children}</>
 }

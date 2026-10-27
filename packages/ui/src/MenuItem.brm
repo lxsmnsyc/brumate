@@ -1,8 +1,10 @@
 <script module>
+  import type { Bindable } from 'brumate/signals';
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Key } from './collection.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
 
-  export interface MenuItemProps {
+  export interface MenuItemOwnProps {
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
@@ -12,11 +14,16 @@
     hasDescription?: boolean;
     onAction?: () => void;
     children?: unknown;
-    [attribute: string]: unknown;
   }
+
+  /**
+   * The props of MenuItem. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type MenuItemProps<T extends AsTarget = 'div'> = AsProps<T, MenuItemOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import { TextContext } from './contexts.ts';
@@ -38,6 +45,7 @@
    *   `data-focus-visible`, and `data-open` while its submenu is open.
    */
   const {
+    as,
     id,
     textValue,
     isDisabled = false,
@@ -46,7 +54,8 @@
     onAction,
     children,
     ...rest
-  } = $props<MenuItemProps>();
+  } = $props<MenuItemProps<T>>();
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
 
   const menu = $getContext(MenuContext);
   const submenu = $getContext(SubmenuContext);
@@ -126,7 +135,8 @@
   );
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   id=(submenu?.triggerId ?? ownId)
   {role}
   tabindex="-1"
@@ -156,4 +166,4 @@
   {onFocus}
   {onBlur}
   {...rest}
->{children}</div>
+>{children}</>

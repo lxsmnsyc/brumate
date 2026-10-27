@@ -1,7 +1,7 @@
 ---
 id: as-controls
 title: as and ref on the controls, overlays and status parts
-status: todo
+status: done
 priority: should
 type: feature
 outline: false

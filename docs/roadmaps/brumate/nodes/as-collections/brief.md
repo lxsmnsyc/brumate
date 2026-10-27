@@ -1,7 +1,7 @@
 ---
 id: as-collections
 title: as and ref on the collection parts
-status: todo
+status: done
 priority: should
 type: feature
 outline: false
