@@ -151,6 +151,11 @@ export const classObject: ElementProps<'div'> = { class: { task: true, on, off: 
 export const styleObject: ElementProps<'div'> = {
   style: { color: 'red', fontSize: '12px', opacity: 0.5, width: null, '--gap': '4px' },
 };
+declare const count: number;
+export const classFalsy: ElementProps<'div'> = { class: ['task', count && 'x', 0n] };
+export const styleUnitless: ElementProps<'div'> = {
+  style: { opacity: 0.5, zIndex: 3, flexGrow: 1, lineHeight: 1.5, gridRowStart: 2, width: '12px' },
+};
 export const selectValue: ElementProps<'select'> = { value: 'a' };
 export const selectBound: ElementProps<'select'> = { value: $bind($signal('')) };
 export const inputBound: ElementProps<'input'> = {
@@ -230,3 +235,7 @@ export const wrongBoundChecked: ElementProps<'input'> = { checked: $bind($signal
 export const wrongAction: ElementProps<'form'> = { action: 1 };
 // @ts-expect-error A static number attribute is a number or a numeric string.
 export const wrongStaticNumber: ElementProps<'textarea'> = { rows: 'three' };
+// @ts-expect-error A number has no unit, so `width: 12` renders `width:12`, which browsers ignore.
+export const unitlessWidth: ElementProps<'div'> = { style: { width: 12 } };
+// @ts-expect-error A number has no unit for `fontSize` either.
+export const unitlessFontSize: ElementProps<'div'> = { style: { fontSize: 12 } };

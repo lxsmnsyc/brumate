@@ -57,12 +57,14 @@ export type EventHandler<E, Ev = Event> = (event: Ev & { currentTarget: E }) => 
 
 /**
  * A value of `class`: a string, or an array or an object of them. An array holds class values,
- * and `false`, `null` and `undefined` add nothing, so `on && 'on'` fits. An object adds the names
+ * and `false`, `0`, `0n`, `null` and `undefined` add nothing, so `on && 'on'` and `count && 'x'` fit. An object adds the names
  * with a true value. See `classValue` in runtime/html.ts.
  */
 export type ClassValue =
   | string
   | false
+  | 0
+  | 0n
   | null
   | undefined
   | readonly ClassValue[]
@@ -80,12 +82,52 @@ type StyleName = {
     : never;
 }[keyof CSSStyleDeclaration];
 
+// The properties that take a bare number. The runtime prints a number as it is, with no unit, so
+// any other property needs a string such as `'12px'`.
+type UnitlessName = Extract<
+  StyleName,
+  | 'animationIterationCount'
+  | 'columnCount'
+  | 'fillOpacity'
+  | 'flex'
+  | 'flexGrow'
+  | 'flexShrink'
+  | 'floodOpacity'
+  | 'fontSizeAdjust'
+  | 'fontWeight'
+  | 'gridArea'
+  | 'gridColumn'
+  | 'gridColumnEnd'
+  | 'gridColumnStart'
+  | 'gridRow'
+  | 'gridRowEnd'
+  | 'gridRowStart'
+  | 'lineClamp'
+  | 'lineHeight'
+  | 'mathDepth'
+  | 'opacity'
+  | 'order'
+  | 'orphans'
+  | 'scale'
+  | 'shapeImageThreshold'
+  | 'stopOpacity'
+  | 'strokeMiterlimit'
+  | 'strokeOpacity'
+  | 'tabSize'
+  | 'widows'
+  | 'zIndex'
+  | 'zoom'
+>;
+
 /**
  * A value of `style` as an object: camel-case names, or `--` variables. A value of `null`,
- * `undefined` or `false` leaves the property out. See `styleValue` in runtime/html.ts.
+ * `undefined` or `false` leaves the property out. A number is for the properties without a unit
+ * and for variables; the others take a string. See `styleValue` in runtime/html.ts.
  */
 export type StyleObject = {
-  [K in StyleName]?: string | number | false | null | undefined;
+  [K in StyleName]?: K extends UnitlessName
+    ? string | number | false | null | undefined
+    : string | false | null | undefined;
 } & {
   [variable: `--${string}`]: string | number | false | null | undefined;
 };

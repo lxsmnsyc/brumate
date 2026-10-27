@@ -14,3 +14,4 @@
 - `EventHandler<E, Ev = Event>` is exported; the internal `Handler<Ev, E>` is an alias of it.
 - Checks: `tsc --noEmit -p .` passes, `tsc --noEmit -p tsconfig.elements.json` passes, oxlint exits 0, oxfmt --check passes. `npx vitest run` in packages/brumate: 972 passed, 5 expected fail.
 - packages/ui tests not run: no ui file changed, and check.ts does not check plain elements yet.
+- Review fixes: `StyleObject` takes a number only for unitless properties (`UnitlessName`) and `--` variables, since `styleValue` prints `String(n)` with no unit, so `{ width: 12 }` is an error. `ClassValue` has `0` and `0n`, since `classValue` drops every falsy value (`value ? String(value) : ''`), so `count && 'x'` fits. Cases added, and the changeset is minor. Before the type change `tsc --noEmit -p .` failed on the `classFalsy` case and on the two `@ts-expect-error` cases for style numbers (unused directive); after, it passes.

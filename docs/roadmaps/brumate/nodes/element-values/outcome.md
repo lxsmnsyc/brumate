@@ -3,7 +3,7 @@
 ## Built
 
 - packages/brumate/elements.d.ts accepts every value that the runtime accepts:
-  - `class` takes `ClassValue` (string, array, object, nested, where `false`, `null` and `undefined` add nothing); `style` takes `string | StyleObject` (camel-case names of CSS properties, and `--*`).
+  - `class` takes `ClassValue` (string, array, object, nested, where `false`, `null` and `undefined` add nothing, including `0` and `0n`); `style` takes `string | StyleObject` (camel-case names of CSS properties, and `--*`; a number only for unitless properties and variables).
   - `select` has `value`; `value` of `input`, `select` and `textarea` and `checked` of `input` take `$bind(name)`, typed `BindableMark<unknown> & WritableMark<string>` (`WritableMark<boolean>` for `checked`).
   - `action` of `form` and `formaction` of `button` and `input` take `string | ServerFunction`.
   - Number attributes take `number | \`${number}\``.
@@ -12,7 +12,7 @@
   - New exports: `EventHandler<E, Ev>`, `ClassValue`, `StyleObject`, `ServerFunction`.
 - contracts/element-types.md is v1.1, with the change listed.
 - packages/brumate/test/elements-types.ts has a case for each widened value and 9 more rejections (a number for `class`, a function in a class array, a kebab-case or unknown style name, a string for `checked`, a signal of a number or of a string for the wrong binding, a number for `action`, `rows="three"`). On the old types `tsc --noEmit -p .` exits 1 with 26 errors; now it exits 0.
-- .changeset/element-values.md (patch).
+- .changeset/element-values.md (minor, for the new exports).
 
 ## Deviations
 
