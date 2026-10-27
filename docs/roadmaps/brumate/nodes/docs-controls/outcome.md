@@ -8,24 +8,24 @@
 
 Sections per page (A anatomy, P props, D data attributes, K keyboard, C controlled and uncontrolled, S styling). x = written, - = left out on purpose.
 
-| Page                | A | P | D | K | C | S |
-| ------------------- | - | - | - | - | - | - |
-| button              | - | x | x | x | x | x |
-| toggle-button       | - | x | x | x | x | x |
-| toggle-button-group | x | x | x | x | x | x |
-| link                | - | x | x | x | - | x |
-| file-trigger        | x | x | - | x | - | x |
-| drop-zone           | x | x | x | x | - | x |
-| text-field          | x | x | x | x | x | x |
-| search-field        | x | x | x | x | x | x |
-| token-field         | x | x | x | x | x | x |
-| number-field        | x | x | x | x | x | x |
-| slider              | x | x | x | x | x | x |
-| checkbox            | - | x | x | x | x | x |
-| checkbox-group      | x | x | x | x | x | x |
-| radio-group         | x | x | x | x | x | x |
-| switch              | - | x | x | x | x | x |
-| form                | - | x | - | x | - | x |
+| Page                | A   | P   | D   | K   | C   | S   |
+| ------------------- | --- | --- | --- | --- | --- | --- |
+| button              | -   | x   | x   | x   | x   | x   |
+| toggle-button       | -   | x   | x   | x   | x   | x   |
+| toggle-button-group | x   | x   | x   | x   | x   | x   |
+| link                | -   | x   | x   | x   | -   | x   |
+| file-trigger        | x   | x   | -   | x   | -   | x   |
+| drop-zone           | x   | x   | x   | x   | -   | x   |
+| text-field          | x   | x   | x   | x   | x   | x   |
+| search-field        | x   | x   | x   | x   | x   | x   |
+| token-field         | x   | x   | x   | x   | x   | x   |
+| number-field        | x   | x   | x   | x   | x   | x   |
+| slider              | x   | x   | x   | x   | x   | x   |
+| checkbox            | -   | x   | x   | x   | x   | x   |
+| checkbox-group      | x   | x   | x   | x   | x   | x   |
+| radio-group         | x   | x   | x   | x   | x   | x   |
+| switch              | -   | x   | x   | x   | x   | x   |
+| form                | -   | x   | -   | x   | -   | x   |
 
 Left out: Anatomy for a single part (contract). Data attributes for FileTrigger and Form, which set none. Controlled and uncontrolled for Link, FileTrigger, DropZone and Form, which have no state.
 
