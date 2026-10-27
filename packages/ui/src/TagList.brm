@@ -4,6 +4,8 @@
   import type { Movement } from './collection.ts';
 
   export interface TagListOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     children?: unknown;
   }
 
@@ -38,7 +40,7 @@
    *   to left, and Home and End go to the ends.
    */
   const { as, children, ...rest } = $props<TagListProps<T>>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<TagListOwnProps>();
 
   const group = $getContext(TagGroupContext);
   const locale = $getContext(LocaleContext);

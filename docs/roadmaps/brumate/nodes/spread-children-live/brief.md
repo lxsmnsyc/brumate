@@ -1,7 +1,7 @@
 ---
 id: spread-children-live
 title: A spread onto a component does not render its children again
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

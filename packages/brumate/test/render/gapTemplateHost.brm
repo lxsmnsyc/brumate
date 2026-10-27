@@ -1,0 +1,5 @@
+<script>
+  import { $props } from 'brumate/signals';
+  const { icon, children } = $props();
+</script>
+<{icon} class="host">{children}</>

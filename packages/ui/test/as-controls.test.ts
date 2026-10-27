@@ -215,8 +215,7 @@ it.fails('removes a toast from a ToastRegion that is a component', async () => {
   await page.waitFor(() => expect(find('.toast')).toBeNull(), 500);
 });
 
-// The template of the toast reads the component as a value, and its part does not import it.
-it.fails('renders a Toast that is a component', async () => {
+it('renders a Toast that is a component', async () => {
   const page = await controls();
   page.click('.add-as');
   await page.waitFor(() => expect(find('.toast-as')).not.toBeNull(), 500);

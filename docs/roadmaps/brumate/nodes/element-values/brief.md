@@ -1,7 +1,7 @@
 ---
 id: element-values
 title: The element types accept every value that the runtime accepts
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

@@ -5,6 +5,8 @@
   import type { Key } from './collection.ts';
 
   export interface ListBoxItemOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
@@ -51,7 +53,7 @@
     children,
     ...rest
   } = $props<ListBoxItemProps<T>>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<ListBoxItemOwnProps>();
 
   const list = $getContext(ListBoxContext);
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.

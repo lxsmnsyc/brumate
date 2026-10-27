@@ -5,6 +5,8 @@
   import type { HoverEvent, PressEvent } from './events.ts';
 
   export interface MenuItemOwnProps {
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
     id: Key;
     textValue?: string;
     isDisabled?: boolean;
@@ -55,7 +57,7 @@
     children,
     ...rest
   } = $props<MenuItemProps<T>>();
-  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+  let { ref } = $props<MenuItemOwnProps>();
 
   const menu = $getContext(MenuContext);
   const submenu = $getContext(SubmenuContext);

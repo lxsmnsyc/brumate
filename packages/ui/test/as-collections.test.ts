@@ -182,12 +182,7 @@ it('updates the checked attribute of a menu item with a component in as', async 
   await page.waitFor(() => expect(page.get('.cut').getAttribute('aria-checked')).toBe('true'));
 });
 
-// The `it.fails` test below shows a gap of the core. It passes as `it.fails` while the gap is open, and
-// becomes `it` when it is fixed.
-//
-// A template that names the component itself does not import it in its code for the browser, so a
-// row that the browser renders fails with a ReferenceError.
-it.fails('renders a template that names the component, for a folder that opens', async () => {
+it('renders a template that names the component, for a folder that opens', async () => {
   vi.resetModules();
   const { mount } = await import('virtual:brumate/testing');
   const { default: Template } =
