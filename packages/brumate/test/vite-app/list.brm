@@ -1,0 +1,33 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Child from './Child.brm';
+
+  let counts = $signal([1, 2]);
+  let show = $signal(false);
+  const label = 'Item';
+
+  function add() {
+    counts = [...counts, counts.length + 1];
+  }
+</script>
+
+<button class="add" onClick=add>Add</button>
+<button class="show" onClick=(() => (show = !show))>Show</button>
+<ul>
+  #for (count, i of counts by i) {
+    <li>
+      {row(i)}
+      <Child value=count onChange=((value) => (counts = counts.map((item, index) => (index === i ? value : item)))) />
+    </li>
+  }
+</ul>
+#if (show) {
+  <section>
+    <Child value=(counts.length) onChange=((value) => console.log(value))>
+      <em>{label}</em>
+    </Child>
+  </section>
+}
+#template row(index: number) {
+  <span>{label} {index + 1}</span>
+}

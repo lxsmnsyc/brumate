@@ -15,7 +15,7 @@ import { fromChunkStream } from '../src/runtime/stream.ts';
 import brumate from '../src/vite.ts';
 import { serverModule, serverStubs } from '../src/server-files.ts';
 
-const root = fileURLToPath(new URL('./render/', import.meta.url));
+const root = fileURLToPath(new URL('./vite-app/', import.meta.url));
 const runtime = (name: string): string =>
   fileURLToPath(new URL(`../src/runtime/${name}.ts`, import.meta.url));
 
@@ -25,7 +25,7 @@ const config: InlineConfig = {
   logLevel: 'silent',
   // `serialMoney.brm` holds a Money, which the plugin of `money.ts` sends.
   plugins: [
-    brumate({ merge: 0, serial: fileURLToPath(new URL('./render/money.ts', import.meta.url)) }),
+    brumate({ merge: 0, serial: fileURLToPath(new URL('./vite-app/money.ts', import.meta.url)) }),
   ],
   resolve: {
     alias: {
@@ -107,7 +107,7 @@ describe('vite plugin', () => {
       },
     ]);
     expect(info.url).toBe('/counter.brm');
-    expect(info.path).toMatch(/\/test\/render\/counter\.brm$/);
+    expect(info.path).toMatch(/\/test\/vite-app\/counter\.brm$/);
     expect(missing.status).toBe(404);
   });
 
