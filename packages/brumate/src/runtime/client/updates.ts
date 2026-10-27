@@ -466,17 +466,10 @@ function loadUpdate(scope: Scope, slot?: number): Promise<unknown> {
  * Loads the update code of a component and of the components above it, which a write of a bound
  * prop reaches, so the writes of a handler run before it returns. A handler waits for it.
  */
-export async function updateReady(scope: Scope | undefined): Promise<void> {
-  const loads: Promise<unknown>[] = [];
-  const visit = (at: Scope | undefined): void => {
-    if (at) {
-      loads.push(loadUpdate(at));
-      visit(at.p ?? at.o);
-      visit(at.t);
-    }
-  };
-  visit(scope);
-  await Promise.all(loads);
+export function updateReady(scope: Scope | undefined): Promise<unknown> {
+  return scope
+    ? Promise.all([loadUpdate(scope), updateReady(scope.p ?? scope.o), updateReady(scope.t)])
+    : Promise.resolve();
 }
 
 /** The writes of the pass that runs that wait for code, to run as one pass of their own. */
@@ -583,23 +576,18 @@ export function pass<T>(write: () => T): T {
 
 setPass(pass);
 
-// The names of the memos that wait in the pass, by scope, so a read computes the ones of its scope.
-const dirty: Map<Scope, Set<string>> = new Map();
+// The scopes with memos that wait in the pass, so a read computes the ones of its scope.
+const dirty: Set<Scope> = new Set();
 
 /** Computes the memos of a scope that wait, so code that reads one in a handler reads the new value. */
 function settle(scope: Scope): void {
-  const names = dirty.get(scope);
-  if (names?.size) {
-    const buckets = levels[depthOf(scope)]?.m;
-    // A memo that reads another memo of the scope settles it through `get`, so the order here does not matter.
-    for (const name of names) {
-      const bucket = buckets?.[+name.slice(1)];
-      const key = `${scope.id}:${name}`;
-      const compute = bucket?.get(key);
-      bucket?.delete(key);
-      names.delete(name);
-      compute?.();
-    }
+  dirty.delete(scope);
+  // A memo that reads another memo of the scope settles it through `get`, so the order here does not matter.
+  for (const [rank, bucket] of (levels[depthOf(scope)]?.m ?? []).entries()) {
+    const key = `${scope.id}:m${rank}`;
+    const compute = bucket?.get(key);
+    bucket?.delete(key);
+    compute?.();
   }
 }
 
@@ -645,7 +633,6 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
   // An update of a scope that left the page in the pass does not run. An error goes to the
   // nearest `#try` around the update, whether its write ran at once or waited for code.
   const later = (): void => {
-    dirty.get(target)?.delete(name);
     if (!failed && scopes.get(target.id) === target) {
       try {
         // Past the limit of rounds, the next update fails in place of running.
@@ -667,13 +654,8 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
   const depth = depthOf(target);
   const level = (levels[depth] ??= { m: [], b: new Map(), e: new Map() });
   if (name[0] === 'm') {
-    const bucket = (level.m[+name.slice(1)] ??= new Map());
-    bucket.set(key, later);
-    let names = dirty.get(target);
-    if (!names) {
-      dirty.set(target, (names = new Set()));
-    }
-    names.add(name);
+    (level.m[+name.slice(1)] ??= new Map()).set(key, later);
+    dirty.add(target);
   } else {
     (name[0] === 'e' ? level.e : level.b).set(key, later);
   }

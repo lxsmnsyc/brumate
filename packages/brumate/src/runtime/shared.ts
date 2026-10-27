@@ -175,7 +175,7 @@ export function addEntryHandlers(
     const handler = make(
       new FunctionReference(
         ref,
-        at === undefined || !/^\d+$/.test(at) ? (at ?? scope!) : Number(at),
+        /^\d+$/.test(at ?? '') ? Number(at) : (at ?? scope!),
         undefined,
         modifiers.length > 0 ? modifiers : undefined,
       ),

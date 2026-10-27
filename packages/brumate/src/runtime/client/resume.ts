@@ -446,7 +446,7 @@ function readFields(): void {
     for (const entry of element.getAttribute('b-on')!.split(' ')) {
       const ref = entry.slice(entry.indexOf('=') + 1);
       if (/^\$(bind#|set:)/.test(ref)) {
-        void handle(element, ref, undefined, custom || undefined);
+        void handle(element, ref, undefined, custom);
       }
     }
   }
