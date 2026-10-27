@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "plugins", "scripts", "vite.config.ts"]
+  "include": ["src", "ui/demos", "plugins", "scripts", "vite.config.ts"]
 }

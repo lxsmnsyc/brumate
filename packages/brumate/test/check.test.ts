@@ -414,6 +414,45 @@ describe('templates passed to a prop', () => {
     expect(mappings.filter((item) => item.source === param)).toHaveLength(2);
   });
 
+  it('writes a template whose parameter has its name at its use', () => {
+    const code = body(`${script}<List {items} {item} />
+
+#template item(item) {
+  <p>{item.id}</p>
+}`);
+    expect(code).not.toContain('function item');
+    expect(code).toContain('item: (async (item): Promise<$$Markup> => {\n$$use((item.id));');
+  });
+
+  it('keeps a template declared that calls itself', () => {
+    const code = body(`${script}<List {items} item=row />
+
+#template row(a) {
+  <p>{a.id}</p>
+  {row(a)}
+}`);
+    expect(code).toContain('async function row(a): Promise<$$Markup> {');
+  });
+
+  it('declares the name of a template written at its uses, and maps each use to it', () => {
+    const source = `${script}<List {items} item=row />
+<List {items} item=(row) />
+
+#template row(a) {
+  <p>{a.id}</p>
+}`;
+    const { code, mappings } = toTypeScript(source, 'Card.brm');
+    expect(code).toContain('const row = $$template;');
+    const at = (offset: number): string[] =>
+      mappings
+        .filter((item) => item.source === offset)
+        .map((item) => code.slice(item.generated, item.generated + item.length));
+    expect(at(source.indexOf('#template row') + 10)).toEqual(['row']);
+    expect(at(source.indexOf('item=row') + 5)).toEqual(['row']);
+    expect(at(source.indexOf('item=(row)') + 6)).toEqual(['row']);
+    expect(code).toContain('$$use(row);\nList({');
+  });
+
   it('keeps a typed template, or one without parameters, declared', () => {
     const code = body(`${script}<List {items} item=row heading=title />
 

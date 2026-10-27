@@ -80,6 +80,8 @@ declare function $$on<T extends string, K extends keyof $$Events & string>(tag: 
 declare function $$onWindow<K extends keyof WindowEventMap & string>(event: K, handler: (event: WindowEventMap[K] & { currentTarget: Window }) => unknown): void;
 declare function $$onDocument<K extends keyof DocumentEventMap & string>(event: K, handler: (event: DocumentEventMap[K] & { currentTarget: Document }) => unknown): void;
 declare function $$use(...values: unknown[]): void;
+/** The type of the name of a template that is written at each use. Only its name is read. */
+declare const $$template: (...args: any[]) => Promise<$$Markup>;
 type $$Plain = string | number | boolean | bigint | null | undefined | Date | Error | URL | URLSearchParams | ArrayBuffer | ArrayBufferView | Headers | FormData | Request | Response | ReadableStream<any> | AbortSignal | Event | DOMException | ImageData;
 type $$Sendable<T> = T extends $$Plain | import('brumate/serial').AppValue ? T : T extends { brumateId: string } ? T : T extends RegExp ? { 'A regular expression cannot be sent to the client. Send its source and flags': never } : T extends (...args: any[]) => any ? { 'A function cannot be sent to the client. Keep it out of the signal or memo': never } : T extends Promise<infer U> ? Promise<$$Sendable<U>> : T extends ReadonlyMap<infer K, infer V> ? ReadonlyMap<$$Sendable<K>, $$Sendable<V>> : T extends ReadonlySet<infer V> ? ReadonlySet<$$Sendable<V>> : T extends object ? { [K in keyof T]: $$Sendable<T[K]> } : T;
 /** Checks a value that the page state sends to the client. */
@@ -360,11 +362,16 @@ function untyped(template: TemplateDecl): boolean {
 
 /** The name of a template that an attribute value passes as it is, such as `item=row`. */
 function passedName(value: Expression): string | undefined {
+  return passedIdentifier(value)?.name;
+}
+
+/** The identifier of `passedName`, with its range in the file. */
+function passedIdentifier(value: Expression): (Range & { name: string }) | undefined {
   let node: oxc.Node = value.ast;
   while (node.type === 'ParenthesizedExpression') {
     node = node.expression;
   }
-  return node.type === 'Identifier' ? node.name : undefined;
+  return node.type === 'Identifier' ? node : undefined;
 }
 
 /**
@@ -389,6 +396,13 @@ function inlineTemplates(file: SFCFile): Set<TemplateDecl> {
               return false;
             }
           }
+        }
+        // So does a parameter of the same name, such as `#template item(item)`, in its template.
+        if (
+          value.kind === 'template' &&
+          paramNames(value as unknown as TemplateDecl).includes(template.name)
+        ) {
+          return false;
         }
         if (value.type === 'Identifier' && value.name === template.name) {
           reads++;
@@ -594,9 +608,7 @@ class Generator {
   /** Opens a block of the generated code that declares names and templates. */
   private enter(declared: Set<string>, templates: TemplateDecl[] = []): void {
     for (const template of templates) {
-      if (!this.inline.has(template)) {
-        declared.add(template.name);
-      }
+      declared.add(template.name);
     }
     this.scopes.push(declared);
     for (const template of templates) {
@@ -616,6 +628,11 @@ class Generator {
     const { out } = this;
     for (const template of templates) {
       if (this.inline.has(template)) {
+        // The name stays declared, so that hover, go to definition, references and rename reach
+        // the template from its uses. Its type is not used.
+        out.text('const ');
+        out.copy(template.nameRange);
+        out.text(' = $$template;\n');
         continue;
       }
       // Templates can await memos, as the component function can.
@@ -732,6 +749,7 @@ class Generator {
         this.nodes(node.children);
         return;
       case 'dynamic':
+        this.passedNames(node.attributes);
         out.text('$$dynamic(');
         out.expression(node.tag);
         out.text(', {');
@@ -921,8 +939,26 @@ class Generator {
     }
   }
 
+  /**
+   * Reads the name of each template that a prop passes and that is written at the use, mapped to
+   * the name at the use, so the use reaches the template in an editor. It is a statement of its own
+   * before the call: in the prop, next to the arrow function, it would change how the call infers
+   * its type parameters.
+   */
+  private passedNames(attributes: Attribute[]): void {
+    for (const attribute of attributes) {
+      if (attribute.kind === 'value' && this.passed(attribute.value)) {
+        const name = passedIdentifier(attribute.value)!;
+        this.out.text('$$use(');
+        this.out.copy(name);
+        this.out.text(');\n');
+      }
+    }
+  }
+
   private component(node: ComponentNode): void {
     const { out } = this;
+    this.passedNames(node.attributes);
     const nameStart = node.start + 1;
     // A direct call checks the props as a fresh object, so an unknown prop is reported, and the
     // type parameters of a generic component are inferred from them.

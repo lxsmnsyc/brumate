@@ -1,4 +1,4 @@
-import { createBrumateVirtualCode } from '@brumate/language-core';
+import { createBrumateVirtualCode, dedupeDiagnostics } from '@brumate/language-core';
 import { describe, expect, it } from 'vitest';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { diagnose } from '../src/index.ts';
@@ -51,5 +51,25 @@ describe('styles', () => {
     expect(css).toBe('\n  p { margin: _______rem; }\n');
     const start = style!.mappings[0]!.sourceOffsets[0]!;
     expect(text.slice(start, start + css.length)).toBe('\n  p { margin: ${size}rem; }\n');
+  });
+});
+
+describe('dedupeDiagnostics', () => {
+  it('drops a diagnostic that repeats another at the same place, as of a template used twice', () => {
+    const file = { fileName: '/App.brm' };
+    const nope = { file, start: 10, length: 4, code: 2339, messageText: "Property 'nope'" };
+    const chain = {
+      file,
+      start: 20,
+      length: 3,
+      code: 2322,
+      messageText: { messageText: 'Type', next: [{ messageText: 'Animal' }] },
+    };
+    const other = {
+      ...chain,
+      messageText: { messageText: 'Type', next: [{ messageText: 'Car' }] },
+    };
+    const result = dedupeDiagnostics([nope, chain, { ...nope }, { ...chain }, other]);
+    expect(result).toEqual([nope, chain, other]);
   });
 });

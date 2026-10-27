@@ -57,7 +57,7 @@ A [GridList](./grid-list.md), a [ListBox](./list-box.md) or a [Table](./table.md
 </Virtualizer>
 ```
 
-A Table takes `items` and `getTextValue`, and its `TableBody` takes `item`. A template parameter takes a type, such as `file: File`. Their keys read the data, as the keyboard section says.
+A Table takes `items` and `getTextValue`, and its `TableBody` takes `item`. The TableBody does not get the type of the items from the Table, so give its template's parameter a type, such as `file: File`. Their keys read the data, as the keyboard section says.
 
 Rows that you write out or render from a `#for` of your own have no data to read. Give the `#for` `window(height)`, and it renders only the rows in view, in the box that scrolls:
 
