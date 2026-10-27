@@ -85,11 +85,11 @@ export function spreadEntries(attributes: Record<string, unknown>): string[] {
 }
 
 /** The reference of the setter of a binding: as the state has it, or of a handler that the core made. */
-function setterReference(set: unknown): FunctionReference | undefined {
-  if (set instanceof FunctionReference) {
-    return set;
+function setterReference(setter: unknown): FunctionReference | undefined {
+  if (setter instanceof FunctionReference) {
+    return setter;
   }
-  return typeof set === 'function' ? handlerReferences.get(set) : undefined;
+  return typeof setter === 'function' ? handlerReferences.get(setter) : undefined;
 }
 
 /** Replaces function references with functions that call them. */

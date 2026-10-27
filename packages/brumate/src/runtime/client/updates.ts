@@ -101,12 +101,12 @@ export function binding<T>(
   value: T,
   scope: Scope | ScopeId,
   slot: number,
-  set?: unknown,
+  setter?: unknown,
 ): Binding<T> {
   return new Binding(
     value,
     new SlotReference(typeof scope === 'object' ? scope.id : scope, slot),
-    set,
+    setter,
   );
 }
 
@@ -191,7 +191,7 @@ export function timed(
   const key = `${scope.id}:${slot}`;
   const state = timers.get(key) ?? { last: -Infinity };
   timers.set(key, state);
-  const run = (): void => {
+  const recompute = (): void => {
     state.timer = undefined;
     state.last = Date.now();
     // A scope that left the page computes no more.
@@ -201,14 +201,14 @@ export function timed(
   };
   const since = Date.now() - state.last;
   if (throttle && state.timer === undefined && since >= ms) {
-    run();
+    recompute();
     return;
   }
   if (!throttle) {
     clearTimeout(state.timer);
     state.timer = undefined;
   }
-  state.timer ??= setTimeout(run, throttle ? ms - since : ms);
+  state.timer ??= setTimeout(recompute, throttle ? ms - since : ms);
   startLoading(scope, slot, key);
 }
 

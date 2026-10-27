@@ -146,13 +146,13 @@ export function clone(source: Template): ClonedNode[] {
   const walk = (source.walk ??= walkOf(parseTemplate(source)));
   const fragment = source.t!.content.cloneNode(true);
   // oxlint-disable-next-line unicorn/no-new-array -- A length, with no values written in yet.
-  const nodes: Node[] = new Array(source.count + 1);
-  nodes[source.count] = fragment;
+  const cloned: Node[] = new Array(source.count + 1);
+  cloned[source.count] = fragment;
   let node: Node = fragment;
   for (let index = 0; index < walk.length; index++) {
     const move = walk[index]!;
     if (move >= 0) {
-      nodes[move] = node;
+      cloned[move] = node;
     } else if (move === FIRST_CHILD) {
       node = node.firstChild!;
     } else if (move === PARENT) {
@@ -163,7 +163,7 @@ export function clone(source: Template): ClonedNode[] {
       }
     }
   }
-  return nodes as ClonedNode[];
+  return cloned as ClonedNode[];
 }
 
 /**
@@ -264,13 +264,13 @@ function keepBlock(
 }
 
 /** Puts what renders gave into the range that a marker of cloned markup opens. */
-function fillRange(place: Comment, html: string, nodes: DocumentFragment | undefined): void {
+function fillRange(place: Comment, html: string, inserted: DocumentFragment | undefined): void {
   if (html) {
     // Markup that a render gave as HTML, which the insert of the clone indexes.
     place.after(parseHTML(html, place));
     markCloned();
-  } else if (nodes) {
-    place.after(nodes);
+  } else if (inserted) {
+    place.after(inserted);
   }
 }
 
@@ -311,16 +311,16 @@ export function fillList(
     return;
   }
   let html = '';
-  let nodes: DocumentFragment | undefined;
+  let parts: DocumentFragment | undefined;
   for (let index = 0; index < items.length; index++) {
     const out = render(found, items[index], index);
     if (typeof out === 'string') {
       html += out;
     } else {
-      (nodes ??= document.createDocumentFragment()).append(out);
+      (parts ??= document.createDocumentFragment()).append(out);
     }
   }
-  fillRange(place, html, nodes);
+  fillRange(place, html, parts);
 }
 
 /** Writes an attribute of an element of cloned markup, as `attribute` writes it in HTML. */

@@ -45,9 +45,9 @@ export function text(scope: Scope, anchor: number, value: unknown): void {
   let kept = scope.n?.[anchor];
   if (kept?.nodeType === 3 && kept.isConnected) {
     if (typeof value === 'string' || typeof value === 'number') {
-      const text = String(value);
-      if ((kept as Text).data !== text) {
-        (kept as Text).data = text;
+      const data = String(value);
+      if ((kept as Text).data !== data) {
+        (kept as Text).data = data;
       }
       return;
     }
@@ -134,12 +134,12 @@ function write(
   ) {
     // Hidden text keeps its new value for when it shows.
     const saved = hiding?.nodes.get(first);
-    const text = String(value);
+    const data = String(value);
     if (saved) {
-      saved.v = text;
-    } else if ((first as Text).data !== text) {
+      saved.v = data;
+    } else if ((first as Text).data !== data) {
       // The same text again changes nothing, and a write would still notify observers.
-      (first as Text).data = text;
+      (first as Text).data = data;
     }
     return;
   }
