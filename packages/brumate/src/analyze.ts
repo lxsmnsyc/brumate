@@ -1719,6 +1719,12 @@ class Resolver {
       return;
     }
     declaration.bound = true;
+    const attribute = owner?.attributes.find(
+      (candidate) => candidate.kind === 'value' && candidate.value.ast === this.site.node,
+    );
+    if (attribute?.kind === 'value') {
+      (declaration.boundAs ??= new Set()).add(attribute.name);
+    }
     const setter =
       fn === undefined
         ? undefined

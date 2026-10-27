@@ -1,7 +1,7 @@
 ---
 id: bound-element-signal
 title: A signal bound to a component's ref may hold an element
-status: active
+status: done
 priority: must
 type: fix
 outline: false

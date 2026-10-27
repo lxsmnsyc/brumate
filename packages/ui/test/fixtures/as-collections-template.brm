@@ -26,7 +26,7 @@
   let open = $signal<Key[]>(['docs']);
   let section = $signal<Key | null>(null);
   let tags = $signal(['news', 'travel', 'gaming']);
-  // The signals of elements are `any`, since a signal cannot take the type that `ref` of a part asks for yet.
+  // These signals are `any`, since ListBox and ListBoxItem type their `ref` as `Bindable<HTMLElement>`, which a signal of an element that may be missing does not fit.
   // oxlint-disable-next-line typescript/no-explicit-any
   let listRef = $signal<any>();
   // oxlint-disable-next-line typescript/no-explicit-any
