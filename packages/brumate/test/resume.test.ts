@@ -4134,6 +4134,30 @@ describe('refs forwarded through components', () => {
       await waitFor(() => expect(text('.seen')).toBe('SECTION'));
     });
 
+    // A component in `as` gets `ref` as a prop and forwards its own element. The dynamic tag
+    // must not also forward its own, so the signal never holds another element.
+    it('gives the element of a component in as, and of an element after as changes', async () => {
+      await resume('restRefTagPageComponent', {});
+      const read = async () => {
+        click(document.querySelector('.read')!);
+        await new Promise((done) => setTimeout(done, 100));
+        return text('.seen');
+      };
+      // A component that drops `ref` leaves the signal empty.
+      expect(await read()).toBe('none');
+      click(document.querySelector('.article')!);
+      await waitFor(() => expect(document.querySelector('article.inner')).not.toBeNull());
+      expect(await read()).toBe('ARTICLE');
+      expect(document.querySelectorAll('.inner')).toHaveLength(1);
+      click(document.querySelector('.section')!);
+      await waitFor(() => expect(document.querySelector('section.inner')).not.toBeNull());
+      expect(await read()).toBe('SECTION');
+      click(document.querySelector('.article')!);
+      await waitFor(() => expect(document.querySelector('article.inner')).not.toBeNull());
+      expect(await read()).toBe('ARTICLE');
+      expect(document.querySelectorAll('.inner')).toHaveLength(1);
+    });
+
     it('leaves the element out of the page state', async () => {
       const server = await import(file('restRefTagPage.brm.ts'));
       const { html, state } = await renderParts(server.default, {});
