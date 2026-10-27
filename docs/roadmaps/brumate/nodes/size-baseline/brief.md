@@ -1,7 +1,7 @@
 ---
 id: size-baseline
 title: Record the size and speed baseline
-status: todo
+status: active
 priority: must
 type: chore
 outline: false
