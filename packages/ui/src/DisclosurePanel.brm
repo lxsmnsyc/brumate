@@ -1,14 +1,24 @@
 <script module>
-  export interface DisclosurePanelProps {
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
+
+  export interface DisclosurePanelOwnProps {
     role?: 'group' | 'region';
     transition?: boolean;
     unmount?: boolean | 'offscreen';
     children?: unknown;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of DisclosurePanel. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type DisclosurePanelProps<T extends AsTarget = 'div'> = AsProps<T, DisclosurePanelOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $effect, $getContext, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { DisclosurePanelContext } from './contexts.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
@@ -27,7 +37,15 @@
    *   `--disclosure-panel-height` holds the height of its content while it moves, so CSS can
    *   animate the height. A TransitionChild inside moves with it.
    */
-  const { role = 'group', transition = false, unmount = false, children, ...rest } = $props<DisclosurePanelProps>();
+  const {
+    as,
+    role = 'group',
+    transition = false,
+    unmount = false,
+    children,
+    ...rest
+  } = $props<DisclosurePanelProps<T>>();
+  let { ref } = $props<DisclosurePanelOwnProps>();
 
   const state = $getContext(DisclosurePanelContext);
   const expanded = $untrack(Boolean(state?.isExpanded));
@@ -38,7 +56,6 @@
   let rested = $signal(expanded);
   let leaving = $signal(false);
   let run = $signal(0);
-  let element = $signal<HTMLElement>();
 
   $setContext(TransitionContext, { show: Boolean(state?.isExpanded), entered: rested });
 
@@ -49,7 +66,7 @@
       return;
     }
     await nextFrame();
-    const target = element;
+    const target = ref;
     if (token === run && target) {
       const done = await enterSteps(target, stepClasses(), {
         current: () => token === run,
@@ -63,7 +80,7 @@
 
   async function close(token: number) {
     rested = false;
-    const target = element;
+    const target = ref;
     if (!transition || !target) {
       shown = false;
       return;
@@ -110,8 +127,8 @@
 </script>
 
 #template content() {
-  <div
-    ref=$bind(element)
+  <{as ?? 'div'}
+    ref=$bind(ref)
     id=(state?.id)
     {role}
     aria-labelledby=(state?.triggerId)
@@ -121,7 +138,7 @@
     data-closed=($untrack(transition && !rested) || undefined)
     onBeforematch=found
     {...rest}
-  >{children}</div>
+  >{children}</>
 }
 
 #if (unmount === 'offscreen') {

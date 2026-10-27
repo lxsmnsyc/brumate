@@ -1,8 +1,9 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { PressEvent } from './events.ts';
 
-  export interface ToggleButtonProps {
+  export interface ToggleButtonOwnProps {
     /** The key of the button in a ToggleButtonGroup. */
     id?: string;
     slot?: string | null;
@@ -11,13 +12,20 @@
     onPress?: (event: PressEvent) => void;
     children?: unknown;
     isSelected?: Bindable<boolean>;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of ToggleButton. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type ToggleButtonProps<T extends AsTarget = 'button'> = AsProps<T, ToggleButtonOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'button'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import { $bind, $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import Button from './Button.brm';
   import { ToggleButtonContext, ToggleGroupContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
@@ -28,8 +36,9 @@
    *
    * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
    */
-  const { id, slot, isDisabled, onChange, onPress, children, ...rest } = $props<ToggleButtonProps>();
-  let { isSelected = false } = $props<ToggleButtonProps>();
+  const { as, id, slot, isDisabled, onChange, onPress, children, ...rest } = $props<ToggleButtonProps<T>>();
+  let { isSelected = false } = $props<ToggleButtonOwnProps>();
+  let { ref } = $props<ToggleButtonOwnProps>();
 
   const context = $getContext(ToggleButtonContext);
   const group = $getContext(ToggleGroupContext);
@@ -42,6 +51,12 @@
   const selected = $memo(group && id !== undefined ? group.selectedKeys.includes(id) : isSelected);
   // The buttons of a group with one selection are radios.
   const radio = $memo(group?.selectionMode === 'single');
+
+  // The ARIA of the button: a radio in a group with one selection, else a toggle. Attributes that
+  // do not apply are left out, so they do not replace the role of a Button that is not native.
+  function state(radio: boolean, on: boolean) {
+    return radio ? { role: 'radio', 'aria-checked': String(on) } : { 'aria-pressed': String(on) };
+  }
 
   function toggle(event: PressEvent) {
     const given = slotProps(context, slot);
@@ -63,11 +78,11 @@
 
 <!-- The Button reads no ButtonContext, since this button has a context of its own. -->
 <Button
+  {as}
+  ref=$bind(ref)
   slot=(null)
   isDisabled=disabled
-  role=(radio ? 'radio' : undefined)
-  aria-checked=(radio ? String(selected) : undefined)
-  aria-pressed=(radio ? undefined : String(selected))
+  {...state(radio, selected)}
   data-selected=(selected || undefined)
   onPress=toggle
   {...attributes}

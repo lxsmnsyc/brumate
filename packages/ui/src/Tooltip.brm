@@ -1,7 +1,9 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
   import type { Placement } from './position.ts';
 
-  export interface TooltipProps {
+  export interface TooltipOwnProps {
     placement?: Placement;
     offset?: number;
     crossOffset?: number;
@@ -9,11 +11,18 @@
     containerPadding?: number;
     transition?: boolean;
     children?: unknown;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of Tooltip. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type TooltipProps<T extends AsTarget = 'div'> = AsProps<T, TooltipOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $effect, $getContext, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
@@ -36,6 +45,7 @@
    * - `transition` lets CSS animate it, with `data-closed`, `data-enter` and `data-leave`.
    */
   const {
+    as,
     placement = 'top',
     offset = 0,
     crossOffset = 0,
@@ -44,7 +54,8 @@
     transition = false,
     children,
     ...rest
-  } = $props<TooltipProps>();
+  } = $props<TooltipProps<T>>();
+  let { ref } = $props<TooltipOwnProps>();
 
   const trigger = $getContext(TooltipTriggerContext);
   const parentLayer = $getContext(LayerContext);
@@ -58,12 +69,11 @@
 
   let mounted = $signal(false);
   let run = $signal(0);
-  let panel = $signal<HTMLElement>();
 
   async function show(token: number) {
     mounted = true;
     await nextFrame();
-    const element = panel;
+    const element = ref;
     const anchor = trigger ? document.getElementById(trigger.triggerId) : null;
     if (token !== run || !element) {
       return;
@@ -106,7 +116,7 @@
   }
 
   async function hide(token: number) {
-    const element = panel;
+    const element = ref;
     if (transition && element) {
       if (!(await leaveSteps(element, stepClasses(), { current: () => token === run }))) {
         return;
@@ -122,8 +132,8 @@
     const next = Boolean(trigger?.isOpen);
     $untrack(change(next));
     return () => {
-      if (panel && !panel.isConnected) {
-        runStops(panel);
+      if (ref && !ref.isConnected) {
+        runStops(ref);
       }
     };
   });
@@ -149,8 +159,8 @@
 #if (mounted) {
   #portal (target) {
     <div id=layerId data-layer style="display: contents">
-      <div
-        ref=$bind(panel)
+      <{as ?? 'div'}
+        ref=$bind(ref)
         id=(trigger?.tooltipId)
         role="tooltip"
         style="position: fixed; top: 0; left: 0"
@@ -158,7 +168,7 @@
         onPointerEnter=entered
         onPointerLeave=left
         {...rest}
-      >{children}</div>
+      >{children}</>
     </div>
   }
 }

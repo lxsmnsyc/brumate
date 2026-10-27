@@ -1,0 +1,192 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Checkbox from '../../src/Checkbox.brm';
+  import CheckboxGroup from '../../src/CheckboxGroup.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import Disclosure from '../../src/Disclosure.brm';
+  import DisclosureGroup from '../../src/DisclosureGroup.brm';
+  import DisclosurePanel from '../../src/DisclosurePanel.brm';
+  import Label from '../../src/Label.brm';
+  import Meter from '../../src/Meter.brm';
+  import Popover from '../../src/Popover.brm';
+  import ProgressBar from '../../src/ProgressBar.brm';
+  import Radio from '../../src/Radio.brm';
+  import RadioGroup from '../../src/RadioGroup.brm';
+  import Text from '../../src/Text.brm';
+  import Toast from '../../src/Toast.brm';
+  import ToastContent from '../../src/ToastContent.brm';
+  import ToastRegion from '../../src/ToastRegion.brm';
+  import ToggleButton from '../../src/ToggleButton.brm';
+  import ToggleButtonGroup from '../../src/ToggleButtonGroup.brm';
+  import Toolbar from '../../src/Toolbar.brm';
+  import Tooltip from '../../src/Tooltip.brm';
+  import TooltipTrigger from '../../src/TooltipTrigger.brm';
+  import { toastQueue } from '../../src/toast.ts';
+  import type { QueuedToast } from '../../src/toast.ts';
+  import AsTarget from './AsTarget.brm';
+
+  // The elements that the parts give back through `ref`. They are `any`, because the type check
+  // of a signal that a component binds takes an element for data that the server cannot send.
+  let toggleRef = $signal<any>();
+  let toolbarRef = $signal<any>();
+  let groupRef = $signal<any>();
+  let disclosureRef = $signal<any>();
+  let setRef = $signal<any>();
+  let panelRef = $signal<any>();
+  let radiosRef = $signal<any>();
+  let boxesRef = $signal<any>();
+  let meterRef = $signal<any>();
+  let barRef = $signal<any>();
+  let regionRef = $signal<any>();
+  let toastRef = $signal<any>();
+  let dialogRef = $signal<any>();
+  let popoverRef = $signal<any>();
+  let tipRef = $signal<any>();
+
+  let pinned = $signal(false);
+  let choice = $signal<string[]>([]);
+  let open = $signal(false);
+  let keys = $signal<string[]>([]);
+  let size = $signal<string | null>(null);
+  let toppings = $signal<string[]>([]);
+  let found1 = $signal('');
+  let found2 = $signal('');
+  let found3 = $signal('');
+  let count = 0;
+
+  function probe1() {
+    found1 =
+      (toggleRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (toolbarRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (groupRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (disclosureRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (setRef?.hasAttribute('data-as-target') ? '1' : '0');
+  }
+
+  function probe2() {
+    found2 =
+      (panelRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (radiosRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (boxesRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (meterRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (barRef?.hasAttribute('data-as-target') ? '1' : '0');
+  }
+
+  function probe3() {
+    found3 =
+      (regionRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (toastRef?.hasAttribute('data-toast-key') ? '1' : '0') +
+      (dialogRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (popoverRef?.hasAttribute('data-as-target') ? '1' : '0') +
+      (tipRef?.hasAttribute('data-as-target') ? '1' : '0');
+  }
+
+  function addAs() {
+    toastQueue<{ title: string }>('as-toast').add({ title: 'Saved as' });
+  }
+
+  function add() {
+    count += 1;
+    toastQueue<{ title: string }>('as-tests').add({ title: `Saved ${count}` });
+  }
+</script>
+
+<Button class="probe1" onPress=probe1>Probe</Button>
+<Button class="probe2" onPress=probe2>Probe</Button>
+<Button class="probe3" onPress=probe3>Probe</Button>
+<p class="found1">{found1}</p>
+<p class="found2">{found2}</p>
+<p class="found3">{found3}</p>
+<Button class="add" onPress=add>Save</Button>
+<Button class="add-as" onPress=addAs>Save as</Button>
+
+<ToggleButton as=AsTarget class="toggle" ref=$bind(toggleRef) isSelected=$bind(pinned)>Pin</ToggleButton>
+<p class="pinned">{String(pinned)}</p>
+
+<Toolbar as=AsTarget class="toolbar" ref=$bind(toolbarRef) aria-label="Tools">
+  <Button class="cut">Cut</Button>
+  <Button class="copy">Copy</Button>
+  <Button class="paste">Paste</Button>
+</Toolbar>
+
+<ToggleButtonGroup as=AsTarget class="group" ref=$bind(groupRef) selectedKeys=$bind(choice)>
+  <ToggleButton id="left" class="left">Left</ToggleButton>
+  <ToggleButton id="right" class="right">Right</ToggleButton>
+</ToggleButtonGroup>
+<p class="choice">{choice.join(',')}</p>
+
+<Disclosure as=AsTarget class="disclosure" ref=$bind(disclosureRef) isExpanded=$bind(open)>
+  <Button slot="trigger" class="disclosure-trigger">Details</Button>
+  <DisclosurePanel as=AsTarget class="panel" ref=$bind(panelRef)>Made of wool.</DisclosurePanel>
+</Disclosure>
+<p class="open">{String(open)}</p>
+
+<DisclosureGroup as=AsTarget class="set" ref=$bind(setRef) expandedKeys=$bind(keys)>
+  <Disclosure id="one" class="one">
+    <Button slot="trigger" class="one-trigger">One</Button>
+    <DisclosurePanel class="one-panel">First</DisclosurePanel>
+  </Disclosure>
+</DisclosureGroup>
+<p class="keys">{keys.join(',')}</p>
+
+<RadioGroup as=AsTarget class="radios" ref=$bind(radiosRef) value=$bind(size)>
+  <Label>Size</Label>
+  <Radio class="small" value="small">Small</Radio>
+  <Radio class="large" value="large">Large</Radio>
+</RadioGroup>
+<p class="size">{size ?? 'none'}</p>
+
+<CheckboxGroup as=AsTarget class="boxes" ref=$bind(boxesRef) value=$bind(toppings)>
+  <Label>Toppings</Label>
+  <Checkbox class="cheese" value="cheese">Cheese</Checkbox>
+  <Checkbox class="ham" value="ham">Ham</Checkbox>
+</CheckboxGroup>
+<p class="toppings">{toppings.join(',')}</p>
+
+<Meter as=AsTarget class="meter" ref=$bind(meterRef) value=(40)><Label>Disk</Label></Meter>
+<ProgressBar as=AsTarget class="bar" ref=$bind(barRef) value=(3) maxValue=(4)><Label>Upload</Label></ProgressBar>
+
+<ToastRegion
+  as=AsTarget
+  queue="as-tests"
+  class="region"
+  ref=$bind(regionRef)
+  toast=item
+/>
+
+#template item(toast: QueuedToast<{ title: string }>) {
+  <Toast {toast} class="toast" ref=$bind(toastRef)>
+    <ToastContent>
+      <Text slot="title" class="title">{toast.content.title}</Text>
+    </ToastContent>
+    <Button slot="close" class="close">×</Button>
+  </Toast>
+}
+
+<ToastRegion queue="as-toast" class="region-as" toast=itemAs />
+
+// A Toast that names a component in `as`. The part of this template does not import the component.
+#template itemAs(toast: QueuedToast<{ title: string }>) {
+  <Toast as=AsTarget {toast} class="toast-as">
+    <ToastContent>
+      <Text slot="title" class="title-as">{toast.content.title}</Text>
+    </ToastContent>
+    <Button slot="close" class="close-as">×</Button>
+  </Toast>
+}
+
+<DialogTrigger>
+  <Button class="pop-trigger">Open</Button>
+  <Popover as=AsTarget class="pop" ref=$bind(popoverRef)>
+    <Dialog as=AsTarget class="dlg" ref=$bind(dialogRef) aria-label="Settings">
+      <Button slot="close" class="dlg-close">Done</Button>
+    </Dialog>
+  </Popover>
+</DialogTrigger>
+
+<TooltipTrigger delay=(0) closeDelay=(0)>
+  <Button class="tip-trigger">Help</Button>
+  <Tooltip as=AsTarget class="tip" ref=$bind(tipRef)>Helpful</Tooltip>
+</TooltipTrigger>

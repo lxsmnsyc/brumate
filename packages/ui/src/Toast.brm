@@ -1,14 +1,23 @@
 <script module>
+  import type { AsProps, AsTarget } from './as.ts';
+  import type { Bindable } from 'brumate/signals';
   import type { QueuedToast } from './toast.ts';
 
-  export interface ToastProps {
+  export interface ToastOwnProps {
     toast: QueuedToast<unknown>;
     children?: unknown;
-    [attribute: string]: unknown;
+    /** The element, bound with `ref=$bind(signal)`. */
+    ref?: Bindable<HTMLElement | undefined>;
   }
+
+  /**
+   * The props of Toast. `as` takes an element name or a component, and the other props are those
+   * of the target.
+   */
+  export type ToastProps<T extends AsTarget = 'div'> = AsProps<T, ToastOwnProps>;
 </script>
 
-<script>
+<script generics="T extends AsTarget = 'div'">
   import { $getContext, $id, $props, $setContext } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
   import { described } from './description.brm.ts';
@@ -22,7 +31,8 @@
    *   after the ToastContent, so a screen reader reads the content first.
    * - It takes focus with Tab and F6, and has `data-toast-key`.
    */
-  const { toast, children, ...rest } = $props<ToastProps>();
+  const { as, toast, children, ...rest } = $props<ToastProps<T>>();
+  let { ref } = $props<ToastOwnProps>();
 
   const region = $getContext(ToastRegionContext);
   const titleId = $id();
@@ -40,7 +50,8 @@
   });
 </script>
 
-<div
+<{as ?? 'div'}
+  ref=$bind(ref)
   role="alertdialog"
   aria-modal="false"
   aria-labelledby=titleId
@@ -48,4 +59,4 @@
   tabindex="0"
   data-toast-key=(toast.key)
   {...rest}
->{children}</div>
+>{children}</>
