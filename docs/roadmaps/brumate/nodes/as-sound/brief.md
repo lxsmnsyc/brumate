@@ -1,7 +1,7 @@
 ---
 id: as-sound
 title: Rebuild as.ts on the element types of brumate
-status: todo
+status: done
 priority: should
 type: refactor
 outline: false
