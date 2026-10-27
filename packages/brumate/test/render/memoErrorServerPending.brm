@@ -1,0 +1,15 @@
+<script>
+  import { $isPending, $memo, $signal } from 'brumate/signals';
+
+  function twice(value: number): Promise<number> {
+    return Promise.resolve(value * 2);
+  }
+
+  let n = $signal(1);
+  const m = $memo(twice(n));
+  const view = $memo(twice(n) && 'p');
+</script>
+
+<p class="flag">{$isPending(m) ? 'p' : 'n'}</p>
+<p class="value">{m}</p>
+<{view} class="tag">tag</>

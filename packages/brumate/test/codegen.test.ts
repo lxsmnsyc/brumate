@@ -522,10 +522,24 @@ describe('await', () => {
     expect(server).toContain(
       'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);\n  const $$p_tags',
     );
+    // A memo without the keyword holds its error until the markup reads it.
     expect(server).toContain(
-      'const tags = (($$t = $$b.ready($$p_tags)) instanceof Promise ? await $$t : $$t);',
+      'let tags;\n  try { tags = (($$t = $$b.ready($$p_tags)) instanceof Promise ? await $$t : $$t); } catch {}',
     );
+    expect(server).toContain('$$b.insert(($$b.read($$p_tags).length)');
     expect(server).not.toContain('$$b.waitAll(');
+  });
+
+  it('reads a memo in place once, and leaves $isPending as false', () => {
+    const { server } = compile(
+      `${header.replace('$memo,', '$isPending, $memo,')}  const user = $memo(load(id));\n</script>\n<p>{$isPending(user) ? 'p' : 'n'}</p>\n<p>{user.name}</p>\n<{user.tag} />`,
+      { filename: 'T.brm' },
+    );
+    expect(server).toContain("$$b.insert((false ? 'p' : 'n'))");
+    expect(server).toContain('$$b.insert(($$b.read($$p_user).name)');
+    expect(server).toContain('$$b.dynamic(($$b.read($$p_user).tag)');
+    expect(server).not.toContain('$$b.read($$p_user)$$b.read');
+    expect(server).not.toContain('false$$b.read');
   });
 
   it('waits for one awaited declaration where it is, and reads it after other statements', () => {
@@ -550,13 +564,13 @@ describe('await', () => {
     );
     // The page waits for the memos where they are declared, one after the other: no keyword, no run.
     expect(server).toContain(
-      'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);',
+      'let user;\n  try { user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t); } catch {}',
     );
     expect(server).toContain(
       '$$b.memo(() => (($$b.read($$p_user)).name.toUpperCase()), $$ctx, "upper")',
     );
     expect(server).not.toContain('$$b.waitAll(');
-    expect(server).toContain('$$b.insert(((user).name)');
+    expect(server).toContain('$$b.insert((($$b.read($$p_user)).name)');
     // In the browser the value is settled, so the memo and the update code do not wait.
     expect(modules.update).toContain(
       '$$b.memo($$s, 2, () => ($$b.get($$s, 1)).name.toUpperCase());',
@@ -577,7 +591,7 @@ describe('await', () => {
       { filename: 'T.brm' },
     );
     expect(server).toContain(
-      'const user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t);',
+      'let user;\n  try { user = (($$t = $$b.ready($$p_user)) instanceof Promise ? await $$t : $$t); } catch {}',
     );
     // The body renders in place when the tags are ready too, and streams otherwise.
     expect(server).toContain('if ($$b.settled([$$p_tags]) && $$ctx.mayShow()) {');

@@ -78,6 +78,7 @@ export function addValueEdits(
   sites: Site[],
   mode: 'server' | 'client' = 'server',
   inline: Set<Declaration> = new Set(),
+  lazy: Set<Declaration> = new Set(),
 ): void {
   const sitesByNode = new Map<object, Site>();
   // The names that each `$props()` destructures, by the call.
@@ -124,6 +125,8 @@ export function addValueEdits(
   const awaits = new Map<number, Reference>();
   // Reads that the edits of a memo replace, which the visit must leave alone.
   const replaced = new Set<Reference>();
+  // The same reads by position, since a site can hold the node of another site.
+  const replacedAt = new Set<number>();
   for (const site of sites) {
     sitesByNode.set(site.node, site);
     for (const read of site.reads) {
@@ -133,10 +136,23 @@ export function addValueEdits(
     }
   }
   // Reads of other memos become reads of the memos, so a value that is still loading throws.
-  const readMemos = (site: Site, node: oxc.Node, own?: Declaration): void => {
+  const readMemos = (
+    site: Site,
+    node: oxc.Node,
+    own?: Declaration,
+    only?: Set<Declaration>,
+  ): void => {
     // A memo in a shorthand property, such as `{ id }`, keeps its key.
     const shorthands = new Set<number>();
+    // `$isPending(memo)` and `$isBound(x)` become `false`, so their arguments are not reads.
+    const folded: [number, number][] = [];
     const findShorthands = (current: oxc.Node): void => {
+      if (
+        current.type === 'CallExpression' &&
+        (calleeName(current) === '$isPending' || calleeName(current) === '$isBound')
+      ) {
+        folded.push([current.start, current.end]);
+      }
       if (current.type === 'Property' && current.shorthand) {
         shorthands.add(current.value.start);
       }
@@ -153,9 +169,12 @@ export function addValueEdits(
         read.range.start >= node.start &&
         read.range.end <= node.end &&
         !targets.has(read.range.start) &&
+        folded.every(([start, end]) => read.range.start < start || read.range.end > end) &&
         read.declaration !== own &&
         !inline.has(read.declaration) &&
+        (!only || only.has(read.declaration)) &&
         !replaced.has(read) &&
+        !replacedAt.has((read.await ?? read.range).start) &&
         (read.declaration.kind === 'memo' || read.declaration.kind === 'async-memo')
       ) {
         // A read with `await` is the read: the value throws when it is still loading.
@@ -167,6 +186,7 @@ export function addValueEdits(
           `${key}$$b.read(${promiseName(read.declaration.name)})`,
         );
         replaced.add(read);
+        replacedAt.add(range.start);
       }
     }
   };
@@ -176,6 +196,15 @@ export function addValueEdits(
     for (const site of sites) {
       if (site.kind === 'function') {
         readMemos(site, site.node as oxc.Node);
+      }
+    }
+    // A memo that the render waits for without `await` holds its error until a read, so the
+    // markup reads it in place, and the `#try` around the read gets the error.
+    if (lazy.size > 0) {
+      for (const site of sites) {
+        if (site.kind !== 'function' && site.kind !== 'memo') {
+          readMemos(site, site.node as oxc.Node, undefined, lazy);
+        }
       }
     }
   }
