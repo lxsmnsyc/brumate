@@ -47,7 +47,7 @@ On the server, a memo declared outside the `#try` that reads it fails at its dec
 
 - [ ] The "declared outside the #try" server test passes as `it`.
 - [ ] A memo read in two `#try` blocks renders each block's own `#catch`.
-- [ ] The same holds for an awaited memo, `const foo = await $memo(bar())` declared outside the `#try`, where `bar()` rejects.
+- [ ] An awaited memo, `const foo = await $memo(bar())`, still throws at its declaration: `await` reads the memo there, so the error goes to the `#try` around the declaration (the maintainer's rule, 2026-10-27). A test covers it outside a `#try`.
 - [ ] docs/decisions.md and website/docs/effects.md drop the inside-only caveat.
 - [ ] Todos gzip within 0.3 kB of main (`pnpm bench --only brumate --scenario todos --metrics dist`).
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
