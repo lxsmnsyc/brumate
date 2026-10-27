@@ -1,7 +1,7 @@
 ---
 id: drop-react-aria-refs
 title: Describe the parts without naming React Aria
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
