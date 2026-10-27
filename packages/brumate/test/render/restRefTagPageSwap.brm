@@ -1,0 +1,13 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import RestRefTag from './RestRefTag.brm';
+
+  let as = $signal('button');
+  let root = $signal<HTMLElement>();
+  let seen = $signal('');
+</script>
+
+<RestRefTag {as} ref=$bind(root) />
+<button class="swap" onClick=(() => (as = 'section'))>Swap</button>
+<button class="read" onClick=(() => (seen = root?.tagName ?? 'none'))>Read</button>
+<p class="seen">{seen}</p>

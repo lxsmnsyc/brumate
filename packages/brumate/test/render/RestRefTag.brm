@@ -1,0 +1,12 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Leaves `ref` in the rest props and spreads them onto a dynamic tag.
+  const { as = 'button', label = 'Rest', ...rest } = $props<{
+    as?: any;
+    label?: string;
+    [name: string]: unknown;
+  }>();
+</script>
+
+<{as} class="inner" {...rest}>{label}</>

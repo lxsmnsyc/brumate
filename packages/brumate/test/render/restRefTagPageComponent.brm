@@ -1,0 +1,17 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import RestRefTag from './RestRefTag.brm';
+  import RestRefTagArticle from './RestRefTagArticle.brm';
+  import RestRefTagIgnore from './RestRefTagIgnore.brm';
+
+  let as = $signal<any>(RestRefTagIgnore);
+  let root = $signal<HTMLElement>();
+  let seen = $signal('');
+</script>
+
+<RestRefTag {as} ref=$bind(root) />
+<button class="section" onClick=(() => (as = 'section'))>Section</button>
+<button class="article" onClick=(() => (as = RestRefTagArticle))>Article</button>
+<button class="ignore" onClick=(() => (as = RestRefTagIgnore))>Ignore</button>
+<button class="read" onClick=(() => (seen = root?.tagName ?? 'none'))>Read</button>
+<p class="seen">{seen}</p>

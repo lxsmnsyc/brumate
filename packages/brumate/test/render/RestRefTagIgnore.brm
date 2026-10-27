@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Names `ref` and leaves it unused, so no element reaches the caller.
+  let { ref, label = 'Ignore' } = $props<{ ref?: unknown; label?: string }>();
+</script>
+
+<aside class="inner">{label}</aside>
