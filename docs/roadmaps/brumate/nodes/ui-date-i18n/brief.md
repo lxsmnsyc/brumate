@@ -1,7 +1,7 @@
 ---
 id: ui-date-i18n
 title: Localized strings and placeholders of the date parts, and a correct today
-status: todo
+status: active
 priority: should
 type: feature
 outline: false

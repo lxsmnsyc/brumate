@@ -1,7 +1,7 @@
 ---
 id: template-context-types
 title: An untyped template parameter takes its type from the prop it is passed to
-status: todo
+status: active
 priority: should
 type: fix
 outline: false
