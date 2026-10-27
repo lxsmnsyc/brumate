@@ -1,0 +1,15 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let count = $signal(1);
+  let seen = $signal(0);
+  const double = $memo(count * 2);
+</script>
+
+<button class="write" onClick=(() => {
+  count++;
+  seen = double;
+})>Write</button>
+<p class="count">{count}</p>
+<p class="double">{double}</p>
+<p class="seen">{seen}</p>

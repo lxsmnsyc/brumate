@@ -1,0 +1,18 @@
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+
+  let first = $signal('Grace');
+  let last = $signal('Hopper');
+  let runs = $signal(0);
+
+  $effect(() => {
+    const log = ((globalThis as any).__batching ??= []);
+    log.push(`${first} ${last}`);
+  });
+</script>
+
+<button class="write" onClick=(() => {
+  first = 'Ada';
+  last = 'Lovelace';
+})>Write</button>
+<p class="name">{first + ' ' + last}</p>

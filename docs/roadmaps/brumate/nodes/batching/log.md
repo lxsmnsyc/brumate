@@ -1,0 +1,3 @@
+- contract update-pass.md written (flush, pass, onPassEnd). flush imported from brumate/signals via Symbol.for registry; compiler keeps mixed signals imports (macros.ts, analyze.ts).
+- no git stash: the stash list is shared between worktrees
+- done: tests, ui suite, size +250 B, rows probe equal to main

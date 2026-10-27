@@ -5731,3 +5731,70 @@ describe('a spread on a component tag', () => {
     expect(el().getAttribute('title')).toBe('a');
   });
 });
+
+describe('batching', () => {
+  afterEach(() => {
+    delete (globalThis as { __batching?: string[] }).__batching;
+  });
+
+  it('writes the DOM once for two writes in a handler', async () => {
+    await resume('batchingWrites', {});
+    const name = document.querySelector('.name')!;
+    let changes = 0;
+    const watcher = new MutationObserver((records) => {
+      changes += records.length;
+    });
+    watcher.observe(name, { childList: true, characterData: true, subtree: true });
+    onTestFinished(() => watcher.disconnect());
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.name')).toBe('Ada Lovelace'));
+    await new Promise((done) => setTimeout(done, 20));
+    changes += watcher.takeRecords().length;
+    expect(changes).toBe(1);
+  });
+
+  it('runs an effect that reads both once', async () => {
+    await resume('batchingWrites', {});
+    const log = () => (globalThis as { __batching?: string[] }).__batching ?? [];
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.name')).toBe('Ada Lovelace'));
+    expect(log()).not.toContain('Ada Hopper');
+    expect(log().filter((entry) => entry === 'Ada Lovelace')).toHaveLength(1);
+  });
+
+  it('does not throw from a state between two writes', async () => {
+    await resume('batchingThrow', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.item')).toBe('c'));
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('flush() runs the waiting bindings at once', async () => {
+    await resume('batchingFlush', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.found')).toBe('yes'));
+  });
+
+  it('without flush() the bindings wait for the end of the handler', async () => {
+    await resume('batchingFlush', {});
+    click(document.querySelector('.lazy')!);
+    await waitFor(() => expect(text('.found')).toBe('no'));
+    expect(document.querySelector('.body')).not.toBeNull();
+  });
+
+  it('flush() sees the DOM when the update code loads at the same time as the handler', async () => {
+    await resume('batchingFlush', {}, { all: 15 });
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(text('.found')).toBe('yes'));
+  });
+
+  it('reads a memo of a signal that the handler wrote', async () => {
+    await resume('batchingMemo', {});
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.seen')).toBe('4'));
+    expect(text('.double')).toBe('4');
+    expect(text('.count')).toBe('2');
+  });
+});

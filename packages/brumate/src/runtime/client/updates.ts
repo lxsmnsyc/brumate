@@ -38,6 +38,9 @@ import type { Scope } from './state.ts';
 
 // oxlint-disable-next-line typescript/no-explicit-any -- Slots hold any value.
 export function get(scope: Scope, slot: number): any {
+  if (dirty.size > 0 && !draining) {
+    settle(scope);
+  }
   const value = scope.s[slot];
   // A value that the server still streams. A memo that reads it waits for it.
   if (computing > 0 && value instanceof Promise) {
@@ -452,6 +455,27 @@ async function updateCode(scope: Scope, slot: number): Promise<unknown> {
   return childrenReady(scope);
 }
 
+/**
+ * Loads the update code of a component and of the components above it, which a write of a bound
+ * prop reaches, so the writes of a handler run before it returns. A handler waits for it.
+ */
+export async function updateReady(scope: Scope | undefined): Promise<void> {
+  const loads: Promise<unknown>[] = [];
+  const seen = new Set<Scope>();
+  const visit = (at: Scope | undefined): void => {
+    if (at && !seen.has(at)) {
+      seen.add(at);
+      loads.push(
+        loadModule(rootOf(at).m!).then((loaded) => loaded.g[at.k] && loadPart(loaded, 'update')),
+      );
+      visit(at.p ?? at.o);
+      visit(at.t);
+    }
+  };
+  visit(scope);
+  await Promise.all(loads);
+}
+
 /** The writes of the pass that runs that wait for code, to run as one pass of their own. */
 let waiting: [Scope, number, Promise<unknown>?][] | undefined;
 
@@ -507,7 +531,7 @@ let updateStart = 0;
  * one round. Effects run after them, the deepest first, so the effects of
  * a child run before those of its parent.
  */
-function pass(write: () => void): void {
+export function pass<T>(write: () => T): T {
   if (DEV && running === 0) {
     updateCount = 0;
     updateStart = performance.now();
@@ -516,10 +540,17 @@ function pass(write: () => void): void {
   if (running++ === 0) {
     failed = false;
   }
+  let result!: T;
+  let held = false;
   try {
-    write();
+    result = write();
     if (running === 1) {
       drain();
+      const hooks = [...passEnd];
+      passEnd.length = 0;
+      for (const hook of hooks) {
+        hook();
+      }
     }
   } finally {
     if (--running === 0) {
@@ -532,19 +563,65 @@ function pass(write: () => void): void {
         }
       }
       levels = [];
+      // Writes that wait for code run as a pass of their own, and the effects wait for it.
+      held = waiting !== undefined;
       waiting = undefined;
       depths.clear();
       failed = false;
       stuck = false;
+      passEnd.length = 0;
+      dirty.clear();
     }
   }
   if (running === 0) {
-    flushEffects();
+    if (!held) {
+      flushEffects();
+    }
     if (DEV) {
       devtools()?.updated?.(updateCount, updateStart, performance.now());
     }
   }
+  return result;
 }
+
+// The memos that wait in the pass, by scope, so a read computes the ones of its scope first.
+const dirty: Map<Scope, Map<string, [number, Map<string, () => void>]>> = new Map();
+
+/** Computes the memos of a scope that wait, so code that reads one in a handler reads the new value. */
+function settle(scope: Scope): void {
+  const waits = dirty.get(scope);
+  if (waits?.size) {
+    for (const [key, [, bucket]] of [...waits].sort((a, b) => a[1][0] - b[1][0])) {
+      const compute = bucket.get(key);
+      bucket.delete(key);
+      waits.delete(key);
+      compute?.();
+    }
+  }
+}
+
+// True while `drain` runs.
+let draining = false;
+
+// The hooks for the end of the pass, which run after its queue and before its effects.
+const passEnd: (() => void)[] = [];
+
+/** Runs `hook` once, after the queue of the pass that runs has run, and before its effects. */
+export function onPassEnd(hook: () => void): void {
+  passEnd.push(hook);
+}
+
+/**
+ * Runs the memos and bindings that wait in the pass at once, such as for a handler that must focus
+ * or measure what it rendered. Effects still wait for the end of the pass.
+ */
+export function flush(): void {
+  if (running > 0 && !draining) {
+    drain();
+  }
+}
+
+(globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.flush')] = flush;
 
 /**
  * Queues the updates that read a slot, on the scope and on its descendants of
@@ -573,6 +650,7 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
   // An update of a scope that left the page in the pass does not run. An error goes to the
   // nearest `#try` around the update, whether its write ran at once or waited for code.
   const later = (): void => {
+    dirty.get(target)?.delete(key);
     if (!failed && scopes.get(target.id) === target) {
       try {
         // Past the limit of rounds, the next update fails in place of running.
@@ -594,7 +672,13 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
   const depth = depthOf(target);
   const level = (levels[depth] ??= { m: [], b: new Map(), e: new Map() });
   if (name[0] === 'm') {
-    (level.m[+name.slice(1)] ??= new Map()).set(key, later);
+    const bucket = (level.m[+name.slice(1)] ??= new Map());
+    bucket.set(key, later);
+    let waits = dirty.get(target);
+    if (!waits) {
+      dirty.set(target, (waits = new Map()));
+    }
+    waits.set(key, [+name.slice(1), bucket]);
   } else {
     (name[0] === 'e' ? level.e : level.b).set(key, later);
   }
@@ -640,39 +724,44 @@ let stuck = false;
 function drain(): void {
   let rounds = 0;
   let depth = 0;
-  while (depth < levels.length) {
-    const level = levels[depth];
-    if (!level) {
-      depth++;
-      continue;
-    }
-    // The bucket of the lowest rank. Each runs whole, so the scan is short.
-    const memos = level.m;
-    let rank = 0;
-    while (rank < memos.length && !memos[rank]?.size) {
-      rank++;
-    }
-    const bucket = memos[rank];
-    if (bucket) {
-      // The whole bucket runs in one loop, with the memos that join it while it runs. A memo that
-      // queues a lower rank or a lower depth, such as of a template that a shallower component
-      // renders, runs after the bucket, since the scan starts again.
-      for (const [key, compute] of bucket) {
-        bucket.delete(key);
-        compute();
+  draining = true;
+  try {
+    while (depth < levels.length) {
+      const level = levels[depth];
+      if (!level) {
+        depth++;
+        continue;
       }
-    } else if (level.b.size > 0) {
-      stuck = ++rounds > 10_000;
-      const round = [...level.b.values()];
-      level.b.clear();
-      for (const waiter of round) {
-        waiter();
+      // The bucket of the lowest rank. Each runs whole, so the scan is short.
+      const memos = level.m;
+      let rank = 0;
+      while (rank < memos.length && !memos[rank]?.size) {
+        rank++;
       }
-    } else {
-      depth++;
-      continue;
+      const bucket = memos[rank];
+      if (bucket) {
+        // The whole bucket runs in one loop, with the memos that join it while it runs. A memo that
+        // queues a lower rank or a lower depth, such as of a template that a shallower component
+        // renders, runs after the bucket, since the scan starts again.
+        for (const [key, compute] of bucket) {
+          bucket.delete(key);
+          compute();
+        }
+      } else if (level.b.size > 0) {
+        stuck = ++rounds > 10_000;
+        const round = [...level.b.values()];
+        level.b.clear();
+        for (const waiter of round) {
+          waiter();
+        }
+      } else {
+        depth++;
+        continue;
+      }
+      depth = 0;
     }
-    depth = 0;
+  } finally {
+    draining = false;
   }
 }
 
@@ -686,10 +775,16 @@ function flushEffects(): void {
   }
   flushing = true;
   try {
-    // A map iterator also visits entries that are added while it runs.
-    for (const [key, runEffect] of pendingEffects) {
-      pendingEffects.delete(key);
-      runEffect();
+    // The effects that wait run as one pass, so their writes update the page once. A pass that
+    // they start puts the effects it schedules back, and they run next.
+    while (pendingEffects.size > 0) {
+      const run = [...pendingEffects.values()];
+      pendingEffects.clear();
+      pass(() => {
+        for (const runEffect of run) {
+          runEffect();
+        }
+      });
     }
   } finally {
     flushing = false;

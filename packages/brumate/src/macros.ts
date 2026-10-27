@@ -42,8 +42,29 @@ export const RENAMED_MACROS: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** True for `import … from 'brumate/signals'`, which the compiler removes. */
-export function isMacroImport(statement: oxc.Node): boolean {
+export function isSignalsImport(statement: oxc.Node): boolean {
   return statement.type === 'ImportDeclaration' && statement.source.value === SIGNALS_MODULE;
+}
+
+/**
+ * True for an import of `brumate/signals` that holds compile-time functions only, which the
+ * compiler removes. One that also imports a function of the runtime, such as `flush`, stays.
+ */
+export function isMacroImport(statement: oxc.Node): boolean {
+  if (!isSignalsImport(statement)) {
+    return false;
+  }
+  for (const specifier of (statement as oxc.ImportDeclaration).specifiers) {
+    if (specifier.type !== 'ImportSpecifier' || specifier.importKind === 'type') {
+      continue;
+    }
+    const name =
+      specifier.imported.type === 'Identifier' ? specifier.imported.name : specifier.imported.value;
+    if (!MACROS.has(name) && !RENAMED_MACROS.has(name)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** Calls every AST node inside a value of the file, such as a script or an expression. */
@@ -87,7 +108,7 @@ export function resolveMacros(file: SFCFile): {
   const aliases = new Map<string, string>();
   const diagnostics: Diagnostic[] = [];
   walk(file, (node) => {
-    if (!isMacroImport(node)) {
+    if (!isSignalsImport(node)) {
       return;
     }
     for (const specifier of (node as oxc.ImportDeclaration).specifiers) {
