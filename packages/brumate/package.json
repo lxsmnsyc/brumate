@@ -17,6 +17,7 @@
   "files": [
     "dist",
     "types.d.ts",
+    "elements.d.ts",
     "forms",
     "skills"
   ],
@@ -109,6 +110,9 @@
       "types": "./dist/runtime/env.d.ts",
       "default": "./dist/runtime/env.js"
     },
+    "./elements": {
+      "types": "./elements.d.ts"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -117,7 +121,7 @@
   "scripts": {
     "build": "tsdown",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.elements.json"
   },
   "dependencies": {
     "@twinkleplop/core": "0.3.1",

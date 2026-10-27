@@ -1415,8 +1415,10 @@ export function insert(
   return insertValue(value);
 }
 
+// A compiled component answers a string. Its type is `Markup` of brumate/elements, an object type
+// that a string stands in for. The bundle cannot import that type without a copy of its own.
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
-export type Component<P = any> = (props: P, ctx: Context) => Promise<string>;
+export type Component<P = any> = (props: P, ctx: Context) => Promise<string | object>;
 
 /**
  * Renders a child component. With `scope` and `anchor`, records the child's
@@ -1443,12 +1445,12 @@ export function component<P>(
   const given = (props as { children?: unknown } | undefined)?.children;
   // Children that the browser renders itself need no HTML from the server.
   if (!(given instanceof Children) || given[CHILDREN_REF]) {
-    return Child(props, ctx);
+    return Child(props, ctx) as Promise<string>;
   }
   // Children that the component did not insert render after it, inside its root scope, so the
   // page state has their HTML for the browser.
   const root = ctx.peek();
-  return Child(props, ctx).then(async (html) => {
+  return (Child(props, ctx) as Promise<string>).then(async (html) => {
     if (given[RAW] === undefined) {
       await given[LAZY](ctx, root);
     }
@@ -2198,7 +2200,7 @@ export async function render<P>(
       : undefined);
   ctx.event = event;
   // The first part of each component runs with the event, and so do memos, which the compiler gives `$$ctx`.
-  const rendered = await ctx.run(() => Root(props, ctx));
+  const rendered = (await ctx.run(() => Root(props, ctx))) as string;
   ctx.send();
   const html = beforeBodyEnd(rendered, ctx.portals.join(''));
   // The queue of `pending` is made only when something is pending, because it costs a lot for a small page.

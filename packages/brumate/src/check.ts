@@ -50,6 +50,8 @@ export interface CheckOutput {
  */
 const HELPERS = `/// <reference types="brumate/types" />
 type $$Component<P> = (props: P, ...rest: any[]) => unknown;
+type $$Markup = import('brumate/elements').Markup;
+declare const $$markup: $$Markup;
 declare function $$dynamic(tag: string | ((props: never, ...rest: never[]) => unknown), props: Record<string, unknown>): void;
 type $$Event<K, M> = K extends keyof M ? M[K] : Event;
 type $$Element<T> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement;
@@ -235,7 +237,7 @@ class Generator {
     } else {
       out.text('Record<string, any>');
     }
-    out.text(", $$ctx?: import('brumate/server').Context): Promise<string> {\n");
+    out.text(", $$ctx?: import('brumate/server').Context): Promise<$$Markup> {\n");
     out.text('$$use($$props, $$ctx);\n');
     for (const statement of body) {
       if (!isTopLevel(statement)) {
@@ -251,7 +253,7 @@ class Generator {
     }
     this.templates(file.templates);
     this.nodes(file.children);
-    out.text("return '';\n}\n");
+    out.text('return $$markup;\n}\n');
     // Components are sent to the client by their ID, as the compiled ones are.
     out.text(`${COMPONENT}.brumateId = '';\n`);
   }
@@ -292,9 +294,9 @@ class Generator {
       if (template.params.length > 0) {
         out.copy({ start: template.params[0]!.start, end: template.params.at(-1)!.end });
       }
-      out.text(') {\n');
+      out.text('): Promise<$$Markup> {\n');
       this.body(template.body);
-      out.text('}\n');
+      out.text('return $$markup;\n}\n');
     }
   }
 
@@ -632,7 +634,7 @@ export function toTypeScript(source: string, filename = 'Component.brm'): CheckO
       out.text('\n');
     }
     out.text(
-      `export default async function ${COMPONENT}(..._: any[]): Promise<string> {\n  return '';\n}\n`,
+      `export default async function ${COMPONENT}(..._: any[]): Promise<$$Markup> {\n  return $$markup;\n}\n`,
     );
     return { code: out.code, mappings: out.mappings, error };
   }

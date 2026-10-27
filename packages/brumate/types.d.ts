@@ -1,7 +1,7 @@
 declare module '*.brm?brumate-server' {
-  import type { Context } from 'brumate/server';
+  import type { Component as BrumateComponent } from 'brumate/elements';
 
-  const Component: (props: any, ctx: Context) => Promise<string>;
+  const Component: BrumateComponent<any>;
   export default Component;
 }
 
@@ -20,9 +20,9 @@ declare module 'virtual:brumate/testing' {
 }
 
 declare module '*.brm' {
-  import type { Context } from 'brumate/server';
+  import type { Component as BrumateComponent } from 'brumate/elements';
 
-  const Component: (props: any, ctx: Context) => Promise<string>;
+  const Component: BrumateComponent<any>;
   export default Component;
 }
 
