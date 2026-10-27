@@ -482,12 +482,10 @@ describe('resume', () => {
     expect(text('li:last-child')).toBe('New');
   });
 
-  // A write runs the readers of each slot that it changes, one slot after another. An
-  // update that reads two of those slots runs once for each, and a child can get one
-  // new prop before the other. `it.fails` marks what ordered updates in
-  // docs/proposals.md would fix.
+  // A write runs the memos it reaches in the order they are declared, each once, then
+  // the bindings, each once. A child gets every new prop before its memos compute.
   describe('updates of a signal and a memo of it', () => {
-    it.fails('computes a memo that reads both once', async () => {
+    it('computes a memo that reads both once', async () => {
       await resume('diamond', {});
       clearRuns();
       click(document.querySelector('.add')!);
@@ -495,7 +493,7 @@ describe('resume', () => {
       expect(runsOf('sum')).toEqual(['sum 2 + 4']);
     });
 
-    it.fails('computes a memo of that memo once', async () => {
+    it('computes a memo of that memo once', async () => {
       await resume('diamond', {});
       clearRuns();
       click(document.querySelector('.add')!);
@@ -503,7 +501,7 @@ describe('resume', () => {
       expect(runsOf('label')).toEqual(['label 2 + 4 of 4']);
     });
 
-    it.fails('runs a binding that reads both once', async () => {
+    it('runs a binding that reads both once', async () => {
       await resume('diamond', {});
       clearRuns();
       click(document.querySelector('.add')!);
@@ -511,7 +509,7 @@ describe('resume', () => {
       expect(runsOf('both')).toEqual(['both 2 4']);
     });
 
-    it.fails('computes a memo of a child that gets both as props once', async () => {
+    it('computes a memo of a child that gets both as props once', async () => {
       await resume('diamond', {});
       clearRuns();
       click(document.querySelector('.grow')!);
@@ -519,7 +517,7 @@ describe('resume', () => {
       expect(runsOf('shout')).toEqual(['shout 3 2']);
     });
 
-    it.fails('gives a child the new list with the new index', async () => {
+    it('gives a child the new list with the new index', async () => {
       await resume('diamond', {});
       const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
       onTestFinished(() => errors.mockRestore());
@@ -529,6 +527,71 @@ describe('resume', () => {
       // reaches the child first, and its memo reads past the end of the old list.
       click(document.querySelector('.grow')!);
       await vi.waitFor(() => expect(text('.shout')).toBe('D'), { timeout: 500 });
+      expect(errors).not.toHaveBeenCalled();
+    });
+
+    it('gives a child a value through a context and another through a prop of a child between', async () => {
+      await resume('diamondContext', {});
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      clearRuns();
+      click(document.querySelector('.grow')!);
+      await vi.waitFor(() => expect(text('.pick')).toBe('c'), { timeout: 500 });
+      expect(runsOf('pick')).toEqual(['pick 3 2']);
+      click(document.querySelector('.grow')!);
+      await vi.waitFor(() => expect(text('.pick')).toBe('d'), { timeout: 500 });
+      expect(errors).not.toHaveBeenCalled();
+    });
+
+    it('gives children inserted into a provider the new context with the new prop', async () => {
+      await resume('diamondChildren', {});
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      const steps: [string, string, string][] = [
+        ['.grow', 'D', 'kidPick 4 3'],
+        ['.grow', 'E', 'kidPick 5 4'],
+        ['.cut', 'D', 'kidPick 4 3'],
+        ['.cut', 'C', 'kidPick 3 2'],
+      ];
+      for (const [button, shown, run] of steps) {
+        clearRuns();
+        click(document.querySelector(button)!);
+        // oxlint-disable-next-line no-await-in-loop -- Each click waits for the one before.
+        await vi.waitFor(() => expect(text('.kid-pick')).toBe(shown), { timeout: 500 });
+        expect(runsOf('kidPick')).toEqual([run]);
+      }
+      expect(errors).not.toHaveBeenCalled();
+    });
+
+    it('computes the memo of a template that a shallower component renders after the memos it reads', async () => {
+      await resume('diamondLift', {});
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      click(document.querySelector('.lift')!);
+      await vi.waitFor(() => expect(text('.lift-pick')).toBe('C'), { timeout: 500 });
+      const steps: [string, string][] = [
+        ['B', 'liftPick 2 1'],
+        ['A', 'liftPick 1 0'],
+      ];
+      for (const [shown, run] of steps) {
+        clearRuns();
+        click(document.querySelector('.cut')!);
+        // oxlint-disable-next-line no-await-in-loop -- Each click waits for the one before.
+        await vi.waitFor(() => expect(text('.lift-pick')).toBe(shown), { timeout: 500 });
+        expect(runsOf('liftPick')).toEqual([run]);
+      }
+      expect(errors).not.toHaveBeenCalled();
+    });
+
+    it('computes a memo of a child once when it writes a bound prop that the parent passes back a memo of', async () => {
+      await resume('diamondBind', {});
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      clearRuns();
+      click(document.querySelector('.cut')!);
+      await vi.waitFor(() => expect(text('.last')).toBe('A'), { timeout: 500 });
+      expect(text('.text')).toBe('a');
+      expect(runsOf('lastChar')).toEqual(['lastChar a 1']);
       expect(errors).not.toHaveBeenCalled();
     });
   });
@@ -960,6 +1023,63 @@ describe('resume', () => {
     click(document.querySelector('.count-up')!);
     click(document.querySelector('.count-up')!);
     await waitFor(() => expect(text('.caught')).toBe('Error: Effect at 3'));
+  });
+
+  it('catches the error of a memo in the #try around it, also when the write waited for the code', async () => {
+    await resume('tryWaitingUpdate', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    // The first click writes before the update code has loaded.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('drops the rest of the updates of a write when a memo throws, so no reader sees its old value', async () => {
+    await resume('memoThrows', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    clearRuns();
+    // The first click writes before the update code has loaded, the second after.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: Bad 1');
+    click(document.querySelector('.warm')!);
+    await waitFor(() => expect(text('.other')).toBe('1'));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(2));
+    expect(String(errors.mock.calls[1]![0])).toBe('Error: Bad 2');
+    expect(text('.count')).toBe('0');
+    expect(text('.both')).toBe('0/ok0');
+    expect(runsOf('both')).toEqual([]);
+  });
+
+  it('shows the error of the memo that threw in its #try, not one of a memo that read its old value', async () => {
+    // The write waits for the update code.
+    await resume('memoThrowsTry', {});
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+    stop?.();
+    // The update code has loaded before the write.
+    await resume('memoThrowsTry', {});
+    click(document.querySelector('.warm')!);
+    await waitFor(() => expect(text('.other')).toBe('1'));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Bad 1'));
+  });
+
+  it('stops updates that keep writing what they read, with one error, and the page goes on', async () => {
+    await resume('refLoop', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.double')).toBe('2'));
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    expect(String(errors.mock.calls[0]![0])).toContain('did not settle');
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.double')).toBe('4'));
+    expect(errors).toHaveBeenCalledTimes(1);
   });
 
   it('reports an error outside every #try with an event, and to onError first', async () => {

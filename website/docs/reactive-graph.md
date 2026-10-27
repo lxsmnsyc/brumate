@@ -99,7 +99,7 @@ export * from "./Counter.brm?brumate-client&part=update";
 export const g = { 1: { 0: [[1, "m2"], [1, "u5"]], 1: [[1, "u6"]] } };
 ```
 
-- `g` is the graph of step 1, kept for the browser. For scopes of kind 1, a write to slot 0 runs `m2` and then `u5`, and a write to slot 1 runs `u6`.
+- `g` is the graph of step 1, kept for the browser. For scopes of kind 1, a write to slot 0 runs `m2` and `u5`, and a write to slot 1 runs `u6`.
 
 The core reads the state script and makes scope 0, with its slots `[0, 0]`. On the click, the loader walks from the target to the element with `b-on`, and reads `b-b="0:0"`. The core calls the handler with that scope:
 
@@ -111,7 +111,7 @@ export const h4 = ($$s) => $$b.update($$s, 0, 1, false);
 
 ### 7. The write runs the code that reads it
 
-`set` stores the new value in slot 0, and runs each entry of `g[1][0]` in order:
+`set` stores the new value in slot 0, and queues each entry of `g[1][0]`. A queued update waits once, however many slots it reads change. Then the write runs what waits:
 
 ```ts
 export function m2($$s) {
@@ -125,12 +125,15 @@ export function u6($$s) {
 }
 ```
 
-1. `m2` computes `double` and writes it to slot 1. That write runs `g[1][1]`, which is `u6`, and `u6` sets text 2 to `2`.
-2. `u5` sets text 1 to `1`.
+1. The memos first, in the order they are declared, each once. `m2` computes `double` and writes it to slot 1. That write queues `g[1][1]`, which is `u6`.
+2. Then the bindings, each once, in the order they were queued: `u5` sets text 1 to `1`, and `u6` sets text 2 to `2`.
+3. Then the effects, if any read the slots.
+
+The memos and bindings of a component run before those of the components inside it, so a child gets every new prop and context value before its memos compute. The effects of a child run before those of its parent. All of it runs before `set` returns, so code that writes `count` and then reads `double` reads the new value.
 
 The page shows `1 / 2`. Nothing else ran: the heading, the button and the rest of the page were not touched.
 
-- A write runs only the entries of its slot, so its cost does not grow with the size of the component.
+- A write runs only the entries of the slots it changes, so its cost does not grow with the size of the component.
 - An entry for another kind, such as the items of a list that read a slot of the list's scope, runs on each scope of that kind inside the one that was written.
 - A write of the same value, by `Object.is`, runs nothing.
 - Effects wait until the other updates of a write have run, and run once each.

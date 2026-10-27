@@ -1,0 +1,12 @@
+<script>
+  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { ran } from './runs.ts';
+  import { Level } from './tplContext.ts';
+
+  const { list } = $props<{ list: string[] }>();
+  const last = $getContext(Level);
+  // It throws when it reads an index past the end of the list.
+  const pick = $memo(ran('pick', `${list.length} ${last}`) && list[last]!.toLowerCase());
+</script>
+
+<p class="pick">{pick}</p>

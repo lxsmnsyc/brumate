@@ -1,0 +1,10 @@
+<script>
+  import { $memo, $props, $setContext } from 'brumate/signals';
+  import { Level } from './tplContext.ts';
+
+  const { letters, children } = $props<{ letters: string[]; children?: unknown }>();
+  const last = $memo(letters.length - 1);
+  $setContext(Level, last);
+</script>
+
+<div class="wrap">{children}</div>

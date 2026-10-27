@@ -1,0 +1,19 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+  import { ran } from './runs.ts';
+  import DiamondLifter from './DiamondLifter.brm';
+
+  const { onTpl } = $props<{ onTpl: (tpl: () => unknown) => void }>();
+  let list = $signal(['a', 'b', 'c']);
+  const last = $memo(list.length - 1);
+</script>
+
+<button class="cut" onClick=(() => (list = list.slice(0, -1)))>Cut</button>
+<DiamondLifter tpl=body {onTpl} />
+#template body() {
+  <script>
+    // It throws when it reads an index past the end of the list.
+    const liftPick = $memo(ran('liftPick', `${list.length} ${last}`) && list[last]!.toUpperCase());
+  </script>
+  <p class="lift-pick">{liftPick}</p>
+}

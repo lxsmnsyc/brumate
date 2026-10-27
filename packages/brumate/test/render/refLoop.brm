@@ -1,0 +1,17 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  // Each row writes `element`, which renders the list again, without end.
+  let element = $signal<unknown>();
+  let count = $signal(0);
+  const double = $memo(count * 2);
+</script>
+
+<button class="go" onClick=(() => (element = 1))>Go</button>
+<button class="inc" onClick=(() => count++)>Inc</button>
+<p class="double">{double}</p>
+<ul>
+  #for (item of [element]) {
+    <li ref=$bind(element)>x</li>
+  }
+</ul>

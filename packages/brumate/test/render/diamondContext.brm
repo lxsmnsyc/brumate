@@ -1,0 +1,12 @@
+<script>
+  import { $memo, $setContext, $signal } from 'brumate/signals';
+  import DiamondContextMid from './DiamondContextMid.brm';
+  import { Level } from './tplContext.ts';
+
+  let letters = $signal(['a', 'b']);
+  const last = $memo(letters.length - 1);
+  $setContext(Level, last);
+</script>
+
+<button class="grow" onClick=(() => (letters = [...letters, String.fromCharCode(97 + letters.length)]))>Grow</button>
+<DiamondContextMid {letters} />

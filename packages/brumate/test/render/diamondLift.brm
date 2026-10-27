@@ -1,0 +1,9 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import DiamondLiftMid from './DiamondLiftMid.brm';
+
+  let view = $signal<(() => unknown) | undefined>(undefined);
+</script>
+
+<DiamondLiftMid onTpl=((tpl) => (view = tpl)) />
+<div class="lifted">{view ? view() : 'unset'}</div>

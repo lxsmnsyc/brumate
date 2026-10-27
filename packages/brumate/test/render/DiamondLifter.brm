@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { tpl, onTpl } = $props<{ tpl: () => unknown; onTpl: (tpl: () => unknown) => void }>();
+</script>
+
+<button class="lift" onClick=(() => onTpl(tpl))>Lift</button>
