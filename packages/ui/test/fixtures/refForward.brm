@@ -5,20 +5,13 @@
   import Link from '../../src/Link.brm';
   import AsTarget from './AsTarget.brm';
 
-  // The elements that the parts give back through `ref`. They are `any`, because the check of a
-  // signal that a component binds takes an element for data that the server cannot send.
-  // oxlint-disable-next-line typescript/no-explicit-any
-  let linkRef = $signal<any>();
-  // oxlint-disable-next-line typescript/no-explicit-any
-  let buttonRef = $signal<any>();
-  // oxlint-disable-next-line typescript/no-explicit-any
-  let headingRef = $signal<any>();
-  // oxlint-disable-next-line typescript/no-explicit-any
-  let asLinkRef = $signal<any>();
-  // oxlint-disable-next-line typescript/no-explicit-any
-  let asButtonRef = $signal<any>();
-  // oxlint-disable-next-line typescript/no-explicit-any
-  let asHeadingRef = $signal<any>();
+  // The elements that the parts give back through `ref`.
+  let linkRef = $signal<HTMLElement>();
+  let buttonRef = $signal<HTMLElement>();
+  let headingRef = $signal<HTMLElement>();
+  let asLinkRef = $signal<HTMLElement>();
+  let asButtonRef = $signal<HTMLElement>();
+  let asHeadingRef = $signal<HTMLElement>();
   let plain = $signal('');
   let targeted = $signal('');
 
