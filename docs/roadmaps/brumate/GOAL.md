@@ -1,5 +1,6 @@
 ---
 milestones: [core-correct, agent-skill, ui-0.1, smaller-client, features, backlog]
+review: auto  # self for S, docs and chore nodes, a fresh reviewer for the rest
 merge:
   # The user chose auto-merge on 2026-10-26. The orchestrator merges the pull requests that pass
   # plan.py can-merge, and the rest wait for the user.
