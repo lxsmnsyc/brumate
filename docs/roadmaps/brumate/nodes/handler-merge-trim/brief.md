@@ -1,7 +1,7 @@
 ---
 id: handler-merge-trim
 title: Measure and trim the merged handlers of #264
-status: todo
+status: done
 priority: should
 type: refactor
 outline: false
@@ -12,7 +12,7 @@ size: S
 spike: false
 verify: pnpm --filter brumate exec vitest run test/resume.test.ts -t "merge"
 exclusive: []
-fulfilled_by:
+fulfilled_by: size-trim (#297)
 gate: false
 added: 2026-10-27
 owns: []
