@@ -69,3 +69,58 @@ it('gives the content of an indeterminate ProgressBar no value', async () => {
   const page = await fixes();
   expect(page.text('.spinner-text')).toBe('none|undefined');
 });
+
+it('prevents Home and End of a toolbar on a button, and moves focus', async () => {
+  const page = await fixes();
+  for (const name of ['.undo', '.up']) {
+    const button = page.get(name) as HTMLElement;
+    button.focus();
+    // The code of the toolbar loads after the page.
+    await page.waitFor(() => expect(key(button, 'Home').defaultPrevented).toBe(true));
+    expect(key(button, 'End').defaultPrevented).toBe(true);
+  }
+  const up = page.get('.up') as HTMLElement;
+  up.focus();
+  key(up, 'End');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.down')));
+});
+
+it('leaves Home and End to a text field of a toolbar', async () => {
+  const page = await fixes();
+  const before = page.get('.before') as HTMLElement;
+  before.focus();
+  await page.waitFor(() => expect(key(before, 'End').defaultPrevented).toBe(true));
+  const field = page.get('.field') as HTMLElement;
+  field.focus();
+  expect(key(field, 'Home').defaultPrevented).toBe(false);
+  expect(key(field, 'End').defaultPrevented).toBe(false);
+  expect(document.activeElement).toBe(field);
+});
+
+it('prevents Home and End of a toggle button group, in either orientation', async () => {
+  const page = await fixes();
+  for (const name of ['.bold', '.va']) {
+    const button = page.get(name) as HTMLElement;
+    button.focus();
+    // The code of the group loads after the page.
+    await page.waitFor(() => expect(key(button, 'Home').defaultPrevented).toBe(true));
+    expect(key(button, 'End').defaultPrevented).toBe(true);
+  }
+  const a = page.get('.va') as HTMLElement;
+  a.focus();
+  key(a, 'End');
+  await page.waitFor(() => expect(document.activeElement).toBe(page.get('.vb')));
+  const vb = page.get('.vb') as HTMLElement;
+  expect(key(vb, 'ArrowRight').defaultPrevented).toBe(false);
+});
+
+it('leaves Home and End to a text field inside a toggle button group', async () => {
+  const page = await fixes();
+  const button = page.get('.wx') as HTMLElement;
+  button.focus();
+  await page.waitFor(() => expect(key(button, 'Home').defaultPrevented).toBe(true));
+  const field = page.get('.gfield') as HTMLElement;
+  field.focus();
+  expect(key(field, 'Home').defaultPrevented).toBe(false);
+  expect(key(field, 'End').defaultPrevented).toBe(false);
+});
