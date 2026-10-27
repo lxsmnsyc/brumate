@@ -2,7 +2,78 @@
 
 Ideas measured or found during the 2026-10-21 performance work that are not done yet. Each item says where the cost is, the change, and the gain that was measured or estimated. `pnpm bench` in [`benchmarks/`](../benchmarks) is the way to check a change.
 
+## Baseline on main, 2026-10-27
+
+This is the baseline that each step of the smaller client reports against. It is a run of `pnpm bench` on main at commit `f45a5c74`, on 2026-10-27. The code is the same as at `654f05dd`; only docs came after it. The machine was an Apple M2 with 8 cores and Node 26.12.1. Sizes are raw / gzip -9.
+
+### Size
+
+Sizes do not depend on load. They were the same in all three runs (the 3-todo HTML differed by 2 B).
+
+| Scenario  | Metric                                  | Files |                             Size |
+| --------- | --------------------------------------- | ----: | -------------------------------: |
+| Todos     | JS before `load`                        |     5 |            32.8 kB / **13.9 kB** |
+| Todos     | JS on the first click (counter, toggle) |     0 |                              0 B |
+| Todos     | Total JS after counter, toggle and add  |     5 |                32.8 kB / 13.9 kB |
+| Todos     | Client JS emitted in dist               |     7 |                77.2 kB / 27.5 kB |
+| Todos     | SSR HTML, 3 todos / 100 todos           |       | 1.5 kB / 711 B, 16.2 kB / 2.1 kB |
+| Todos     | Per extra todo                          |       |                     155 B / 15 B |
+| Rows      | Client JS emitted in dist               |     6 |            76.7 kB / **27.3 kB** |
+| Rows      | SSR HTML, 1,000 rows                    |       |               307.2 kB / 24.2 kB |
+| Dashboard | JS before `load`                        |     4 |               111.4 kB / 23.6 kB |
+| Dashboard | JS on the first click and on scroll     |     0 |                              0 B |
+| Dashboard | Client JS emitted in dist               |     6 |               155.8 kB / 37.3 kB |
+
+The rows report has no `JS before load` row. The page loads all of its client code when it starts, so the 27.3 kB of the build output is the ceiling for what loads. The first click of the todos and dashboard pages fetches nothing, since the page loads its code at the start (see "Client loading").
+
+The benchmarks README, from 2026-10-22, has 2.1 kB gzip before `load` for todos and 3.1 kB for the dashboard. Now they are 13.9 kB and 23.6 kB. The likely cause is the change of 2026-10-25 that loads all page code at the start (not checked here). These are the numbers that the next steps have to bring down. Marko 6 loads 4.4 kB and 10.5 kB.
+
+### Speed
+
+The timings were taken under load: other agents ran tests and builds on the machine during every run. The load average was 6.5 to 8.9 on 8 cores at the start and end of each run. The min to max ranges are wide. Compare them only with runs on the same machine, ideally with an idle one. The ratios to Marko 6 inside one run are the safest thing to compare.
+
+Three runs of `pnpm bench --scenario todos,dashboard`, then one run of `--scenario rows` (about 20 minutes with 10 runs, so it ran once). The tables give the median of the three runs, then each run.
+
+| Metric (brumate)                                      | Median |   Run 1 |  Run 2 |  Run 3 |
+| ----------------------------------------------------- | -----: | ------: | -----: | -----: |
+| Load average at start of the run                      |        |    8.76 |   8.86 |   6.50 |
+| SSR renders/s, 3 todos                                | 52,606 | 121,476 | 52,606 | 47,504 |
+| SSR renders/s, 100 todos                              |  6,246 |  11,714 |  6,246 |  4,441 |
+| SSR renders/s, dashboard page                         |  2,086 |   4,804 |  2,086 |  1,922 |
+| Todos click to update: counter, ms                    |    318 |     117 |    318 |    348 |
+| Todos click to update: toggle, ms                     |     77 |      47 |    137 |     77 |
+| Todos click to update: add, ms                        |    151 |     115 |    151 |    172 |
+| Todos first counter click, 150 ms RTT, after idle, ms |     97 |      97 |    100 |     73 |
+| Todos first counter click, 150 ms RTT, cold, ms       |    116 |     117 |    116 |     94 |
+| Dashboard click to update: widget 1, ms               |    122 |     294 |     46 |    122 |
+| Dashboard click to update: widget 30, ms              |     22 |     183 |     19 |     22 |
+| Dashboard click to update: widget 45, ms              |     21 |     237 |     19 |     21 |
+| Dashboard first click, 150 ms RTT, after idle, ms     |    129 |     421 |    103 |    129 |
+| Dashboard first click, 150 ms RTT, cold, ms           |    442 |     431 |    445 |    442 |
+
+Run 1 had the highest SSR rates. Runs 2 and 3 had up to 2.6 times fewer renders per second, and the click timings moved by up to 6 times. The load explains this. In run 1, brumate rendered 3 todos at 121,476 per second against 134,625 for Marko 6, and 100 todos at 11,714 against 8,449.
+
+The rows scenario ran once, with a load average of 8.14 at the start and 3.69 at the end. The table gives the main thread time from the click to the paint in ms, as the median of 10 with the min to max:
+
+| Operation                                                 | brumate                | Marko 6                 |
+| --------------------------------------------------------- | ---------------------- | ----------------------- |
+| Create 1,000 rows                                         | 52.4 (37.7 to 62.5)    | 33.1 (22.9 to 48.6)     |
+| Replace 1,000 rows                                        | 62 (47.1 to 83.4)      | 28.6 (24.6 to 41.2)     |
+| Update every 10th of 1,000 rows                           | 25.9 (18.4 to 33.1)    | 11.2 (8.7 to 13.7)      |
+| Select a row of 1,000                                     | 2.5 (1.9 to 5.4)       | 1.1 (0.8 to 1.3)        |
+| Swap 2 of 1,000 rows                                      | 6.9 (5.5 to 9)         | 5.6 (4.1 to 9.7)        |
+| Remove a row of 1,000                                     | 11 (6.9 to 13.7)       | 12.1 (10.7 to 12.9)     |
+| Create 10,000 rows                                        | 270.6 (243.2 to 358.4) | 502.4 (353.7 to 1329.8) |
+| Append 1,000 rows to 1,000                                | 68.6 (41 to 75.5)      | 63.5 (46.1 to 79.5)     |
+| Clear 1,000 rows                                          | 5.9 (4.9 to 9.3)       | 4.5 (3.2 to 5.7)        |
+| First select on 1,000 server rows, main thread / to paint | 8.8 / 14.1             | 5.1 / 13.9              |
+| SSR renders/s, 1,000 rows                                 | 244                    | 249                     |
+
+The full tables of every run are in `benchmarks/results/`, which git ignores.
+
 ## Where brumate stands
+
+The numbers below are from earlier runs. The baseline above replaces them as the reference.
 
 On the todos scenario, at commit `3e95739`:
 
