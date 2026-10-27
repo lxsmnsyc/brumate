@@ -113,6 +113,7 @@ it('moves the channel of its input a page with PageUp and PageDown, and a page w
   x.focus();
   press('PageUp', x);
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 60%, 80%)'));
+  await page.waitFor(() => expect(x.value).toBe('60'));
   press('PageDown', x);
   press('PageDown', x);
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 40%, 80%)'));
@@ -133,6 +134,7 @@ it('sends Home and End to the ends of the range of the channel of its input', as
   x.focus();
   press('End', x);
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 100%, 80%)'));
+  await page.waitFor(() => expect(x.value).toBe('100'));
   press('Home', x);
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 0%, 80%)'));
   press('End', y);

@@ -2,7 +2,10 @@
   import type { AsProps, AsTarget } from './as.ts';
 
   export interface CalendarHeadingOwnProps {
-    /** Shown in place of the months that the Calendar shows, such as `October 2026`. */
+    /**
+     * Shown in place of the months that the Calendar shows, such as `October 2026`. It renders
+     * inside `aria-hidden="true"`, since the label of the Calendar comes from elsewhere.
+     */
     children?: unknown;
   }
 
