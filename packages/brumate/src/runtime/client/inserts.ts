@@ -59,7 +59,7 @@ export function text(scope: Scope, anchor: number, value: unknown): void {
   }
   const start = kept?.isConnected ? (kept as Comment) : findComment(`t${scope.id}:${anchor}`);
   if (start) {
-    write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope, start);
+    write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope, start, anchor);
   }
 }
 
@@ -67,7 +67,7 @@ export function text(scope: Scope, anchor: number, value: unknown): void {
 export function content(scope: Scope, anchor: number, value: unknown): void {
   const element = findElement(scope.id, anchor);
   if (element) {
-    write(element, element.firstChild, null, value, scope, element);
+    write(element, element.firstChild, null, value, scope, element, anchor);
   }
 }
 
@@ -101,6 +101,7 @@ function write(
   value: unknown,
   at?: Scope,
   key?: Node,
+  anchor?: number,
 ): void {
   // The same template again at an insert updates in place, with its new arguments, as a snippet
   // of Svelte does. Its elements and their focus stay.
@@ -114,7 +115,8 @@ function write(
     firstWrite &&
     value instanceof RenderedChildren &&
     value.at !== undefined &&
-    value.at === at?.id
+    value.at === at?.id &&
+    value.anchor === anchor
   ) {
     return;
   }

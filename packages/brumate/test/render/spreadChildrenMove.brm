@@ -1,0 +1,12 @@
+<script>
+  import { $getContext, $props } from 'brumate/signals';
+  import { Shown } from './spreadChildrenPick.brm';
+
+  // Moves its children from the first insert to the second when the context says so. Both
+  // inserts are in the same scope.
+  const { children } = $props<{ children?: unknown }>();
+  const ctx = $getContext(Shown);
+</script>
+
+<div class="sc-move-1">{ctx!.shown() ? 'none' : children}</div>
+<div class="sc-move-2">{ctx!.shown() ? children : 'x'}</div>

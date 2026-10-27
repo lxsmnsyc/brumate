@@ -2326,6 +2326,24 @@ describe('a spread onto a component', () => {
     await waitFor(() => expect(text('.sc-pick')).toBe('Picked'));
   });
 
+  it('renders children at another insert of the scope where the server rendered them', async () => {
+    const server = await import(file('spreadChildrenStream.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    await startLoader();
+    // The server renders the children at the first insert of each, and the change moves them.
+    click(document.querySelector('.sc-tone')!);
+    await waitFor(() => expect(text('.sc-tone')).toBe('sc-b'));
+    server.release('Ada');
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    await waitFor(() => expect(text('.sc-move-2')).toBe('Moved'));
+    expect(text('.sc-move-1')).toBe('none');
+    await waitFor(() => expect(text('.sc-twice-2')).toBe('Twice'));
+    expect(text('.sc-twice-1')).toBe('Twice');
+  });
+
   it('keeps the component in `as` that the server rendered, in a body that streams in later', async () => {
     const server = await import(file('spreadChildrenStream.brm.ts'));
     const { html, state, pending } = await renderParts(server.default, {});

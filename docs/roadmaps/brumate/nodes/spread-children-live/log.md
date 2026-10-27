@@ -22,3 +22,10 @@
 - Fix: the server records on the reference of the children the scope where it first rendered them, `$b.n(ref, scope, at)`. The client keeps the nodes only when the insert is at that scope. Navigation shifts `at` with `scope`. A reference sent in a record before the server renders it has no `at`, so the client renders it again, as on main.
 - Merged origin/main (#278, as-live-props). The live class workaround for spreadChildrenTarget is gone; all tests pass without it.
 - Size, minified, gzip -9, against main: client 15681 to 15758 (+77), produce 2016 to 2019 (+3), client-routes 1009 to 1027 (+18, loads with navigation).
+
+## 2026-10-27, review round 2
+
+- Review: `at` named a scope, and every insert of a component's markup has the same scope. Children that move to a second insert of that scope matched and kept the server's text. Probes added as one test with spreadChildrenMove (`{shown ? 'none' : children}` then `{shown ? children : 'x'}`) and spreadChildrenTwice (`{children}` then `{shown ? children : 'none'}`). It fails with the scope check alone.
+- Fix: the server compiler passes the anchor of the insert to `insert()` for a value that reads a prop (codegen/markup.ts), `Children` records it next to the scope, and the state sends it as a fourth argument, `$b.n(ref, scope, at, anchor)`. `text()` and `content()` pass their anchor to `write`, which compares both. The anchor is its own field, so `shiftId` moves only the scope.
+- Merged origin/main again.
+- Size, minified, gzip -9, against main: client 15681 to 15769 (+88), produce 2016 to 2011 (-5).
