@@ -1,7 +1,7 @@
 ---
 id: size-baseline
 title: Record the size and speed baseline
-status: active
+status: done
 priority: must
 type: chore
 outline: false
@@ -44,3 +44,5 @@ Run `pnpm bench` on main and record the gzip size of the JS before `load` for to
 ## Sizing
 
 S: a run and a record.
+
+PR: #289
