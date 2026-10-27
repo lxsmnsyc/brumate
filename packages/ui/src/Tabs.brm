@@ -26,7 +26,7 @@
   import { TabsContext } from './tabs.ts';
 
   /**
-   * Tabs that show one panel at a time, as Tabs of React Aria Components. It holds a TabList with
+   * Tabs that show one panel at a time. It holds a TabList with
    * Tab elements, and a TabPanel for each tab, with the same `id`.
    *
    * - `selectedKey` is the key of the selected tab. With none, the first tab is selected. A key
@@ -57,7 +57,7 @@
 
   /**
    * In the browser, a selection that no tab shows, such as of a key that has no tab or of a
-   * disabled tab, goes to the first tab that is enabled, as React Aria does.
+   * disabled tab, goes to the first tab that is enabled.
    */
   function check() {
     const element = root;

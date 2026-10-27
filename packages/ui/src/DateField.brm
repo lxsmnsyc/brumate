@@ -21,8 +21,8 @@
   }
 
   /**
-   * The props of DateField. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of DateField. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type DateFieldProps<T extends AsTarget = 'div'> = AsProps<T, DateFieldOwnProps>;
 </script>
@@ -39,7 +39,7 @@
   import { DateFieldContext } from './segments.ts';
 
   /**
-   * A date that the user edits segment by segment, as DateField of React Aria Components. It
+   * A date that the user edits segment by segment. It
    * holds a Label, a DateInput of DateSegments, and a Text with `slot="description"` and a
    * FieldError, as a TextField does.
    *
@@ -49,9 +49,9 @@
    * - A segment that is not set shows its placeholder. The arrow keys start it at
    *   `placeholderValue`, today by default.
    * - `minValue`, `maxValue` and `isDateUnavailable` make a date invalid, as `isInvalid` does.
-   * - `name` posts the date with a form, from a hidden input. `isRequired` asks the browser to check
-   *   it on a submit, and the FieldError shows the message. A reset of the form gives back the
-   *   first date.
+   * - `name` posts the date with a form, from a hidden input. `isRequired` asks the browser to
+   *   check it on a submit, and the FieldError shows the message. A reset of the form gives back
+   *   the first date.
    * - It shows `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
    */
   const {

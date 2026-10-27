@@ -11,7 +11,7 @@
   import { SectionContext } from './collection.ts';
 
   /**
-   * A group of the items of a collection, as ListBoxSection of React Aria Components. A Header
+   * A group of the items of a collection. A Header
    * inside names it. A section with no Header needs `aria-label`.
    */
   const { children, 'aria-label': label, ...rest } = $props<ListBoxSectionProps>();

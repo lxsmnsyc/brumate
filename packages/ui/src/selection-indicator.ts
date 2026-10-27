@@ -1,5 +1,4 @@
-// The move of a SelectionIndicator from the item that was selected to the one that is, as the
-// SharedElementTransition of React Aria animates it.
+// The move of a SelectionIndicator from the item that was selected to the one that is.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
 

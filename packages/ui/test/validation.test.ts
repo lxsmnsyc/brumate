@@ -1,5 +1,4 @@
-// The tests of validation and of the keys of a search field follow those of useFormValidation,
-// TextField, SearchField and Form in React Aria.
+// The tests of validation and of the keys of a search field.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Validation from './fixtures/validation.brm?brumate-server';

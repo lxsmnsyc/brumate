@@ -10,7 +10,7 @@
     onHoverStart?: (event: HoverEvent) => void;
     onHoverEnd?: (event: HoverEvent) => void;
     onHoverChange?: (hovered: boolean) => void;
-    /** As in React Aria, `aria-disabled` and `aria-invalid` of the caller give the state too. */
+    /** `aria-disabled` and `aria-invalid` of the caller give the state too. */
     'aria-disabled'?: unknown;
     'aria-invalid'?: unknown;
     children?: unknown;
@@ -31,9 +31,8 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * Parts that belong together, such as an input and its buttons, as Group of React Aria
-   * Components. It shows `data-hovered`, `data-focus-within`, `data-focus-visible`,
-   * `data-disabled` and `data-invalid`.
+   * Parts that belong together, such as an input and its buttons. It shows `data-hovered`,
+   * `data-focus-within`, `data-focus-visible`, `data-disabled` and `data-invalid`.
    */
   const {
     role = 'group',
@@ -51,7 +50,7 @@
 
   const context = $getContext(GroupContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
-  // As in React Aria, aria-disabled and aria-invalid of the caller give the state too.
+  // aria-disabled and aria-invalid of the caller give the state too.
   const disabled = $memo(
     Boolean(isDisabled ?? slotProps(context, slot).isDisabled ?? ariaTrue(rest['aria-disabled'])),
   );

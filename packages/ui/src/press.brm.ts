@@ -1,4 +1,4 @@
-// Press handling for the parts, after usePress of React Aria. A press starts with a pointer, Enter
+// Press handling for the parts. A press starts with a pointer, Enter
 // or Space, or a click without a pointer, such as from a screen reader, and calls the same
 // handlers for each. A part calls the returned functions from the handlers of its element, and
 // shows `pressed` as `data-pressed`. Space must be prevented on keydown and keyup, with
@@ -7,7 +7,7 @@
 //
 // The handlers load on the first event, after the browser has moved on. So a press keeps its
 // pointer with pointer capture, and its pointerup reaches the element even when it ends outside.
-// A listener on the document, as React Aria adds, would start too late to see it.
+// A listener on the document would start too late to see it.
 import { $signal } from 'brumate/signals';
 import type { PointerKind, PressEvent } from './events.ts';
 import {
@@ -185,7 +185,7 @@ export function press(
     }
     // A click with no pointer or key before it, such as from a screen reader or element.click(),
     // presses as virtual. A click of a pointer whose press was cancelled, such as by a long
-    // press, presses nothing, as in React Aria.
+    // press, presses nothing.
     if (event.detail !== 0) {
       return;
     }

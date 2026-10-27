@@ -26,7 +26,7 @@
   import { TabsContext, selectedOf, tabId } from './tabs.ts';
 
   /**
-   * A tab of a TabList, as Tab of React Aria Components. `id` is its key, and the TabPanel with the
+   * A tab of a TabList. `id` is its key, and the TabPanel with the
    * same `id` is its panel.
    *
    * - A press selects it, and so do Enter and Space.

@@ -1,5 +1,5 @@
-// The state that a Calendar shares with its heading, its grids and its cells, and the date math
-// of React Stately's calendar. Dates are ISO strings, such as `2026-10-25`, since the page state
+// The state that a Calendar shares with its heading, its grids and its cells, and the date math.
+// Dates are ISO strings, such as `2026-10-25`, since the page state
 // cannot hold the classes of `@internationalized/date`.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
@@ -319,7 +319,7 @@ export function rangeLabel(
     : days.formatRange(from, end.toDate('UTC'));
 }
 
-/** Two dates as `{start} to {end}`, as React Aria reads a range, with the parts that they share. */
+/** Two dates as `{start} to {end}`, with the parts that they share. */
 function joinRange(formatter: DateFormatter, start: Date, end: Date): string {
   const parts = formatter.formatRangeToParts(start, end);
   let separator = -1;

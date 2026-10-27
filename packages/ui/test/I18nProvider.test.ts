@@ -15,7 +15,7 @@ it('gives the parts inside it a locale and its direction, and en-US outside', as
   expect(page.text('.french')).toBe('fr-FR ltr');
 });
 
-it('tells the direction of a locale by its script, as React Aria does', () => {
+it('tells the direction of a locale by its script', () => {
   expect(isRTL('he')).toBe(true);
   expect(isRTL('fa-IR')).toBe(true);
   // Uzbek in Arabic script is right to left, and in Latin script is not.

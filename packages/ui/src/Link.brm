@@ -37,13 +37,13 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * A link, as Link of React Aria Components. With `href` it is an <a>, and without it an element
+   * A link. With `href` it is an <a>, and without it an element
    * with role="link". It presses as a Button does, and the browser follows the link. Its state
    * is in `data-current`, `data-pressed`, `data-hovered`, `data-focused`, `data-focus-visible`
    * and `data-disabled`.
    *
    * A disabled link is a <span> with no `href`, so the browser does not follow it, and it leaves
-   * the order of Tab, as in React Aria, whose useLink gives it no tabindex.
+   * the order of Tab, since it has no `tabindex`.
    */
   const {
     href,

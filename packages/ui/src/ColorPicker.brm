@@ -15,7 +15,7 @@
   import { formatLike, parseColor, sameColor, toSpace, tryParseColor } from './color.ts';
 
   /**
-   * Holds a color for the color parts inside it, as ColorPicker of React Aria Components. It has
+   * Holds a color for the color parts inside it. It has
    * no element of its own.
    *
    * - `value` is a color of CSS, such as `#e2445a`. `value=(color)` starts its own, and
@@ -33,7 +33,7 @@
   const { onChange, children } = $props<ColorPickerProps>();
   let { value = '#000000' } = $props<ColorPickerProps>();
 
-  // The color that the parts edit, in hsb as React Aria keeps it. A value that is no color is black.
+  // The color that the parts edit, in hsb. A value that is no color is black.
   function fresh(text: string): Color {
     return toSpace(tryParseColor(text) ?? parseColor('#000000'), 'hsb');
   }

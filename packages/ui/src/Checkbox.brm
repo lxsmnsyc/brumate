@@ -25,14 +25,14 @@
   import { describedBy, isFirstInvalid } from './fields.ts';
 
   /**
-   * A checkbox, as Checkbox of React Aria Components: a <label> around a native checkbox, which
+   * A checkbox: a <label> around a native checkbox, which
    * a screen reader reads and a form posts without scripts. The label shows the state as
    * `data-selected`, `data-indeterminate`, `data-pressed`, `data-hovered`, `data-focused`,
    * `data-focus-visible`, `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
    * Draw the box in the children, from these attributes.
    *
-   * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the caller's.
-   * In a CheckboxGroup, the group keeps the state, and `value` names the box in it.
+   * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the
+   * caller's. In a CheckboxGroup, the group keeps the state, and `value` names the box in it.
    */
   const {
     name,
@@ -55,7 +55,7 @@
   const required = $memo(Boolean(isRequired || group?.isRequired));
   const mixed = $memo(Boolean(isIndeterminate || group?.isIndeterminate));
   // The browser checked the box on a submit, and it was not valid. In a group, the group keeps
-  // this state for every box, as in React Aria, so a check of any box clears all of them.
+  // this state for every box, so a check of any box clears all of them.
   let failed = $signal(false);
   const invalid = $memo(Boolean(isInvalid || (group ? group.isInvalid : failed)));
 

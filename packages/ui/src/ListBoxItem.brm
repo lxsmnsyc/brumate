@@ -19,8 +19,8 @@
   }
 
   /**
-   * The props of ListBoxItem. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of ListBoxItem. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type ListBoxItemProps<T extends AsTarget = 'div'> = AsProps<T, ListBoxItemOwnProps<T>>;
 </script>
@@ -33,7 +33,7 @@
   import { ListBoxContext, keyAttribute } from './collection.ts';
 
   /**
-   * An option of a ListBox, as ListBoxItem of React Aria Components. `id` is its key.
+   * An option of a ListBox. `id` is its key.
    *
    * - A press selects it, as the ListBox says, or acts on it when the ListBox selects nothing.
    * - `textValue` is the text that typeahead matches, when its content is more than text.

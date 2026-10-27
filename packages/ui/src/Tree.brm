@@ -71,14 +71,14 @@
   import TreeRow from './TreeRow.brm';
 
   /**
-   * A list of rows that nest and open and close, as Tree of React Aria Components. It renders a
+   * A list of rows that nest and open and close. It renders a
    * row for each item of `items` that shows, with the `item` template, which renders a TreeItem.
    * An item with `children` is a parent, even when it is empty.
    *
    * - `expandedKeys` holds the keys of the open items, and `onExpandedChange` hears of changes.
    *   The children of a closed item do not render.
-   * - Up and Down move between rows, Home and End to the ends, PageUp and PageDown by a page, and letters to the row whose text
-   *   starts with them.
+   * - Up and Down move between rows, Home and End to the ends, PageUp and PageDown by a page, and
+   *   letters to the row whose text starts with them.
    * - Right opens a closed row. Left closes an open row, or else moves to the row that holds it.
    *   Otherwise Left and Right move through the controls in a row and back to the row, right to
    *   left the other way round.
@@ -401,7 +401,7 @@
           return;
         }
       }
-      // In tab mode, Left and Right only open and close rows, as in React Aria.
+      // In tab mode, Left and Right only open and close rows.
       if (!tabMode) {
         across(row, target, expand);
       }

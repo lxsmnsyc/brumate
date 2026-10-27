@@ -11,7 +11,7 @@
   import { LinkContext } from './contexts.ts';
 
   /**
-   * A trail of links, as Breadcrumbs of React Aria Components: an <ol> of Breadcrumbs. Put it in
+   * A trail of links: an <ol> of Breadcrumbs. Put it in
    * a <nav> with a label. `isDisabled` disables every link. It shows `data-disabled`.
    */
   const { isDisabled = false, children, ...rest } = $props<BreadcrumbsProps>();

@@ -33,7 +33,7 @@
   import { MenuContext, SubmenuContext } from './menu.ts';
 
   /**
-   * An item of a Menu, as MenuItem of React Aria Components. `id` is its key.
+   * An item of a Menu. `id` is its key.
    *
    * - A press, Enter or Space acts on it, as the Menu says. Inside a SubmenuTrigger, it opens
    *   the submenu instead.

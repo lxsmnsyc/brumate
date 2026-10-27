@@ -1,4 +1,4 @@
-// The segments of one date, after useDateFieldState of React Aria, for a DateField and for each
+// The segments of one date, for a DateField and for each
 // date of a DateRangePicker. A component passes its value and its limits, and gets the segments,
 // the date that they hold, and the functions of the DateFieldContext.
 import { $client, $effect, $memo, $signal, $untrack } from 'brumate/signals';

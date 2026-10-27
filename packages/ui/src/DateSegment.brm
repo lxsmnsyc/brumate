@@ -13,8 +13,7 @@
   import { DateFieldContext, PAGE_STEP, SEGMENT_NAMES, focusSegment } from './segments.ts';
 
   /**
-   * One part of the date of a DateField, or the text between two parts, as DateSegment of React
-   * Aria Components.
+   * One part of the date of a DateField, or the text between two parts.
    *
    * - A part is a spinbutton. ArrowUp and ArrowDown step it around its range, and a part that is
    *   not set starts at the placeholder. PageUp and PageDown step it further, such as by 5 years

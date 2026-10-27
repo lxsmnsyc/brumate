@@ -1,4 +1,4 @@
-// The tests of Menu follow the tests of Menu, MenuTrigger and SubmenuTrigger in React Aria.
+// The tests of Menu.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Menus from './fixtures/menus.brm?brumate-server';

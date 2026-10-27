@@ -1,4 +1,4 @@
-// The tests of Tree follow the tests of Tree in React Aria.
+// The tests of Tree.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Trees from './fixtures/trees.brm?brumate-server';

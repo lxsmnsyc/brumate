@@ -13,7 +13,7 @@
   import { TableContext } from './table.ts';
 
   /**
-   * The rows of a Table, as TableBody of React Aria Components: Row elements, written out or from
+   * The rows of a Table: Row elements, written out or from
    * a `#for`. Or, when the Table has `items`, the `item` template renders a Row for each one, and
    * only the rows in view when the Table is windowed.
    */

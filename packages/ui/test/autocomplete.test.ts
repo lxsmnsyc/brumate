@@ -1,4 +1,4 @@
-// The tests of Autocomplete follow the tests of Autocomplete in React Aria.
+// The tests of Autocomplete.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Autocompletes from './fixtures/autocompletes.brm?brumate-server';

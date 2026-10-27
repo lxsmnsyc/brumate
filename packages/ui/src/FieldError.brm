@@ -6,8 +6,8 @@
   }
 
   /**
-   * The props of FieldError. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of FieldError. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type FieldErrorProps<T extends AsTarget = 'span'> = AsProps<T, FieldErrorOwnProps>;
 </script>
@@ -17,7 +17,7 @@
   import { FieldErrorContext } from './contexts.ts';
 
   /**
-   * The errors of a field, as FieldError of React Aria Components. It renders only while the
+   * The errors of a field. It renders only while the
    * field is invalid, with the ID that the field's input names in aria-describedby. Without
    * children, it shows the messages of the field.
    */

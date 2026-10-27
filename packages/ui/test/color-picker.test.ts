@@ -1,4 +1,4 @@
-// The tests of ColorPicker follow the tests of ColorPicker in React Aria.
+// The tests of ColorPicker.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Pickers from './fixtures/color-pickers.brm?brumate-server';

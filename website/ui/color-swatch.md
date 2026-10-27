@@ -14,7 +14,7 @@ A sample of a color, named for screen readers.
 - `color` is a color of CSS: hex, `rgb()`, `hsl()` or `hsb()`, with or without alpha.
 - It is `role="img"`, with the role description `color swatch`.
 - `colorName` names it for screen readers. Without it, a short name in English names it, such as `dark blue`, and says how transparent it is, such as `green, 50% transparent`.
-- An `aria-label` adds to that name, as in React Aria: `red, Brand`. It does not replace it.
+- An `aria-label` adds to that name: `red, Brand`. It does not replace it.
 - The background shows the color over a checkerboard, so its alpha shows.
 - The element has `--color`, the color, for CSS. Give it a size.
 

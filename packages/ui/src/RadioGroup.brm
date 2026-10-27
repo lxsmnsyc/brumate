@@ -17,8 +17,8 @@
   }
 
   /**
-   * The props of RadioGroup. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of RadioGroup. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type RadioGroupProps<T extends AsTarget = 'div'> = AsProps<T, RadioGroupOwnProps<T>>;
 </script>
@@ -30,7 +30,7 @@
   import { describedBy } from './fields.ts';
 
   /**
-   * A group of radios, as RadioGroup of React Aria Components. It holds a Label, its Radios, a
+   * A group of radios. It holds a Label, its Radios, a
    * Text with `slot="description"` and a FieldError. The radios are native, so the arrow keys
    * move between them and Tab stops at the checked one, as in every browser. The element shows
    * `data-orientation`, `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.

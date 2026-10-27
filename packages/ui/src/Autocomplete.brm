@@ -19,9 +19,8 @@
   import { MENU_ITEMS } from './menu.ts';
 
   /**
-   * A field that filters a Menu or a ListBox next to it, as Autocomplete of React Aria
-   * Components. It holds a SearchField or a TextField, and the collection. It renders only its
-   * children.
+   * A field that filters a Menu or a ListBox next to it. It holds a SearchField or a TextField, and
+   * the collection. It renders only its children.
    *
    * - Typing shows the items whose text contains the text, in any case, and makes the first one
    *   active. `filter` changes the match.

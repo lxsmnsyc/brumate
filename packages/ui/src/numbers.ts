@@ -1,6 +1,5 @@
 // The math of a NumberField and a Slider: steps that keep the precision of the step, values that
-// snap to a step between a minimum and a maximum, and the repeat of a Button that is held. It
-// follows the number utilities of React Stately.
+// snap to a step between a minimum and a maximum, and the repeat of a Button that is held.
 
 /** The number of digits after the point in a number, also for one such as `1e-7`. */
 function precisionOf(step: number): number {
@@ -64,7 +63,7 @@ export function snapToStep(
 }
 
 /**
- * The value a step up or down from `value`, as React Aria's NumberField takes it. A value off the
+ * The value a step up or down from `value`, in the direction of the change. A value off the
  * steps first moves to the nearest step, when that is in the direction of the change. With no
  * value, it starts at the minimum or the maximum, or at 0.
  */
@@ -91,7 +90,7 @@ const repeats = new Map<string, ReturnType<typeof setTimeout>>();
 
 /**
  * Runs `step` at once, and again while the Button is held: after `delay`, 400 milliseconds for a
- * mouse and 600 for a touch, and then every 60 milliseconds, as React Aria's spin buttons do.
+ * mouse and 600 for a touch, and then every 60 milliseconds.
  */
 export function startRepeat(id: string, step: () => boolean, delay: number): void {
   stopRepeat(id);

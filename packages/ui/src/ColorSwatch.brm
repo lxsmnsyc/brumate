@@ -13,7 +13,7 @@
   import { colorName, formatColor, swatchBackground, tryParseColor } from './color.ts';
 
   /**
-   * A sample of a color, as ColorSwatch of React Aria Components: role="img", named by the color.
+   * A sample of a color: role="img", named by the color.
    *
    * - `color` is a color of CSS, such as `#e2445a` or `hsl(355, 74%, 58%)`.
    * - Without `color`, inside a ColorSwatchPickerItem, it shows the color of the item, and inside a
@@ -32,7 +32,7 @@
   const parsed = $memo(tryParseColor(color));
   const css = $memo(parsed ? formatColor(parsed) : 'transparent');
   const described = $memo(name ?? (parsed ? colorName(parsed) : color));
-  // As React Aria does, an `aria-label` of the caller adds to the name of the color.
+  // An `aria-label` of the caller adds to the name of the color.
   const label = $memo(ariaLabel ? `${described}, ${ariaLabel}` : described);
 </script>
 

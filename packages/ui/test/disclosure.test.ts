@@ -1,4 +1,4 @@
-// The tests of Disclosure follow the tests of Disclosure and DisclosureGroup in React Aria.
+// The tests of Disclosure.
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Disclosures from './fixtures/disclosures.brm?brumate-server';

@@ -1,4 +1,4 @@
-// The tests of PreviewTrigger follow the tests of PreviewTrigger in React Aria.
+// The tests of PreviewTrigger.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Previews from './fixtures/previews.brm?brumate-server';

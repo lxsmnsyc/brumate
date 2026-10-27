@@ -1,4 +1,4 @@
-// The tests of ColorWheel follow the tests of ColorWheel in React Aria.
+// The tests of ColorWheel.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import ColorWheels from './fixtures/color-wheels.brm?brumate-server';
@@ -111,7 +111,7 @@ it('wraps the end of the circle to 0', async () => {
   await page.waitFor(() => expect(state(page)[0]).toBe('hsl(0, 50%, 40%)'));
 });
 
-it('moves a page of 15 with Shift and an arrow, as React Aria does', async () => {
+it('moves a page of 15 with Shift and an arrow', async () => {
   const page = await wheels();
   const input = range(page, '.wheel');
   input.focus();

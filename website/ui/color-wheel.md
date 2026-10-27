@@ -39,4 +39,4 @@ A circular track for the hue of a color.
 - The thumb has one hidden `<input type="range">` from 0 to 360. The arrow keys step the hue by 1, Right and Up up and Left and Down down. Home goes to 0, and End goes to 360, which is 0.
 - The hue is a circle. A step up from 359 gives 0, and a step down from 0 gives 359.
 - PageUp and PageDown move by 15, to a multiple of 15. A page down from 0 gives 345.
-- With Shift, the arrow keys move by 15, as in React Aria.
+- With Shift, the arrow keys move by 15.

@@ -1,5 +1,5 @@
 // The items of a collection, such as the options of a ListBox, read from the page. A part of
-// brumate cannot read the structure of its children as React Aria reads them, so the order of the
+// brumate cannot read the structure of its children, so the order of the
 // items is the order of their elements, and each element carries its key in `data-key`. Keyboard
 // movement, ranges and typeahead work on these elements, so they work for items of any markup:
 // written out, from a `#for`, or in sections.
@@ -190,7 +190,7 @@ export function keysIn(keys: Key[], anchor: Key, to: Key): Key[] {
   return keys.slice(low, high + 1);
 }
 
-/** How long the letters of a typeahead add up, in milliseconds, as in React Aria. */
+/** How long the letters of a typeahead add up, in milliseconds. */
 const TYPEAHEAD = 1000;
 
 /** The text that a typeahead has, by its collection. */
@@ -363,8 +363,8 @@ export interface SelectionRequest {
 }
 
 /**
- * The selection after a press or a key on an item, as useMultipleSelectionState of React Aria
- * decides it. Disabled items are never selected.
+ * The selection after a press or a key on an item.
+ * The mode of selection decides it. Disabled items are never selected.
  */
 export function nextSelection(
   current: Key[],

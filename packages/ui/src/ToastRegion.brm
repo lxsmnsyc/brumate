@@ -13,8 +13,8 @@
   }
 
   /**
-   * The props of ToastRegion. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of ToastRegion. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type ToastRegionProps<V = unknown, T extends AsTarget = 'div'> = AsProps<T, ToastRegionOwnProps<V, T>>;
 </script>
@@ -32,7 +32,7 @@
   import { enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
   /**
-   * The toasts of a queue, as ToastRegion of React Aria Components. It renders at the end of the
+   * The toasts of a queue. It renders at the end of the
    * page, and `toast`, a `#template`, renders each toast of the queue, newest first.
    *
    * - It is a landmark, a `region` named "Notifications", while it has toasts. F6 moves focus to

@@ -11,7 +11,7 @@
   import { ColorWheelContext } from './color-wheel.ts';
 
   /**
-   * The track of a ColorWheel, as ColorWheelTrack of React Aria Components. It draws the ring of
+   * The track of a ColorWheel. It draws the ring of
    * the hues.
    *
    * - The ring is a circle with twice the outer radius as its size, and a conic gradient of the hue

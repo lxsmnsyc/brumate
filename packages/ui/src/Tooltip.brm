@@ -32,7 +32,7 @@
   import { enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
   /**
-   * The text of a TooltipTrigger, as Tooltip of React Aria Components. It is a `role="tooltip"`
+   * The text of a TooltipTrigger. It is a `role="tooltip"`
    * that names nothing and takes no focus, and the trigger's Button points to it with
    * `aria-describedby`.
    *
@@ -80,7 +80,7 @@
     }
     // A show during a leave stops what the show before it started.
     runStops(element);
-    // Escape hides only the tooltip, as in React Aria, so a Dialog or a Popover around the
+    // Escape hides only the tooltip, so a Dialog or a Popover around the
     // trigger stays open. This listener runs during the event, so it can prevent it.
     const escape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {

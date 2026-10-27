@@ -1,6 +1,6 @@
 # @brumate/ui
 
-Accessible, unstyled components for brumate. They follow the behaviour and the composition of [React Aria Components](https://react-spectrum.adobe.com/react-aria/components.html), and the API of [Terracotta](https://github.com/lxsmnsyc/terracotta). The plan is in [Headless UI components](../../docs/proposals.md#headless-ui-components).
+Accessible, unstyled components for brumate. They follow the WAI-ARIA patterns for behaviour, and the API of [Terracotta](https://github.com/lxsmnsyc/terracotta). The plan is in [Headless UI components](../../docs/proposals.md#headless-ui-components).
 
 Install it with brumate, which it needs as a peer:
 
@@ -55,11 +55,11 @@ The brumate Vite plugin finds the parts in the package, so a page imports them a
 
 ## Writing a part
 
-A part is a `.brm` component in `src`, with a `.stories.ts` file, a test in `test`, and a section in `examples/ui`. It follows the part of React Aria Components of the same name, and React Aria's tests are its specification. `Button.brm` shows each step.
+A part is a `.brm` component in `src`, with a `.stories.ts` file, a test in `test`, and a section in `examples/ui`. It follows the WAI-ARIA pattern of the same name, and its tests are its specification. `Button.brm` shows each step.
 
 ### Props
 
-- Name the props as React Aria does: `isDisabled`, `onPress`, `onHoverChange`.
+- Name the props `isDisabled`, `onPress`, `onHoverChange`.
 - Export `<Name>Props` from `<script module>`, and use it in `$props<NameProps>()`, so apps can import it. See [Props types](../../website/docs/typescript.md#props-types).
 - Take `as`, and render `<{as ?? 'button'} …>`, so the caller can pick the element. Its type is `AsProps` of `src/as.ts`, as `ButtonProps` shows: the other props are those of the element or the component.
 - End the element with `{...rest}`, so the caller's attributes come last. Its `class` adds to the part's, and its handlers run after the part's own.
@@ -93,6 +93,6 @@ A part that holds other parts provides their props in the context of each part t
 
 ### Tests
 
-- Test the behaviour of React Aria, with the helpers of `test/interact.ts`: `pointer`, `pressWith`, `press` and `tab`.
+- Test the behaviour of the pattern, with the helpers of `test/interact.ts`: `pointer`, `pressWith`, `press` and `tab`.
 - The handlers of a fixture run after their code loads, so wait for what they log with `page.waitFor`.
 - Add a step to `e2e/suites/ui.mjs` for what happy-dom does not do, such as pointer capture, scrolling and `:focus-visible`. The suite runs axe-core on the page.

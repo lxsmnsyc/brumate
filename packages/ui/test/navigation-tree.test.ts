@@ -1,4 +1,4 @@
-// The tests of NavigationTree follow the tests of NavigationTree in React Aria.
+// The tests of NavigationTree.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Navigation from './fixtures/nav-tree-page.brm?brumate-server';

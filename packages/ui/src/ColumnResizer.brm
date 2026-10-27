@@ -14,7 +14,7 @@
   import { ColumnContext, TableResizeContext } from './table.ts';
 
   /**
-   * The handle that resizes a Column, as ColumnResizer of React Aria Components. It goes in a
+   * The handle that resizes a Column. It goes in a
    * Column of a Table in a ResizableTableContainer.
    *
    * - A drag resizes the column. Right to left, it turns around.
@@ -99,7 +99,7 @@
       sizes!.end();
       return;
     }
-    // Up and Down change the width as Right and Left do, as in React Aria.
+    // Up and Down change the width as Right and Left do.
     const step = { ArrowRight: 10, ArrowLeft: -10, ArrowUp: -10, ArrowDown: 10 }[event.key];
     if (step !== undefined) {
       const turn = locale.direction === 'rtl' && /Left|Right/.test(event.key) ? -1 : 1;
@@ -128,7 +128,7 @@
     sizes!.end();
   }
 
-  // At its least width it can only grow, and at its most only shrink, as React Aria names them.
+  // At its least width it can only grow, and at its most only shrink.
   const direction = $memo(
     width !== undefined && width <= column.minWidth
       ? locale.direction === 'rtl'

@@ -1,5 +1,4 @@
-// The tests of the boxes follow the tests of Checkbox, CheckboxGroup, RadioGroup and Switch in
-// React Aria.
+// The tests of Checkbox, CheckboxGroup, RadioGroup and Switch.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Boxes from './fixtures/boxes.brm?brumate-server';

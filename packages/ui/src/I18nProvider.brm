@@ -10,7 +10,7 @@
   import { LocaleContext, localeOf } from './locale.ts';
 
   /**
-   * Gives the parts inside it a locale, and its direction, as I18nProvider of React Aria does.
+   * Gives the parts inside it a locale, and its direction.
    * It renders only its children. Put `lang` and `dir` on an element yourself, such as <html>.
    */
   const { locale = 'en-US', children } = $props<I18nProviderProps>();

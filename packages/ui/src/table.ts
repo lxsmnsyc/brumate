@@ -3,7 +3,7 @@ import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
 import type { Key } from './collection.ts';
 
-/** The column that a Table is sorted by, and the direction, as SortDescriptor of React Aria. */
+/** The column that a Table is sorted by, and the direction. */
 export interface SortDescriptor {
   column: Key;
   direction: 'ascending' | 'descending';
@@ -46,7 +46,7 @@ export const TableRowContext: Context<TableRowState | null> = createContext<Tabl
   null,
 );
 
-/** The next sort for a press of a column, as useTableState of React Stately sorts. */
+/** The next sort for a press of a column. */
 export function nextSort(current: SortDescriptor | null, column: Key): SortDescriptor {
   return {
     column,

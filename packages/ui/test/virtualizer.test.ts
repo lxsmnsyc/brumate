@@ -1,4 +1,4 @@
-// The tests of Virtualizer follow the tests of Virtualizer in React Aria.
+// The tests of Virtualizer.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Virtualized from './fixtures/virtualized.brm?brumate-server';

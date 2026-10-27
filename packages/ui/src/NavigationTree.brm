@@ -19,7 +19,7 @@
   import Tree from './Tree.brm';
 
   /**
-   * A tree of links, such as the pages of a site, as NavigationTree of React Aria Components. It
+   * A tree of links, such as the pages of a site. It
    * takes `items` and an `item` template as a Tree does, and each item can have an `href`. The
    * template renders a NavigationTreeItem with a NavigationTreeItemLink.
    *
@@ -28,7 +28,7 @@
    * - The links are in the order of Tab. Up and Down move between the rows, Right opens a row,
    *   and Left closes it or moves to the row that holds it.
    * - `expandedKeys` holds the keys of the open items, as in a Tree.
-   * - It is no landmark. Put it in a `nav` with a label, as React Aria says.
+   * - It is no landmark. Put it in a `nav` with a label.
    */
   const { selectedRoute = null, items, item, onExpandedChange, ...rest } = $props<NavigationTreeProps<V>>();
   let { expandedKeys = [] } = $props<NavigationTreeProps<V>>();

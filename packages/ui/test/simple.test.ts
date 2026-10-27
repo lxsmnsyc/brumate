@@ -1,4 +1,4 @@
-// The tests of the simple parts follow their tests in React Aria Components.
+// The tests of the simple parts.
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Simple from './fixtures/simple.brm?brumate-server';
@@ -61,7 +61,7 @@ it('shows focus within a Group, and its focus ring', async () => {
   const off = page.get('.disabled-group');
   expect(off.getAttribute('aria-disabled')).toBe('true');
   expect(off.hasAttribute('data-invalid')).toBe(true);
-  // aria-disabled of the caller disables it, as in React Aria.
+  // aria-disabled of the caller disables it.
   expect(page.get('.aria-group').hasAttribute('data-disabled')).toBe(true);
 });
 
@@ -122,7 +122,7 @@ it('marks the current Link, and leaves out the address of a disabled one', async
   expect(off.hasAttribute('href')).toBe(false);
   expect(off.getAttribute('role')).toBe('link');
   expect(off.getAttribute('aria-disabled')).toBe('true');
-  // It leaves the order of Tab, as in React Aria.
+  // It leaves the order of Tab.
   expect(off.hasAttribute('tabindex')).toBe(false);
   // A link without an address is an element with the role and the focus of a link.
   const span = page.get('.span');

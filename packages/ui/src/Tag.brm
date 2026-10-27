@@ -29,7 +29,7 @@
   import { TagGroupContext } from './tags.ts';
 
   /**
-   * A tag of a TagList, as Tag of React Aria Components. `id` is its key.
+   * A tag of a TagList. `id` is its key.
    *
    * - A press and Space toggle it, when the TagGroup selects.
    * - Delete and Backspace remove it, or the selected tags when it is one of them, and a Button

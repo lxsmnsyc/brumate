@@ -1,4 +1,4 @@
-// Focus handling for the parts, after useFocusRing of React Aria. The focus shows as a ring when
+// Focus handling for the parts. The focus shows as a ring when
 // the browser's :focus-visible says so, such as after Tab, and when a key is pressed after a
 // pointer moved focus. CSS can use :focus-visible directly. The data attributes are for parts
 // whose ring is on another element.

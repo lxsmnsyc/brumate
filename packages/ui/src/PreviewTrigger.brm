@@ -23,7 +23,7 @@
 
   /**
    * Shows a Popover for the Link or the Button inside it, on hover, on focus from the keyboard,
-   * or on a long press, as PreviewTrigger of React Aria Components. Unlike a Tooltip, the
+   * or on a long press. Unlike a Tooltip, the
    * preview can hold links and buttons.
    *
    * - Hover and focus show it after `delay`, 600 milliseconds by default. Once a preview has

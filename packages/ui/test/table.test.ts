@@ -1,4 +1,4 @@
-// The tests of Table follow the tests of Table in React Aria.
+// The tests of Table.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Tables from './fixtures/tables.brm?brumate-server';

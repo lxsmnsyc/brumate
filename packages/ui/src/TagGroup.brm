@@ -28,7 +28,7 @@
   import { TagGroupContext } from './tags.ts';
 
   /**
-   * A group of tags, which the user can select and remove, as TagGroup of React Aria Components.
+   * A group of tags, which the user can select and remove.
    * It holds a Label, a TagList with Tag elements, and a Text with `slot="description"`.
    *
    * - `selectionMode` is `none` (the default), `single` or `multiple`. A press and Space toggle a

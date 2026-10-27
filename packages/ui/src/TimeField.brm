@@ -20,8 +20,8 @@
   }
 
   /**
-   * The props of TimeField. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of TimeField. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type TimeFieldProps<T extends AsTarget = 'div'> = AsProps<T, TimeFieldOwnProps>;
 </script>
@@ -48,7 +48,7 @@
   } from './segments.ts';
 
   /**
-   * A time of day that the user edits segment by segment, as TimeField of React Aria Components.
+   * A time of day that the user edits segment by segment.
    * It holds the same parts as a DateField: a Label, a DateInput of DateSegments, and a Text with
    * `slot="description"` and a FieldError.
    *
@@ -60,9 +60,9 @@
    *   or as `hourCycle` says.
    * - An empty segment starts at `placeholderValue`, midnight by default.
    * - `minValue` and `maxValue` make a time invalid, as `isInvalid` does.
-   * - `name` posts the time with a form, from a hidden input. `isRequired` asks the browser to check
-   *   it on a submit, and the FieldError shows the message. A reset of the form gives back the
-   *   first time.
+   * - `name` posts the time with a form, from a hidden input. `isRequired` asks the browser to
+   *   check it on a submit, and the FieldError shows the message. A reset of the form gives back
+   *   the first time.
    * - On a 12-hour clock, AM and PM are a segment of their own, which must be set too.
    * - It shows `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
    */

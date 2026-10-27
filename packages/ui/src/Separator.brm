@@ -7,8 +7,8 @@
   }
 
   /**
-   * The props of Separator. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of Separator. `as` takes an element name or a component, and the other props are
+   * those of the target.
    */
   export type SeparatorProps<T extends AsTarget = 'hr'> = AsProps<T, SeparatorOwnProps>;
 </script>
@@ -19,7 +19,7 @@
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
-   * A line between parts of the content, as Separator of React Aria Components. Horizontal, it is
+   * A line between parts of the content. Horizontal, it is
    * an <hr>. Vertical, it is an element with role="separator" and aria-orientation.
    */
   const { orientation, slot, ...rest } = $props<SeparatorOwnProps>();

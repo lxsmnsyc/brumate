@@ -47,7 +47,7 @@
   import { startDrag, thumbId } from './slider.ts';
 
   /**
-   * An area for two channels of a color, as ColorArea of React Aria Components. It holds a
+   * An area for two channels of a color. It holds a
    * ColorThumb, which gets a hidden range input for each axis.
    *
    * - `xChannel` and `yChannel` are the channels of the axes, and `colorSpace` is the space that
@@ -64,14 +64,14 @@
    *   `onChange` are left alone while an edit makes no other color. When `value` changes from
    *   outside, such as from a reset of the form, the color follows it.
    * - Left and Right move x by a step, and Up and Down move y, on either input, by a page with
-   *   Shift. PageUp and PageDown move y by a page. Home and End move x down and up by a page, as
-   *   React Aria does. The focus goes to the input of the axis that moved. The inputs have the role
-   *   description `2D slider`.
+   *   Shift. PageUp and PageDown move y by a page. Home and End move x down and up by a page. The
+   *   focus goes to the input of the axis that moved. The inputs have the role description `2D
+   *   slider`.
    * - It has one tab stop: the input of y has `tabindex="-1"` and `aria-hidden`, unless it has the
    *   focus or a key just changed the value. A screen reader hears the value, the other axis, the
    *   third channel and the name of the color without its alpha, and after a key only the value
    *   and the color.
-   * - The group and both inputs are named as in React Aria: the `aria-label` of the caller and
+   * - The group and both inputs are named: the `aria-label` of the caller and
    *   `Color picker`, which alone names the inputs. An `aria-labelledby` reaches the group and
    *   both inputs, each with its own ID first, when there is a label.
    * - A press with Alt, Ctrl or Meta does nothing.
@@ -133,7 +133,7 @@
     SPACE_CHANNELS[axes.space].find((channel) => channel !== axes.x && channel !== axes.y)!,
   );
   // Which input has the focus or had it last, and what changed the value since the focus came.
-  // The input that is not in use leaves the tab order and the screen readers, as in React Aria.
+  // The input that is not in use leaves the tab order and the screen readers.
   let focusedInput = $signal<number>(-1);
   let changedByKey = $signal(false);
   let changedByInput = $signal(false);
@@ -176,7 +176,7 @@
     ),
   );
   // Screen readers get the value of the input, then the other axis and the third channel, and
-  // what color they make. After a change the text is short, as in React Aria. The color is named
+  // what color they make. After a change the text is short. The color is named
   // without its alpha.
   const colorText = $memo(colorName(displayColor(color, 'red')));
   function channelText(channel: ColorChannel) {
@@ -192,7 +192,7 @@
   const xText = $memo(valueTextOf(axes.x, axes.y));
   const yText = $memo(valueTextOf(axes.y, axes.x));
 
-  // The names, as in React Aria: the group says the label of the caller and what it is, and so do
+  // The names: the group says the label of the caller and what it is, and so do
   // the inputs, which are the color picker without a label. A `aria-labelledby` has the element
   // itself too, when it has a label.
   const labelText = $memo(ariaLabel ? `${ariaLabel}, Color picker` : undefined);
@@ -293,7 +293,7 @@
     );
   }
 
-  // A press on the thumb keeps the distance to the pointer, as in React Aria.
+  // A press on the thumb keeps the distance to the pointer.
   function press(event: PointerEvent) {
     const area = (event.currentTarget as Element).closest('[data-color-area]');
     if (!area) {
@@ -337,7 +337,7 @@
 
   // The arrows move a step, or a page with Shift. The pages move y, and Home and End move x.
   function inputKey(_index: number, key: string, shiftKey: boolean) {
-    // The focus goes to the input of the axis that moved, as in React Aria.
+    // The focus goes to the input of the axis that moved.
     const index = key === 'ArrowUp' || key === 'ArrowDown' || key === 'PageUp' || key === 'PageDown' ? 1 : 0;
     changedByKey = true;
     focusedInput = index;

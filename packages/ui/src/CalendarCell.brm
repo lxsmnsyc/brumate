@@ -20,7 +20,7 @@
   } from './calendar.ts';
 
   /**
-   * A date in a CalendarGrid, as CalendarCell of React Aria Components. It renders a `<td>` with
+   * A date in a CalendarGrid. It renders a `<td>` with
    * a button inside, which holds the number of the day, or `children`.
    *
    * - A press selects the date. Only the focused date is in the order of Tab.
@@ -28,8 +28,7 @@
    *   `data-focused`, `data-focus-visible`, `data-today`,
    *   `data-disabled`, `data-unavailable`, `data-outside-month`, `data-outside-visible-range`,
    *   `data-invalid` and `data-pressed`.
-   * - A date outside the month of its grid is disabled, and its button is hidden, as React Aria
-   *   hides it.
+   * - A date outside the month of its grid is disabled, and its button is hidden.
    */
   const { date, children, ...rest } = $props<CalendarCellProps>();
 
@@ -50,7 +49,7 @@
     !disabled && (calendar?.isDateUnavailable?.(date) ?? false),
   );
   // After the first date of a range, a date past the nearest one that cannot be picked is out of
-  // reach, as React Aria marks it invalid.
+  // reach invalid.
   const unreachable = $memo(
     Boolean(
       calendar?.available &&

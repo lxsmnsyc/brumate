@@ -1,4 +1,4 @@
-// The tests of Button follow the tests of usePress and Button in React Aria.
+// The tests of Button.
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Buttons from './fixtures/buttons.brm?brumate-server';

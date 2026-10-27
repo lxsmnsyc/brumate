@@ -1,11 +1,11 @@
-// The value of a Meter or a ProgressBar, as useMeter and useProgressBar of React Aria count it.
+// The value of a Meter or a ProgressBar.
 
 export interface ProgressState {
   /** From 0 to 100. */
   percentage: number;
   /** The value as the locale writes it, such as "40%". */
   valueText: string;
-  /** The value inside the range, which aria-valuenow gives, as useProgressBar of React Aria. */
+  /** The value inside the range, which aria-valuenow gives. */
   value: number;
 }
 

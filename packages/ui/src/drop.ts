@@ -1,4 +1,4 @@
-// The items of a drop, after the DropItem of React Aria: text or a file, from a drag or a paste.
+// The items of a drop: text or a file, from a drag or a paste.
 import type { Key } from './collection.ts';
 
 /** Text that a drop gives, in each of its types, such as `text/plain` and `text/html`. */
@@ -19,7 +19,7 @@ export interface FileDropItem {
 
 export type DropItem = TextDropItem | FileDropItem;
 
-/** What a drop operation does, as React Aria names it. `cancel` refuses the drop. */
+/** What a drop operation does. `cancel` refuses the drop. */
 export type DropOperation = 'copy' | 'move' | 'link' | 'cancel';
 
 export interface DropEvent {
@@ -105,7 +105,7 @@ export interface DropTarget {
   dropPosition: 'before' | 'after';
 }
 
-/** The rows that a drag in a collection moves, and where they go, as onReorder of React Aria. */
+/** The rows that a drag in a collection moves, and where they go. */
 export interface ReorderEvent {
   keys: Key[];
   target: DropTarget;

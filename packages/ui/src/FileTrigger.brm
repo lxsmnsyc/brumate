@@ -15,9 +15,9 @@
   import { ButtonContext } from './contexts.ts';
 
   /**
-   * Opens the file picker of the browser from a Button inside, as FileTrigger of React Aria
-   * Components. `onSelect` gets the files that the user picked. The input is hidden, so the
-   * picker needs scripts. For a form that works without them, use a visible file input.
+   * Opens the file picker of the browser from a Button inside. `onSelect` gets the files that the
+   * user picked. The input is hidden, so the picker needs scripts. For a form that works without
+   * them, use a visible file input.
    */
   const {
     acceptedFileTypes,
@@ -32,7 +32,7 @@
   const inputId = $id();
 
   // The input forgets the files of before, so a change fires when the user picks the same file
-  // again, such as after an upload that failed. React Aria does the same.
+  // again, such as after an upload that failed.
   function open() {
     const input = document.getElementById(inputId) as HTMLInputElement | null;
     if (input) {

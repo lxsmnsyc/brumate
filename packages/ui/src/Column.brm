@@ -23,7 +23,7 @@
   import { ColumnContext, TableContext, TableResizeContext, cssWidth } from './table.ts';
 
   /**
-   * A column of a Table, as Column of React Aria Components: its header cell. `id` is its key.
+   * A column of a Table: its header cell. `id` is its key.
    *
    * - `isRowHeader` makes the cells of the column name their rows, as `th` elements with
    *   `role="rowheader"`. A Table needs one.

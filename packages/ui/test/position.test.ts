@@ -1,4 +1,4 @@
-// The tests of the placement of overlays follow the tests of calculatePosition in React Aria.
+// The tests of the placement of overlays.
 import { expect, it } from 'vitest';
 import { computePosition, parsePlacement } from '../src/position.ts';
 

@@ -13,7 +13,7 @@ An area for two channels of a color.
 ```
 
 - A `ColorArea` holds a [ColorThumb](./color-slider.md#colorthumb), which moves on both axes.
-- `xChannel` and `yChannel` are the channels of the axes: `hue`, `saturation`, `lightness`, `brightness`, `red`, `green` or `blue`. Y grows upward. Without them, they are the first two channels of the space, as in React Aria: hue and saturation for `hsb` and `hsl`, and red and green for `rgb`. Give one, and the other is the first channel of the space that is left.
+- `xChannel` and `yChannel` are the channels of the axes: `hue`, `saturation`, `lightness`, `brightness`, `red`, `green` or `blue`. Y grows upward. Without them, they are the first two channels of the space: hue and saturation for `hsb` and `hsl`, and red and green for `rgb`. Give one, and the other is the first channel of the space that is left.
 - `colorSpace` is the space that it reads the channels in, `rgb`, `hsl` or `hsb`. A color of another space moves to it. Without it, the space is that of `value`, such as `rgb` for a hex color, when it has the channels, or else the first of `hsb`, `hsl` and `rgb` that has them.
 - `value` is a color of CSS, such as `#e2445a`. It starts its own state, or binds with `$bind`. See [State](./state.md). Without one, it is `#ffffff`.
 - `onChange` gets each change. `onChangeEnd` gets the color once a drag or a key ends.
@@ -21,7 +21,7 @@ An area for two channels of a color.
 - The area edits a color at full precision, and gives back the format of the caller. Hex cannot hold the hue of a gray, nor hsl the saturation of black, so a drag to saturation 0 and back keeps the hue. `value` and `onChange` change only when an edit makes another color. When `value` changes from outside, such as from a reset of the form, the color follows it.
 - `isDisabled` keeps it still and shows `data-disabled`.
 - `xName` and `yName` send the two values with a form, also before the code of the page loads. A reset of the form gives back the first color.
-- The area is a group. Give it an `aria-label` or an `aria-labelledby`, such as `Saturation and brightness`. As in React Aria, the group and both inputs say that label and `Color picker`, such as `Saturation and brightness, Color picker`, and the inputs are `Color picker` without a label. An `aria-labelledby` reaches the group and both inputs, each with its own ID first.
+- The area is a group. Give it an `aria-label` or an `aria-labelledby`, such as `Saturation and brightness`. The group and both inputs say that label and `Color picker`, such as `Saturation and brightness, Color picker`, and the inputs are `Color picker` without a label. An `aria-labelledby` reaches the group and both inputs, each with its own ID first.
 
 ## Keys
 

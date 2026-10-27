@@ -23,8 +23,8 @@
   }
 
   /**
-   * The props of DateRangePicker. `as` takes an element name or a component, and the other props are those
-   * of the target.
+   * The props of DateRangePicker. `as` takes an element name or a component, and the other props
+   * are those of the target.
    */
   export type DateRangePickerProps<T extends AsTarget = 'div'> = AsProps<T, DateRangePickerOwnProps>;
 </script>
@@ -49,10 +49,9 @@
   import { DateRangeFieldContext } from './segments.ts';
 
   /**
-   * Two dates that the user types or picks as a range, as DateRangePicker of React Aria
-   * Components. It holds a Label, a Group with a DateInput with `slot="start"`, one with
-   * `slot="end"` and a Button, a Popover with a Dialog and a RangeCalendar, and a Text with
-   * `slot="description"` and a FieldError.
+   * Two dates that the user types or picks as a range. It holds a Label, a Group with a DateInput
+   * with `slot="start"`, one with `slot="end"` and a Button, a Popover with a Dialog and a
+   * RangeCalendar, and a Text with `slot="description"` and a FieldError.
    *
    * - `value` is the range as `{ start, end }` of `YYYY-MM-DD` dates, or null until both are set.
    *   `value=(range)` starts its own, and `value=$bind(signal)` writes the caller's. `onChange`

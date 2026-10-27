@@ -1,4 +1,4 @@
-// The tests of Slider follow the tests of Slider in React Aria.
+// The tests of Slider.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Sliders from './fixtures/sliders.brm?brumate-server';

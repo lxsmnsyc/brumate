@@ -1,4 +1,4 @@
-// The tests of ColorSwatch follow the tests of ColorSwatch in React Aria.
+// The tests of ColorSwatch.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
 import Pickers from './fixtures/color-swatch-pickers.brm?brumate-server';
