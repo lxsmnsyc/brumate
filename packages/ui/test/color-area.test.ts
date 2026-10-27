@@ -105,39 +105,42 @@ it('moves x with Left and Right and y with Up and Down, on either input', async 
   await page.waitFor(() => expect(state(page)[5]).toBe('hsb(210, 50%, 79%)'));
 });
 
-it('moves y a page with PageUp and PageDown, and a page with Shift and an arrow', async () => {
+it('moves the channel of its input a page with PageUp and PageDown, and a page with Shift and an arrow', async () => {
   const page = await areas();
   const { x, y } = inputs(page, '.hsb');
   expect(x.getAttribute('aria-roledescription')).toBe('2D slider');
   expect(y.getAttribute('aria-roledescription')).toBe('2D slider');
   x.focus();
   press('PageUp', x);
-  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 50%, 90%)'));
-  press('PageDown', x);
-  press('PageDown', x);
-  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 50%, 70%)'));
-  // Shift with PageUp moves y too.
-  press('PageUp', x, { shiftKey: true });
-  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 50%, 80%)'));
-  press('ArrowRight', x, { shiftKey: true });
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 60%, 80%)'));
+  await page.waitFor(() => expect(x.value).toBe('60'));
+  press('PageDown', x);
+  press('PageDown', x);
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 40%, 80%)'));
+  press('PageUp', y);
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 40%, 90%)'));
+  press('PageDown', y, { shiftKey: true });
+  press('PageDown', y);
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 40%, 70%)'));
+  press('ArrowRight', x, { shiftKey: true });
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 50%, 70%)'));
   press('ArrowDown', x, { shiftKey: true });
-  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 60%, 70%)'));
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 50%, 60%)'));
 });
 
-it('moves x a page with Home and End, to the ends of its range', async () => {
+it('sends Home and End to the ends of the range of the channel of its input', async () => {
   const page = await areas();
-  const { x } = inputs(page, '.hsb');
+  const { x, y } = inputs(page, '.hsb');
   x.focus();
   press('End', x);
-  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 60%, 80%)'));
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 100%, 80%)'));
+  await page.waitFor(() => expect(x.value).toBe('100'));
   press('Home', x);
-  press('Home', x);
-  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 40%, 80%)'));
-  for (let i = 0; i < 5; i++) {
-    press('Home', x);
-  }
   await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 0%, 80%)'));
+  press('End', y);
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 0%, 100%)'));
+  press('Home', y);
+  await page.waitFor(() => expect(state(page)[0]).toBe('hsb(210, 0%, 0%)'));
 });
 
 it('takes a value from the input of a screen reader, in the format of the value', async () => {
@@ -190,11 +193,13 @@ it('mirrors x right to left', async () => {
   // 20% of saturation sits at 80% from the left.
   expect(page.get('.rtl-thumb').getAttribute('style')).toMatch(/-1:\s*80%;\s*--s-[^:]+-2:\s*50%/);
   x.focus();
-  // Left is toward the larger values, and Home goes to the right.
+  // Left is toward the larger values. Home and End go to the ends of the range, also mirrored.
   press('ArrowLeft', x);
   await page.waitFor(() => expect(state(page)[2]).toBe('hsb(0, 21%, 50%)'));
   press('Home', x);
-  await page.waitFor(() => expect(state(page)[2]).toBe('hsb(0, 31%, 50%)'));
+  await page.waitFor(() => expect(state(page)[2]).toBe('hsb(0, 0%, 50%)'));
+  press('End', x);
+  await page.waitFor(() => expect(state(page)[2]).toBe('hsb(0, 100%, 50%)'));
   layout(page.get('.rtl'));
   pointer('pointerdown', page.get('.rtl'), { clientX: 150, clientY: 50 });
   // 150 of 200 from the left is 25% of saturation.
@@ -263,7 +268,7 @@ it('takes the first two channels of the space by default, and white without a va
   press('ArrowRight', hsb.x);
   await page.waitFor(() => expect(state(page)[6]).toBe('hsb(211, 50%, 80%)'));
   press('End', hex.x);
-  await page.waitFor(() => expect(state(page)[7]).toBe('#446699'));
+  await page.waitFor(() => expect(state(page)[7]).toBe('#FF6699'));
 });
 
 it('names the color without its alpha', async () => {

@@ -58,7 +58,7 @@ An area for two channels of a color.
 
 ## Keyboard
 
-The keys act on either input of the thumb. A key with Ctrl, Meta or Alt moves nothing.
+The arrows act on either input of the thumb, and each moves its own axis. The other keys act on the axis of the input that has focus. A key with Ctrl, Meta or Alt moves nothing.
 
 | Key          | Action                                                                   |
 | ------------ | ------------------------------------------------------------------------ |
@@ -67,10 +67,10 @@ The keys act on either input of the thumb. A key with Ctrl, Meta or Alt moves no
 | `ArrowLeft`  | Lowers x by a step, or by a page with Shift. Right to left, it raises x. |
 | `ArrowUp`    | Raises y by a step, or by a page with Shift.                             |
 | `ArrowDown`  | Lowers y by a step, or by a page with Shift.                             |
-| `PageUp`     | Raises y by a page.                                                      |
-| `PageDown`   | Lowers y by a page.                                                      |
-| `End`        | Raises x by a page. Right to left, it lowers x.                          |
-| `Home`       | Lowers x by a page. Right to left, it raises x.                          |
+| `PageUp`     | Raises the axis of the input by a page.                                  |
+| `PageDown`   | Lowers the axis of the input by a page.                                  |
+| `End`        | Sets the axis of the input to its maximum.                               |
+| `Home`       | Sets the axis of the input to its minimum.                               |
 
 ## Controlled and uncontrolled
 

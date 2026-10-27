@@ -141,3 +141,22 @@ it('shows two months in the locale, with dates that cannot be picked', async () 
     expect(page.text('.trip-heading').replace(/\s/g, ' ')).toBe('Dezember 2026 – Januar 2027'),
   );
 });
+
+it('names the months and the dates by the Gregorian value in a locale with another calendar', async () => {
+  const page = await calendars();
+  // th-TH uses the Buddhist calendar, in which 2026 is 2569.
+  expect(page.text('.thai-heading')).toContain('2026');
+  expect(page.text('.thai-heading')).not.toContain('2569');
+  expect(page.get('.thai').getAttribute('aria-label')).toContain('Thai');
+  expect(page.get('.thai-grid').getAttribute('aria-label')).toContain('2026');
+  expect(page.get('.thai-grid').getAttribute('aria-label')).not.toContain('2569');
+  const label = cell(page, '.thai', '2026-10-25').getAttribute('aria-label')!;
+  expect(label).toContain('2026');
+  expect(label).not.toContain('2569');
+});
+
+it('shows the children of a CalendarHeading in place of the months', async () => {
+  const page = await calendars();
+  expect(page.text('.titled-heading')).toBe('Pick a day');
+  expect(page.text('.heading')).toBe('October 2026');
+});
