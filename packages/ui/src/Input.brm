@@ -1,5 +1,6 @@
 <script module>
   export interface InputProps {
+    /** The slot of the context of a part that holds this input. */
     slot?: string | null;
     [attribute: string]: unknown;
   }

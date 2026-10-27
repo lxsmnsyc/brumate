@@ -3,13 +3,21 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface CheckboxGroupOwnProps<T extends AsTarget = 'div'> {
+    /** The name that its boxes post with, when a box has none. */
     name?: string;
+    /** Disables every box of the group. */
     isDisabled?: boolean;
+    /** Makes every box of the group read only. */
     isReadOnly?: boolean;
+    /** Asks for at least one checked box when the form is sent. */
     isRequired?: boolean;
+    /** Marks the group as invalid. */
     isInvalid?: boolean;
+    /** Runs with the values of the checked boxes when the user changes them. */
     onChange?: (value: string[]) => void;
+    /** The Label, Checkboxes, Text and FieldError of the group. */
     children?: unknown;
+    /** The `value` of each checked box. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string[]>;
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;

@@ -1,7 +1,10 @@
 <script module>
   export interface RadioProps {
+    /** The value of the radio. It names the radio in its group. */
     value: string;
+    /** Disables the radio. A disabled group disables its radios too. */
     isDisabled?: boolean;
+    /** The content of the label. Draw the circle here. */
     children?: unknown;
     [attribute: string]: unknown;
   }

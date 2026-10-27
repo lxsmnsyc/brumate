@@ -1,5 +1,6 @@
 <script module>
   export interface TokenProps {
+    /** The content of the token, such as its text. */
     children?: unknown;
     [attribute: string]: unknown;
   }

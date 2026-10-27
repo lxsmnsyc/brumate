@@ -30,6 +30,21 @@ A button that presses with a mouse, a touch, a pen, Enter, Space, or a screen re
 | `data-disabled`      | It is disabled.                   |
 | `data-pending`       | It is pending.                    |
 
+## Keyboard
+
+| Key                | Action                                                   |
+| ------------------ | -------------------------------------------------------- |
+| `Tab`              | Moves focus to the button. A disabled button is skipped. |
+| `Enter` or `Space` | Presses the button. Space never scrolls the page.        |
+
+## Controlled and uncontrolled
+
+A button has no state of its own. `isDisabled` and `isPending` are set by the caller, and `onPress` and `onPressChange` report what the user does. To keep a pressed state, use a [ToggleButton](./toggle-button.md).
+
+## Styling
+
+Style the button with the data attributes above, such as `[data-pressed]` and `[data-focus-visible]`. See [Styling](./styling.md).
+
 ## In other parts
 
 Many parts give the `Button` inside them its role, its state and its handlers through a context, such as the trigger of a [Disclosure](./disclosure.md), of a [DialogTrigger](./dialog.md#dialogtrigger) or of a [TooltipTrigger](./tooltip.md). `slot` picks the button that a part means, such as `slot="close"` in a [Dialog](./dialog.md). The handlers of the part run first, then yours.

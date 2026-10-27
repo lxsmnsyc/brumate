@@ -1,5 +1,6 @@
 <script module>
   export interface TextAreaProps {
+    /** The slot of the context of a part that holds this text area. */
     slot?: string | null;
     [attribute: string]: unknown;
   }

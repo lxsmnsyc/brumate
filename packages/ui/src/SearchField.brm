@@ -3,14 +3,23 @@
   import type { Bindable } from 'brumate/signals';
 
   export interface SearchFieldOwnProps {
+    /** The name of the input, posted with the form. */
     name?: string;
+    /** Disables the field, its input and its clear button. */
     isDisabled?: boolean;
+    /** Makes the input read only, and stops Enter and Escape from acting. */
     isReadOnly?: boolean;
+    /** The hint that the input shows while it is empty. */
     placeholder?: string;
+    /** Runs with the text each time it changes. */
     onChange?: (value: string) => void;
+    /** Runs with the text when the user presses Enter. */
     onSubmit?: (value: string) => void;
+    /** Runs when Escape or the clear button empties the field. */
     onClear?: () => void;
+    /** The Label, Input, Text and Button of the field. */
     children?: unknown;
+    /** The text. A plain value starts its own state, and `$bind(signal)` writes the caller's. */
     value?: Bindable<string>;
   }
 
