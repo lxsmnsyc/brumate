@@ -122,6 +122,20 @@ export function blockingMemos(plan: Plan): Set<Declaration> {
 }
 
 /**
+ * Returns the memos that the server waits for where they are declared, but reads where the
+ * markup reads them: those without `await`. They hold an error until a read.
+ */
+export function lazyMemos(blocking: Set<Declaration>, inline: Set<Declaration>): Set<Declaration> {
+  const result = new Set<Declaration>();
+  for (const declaration of blocking) {
+    if (!declaration.awaited && !inline.has(declaration)) {
+      result.add(declaration);
+    }
+  }
+  return result;
+}
+
+/**
  * Returns the memos that a `#loading` body waits for before it renders:
  * the memos that its markup reads, and the memos that a `#loading` body
  * inside it reads with `await`. Memos that the page or a body around it
