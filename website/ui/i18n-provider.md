@@ -14,7 +14,7 @@ Gives the parts inside it a locale and its direction.
 
 ## Date strings
 
-The date parts read their words from the locale: the placeholders of the segments, the names of the segments for screen readers, and the labels of the Calendar and the DatePicker. English, German, French, Spanish, Japanese and Chinese have a table. Another language shows English words in the order and with the numbers of its locale.
+The date parts read their words from the locale: the placeholders of the segments, the names of the segments for screen readers, and the labels of the Calendar and the DatePicker. English, German, French, Spanish, Japanese and Chinese (Simplified, and Traditional for `zh-Hant`, `zh-TW`, `zh-HK` and `zh-MO`) have a table. Another language shows English words in the order and with the numbers of its locale.
 
 The server looks up the table once and writes only that language into the page, so the browser never loads the other languages. To use your own words, pass the whole set as `strings`. Start from `stringsOf` to change a few:
 
@@ -28,18 +28,18 @@ The server looks up the table once and writes only that language into the page, 
 <I18nProvider locale="de-DE" {strings}>…</I18nProvider>
 ```
 
-| Key              | Words for                                                  |
-| ---------------- | ---------------------------------------------------------- |
-| `placeholders`   | `year`, `month` and `day` when they are not set.           |
-| `segmentNames`   | The name of each segment for screen readers.               |
-| `empty`          | The spoken value of a segment that is not set.             |
-| `previous`       | The Button that shows earlier months.                      |
-| `next`           | The Button that shows later months.                        |
-| `calendar`       | The Button of a DatePicker that opens the Calendar.        |
-| `today`          | The start of the label of today's cell.                    |
-| `selected`       | The end of the label of a selected cell.                   |
-| `firstAvailable` | The end of the label of the first date that can be picked. |
-| `lastAvailable`  | The end of the label of the last date that can be picked.  |
+| Key              | Words for                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| `placeholders`   | `year`, `month` and `day` when they are not set.                                        |
+| `segmentNames`   | The name of each segment for screen readers.                                            |
+| `empty`          | The spoken value of a segment that is not set.                                          |
+| `previous`       | The Button that shows earlier months.                                                   |
+| `next`           | The Button that shows later months.                                                     |
+| `calendar`       | The Button of a DatePicker that opens the Calendar.                                     |
+| `today`          | The label of today's cell, with `{date}` for the date, such as `Today, {date}`.         |
+| `selected`       | The label of a selected cell, such as `{date} selected`.                                |
+| `firstAvailable` | The label of the first date that can be picked, such as `{date}, First available date`. |
+| `lastAvailable`  | The label of the last date that can be picked, such as `{date}, Last available date`.   |
 
 ## Props
 

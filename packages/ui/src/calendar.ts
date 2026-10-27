@@ -150,15 +150,17 @@ export function watchToday(timeZone: string | undefined, update: (today: DateStr
   let timer: ReturnType<typeof setTimeout>;
   const run = () => {
     clearTimeout(timer);
-    update(todayString(timeZone));
+    // A hidden tab catches up when it shows again.
+    if (!document.hidden) {
+      update(todayString(timeZone));
+    }
     timer = setTimeout(run, 60_050 - (Date.now() % 60_000));
   };
-  const shown = () => document.hidden || run();
   run();
-  document.addEventListener('visibilitychange', shown);
+  document.addEventListener('visibilitychange', run);
   return () => {
     clearTimeout(timer);
-    document.removeEventListener('visibilitychange', shown);
+    document.removeEventListener('visibilitychange', run);
   };
 }
 
@@ -393,17 +395,18 @@ export function cellLabel(calendar: CalendarState, date: DateString, selected: b
     timeZone: 'UTC',
   });
   const { strings } = calendar;
-  const selectedText = strings?.selected ?? 'selected';
   let label = formatter.format(toDate(date).toDate('UTC'));
+  const fill = (text: string) => text.replace('{date}', label);
   if (date === calendar.today) {
-    label = `${strings?.today ?? 'Today'}, ${label}${selected ? ` ${selectedText}` : ''}`;
-  } else if (selected) {
-    label = `${label} ${selectedText}`;
+    label = fill(strings?.today ?? 'Today, {date}');
+  }
+  if (selected) {
+    label = fill(strings?.selected ?? '{date} selected');
   }
   if (date === calendar.minValue) {
-    label += `, ${strings?.firstAvailable ?? 'First available date'}`;
+    label = fill(strings?.firstAvailable ?? '{date}, First available date');
   } else if (date === calendar.maxValue) {
-    label += `, ${strings?.lastAvailable ?? 'Last available date'}`;
+    label = fill(strings?.lastAvailable ?? '{date}, Last available date');
   }
   return label;
 }

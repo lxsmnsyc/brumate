@@ -84,7 +84,13 @@ it('has a table for each of the first six languages', () => {
     expect(stringsOf(language).previous).not.toBe('Previous');
   }
   // A region or a script does not change the language.
-  expect(stringsOf('zh-Hant-TW').next).toBe(stringsOf('zh').next);
+  expect(stringsOf('zh-CN').next).toBe(stringsOf('zh').next);
+  // Traditional Chinese has its own table, chosen by script or by region.
+  for (const locale of ['zh-Hant', 'zh-TW', 'zh-HK', 'zh-MO', 'zh-Hant-TW']) {
+    expect(stringsOf(locale).next).toBe('下一個');
+    expect(stringsOf(locale).empty).toBe('空白');
+  }
+  expect(stringsOf('zh-Hans-SG').next).toBe('下一个');
   expect(stringsOf('not a locale').next).toBe('Next');
 });
 

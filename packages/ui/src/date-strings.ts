@@ -32,13 +32,13 @@ export interface DateStrings {
   next: string;
   /** The `aria-label` of the Button that opens the Calendar of a DatePicker. */
   calendar: string;
-  /** Starts the label of today's cell. */
+  /** The label of today's cell. `{date}` is the date, such as `Today, {date}`. */
   today: string;
-  /** Ends the label of a selected cell. */
+  /** The label of a selected cell. `{date}` is the label so far, such as `{date} selected`. */
   selected: string;
-  /** Ends the label of the first date that can be picked. */
+  /** The label of the first date that can be picked, such as `{date}, First available date`. */
   firstAvailable: string;
-  /** Ends the label of the last date that can be picked. */
+  /** The label of the last date that can be picked, such as `{date}, Last available date`. */
   lastAvailable: string;
 }
 
@@ -51,10 +51,10 @@ const ENGLISH: Words = {
   previous: 'Previous',
   next: 'Next',
   calendar: 'Calendar',
-  today: 'Today',
-  selected: 'selected',
-  firstAvailable: 'First available date',
-  lastAvailable: 'Last available date',
+  today: 'Today, {date}',
+  selected: '{date} selected',
+  firstAvailable: '{date}, First available date',
+  lastAvailable: '{date}, Last available date',
 };
 
 /**
@@ -70,10 +70,10 @@ const LANGUAGES: Record<string, Words> = {
     previous: 'Zurück',
     next: 'Weiter',
     calendar: 'Kalender',
-    today: 'Heute',
-    selected: 'ausgewählt',
-    firstAvailable: 'Erstes verfügbares Datum',
-    lastAvailable: 'Letztes verfügbares Datum',
+    today: 'Heute, {date}',
+    selected: '{date} ausgewählt',
+    firstAvailable: '{date}, Erstes verfügbares Datum',
+    lastAvailable: '{date}, Letztes verfügbares Datum',
   },
   fr: {
     placeholders: { year: 'aaaa', month: 'mm', day: 'jj' },
@@ -81,10 +81,10 @@ const LANGUAGES: Record<string, Words> = {
     previous: 'Précédent',
     next: 'Suivant',
     calendar: 'Calendrier',
-    today: "Aujourd'hui",
-    selected: 'sélectionné',
-    firstAvailable: 'Première date disponible',
-    lastAvailable: 'Dernière date disponible',
+    today: "Aujourd'hui, {date}",
+    selected: '{date} sélectionné',
+    firstAvailable: '{date}, Première date disponible',
+    lastAvailable: '{date}, Dernière date disponible',
   },
   es: {
     placeholders: { year: 'aaaa', month: 'mm', day: 'dd' },
@@ -92,39 +92,54 @@ const LANGUAGES: Record<string, Words> = {
     previous: 'Anterior',
     next: 'Siguiente',
     calendar: 'Calendario',
-    today: 'Hoy',
-    selected: 'seleccionado',
-    firstAvailable: 'Primera fecha disponible',
-    lastAvailable: 'Última fecha disponible',
+    today: 'Hoy, {date}',
+    selected: '{date} seleccionado',
+    firstAvailable: '{date}, Primera fecha disponible',
+    lastAvailable: '{date}, Última fecha disponible',
   },
   ja: {
     placeholders: { year: '年', month: '月', day: '日' },
-    empty: '空',
+    empty: '空白',
     previous: '前へ',
     next: '次へ',
     calendar: 'カレンダー',
-    today: '今日',
-    selected: '選択済み',
-    firstAvailable: '選択可能な最初の日付',
-    lastAvailable: '選択可能な最後の日付',
+    today: '今日、{date}',
+    selected: '{date} 選択済み',
+    firstAvailable: '{date}、選択可能な最初の日付',
+    lastAvailable: '{date}、選択可能な最後の日付',
   },
   zh: {
     placeholders: { year: '年', month: '月', day: '日' },
-    empty: '空',
+    empty: '空白',
     previous: '上一个',
     next: '下一个',
     calendar: '日历',
-    today: '今天',
-    selected: '已选择',
-    firstAvailable: '第一个可用日期',
-    lastAvailable: '最后一个可用日期',
+    today: '今天，{date}',
+    selected: '{date} 已选择',
+    firstAvailable: '{date}，第一个可用日期',
+    lastAvailable: '{date}，最后一个可用日期',
+  },
+  'zh-Hant': {
+    placeholders: { year: '年', month: '月', day: '日' },
+    empty: '空白',
+    previous: '上一個',
+    next: '下一個',
+    calendar: '日曆',
+    today: '今天，{date}',
+    selected: '{date} 已選擇',
+    firstAvailable: '{date}，第一個可用日期',
+    lastAvailable: '{date}，最後一個可用日期',
   },
 };
 
-/** The language subtag of a locale, such as `de` for `de-DE`. */
+/**
+ * The key of the table of a locale: its language subtag, such as `de` for `de-DE`, and `zh-Hant`
+ * for Chinese in Traditional script, which `zh-TW`, `zh-HK` and `zh-MO` have by default.
+ */
 function languageOf(locale: string): string {
   try {
-    return new Intl.Locale(locale).language;
+    const { language, script } = new Intl.Locale(locale).maximize();
+    return language === 'zh' && script === 'Hant' ? 'zh-Hant' : language;
   } catch {
     return locale.split(/[-_]/)[0]!.toLowerCase();
   }

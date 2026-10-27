@@ -6,10 +6,13 @@
 - `I18nProvider` takes `timeZone` and `strings`. It looks up the table on the server and sets `DateStringsContext`. `strings` replaces the whole set.
 - DateField, TimeField, DateRangePicker, DateSegment, DatePicker and Calendar read the strings from the context. English words stay as fallbacks outside a provider.
 - Calendar takes `timeZone`. Today starts as the server's date in that zone (or the I18nProvider's, or the server's own). `watchToday` in calendar.ts then sets the browser's date on idle, when the tab shows, and at each minute, so the highlight moves at midnight.
-- `packages/ui/test/date-i18n.test.ts` and `test/fixtures/date-i18n.brm`: 11 tests. Docs: `website/ui/date-field.md`, `calendar.md`, `i18n-provider.md`. Changeset `.changeset/ui-date-i18n.md`.
+- The table has a `zh-Hant` entry (chosen by script, so `zh-TW`, `zh-HK` and `zh-MO` get it), and the labels that join a date (`today`, `selected`, `firstAvailable`, `lastAvailable`) are templates with `{date}`, so each language has its own punctuation. `watchToday` skips the update while the tab is hidden.
+- `packages/ui/test/date-i18n.test.ts` and `test/fixtures/date-i18n.brm`: 13 tests. Docs: `website/ui/date-field.md`, `calendar.md`, `i18n-provider.md`. Changeset `.changeset/ui-date-i18n.md`.
 
 ## Deviations
 
+- The placeholders follow the date inputs of Chrome. Firefox differs: German is upper case, and Japanese and Chinese show `yyyy/mm/dd`.
+- DateField and DateRangePicker read today when they render, not when a key steps an empty segment, so a page left open past midnight steps from the old date. Reading it in `step` costs +36 B (508 B against the 500 B budget), so it is left out.
 - The timer wakes at each minute boundary and not at a computed midnight. It moves the date within 50 ms of midnight in any zone, and it saves 65 B gzip.
 - Only the Calendar tracks today in the browser. DateField and DateRangePicker start an empty segment at the date of the server, in the I18nProvider's time zone when it has one. A signal in each field cost about 0.4 kB.
 - `timeZone` is a prop of Calendar and RangeCalendar and of the I18nProvider, not of DatePicker. A Calendar in a DatePicker takes it from the I18nProvider or its own prop.
@@ -40,4 +43,4 @@
 ## Size
 
 - Estimated M, actual M.
-- gzip of the chunks of a DatePicker page: +482 B (budget 500 B).
+- gzip of the chunks of a DatePicker page: +472 B against origin/main of 2026-10-28 (budget 500 B).
