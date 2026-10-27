@@ -36,8 +36,17 @@
   const nested = $getContext(ToolbarContext);
   $setContext(ToolbarContext, true);
 
-  $client(() => (ref ? keepTabStop(ref) : undefined), 'load');
-  $client(() => (ref ? preventEdges(ref) : undefined), 'load');
+  $client(() => {
+    if (!ref) {
+      return undefined;
+    }
+    const stops = [keepTabStop(ref), preventEdges(ref)];
+    return () => {
+      for (const stop of stops) {
+        stop();
+      }
+    };
+  }, 'load');
 
   function keyDown(event: KeyboardEvent) {
     moveFocus(event.currentTarget as Element, event.key, orientation, locale.direction);

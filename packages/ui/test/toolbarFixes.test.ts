@@ -102,7 +102,8 @@ it('prevents Home and End of a toggle button group, in either orientation', asyn
   for (const name of ['.bold', '.va']) {
     const button = page.get(name) as HTMLElement;
     button.focus();
-    expect(key(button, 'Home').defaultPrevented).toBe(true);
+    // The code of the group loads after the page.
+    await page.waitFor(() => expect(key(button, 'Home').defaultPrevented).toBe(true));
     expect(key(button, 'End').defaultPrevented).toBe(true);
   }
   const a = page.get('.va') as HTMLElement;
@@ -111,4 +112,15 @@ it('prevents Home and End of a toggle button group, in either orientation', asyn
   await page.waitFor(() => expect(document.activeElement).toBe(page.get('.vb')));
   const vb = page.get('.vb') as HTMLElement;
   expect(key(vb, 'ArrowRight').defaultPrevented).toBe(false);
+});
+
+it('leaves Home and End to a text field inside a toggle button group', async () => {
+  const page = await fixes();
+  const button = page.get('.wx') as HTMLElement;
+  button.focus();
+  await page.waitFor(() => expect(key(button, 'Home').defaultPrevented).toBe(true));
+  const field = page.get('.gfield') as HTMLElement;
+  field.focus();
+  expect(key(field, 'Home').defaultPrevented).toBe(false);
+  expect(key(field, 'End').defaultPrevented).toBe(false);
 });

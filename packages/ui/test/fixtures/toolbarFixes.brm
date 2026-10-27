@@ -33,6 +33,10 @@
   <ToggleButton id="a" class="va">A</ToggleButton>
   <ToggleButton id="b" class="vb">B</ToggleButton>
 </ToggleButtonGroup>
+<ToggleButtonGroup class="withfield" aria-label="With field" selectionMode="multiple">
+  <ToggleButton id="x" class="wx">X</ToggleButton>
+  <input class="gfield" aria-label="Group field" />
+</ToggleButtonGroup>
 <ToggleButtonGroup class="off" aria-label="Off" isDisabled=(true)>
   <ToggleButton id="on" class="forced" isDisabled=(false)>On</ToggleButton>
 </ToggleButtonGroup>
