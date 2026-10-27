@@ -32,11 +32,18 @@ export type DynamicHandle<E> = {
   <H>(event: string, handler: H): H;
 };
 
+/** The keys of each object of a union, so an optional key counts. */
+export type SpreadKeys<U> = U extends unknown ? keyof U : never;
+
 /**
  * Checks the props of a component as a dynamic tag. Without a spread, the props are complete.
- * With one, the spreads can hold any of them, so each object is checked as part of the props.
+ * With spreads, each one is part of the props, and the object must give each required prop that
+ * no spread names.
  */
 export type DynamicProps<P> = {
   (props: P): void;
-  (props: Partial<P>, ...spreads: [Partial<P>, ...Partial<P>[]]): void;
+  <S extends [Partial<P>, ...Partial<P>[]]>(
+    props: Omit<P, SpreadKeys<S[number]>> & Partial<P>,
+    ...spreads: S
+  ): void;
 };

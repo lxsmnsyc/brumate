@@ -42,6 +42,10 @@ it('reports type errors in .brm files at their place in the file', () => {
     "Dynamic.brm(21,47): error TS2339: Property 'nope' does not exist on type '(EventTarget & HTMLElement) | (EventTarget & SVGElement)'.",
     "Dynamic.brm(22,10): error TS2353: Object literal may only specify known properties, and 'onFooBar' does not exist in type '{ onInput? ...",
     'Dynamic.brm(23,10): error TS2345: Argument of type \'{ tabindex: "x"; }\' is not assignable to parameter of type \'Html<"div", {}>\'.',
+    // A component with a spread still reports a required prop that no spread gives, at the tag.
+    // A prop that a spread gives, also as an optional key or in `c && { ... }`, and a spread of
+    // `Record<string, unknown>` pass.
+    "Dynamic.brm(26,1): error TS2345: Argument of type '{}' is not assignable to parameter of type 'Omit<{ label: string; onPress?: (() => void) | undefined; }, \"onPress\"> & Partial<{ label: string; onPress?: (() => void) | undefined; }>'.",
     // The attributes of a plain element, each at its place: an unknown one, a wrong value, a ref
     // of another element, a wrong value in a spread and a computed name. Then children given to a
     // component that takes none, at the children. `autocorrect`,

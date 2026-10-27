@@ -23,3 +23,8 @@
 <{'div'} {...(c && { tabindex: 'x' })}></>
 <{'div'} {...(c && { id: 'a' })} {...undefined} {...(c ? { title: 'a' } : null)}>text</>
 <{as} ref=$bind(button) data-x=(1) {...(c && { id: 'a' })}>text</>
+<{(null! as Component<{ label: string; onPress?: () => void }>)} {...{ onPress: () => {} }}></>
+<{(null! as Component<{ label: string; count: number }>)} count=(1) {...{ label: 'a' }}></>
+<{(null! as Component<{ label: string; count: number }>)} {...({} as { label?: string; count?: number })}></>
+<{(null! as Component<{ label: string; count: number }>)} label="a" count=(1) {...({} as Record<string, unknown>)}></>
+<{(null! as Component<{ label: string; count: number }>)} count=(1) {...(c && { label: 'a' })}></>
