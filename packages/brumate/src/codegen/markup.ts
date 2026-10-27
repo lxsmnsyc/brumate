@@ -151,6 +151,7 @@ const CLIENT_HELPERS: Record<string, string> = {
   fn: 'handlerProp',
   bindings: 'bindings',
   after: 'afterInsert',
+  restRef: 'restRef',
   title: 'title',
 };
 
@@ -1326,8 +1327,23 @@ export class Emitter {
       }
     }
     if (merged) {
+      // A `ref` that a rest prop holds is a binding of the parent's signal. The element goes to it.
+      const forwards =
+        anchor !== undefined &&
+        !node.attributes.some((attribute) => attribute.kind === 'ref') &&
+        node.attributes.some((attribute) =>
+          attribute.kind === 'spread'
+            ? this.sitesByNode
+                .get(attribute.value.ast)
+                ?.reads.some(
+                  (read) =>
+                    read.declaration.kind === 'prop' || read.declaration.kind === 'props-rest',
+                )
+            : false,
+        );
+      const attributes = `$$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})`;
       this.code(
-        `$$b.spread($$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})${spreadArguments(spreadHandlers)})`,
+        `$$b.spread(${forwards ? `${this.helper('restRef')}(${attributes}, ${anchor.scope}, ${anchor.index})` : attributes}${spreadArguments(spreadHandlers)})`,
       );
     }
     // With a spread, the own `b-b` is already written, before it.
