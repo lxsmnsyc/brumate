@@ -56,6 +56,12 @@ depends_on:
   - on: code-examples
     kind: hard
     why: the docs code that people copy should use the current markup
+  - on: setter-ref-forward
+    kind: hard
+    why: a ref with a setter never gets its element, wrong behavior users can hit
+  - on: handler-code-wait
+    kind: hard
+    why: a handler waits on unrelated update code, and a failed load leaves effects stuck
 ---
 
 # Release brumate 0.4.0 and @brumate/ui 0.1.0
@@ -66,7 +72,7 @@ Publish brumate 0.4.0 and @brumate/ui 0.1.0 (the first public ui release), with 
 
 ## Context
 
-- The maintainer asked for a formal 0.4.0 release on 2026-10-28, with @brumate/ui published as 0.1.0 at the same time. The nodes this one depends on are the cut they agreed to.
+- The maintainer asked for a formal 0.4.0 release on 2026-10-28, with @brumate/ui published as 0.1.0 at the same time. The nodes this one depends on are the cut they agreed to. Of the core fixes, setter-ref-forward and handler-code-wait are in; visible-forwarded-ref may go in if there is room; runtime-brand-checks and conditional-rest-spread wait for a later release.
 - Releases run through changesets: on a push to main, .github/workflows/release.yml opens or updates a "Version Packages" pull request. Merging that pull request publishes. So this node is: check the version pull request, then hand it to the maintainer. The orchestrator never merges it (`gate: true`, and `release` is excluded from auto-merge in GOAL.md).
 - @brumate/ui is at 0.0.0. Check that its changesets bump it to 0.1.0, not 0.0.1 or 1.0.0; adjust with one changeset if needed.
 - Before the version pull request: `pnpm build && pnpm test && node e2e/run.mjs` pass on main (GOAL acceptance), `pnpm bench` todos size is recorded, and the package contents are checked with `pnpm pack --dry-run` for each published package (no test fixtures, the ui skill included).
