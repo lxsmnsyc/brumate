@@ -21,7 +21,7 @@
       <li class="menu-row">
         <span>{file.name}</span>
         <MenuTrigger>
-          <Button class="ui-button" aria-label=(`Actions for ${file.name}`)>More</Button>
+          <Button class="ui-button" aria-label=(`More actions for ${file.name}`)>More</Button>
           <Popover class="ui-popover" placement="bottom end">
             <Menu class="ui-menu" onAction=((key) => {
               if (key === 'delete') {

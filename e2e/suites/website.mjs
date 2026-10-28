@@ -871,7 +871,7 @@ export async function run({ browser, url, runner }) {
       await visit('menu');
       const names = () => page.locator('.menu-row span').allInnerTexts();
       assert((await names()).join() === 'Notes.txt,Budget.xlsx,Photos.zip', 'the rows start wrong');
-      const actions = page.getByRole('button', { name: 'Actions for Notes.txt' });
+      const actions = page.getByRole('button', { name: 'More actions for Notes.txt' });
       await actions.focus();
       await page.keyboard.press('ArrowDown');
       await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'menuitem');
@@ -881,7 +881,7 @@ export async function run({ browser, url, runner }) {
       assert((await names()).includes('Copy of Notes.txt'), 'Duplicate added no row');
       assert(
         (await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))) ===
-          'Actions for Notes.txt',
+          'More actions for Notes.txt',
         'focus did not return to the Button',
       );
       // A menu that is open takes Escape, and the state demo follows its signal.

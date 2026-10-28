@@ -15,7 +15,7 @@
     <Menu class="ui-menu" aria-label="Edit" data-mark="3" data-mark-side="bottom">
       <MenuSection data-mark="4">
         <Header class="ui-listbox-header menu-anatomy-self" data-mark="5" data-mark-side="after">Clipboard</Header>
-        <MenuItem id="cut" class="ui-menu-item" hasLabel hasDescription data-mark="6" data-mark-side="inside">
+        <MenuItem id="cut" class="ui-menu-item" data-mark="6" data-mark-side="inside">
           <span class="menu-anatomy-text">
             <Text slot="label" class="menu-anatomy-self" data-mark="7" data-mark-side="after">Cut</Text>
             <Text slot="description" class="ui-help menu-anatomy-self" data-mark="8" data-mark-side="after">Moves the selection</Text>

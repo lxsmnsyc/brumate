@@ -9,7 +9,6 @@
   import Popover from '@brumate/ui/Popover.brm';
   import Separator from '@brumate/ui/Separator.brm';
   import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
-  import Text from '@brumate/ui/Text.brm';
   import type { Key } from '@brumate/ui/collection.ts';
 
   let last = $signal('nothing yet');
@@ -23,10 +22,10 @@
       <Menu class="menu-styled" onAction=((key) => (last = String(key)))>
         <MenuSection>
           <Header class="menu-styled-header">Clipboard</Header>
-          <MenuItem id="cut" class="menu-styled-item" textValue="Cut" hasLabel hasDescription>
+          <MenuItem id="cut" class="menu-styled-item" textValue="Cut">
             <span class="menu-styled-text">
-              <Text slot="label">Cut</Text>
-              <Text slot="description" class="menu-styled-hint">Moves the selection</Text>
+              <span>Cut</span>
+              <span class="menu-styled-hint">Moves the selection</span>
             </span>
             <kbd class="menu-styled-key">Ctrl X</kbd>
           </MenuItem>
