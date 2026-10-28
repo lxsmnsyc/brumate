@@ -2,7 +2,7 @@
   import { $memo, $props, $route } from 'brumate/signals';
   import { raw } from 'brumate/html';
   import Header from '../components/Header.brm';
-  import { FIT_SCRIPT, NETWORK_SCRIPT, THEME_SCRIPT } from '../scripts.ts';
+  import { NETWORK_SCRIPT, THEME_SCRIPT } from '../scripts.ts';
   import { STYLES } from '../theme.ts';
 
   const { children } = $props();
@@ -22,7 +22,6 @@
     <link rel="apple-touch-icon" href=(`${base}apple-touch-icon.png`)>
     {raw(THEME_SCRIPT)}
     {raw(NETWORK_SCRIPT)}
-    {raw(FIT_SCRIPT)}
     {raw(STYLES)}
   </head>
   <body>
