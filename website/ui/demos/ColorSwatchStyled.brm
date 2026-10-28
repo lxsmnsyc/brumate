@@ -1,0 +1,57 @@
+<script>
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+</script>
+
+<div class="color-swatch-styled-row">
+  <ColorSwatch class="color-swatch-styled color-swatch-styled-square" color="#e2445a" />
+  <ColorSwatch class="color-swatch-styled color-swatch-styled-circle" color="hsl(210, 50%, 40%)" colorName="Ocean" />
+  <!-- The part draws the checkerboard under a color with alpha. -->
+  <ColorSwatch class="color-swatch-styled color-swatch-styled-square" color="rgba(46, 160, 67, 0.5)" />
+  <span class="color-swatch-styled-chip">
+    <ColorSwatch class="color-swatch-styled color-swatch-styled-small" color="#8b5cf6" />
+    Violet
+  </span>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. The swatch sets --color, the color it shows. */
+  :global(.color-swatch-styled-row) {
+    --color-swatch-styled-edge: color-mix(in srgb, CanvasText 55%, Canvas);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    color: CanvasText;
+  }
+
+  :global(.color-swatch-styled) {
+    box-shadow: 0 0 0 1px var(--color-swatch-styled-edge);
+  }
+
+  :global(.color-swatch-styled-square) {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 0.5rem;
+  }
+
+  :global(.color-swatch-styled-circle) {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+  }
+
+  :global(.color-swatch-styled-small) {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+  }
+
+  :global(.color-swatch-styled-chip) {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.25rem 0.75rem 0.25rem 0.4rem;
+    border: 1px solid var(--color-swatch-styled-edge);
+    border-radius: 999px;
+  }
+</style>

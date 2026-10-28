@@ -1,0 +1,50 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ColorSlider from '@brumate/ui/ColorSlider.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let mine = $signal('hsl(210, 80%, 50%)');
+  let asked = $signal('hsl(210, 80%, 50%)');
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <ColorSlider class="ui-color-slider" channel="hue" >
+    <Label>Own state</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-color-track">
+      <ColorThumb class="ui-color-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <ColorSlider class="ui-color-slider" channel="hue" value="hsl(30, 80%, 50%)">
+    <Label>Starts at orange, then keeps its own copy</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-color-track">
+      <ColorThumb class="ui-color-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <ColorSlider class="ui-color-slider" channel="hue" value=$bind(mine) onChange=((next) => (log = `changed to ${next}`))>
+    <Label>Writes your signal</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-color-track">
+      <ColorThumb class="ui-color-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <ColorSlider class="ui-color-slider" channel="hue" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <Label>Asks you first</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-color-track">
+      <ColorThumb class="ui-color-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine}. Asks: {asked}. Last callback: {log || 'none'}.</p>
+</form>

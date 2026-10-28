@@ -1,0 +1,85 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import ColorWheel from '@brumate/ui/ColorWheel.brm';
+  import ColorWheelTrack from '@brumate/ui/ColorWheelTrack.brm';
+
+  let color = $signal('hsl(210, 80%, 50%)');
+</script>
+
+<div class="color-wheel-styled-row">
+  <ColorWheel class="color-wheel-styled" value=$bind(color) outerRadius=(90) innerRadius=(66) aria-label="Hue">
+    <ColorWheelTrack class="color-wheel-styled-track" />
+    <ColorThumb class="color-wheel-styled-thumb" />
+  </ColorWheel>
+  <ColorWheel class="color-wheel-styled" value="hsl(30, 80%, 50%)" outerRadius=(50) innerRadius=(36) isDisabled aria-label="Disabled hue">
+    <ColorWheelTrack class="color-wheel-styled-track" />
+    <ColorThumb class="color-wheel-styled-thumb" />
+  </ColorWheel>
+  <div class="color-wheel-styled-preview">
+    <ColorSwatch class="color-wheel-styled-swatch" color=color />
+    <code>{color}</code>
+  </div>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.color-wheel-styled-row) {
+    --color-wheel-styled-page: Canvas;
+    --color-wheel-styled-text: CanvasText;
+    --color-wheel-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    align-items: center;
+    color: var(--color-wheel-styled-text);
+  }
+
+  /* The ring is drawn by the track. A disabled wheel dims. */
+  :global(.color-wheel-styled[data-disabled]) {
+    opacity: 0.5;
+  }
+
+  :global(.color-wheel-styled-thumb) {
+    box-sizing: border-box;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    outline: none;
+    box-shadow: 0 0 0 1.5px #000, inset 0 0 0 1.5px #000;
+    transition: scale 0.12s;
+  }
+
+  :global(.color-wheel-styled-thumb[data-dragging]) {
+    scale: 1.2;
+  }
+
+  :global(.color-wheel-styled-thumb[data-focus-visible]) {
+    box-shadow:
+      0 0 0 1.5px #000,
+      0 0 0 3.5px var(--color-wheel-styled-page),
+      0 0 0 6px var(--color-wheel-styled-accent),
+      inset 0 0 0 1.5px #000;
+  }
+
+  :global(.color-wheel-styled-preview) {
+    display: grid;
+    gap: 0.5rem;
+    justify-items: start;
+  }
+
+  :global(.color-wheel-styled-swatch) {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-wheel-styled-text) 50%, var(--color-wheel-styled-page));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.color-wheel-styled-thumb) {
+      transition: none;
+    }
+  }
+</style>

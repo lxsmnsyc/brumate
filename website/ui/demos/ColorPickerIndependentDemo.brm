@@ -1,0 +1,38 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ColorField from '@brumate/ui/ColorField.brm';
+  import ColorPicker from '@brumate/ui/ColorPicker.brm';
+  import ColorSlider from '@brumate/ui/ColorSlider.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let log = $signal('none');
+</script>
+
+<ColorPicker value="hsb(210, 80%, 90%)" onChange=((next) => (log = next))>
+  <div class="ui-stack">
+    <ColorSlider class="ui-color-slider" channel="hue">
+      <Label>Hue, from the picker</Label>
+      <SliderOutput />
+      <SliderTrack class="ui-color-track"><ColorThumb class="ui-color-thumb" /></SliderTrack>
+    </ColorSlider>
+    <!-- A value of its own makes the part independent of the picker. -->
+    <ColorSlider class="ui-color-slider" channel="hue" value="hsb(0, 80%, 90%)">
+      <Label>Hue, its own</Label>
+      <SliderOutput />
+      <SliderTrack class="ui-color-track"><ColorThumb class="ui-color-thumb" /></SliderTrack>
+    </ColorSlider>
+    <div class="ui-row ui-color-row">
+      <ColorField class="ui-field">
+        <Label>Hex, from the picker</Label>
+        <Input class="ui-input" />
+      </ColorField>
+      <ColorSwatch class="ui-swatch" />
+    </div>
+    <p>The picker called onChange with: {log}.</p>
+  </div>
+</ColorPicker>

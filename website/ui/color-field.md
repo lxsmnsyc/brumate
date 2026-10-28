@@ -21,12 +21,20 @@ A field for a color, as hex or as one channel.
 - `value` is a color of CSS, such as `#e2445a`, or `null` when the field is empty. It starts its own state, or binds with `$bind`, and `onChange` gets each change. See [State](./state.md).
 - The value keeps the format it was given, such as `hsl(210, 50%, 40%)`, and is hex when it started empty. Editing keeps the alpha of the color.
 - A field of a channel edits a color at full precision, and gives back the format of the caller. `value` and `onChange` change only when an edit makes another color, so typed hex in another case, or a blur without typing, changes nothing.
-- `name` sends the hex, or the channel value, as it reads in the input, also before the code of the page loads.
+- `name` sends the hex as it reads in the input, also before the code of the page loads. A channel field sends the number of the channel, so an alpha input that reads `100%` sends `1`.
 - A reset of the form gives back the first value.
 - `isRequired` asks the browser to check the field on a submit, and the `FieldError` shows the message.
 - It shows `data-channel`, which is `hex` without a channel, and `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
 
 ## Anatomy
+
+```brm anatomy ColorFieldAnatomy
+`ColorField`: The field. It shows `data-channel`, `data-invalid` and the other states.
+`Label`: Names the input.
+`Input`: Holds the text. The keys step the color, and leaving it commits the text.
+`Text` with `slot="description"`: Describes the field. Optional.
+`FieldError`: Shows the message of an invalid field. Optional.
+```
 
 ```html
 <ColorField>
@@ -73,11 +81,48 @@ The keys act while the input has focus. A key with Shift, Ctrl, Alt or Meta is l
 
 ## Controlled and uncontrolled
 
-`value` holds a color of CSS, or `null` when the field is empty. A plain `value` starts the field's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the color as text, or `null`, each time an edit makes another value. Inside a [ColorPicker](./color-picker.md), a field without a `value` reads and writes the color of the picker. A reset of the form gives back the first value. See [State](./state.md).
+`value` holds a color of CSS, or `null` when the field is empty. How you pass it picks who keeps it. Change a field below and press Reset the form:
+
+```brm demo ColorFieldStateDemo
+
+```
+
+- `value` alone, or nothing, makes the field keep its own color. `value="#f59e0b"` is where that color starts. Type another and the field keeps it. A new value from you replaces it.
+- `value=$bind(signal)` writes your signal. Change the signal and the field follows.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and type in the last field.
+- `onChange` gets the color as text, or `null`, in every shape, each time an edit makes another value.
+- A reset of the form gives back the first value, as a write: with `$bind(signal, request)`, your request can refuse it. The server renders the value it starts with.
+- With a request that refuses, a ColorField on main today can show the refused value: the part draws the new color before it asks, and a refusal leaves it drawn. The node `ui-refused-write-sync` (#332) makes it show the kept value. Press Lock above and use the last one to see which you get.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the field with the data attributes above. The `Input` and the `Label` are the parts of [TextField](./text-field.md). See [Styling](./styling.md).
+
+This stylesheet styles the input in rest, hover, keyboard focus, invalid and disabled, the description and the error, and a swatch beside the field. Clear the first field and press Save to see the error.
+
+```brm styled ColorFieldStyled
+
+```
+
+## Use cases
+
+### Channels of one color
+
+Fields with a `channel` and `colorSpace="rgb"` edit one number each, and the hex field edits all three. They share one `$bind` signal, so a change in one shows in the others.
+
+```brm demo ColorFieldChannelsDemo
+
+```
+
+### A field in a form
+
+`isRequired` makes the browser check the hex field, and the FieldError shows the message. `name` sends the hex as the input reads it, and for a channel field the value of the channel, such as the opacity here. Reset gives back the first values.
+
+```brm demo ColorFieldFormDemo
+
+```
 
 ## Hex
 

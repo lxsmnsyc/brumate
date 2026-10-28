@@ -1,0 +1,26 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import Form from '@brumate/ui/Form.brm';
+
+  let sent = $signal('Nothing sent.');
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent s=${data.get('s')}, b=${data.get('b')}.`;
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(submit))>
+  <ColorArea class="ui-color-area" xChannel="saturation" yChannel="brightness" xName="s" yName="b" value="hsb(210, 80%, 90%)" aria-label="Saturation and brightness">
+    <ColorThumb class="ui-color-thumb" />
+  </ColorArea>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Save</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p role="status">{sent}</p>
+</Form>

@@ -1,0 +1,104 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorSwatchPicker from '@brumate/ui/ColorSwatchPicker.brm';
+  import ColorSwatchPickerItem from '@brumate/ui/ColorSwatchPickerItem.brm';
+
+  let color = $signal('#2563eb');
+  const colors = ['#e2445a', '#f59e0b', '#2ea043', '#2563eb', '#8b5cf6', '#6b7280'];
+</script>
+
+<div class="swatch-picker-styled-box">
+  <p id="swatch-picker-styled-title" class="swatch-picker-styled-title">Label color</p>
+  <ColorSwatchPicker class="swatch-picker-styled" aria-labelledby="swatch-picker-styled-title" value=$bind(color)>
+    #for (item of colors by item) {
+      <ColorSwatchPickerItem class="swatch-picker-styled-item" color=item isDisabled=(item === '#6b7280')>
+        <ColorSwatch class="swatch-picker-styled-swatch" />
+      </ColorSwatchPickerItem>
+    }
+  </ColorSwatchPicker>
+  <p>Picked {color}. The gray one is disabled.</p>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.swatch-picker-styled-box) {
+    --swatch-picker-styled-page: Canvas;
+    --swatch-picker-styled-ring: color-mix(in srgb, CanvasText 55%, Canvas);
+    --swatch-picker-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    display: grid;
+    gap: 0.6rem;
+    justify-items: start;
+    color: CanvasText;
+  }
+
+  :global(.swatch-picker-styled-title) {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  :global(.swatch-picker-styled) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    outline: none;
+  }
+
+  /* The item: a ring that grows in steps. Rest has none, hover draws a gray one, selected an accent one. */
+  :global(.swatch-picker-styled-item) {
+    padding: 4px;
+    border-radius: 50%;
+    outline: none;
+    box-shadow: 0 0 0 2px transparent;
+    cursor: pointer;
+    transition: box-shadow 0.12s, scale 0.12s;
+  }
+
+  :global(.swatch-picker-styled-item[data-hovered]) {
+    box-shadow: 0 0 0 2px var(--swatch-picker-styled-ring);
+  }
+
+  :global(.swatch-picker-styled-item[data-selected]) {
+    box-shadow: 0 0 0 3px var(--swatch-picker-styled-accent);
+  }
+
+  /* Selected and hovered: the ring thickens. */
+  :global(.swatch-picker-styled-item[data-selected][data-hovered]) {
+    box-shadow: 0 0 0 5px var(--swatch-picker-styled-accent);
+  }
+
+  /* Pressed, selected or not: the item shrinks. */
+  :global(.swatch-picker-styled-item[data-pressed]) {
+    scale: 0.92;
+  }
+
+  /* Two bands, so the ring shows on the page and next to a selected ring. */
+  :global(.swatch-picker-styled-item[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--swatch-picker-styled-page), 0 0 0 5px var(--swatch-picker-styled-accent);
+  }
+
+  :global(.swatch-picker-styled-item[data-selected][data-focus-visible]) {
+    box-shadow:
+      0 0 0 2px var(--swatch-picker-styled-accent),
+      0 0 0 4px var(--swatch-picker-styled-page),
+      0 0 0 7px var(--swatch-picker-styled-accent);
+  }
+
+  :global(.swatch-picker-styled-item[data-disabled]) {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  :global(.swatch-picker-styled-swatch) {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 25%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.swatch-picker-styled-item) {
+      transition: none;
+    }
+  }
+</style>

@@ -1,0 +1,29 @@
+<script>
+  import type { ColorChannel } from '@brumate/ui/color.ts';
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorField from '@brumate/ui/ColorField.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  let color = $signal<string | null>('#2563eb');
+  const channels: ColorChannel[] = ['red', 'green', 'blue'];
+</script>
+
+<div class="ui-stack">
+  <div class="ui-row ui-color-row">
+    <ColorField class="ui-field" value=$bind(color)>
+      <Label>Hex</Label>
+      <Input class="ui-input" />
+    </ColorField>
+    <ColorSwatch class="ui-swatch" color=(color ?? 'transparent') />
+  </div>
+  <div class="ui-row">
+    #for (channel of channels by channel) {
+      <ColorField class="ui-field" channel=channel colorSpace="rgb" value=$bind(color)>
+        <Label>{channel}</Label>
+        <Input class="ui-input" />
+      </ColorField>
+    }
+  </div>
+</div>
