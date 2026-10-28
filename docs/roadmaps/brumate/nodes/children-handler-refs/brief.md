@@ -1,7 +1,7 @@
 ---
 id: children-handler-refs
 title: A function used inside children that render later is defined in the browser
-status: active
+status: done
 priority: should
 type: fix
 outline: false
