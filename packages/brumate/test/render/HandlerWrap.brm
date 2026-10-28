@@ -1,0 +1,11 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { children } = $props<{ children?: unknown }>();
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>toggle</button>
+#if (open) {
+  <div class="box">{children}</div>
+}

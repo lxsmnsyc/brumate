@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import HandlerWrap from './HandlerWrap.brm';
+
+  let n = $signal(0);
+  function bump() {
+    n += 1;
+  }
+</script>
+
+<button class="top" onClick=bump>top</button>
+<HandlerWrap><button class="go" onClick=bump>go</button></HandlerWrap>
+<p class="n">{n}</p>
