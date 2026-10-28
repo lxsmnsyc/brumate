@@ -38,6 +38,8 @@ Closing a Modal and the Modal over it in one step returns focus to the button th
   - Tooltip: with a refusing setter, a hover that returns within `closeDelay` is not asked again; the early return `current?.id === id` in tooltip.ts `show()` skips it. A focus after a refusal is not asked either.
   - PreviewTrigger: after a hover, a press fades the card out and it comes back in about 370 ms; a keyboard Enter does hide it.
 
+- From the review of overlay-start-open (#341): a modal and a menu that both start open do not stack. Focus stays on the modal, the modal layer is not inert, and the first Escape closes the modal, leaving the menu open with nothing inert. Two modals stack through `queueLoad` in overlay.ts; give the Popover path the same stacking, or document that only one overlay of mixed kinds may start open. Presses cannot reach this case.
+
 ## Acceptance
 
 - [ ] A test for each of the three, and each checked in Chrome.

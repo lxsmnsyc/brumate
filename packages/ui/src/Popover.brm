@@ -37,6 +37,7 @@
 
 <script generics="T extends AsTarget = 'div'">
   import {
+    $client,
     $effect,
     $getContext,
     $id,
@@ -61,7 +62,9 @@
     keepFocus,
     lockScroll,
     pressOutside,
+    queueLoad,
     release,
+    takesText,
   } from './overlay.ts';
   import { followTrigger, keepArrows } from './position.ts';
   import { mergeStyle } from './style.ts';
@@ -117,6 +120,9 @@
   let mounted = $signal(false);
   let rested = $signal(false);
   let leaving = $signal(false);
+  // Whether it is shown or opening, and not leaving. A change to the value it already shows, such as
+  // the first write of a bound start value, opens nothing again.
+  let shown = $signal(false);
   let run = $signal(0);
   let layer = $signal<HTMLElement>();
 
@@ -142,7 +148,8 @@
     }
   }
 
-  async function show(token: number) {
+  async function show(token: number, loaded = false) {
+    shown = true;
     mounted = true;
     const returnTo = document.activeElement;
     await nextFrame();
@@ -195,7 +202,10 @@
     rested = true;
     // Focus moves in once it has entered, so it lands on a popover that has settled. A preview
     // leaves focus where it is, and Tab moves into it, and so does a submenu opened by hover.
-    if (!trigger?.isPreview && trigger?.autoFocus !== false) {
+    // A popover that starts open on load leaves focus in a field that a reader is typing in,
+    // unless it is modal, where the page behind it is inert.
+    const typing = loaded && !modal && takesText(document.activeElement);
+    if (!trigger?.isPreview && trigger?.autoFocus !== false && !typing) {
       focusInto(
         element.querySelector<HTMLElement>(
           '[role=dialog], [role=alertdialog], [role=menu], [role=listbox]',
@@ -206,6 +216,7 @@
   }
 
   async function hide(token: number) {
+    shown = false;
     rested = false;
     const element = ref as HTMLElement | undefined;
     if (transition && element) {
@@ -223,20 +234,38 @@
     mounted = false;
   }
 
+  // When the popover leaves the page while it is open, such as with an #if around it, its panel
+  // goes with it, and what it held on the page is given back.
+  function leave() {
+    const element = ref as HTMLElement | undefined;
+    if (element && !element.isConnected) {
+      release(element, layer);
+    }
+  }
+
   $effect(() => {
     const next = wanted;
     $untrack(change(next));
-    // When the popover leaves the page while it is open, such as with an #if around it, its
-    // panel goes with it, and what it held on the page is given back.
-    return () => {
-      const element = ref as HTMLElement | undefined;
-      if (element && !element.isConnected) {
-        release(element, layer);
-      }
-    };
+    return leave;
   });
 
+  // An effect never runs when the page loads, so a start value of `true` opens it here, after the
+  // overlays before it. Its cleanup runs even when the value never changes.
+  $client(() => {
+    queueLoad(() => {
+      if (wanted && !shown) {
+        run += 1;
+        leaving = false;
+        return show(run, true);
+      }
+    });
+    return leave;
+  }, 'load');
+
   function change(next: boolean) {
+    if (next && shown) {
+      return;
+    }
     run += 1;
     if (next) {
       leaving = false;

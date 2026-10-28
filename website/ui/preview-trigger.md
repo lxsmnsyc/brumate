@@ -71,7 +71,7 @@ The preview renders at the end of the page, in a [layer](./layers.md), so Tab mo
 
 ```
 
-- `isOpen` alone, or nothing, makes the `PreviewTrigger` keep its own state: hover, focus, Escape and a press change it. `isOpen=(true)` is meant as the state where it starts, but it does not show on load: an [effect never runs when the page loads](../docs/effects.md), and the preview opens from one on its open value, which a start value of `true` never changes. Open it from an event.
+- `isOpen` alone, or nothing, makes the `PreviewTrigger` keep its own state: hover, focus, Escape and a press change it. `isOpen=(true)`, or a bound signal that starts `true`, shows the preview once the page has loaded. It closes as one opened by hover does, when the pointer and focus leave the trigger and the preview. The server renders no preview, since it needs the rect of its trigger.
 - `isOpen=$bind(signal)` writes your signal. "Show or hide the second" sets it, and the preview follows.
 - `isOpen=$bind(signal, (next) => ...)` asks you first. The preview shows what you keep, so a request that you ignore leaves it hidden. Lock the last one, then hover its link.
 - `onOpenChange` gets each new state in every shape.

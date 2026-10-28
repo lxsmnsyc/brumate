@@ -107,6 +107,9 @@ depends_on:
   - on: combobox-fixes
     kind: hard
     why: ComboBox, Select and Autocomplete form bugs must be fixed in the first ui release
+  - on: overlay-navigation-cleanup
+    kind: hard
+    why: a client navigation away from an open overlay must not leave the next page inert
   - on: handler-code-wait
     kind: hard
     why: a handler waits on unrelated update code, and a failed load leaves effects stuck

@@ -69,7 +69,7 @@ The keys are those of a [Modal](./modal.md#keyboard). `Escape` closes a sheet, a
 - Inside a `DialogTrigger` with no `isOpen`, the trigger keeps the state. Escape and a press outside close it.
 - `isOpen=$bind(signal)` on the Sheet writes your signal. Your own button sets it. `onOpenChange` runs when the sheet closes itself.
 - `isOpen=$bind(signal, (next) => ...)` asks you first. The sheet makes a request when Escape or a press outside would close it, and shows what you keep. Press "Asks you first", press Lock in the dialog, then Escape: the request is refused and the sheet stays. Your own write, as the Close button does, is not a request, so it always works.
-- `isOpen=(true)` alone is meant to start a sheet open, but it does not show on load: an [effect never runs when the page loads](../docs/effects.md), and the overlay opens from one on its open value, which a start value of `true` never changes. Open it from an event.
+- `isOpen=(true)`, or a bound signal that starts `true`, starts the sheet open. Once the page has loaded, focus is in the sheet and the page is inert, as after a press. The server renders no sheet, so it shows when the code loads. An overlay that starts open takes focus when the code loads, even from a field the reader already focused, since the page behind it is inert.
 - A Sheet is not a form field, so a reset of a form around it changes nothing. The server renders no sheet: it opens once the code loads.
 
 See [State](./state.md) for the other parts.
