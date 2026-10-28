@@ -7,7 +7,7 @@
 // It builds each scenario as a small app in `.ui-sizes`, renders it on the server, and adds up
 // the files that the build lists for the components found in the HTML.
 import { execSync } from 'node:child_process';
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
 const scenarios = {
