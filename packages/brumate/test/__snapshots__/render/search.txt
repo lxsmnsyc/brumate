@@ -55,7 +55,6 @@ export * from "./search.brm?brumate-client&part=update";
 export const id = "Search_s4k9u0";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "u3"]], 1: [[1, "b5"], [1, "b6"]] }, 3: { 0: [[3, "u7"]] } };
-export const w = ["h4"];
 
 # Client part: h4
 import * as $$b from 'brumate/client';

@@ -416,7 +416,7 @@ function trigger(scope: Scope, slot: number): void {
   // `waiting` is set only while a pass runs.
   if (waiting) {
     // Its code starts to load now, so the pass waits no longer than the first write.
-    waiting.push([scope, slot, updateCode(scope, slot).catch((error) => fail(scope, error))]);
+    waiting.push([scope, slot, updateCode(scope, slot)]);
     return;
   }
   const list: [Scope, number, Promise<unknown>?][] = [[scope, slot]];
@@ -452,37 +452,28 @@ async function updateCode(scope: Scope, slot: number): Promise<unknown> {
   return childrenReady(scope);
 }
 
-/**
- * Loads the module of a component and its update code, when something reads the slot, or, with
- * `any`, when something reads any slot of the module.
- */
-function loadUpdate(scope: Scope, slot?: number, any?: boolean): Promise<unknown> {
-  return loadModule(rootOf(scope).m!).then((loaded): unknown => {
+/** Loads the module of a component and its update code, when something reads the slot. */
+function loadUpdate(scope: Scope, slot?: number): Promise<unknown> {
+  return loadModule(rootOf(scope).m!).then((loaded) => {
     const reads = loaded.g[scope.k];
-    const used = any
-      ? Object.keys(loaded.g).length > 0
-      : slot === undefined
-        ? reads
-        : reads?.[slot];
-    return used && loadPart(loaded, 'update');
+    return (slot === undefined ? reads : reads?.[slot]) && loadPart(loaded, 'update');
   });
 }
 
 /**
  * Loads the update code that a write of a handler can need, so its writes run before it returns.
- * A handler that writes only the slots of its own component (`w` of its module) waits for the
- * code of that component. Any other handler also waits for the components above it, which a
+ * A handler that is not in `w` of its module writes only the slots of its own component, and
+ * waits for the code of that component. A handler in `w` also waits for the components above it, which a
  * write of a bound prop reaches, and for the scope that its children render in.
  */
-export async function updateReady(scope: Scope | undefined, handler?: string): Promise<unknown> {
-  if (!scope) {
-    return;
+export async function updateReady(scope: Scope | undefined, ref?: string): Promise<unknown> {
+  const root = scope && rootOf(scope);
+  if (ref && root && !(await loadModule(root.m!)).w?.includes(ref.split('#')[1]!)) {
+    return loadUpdate(root);
   }
-  const [id, name] = handler?.split('#') ?? [];
-  if (id && (await loadModule(id)).w?.includes(name!)) {
-    return loadUpdate(scope, undefined, true);
-  }
-  return Promise.all([loadUpdate(scope), updateReady(scope.p ?? scope.o), updateReady(scope.t)]);
+  return (
+    scope && Promise.all([loadUpdate(scope), updateReady(scope.p ?? scope.o), updateReady(scope.t)])
+  );
 }
 
 /** The writes of the pass that runs that wait for code, to run as one pass of their own. */

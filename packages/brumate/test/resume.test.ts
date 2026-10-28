@@ -6152,4 +6152,16 @@ describe('a handler waits only for', () => {
     await waitFor(() => expect(text('.caught')).toBe('Error: The chunk is gone'));
     await waitFor(() => expect(log()).toContain('effect 1'));
   });
+
+  it('waits only for the update code that it can need: a #try in the module of the failed chunk cannot render its #catch', async () => {
+    // The #catch body is in the update code that failed, so the error is logged.
+    await resumeParts('handlerWaitFail', { [idOf('HandlerWaitFail')]: 'fail' });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await new Promise((done) => setTimeout(done, 50));
+    expect(document.querySelector('.caught')).toBeNull();
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: The chunk is gone');
+  });
 });

@@ -109,7 +109,6 @@ export * from "./blocks.brm?brumate-client&part=update";
 export const id = "Blocks_jlmev2";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b7"], [12, "u18"]], 1: [[1, "b8"]] }, 5: { 1: [[5, "u9"]], 0: [[5, "u10"]] } };
-export const w = ["h6","h20"];
 
 # Client part: c4
 import * as $$b from 'brumate/client';

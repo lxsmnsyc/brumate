@@ -49,7 +49,6 @@ export * from "./loading.brm?brumate-client&part=update";
 export const id = "Loading_1sx8r1u";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u3"], [2, "u6"]] } };
-export const w = ["h2","h5"];
 
 # Client part: h2
 import * as $$b from 'brumate/client';

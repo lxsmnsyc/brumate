@@ -73,7 +73,6 @@ export * from "./compact.brm?brumate-client&part=update";
 export const id = "Compact_omhyaj";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b7"], [1, "b15"]], 1: [[3, "u14"]] }, 2: { 0: [[2, "u10"], [2, "u11"], [2, "u12"]] }, 4: { 0: [[4, "u17"], [4, "u18"]] } };
-export const w = ["h2","h3","h4","h5","h6","h13"];
 
 # Client part: h13
 import * as $$b from 'brumate/client';

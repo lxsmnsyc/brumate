@@ -26,7 +26,6 @@ export * from "./template-update.brm?brumate-client&part=update";
 export const id = "TemplateUpdate_kx4ubq";
 export const props = {  };
 export const g = { 2: { 0: [[2, "u1"]], 1: [[2, "u2"]] }, 1: { 0: [[1, "u4"]] } };
-export const w = ["h3"];
 
 # Client part: h3
 import * as $$b from 'brumate/client';

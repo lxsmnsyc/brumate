@@ -126,8 +126,8 @@ class ClientGenerator {
   private readonly live = new Map<Site, GraphNode>();
   /** The export that updates each live node. */
   private readonly updates = new Map<GraphNode, string>();
-  /** The handlers that write only the slots of their own component. */
-  private readonly own: string[] = [];
+  /** The handlers that can write a slot of another component. */
+  private readonly wide: string[] = [];
   /** Bodies that the client renders, by scope. */
   private readonly renders = new Map<Scope, { body: Body; block: Block }>();
 
@@ -241,7 +241,7 @@ class ClientGenerator {
       `export const id = ${JSON.stringify(this.plan.id)};`,
       `export const props = ${this.propsMap()};`,
       `export const g = ${this.table()};`,
-      ...(this.own.length > 0 ? [`export const w = ${JSON.stringify(this.own)};`] : []),
+      ...(this.wide.length > 0 ? [`export const w = ${JSON.stringify(this.wide)};`] : []),
       ...(refresh ? [`export const refresh = ${refresh};`] : []),
       ...(tries ? [`export const t = ${tries};`] : []),
     ];
@@ -820,8 +820,8 @@ class ClientGenerator {
         code = `function ${code}`;
       }
       this.part = symbol;
-      if (symbol.startsWith('h') && this.writesOwn(site)) {
-        this.own.push(symbol);
+      if (site.kind !== 'client' && !symbol.startsWith('t') && !this.writesOwn(site)) {
+        this.wide.push(symbol);
       }
       if (symbol.startsWith('t')) {
         this.emitTemplateArgs(site, symbol);
@@ -838,7 +838,8 @@ class ClientGenerator {
 
   /**
    * True when a handler can write only the slots of its own component, so it waits for the
-   * update code of that component and not for the code of the components above it. A prop,
+   * update code of that component and not for the code of the components above it. The others
+   * are listed in `w`. A prop,
    * a context, an import or a template can reach another component.
    */
   private writesOwn(site: Site, seen = new Set<Site>()): boolean {
@@ -852,7 +853,8 @@ class ClientGenerator {
       }
     }
     for (const { declaration } of [...site.reads, ...site.writes]) {
-      if (OUTER.has(declaration.kind)) {
+      // The wrappers of `brumate/events` run the handler that they get, which is checked as a call.
+      if (OUTER.has(declaration.kind) && declaration.imported?.source !== 'brumate/events') {
         return false;
       }
     }

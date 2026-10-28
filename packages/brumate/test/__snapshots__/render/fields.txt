@@ -42,7 +42,6 @@ export * from "./fields.brm?brumate-client&part=update";
 export const id = "Fields_1cs3w3p";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b5"]] }, 2: { 0: [[2, "u7"]] } };
-export const w = ["h9"];
 
 # Client part: h9
 import * as $$b from 'brumate/client';

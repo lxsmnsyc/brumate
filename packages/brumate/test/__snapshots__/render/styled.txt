@@ -28,7 +28,6 @@ export * from "./styled.brm?brumate-client&part=update";
 export const id = "Styled_9wx0az";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u1"], [1, "u2"], [1, "b4"]] } };
-export const w = ["h3"];
 
 # Client part: h3
 import * as $$b from 'brumate/client';

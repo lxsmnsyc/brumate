@@ -40,7 +40,7 @@ HTML only
   4 elements and 0 inserted values ship no client code
 
 Client modules, before minifying (bytes, gzip)
-  entry: 446 B, 206 B
+  entry: 410 B, 188 B
   h5: 348 B, 245 B
   h12: 232 B, 172 B
   h7: 120 B, 121 B

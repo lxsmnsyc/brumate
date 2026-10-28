@@ -32,7 +32,6 @@ export * from "./doubler.brm?brumate-client&part=update";
 export const id = "Doubler_1bxsryb";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m1"], [1, "u3"]], 1: [[1, "u4"], [1, "b5"]] } };
-export const w = ["h2"];
 
 # Client part: h2
 import * as $$b from 'brumate/client';
