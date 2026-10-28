@@ -1,0 +1,22 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
+
+  let text = $signal('Draft');
+  let history = $signal<string[]>([]);
+
+  function change(next: string) {
+    history = [...history, text];
+    text = next;
+  }
+</script>
+
+<Toolbar class="ui-group" aria-label="Edit">
+  <Button class="ui-button" onPress=(() => change(text.toUpperCase()))>Upper</Button>
+  <Button class="ui-button" onPress=(() => change(text.toLowerCase()))>Lower</Button>
+  <Separator orientation="vertical" class="ui-separator" />
+  <Button class="ui-button" isDisabled=(history.length === 0) onPress=(() => { text = history[history.length - 1] ?? text; history = history.slice(0, -1); })>Undo</Button>
+</Toolbar>
+<p>{text}</p>

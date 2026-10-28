@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Link from '@brumate/ui/Link.brm';
+
+  let open = $signal(false);
+</script>
+
+<p>
+  Read the <Link class="ui-link" href="https://example.com/terms" target="_blank" rel="noreferrer">terms</Link>
+  or <Link class="ui-link" onPress=(() => (open = !open))>{open ? 'hide' : 'show'} the short version</Link>.
+</p>
+#if (open) {
+  <p>We keep your email to send receipts, and nothing else.</p>
+}

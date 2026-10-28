@@ -1,0 +1,109 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+</script>
+
+<div class="button-styled-row">
+  <Button class="button-styled">Save</Button>
+  <Button class="button-styled button-styled-quiet">Cancel</Button>
+  <Button class="button-styled" isPending>Saving</Button>
+  <Button class="button-styled" isDisabled>Disabled</Button>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.button-styled-row) {
+    --button-styled-bg: light-dark(#2a76b2, #6fb2e6);
+    --button-styled-text: light-dark(#fff, #101418);
+    --button-styled-hover: light-dark(#1f5f94, #8cc3ee);
+    --button-styled-press: light-dark(#184b75, #a9d3f4);
+    --button-styled-ring: light-dark(#2a76b2, #6fb2e6);
+    --button-styled-page: Canvas;
+    --button-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    color: CanvasText;
+  }
+
+  /* Rest, hover, press, keyboard focus, pending and disabled. */
+  :global(.button-styled) {
+    padding: 0.5rem 1.1rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: var(--button-styled-bg);
+    color: var(--button-styled-text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s, scale 0.1s;
+  }
+
+  :global(.button-styled[data-hovered]) {
+    background: var(--button-styled-hover);
+  }
+
+  :global(.button-styled[data-pressed]) {
+    background: var(--button-styled-press);
+    scale: 0.97;
+  }
+
+  /* A ring offset from the fill, so it shows on the page. */
+  :global(.button-styled[data-focus-visible]) {
+    outline: 2px solid var(--button-styled-ring);
+    outline-offset: 2px;
+  }
+
+  :global(.button-styled-quiet) {
+    border-color: var(--button-styled-border);
+    background: var(--button-styled-page);
+    color: CanvasText;
+  }
+
+  :global(.button-styled-quiet[data-hovered]) {
+    background: color-mix(in srgb, CanvasText 8%, Canvas);
+  }
+
+  :global(.button-styled-quiet[data-pressed]) {
+    background: color-mix(in srgb, CanvasText 16%, Canvas);
+  }
+
+  /* A pending button keeps its focus, so it only dims and shows a spinner. */
+  :global(.button-styled[data-pending]) {
+    cursor: progress;
+    opacity: 0.8;
+  }
+
+  :global(.button-styled[data-pending])::after {
+    content: '';
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    margin-inline-start: 0.5em;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    vertical-align: -0.1em;
+    animation: button-styled-spin 0.8s linear infinite;
+  }
+
+  :global(.button-styled[data-disabled]:not([data-pending])) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  @keyframes button-styled-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.button-styled) {
+      transition: none;
+    }
+
+    :global(.button-styled[data-pending])::after {
+      animation: none;
+    }
+  }
+</style>

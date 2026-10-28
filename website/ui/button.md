@@ -32,18 +32,42 @@ A button that presses with a mouse, a touch, a pen, Enter, Space, or a screen re
 
 ## Keyboard
 
-| Key                | Action                                                   |
-| ------------------ | -------------------------------------------------------- |
-| `Tab`              | Moves focus to the button. A disabled button is skipped. |
-| `Enter` or `Space` | Presses the button. Space never scrolls the page.        |
+| Key                | Action                                                                                                                       |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`              | Moves focus to the button. A disabled button is skipped; a pending one keeps focus.                                          |
+| `Enter` or `Space` | Presses the button. Space never scrolls the page, except on a `submit` or `reset` button, which keeps Space for the browser. |
 
 ## Controlled and uncontrolled
 
-A button has no state of its own. `isDisabled` and `isPending` are set by the caller, and `onPress` and `onPressChange` report what the user does. To keep a pressed state, use a [ToggleButton](./toggle-button.md).
+A Button has no state of its own, so it has no controlled and uncontrolled shapes. The caller sets `isDisabled` and `isPending`, and `onPress` and `onPressChange` report what the user does. To keep a pressed state, use a [ToggleButton](./toggle-button.md). A reset of a form does nothing to a Button: it is the `type="reset"` button that resets the form. See [State](./state.md) for the parts that keep a value.
 
 ## Styling
 
-Style the button with the data attributes above, such as `[data-pressed]` and `[data-focus-visible]`. See [Styling](./styling.md).
+Style the button with the data attributes above, such as `[data-pressed]` and `[data-focus-visible]`. See [Styling](./styling.md). A Button is one element, so this page has no anatomy picture.
+
+This stylesheet styles every state: rest, hover, press, keyboard focus, pending and disabled. Press a button, tab to it, or look at the last two. Its tokens are at the top, and they follow the color scheme.
+
+```brm styled ButtonStyled
+
+```
+
+## Use cases
+
+### A pending save in a form
+
+`isPending` keeps the focus on the button and presses nothing. It also makes the button `type="button"`, so the form has no submit button while it is pending, and a form with one text field still submits on Enter. The handler of the form must guard against it, as this one does with `if (saving) return`. Here the submit starts a save, the button shows it, and the Reset button waits with `isDisabled` until the save is done.
+
+```brm demo ButtonSaveDemo
+
+```
+
+### Buttons in a toolbar
+
+A [Toolbar](./toolbar.md) moves focus between its buttons with the arrow keys, so the group takes one stop of Tab. A disabled button leaves the arrow order too, and so does a pending one, which has `aria-disabled`. Undo is disabled until there is something to undo.
+
+```brm demo ButtonToolbarDemo
+
+```
 
 ## In other parts
 
