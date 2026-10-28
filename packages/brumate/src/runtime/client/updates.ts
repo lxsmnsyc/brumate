@@ -107,7 +107,10 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
   return value;
 }
 
-/** Calls the setter of a binding. An element that is not in the page yet goes once it is. */
+/**
+ * Calls the setter of a binding. An element reference arrives only while a render writes its ref,
+ * so the element goes once the render has inserted it.
+ */
 export function send(bound: unknown, value: unknown): void {
   if (value instanceof ElementReference) {
     afterInsert.push(() => {

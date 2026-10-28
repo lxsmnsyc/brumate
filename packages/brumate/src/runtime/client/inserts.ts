@@ -3,7 +3,7 @@
 
 import { HAS_BINDINGS, HAS_CHILDREN, HAS_TEMPLATES } from '../features.ts';
 import { attributeText, insertValue, onValue, textValue } from '../html.ts';
-import { isBinding, isSlotReference } from '../shared.ts';
+import { FunctionReference, isBinding, isSlotReference } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
 import { findComment, findElement, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
@@ -294,8 +294,8 @@ export function attr(scope: Scope, anchor: number, name: string, value: unknown)
 /** The attributes that the last update of a spread wrote, so the next one removes those it drops. */
 const spreadNames = new WeakMap<Element, Set<string>>();
 
-/** The binding that gave a setter each element, so an update of a spread does not call it again. */
-const given = new WeakMap<Element, string>();
+/** The setters that were given each element, so an update of a spread does not call them again. */
+const given = new WeakMap<Element, Set<unknown>>();
 
 /**
  * Gives the element of a spread to the signal that a `ref` in its attributes is bound to, or to
@@ -304,15 +304,20 @@ const given = new WeakMap<Element, string>();
 function forwardRef(element: Element | null, values: Record<string, unknown>): void {
   const bound = values.ref;
   if (HAS_BINDINGS && element && isBinding(bound)) {
-    const { target, ref } = bound;
+    const { target } = bound;
     if (isSlotReference(target)) {
       const owner = scopes.get(target.scope);
       if (owner) {
         set(owner, target.slot, element);
       }
-    } else if (given.get(element) !== `${ref.scope}:${ref.slot}`) {
-      given.set(element, `${ref.scope}:${ref.slot}`);
-      send(target, element);
+    } else {
+      // A reference is new at each update, so its text is the key.
+      const key = target instanceof FunctionReference ? `${target.scope}#${target.ref}` : target;
+      const seen = given.get(element) ?? new Set();
+      if (!seen.has(key)) {
+        given.set(element, seen.add(key));
+        send(target, element);
+      }
     }
   }
 }

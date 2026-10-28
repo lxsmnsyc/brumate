@@ -4248,6 +4248,28 @@ describe('refs forwarded through components', () => {
       await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
       expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
     });
+
+    it('does not call the setter again when the spread updates', async () => {
+      await resume('setterRefChangePage', {});
+      click(document.querySelector('.retitle')!);
+      await waitFor(() => expect(text('.calls')).toBe('A:BUTTON;'));
+      click(document.querySelector('.retitle')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.getAttribute('title')).toBe('onexx'),
+      );
+      await new Promise((done) => setTimeout(done, 100));
+      expect(text('.calls')).toBe('A:BUTTON;');
+    });
+
+    it('calls the setter with the new element when a block closes and opens again', async () => {
+      await resume('setterRefReopenPage', {});
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(text('.calls')).toBe('in;'));
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(document.querySelector('.inner')).toBeNull());
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(text('.calls')).toBe('in;in;'));
+    });
   });
 
   // The pattern of the parts that take `as`: the rest props, with `ref`, spread onto a dynamic tag.

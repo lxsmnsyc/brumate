@@ -5,7 +5,8 @@
 - A `ref=$bind(root, fn)` that a parent passes to a component calls `fn` with the element in the browser. Two paths:
   - A component that forwards it by name (`let { ref } = $props()`, then `ref=$bind(ref)`): the write of the element goes through `set`, which now calls the setter by `send` (runtime/client/updates.ts). `send` waits for `afterInsert` when it gets an element reference, so `fn` sees the element in the page.
   - A component that leaves `ref` in its rest props and spreads them on an element or a dynamic tag: `forwardRef` (runtime/client/inserts.ts) calls `send` when the target of the binding is a setter. It remembers the scope and slot it gave each element, so a later update of the spread does not call `fn` again.
-- `runtime/client/insert.ts` drains `afterInsert` until it is empty. A callback that adds another, such as the write of a ref in an outer scope that then calls the setter, was dropped before.
+- `runtime/client/insert.ts` runs `afterInsert` until it is empty. A callback that adds another, such as the write of a ref in an outer scope that then calls the setter, was dropped before. The queue is taken first and the shared list cleared in `finally`, so a throw leaves nothing for the next insert.
+- Tests added for: no second call on a spread update, a block that closes and opens again. Two different setters on one element have no test: `$bind(name, fn)` takes a function expression, so a page cannot pick between two, and an element has one `ref`.
 - Tests in packages/brumate/test/resume.test.ts, "a ref bound with a setter": named prop and rest props, each with the setter called by a block that the browser renders. Fixtures `setterRefPage.brm`, `setterRefRestPage.brm`, `SetterRefButton.brm`, `SetterRefBox.brm`.
 - Changeset `.changeset/setter-ref-forward.md` (patch, brumate).
 
@@ -24,7 +25,7 @@ The setter does not run for markup that the server rendered. The server has no s
 
 ## Gotchas
 
-- `fn` is called once per element and binding. A new binding for the same element (the spread points `ref` elsewhere) calls it again.
+- `fn` is called once per element and setter. The key is the setter: a function, or the component and export name of a reference. Another setter on the same element and signal is called too. Arguments of a `$handler` setter are not part of the key.
 - The element is never written into the page state: the setter case adds nothing to it.
 
 ## Proposed learnings
