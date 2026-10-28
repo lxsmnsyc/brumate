@@ -15,9 +15,9 @@ The PR stops here because each page needs an anatomy picture, a styled example, 
 
 - Every claim was read against packages/ui/src. ListBox, Tabs, TagGroup and GridList are not form fields and have no reset handler (state.md says so), and the pages say so and link to state.md.
 - Each styled example has rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled states, with a two-band focus ring that shows on a selected fill. Colors use `light-dark()`. Every class has a prefix of its own (`listbox-styled-`, `tabs-styled-`, `tags-styled-`, `gridlist-styled-`).
-- One e2e flow in e2e/suites/website.mjs covers the four pages in both schemes: the CSS shows, the callouts equal the listed pieces, and axe finds nothing. The flow excludes `.props-table` from axe, which scrolls and fails `scrollable-region-focusable` on main (node ui-scroll-focus). Delete the exclude when the node lands.
-- The ListBox picture and styled example use an item with a label and a description. It is named by its label and described by the description, on purpose. axe 4.14 reports `label-content-name-mismatch` on it, a false positive, so the flow turns that rule off. An item with a description and no label is named by its whole content, and the page says so.
-- The sidebar flow still fails on main's `scrollable-region-focusable` for calendar, list-box, grid-list and tree. The new demos add no other violation. The first `/docs/control-flow` flow failed once with a network `Not connected` console error, and is not in these pages.
+- One e2e flow in e2e/suites/website.mjs covers the four pages in both schemes: the CSS shows, the callouts equal the listed pieces, and axe finds nothing. The flow runs axe on the whole article.
+- The ListBox picture and styled example use an item with a label and a description. It is named by its label and described by the description, on purpose. axe 4.14 reports `label-content-name-mismatch` on it, a false positive, so the flows leave out only `[role=option][aria-labelledby][aria-describedby]` and keep the rule on. An item with a description and no label is named by its whole content, and the page says so.
+- The sidebar flow passes apart from the `/docs/control-flow` failure.
 - No change to website/src/routes/ui/_layout.brm. The demos use its existing classes, and a few inline styles in the anatomy pictures.
 
 ## Checked in Chrome

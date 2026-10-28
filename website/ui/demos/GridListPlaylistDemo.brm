@@ -11,16 +11,7 @@
   let tracks = $signal(['Opening', 'Rain', 'Night train', 'Closing']);
   let playing = $signal<Key | null>(null);
 
-  // The next row moves under the pointer when a row leaves, so a second press right after would
-  // remove it. A press is ignored for a moment.
-  let busy = false;
-
   function remove(track: string) {
-    if (busy) {
-      return;
-    }
-    busy = true;
-    setTimeout(() => (busy = false), 400);
     tracks = tracks.filter((item) => item !== track);
     if (playing === track) {
       playing = null;
