@@ -32,7 +32,7 @@
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
   import { CheckboxGroupContext } from './contexts.ts';
-  import { describedBy, isFirstInvalid, onFormReset } from './fields.ts';
+  import { afterWrite, describedBy, isFirstInvalid, onFormReset } from './fields.ts';
 
   /**
    * A checkbox: a <label> around a native checkbox, which
@@ -121,15 +121,22 @@
     failed = false;
     // A click clears the indeterminate state of the input. It stays while the prop says so.
     input.indeterminate = mixed;
-    if (group) {
-      group.toggle(value ?? '', input.checked);
-    } else {
-      isSelected = input.checked;
-    }
-    // A setter that refuses leaves the old state, so the input goes back to it.
+    const before = selected;
     const next = input.checked;
+    if (group) {
+      group.toggle(value ?? '', next);
+    } else {
+      isSelected = next;
+    }
+    // The input shows the state that the caller keeps, and the change handler gets it only when
+    // it changed.
     input.checked = selected;
-    onChange?.(next);
+    afterWrite(
+      before,
+      next,
+      () => selected,
+      (kept) => onChange?.(kept),
+    );
   }
 
   // The browser shows no message of its own. The group shows it in its FieldError.

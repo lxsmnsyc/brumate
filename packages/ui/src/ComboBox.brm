@@ -65,7 +65,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf, onFormReset } from './fields.ts';
+  import { afterWrite, describedBy, messagesOf, onFormReset } from './fields.ts';
 
   /**
    * A text field with a list of suggestions. It holds a
@@ -213,10 +213,19 @@
     selectedText = item ? textOfItem(item) : undefined;
     inputValue = selectedText ?? inputValue;
     onInputChange?.(inputValue);
-    if (key !== selectedKey) {
+    const before = selectedKey;
+    if (key !== before) {
       selectedKey = key;
-      edited = true;
-      onSelectionChange?.(key);
+      // The change handler gets the key that the caller keeps, and only when it changed.
+      afterWrite(
+        before,
+        key,
+        () => selectedKey,
+        (kept) => {
+          edited = true;
+          onSelectionChange?.(kept);
+        },
+      );
     }
     setOpen(false);
     input()?.focus();
@@ -226,8 +235,14 @@
     inputValue = text;
     onInputChange?.(text);
     if (text === '' && selectedKey !== null) {
+      const before = selectedKey;
       selectedKey = null;
-      onSelectionChange?.(null);
+      afterWrite(
+        before,
+        null,
+        () => selectedKey,
+        (kept) => onSelectionChange?.(kept),
+      );
     }
     filterText = text;
     if (menuTrigger !== 'manual' && text !== '') {
@@ -274,8 +289,14 @@
     setOpen(false);
     if (allowsCustomValue) {
       if (selectedKey !== null && inputValue !== selectedText) {
+        const before = selectedKey;
         selectedKey = null;
-        onSelectionChange?.(null);
+        afterWrite(
+          before,
+          null,
+          () => selectedKey,
+          (kept) => onSelectionChange?.(kept),
+        );
       }
       return;
     }

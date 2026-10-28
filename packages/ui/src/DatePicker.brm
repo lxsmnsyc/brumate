@@ -37,6 +37,7 @@
   import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
   import { DateStringsContext } from './date-strings.ts';
   import DateField from './DateField.brm';
+  import { afterWrite } from './fields.ts';
 
   /**
    * A DateField with a Button that opens a Calendar in a Popover. It holds a Label, a Group with a
@@ -86,9 +87,15 @@
     if (typeof picked !== 'string') {
       return;
     }
-    if (picked !== value) {
+    const before = value;
+    if (picked !== before) {
       value = picked;
-      onChange?.(picked);
+      afterWrite(
+        before,
+        picked,
+        () => value,
+        (kept) => onChange?.(kept),
+      );
     }
     if (shouldCloseOnSelect) {
       setOpen(false);

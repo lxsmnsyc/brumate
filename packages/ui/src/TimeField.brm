@@ -46,7 +46,7 @@
   import { formField } from './date-field.brm.ts';
   import { prevent } from 'brumate/events';
   import { DateStringsContext } from './date-strings.ts';
-  import { describedBy, messagesOf } from './fields.ts';
+  import { afterWrite, describedBy, messagesOf } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import {
     DateFieldContext,
@@ -142,16 +142,24 @@
   function update(next: DateParts) {
     parts = next;
     const time = timeOf(next, granularity, twelve);
-    if (time !== value) {
+    const before = value;
+    if (time !== before) {
       value = time;
-      // A setter that refuses leaves the old time, and the segments show that one.
+      // The segments show the time that the caller keeps, and the change handler gets it only
+      // when it changed.
       if (value !== time) {
         parts = timePartsOf(value);
-        return;
       }
-      edited = true;
-      changed();
-      onChange?.(time);
+      afterWrite(
+        before,
+        time,
+        () => value,
+        (kept) => {
+          edited = true;
+          changed();
+          onChange?.(kept);
+        },
+      );
     }
   }
 

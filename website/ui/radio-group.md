@@ -93,7 +93,7 @@ The radios are native, so Tab and the arrow keys work as in every browser, with 
 
 - `value` alone, or nothing, makes the group keep its own choice, with none chosen at first. `value="b"` is where that choice starts, and a new value from you replaces it.
 - `value=$bind(signal)` writes your signal. Change the signal and the radios follow.
-- `value=$bind(signal, (next) => ...)` asks you first. The group shows what you keep, so a request that you ignore leaves the old choice. Press Lock above and choose a radio of the last group. The line under the groups shows that Asks keeps its choice. The hidden input of a radio that you refused is not put back yet, so a form would still post it until the next reset.
+- `value=$bind(signal, (next) => ...)` asks you first. The group shows what you keep, so a request that you ignore leaves the old choice. Press Lock above and choose a radio of the last group. The line under the groups shows that Asks keeps its choice.
 - `onChange` gets the `value` of the chosen radio in every shape.
 - A reset of the form gives back the choice that the group started with, as a write: with `$bind(signal, request)`, your request can refuse it. A group that started with no choice goes back to none.
 - The server renders the choice it starts with. See [State](./state.md).

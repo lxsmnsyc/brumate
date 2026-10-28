@@ -47,7 +47,7 @@
   import { ColorPickerContext } from './contexts.ts';
   import { ColorThumbContext } from './color-thumb.ts';
   import { LabelContext } from './contexts.ts';
-  import { onFormReset } from './fields.ts';
+  import { afterWrite, onFormReset } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import { clamp, snapToStep } from './numbers.ts';
   import { SliderContext, pointAt, startDrag, thumbId, valueAt } from './slider.ts';
@@ -179,8 +179,14 @@
       write(edited, held);
       return;
     }
+    const before = held;
     write(edited, text);
-    onChange?.(text);
+    afterWrite(
+      before,
+      text,
+      () => held,
+      (kept) => onChange?.(kept),
+    );
   }
 
   function setDragging(_index: number, next: boolean) {

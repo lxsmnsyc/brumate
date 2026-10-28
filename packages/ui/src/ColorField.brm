@@ -78,7 +78,7 @@
     withChannelValue,
   } from './color.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf, onFormReset } from './fields.ts';
+  import { afterWrite, describedBy, messagesOf, onFormReset } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import { addStep, clamp, listenToWheel, snapToStep, stopWheel } from './numbers.ts';
 
@@ -253,12 +253,22 @@
       working = nextColor;
       if (!same) {
         value = next;
-        // A setter that refuses leaves the old value, and the field shows that one.
+        // The caller keeps the value, so the field shows that one, and the change handler gets it
+        // only when it changed.
         if (value !== next) {
           working = Object.is(value, before) ? prev : fresh(value);
-          text = display(working);
-          return;
         }
+        afterWrite(
+          before,
+          next,
+          () => value,
+          (kept) => {
+            edited = true;
+            onChange?.(kept);
+          },
+        );
+        text = display(working);
+        return;
       }
     }
     if (!same) {

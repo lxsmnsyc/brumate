@@ -80,6 +80,7 @@
   import { tabbables } from './overlay.ts';
   import { VirtualizerContext } from './virtualizer.ts';
   import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
+  import { afterWrite } from './fields.ts';
 
   /**
    * A list of rows that can hold buttons, checkboxes and links. Its items are GridListItem
@@ -141,9 +142,17 @@
   const gridId = $id();
 
   function setSelection(next: Key[]) {
-    if (!sameKeys(next, selectedKeys)) {
+    const before = selectedKeys;
+    if (!sameKeys(next, before)) {
       selectedKeys = next;
-      onSelectionChange?.(next);
+      // The change handler gets the keys that the caller keeps, and only when they changed.
+      afterWrite(
+        before,
+        next,
+        () => selectedKeys,
+        (kept) => onSelectionChange?.(kept),
+        sameKeys,
+      );
     }
   }
 

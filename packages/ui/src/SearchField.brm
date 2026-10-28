@@ -34,7 +34,7 @@
   import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { ButtonContext, InputContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, onFormReset } from './fields.ts';
+  import { afterWrite, describedBy, onFormReset } from './fields.ts';
 
   /**
    * A search field. It holds a Label, an Input and a
@@ -69,8 +69,15 @@
   const empty = $memo(value === '');
 
   function change(next: string) {
+    const before = value;
     value = next;
-    onChange?.(next);
+    // The change handler gets the text that the caller keeps, and only when it changed.
+    afterWrite(
+      before,
+      next,
+      () => value,
+      (kept) => onChange?.(kept),
+    );
   }
 
   function clear() {

@@ -20,8 +20,8 @@ The native range inputs had a second gap: a user move of the input set its own `
 
 ## Deviations
 
-- onChange no longer runs when a NumberField, ColorField, TimeField or DateRangePicker setter refuses. The docs already said it runs only if the setter accepted. Slider, Checkbox, Switch and the groups still call it.
-- website/ui/checkbox-group.md and radio-group.md are not changed: PR #331 owns the pages that say the groups do not sync on a refused click. They can drop that line once #331 merges.
+- Change handlers follow one rule in every part with a bound value: the handler gets the value the caller keeps, and only when it differs from the value before the write (docs/decisions.md, website/ui/state.md). A setter that rounds or uppercases gets the handler with the changed value; a setter that refuses gets none. A part that writes its own state reads the kept value at once. With a `$bind(signal, fn)` setter the part sees what the caller keeps only after the caller drew, so `afterWrite` in packages/ui/src/fields.ts waits one timer and then compares. Tests: packages/ui/test/change-handlers.test.ts.
+- The notes in website/ui/checkbox.md, switch.md, checkbox-group.md and radio-group.md that said a refused click was not put back are removed.
 
 ## Stubs left
 

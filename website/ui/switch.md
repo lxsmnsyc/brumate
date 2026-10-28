@@ -47,7 +47,7 @@ The label shows the state:
 
 - `isSelected` alone, or nothing, makes the Switch keep its own state. `isSelected` with no value starts it on, and a new value from you replaces it.
 - `isSelected=$bind(signal)` writes your signal. Change the signal and the switch follows.
-- `isSelected=$bind(signal, (next) => ...)` asks you first. The switch shows what you keep, so a request that you ignore leaves the old state. Press Lock above and click the last switch. The line under the switches shows that Asks keeps its value. The hidden input of the switch that you refused is not put back yet, so a form would post it until the next reset.
+- `isSelected=$bind(signal, (next) => ...)` asks you first. The switch shows what you keep, so a request that you ignore leaves the old state. Press Lock above and click the last switch. The line under the switches shows that Asks keeps its value.
 - `onChange` gets the new state in every shape, each time the user toggles the switch.
 - A reset of the form gives back the state that the switch started with, as a write: with `$bind(signal, request)`, your request can refuse it.
 - The server renders the state it starts with. See [State](./state.md).

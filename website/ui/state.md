@@ -34,7 +34,7 @@ There is no `defaultSelected` or `defaultValue`: a `let` prop of brumate already
 ## Change callbacks
 
 - Each part calls its change handler with the new value, in every shape: `onChange`, or `onSelectionChange` and `onOpenChange` for keys and overlays.
-- With `$bind(signal)`, the handler runs after the signal is written. With a setter, it runs after your setter, and only if you accepted.
+- With `$bind(signal)`, the handler runs after the signal is written. With a setter, it runs after your setter, with the value you keep, and only when that value is not the one from before the write. A setter that refuses calls no handler. A setter that changes the value, such as by rounding, gets the handler with the changed value.
 - A value of `null` is a value like any other, such as the `selectedKey` of a `Select` with nothing chosen.
 
 ## Form reset

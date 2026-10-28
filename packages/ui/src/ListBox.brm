@@ -96,6 +96,7 @@
   import { LocaleContext } from './locale.ts';
   import { VirtualizerContext } from './virtualizer.ts';
   import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
+  import { afterWrite } from './fields.ts';
 
   /**
    * A list of options that the user selects from. Its items
@@ -155,9 +156,17 @@
   const listId = $id();
 
   function setSelection(next: Key[]) {
-    if (!sameKeys(next, chosen)) {
+    const before = chosen;
+    if (!sameKeys(next, before)) {
       selectedKeys = next;
-      onSelectionChange?.(next);
+      // The change handler gets the keys that the caller keeps, and only when they changed.
+      afterWrite(
+        before,
+        next,
+        () => selectedKeys,
+        (kept) => onSelectionChange?.(kept),
+        sameKeys,
+      );
     }
   }
 

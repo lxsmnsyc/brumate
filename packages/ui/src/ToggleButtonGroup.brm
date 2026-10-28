@@ -33,6 +33,7 @@
   import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
+  import { afterWrite } from './fields.ts';
 
   /**
    * ToggleButtons with one selection. With `selectionMode="single"`, the default, it is a
@@ -81,8 +82,15 @@
     } else {
       next = selectionMode === 'single' ? [id] : [...selectedKeys, id];
     }
+    const before = selectedKeys;
     selectedKeys = next;
-    onSelectionChange?.(next);
+    // The change handler gets the keys that the caller keeps, and only when they changed.
+    afterWrite(
+      before,
+      next,
+      () => selectedKeys,
+      (kept) => onSelectionChange?.(kept),
+    );
   }
 
   function keyDown(event: KeyboardEvent & { currentTarget: Element }) {

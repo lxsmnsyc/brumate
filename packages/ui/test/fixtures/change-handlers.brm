@@ -1,0 +1,96 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Checkbox from '../../src/Checkbox.brm';
+  import CheckboxGroup from '../../src/CheckboxGroup.brm';
+  import ColorField from '../../src/ColorField.brm';
+  import Group from '../../src/Group.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import NumberField from '../../src/NumberField.brm';
+  import Popover from '../../src/Popover.brm';
+  import Radio from '../../src/Radio.brm';
+  import RadioGroup from '../../src/RadioGroup.brm';
+  import SearchField from '../../src/SearchField.brm';
+  import Select from '../../src/Select.brm';
+  import SelectValue from '../../src/SelectValue.brm';
+  import Slider from '../../src/Slider.brm';
+  import SliderThumb from '../../src/SliderThumb.brm';
+  import SliderTrack from '../../src/SliderTrack.brm';
+  import Switch from '../../src/Switch.brm';
+  import TextField from '../../src/TextField.brm';
+
+  // The change handlers write what they get here. A setter that refuses writes to `tried`.
+  let calls = $signal<unknown[][]>([]);
+  let tried = $signal<string[]>([]);
+  let count = $signal(20);
+  let hex = $signal<string | null>('#abcdef');
+  let text = $signal('a');
+  let query = $signal('q');
+  let volume = $signal(50);
+  let box = $signal(false);
+  let power = $signal(false);
+  let size = $signal<string | null>('small');
+  let toppings = $signal(['ham']);
+  let fruit = $signal<string | null>('apple');
+
+  function heard(name: string, value: unknown) {
+    calls = [...calls, [name, value]];
+  }
+
+  function refused(name: string) {
+    tried = [...tried, name];
+  }
+</script>
+
+<main>
+  <!-- A setter that rounds to tens and one that uppercases accept, with another value. -->
+  <NumberField class="number" value=$bind(count, (next) => (count = Math.round(next / 10) * 10)) onChange=((next) => heard('number', next))>
+    <Label>Count</Label>
+    <Group>
+      <Input class="number-input" />
+    </Group>
+  </NumberField>
+  <ColorField class="hex" value=$bind(hex, (next) => (hex = next?.toUpperCase() ?? null)) onChange=((next) => heard('hex', next))>
+    <Label>Hex</Label>
+    <Input class="hex-input" />
+  </ColorField>
+  <!-- These setters refuse every write. -->
+  <TextField class="text" value=$bind(text, () => refused('text')) onChange=((next) => heard('text', next))>
+    <Label>Text</Label>
+    <Input class="text-input" />
+  </TextField>
+  <SearchField class="search" value=$bind(query, () => refused('search')) onChange=((next) => heard('search', next))>
+    <Label>Search</Label>
+    <Input class="search-input" />
+  </SearchField>
+  <Slider class="slider" value=$bind(volume, () => refused('slider')) onChange=((next) => heard('slider', next))>
+    <Label>Volume</Label>
+    <SliderTrack style="width: 100px; height: 10px">
+      <SliderThumb class="slider-thumb" />
+    </SliderTrack>
+  </Slider>
+  <Checkbox class="box" isSelected=$bind(box, () => refused('box')) onChange=((next) => heard('box', next))>Box</Checkbox>
+  <Switch class="power" isSelected=$bind(power, () => refused('power')) onChange=((next) => heard('power', next))>Power</Switch>
+  <RadioGroup class="sizes" value=$bind(size, () => refused('sizes')) onChange=((next) => heard('sizes', next))>
+    <Label>Size</Label>
+    <Radio class="large" value="large">Large</Radio>
+  </RadioGroup>
+  <CheckboxGroup class="toppings" value=$bind(toppings, () => refused('toppings')) onChange=((next) => heard('toppings', next))>
+    <Label>Toppings</Label>
+    <Checkbox class="egg" value="egg">Egg</Checkbox>
+  </CheckboxGroup>
+  <Select class="fruit" selectedKey=$bind(fruit, () => refused('fruit')) onSelectionChange=((next) => heard('fruit', next))>
+    <Label>Fruit</Label>
+    <Button class="fruit-trigger"><SelectValue /></Button>
+    <Popover>
+      <ListBox>
+        <ListBoxItem id="apple">Apple</ListBoxItem>
+        <ListBoxItem id="pear" class="pear">Pear</ListBoxItem>
+      </ListBox>
+    </Popover>
+  </Select>
+  <p class="state">{JSON.stringify([calls, tried, count, hex])}</p>
+</main>

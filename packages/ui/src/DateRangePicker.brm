@@ -44,7 +44,7 @@
   import { dateSegments, formField } from './date-field.brm.ts';
   import { prevent } from 'brumate/events';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf } from './fields.ts';
+  import { afterWrite, describedBy, messagesOf } from './fields.ts';
   import { DateStringsContext } from './date-strings.ts';
   import { LocaleContext } from './locale.ts';
   import { DateRangeFieldContext } from './segments.ts';
@@ -165,17 +165,27 @@
     $untrack((startValue = from));
     $untrack((endValue = to));
     const next = rangeOf(from, to);
-    if (!same(next, $untrack(value))) {
+    const before = $untrack(value);
+    if (!same(next, before)) {
       $untrack((value = next));
-      // A setter that refuses leaves the old range, and the fields show that one.
-      if (!same($untrack(value), next)) {
-        $untrack((startValue = $untrack(value)?.start ?? null));
-        $untrack((endValue = $untrack(value)?.end ?? null));
-        return;
+      // The fields show the range that the caller keeps, and the change handler gets it only
+      // when it changed.
+      const kept = $untrack(value);
+      if (!same(kept, next)) {
+        $untrack((startValue = kept?.start ?? null));
+        $untrack((endValue = kept?.end ?? null));
       }
-      edited = true;
-      changed();
-      onChange?.(next);
+      afterWrite(
+        before,
+        next,
+        () => $untrack(value),
+        (after) => {
+          edited = true;
+          changed();
+          onChange?.(after);
+        },
+        same,
+      );
     }
   });
 
@@ -200,10 +210,19 @@
     if (typeof picked === 'string') {
       return;
     }
-    if (!same(picked, value)) {
+    const before = value;
+    if (!same(picked, before)) {
       value = picked;
-      edited = true;
-      onChange?.(picked);
+      afterWrite(
+        before,
+        picked,
+        () => value,
+        (kept) => {
+          edited = true;
+          onChange?.(kept);
+        },
+        same,
+      );
     }
     if (shouldCloseOnSelect) {
       setOpen(false);
