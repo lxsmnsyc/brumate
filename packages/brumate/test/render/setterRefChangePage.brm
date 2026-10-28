@@ -1,0 +1,20 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import SetterRefBox from './SetterRefBox.brm';
+
+  let title = $signal('one');
+  let root = $signal<HTMLElement>();
+  let calls = $signal('');
+
+  function takeA(element: HTMLElement | undefined) {
+    calls = `${calls}A:${element?.tagName ?? 'none'};`;
+  }
+
+  function takeB(element: HTMLElement | undefined) {
+    calls = `${calls}B:${element?.tagName ?? 'none'};`;
+  }
+</script>
+
+<SetterRefBox ref=$bind(root, takeA) {title} />
+<button class="retitle" onClick=(() => (title = title + 'x'))>Retitle</button>
+<p class="calls">{calls}</p>

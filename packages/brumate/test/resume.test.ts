@@ -4231,6 +4231,61 @@ describe('refs forwarded through components', () => {
     expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
   });
 
+  describe('a ref bound with a setter', () => {
+    it('a ref bound with a setter calls it with the element of a named ref prop, on resume and in a block', async () => {
+      await resume('setterRefPage', {});
+      // The setter runs once on resume, with the button that the server rendered.
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;BUTTON;'));
+      await new Promise((done) => setTimeout(done, 100));
+      expect(text('.calls')).toBe('BUTTON;BUTTON;');
+    });
+
+    it('a ref bound with a setter calls it on resume through a relay of two levels', async () => {
+      await resume('setterRefRelayPage', {});
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+      await new Promise((done) => setTimeout(done, 100));
+      expect(text('.calls')).toBe('BUTTON;');
+    });
+
+    it('a ref bound with a setter calls it on resume through a relay of three levels', async () => {
+      await resume('setterRefRelay3Page', {});
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+    });
+
+    it('a ref bound with a setter calls it through rest props spread on an element', async () => {
+      await resume('setterRefRestPage', {});
+      // Not called on resume yet: the follow-up node setter-ref-resume-rest. A block calls it.
+      expect(text('.calls')).toBe('');
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+      expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
+    });
+
+    it('does not call the setter again when the spread updates', async () => {
+      await resume('setterRefChangePage', {});
+      click(document.querySelector('.retitle')!);
+      await waitFor(() => expect(text('.calls')).toBe('A:BUTTON;'));
+      click(document.querySelector('.retitle')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.getAttribute('title')).toBe('onexx'),
+      );
+      await new Promise((done) => setTimeout(done, 100));
+      expect(text('.calls')).toBe('A:BUTTON;');
+    });
+
+    it('calls the setter with the new element when a block closes and opens again', async () => {
+      await resume('setterRefReopenPage', {});
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(text('.calls')).toBe('in;'));
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(document.querySelector('.inner')).toBeNull());
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(text('.calls')).toBe('in;in;'));
+    });
+  });
+
   // The pattern of the parts that take `as`: the rest props, with `ref`, spread onto a dynamic tag.
   describe('a dynamic tag that spreads the rest props', () => {
     it('a ref left in the rest props reaches a dynamic tag that spreads the rest', async () => {

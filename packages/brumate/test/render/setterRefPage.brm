@@ -1,0 +1,19 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import SetterRefButton from './SetterRefButton.brm';
+
+  let shown = $signal(false);
+  let root = $signal<HTMLElement>();
+  let calls = $signal('');
+
+  function take(element: HTMLElement | undefined) {
+    calls = `${calls}${element?.tagName ?? 'none'};`;
+  }
+</script>
+
+<button class="show" onClick=(() => (shown = true))>Show</button>
+<SetterRefButton ref=$bind(root, take) />
+#if (shown) {
+  <SetterRefButton label="Later" ref=$bind(root, take) />
+}
+<p class="calls">{calls}</p>
