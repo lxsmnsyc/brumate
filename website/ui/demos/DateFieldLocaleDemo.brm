@@ -1,0 +1,31 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import DateField from '@brumate/ui/DateField.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import I18nProvider from '@brumate/ui/I18nProvider.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  let date = $signal<string | null>('2026-10-15');
+</script>
+
+<div class="ui-row" style="align-items: start; flex-wrap: wrap">
+  <I18nProvider locale="de-DE" timeZone="Europe/Berlin">
+    <DateField class="ui-field" value=$bind(date)>
+      <Label>Datum</Label>
+      <DateInput class="ui-input ui-date-input" />
+    </DateField>
+  </I18nProvider>
+  <I18nProvider locale="ja-JP" timeZone="Asia/Tokyo">
+    <DateField class="ui-field" value=$bind(date)>
+      <Label>日付</Label>
+      <DateInput class="ui-input ui-date-input" />
+    </DateField>
+  </I18nProvider>
+  <I18nProvider locale="en-US">
+    <DateField class="ui-field" value=$bind(date)>
+      <Label>Date</Label>
+      <DateInput class="ui-input ui-date-input" />
+    </DateField>
+  </I18nProvider>
+</div>
+<p>Value: {date ?? 'empty'}. The three fields share one signal. The order of the segments, the text between them and the placeholders follow the locale of each provider. A set value is always YYYY-MM-DD, and an emptied segment makes it empty.</p>

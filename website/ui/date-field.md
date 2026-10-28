@@ -24,6 +24,15 @@ A date that the user types segment by segment.
 
 ## Anatomy
 
+```brm anatomy DateFieldAnatomy
+`DateField`: The field and its state. It shows `data-invalid`, `data-required` and the other states.
+`Label`: Names the group of segments.
+`DateInput`: The group that holds the segments and the text between them.
+`DateSegment`: One part of the date, here the month. It is editable text with `role="spinbutton"`.
+`Text` with `slot="description"`: Describes the field. Optional.
+`FieldError`: Shows the message of an invalid field. Optional.
+```
+
 ```html
 <DateField>
   <Label />
@@ -106,11 +115,30 @@ The keys act on the segment that has focus. A segment takes none of them while t
 
 ## Controlled and uncontrolled
 
-`value` holds the date as `YYYY-MM-DD`, or `null` until every segment is set. A plain `value` starts the field's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the date each time it changes, and `null` when a segment is emptied. A reset of the form gives back the first date. See [State](./state.md).
+`value` holds the date as `YYYY-MM-DD`, or `null` until every segment is set. How you pass it picks who keeps it. Change a field below and press Reset the form:
+
+```brm demo DateFieldStateDemo
+
+```
+
+- `value` alone, or nothing, makes the field keep its own date. `value="2026-10-15"` is where that date starts. Type another and the field keeps it. A new value from you replaces it.
+- `value=$bind(signal)` writes your signal. Change the signal and the field follows.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock above, then change the last field: the signal keeps its date.
+- `onChange` gets the date, or `null` when a segment is emptied, in every shape, each time the date changes. With a request that refuses, it still gets the date that was asked for.
+- With a request that refuses, the segments of a DateField keep the date that was typed, and the signal keeps the date you hold. Press Lock above, press ArrowUp in the last field and see the two differ. The segments follow the signal again at its next change.
+- A reset of the form gives back the first date, as a write: with `$bind(signal, request)`, your request can refuse it. The server renders the date it starts with.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the segments with `data-type`, `data-placeholder` and `data-focused`, and the field with the other data attributes above. The hidden input that posts the date is out of sight. See [Styling](./styling.md).
+
+A segment has no `data-hovered` or `data-focus-visible`, so use `:hover` and `data-focused`. This stylesheet draws the input as a box with its segments in rest, placeholder, focus, invalid and disabled, and the description and the error. Press Save with no date to see the error.
+
+```brm styled DateFieldStyled
+
+```
 
 ## Segments
 
@@ -146,3 +174,21 @@ Style the segments with `data-type`, `data-placeholder` and `data-focused`, and 
 
 - `minValue` and `maxValue` limit the date, and `isDateUnavailable` marks dates that cannot be picked. A date outside them makes the field invalid, as `isInvalid` does.
 - The errors of a [Form](./form.md) for its `name` show in the FieldError.
+
+## Use cases
+
+### A date in a form
+
+`isRequired` makes the browser check the field on a submit, and the FieldError shows the message. `minValue` and `maxValue` make a date outside them invalid, but they do not stop a submit: the form here looks for `data-invalid` before it sends. `name` posts the date as `YYYY-MM-DD`, and Reset gives back the first date.
+
+```brm demo DateFieldFormDemo
+
+```
+
+### A date in the language of the user
+
+An [I18nProvider](./i18n-provider.md) gives the order of the segments, the text between them, the placeholders and the names that a screen reader hears. Three providers give three locales to one signal. Empty a segment with Backspace to see its placeholder: the value becomes empty until every segment is set again, and a set value is always `YYYY-MM-DD`:
+
+```brm demo DateFieldLocaleDemo
+
+```

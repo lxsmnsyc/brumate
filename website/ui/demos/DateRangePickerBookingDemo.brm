@@ -1,0 +1,60 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let sent = $signal('Nothing sent.');
+
+  function submit(event: SubmitEvent) {
+    const form = event.currentTarget as HTMLFormElement;
+    if (form.querySelector('[data-invalid]')) {
+      sent = 'Fix the field first.';
+      return;
+    }
+    const data = new FormData(form);
+    sent = `Sent from=${data.get('from')}, to=${data.get('to')}.`;
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(submit))>
+  <DateRangePicker class="ui-field" startName="from" endName="to" isRequired minValue="2026-11-02" maxValue="2027-02-28">
+    <Label>Stay</Label>
+    <Group class="ui-group">
+      <DateInput slot="start" class="ui-input ui-date-input" />
+      <span aria-hidden="true">–</span>
+      <DateInput slot="end" class="ui-input ui-date-input" />
+      <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+    </Group>
+    <Text slot="description" class="ui-help">From the 2nd of November. Type an end before the start, and the range is invalid.</Text>
+    <FieldError class="ui-error">Pick a range from the 2nd of November, with the end after the start.</FieldError>
+    <Popover class="ui-popover">
+      <Dialog>
+        <RangeCalendar class="ui-calendar">
+          <header>
+            <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+            <CalendarHeading />
+            <Button slot="next" class="ui-button ui-icon-button">›</Button>
+          </header>
+          <CalendarGrid />
+        </RangeCalendar>
+      </Dialog>
+    </Popover>
+  </DateRangePicker>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Book</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p role="status">{sent}</p>
+</Form>

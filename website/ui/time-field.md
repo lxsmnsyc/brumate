@@ -22,6 +22,15 @@ A time of day that the user types segment by segment.
 
 ## Anatomy
 
+```brm anatomy TimeFieldAnatomy
+`TimeField`: The field and its state. It shows `data-invalid`, `data-required` and the other states.
+`Label`: Names the group of segments.
+`DateInput`: The group that holds the segments and the text between them.
+`DateSegment`: One part of the time, here the hour. It is editable text with `role="spinbutton"`.
+`Text` with `slot="description"`: Describes the field. Optional.
+`FieldError`: Shows the message of an invalid field. Optional.
+```
+
 ```html
 <TimeField>
   <Label />
@@ -73,11 +82,29 @@ The keys act on the segment that has focus. A segment takes none of them while t
 
 ## Controlled and uncontrolled
 
-`value` holds the time as `HH:MM`, or `HH:MM:SS` with `granularity="second"`, or `null` until every segment is set. A plain `value` starts the field's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the time each time it changes, and `null` when a segment is emptied. A reset of the form gives back the first time. See [State](./state.md).
+`value` holds the time as `HH:MM`, or `HH:MM:SS` with `granularity="second"`, or `null` until every segment is set. How you pass it picks who keeps it. Change a field below and press Reset the form:
+
+```brm demo TimeFieldStateDemo
+
+```
+
+- `value` alone, or nothing, makes the field keep its own time. `value="09:30"` is where that time starts. Type another and the field keeps it. A new value from you replaces it.
+- `value=$bind(signal)` writes your signal. Change the signal and the field follows.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and change the last field: its segments go back to the time that you keep.
+- `onChange` gets the time, or `null` when a segment is emptied, in every shape, each time the time changes. With a request that refuses, it still gets the time that was asked for.
+- A reset of the form gives back the first time, as a write: with `$bind(signal, request)`, your request can refuse it, and the segments show the time that you keep. The server renders the time it starts with.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the segments with `data-type`, `data-placeholder` and `data-focused`, and the field with the data attributes above. See [DateField](./date-field.md) for the attributes of the segments, and [Styling](./styling.md).
+
+A segment has no `data-hovered` or `data-focus-visible`, so use `:hover` and `data-focused`. This stylesheet draws the input as a box with its segments in rest, placeholder, focus, invalid and disabled, and the description and the error. Press Save with no time, or type one outside 8 AM to 6 PM.
+
+```brm styled TimeFieldStyled
+
+```
 
 ## Segments
 
@@ -95,3 +122,21 @@ Style the segments with `data-type`, `data-placeholder` and `data-focused`, and 
 ## Validation
 
 - `minValue` and `maxValue`, such as `"08:00"` and `"18:00"`, limit the time. A time outside them makes the field invalid, as `isInvalid` does.
+
+## Use cases
+
+### Opening hours in a form
+
+The `minValue` of the closing time follows the signal of the opening time, so a closing time before it is invalid and the FieldError shows the message. An invalid time does not stop a submit: the form here looks for `data-invalid` before it sends. `name` posts each time as `HH:MM`, and Reset gives back the first times.
+
+```brm demo TimeFieldHoursDemo
+
+```
+
+### A clock in the language of the user
+
+An [I18nProvider](./i18n-provider.md) gives the clock, the order of the segments and the words that a screen reader hears. `hourCycle` picks 12 or 24 hours whatever the locale. The value stays `HH:MM`.
+
+```brm demo TimeFieldClockDemo
+
+```

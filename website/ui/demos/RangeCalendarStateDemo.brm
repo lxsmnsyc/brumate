@@ -1,0 +1,68 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let mine = $signal<{ start: string; end: string } | null>({ start: '2026-10-13', end: '2026-10-16' });
+  let asked = $signal<{ start: string; end: string } | null>({ start: '2026-10-13', end: '2026-10-16' });
+  let locked = $signal(false);
+  let log = $signal('');
+
+  function show(range: { start: string; end: string } | null) {
+    return range ? `${range.start} to ${range.end}` : 'none';
+  }
+</script>
+
+<div class="ui-row" style="align-items: start; flex-wrap: wrap">
+  <div class="ui-stack">
+    <p>Own state</p>
+    <RangeCalendar class="ui-calendar" aria-label="Own state">
+      <header>
+        <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+        <CalendarHeading />
+        <Button slot="next" class="ui-button ui-icon-button">›</Button>
+      </header>
+      <CalendarGrid />
+    </RangeCalendar>
+  </div>
+  <div class="ui-stack">
+    <p>Starts at the 13th, then keeps its own copy</p>
+    <RangeCalendar class="ui-calendar" aria-label="Own copy" value=({ start: '2026-10-13', end: '2026-10-16' })>
+      <header>
+        <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+        <CalendarHeading />
+        <Button slot="next" class="ui-button ui-icon-button">›</Button>
+      </header>
+      <CalendarGrid />
+    </RangeCalendar>
+  </div>
+  <div class="ui-stack">
+    <p>Writes your signal</p>
+    <RangeCalendar class="ui-calendar" aria-label="Writes your signal" value=$bind(mine) onChange=((next) => (log = `picked ${next.start} to ${next.end}`))>
+      <header>
+        <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+        <CalendarHeading />
+        <Button slot="next" class="ui-button ui-icon-button">›</Button>
+      </header>
+      <CalendarGrid />
+    </RangeCalendar>
+  </div>
+  <div class="ui-stack">
+    <p>Asks you first</p>
+    <RangeCalendar class="ui-calendar" aria-label="Asks you first" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+      <header>
+        <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+        <CalendarHeading />
+        <Button slot="next" class="ui-button ui-icon-button">›</Button>
+      </header>
+      <CalendarGrid />
+    </RangeCalendar>
+  </div>
+</div>
+<div class="ui-row">
+  <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <Button class="ui-button" onClick=(() => { mine = null; asked = null; })>Clear both signals</Button>
+</div>
+<p>Writes: {show(mine)}. Asks: {show(asked)}. Last callback: {log || 'none'}.</p>

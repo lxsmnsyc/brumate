@@ -1,0 +1,200 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+
+  let date = $signal<string | null>('2026-10-15');
+
+  // Weekends cannot be picked.
+  function weekend(value: string) {
+    return [0, 6].includes(new Date(`${value}T00:00:00Z`).getUTCDay());
+  }
+</script>
+
+<div class="calendar-styled-wrap">
+  <Calendar
+    class="calendar-styled"
+    aria-label="Delivery date"
+    value=$bind(date)
+    focusedValue="2026-10-15"
+    minValue="2026-10-05"
+    maxValue="2026-11-20"
+    isDateUnavailable=weekend
+  >
+    <header class="calendar-styled-header">
+      <Button slot="previous" class="calendar-styled-nav">‹</Button>
+      <CalendarHeading class="calendar-styled-heading" />
+      <Button slot="next" class="calendar-styled-nav">›</Button>
+    </header>
+    <CalendarGrid class="calendar-styled-grid" />
+  </Calendar>
+  <p class="calendar-styled-status">{date ? `Delivery on ${date}.` : 'Pick a day.'}</p>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.calendar-styled-wrap) {
+    --calendar-styled-page: Canvas;
+    --calendar-styled-text: CanvasText;
+    --calendar-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
+    --calendar-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
+    --calendar-styled-hover: color-mix(in srgb, CanvasText 10%, Canvas);
+    --calendar-styled-press: color-mix(in srgb, CanvasText 18%, Canvas);
+    --calendar-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --calendar-styled-on-accent: light-dark(#fff, #101418);
+    display: grid;
+    gap: 0.75rem;
+    justify-items: start;
+    color: var(--calendar-styled-text);
+  }
+
+  :global(.calendar-styled) {
+    width: 18rem;
+    padding: 0.75rem;
+    border: 1px solid var(--calendar-styled-border);
+    border-radius: 12px;
+    background: var(--calendar-styled-page);
+  }
+
+  :global(.calendar-styled-header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  :global(.calendar-styled-heading) {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  /* The month buttons: rest, hover, press, keyboard focus and disabled at a limit. */
+  :global(.calendar-styled-nav) {
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.calendar-styled-nav[data-hovered]) {
+    background: var(--calendar-styled-hover);
+  }
+
+  :global(.calendar-styled-nav[data-pressed]) {
+    background: var(--calendar-styled-press);
+  }
+
+  :global(.calendar-styled-nav[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--calendar-styled-page), 0 0 0 4px var(--calendar-styled-accent);
+  }
+
+  :global(.calendar-styled-nav[data-disabled]) {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  /* The prose styles of the page give a table borders and a heading a rule, so reset them. */
+  :global(.calendar-styled .calendar-styled-grid td) {
+    padding: 0;
+    border: 0;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  :global(.calendar-styled .calendar-styled-header .calendar-styled-heading) {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  :global(.calendar-styled-grid) {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+  }
+
+  :global(.calendar-styled .calendar-styled-grid th) {
+    padding: 0 0 0.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--calendar-styled-muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  /* A date: rest, hover, press, today, selected, keyboard focus, unavailable and out of range. */
+  :global(.calendar-styled-grid [data-date]) {
+    width: 2.25rem;
+    height: 2.25rem;
+    margin: 1px auto;
+    border-radius: 50%;
+    line-height: 2.25rem;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.calendar-styled-grid [data-date]:hover) {
+    background: var(--calendar-styled-hover);
+  }
+
+  :global(.calendar-styled-grid [data-date][data-pressed]) {
+    background: var(--calendar-styled-press);
+  }
+
+  /* Today has a ring, so it does not depend on color alone. */
+  :global(.calendar-styled-grid [data-today]) {
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px var(--calendar-styled-border);
+  }
+
+  :global(.calendar-styled-grid [data-selected]) {
+    background: var(--calendar-styled-accent);
+    color: var(--calendar-styled-on-accent);
+  }
+
+  :global(.calendar-styled-grid [data-selected]:hover),
+  :global(.calendar-styled-grid [data-selected][data-pressed]) {
+    background: color-mix(in srgb, var(--calendar-styled-accent) 80%, CanvasText);
+  }
+
+  /* Two bands, so the ring shows on the fill of a selected date too. */
+  :global(.calendar-styled-grid [data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--calendar-styled-page), 0 0 0 4px var(--calendar-styled-accent);
+  }
+
+  :global(.calendar-styled-grid [data-unavailable]) {
+    color: var(--calendar-styled-muted);
+    text-decoration: line-through;
+    cursor: default;
+  }
+
+  :global(.calendar-styled-grid [data-disabled]) {
+    color: var(--calendar-styled-muted);
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  :global(.calendar-styled-grid [data-disabled]:hover),
+  :global(.calendar-styled-grid [data-unavailable]:hover) {
+    background: transparent;
+  }
+
+  :global(.calendar-styled-status) {
+    margin: 0;
+    color: var(--calendar-styled-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.calendar-styled-grid [data-date]) {
+      transition: none;
+    }
+  }
+</style>

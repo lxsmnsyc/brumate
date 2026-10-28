@@ -1,0 +1,104 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DatePicker from '@brumate/ui/DatePicker.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+
+  let mine = $signal<string | null>('2026-10-15');
+  let asked = $signal<string | null>('2026-10-15');
+  let open = $signal(false);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+    <DatePicker class="ui-field">
+      <Label>Own state</Label>
+      <Group class="ui-group">
+        <DateInput class="ui-input ui-date-input" />
+        <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+      </Group>
+      <Popover class="ui-popover">
+        <Dialog>
+          <Calendar class="ui-calendar">
+            <header>
+              <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+              <CalendarHeading />
+              <Button slot="next" class="ui-button ui-icon-button">›</Button>
+            </header>
+            <CalendarGrid />
+          </Calendar>
+        </Dialog>
+      </Popover>
+    </DatePicker>
+    <DatePicker class="ui-field" value="2026-10-15">
+      <Label>Starts at the 15th, then keeps its own copy</Label>
+      <Group class="ui-group">
+        <DateInput class="ui-input ui-date-input" />
+        <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+      </Group>
+      <Popover class="ui-popover">
+        <Dialog>
+          <Calendar class="ui-calendar">
+            <header>
+              <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+              <CalendarHeading />
+              <Button slot="next" class="ui-button ui-icon-button">›</Button>
+            </header>
+            <CalendarGrid />
+          </Calendar>
+        </Dialog>
+      </Popover>
+    </DatePicker>
+    <DatePicker class="ui-field" value=$bind(mine) isOpen=$bind(open) onChange=((next) => (log = `changed to ${next ?? 'empty'}`))>
+      <Label>Writes your signal, and whether it is open</Label>
+      <Group class="ui-group">
+        <DateInput class="ui-input ui-date-input" />
+        <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+      </Group>
+      <Popover class="ui-popover">
+        <Dialog>
+          <Calendar class="ui-calendar">
+            <header>
+              <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+              <CalendarHeading />
+              <Button slot="next" class="ui-button ui-icon-button">›</Button>
+            </header>
+            <CalendarGrid />
+          </Calendar>
+        </Dialog>
+      </Popover>
+    </DatePicker>
+    <DatePicker class="ui-field" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+      <Label>Asks you first</Label>
+      <Group class="ui-group">
+        <DateInput class="ui-input ui-date-input" />
+        <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+      </Group>
+      <Popover class="ui-popover">
+        <Dialog>
+          <Calendar class="ui-calendar">
+            <header>
+              <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+              <CalendarHeading />
+              <Button slot="next" class="ui-button ui-icon-button">›</Button>
+            </header>
+            <CalendarGrid />
+          </Calendar>
+        </Dialog>
+      </Popover>
+    </DatePicker>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (open = !open))>{open ? 'Close' : 'Open'} the third from here</Button>
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine ?? 'empty'}. Open: {open ? 'yes' : 'no'}. Asks: {asked ?? 'empty'}. Last callback: {log || 'none'}.</p>
+</form>

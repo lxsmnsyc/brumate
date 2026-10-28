@@ -1,0 +1,28 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import I18nProvider from '@brumate/ui/I18nProvider.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TimeField from '@brumate/ui/TimeField.brm';
+
+  let locale = $signal('de-DE');
+  let cycle = $signal<12 | 24 | undefined>(undefined);
+  let time = $signal<string | null>('14:05');
+</script>
+
+<div class="ui-row" style="flex-wrap: wrap">
+  <Button class="ui-button" onClick=(() => (locale = 'de-DE'))>Deutsch</Button>
+  <Button class="ui-button" onClick=(() => (locale = 'en-US'))>English</Button>
+  <Button class="ui-button" onClick=(() => (locale = 'ja-JP'))>日本語</Button>
+  <Button class="ui-button" onClick=(() => (cycle = undefined))>Clock of the locale</Button>
+  <Button class="ui-button" onClick=(() => (cycle = 12))>12 hours</Button>
+  <Button class="ui-button" onClick=(() => (cycle = 24))>24 hours</Button>
+</div>
+<I18nProvider {locale}>
+  <TimeField class="ui-field" hourCycle=cycle value=$bind(time)>
+    <Label>Uhrzeit</Label>
+    <DateInput class="ui-input ui-date-input" />
+  </TimeField>
+</I18nProvider>
+<p>Value: {time ?? 'empty'}. The value is always 24 hours, whatever the clock that shows.</p>

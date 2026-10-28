@@ -1,0 +1,217 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-16' });
+
+  // The 22nd cannot be picked, so a range that starts before it stops there.
+  function taken(date: string) {
+    return date === '2026-10-22';
+  }
+</script>
+
+<div class="range-calendar-styled-wrap">
+  <RangeCalendar
+    class="range-calendar-styled"
+    aria-label="Stay"
+    value=$bind(stay)
+    focusedValue="2026-10-14"
+    minValue="2026-10-05"
+    maxValue="2026-11-20"
+    isDateUnavailable=taken
+  >
+    <header class="range-calendar-styled-header">
+      <Button slot="previous" class="range-calendar-styled-nav">‹</Button>
+      <CalendarHeading class="range-calendar-styled-heading" />
+      <Button slot="next" class="range-calendar-styled-nav">›</Button>
+    </header>
+    <CalendarGrid class="range-calendar-styled-grid" />
+  </RangeCalendar>
+  <p class="range-calendar-styled-status">{stay ? `${stay.start} to ${stay.end}.` : 'Pick the first day, then the last.'}</p>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.range-calendar-styled-wrap) {
+    --range-calendar-styled-page: Canvas;
+    --range-calendar-styled-text: CanvasText;
+    --range-calendar-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
+    --range-calendar-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
+    --range-calendar-styled-hover: color-mix(in srgb, CanvasText 10%, Canvas);
+    --range-calendar-styled-press: color-mix(in srgb, CanvasText 18%, Canvas);
+    --range-calendar-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --range-calendar-styled-on-accent: light-dark(#fff, #101418);
+    /* The band between the ends of the range. */
+    --range-calendar-styled-band: light-dark(#d4e6f5, #1d3a52);
+    display: grid;
+    gap: 0.75rem;
+    justify-items: start;
+    color: var(--range-calendar-styled-text);
+  }
+
+  :global(.range-calendar-styled) {
+    width: 18rem;
+    padding: 0.75rem;
+    border: 1px solid var(--range-calendar-styled-border);
+    border-radius: 12px;
+    background: var(--range-calendar-styled-page);
+  }
+
+  :global(.range-calendar-styled-header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  /* The prose styles of the page give a heading a rule and a table borders, so reset them. */
+  :global(.range-calendar-styled .range-calendar-styled-header .range-calendar-styled-heading) {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  :global(.range-calendar-styled .range-calendar-styled-grid td) {
+    padding: 0;
+    border: 0;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  /* The month buttons: rest, hover, press, keyboard focus and disabled at a limit. */
+  :global(.range-calendar-styled-nav) {
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.range-calendar-styled-nav[data-hovered]) {
+    background: var(--range-calendar-styled-hover);
+  }
+
+  :global(.range-calendar-styled-nav[data-pressed]) {
+    background: var(--range-calendar-styled-press);
+  }
+
+  :global(.range-calendar-styled-nav[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--range-calendar-styled-page), 0 0 0 4px var(--range-calendar-styled-accent);
+  }
+
+  :global(.range-calendar-styled-nav[data-disabled]) {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  :global(.range-calendar-styled-grid) {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+  }
+
+  :global(.range-calendar-styled .range-calendar-styled-grid th) {
+    padding: 0 0 0.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--range-calendar-styled-muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  /* A date: rest, hover, press, today, in the range, its ends, keyboard focus, unavailable and out of range. */
+  :global(.range-calendar-styled-grid [data-date]) {
+    width: 2.25rem;
+    height: 2.25rem;
+    margin: 1px auto;
+    border-radius: 50%;
+    line-height: 2.25rem;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.range-calendar-styled-grid [data-date]:hover) {
+    background: var(--range-calendar-styled-hover);
+  }
+
+  :global(.range-calendar-styled-grid [data-date][data-pressed]) {
+    background: var(--range-calendar-styled-press);
+  }
+
+  :global(.range-calendar-styled-grid [data-today]) {
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px var(--range-calendar-styled-border);
+  }
+
+  /* The dates between the ends are squares in a band, so the range reads as one stripe. */
+  :global(.range-calendar-styled-grid [data-selected]),
+  :global(.range-calendar-styled-grid [data-selected]:hover) {
+    width: 100%;
+    border-radius: 0;
+    background: var(--range-calendar-styled-band);
+    color: var(--range-calendar-styled-text);
+    /* The band is pale, so lines of the accent above and below keep the range visible by themselves. */
+    box-shadow: inset 0 2px 0 var(--range-calendar-styled-accent), inset 0 -2px 0 var(--range-calendar-styled-accent);
+  }
+
+  :global(.range-calendar-styled-grid [data-selection-start]),
+  :global(.range-calendar-styled-grid [data-selection-end]) {
+    background: var(--range-calendar-styled-accent);
+    color: var(--range-calendar-styled-on-accent);
+  }
+
+  :global(.range-calendar-styled-grid [data-selection-start]) {
+    border-radius: 1.125rem 0 0 1.125rem;
+  }
+
+  :global(.range-calendar-styled-grid [data-selection-end]) {
+    border-radius: 0 1.125rem 1.125rem 0;
+  }
+
+  :global(.range-calendar-styled-grid [data-selection-start][data-selection-end]) {
+    border-radius: 1.125rem;
+  }
+
+  /* Two bands, so the ring shows on the fill of a selected date too. */
+  :global(.range-calendar-styled-grid [data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--range-calendar-styled-page), 0 0 0 4px var(--range-calendar-styled-accent);
+  }
+
+  :global(.range-calendar-styled-grid [data-unavailable]) {
+    color: var(--range-calendar-styled-muted);
+    text-decoration: line-through;
+    cursor: default;
+  }
+
+  :global(.range-calendar-styled-grid [data-disabled]) {
+    color: var(--range-calendar-styled-muted);
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  :global(.range-calendar-styled-grid [data-disabled]:hover),
+  :global(.range-calendar-styled-grid [data-unavailable]:hover) {
+    background: transparent;
+  }
+
+  :global(.range-calendar-styled-status) {
+    margin: 0;
+    color: var(--range-calendar-styled-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.range-calendar-styled-grid [data-date]) {
+      transition: none;
+    }
+  }
+</style>

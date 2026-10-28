@@ -1,0 +1,61 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DatePicker from '@brumate/ui/DatePicker.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<!-- The picture draws the field, then the Popover, the Dialog and the Calendar as blocks of their own, since a real Popover renders in a layer at the end of <body>. -->
+<DatePicker class="ui-field" value="2026-10-15" isInvalid style="width: fit-content" data-mark="1">
+  <Label data-mark="2" data-mark-side="after">Departure</Label>
+  <Group class="ui-group date-picker-anatomy-group" style="width: fit-content" data-mark="3" data-mark-side="after">
+    <DateInput class="ui-input ui-date-input" style="width: fit-content" data-mark="4" />
+    <Button class="ui-button ui-icon-button" aria-label="Calendar" data-mark="5">▾</Button>
+  </Group>
+  <Text slot="description" class="ui-help" data-mark="6" data-mark-side="after">Pick a day, or type it.</Text>
+  <FieldError class="ui-error" style="justify-self: start" data-mark="7" data-mark-side="after">The date is in the past.</FieldError>
+</DatePicker>
+<div class="anatomy-popover date-picker-anatomy-popover" data-mark="8">
+  <Dialog class="date-picker-anatomy-dialog" aria-label="Calendar" data-mark="9" data-mark-side="bottom">
+    <Calendar class="ui-calendar" aria-label="Departure" value="2026-10-15" focusedValue="2026-10-15" data-mark="10" data-mark-side="after">
+      <header>
+        <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+        <CalendarHeading />
+        <Button slot="next" class="ui-button ui-icon-button">›</Button>
+      </header>
+      <CalendarGrid />
+    </Calendar>
+  </Dialog>
+</div>
+
+<style>
+  :global(.date-picker-anatomy-group) {
+    padding-top: 0.75rem;
+  }
+
+  /* Wide enough for the Calendar, which the Select-sized block of the picture is not. */
+  :global(.anatomy-stage .date-picker-anatomy-popover) {
+    justify-self: start;
+    width: 20rem;
+    max-width: 100%;
+    padding: 1rem;
+  }
+
+  :global(.date-picker-anatomy-dialog) {
+    display: grid;
+    padding: 0.25rem 0.25rem 1.25rem;
+    border: 1px dashed var(--muted);
+    border-radius: 6px;
+  }
+
+  :global(.date-picker-anatomy-dialog .ui-calendar) {
+    width: auto;
+  }
+</style>

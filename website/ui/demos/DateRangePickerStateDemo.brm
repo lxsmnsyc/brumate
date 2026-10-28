@@ -1,0 +1,116 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let mine = $signal<{ start: string; end: string } | null>({ start: '2026-10-13', end: '2026-10-16' });
+  let asked = $signal<{ start: string; end: string } | null>({ start: '2026-10-13', end: '2026-10-16' });
+  let open = $signal(false);
+  let locked = $signal(false);
+  let log = $signal('');
+
+  function show(range: { start: string; end: string } | null) {
+    return range ? `${range.start} to ${range.end}` : 'empty';
+  }
+</script>
+
+<form class="ui-stack">
+    <DateRangePicker class="ui-field">
+      <Label>Own state</Label>
+      <Group class="ui-group">
+        <DateInput slot="start" class="ui-input ui-date-input" />
+        <span aria-hidden="true">–</span>
+        <DateInput slot="end" class="ui-input ui-date-input" />
+        <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+      </Group>
+      <Popover class="ui-popover">
+        <Dialog>
+          <RangeCalendar class="ui-calendar">
+            <header>
+              <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+              <CalendarHeading />
+              <Button slot="next" class="ui-button ui-icon-button">›</Button>
+            </header>
+            <CalendarGrid />
+          </RangeCalendar>
+        </Dialog>
+      </Popover>
+    </DateRangePicker>
+    <DateRangePicker class="ui-field" value=({ start: '2026-10-13', end: '2026-10-16' })>
+      <Label>Starts at the 13th, then keeps its own copy</Label>
+      <Group class="ui-group">
+        <DateInput slot="start" class="ui-input ui-date-input" />
+        <span aria-hidden="true">–</span>
+        <DateInput slot="end" class="ui-input ui-date-input" />
+        <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+      </Group>
+      <Popover class="ui-popover">
+        <Dialog>
+          <RangeCalendar class="ui-calendar">
+            <header>
+              <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+              <CalendarHeading />
+              <Button slot="next" class="ui-button ui-icon-button">›</Button>
+            </header>
+            <CalendarGrid />
+          </RangeCalendar>
+        </Dialog>
+      </Popover>
+    </DateRangePicker>
+    <DateRangePicker class="ui-field" value=$bind(mine) isOpen=$bind(open) onChange=((next) => (log = `changed to ${show(next)}`))>
+      <Label>Writes your signal, and whether it is open</Label>
+      <Group class="ui-group">
+        <DateInput slot="start" class="ui-input ui-date-input" />
+        <span aria-hidden="true">–</span>
+        <DateInput slot="end" class="ui-input ui-date-input" />
+        <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+      </Group>
+      <Popover class="ui-popover">
+        <Dialog>
+          <RangeCalendar class="ui-calendar">
+            <header>
+              <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+              <CalendarHeading />
+              <Button slot="next" class="ui-button ui-icon-button">›</Button>
+            </header>
+            <CalendarGrid />
+          </RangeCalendar>
+        </Dialog>
+      </Popover>
+    </DateRangePicker>
+    <DateRangePicker class="ui-field" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+      <Label>Asks you first</Label>
+      <Group class="ui-group">
+        <DateInput slot="start" class="ui-input ui-date-input" />
+        <span aria-hidden="true">–</span>
+        <DateInput slot="end" class="ui-input ui-date-input" />
+        <Button class="ui-button ui-icon-button" aria-label="Calendar">▾</Button>
+      </Group>
+      <Popover class="ui-popover">
+        <Dialog>
+          <RangeCalendar class="ui-calendar">
+            <header>
+              <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+              <CalendarHeading />
+              <Button slot="next" class="ui-button ui-icon-button">›</Button>
+            </header>
+            <CalendarGrid />
+          </RangeCalendar>
+        </Dialog>
+      </Popover>
+    </DateRangePicker>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (open = !open))>{open ? 'Close' : 'Open'} the third from here</Button>
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {show(mine)}. Open: {open ? 'yes' : 'no'}. Asks: {show(asked)}. Last callback: {log || 'none'}.</p>
+</form>

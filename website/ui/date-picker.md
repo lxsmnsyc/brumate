@@ -36,6 +36,21 @@ A DateField with a button that opens a Calendar.
 
 ## Anatomy
 
+```brm anatomy DatePickerAnatomy
+`DatePicker`: The picker and its state. It shows `data-open`, `data-invalid` and the states of a DateField.
+`Label`: Names the group, and the Button that opens the Popover.
+`Group`: Holds the input and the Button. It is named by the Label.
+`DateInput`: The segments of the date, as in a [DateField](./date-field.md).
+`Button`: Opens the Popover. It is named by the Button and the Label together.
+`Text` with `slot="description"`: Describes the field. Optional.
+`FieldError`: Shows the message of an invalid field. Optional.
+`Popover`: The layer that holds the Calendar.
+`Dialog`: The `dialog` that takes focus when the Popover opens.
+`Calendar`: The dates. A pick sets the date and closes the Popover.
+```
+
+The picture draws the Popover in place, open, as a block of its own under the field, so that each layer can carry a number. The real Popover opens in a layer at the end of the page.
+
 ```html
 <DatePicker>
   <Label />
@@ -43,13 +58,13 @@ A DateField with a button that opens a Calendar.
     <DateInput />
     <Button />
   </>
+  <Text slot="description" />
+  <FieldError />
   <Popover>
     <Dialog>
       <Calendar />
     </>
   </>
-  <Text slot="description" />
-  <FieldError />
 </>
 ```
 
@@ -83,11 +98,30 @@ The segments of the DateInput take the keys of a [DateField](./date-field.md#key
 
 ## Controlled and uncontrolled
 
-`value` holds the date as `YYYY-MM-DD`, or `null`. A plain `value` starts the picker's own state, and `value=$bind(signal)` writes your signal. `isOpen` holds whether the Popover shows in the same way, and `onOpenChange` gets each change. `onChange` gets the date each time it changes, typed or picked. See [State](./state.md).
+`value` holds the date as `YYYY-MM-DD`, or `null`, and `isOpen` holds whether the Popover shows. How you pass them picks who keeps them. Pick a date in each picker, then use the buttons under them:
+
+```brm demo DatePickerStateDemo
+
+```
+
+- `value` alone, or nothing, makes the picker keep its own date. `value="2026-10-15"` is where that date starts. Type or pick another and the picker keeps it. A new value from you replaces it.
+- `value=$bind(signal)` writes your signal. Change the signal and the field follows. `isOpen=$bind(signal)` does the same for the Popover: the first Button under the pickers opens and closes the third one.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and pick a date in the last picker: the field shows the date that you keep, and the Popover closes.
+- A date that is typed is another case. With a request that refuses, the segments keep the typed date and the signal keeps yours, until the signal changes. Press Lock above, press ArrowUp in the last field and see the two differ.
+- `onChange` gets the date, or `null`, in every shape, typed or picked, each time the date changes. `onOpenChange` gets each change of `isOpen`.
+- A reset of the form gives back the first date, as a write: with `$bind(signal, request)`, your request can refuse it. The picker renders a [DateField](./date-field.md), which resets with its form. The Popover is not a form field, so a reset does not close it. The server renders the date it starts with, and the Popover closed.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the picker with the data attributes above, and the parts inside it with their own. See [DateField](./date-field.md), [Calendar](./calendar.md), [Popover](./popover.md) and [Styling](./styling.md).
+
+The Popover is a layer outside the form, so put the custom properties of the example on its class too. A segment has no `data-hovered`, and a date has none, so use `:hover` for the pointer. This stylesheet draws the Group as the box, the Button as its trigger, the layer that fades while it opens and closes, and the Calendar in it. The weekends cannot be picked, and the dates before the 5th of October and after the 20th of November are out of range. Press Save with no date to see the error.
+
+```brm styled DatePickerStyled
+
+```
 
 ## The Calendar
 
@@ -98,3 +132,21 @@ Style the picker with the data attributes above, and the parts inside it with th
 - The Calendar follows `minValue`, `maxValue` and `isDateUnavailable` of the DatePicker, unless it has its own.
 - Escape closes the Popover.
 - `isOpen` is whether the Popover shows. It starts its own state, or binds with `$bind`, and `onOpenChange` gets each change.
+
+## Use cases
+
+### A date in a booking form
+
+`name` posts the date, `isRequired` makes the browser check it, and `minValue`, `maxValue` and `isDateUnavailable` limit the field and the Calendar both. Mondays and two more days are taken: type one, and the field turns invalid. An invalid date does not stop a submit, so the form here looks for `data-invalid` before it sends.
+
+```brm demo DatePickerBookingDemo
+
+```
+
+### A picker in the language of the user
+
+An [I18nProvider](./i18n-provider.md) gives the order and the placeholders of the segments, the names of the days and months, and the name of the Button, which a screen reader hears as `Kalender` in German. Two providers give two locales to one signal.
+
+```brm demo DatePickerLocaleDemo
+
+```

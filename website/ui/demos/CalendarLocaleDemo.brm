@@ -1,0 +1,30 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import I18nProvider from '@brumate/ui/I18nProvider.brm';
+
+  let locale = $signal('de-DE');
+  // Today follows the zone of the place, so each locale has its own.
+  const zones: Record<string, string> = { 'de-DE': 'Europe/Berlin', 'ja-JP': 'Asia/Tokyo', 'en-US': 'America/New_York' };
+  let date = $signal<string | null>(null);
+</script>
+
+<div class="ui-row">
+  <Button class="ui-button" onClick=(() => (locale = 'de-DE'))>Deutsch</Button>
+  <Button class="ui-button" onClick=(() => (locale = 'ja-JP'))>日本語</Button>
+  <Button class="ui-button" onClick=(() => (locale = 'en-US'))>English</Button>
+</div>
+<I18nProvider {locale} timeZone=(zones[locale])>
+  <Calendar class="ui-calendar" aria-label="Lieferdatum" value=$bind(date) focusedValue="2026-10-15">
+    <header>
+      <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+      <CalendarHeading />
+      <Button slot="next" class="ui-button ui-icon-button">›</Button>
+    </header>
+    <CalendarGrid />
+  </Calendar>
+</I18nProvider>
+<p>{date ?? 'No date yet.'} The names of the days and months, the first day of the week and the labels that a screen reader hears follow the locale.</p>

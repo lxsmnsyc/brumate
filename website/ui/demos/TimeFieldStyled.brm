@@ -1,0 +1,157 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import TimeField from '@brumate/ui/TimeField.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let sent = $signal('');
+
+  function submit(event: SubmitEvent) {
+    const form = event.currentTarget as HTMLFormElement;
+    if (form.querySelector('[data-invalid]')) {
+      sent = 'Fix the field first.';
+      return;
+    }
+    const data = new FormData(form);
+    sent = `Sent start=${data.get('start')}.`;
+  }
+</script>
+
+<Form class="time-field-styled-form" onSubmit=(prevent(submit))>
+  <TimeField class="time-field-styled" name="start" isRequired minValue="08:00" maxValue="18:00">
+    <Label class="time-field-styled-label">Start</Label>
+    <DateInput class="time-field-styled-input" />
+    <Text slot="description" class="time-field-styled-help">Press Save with no time, or type one outside 8 AM to 6 PM.</Text>
+    <FieldError class="time-field-styled-error">Pick a time from 8 AM to 6 PM.</FieldError>
+  </TimeField>
+  <TimeField class="time-field-styled" value="09:30" isDisabled>
+    <Label class="time-field-styled-label">Disabled</Label>
+    <DateInput class="time-field-styled-input" />
+  </TimeField>
+  <Button type="submit" class="time-field-styled-submit">Save</Button>
+  <p role="status" class="time-field-styled-status">{sent}</p>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.time-field-styled-form) {
+    --time-field-styled-page: Canvas;
+    --time-field-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
+    --time-field-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
+    --time-field-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --time-field-styled-on-accent: light-dark(#fff, #101418);
+    --time-field-styled-danger: light-dark(#c4271d, #f28b82);
+    display: grid;
+    justify-items: start;
+    gap: 0.9rem;
+    color: CanvasText;
+  }
+
+  :global(.time-field-styled) {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  :global(.time-field-styled-label) {
+    font-weight: 600;
+  }
+
+  /* The input is the box. Its segments: placeholder, set, hover and keyboard focus. */
+  :global(.time-field-styled-input) {
+    display: inline-flex;
+    width: fit-content;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--time-field-styled-border);
+    border-radius: 8px;
+    background: var(--time-field-styled-page);
+    font-variant-numeric: tabular-nums;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.time-field-styled-input:hover) {
+    border-color: var(--time-field-styled-accent);
+  }
+
+  :global(.time-field-styled-input:focus-within) {
+    border-color: var(--time-field-styled-accent);
+    box-shadow: 0 0 0 3px var(--time-field-styled-page), 0 0 0 5px var(--time-field-styled-accent);
+  }
+
+  :global(.time-field-styled-input[data-invalid]) {
+    border-color: var(--time-field-styled-danger);
+  }
+
+  :global(.time-field-styled-input[data-invalid]:focus-within) {
+    box-shadow: 0 0 0 3px var(--time-field-styled-page), 0 0 0 5px var(--time-field-styled-danger);
+  }
+
+  :global(.time-field-styled-input [data-segment]:not([data-type='literal'])) {
+    padding: 0 2px;
+    border-radius: 4px;
+    outline: none;
+    caret-color: transparent;
+  }
+
+  :global(.time-field-styled-input [data-placeholder]) {
+    color: var(--time-field-styled-muted);
+  }
+
+  :global(.time-field-styled-input [data-focused]) {
+    background: var(--time-field-styled-accent);
+    color: var(--time-field-styled-on-accent);
+  }
+
+  :global(.time-field-styled[data-disabled] .time-field-styled-input) {
+    opacity: 0.55;
+  }
+
+  :global(.time-field-styled-help) {
+    color: var(--time-field-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.time-field-styled-error) {
+    color: var(--time-field-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  :global(.time-field-styled-submit) {
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--time-field-styled-accent);
+    color: var(--time-field-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.time-field-styled-submit[data-hovered]) {
+    background: color-mix(in srgb, var(--time-field-styled-accent) 85%, CanvasText);
+  }
+
+  :global(.time-field-styled-submit[data-pressed]) {
+    background: color-mix(in srgb, var(--time-field-styled-accent) 70%, CanvasText);
+  }
+
+  :global(.time-field-styled-submit[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--time-field-styled-page), 0 0 0 4px var(--time-field-styled-accent);
+  }
+
+  :global(.time-field-styled-status) {
+    margin: 0;
+    color: var(--time-field-styled-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.time-field-styled-input) {
+      transition: none;
+    }
+  }
+</style>
