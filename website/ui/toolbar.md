@@ -52,7 +52,7 @@ The items are any parts that take focus, such as buttons, links and fields. The 
 
 | Key                         | Action                                                                                                                                                           |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Tab`                       | Moves focus to the item that had it last. Before the first focus, every item takes Tab in turn. After it, the next `Tab` leaves the toolbar.                                                               |
+| `Tab`                       | Moves focus to the item that had it last. Before the first focus, every item takes Tab in turn. After it, the next `Tab` leaves the toolbar.                     |
 | `ArrowRight` or `ArrowLeft` | In a horizontal toolbar, moves focus to the next or the previous item. Right to left, the keys swap.                                                             |
 | `ArrowDown` or `ArrowUp`    | In a vertical toolbar, moves focus to the next or the previous item. A text area keeps them. Like Home and End, the page prevents them once its code has loaded. |
 | `Home`                      | Moves focus to the first item.                                                                                                                                   |
