@@ -1,0 +1,30 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import PreviewTrigger from '@brumate/ui/PreviewTrigger.brm';
+
+  const files = [
+    { name: 'plan.txt', lines: ['Ship the docs', 'Review the pages'] },
+    { name: 'todo.txt', lines: ['Buy milk', 'Call the bank'] },
+  ];
+  let opened = $signal('nothing');
+</script>
+
+<div class="ui-stack">
+  <div class="ui-actions" style="justify-content: start">
+    #for (file of files by file.name) {
+      <PreviewTrigger>
+        <Button class="ui-button" onPress=(() => (opened = file.name))>{file.name}</Button>
+        <Popover class="ui-popover" placement="bottom start" transition>
+          <div class="ui-dialog">
+            #for (line of file.lines by line) {
+              <span>{line}</span>
+            }
+          </div>
+        </Popover>
+      </PreviewTrigger>
+    }
+  </div>
+  <p>Opened: {opened}.</p>
+</div>

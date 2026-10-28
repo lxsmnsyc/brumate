@@ -1,0 +1,16 @@
+<script>
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorSwatchPicker from '@brumate/ui/ColorSwatchPicker.brm';
+  import ColorSwatchPickerItem from '@brumate/ui/ColorSwatchPickerItem.brm';
+</script>
+
+<!-- The list clips its badge, so a wrapper carries it. -->
+<div style="width: fit-content; margin-right: 1.5rem" data-mark="1" data-mark-side="after">
+<ColorSwatchPicker class="ui-swatch-picker" aria-label="Color" value="#e2445a">
+  <ColorSwatchPickerItem class="ui-swatch-option" color="#e2445a" data-mark="2">
+    <ColorSwatch class="ui-swatch" data-mark="3" data-mark-side="bottom" />
+  </ColorSwatchPickerItem>
+  <ColorSwatchPickerItem class="ui-swatch-option" color="#2563eb"><ColorSwatch class="ui-swatch" /></ColorSwatchPickerItem>
+  <ColorSwatchPickerItem class="ui-swatch-option" color="#2ea043"><ColorSwatch class="ui-swatch" /></ColorSwatchPickerItem>
+</ColorSwatchPicker>
+</div>

@@ -1,0 +1,42 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Toast from '@brumate/ui/Toast.brm';
+  import ToastContent from '@brumate/ui/ToastContent.brm';
+  import ToastRegion from '@brumate/ui/ToastRegion.brm';
+  import { toastQueue } from '@brumate/ui/toast.ts';
+  import Icon from '../../src/components/Icon.brm';
+  import type { QueuedToast } from '@brumate/ui/toast.ts';
+
+  interface Notice {
+    title: string;
+    stays: boolean;
+  }
+
+  let count = 0;
+
+  // The second argument sets how many show at a time: the others wait for a place.
+  function add(stays: boolean) {
+    count += 1;
+    toastQueue<Notice>('kinds', 2).add(
+      { title: (stays ? 'Stays ' : 'Goes ') + count, stays },
+      stays ? {} : { timeout: 5000 },
+    );
+  }
+</script>
+
+<div class="ui-actions" style="justify-content: start">
+  <Button class="ui-button" onPress=(() => add(false))>Notice that goes</Button>
+  <Button class="ui-button" onPress=(() => add(true))>Notice that stays</Button>
+</div>
+<ToastRegion queue="kinds" class="ui-toasts" aria-label="Messages" toast=notice transition />
+
+#template notice(toast: QueuedToast<Notice>) {
+  <Toast {toast} class="ui-toast">
+    <ToastContent class="ui-toast-content">
+      <Text slot="title" class="ui-toast-title">{toast.content.title}</Text>
+      <Text slot="description">{toast.content.stays ? 'It stays until you close it.' : 'It closes by itself.'}</Text>
+    </ToastContent>
+    <Button slot="close" class="ui-icon-button"><Icon name="close" size=(14) /></Button>
+  </Toast>
+}

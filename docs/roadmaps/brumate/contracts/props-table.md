@@ -134,3 +134,4 @@ website/test/props-table.test.ts reads the rows of Button and checks them agains
 ## Changes
 
 - v1: frozen by docs-generator.
+- v1 (additive, ui-scroll-focus): the table is wrapped in a focusable `.props-scroll` group (`role="group"`, `tabindex="0"`, labelled `<Part> props`), so a keyboard can scroll a wide table.

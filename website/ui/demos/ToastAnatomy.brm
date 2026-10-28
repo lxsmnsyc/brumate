@@ -1,0 +1,20 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Toast from '@brumate/ui/Toast.brm';
+  import ToastContent from '@brumate/ui/ToastContent.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  const notice = { key: 'picture', content: {} };
+</script>
+
+<!-- The picture draws the region in place. The real ToastRegion renders at the end of the page, in the corner. -->
+<div class="ui-toasts" style="position: relative; box-sizing: border-box; width: min(100%, 24rem); padding: 1rem; border: 1px dashed var(--muted); border-radius: var(--radius)" data-mark="1">
+  <Toast toast=(notice) class="ui-toast" data-mark="2" data-mark-side="bottom">
+    <ToastContent class="ui-toast-content" data-mark="3" data-mark-side="inside">
+      <Text slot="title" class="ui-toast-title" style="justify-self: start" data-mark="4" data-mark-side="after">Draft saved</Text>
+      <Text slot="description" style="justify-self: start" data-mark="5" data-mark-side="after">Version 3 is safe.</Text>
+    </ToastContent>
+    <Button slot="close" class="ui-icon-button" data-mark="6"><Icon name="close" size=(14) /></Button>
+  </Toast>
+</div>

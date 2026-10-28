@@ -1,0 +1,57 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import ColorWheel from '@brumate/ui/ColorWheel.brm';
+  import ColorWheelTrack from '@brumate/ui/ColorWheelTrack.brm';
+
+  let mine = $signal('hsl(210, 80%, 50%)');
+  let asked = $signal('hsl(210, 80%, 50%)');
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <div class="ui-row color-wheel-state-row">
+  <div class="ui-stack color-wheel-state-item"><span>Own state</span>
+    <ColorWheel class="ui-color-wheel" outerRadius=(50) innerRadius=(36) aria-label="Own state" >
+      <ColorWheelTrack />
+      <ColorThumb class="ui-color-thumb" />
+    </ColorWheel>
+  </div>
+  <div class="ui-stack color-wheel-state-item"><span>Starts at orange, then keeps its own copy</span>
+    <ColorWheel class="ui-color-wheel" outerRadius=(50) innerRadius=(36) aria-label="Starts at orange, then keeps its own copy" value="hsl(30, 80%, 50%)">
+      <ColorWheelTrack />
+      <ColorThumb class="ui-color-thumb" />
+    </ColorWheel>
+  </div>
+  <div class="ui-stack color-wheel-state-item"><span>Writes your signal</span>
+    <ColorWheel class="ui-color-wheel" outerRadius=(50) innerRadius=(36) aria-label="Writes your signal" value=$bind(mine) onChange=((next) => (log = `changed to ${next}`))>
+      <ColorWheelTrack />
+      <ColorThumb class="ui-color-thumb" />
+    </ColorWheel>
+  </div>
+  <div class="ui-stack color-wheel-state-item"><span>Asks you first</span>
+    <ColorWheel class="ui-color-wheel" outerRadius=(50) innerRadius=(36) aria-label="Asks you first" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+      <ColorWheelTrack />
+      <ColorThumb class="ui-color-thumb" />
+    </ColorWheel>
+  </div>
+  </div>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine}. Asks: {asked}. Last callback: {log || 'none'}.</p>
+</form>
+
+<style>
+  :global(.color-wheel-state-row) {
+    flex-wrap: wrap;
+  }
+
+  :global(.color-wheel-state-item) {
+    width: 100px;
+    font-size: 0.8rem;
+  }
+</style>

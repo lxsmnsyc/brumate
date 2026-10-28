@@ -1,0 +1,16 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Link from '@brumate/ui/Link.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+</script>
+
+<!-- The picture draws the Popover in place, below the Link, since a real Popover renders in a layer at the end of <body>. -->
+<p style="margin: 0">Written by <Link class="ui-link" href="#preview-trigger" data-mark="1" data-mark-side="after">Ada Lovelace</Link></p>
+<div class="ui-popover" style="position: relative; width: min(100%, 22rem)" data-mark="2">
+  <span style="position: absolute; top: 0; left: 2rem; width: 12px; height: 12px" data-mark="3" data-mark-side="after"><OverlayArrow class="ui-arrow" data-placement="bottom" /></span>
+  <div class="ui-dialog">
+    <strong>Ada Lovelace</strong>
+    <p>Writes about engines and the numbers of Bernoulli.</p>
+    <Button class="ui-button" style="justify-self: start">Follow</Button>
+  </div>
+</div>

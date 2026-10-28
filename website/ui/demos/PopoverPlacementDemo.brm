@@ -1,0 +1,23 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+
+  const placements = ['bottom start', 'bottom end', 'top', 'end'] as const;
+</script>
+
+<div class="ui-actions" style="justify-content: center; flex-wrap: wrap">
+  #for (placement of placements by placement) {
+    <DialogTrigger>
+      <Button class="ui-button">{placement}</Button>
+      <Popover class="ui-popover" {placement} offset=(10) transition>
+        <OverlayArrow class="ui-arrow" />
+        <Dialog class="ui-dialog" aria-label=(placement)>
+          <p>Asked for {placement}.</p>
+        </Dialog>
+      </Popover>
+    </DialogTrigger>
+  }
+</div>

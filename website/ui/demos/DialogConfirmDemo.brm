@@ -1,0 +1,42 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+
+  let files = $signal(['report.pdf', 'notes.txt', 'photo.png']);
+  let asking = $signal(false);
+  let target = $signal('');
+
+  function ask(file: string) {
+    target = file;
+    asking = true;
+  }
+
+</script>
+
+<ul class="ui-stack" style="padding: 0; list-style: none">
+  #for (file of files by file) {
+    <li class="ui-actions" style="justify-content: space-between; align-items: center">
+      <span>{file}</span>
+      <Button class="ui-button" onPress=(() => ask(file))>Delete</Button>
+    </li>
+  }
+  #if (files.length === 0) {
+    <li>No files left. Reload the page to get them back.</li>
+  }
+</ul>
+<ModalOverlay class="ui-backdrop" isOpen=$bind(asking) transition>
+  <Modal class="ui-modal">
+    <Dialog role="alertdialog" class="ui-dialog">
+      <Heading slot="title" level=(4)>Delete {target}?</Heading>
+      <p>It cannot come back.</p>
+      <div class="ui-actions">
+        <Button slot="close" class="ui-button" autofocus>Keep it</Button>
+        <Button slot="close" class="ui-button" onPress=(() => (files = files.filter((file) => file !== target)))>Delete</Button>
+      </div>
+    </Dialog>
+  </Modal>
+</ModalOverlay>

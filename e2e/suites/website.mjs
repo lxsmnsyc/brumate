@@ -638,6 +638,181 @@ export async function run({ browser, url, runner }) {
       },
     );
     await flow(
+      '/ui: the pages of the color parts have a styled example, and an anatomy picture where they have pieces',
+      async () => {
+        const pieces = new Set([
+          'color-slider',
+          'color-area',
+          'color-wheel',
+          'color-field',
+          'color-swatch-picker',
+        ]);
+        const slugs = [
+          'color-picker',
+          'color-swatch',
+          'color-slider',
+          'color-area',
+          'color-wheel',
+          'color-field',
+          'color-swatch-picker',
+        ];
+        for (const slug of slugs) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            assert((await page.locator('.styled pre').count()) === 1, `/ui/${slug} shows no CSS`);
+            const marks = await page.locator('.anatomy [data-mark]').count();
+            const items = await page.locator('.anatomy-list li').count();
+            assert(
+              pieces.has(slug) ? marks > 0 && marks === items : marks === 0,
+              `/ui/${slug}: ${marks} callouts for ${items} listed pieces`,
+            );
+            await page.addScriptTag({ path: axe });
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run(document.querySelector('article'));
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow(
+      '/ui: the pages of Overlays that are done have an anatomy picture and a styled example',
+      async () => {
+        for (const slug of [
+          'dialog',
+          'popover',
+          'modal',
+          'sheet',
+          'tooltip',
+          'preview-trigger',
+          'toast',
+        ]) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            assert((await page.locator('.styled pre').count()) === 1, `/ui/${slug} shows no CSS`);
+            const marks = await page.locator('.anatomy [data-mark]').count();
+            const items = await page.locator('.anatomy-list li').count();
+            assert(
+              marks > 0 && marks === items,
+              `/ui/${slug}: ${marks} callouts for ${items} pieces`,
+            );
+            await page.addScriptTag({ path: axe });
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run(document.querySelector('article'));
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow('/ui: the overlays open, save, close and give focus back', async () => {
+      const settle = () => page.waitForTimeout(1500);
+      const focused = () =>
+        page.evaluate(() => (document.activeElement?.textContent ?? '').trim().slice(0, 40));
+      const visit = async (slug) => {
+        await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+        await settle();
+      };
+      // Dialog: the rename form saves, with no reload, and Escape gives focus back.
+      await visit('dialog');
+      const dialogUrl = page.url();
+      const rename = page.locator('button.ui-button[aria-expanded]', { hasText: /^Rename$/ });
+      await rename.click();
+      await page.waitForFunction(() => document.activeElement?.matches('[role=dialog] input'));
+      await page.keyboard.press('Control+A');
+      await page.keyboard.type('Annual');
+      await page.keyboard.press('Enter');
+      await page.getByText('File: Annual').waitFor({ timeout: 5000 });
+      await settle();
+      assert(page.url() === dialogUrl, `the rename form went to ${page.url()}`);
+      assert((await focused()) === 'Rename', `focus is on "${await focused()}" after saving`);
+      await rename.click();
+      await page.waitForFunction(() => document.activeElement?.matches('[role=dialog] input'));
+      await page.keyboard.press('Escape');
+      await settle();
+      assert((await focused()) === 'Rename', `focus is on "${await focused()}" after Escape`);
+      // Modal: a second modal opens over the first, and Escape closes only the top one.
+      await visit('modal');
+      await page.locator('button.ui-button', { hasText: /^Edit the greeting$/ }).click();
+      await page.waitForFunction(() =>
+        document.activeElement?.matches('[data-modal-overlay] input'),
+      );
+      await page.keyboard.type('!');
+      await page
+        .locator('[data-modal-overlay] [role=dialog] button', { hasText: /^Cancel$/ })
+        .click();
+      await page.locator('[data-modal-overlay] [role=alertdialog]').waitFor();
+      await page.waitForFunction(() => document.activeElement?.closest('[role=alertdialog]'));
+      assert((await page.locator('[data-modal-overlay]').count()) === 2, 'no nested modal');
+      await page.keyboard.press('Escape');
+      await settle();
+      const left = await page.locator('[data-modal-overlay]').count();
+      assert(left === 1, `${left} modals are left after Escape`);
+      await page
+        .locator('[data-modal-overlay] [role=dialog] button', { hasText: /^Cancel$/ })
+        .click();
+      await page
+        .locator('[data-modal-overlay] [role=alertdialog] button', { hasText: /^Discard$/ })
+        .click();
+      await settle();
+      assert((await page.locator('[data-modal-overlay]').count()) === 0, 'Discard left a modal');
+      // Sheet: opens from its trigger and Escape closes it.
+      await visit('sheet');
+      await page.locator('.sheet-styled-trigger', { hasText: 'start' }).click();
+      await page.locator('.sheet-styled-box').waitFor();
+      await page.waitForFunction(() => document.activeElement?.closest('[role=dialog]'));
+      await page.keyboard.press('Escape');
+      await settle();
+      assert((await page.locator('.sheet-styled-box').count()) === 0, 'Escape left the sheet');
+      // Popover: opens with the dialog focused, and Escape gives focus back.
+      await visit('popover');
+      const share = page.locator('.popover-styled-trigger');
+      await share.click();
+      await page.locator('.popover-styled-popover').waitFor();
+      await page.waitForFunction(() => document.activeElement?.closest('[role=dialog]'));
+      await page.keyboard.press('Escape');
+      await settle();
+      assert((await focused()) === 'Share', `focus is on "${await focused()}" after Escape`);
+      // Tooltip: focus from the keyboard shows it, and Escape hides it.
+      await visit('tooltip');
+      await page.locator('.tooltip-styled-trigger').first().focus();
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Shift+Tab');
+      await page.locator('[role=tooltip]:not([data-closed])').first().waitFor();
+      await page.keyboard.press('Escape');
+      await settle();
+      assert((await page.locator('[role=tooltip]').count()) === 0, 'Escape left the tooltip');
+      // PreviewTrigger: focus from the keyboard shows the card, and Escape hides it.
+      await visit('preview-trigger');
+      await page.locator('.preview-styled-link').focus();
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Shift+Tab');
+      await page.locator('.preview-styled-card').waitFor();
+      await page.keyboard.press('Escape');
+      await settle();
+      assert((await page.locator('.preview-styled-card').count()) === 0, 'Escape left the card');
+      // Toast: a button adds one, and its close button removes it.
+      await visit('toast');
+      await page.locator('.toast-styled-trigger').first().click();
+      const toast = page.locator('.toast-styled-toast');
+      await toast.waitFor();
+      await toast.getByRole('button', { name: 'Close' }).click();
+      await settle();
+      assert((await toast.count()) === 0, 'the close button left the toast');
+    });
+    await flow(
       '/ui/styling: the styled examples follow the theme toggle, with no contrast violations',
       async () => {
         // The toggle of the site, not the system setting, picks the theme. Each system setting
@@ -701,6 +876,50 @@ export async function run({ browser, url, runner }) {
             found.push(`${slug}: ${violations.join(', ')}`);
           }
         }
+        assert(found.length === 0, `found:\n${found.join('\n')}`);
+      },
+    );
+    await flow(
+      '/docs and /ui: no scrollable region is out of reach of the keyboard, at 375px and 1280px',
+      async () => {
+        const found = [];
+        for (const width of [375, 1280]) {
+          await page.setViewportSize({ width, height: 800 });
+          const slugs = new Set();
+          for (const start of ['/docs/state', '/ui/introduction']) {
+            await page.goto(`${url}${start}`, { waitUntil: 'load' });
+            // The sidebar is a drawer at narrow widths, so read the links without clicking.
+            const hrefs = await page
+              .locator('nav.sidebar a[href^="/docs"], nav.sidebar a[href^="/ui"]')
+              .evaluateAll((links) => links.map((link) => link.getAttribute('href')));
+            for (const href of hrefs) {
+              slugs.add(href);
+            }
+          }
+          slugs.add('/docs/');
+          slugs.add('/ui/');
+          assert(slugs.size > 60, `the sidebars link to ${slugs.size} pages`);
+          for (const slug of slugs) {
+            const response = await page.goto(`${url}${slug}`, { waitUntil: 'load' });
+            if (response?.status() !== 200) {
+              found.push(`${width}px ${slug}: ${response?.status()}`);
+              continue;
+            }
+            await page.addScriptTag({ path: axe });
+            const nodes = await page.evaluate(async () => {
+              const result = await window.axe.run(document, {
+                runOnly: ['scrollable-region-focusable'],
+              });
+              return result.violations.flatMap((violation) =>
+                violation.nodes.map((node) => node.target.join(' ')),
+              );
+            });
+            if (nodes.length > 0) {
+              found.push(`${width}px ${slug}: ${nodes.join(', ')}`);
+            }
+          }
+        }
+        await page.setViewportSize({ width: 1280, height: 720 });
         assert(found.length === 0, `found:\n${found.join('\n')}`);
       },
     );
