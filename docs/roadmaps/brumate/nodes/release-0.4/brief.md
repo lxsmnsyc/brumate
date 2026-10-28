@@ -65,6 +65,12 @@ depends_on:
   - on: ui-form-reset
     kind: hard
     why: a form reset must give every ui form part its first value in the first ui release
+  - on: ui-refused-write-sync
+    kind: hard
+    why: a bound part must show the value its caller keeps
+  - on: pending-submit
+    kind: hard
+    why: a pending submit must not send its form twice
   - on: handler-code-wait
     kind: hard
     why: a handler waits on unrelated update code, and a failed load leaves effects stuck
