@@ -1046,12 +1046,13 @@
     width: 16rem;
   }
 
-  :global(.ui-slider .ui-track) {
+  :global(.ui-slider-track) {
+    position: relative;
     grid-column: 1 / -1;
     height: 1.5rem;
   }
 
-  :global(.ui-track::before) {
+  :global(.ui-slider-track::before) {
     content: '';
     position: absolute;
     top: 50%;
