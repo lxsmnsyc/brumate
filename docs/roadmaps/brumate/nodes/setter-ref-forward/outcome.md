@@ -34,7 +34,7 @@ The setter does not run for markup that the server rendered. The server has no s
 ## Verification
 
 - `npx vitest run test/resume.test.ts -t "a ref bound with a setter"` in packages/brumate: 2 failed on main (timeout), 2 pass now.
-- Full suites, lint, format and typecheck: see the PR.
+- packages/brumate: 58 files, 1144 passed, 1 skipped. packages/ui: 58 files pass, 573 tests pass; `test/generics-markup.test.ts` fails 3 tests the same way with main's client runtime in this worktree (type-check tests), so not from this change. `oxlint` (warnings only), `oxfmt --check` and `tsc --noEmit` pass.
 
 ## Size
 
