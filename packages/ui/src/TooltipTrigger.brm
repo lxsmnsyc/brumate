@@ -17,7 +17,7 @@
     onOpenChange?: (open: boolean) => void;
     /** A `Button` and a `Tooltip`. */
     children?: unknown;
-    /** Whether the tooltip shows. Alone it starts shown, and `$bind` writes your signal. */
+    /** Whether the tooltip shows. Alone it holds its own state, which starts hidden, and `$bind` writes your signal. A shown start value does not show it on load. */
     isOpen?: Bindable<boolean>;
   }
 </script>

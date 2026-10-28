@@ -1,0 +1,33 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  const items = [
+    { name: 'Hammer', kind: 'tools' },
+    { name: 'Saw', kind: 'tools' },
+    { name: 'Nails', kind: 'supplies' },
+    { name: 'Gloves', kind: 'safety' },
+    { name: 'Goggles', kind: 'safety' },
+  ];
+  let kinds = $signal<string[]>([]);
+  const shown = $memo(kinds.length === 0 ? items : items.filter((item) => kinds.includes(item.kind)));
+</script>
+
+<div class="ui-stack">
+  <CheckboxGroup class="ui-group" value=$bind(kinds)>
+    <Label>Kind</Label>
+    #for (kind of ['tools', 'supplies', 'safety'] by kind) {
+      <Checkbox class="ui-box" value=kind>
+        <span class="ui-mark" aria-hidden="true"></span>
+        {kind}
+      </Checkbox>
+    }
+  </CheckboxGroup>
+  <ul aria-label="Items">
+    #for (item of shown by item.name) {
+      <li>{item.name}</li>
+    }
+  </ul>
+</div>

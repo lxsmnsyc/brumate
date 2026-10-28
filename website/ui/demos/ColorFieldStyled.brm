@@ -1,0 +1,151 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ColorField from '@brumate/ui/ColorField.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let accent = $signal<string | null>('#e2445a');
+  let sent = $signal('');
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent accent=${data.get('accent')}.`;
+  }
+</script>
+
+<Form class="color-field-styled-form" onSubmit=(prevent(submit))>
+  <div class="color-field-styled-row">
+    <ColorField class="color-field-styled" name="accent" value=$bind(accent) isRequired>
+      <Label class="color-field-styled-label">Accent</Label>
+      <Input class="color-field-styled-input" />
+      <Text slot="description" class="color-field-styled-help">Type hex. Clear it and press Save to see the error.</Text>
+      <FieldError class="color-field-styled-error" />
+    </ColorField>
+    <ColorSwatch class="color-field-styled-swatch" color=(accent ?? 'transparent') />
+  </div>
+  <ColorField class="color-field-styled" value="#2563eb" isDisabled>
+    <Label class="color-field-styled-label">Disabled</Label>
+    <Input class="color-field-styled-input" />
+  </ColorField>
+  <Button type="submit" class="color-field-styled-submit">Save</Button>
+  <p role="status" class="color-field-styled-status">{sent}</p>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.color-field-styled-form) {
+    --color-field-styled-page: Canvas;
+    --color-field-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
+    --color-field-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
+    --color-field-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --color-field-styled-on-accent: light-dark(#fff, #101418);
+    --color-field-styled-danger: light-dark(#c4271d, #f28b82);
+    display: grid;
+    justify-items: start;
+    gap: 0.9rem;
+    color: CanvasText;
+  }
+
+  :global(.color-field-styled-row) {
+    display: flex;
+    gap: 0.75rem;
+    align-items: start;
+  }
+
+  :global(.color-field-styled) {
+    display: grid;
+    gap: 0.3rem;
+    width: 16rem;
+  }
+
+  :global(.color-field-styled-label) {
+    font-weight: 600;
+  }
+
+  /* The input: rest, hover, keyboard focus, invalid and disabled. */
+  :global(.color-field-styled-input) {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-field-styled-border);
+    border-radius: 8px;
+    background: var(--color-field-styled-page);
+    color: inherit;
+    font: inherit;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.color-field-styled-input[data-hovered]) {
+    border-color: var(--color-field-styled-accent);
+  }
+
+  :global(.color-field-styled-input[data-focus-visible]) {
+    border-color: var(--color-field-styled-accent);
+    box-shadow: 0 0 0 3px var(--color-field-styled-page), 0 0 0 5px var(--color-field-styled-accent);
+  }
+
+  :global(.color-field-styled-input[data-invalid]) {
+    border-color: var(--color-field-styled-danger);
+  }
+
+  :global(.color-field-styled-input[data-invalid][data-focus-visible]) {
+    box-shadow: 0 0 0 3px var(--color-field-styled-page), 0 0 0 5px var(--color-field-styled-danger);
+  }
+
+  :global(.color-field-styled[data-disabled] .color-field-styled-input) {
+    opacity: 0.55;
+  }
+
+  :global(.color-field-styled-help) {
+    color: var(--color-field-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.color-field-styled-error) {
+    color: var(--color-field-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  :global(.color-field-styled-swatch) {
+    width: 2.6rem;
+    height: 2.6rem;
+    margin-top: 1.55rem;
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px var(--color-field-styled-border);
+  }
+
+  :global(.color-field-styled-submit) {
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--color-field-styled-accent);
+    color: var(--color-field-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.color-field-styled-submit[data-hovered]) {
+    background: color-mix(in srgb, var(--color-field-styled-accent) 85%, CanvasText);
+  }
+
+  :global(.color-field-styled-submit[data-pressed]) {
+    background: color-mix(in srgb, var(--color-field-styled-accent) 70%, CanvasText);
+  }
+
+  :global(.color-field-styled-submit[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--color-field-styled-page), 0 0 0 4px var(--color-field-styled-accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.color-field-styled-input) {
+      transition: none;
+    }
+  }
+</style>

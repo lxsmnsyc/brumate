@@ -39,8 +39,45 @@ The label shows the state:
 
 ## Controlled and uncontrolled
 
-`isSelected` holds the state. A plain `isSelected` starts the switch's own state, and `isSelected=$bind(signal)` writes your signal. `onChange` gets the new state each time the user toggles the switch. See [State](./state.md).
+`isSelected` holds whether the switch is on. How you pass it picks who keeps it:
+
+```brm demo SwitchStateDemo
+
+```
+
+- `isSelected` alone, or nothing, makes the Switch keep its own state. `isSelected` with no value starts it on, and a new value from you replaces it.
+- `isSelected=$bind(signal)` writes your signal. Change the signal and the switch follows.
+- `isSelected=$bind(signal, (next) => ...)` asks you first. The switch shows what you keep, so a request that you ignore leaves the old state. Press Lock above and click the last switch. The line under the switches shows that Asks keeps its value. The hidden input of the switch that you refused is not put back yet, so a form would post it until the next reset.
+- `onChange` gets the new state in every shape, each time the user toggles the switch.
+- A reset of the form gives back the state that the switch started with, as a write: with `$bind(signal, request)`, your request can refuse it.
+- The server renders the state it starts with. See [State](./state.md).
+
+A standalone Switch does not yet tie a description to its input either. The node `checkbox-description` is meant to add it.
 
 ## Styling
 
-Draw the switch in the children, from the attributes of the label. See [Styling](./styling.md#boxes).
+Style the switch from the attributes of the label, such as `[data-selected]` and `[data-focus-visible]`. Draw the track and the knob in the children. See [Styling](./styling.md#boxes). A Switch is one element with the content you give it, so this page has no anatomy picture.
+
+This stylesheet draws a track with a knob that moves. It styles rest, hover, press, on, on and hovered, on and pressed, keyboard focus, read only and disabled. The focus ring has two bands outside the track, so it shows next to the fill.
+
+```brm styled SwitchStyled
+
+```
+
+## Use cases
+
+### A settings panel
+
+Switches in a form post with it: `name` names the field, and a switch that is on posts its `value`, or `on` without one. Turning Airplane mode on turns Wi-Fi off and disables its switch. Reset the settings gives each switch back the state it started with.
+
+```brm demo SwitchSettingsDemo
+
+```
+
+### A switch that saves
+
+A setting that applies at once has no Save button. The switch moves when the user toggles it, and `onChange` starts the save. Toggle it twice in a row: each toggle starts a save, and only the last one reports.
+
+```brm demo SwitchSavingDemo
+
+```

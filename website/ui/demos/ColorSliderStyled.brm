@@ -1,0 +1,108 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorSlider from '@brumate/ui/ColorSlider.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let color = $signal('hsl(210, 80%, 50%)');
+</script>
+
+<div class="color-slider-styled-stack">
+  <ColorSlider class="color-slider-styled" channel="hue" value=$bind(color)>
+    <Label class="color-slider-styled-label">Hue</Label>
+    <SliderOutput class="color-slider-styled-output" />
+    <SliderTrack class="color-slider-styled-track">
+      <ColorThumb class="color-slider-styled-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <ColorSlider class="color-slider-styled" channel="alpha" value=$bind(color)>
+    <Label class="color-slider-styled-label">Opacity</Label>
+    <SliderOutput class="color-slider-styled-output" />
+    <SliderTrack class="color-slider-styled-track">
+      <ColorThumb class="color-slider-styled-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <ColorSlider class="color-slider-styled" channel="lightness" value="hsl(210, 80%, 50%)" isDisabled>
+    <Label class="color-slider-styled-label">Lightness, disabled</Label>
+    <SliderOutput class="color-slider-styled-output" />
+    <SliderTrack class="color-slider-styled-track">
+      <ColorThumb class="color-slider-styled-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.color-slider-styled-stack) {
+    --color-slider-styled-page: Canvas;
+    --color-slider-styled-text: CanvasText;
+    --color-slider-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
+    --color-slider-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    display: grid;
+    gap: 1rem;
+    color: var(--color-slider-styled-text);
+  }
+
+  :global(.color-slider-styled) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.4rem;
+    width: min(100%, 18rem);
+  }
+
+  :global(.color-slider-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.color-slider-styled-output) {
+    color: var(--color-slider-styled-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The part gives the gradient of the channel as --track-background. */
+  :global(.color-slider-styled-track) {
+    grid-column: 1 / -1;
+    height: 1.5rem;
+    border-radius: 0.75rem;
+    background: var(--track-background);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-slider-styled-text) 50%, var(--color-slider-styled-page));
+  }
+
+  /* The thumb fills with the color. A white band and a dark band outside it show on any track. */
+  :global(.color-slider-styled-thumb) {
+    box-sizing: border-box;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    outline: none;
+    box-shadow: 0 0 0 1.5px #000, inset 0 0 0 1.5px #000;
+    transition: scale 0.12s;
+  }
+
+  :global(.color-slider-styled-thumb[data-dragging]) {
+    scale: 1.15;
+  }
+
+  /* Keyboard focus: an accent band outside a band of the page color, so it shows on any track. */
+  :global(.color-slider-styled-thumb[data-focus-visible]) {
+    box-shadow:
+      0 0 0 1.5px #000,
+      0 0 0 3.5px var(--color-slider-styled-page),
+      0 0 0 6px var(--color-slider-styled-accent),
+      inset 0 0 0 1.5px #000;
+  }
+
+  /* A disabled slider dims the track and the thumb. The text keeps its contrast. */
+  :global(.color-slider-styled[data-disabled] .color-slider-styled-track) {
+    opacity: 0.5;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.color-slider-styled-thumb) {
+      transition: none;
+    }
+  }
+</style>

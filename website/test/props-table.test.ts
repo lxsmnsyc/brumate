@@ -92,6 +92,14 @@ describe('renderProps', () => {
     expect(html).toContain('Use <code>x</code> &lt;b&gt;');
     expect(html).toContain('<td><code>1</code></td>');
   });
+
+  it('wraps the table in a focusable scroll group', () => {
+    const html = renderProps([], 'TextField');
+    expect(html).toContain(
+      '<div class="props-scroll" role="group" aria-label="TextField props" tabindex="0">',
+    );
+    expect(html.trimEnd().endsWith('</table>\n</div>')).toBe(true);
+  });
 });
 
 describe('the button page', () => {

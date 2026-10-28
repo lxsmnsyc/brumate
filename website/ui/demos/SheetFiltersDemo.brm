@@ -1,0 +1,51 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Sheet from '@brumate/ui/Sheet.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  const shoes = [
+    { name: 'Trail', color: 'green' },
+    { name: 'Road', color: 'red' },
+    { name: 'Court', color: 'green' },
+    { name: 'Track', color: 'blue' },
+  ];
+
+  // The sheet edits a draft. Apply copies it, and Cancel throws it away.
+  let applied = $signal<string[]>([]);
+  let draft = $signal<string[]>([]);
+  const shown = $memo(applied.length === 0 ? shoes : shoes.filter((shoe) => applied.includes(shoe.color)));
+</script>
+
+<div class="ui-stack">
+  <DialogTrigger onOpenChange=((next) => { if (next) draft = applied; })>
+    <Button class="ui-button">Filters{applied.length > 0 ? ' (' + applied.length + ')' : ''}</Button>
+    <Sheet class="ui-sheet" side="end" transition>
+      <Dialog class="ui-dialog">
+        <Heading slot="title" level=(4)>Color</Heading>
+        <CheckboxGroup class="ui-field" aria-label="Color" value=$bind(draft)>
+          #for (color of ['green', 'red', 'blue'] by color) {
+            <Checkbox class="ui-box" value=color>
+              <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+              {color}
+            </Checkbox>
+          }
+        </CheckboxGroup>
+        <div class="ui-actions">
+          <Button slot="close" class="ui-button">Cancel</Button>
+          <Button slot="close" class="ui-button" onPress=(() => (applied = draft))>Apply</Button>
+        </div>
+      </Dialog>
+    </Sheet>
+  </DialogTrigger>
+  <ul style="margin: 0">
+    #for (shoe of shown by shoe.name) {
+      <li>{shoe.name}, {shoe.color}</li>
+    }
+  </ul>
+</div>

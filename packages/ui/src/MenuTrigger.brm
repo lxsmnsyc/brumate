@@ -27,7 +27,7 @@
    * - A press opens the menu. From a key, focus goes to its first item. From a pointer, it goes
    *   to the menu, and the arrow keys move to an item.
    * - ArrowDown on the Button opens the menu at its first item, and ArrowUp at its last.
-   * - `isOpen` alone starts it open, and `isOpen=$bind(signal)` writes the caller's.
+   * - `isOpen` alone holds its own state, which starts closed, and `isOpen=$bind(signal)` writes the caller's. An open start value does not open it on load.
    */
   const { onOpenChange, children } = $props<MenuTriggerProps>();
   let { isOpen = false } = $props<MenuTriggerProps>();

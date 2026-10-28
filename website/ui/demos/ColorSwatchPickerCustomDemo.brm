@@ -1,0 +1,28 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorField from '@brumate/ui/ColorField.brm';
+  import ColorPicker from '@brumate/ui/ColorPicker.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorSwatchPicker from '@brumate/ui/ColorSwatchPicker.brm';
+  import ColorSwatchPickerItem from '@brumate/ui/ColorSwatchPickerItem.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  let color = $signal('#2563eb');
+  const colors = ['#e2445a', '#f59e0b', '#2ea043', '#2563eb', '#8b5cf6'];
+</script>
+
+<ColorPicker value=$bind(color)>
+  <div class="ui-stack">
+    <ColorSwatchPicker class="ui-swatch-picker" aria-label="Presets">
+      #for (item of colors by item) {
+        <ColorSwatchPickerItem class="ui-swatch-option" color=item><ColorSwatch class="ui-swatch" /></ColorSwatchPickerItem>
+      }
+    </ColorSwatchPicker>
+    <ColorField class="ui-field">
+      <Label>Custom</Label>
+      <Input class="ui-input" />
+    </ColorField>
+    <p>The color is {color}. A color that no preset has leaves all of them unselected.</p>
+  </div>
+</ColorPicker>

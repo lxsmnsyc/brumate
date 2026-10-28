@@ -1,0 +1,51 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+
+  let open = $signal(false);
+  let gated = $signal(false);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<div class="ui-stack">
+  <!-- The trigger keeps its own state. -->
+  <DialogTrigger>
+    <Button class="ui-button">Own state</Button>
+    <Popover class="ui-popover" transition>
+      <Dialog class="ui-dialog" aria-label="Own state">
+        <p>The DialogTrigger holds whether this is open.</p>
+        <Button slot="close" class="ui-button">Close</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <!-- The trigger writes your signal, so other code can open it too. -->
+  <DialogTrigger isOpen=$bind(open) onOpenChange=((next) => (log = next ? 'opened' : 'closed'))>
+    <Button class="ui-button">Writes your signal</Button>
+    <Popover class="ui-popover" transition>
+      <Dialog class="ui-dialog" aria-label="Writes your signal">
+        <p>Your signal says {open ? 'open' : 'closed'}.</p>
+        <Button slot="close" class="ui-button">Close</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <!-- The trigger asks you first. Lock refuses a request to open. -->
+  <DialogTrigger isOpen=$bind(gated, (next) => { if (!locked || !next) gated = next; })>
+    <Button class="ui-button">Asks you first</Button>
+    <Popover class="ui-popover" transition>
+      <Dialog class="ui-dialog" aria-label="Asks you first">
+        <p>You let it open.</p>
+        <Button slot="close" class="ui-button">Close</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <div class="ui-actions" style="justify-content: start">
+    <Button class="ui-button" onPress=(() => (open = !open))>Open or close from outside</Button>
+    <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the last one</Button>
+  </div>
+  <p>Signal: {open ? 'open' : 'closed'}. Last callback: {log || 'none'}. Last one is {locked ? 'locked' : 'free'}.</p>
+</div>

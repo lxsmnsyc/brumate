@@ -1,0 +1,34 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  let files = $signal([
+    { name: 'report.pdf', on: true },
+    { name: 'photo.png', on: false },
+    { name: 'notes.txt', on: true },
+  ]);
+  const count = $memo(files.filter((file) => file.on).length);
+
+  function setAll(on: boolean) {
+    files = files.map((file) => ({ ...file, on }));
+  }
+
+  function setOne(name: string, on: boolean) {
+    files = files.map((file) => (file.name === name ? { ...file, on } : file));
+  }
+</script>
+
+<div class="ui-stack">
+  <Checkbox class="ui-box" isSelected=(count === files.length) isIndeterminate=(count > 0 && count < files.length) onChange=setAll>
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+    All files
+  </Checkbox>
+  #for (file of files by file.name) {
+    <Checkbox class="ui-box" isSelected=(file.on) onChange=((on) => setOne(file.name, on))>
+      <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+      {file.name}
+    </Checkbox>
+  }
+  <p>{count} of {files.length} selected.</p>
+</div>

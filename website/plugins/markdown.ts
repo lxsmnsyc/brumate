@@ -123,14 +123,6 @@ function demoName(token: {
   return match ? { kind: match[1] as 'demo' | 'anatomy' | 'styled', name: match[2]! } : undefined;
 }
 
-/**
- * Code blocks take focus, so a keyboard can scroll one that is wider than the page, as WCAG
- * asks of a region that scrolls.
- */
-function focusableCode(html: string): string {
-  return html.replaceAll('<pre class="twinkleplop', '<pre tabindex="0" class="twinkleplop');
-}
-
 /** A heading id as GitHub makes it, so links between pages keep working. */
 export function slug(text: string): string {
   return text
@@ -228,6 +220,21 @@ function createRenderer(base: string, section: 'docs' | 'ui'): MarkdownIt {
   const parser = new MarkdownIt({ html: false, linkify: false });
   parser.use(twinkleplop, { languages: LANGUAGES, on_unknown_language: 'plain' });
   parser.use(alerts);
+  // A table or a code block can be wider than the page, so it scrolls. A scrolling region takes
+  // focus and has a name, so a keyboard user can reach it and scroll it.
+  const label = (kind: string, env: { headings?: Heading[] } | undefined): string => {
+    const heading = env?.headings?.at(-1)?.text;
+    return heading ? `${kind}: ${heading}` : kind;
+  };
+  const fence = parser.renderer.rules.fence!;
+  parser.renderer.rules.fence = (tokens, index, options, env, self) =>
+    fence(tokens, index, options, env, self).replace(
+      /<pre(?=[\s>])/,
+      `<pre tabindex="0" role="group" aria-label="${parser.utils.escapeHtml(label('Code', env))}"`,
+    );
+  parser.renderer.rules.table_open = (_tokens, _index, _options, env) =>
+    `<div class="table-scroll" role="group" aria-label="${parser.utils.escapeHtml(label('Table', env))}" tabindex="0">\n<table>\n`;
+  parser.renderer.rules.table_close = () => '</table>\n</div>\n';
   parser.renderer.rules.link_open = (tokens, index, options, _env, self) => {
     const token = tokens[index]!;
     const href = token.attrGet('href');
@@ -298,9 +305,7 @@ export default function markdown(): Plugin {
       let index = 0;
       const flush = (end: number): void => {
         if (end > start) {
-          const html = focusableCode(
-            parser.renderer.render(tokens.slice(start, end), parser.options, env),
-          );
+          const html = parser.renderer.render(tokens.slice(start, end), parser.options, env);
           parts.push(`{ html: raw(${JSON.stringify(html)}) }`);
         }
       };
@@ -320,7 +325,7 @@ export default function markdown(): Plugin {
         if (props) {
           flush(index);
           this.addWatchFile(fileURLToPath(new URL(`${props}.brm`, PART_FILES)));
-          parts.push(`{ html: raw(${JSON.stringify(renderProps(readProps(props)))}) }`);
+          parts.push(`{ html: raw(${JSON.stringify(renderProps(readProps(props), props))}) }`);
           index++;
           start = index;
           continue;
@@ -341,7 +346,7 @@ export default function markdown(): Plugin {
             extra = `, variant: "anatomy", label: ${JSON.stringify(label)}`;
           } else {
             const source = readFileSync(file, 'utf8').trim();
-            html = focusableCode(parser.render(`\`\`\`html\n${source}\n\`\`\``));
+            html = parser.render(`\`\`\`html\n${source}\n\`\`\``);
             if (demo.kind === 'styled') {
               extra = ', variant: "styled"';
             }

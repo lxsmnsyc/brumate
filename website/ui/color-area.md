@@ -25,6 +25,11 @@ An area for two channels of a color.
 
 ## Anatomy
 
+```brm anatomy ColorAreaAnatomy
+`ColorArea`: The group with the two-channel gradient as `--area-background`. Give it an `aria-label`.
+`ColorThumb`: The handle. It holds two range inputs, one for each axis.
+```
+
 ```html
 <ColorArea>
   <ColorThumb />
@@ -58,7 +63,7 @@ An area for two channels of a color.
 
 ## Keyboard
 
-The arrows act on either input of the thumb, and each moves its own axis. The other keys act on the axis of the input that has focus. A key with Ctrl, Meta or Alt moves nothing.
+The arrows act on either input of the thumb, and each moves its own axis. The other keys act on the axis of the input that has focus. Ctrl, Alt or Meta with an arrow moves the thumb one step, since the range input handles the key. Only a pointer press ignores the modifiers.
 
 | Key          | Action                                                                   |
 | ------------ | ------------------------------------------------------------------------ |
@@ -74,18 +79,55 @@ The arrows act on either input of the thumb, and each moves its own axis. The ot
 
 ## Controlled and uncontrolled
 
-`value` holds a color of CSS, `#ffffff` without one. A plain `value` starts the area's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the color as text each time an edit makes another color, and `onChangeEnd` gets it once a drag or a key ends. Inside a [ColorPicker](./color-picker.md), an area without a `value` reads and writes the color of the picker. A reset of the form gives back the first color. See [State](./state.md).
+`value` holds a color of CSS, `#ffffff` without one. How you pass it picks who keeps it. Each area below edits saturation and brightness, and Reset the form gives each one back the color it started with:
+
+```brm demo ColorAreaStateDemo
+
+```
+
+- `value` alone, or nothing, makes the area keep its own color. `value="hsb(30, 80%, 90%)"` is where that color starts. Drag and the area keeps the new color. A new value from you replaces it.
+- `value=$bind(signal)` writes your signal. Change the signal and the area follows.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and drag the last area.
+- `onChange` gets the color as text in every shape, each time an edit makes another color. `onChangeEnd` gets it once a drag or a key ends.
+- A reset of the form gives back the first color, as a write: with `$bind(signal, request)`, your request can refuse it. The server renders the color it starts with.
+- With a request that refuses, a ColorArea on main today can show the refused value: the part draws the new color before it asks, and a refusal leaves it drawn. The node `ui-refused-write-sync` (#332) makes it show the kept value. Press Lock above and use the last one to see which you get.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the area with `background: var(--area-background)` and `background-blend-mode: var(--area-background-blend-mode)`, and the thumb with the data attributes above. The area is `position: relative`, so give it a size. The thumb has `--color`. See [Styling](./styling.md).
+
+This stylesheet styles the area with its gradient, the thumb in rest, dragging, keyboard focus and disabled, and a swatch that follows the value. A thumb has no hover state. Drag the thumb, or tab to it and press the arrows.
+
+```brm styled ColorAreaStyled
+
+```
+
+## Use cases
+
+### Hue beside the area
+
+An area edits two channels, so the third needs a slider. Both use `colorSpace="hsb"` and one `$bind` signal. A drag in the area keeps the hue, and a move of the slider keeps the saturation and the brightness.
+
+```brm demo ColorAreaHueDemo
+
+```
+
+### An area in a form
+
+`xName` and `yName` send the two values with the form, also before the code of the page loads. Reset gives back the color the area started with.
+
+```brm demo ColorAreaFormDemo
+
+```
 
 ## Keys and screen readers
 
 - There is one tab stop. When focus was last on the y input, the x input is out of the tab order (`tabindex="-1"`) and hidden from screen readers (`aria-hidden="true"`). The y input is out of both until it has the focus or a key changed the value.
 - The focus goes to the input of the axis that a key moved.
 - A screen reader hears the value of the input, the other axis and the third channel, and a name of the color without its alpha, such as `Saturation 50%, Brightness 80%, Hue 210°, blue`. After a change from a key it hears only the input and the color, such as `Saturation 51%, blue`, until the focus leaves.
-- A key with Ctrl, Meta or Alt moves nothing. Until the loader of the page matches the modifiers, such a key is still prevented, so Cmd+Left does not go back.
+- Ctrl, Alt or Meta with an arrow moves the thumb one step, since the range input handles the key. Only a pointer press ignores the modifiers.
 
 ## Pointer
 

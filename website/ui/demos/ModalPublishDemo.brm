@@ -1,0 +1,33 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+
+  let sending = $signal(false);
+  let done = $signal(false);
+  let count = $signal(0);
+
+  // The Modal opens from code, once the work is done, so it needs no trigger.
+  function publish() {
+    sending = true;
+    setTimeout(() => {
+      sending = false;
+      count += 1;
+      done = true;
+    }, 800);
+  }
+</script>
+
+<Button class="ui-button" isPending=(sending) onPress=publish>{sending ? 'Publishing' : 'Publish'}</Button>
+<ModalOverlay class="ui-backdrop" isOpen=$bind(done) transition>
+  <Modal class="ui-modal">
+    <Dialog class="ui-dialog">
+      <Heading slot="title" level=(4)>Published</Heading>
+      <p>Version {count} is live.</p>
+      <Button slot="close" class="ui-button">Done</Button>
+    </Dialog>
+  </Modal>
+</ModalOverlay>
