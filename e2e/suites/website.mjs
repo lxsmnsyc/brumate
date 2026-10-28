@@ -887,6 +887,7 @@ export async function run({ browser, url, runner }) {
       // A menu that is open takes Escape, and the state demo follows its signal.
       await page.getByRole('button', { name: 'Open the second menu' }).click();
       await page.getByRole('menuitem', { name: 'Size' }).waitFor();
+      await page.waitForFunction(() => document.activeElement?.closest('[role=menu]'));
       await page.keyboard.press('Escape');
       await settle();
       assert(
