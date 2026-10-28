@@ -24,6 +24,12 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: ui-docs-pages-collections-3
+    kind: hard
+    why: the skill follows the finished ui docs, so it waits for the last docs pages
+  - on: ui-docs-pages-utilities
+    kind: hard
+    why: the skill follows the finished ui docs, so it waits for the last docs pages
   - on: brm-skill
     kind: hard
     why: it follows the format and the test harness of the brumate skill

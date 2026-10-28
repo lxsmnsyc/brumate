@@ -22,12 +22,14 @@ owns:
   - website/ui/visually-hidden.md
   - website/ui/keyboard.md
   - website/ui/i18n-provider.md
+  - website/ui/selection-indicator.md
   - website/ui/demos/Separator*.brm
   - website/ui/demos/Heading*.brm
   - website/ui/demos/Transition*.brm
   - website/ui/demos/VisuallyHidden*.brm
   - website/ui/demos/Keyboard*.brm
   - website/ui/demos/I18nProvider*.brm
+  - website/ui/demos/SelectionIndicator*.brm
 shared:
   - website/src/routes/ui/_layout.brm
   - e2e/suites/website.mjs
@@ -43,7 +45,7 @@ depends_on:
 
 ## Goal
 
-Finish Separator, Heading, Transition, VisuallyHidden, Keyboard and I18nProvider: what of the pattern applies to each, as ui-docs-pages-layout's outcome.md lists (Separator a styled example, Transition a styled example with show, appear and unmount, the others one use case each, I18nProvider a locale switch, no anatomy for one-element parts).
+Finish Separator, Heading, Transition, VisuallyHidden, Keyboard, I18nProvider and SelectionIndicator: what of the pattern applies to each, as ui-docs-pages-layout's outcome.md lists (Separator a styled example, Transition a styled example with show, appear and unmount, the others one use case each, I18nProvider a locale switch, SelectionIndicator a use case in a ToggleButtonGroup or Tabs (added 2026-10-29: no open node owned its page), no anatomy for one-element parts).
 
 ## Context
 
