@@ -1,0 +1,67 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  let password = $signal('');
+  let saving = $signal(false);
+  let errors = $signal<Record<string, string>>({});
+  let done = $signal('');
+
+  function matches(value: string) {
+    return value === password ? null : 'The passwords differ';
+  }
+
+  // The browser checked the fields before this runs. A pending button is type=button, so Enter in
+  // a field can still submit: guard here.
+  function submit(event: SubmitEvent) {
+    if (saving) {
+      return;
+    }
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    saving = true;
+    done = '';
+    setTimeout(() => {
+      saving = false;
+      if (data.get('email') === 'taken@example.com') {
+        errors = { email: 'This email has an account' };
+        return;
+      }
+      errors = {};
+      done = `Welcome, ${data.get('email')}.`;
+    }, 800);
+  }
+</script>
+
+<Form class="ui-form" validationErrors=errors onSubmit=(prevent(submit))>
+  <TextField class="ui-field" name="email" type="email" isRequired>
+    <Label>Email</Label>
+    <Input class="ui-input" />
+    <Text slot="description" class="ui-help">Try taken@example.com for an error of the server.</Text>
+    <FieldError class="ui-error" />
+  </TextField>
+  <TextField class="ui-field" name="password" type="password" isRequired minLength=(8) value=$bind(password)>
+    <Label>Password</Label>
+    <Input class="ui-input" />
+    <FieldError class="ui-error" />
+  </TextField>
+  <TextField class="ui-field" type="password" isRequired validate=matches>
+    <Label>Repeat the password</Label>
+    <Input class="ui-input" />
+    <FieldError class="ui-error" />
+  </TextField>
+  <Checkbox class="ui-box" name="terms" isRequired>
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+    I accept the terms
+  </Checkbox>
+  <Button type="submit" class="ui-button" isPending=saving>{saving ? 'Creating' : 'Create account'}</Button>
+  <p role="status">{done}</p>
+</Form>

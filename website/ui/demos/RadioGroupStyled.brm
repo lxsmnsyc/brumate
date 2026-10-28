@@ -1,0 +1,187 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  const plans = [
+    { id: 'free', name: 'Free', note: 'One project' },
+    { id: 'team', name: 'Team', note: 'Ten projects' },
+    { id: 'business', name: 'Business', note: 'No limit' },
+    { id: 'legacy', name: 'Legacy', note: 'No longer sold' },
+  ];
+</script>
+
+<Form class="radio-styled-form">
+  <RadioGroup class="radio-styled" name="plan" isRequired>
+    <Label class="radio-styled-label">Plan</Label>
+    #for (plan of plans by plan.id) {
+      <Radio class="radio-styled-item" value=(plan.id) isDisabled=(plan.id === 'legacy')>
+        <span class="radio-styled-ring" aria-hidden="true"></span>
+        <span class="radio-styled-text"><strong>{plan.name}</strong><span class="radio-styled-note">{plan.note}</span></span>
+      </Radio>
+    }
+    <Text slot="description" class="radio-styled-help">Press Choose with nothing picked to see the error.</Text>
+    <FieldError class="radio-styled-error" />
+  </RadioGroup>
+  <Button type="submit" class="radio-styled-submit">Choose</Button>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.radio-styled-form) {
+    --radio-styled-page: Canvas;
+    --radio-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
+    --radio-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --radio-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --radio-styled-on-accent: light-dark(#fff, #101418);
+    --radio-styled-danger: light-dark(#c4271d, #f28b82);
+    display: grid;
+    justify-items: start;
+    gap: 0.75rem;
+    color: CanvasText;
+  }
+
+  :global(.radio-styled) {
+    display: grid;
+    gap: 0.4rem;
+    width: min(18rem, 100%);
+  }
+
+  :global(.radio-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.radio-styled-item) {
+    display: flex;
+    gap: 0.7rem;
+    align-items: center;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--radio-styled-border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+
+  :global(.radio-styled-ring) {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 1.1rem;
+    height: 1.1rem;
+    box-sizing: border-box;
+    border: 2px solid var(--radio-styled-border);
+    border-radius: 50%;
+    transition: border-color 0.15s;
+  }
+
+  :global(.radio-styled-ring)::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--radio-styled-accent);
+    scale: 0;
+    transition: scale 0.15s;
+  }
+
+  :global(.radio-styled-text) {
+    display: grid;
+  }
+
+  :global(.radio-styled-note) {
+    color: var(--radio-styled-muted);
+    font-size: 0.8rem;
+  }
+
+  :global(.radio-styled-item[data-hovered]) {
+    border-color: var(--radio-styled-accent);
+    background: color-mix(in srgb, var(--radio-styled-accent) 10%, transparent);
+  }
+
+  :global(.radio-styled-item[data-pressed]) {
+    background: color-mix(in srgb, var(--radio-styled-accent) 22%, transparent);
+  }
+
+  :global(.radio-styled-item[data-selected]) {
+    border-color: var(--radio-styled-accent);
+    background: color-mix(in srgb, var(--radio-styled-accent) 14%, transparent);
+  }
+
+  :global(.radio-styled-item[data-selected][data-hovered]) {
+    background: color-mix(in srgb, var(--radio-styled-accent) 24%, transparent);
+  }
+
+  :global(.radio-styled-item[data-selected][data-pressed]) {
+    background: color-mix(in srgb, var(--radio-styled-accent) 34%, transparent);
+  }
+
+  :global(.radio-styled-item[data-selected] .radio-styled-ring) {
+    border-color: var(--radio-styled-accent);
+  }
+
+  :global(.radio-styled-item[data-selected] .radio-styled-ring)::after {
+    scale: 1;
+  }
+
+  /* Two bands: an outer accent ring and an inner band in the page color. */
+  :global(.radio-styled-item[data-focus-visible]) {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--radio-styled-accent),
+      inset 0 0 0 2px var(--radio-styled-page);
+  }
+
+  :global(.radio-styled-item[data-invalid]) {
+    border-color: var(--radio-styled-danger);
+  }
+
+  :global(.radio-styled-item[data-disabled]) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  :global(.radio-styled-help) {
+    color: var(--radio-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.radio-styled-error) {
+    color: var(--radio-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  :global(.radio-styled-submit) {
+    padding: 0.4rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--radio-styled-accent);
+    color: var(--radio-styled-on-accent);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :global(.radio-styled-submit[data-hovered]) {
+    background: color-mix(in srgb, var(--radio-styled-accent), CanvasText 15%);
+  }
+
+  :global(.radio-styled-submit[data-pressed]) {
+    background: color-mix(in srgb, var(--radio-styled-accent), CanvasText 28%);
+  }
+
+  :global(.radio-styled-submit[data-focus-visible]) {
+    outline: 2px solid var(--radio-styled-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.radio-styled-item),
+    :global(.radio-styled-ring),
+    :global(.radio-styled-ring)::after {
+      transition: none;
+    }
+  }
+</style>

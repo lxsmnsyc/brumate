@@ -1,0 +1,36 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  let accepted = $signal(false);
+  let tried = $signal(false);
+  let sent = $signal('');
+  const blocked = $memo(tried && !accepted);
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    tried = true;
+    if (!accepted) {
+      return;
+    }
+    sent = `Sent news=${data.get('news') ?? 'off'}.`;
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(submit))>
+  <Checkbox class="ui-box" name="news" value="yes">
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+    Send me the newsletter
+  </Checkbox>
+  <Checkbox class="ui-box" isSelected=$bind(accepted) isInvalid=blocked aria-describedby="consent-note">
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+    I accept the terms
+  </Checkbox>
+  <p id="consent-note" class=(blocked ? 'ui-error' : 'ui-help')>{blocked ? 'Accept the terms to continue.' : 'Required.'}</p>
+  <Button type="submit" class="ui-button">Create account</Button>
+  <p role="status">{sent}</p>
+</Form>

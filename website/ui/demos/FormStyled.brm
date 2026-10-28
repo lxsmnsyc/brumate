@@ -1,0 +1,173 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  let saving = $signal(false);
+
+  // A pending button is type=button, so Enter in a field still submits. Guard here.
+  function save() {
+    if (saving) {
+      return;
+    }
+    saving = true;
+    setTimeout(() => (saving = false), 1500);
+  }
+</script>
+
+<Form class="form-styled" validationErrors=({ email: 'This email has an account' }) onSubmit=(prevent(save))>
+  <TextField class="form-styled-field" name="name" isRequired value="Ada">
+    <Label class="form-styled-label">Name</Label>
+    <Input class="form-styled-input" />
+  </TextField>
+  <TextField class="form-styled-field" name="email" type="email" value="ada@example.com">
+    <Label class="form-styled-label">Email</Label>
+    <Input class="form-styled-input" />
+    <Text slot="description" class="form-styled-help">We send the receipt here.</Text>
+    <FieldError class="form-styled-error" />
+  </TextField>
+  <TextField class="form-styled-field" isDisabled value="Locked">
+    <Label class="form-styled-label">Plan</Label>
+    <Input class="form-styled-input" />
+  </TextField>
+  <div class="form-styled-row">
+    <Button type="submit" class="form-styled-button" isPending=saving>{saving ? 'Saving' : 'Save'}</Button>
+    <Button type="reset" class="form-styled-button form-styled-quiet" isDisabled=saving>Reset</Button>
+  </div>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.form-styled) {
+    --form-styled-page: Canvas;
+    --form-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
+    --form-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --form-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --form-styled-on-accent: light-dark(#fff, #101418);
+    --form-styled-danger: light-dark(#c4271d, #f28b82);
+    display: grid;
+    gap: 0.9rem;
+    width: min(20rem, 100%);
+    color: CanvasText;
+  }
+
+  :global(.form-styled-field) {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  :global(.form-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.form-styled-input) {
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--form-styled-border);
+    border-radius: 8px;
+    background: var(--form-styled-page);
+    color: inherit;
+    font: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.form-styled-input[data-hovered]) {
+    border-color: var(--form-styled-accent);
+  }
+
+  :global(.form-styled-input[data-focus-visible]) {
+    outline: none;
+    border-color: var(--form-styled-accent);
+    box-shadow: 0 0 0 2px var(--form-styled-accent);
+  }
+
+  :global(.form-styled-input[data-invalid]) {
+    border-color: var(--form-styled-danger);
+  }
+
+  :global(.form-styled-input[data-invalid][data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--form-styled-danger);
+  }
+
+  :global(.form-styled-input[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.form-styled-help) {
+    color: var(--form-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.form-styled-error) {
+    color: var(--form-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  :global(.form-styled-row) {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  :global(.form-styled-button) {
+    padding: 0.4rem 1rem;
+    border: 1px solid var(--form-styled-accent);
+    border-radius: 8px;
+    background: var(--form-styled-accent);
+    color: var(--form-styled-on-accent);
+    font: inherit;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  :global(.form-styled-quiet) {
+    background: transparent;
+    color: inherit;
+  }
+
+  :global(.form-styled-button[data-hovered]) {
+    background: color-mix(in srgb, var(--form-styled-accent), CanvasText 15%);
+  }
+
+  :global(.form-styled-quiet[data-hovered]) {
+    background: color-mix(in srgb, var(--form-styled-accent) 14%, transparent);
+  }
+
+  :global(.form-styled-button[data-pressed]) {
+    background: color-mix(in srgb, var(--form-styled-accent), CanvasText 28%);
+  }
+
+  :global(.form-styled-quiet[data-pressed]) {
+    background: color-mix(in srgb, var(--form-styled-accent) 28%, transparent);
+  }
+
+  /* Two bands, so the ring shows on the page and on the fill. */
+  :global(.form-styled-button[data-focus-visible]) {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--form-styled-page),
+      0 0 0 4px var(--form-styled-accent);
+  }
+
+  :global(.form-styled-button[data-pending]) {
+    opacity: 0.7;
+    cursor: progress;
+  }
+
+  :global(.form-styled-button[data-disabled]) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.form-styled-input),
+    :global(.form-styled-button) {
+      transition: none;
+    }
+  }
+</style>

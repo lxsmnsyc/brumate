@@ -1,0 +1,40 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  let mine = $signal(['b']);
+  let asked = $signal(['b']);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <CheckboxGroup class="ui-group" aria-label="Own state">
+    <Label>Own state</Label>
+    <Checkbox class="ui-box" value="a">A</Checkbox>
+    <Checkbox class="ui-box" value="b">B</Checkbox>
+  </CheckboxGroup>
+  <CheckboxGroup class="ui-group" value=(['b'])>
+    <Label>Starts at B</Label>
+    <Checkbox class="ui-box" value="a">A</Checkbox>
+    <Checkbox class="ui-box" value="b">B</Checkbox>
+  </CheckboxGroup>
+  <CheckboxGroup class="ui-group" value=$bind(mine) onChange=((next) => (log = `changed to ${next.join(', ') || 'nothing'}`))>
+    <Label>Writes your signal</Label>
+    <Checkbox class="ui-box" value="a">A</Checkbox>
+    <Checkbox class="ui-box" value="b">B</Checkbox>
+  </CheckboxGroup>
+  <CheckboxGroup class="ui-group" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <Label>Asks you first</Label>
+    <Checkbox class="ui-box" value="a">A</Checkbox>
+    <Checkbox class="ui-box" value="b">B</Checkbox>
+  </CheckboxGroup>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine.join(', ') || 'none'}. Asks: {asked.join(', ') || 'none'}. Last callback: {log || 'none'}.</p>
+</form>

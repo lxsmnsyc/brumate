@@ -1,0 +1,134 @@
+<script>
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+</script>
+
+<div class="checkbox-styled-list">
+  <Checkbox class="checkbox-styled" isSelected><span class="checkbox-styled-box" aria-hidden="true"></span>Send me the newsletter</Checkbox>
+  <Checkbox class="checkbox-styled"><span class="checkbox-styled-box" aria-hidden="true"></span>Send me offers</Checkbox>
+  <Checkbox class="checkbox-styled" isIndeterminate><span class="checkbox-styled-box" aria-hidden="true"></span>Some of the files</Checkbox>
+  <Checkbox class="checkbox-styled" isInvalid><span class="checkbox-styled-box" aria-hidden="true"></span>Accept the terms</Checkbox>
+  <Checkbox class="checkbox-styled" isSelected isReadOnly><span class="checkbox-styled-box" aria-hidden="true"></span>Read only</Checkbox>
+  <Checkbox class="checkbox-styled" isDisabled><span class="checkbox-styled-box" aria-hidden="true"></span>Disabled</Checkbox>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.checkbox-styled-list) {
+    --checkbox-styled-page: Canvas;
+    --checkbox-styled-border: color-mix(in srgb, CanvasText 45%, Canvas);
+    --checkbox-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --checkbox-styled-on-accent: light-dark(#fff, #101418);
+    --checkbox-styled-danger: light-dark(#c4271d, #f28b82);
+    display: grid;
+    justify-items: start;
+    gap: 0.6rem;
+    color: CanvasText;
+  }
+
+  :global(.checkbox-styled) {
+    display: inline-flex;
+    gap: 0.6rem;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  :global(.checkbox-styled-box) {
+    display: grid;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    box-sizing: border-box;
+    border: 2px solid var(--checkbox-styled-border);
+    border-radius: 5px;
+    transition: background-color 0.15s, border-color 0.15s, scale 0.15s;
+  }
+
+  /* The check and the dash are one shape that changes. */
+  :global(.checkbox-styled-box)::after {
+    content: '';
+    width: 0.35rem;
+    height: 0.65rem;
+    border: solid var(--checkbox-styled-on-accent);
+    border-width: 0 2px 2px 0;
+    rotate: 45deg;
+    translate: 0 -1px;
+    scale: 0;
+    transition: scale 0.15s;
+  }
+
+  :global(.checkbox-styled[data-hovered] .checkbox-styled-box) {
+    border-color: var(--checkbox-styled-accent);
+  }
+
+  :global(.checkbox-styled[data-pressed] .checkbox-styled-box) {
+    scale: 0.9;
+  }
+
+  :global(.checkbox-styled[data-selected] .checkbox-styled-box),
+  :global(.checkbox-styled[data-indeterminate] .checkbox-styled-box) {
+    border-color: var(--checkbox-styled-accent);
+    background: var(--checkbox-styled-accent);
+  }
+
+  :global(.checkbox-styled[data-selected] .checkbox-styled-box)::after {
+    scale: 1;
+  }
+
+  :global(.checkbox-styled[data-indeterminate] .checkbox-styled-box)::after {
+    width: 0.6rem;
+    height: 0;
+    border-width: 0 0 2px;
+    rotate: 0deg;
+    translate: 0;
+    scale: 1;
+  }
+
+  /* A filled box gets darker in a light theme and lighter in a dark one. */
+  :global(.checkbox-styled[data-selected][data-hovered] .checkbox-styled-box),
+  :global(.checkbox-styled[data-indeterminate][data-hovered] .checkbox-styled-box) {
+    border-color: color-mix(in srgb, var(--checkbox-styled-accent), CanvasText 15%);
+    background: color-mix(in srgb, var(--checkbox-styled-accent), CanvasText 15%);
+  }
+
+  :global(.checkbox-styled[data-selected][data-pressed] .checkbox-styled-box),
+  :global(.checkbox-styled[data-indeterminate][data-pressed] .checkbox-styled-box) {
+    border-color: color-mix(in srgb, var(--checkbox-styled-accent), CanvasText 28%);
+    background: color-mix(in srgb, var(--checkbox-styled-accent), CanvasText 28%);
+  }
+
+  /* Two bands outside the box, so the ring shows on the page and next to the fill. */
+  :global(.checkbox-styled[data-focus-visible] .checkbox-styled-box) {
+    box-shadow:
+      0 0 0 2px var(--checkbox-styled-page),
+      0 0 0 4px var(--checkbox-styled-accent);
+  }
+
+  :global(.checkbox-styled[data-invalid] .checkbox-styled-box) {
+    border-color: var(--checkbox-styled-danger);
+  }
+
+  :global(.checkbox-styled[data-invalid][data-selected] .checkbox-styled-box) {
+    background: var(--checkbox-styled-danger);
+  }
+
+  /* No outline on the label: the ring is drawn on the box. */
+  :global(.checkbox-styled[data-focus-visible]) {
+    outline: none;
+  }
+
+  :global(.checkbox-styled[data-readonly]) {
+    cursor: default;
+  }
+
+  :global(.checkbox-styled[data-disabled]) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.checkbox-styled-box),
+    :global(.checkbox-styled-box)::after {
+      transition: none;
+    }
+  }
+</style>

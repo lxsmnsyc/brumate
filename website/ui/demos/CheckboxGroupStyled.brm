@@ -1,0 +1,143 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  const toppings = ['Cheese', 'Olives', 'Basil', 'Anchovies'];
+</script>
+
+<Form class="checkgroup-styled-form">
+  <CheckboxGroup class="checkgroup-styled" name="toppings" value=(['cheese']) isRequired>
+    <Label class="checkgroup-styled-label">Toppings</Label>
+    <div class="checkgroup-styled-chips">
+      #for (topping of toppings by topping) {
+        <Checkbox class="checkgroup-styled-chip" value=(topping.toLowerCase()) isDisabled=(topping === 'Anchovies')>{topping}</Checkbox>
+      }
+    </div>
+    <Text slot="description" class="checkgroup-styled-help">Pick one or more. Clear all and press Order to see the error.</Text>
+    <FieldError class="checkgroup-styled-error" />
+  </CheckboxGroup>
+  <Button type="submit" class="checkgroup-styled-submit">Order</Button>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.checkgroup-styled-form) {
+    --checkgroup-styled-page: Canvas;
+    --checkgroup-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
+    --checkgroup-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --checkgroup-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --checkgroup-styled-on-accent: light-dark(#fff, #101418);
+    --checkgroup-styled-danger: light-dark(#c4271d, #f28b82);
+    display: grid;
+    justify-items: start;
+    gap: 0.75rem;
+    color: CanvasText;
+  }
+
+  :global(.checkgroup-styled) {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  :global(.checkgroup-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.checkgroup-styled-chips) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  :global(.checkgroup-styled-chip) {
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--checkgroup-styled-border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  :global(.checkgroup-styled-chip[data-hovered]) {
+    border-color: var(--checkgroup-styled-accent);
+    background: color-mix(in srgb, var(--checkgroup-styled-accent) 14%, transparent);
+  }
+
+  :global(.checkgroup-styled-chip[data-pressed]) {
+    background: color-mix(in srgb, var(--checkgroup-styled-accent) 28%, transparent);
+  }
+
+  :global(.checkgroup-styled-chip[data-selected]) {
+    border-color: var(--checkgroup-styled-accent);
+    background: var(--checkgroup-styled-accent);
+    color: var(--checkgroup-styled-on-accent);
+  }
+
+  :global(.checkgroup-styled-chip[data-selected][data-hovered]) {
+    background: color-mix(in srgb, var(--checkgroup-styled-accent), CanvasText 15%);
+  }
+
+  :global(.checkgroup-styled-chip[data-selected][data-pressed]) {
+    background: color-mix(in srgb, var(--checkgroup-styled-accent), CanvasText 28%);
+  }
+
+  /* Two inner bands, so the ring shows on the page and on the fill. */
+  :global(.checkgroup-styled-chip[data-focus-visible]) {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--checkgroup-styled-accent),
+      inset 0 0 0 2px var(--checkgroup-styled-page);
+  }
+
+  :global(.checkgroup-styled-chip[data-invalid]) {
+    border-color: var(--checkgroup-styled-danger);
+  }
+
+  :global(.checkgroup-styled-chip[data-disabled]) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  :global(.checkgroup-styled-help) {
+    color: var(--checkgroup-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.checkgroup-styled-error) {
+    color: var(--checkgroup-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  :global(.checkgroup-styled-submit) {
+    padding: 0.4rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--checkgroup-styled-accent);
+    color: var(--checkgroup-styled-on-accent);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :global(.checkgroup-styled-submit[data-hovered]) {
+    background: color-mix(in srgb, var(--checkgroup-styled-accent), CanvasText 15%);
+  }
+
+  :global(.checkgroup-styled-submit[data-pressed]) {
+    background: color-mix(in srgb, var(--checkgroup-styled-accent), CanvasText 28%);
+  }
+
+  :global(.checkgroup-styled-submit[data-focus-visible]) {
+    outline: 2px solid var(--checkgroup-styled-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.checkgroup-styled-chip) {
+      transition: none;
+    }
+  }
+</style>
