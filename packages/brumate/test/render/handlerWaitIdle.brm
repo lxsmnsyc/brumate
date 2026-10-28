@@ -1,0 +1,9 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import HandlerWaitChild from './HandlerWaitChild.brm';
+
+  let total = $signal(0);
+</script>
+
+<p class="total">{total}</p>
+<HandlerWaitChild total=$bind(total) />

@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { value } = $props<{ value: number }>();
+</script>
+
+<p class="value">{value}</p>

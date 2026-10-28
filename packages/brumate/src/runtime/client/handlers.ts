@@ -224,10 +224,10 @@ export function handle(
   // so an input handler runs before the submit handler of a later event.
   // The code of the children that the handler can insert loads with it.
   // So does the code of the page, which the handler can call.
-  // So does the update code of its scope, so its writes run before the handler returns.
+  // So does the update code of the scopes that it can write, so its writes run before it returns.
   const children = childrenReady(scope);
   const code = codeReady();
-  const loaded = Promise.all([resolve(ref), children, code, updateReady(scope)]).then(
+  const loaded = Promise.all([resolve(ref), children, code, updateReady(scope, ref)]).then(
     ([handler]) => handler,
   );
   const started = lastHandler
