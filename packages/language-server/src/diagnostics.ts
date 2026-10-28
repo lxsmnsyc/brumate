@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { BrumateError, CompileError, compile } from 'brumate';
+import { BrumateError, CompileError, compile, findError } from 'brumate';
 import type { Diagnostic as CompilerDiagnostic } from 'brumate';
 import type { Diagnostic, LanguageServicePlugin } from '@volar/language-server';
 import type { TextDocument } from 'vscode-languageserver-textdocument';
@@ -9,10 +9,14 @@ const ERROR = 1;
 const WARNING = 2;
 
 function toDiagnostic(document: TextDocument, diagnostic: CompilerDiagnostic): Diagnostic {
+  // An error with an entry in the catalog has a code and a page that explains it.
+  const entry = diagnostic.severity === 'error' ? findError(diagnostic.message) : undefined;
   return {
     severity: diagnostic.severity === 'error' ? ERROR : WARNING,
     message: diagnostic.message,
     source: 'brumate',
+    ...(entry?.code && { code: entry.code }),
+    ...(entry?.link && { codeDescription: { href: entry.link } }),
     range: {
       start: document.positionAt(diagnostic.range.start),
       end: document.positionAt(Math.max(diagnostic.range.end, diagnostic.range.start + 1)),
@@ -34,7 +38,8 @@ export function diagnose(document: TextDocument, filename: string): Diagnostic[]
       return error.diagnostics.map((diagnostic) => toDiagnostic(document, diagnostic));
     }
     if (error instanceof BrumateError) {
-      const message = error.message.replace(/ \([^()]*:\d+:\d+\)$/, '');
+      // The code is in the message. It becomes the code of the diagnostic.
+      const message = error.message.replace(/ \([^()]*:\d+:\d+\)$/, '').replace(/ \[BRM\d+\]$/, '');
       return [
         toDiagnostic(document, {
           severity: 'error',

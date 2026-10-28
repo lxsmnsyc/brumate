@@ -73,3 +73,20 @@ describe('dedupeDiagnostics', () => {
     expect(result).toEqual([nope, chain, other]);
   });
 });
+
+describe('codes', () => {
+  it('gives a compile error its code and a link to its page', () => {
+    const text = `<script>\n  let count = $signal(0);\n</script>\n<p>{count}</p>\n`;
+    const [error] = diagnose(document(text), '/App.brm');
+    expect(error?.code).toMatch(/^BRM\d{3}$/);
+    expect(error?.codeDescription?.href).toContain(`#${String(error?.code).toLowerCase()}`);
+    expect(error?.message).not.toContain('[BRM');
+  });
+
+  it('gives a syntax error its code, and keeps it out of the message', () => {
+    const [error] = diagnose(document('<p>{count</p>\n'), '/App.brm');
+    expect(error?.code).toMatch(/^BRM\d{3}$/);
+    expect(error?.codeDescription?.href).toBeTruthy();
+    expect(error?.message).not.toContain('[BRM');
+  });
+});

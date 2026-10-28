@@ -1,3 +1,5 @@
+import { findError } from './error-catalog.ts';
+
 export interface Location {
   /** 1-based. */
   line: number;
@@ -38,6 +40,15 @@ export function codeFrame(source: string, offset: number): string {
   return result.join('\n');
 }
 
+/**
+ * The message with the code of its catalog entry, as `message [BRM012]`.
+ * A message that has no entry stays as it is.
+ */
+export function withCode(message: string): string {
+  const code = findError(message)?.code;
+  return code ? `${message} [${code}]` : message;
+}
+
 /** A syntax error. Parsing stops at the first one. */
 export class BrumateError extends Error {
   readonly filename: string;
@@ -48,7 +59,7 @@ export class BrumateError extends Error {
 
   constructor(message: string, source: string, offset: number, filename: string) {
     const location = getLocation(source, offset);
-    super(`${message} (${filename}:${location.line}:${location.column})`);
+    super(`${withCode(message)} (${filename}:${location.line}:${location.column})`);
     this.name = 'BrumateError';
     this.filename = filename;
     this.offset = offset;

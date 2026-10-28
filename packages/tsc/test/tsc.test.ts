@@ -84,7 +84,17 @@ it('reports type errors in .brm files at their place in the file', () => {
   // also of the merged `itemaction`, with no error.
   const compile = result.stderr.split('\n').filter((line) => line.includes('error BRM'));
   expect(compile.map((line) => line.replace(/^.*src\//, '')).toSorted()).toEqual([
-    'EventCaseFocusout.brm(2,8): error BRM: "onFocusout" is not an event name. Write "onFocusOut"',
-    'EventCaseKeydown.brm(2,6): error BRM: "onKeydown" is not an event name. Write "onKeyDown"',
+    'EventCaseFocusout.brm(2,8): error BRM180: "onFocusout" is not an event name. Write "onFocusOut"',
+    'EventCaseKeydown.brm(2,6): error BRM180: "onKeydown" is not an event name. Write "onKeyDown"',
   ]);
+});
+
+it('prints the code of a syntax error in place of BRM', () => {
+  const project = fileURLToPath(new URL('./fixture-syntax/tsconfig.json', import.meta.url));
+  const result = spawnSync(process.execPath, [bin, '-p', project], { encoding: 'utf8' });
+  const line = `${result.stdout}${result.stderr}`
+    .split('\n')
+    .find((text) => text.includes('Broken.brm'));
+  expect(line).toMatch(/Broken\.brm\(1,\d+\): error BRM\d{3}: [^[]+$/);
+  expect(result.status).not.toBe(0);
 });

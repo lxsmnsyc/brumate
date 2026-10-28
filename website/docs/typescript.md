@@ -22,6 +22,29 @@ brumate-tsc --noEmit
 
 A file with a syntax error is reported with the code `BRM`. Its scripts are still checked.
 
+## `brumate check`
+
+```bash
+brumate check             # compile every .brm file, then type-check the project
+brumate check --json      # one JSON object per line, for scripts and agents
+brumate check --no-types  # the compiler only
+brumate check src/App.brm # limit the compiler to these files or directories
+```
+
+It compiles every `.brm` file under the current directory, and runs `brumate-tsc` when `@brumate/tsc` is installed and the directory has a `tsconfig.json`. It exits with 1 when there is an error. Warnings are printed and do not change the exit code.
+
+With `--json`, each problem is one line:
+
+```json
+{"file":"src/App.brm","range":{"start":{"line":5,"column":3},"end":{"line":5,"column":4}},"severity":"error","message":"Cannot assign to memo \"double\"","code":"BRM117","link":"https://brumate-docs.vercel.app/docs/errors#brm117","source":"brumate"}
+```
+
+- `range` has 1-based lines and columns. The type checker gives a start only, so its end is the start.
+- `code` is `BRM` and a number for a compile error, and `TS` and a number for a type error. A warning has no code. `link` is the section of [Compile errors](./errors.md) that explains a `BRM` code, and `null` for other problems.
+- `source` is `brumate` or `typescript`.
+
+The message of a compile error in Vite and in the terminal ends with its code, as `message [BRM117] (App.brm:5:3)`.
+
 ## In an editor
 
 In VS Code, the [extension](./editor.md) adds the plugin itself.

@@ -27,10 +27,14 @@ export function run(): void {
   runTsc(require.resolve('typescript-api/lib/tsc'), ['.brm'], () => [
     createBrumateLanguagePlugin({
       onError(fileName, error) {
-        const message = error.message.replace(/ \([^()]*:\d+:\d+\)$/, '');
+        // The message ends with the code of its catalog entry, such as `[BRM031]`.
+        const text = error.message.replace(/ \([^()]*:\d+:\d+\)$/, '');
+        const found = /^(.*) \[(BRM\d+)\]$/.exec(text);
+        const message = found ? found[1] : text;
+        const code = found ? found[2] : 'BRM';
         errors.set(
           fileName,
-          `${path.relative(process.cwd(), fileName)}(${error.location.line},${error.location.column}): error BRM: ${message}`,
+          `${path.relative(process.cwd(), fileName)}(${error.location.line},${error.location.column}): error ${code}: ${message}`,
         );
       },
     }),

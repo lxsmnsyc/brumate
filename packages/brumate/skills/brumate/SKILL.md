@@ -52,5 +52,6 @@ Read the file for the part of the work that you do.
 ## Checking your work
 
 - `npx brumate-tsc --noEmit` type-checks the project, `.brm` files included.
-- A compile error names the file, the line and the column. Look its message up in [references/errors.md](references/errors.md).
+- `npx brumate check --json` compiles every `.brm` file and runs the type check. It prints one JSON object per problem, with `file`, `range`, `message`, `code` and `link`, and exits with 1 on an error.
+- A compile error names the file, the line and the column, and ends with a code such as `[BRM012]`. Look its message or its code up in [references/errors.md](references/errors.md).
 - The docs of brumate, in `website/docs` of its repository, cover each topic in full.
