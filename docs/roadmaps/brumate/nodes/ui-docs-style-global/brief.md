@@ -37,6 +37,7 @@ The styling sections and the styled demos of @brumate/ui, and the demo styles in
 
 ## Context
 
+- Planned for the 0.5.0 release, not 0.4.0 (the maintainer, 2026-10-28).
 - Asked by the maintainer on 2026-10-28. Today about 870 `:global(...)` across 47 files in website/ui and website/src/routes/ui.
 - styling.md explains `:global` once; replace that with `<style global>`, and say when a scoped style is still the better choice.
 - Update the pattern in docs/roadmaps/brumate/nodes/ui-docs-kit/outcome.md so later docs nodes write `<style global>`.
