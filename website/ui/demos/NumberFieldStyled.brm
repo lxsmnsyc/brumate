@@ -1,0 +1,185 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import NumberField from '@brumate/ui/NumberField.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let sent = $signal('');
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent ${data.get('guests') || 'nothing'}.`;
+  }
+</script>
+
+<Form class="numberfield-styled-form" onSubmit=(prevent(submit))>
+  <NumberField class="numberfield-styled" name="guests" minValue=(1) maxValue=(6) value=(2) isRequired>
+    <Label class="numberfield-styled-label">Guests</Label>
+    <Group class="numberfield-styled-group">
+      <Button slot="decrement" class="numberfield-styled-step">−</Button>
+      <Input class="numberfield-styled-input" />
+      <Button slot="increment" class="numberfield-styled-step">+</Button>
+    </Group>
+    <Text slot="description" class="numberfield-styled-help">From 1 to 6. Clear the box and press Send to see the error.</Text>
+    <FieldError class="numberfield-styled-error" />
+  </NumberField>
+  <NumberField class="numberfield-styled" isDisabled value=(4)>
+    <Label class="numberfield-styled-label">Rooms</Label>
+    <Group class="numberfield-styled-group">
+      <Button slot="decrement" class="numberfield-styled-step">−</Button>
+      <Input class="numberfield-styled-input" />
+      <Button slot="increment" class="numberfield-styled-step">+</Button>
+    </Group>
+  </NumberField>
+  <Button type="submit" class="numberfield-styled-submit">Send</Button>
+  <p role="status" class="numberfield-styled-status">{sent}</p>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.numberfield-styled-form) {
+    --numberfield-styled-field: light-dark(#fff, #0f0d0b);
+    --numberfield-styled-border: light-dark(#76706a, #8d857b);
+    --numberfield-styled-muted: light-dark(#5a544d, #b3aaa0);
+    --numberfield-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --numberfield-styled-on-accent: light-dark(#fff, #101418);
+    --numberfield-styled-hover: light-dark(#e3edf6, #223548);
+    --numberfield-styled-press: light-dark(#c5dbee, #2f4a63);
+    --numberfield-styled-danger: light-dark(#b3261e, #f28b82);
+    display: grid;
+    justify-items: start;
+    gap: 0.9rem;
+    width: min(100%, 16rem);
+    color: CanvasText;
+  }
+
+  :global(.numberfield-styled) {
+    display: grid;
+    gap: 0.3rem;
+    width: 100%;
+  }
+
+  :global(.numberfield-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.numberfield-styled-group) {
+    display: flex;
+    overflow: hidden;
+    border: 1px solid var(--numberfield-styled-border);
+    border-radius: 8px;
+    background: var(--numberfield-styled-field);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.numberfield-styled-group:hover) {
+    border-color: var(--numberfield-styled-accent);
+  }
+
+  /* Two bands, an accent one and an inner one in the color of the field. */
+  :global(.numberfield-styled-group:has([data-focus-visible])) {
+    border-color: var(--numberfield-styled-accent);
+    box-shadow:
+      0 0 0 2px var(--numberfield-styled-accent),
+      inset 0 0 0 2px var(--numberfield-styled-field);
+  }
+
+  :global(.numberfield-styled[data-invalid] .numberfield-styled-group) {
+    border-color: var(--numberfield-styled-danger);
+  }
+
+  :global(.numberfield-styled-input) {
+    flex: 1;
+    min-width: 0;
+    padding: 0.45rem 0.25rem;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: CanvasText;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  :global(.numberfield-styled-step) {
+    width: 2.5rem;
+    border: 0;
+    background: transparent;
+    color: CanvasText;
+    font: inherit;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  :global(.numberfield-styled-step[data-hovered]) {
+    background: var(--numberfield-styled-hover);
+  }
+
+  :global(.numberfield-styled-step[data-pressed]) {
+    background: var(--numberfield-styled-press);
+  }
+
+  :global(.numberfield-styled-step[data-disabled]) {
+    color: var(--numberfield-styled-muted);
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  :global(.numberfield-styled[data-disabled] .numberfield-styled-group) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.numberfield-styled-help) {
+    color: var(--numberfield-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.numberfield-styled-error) {
+    color: var(--numberfield-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  :global(.numberfield-styled-submit) {
+    padding: 0.4rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--numberfield-styled-accent);
+    color: var(--numberfield-styled-on-accent);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :global(.numberfield-styled-submit[data-hovered]) {
+    background: color-mix(in srgb, var(--numberfield-styled-accent), CanvasText 15%);
+  }
+
+  :global(.numberfield-styled-submit[data-pressed]) {
+    background: color-mix(in srgb, var(--numberfield-styled-accent), CanvasText 28%);
+  }
+
+  :global(.numberfield-styled-submit[data-focus-visible]) {
+    outline: 2px solid var(--numberfield-styled-accent);
+    outline-offset: 2px;
+  }
+
+  :global(.numberfield-styled-status) {
+    margin: 0;
+    color: var(--numberfield-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.numberfield-styled-group),
+    :global(.numberfield-styled-step) {
+      transition: none;
+    }
+  }
+</style>

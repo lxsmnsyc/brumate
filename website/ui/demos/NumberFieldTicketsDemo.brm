@@ -1,0 +1,26 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import NumberField from '@brumate/ui/NumberField.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  const price = 18.5;
+  let seats = $signal(2);
+  const total = $memo(Number.isNaN(seats) ? 'none' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(seats * price));
+</script>
+
+<div class="ui-stack">
+  <NumberField class="ui-field" minValue=(1) maxValue=(8) value=$bind(seats)>
+    <Label>Seats</Label>
+    <Group class="ui-number">
+      <Button slot="decrement" class="ui-step">−</Button>
+      <Input class="ui-input" />
+      <Button slot="increment" class="ui-step">+</Button>
+    </Group>
+    <Text slot="description" class="ui-help">Up to 8 seats, $18.50 each.</Text>
+  </NumberField>
+  <p>{Number.isNaN(seats) ? 'No seats' : `${seats} ${seats === 1 ? 'seat' : 'seats'}`}: {total}.</p>
+</div>

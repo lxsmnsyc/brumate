@@ -1,0 +1,17 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TextArea from '@brumate/ui/TextArea.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  const limit = 80;
+  let note = $signal('Out until Monday.');
+  const left = $memo(limit - note.length);
+</script>
+
+<TextField class="ui-field" name="note" maxLength=(limit) value=$bind(note)>
+  <Label>Status note</Label>
+  <TextArea class="ui-input" rows=(3) />
+  <Text slot="description" class="ui-help">{left} characters left. The box stops at {limit}.</Text>
+</TextField>

@@ -1,0 +1,54 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Token from '@brumate/ui/Token.brm';
+  import TokenField from '@brumate/ui/TokenField.brm';
+  import TokenInput from '@brumate/ui/TokenInput.brm';
+  import type { TokenSegment } from '@brumate/ui/token-field.ts';
+
+  const start: TokenSegment[] = [
+    { type: 'text', text: 'Ping ' },
+    { type: 'token', text: '@ada' },
+    { type: 'text', text: ' ' },
+  ];
+  const grace: TokenSegment[] = [
+    { type: 'text', text: 'Ping ' },
+    { type: 'token', text: '@grace' },
+    { type: 'text', text: ' ' },
+  ];
+  let mine = $signal<TokenSegment[]>(start);
+  let asked = $signal<TokenSegment[]>(start);
+  let locked = $signal(false);
+  let log = $signal('');
+  const names = (value: TokenSegment[]) => value.filter((one) => one.type === 'token').map((one) => one.text).join(', ') || 'none';
+</script>
+
+<form class="ui-stack">
+  <TokenField class="ui-field" pattern="@\S+">
+    <Label>Own state</Label>
+    <TokenInput class="ui-input ui-token-input" token=chip />
+  </TokenField>
+  <TokenField class="ui-field" pattern="@\S+" value=(start)>
+    <Label>Starts at @ada</Label>
+    <TokenInput class="ui-input ui-token-input" token=chip />
+  </TokenField>
+  <TokenField class="ui-field" pattern="@\S+" value=$bind(mine) onChange=((next) => (log = `asked for ${names(next)}`))>
+    <Label>Writes your signal</Label>
+    <TokenInput class="ui-input ui-token-input" token=chip />
+  </TokenField>
+  <TokenField class="ui-field" pattern="@\S+" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <Label>Asks you first</Label>
+    <TokenInput class="ui-input ui-token-input" token=chip />
+  </TokenField>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (mine = grace))>Write @grace to the third</Button>
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {names(mine)}. Asks: {names(asked)}. Last callback: {log || 'none'}.</p>
+</form>
+
+#template chip(segment) {
+  <Token class="ui-token ui-mention">{segment.text}</Token>
+}

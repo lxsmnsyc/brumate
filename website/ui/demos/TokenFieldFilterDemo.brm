@@ -1,0 +1,46 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Token from '@brumate/ui/Token.brm';
+  import TokenField from '@brumate/ui/TokenField.brm';
+  import TokenInput from '@brumate/ui/TokenInput.brm';
+  import type { TokenSegment } from '@brumate/ui/token-field.ts';
+
+  const issues = [
+    { title: 'Menu loses focus', owner: 'ada', kind: 'bug' },
+    { title: 'Add a Tree page', owner: 'grace', kind: 'docs' },
+    { title: 'Slider thumb jumps', owner: 'ada', kind: 'bug' },
+    { title: 'Write the Form page', owner: 'grace', kind: 'docs' },
+  ];
+  let search = $signal<TokenSegment[]>([{ type: 'text', text: 'slider ' }]);
+  // A token reads `owner:ada` or `kind:bug`. The text around the tokens is a word of the title.
+  const filters = $memo(search.filter((one) => one.type === 'token').map((one) => one.text.split(':')));
+  const words = $memo(search.filter((one) => one.type === 'text').map((one) => one.text).join(' ').toLowerCase().split(/\s+/).filter(Boolean));
+  const shown = $memo(
+    issues.filter(
+      (issue) =>
+        filters.every(([key, word]) => (key === 'owner' ? issue.owner === word : key === 'kind' ? issue.kind === word : true)) &&
+        words.every((word) => issue.title.toLowerCase().includes(word)),
+    ),
+  );
+</script>
+
+<div class="ui-stack">
+  <TokenField class="ui-field" pattern="(owner|kind):\w+" role="searchbox" placeholder="Search the issues" value=$bind(search)>
+    <Label>Search</Label>
+    <TokenInput class="ui-input ui-token-input" token=chip />
+    <Text slot="description" class="ui-help">Add owner:ada or kind:docs, then a space. {shown.length} of {issues.length} shown.</Text>
+  </TokenField>
+  <ul aria-label="Issues">
+    #for (issue of shown by issue.title) {
+      <li>{issue.title} ({issue.owner}, {issue.kind})</li>
+    } #else {
+      <li>No issue matches.</li>
+    }
+  </ul>
+</div>
+
+#template chip(segment) {
+  <Token class="ui-token ui-mention">{segment.text}</Token>
+}

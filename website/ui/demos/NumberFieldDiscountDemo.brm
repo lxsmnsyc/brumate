@@ -1,0 +1,37 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import NumberField from '@brumate/ui/NumberField.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let sent = $signal('Nothing sent.');
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent discount=${data.get('discount')}.`;
+  }
+</script>
+
+<Form class="ui-stack" onSubmit=(prevent(submit))>
+  <NumberField class="ui-field" name="discount" isRequired minValue=(0) maxValue=(0.5) step=(0.05) value=(0.1) formatOptions=({ style: 'percent' })>
+    <Label>Discount</Label>
+    <Group class="ui-number">
+      <Button slot="decrement" class="ui-step">−</Button>
+      <Input class="ui-input" />
+      <Button slot="increment" class="ui-step">+</Button>
+    </Group>
+    <Text slot="description" class="ui-help">From 0% to 50%, in steps of 5%. Clear the box and press Send.</Text>
+    <FieldError class="ui-error" />
+  </NumberField>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Send</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p role="status">{sent}</p>
+</Form>

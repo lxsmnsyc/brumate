@@ -646,6 +646,185 @@ export async function run({ browser, url, runner }) {
       },
     );
     await flow(
+      '/ui: the pages of the text and number fields have an anatomy picture and a styled example',
+      async () => {
+        for (const slug of [
+          'text-field',
+          'search-field',
+          'token-field',
+          'number-field',
+          'slider',
+        ]) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            assert((await page.locator('.styled pre').count()) === 1, `/ui/${slug} shows no CSS`);
+            // The token template of a TokenInput is also drawn in a hidden copy, which has no callout.
+            const marks = await page.locator('.anatomy [data-mark]:not([hidden] *)').count();
+            const items = await page.locator('.anatomy-list li').count();
+            assert(
+              marks > 0 && marks === items,
+              `/ui/${slug}: ${marks} callouts for ${items} pieces`,
+            );
+            await page.addScriptTag({ path: axe });
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run(document.querySelector('article'));
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow('/ui: the text and number fields edit, refuse, reset and send', async () => {
+      const settle = () => page.waitForTimeout(500);
+      const visit = async (slug) => {
+        await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+        await settle();
+      };
+      const state = () => page.locator('form.ui-stack', { hasText: 'Asks you first' });
+      const line = () => state().locator('p').textContent();
+      // TextField: a refused edit leaves the typed text in the input, a reset puts the kept one back.
+      await visit('text-field');
+      const asks = state().getByLabel('Asks you first');
+      await state().getByRole('button', { name: /^Lock/ }).click();
+      await asks.click();
+      await page.keyboard.type('xyz');
+      assert((await asks.inputValue()) === 'Adaxyz', 'the input lost the typed text');
+      assert((await line()).includes('Asks: "Ada"'), `the signal changed: ${await line()}`);
+      await state().getByRole('button', { name: 'Reset the form' }).click();
+      await settle();
+      assert((await asks.inputValue()) === 'Ada', 'the reset did not put the kept text back');
+      await page.getByLabel('Find a city').click();
+      await page.keyboard.type('ly');
+      assert(
+        (await page.getByRole('list', { name: 'Cities' }).innerText()) === 'Lyon',
+        'the city list did not follow the text',
+      );
+      // SearchField: Escape clears a field with text, and closes the dialog only when it is empty.
+      await visit('search-field');
+      const search = page.getByLabel('Search the parts').last();
+      await search.click();
+      await page.keyboard.type('se');
+      await page.keyboard.press('Enter');
+      assert(
+        (await page.locator('p', { hasText: /results? for/ }).innerText()).includes('Select'),
+        'Enter did not search',
+      );
+      await page.keyboard.press('Escape');
+      assert((await search.inputValue()) === '', 'Escape left the text');
+      await page.getByRole('button', { name: 'Find a file' }).click();
+      await page.waitForFunction(() => document.activeElement?.matches('[role=dialog] input'));
+      await page.keyboard.type('abc');
+      await page.keyboard.press('Escape');
+      await settle();
+      assert((await page.getByRole('dialog').count()) === 1, 'Escape closed the dialog with text');
+      assert(
+        (await page.getByLabel('File name').inputValue()) === '',
+        'Escape did not clear the text',
+      );
+      await page.keyboard.press('Escape');
+      await settle();
+      assert(
+        (await page.getByRole('dialog').count()) === 0,
+        'Escape on an empty field did not close',
+      );
+      // TokenField: a typed @name becomes a token, a form sends the text, a filter token filters.
+      await visit('token-field');
+      const mine = page.locator('form', { hasText: 'A form sends' });
+      await mine.getByRole('textbox').click();
+      await page.keyboard.type('hello @ada ');
+      await page.waitForFunction(
+        () => document.querySelectorAll('form [data-token="@ada"]').length > 0,
+      );
+      await mine.getByRole('button', { name: 'Send' }).click();
+      assert(
+        (await mine.locator('[role=status]').innerText()) === 'Sent "hello @ada".',
+        `the form sent: ${await mine.locator('[role=status]').innerText()}`,
+      );
+      const searchbox = page.getByRole('searchbox', { name: 'Search', exact: true });
+      await searchbox.click();
+      await page.keyboard.press('End');
+      await page.keyboard.type('owner:ada ');
+      await page.waitForFunction(
+        () =>
+          document.querySelector('[aria-label=Issues]')?.textContent ===
+          'Slider thumb jumps (ada, bug)',
+      );
+      // NumberField: a refused step keeps the number, the end of the range stops the field.
+      await visit('number-field');
+      const number = state().getByRole('textbox', { name: 'Asks you first' });
+      await state().getByRole('button', { name: /^Lock/ }).click();
+      await number.click();
+      await page.keyboard.press('ArrowUp');
+      assert((await number.inputValue()) === '2', `the number shows ${await number.inputValue()}`);
+      await state()
+        .getByRole('button', { name: /^Unlock/ })
+        .click();
+      await number.click();
+      await page.keyboard.press('ArrowUp');
+      assert((await number.inputValue()) === '3', 'ArrowUp did not step');
+      const seats = page.getByRole('textbox', { name: 'Seats' });
+      await seats.click();
+      for (let i = 0; i < 9; i++) {
+        await page.keyboard.press('ArrowUp');
+      }
+      assert((await seats.inputValue()) === '8', 'the seats passed the maximum');
+      assert(
+        await page.getByRole('button', { name: 'Increase Seats' }).isDisabled(),
+        'the plus button is not disabled at the maximum',
+      );
+      assert(
+        await seats.evaluate((input) => document.activeElement === input),
+        'focus left the input',
+      );
+      const discount = page.getByRole('textbox', { name: 'Discount' });
+      const percent = page.locator('form', { hasText: 'From 0% to 50%' });
+      await discount.click();
+      await page.keyboard.press('ArrowUp');
+      assert((await discount.inputValue()) === '15%', 'the percent did not step by 5%');
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.press('Backspace');
+      await percent.getByRole('button', { name: 'Send' }).click();
+      await settle();
+      assert(
+        (await percent.locator('[role=status]').innerText()) === 'Nothing sent.',
+        'a required field sent an empty number',
+      );
+      // Slider: a refused key keeps the value, a range filters on release.
+      await visit('slider');
+      const thumb = state().getByRole('slider', { name: 'Asks you first' });
+      await state().getByRole('button', { name: /^Lock/ }).click();
+      await thumb.focus();
+      await page.keyboard.press('ArrowRight');
+      assert((await thumb.inputValue()) === '30', `the thumb shows ${await thumb.inputValue()}`);
+      assert((await line()).includes('Asks: 30'), 'the signal changed');
+      await state()
+        .getByRole('button', { name: /^Unlock/ })
+        .click();
+      await thumb.focus();
+      await page.keyboard.press('ArrowRight');
+      assert((await thumb.inputValue()) === '31', 'ArrowRight did not step');
+      const lowest = page.getByRole('slider', { name: /Lowest price/ });
+      await lowest.focus();
+      for (let i = 0; i < 5; i++) {
+        await page.keyboard.press('ArrowRight');
+      }
+      assert(
+        (await page.getByRole('list', { name: 'Rooms' }).innerText()).startsWith('Garden'),
+        'the range did not filter the rooms',
+      );
+      await page.getByRole('button', { name: 'Smile' }).click();
+      assert(
+        (await page.getByRole('slider', { name: 'Low', exact: true }).inputValue()) === '80',
+        'the preset did not write the sliders',
+      );
+    });
+    await flow(
       '/ui: the pages of the color parts have a styled example, and an anatomy picture where they have pieces',
       async () => {
         const pieces = new Set([
@@ -890,7 +1069,7 @@ export async function run({ browser, url, runner }) {
       const rename = page.locator('button.ui-button[aria-expanded]', { hasText: /^Rename$/ });
       await rename.click();
       await page.waitForFunction(() => document.activeElement?.matches('[role=dialog] input'));
-      await page.keyboard.press('Control+A');
+      await page.keyboard.press('ControlOrMeta+A');
       await page.keyboard.type('Annual');
       await page.keyboard.press('Enter');
       await page.getByText('File: Annual').waitFor({ timeout: 5000 });

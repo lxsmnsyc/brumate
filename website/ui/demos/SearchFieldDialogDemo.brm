@@ -1,0 +1,40 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+
+  let shown = $signal(false);
+  let text = $signal('');
+  let log = $signal('Nothing yet.');
+</script>
+
+<div class="ui-stack">
+  <DialogTrigger isOpen=$bind(shown)>
+    <Button class="ui-button">Find a file</Button>
+    <ModalOverlay class="ui-backdrop" transition>
+      <Modal class="ui-modal">
+        <Dialog class="ui-dialog" aria-label="Find a file">
+          <Heading slot="title">Find a file</Heading>
+          <SearchField
+            class="ui-field"
+            value=$bind(text)
+            onClear=(() => (log = 'Cleared by Escape or the button.'))
+            onSubmit=((value) => { log = `Opened "${value}".`; shown = false; })
+          >
+            <Label>File name</Label>
+            <Input class="ui-input" autofocus />
+          </SearchField>
+          <Button class="ui-button" onClick=(() => (shown = false))>Close</Button>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  </DialogTrigger>
+  <p>{log}</p>
+</div>

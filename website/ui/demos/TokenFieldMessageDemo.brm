@@ -1,0 +1,35 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Token from '@brumate/ui/Token.brm';
+  import TokenField from '@brumate/ui/TokenField.brm';
+  import TokenInput from '@brumate/ui/TokenInput.brm';
+
+  let sent = $signal('Nothing sent.');
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent "${String(data.get('message')).trim()}".`;
+  }
+</script>
+
+<Form class="ui-stack" onSubmit=(prevent(submit))>
+  <TokenField class="ui-field" name="message" pattern="[#@]\S+" placeholder="Write a message">
+    <Label>Message</Label>
+    <TokenInput class="ui-input ui-token-input" token=chip />
+    <Text slot="description" class="ui-help">A form sends the text, with each token as its text. Reset puts the box back to empty.</Text>
+  </TokenField>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Send</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p role="status">{sent}</p>
+</Form>
+
+#template chip(segment) {
+  <Token class=(segment.text.startsWith('@') ? 'ui-token ui-mention' : 'ui-token')>{segment.text}</Token>
+}

@@ -1,0 +1,38 @@
+<script>
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Token from '@brumate/ui/Token.brm';
+  import TokenField from '@brumate/ui/TokenField.brm';
+  import TokenInput from '@brumate/ui/TokenInput.brm';
+  import type { TokenSegment } from '@brumate/ui/token-field.ts';
+
+  const message: TokenSegment[] = [
+    { type: 'text', text: 'Ask ' },
+    { type: 'token', text: '@ada' },
+    { type: 'text', text: ' about it' },
+  ];
+</script>
+
+<TokenField class="ui-field" value=(message) pattern="[#@]\S+" style="width: 20rem; max-width: calc(100% - 0.75rem)" data-mark="1">
+  <Label class="ui-label" data-mark="2" data-mark-side="after">Message</Label>
+  <span class="tokenfield-anatomy-input" data-mark="3">
+    <TokenInput class="ui-input ui-token-input" token=chip />
+  </span>
+  <Text slot="description" class="ui-help" data-mark="5" data-mark-side="after">Type a @name, then a space.</Text>
+</TokenField>
+
+#template chip(segment) {
+  <Token class="ui-token ui-mention tokenfield-anatomy-token" data-mark="4">{segment.text}</Token>
+}
+
+<style>
+  /* The badge of a token sits above its corner, so it does not cover the text. */
+  :global(.anatomy-stage .tokenfield-anatomy-token[data-mark]::before) {
+    top: -1.1rem;
+    inset-inline-end: -0.4rem;
+  }
+
+  :global(.tokenfield-anatomy-input) {
+    display: block;
+  }
+</style>
