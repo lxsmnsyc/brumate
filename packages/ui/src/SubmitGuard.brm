@@ -1,0 +1,46 @@
+<script>
+  import type { Bindable } from 'brumate/signals';
+  import { $client, $props } from 'brumate/signals';
+
+  let { ref } = $props<{ ref?: Bindable<HTMLElement | undefined> }>();
+
+  // Cancels a submit of the form while the submit button is pending: a click on it, or Enter in a
+  // field, which the browser sends as a click on the default button, the first submit button of
+  // the form in tree order. A submit with no submitter, such as `form.requestSubmit()`, is
+  // cancelled when the button is the default button. In a form with two submit buttons, only the
+  // pending one is blocked. When the button is not pending, the listener does nothing, and the
+  // other submit listeners of the page run.
+  //
+  // The listener is on the window, in the capture phase, so it runs before the listeners that
+  // brumate adds on the document and before those on the form. It runs on load, so it exists
+  // before a press can make the button pending. It reads data-pending, because a signal read in
+  // a $client callback is the value of the load.
+  $client(() => {
+    const button = ref as HTMLButtonElement | undefined;
+    const form = button?.form;
+    if (!form || button.type !== 'submit') {
+      return;
+    }
+    // The default button is the first submit button of the form, in tree order.
+    const isDefault = () => {
+      for (const element of form.elements) {
+        if ((element as HTMLButtonElement).type === 'submit') {
+          return element === button;
+        }
+      }
+      return false;
+    };
+    const onSubmit = (event: SubmitEvent) => {
+      if (
+        button.hasAttribute('data-pending') &&
+        event.target === form &&
+        (event.submitter === button || (!event.submitter && isDefault()))
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener('submit', onSubmit, true);
+    return () => window.removeEventListener('submit', onSubmit, true);
+  }, 'load');
+</script>

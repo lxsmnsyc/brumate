@@ -55,7 +55,14 @@ This stylesheet styles every state: rest, hover, press, keyboard focus, pending 
 
 ### A pending save in a form
 
-`isPending` keeps the focus on the button and presses nothing. A pending submit button keeps `type="submit"` and cancels the submit of its form, so the form does not send again, by a click on the button or by Enter in a field. Enter clicks the default button of the form, which is the first submit button in tree order. With two submit buttons, only the pending one is blocked: a click on the other button sends the form, and so does Enter unless the pending button is the first. A submit with no submitter, such as `form.requestSubmit()`, is cancelled when the pending button is the first. A pending reset button becomes `type="button"`, so it resets nothing. The handler of the form needs no guard. Here the submit starts a save, the button shows it, and the Reset button waits with `isDisabled` until the save is done.
+`isPending` keeps the focus on the button and presses nothing. A pending submit button keeps `type="submit"` and cancels the submit of its form, so the form does not send again, by a click on the button or by Enter in a field. The handler of the form needs no guard. Enter clicks the default button of the form, which is the first submit button in tree order. With two submit buttons in one form:
+
+- Only the pending button is blocked.
+- A click on the other button sends the form.
+- Enter sends the form unless the pending button is the first one.
+- A submit with no submitter, such as `form.requestSubmit()`, is cancelled when the pending button is the first one.
+
+A pending reset button becomes `type="button"`, so it resets nothing. Here the submit starts a save, the button shows it, and the Reset button waits with `isDisabled` until the save is done.
 
 ```brm demo ButtonSaveDemo
 
