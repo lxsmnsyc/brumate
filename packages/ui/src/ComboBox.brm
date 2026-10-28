@@ -37,7 +37,7 @@
     inputValue?: Bindable<string>;
     /**
      * Whether the list is open. Alone it holds its own state, which starts closed, and `$bind`
-     * writes your signal.
+     * writes your signal. A start value of `true` opens the list once the page has loaded.
      */
     isOpen?: Bindable<boolean>;
   }

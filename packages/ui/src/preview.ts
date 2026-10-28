@@ -19,6 +19,9 @@ function layerOf(overlayId: string): Element | null {
   return document.getElementById(overlayId)?.closest('[data-layer]') ?? null;
 }
 
+/** The follow that a preview which started open began on load, by the ID of its overlay. */
+export const startedOpen = new Map<string, () => void>();
+
 /**
  * Follows the page while the preview is open. Returns the function that stops it.
  *

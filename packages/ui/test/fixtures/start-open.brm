@@ -1,0 +1,92 @@
+<script>
+  import { $bind, $client, $props, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import Heading from '../../src/Heading.brm';
+  import Link from '../../src/Link.brm';
+  import Menu from '../../src/Menu.brm';
+  import MenuItem from '../../src/MenuItem.brm';
+  import MenuTrigger from '../../src/MenuTrigger.brm';
+  import Modal from '../../src/Modal.brm';
+  import ModalOverlay from '../../src/ModalOverlay.brm';
+  import Popover from '../../src/Popover.brm';
+  import PreviewTrigger from '../../src/PreviewTrigger.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import Select from '../../src/Select.brm';
+  import SelectValue from '../../src/SelectValue.brm';
+  import ComboBox from '../../src/ComboBox.brm';
+  import Sheet from '../../src/Sheet.brm';
+  import Tooltip from '../../src/Tooltip.brm';
+  import TooltipTrigger from '../../src/TooltipTrigger.brm';
+
+  const { kind } = $props<{ kind: string }>();
+  let held = $signal(true);
+  let second = $signal(true);
+  // A reader who is typing before the rest of the code has loaded.
+  $client(() => document.querySelector<HTMLElement>('.typing')?.focus(), 'load');
+</script>
+
+<main class="page">
+  <button class="outside" type="button">Outside</button>
+  #if (kind === 'popover') {
+    <DialogTrigger isOpen=$bind(held)>
+      <Button class="trigger">Open</Button>
+      <Popover class="layer"><Dialog class="dialog" aria-label="Settings"><input class="field" aria-label="Name"></Dialog></Popover>
+    </DialogTrigger>
+  } #else if (kind === 'popover-own') {
+    <Popover class="layer" isOpen=$bind(held)><Dialog class="dialog" aria-label="Settings"><input class="field" aria-label="Name"></Dialog></Popover>
+  } #else if (kind === 'modal') {
+    <DialogTrigger isOpen=(true)>
+      <Button class="trigger">Open</Button>
+      <ModalOverlay class="layer"><Modal class="modal"><Dialog class="dialog"><Heading slot="title">Settings</Heading><input class="field" aria-label="Name"></Dialog></Modal></ModalOverlay>
+    </DialogTrigger>
+  } #else if (kind === 'modal-own') {
+    <Modal class="layer" isOpen=$bind(held)><Dialog class="dialog"><Heading slot="title">Settings</Heading><input class="field" aria-label="Name"></Dialog></Modal>
+  } #else if (kind === 'overlay-own') {
+    <ModalOverlay class="layer" isOpen=$bind(held)><Modal class="modal"><Dialog class="dialog"><Heading slot="title">Settings</Heading><input class="field" aria-label="Name"></Dialog></Modal></ModalOverlay>
+  } #else if (kind === 'two') {
+    <Modal class="first" isOpen=$bind(held)><Dialog class="first-dialog" aria-label="First"><input class="field" aria-label="Name"></Dialog></Modal>
+    <Modal class="second" isOpen=$bind(second)><Dialog class="second-dialog" aria-label="Second"><input class="field2" aria-label="Other"></Dialog></Modal>
+  } #else if (kind === 'sheet') {
+    <Sheet class="layer" isOpen=$bind(held)><Dialog class="dialog" aria-label="Menu"><input class="field" aria-label="Name"></Dialog></Sheet>
+  } #else if (kind === 'select') {
+    <Select class="select" isOpen=$bind(held)>
+      <Label>Size</Label>
+      <Button class="trigger"><SelectValue /></Button>
+      <Popover class="layer"><ListBox class="list"><ListBoxItem id="s" class="item">Small</ListBoxItem></ListBox></Popover>
+    </Select>
+  } #else if (kind === 'combobox') {
+    <ComboBox class="combo" isOpen=$bind(held)>
+      <Label>Fruit</Label>
+      <Input class="input" />
+      <Button class="trigger">v</Button>
+      <Popover class="layer"><ListBox class="list"><ListBoxItem id="a" class="item">Apple</ListBoxItem></ListBox></Popover>
+    </ComboBox>
+  } #else if (kind === 'typing') {
+    <input class="typing" aria-label="Typing">
+    <DialogTrigger isOpen=$bind(held)>
+      <Button class="trigger">Open</Button>
+      <Popover class="layer" isNonModal><Dialog class="dialog" aria-label="Loose"><Button class="inside">Inside</Button></Dialog></Popover>
+    </DialogTrigger>
+  } #else if (kind === 'tooltip') {
+    <TooltipTrigger isOpen=$bind(held)>
+      <Button class="trigger">Save</Button>
+      <Tooltip class="layer">Save the draft</Tooltip>
+    </TooltipTrigger>
+  } #else if (kind === 'menu') {
+    <MenuTrigger isOpen=$bind(held)>
+      <Button class="trigger">Actions</Button>
+      <Popover class="layer"><Menu class="menu"><MenuItem id="a" class="item">Copy</MenuItem></Menu></Popover>
+    </MenuTrigger>
+  } #else if (kind === 'preview') {
+    <PreviewTrigger isOpen=$bind(held)>
+      <Link class="trigger" href="#ada">Ada</Link>
+      <Popover class="layer"><p>Ada writes about engines.</p><Button class="follow">Follow</Button></Popover>
+    </PreviewTrigger>
+  }
+  <p class="state">{String(held)}</p>
+</main>

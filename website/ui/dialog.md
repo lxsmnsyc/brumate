@@ -68,7 +68,7 @@ A `Dialog` has no state. The `DialogTrigger` around it holds whether the overlay
 
 ```
 
-- `isOpen` alone, or nothing, makes the `DialogTrigger` keep its own state. A press of the Button toggles it, and so do Escape and a press outside, which close the overlay through the trigger. `isOpen=(true)` is meant as the state where it starts, but it does not show on load: an [effect never runs when the page loads](../docs/effects.md), and the overlay opens from one on its open value, which a start value of `true` never changes. Open it from an event. The demo above does not use it.
+- `isOpen` alone, or nothing, makes the `DialogTrigger` keep its own state. A press of the Button toggles it, and so do Escape and a press outside, which close the overlay through the trigger. `isOpen=(true)`, or a bound signal that starts `true`, starts it open: once the page has loaded the overlay is open, with focus and the inert page as after a press. The server renders no overlay, so it shows when the code loads.
 - `isOpen=$bind(signal)` writes your signal. Press "Open or close from outside" and the signal opens the popover that the second button owns.
 - `isOpen=$bind(signal, (next) => ...)` asks you first. The overlay shows what you keep, so a request that you ignore leaves it closed. Lock the last one and press its Button.
 - `onOpenChange` gets each new state in every shape. An overlay can also take its own `isOpen`, with no `DialogTrigger`: see [Popover](./popover.md#controlled-and-uncontrolled) and [Modal](./modal.md#controlled-and-uncontrolled).
