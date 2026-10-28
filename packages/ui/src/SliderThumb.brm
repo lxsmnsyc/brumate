@@ -60,6 +60,8 @@
       return;
     }
     slider?.setThumb(index, Number(event.currentTarget.value));
+    // A setter that refuses leaves the old value, so the input goes back to it.
+    event.currentTarget.value = String(value);
   }
 
   function changed() {

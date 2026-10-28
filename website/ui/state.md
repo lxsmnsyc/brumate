@@ -49,7 +49,7 @@ A `reset` of the form gives every form field the value that it started with. Cha
 - The other parts are not form fields, since a form sends nothing of them, and they do not reset: `ToggleButton`, `ToggleButtonGroup`, `Calendar`, `RangeCalendar`, `Autocomplete`, `TagGroup`, `ListBox`, `Tabs` and the rest. Set their signal yourself on a reset.
 - A reset that another listener prevents changes nothing.
 - The reset is a write, as an edit is, so it follows the shape of the state. With `$bind(signal)`, the signal gets the start value back. With `$bind(signal, request)`, the request gets it like any new value, and a request that refuses it leaves the old value. A part with its own state or its own copy resets with no help.
-- With a request that refuses, `TextField`, `SearchField`, `TokenField`, `Checkbox`, `Switch`, `CheckboxGroup`, `RadioGroup`, `Select`, `ComboBox`, `Slider` and `DateField` show what you keep, and so do their inputs. `NumberField`, `ColorField`, `ColorSlider`, `ColorArea`, `ColorWheel`, `TimeField` and `DateRangePicker` are not in sync yet: the field or its input can show another value than the one you keep. The node `ui-refused-write-sync` fixes them.
+- With a request that refuses, every form field shows what you keep, and so do its inputs, after an edit and after a reset.
 - The start value is the one that the part had when it rendered. A `Checkbox` in a `CheckboxGroup` and a `Radio` reset with their group.
 
 ## The server render

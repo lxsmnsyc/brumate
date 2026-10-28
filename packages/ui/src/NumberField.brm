@@ -196,10 +196,13 @@
   function setValue(next: number) {
     if (!Object.is(next, value)) {
       value = next;
-      edited = true;
-      onChange?.(next);
+      // A setter that refuses leaves the old number, so nothing changed.
+      if (Object.is(value, next)) {
+        edited = true;
+        onChange?.(next);
+      }
     }
-    text = format(next);
+    text = format(value);
   }
 
   // A value that the caller sets shows in the input.

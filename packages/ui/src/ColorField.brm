@@ -248,9 +248,17 @@
     if (picker && !passed) {
       picker.setValue(nextColor!, same ? held! : next!);
     } else {
+      const before = value;
+      const prev = working;
       working = nextColor;
       if (!same) {
         value = next;
+        // A setter that refuses leaves the old value, and the field shows that one.
+        if (value !== next) {
+          working = Object.is(value, before) ? prev : fresh(value);
+          text = display(working);
+          return;
+        }
       }
     }
     if (!same) {

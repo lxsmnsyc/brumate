@@ -114,7 +114,7 @@
   let initialValue = $signal(value);
   const { committed, nativeErrors, invalidated, changed } = formField(inputId, () => {
     value = initialValue;
-    parts = timePartsOf(initialValue);
+    parts = timePartsOf(value);
     edited = false;
   });
   const segments = $memo(timeSegmentsOf(parts, placeholderValue, locale.locale, granularity, hourCycle));
@@ -144,6 +144,11 @@
     const time = timeOf(next, granularity, twelve);
     if (time !== value) {
       value = time;
+      // A setter that refuses leaves the old time, and the segments show that one.
+      if (value !== time) {
+        parts = timePartsOf(value);
+        return;
+      }
       edited = true;
       changed();
       onChange?.(time);
