@@ -27,3 +27,11 @@ There is no `defaultSelected` or `defaultValue`: a `let` prop of brumate already
 | `isSelected`   | `ToggleButton`, `Checkbox`, `Switch`                      |
 | `value`        | `TextField`, `SearchField`, `CheckboxGroup`, `RadioGroup` |
 | `selectedKeys` | `ToggleButtonGroup`                                       |
+
+## Form reset
+
+A `reset` of the form gives every part with state the value that it started with: `TextField`, `SearchField`, `NumberField`, `TokenField`, `Checkbox`, `Switch`, `CheckboxGroup`, `RadioGroup`, `Select`, `ComboBox`, `Slider`, the color parts and the date parts. Its `data-*` attributes and its hidden input follow.
+
+- The reset is a write, as an edit is, so it follows the shape of the state. With `$bind(signal)`, the signal gets the start value back. With `$bind(signal, request)`, the request gets it like any new value, and a request that refuses it leaves the old value. The part and its input then show what you keep. A part with its own state or its own copy resets with no help.
+- The start value is the one that the part had when it rendered. A part in a `CheckboxGroup` or a `RadioGroup` resets with its group.
+- There are no exceptions: a part with a `name` that a form sends resets with the form.

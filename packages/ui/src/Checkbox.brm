@@ -27,12 +27,12 @@
 </script>
 
 <script>
-  import { $client, $getContext, $memo, $props, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
   import { CheckboxGroupContext } from './contexts.ts';
-  import { describedBy, isFirstInvalid } from './fields.ts';
+  import { describedBy, isFirstInvalid, onFormReset } from './fields.ts';
 
   /**
    * A checkbox: a <label> around a native checkbox, which
@@ -57,6 +57,9 @@
     ...rest
   } = $props<CheckboxProps>();
   let { isSelected = false } = $props<CheckboxProps>();
+  // The state that a reset of the form gives back.
+  let initial = $signal(isSelected);
+  const inputId = $id();
 
   const group = $getContext(CheckboxGroupContext);
   const selected = $memo(group ? group.value.includes(value ?? '') : isSelected);
@@ -87,6 +90,26 @@
 
   // The click of a read-only box, which the wrapper prevents.
   function keep() {}
+
+  // A reset of the form gives back the first state, as it does for a box of the browser. In a
+  // group, the group keeps the state and gives it back. The browser sets its own default on the
+  // native input, so this puts it back in step with the state.
+  $client(() => {
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+    return onFormReset(
+      input,
+      () => {
+        if (!group) {
+          isSelected = initial;
+        }
+      },
+      () => {
+        if (input) {
+          input.checked = selected;
+        }
+      },
+    );
+  }, 'load');
 
   function change(event: Event & { currentTarget: HTMLInputElement }) {
     const input = event.currentTarget;
@@ -145,6 +168,7 @@
   #if (readOnly) {
     <VisuallyHidden
       as="input"
+      id=inputId
       type="checkbox"
       name=(name ?? group?.name)
       {value}
@@ -161,6 +185,7 @@
   } #else {
     <VisuallyHidden
       as="input"
+      id=inputId
       type="checkbox"
       name=(name ?? group?.name)
       {value}

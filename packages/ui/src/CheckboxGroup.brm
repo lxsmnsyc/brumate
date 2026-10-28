@@ -39,7 +39,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy } from './fields.ts';
+  import { describedBy, onFormReset } from './fields.ts';
 
   /**
    * A group of checkboxes. It holds a Label, its
@@ -67,6 +67,8 @@
   } = $props<CheckboxGroupProps<T>>();
   let { value = [] } = $props<CheckboxGroupOwnProps<T>>();
   let { ref } = $props<CheckboxGroupOwnProps<T>>();
+  // The value that a reset of the form gives back.
+  let initial = $signal(value);
 
   const labelId = $id();
   const descriptionId = $id();
@@ -85,6 +87,16 @@
   function invalidated(text: string) {
     message = text;
   }
+
+  // A reset of the form gives back the first value. Each box puts its native input back in step.
+  $client(
+    () =>
+      onFormReset(ref, () => {
+        value = initial;
+        message = '';
+      }),
+    'load',
+  );
 
   // The code of the group runs, so it can make the boxes optional when one is checked. It stays
   // on 'load', since a form can submit before the page is idle, and a box that is required would
