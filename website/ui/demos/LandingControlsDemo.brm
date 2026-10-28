@@ -1,0 +1,21 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Switch from '@brumate/ui/Switch.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  let presses = $signal(0);
+  let subscribed = $signal(true);
+  let wifi = $signal(false);
+</script>
+
+<Button class="ui-button" onPress=(() => presses++)>Pressed {presses} {presses === 1 ? 'time' : 'times'}</Button>
+<Switch class="ui-box" isSelected=$bind(wifi)>
+  <span class="ui-track" aria-hidden="true"></span>
+  Wi-Fi is {wifi ? 'on' : 'off'}
+</Switch>
+<Checkbox class="ui-box" isSelected=$bind(subscribed)>
+  <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+  Send me the newsletter
+</Checkbox>
