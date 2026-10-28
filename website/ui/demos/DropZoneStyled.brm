@@ -1,0 +1,102 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import DropZone from '@brumate/ui/DropZone.brm';
+  import FileTrigger from '@brumate/ui/FileTrigger.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let count = $signal(0);
+</script>
+
+<div class="drop-styled-row">
+  <DropZone class="drop-styled" onDrop=((event) => (count += event.items.length))>
+    <Text slot="label" class="drop-styled-label">Drop files here</Text>
+    <FileTrigger allowsMultiple onSelect=((files) => (count += files?.length ?? 0))>
+      <Button class="drop-styled-button">Browse</Button>
+    </FileTrigger>
+  </DropZone>
+  <DropZone class="drop-styled" isDisabled>
+    <Text slot="label" class="drop-styled-label">Disabled</Text>
+  </DropZone>
+</div>
+<p>{count} items received.</p>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.drop-styled-row) {
+    --drop-styled-border: color-mix(in srgb, CanvasText 35%, Canvas);
+    --drop-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --drop-styled-tint: color-mix(in srgb, var(--drop-styled-accent) 14%, Canvas);
+    --drop-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    color: CanvasText;
+  }
+
+  /* Rest, hover, a drag over it, keyboard focus and disabled. */
+  :global(.drop-styled) {
+    display: grid;
+    flex: 1 1 14rem;
+    gap: 0.75rem;
+    justify-items: center;
+    padding: 1.5rem 1rem;
+    border: 2px dashed var(--drop-styled-border);
+    border-radius: 12px;
+    text-align: center;
+    transition: border-color 0.15s, background-color 0.15s;
+  }
+
+  :global(.drop-styled[data-hovered]) {
+    border-color: var(--drop-styled-accent);
+  }
+
+  :global(.drop-styled[data-drop-target]) {
+    border-style: solid;
+    border-color: var(--drop-styled-accent);
+    background: var(--drop-styled-tint);
+  }
+
+  :global(.drop-styled[data-focus-visible]) {
+    outline: 2px solid var(--drop-styled-accent);
+    outline-offset: 3px;
+  }
+
+  :global(.drop-styled[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.drop-styled-label) {
+    color: var(--drop-styled-muted);
+  }
+
+  :global(.drop-styled[data-drop-target] .drop-styled-label) {
+    color: CanvasText;
+  }
+
+  :global(.drop-styled-button) {
+    padding: 0.4rem 1rem;
+    border: 1px solid var(--drop-styled-accent);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :global(.drop-styled-button[data-hovered]) {
+    background: var(--drop-styled-tint);
+  }
+
+  :global(.drop-styled-button[data-focus-visible]) {
+    outline: 2px solid var(--drop-styled-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.drop-styled) {
+      transition: none;
+    }
+  }
+</style>

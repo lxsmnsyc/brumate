@@ -1,0 +1,88 @@
+<script>
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+</script>
+
+<ToggleButtonGroup class="segment-styled" aria-label="Period" selectedKeys=(['week']) disallowEmptySelection>
+  <ToggleButton id="day" class="segment-styled-button">Day</ToggleButton>
+  <ToggleButton id="week" class="segment-styled-button">Week</ToggleButton>
+  <ToggleButton id="month" class="segment-styled-button">Month</ToggleButton>
+  <ToggleButton id="year" class="segment-styled-button" isDisabled>Year</ToggleButton>
+</ToggleButtonGroup>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.segment-styled) {
+    --segment-styled-bg: color-mix(in srgb, CanvasText 8%, Canvas);
+    --segment-styled-page: Canvas;
+    --segment-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --segment-styled-on-accent: light-dark(#fff, #101418);
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--segment-styled-bg);
+    color: CanvasText;
+  }
+
+  :global(.segment-styled[data-orientation='vertical']) {
+    flex-direction: column;
+  }
+
+  :global(.segment-styled[data-disabled]) {
+    opacity: 0.5;
+  }
+
+  /* Rest, hover, press, keyboard focus, on and disabled. */
+  :global(.segment-styled-button) {
+    padding: 0.35rem 0.9rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+  }
+
+  :global(.segment-styled-button[data-hovered]) {
+    background: color-mix(in srgb, CanvasText 10%, transparent);
+  }
+
+  :global(.segment-styled-button[data-pressed]) {
+    background: color-mix(in srgb, CanvasText 18%, transparent);
+  }
+
+  :global(.segment-styled-button[data-selected]) {
+    background: var(--segment-styled-accent);
+    color: var(--segment-styled-on-accent);
+  }
+
+  /* An on button gets darker in a light theme and lighter in a dark one, so the text keeps its contrast. */
+  :global(.segment-styled-button[data-selected][data-hovered]) {
+    background: color-mix(in srgb, var(--segment-styled-accent), CanvasText 15%);
+  }
+
+  :global(.segment-styled-button[data-selected][data-pressed]) {
+    background: color-mix(in srgb, var(--segment-styled-accent), CanvasText 28%);
+  }
+
+  /* Two bands, so the ring shows on the track and on the accent fill. */
+  :global(.segment-styled-button[data-focus-visible]) {
+    outline: none;
+    box-shadow:
+      inset 0 0 0 2px var(--segment-styled-accent),
+      inset 0 0 0 4px var(--segment-styled-page);
+  }
+
+  :global(.segment-styled-button[data-disabled]) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.segment-styled-button) {
+      transition: none;
+    }
+  }
+</style>

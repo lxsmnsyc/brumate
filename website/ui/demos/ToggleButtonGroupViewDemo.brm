@@ -1,0 +1,18 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+
+  let view = $signal(['list']);
+  const items = ['Apples', 'Pears', 'Plums'];
+</script>
+
+<ToggleButtonGroup class="ui-group" aria-label="View" selectedKeys=$bind(view) disallowEmptySelection>
+  <ToggleButton id="list" class="ui-button">List</ToggleButton>
+  <ToggleButton id="grid" class="ui-button">Grid</ToggleButton>
+</ToggleButtonGroup>
+<ul style=(view[0] === 'grid' ? 'display: flex; gap: 1rem; list-style: none; padding: 0' : '')>
+  #for (item of items by item) {
+    <li>{item}</li>
+  }
+</ul>

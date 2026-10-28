@@ -1,0 +1,27 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import DropZone from '@brumate/ui/DropZone.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import type { DropEvent } from '@brumate/ui/drop.ts';
+
+  let notes = $signal<string[]>([]);
+
+  async function dropped(event: DropEvent) {
+    const next = [...notes];
+    for (const item of event.items) {
+      if (item.kind === 'text' && item.types.has('text/plain')) {
+        next.push(await item.getText('text/plain'));
+      }
+    }
+    notes = next;
+  }
+</script>
+
+<DropZone class="ui-dropzone" onDrop=dropped>
+  <Text slot="label">Drag text here, or focus the area and paste</Text>
+</DropZone>
+<ul>
+  #for (note, index of notes by index) {
+    <li>{note}</li>
+  }
+</ul>

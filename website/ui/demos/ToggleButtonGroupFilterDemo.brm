@@ -1,0 +1,22 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+
+  let kinds = $signal<string[]>([]);
+  const files = [
+    { name: 'plan.pdf', kind: 'doc' },
+    { name: 'logo.png', kind: 'image' },
+    { name: 'notes.md', kind: 'doc' },
+    { name: 'photo.jpg', kind: 'image' },
+    { name: 'intro.mp4', kind: 'video' },
+  ];
+  const shown = $memo(kinds.length === 0 ? files : files.filter((file) => kinds.includes(file.kind)));
+</script>
+
+<ToggleButtonGroup class="ui-stack" aria-label="Kinds" selectionMode="multiple" orientation="vertical" selectedKeys=$bind(kinds)>
+  <ToggleButton id="doc" class="ui-button">Documents</ToggleButton>
+  <ToggleButton id="image" class="ui-button">Images</ToggleButton>
+  <ToggleButton id="video" class="ui-button">Videos</ToggleButton>
+</ToggleButtonGroup>
+<p>{shown.length} of {files.length}: {shown.map((file) => file.name).join(', ')}.</p>

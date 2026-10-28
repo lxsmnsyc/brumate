@@ -13,6 +13,11 @@ ToggleButtons with one selection, as radios, or several, as a toolbar.
 
 ## Anatomy
 
+```brm anatomy ToggleButtonGroupAnatomy
+`ToggleButtonGroup`: Holds the buttons and the selection. It is a `radiogroup`, or a toolbar with `selectionMode="multiple"`.
+`ToggleButton`: One choice. It names itself with `id`, and shows `data-selected` when it is on.
+```
+
 ```html
 <ToggleButtonGroup>
   <ToggleButton />
@@ -57,8 +62,42 @@ Only one button of the group is in the order of Tab. It is the one that had focu
 
 ## Controlled and uncontrolled
 
-`selectedKeys` holds the state, as the list of the `id` of each button that is on. A plain `selectedKeys=([...])` starts the group's own state, and `selectedKeys=$bind(signal)` writes your signal. `onSelectionChange` gets the new list each time the user changes it.
+`selectedKeys` holds the `id` of each button that is on, as a list. How you pass it picks who keeps it:
+
+```brm demo ToggleButtonGroupStateDemo
+
+```
+
+- `selectedKeys` alone, or nothing, makes the group keep its own selection. `selectedKeys=(['b'])` is where that selection starts. Press another button and the group keeps the pick. A new value from you replaces it.
+- `selectedKeys=$bind(signal)` writes your signal. Change the signal and the group follows.
+- `selectedKeys=$bind(signal, (next) => ...)` asks you first. The group shows what you keep, so a request that you ignore leaves the old list. Press Lock above and press a button in the last group.
+- `onSelectionChange` gets the new list in every shape.
+- The server renders the selection it starts with. A ToggleButtonGroup has no reset handler, so a form reset leaves it as it is. See [State](./state.md).
 
 ## Styling
 
 Style the group with `[data-orientation]` and `[data-disabled]`, and each button with `[data-selected]`. See [Styling](./styling.md).
+
+This stylesheet makes a segmented control: a track, buttons that fill with the accent when on, and a two-band focus ring that shows on the track and on the fill. Press the arrow keys to move focus.
+
+```brm styled ToggleButtonGroupStyled
+
+```
+
+## Use cases
+
+### A view switch
+
+A group with one selection and `disallowEmptySelection` always shows one view. `selectedKeys=$bind(view)` lets the page read the choice.
+
+```brm demo ToggleButtonGroupViewDemo
+
+```
+
+### Filters with several choices
+
+`selectionMode="multiple"` lets several buttons be on. With none on, the list shows everything. `orientation="vertical"` lays the buttons in a column and moves focus with ArrowUp and ArrowDown.
+
+```brm demo ToggleButtonGroupFilterDemo
+
+```
