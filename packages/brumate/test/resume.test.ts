@@ -6164,4 +6164,19 @@ describe('a handler waits only for', () => {
     expect(document.querySelector('.caught')).toBeNull();
     expect(String(errors.mock.calls[0]![0])).toBe('Error: The chunk is gone');
   });
+
+  it('waits only for the update code that it can need: a signal of a block scope is written before the handler returns', async () => {
+    await resumeParts('handlerWaitBlock', { [idOf('HandlerWaitBlock')]: 400 });
+    click(document.querySelector('.b')!);
+    await waitFor(() => expect(log()).toEqual(['dom 1']));
+  });
+
+  it('waits only for the update code that it can need: a rejected load of a write that joins a pass reaches onError', async () => {
+    await resumeParts('handlerWaitJoin', { [idOf('HandlerWaitKid_')]: 'fail' });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(log()).toContain('effect 1'));
+  });
 });

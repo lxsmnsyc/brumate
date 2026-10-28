@@ -416,7 +416,7 @@ function trigger(scope: Scope, slot: number): void {
   // `waiting` is set only while a pass runs.
   if (waiting) {
     // Its code starts to load now, so the pass waits no longer than the first write.
-    waiting.push([scope, slot, updateCode(scope, slot)]);
+    waiting.push([scope, slot, updateCode(scope, slot).catch((error) => fail(scope, error))]);
     return;
   }
   const list: [Scope, number, Promise<unknown>?][] = [[scope, slot]];
@@ -467,13 +467,15 @@ function loadUpdate(scope: Scope, slot?: number): Promise<unknown> {
  * write of a bound prop reaches, and for the scope that its children render in.
  */
 export async function updateReady(scope: Scope | undefined, ref?: string): Promise<unknown> {
-  const root = scope && rootOf(scope);
-  if (ref && root && !(await loadModule(root.m!)).w?.includes(ref.split('#')[1]!)) {
-    return loadUpdate(root);
+  if (!scope) {
+    return;
   }
-  return (
-    scope && Promise.all([loadUpdate(scope), updateReady(scope.p ?? scope.o), updateReady(scope.t)])
-  );
+  const root = rootOf(scope);
+  const own = ref && !(await loadModule(root.m!)).w?.includes(ref.split('#')[1]!);
+  return Promise.all([
+    loadUpdate(scope),
+    own ? loadUpdate(root) : Promise.all([updateReady(scope.p ?? scope.o), updateReady(scope.t)]),
+  ]);
 }
 
 /** The writes of the pass that runs that wait for code, to run as one pass of their own. */

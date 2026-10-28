@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  let show = true;
+</script>
+
+#if (show) {
+  <script>
+    let c = $signal(0);
+    async function bump() {
+      (globalThis as any).__handlerWait ??= [];
+      c += 1;
+      await Promise.resolve();
+      (globalThis as any).__handlerWait.push('dom ' + document.querySelector('.v')!.textContent);
+    }
+  </script>
+  <button class="b" onClick=bump>x</button>
+  <p class="v">{c}</p>
+}

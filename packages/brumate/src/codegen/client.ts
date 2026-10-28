@@ -839,8 +839,7 @@ class ClientGenerator {
   /**
    * True when a handler can write only the slots of its own component, so it waits for the
    * update code of that component and not for the code of the components above it. The others
-   * are listed in `w`. A prop,
-   * a context, an import or a template can reach another component.
+   * are listed in `w`. A prop, a context, an import or a template can reach another component.
    */
   private writesOwn(site: Site, seen = new Set<Site>()): boolean {
     if (seen.has(site)) {
