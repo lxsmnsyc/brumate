@@ -199,7 +199,7 @@
       edited = true;
       onChange?.(next);
     }
-    text = format(next);
+    text = format(value);
   }
 
   // A value that the caller sets shows in the input.

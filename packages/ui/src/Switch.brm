@@ -88,7 +88,10 @@
       return;
     }
     isSelected = input.checked;
-    onChange?.(input.checked);
+    // A setter that refuses leaves the old state, so the input goes back to it.
+    const next = input.checked;
+    input.checked = isSelected;
+    onChange?.(next);
   }
 </script>
 

@@ -123,8 +123,9 @@
       return;
     }
     const list = values.map((item, at) => (at === index ? snapped : item));
-    value = emit(list);
-    onChange?.(value);
+    const written = emit(list);
+    value = written;
+    onChange?.(written);
   }
 
   function setDragging(index: number, next: boolean) {

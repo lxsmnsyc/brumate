@@ -287,7 +287,8 @@ export interface ColorPickerState {
    * Sets the color. The picker writes it to `value` in the format of `value`, only when that is
    * another color, or writes `text` instead when it is given.
    */
-  setValue: (color: Color, text?: string) => void;
+  /** Writes the color, and gives the color that the picker shows after the write. */
+  setValue: (color: Color, text?: string) => Color;
 }
 
 export const ColorPickerContext: Context<ColorPickerState | null> =

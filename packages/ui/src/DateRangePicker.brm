@@ -125,8 +125,8 @@
   let edited = $signal(false);
   const { committed, nativeErrors, invalidated, changed } = formField(startId, () => {
     value = initialValue;
-    startValue = initialValue?.start ?? null;
-    endValue = initialValue?.end ?? null;
+    startValue = value?.start ?? null;
+    endValue = value?.end ?? null;
     edited = false;
   });
   const errors = $memo([
@@ -167,6 +167,11 @@
     const next = rangeOf(from, to);
     if (!same(next, $untrack(value))) {
       $untrack((value = next));
+      // A setter that refuses leaves the old range, and the fields show that one.
+      if (!same($untrack(value), next)) {
+        $untrack((startValue = $untrack(value)?.start ?? null));
+        $untrack((endValue = $untrack(value)?.end ?? null));
+      }
       edited = true;
       changed();
       onChange?.(next);

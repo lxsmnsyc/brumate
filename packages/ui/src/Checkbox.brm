@@ -126,7 +126,10 @@
     } else {
       isSelected = input.checked;
     }
-    onChange?.(input.checked);
+    // A setter that refuses leaves the old state, so the input goes back to it.
+    const next = input.checked;
+    input.checked = selected;
+    onChange?.(next);
   }
 
   // The browser shows no message of its own. The group shows it in its FieldError.
