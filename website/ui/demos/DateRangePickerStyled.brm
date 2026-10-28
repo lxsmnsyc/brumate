@@ -224,6 +224,8 @@
   :global(.date-range-picker-styled-popover .date-range-picker-styled-grid td) {
     padding: 0;
     border: 0;
+    text-align: center;
+    vertical-align: middle;
   }
 
   :global(.date-range-picker-styled-popover .date-range-picker-styled-header .date-range-picker-styled-heading) {

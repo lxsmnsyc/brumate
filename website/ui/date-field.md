@@ -187,7 +187,7 @@ A segment has no `data-hovered` or `data-focus-visible`, so use `:hover` and `da
 
 ### A date in the language of the user
 
-An [I18nProvider](./i18n-provider.md) gives the order of the segments, the text between them, the placeholders and the names that a screen reader hears. Three providers give three locales to one signal. Empty a segment with Backspace to see its placeholder, and note that the value stays `YYYY-MM-DD`:
+An [I18nProvider](./i18n-provider.md) gives the order of the segments, the text between them, the placeholders and the names that a screen reader hears. Three providers give three locales to one signal. Empty a segment with Backspace to see its placeholder: the value becomes empty until every segment is set again, and a set value is always `YYYY-MM-DD`:
 
 ```brm demo DateFieldLocaleDemo
 

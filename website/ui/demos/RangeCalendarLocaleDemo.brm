@@ -7,6 +7,8 @@
   import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
 
   let locale = $signal('fr-FR');
+  // Today follows the zone of the place, so each locale has its own.
+  const zones: Record<string, string> = { 'fr-FR': 'Europe/Paris', 'es-ES': 'Europe/Madrid', 'en-US': 'America/New_York' };
   let stay = $signal<{ start: string; end: string } | null>(null);
 </script>
 
@@ -15,7 +17,7 @@
   <Button class="ui-button" onClick=(() => (locale = 'es-ES'))>Español</Button>
   <Button class="ui-button" onClick=(() => (locale = 'en-US'))>English</Button>
 </div>
-<I18nProvider {locale} timeZone="Europe/Paris">
+<I18nProvider {locale} timeZone=(zones[locale])>
   <RangeCalendar class="ui-calendar" aria-label="Séjour" value=$bind(stay) focusedValue="2026-10-15">
     <header>
       <Button slot="previous" class="ui-button ui-icon-button">‹</Button>

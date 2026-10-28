@@ -7,6 +7,8 @@
   import I18nProvider from '@brumate/ui/I18nProvider.brm';
 
   let locale = $signal('de-DE');
+  // Today follows the zone of the place, so each locale has its own.
+  const zones: Record<string, string> = { 'de-DE': 'Europe/Berlin', 'ja-JP': 'Asia/Tokyo', 'en-US': 'America/New_York' };
   let date = $signal<string | null>(null);
 </script>
 
@@ -15,7 +17,7 @@
   <Button class="ui-button" onClick=(() => (locale = 'ja-JP'))>日本語</Button>
   <Button class="ui-button" onClick=(() => (locale = 'en-US'))>English</Button>
 </div>
-<I18nProvider {locale} timeZone="Europe/Berlin">
+<I18nProvider {locale} timeZone=(zones[locale])>
   <Calendar class="ui-calendar" aria-label="Lieferdatum" value=$bind(date) focusedValue="2026-10-15">
     <header>
       <Button slot="previous" class="ui-button ui-icon-button">‹</Button>

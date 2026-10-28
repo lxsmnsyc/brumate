@@ -28,4 +28,4 @@
     </DateField>
   </I18nProvider>
 </div>
-<p>Value: {date ?? 'empty'}. The three fields share one signal. The order of the segments, the text between them and the placeholders follow the locale of each provider.</p>
+<p>Value: {date ?? 'empty'}. The three fields share one signal. The order of the segments, the text between them and the placeholders follow the locale of each provider. A set value is always YYYY-MM-DD, and an emptied segment makes it empty.</p>

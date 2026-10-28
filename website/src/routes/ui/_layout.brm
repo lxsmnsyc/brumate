@@ -1224,6 +1224,8 @@
     padding: 0;
     border: 0;
     background: transparent;
+    text-align: center;
+    vertical-align: middle;
   }
 
   :global(.ui-calendar table) {
