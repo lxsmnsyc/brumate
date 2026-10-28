@@ -1,0 +1,57 @@
+<script>
+  import { $bind, $props, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import Heading from '../../src/Heading.brm';
+  import Link from '../../src/Link.brm';
+  import Menu from '../../src/Menu.brm';
+  import MenuItem from '../../src/MenuItem.brm';
+  import MenuTrigger from '../../src/MenuTrigger.brm';
+  import Modal from '../../src/Modal.brm';
+  import ModalOverlay from '../../src/ModalOverlay.brm';
+  import Popover from '../../src/Popover.brm';
+  import PreviewTrigger from '../../src/PreviewTrigger.brm';
+  import Tooltip from '../../src/Tooltip.brm';
+  import TooltipTrigger from '../../src/TooltipTrigger.brm';
+
+  const { kind } = $props<{ kind: string }>();
+  let held = $signal(true);
+</script>
+
+<main class="page">
+  <button class="outside" type="button">Outside</button>
+  #if (kind === 'popover') {
+    <DialogTrigger isOpen=$bind(held)>
+      <Button class="trigger">Open</Button>
+      <Popover class="layer"><Dialog class="dialog" aria-label="Settings"><input class="field" aria-label="Name"></Dialog></Popover>
+    </DialogTrigger>
+  } #else if (kind === 'popover-own') {
+    <Popover class="layer" isOpen=$bind(held)><Dialog class="dialog" aria-label="Settings"><input class="field" aria-label="Name"></Dialog></Popover>
+  } #else if (kind === 'modal') {
+    <DialogTrigger isOpen=(true)>
+      <Button class="trigger">Open</Button>
+      <ModalOverlay class="layer"><Modal class="modal"><Dialog class="dialog"><Heading slot="title">Settings</Heading><input class="field" aria-label="Name"></Dialog></Modal></ModalOverlay>
+    </DialogTrigger>
+  } #else if (kind === 'modal-own') {
+    <Modal class="layer" isOpen=$bind(held)><Dialog class="dialog"><Heading slot="title">Settings</Heading><input class="field" aria-label="Name"></Dialog></Modal>
+  } #else if (kind === 'overlay-own') {
+    <ModalOverlay class="layer" isOpen=$bind(held)><Modal class="modal"><Dialog class="dialog"><Heading slot="title">Settings</Heading><input class="field" aria-label="Name"></Dialog></Modal></ModalOverlay>
+  } #else if (kind === 'tooltip') {
+    <TooltipTrigger isOpen=$bind(held)>
+      <Button class="trigger">Save</Button>
+      <Tooltip class="layer">Save the draft</Tooltip>
+    </TooltipTrigger>
+  } #else if (kind === 'menu') {
+    <MenuTrigger isOpen=$bind(held)>
+      <Button class="trigger">Actions</Button>
+      <Popover class="layer"><Menu class="menu"><MenuItem id="a" class="item">Copy</MenuItem></Menu></Popover>
+    </MenuTrigger>
+  } #else if (kind === 'preview') {
+    <PreviewTrigger isOpen=$bind(held)>
+      <Link class="trigger" href="#ada">Ada</Link>
+      <Popover class="layer"><p>Ada writes about engines.</p><Button class="follow">Follow</Button></Popover>
+    </PreviewTrigger>
+  }
+  <p class="state">{String(held)}</p>
+</main>

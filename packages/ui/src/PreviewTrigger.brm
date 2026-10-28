@@ -15,13 +15,13 @@
     onOpenChange?: (open: boolean) => void;
     /** A `Link` or a `Button`, and a `Popover`. */
     children?: unknown;
-    /** Whether the preview shows. Alone it holds its own state, which starts hidden, and `$bind` writes your signal. A shown start value does not show it on load. */
+    /** Whether the preview shows. Alone it holds its own state, which starts hidden, and `$bind` writes your signal. A start value of `true` shows it once the page has loaded. */
     isOpen?: Bindable<boolean>;
   }
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
   import { isFocusVisible } from './interactions.ts';
   import { cancelLongPress, dismissed, followPreview, startLongPress } from './preview.ts';
@@ -135,18 +135,31 @@
     previews.forget(overlayId);
   }, 'idle');
 
+  function follow() {
+    return followPreview(triggerId, overlayId, {
+      keep: () => previews.keep(overlayId),
+      leave: () => close(false),
+      close: () => close(true),
+    });
+  }
+
+  // A start value of `true` follows from load, since an effect never runs then. The first run of
+  // the effect gives that follow back.
+  let loaded = $signal<(() => void) | undefined>();
+  $client(() => {
+    if (isOpen) {
+      loaded = follow();
+    }
+  }, 'load');
+
   // While it is open, the page decides when it closes.
   $effect(() => {
+    $untrack(loaded?.());
+    $untrack((loaded = undefined));
     if (!isOpen) {
       return undefined;
     }
-    return $untrack(
-      followPreview(triggerId, overlayId, {
-        keep: () => previews.keep(overlayId),
-        leave: () => close(false),
-        close: () => close(true),
-      }),
-    );
+    return $untrack(follow());
   });
 
   // The props of a trigger around it come first, and the handlers of both run.

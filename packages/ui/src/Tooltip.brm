@@ -30,7 +30,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $effect, $getContext, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
@@ -141,6 +141,13 @@
       }
     };
   });
+
+  // An effect never runs when the page loads, so a start value of `true` opens it here.
+  $client(() => {
+    if (Boolean(trigger?.isOpen) && !mounted) {
+      change(true);
+    }
+  }, 'load');
 
   function change(next: boolean) {
     run += 1;

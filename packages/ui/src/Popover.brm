@@ -37,6 +37,7 @@
 
 <script generics="T extends AsTarget = 'div'">
   import {
+    $client,
     $effect,
     $getContext,
     $id,
@@ -235,6 +236,13 @@
       }
     };
   });
+
+  // An effect never runs when the page loads, so a start value of `true` opens it here.
+  $client(() => {
+    if (wanted && !mounted) {
+      change(true);
+    }
+  }, 'load');
 
   function change(next: boolean) {
     run += 1;

@@ -8,7 +8,7 @@
     onOpenChange?: (open: boolean) => void;
     /** A `Button` and a `Popover` with a `Menu`. */
     children?: unknown;
-    /** Whether the menu is open. Alone it starts the menu open, and `$bind` writes your signal. */
+    /** Whether the menu is open. Alone it holds its own state, which starts closed, and `$bind` writes your signal. A start value of `true` opens the menu once the page has loaded. */
     isOpen?: Bindable<boolean>;
   }
 </script>
@@ -27,7 +27,7 @@
    * - A press opens the menu. From a key, focus goes to its first item. From a pointer, it goes
    *   to the menu, and the arrow keys move to an item.
    * - ArrowDown on the Button opens the menu at its first item, and ArrowUp at its last.
-   * - `isOpen` alone holds its own state, which starts closed, and `isOpen=$bind(signal)` writes the caller's. An open start value does not open it on load.
+   * - `isOpen` alone holds its own state, which starts closed, and `isOpen=$bind(signal)` writes the caller's. A start value of `true` opens the menu once the page has loaded.
    */
   const { onOpenChange, children } = $props<MenuTriggerProps>();
   let { isOpen = false } = $props<MenuTriggerProps>();
