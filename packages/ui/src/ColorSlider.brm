@@ -47,6 +47,7 @@
   import { ColorPickerContext } from './contexts.ts';
   import { ColorThumbContext } from './color-thumb.ts';
   import { LabelContext } from './contexts.ts';
+  import { onFormReset } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import { clamp, snapToStep } from './numbers.ts';
   import { SliderContext, pointAt, startDrag, thumbId, valueAt } from './slider.ts';
@@ -254,15 +255,12 @@
 
   // A reset of the form gives back the first color, as it does for a field of the browser.
   $client(() => {
-    const owner = (document.getElementById(thumbId({ id }, 0)) as HTMLInputElement | null)?.form;
-    if (!owner) {
-      return undefined;
-    }
-    function reset() {
-      write(fresh(initialValue), initialValue);
-    }
-    owner.addEventListener('reset', reset);
-    return () => owner.removeEventListener('reset', reset);
+    return onFormReset(
+      document.getElementById(thumbId({ id }, 0)) as HTMLInputElement | null,
+      () => {
+        write(fresh(initialValue), initialValue);
+      },
+    );
   }, 'load');
 
   $setContext(LabelContext, { id: labelId });

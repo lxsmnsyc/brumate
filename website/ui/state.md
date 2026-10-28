@@ -39,15 +39,18 @@ There is no `defaultSelected` or `defaultValue`: a `let` prop of brumate already
 
 ## Form reset
 
-A `reset` of the form gives some parts back the value that they started with. Change the name, then press Reset:
+A `reset` of the form gives every form field the value that it started with. Change the name, then press Reset:
 
 ```brm demo StateFormDemo
 
 ```
 
-- These parts reset: `TextField`, `NumberField`, `Select`, `Slider`, `ColorField`, `ColorSlider`, `ColorArea`, `ColorWheel`, `DateField`, `TimeField` and `DateRangePicker`. Each one writes its value back, as an assignment to its prop.
-- These parts do not reset yet: `Checkbox`, `Switch`, `CheckboxGroup`, `RadioGroup`, `ComboBox`, `SearchField` and `TokenField`. A native checkbox unchecks, but the state of the part, its signal and `data-selected`, stays. Keep your own reset button for them, or set the signal yourself. The parts not named here are not checked.
-- The reset is a write, so it follows the shape of the state. With `$bind(signal)`, the signal gets the start value back. With `$bind(signal, request)`, the request gets it like any new value, and a request that refuses it leaves the old value. A part with its own state or its own copy resets with no help.
+- These form fields reset: `TextField`, `SearchField`, `NumberField`, `TokenField`, `Checkbox`, `Switch`, `CheckboxGroup`, `RadioGroup`, `Select`, `ComboBox`, `Slider`, `ColorField`, `ColorSlider`, `ColorArea`, `ColorWheel`, `DateField`, `TimeField` and `DateRangePicker`. Their `data-*` attributes and their hidden input follow.
+- The other parts are not form fields, since a form sends nothing of them, and they do not reset: `ToggleButton`, `ToggleButtonGroup`, `Calendar`, `RangeCalendar`, `Autocomplete`, `TagGroup`, `ListBox`, `Tabs` and the rest. Set their signal yourself on a reset.
+- A reset that another listener prevents changes nothing.
+- The reset is a write, as an edit is, so it follows the shape of the state. With `$bind(signal)`, the signal gets the start value back. With `$bind(signal, request)`, the request gets it like any new value, and a request that refuses it leaves the old value. A part with its own state or its own copy resets with no help.
+- With a request that refuses, `TextField`, `SearchField`, `TokenField`, `Checkbox`, `Switch`, `CheckboxGroup`, `RadioGroup`, `Select`, `ComboBox`, `Slider` and `DateField` show what you keep, and so do their inputs. `NumberField`, `ColorField`, `ColorSlider`, `ColorArea`, `ColorWheel`, `TimeField` and `DateRangePicker` are not in sync yet: the field or its input can show another value than the one you keep. The node `ui-refused-write-sync` fixes them.
+- The start value is the one that the part had when it rendered. A `Checkbox` in a `CheckboxGroup` and a `Radio` reset with their group.
 
 ## The server render
 

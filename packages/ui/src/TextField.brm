@@ -67,7 +67,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, firstErrors, messagesOf } from './fields.ts';
+  import { describedBy, firstErrors, messagesOf, onFormReset } from './fields.ts';
 
   /**
    * A text field. It holds a Label, an Input or a
@@ -190,17 +190,11 @@
     if (behavior === 'native') {
       element.setCustomValidity(customMessage(value));
     }
-    const owner = element.form;
-    if (!owner) {
-      return undefined;
-    }
-    function reset() {
+    return onFormReset(element, () => {
       value = initial;
       committed = false;
       nativeErrors = [];
-    }
-    owner.addEventListener('reset', reset);
-    return () => owner.removeEventListener('reset', reset);
+    });
   }, 'load');
 
   function invalidated(message: string, first: boolean) {

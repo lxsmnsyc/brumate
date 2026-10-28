@@ -1,0 +1,107 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '../../src/Checkbox.brm';
+  import CheckboxGroup from '../../src/CheckboxGroup.brm';
+  import ComboBox from '../../src/ComboBox.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import Popover from '../../src/Popover.brm';
+  import Radio from '../../src/Radio.brm';
+  import RadioGroup from '../../src/RadioGroup.brm';
+  import SearchField from '../../src/SearchField.brm';
+  import Switch from '../../src/Switch.brm';
+  import Token from '../../src/Token.brm';
+  import TokenField from '../../src/TokenField.brm';
+  import TokenInput from '../../src/TokenInput.brm';
+  import type { Key } from '../../src/collection.ts';
+  import type { TokenSegment } from '../../src/token-field.ts';
+
+  // The second form binds each state with a setter, which refuses once `held` is on.
+  let held = $signal(false);
+  let boxed = $signal(true);
+  let switched = $signal(true);
+  let toppings = $signal(['ham']);
+  let size = $signal<string | null>('small');
+  let fruit = $signal<Key | null>('apple');
+  let text = $signal('Apple');
+  let query = $signal('cats');
+  let message = $signal<TokenSegment[]>([{ type: 'text', text: 'hi' }]);
+</script>
+
+<form class="own">
+  <Checkbox class="box" name="box" isSelected>Box</Checkbox>
+  <Switch class="switch" name="switch" isSelected>Switch</Switch>
+  <CheckboxGroup class="group" name="topping" value=(['ham'])>
+    <Label>Toppings</Label>
+    <Checkbox class="ham" value="ham">Ham</Checkbox>
+    <Checkbox class="egg" value="egg">Egg</Checkbox>
+  </CheckboxGroup>
+  <RadioGroup class="radios" name="size" value="small">
+    <Label>Size</Label>
+    <Radio class="small" value="small">Small</Radio>
+    <Radio class="large" value="large">Large</Radio>
+  </RadioGroup>
+  <ComboBox class="fruit" name="fruit" selectedKey="apple" inputValue="Apple">
+    <Label>Fruit</Label>
+    <Input class="fruit-input" />
+    <Popover>
+      <ListBox>
+        <ListBoxItem id="apple">Apple</ListBoxItem>
+        <ListBoxItem id="banana">Banana</ListBoxItem>
+      </ListBox>
+    </Popover>
+  </ComboBox>
+  <SearchField class="search" name="query" value="cats">
+    <Label>Search</Label>
+    <Input class="search-input" />
+  </SearchField>
+  <TokenField class="message" name="message" value=([{ type: 'text', text: 'hi' }])>
+    <Label>Message</Label>
+    <TokenInput class="message-input" />
+  </TokenField>
+  <button class="reset" type="reset">Reset</button>
+</form>
+
+<form class="held">
+  <Checkbox class="box" name="box" isSelected=$bind(boxed, (next) => { if (!held) boxed = next; })>Box</Checkbox>
+  <Switch class="switch" name="switch" isSelected=$bind(switched, (next) => { if (!held) switched = next; })>Switch</Switch>
+  <CheckboxGroup class="group" name="topping" value=$bind(toppings, (next) => { if (!held) toppings = next; })>
+    <Label>Toppings</Label>
+    <Checkbox class="ham" value="ham">Ham</Checkbox>
+    <Checkbox class="egg" value="egg">Egg</Checkbox>
+  </CheckboxGroup>
+  <RadioGroup class="radios" name="size" value=$bind(size, (next) => { if (!held) size = next; })>
+    <Label>Size</Label>
+    <Radio class="small" value="small">Small</Radio>
+    <Radio class="large" value="large">Large</Radio>
+  </RadioGroup>
+  <ComboBox
+    class="fruit"
+    name="fruit"
+    selectedKey=$bind(fruit, (next) => { if (!held) fruit = next; })
+    inputValue=$bind(text, (next) => { if (!held) text = next; })
+  >
+    <Label>Fruit</Label>
+    <Input class="fruit-input" />
+    <Popover>
+      <ListBox>
+        <ListBoxItem id="apple">Apple</ListBoxItem>
+        <ListBoxItem id="banana">Banana</ListBoxItem>
+      </ListBox>
+    </Popover>
+  </ComboBox>
+  <SearchField class="search" name="query" value=$bind(query, (next) => { if (!held) query = next; })>
+    <Label>Search</Label>
+    <Input class="search-input" />
+  </SearchField>
+  <TokenField class="message" name="message" value=$bind(message, (next) => { if (!held) message = next; })>
+    <Label>Message</Label>
+    <TokenInput class="message-input" />
+  </TokenField>
+  <button class="reset" type="reset">Reset</button>
+</form>
+<button class="hold" type="button" onClick=(() => (held = true))>Hold</button>
+<p class="state">{JSON.stringify([boxed, switched, toppings, size, fruit, text, query, message])}</p>
+<p class="held-flag">{String(held)}</p>
