@@ -3,10 +3,12 @@
 
   // The sidebar of a section of the docs, the docs of brumate or the parts of @brumate/ui. It is
   // in a layout, so it stays when a link loads another page, with its scroll position.
-  const { section, sections, label, children } = $props<{
+  const { section, sections, label, bare = false, children } = $props<{
     section: 'docs' | 'ui';
     sections: { title: string; pages: { slug: string; title: string }[] }[];
     label: string;
+    /** A page without the sidebar, such as the landing page of a section. */
+    bare?: boolean;
     children?: unknown;
   }>();
   const route = $route();
@@ -30,11 +32,11 @@
 </script>
 
 
-<div class="docs">
-  <details class="sidebar-toggle" ref=$bind(menu)>
+<div class={ docs: true, bare }>
+  <details class="sidebar-toggle" hidden=bare ref=$bind(menu)>
     <summary>Menu</summary>
   </details>
-  <nav class="sidebar" aria-label=label>
+  <nav class="sidebar" hidden=bare aria-label=label>
     #for (section of sections by section.title) {
       <p class="sidebar-title">{section.title}</p>
       #for (item of section.pages by item.slug) {
@@ -60,6 +62,16 @@
     max-width: 82rem;
     margin: 0 auto;
     padding: 0 1rem;
+  }
+
+  .docs.bare {
+    display: block;
+    max-width: none;
+    padding: 0;
+  }
+
+  .docs.bare > [hidden] {
+    display: none !important;
   }
 
   .sidebar-toggle {

@@ -1,12 +1,16 @@
 <script>
-  import { $props } from 'brumate/signals';
+  import { $memo, $props, $route } from 'brumate/signals';
   import DocsShell from '../../components/DocsShell.brm';
   import { sections } from '../../ui.ts';
 
   const { children } = $props();
+  const route = $route();
+  const base = import.meta.env.BASE_URL;
+  // The landing page at /ui has no sidebar, like the home page.
+  const landing = $memo(route.url.pathname.replace(/\/$/, '') === `${base}ui`);
 </script>
 
-<DocsShell section="ui" {sections} label="Parts">{children}</DocsShell>
+<DocsShell section="ui" {sections} label="Parts" bare=landing>{children}</DocsShell>
 
 <style>
   /*

@@ -385,7 +385,7 @@ export async function run({ browser, url, runner }) {
         await page.evaluate(() => (window.__e2eSamePage = true));
         await page.locator('.header-nav a', { hasText: 'UI' }).click();
         await page.waitForURL(`${url}/ui`, { timeout: 5000 });
-        await page.locator('.ui-demo').first().waitFor({ timeout: 5000 });
+        await page.locator('.hero .install').waitFor({ timeout: 5000 });
         assert(
           await page.evaluate(() => window.__e2eSamePage === true),
           'the link loaded a new page',
@@ -399,8 +399,19 @@ export async function run({ browser, url, runner }) {
           null,
           { timeout: 5000 },
         );
-        const sidebar = await page.locator('.sidebar').textContent();
-        assert(!sidebar.includes('Routing'), 'the sidebar shows the docs of brumate');
+        // The landing page has no sidebar, like the home page, and its parts work.
+        assert(await page.locator('.sidebar').isHidden(), 'the landing page shows a sidebar');
+        await page.locator('.ui-box', { hasText: 'Wi-Fi is off' }).click();
+        await page.locator('.ui-box', { hasText: 'Wi-Fi is on' }).waitFor({ timeout: 5000 });
+        await page.addScriptTag({ path: axe });
+        // The primary button of the site, white on the accent color, is as on the home page.
+        const violations = await page.evaluate(async () => {
+          const result = await window.axe.run(document.querySelector('main'), {
+            rules: { 'color-contrast': { enabled: false } },
+          });
+          return result.violations.map((violation) => violation.id);
+        });
+        assert(violations.length === 0, `axe found on /ui: ${violations.join(', ')}`);
         // The grid of cards is on its own page, which the header links to.
         await page.locator('.header-nav a', { hasText: 'Parts' }).click();
         await page.waitForURL(`${url}/ui/parts`, { timeout: 5000 });
@@ -466,7 +477,7 @@ export async function run({ browser, url, runner }) {
     await flow(
       '/ui: each page of the sidebar loads, with no accessibility violations',
       async () => {
-        await page.goto(`${url}/ui`, { waitUntil: 'load' });
+        await page.goto(`${url}/ui/introduction`, { waitUntil: 'load' });
         const slugs = await page
           .locator('nav.sidebar a[href^="/ui"]')
           .evaluateAll((links) => [...new Set(links.map((link) => link.getAttribute('href')))]);
