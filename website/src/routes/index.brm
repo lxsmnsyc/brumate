@@ -536,7 +536,7 @@
   .xray:has(.xray-toggle input:checked) :global([data-xray='update'])::after {
     content: 'updates';
     background: var(--cool);
-    color: #fff;
+    color: var(--on-cool);
   }
 
   /* The features with code, text on one side and the code on the other. */
@@ -775,9 +775,9 @@
   .type-error {
     margin: 0;
     padding: 0.6rem 0.8rem;
-    border-left: 3px solid #d1242f;
+    border-left: 3px solid var(--danger);
     border-radius: 6px;
-    background: color-mix(in srgb, #d1242f 10%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
     font-family: var(--mono);
     font-size: 0.8rem;
   }

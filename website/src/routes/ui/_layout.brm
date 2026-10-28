@@ -228,7 +228,7 @@
     height: 1.1rem;
     border: 2px solid var(--muted);
     border-radius: 5px;
-    color: #fff;
+    color: var(--on-accent);
     transition: background 0.15s, border-color 0.15s;
   }
 
@@ -252,8 +252,8 @@
 
   :global(.ui-box[data-selected] .ui-mark:not(.round)),
   :global(.ui-box[data-indeterminate] .ui-mark) {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
   }
 
   /* A radio is a ring, with a dot while it is chosen. */
@@ -312,7 +312,11 @@
   }
 
   :global(.ui-box[data-selected] .ui-track) {
-    background: var(--accent);
+    background: var(--accent-fill);
+  }
+
+  :global(.ui-box[data-selected] .ui-track)::after {
+    background: var(--on-accent);
   }
 
   :global(.ui-box[data-selected] .ui-track)::after {
@@ -916,7 +920,7 @@
   }
 
   :global(.ui-navlink[aria-current='page']) {
-    color: var(--accent);
+    color: var(--accent-strong);
     font-weight: 600;
   }
 
@@ -1165,8 +1169,8 @@
   }
 
   :global(.ui-date-input [data-focused]) {
-    background: var(--accent);
-    color: var(--bg);
+    background: var(--accent-fill);
+    color: var(--on-accent);
   }
 
   /* A calendar: the heading between its buttons, and a grid of round days. */
@@ -1214,8 +1218,8 @@
   }
 
   :global(.ui-calendar [data-selected]) {
-    background: var(--accent);
-    color: var(--bg);
+    background: var(--accent-fill);
+    color: var(--on-accent);
   }
 
   /* The days inside a range are squares, so the range reads as one band. */
