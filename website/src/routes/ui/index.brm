@@ -115,7 +115,7 @@
     <ul class="ui-gallery">
       #for (card of gallery by card.title) {
         <li class="ui-card">
-          <div class="ui-demo-stage" inert><{demos[card.demo]} /></div>
+          <div class="ui-demo-stage" inert><div class="ui-fit"><{demos[card.demo]} /></div></div>
           <a class="ui-card-title" href=(`${base}ui/${card.href}`)>{card.title}</a>
           <p>{card.summary}</p>
         </li>
