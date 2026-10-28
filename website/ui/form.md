@@ -58,7 +58,7 @@ A Form keeps no state. Its fields do, each with the shapes of [State](./state.md
 
 A Form sets no data attributes. With `validationBehavior="aria"` it sets `novalidate` on the `<form>`. Give it a `class`. Style its fields with their own attributes. See [Styling](./styling.md).
 
-This stylesheet styles a form of fields and buttons: input hover, keyboard focus, an error of the server on the email, a disabled field, and the Save button at rest, hover, press, focus, pending and disabled. Edit the email so that the server error goes, then press Save to see the pending button. The handler ignores a second send.
+This stylesheet styles a form of fields and buttons: input hover, keyboard focus, an error of the server on the email, a disabled field, and the Save button at rest, hover, press, focus, pending and disabled. Edit the email so that the server error goes, then press Save to see the pending button.
 
 ```brm styled FormStyled
 

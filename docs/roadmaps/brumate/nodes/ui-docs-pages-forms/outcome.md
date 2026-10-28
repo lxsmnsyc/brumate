@@ -29,6 +29,8 @@ Five of the ten Forms pages: Checkbox, Switch, CheckboxGroup, RadioGroup and For
 - A refused write on a Checkbox, a Switch, a CheckboxGroup or a RadioGroup (a `$bind` request that ignores the new value) draws the kept value, but the hidden input of the clicked box or radio keeps the browser's new state until the next reset. A form would post it. Checked on the state demos and on the limit demo. The four pages say so. This is the same family as `ui-refused-write-sync`, for clicks and not for resets. The node `ui-refused-write-sync` (#332) fixes it.
 - A pending submit Button is `type="button"` (see ui-docs-pages-controls). The node `pending-submit` is on main.
 
+- A standalone Checkbox and a Switch do not tie a description or an error to their input: only a CheckboxGroup gives `describedBy`. The consent demo shows its note as plain text. The node `checkbox-description` adds it.
+
 ## Stubs left
 
 - The five pages of Forms: text-field, search-field, token-field, number-field, slider.

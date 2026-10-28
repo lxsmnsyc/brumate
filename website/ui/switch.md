@@ -52,6 +52,8 @@ The label shows the state:
 - A reset of the form gives back the state that the switch started with, as a write: with `$bind(signal, request)`, your request can refuse it.
 - The server renders the state it starts with. See [State](./state.md).
 
+A standalone Switch does not yet tie a description to its input either. The node `checkbox-description` is meant to add it.
+
 ## Styling
 
 Style the switch from the attributes of the label, such as `[data-selected]` and `[data-focus-visible]`. Draw the track and the knob in the children. See [Styling](./styling.md#boxes). A Switch is one element with the content you give it, so this page has no anatomy picture.
