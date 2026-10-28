@@ -15,7 +15,7 @@ import { prop, spreadProps } from './props.ts';
 import { afterInsert, disposeKinds, inPlace, nextId } from './scopes.ts';
 import { hiding, options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
-import { set } from './updates.ts';
+import { send, set } from './updates.ts';
 
 /**
  * Renders a `#portal` body into its target, between markers with its scope
@@ -294,13 +294,26 @@ export function attr(scope: Scope, anchor: number, name: string, value: unknown)
 /** The attributes that the last update of a spread wrote, so the next one removes those it drops. */
 const spreadNames = new WeakMap<Element, Set<string>>();
 
-/** Gives the element of a spread to the signal that a `ref` in its attributes is bound to. */
+/** The binding that gave a setter each element, so an update of a spread does not call it again. */
+const given = new WeakMap<Element, string>();
+
+/**
+ * Gives the element of a spread to the signal that a `ref` in its attributes is bound to, or to
+ * the setter of the binding.
+ */
 function forwardRef(element: Element | null, values: Record<string, unknown>): void {
   const bound = values.ref;
-  const target = HAS_BINDINGS && isBinding(bound) && isSlotReference(bound.target) && bound.target;
-  const owner = target && scopes.get(target.scope);
-  if (owner && element) {
-    set(owner, target.slot, element);
+  if (HAS_BINDINGS && element && isBinding(bound)) {
+    const { target, ref } = bound;
+    if (isSlotReference(target)) {
+      const owner = scopes.get(target.scope);
+      if (owner) {
+        set(owner, target.slot, element);
+      }
+    } else if (given.get(element) !== `${ref.scope}:${ref.slot}`) {
+      given.set(element, `${ref.scope}:${ref.slot}`);
+      send(target, element);
+    }
   }
 }
 

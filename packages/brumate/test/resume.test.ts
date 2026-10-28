@@ -4231,6 +4231,25 @@ describe('refs forwarded through components', () => {
     expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
   });
 
+  describe('a ref bound with a setter', () => {
+    it('a ref bound with a setter calls it with the element of a named ref prop, after resume and in a block', async () => {
+      await resume('setterRefPage', {});
+      // The server has no element to give, so the setter waits for the browser to render one.
+      expect(text('.calls')).toBe('');
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+    });
+
+    it('a ref bound with a setter calls it through rest props spread on an element', async () => {
+      await resume('setterRefRestPage', {});
+      // The server has no element to give, so the setter waits for the browser to render one.
+      expect(text('.calls')).toBe('');
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+      expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
+    });
+  });
+
   // The pattern of the parts that take `as`: the rest props, with `ref`, spread onto a dynamic tag.
   describe('a dynamic tag that spreads the rest props', () => {
     it('a ref left in the rest props reaches a dynamic tag that spreads the rest', async () => {

@@ -171,7 +171,8 @@ export function insertHTML(
     markerObserver?.takeRecords();
   }
   options.inserted?.();
-  for (const fn of afterInsert.splice(0)) {
+  // A callback can add more, such as the call of a setter after the write of a ref.
+  for (let fn = afterInsert.shift(); fn; fn = afterInsert.shift()) {
     fn();
   }
   // HTML from the server, such as `children`, can be older than the values on the client.
