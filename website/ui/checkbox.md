@@ -51,7 +51,7 @@ The label shows the state:
 
 - `isSelected` alone, or nothing, makes the Checkbox keep its own state. `isSelected` with no value starts it on, and a new value from you replaces it.
 - `isSelected=$bind(signal)` writes your signal. Change the signal and the box follows.
-- `isSelected=$bind(signal, (next) => ...)` asks you first. The box shows what you keep, so a request that you ignore leaves the old state. Press Lock above and click the last box. The line under the boxes shows that Asks keeps its value.
+- `isSelected=$bind(signal, (next) => ...)` asks you first. The box shows what you keep, so a request that you ignore leaves the old state. Press Lock above and click the last box. The line under the boxes shows that Asks keeps its value. The hidden input of the box that you refused is not put back yet, so a form would post it until the next reset.
 - `onChange` gets the new state in every shape, each time the user toggles the box.
 - A reset of the form gives back the state that the box started with, as a write: with `$bind(signal, request)`, your request can refuse it. In a [CheckboxGroup](./checkbox-group.md), the group keeps the state and gives it back, and `value` names the box.
 - The server renders the state it starts with. See [State](./state.md).

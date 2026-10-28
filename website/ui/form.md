@@ -48,7 +48,7 @@ A `Form` takes the attributes of a `<form>` too, and they come last.
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `Enter` | In a field, sends the form, as the browser does. A native check of an invalid field stops the send and focuses the first invalid field. |
 
-A pending submit [Button](./button.md) is `type="button"`, so a form with one text field can still send on Enter while it saves. Guard in your submit handler, as the first use case below does.
+A pending submit [Button](./button.md) is `type="button"`. A form with one text field can then send again on Enter while it saves, so guard in your submit handler. Chrome sends no implicit submit from a form with several text fields and no submit button, so there Enter does nothing while the Button is pending.
 
 ## Controlled and uncontrolled
 
@@ -58,7 +58,7 @@ A Form keeps no state. Its fields do, each with the shapes of [State](./state.md
 
 A Form sets no data attributes. With `validationBehavior="aria"` it sets `novalidate` on the `<form>`. Give it a `class`. Style its fields with their own attributes. See [Styling](./styling.md).
 
-This stylesheet styles a form of fields and buttons: input hover, keyboard focus, an error of the server on the email, a disabled field, and the Save button at rest, hover, press, focus, pending and disabled. Press Save, then press Enter in a field while it saves: the handler ignores the second send.
+This stylesheet styles a form of fields and buttons: input hover, keyboard focus, an error of the server on the email, a disabled field, and the Save button at rest, hover, press, focus, pending and disabled. Edit the email so that the server error goes, then press Save to see the pending button. The handler ignores a second send.
 
 ```brm styled FormStyled
 
@@ -68,7 +68,7 @@ This stylesheet styles a form of fields and buttons: input hover, keyboard focus
 
 ### A sign-up form with validation
 
-The browser checks `isRequired`, `type="email"` and `minLength` when the form is sent, and `validate` checks the repeated password. The first invalid field gets focus. The submit handler guards with `if (saving) return`, since a pending Button is not a submit button and Enter in a field sends the form again. A reply with an error is passed back as `validationErrors`, and the field shows it until the user edits the field.
+The browser checks `isRequired`, `type="email"` and `minLength` when the form is sent, and `validate` checks the repeated password. The first invalid field gets focus. The submit handler still starts with `if (saving) return`, as a form with one field needs. This form has three fields, so Chrome does not send it on Enter while it is pending. A reply with an error is passed back as `validationErrors`, and the field shows it until the user edits the field.
 
 ```brm demo FormSignupDemo
 

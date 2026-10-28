@@ -39,7 +39,7 @@ A group holds one or more Checkboxes. The `Label`, the `Text` and the `FieldErro
 
 ```
 
-See the [Checkbox](./checkbox.md#props) page for the props of a box, and the [TextField](./text-field.md#props) page for the Label, Text and FieldError.
+The props of a box are on the [Checkbox](./checkbox.md#props) page. Those of the Label, Text and FieldError are on the [TextField](./text-field.md#props) page.
 
 ## Data attributes
 
@@ -80,7 +80,7 @@ The group adds no keys. Each box takes the keys of a [Checkbox](./checkbox.md#ke
 
 Style the group with the data attributes above, and each box from its own, such as `[data-selected]`. See [Styling](./styling.md).
 
-This stylesheet turns the boxes into chips that fill when checked. It styles rest, hover, press, checked, checked and hovered, checked and pressed, keyboard focus, invalid and disabled, and the description and the error. Clear all the chips and press Order: the group is required, and the error shows once the code of the group has loaded.
+This stylesheet turns the boxes into chips that fill when checked. It styles rest, hover, press, checked, checked and hovered, checked and pressed, keyboard focus, invalid and disabled, and the description and the error. Clear all the chips and press Order. The group is required, and the error shows once its code has loaded.
 
 ```brm styled CheckboxGroupStyled
 
@@ -98,7 +98,7 @@ A group bound to a signal gives the page the list of the kinds. With none checke
 
 ### A limit of choices
 
-The request of `$bind` can refuse a list. This one keeps at most two colors, and says so in the description. The group shows what you keep, so the box that the user just clicked is drawn off again. The hidden input of that box is not put back yet, so check the list on the server too.
+The request of `$bind` can refuse a list. This one keeps at most two colors, and says so in the description. The group shows what you keep, so the box that the user clicked is drawn off again. The hidden input of that box is not put back yet. Check the list on the server too.
 
 ```brm demo CheckboxGroupLimitDemo
 

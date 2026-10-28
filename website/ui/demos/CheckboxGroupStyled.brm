@@ -1,4 +1,6 @@
 <script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
   import Button from '@brumate/ui/Button.brm';
   import Checkbox from '@brumate/ui/Checkbox.brm';
   import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
@@ -8,9 +10,16 @@
   import Text from '@brumate/ui/Text.brm';
 
   const toppings = ['Cheese', 'Olives', 'Basil', 'Anchovies'];
+
+  let sent = $signal('');
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent toppings=${data.getAll('toppings').join(', ')}.`;
+  }
 </script>
 
-<Form class="checkgroup-styled-form">
+<Form class="checkgroup-styled-form" onSubmit=(prevent(submit))>
   <CheckboxGroup class="checkgroup-styled" name="toppings" value=(['cheese']) isRequired>
     <Label class="checkgroup-styled-label">Toppings</Label>
     <div class="checkgroup-styled-chips">
@@ -22,6 +31,7 @@
     <FieldError class="checkgroup-styled-error" />
   </CheckboxGroup>
   <Button type="submit" class="checkgroup-styled-submit">Order</Button>
+  <p role="status" class="checkgroup-styled-status">{sent}</p>
 </Form>
 
 <style>
@@ -133,6 +143,12 @@
   :global(.checkgroup-styled-submit[data-focus-visible]) {
     outline: 2px solid var(--checkgroup-styled-accent);
     outline-offset: 2px;
+  }
+
+  :global(.checkgroup-styled-status) {
+    margin: 0;
+    color: var(--checkgroup-styled-muted);
+    font-size: 0.875rem;
   }
 
   @media (prefers-reduced-motion: reduce) {

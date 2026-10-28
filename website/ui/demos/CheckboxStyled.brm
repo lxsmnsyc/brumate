@@ -15,7 +15,7 @@
   /* The tokens. Change these and the rest follows. */
   :global(.checkbox-styled-list) {
     --checkbox-styled-page: Canvas;
-    --checkbox-styled-border: color-mix(in srgb, CanvasText 45%, Canvas);
+    --checkbox-styled-border: color-mix(in srgb, CanvasText 60%, Canvas);
     --checkbox-styled-accent: light-dark(#2a76b2, #6fb2e6);
     --checkbox-styled-on-accent: light-dark(#fff, #101418);
     --checkbox-styled-danger: light-dark(#c4271d, #f28b82);

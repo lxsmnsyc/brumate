@@ -20,8 +20,8 @@
     return value === password ? null : 'The passwords differ';
   }
 
-  // The browser checked the fields before this runs. A pending button is type=button, so Enter in
-  // a field can still submit: guard here.
+  // The browser checked the fields before this runs. A pending button is type=button. In a form of
+  // one field, Enter would submit again, so guard here.
   function submit(event: SubmitEvent) {
     if (saving) {
       return;

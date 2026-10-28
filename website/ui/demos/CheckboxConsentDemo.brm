@@ -26,11 +26,11 @@
     <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
     Send me the newsletter
   </Checkbox>
-  <Checkbox class="ui-box" isSelected=$bind(accepted) isInvalid=blocked aria-describedby="consent-note">
+  <Checkbox class="ui-box" isSelected=$bind(accepted) isInvalid=blocked>
     <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
     I accept the terms
   </Checkbox>
-  <p id="consent-note" class=(blocked ? 'ui-error' : 'ui-help')>{blocked ? 'Accept the terms to continue.' : 'Required.'}</p>
+  <p class=(blocked ? 'ui-error' : 'ui-help')>{blocked ? 'Accept the terms to continue.' : 'Required.'}</p>
   <Button type="submit" class="ui-button">Create account</Button>
   <p role="status">{sent}</p>
 </Form>

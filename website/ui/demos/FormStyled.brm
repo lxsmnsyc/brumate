@@ -11,7 +11,7 @@
 
   let saving = $signal(false);
 
-  // A pending button is type=button, so Enter in a field still submits. Guard here.
+  // A pending button is type=button. In a form of one field, Enter would submit again: guard here.
   function save() {
     if (saving) {
       return;

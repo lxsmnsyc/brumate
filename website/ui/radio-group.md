@@ -110,7 +110,7 @@ This stylesheet makes each radio a card with a ring, a name and a note. It style
 
 ## Use cases
 
-### A plan and a number of seats
+### A plan and its seats
 
 Two groups bound to signals feed one total. A radio group holds one choice, so each question gets its own group.
 
