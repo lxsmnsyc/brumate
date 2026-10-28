@@ -1,0 +1,67 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+
+  let files = $signal([
+    { id: 1, name: 'Notes.txt' },
+    { id: 2, name: 'Budget.xlsx' },
+    { id: 3, name: 'Photos.zip' },
+  ]);
+  let message = $signal('Open the menu of a file.');
+</script>
+
+<div class="ui-stack">
+  <ul class="menu-row-list">
+    #for (file of files by file.id) {
+      <li class="menu-row">
+        <span>{file.name}</span>
+        <MenuTrigger>
+          <Button class="ui-button" aria-label=(`More actions for ${file.name}`)>More</Button>
+          <Popover class="ui-popover" placement="bottom end">
+            <Menu class="ui-menu" onAction=((key) => {
+              if (key === 'delete') {
+                files = files.filter((item) => item.id !== file.id);
+                message = `Deleted ${file.name}.`;
+              } else if (key === 'duplicate') {
+                files = [...files, { id: Math.max(0, ...files.map((item) => item.id)) + 1, name: `Copy of ${file.name}` }];
+                message = `Duplicated ${file.name}.`;
+              } else {
+                files = [file, ...files.filter((item) => item.id !== file.id)];
+                message = `Moved ${file.name} to the top.`;
+              }
+            })>
+              <MenuItem id="top" class="ui-menu-item">Move to top</MenuItem>
+              <MenuItem id="duplicate" class="ui-menu-item">Duplicate</MenuItem>
+              <Separator />
+              <MenuItem id="delete" class="ui-menu-item">Delete</MenuItem>
+            </Menu>
+          </Popover>
+        </MenuTrigger>
+      </li>
+    }
+  </ul>
+  <p aria-live="polite">{message}</p>
+</div>
+
+<style>
+  :global(.menu-row-list) {
+    display: grid;
+    gap: 0.25rem;
+    width: min(100%, 20rem);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  :global(.menu-row) {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+</style>

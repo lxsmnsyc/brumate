@@ -1,0 +1,55 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+
+  let text = $signal('');
+  let asked = $signal('');
+  let locked = $signal(false);
+  let log = $signal('');
+  const commands = ['New file', 'Open file', 'Save', 'Save as'];
+</script>
+
+<div class="ui-stack">
+  <Autocomplete>
+    <SearchField class="ui-field">
+      <Label>Own state</Label>
+      <Input class="ui-input" />
+    </SearchField>
+    <Menu class="ui-menu" aria-label="Own state">{items()}</Menu>
+  </Autocomplete>
+  <Autocomplete inputValue=('open')>
+    <SearchField class="ui-field" value=('open')>
+      <Label>Starts at "open", then keeps its own copy</Label>
+      <Input class="ui-input" />
+    </SearchField>
+    <Menu class="ui-menu" aria-label="Starts at open">{items()}</Menu>
+  </Autocomplete>
+  <Autocomplete inputValue=$bind(text) onInputChange=((next) => (log = `"${next}"`))>
+    <SearchField class="ui-field">
+      <Label>Writes your signal</Label>
+      <Input class="ui-input" />
+    </SearchField>
+    <Menu class="ui-menu" aria-label="Writes your signal">{items()}</Menu>
+  </Autocomplete>
+  <Autocomplete inputValue=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <SearchField class="ui-field">
+      <Label>Asks you first</Label>
+      <Input class="ui-input" />
+    </SearchField>
+    <Menu class="ui-menu" aria-label="Asks you first">{items()}</Menu>
+  </Autocomplete>
+  <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the fourth</Button>
+  <p>Third: "{text}", last callback {log || 'none'}. Fourth: "{asked}".</p>
+</div>
+
+#template items() {
+  #for (name of commands by name) {
+    <MenuItem id=(name) class="ui-menu-item">{name}</MenuItem>
+  }
+}

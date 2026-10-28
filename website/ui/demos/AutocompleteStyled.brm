@@ -1,0 +1,173 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+
+  let last = $signal('nothing yet');
+  const commands = [
+    { id: 'new', name: 'New file' },
+    { id: 'open', name: 'Open file' },
+    { id: 'save', name: 'Save' },
+    { id: 'rename', name: 'Rename' },
+    { id: 'close', name: 'Close tab' },
+  ];
+</script>
+
+<div class="auto-styled">
+  <Autocomplete>
+    <SearchField class="auto-styled-field">
+      <Label class="auto-styled-label">Commands</Label>
+      <span class="auto-styled-box">
+        <Input class="auto-styled-input" placeholder="Type a command" />
+        <Button class="auto-styled-clear" aria-label="Clear">×</Button>
+      </span>
+    </SearchField>
+    <Menu class="auto-styled-menu" aria-label="Commands" disabledKeys=(['close']) onAction=((key) => (last = String(key)))>
+      #for (command of commands by command.id) {
+        <MenuItem id=(command.id) class="auto-styled-item">{command.name}</MenuItem>
+      }
+    </Menu>
+  </Autocomplete>
+  <p class="auto-styled-status">Last command: {last}.</p>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.auto-styled) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --auto-styled-bg: Canvas;
+    --auto-styled-text: CanvasText;
+    --auto-styled-muted: color-mix(in srgb, CanvasText 68%, Canvas);
+    --auto-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
+    --auto-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --auto-styled-on-accent: light-dark(#fff, #101418);
+    --auto-styled-hover: color-mix(in srgb, var(--auto-styled-accent) 14%, Canvas);
+    --auto-styled-radius: 8px;
+    display: grid;
+    gap: 0.5rem;
+    width: min(100%, 18rem);
+    color: var(--auto-styled-text);
+  }
+
+  :global(.auto-styled-field) {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  :global(.auto-styled-label) {
+    font-weight: 600;
+  }
+
+  /* The box: rest, hover, focus inside, and disabled. */
+  :global(.auto-styled-box) {
+    display: flex;
+    border: 1px solid var(--auto-styled-border);
+    border-radius: var(--auto-styled-radius);
+    background: var(--auto-styled-bg);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.auto-styled-box:hover) {
+    border-color: var(--auto-styled-accent);
+  }
+
+  :global(.auto-styled-box:focus-within) {
+    border-color: var(--auto-styled-accent);
+    box-shadow: 0 0 0 2px var(--auto-styled-bg), 0 0 0 4px var(--auto-styled-accent);
+  }
+
+  :global(.auto-styled-input) {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    background: transparent;
+    color: var(--auto-styled-text);
+    font: inherit;
+    outline: none;
+  }
+
+  :global(.auto-styled-input::placeholder) {
+    color: var(--auto-styled-muted);
+  }
+
+  /* The clear button shows only while the field has text. */
+  :global(.auto-styled-clear) {
+    padding: 0 0.75rem;
+    border: 0;
+    border-radius: 0 var(--auto-styled-radius) var(--auto-styled-radius) 0;
+    background: transparent;
+    color: var(--auto-styled-text);
+    font-size: 1.25rem;
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.auto-styled-field[data-empty] .auto-styled-clear) {
+    visibility: hidden;
+  }
+
+  :global(.auto-styled-clear[data-hovered]) {
+    background: var(--auto-styled-hover);
+  }
+
+  :global(.auto-styled-clear[data-pressed]) {
+    background: color-mix(in srgb, var(--auto-styled-accent) 28%, Canvas);
+  }
+
+  :global(.auto-styled-clear[data-focus-visible]) {
+    box-shadow: inset 0 0 0 2px var(--auto-styled-accent);
+  }
+
+  :global(.auto-styled-menu) {
+    display: grid;
+    padding: 0.25rem;
+    border: 1px solid var(--auto-styled-border);
+    border-radius: var(--auto-styled-radius);
+    background: var(--auto-styled-bg);
+    outline: none;
+  }
+
+  /* The items. Focus stays in the field, so the active item shows as data-focused. */
+  :global(.auto-styled-item) {
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    cursor: default;
+    outline: none;
+  }
+
+  :global(.auto-styled-item[data-hovered]) {
+    background: var(--auto-styled-hover);
+  }
+
+  :global(.auto-styled-item[data-pressed]) {
+    background: color-mix(in srgb, var(--auto-styled-accent) 30%, Canvas);
+  }
+
+  /* Two bands, so the ring shows on the page and on a shaded item. */
+  :global(.auto-styled-item[data-focused]) {
+    box-shadow:
+      inset 0 0 0 2px var(--auto-styled-accent),
+      inset 0 0 0 4px var(--auto-styled-bg);
+  }
+
+  :global(.auto-styled-item[data-disabled]) {
+    color: var(--auto-styled-muted);
+    text-decoration: line-through;
+  }
+
+  :global(.auto-styled-status) {
+    margin: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.auto-styled-box) {
+      transition: none;
+    }
+  }
+</style>

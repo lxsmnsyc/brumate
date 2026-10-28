@@ -1,0 +1,66 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let shown = $signal(false);
+  let asked = $signal(false);
+  let locked = $signal(false);
+  let log = $signal('');
+  let columns = $signal<Key[]>(['name']);
+  const names = ['Name', 'Size', 'Date'];
+</script>
+
+<div class="ui-stack">
+  <div class="ui-row">
+    <MenuTrigger>
+      <Button class="ui-button">Own state</Button>
+      <Popover class="ui-popover" placement="bottom start">
+        <Menu class="ui-menu">
+          #for (name of names by name) {
+            <MenuItem id=(name.toLowerCase()) class="ui-menu-item">{name}</MenuItem>
+          }
+        </Menu>
+      </Popover>
+    </MenuTrigger>
+    <MenuTrigger isOpen=$bind(shown) onOpenChange=((open) => (log = open ? 'opened' : 'closed'))>
+      <Button class="ui-button">Writes your signal</Button>
+      <Popover class="ui-popover" placement="bottom start">
+        <Menu class="ui-menu">
+          #for (name of names by name) {
+            <MenuItem id=(name.toLowerCase()) class="ui-menu-item">{name}</MenuItem>
+          }
+        </Menu>
+      </Popover>
+    </MenuTrigger>
+    <MenuTrigger isOpen=$bind(asked, (next) => { if (!locked) asked = next; })>
+      <Button class="ui-button">Asks you first</Button>
+      <Popover class="ui-popover" placement="bottom start">
+        <Menu class="ui-menu">
+          #for (name of names by name) {
+            <MenuItem id=(name.toLowerCase()) class="ui-menu-item">{name}</MenuItem>
+          }
+        </Menu>
+      </Popover>
+    </MenuTrigger>
+    <MenuTrigger>
+      <Button class="ui-button">Columns</Button>
+      <Popover class="ui-popover" placement="bottom start">
+        <Menu class="ui-menu" selectionMode="multiple" selectedKeys=$bind(columns)>
+          #for (name of names by name) {
+            <MenuItem id=(name.toLowerCase()) class="ui-menu-item">{name}</MenuItem>
+          }
+        </Menu>
+      </Popover>
+    </MenuTrigger>
+  </div>
+  <div class="ui-row">
+    <Button class="ui-button" onPress=(() => (shown = !shown))>{shown ? 'Close' : 'Open'} the second menu</Button>
+    <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the third</Button>
+  </div>
+  <p>Second menu: {shown ? 'open' : 'closed'}, last change {log || 'none'}. Third menu: {asked ? 'open' : 'closed'}. Columns: {columns.join(', ') || 'none'}.</p>
+</div>

@@ -1,0 +1,68 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Header from '@brumate/ui/Header.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuSection from '@brumate/ui/MenuSection.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<!-- The picture draws the menus open in place, since a real Popover renders in a layer at the end of <body>. -->
+<Button class="ui-button" data-mark="1">Edit</Button>
+<div class="menu-anatomy-row">
+  <div class="menu-anatomy-popover" data-mark="2">
+    <Menu class="ui-menu" aria-label="Edit" data-mark="3" data-mark-side="bottom">
+      <MenuSection data-mark="4">
+        <Header class="ui-listbox-header menu-anatomy-self" data-mark="5" data-mark-side="after">Clipboard</Header>
+        <MenuItem id="cut" class="ui-menu-item" data-mark="6" data-mark-side="inside">
+          <span class="menu-anatomy-text">
+            <Text slot="label" class="menu-anatomy-self" data-mark="7" data-mark-side="after">Cut</Text>
+            <Text slot="description" class="ui-help menu-anatomy-self" data-mark="8" data-mark-side="after">Moves the selection</Text>
+          </span>
+        </MenuItem>
+        <MenuItem id="copy" class="ui-menu-item">Copy</MenuItem>
+      </MenuSection>
+      <div class="menu-anatomy-line" data-mark="9" data-mark-side="inside"><Separator /></div>
+      <MenuItem id="share" class="ui-menu-item" aria-haspopup="menu" aria-expanded="true" data-open data-mark="10" data-mark-side="inside">Share</MenuItem>
+    </Menu>
+  </div>
+  <div class="menu-anatomy-popover" data-mark="11">
+    <Menu class="ui-menu" aria-label="Share" data-mark="12" data-mark-side="bottom">
+      <MenuItem id="email" class="ui-menu-item">Email</MenuItem>
+      <MenuItem id="messages" class="ui-menu-item">Messages</MenuItem>
+    </Menu>
+  </div>
+</div>
+
+<style>
+  :global(.menu-anatomy-row) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+
+  :global(.menu-anatomy-popover) {
+    padding: 1.2rem 0.8rem;
+    border: 1px dashed var(--muted);
+    border-radius: var(--radius);
+  }
+
+  :global(.menu-anatomy-popover .ui-menu) {
+    gap: 0.5rem;
+    min-width: 16rem;
+  }
+
+  :global(.menu-anatomy-line) {
+    padding-block: 0.2rem;
+  }
+
+  :global(.menu-anatomy-text) {
+    display: grid;
+  }
+
+  :global(.menu-anatomy-self) {
+    justify-self: start;
+  }
+</style>

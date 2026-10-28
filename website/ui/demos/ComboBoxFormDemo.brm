@@ -1,0 +1,57 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import Button from '@brumate/ui/Button.brm';
+  import ComboBox from '@brumate/ui/ComboBox.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+
+  let sent = $signal<string | null>(null);
+  let refused = $signal(false);
+  const countries = [
+    { code: 'ca', name: 'Canada' },
+    { code: 'fr', name: 'France' },
+    { code: 'jp', name: 'Japan' },
+    { code: 'ke', name: 'Kenya' },
+    { code: 'pe', name: 'Peru' },
+  ];
+
+  function submit(event: SubmitEvent): void {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    const code = String(data.get('country'));
+    if (code === 'jp') {
+      refused = true;
+      sent = null;
+      return;
+    }
+    sent = code;
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(submit))>
+  <ComboBox class="ui-select" name="country" isRequired isInvalid=(refused) onSelectionChange=(() => (refused = false))>
+    <Label>Country</Label>
+    <div class="ui-combobox-box">
+      <Input class="ui-input" placeholder="Type to search" />
+      <Button class="ui-button ui-select-button" />
+    </div>
+    <FieldError class="ui-error">We do not ship to Japan yet.</FieldError>
+    <Popover class="ui-popover ui-select-popover">
+      <ListBox class="ui-listbox">
+        #for (country of countries by country.code) {
+          <ListBoxItem id=(country.code) class="ui-option">{country.name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </ComboBox>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Save</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p>{sent === null ? 'Nothing sent.' : `Sent country=${sent}.`}</p>
+</Form>

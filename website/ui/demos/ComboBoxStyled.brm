@@ -1,0 +1,258 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import Button from '@brumate/ui/Button.brm';
+  import ComboBox from '@brumate/ui/ComboBox.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let missing = $signal(false);
+  let saved = $signal('');
+  const animals = ['Aardvark', 'Cat', 'Dog', 'Kangaroo', 'Koala', 'Panda', 'Penguin', 'Snake'];
+
+  function save(event: SubmitEvent): void {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    const animal = String(data.get('animal'));
+    missing = animal === '';
+    saved = animal;
+  }
+</script>
+
+<Form class="combo-styled-form" onSubmit=(prevent(save))>
+  <ComboBox class="combo-styled" name="animal" isInvalid=(missing) onSelectionChange=(() => (missing = false))>
+    <Label class="combo-styled-label">Favorite animal</Label>
+    <div class="combo-styled-box">
+      <Input class="combo-styled-input" placeholder="Type to search" />
+      <Button class="combo-styled-button" />
+    </div>
+    <Text slot="description" class="combo-styled-help">Type, or press the arrow keys.</Text>
+    <FieldError class="combo-styled-error">Pick an animal from the list.</FieldError>
+    <Popover class="combo-styled-popover">
+      <ListBox class="combo-styled-list">
+        #for (name of animals by name) {
+          <ListBoxItem id=(name.toLowerCase()) class="combo-styled-item" isDisabled=(name === 'Snake')>{name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </ComboBox>
+  <Button type="submit" class="combo-styled-submit">Save</Button>
+  <p class="combo-styled-saved" aria-live="polite">{saved === '' ? '' : `Saved ${saved}.`}</p>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.combo-styled-form),
+  :global(.combo-styled-popover) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --combo-styled-bg: Canvas;
+    --combo-styled-text: CanvasText;
+    --combo-styled-muted: color-mix(in srgb, CanvasText 68%, Canvas);
+    --combo-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
+    --combo-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --combo-styled-on-accent: light-dark(#fff, #101418);
+    --combo-styled-danger: light-dark(#c4271d, #f28b82);
+    --combo-styled-hover: color-mix(in srgb, var(--combo-styled-accent) 14%, Canvas);
+    --combo-styled-radius: 8px;
+  }
+
+  :global(.combo-styled-form) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: start;
+    color: var(--combo-styled-text);
+  }
+
+  :global(.combo-styled) {
+    display: grid;
+    gap: 0.3rem;
+    width: 15rem;
+  }
+
+  :global(.combo-styled-label) {
+    font-weight: 600;
+  }
+
+  /* The box: rest, hover, focus inside, open, invalid and disabled. */
+  :global(.combo-styled-box) {
+    display: flex;
+    border: 1px solid var(--combo-styled-border);
+    border-radius: var(--combo-styled-radius);
+    background: var(--combo-styled-bg);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.combo-styled-box:hover) {
+    border-color: var(--combo-styled-accent);
+  }
+
+  :global(.combo-styled-box:focus-within) {
+    border-color: var(--combo-styled-accent);
+    box-shadow: 0 0 0 2px var(--combo-styled-bg), 0 0 0 4px var(--combo-styled-accent);
+  }
+
+  :global(.combo-styled[data-invalid] .combo-styled-box) {
+    border-color: var(--combo-styled-danger);
+  }
+
+  :global(.combo-styled[data-disabled] .combo-styled-box) {
+    opacity: 0.55;
+  }
+
+  :global(.combo-styled-input) {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    background: transparent;
+    color: var(--combo-styled-text);
+    font: inherit;
+    outline: none;
+  }
+
+  :global(.combo-styled-input::placeholder) {
+    color: var(--combo-styled-muted);
+  }
+
+  :global(.combo-styled-button) {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    border: 0;
+    border-radius: 0 var(--combo-styled-radius) var(--combo-styled-radius) 0;
+    background: transparent;
+    color: var(--combo-styled-text);
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.combo-styled-button)::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    rotate: 45deg;
+    translate: 0 -2px;
+    transition: rotate 0.15s;
+  }
+
+  :global(.combo-styled-button[data-hovered]) {
+    background: var(--combo-styled-hover);
+  }
+
+  :global(.combo-styled-button[data-pressed]) {
+    background: color-mix(in srgb, var(--combo-styled-accent) 28%, Canvas);
+  }
+
+  :global(.combo-styled[data-open] .combo-styled-button)::after {
+    rotate: 225deg;
+    translate: 0 2px;
+  }
+
+  :global(.combo-styled-help) {
+    color: var(--combo-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.combo-styled-error) {
+    color: var(--combo-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  /* The list: as wide as the field, and it fades and rises while it opens and closes. */
+  :global(.combo-styled-popover) {
+    box-sizing: border-box;
+    width: var(--trigger-width);
+    max-height: var(--available-height);
+    overflow: auto;
+    border: 1px solid var(--combo-styled-border);
+    border-radius: var(--combo-styled-radius);
+    background: var(--combo-styled-bg);
+    color: var(--combo-styled-text);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+    transition: opacity 0.15s, translate 0.15s;
+  }
+
+  :global(.combo-styled-popover[data-closed]) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+
+  :global(.combo-styled-list) {
+    display: grid;
+    padding: 0.25rem;
+    outline: none;
+  }
+
+  /* The items. Focus stays in the input, so the active item shows as data-focused. */
+  :global(.combo-styled-item) {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    cursor: default;
+    outline: none;
+  }
+
+  :global(.combo-styled-item[data-hovered]) {
+    background: var(--combo-styled-hover);
+  }
+
+  /* Two bands, so the ring shows on the page and on the accent fill of a selected item. */
+  :global(.combo-styled-item[data-focused]) {
+    box-shadow:
+      inset 0 0 0 2px var(--combo-styled-accent),
+      inset 0 0 0 4px var(--combo-styled-bg);
+  }
+
+  :global(.combo-styled-item[data-selected]) {
+    background: var(--combo-styled-accent);
+    color: var(--combo-styled-on-accent);
+  }
+
+  :global(.combo-styled-item[data-selected])::after {
+    content: '✓';
+  }
+
+  :global(.combo-styled-item[data-disabled]) {
+    color: var(--combo-styled-muted);
+    text-decoration: line-through;
+  }
+
+  :global(.combo-styled-saved) {
+    flex-basis: 100%;
+    margin: 0;
+  }
+
+  :global(.combo-styled-submit) {
+    align-self: end;
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: var(--combo-styled-radius);
+    background: var(--combo-styled-accent);
+    color: var(--combo-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  :global(.combo-styled-submit[data-focus-visible]) {
+    outline: 2px solid var(--combo-styled-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.combo-styled-box),
+    :global(.combo-styled-button)::after,
+    :global(.combo-styled-popover) {
+      transition: none;
+    }
+  }
+</style>

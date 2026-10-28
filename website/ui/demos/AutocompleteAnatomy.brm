@@ -1,0 +1,40 @@
+<script>
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<Autocomplete inputValue="fi">
+  <SearchField class="ui-field auto-anatomy-field" value="fi" data-mark="1">
+    <Label data-mark="2" data-mark-side="after">Commands</Label>
+    <span class="ui-group">
+      <span class="auto-anatomy-input" data-mark="3"><Input class="ui-input" /></span>
+      <Button class="ui-button ui-icon-button" data-mark="4" data-mark-side="bottom"><Icon name="close" /></Button>
+    </span>
+  </SearchField>
+  <Menu class="ui-menu auto-anatomy-menu" aria-label="Commands" data-mark="5" data-mark-side="bottom">
+    <MenuItem id="new" class="ui-menu-item" data-mark="6" data-mark-side="inside">New file</MenuItem>
+    <MenuItem id="open" class="ui-menu-item">Open file</MenuItem>
+  </Menu>
+</Autocomplete>
+
+<style>
+  :global(.auto-anatomy-field) {
+    width: fit-content;
+    margin-block-end: 0.5rem;
+  }
+
+  :global(.auto-anatomy-input) {
+    display: flex;
+    flex: 1;
+  }
+
+  :global(.auto-anatomy-menu) {
+    width: 16rem;
+  }
+</style>

@@ -1,0 +1,55 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  const people = [
+    { name: 'Ada', role: 'Engineer', city: 'London' },
+    { name: 'Grace', role: 'Admiral', city: 'New York' },
+    { name: 'Linus', role: 'Maintainer', city: 'Portland' },
+  ];
+  let shown = $signal<Key[]>(['role']);
+  let sort = $signal<Key[]>(['name']);
+  const rows = $memo(
+    [...people].sort((a, b) => a[String(sort[0]) as 'name' | 'city'].localeCompare(b[String(sort[0]) as 'name' | 'city'])),
+  );
+</script>
+
+<div class="ui-stack">
+  <div class="ui-row">
+    <MenuTrigger>
+      <Button class="ui-button">Show</Button>
+      <Popover class="ui-popover" placement="bottom start">
+        <Menu class="ui-menu" aria-label="Show" selectionMode="multiple" selectedKeys=$bind(shown)>
+          <MenuItem id="role" class="ui-menu-item">Role</MenuItem>
+          <MenuItem id="city" class="ui-menu-item">City</MenuItem>
+        </Menu>
+      </Popover>
+    </MenuTrigger>
+    <MenuTrigger>
+      <Button class="ui-button">Sort by</Button>
+      <Popover class="ui-popover" placement="bottom start">
+        <Menu class="ui-menu" aria-label="Sort by" selectionMode="single" disallowEmptySelection selectedKeys=$bind(sort)>
+          <MenuItem id="name" class="ui-menu-item">Name</MenuItem>
+          <MenuItem id="city" class="ui-menu-item">City</MenuItem>
+        </Menu>
+      </Popover>
+    </MenuTrigger>
+  </div>
+  <ul class="menu-view-list" aria-live="polite">
+    #for (person of rows by person.name) {
+      <li>{person.name}{shown.includes('role') ? `, ${person.role}` : ''}{shown.includes('city') ? `, ${person.city}` : ''}</li>
+    }
+  </ul>
+</div>
+
+<style>
+  :global(.menu-view-list) {
+    margin: 0;
+    padding-inline-start: 1.25rem;
+  }
+</style>

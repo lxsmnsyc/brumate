@@ -1,0 +1,231 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Header from '@brumate/ui/Header.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuSection from '@brumate/ui/MenuSection.brm';
+  import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let last = $signal('nothing yet');
+  let view = $signal<Key[]>(['list']);
+</script>
+
+<div class="menu-styled-demo">
+  <MenuTrigger>
+    <Button class="menu-styled-button">Edit</Button>
+    <Popover class="menu-styled-popover" placement="bottom start">
+      <Menu class="menu-styled" onAction=((key) => (last = String(key)))>
+        <MenuSection>
+          <Header class="menu-styled-header">Clipboard</Header>
+          <MenuItem id="cut" class="menu-styled-item" textValue="Cut">
+            <span class="menu-styled-text">
+              <span>Cut</span>
+              <span class="menu-styled-hint">Moves the selection</span>
+            </span>
+            <kbd class="menu-styled-key">Ctrl X</kbd>
+          </MenuItem>
+          <MenuItem id="copy" class="menu-styled-item">Copy</MenuItem>
+          <MenuItem id="paste" class="menu-styled-item" isDisabled>Paste</MenuItem>
+        </MenuSection>
+        <Separator class="menu-styled-separator" />
+        <SubmenuTrigger>
+          <MenuItem id="share" class="menu-styled-item">Share</MenuItem>
+          <Popover class="menu-styled-popover" offset=(-4)>
+            <Menu class="menu-styled" onAction=((key) => (last = String(key)))>
+              <MenuItem id="email" class="menu-styled-item">Email</MenuItem>
+              <MenuItem id="messages" class="menu-styled-item">Messages</MenuItem>
+            </Menu>
+          </Popover>
+        </SubmenuTrigger>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <MenuTrigger>
+    <Button class="menu-styled-button">View</Button>
+    <Popover class="menu-styled-popover" placement="bottom start">
+      <Menu class="menu-styled" selectionMode="single" disallowEmptySelection selectedKeys=$bind(view)>
+        <MenuItem id="list" class="menu-styled-item">List</MenuItem>
+        <MenuItem id="grid" class="menu-styled-item">Grid</MenuItem>
+        <MenuItem id="table" class="menu-styled-item">Table</MenuItem>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <p class="menu-styled-status">Last action: {last}. View: {view[0]}.</p>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.menu-styled-demo),
+  :global(.menu-styled-popover) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --menu-styled-bg: Canvas;
+    --menu-styled-text: CanvasText;
+    --menu-styled-muted: color-mix(in srgb, CanvasText 68%, Canvas);
+    --menu-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
+    --menu-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --menu-styled-on-accent: light-dark(#fff, #101418);
+    --menu-styled-hover: color-mix(in srgb, var(--menu-styled-accent) 14%, Canvas);
+    --menu-styled-radius: 8px;
+  }
+
+  :global(.menu-styled-demo) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    color: var(--menu-styled-text);
+  }
+
+  :global(.menu-styled-status) {
+    flex-basis: 100%;
+    margin: 0;
+  }
+
+  /* The trigger: rest, hover, press, focus and open. */
+  :global(.menu-styled-button) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--menu-styled-border);
+    border-radius: var(--menu-styled-radius);
+    background: var(--menu-styled-bg);
+    color: var(--menu-styled-text);
+    font: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+
+  :global(.menu-styled-button[data-hovered]) {
+    background: var(--menu-styled-hover);
+  }
+
+  :global(.menu-styled-button[data-pressed]) {
+    background: color-mix(in srgb, var(--menu-styled-accent) 28%, Canvas);
+  }
+
+  :global(.menu-styled-button[aria-expanded='true']) {
+    border-color: var(--menu-styled-accent);
+    border-width: 2px;
+    padding: calc(0.45rem - 1px) calc(0.9rem - 1px);
+  }
+
+  :global(.menu-styled-button[data-focus-visible]) {
+    box-shadow:
+      0 0 0 2px var(--menu-styled-bg),
+      0 0 0 4px var(--menu-styled-accent);
+  }
+
+  /* The popover fades and rises while it opens and closes. */
+  :global(.menu-styled-popover) {
+    z-index: 20;
+    box-sizing: border-box;
+    border: 1px solid var(--menu-styled-border);
+    border-radius: var(--menu-styled-radius);
+    background: var(--menu-styled-bg);
+    color: var(--menu-styled-text);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+    transition: opacity 0.15s, translate 0.15s;
+  }
+
+  :global(.menu-styled-popover[data-closed]) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+
+  :global(.menu-styled) {
+    display: grid;
+    min-width: 12rem;
+    padding: 0.25rem;
+    outline: none;
+  }
+
+  :global(.menu-styled-header) {
+    padding: 0.4rem 0.6rem 0.2rem;
+    color: var(--menu-styled-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  :global(.menu-styled-separator) {
+    width: 100%;
+    margin: 0.25rem 0;
+    border: 0;
+    border-top: 1px solid var(--menu-styled-border);
+  }
+
+  /* The items: hover and focus (data-focused), keyboard focus, press, checked, open submenu and disabled. */
+  :global(.menu-styled-item) {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    cursor: default;
+    outline: none;
+  }
+
+  :global(.menu-styled-item[data-focused]),
+  :global(.menu-styled-item[data-open]) {
+    background: var(--menu-styled-hover);
+  }
+
+  :global(.menu-styled-item[data-pressed]) {
+    background: color-mix(in srgb, var(--menu-styled-accent) 30%, Canvas);
+  }
+
+  /* Two bands, so the ring shows on the page and on a shaded item. */
+  :global(.menu-styled-item[data-focus-visible]) {
+    box-shadow:
+      inset 0 0 0 2px var(--menu-styled-accent),
+      inset 0 0 0 4px var(--menu-styled-bg);
+  }
+
+  :global(.menu-styled-item[data-disabled]) {
+    color: var(--menu-styled-muted);
+    text-decoration: line-through;
+  }
+
+  :global(.menu-styled-item[role='menuitemradio'])::before {
+    width: 1rem;
+    content: '';
+  }
+
+  :global(.menu-styled-item[aria-checked='true'])::before {
+    color: var(--menu-styled-accent);
+    font-weight: 700;
+    content: '✓';
+  }
+
+  :global(.menu-styled-item[aria-haspopup])::after {
+    margin-inline-start: auto;
+    content: '›';
+  }
+
+  :global(.menu-styled-text) {
+    display: grid;
+  }
+
+  :global(.menu-styled-hint),
+  :global(.menu-styled-key) {
+    color: var(--menu-styled-muted);
+    font-size: 0.8125rem;
+  }
+
+  :global(.menu-styled-key) {
+    margin-inline-start: auto;
+    font-family: inherit;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.menu-styled-button),
+    :global(.menu-styled-popover) {
+      transition: none;
+    }
+  }
+</style>

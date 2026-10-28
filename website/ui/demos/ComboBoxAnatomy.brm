@@ -1,0 +1,40 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import ComboBox from '@brumate/ui/ComboBox.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<!-- The picture draws the list open in place, since a real Popover renders in a layer at the end of <body>. -->
+<ComboBox class="ui-select" selectedKey="cat" inputValue="Cat" isInvalid>
+  <Label data-mark="1" data-mark-side="after">Favorite animal</Label>
+  <div class="ui-combobox-box">
+    <span class="combo-anatomy-input" data-mark="2">
+      <Input class="ui-input" />
+    </span>
+    <Button class="ui-button ui-select-button" data-mark="3" data-mark-side="bottom" />
+  </div>
+  <Text slot="description" class="ui-help" data-mark="4" data-mark-side="after">Type, then pick one.</Text>
+  <FieldError class="ui-error combo-anatomy-self" data-mark="5" data-mark-side="after">Pick an animal from the list.</FieldError>
+</ComboBox>
+<div class="anatomy-popover" data-mark="6">
+  <ListBox class="ui-listbox" aria-label="Animals" selectedKeys=(['cat']) data-mark="7" data-mark-side="bottom">
+    <ListBoxItem id="cat" class="ui-option" data-mark="8" data-mark-side="inside">Cat</ListBoxItem>
+    <ListBoxItem id="dog" class="ui-option">Dog</ListBoxItem>
+  </ListBox>
+</div>
+
+<style>
+  :global(.combo-anatomy-input) {
+    display: flex;
+    flex: 1;
+  }
+
+  :global(.combo-anatomy-self) {
+    justify-self: start;
+  }
+</style>
