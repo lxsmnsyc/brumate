@@ -105,6 +105,7 @@ export * from "./offscreen.brm?brumate-client&part=update";
 export const id = "Offscreen_1oupne3";
 export const props = {  };
 export const g = { 1: { 0: [[1, "b13"], [1, "b29"], [7, "b32"]], 1: [[2, "e15"], [3, "u22"], [2, "u24"], [2, "b25"], [4, "u26"], [5, "u27"], [2, "u28"], [6, "u30"], [8, "e33"]], 2: [[2, "b21"]], 4: [[2, "u23"]], 3: [[1, "b31"]] }, 2: { 0: [[2, "u18"], [2, "u20"]] } };
+export const w = ["h7","h8","h9","h10","h11","h12","h17","h19"];
 
 # Client part: h7
 import * as $$b from 'brumate/client';

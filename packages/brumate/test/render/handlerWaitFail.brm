@@ -1,0 +1,19 @@
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+  import HandlerWaitKid from './HandlerWaitKid.brm';
+
+  let n = $signal(0);
+
+  $effect(() => {
+    ((globalThis as any).__handlerWait ??= []).push(`effect ${n}`);
+  });
+</script>
+
+<button class="inc" onClick=(() => (n += 1))>Inc</button>
+#try {
+  <button class="inner" onClick=(() => (n = 0))>Reset</button>
+  <HandlerWaitKid value=n />
+} #catch (error, reset) {
+  <p class="caught">{String(error)}</p>
+  <button class="again" onClick=reset>Again</button>
+}

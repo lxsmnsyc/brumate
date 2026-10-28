@@ -44,6 +44,7 @@ export * from "./deferred.brm?brumate-client&part=update";
 export const id = "Deferred_1mbnfwf";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"], [3, "u7"]] } };
+export const w = ["h1","h6"];
 
 # Client part: h1
 import * as $$b from 'brumate/client';

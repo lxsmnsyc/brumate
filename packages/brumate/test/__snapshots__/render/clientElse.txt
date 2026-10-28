@@ -25,6 +25,7 @@ export * from "./clientElse.brm?brumate-client&part=update";
 export const id = "ClientElse_1w4g5uu";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"], [2, "u3"], [3, "u5"]] } };
+export const w = ["h1","h4"];
 
 # Client part: h1
 import * as $$b from 'brumate/client';

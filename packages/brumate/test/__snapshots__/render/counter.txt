@@ -21,6 +21,7 @@ export * from "./counter.brm?brumate-client&part=update";
 export const id = "Counter_m86gta";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "u5"]], 1: [[1, "u6"]] } };
+export const w = ["h4"];
 
 # Client part: h4
 import * as $$b from 'brumate/client';

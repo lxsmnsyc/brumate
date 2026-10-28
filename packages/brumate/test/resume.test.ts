@@ -6077,3 +6077,79 @@ describe('batching', () => {
     expect(text('.count')).toBe('2');
   });
 });
+
+describe('a handler waits only for', () => {
+  type Waits = Record<string, number | 'fail'>;
+
+  /** The id of the component of a fixture, to name its module. */
+  const idOf = (prefix: string): string => [...modules.keys()].find((id) => id.startsWith(prefix))!;
+
+  /**
+   * Resumes a page whose modules load their parts one by one. `update` holds the milliseconds that
+   * the update code of a component takes to load, by component ID prefix, or `fail` to reject it.
+   */
+  async function resumeParts(name: string, update: Waits): Promise<void> {
+    const server = await import(file(`${name}.brm.ts`));
+    const { html, state } = await renderParts(server.default, {}, {});
+    show(html + state);
+    loadedParts.length = 0;
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({
+      load: async (id) => {
+        const loaded = await import(modules.get(id)!);
+        const wait = Object.entries(update).find(([prefix]) => id.startsWith(prefix))?.[1];
+        return {
+          ...loaded,
+          load: async (part: string) => {
+            if (part === 'update' && wait === 'fail') {
+              throw new Error('The chunk is gone');
+            }
+            if (part === 'update' && typeof wait === 'number') {
+              await new Promise((done) => setTimeout(done, wait));
+            }
+            return loaded;
+          },
+        };
+      },
+    });
+  }
+
+  const log = (): string[] => (globalThis as { __handlerWait?: string[] }).__handlerWait ?? [];
+
+  afterEach(() => {
+    delete (globalThis as { __handlerWait?: string[] }).__handlerWait;
+  });
+
+  it('waits only for the update code that it can need: a handler that writes nothing runs', async () => {
+    await resumeParts('handlerWaitIdle', { [idOf('HandlerWaitIdle')]: 600 });
+    click(document.querySelector('.idle')!);
+    await vi.waitFor(() => expect(log()).toEqual(['idle']), { timeout: 300 });
+    expect(text('.total')).toBe('0');
+  });
+
+  it('waits only for the update code that it can need: a handler of its own slot runs', async () => {
+    await resumeParts('handlerWaitIdle', { [idOf('HandlerWaitIdle')]: 600 });
+    click(document.querySelector('.local')!);
+    await vi.waitFor(() => expect(text('.own')).toBe('1'), { timeout: 300 });
+    expect(log()).toEqual(['local']);
+  });
+
+  it('waits only for the update code that it can need: a handler that writes a slot of the parent waits', async () => {
+    await resumeParts('handlerWaitIdle', { [idOf('HandlerWaitIdle')]: 300 });
+    click(document.querySelector('.add')!);
+    await new Promise((done) => setTimeout(done, 120));
+    expect(log()).toEqual([]);
+    await waitFor(() => expect(text('.total')).toBe('1'));
+    expect(log()).toEqual(['add']);
+  });
+
+  it('waits only for the update code that it can need: a rejected load reaches the #try and the effects run', async () => {
+    await resumeParts('handlerWaitFail', { [idOf('HandlerWaitKid')]: 'fail' });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: The chunk is gone'));
+    await waitFor(() => expect(log()).toContain('effect 1'));
+  });
+});

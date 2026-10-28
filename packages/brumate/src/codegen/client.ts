@@ -80,6 +80,19 @@ export function partOf(name: string): string {
 // Sites whose code does not run while a body renders.
 // Sites that run only in the browser, where a component is its render function and not a stub.
 const BROWSER_ONLY_SITES = new Set(['server-function', 'event', 'effect', 'client']);
+/** Declarations that a handler reads or writes that can reach other components. */
+const OUTER = new Set([
+  'import',
+  'module',
+  'prop',
+  'props-rest',
+  'context',
+  'template',
+  'template-param',
+  'action',
+  'error',
+  'reset',
+]);
 const DEFERRED_SITES = new Set(['function', 'server-function', 'event', 'effect', 'client']);
 
 /**
@@ -113,6 +126,8 @@ class ClientGenerator {
   private readonly live = new Map<Site, GraphNode>();
   /** The export that updates each live node. */
   private readonly updates = new Map<GraphNode, string>();
+  /** The handlers that write only the slots of their own component. */
+  private readonly own: string[] = [];
   /** Bodies that the client renders, by scope. */
   private readonly renders = new Map<Scope, { body: Body; block: Block }>();
 
@@ -226,6 +241,7 @@ class ClientGenerator {
       `export const id = ${JSON.stringify(this.plan.id)};`,
       `export const props = ${this.propsMap()};`,
       `export const g = ${this.table()};`,
+      ...(this.own.length > 0 ? [`export const w = ${JSON.stringify(this.own)};`] : []),
       ...(refresh ? [`export const refresh = ${refresh};`] : []),
       ...(tries ? [`export const t = ${tries};`] : []),
     ];
@@ -804,6 +820,9 @@ class ClientGenerator {
         code = `function ${code}`;
       }
       this.part = symbol;
+      if (symbol.startsWith('h') && this.writesOwn(site)) {
+        this.own.push(symbol);
+      }
       if (symbol.startsWith('t')) {
         this.emitTemplateArgs(site, symbol);
       }
@@ -815,6 +834,34 @@ class ClientGenerator {
         this.emit(this.handlerExport(site, symbol, code, base));
       }
     }
+  }
+
+  /**
+   * True when a handler can write only the slots of its own component, so it waits for the
+   * update code of that component and not for the code of the components above it. A prop,
+   * a context, an import or a template can reach another component.
+   */
+  private writesOwn(site: Site, seen = new Set<Site>()): boolean {
+    if (seen.has(site)) {
+      return true;
+    }
+    seen.add(site);
+    for (let scope: Scope | undefined = site.scope; scope; scope = scope.parent) {
+      if (scope.kind === 'template') {
+        return false;
+      }
+    }
+    for (const { declaration } of [...site.reads, ...site.writes]) {
+      if (OUTER.has(declaration.kind)) {
+        return false;
+      }
+    }
+    for (const callee of site.calls) {
+      if (!callee.site || !this.writesOwn(callee.site, seen)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

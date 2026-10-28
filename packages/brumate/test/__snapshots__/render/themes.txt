@@ -31,6 +31,7 @@ export * from "./themes.brm?brumate-client&part=update";
 export const id = "Themes_945372";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"]], 1: [[1, "b5"]] } };
+export const w = ["h3","h4"];
 
 # Client part: h3
 import * as $$b from 'brumate/client';

@@ -27,6 +27,7 @@ export * from "./parent.brm?brumate-client&part=update";
 export const id = "Parent_4bs4t8";
 export const props = {  };
 export const g = { 1: { 0: [[1, "u2"]] } };
+export const w = ["h3","h6"];
 
 # Client part: h3
 import * as $$b from 'brumate/client';

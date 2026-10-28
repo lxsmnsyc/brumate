@@ -63,6 +63,7 @@ export * from "./memos.brm?brumate-client&part=update";
 export const id = "Memos_1khoa0p";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "m4"], [1, "m7"], [1, "u16"]], 2: [[1, "m3"], [1, "m14"], [1, "u17"]], 3: [[1, "m6"], [1, "m8"], [1, "u18"]], 5: [[1, "m6"]], 7: [[1, "m8"], [1, "u22"]], 10: [[1, "m13"], [1, "u26"]], 1: [[1, "m14"]], 4: [[1, "u19"]], 6: [[1, "u21"]], 8: [[1, "u23"]], 9: [[1, "u25"]], 13: [[1, "u27"]], 11: [[1, "u28"]], 12: [[1, "u29"]], 14: [[2, "u36"]] } };
+export const w = ["h15","h30"];
 
 # Client part: h15
 import * as $$b from 'brumate/client';

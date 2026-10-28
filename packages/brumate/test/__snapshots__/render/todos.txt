@@ -64,6 +64,7 @@ export * from "./todos.brm?brumate-client&part=update";
 export const id = "Todos_t3g9lr";
 export const props = {  };
 export const g = { 1: { 0: [[1, "m2"], [1, "b8"]], 1: [[1, "u6"]], 2: [[1, "u15"]] }, 2: { 0: [[2, "u11"], [2, "u13"], [2, "u14"]] } };
+export const w = ["h5","h7","h12"];
 
 # Client part: h5
 import * as $$b from 'brumate/client';
