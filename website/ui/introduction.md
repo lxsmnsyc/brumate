@@ -1,6 +1,6 @@
 # Introduction
 
-Accessible, unstyled components for brumate. They resume like the rest of a brumate page: the server renders them, and the browser keeps their state. See [All parts](./parts.md) for a card of each one.
+Accessible, unstyled components for brumate. They resume like the rest of a brumate page: the server renders them, and the browser keeps their state. See [the cards of the parts](./index.md#parts) for a preview of each one.
 
 ## What the parts give you
 

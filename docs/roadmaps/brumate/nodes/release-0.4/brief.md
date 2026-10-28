@@ -59,6 +59,9 @@ depends_on:
   - on: setter-ref-forward
     kind: hard
     why: a ref with a setter never gets its element, wrong behavior users can hit
+  - on: ui-form-reset
+    kind: hard
+    why: a form reset must give every ui form part its first value in the first ui release
   - on: handler-code-wait
     kind: hard
     why: a handler waits on unrelated update code, and a failed load leaves effects stuck
