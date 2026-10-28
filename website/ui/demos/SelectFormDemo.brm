@@ -1,0 +1,41 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Select from '@brumate/ui/Select.brm';
+  import SelectValue from '@brumate/ui/SelectValue.brm';
+
+  let sent = $signal<string | null>(null);
+  const plans = ['Free', 'Team', 'Business'];
+
+  function submit(event: SubmitEvent): void {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = String(data.get('plan'));
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(submit))>
+  <Select class="ui-select" name="plan" isRequired>
+    <Label>Plan</Label>
+    <Button class="ui-button ui-select-button"><SelectValue class="ui-select-value" /></Button>
+    <FieldError class="ui-error" />
+    <Popover class="ui-popover ui-select-popover">
+      <ListBox class="ui-listbox">
+        #for (plan of plans by plan) {
+          <ListBoxItem id=(plan.toLowerCase()) class="ui-option">{plan}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </Select>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Subscribe</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p>{sent === null ? 'Nothing sent.' : `Sent plan=${sent}.`}</p>
+</Form>

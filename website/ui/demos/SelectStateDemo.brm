@@ -1,0 +1,69 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Select from '@brumate/ui/Select.brm';
+  import SelectValue from '@brumate/ui/SelectValue.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let mine = $signal<Key | null>('dog');
+  let locked = $signal(false);
+  let log = $signal('');
+  const animals = ['Cat', 'Dog', 'Panda'];
+</script>
+
+<div class="ui-stack">
+  <Select class="ui-select">
+    <Label>Own state</Label>
+    <Button class="ui-button ui-select-button"><SelectValue class="ui-select-value" /></Button>
+    <Popover class="ui-popover ui-select-popover">
+      <ListBox class="ui-listbox">
+        #for (name of animals by name) {
+          <ListBoxItem id=(name.toLowerCase()) class="ui-option">{name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </Select>
+
+  <Select class="ui-select" selectedKey="cat">
+    <Label>Starts at Cat, then keeps its own copy</Label>
+    <Button class="ui-button ui-select-button"><SelectValue class="ui-select-value" /></Button>
+    <Popover class="ui-popover ui-select-popover">
+      <ListBox class="ui-listbox">
+        #for (name of animals by name) {
+          <ListBoxItem id=(name.toLowerCase()) class="ui-option">{name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </Select>
+
+  <Select class="ui-select" selectedKey=$bind(mine) onSelectionChange=((key) => (log = `changed to ${key}`))>
+    <Label>Writes your signal</Label>
+    <Button class="ui-button ui-select-button"><SelectValue class="ui-select-value" /></Button>
+    <Popover class="ui-popover ui-select-popover">
+      <ListBox class="ui-listbox">
+        #for (name of animals by name) {
+          <ListBoxItem id=(name.toLowerCase()) class="ui-option">{name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </Select>
+
+  <Select class="ui-select" selectedKey=$bind(mine, (next) => { if (!locked) mine = next; })>
+    <Label>Asks you first</Label>
+    <Button class="ui-button ui-select-button"><SelectValue class="ui-select-value" /></Button>
+    <Popover class="ui-popover ui-select-popover">
+      <ListBox class="ui-listbox">
+        #for (name of animals by name) {
+          <ListBoxItem id=(name.toLowerCase()) class="ui-option">{name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </Select>
+
+  <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <p>Signal: {mine ?? 'none'}. Last callback: {log || 'none'}.</p>
+</div>

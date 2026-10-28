@@ -1,0 +1,18 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import SetterRefBox from './SetterRefBox.brm';
+
+  let shown = $signal(false);
+  let root = $signal<HTMLElement>();
+  let calls = $signal('');
+
+  function take(element: HTMLElement | undefined) {
+    calls = `${calls}${element?.isConnected ? 'in' : 'out'};`;
+  }
+</script>
+
+<button class="toggle" onClick=(() => (shown = !shown))>Toggle</button>
+#if (shown) {
+  <SetterRefBox ref=$bind(root, take) />
+}
+<p class="calls">{calls}</p>

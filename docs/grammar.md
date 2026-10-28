@@ -66,6 +66,8 @@ EventName       = "on" Upper { IdentChar } ;
 Modifier        = "prevent" | "stop" | "passive" | "once" | "capture" ;
 
 RefAttribute    = "ref=$bind(" Ident ")" ;
+(* A setter, ref=$bind(name, fn), is not an attribute of an element. A component prop takes it,
+   named or in the rest props, and the element that the component forwards it to calls fn. *)
 
 NamedAttribute  = AttributeName [ "=" Value ] ;
 AttributeName   = NameStart { NameChar } [ ":" NameStart { NameChar } ] ;

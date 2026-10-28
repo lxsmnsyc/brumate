@@ -101,12 +101,29 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
     } else {
       writeSlot(scope, slot, value);
     }
+  } else {
+    send(bound, value);
+  }
+  return value;
+}
+
+/**
+ * Calls the setter of a binding. An element reference arrives only while a render writes its ref,
+ * so the element goes once the render has inserted it.
+ */
+export function send(bound: unknown, value: unknown): void {
+  if (value instanceof ElementReference) {
+    afterInsert.push(() => {
+      const element = findElement(value.scope, value.anchor);
+      if (element) {
+        send(bound, element);
+      }
+    });
   } else if (bound instanceof FunctionReference) {
     void call(bound.ref, scopes.get(bound.scope), [...(bound.args ?? []), value]);
   } else if (typeof bound === 'function') {
     void bound(value);
   }
-  return value;
 }
 
 /** Writes a slot, and updates what reads it. */

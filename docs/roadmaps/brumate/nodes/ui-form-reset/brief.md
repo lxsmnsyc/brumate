@@ -1,7 +1,7 @@
 ---
 id: ui-form-reset
 title: Every form part of @brumate/ui resets with its form
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

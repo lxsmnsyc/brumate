@@ -1,0 +1,8 @@
+<script>
+  import { $props, type Bindable } from 'brumate/signals';
+
+  // Forwards its button to the binding of the caller.
+  let { ref, label = 'Button' } = $props<{ ref?: Bindable<HTMLElement>; label?: string }>();
+</script>
+
+<button class="inner" ref=$bind(ref)>{label}</button>

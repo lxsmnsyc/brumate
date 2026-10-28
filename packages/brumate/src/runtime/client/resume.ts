@@ -1,21 +1,30 @@
 // Reads the state of the page and starts the core: the state records, the scopes they hold, and
 // what leaving a page or some routes drops.
 
-import { HAS_LATE_MARKUP } from '../features.ts';
+import { HAS_BINDINGS, HAS_LATE_MARKUP } from '../features.ts';
 import {
   CHILDREN,
+  ElementReference,
   ITEM,
   ITEM_SLOT,
   MODULE,
   OWNER,
   PREFIX,
   SOURCE,
+  isSlotReference,
   parseId,
   stateValues,
   useSerialEntry,
 } from '../shared.ts';
 import type { PackedState, PageState, ScopeId, ScopeState } from '../shared.ts';
-import { indexMarkers, observeMarkers, rendered, stopObserving, unindexed } from './blocks.ts';
+import {
+  findElement,
+  indexMarkers,
+  observeMarkers,
+  rendered,
+  stopObserving,
+  unindexed,
+} from './blocks.ts';
 import { loadComponent, pageComponents } from './code.ts';
 import { leaveGuesses, settled } from './guesses.ts';
 import { callable, handle, isBox, resetHandler } from './handlers.ts';
@@ -45,7 +54,7 @@ import {
 } from './state.ts';
 import type { CoreOptions, Scope } from './state.ts';
 import { watchTitles } from './titles.ts';
-import { pendingEffects, resetWrites, set, writes } from './updates.ts';
+import { pendingEffects, resetWrites, send, set, writes } from './updates.ts';
 
 /**
  * A state record: its script, and its code, which seroval wrote. The code
@@ -223,6 +232,19 @@ function addScopes(state: PageState, root: string): Scope[] {
             set(scope, i, result);
           }
         });
+      }
+    }
+  }
+  if (HAS_BINDINGS) {
+    // A prop that the server bound with a setter, and that the component wrote an element into.
+    for (const scope of added) {
+      for (const [slot, bound] of Object.entries(scope.b ?? {})) {
+        const value = scope.s[+slot];
+        const element =
+          value instanceof ElementReference ? findElement(value.scope, value.anchor) : null;
+        if (element && !isSlotReference(bound)) {
+          send(bound, element);
+        }
       }
     }
   }
