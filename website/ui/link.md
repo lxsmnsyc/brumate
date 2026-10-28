@@ -30,10 +30,10 @@ A link that presses as a button does, and that the browser follows.
 
 ## Keyboard
 
-| Key     | Action                                                |
-| ------- | ----------------------------------------------------- |
-| `Tab`   | Moves focus to the link. A disabled link is skipped.  |
-| `Enter` | Presses the link, and the browser follows its `href`. |
+| Key     | Action                                                                                |
+| ------- | ------------------------------------------------------------------------------------- |
+| `Tab`   | Moves focus to the link. A disabled link is skipped.                                  |
+| `Enter` | Presses the link, and the browser follows its `href`. Space does not activate a link. |
 
 ## Controlled and uncontrolled
 

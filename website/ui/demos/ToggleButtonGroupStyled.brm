@@ -58,6 +58,15 @@
     color: var(--segment-styled-on-accent);
   }
 
+  /* An on button gets darker in a light theme and lighter in a dark one, so the text keeps its contrast. */
+  :global(.segment-styled-button[data-selected][data-hovered]) {
+    background: color-mix(in srgb, var(--segment-styled-accent), CanvasText 15%);
+  }
+
+  :global(.segment-styled-button[data-selected][data-pressed]) {
+    background: color-mix(in srgb, var(--segment-styled-accent), CanvasText 28%);
+  }
+
   /* Two bands, so the ring shows on the track and on the accent fill. */
   :global(.segment-styled-button[data-focus-visible]) {
     outline: none;

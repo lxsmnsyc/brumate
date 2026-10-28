@@ -6,12 +6,6 @@ An area that takes drops of text and files, and pastes from keyboard users.
 
 ```
 
-```html
-<DropZone onDrop=dropped>
-  <Text slot="label">Drop files here</Text>
-</DropZone>
-```
-
 - `onDrop` gets the items of a drop. A text item has `types` and `getText(type)`. A file item has `name`, `type` and `getFile()`.
 - `onDropEnter` and `onDropExit` run as a drag that it takes comes over it and leaves.
 - `getDropOperation(types, allowed)` gets the types of a drag and the operations its source allows, and returns one of them, or `'cancel'` to refuse it. Files show as their types, such as `image/png`. Without it, the first allowed operation is used. A drag shows `data-drop-target` only for an allowed operation.

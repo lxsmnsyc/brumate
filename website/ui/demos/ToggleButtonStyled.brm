@@ -54,6 +54,15 @@
     color: var(--toggle-styled-on-accent);
   }
 
+  /* An on button gets darker in a light theme and lighter in a dark one, so the text keeps its contrast. */
+  :global(.toggle-styled[data-selected][data-hovered]) {
+    background: color-mix(in srgb, var(--toggle-styled-accent), CanvasText 15%);
+  }
+
+  :global(.toggle-styled[data-selected][data-pressed]) {
+    background: color-mix(in srgb, var(--toggle-styled-accent), CanvasText 28%);
+  }
+
   :global(.toggle-styled[data-selected])::before {
     content: '✓ ';
   }
