@@ -1,0 +1,44 @@
+<script>
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+
+  const palette = [
+    { name: 'Brand red', color: '#e2445a' },
+    { name: 'Ocean', color: 'hsl(210, 50%, 40%)' },
+    { name: 'Moss', color: '#2ea043' },
+    { name: 'Glass', color: 'rgba(37, 99, 235, 0.4)' },
+  ];
+</script>
+
+<table class="color-palette">
+  <caption>Palette</caption>
+  <thead>
+    <tr><th scope="col">Swatch</th><th scope="col">Name</th><th scope="col">Value</th></tr>
+  </thead>
+  <tbody>
+    #for (item of palette by item.name) {
+      <tr>
+        <td><ColorSwatch class="ui-swatch" color=item.color colorName=item.name /></td>
+        <td>{item.name}</td>
+        <td><code>{item.color}</code></td>
+      </tr>
+    }
+  </tbody>
+</table>
+
+<style>
+  :global(.color-palette) {
+    border-collapse: collapse;
+    text-align: start;
+  }
+
+  :global(.color-palette caption) {
+    padding-bottom: 0.5rem;
+    font-weight: 600;
+    text-align: start;
+  }
+
+  :global(.color-palette th),
+  :global(.color-palette td) {
+    padding: 0.35rem 1rem 0.35rem 0;
+  }
+</style>

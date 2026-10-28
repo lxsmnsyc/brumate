@@ -29,6 +29,14 @@ A slider for one channel of a color.
 
 ## Anatomy
 
+```brm anatomy ColorSliderAnatomy
+`ColorSlider`: The group that holds the slider. The Label names it. It gives the track its gradient as `--track-background`.
+`Label`: Names the slider.
+`SliderOutput`: Shows the channel, such as `210°`.
+`SliderTrack`: The strip that a press or a drag moves along.
+`ColorThumb`: The handle. It holds a range input for the keys and screen readers.
+```
+
 ```html
 <ColorSlider>
   <Label />
@@ -92,11 +100,48 @@ The keys act on the thumb. A key with Ctrl, Meta or Alt moves nothing.
 
 ## Controlled and uncontrolled
 
-`value` holds a color of CSS. A plain `value` starts the slider's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the color as text each time an edit makes another color, and `onChangeEnd` gets it once a drag or a key ends. Inside a [ColorPicker](./color-picker.md), a slider without a `value` reads and writes the color of the picker. A reset of the form gives back the first color. See [State](./state.md).
+`value` holds a color of CSS. How you pass it picks who keeps it. Each slider below edits the hue, and Reset the form gives each one back the color it started with:
+
+```brm demo ColorSliderStateDemo
+
+```
+
+- `value` alone, or nothing, makes the slider keep its own color. `value="hsl(30, 80%, 50%)"` is where that color starts. Move the thumb and the slider keeps the new color. A new value from you replaces it.
+- `value=$bind(signal)` writes your signal. Change the signal and the slider follows.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and move the last slider.
+- `onChange` gets the color as text in every shape, each time an edit makes another color. `onChangeEnd` gets it once a drag or a key ends.
+- A reset of the form gives back the first color, as a write: with `$bind(signal, request)`, your request can refuse it. The server renders the color it starts with.
+- With a request that refuses, a ColorSlider on main today can show the refused value: the part draws the new color before it asks, and a refusal leaves it drawn. The node `ui-refused-write-sync` (#332) makes it show the kept value. Press Lock above and use the last one to see which you get.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the track with `background: var(--track-background)`, and the thumb with the data attributes above. The thumb has `--color`. The track is `position: relative` and the thumb is `position: absolute`, so give both a size. See [Styling](./styling.md).
+
+This stylesheet styles the track with the gradient of the part, the value, and every state of the thumb: rest, dragging, keyboard focus and disabled. A thumb has no hover state. Drag the thumb, or tab to it and press the arrows.
+
+```brm styled ColorSliderStyled
+
+```
+
+## Use cases
+
+### Red, green and blue
+
+`colorSpace="rgb"` reads the color in rgb, so each slider adjusts one of its channels. Three sliders on one `$bind` signal share a color, and the swatch and the text follow every one.
+
+```brm demo ColorSliderRgbDemo
+
+```
+
+### A slider in a form
+
+`name` sends the value of the channel with the form, as the hue here, also before the code of the page loads. The range input of the thumb carries it. Reset gives back the color the slider started with.
+
+```brm demo ColorSliderFormDemo
+
+```
 
 ## Channel
 

@@ -638,6 +638,55 @@ export async function run({ browser, url, runner }) {
       },
     );
     await flow(
+      '/ui: the pages of the color parts have a styled example, and an anatomy picture where they have pieces',
+      async () => {
+        const pieces = new Set([
+          'color-slider',
+          'color-area',
+          'color-wheel',
+          'color-field',
+          'color-swatch-picker',
+        ]);
+        const slugs = [
+          'color-picker',
+          'color-swatch',
+          'color-slider',
+          'color-area',
+          'color-wheel',
+          'color-field',
+          'color-swatch-picker',
+        ];
+        for (const slug of slugs) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            assert((await page.locator('.styled pre').count()) === 1, `/ui/${slug} shows no CSS`);
+            const marks = await page.locator('.anatomy [data-mark]').count();
+            const items = await page.locator('.anatomy-list li').count();
+            assert(
+              pieces.has(slug) ? marks > 0 && marks === items : marks === 0,
+              `/ui/${slug}: ${marks} callouts for ${items} listed pieces`,
+            );
+            await page.addScriptTag({ path: axe });
+            // The props table scrolls and fails scrollable-region-focusable on main (node
+            // ui-scroll-focus). Delete the exclude when that node lands.
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run({
+                include: ['article'],
+                exclude: ['.props-table'],
+              });
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow(
       '/ui/styling: the styled examples follow the theme toggle, with no contrast violations',
       async () => {
         // The toggle of the site, not the system setting, picks the theme. Each system setting

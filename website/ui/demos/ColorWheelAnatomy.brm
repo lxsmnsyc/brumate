@@ -1,0 +1,20 @@
+<script>
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import ColorWheel from '@brumate/ui/ColorWheel.brm';
+  import ColorWheelTrack from '@brumate/ui/ColorWheelTrack.brm';
+</script>
+
+<div class="color-wheel-anatomy">
+  <ColorWheel class="ui-color-wheel" value="hsl(210, 80%, 50%)" outerRadius=(90) innerRadius=(66) data-mark="1">
+    <!-- The track is clipped to the ring, so a wrapper carries its badge. -->
+    <div style="position: absolute; inset: 0" data-mark="2" data-mark-side="inside"><ColorWheelTrack /></div>
+    <!-- A thumb is placed with position: absolute, so the picture keeps it. -->
+    <ColorThumb class="ui-color-thumb" style="position: absolute" data-mark="3" />
+  </ColorWheel>
+</div>
+
+<style>
+  :global(.color-wheel-anatomy) {
+    width: 180px;
+  }
+</style>

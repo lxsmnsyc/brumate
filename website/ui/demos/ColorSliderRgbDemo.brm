@@ -1,0 +1,29 @@
+<script>
+  import type { ColorChannel } from '@brumate/ui/color.ts';
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorSlider from '@brumate/ui/ColorSlider.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let color = $signal('#2563eb');
+  const channels: ColorChannel[] = ['red', 'green', 'blue'];
+</script>
+
+<div class="ui-stack">
+  #for (channel of channels by channel) {
+    <ColorSlider class="ui-color-slider" channel=channel colorSpace="rgb" value=$bind(color)>
+      <Label>{channel}</Label>
+      <SliderOutput />
+      <SliderTrack class="ui-color-track">
+        <ColorThumb class="ui-color-thumb" />
+      </SliderTrack>
+    </ColorSlider>
+  }
+  <div class="ui-row">
+    <ColorSwatch class="ui-swatch" color=color />
+    <p>{color}</p>
+  </div>
+</div>

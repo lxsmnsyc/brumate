@@ -1,0 +1,33 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ColorSlider from '@brumate/ui/ColorSlider.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let sent = $signal('Nothing sent.');
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent hue=${data.get('hue')}.`;
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(submit))>
+  <ColorSlider class="ui-color-slider" channel="hue" name="hue" value="hsl(210, 80%, 50%)">
+    <Label>Hue of the theme</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-color-track">
+      <ColorThumb class="ui-color-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Save</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p role="status">{sent}</p>
+</Form>

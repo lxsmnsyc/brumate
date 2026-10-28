@@ -1,0 +1,45 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorField from '@brumate/ui/ColorField.brm';
+  import ColorPicker from '@brumate/ui/ColorPicker.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  let mine = $signal('#2563eb');
+  let asked = $signal('#2563eb');
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<div class="ui-stack">
+  <ColorPicker>
+    <div class="ui-row ui-color-row">
+      <ColorField class="ui-field"><Label>Own state</Label><Input class="ui-input" /></ColorField>
+      <ColorSwatch class="ui-swatch" />
+    </div>
+  </ColorPicker>
+  <ColorPicker value="#f59e0b">
+    <div class="ui-row ui-color-row">
+      <ColorField class="ui-field"><Label>Starts at orange, then keeps its own copy</Label><Input class="ui-input" /></ColorField>
+      <ColorSwatch class="ui-swatch" />
+    </div>
+  </ColorPicker>
+  <ColorPicker value=$bind(mine) onChange=((next) => (log = `changed to ${next}`))>
+    <div class="ui-row ui-color-row">
+      <ColorField class="ui-field"><Label>Writes your signal</Label><Input class="ui-input" /></ColorField>
+      <ColorSwatch class="ui-swatch" />
+    </div>
+  </ColorPicker>
+  <ColorPicker value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <div class="ui-row ui-color-row">
+      <ColorField class="ui-field"><Label>Asks you first</Label><Input class="ui-input" /></ColorField>
+      <ColorSwatch class="ui-swatch" />
+    </div>
+  </ColorPicker>
+  <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <p>Writes: {mine}. Asks: {asked}. Last callback: {log || 'none'}.</p>
+</div>

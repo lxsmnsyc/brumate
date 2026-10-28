@@ -44,11 +44,47 @@ Every part inside is optional.
 
 ## Controlled and uncontrolled
 
-`value` holds a color of CSS. A plain `value` starts the picker's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the color as text each time an edit from any part makes another color. See [State](./state.md).
+`value` holds a color of CSS. How you pass it picks who keeps it. Each picker below holds a ColorField and a swatch:
+
+```brm demo ColorPickerStateDemo
+
+```
+
+- `value` alone, or nothing, makes the picker keep its own color. `value="#f59e0b"` is where it starts. Type a color and the picker keeps it. A new value from you replaces it.
+- `value=$bind(signal)` writes your signal. Change the signal and every part inside follows.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and type in the last field.
+- `onChange` gets the color as text in every shape, each time an edit from any part makes another color.
+- A ColorPicker is not a form field and has no reset of its own. A ColorField, ColorArea, ColorSlider or ColorWheel inside it with no `value` writes the picker on a reset of its form, with the color the picker had when the form rendered. The server renders the color it starts with.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 A ColorPicker has no element, so it has no data attributes and no classes. Style the parts inside it. See [Styling](./styling.md).
+
+This stylesheet styles a picker of an area, a hue slider, a hex field, a swatch and presets. Every part follows the color of the picker. It names the states of each part: thumbs in rest, dragging and keyboard focus, the input in rest, hover and focus, and the presets in rest, hover, press, selected and keyboard focus.
+
+```brm styled ColorPickerStyled
+
+```
+
+## Use cases
+
+### A color in a form
+
+The ColorField inside the picker has a `name`, so the form sends the hex. The presets change the color, and typing in the field changes the selected preset.
+
+```brm demo ColorPickerFormDemo
+
+```
+
+### A part that keeps its own color
+
+A part with a `value` of its own does not read or write the picker. The second slider below starts at red and moves alone, and `onChange` of the picker runs for the others only.
+
+```brm demo ColorPickerIndependentDemo
+
+```
 
 ## Format
 
