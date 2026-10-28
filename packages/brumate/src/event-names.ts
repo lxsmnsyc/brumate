@@ -2,6 +2,7 @@
 // in camel case only (`onKeyDown`), so the parser reports the lower-case form (`onKeydown`).
 // ElementEventNames in elements.d.ts has the same names, and a test keeps them equal.
 export const CAMEL_EVENTS: readonly string[] = [
+  'AfterPrint',
   'AnimationCancel',
   'AnimationEnd',
   'AnimationIteration',
@@ -9,7 +10,9 @@ export const CAMEL_EVENTS: readonly string[] = [
   'AuxClick',
   'BeforeInput',
   'BeforeMatch',
+  'BeforePrint',
   'BeforeToggle',
+  'BeforeUnload',
   'CanPlay',
   'CanPlayThrough',
   'CompositionEnd',
@@ -20,6 +23,9 @@ export const CAMEL_EVENTS: readonly string[] = [
   'ContextRestored',
   'CueChange',
   'DblClick',
+  'DeviceMotion',
+  'DeviceOrientation',
+  'DeviceOrientationAbsolute',
   'DragEnd',
   'DragEnter',
   'DragLeave',
@@ -31,14 +37,19 @@ export const CAMEL_EVENTS: readonly string[] = [
   'FormData',
   'FullscreenChange',
   'FullscreenError',
+  'GamepadConnected',
+  'GamepadDisconnected',
   'GotPointerCapture',
+  'HashChange',
   'KeyDown',
   'KeyPress',
   'KeyUp',
+  'LanguageChange',
+  'LoadStart',
   'LoadedData',
   'LoadedMetadata',
-  'LoadStart',
   'LostPointerCapture',
+  'MessageError',
   'MouseDown',
   'MouseEnter',
   'MouseLeave',
@@ -46,20 +57,30 @@ export const CAMEL_EVENTS: readonly string[] = [
   'MouseOut',
   'MouseOver',
   'MouseUp',
+  'OrientationChange',
+  'PageHide',
+  'PageReveal',
+  'PageShow',
+  'PageSwap',
   'PointerCancel',
   'PointerDown',
   'PointerEnter',
   'PointerLeave',
+  'PointerLockChange',
+  'PointerLockError',
   'PointerMove',
   'PointerOut',
   'PointerOver',
   'PointerRawUpdate',
   'PointerUp',
+  'PopState',
   'RateChange',
+  'ReadyStateChange',
+  'RejectionHandled',
   'ScrollEnd',
   'SecurityPolicyViolation',
-  'SelectionChange',
   'SelectStart',
+  'SelectionChange',
   'SlotChange',
   'TimeUpdate',
   'TouchCancel',
@@ -70,10 +91,15 @@ export const CAMEL_EVENTS: readonly string[] = [
   'TransitionEnd',
   'TransitionRun',
   'TransitionStart',
+  'UnhandledRejection',
+  'VisibilityChange',
   'VolumeChange',
 ];
 
-const BY_LOWER = new Map(CAMEL_EVENTS.map((name) => [`on${name.toLowerCase()}`, `on${name}`]));
+const BY_LOWER = new Map<string, string>();
+for (const name of CAMEL_EVENTS) {
+  BY_LOWER.set(`on${name.toLowerCase()}`, `on${name}`);
+}
 
 /** The camel-case name for a handler written in another case, such as `onKeyDown` for `onKeydown`. */
 export function camelEventName(attribute: string): string | undefined {

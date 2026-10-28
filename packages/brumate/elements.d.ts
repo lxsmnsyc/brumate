@@ -154,6 +154,7 @@ type Handler<Ev, E> = EventHandler<E, Ev>;
  * 'ItemAction' }`. An event with no entry here has the name of one word, `onItemaction`.
  */
 export interface ElementEventNames {
+  afterprint: 'AfterPrint';
   animationcancel: 'AnimationCancel';
   animationend: 'AnimationEnd';
   animationiteration: 'AnimationIteration';
@@ -161,7 +162,9 @@ export interface ElementEventNames {
   auxclick: 'AuxClick';
   beforeinput: 'BeforeInput';
   beforematch: 'BeforeMatch';
+  beforeprint: 'BeforePrint';
   beforetoggle: 'BeforeToggle';
+  beforeunload: 'BeforeUnload';
   canplay: 'CanPlay';
   canplaythrough: 'CanPlayThrough';
   compositionend: 'CompositionEnd';
@@ -172,6 +175,9 @@ export interface ElementEventNames {
   contextrestored: 'ContextRestored';
   cuechange: 'CueChange';
   dblclick: 'DblClick';
+  devicemotion: 'DeviceMotion';
+  deviceorientation: 'DeviceOrientation';
+  deviceorientationabsolute: 'DeviceOrientationAbsolute';
   dragend: 'DragEnd';
   dragenter: 'DragEnter';
   dragleave: 'DragLeave';
@@ -183,14 +189,19 @@ export interface ElementEventNames {
   formdata: 'FormData';
   fullscreenchange: 'FullscreenChange';
   fullscreenerror: 'FullscreenError';
+  gamepadconnected: 'GamepadConnected';
+  gamepaddisconnected: 'GamepadDisconnected';
   gotpointercapture: 'GotPointerCapture';
+  hashchange: 'HashChange';
   keydown: 'KeyDown';
   keypress: 'KeyPress';
   keyup: 'KeyUp';
+  languagechange: 'LanguageChange';
+  loadstart: 'LoadStart';
   loadeddata: 'LoadedData';
   loadedmetadata: 'LoadedMetadata';
-  loadstart: 'LoadStart';
   lostpointercapture: 'LostPointerCapture';
+  messageerror: 'MessageError';
   mousedown: 'MouseDown';
   mouseenter: 'MouseEnter';
   mouseleave: 'MouseLeave';
@@ -198,20 +209,30 @@ export interface ElementEventNames {
   mouseout: 'MouseOut';
   mouseover: 'MouseOver';
   mouseup: 'MouseUp';
+  orientationchange: 'OrientationChange';
+  pagehide: 'PageHide';
+  pagereveal: 'PageReveal';
+  pageshow: 'PageShow';
+  pageswap: 'PageSwap';
   pointercancel: 'PointerCancel';
   pointerdown: 'PointerDown';
   pointerenter: 'PointerEnter';
   pointerleave: 'PointerLeave';
+  pointerlockchange: 'PointerLockChange';
+  pointerlockerror: 'PointerLockError';
   pointermove: 'PointerMove';
   pointerout: 'PointerOut';
   pointerover: 'PointerOver';
   pointerrawupdate: 'PointerRawUpdate';
   pointerup: 'PointerUp';
+  popstate: 'PopState';
   ratechange: 'RateChange';
+  readystatechange: 'ReadyStateChange';
+  rejectionhandled: 'RejectionHandled';
   scrollend: 'ScrollEnd';
   securitypolicyviolation: 'SecurityPolicyViolation';
-  selectionchange: 'SelectionChange';
   selectstart: 'SelectStart';
+  selectionchange: 'SelectionChange';
   slotchange: 'SlotChange';
   timeupdate: 'TimeUpdate';
   touchcancel: 'TouchCancel';
@@ -222,6 +243,8 @@ export interface ElementEventNames {
   transitionend: 'TransitionEnd';
   transitionrun: 'TransitionRun';
   transitionstart: 'TransitionStart';
+  unhandledrejection: 'UnhandledRejection';
+  visibilitychange: 'VisibilityChange';
   volumechange: 'VolumeChange';
 }
 

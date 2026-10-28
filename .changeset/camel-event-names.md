@@ -7,4 +7,4 @@ A handler of an event with more than one word is written in camel case only. `on
 
 Breaking: the `attrs` object of `createForm` has `onFocusOut` in place of `onFocusout`. A form that spreads `attrs` needs no change. Code that reads `attrs.onFocusout` must read `attrs.onFocusOut`.
 
-An app that merges its own event into `ElementEvents` gives the camel name in `ElementEventNames`: `interface ElementEventNames { itemaction: 'ItemAction' }` makes `onItemAction` its attribute. `@brumate/ui` does this for `itemaction` and `toastchange`.
+An app that merges its own event of several words into `ElementEvents` must also add an entry to `ElementEventNames` to get a camel attribute: `interface ElementEventNames { itemaction: 'ItemAction' }` makes `onItemAction` its attribute. Without the entry, the attribute stays `onItemaction`. `@brumate/ui` does this for `itemaction` and `toastchange`.

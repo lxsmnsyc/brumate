@@ -54,6 +54,14 @@ describe('syntax errors', () => {
       '"onFocusout" is not an event name. Write "onFocusOut" (Test.brm:1:8)',
     ],
     [
+      '<window onHashchange=go />',
+      '"onHashchange" is not an event name. Write "onHashChange" (Test.brm:1:9)',
+    ],
+    [
+      '<document onVisibilitychange=go />',
+      '"onVisibilitychange" is not an event name. Write "onVisibilityChange" (Test.brm:1:11)',
+    ],
+    [
       '<window onPointerdown=go />',
       '"onPointerdown" is not an event name. Write "onPointerDown" (Test.brm:1:9)',
     ],

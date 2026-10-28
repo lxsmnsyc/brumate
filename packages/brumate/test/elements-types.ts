@@ -3,6 +3,7 @@ import { $bind, $signal } from 'brumate/signals';
 import type { Bindable, BindableMark, Unbound } from 'brumate/signals';
 import type {
   Component,
+  ElementEventNames,
   ElementEvents,
   ElementOf,
   ElementProps,
@@ -244,3 +245,71 @@ export const wrongStaticNumber: ElementProps<'textarea'> = { rows: 'three' };
 export const unitlessWidth: ElementProps<'div'> = { style: { width: 12 } };
 // @ts-expect-error A number has no unit for `fontSize` either.
 export const unitlessFontSize: ElementProps<'div'> = { style: { fontSize: 12 } };
+
+// Every event of the DOM is either in `ElementEventNames`, when its name has more than one word,
+// or listed here as a word of its own. A new event in the DOM types fails this line until it is
+// sorted. `DOMContentLoaded` has capitals in its name, which a handler name cannot carry, and the
+// `webkit*` names are old aliases of events that have their own entry, so they keep the
+// lower-case name and the parser does not report them.
+type OneWord =
+  | 'abort'
+  | 'blur'
+  | 'cancel'
+  | 'change'
+  | 'click'
+  | 'close'
+  | 'command'
+  | 'copy'
+  | 'cut'
+  | 'drag'
+  | 'drop'
+  | 'emptied'
+  | 'ended'
+  | 'error'
+  | 'focus'
+  | 'input'
+  | 'invalid'
+  | 'load'
+  | 'message'
+  | 'offline'
+  | 'online'
+  | 'paste'
+  | 'pause'
+  | 'play'
+  | 'playing'
+  | 'progress'
+  | 'reset'
+  | 'resize'
+  | 'scroll'
+  | 'seeked'
+  | 'seeking'
+  | 'select'
+  | 'stalled'
+  | 'storage'
+  | 'submit'
+  | 'suspend'
+  | 'toggle'
+  | 'unload'
+  | 'waiting'
+  | 'wheel'
+  | 'DOMContentLoaded'
+  | 'webkitanimationend'
+  | 'webkitanimationiteration'
+  | 'webkitanimationstart'
+  | 'webkittransitionend';
+type DomEvents =
+  | keyof WindowEventMap
+  | keyof DocumentEventMap
+  | keyof HTMLElementEventMap
+  | keyof SVGElementEventMap;
+export const everyEventSorted: [Exclude<DomEvents, keyof ElementEventNames | OneWord>] extends [
+  never,
+]
+  ? true
+  : false = true;
+// And an entry that names no event of the DOM is a mistake, but the one that this file merges.
+export const noStrayEntry: [Exclude<keyof ElementEventNames, DomEvents | 'itemaction'>] extends [
+  never,
+]
+  ? true
+  : false = true;
