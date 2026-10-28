@@ -1,0 +1,39 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
+
+  const plans = [
+    { id: 'free', name: 'Free', price: 0 },
+    { id: 'team', name: 'Team', price: 12 },
+    { id: 'business', name: 'Business', price: 40 },
+  ];
+  let plan = $signal<string | null>('team');
+  let seats = $signal<string | null>('5');
+  const total = $memo((plans.find((item) => item.id === plan)?.price ?? 0) * Number(seats ?? 0));
+</script>
+
+<div class="ui-stack">
+  <RadioGroup class="ui-field" name="plan" value=$bind(plan)>
+    <Label>Plan</Label>
+    #for (item of plans by item.id) {
+      <Radio class="ui-box" value=(item.id)>
+        <span class="ui-mark round" aria-hidden="true"></span>
+        {item.name}, {item.price} a seat
+      </Radio>
+    }
+  </RadioGroup>
+  <RadioGroup class="ui-field" name="seats" orientation="horizontal" value=$bind(seats)>
+    <Label>Seats</Label>
+    <div class="ui-row">
+      #for (count of ['1', '5', '10'] by count) {
+        <Radio class="ui-box" value=count>
+          <span class="ui-mark round" aria-hidden="true"></span>
+          {count}
+        </Radio>
+      }
+    </div>
+  </RadioGroup>
+  <p>Total: {total} a month.</p>
+</div>

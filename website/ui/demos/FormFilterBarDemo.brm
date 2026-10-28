@@ -1,0 +1,51 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
+  import Switch from '@brumate/ui/Switch.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  const items = [
+    { name: 'Desk', price: 240, stock: true },
+    { name: 'Lamp', price: 35, stock: true },
+    { name: 'Chair', price: 120, stock: false },
+    { name: 'Shelf', price: 60, stock: true },
+  ];
+  let query = $signal('');
+  let inStock = $signal(false);
+  let order = $signal<string | null>('name');
+  const shown = $memo(
+    items
+      .filter((item) => item.name.toLowerCase().includes(query.toLowerCase()) && (!inStock || item.stock))
+      .toSorted((a, b) => (order === 'price' ? a.price - b.price : a.name.localeCompare(b.name))),
+  );
+</script>
+
+<div class="ui-stack">
+  <Form class="ui-row" onSubmit=(prevent(() => {}))>
+    <TextField class="ui-field" value=$bind(query)>
+      <Label>Search</Label>
+      <Input class="ui-input" />
+    </TextField>
+    <Switch class="ui-box" isSelected=$bind(inStock)>
+      <span class="ui-track" aria-hidden="true"></span>
+      In stock only
+    </Switch>
+    <RadioGroup class="ui-group" orientation="horizontal" value=$bind(order)>
+      <Label>Sort</Label>
+      <Radio class="ui-box" value="name"><span class="ui-mark round" aria-hidden="true"></span>Name</Radio>
+      <Radio class="ui-box" value="price"><span class="ui-mark round" aria-hidden="true"></span>Price</Radio>
+    </RadioGroup>
+    <Button type="reset" class="ui-button">Clear</Button>
+  </Form>
+  <ul aria-label="Results">
+    #for (item of shown by item.name) {
+      <li>{item.name}, {item.price}{item.stock ? '' : ' (sold out)'}</li>
+    }
+  </ul>
+</div>
