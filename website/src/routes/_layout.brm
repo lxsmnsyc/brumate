@@ -28,7 +28,7 @@
     <Header {section} />
     {children}
     <footer class="footer">
-      <p>MIT licensed. Built with brumate: this page loaded no component code until you used it.</p>
+      <p>MIT licensed. Built with brumate: the server rendered this page, and the browser picked up where it left off.</p>
     </footer>
   </body>
 </html>

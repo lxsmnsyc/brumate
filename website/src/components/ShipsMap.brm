@@ -132,8 +132,8 @@
   }
 
   .ships-switch label:has(input:checked) {
-    background: var(--accent);
-    color: #fff;
+    background: var(--accent-fill);
+    color: var(--on-accent);
   }
 
   .ships-switch label:has(input:focus-visible) {
@@ -196,12 +196,18 @@
   }
 
   .sm-tags rect {
-    fill: var(--accent);
+    fill: var(--accent-fill);
   }
 
-  .sm-tags text,
+  .sm-tags text {
+    fill: var(--on-accent);
+    font-size: 13px;
+    font-weight: 600;
+    text-anchor: middle;
+  }
+
   .sm-tag-all text {
-    fill: #fff;
+    fill: var(--on-cool);
     font-size: 13px;
     font-weight: 600;
     text-anchor: middle;
@@ -209,6 +215,10 @@
 
   .sm-tags .sm-tag-update rect {
     fill: var(--cool);
+  }
+
+  .sm-tags .sm-tag-update text {
+    fill: var(--on-cool);
   }
 
   .sm-tag-all {
