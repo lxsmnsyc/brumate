@@ -335,6 +335,17 @@ export async function run({ browser, url, runner }) {
         'the link loaded a new page',
       );
     });
+    await flow('/docs: the brand link returns to / with a filled network panel', async () => {
+      await page.locator('.brand').click();
+      await page.waitForURL(`${url}/`, { timeout: 5000 });
+      await page.locator('[data-network]').waitFor({ timeout: 5000 });
+      await page.locator('[data-network] ol li:not(.empty)').first().waitFor({ timeout: 5000 });
+      const total = (await page.locator('[data-network] [data-total]').textContent()).trim();
+      assert(total !== '0 KB' && total !== '0.0 KB', `the network panel reads ${total}`);
+      await page.locator('.header-nav a', { hasText: 'Docs' }).click();
+      await page.waitForURL(`${url}/docs`, { timeout: 5000 });
+      await page.locator('.docs .sidebar').waitFor({ timeout: 5000 });
+    });
     await flow('/docs: a sidebar link navigates on the client', async () => {
       await page.locator('.sidebar a[href="/docs/state"]').click();
       await page.waitForURL(`${url}/docs/state`, { timeout: 5000 });
