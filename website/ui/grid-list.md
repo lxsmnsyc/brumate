@@ -26,6 +26,14 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 
 ## Anatomy
 
+```brm anatomy GridListAnatomy
+`GridList`: Holds the rows and the selection. It is a `grid`, takes one stop of Tab, and needs `aria-label`.
+`GridListItem`: One row, with one cell. Its `id` is its key, and it shows `data-selected` when it is selected.
+`Checkbox` with `slot="selection"`: Shows whether the row is selected, and toggles it. Optional.
+`Button` with `slot="drag"`: Starts a drag of the row from the keys. It needs `onReorder`. Optional.
+`Button`: Any other control in the row. Its press is its own and does not select the row.
+```
+
 ```html
 <GridList>
   <GridListItem>
@@ -100,11 +108,45 @@ With `onReorder`, the Button with `slot="drag"` starts a drag from the keys. The
 
 ## Controlled and uncontrolled
 
-`selectedKeys` holds the keys of the selected rows. `selectedKeys=(['a'])` starts the list's own selection, and `selectedKeys=$bind(signal)` writes your signal. `onSelectionChange` gets the keys after each change. See [State](./state.md).
+`selectedKeys` holds the keys of the selected rows, as a list. How you pass it picks who keeps it:
+
+```brm demo GridListStateDemo
+
+```
+
+- `selectedKeys` alone, or nothing, makes the list keep its own selection. `selectedKeys=(['cat'])` is where that selection starts. Pick another row and the list keeps the pick. A new value from you replaces it.
+- `selectedKeys=$bind(signal)` writes your signal. Change the signal and the list follows.
+- `selectedKeys=$bind(signal, (next) => ...)` asks you first. The list shows what you keep, so a request that you ignore leaves the old keys. Press Lock above and pick a row in the last list.
+- `onSelectionChange` gets the keys after each change, in every shape.
+- A GridList is not a form field. It has no `name` and no reset, so a reset of a form leaves its selection as it is. The server renders the selection it starts with. See [State](./state.md).
 
 ## Styling
 
-Style a row with the data attributes above, such as `[data-selected]` and `[data-drop-target]`. See [Styling](./styling.md).
+Style a row with the data attributes above, such as `[data-selected]` and `[data-drop-target]`. The Checkbox and the Buttons in a row show their own attributes. See [Styling](./styling.md).
+
+This stylesheet styles every state of a row: rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled, with the Checkbox and the Button in it. Its tokens are at the top, and they follow the color scheme. Tab to the list, press the arrow keys and Space, then Right to reach the Button.
+
+```brm styled GridListStyled
+
+```
+
+## Use cases
+
+### Rows with actions on the selection
+
+A Checkbox with `slot="selection"` selects a row, and a Button in the row acts on that row alone. The button above the list acts on the selected rows. Both remove keys from the data. The GridList keeps the keys that you give it, so the demo also drops them from the bound selection, and the signal keeps no key of a row that is gone.
+
+```brm demo GridListBulkDemo
+
+```
+
+### A playlist that reorders
+
+With no `selectionMode`, a press or Enter on a row acts: `onAction` gets its key. `onReorder` lets the rows move, by a pointer drag or from the keys with the Button of `slot="drag"`: press it, choose the place with Up and Down, and drop with Enter. `moveKeys` of the [data helpers](./data.md) moves the keys in the list of your data.
+
+```brm demo GridListPlaylistDemo
+
+```
 
 ## Rows from data
 

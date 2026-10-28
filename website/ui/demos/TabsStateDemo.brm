@@ -1,0 +1,59 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let mine = $signal<Key | null>('b');
+  let locked = $signal(false);
+  let log = $signal('');
+  const tabs = ['a', 'b', 'c'];
+</script>
+
+<div class="ui-stack">
+  <Tabs>
+    <TabList class="ui-tablist" aria-label="Own state">
+      #for (key of tabs by key) {
+        <Tab id=key class="ui-tab">Tab {key}</Tab>
+      }
+    </TabList>
+    #for (key of tabs by key) {
+      <TabPanel id=key class="ui-tabpanel">Panel {key}</TabPanel>
+    }
+  </Tabs>
+  <Tabs selectedKey="b">
+    <TabList class="ui-tablist" aria-label="Starts at B, then keeps its own copy">
+      #for (key of tabs by key) {
+        <Tab id=key class="ui-tab">Tab {key}</Tab>
+      }
+    </TabList>
+    #for (key of tabs by key) {
+      <TabPanel id=key class="ui-tabpanel">Panel {key}</TabPanel>
+    }
+  </Tabs>
+  <Tabs selectedKey=$bind(mine) onSelectionChange=((key) => (log = `changed to ${key}`))>
+    <TabList class="ui-tablist" aria-label="Writes your signal">
+      #for (key of tabs by key) {
+        <Tab id=key class="ui-tab">Tab {key}</Tab>
+      }
+    </TabList>
+    #for (key of tabs by key) {
+      <TabPanel id=key class="ui-tabpanel">Panel {key}</TabPanel>
+    }
+  </Tabs>
+  <Tabs selectedKey=$bind(mine, (next) => { if (!locked) mine = next; })>
+    <TabList class="ui-tablist" aria-label="Asks you first">
+      #for (key of tabs by key) {
+        <Tab id=key class="ui-tab">Tab {key}</Tab>
+      }
+    </TabList>
+    #for (key of tabs by key) {
+      <TabPanel id=key class="ui-tabpanel">Panel {key}</TabPanel>
+    }
+  </Tabs>
+  <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <p>Signal: {mine ?? 'none'}. Last callback: {log || 'none'}.</p>
+</div>

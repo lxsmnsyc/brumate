@@ -1,7 +1,7 @@
 ---
 id: pending-submit
 title: A pending submit Button keeps its form from sending again
-status: active
+status: done
 priority: should
 type: fix
 outline: false
