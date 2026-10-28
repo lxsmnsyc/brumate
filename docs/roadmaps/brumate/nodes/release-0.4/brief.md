@@ -110,6 +110,12 @@ depends_on:
   - on: overlay-navigation-cleanup
     kind: hard
     why: a client navigation away from an open overlay must not leave the next page inert
+  - on: tokenfield-sync
+    kind: hard
+    why: TokenField's box must follow the kept value in the first ui release
+  - on: date-field-sync
+    kind: hard
+    why: DateField must show the kept date, follow the locale and block an out-of-range submit
   - on: handler-code-wait
     kind: hard
     why: a handler waits on unrelated update code, and a failed load leaves effects stuck

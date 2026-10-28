@@ -22,7 +22,7 @@
 - Part fixes: overlay-navigation-cleanup, overlay-focus-fixes, checkbox-description, field-error-clears.
 - Docs: ui-docs-pages-collections-3, ui-docs-pages-utilities.
 - Release prep: ui-skill, code-examples, try-sample-console, then changeset-review and release-0.4 (the maintainer merges the Version Packages pull request).
-- To ask: tokenfield-sync and date-field-sync in the cut (both visible form bugs on main; recommend yes).
+- tokenfield-sync and date-field-sync are in the cut (the maintainer, 2026-10-28).
 
 ## Notes
 
