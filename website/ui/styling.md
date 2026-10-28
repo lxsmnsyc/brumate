@@ -1,6 +1,6 @@
 # Styling
 
-The parts render no CSS. Style them with classes and the `data-*` attributes of their state.
+The parts render no CSS. Style them with classes and the `data-*` attributes of their state. This page styles one part of each kind in full, with the CSS beside the result. The depth of the examples follows the docs of [Terracotta](https://github.com/lxsmnsyc/terracotta).
 
 ```html
 <Button class="button">Save</Button>
@@ -38,6 +38,53 @@ The parts render no CSS. Style them with classes and the `data-*` attributes of 
 | `data-invalid`       | A field has errors.                                                     |
 
 Each part lists its own attributes on its page.
+
+## A button
+
+A button has rest, hover, press, keyboard focus, disabled and pending. Each is an attribute, so each is one rule. Press, tab and hover below.
+
+```brm styled StylingButtonDemo
+
+```
+
+## A field
+
+The field holds the state of the group, and the `Input` holds its own. Style the border on the input and the label on the field. `data-invalid` comes from `isInvalid`, a failed `isRequired` or a server error, and `FieldError` shows only while it holds. Send the form empty to see it.
+
+```brm styled StylingFieldDemo
+
+```
+
+## A collection
+
+A list has one rule for each state of an item. `data-focus-visible` is the ring of the keyboard, `data-hovered` never fires on touch, and `data-selected` is the choice. Select two items, then use the arrow keys.
+
+```brm styled StylingListDemo
+
+```
+
+## An overlay
+
+An overlay renders in a layer at the end of `<body>`, so a rule that depends on a parent of the trigger does not reach it. Give the overlay its own class. `transition` on the Popover keeps it in the page while it leaves, and `data-closed` marks the closed look, so CSS animates both ways. The [Transition](./transition.md) page covers the steps.
+
+```brm styled StylingOverlayDemo
+
+```
+
+## Transitions
+
+- Put the resting look on the class and the closed look on `[data-closed]`, with a `transition` on the class. The same rule plays on the way in and the way out.
+- `data-enter` and `data-leave` mark the frames of the move, for a keyframe animation.
+- Wrap the rule in `@media (prefers-reduced-motion: reduce)` and set `transition: none`, as each example above does.
+
+## Dark mode
+
+The parts have no colors, so dark mode is the CSS you write. Two ways work, and the examples above use both:
+
+- Use system colors such as `Canvas`, `CanvasText` and `color-mix()`, which follow `color-scheme`.
+- Keep the colors in custom properties on the root class of the part, and override them in `@media (prefers-color-scheme: dark)`. For a switch in the page, override them under `[data-theme='dark']` too. Check the contrast of text on the accent in both themes.
+
+A rule for an overlay puts the custom properties on the overlay class as well, since the layer is not inside your root.
 
 ## Boxes
 

@@ -1,0 +1,225 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Select from '@brumate/ui/Select.brm';
+  import SelectValue from '@brumate/ui/SelectValue.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  const sizes = ['Small', 'Medium', 'Large', 'Extra large'];
+</script>
+
+<Form class="pick-form">
+  <Select class="pick" name="size" isRequired>
+    <Label class="pick-label">Size</Label>
+    <Button class="pick-button"><SelectValue class="pick-value" /></Button>
+    <Text slot="description" class="pick-help">Sizes run small.</Text>
+    <FieldError class="pick-error" />
+    <Popover class="pick-popover">
+      <ListBox class="pick-list">
+        #for (size of sizes by size) {
+          <ListBoxItem id=(size.toLowerCase()) class="pick-item" isDisabled=(size === 'Extra large')>{size}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </Select>
+  <Button type="submit" class="pick-submit">Order</Button>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.pick-form),
+  :global(.pick-popover) {
+    --pick-bg: Canvas;
+    --pick-text: CanvasText;
+    --pick-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --pick-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --pick-accent: #2a76b2;
+    --pick-on-accent: #fff;
+    --pick-danger: #c4271d;
+    --pick-radius: 8px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(.pick-form),
+    :global(.pick-popover) {
+      --pick-accent: #6fb2e6;
+      --pick-on-accent: #101418;
+      --pick-danger: #f28b82;
+    }
+  }
+
+  :global(.pick-form) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: end;
+    color: var(--pick-text);
+  }
+
+  :global(.pick) {
+    display: grid;
+    gap: 0.3rem;
+    width: 14rem;
+  }
+
+  :global(.pick-label) {
+    font-weight: 600;
+  }
+
+  /* The button: rest, hover, press, focus, open, disabled and invalid. */
+  :global(.pick-button) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--pick-border);
+    border-radius: var(--pick-radius);
+    background: var(--pick-bg);
+    color: var(--pick-text);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.pick-button)::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    rotate: 45deg;
+    translate: 0 -2px;
+    transition: rotate 0.15s;
+  }
+
+  :global(.pick-button[data-hovered]) {
+    border-color: var(--pick-accent);
+  }
+
+  :global(.pick-button[data-pressed]) {
+    background: color-mix(in srgb, var(--pick-accent) 12%, var(--pick-bg));
+  }
+
+  :global(.pick-button[data-focus-visible]) {
+    outline: 2px solid var(--pick-accent);
+    outline-offset: 2px;
+  }
+
+  :global(.pick[data-open] .pick-button) {
+    border-color: var(--pick-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pick-accent) 25%, transparent);
+  }
+
+  :global(.pick[data-open] .pick-button)::after {
+    rotate: 225deg;
+    translate: 0 2px;
+  }
+
+  :global(.pick[data-disabled] .pick-button) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.pick[data-invalid] .pick-button) {
+    border-color: var(--pick-danger);
+  }
+
+  :global(.pick-value[data-placeholder]) {
+    color: var(--pick-muted);
+  }
+
+  :global(.pick-help) {
+    color: var(--pick-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.pick-error) {
+    color: var(--pick-danger);
+    font-size: 0.875rem;
+  }
+
+  /* The list: as wide as the button, and it fades and rises while it opens and closes. */
+  :global(.pick-popover) {
+    box-sizing: border-box;
+    width: var(--trigger-width);
+    max-height: var(--available-height);
+    overflow: auto;
+    border: 1px solid var(--pick-border);
+    border-radius: var(--pick-radius);
+    background: var(--pick-bg);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+    transition: opacity 0.15s, translate 0.15s;
+  }
+
+  :global(.pick-popover[data-closed]) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+
+  :global(.pick-list) {
+    display: grid;
+    padding: 0.25rem;
+    outline: none;
+  }
+
+  /* The items: hover, keyboard focus, selected and disabled. */
+  :global(.pick-item) {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    outline: none;
+  }
+
+  :global(.pick-item[data-hovered]) {
+    background: color-mix(in srgb, var(--pick-accent) 12%, var(--pick-bg));
+  }
+
+  :global(.pick-item[data-focus-visible]) {
+    box-shadow: inset 0 0 0 2px var(--pick-accent);
+  }
+
+  :global(.pick-item[data-selected]) {
+    background: var(--pick-accent);
+    color: var(--pick-on-accent);
+  }
+
+  :global(.pick-item[data-selected])::after {
+    content: '✓';
+  }
+
+  :global(.pick-item[data-disabled]) {
+    color: var(--pick-muted);
+    cursor: not-allowed;
+  }
+
+  :global(.pick-submit) {
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: var(--pick-radius);
+    background: var(--pick-accent);
+    color: var(--pick-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  :global(.pick-submit[data-focus-visible]) {
+    outline: 2px solid var(--pick-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.pick-button),
+    :global(.pick-button)::after,
+    :global(.pick-popover) {
+      transition: none;
+    }
+  }
+</style>

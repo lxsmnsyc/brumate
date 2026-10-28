@@ -2,8 +2,10 @@
   import { $props } from 'brumate/signals';
   import * as docs from '../docs.ts';
   import * as ui from '../ui.ts';
+  import AnatomyFigure from './AnatomyFigure.brm';
   import LiveSample from './LiveSample.brm';
   import Meta from './Meta.brm';
+  import StyledExample from './StyledExample.brm';
 
   // A page of the docs of brumate, or of the section of @brumate/ui.
   const { slug, section = 'docs' } = $props<{ slug: string; section?: 'docs' | 'ui' }>();
@@ -50,6 +52,10 @@
             </li>
           }
         </ul>
+      } #else if ('demo' in part && part.variant === 'anatomy') {
+        <AnatomyFigure label=(part.label ?? "") demo=ui.demos[part.demo]>{part.source}</AnatomyFigure>
+      } #else if ('demo' in part && part.variant === 'styled') {
+        <StyledExample demo=ui.demos[part.demo]>{part.source}</StyledExample>
       } #else if ('demo' in part) {
         <!-- A demo of @brumate/ui: the parts in the style of the site, then the source. -->
         <figure class="ui-demo">

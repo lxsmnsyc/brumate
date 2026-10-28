@@ -464,6 +464,29 @@ export async function run({ browser, url, runner }) {
       },
     );
     await flow(
+      '/ui/select: the anatomy picture and the styled example, with no accessibility violations',
+      async () => {
+        for (const scheme of ['light', 'dark']) {
+          await page.emulateMedia({ colorScheme: scheme });
+          await page.goto(`${url}/ui/select`, { waitUntil: 'load' });
+          const marks = await page.locator('.anatomy [data-mark]').count();
+          const items = await page.locator('.anatomy-list li').count();
+          assert(marks > 0 && marks === items, `${marks} callouts for ${items} listed pieces`);
+          assert(
+            (await page.locator('.styled pre').count()) === 1,
+            'the styled example shows no CSS',
+          );
+          await page.addScriptTag({ path: axe });
+          const violations = await page.evaluate(async () => {
+            const result = await window.axe.run(document.querySelector('article'));
+            return result.violations.map((violation) => violation.id);
+          });
+          assert(violations.length === 0, `axe found in ${scheme}: ${violations.join(', ')}`);
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow(
       '/ui: each page of the sidebar loads, with no accessibility violations',
       async () => {
         await page.goto(`${url}/ui`, { waitUntil: 'load' });

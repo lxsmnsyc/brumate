@@ -1,0 +1,113 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<Form class="sf-form">
+  <TextField class="sf" name="email" type="email" isRequired>
+    <Label class="sf-label">Email</Label>
+    <Input class="sf-input" />
+    <Text slot="description" class="sf-help">We send the receipt here.</Text>
+    <FieldError class="sf-error" />
+  </TextField>
+  <TextField class="sf" isDisabled value="Locked">
+    <Label class="sf-label">Plan</Label>
+    <Input class="sf-input" />
+  </TextField>
+  <Button type="submit" class="sf-submit">Send</Button>
+</Form>
+
+<style>
+  :global(.sf-form) {
+    --sf-accent: #2a76b2;
+    --sf-danger: #c4271d;
+    display: grid;
+    gap: 0.75rem;
+    width: min(18rem, 100%);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(.sf-form) {
+      --sf-accent: #6fb2e6;
+      --sf-danger: #f28b82;
+    }
+  }
+
+  :global(.sf) {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  :global(.sf-label) {
+    font-weight: 600;
+  }
+
+  :global(.sf-input) {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas);
+    border-radius: 8px;
+    background: Canvas;
+    color: CanvasText;
+    font: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.sf-input[data-hovered]) {
+    border-color: var(--sf-accent);
+  }
+
+  :global(.sf-input[data-focused]) {
+    border-color: var(--sf-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sf-accent) 25%, transparent);
+    outline: none;
+  }
+
+  :global(.sf-input[data-invalid]) {
+    border-color: var(--sf-danger);
+  }
+
+  :global(.sf-input[data-invalid][data-focused]) {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sf-danger) 25%, transparent);
+  }
+
+  :global(.sf-input[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* The field carries the state of the whole group, so a label can use it too. */
+  :global(.sf[data-invalid] .sf-label) {
+    color: var(--sf-danger);
+  }
+
+  :global(.sf-help) {
+    color: color-mix(in srgb, CanvasText 60%, Canvas);
+    font-size: 0.875rem;
+  }
+
+  :global(.sf-error) {
+    color: var(--sf-danger);
+    font-size: 0.875rem;
+  }
+
+  :global(.sf-submit) {
+    justify-self: start;
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--sf-accent);
+    color: Canvas;
+    font: inherit;
+    font-weight: 600;
+  }
+
+  :global(.sf-submit[data-focus-visible]) {
+    outline: 2px solid var(--sf-accent);
+    outline-offset: 2px;
+  }
+</style>

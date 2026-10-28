@@ -1,0 +1,41 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import type { Component } from 'brumate/server';
+
+  // A styled example: the part with a complete stylesheet, live, and the source of the demo
+  // below it, which holds the markup and the CSS. The demo's own classes keep it apart from the
+  // look of the site.
+  const { demo, children } = $props<{ demo: Component; children?: unknown }>();
+</script>
+
+<figure class="styled">
+  <div class="styled-stage"><{demo} /></div>
+  {children}
+</figure>
+
+<style>
+  .styled {
+    margin: 1.5rem 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .styled-stage {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+    min-height: 9rem;
+    padding: 1.5rem;
+    background: var(--surface);
+  }
+
+  .styled :global(pre) {
+    max-height: 32rem;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+  }
+</style>

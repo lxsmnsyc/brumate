@@ -1,0 +1,72 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+</script>
+
+<DialogTrigger>
+  <Button class="so-trigger">Details</Button>
+  <Popover class="so" transition>
+    <Dialog class="so-dialog">
+      <Heading slot="title" level=(4) class="so-title">Order 1042</Heading>
+      <p>Ships on Monday.</p>
+    </Dialog>
+  </Popover>
+</DialogTrigger>
+
+<style>
+  :global(.so-trigger) {
+    padding: 0.5rem 1rem;
+    border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas);
+    border-radius: 8px;
+    background: Canvas;
+    color: CanvasText;
+    font: inherit;
+  }
+
+  :global(.so-trigger[data-focus-visible]) {
+    outline: 2px solid #2a76b2;
+    outline-offset: 2px;
+  }
+
+  /* The overlay is a layer at the end of <body>, so its look cannot come from a parent. */
+  :global(.so) {
+    max-width: 18rem;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas);
+    border-radius: 12px;
+    background: Canvas;
+    color: CanvasText;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 22%);
+    transition: opacity 0.18s, translate 0.18s;
+  }
+
+  /* `transition` keeps it in the page while these play, and sets data-closed, data-enter and data-leave. */
+  :global(.so[data-closed]) {
+    opacity: 0;
+    translate: 0 4px;
+  }
+
+  :global(.so[data-closed][data-placement='top']) {
+    translate: 0 -4px;
+  }
+
+  :global(.so-dialog) {
+    display: grid;
+    gap: 0.5rem;
+    outline: none;
+  }
+
+  :global(.so-title),
+  :global(.so-dialog p) {
+    margin: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.so) {
+      transition: none;
+    }
+  }
+</style>
