@@ -1,6 +1,6 @@
 # Styling
 
-The parts render no CSS. Style them with classes and the `data-*` attributes of their state. This page styles one part of each kind in full, with the CSS beside the result. The depth of the examples follows the docs of [Terracotta](https://github.com/lxsmnsyc/terracotta).
+The parts render no CSS. Style them with classes and the `data-*` attributes of their state. This page styles one part of each kind in full, with the CSS beside the result.
 
 ```html
 <Button class="button">Save</Button>
