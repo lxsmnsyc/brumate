@@ -1,7 +1,7 @@
 ---
 id: ui-scroll-focus
 title: Scrollable regions of the ui docs pages take focus
-status: todo
+status: active
 priority: should
 type: fix
 outline: false
