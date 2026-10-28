@@ -9,6 +9,8 @@ merge:
   max_size: M
   exclude: [release, hotfix, contract, gate]
 branches:
+  # After the 0.4.0 release (node next-branch): minor work targets `next`, hotfixes target `main`,
+  # and `next` is synced with `main` after every release from `main`. Empty until then.
 ---
 
 # brumate
