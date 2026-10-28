@@ -26,13 +26,19 @@
     onInputChange?: (value: string) => void;
     /** Runs with each change of whether the list is open. */
     onOpenChange?: (open: boolean) => void;
-    /** A `Label`, an `Input`, a `Button`, a `Popover` with a `ListBox`, and optionally a `Text` and a `FieldError`. */
+    /**
+     * A `Label`, an `Input`, a `Button`, a `Popover` with a `ListBox`, and optionally a `Text` and a
+     * `FieldError`.
+     */
     children?: unknown;
     /** The key of the selected item, or `null`. Starts its own state, or binds with `$bind`. */
     selectedKey?: Bindable<Key | null>;
     /** The text in the input. Starts its own state, or binds with `$bind`. */
     inputValue?: Bindable<string>;
-    /** Whether the list is open. Alone it holds its own state, which starts closed, and `$bind` writes your signal. A start value of `true` opens the list once the page has loaded. */
+    /**
+     * Whether the list is open. Alone it holds its own state, which starts closed, and `$bind`
+     * writes your signal. A start value of `true` opens the list once the page has loaded.
+     */
     isOpen?: Bindable<boolean>;
   }
 
@@ -128,12 +134,19 @@
   let filterText = $signal('');
   // The item that becomes active once the list shows its items.
   let strategy = $signal<'first' | 'last' | 'keep'>('keep');
-  let edited = $signal(false);
+  // The errors of the server, until the user picks. New errors of a later reply show again.
+  let edited = $signal<unknown>(undefined);
+  // The message of the browser, once the field was checked on a submit.
+  let committed = $signal(false);
+  let nativeErrors = $signal<string[]>([]);
   // A press of the Button puts focus back in the input, which does not open the list again.
   let refocused = $signal(false);
-  const errors = $memo(
-    edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
+  const serverErrors = $memo(
+    form && edited === form.validationErrors
+      ? []
+      : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
   );
+  const errors = $memo([...serverErrors, ...(committed ? nativeErrors : [])]);
   const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
 
   // A reset of the form gives back the first key and text, as it does for a field of the browser.
@@ -144,7 +157,9 @@
         inputValue = initialText;
         selectedText = undefined;
         filterText = '';
-        edited = false;
+        edited = undefined;
+        committed = false;
+        nativeErrors = [];
         setOpen(false);
       }),
     'load',
@@ -209,22 +224,53 @@
   }
 
   function select(key: Key) {
-    const item = findItem(key);
-    selectedText = item ? textOfItem(item) : undefined;
-    inputValue = selectedText ?? inputValue;
-    onInputChange?.(inputValue);
+    const before = inputValue;
+    const beforeText = selectedText;
     if (key !== selectedKey) {
       selectedKey = key;
-      edited = true;
+      edited = form?.validationErrors ?? null;
       onSelectionChange?.(key);
     }
+    // A setter that refuses leaves the old key, and the input shows the text of that one.
+    const kept = selectedKey;
+    const item = kept === null ? undefined : findItem(kept);
+    selectedText = item ? textOfItem(item) : kept === key ? undefined : beforeText;
+    inputValue = kept === null && kept !== key ? before : (selectedText ?? inputValue);
+    if (inputValue !== before) {
+      onInputChange?.(inputValue);
+    }
+    recheck();
     setOpen(false);
     input()?.focus();
+  }
+
+  // The browser shows no message of its own. The field shows it in its FieldError.
+  function invalidated(message: string, first: boolean) {
+    committed = true;
+    nativeErrors = message ? [message] : [];
+    if (first) {
+      input()?.focus();
+    }
+  }
+
+  // After a submit, the message follows what is in the field.
+  function recheck() {
+    if (!committed) {
+      return;
+    }
+    // The input shows the new text after the update, so the check waits for it.
+    setTimeout(() => {
+      const element = input();
+      if (element) {
+        nativeErrors = element.validity.valid ? [] : [element.validationMessage];
+      }
+    }, 0);
   }
 
   function typed(text: string) {
     inputValue = text;
     onInputChange?.(text);
+    recheck();
     if (text === '' && selectedKey !== null) {
       selectedKey = null;
       onSelectionChange?.(null);
@@ -354,6 +400,7 @@
     required: isRequired || undefined,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
     onChange: typed,
+    onInvalid: invalidated,
     onBlur: blurred,
     onFocus: focused,
   });

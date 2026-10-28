@@ -1,0 +1,100 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Autocomplete from '../../src/Autocomplete.brm';
+  import Button from '../../src/Button.brm';
+  import ComboBox from '../../src/ComboBox.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import Form from '../../src/Form.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import Popover from '../../src/Popover.brm';
+  import Select from '../../src/Select.brm';
+  import SelectValue from '../../src/SelectValue.brm';
+  import TextField from '../../src/TextField.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  let errors = $signal<Record<string, string>>({});
+  let fruit = $signal<Key | null>(null);
+  let size = $signal<Key | null>(null);
+  let held = $signal(false);
+  let kept = $signal<Key | null>('apple');
+  let requests = $signal<(Key | null)[]>([]);
+  let query = $signal('');
+  let refused = $signal('');
+</script>
+
+<main class="page">
+  <Form class="form" validationErrors=errors onSubmit=((event) => event.preventDefault())>
+    <ComboBox class="fruit" name="fruit" selectedKey=$bind(fruit)>
+      <Label>Fruit</Label>
+      <Input class="fruit-input" />
+      <Popover>
+        <ListBox class="fruit-list">
+          <ListBoxItem id="apple" class="fruit-apple">Apple</ListBoxItem>
+          <ListBoxItem id="banana" class="fruit-banana">Banana</ListBoxItem>
+        </ListBox>
+      </Popover>
+      <FieldError class="fruit-error" />
+    </ComboBox>
+    <Select class="size" name="size" selectedKey=$bind(size)>
+      <Label>Size</Label>
+      <Button class="size-trigger"><SelectValue /></Button>
+      <FieldError class="size-error" />
+      <Popover>
+        <ListBox class="size-list">
+          <ListBoxItem id="small" class="size-small">Small</ListBoxItem>
+          <ListBoxItem id="large" class="size-large">Large</ListBoxItem>
+        </ListBox>
+      </Popover>
+    </Select>
+    <ComboBox class="need" name="need" isRequired>
+      <Label>Need</Label>
+      <Input class="need-input" />
+      <Popover>
+        <ListBox class="need-list">
+          <ListBoxItem id="one" class="need-one">One</ListBoxItem>
+        </ListBox>
+      </Popover>
+      <FieldError class="need-error" />
+    </ComboBox>
+  </Form>
+  <button class="reply" type="button" onClick=(() => (errors = { fruit: 'No fruit today', size: 'No size today' }))>Reply</button>
+  <button class="hold" type="button" onClick=(() => (held = true))>Hold</button>
+  <ComboBox
+    class="held"
+    selectedKey=$bind(kept, (next) => { if (!held) kept = next; })
+    onSelectionChange=((key) => (requests = [...requests, key]))
+  >
+    <Label>Held</Label>
+    <Input class="held-input" />
+    <Popover>
+      <ListBox class="held-list">
+        <ListBoxItem id="apple" class="held-apple">Apple</ListBoxItem>
+        <ListBoxItem id="banana" class="held-banana">Banana</ListBoxItem>
+      </ListBox>
+    </Popover>
+  </ComboBox>
+  <button class="after" type="button">After</button>
+  <Autocomplete inputValue=$bind(query)>
+    <TextField class="search">
+      <Input class="search-input" aria-label="Search" />
+    </TextField>
+    <ListBox class="search-list" aria-label="Fruit">
+      <ListBoxItem id="apple" class="search-apple">Apple</ListBoxItem>
+      <ListBoxItem id="banana" class="search-banana">Banana</ListBoxItem>
+    </ListBox>
+  </Autocomplete>
+  <Autocomplete inputValue=$bind(refused, (next) => {})>
+    <TextField class="refusing">
+      <Input class="refusing-input" aria-label="Refusing" />
+    </TextField>
+    <ListBox class="refusing-list" aria-label="Refusing fruit">
+      <ListBoxItem id="apple" class="refusing-apple">Apple</ListBoxItem>
+      <ListBoxItem id="banana" class="refusing-banana">Banana</ListBoxItem>
+    </ListBox>
+  </Autocomplete>
+  <button class="write" type="button" onClick=(() => (query = 'ban'))>Write</button>
+  <p class="state">{JSON.stringify([fruit, size, kept, requests, query, refused])}</p>
+</main>

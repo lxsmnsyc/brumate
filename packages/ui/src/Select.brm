@@ -23,7 +23,10 @@
     children?: unknown;
     /** The key of the selected item, or `null`. Starts its own state, or binds with `$bind`. */
     selectedKey?: Bindable<Key | null>;
-    /** Whether the list is open. Alone it starts the list open, and `$bind` writes your signal. */
+    /**
+     * Whether the list is open. Alone it holds its own state, which starts closed, and `$bind`
+     * writes your signal.
+     */
     isOpen?: Bindable<boolean>;
   }
 
@@ -116,9 +119,12 @@
   // The message of the browser, once the field was checked on a submit.
   let committed = $signal(false);
   let nativeErrors = $signal<string[]>([]);
-  let edited = $signal(false);
+  // The errors of the server, until the user picks. New errors of a later reply show again.
+  let edited = $signal<unknown>(undefined);
   const serverErrors = $memo(
-    edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
+    form && edited === form.validationErrors
+      ? []
+      : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
   );
   const errors = $memo([...serverErrors, ...(committed ? nativeErrors : [])]);
   const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
@@ -160,7 +166,7 @@
     remember(key);
     if (key !== selectedKey) {
       selectedKey = key;
-      edited = true;
+      edited = form?.validationErrors ?? null;
       onSelectionChange?.(key);
     }
     // The browser checks the new value at once, so its message goes away.
@@ -224,7 +230,7 @@
         selectedKey = initialKey;
         committed = false;
         nativeErrors = [];
-        edited = false;
+        edited = undefined;
       },
     );
   }, 'load');

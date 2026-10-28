@@ -22,7 +22,7 @@ A list of actions or options that opens from a button, with the keyboard, a poin
 - A `Menu` holds `MenuItem` elements, each with an `id`, its key. Write them out, or render them from a `#for`.
 - `onAction` on the Menu gets the key of the item, and `onAction` on the item runs too.
 - `disabledKeys`, or `isDisabled` on an item, keeps items from focus and action.
-- `isOpen` alone starts the menu open, and `isOpen=$bind(signal)` writes the caller's. `onOpenChange` gets each change.
+- `isOpen` alone holds its own state, which starts closed, and `isOpen=$bind(signal)` writes the caller's. `onOpenChange` gets each change.
 
 ## Anatomy
 
