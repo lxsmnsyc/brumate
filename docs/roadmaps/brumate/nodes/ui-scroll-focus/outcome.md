@@ -1,0 +1,21 @@
+# Outcome: ui-scroll-focus
+
+## Cause
+
+Axe's `scrollable-region-focusable` named one node on each of /ui/calendar, /ui/list-box, /ui/grid-list and /ui/tree: the `.props-table`. The rule `.prose table` sets `display: block; overflow-x: auto`, so the table scrolled when wider than the column, and nothing in it was focusable. No part (ListBox, GridList, Tree, Calendar) and no demo scrolls, so packages/ui is unchanged.
+
+## Fix
+
+- `renderProps` (website/plugins/props-table.ts) wraps the table in `<div class="props-scroll" role="group" aria-label="Props" tabindex="0">`.
+- website/src/styles.css: the wrapper scrolls (`overflow-x: auto`) and shows a focus ring. `.props-table` is a normal table again (`display: table`), so it keeps its table semantics.
+- `role="group"` rather than `region`: pages with several tables would otherwise repeat a landmark (axe `landmark-unique`).
+- e2e/suites/website.mjs: removed the `exclude: ['.props-table']` workaround of the color parts flow.
+- website/test/props-table.test.ts: checks the wrapper.
+
+## Checks
+
+- Real Chrome (playwright-core, port 5326): the wrapper on /ui/list-box is 762px wide in 720px; focused, ArrowRight scrolls it (scrollLeft 0 to 40).
+- Axe with only the rule: no node on the four pages.
+- e2e `--only website --no-build`: 51 passed, 1 failed (the known /docs/control-flow "Not connected"). The sidebar flow and the color flow pass without the exclude.
+- oxfmt, oxlint, brumate-tsc, website tests (114), check-samples (63 samples) and the website build pass.
+- No changeset: only the private website changed.

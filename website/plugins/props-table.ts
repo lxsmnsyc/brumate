@@ -181,5 +181,6 @@ export function renderProps(rows: PropRow[]): string {
       return `<tr><td><code>${escape(row.name)}</code></td><td><code>${escape(row.type)}</code></td><td>${value}</td><td>${describe(row.description)}</td></tr>`;
     })
     .join('\n');
-  return `<table class="props-table">\n<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>\n<tbody>\n${body}\n</tbody>\n</table>\n`;
+  // The wrapper scrolls, so it takes focus: a keyboard user can scroll a wide table.
+  return `<div class="props-scroll" role="group" aria-label="Props" tabindex="0">\n<table class="props-table">\n<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>\n<tbody>\n${body}\n</tbody>\n</table>\n</div>\n`;
 }

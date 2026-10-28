@@ -668,13 +668,8 @@ export async function run({ browser, url, runner }) {
               `/ui/${slug}: ${marks} callouts for ${items} listed pieces`,
             );
             await page.addScriptTag({ path: axe });
-            // The props table scrolls and fails scrollable-region-focusable on main (node
-            // ui-scroll-focus). Delete the exclude when that node lands.
             const violations = await page.evaluate(async () => {
-              const result = await window.axe.run({
-                include: ['article'],
-                exclude: ['.props-table'],
-              });
+              const result = await window.axe.run(document.querySelector('article'));
               return result.violations.map((violation) => violation.id);
             });
             assert(
