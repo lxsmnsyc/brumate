@@ -1,7 +1,7 @@
 ---
 id: handler-code-wait
 title: A handler waits only for the update code it can need
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

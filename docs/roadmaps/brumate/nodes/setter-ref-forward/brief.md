@@ -1,7 +1,7 @@
 ---
 id: setter-ref-forward
 title: A ref bound with a setter receives the element
-status: todo
+status: active
 priority: should
 type: fix
 outline: false
