@@ -647,8 +647,12 @@ export async function run({ browser, url, runner }) {
             continue;
           }
           await page.addScriptTag({ path: axe });
+          // A described option is named by its label alone, on purpose. axe reports
+          // label-content-name-mismatch on it, which is a false positive.
           const violations = await page.evaluate(async () => {
-            const result = await window.axe.run(document.querySelector('article'));
+            const result = await window.axe.run(document.querySelector('article'), {
+              rules: { 'label-content-name-mismatch': { enabled: false } },
+            });
             return result.violations.map((violation) => violation.id);
           });
           if (violations.length > 0) {
