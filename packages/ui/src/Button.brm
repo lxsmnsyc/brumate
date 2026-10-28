@@ -6,7 +6,7 @@
   export interface ButtonOwnProps<T extends AsTarget = 'button'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
-    /** The `type` of a native button. A pending button is always `button`. */
+    /** The `type` of a native button. A pending reset button is `button`. A pending submit button keeps `submit` and cancels its form's submit. */
     type?: 'button' | 'submit' | 'reset';
     /** The slot of the context of a part that holds this button, such as "increment". */
     slot?: string | null;
@@ -46,7 +46,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'button'">
-  import { $getContext, $handler, $memo, $props } from 'brumate/signals';
+  import { $client, $getContext, $handler, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
@@ -160,17 +160,51 @@
     focusChanged,
   );
 
+  // A pending reset button is a plain button, so it resets nothing. A pending submit button keeps
+  // its type, so the form still has its submit button and its default button, and the button
+  // cancels the submit itself.
+  const kind = $memo(pending && type === 'reset' ? 'button' : type);
+
   // A submit or reset button keeps Space, so the browser clicks it and sends its form.
   // Other buttons prevent it, so the browser does not scroll the page or click them.
-  // A pending button is a plain button, so it sends nothing again.
   function keys() {
-    return native && !pending && (type === 'submit' || type === 'reset')
+    return native && (kind === 'submit' || kind === 'reset')
       ? { onKeyDown: $handler(onKeyDown), onKeyUp: $handler(onKeyUp) }
       : {
           onKeyDown: $handler(prevent(onKeyDown, 'Space')),
           onKeyUp: $handler(prevent(onKeyUp, 'Space')),
         };
   }
+
+  // It reads data-pending, because a signal read in a $client callback is the value of the load.
+  // The listener is on the window, in the capture phase, so it runs before the listeners that
+  // brumate adds on the document and before those on the form.
+  // Cancels a submit of the form while this button is pending: a click on it, or Enter in a field,
+  // which the browser sends as a click on the default button, the first submit button in tree
+  // order. A submit with no submitter, such as `form.requestSubmit()`, is cancelled when this
+  // button is the default button. In a form with two submit buttons, only the pending one is
+  // blocked: Enter sends the form unless the default button is the pending one. When the button
+  // is not pending, the listener does nothing, and the other submit listeners of the page run.
+  $client(() => {
+    const button = ref as HTMLButtonElement | undefined;
+    const form = button?.form;
+    if (!form) {
+      return;
+    }
+    const onSubmit = (event: SubmitEvent) => {
+      if (
+        button.hasAttribute('data-pending') &&
+        event.target === form &&
+        (event.submitter === button ||
+          (!event.submitter && form.querySelector('button[type=submit], input[type=submit]') === button))
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener('submit', onSubmit, true);
+    return () => window.removeEventListener('submit', onSubmit, true);
+  }, 'idle');
 </script>
 
 <!--
@@ -179,7 +213,7 @@
 -->
 <{as ?? 'button'}
   ref=$bind(ref)
-  type=(native ? (pending ? 'button' : type) : undefined)
+  type=(native ? kind : undefined)
   href=(disabled ? undefined : href)
   role=(native ? undefined : 'button')
   tabindex=(native || disabled ? undefined : 0)

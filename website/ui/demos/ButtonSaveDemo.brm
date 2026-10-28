@@ -10,11 +10,8 @@
   let saving = $signal(false);
   let saved = $signal('');
 
-  // A pending button is type=button, so Enter in the field still submits. Guard here.
+  // The pending Save button keeps the form from submitting again, by a click or Enter.
   function save(event: SubmitEvent) {
-    if (saving) {
-      return;
-    }
     const data = new FormData(event.currentTarget as HTMLFormElement);
     saving = true;
     saved = '';
