@@ -44,6 +44,9 @@ depends_on:
   - on: ui-docs-pages-collections
     kind: hard
     why: every /ui page complete is the ui-0.1 acceptance
+  - on: ui-docs-pages-utilities
+    kind: hard
+    why: every /ui page complete is the ui-0.1 acceptance
   - on: ui-docs-pages-layout
     kind: hard
     why: every /ui page complete is the ui-0.1 acceptance
