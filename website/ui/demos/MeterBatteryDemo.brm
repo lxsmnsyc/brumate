@@ -11,8 +11,9 @@
 <div class="ui-stack">
   <Meter class="ui-bar" value=(charge)><Label>Battery</Label></Meter>
   <div class="ui-group">
-    <Button class="ui-button" isDisabled=(charge <= 0) onPress=(() => (charge = Math.max(0, charge - 15)))>Use 15%</Button>
-    <Button class="ui-button" isDisabled=(charge >= 100) onPress=(() => (charge = Math.min(100, charge + 15)))>Charge 15%</Button>
+    <!-- The buttons clamp and stay enabled, so focus stays where it is at 0% and at 100%. -->
+    <Button class="ui-button" onPress=(() => (charge = Math.max(0, charge - 15)))>Use 15%</Button>
+    <Button class="ui-button" onPress=(() => (charge = Math.min(100, charge + 15)))>Charge 15%</Button>
   </div>
   <p>{note}</p>
 </div>

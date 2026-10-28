@@ -14,9 +14,10 @@
     <Label>{waiting ? 'Saving' : steps[step - 1]}</Label>
   </ProgressBar>
   <div class="ui-group">
-    <Button class="ui-button" isDisabled=(step <= 1 || waiting) onPress=(() => (step -= 1))>Back</Button>
-    <Button class="ui-button" isDisabled=(step >= steps.length || waiting) onPress=(() => (step += 1))>Next</Button>
-    <Button class="ui-button" isDisabled=(waiting) onPress=(() => (waiting = true))>Save</Button>
-    <Button class="ui-button" isDisabled=(!waiting) onPress=(() => (waiting = false))>Finish saving</Button>
+    <!-- The buttons stay enabled and clamp, so focus stays where it is. -->
+    <Button class="ui-button" onPress=(() => { if (!waiting) step = Math.max(1, step - 1); })>Back</Button>
+    <Button class="ui-button" onPress=(() => { if (!waiting) step = Math.min(steps.length, step + 1); })>Next</Button>
+    <Button class="ui-button" onPress=(() => (waiting = true))>Save</Button>
+    <Button class="ui-button" onPress=(() => (waiting = false))>Finish saving</Button>
   </div>
 </div>

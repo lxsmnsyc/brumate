@@ -35,7 +35,7 @@
 <style>
   /* The tokens. Change these and the rest follows. */
   :global(.disclosure-styled) {
-    --disclosure-styled-border: color-mix(in srgb, CanvasText 45%, Canvas);
+    --disclosure-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
     --disclosure-styled-hover: color-mix(in srgb, CanvasText 8%, Canvas);
     --disclosure-styled-press: color-mix(in srgb, CanvasText 16%, Canvas);
     --disclosure-styled-open: color-mix(in srgb, CanvasText 5%, Canvas);

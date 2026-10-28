@@ -22,7 +22,7 @@
 <style>
   /* The tokens. Change these and the rest follows. */
   :global(.group-styled-stack) {
-    --group-styled-border: color-mix(in srgb, CanvasText 45%, Canvas);
+    --group-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
     --group-styled-hover: color-mix(in srgb, CanvasText 75%, Canvas);
     --group-styled-accent: light-dark(#2a76b2, #6fb2e6);
     --group-styled-invalid: light-dark(#b3261e, #ff8a80);

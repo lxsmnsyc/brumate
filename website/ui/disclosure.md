@@ -86,7 +86,7 @@ The trigger shows the data attributes of a [Button](./button.md#data-attributes)
 - `isExpanded` alone, or nothing, makes the disclosure keep its own state. It starts collapsed. `isExpanded=(true)` is where that state starts, and a press changes it from there.
 - `isExpanded=$bind(signal)` writes your signal. Change the signal and the disclosure follows. The last two disclosures above share one signal.
 - `isExpanded=$bind(signal, (next) => ...)` asks you first. The disclosure shows what you keep, so a request that you ignore leaves it as it was. Press Lock, then the last disclosure.
-- `onExpandedChange` gets each new state when the disclosure changes by itself, which is a press or find in page. It does not run when you write the signal. In a [DisclosureGroup](./disclosure-group.md), the group holds the state, and a disclosure that the group collapses, because another one opened, does not run its own `onExpandedChange`. The `onExpandedChange` of the group does.
+- `onExpandedChange` gets each new state when the disclosure changes by itself, which is a press or find in page. It runs for a request that your setter refuses too: the handler reports what the user asked for, and the setter decides what is kept (see [State](./state.md#change-callbacks)). It does not run when you write the signal. In a [DisclosureGroup](./disclosure-group.md), the group holds the state, and a disclosure that the group collapses, because another one opened, does not run its own `onExpandedChange`. The `onExpandedChange` of the group does.
 - A disclosure is not a form field, so a form reset leaves it as it is. The server renders the state it starts with, panel and `hidden` included. See [State](./state.md).
 
 ## Styling
@@ -134,7 +134,7 @@ With `true` and `'offscreen'`, a panel that starts collapsed has no content in t
 
 ### Terms that must be opened
 
-`onExpandedChange` runs when the user opens the disclosure, so the page can know that the terms were opened. The Accept button waits for it.
+`onExpandedChange` runs when the user opens the disclosure, so the page can know that the terms were opened. The Accept button waits for it. It is disabled only until then: a button that disables itself while it has focus drops focus to the page, so Accept stays enabled after it is pressed.
 
 ```brm demo DisclosureTermsDemo
 

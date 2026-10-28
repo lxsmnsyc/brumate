@@ -912,6 +912,38 @@ export async function run({ browser, url, runner }) {
           (await triggers.nth(1).getAttribute('aria-expanded')) === 'true',
           'step 2 did not open',
         );
+        assert(
+          (await focused()).startsWith('2. Payment'),
+          `focus is on "${await focused()}" after Continue`,
+        );
+        // Without allowsMultipleExpanded, a press on another trigger closes the open one. The
+        // presses go through the part, not a signal.
+        const cards = page.locator('.group-styled-list .group-styled-trigger');
+        const openCount = () =>
+          cards.evaluateAll(
+            (list) => list.filter((item) => item.getAttribute('aria-expanded') === 'true').length,
+          );
+        assert((await openCount()) === 1, 'the styled group does not start with one open');
+        await cards.nth(1).click();
+        await settle();
+        assert((await openCount()) === 1, `${await openCount()} are open after one more press`);
+        assert(
+          (await cards.nth(1).getAttribute('aria-expanded')) === 'true',
+          'the pressed item did not open',
+        );
+        await cards.nth(2).click();
+        await settle();
+        assert((await openCount()) === 1, `${await openCount()} are open after two presses`);
+        // With allowsMultipleExpanded they add up.
+        const every = page.locator('.ui-stack', { hasText: 'Expand all' });
+        await every.getByRole('button', { name: 'Collapse all' }).click();
+        await every.getByRole('button', { name: 'Setup', exact: true }).click();
+        await every.getByRole('button', { name: 'Usage', exact: true }).click();
+        await settle();
+        assert(
+          (await every.locator('p').last().innerText()).startsWith('2 of 3'),
+          'two presses did not leave two open',
+        );
         // Disclosure: Enter opens the terms, and the Accept button wakes up.
         await visit('disclosure');
         const terms = page.locator('.ui-stack', { hasText: 'Terms of use' });
@@ -921,6 +953,31 @@ export async function run({ browser, url, runner }) {
         await page.keyboard.press('Enter');
         await settle();
         assert(!(await accept.isDisabled()), 'opening the terms did not enable Accept');
+        await accept.focus();
+        await page.keyboard.press('Enter');
+        await settle();
+        assert(
+          (await focused()) === 'Accepted',
+          `focus is on "${await focused()}" after Accept, not on the button`,
+        );
+        // unmount="offscreen" keeps the typed text across a collapse.
+        const options = page.locator('.ui-stack', { hasText: 'Advanced options' });
+        const section = options.getByRole('button', { name: 'Advanced options' });
+        await section.click();
+        await settle();
+        await options.locator('input').fill('proxy:8080');
+        await section.click();
+        await settle();
+        assert(
+          (await section.getAttribute('aria-expanded')) === 'false',
+          'the section stayed open',
+        );
+        await section.click();
+        await settle();
+        assert(
+          (await options.locator('input').inputValue()) === 'proxy:8080',
+          'the collapse lost the typed text',
+        );
         // Toolbar: the arrow keys move focus and Home and End go to the ends.
         await visit('toolbar');
         const editor = page.locator('.ui-stack', { hasText: 'Hello' });
@@ -962,6 +1019,66 @@ export async function run({ browser, url, runner }) {
         await upload.getByRole('button', { name: 'Cancel' }).click();
         await settle();
         assert((await bar.getAttribute('aria-valuenow')) === '0', 'Cancel left the value');
+        // The buttons keep focus when they are pressed with the keyboard.
+        await upload.getByRole('button', { name: 'Upload', exact: true }).focus();
+        await page.keyboard.press('Enter');
+        assert((await focused()) === 'Upload', `focus is on "${await focused()}" after Upload`);
+        await upload.getByRole('button', { name: 'Cancel' }).focus();
+        await page.keyboard.press('Enter');
+        await settle();
+        assert((await focused()) === 'Cancel', `focus is on "${await focused()}" after Cancel`);
+        // The fill has the width that --percentage says (64%, 38%, 72% and 94%).
+        const fill = (selector) =>
+          page.evaluate((query) => {
+            const element = document.querySelector(query);
+            return (
+              (element.getBoundingClientRect().width /
+                element.parentElement.getBoundingClientRect().width) *
+              100
+            );
+          }, selector);
+        const wide = await fill('.progress-styled-list .progress-styled-fill');
+        assert(Math.abs(wide - 64) < 1, `the ProgressBar fill is ${wide}% wide, not 64%`);
+        await visit('meter');
+        const meterFill = await fill(".meter-styled-fill[data-level='high']");
+        assert(Math.abs(meterFill - 72) < 1, `the Meter fill is ${meterFill}% wide, not 72%`);
+        // Breadcrumbs: a press on a step cuts the path, and focus goes to the list of folders.
+        await visit('breadcrumbs');
+        const folders = page.locator('.ui-stack:has(nav[aria-label=Folder])');
+        const trail = folders.locator('nav');
+        await folders.getByRole('button', { name: 'Photos' }).click();
+        await folders.getByRole('button', { name: 'Spring' }).click();
+        await settle();
+        assert((await trail.locator('li').count()) === 3, 'the path is not three steps');
+        await trail.getByRole('link', { name: 'Photos' }).click();
+        await settle();
+        assert((await trail.locator('li').count()) === 2, 'a press on a step left the path');
+        assert(
+          await folders
+            .locator('[role=group][tabindex="-1"]')
+            .evaluate((list) => list === document.activeElement),
+          'focus did not go to the list of folders',
+        );
+        // Group: the focus ring follows focus inside, and the disabled one says so.
+        await visit('group');
+        const frames = page.locator('.group-styled');
+        assert(
+          (await frames.nth(2).getAttribute('data-disabled')) !== null &&
+            (await frames.nth(2).locator('input').isDisabled()),
+          'the disabled group is not disabled',
+        );
+        assert((await frames.nth(1).getAttribute('data-invalid')) !== null, 'no data-invalid');
+        await frames.nth(0).locator('input').focus();
+        assert(
+          (await frames.nth(0).getAttribute('data-focus-within')) !== null,
+          'no data-focus-within with focus inside',
+        );
+        // Enter in the search field searches.
+        const search = page.locator('.ui-stack:has(form)');
+        await search.locator('input').fill('shoes');
+        await page.keyboard.press('Enter');
+        await settle();
+        assert((await search.innerText()).includes('Searched for "shoes"'), 'Enter did not search');
       },
     );
     await flow(

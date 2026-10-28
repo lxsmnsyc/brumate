@@ -84,7 +84,7 @@ Breadcrumbs keep no state. They draw the trail that you give them, so a use case
 
 ### A path that the user walks
 
-The path is a list in a signal. A Link without `href` is an element with `role="link"` that runs `onPress`, so a press on a step cuts the path back to it, and a button opens a folder.
+The path is a list in a signal. A Link without `href` is an element with `role="link"` that runs `onPress`, so a press on a step cuts the path back to it, and a button opens a folder. The pressed step becomes the current one, and its link turns into plain text, and the folder buttons are replaced. So the handler moves focus to the list of folders on purpose.
 
 ```brm demo BreadcrumbsFolderDemo
 

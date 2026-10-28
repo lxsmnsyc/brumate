@@ -9,7 +9,7 @@
 
 <div class="ui-stack">
   <Group class="ui-group" aria-label="Quantity" isInvalid=(amount > 5)>
-    <Button class="ui-button ui-icon-button" aria-label="One less" isDisabled=(amount <= 1) onPress=(() => amount--)><Icon name="minus" /></Button>
+    <Button class="ui-button ui-icon-button" aria-label="One less" onPress=(() => (amount = Math.max(1, amount - 1)))><Icon name="minus" /></Button>
     <output class="ui-input" aria-live="polite">{amount}</output>
     <Button class="ui-button ui-icon-button" aria-label="One more" onPress=(() => amount++)><Icon name="plus" /></Button>
   </Group>

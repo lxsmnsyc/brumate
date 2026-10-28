@@ -17,7 +17,8 @@
       </DisclosurePanel>
     </Disclosure>
   </div>
-  <Button class="ui-button" isDisabled=(!read || accepted) onPress=(() => (accepted = true))>
+  <!-- Accept is disabled only until the terms are read. After it, it stays enabled, so focus does not drop to the page when it is pressed. -->
+  <Button class="ui-button" isDisabled=(!read) onPress=(() => (accepted = true))>
     {accepted ? 'Accepted' : 'Accept'}
   </Button>
   <p>{read ? 'You opened the terms.' : 'Open the terms to accept them.'}</p>

@@ -1,5 +1,6 @@
 <script>
   import { $bind, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
   import Button from '@brumate/ui/Button.brm';
   import Group from '@brumate/ui/Group.brm';
   import Input from '@brumate/ui/Input.brm';
@@ -12,12 +13,15 @@
 </script>
 
 <div class="ui-stack">
-  <TextField value=$bind(query)>
-    <Label><VisuallyHidden>Search the shop</VisuallyHidden></Label>
-    <Group class="ui-group" aria-label="Search">
-      <Input class="ui-input" placeholder="Search" />
-      <Button class="ui-button" isDisabled=(query === '') onPress=(() => (searched = query))>Search</Button>
-    </Group>
-  </TextField>
+  <!-- A form, so Enter in the field searches as the button does. -->
+  <form onSubmit=(prevent(() => (searched = query)))>
+    <TextField value=$bind(query)>
+      <Label><VisuallyHidden>Search the shop</VisuallyHidden></Label>
+      <Group class="ui-group" aria-label="Search">
+        <Input class="ui-input" placeholder="Search" />
+        <Button type="submit" class="ui-button" isDisabled=(query === '')>Search</Button>
+      </Group>
+    </TextField>
+  </form>
   <p>{searched === '' ? 'Nothing searched yet.' : `Searched for "${searched}".`}</p>
 </div>

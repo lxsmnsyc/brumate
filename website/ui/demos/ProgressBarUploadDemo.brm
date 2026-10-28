@@ -42,7 +42,8 @@
 <div class="ui-stack">
   <ProgressBar class="ui-bar" value=(sent)><Label>{running ? 'Uploading' : sent >= 100 ? 'Done' : 'Ready'}</Label></ProgressBar>
   <div class="ui-group">
-    <Button class="ui-button" isDisabled=(running) onPress=start>{sent >= 100 ? 'Upload again' : 'Upload'}</Button>
-    <Button class="ui-button" isDisabled=(!running) onPress=cancel>Cancel</Button>
+    <!-- Neither button disables itself: a disabled button that has focus drops it to the page. Upload ignores a press while it runs, and Cancel resets. -->
+    <Button class="ui-button" onPress=start>{sent >= 100 ? 'Upload again' : 'Upload'}</Button>
+    <Button class="ui-button" onPress=cancel>Cancel</Button>
   </div>
 </div>

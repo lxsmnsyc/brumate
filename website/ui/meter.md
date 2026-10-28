@@ -38,7 +38,7 @@ A `Meter` sets no data attributes. It sets `role="meter"` with `aria-valuenow`, 
 
 ## Styling
 
-The part sets `--percentage` in its own `style` attribute, and a `style` that you pass replaces it. Size the part with a class or a wrapper, and keep `style` for nothing else.
+The part sets `--percentage` in its own `style` attribute, and a `style` that you pass replaces it. Size the part with a class or a wrapper, and keep `style` for nothing else. The value is not rounded: a third is `33.33333333333333%`. A bar does not mind.
 
 Draw the bar with `--percentage`, from `0%` to `100%`, or with the `content` template. See [Styling](./styling.md#bars).
 

@@ -1,5 +1,5 @@
 <script>
-  import { $memo, $signal } from 'brumate/signals';
+  import { $bind, $memo, $signal } from 'brumate/signals';
   import Breadcrumb from '@brumate/ui/Breadcrumb.brm';
   import Breadcrumbs from '@brumate/ui/Breadcrumbs.brm';
   import Button from '@brumate/ui/Button.brm';
@@ -9,6 +9,14 @@
   const folders: Record<string, string[]> = { files: ['Photos', 'Docs'], Photos: ['Spring', 'Summer'], Docs: [], Spring: [], Summer: [] };
   let path = $signal(['files']);
   const here = $memo(path[path.length - 1]);
+  let list = $signal<HTMLElement | undefined>(undefined);
+
+  // The pressed step becomes the current one, and its link turns into plain text. The folder
+  // buttons are replaced too. So focus moves on purpose, to the list of folders.
+  function go(next: string[]) {
+    path = next;
+    list?.focus();
+  }
 </script>
 
 <div class="ui-stack">
@@ -16,7 +24,7 @@
     <Breadcrumbs class="ui-group">
       #for (name of path by name) {
         <Breadcrumb class="ui-crumb" isCurrent=(name === here)>
-          <Link class="ui-link" onPress=(() => (path = path.slice(0, path.indexOf(name) + 1)))>{name}</Link>
+          <Link class="ui-link" onPress=(() => go(path.slice(0, path.indexOf(name) + 1)))>{name}</Link>
           #if (name !== here) {
             <Icon name="arrow-right" size=(12) />
           }
@@ -24,9 +32,9 @@
       }
     </Breadcrumbs>
   </nav>
-  <div class="ui-group">
+  <div class="ui-group" role="group" aria-label=(`Folders in ${here}`) tabindex="-1" ref=$bind(list) style="outline-offset: 4px">
     #for (name of folders[here] by name) {
-      <Button class="ui-button" onPress=(() => (path = [...path, name]))>{name}</Button>
+      <Button class="ui-button" onPress=(() => go([...path, name]))>{name}</Button>
     }
     #if (folders[here].length === 0) {
       <span>This folder is empty.</span>

@@ -6,22 +6,24 @@
   import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
 
   let open = $signal(['address']);
+  let paymentTrigger = $signal<HTMLButtonElement | undefined>(undefined);
   let done = $signal<string[]>([]);
 </script>
 
+<!-- The Continue button leaves with its panel, so each step moves focus to the trigger of the next one. -->
 <DisclosureGroup class="ui-accordion" expandedKeys=$bind(open)>
   <Disclosure id="address" class="ui-disclosure">
     <Button slot="trigger" class="ui-disclosure-trigger">1. Address{done.includes('address') ? ' (done)' : ''}</Button>
     <DisclosurePanel transition class="ui-disclosure-panel">
       <p>12 Mill Road, Leeds.</p>
-      <p><Button class="ui-button" onPress=(() => { done = [...done, 'address']; open = ['payment']; })>Continue</Button></p>
+      <p><Button class="ui-button" onPress=(() => { done = [...done, 'address']; open = ['payment']; paymentTrigger?.focus(); })>Continue</Button></p>
     </DisclosurePanel>
   </Disclosure>
   <Disclosure id="payment" class="ui-disclosure">
-    <Button slot="trigger" class="ui-disclosure-trigger">2. Payment{done.includes('payment') ? ' (done)' : ''}</Button>
+    <Button slot="trigger" ref=$bind(paymentTrigger) class="ui-disclosure-trigger">2. Payment{done.includes('payment') ? ' (done)' : ''}</Button>
     <DisclosurePanel transition class="ui-disclosure-panel">
       <p>Card ending in 4242.</p>
-      <p><Button class="ui-button" onPress=(() => { done = [...done, 'payment']; open = []; })>Finish</Button></p>
+      <p><Button class="ui-button" onPress=(() => { done = [...done, 'payment']; open = []; paymentTrigger?.focus(); })>Finish</Button></p>
     </DisclosurePanel>
   </Disclosure>
 </DisclosureGroup>

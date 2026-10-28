@@ -25,7 +25,7 @@
 <style>
   /* The tokens. Change these and the rest follows. */
   :global(.group-styled-list) {
-    --group-styled-border: color-mix(in srgb, CanvasText 45%, Canvas);
+    --group-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
     --group-styled-hover: color-mix(in srgb, CanvasText 8%, Canvas);
     --group-styled-press: color-mix(in srgb, CanvasText 16%, Canvas);
     --group-styled-accent: light-dark(#2a76b2, #6fb2e6);

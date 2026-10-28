@@ -57,7 +57,7 @@ The group takes no keys of its own. Each trigger works as in a [Disclosure](./di
 - `expandedKeys` alone, or nothing, makes the group keep its own list. It starts empty. `expandedKeys=(['b'])` is where that list starts.
 - `expandedKeys=$bind(signal)` writes your signal. Change the signal and the group follows. The last two groups share one signal.
 - `expandedKeys=$bind(signal, (next) => ...)` asks you first. The group shows what you keep, so a request that you ignore leaves the old list. Press Lock, then a trigger in the last group.
-- `onExpandedChange` gets the new list when a press changes it. It does not run when you write the signal.
+- `onExpandedChange` gets the new list when a press changes it, also when your setter refuses it: the handler reports the request, and the setter decides what is kept (see [State](./state.md#change-callbacks)). It does not run when you write the signal.
 - The `isExpanded` of a disclosure inside the group is not read: the group decides.
 - A group is not a form field, so a form reset leaves it as it is. The server renders the keys it starts with. See [State](./state.md).
 
@@ -83,7 +83,7 @@ This stylesheet makes a stack of cards. The open card gets an accent edge and a 
 
 ### Steps that open in turn
 
-A press of Continue writes the list, so the next step opens and the first closes.
+A press of Continue writes the list, so the next step opens and the first closes. The Continue button leaves with its panel, so the handler moves focus to the trigger of the next step on purpose.
 
 ```brm demo DisclosureGroupStepsDemo
 
