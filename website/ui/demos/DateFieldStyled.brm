@@ -1,0 +1,157 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import DateField from '@brumate/ui/DateField.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let sent = $signal('');
+
+  function submit(event: SubmitEvent) {
+    const form = event.currentTarget as HTMLFormElement;
+    if (form.querySelector('[data-invalid]')) {
+      sent = 'Fix the field first.';
+      return;
+    }
+    const data = new FormData(form);
+    sent = `Sent arrival=${data.get('arrival')}.`;
+  }
+</script>
+
+<Form class="date-field-styled-form" onSubmit=(prevent(submit))>
+  <DateField class="date-field-styled" name="arrival" isRequired minValue="2026-01-01" maxValue="2026-12-31">
+    <Label class="date-field-styled-label">Arrival</Label>
+    <DateInput class="date-field-styled-input" />
+    <Text slot="description" class="date-field-styled-help">Press Save with no date, or type a date outside 2026.</Text>
+    <FieldError class="date-field-styled-error">Pick a date in 2026.</FieldError>
+  </DateField>
+  <DateField class="date-field-styled" value="2026-10-15" isDisabled>
+    <Label class="date-field-styled-label">Disabled</Label>
+    <DateInput class="date-field-styled-input" />
+  </DateField>
+  <Button type="submit" class="date-field-styled-submit">Save</Button>
+  <p role="status" class="date-field-styled-status">{sent}</p>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.date-field-styled-form) {
+    --date-field-styled-page: Canvas;
+    --date-field-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
+    --date-field-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
+    --date-field-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --date-field-styled-on-accent: light-dark(#fff, #101418);
+    --date-field-styled-danger: light-dark(#c4271d, #f28b82);
+    display: grid;
+    justify-items: start;
+    gap: 0.9rem;
+    color: CanvasText;
+  }
+
+  :global(.date-field-styled) {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  :global(.date-field-styled-label) {
+    font-weight: 600;
+  }
+
+  /* The input is the box. Its segments: placeholder, set, hover and keyboard focus. */
+  :global(.date-field-styled-input) {
+    display: inline-flex;
+    width: fit-content;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--date-field-styled-border);
+    border-radius: 8px;
+    background: var(--date-field-styled-page);
+    font-variant-numeric: tabular-nums;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.date-field-styled-input:hover) {
+    border-color: var(--date-field-styled-accent);
+  }
+
+  :global(.date-field-styled-input:focus-within) {
+    border-color: var(--date-field-styled-accent);
+    box-shadow: 0 0 0 3px var(--date-field-styled-page), 0 0 0 5px var(--date-field-styled-accent);
+  }
+
+  :global(.date-field-styled-input[data-invalid]) {
+    border-color: var(--date-field-styled-danger);
+  }
+
+  :global(.date-field-styled-input[data-invalid]:focus-within) {
+    box-shadow: 0 0 0 3px var(--date-field-styled-page), 0 0 0 5px var(--date-field-styled-danger);
+  }
+
+  :global(.date-field-styled-input [data-segment]:not([data-type='literal'])) {
+    padding: 0 2px;
+    border-radius: 4px;
+    outline: none;
+    caret-color: transparent;
+  }
+
+  :global(.date-field-styled-input [data-placeholder]) {
+    color: var(--date-field-styled-muted);
+  }
+
+  :global(.date-field-styled-input [data-focused]) {
+    background: var(--date-field-styled-accent);
+    color: var(--date-field-styled-on-accent);
+  }
+
+  :global(.date-field-styled[data-disabled] .date-field-styled-input) {
+    opacity: 0.55;
+  }
+
+  :global(.date-field-styled-help) {
+    color: var(--date-field-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.date-field-styled-error) {
+    color: var(--date-field-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  :global(.date-field-styled-submit) {
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--date-field-styled-accent);
+    color: var(--date-field-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.date-field-styled-submit[data-hovered]) {
+    background: color-mix(in srgb, var(--date-field-styled-accent) 85%, CanvasText);
+  }
+
+  :global(.date-field-styled-submit[data-pressed]) {
+    background: color-mix(in srgb, var(--date-field-styled-accent) 70%, CanvasText);
+  }
+
+  :global(.date-field-styled-submit[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--date-field-styled-page), 0 0 0 4px var(--date-field-styled-accent);
+  }
+
+  :global(.date-field-styled-status) {
+    margin: 0;
+    color: var(--date-field-styled-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.date-field-styled-input) {
+      transition: none;
+    }
+  }
+</style>

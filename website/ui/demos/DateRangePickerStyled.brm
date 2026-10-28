@@ -1,0 +1,409 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let sent = $signal('');
+
+  // The 22nd cannot be picked, so a range that starts before it stops there.
+  function taken(date: string) {
+    return date === '2026-10-22';
+  }
+
+  function submit(event: SubmitEvent) {
+    const form = event.currentTarget as HTMLFormElement;
+    if (form.querySelector('[data-invalid]')) {
+      sent = 'Fix the field first.';
+      return;
+    }
+    const data = new FormData(form);
+    sent = `Sent from=${data.get('from')}, to=${data.get('to')}.`;
+  }
+</script>
+
+<Form class="date-range-picker-styled-form" onSubmit=(prevent(submit))>
+  <DateRangePicker
+    class="date-range-picker-styled"
+    startName="from"
+    endName="to"
+    isRequired
+    minValue="2026-10-05"
+    maxValue="2026-11-20"
+    placeholderValue="2026-10-15"
+    isDateUnavailable=taken
+  >
+    <Label class="date-range-picker-styled-label">Stay</Label>
+    <Group class="date-range-picker-styled-group">
+      <DateInput slot="start" class="date-range-picker-styled-input" />
+      <span aria-hidden="true">–</span>
+      <DateInput slot="end" class="date-range-picker-styled-input" />
+      <Button class="date-range-picker-styled-trigger" aria-label="Calendar">▾</Button>
+    </Group>
+    <Text slot="description" class="date-range-picker-styled-help">Press Save with no dates to see the error.</Text>
+    <FieldError class="date-range-picker-styled-error">Pick two dates from the 5th of October to the 20th of November.</FieldError>
+    <Popover class="date-range-picker-styled-popover" transition>
+      <Dialog class="date-range-picker-styled-dialog">
+        <RangeCalendar class="date-range-picker-styled-calendar" aria-label="Stay">
+          <header class="date-range-picker-styled-header">
+            <Button slot="previous" class="date-range-picker-styled-nav">‹</Button>
+            <CalendarHeading class="date-range-picker-styled-heading" />
+            <Button slot="next" class="date-range-picker-styled-nav">›</Button>
+          </header>
+          <CalendarGrid class="date-range-picker-styled-grid" />
+        </RangeCalendar>
+      </Dialog>
+    </Popover>
+  </DateRangePicker>
+  <Button type="submit" class="date-range-picker-styled-submit">Save</Button>
+  <p role="status" class="date-range-picker-styled-status">{sent}</p>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. The Popover is a layer outside the form, so it has them too. */
+  :global(.date-range-picker-styled-form),
+  :global(.date-range-picker-styled-popover) {
+    --date-range-picker-styled-page: Canvas;
+    --date-range-picker-styled-text: CanvasText;
+    --date-range-picker-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
+    --date-range-picker-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
+    --date-range-picker-styled-hover: color-mix(in srgb, CanvasText 10%, Canvas);
+    --date-range-picker-styled-press: color-mix(in srgb, CanvasText 18%, Canvas);
+    --date-range-picker-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --date-range-picker-styled-on-accent: light-dark(#fff, #101418);
+    --date-range-picker-styled-danger: light-dark(#c4271d, #f28b82);
+    /* The band between the ends of the range. */
+    --date-range-picker-styled-band: light-dark(#d4e6f5, #1d3a52);
+  }
+
+  :global(.date-range-picker-styled-form) {
+    display: grid;
+    justify-items: start;
+    gap: 0.9rem;
+    color: var(--date-range-picker-styled-text);
+  }
+
+  :global(.date-range-picker-styled) {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  :global(.date-range-picker-styled-label) {
+    font-weight: 600;
+  }
+
+  /* The group is the box. The input and the trigger sit in it. */
+  :global(.date-range-picker-styled-group) {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    gap: 0.25rem;
+    padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+    border: 1px solid var(--date-range-picker-styled-border);
+    border-radius: 8px;
+    background: var(--date-range-picker-styled-page);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.date-range-picker-styled-group:hover) {
+    border-color: var(--date-range-picker-styled-accent);
+  }
+
+  :global(.date-range-picker-styled-group:focus-within) {
+    border-color: var(--date-range-picker-styled-accent);
+    box-shadow: 0 0 0 3px var(--date-range-picker-styled-page), 0 0 0 5px var(--date-range-picker-styled-accent);
+  }
+
+  :global(.date-range-picker-styled[data-invalid] .date-range-picker-styled-group) {
+    border-color: var(--date-range-picker-styled-danger);
+  }
+
+  :global(.date-range-picker-styled[data-invalid] .date-range-picker-styled-group:focus-within) {
+    box-shadow: 0 0 0 3px var(--date-range-picker-styled-page), 0 0 0 5px var(--date-range-picker-styled-danger);
+  }
+
+  :global(.date-range-picker-styled[data-open] .date-range-picker-styled-group) {
+    border-color: var(--date-range-picker-styled-accent);
+  }
+
+  :global(.date-range-picker-styled-input) {
+    display: inline-flex;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :global(.date-range-picker-styled-input [data-segment]:not([data-type='literal'])) {
+    padding: 0 2px;
+    border-radius: 4px;
+    outline: none;
+    caret-color: transparent;
+  }
+
+  :global(.date-range-picker-styled-input [data-placeholder]) {
+    color: var(--date-range-picker-styled-muted);
+  }
+
+  :global(.date-range-picker-styled-input [data-focused]) {
+    background: var(--date-range-picker-styled-accent);
+    color: var(--date-range-picker-styled-on-accent);
+  }
+
+  /* The trigger: rest, hover, press, keyboard focus, open and disabled. */
+  :global(.date-range-picker-styled-trigger) {
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.date-range-picker-styled-trigger[data-hovered]) {
+    background: var(--date-range-picker-styled-hover);
+  }
+
+  :global(.date-range-picker-styled-trigger[data-pressed]),
+  :global(.date-range-picker-styled-trigger[aria-expanded='true']) {
+    background: var(--date-range-picker-styled-press);
+  }
+
+  :global(.date-range-picker-styled-trigger[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--date-range-picker-styled-page), 0 0 0 4px var(--date-range-picker-styled-accent);
+  }
+
+  :global(.date-range-picker-styled-trigger[data-disabled]) {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  :global(.date-range-picker-styled-help) {
+    color: var(--date-range-picker-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.date-range-picker-styled-error) {
+    color: var(--date-range-picker-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  /* The layer: it fades and rises while it opens and closes. */
+  :global(.date-range-picker-styled-popover) {
+    box-sizing: border-box;
+    border: 1px solid var(--date-range-picker-styled-border);
+    border-radius: 12px;
+    background: var(--date-range-picker-styled-page);
+    color: var(--date-range-picker-styled-text);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+    transition: opacity 0.15s, translate 0.15s;
+  }
+
+  :global(.date-range-picker-styled-popover[data-closed]) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+
+  :global(.date-range-picker-styled-dialog) {
+    padding: 0.75rem;
+    outline: none;
+  }
+
+  /* The prose styles of the page give a table borders and a heading a rule, so reset them. */
+  :global(.date-range-picker-styled-popover .date-range-picker-styled-grid td) {
+    padding: 0;
+    border: 0;
+  }
+
+  :global(.date-range-picker-styled-popover .date-range-picker-styled-header .date-range-picker-styled-heading) {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  :global(.date-range-picker-styled-calendar) {
+    width: 17rem;
+  }
+
+  :global(.date-range-picker-styled-header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  :global(.date-range-picker-styled-heading) {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  /* The month buttons: rest, hover, press, keyboard focus and disabled at a limit. */
+  :global(.date-range-picker-styled-nav) {
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.date-range-picker-styled-nav[data-hovered]) {
+    background: var(--date-range-picker-styled-hover);
+  }
+
+  :global(.date-range-picker-styled-nav[data-pressed]) {
+    background: var(--date-range-picker-styled-press);
+  }
+
+  :global(.date-range-picker-styled-nav[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--date-range-picker-styled-page), 0 0 0 4px var(--date-range-picker-styled-accent);
+  }
+
+  :global(.date-range-picker-styled-nav[data-disabled]) {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  :global(.date-range-picker-styled-grid) {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+  }
+
+  :global(.date-range-picker-styled-popover .date-range-picker-styled-grid th) {
+    padding: 0 0 0.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--date-range-picker-styled-muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  /* A date: rest, hover, press, today, selected, keyboard focus, unavailable and out of range. */
+  :global(.date-range-picker-styled-grid [data-date]) {
+    width: 2.25rem;
+    height: 2.25rem;
+    margin: 1px auto;
+    border-radius: 50%;
+    line-height: 2.25rem;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.date-range-picker-styled-grid [data-date]:hover) {
+    background: var(--date-range-picker-styled-hover);
+  }
+
+  :global(.date-range-picker-styled-grid [data-date][data-pressed]) {
+    background: var(--date-range-picker-styled-press);
+  }
+
+  /* Today has a ring, so it does not depend on color alone. */
+  :global(.date-range-picker-styled-grid [data-today]) {
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px var(--date-range-picker-styled-border);
+  }
+
+  /* The dates between the ends are squares in a band, so the range reads as one stripe. */
+  :global(.date-range-picker-styled-grid [data-selected]),
+  :global(.date-range-picker-styled-grid [data-selected]:hover) {
+    width: 100%;
+    border-radius: 0;
+    background: var(--date-range-picker-styled-band);
+    color: var(--date-range-picker-styled-text);
+    /* The band is pale, so lines of the accent above and below keep the range visible by themselves. */
+    box-shadow: inset 0 2px 0 var(--date-range-picker-styled-accent), inset 0 -2px 0 var(--date-range-picker-styled-accent);
+  }
+
+  :global(.date-range-picker-styled-grid [data-selection-start]),
+  :global(.date-range-picker-styled-grid [data-selection-end]) {
+    background: var(--date-range-picker-styled-accent);
+    color: var(--date-range-picker-styled-on-accent);
+  }
+
+  :global(.date-range-picker-styled-grid [data-selection-start]) {
+    border-radius: 1.125rem 0 0 1.125rem;
+  }
+
+  :global(.date-range-picker-styled-grid [data-selection-end]) {
+    border-radius: 0 1.125rem 1.125rem 0;
+  }
+
+  :global(.date-range-picker-styled-grid [data-selection-start][data-selection-end]) {
+    border-radius: 1.125rem;
+  }
+
+  /* Two bands, so the ring shows on the fill of a selected date too. */
+  :global(.date-range-picker-styled-grid [data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--date-range-picker-styled-page), 0 0 0 4px var(--date-range-picker-styled-accent);
+  }
+
+  :global(.date-range-picker-styled-grid [data-unavailable]) {
+    color: var(--date-range-picker-styled-muted);
+    text-decoration: line-through;
+    cursor: default;
+  }
+
+  :global(.date-range-picker-styled-grid [data-disabled]) {
+    color: var(--date-range-picker-styled-muted);
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  :global(.date-range-picker-styled-grid [data-disabled]:hover),
+  :global(.date-range-picker-styled-grid [data-unavailable]:hover) {
+    background: transparent;
+  }
+
+  :global(.date-range-picker-styled-submit) {
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--date-range-picker-styled-accent);
+    color: var(--date-range-picker-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.date-range-picker-styled-submit[data-hovered]) {
+    background: color-mix(in srgb, var(--date-range-picker-styled-accent) 85%, CanvasText);
+  }
+
+  :global(.date-range-picker-styled-submit[data-pressed]) {
+    background: color-mix(in srgb, var(--date-range-picker-styled-accent) 70%, CanvasText);
+  }
+
+  :global(.date-range-picker-styled-submit[data-focus-visible]) {
+    box-shadow: 0 0 0 2px var(--date-range-picker-styled-page), 0 0 0 4px var(--date-range-picker-styled-accent);
+  }
+
+  :global(.date-range-picker-styled-status) {
+    margin: 0;
+    color: var(--date-range-picker-styled-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.date-range-picker-styled-group),
+    :global(.date-range-picker-styled-popover),
+    :global(.date-range-picker-styled-grid [data-date]) {
+      transition: none;
+    }
+  }
+</style>

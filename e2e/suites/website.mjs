@@ -682,6 +682,164 @@ export async function run({ browser, url, runner }) {
       },
     );
     await flow(
+      '/ui: the pages of the date parts have an anatomy picture and a styled example',
+      async () => {
+        const slugs = [
+          'calendar',
+          'range-calendar',
+          'date-field',
+          'time-field',
+          'date-picker',
+          'date-range-picker',
+        ];
+        for (const slug of slugs) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            assert((await page.locator('.styled pre').count()) === 1, `/ui/${slug} shows no CSS`);
+            const marks = await page.locator('.anatomy [data-mark]').count();
+            const items = await page.locator('.anatomy-list li').count();
+            assert(
+              marks > 0 && marks === items,
+              `/ui/${slug}: ${marks} callouts for ${items} listed pieces`,
+            );
+            await page.addScriptTag({ path: axe });
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run(document.querySelector('article'));
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow('/ui: the date parts pick, type, reset and refuse with real keys', async () => {
+      const settle = () => page.waitForTimeout(1200);
+      const visit = async (slug) => {
+        await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+        await settle();
+      };
+      const demo = (text) => page.locator('.ui-demo', { hasText: text }).first();
+      const status = async (scope) => (await scope.locator('p').last().innerText()).trim();
+      const segment = (field, index) =>
+        field.locator('[data-segment]:not([data-type=literal])').nth(index);
+      const shown = async (field) =>
+        (await field.locator('[data-segment]').allInnerTexts()).join('');
+      const press = (scope, name) => scope.getByRole('button', { name, exact: true }).click();
+      const cell = (scope, date) => scope.locator(`[data-date="${date}"]`);
+      // Calendar: a click and the keys pick, a locked signal keeps its date, a taken day cannot be picked.
+      await visit('calendar');
+      const calendars = demo('Writes your signal');
+      const grids = calendars.locator('[role=application]');
+      await cell(grids.nth(2), '2026-10-14').click();
+      assert((await status(calendars)).includes('Writes: 2026-10-14'), 'a click picks no date');
+      await press(calendars, 'Lock the signal');
+      await cell(grids.nth(3), '2026-10-21').click();
+      assert((await status(calendars)).includes('Asks: 2026-10-15'), 'a locked signal changed');
+      await cell(grids.nth(1), '2026-10-15').focus();
+      for (let index = 0; index < 5; index++) {
+        await page.keyboard.press('ArrowRight');
+      }
+      await page.keyboard.press('Enter');
+      assert(
+        (await grids.nth(1).locator('[data-selected]').getAttribute('data-date')) === '2026-10-20',
+        'the arrow keys and Enter picked another date',
+      );
+      const booking = demo('Mondays and three days');
+      await cell(booking, '2026-11-09').click({ force: true });
+      assert((await status(booking)).includes('Pick a day'), 'a Monday was picked');
+      await cell(booking, '2026-12-10').click();
+      assert((await status(booking)).includes('Booked for 2026-12-10'), 'no date in month two');
+      // RangeCalendar: two presses make a range, and the nights follow.
+      await visit('range-calendar');
+      const stay = demo('The 10th and 11th');
+      await cell(stay, '2026-11-05').click();
+      await cell(stay, '2026-11-09').click();
+      assert((await status(stay)).includes('4 nights'), `the stay says "${await status(stay)}"`);
+      // DateField: typed digits, a locked signal, a reset, and a limit that blocks the form.
+      await visit('date-field');
+      const fields = demo('Writes your signal');
+      const field = fields.locator('.ui-field');
+      await segment(field.nth(2), 0).click();
+      await page.keyboard.type('12312027', { delay: 25 });
+      assert((await status(fields)).includes('Writes: 2027-12-31'), 'typing wrote no date');
+      await press(fields, 'Reset the form');
+      await page.waitForTimeout(200);
+      assert((await status(fields)).includes('Writes: 2026-10-15'), 'a reset gave no first date');
+      assert((await shown(field.nth(2))) === '10/15/2026', 'the segments kept the typed date');
+      const form = demo('Empty a segment');
+      await segment(form.locator('.ui-field'), 2).click();
+      await page.keyboard.press('End');
+      await press(form, 'Save');
+      assert(
+        (await status(form)) === 'Fix the field first.',
+        `the form says "${await status(form)}"`,
+      );
+      await press(form, 'Reset');
+      await press(form, 'Save');
+      assert((await status(form)).includes('birthday=2000-02-29'), 'a reset gave no first date');
+      // TimeField: a closing time before the opening one is invalid and blocks the form.
+      await visit('time-field');
+      const hours = demo('Opens');
+      const times = hours.locator('.ui-field');
+      await segment(times.nth(1), 0).click();
+      await page.keyboard.type('0700', { delay: 25 });
+      await page.keyboard.press('a');
+      assert((await times.nth(1).getAttribute('data-invalid')) !== null, 'a 7 AM close is valid');
+      await press(hours, 'Save');
+      assert(
+        (await status(hours)) === 'Fix the field first.',
+        `the hours say "${await status(hours)}"`,
+      );
+      await segment(times.nth(0), 0).click();
+      await page.keyboard.type('0600', { delay: 25 });
+      await page.keyboard.press('a');
+      await press(hours, 'Save');
+      assert(
+        (await status(hours)).includes('opens=06:00, closes=07:00'),
+        `the hours say "${await status(hours)}"`,
+      );
+      // DatePicker: it opens from outside, a pick closes it and gives focus back to the button.
+      await visit('date-picker');
+      const pickers = demo('Writes your signal');
+      const picker = pickers.locator('.ui-field');
+      await press(pickers, 'Open the third from here');
+      await page.locator('.ui-popover:visible').waitFor();
+      await page.waitForFunction(() => document.activeElement?.closest('.ui-popover'));
+      await page.keyboard.press('Escape');
+      await page.locator('.ui-popover:visible').waitFor({ state: 'detached' });
+      const trigger = picker.nth(2).getByRole('button', { name: /Calendar/ });
+      await trigger.click();
+      await cell(page.locator('.ui-popover:visible'), '2026-10-21').click();
+      await page.locator('.ui-popover:visible').waitFor({ state: 'detached' });
+      assert((await status(pickers)).includes('Writes: 2026-10-21'), 'a pick wrote no date');
+      assert(
+        await trigger.evaluate((button) => button === document.activeElement),
+        'focus did not go back to the button',
+      );
+      assert((await shown(picker.nth(2))) === '10/21/2026', 'the field shows another date');
+      // DateRangePicker: two presses in the RangeCalendar set both inputs.
+      await visit('date-range-picker');
+      const ranges = demo('Writes your signal');
+      await ranges
+        .locator('.ui-field')
+        .nth(2)
+        .getByRole('button', { name: /Calendar/ })
+        .click();
+      const layer = page.locator('.ui-popover:visible');
+      await cell(layer, '2026-10-19').click();
+      await cell(layer, '2026-10-22').click();
+      await layer.waitFor({ state: 'detached' });
+      assert(
+        (await status(ranges)).includes('Writes: 2026-10-19 to 2026-10-22'),
+        `the range says "${await status(ranges)}"`,
+      );
+    });
+    await flow(
       '/ui: the pages of Overlays that are done have an anatomy picture and a styled example',
       async () => {
         for (const slug of [

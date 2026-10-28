@@ -1,0 +1,68 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+
+  let mine = $signal<string | null>('2026-10-15');
+  let asked = $signal<string | null>('2026-10-15');
+  let locked = $signal(false);
+  let log = $signal('');
+
+  function picked(next: string) {
+    log = `picked ${next}`;
+  }
+</script>
+
+<div class="ui-row" style="align-items: start; flex-wrap: wrap">
+  <div class="ui-stack">
+    <p>Own state</p>
+    <Calendar class="ui-calendar" aria-label="Own state">
+      <header>
+        <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+        <CalendarHeading />
+        <Button slot="next" class="ui-button ui-icon-button">›</Button>
+      </header>
+      <CalendarGrid />
+    </Calendar>
+  </div>
+  <div class="ui-stack">
+    <p>Starts at the 15th, then keeps its own copy</p>
+    <Calendar class="ui-calendar" aria-label="Own copy" value="2026-10-15">
+      <header>
+        <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+        <CalendarHeading />
+        <Button slot="next" class="ui-button ui-icon-button">›</Button>
+      </header>
+      <CalendarGrid />
+    </Calendar>
+  </div>
+  <div class="ui-stack">
+    <p>Writes your signal</p>
+    <Calendar class="ui-calendar" aria-label="Writes your signal" value=$bind(mine) onChange=picked>
+      <header>
+        <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+        <CalendarHeading />
+        <Button slot="next" class="ui-button ui-icon-button">›</Button>
+      </header>
+      <CalendarGrid />
+    </Calendar>
+  </div>
+  <div class="ui-stack">
+    <p>Asks you first</p>
+    <Calendar class="ui-calendar" aria-label="Asks you first" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+      <header>
+        <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+        <CalendarHeading />
+        <Button slot="next" class="ui-button ui-icon-button">›</Button>
+      </header>
+      <CalendarGrid />
+    </Calendar>
+  </div>
+</div>
+<div class="ui-row">
+  <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <Button class="ui-button" onClick=(() => { mine = null; asked = null; })>Clear both signals</Button>
+</div>
+<p>Writes: {mine ?? 'none'}. Asks: {asked ?? 'none'}. Last callback: {log || 'none'}.</p>

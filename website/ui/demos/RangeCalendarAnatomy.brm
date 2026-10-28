@@ -1,0 +1,32 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarCell from '@brumate/ui/CalendarCell.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+</script>
+
+<!-- A fixed month and range, so the picture does not move with the clock. -->
+<RangeCalendar
+  class="ui-calendar"
+  style="padding-bottom: 1rem"
+  aria-label="Stay"
+  value=({ start: '2026-10-13', end: '2026-10-16' })
+  focusedValue="2026-10-14"
+  data-mark="1" data-mark-side="bottom"
+>
+  <header>
+    <Button slot="previous" class="ui-button ui-icon-button" data-mark="3">‹</Button>
+    <CalendarHeading data-mark="2" data-mark-side="after" />
+    <Button slot="next" class="ui-button ui-icon-button" data-mark="4">›</Button>
+  </header>
+  <CalendarGrid cell=day data-mark="5" />
+</RangeCalendar>
+
+#template day(date) {
+  #if (date === '2026-10-14') {
+    <CalendarCell {date} data-mark="6" />
+  } #else {
+    <CalendarCell {date} />
+  }
+}

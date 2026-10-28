@@ -1,0 +1,42 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>(null);
+  // Two nights are taken.
+  const taken = ['2026-11-10', '2026-11-11'];
+
+  function isTaken(date: string) {
+    return taken.includes(date);
+  }
+
+  function nights(range: { start: string; end: string }) {
+    return (Date.parse(range.end) - Date.parse(range.start)) / 86400000;
+  }
+</script>
+
+<RangeCalendar
+  class="ui-calendar"
+  style="width: 34rem"
+  aria-label="Stay"
+  value=$bind(stay)
+  focusedValue="2026-11-03"
+  minValue="2026-11-03"
+  maxValue="2027-01-31"
+  visibleDuration=({ months: 2 })
+  isDateUnavailable=isTaken
+>
+  <header>
+    <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+    <CalendarHeading />
+    <Button slot="next" class="ui-button ui-icon-button">›</Button>
+  </header>
+  <div class="ui-row" style="align-items: start">
+    <CalendarGrid />
+    <CalendarGrid offset=({ months: 1 }) />
+  </div>
+</RangeCalendar>
+<p>{stay ? `${nights(stay)} nights, from ${stay.start} to ${stay.end}.` : 'Pick the first day, then the last. The 10th and 11th of November are taken, so a range stops before them.'}</p>

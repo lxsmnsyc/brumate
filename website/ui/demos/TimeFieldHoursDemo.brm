@@ -1,0 +1,46 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TimeField from '@brumate/ui/TimeField.brm';
+
+  let opens = $signal<string | null>('08:00');
+  let closes = $signal<string | null>('17:00');
+  let sent = $signal('Nothing sent.');
+
+  function submit(event: SubmitEvent) {
+    const form = event.currentTarget as HTMLFormElement;
+    if (form.querySelector('[data-invalid]')) {
+      sent = 'Fix the field first.';
+      return;
+    }
+    const data = new FormData(form);
+    sent = `Sent opens=${data.get('opens')}, closes=${data.get('closes')}.`;
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(submit))>
+  <div class="ui-row" style="align-items: start">
+    <TimeField class="ui-field" name="opens" isRequired value=$bind(opens)>
+      <Label>Opens</Label>
+      <DateInput class="ui-input ui-date-input" />
+      <FieldError class="ui-error" />
+    </TimeField>
+    <TimeField class="ui-field" name="closes" isRequired minValue=(opens ?? undefined) value=$bind(closes)>
+      <Label>Closes</Label>
+      <DateInput class="ui-input ui-date-input" />
+      <Text slot="description" class="ui-help">Not before the opening time.</Text>
+      <FieldError class="ui-error">Pick a time that is not before the opening.</FieldError>
+    </TimeField>
+  </div>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Save</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p role="status">{sent}</p>
+</Form>

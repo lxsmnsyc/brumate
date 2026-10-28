@@ -1211,13 +1211,28 @@
     font-weight: 600;
   }
 
+  /* The prose styles of the page give a heading a rule and a table borders, so reset them. */
+  :global(.ui-calendar header h2) {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1rem;
+  }
+
+  :global(.ui-calendar table th),
+  :global(.ui-calendar table td) {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
   :global(.ui-calendar table) {
     width: 100%;
     border-collapse: collapse;
     text-align: center;
   }
 
-  :global(.ui-calendar th) {
+  :global(.ui-calendar table th) {
     padding-bottom: 0.25rem;
     color: var(--muted);
     font-weight: 400;

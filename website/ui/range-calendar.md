@@ -24,6 +24,15 @@ A grid of the days of a month, to pick a range of dates.
 
 ## Anatomy
 
+```brm anatomy RangeCalendarAnatomy
+`RangeCalendar`: The grid and its range. It shows `data-disabled` and `data-invalid`.
+`CalendarHeading`: Shows the months, such as `October 2026`. Optional.
+`Button` with `slot="previous"`: Shows the months before.
+`Button` with `slot="next"`: Shows the months after.
+`CalendarGrid`: The days of one month, as a table.
+`CalendarCell`: One date. It shows `data-selected`, and `data-selection-start` or `data-selection-end` at the ends of the range. Optional.
+```
+
 ```html
 <RangeCalendar>
   <CalendarHeading />
@@ -71,11 +80,30 @@ The dates use the Gregorian calendar. Names and numbers follow the locale.
 
 ## Controlled and uncontrolled
 
-`value` holds the selected range as `{ start, end }` of `YYYY-MM-DD` dates, or `null`. A plain `value` starts the calendar's own state, and `value=$bind(signal)` writes your signal. `onChange` gets each range that is picked. See [State](./state.md).
+`value` holds the selected range as `{ start, end }` of `YYYY-MM-DD` dates, or `null`. How you pass it picks who keeps it. Pick a range in each calendar, then use the buttons under them:
+
+```brm demo RangeCalendarStateDemo
+
+```
+
+- `value` alone, or nothing, makes the calendar keep its own range. The first value is where that range starts. Pick another and the calendar keeps it. A new value from you replaces it.
+- `value=$bind(signal)` writes your signal. Change the signal and the calendar follows. Clear both signals above to see it.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and pick a range in the last calendar: the signal and the selection stay.
+- `onChange` gets the range as `{ start, end }` in every shape, each time a range is done. The first press of a range changes nothing yet.
+- A RangeCalendar is not a form field: a `reset` of the form leaves it as it is, and it posts nothing. Set your signal yourself on a reset, or use a [DateRangePicker](./date-range-picker.md).
+- The server renders the range it starts with.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the dates with `data-selected`, `data-selection-start` and `data-selection-end`, and the other data attributes of a [Calendar](./calendar.md#data-attributes). See [Styling](./styling.md).
+
+A cell has no `data-hovered`, so use `:hover` for the pointer. This stylesheet draws the range as a band with round ends, and styles a date in rest, hover, press, today, keyboard focus, unavailable and out of range. The 22nd is taken, so a range that starts before it stops there.
+
+```brm styled RangeCalendarStyled
+
+```
 
 ## Picking a range
 
@@ -89,3 +117,21 @@ Style the dates with `data-selected`, `data-selection-start` and `data-selection
 
 - A date in the range shows `data-selected`. The first date shows `data-selection-start`, and the last `data-selection-end`.
 - The cells show the other states of a Calendar cell. See [Cells](./calendar.md#cells).
+
+## Use cases
+
+### A stay over two months
+
+Two `CalendarGrid`s show two months, and `isDateUnavailable` marks the nights that are taken. A range stops before them, and the dates past them cannot be picked. `onChange` or the signal gives the range, and the nights are the difference of the dates.
+
+```brm demo RangeCalendarStayDemo
+
+```
+
+### A range in the language of the user
+
+An [I18nProvider](./i18n-provider.md) gives the names, the first day of the week and the words that a screen reader hears. Change the language below:
+
+```brm demo RangeCalendarLocaleDemo
+
+```

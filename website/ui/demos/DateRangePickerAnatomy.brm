@@ -1,0 +1,70 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<!-- The picture draws the field, then the Popover, the Dialog and the RangeCalendar as blocks of their own, since a real Popover renders in a layer at the end of <body>. -->
+<DateRangePicker class="ui-field" value=({ start: '2026-10-13', end: '2026-10-16' }) isInvalid style="width: fit-content" data-mark="1">
+  <Label data-mark="2" data-mark-side="after">Stay</Label>
+  <Group class="ui-group date-range-picker-anatomy-group" style="width: fit-content" data-mark="3" data-mark-side="after">
+    <DateInput slot="start" class="ui-input ui-date-input" style="width: fit-content" data-mark="4" />
+    <span aria-hidden="true">–</span>
+    <DateInput slot="end" class="ui-input ui-date-input" style="width: fit-content" data-mark="5" />
+    <Button class="ui-button ui-icon-button" aria-label="Calendar" data-mark="6">▾</Button>
+  </Group>
+  <Text slot="description" class="ui-help" data-mark="7" data-mark-side="after">Pick two days, or type them.</Text>
+  <FieldError class="ui-error" style="justify-self: start" data-mark="8" data-mark-side="after">The range is in the past.</FieldError>
+</DateRangePicker>
+<div class="anatomy-popover date-range-picker-anatomy-popover" data-mark="9">
+  <Dialog class="date-range-picker-anatomy-dialog" aria-label="Calendar" data-mark="10" data-mark-side="bottom">
+    <RangeCalendar class="ui-calendar" aria-label="Stay" value=({ start: '2026-10-13', end: '2026-10-16' }) focusedValue="2026-10-14" data-mark="11" data-mark-side="after">
+      <header>
+        <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+        <CalendarHeading />
+        <Button slot="next" class="ui-button ui-icon-button">›</Button>
+      </header>
+      <CalendarGrid />
+    </RangeCalendar>
+  </Dialog>
+</div>
+
+<style>
+  :global(.date-range-picker-anatomy-group) {
+    padding-top: 0.75rem;
+  }
+
+  /* The badge of an input sits above it, in the padding of the Group, so it stays off the digits. */
+  :global(.date-range-picker-anatomy-group .ui-date-input[data-mark])::before {
+    top: -1.1rem;
+    inset-inline-end: auto;
+    inset-inline-start: 0;
+  }
+
+  /* Wide enough for the RangeCalendar, which the Select-sized block of the picture is not. */
+  :global(.anatomy-stage .date-range-picker-anatomy-popover) {
+    justify-self: start;
+    width: 20rem;
+    max-width: 100%;
+    padding: 1rem;
+  }
+
+  :global(.date-range-picker-anatomy-dialog) {
+    display: grid;
+    padding: 0.25rem 0.25rem 1.25rem;
+    border: 1px dashed var(--muted);
+    border-radius: 6px;
+  }
+
+  :global(.date-range-picker-anatomy-dialog .ui-calendar) {
+    width: auto;
+  }
+</style>

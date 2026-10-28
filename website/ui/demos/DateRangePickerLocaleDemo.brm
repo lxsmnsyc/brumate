@@ -1,0 +1,66 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import I18nProvider from '@brumate/ui/I18nProvider.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>(null);
+</script>
+
+<div class="ui-row" style="align-items: start; flex-wrap: wrap">
+  <I18nProvider locale="fr-FR" timeZone="Europe/Paris">
+    <DateRangePicker class="ui-field" value=$bind(stay)>
+      <Label>Séjour</Label>
+      <Group class="ui-group">
+        <DateInput slot="start" class="ui-input ui-date-input" />
+        <span aria-hidden="true">–</span>
+        <DateInput slot="end" class="ui-input ui-date-input" />
+        <Button class="ui-button ui-icon-button">▾</Button>
+      </Group>
+      <Popover class="ui-popover">
+        <Dialog>
+          <RangeCalendar class="ui-calendar">
+            <header>
+              <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+              <CalendarHeading />
+              <Button slot="next" class="ui-button ui-icon-button">›</Button>
+            </header>
+            <CalendarGrid />
+          </RangeCalendar>
+        </Dialog>
+      </Popover>
+    </DateRangePicker>
+  </I18nProvider>
+  <I18nProvider locale="ja-JP" timeZone="Asia/Tokyo">
+    <DateRangePicker class="ui-field" value=$bind(stay)>
+      <Label>滞在</Label>
+      <Group class="ui-group">
+        <DateInput slot="start" class="ui-input ui-date-input" />
+        <span aria-hidden="true">–</span>
+        <DateInput slot="end" class="ui-input ui-date-input" />
+        <Button class="ui-button ui-icon-button">▾</Button>
+      </Group>
+      <Popover class="ui-popover">
+        <Dialog>
+          <RangeCalendar class="ui-calendar">
+            <header>
+              <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+              <CalendarHeading />
+              <Button slot="next" class="ui-button ui-icon-button">›</Button>
+            </header>
+            <CalendarGrid />
+          </RangeCalendar>
+        </Dialog>
+      </Popover>
+    </DateRangePicker>
+  </I18nProvider>
+</div>
+<p>{stay ? `${stay.start} to ${stay.end}.` : 'No range yet.'} The two pickers share one signal. The segments, the RangeCalendar and the name of the Button follow the locale of each provider.</p>

@@ -1,0 +1,28 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import I18nProvider from '@brumate/ui/I18nProvider.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let locale = $signal('fr-FR');
+  let stay = $signal<{ start: string; end: string } | null>(null);
+</script>
+
+<div class="ui-row">
+  <Button class="ui-button" onClick=(() => (locale = 'fr-FR'))>Français</Button>
+  <Button class="ui-button" onClick=(() => (locale = 'es-ES'))>Español</Button>
+  <Button class="ui-button" onClick=(() => (locale = 'en-US'))>English</Button>
+</div>
+<I18nProvider {locale} timeZone="Europe/Paris">
+  <RangeCalendar class="ui-calendar" aria-label="Séjour" value=$bind(stay) focusedValue="2026-10-15">
+    <header>
+      <Button slot="previous" class="ui-button ui-icon-button">‹</Button>
+      <CalendarHeading />
+      <Button slot="next" class="ui-button ui-icon-button">›</Button>
+    </header>
+    <CalendarGrid />
+  </RangeCalendar>
+</I18nProvider>
+<p>{stay ? `${stay.start} to ${stay.end}.` : 'No range yet.'}</p>

@@ -1,0 +1,36 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import DateField from '@brumate/ui/DateField.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  let mine = $signal<string | null>('2026-10-15');
+  let asked = $signal<string | null>('2026-10-15');
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <DateField class="ui-field">
+    <Label>Own state</Label>
+    <DateInput class="ui-input ui-date-input" />
+  </DateField>
+  <DateField class="ui-field" value="2026-10-15">
+    <Label>Starts at the 15th, then keeps its own copy</Label>
+    <DateInput class="ui-input ui-date-input" />
+  </DateField>
+  <DateField class="ui-field" value=$bind(mine) onChange=((next) => (log = `changed to ${next ?? 'empty'}`))>
+    <Label>Writes your signal</Label>
+    <DateInput class="ui-input ui-date-input" />
+  </DateField>
+  <DateField class="ui-field" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <Label>Asks you first</Label>
+    <DateInput class="ui-input ui-date-input" />
+  </DateField>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine ?? 'empty'}. Asks: {asked ?? 'empty'}. Last callback: {log || 'none'}.</p>
+</form>
