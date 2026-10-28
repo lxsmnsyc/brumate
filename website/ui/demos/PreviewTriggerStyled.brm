@@ -64,7 +64,7 @@
 
   /* The link: rest, hover, press, keyboard focus and the preview that shows (aria-expanded). */
   :global(.preview-styled-link) {
-    color: var(--preview-styled-accent);
+    color: light-dark(#1d5f94, #6fb2e6);
     text-decoration: underline dotted;
     text-underline-offset: 3px;
     border-radius: 3px;
@@ -77,7 +77,7 @@
   }
 
   :global(.preview-styled-link[data-pressed]) {
-    color: color-mix(in srgb, var(--preview-styled-accent) 70%, CanvasText);
+    color: color-mix(in srgb, light-dark(#1d5f94, #6fb2e6) 70%, CanvasText);
   }
 
   :global(.preview-styled-link[data-focus-visible]) {
