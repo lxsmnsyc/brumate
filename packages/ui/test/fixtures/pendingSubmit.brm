@@ -1,0 +1,20 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import Button from '../../src/Button.brm';
+
+  let pending = $signal(false);
+  let sent = $signal(0);
+</script>
+
+<form class="one" onSubmit=(prevent(() => sent++))>
+  <input name="title" aria-label="Title" />
+  <Button class="save" type="submit" isPending=pending>Save</Button>
+</form>
+<form class="two" onSubmit=(prevent(() => sent++))>
+  <input name="title" aria-label="Title" />
+  <Button class="first" type="submit" isPending=pending>First</Button>
+  <Button class="second" type="submit">Second</Button>
+</form>
+<button class="toggle" onClick=(() => (pending = !pending))>Toggle</button>
+<p class="sent">{sent}</p>
