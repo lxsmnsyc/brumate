@@ -1,10 +1,10 @@
 <script>
   import { $props } from 'brumate/signals';
 
-  const { title = 'Scripts this page loaded' } = $props<{ title?: string }>();
+  const { title = 'Scripts this page loaded', only } = $props<{ title?: string; only?: string }>();
 </script>
 
-<aside class="network" data-network>
+<aside class="network" data-network data-only=only>
   <header>
     <span>{title}</span>
     <strong data-total>0 KB</strong>

@@ -94,11 +94,6 @@
     text-decoration: none;
   }
 
-  .brand-mark {
-    width: 1.5rem;
-    height: 1.5rem;
-  }
-
   .header-nav {
     display: flex;
     align-items: center;

@@ -14,3 +14,12 @@
     <circle cx="18" cy="19.5" r="10" />
   </g>
 </svg>
+
+<style>
+  /* The size is set here. A style of the header does not reach the markup of a child. */
+  .brand-mark {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+</style>
