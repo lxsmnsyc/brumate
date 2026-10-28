@@ -174,6 +174,14 @@ async function clickButtons(page, figures, url) {
 
 const axe = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 
+// Helpers of the flow of the date parts. A demo shows its state in its last paragraph.
+const status = async (scope) => (await scope.locator('p').last().innerText()).trim();
+const segment = (field, index) =>
+  field.locator('[data-segment]:not([data-type=literal])').nth(index);
+const dateText = async (field) => (await field.locator('[data-segment]').allInnerTexts()).join('');
+const press = (scope, name) => scope.getByRole('button', { name, exact: true }).click();
+const cell = (scope, date) => scope.locator(`[data-date="${date}"]`);
+
 export async function run({ browser, url, runner }) {
   const step = (name, options, check) => runner.step('website', name, options, check);
   const pages = livePages();
@@ -724,13 +732,6 @@ export async function run({ browser, url, runner }) {
         await settle();
       };
       const demo = (text) => page.locator('.ui-demo', { hasText: text }).first();
-      const status = async (scope) => (await scope.locator('p').last().innerText()).trim();
-      const segment = (field, index) =>
-        field.locator('[data-segment]:not([data-type=literal])').nth(index);
-      const shown = async (field) =>
-        (await field.locator('[data-segment]').allInnerTexts()).join('');
-      const press = (scope, name) => scope.getByRole('button', { name, exact: true }).click();
-      const cell = (scope, date) => scope.locator(`[data-date="${date}"]`);
       // Calendar: a click and the keys pick, a locked signal keeps its date, a taken day cannot be picked.
       await visit('calendar');
       const calendars = demo('Writes your signal');
@@ -770,7 +771,7 @@ export async function run({ browser, url, runner }) {
       await press(fields, 'Reset the form');
       await page.waitForTimeout(200);
       assert((await status(fields)).includes('Writes: 2026-10-15'), 'a reset gave no first date');
-      assert((await shown(field.nth(2))) === '10/15/2026', 'the segments kept the typed date');
+      assert((await dateText(field.nth(2))) === '10/15/2026', 'the segments kept the typed date');
       const form = demo('Empty a segment');
       await segment(form.locator('.ui-field'), 2).click();
       await page.keyboard.press('End');
@@ -821,7 +822,7 @@ export async function run({ browser, url, runner }) {
         await trigger.evaluate((button) => button === document.activeElement),
         'focus did not go back to the button',
       );
-      assert((await shown(picker.nth(2))) === '10/21/2026', 'the field shows another date');
+      assert((await dateText(picker.nth(2))) === '10/21/2026', 'the field shows another date');
       // DateRangePicker: two presses in the RangeCalendar set both inputs.
       await visit('date-range-picker');
       const ranges = demo('Writes your signal');
