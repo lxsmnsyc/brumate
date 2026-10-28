@@ -28,7 +28,7 @@ Accepted by the maintainer on 2026-10-27. The node element-values makes the chan
 # Change request: element-types v1.2 to v1.3
 
 - From node: camel-event-names (PR #317)
-- Status: proposed, the maintainer decides
+- Status: accepted
 
 ## Problem
 
@@ -50,4 +50,4 @@ None needed. The PR changes the types and the parser at once.
 
 ## Decision
 
-Pending.
+Accepted by the maintainer on 2026-10-28. PR #317 makes the change, and the contract is v1.3.
