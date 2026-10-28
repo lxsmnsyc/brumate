@@ -4242,6 +4242,18 @@ describe('refs forwarded through components', () => {
       expect(text('.calls')).toBe('BUTTON;BUTTON;');
     });
 
+    it('a ref bound with a setter calls it on resume through a relay of two levels', async () => {
+      await resume('setterRefRelayPage', {});
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+      await new Promise((done) => setTimeout(done, 100));
+      expect(text('.calls')).toBe('BUTTON;');
+    });
+
+    it('a ref bound with a setter calls it on resume through a relay of three levels', async () => {
+      await resume('setterRefRelay3Page', {});
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+    });
+
     it('a ref bound with a setter calls it through rest props spread on an element', async () => {
       await resume('setterRefRestPage', {});
       // Not called on resume yet: the follow-up node setter-ref-resume-rest. A block calls it.
