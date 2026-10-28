@@ -4,6 +4,7 @@
   import Dialog from '../../src/Dialog.brm';
   import DialogTrigger from '../../src/DialogTrigger.brm';
   import ModalOverlay from '../../src/ModalOverlay.brm';
+  import OverlayArrow from '../../src/OverlayArrow.brm';
   import Popover from '../../src/Popover.brm';
   import Tooltip from '../../src/Tooltip.brm';
   import TooltipTrigger from '../../src/TooltipTrigger.brm';
@@ -15,6 +16,7 @@
 <DialogTrigger>
   <Button class="pop-trigger">Popover</Button>
   <Popover class="pop" style=(live ? 'color: red' : 'color: blue')>
+    <OverlayArrow class="arrow" style=(live ? 'color: red' : 'color: blue') />
     <Dialog aria-label="Popover">Text</Dialog>
   </Popover>
 </DialogTrigger>

@@ -104,8 +104,12 @@ it('keeps the placement of a Popover when its style changes', async () => {
     pop.style.getPropertyValue('--trigger-width'),
     pop.style.getPropertyValue('--available-height'),
   ];
+  const arrow = pop.querySelector<HTMLElement>('.arrow')!;
+  await page.waitFor(() => expect(arrow.style.left).not.toBe(''));
+  const arrowBefore = [arrow.style.left, arrow.style.top];
   page.click('.live');
   await page.waitFor(() => expect(pop.style.color).toBe('red'));
+  await page.waitFor(() => expect(arrow.style.color).toBe('red'));
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(pop.style.position).toBe('fixed');
   expect([
@@ -114,6 +118,8 @@ it('keeps the placement of a Popover when its style changes', async () => {
     pop.style.getPropertyValue('--trigger-width'),
     pop.style.getPropertyValue('--available-height'),
   ]).toEqual(before);
+  expect(arrow.style.position).toBe('absolute');
+  expect([arrow.style.left, arrow.style.top]).toEqual(arrowBefore);
 });
 
 it('keeps position: fixed and the style of the user on a Tooltip', async () => {

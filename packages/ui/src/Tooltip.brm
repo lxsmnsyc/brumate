@@ -34,7 +34,7 @@
   import { ButtonContext, LinkContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
-  import { followTrigger } from './position.ts';
+  import { followTrigger, keepArrows } from './position.ts';
   import { mergeStyle } from './style.ts';
   import { TooltipTriggerContext, keepStops, runStops } from './tooltip.ts';
   import { enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
@@ -101,20 +101,14 @@
     document.addEventListener('keydown', escape, true);
     const stops = [() => document.removeEventListener('keydown', escape, true)];
     if (anchor) {
+      const arrows = keepArrows(element);
       stops.push(
+        arrows.stop,
         followTrigger(
           anchor,
           element,
           { placement, offset, crossOffset, shouldFlip, containerPadding, direction: locale.direction },
-          (position) => {
-            element.dataset.placement = position.side;
-            for (const arrow of element.querySelectorAll<HTMLElement>('[data-overlay-arrow]')) {
-              arrow.dataset.placement = position.side;
-              const vertical = position.side === 'top' || position.side === 'bottom';
-              arrow.style.left = vertical ? `${position.arrow}px` : '';
-              arrow.style.top = vertical ? '' : `${position.arrow}px`;
-            }
-          },
+          arrows.place,
         ),
       );
     }

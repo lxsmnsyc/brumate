@@ -214,3 +214,36 @@ export function keepStyle(element: HTMLElement): {
     },
   };
 }
+
+/**
+ * Places the arrows of an overlay along its side, and keeps their `left` and `top` when a new
+ * `style` attribute replaces them. `stop` ends it.
+ */
+export function keepArrows(overlay: HTMLElement): {
+  place: (position: Position) => void;
+  stop: () => void;
+} {
+  const kept = new Map<HTMLElement, ReturnType<typeof keepStyle>>();
+  return {
+    place(position) {
+      overlay.dataset.placement = position.side;
+      const vertical = position.side === 'top' || position.side === 'bottom';
+      for (const arrow of overlay.querySelectorAll<HTMLElement>('[data-overlay-arrow]')) {
+        arrow.dataset.placement = position.side;
+        let keeper = kept.get(arrow);
+        if (!keeper) {
+          keeper = keepStyle(arrow);
+          kept.set(arrow, keeper);
+        }
+        keeper.put('left', vertical ? `${position.arrow}px` : '');
+        keeper.put('top', vertical ? '' : `${position.arrow}px`);
+      }
+    },
+    stop() {
+      for (const keeper of kept.values()) {
+        keeper.stop();
+      }
+      kept.clear();
+    },
+  };
+}
