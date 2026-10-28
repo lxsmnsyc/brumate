@@ -134,7 +134,7 @@ This stylesheet styles every state of a row: rest, hover, press, keyboard focus,
 
 ### Rows with actions on the selection
 
-A Checkbox with `slot="selection"` selects a row, and a Button in the row acts on that row alone. The button above the list acts on the selected rows. Both remove keys from the data, and the list drops them from the selection too, so the bound signal keeps no key of a row that is gone.
+A Checkbox with `slot="selection"` selects a row, and a Button in the row acts on that row alone. The button above the list acts on the selected rows. Both remove keys from the data. The GridList keeps the keys that you give it, so the demo also drops them from the bound selection, and the signal keeps no key of a row that is gone. A press on a row's button ignores a second press for a moment, since the next row moves under the pointer.
 
 ```brm demo GridListBulkDemo
 

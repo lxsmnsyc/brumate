@@ -15,8 +15,8 @@ The PR stops here because each page needs an anatomy picture, a styled example, 
 
 - Every claim was read against packages/ui/src. ListBox, Tabs, TagGroup and GridList are not form fields and have no reset handler (state.md says so), and the pages say so and link to state.md.
 - Each styled example has rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled states, with a two-band focus ring that shows on a selected fill. Colors use `light-dark()`. Every class has a prefix of its own (`listbox-styled-`, `tabs-styled-`, `tags-styled-`, `gridlist-styled-`).
-- One e2e flow in e2e/suites/website.mjs covers the four pages in both schemes: the CSS shows, the callouts equal the listed pieces, and axe finds nothing. The flow turns off `scrollable-region-focusable`, which list-box and grid-list fail on main (node ui-scroll-focus). Delete that line when the node lands.
-- The ListBox picture and styled example give an item a description, not a label and a description. An item with both is named by its label alone, and axe reports the experimental `label-content-name-mismatch` on it when the list is visible. The page text still explains the label slot.
+- One e2e flow in e2e/suites/website.mjs covers the four pages in both schemes: the CSS shows, the callouts equal the listed pieces, and axe finds nothing. The flow excludes `.props-table` from axe, which scrolls and fails `scrollable-region-focusable` on main (node ui-scroll-focus). Delete the exclude when the node lands.
+- The ListBox picture and styled example use an item with a label and a description. It is named by its label and described by the description, on purpose. axe 4.14 reports `label-content-name-mismatch` on it, a false positive, so the flow turns that rule off. An item with a description and no label is named by its whole content, and the page says so.
 - The sidebar flow still fails on main's `scrollable-region-focusable` for calendar, list-box, grid-list and tree. The new demos add no other violation. The first `/docs/control-flow` flow failed once with a network `Not connected` console error, and is not in these pages.
 - No change to website/src/routes/ui/_layout.brm. The demos use its existing classes, and a few inline styles in the anatomy pictures.
 
@@ -32,7 +32,8 @@ The PR stops here because each page needs an anatomy picture, a styled example, 
 ## Deviations
 
 - The brief asked for about a dozen pages. Eight are left.
-- Screenshots: Tabs, TagGroup and GridList, anatomy and styled, in both themes, and the styled ListBox in dark.
+- Screenshots: Tabs, TagGroup and GridList, anatomy and styled, in both themes, and the ListBox anatomy and styled.
+- Contrast was measured in Chrome in both themes for every state of the styled examples, and the pressed and remove-button states were fixed to reach 4.5:1 (3:1 for the × glyph). The e2e flow runs axe on the default state only. Borders of the tags and lists are 55% text mix, above 3:1.
 
 ## Stubs left
 

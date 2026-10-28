@@ -35,7 +35,7 @@
     --gridlist-styled-bg: Canvas;
     --gridlist-styled-text: CanvasText;
     --gridlist-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
-    --gridlist-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --gridlist-styled-border: color-mix(in srgb, CanvasText 55%, Canvas);
     --gridlist-styled-accent: light-dark(#2a76b2, #6fb2e6);
     --gridlist-styled-on-accent: light-dark(#fff, #101418);
     --gridlist-styled-radius: 8px;
@@ -102,6 +102,11 @@
   :global(.gridlist-styled-size) {
     color: var(--gridlist-styled-muted);
     font-size: 0.875rem;
+  }
+
+  /* The size takes the text color while the row is pressed, for its contrast on the tint. */
+  :global(.gridlist-styled-row[data-pressed] .gridlist-styled-size) {
+    color: var(--gridlist-styled-text);
   }
 
   /* The tint of a selected row is too dark for the muted color, so its size takes the text color. */

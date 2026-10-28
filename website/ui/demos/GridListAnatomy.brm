@@ -7,8 +7,8 @@
 </script>
 
 <GridList class="ui-gridlist" style="margin-inline-end: 1.2rem" aria-label="Files" selectionMode="multiple" selectedKeys=(['notes']) onReorder=(() => {}) data-mark="1">
-  <GridListItem id="notes" class="ui-gridrow" textValue="Notes.txt" style="gap: 1.6rem" data-mark="2" data-mark-side="after">
-    <Button slot="drag" class="ui-grip" data-mark="4"><Icon name="grip" size=(16) /></Button>
+  <GridListItem id="notes" class="ui-gridrow" textValue="Notes.txt" style="gap: 2.4rem; padding-block: 0.9rem" data-mark="2" data-mark-side="after">
+    <Button slot="drag" class="ui-grip" data-mark="4" data-mark-side="bottom"><Icon name="grip" size=(16) /></Button>
     <Checkbox slot="selection" class="ui-box" aria-label="Select Notes.txt" data-mark="3" data-mark-side="after">
       <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
     </Checkbox>

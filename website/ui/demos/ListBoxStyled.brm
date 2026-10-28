@@ -29,8 +29,8 @@
     <ListBoxSection class="listbox-styled-section">
       <Header class="listbox-styled-header">{group.name}</Header>
       #for (item of group.items by item.id) {
-        <ListBoxItem id=(item.id) class="listbox-styled-item" textValue=(item.name) hasDescription>
-          <span class="listbox-styled-name">{item.name}</span>
+        <ListBoxItem id=(item.id) class="listbox-styled-item" textValue=(item.name) hasLabel hasDescription>
+          <Text slot="label" class="listbox-styled-name">{item.name}</Text>
           <Text slot="description" class="listbox-styled-note">{item.note}</Text>
         </ListBoxItem>
       }
@@ -45,7 +45,7 @@
     --listbox-styled-bg: Canvas;
     --listbox-styled-text: CanvasText;
     --listbox-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
-    --listbox-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --listbox-styled-border: color-mix(in srgb, CanvasText 55%, Canvas);
     --listbox-styled-accent: light-dark(#2a76b2, #6fb2e6);
     --listbox-styled-on-accent: light-dark(#fff, #101418);
     --listbox-styled-radius: 8px;
@@ -99,6 +99,11 @@
 
   :global(.listbox-styled-item[data-pressed]) {
     background: color-mix(in srgb, var(--listbox-styled-accent) 26%, var(--listbox-styled-bg));
+  }
+
+  /* The muted note takes the text color while pressed, for its contrast on the tint. */
+  :global(.listbox-styled-item[data-pressed] .listbox-styled-note) {
+    color: var(--listbox-styled-text);
   }
 
   /* Two bands, so the ring shows on the page and on the accent fill of a selected item. */

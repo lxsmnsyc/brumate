@@ -11,8 +11,17 @@
   let files = $signal(first);
   let picked = $signal<Key[]>([]);
 
+  // The next row moves under the pointer when a row leaves, so a second press right after would
+  // delete it. A press is ignored for a moment.
+  let busy = false;
+
   // A key that leaves the list leaves the selection too.
   function drop(keys: Key[]) {
+    if (busy) {
+      return;
+    }
+    busy = true;
+    setTimeout(() => (busy = false), 400);
     files = files.filter((file) => !keys.includes(file));
     picked = picked.filter((key) => !keys.includes(key));
   }

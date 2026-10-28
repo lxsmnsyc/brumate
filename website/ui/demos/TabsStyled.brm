@@ -62,6 +62,7 @@
 
   :global(.tabs-styled-tab[data-pressed]) {
     background: color-mix(in srgb, var(--tabs-styled-accent) 24%, var(--tabs-styled-bg));
+    color: var(--tabs-styled-text);
   }
 
   :global(.tabs-styled-tab[data-selected]) {

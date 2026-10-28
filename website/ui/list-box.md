@@ -21,6 +21,7 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 `ListBoxSection`: Groups items. It is named by its Header, or by `aria-label`. Optional.
 `Header`: Names the section.
 `ListBoxItem`: One option. Its `id` is its key, and it shows `data-selected` when it is selected.
+`Text` with `slot="label"`: Names an item whose content is more than text. The item needs `hasLabel`. Optional.
 `Text` with `slot="description"`: Describes the item. The item needs `hasDescription`. Optional.
 ```
 
@@ -37,7 +38,7 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 </>
 ```
 
-The sections, and the `Text` elements in an item, are optional. An item holds text, or the two `Text` elements.
+The sections, and the `Text` elements in an item, are optional. An item holds text, or a label and a description.
 
 ## Props
 
@@ -191,6 +192,7 @@ With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets 
 
 - An item is an `option`. It shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
 - A `Text` with `slot="label"` names an item, and one with `slot="description"` describes it. A part cannot read its children, so add `hasLabel` and `hasDescription` to the item that has them.
+- An item with `hasDescription` and no `hasLabel` is named by its whole content, the description included, and the description is read again as its description. Give such an item a label.
 - The list shows `data-orientation`.
 - An option is read as one piece of text, so it holds no fields or buttons. The list takes the keys of a field inside. A [GridList](./grid-list.md) holds rows with controls.
 

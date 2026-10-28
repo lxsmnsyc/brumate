@@ -34,7 +34,7 @@
     --tags-styled-bg: Canvas;
     --tags-styled-text: CanvasText;
     --tags-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
-    --tags-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --tags-styled-border: color-mix(in srgb, CanvasText 55%, Canvas);
     --tags-styled-accent: light-dark(#2a76b2, #6fb2e6);
     --tags-styled-on-accent: light-dark(#fff, #101418);
     display: grid;
@@ -131,6 +131,15 @@
 
   :global(.tags-styled-remove[data-pressed]) {
     background: color-mix(in srgb, currentColor 35%, transparent);
+  }
+
+  /* On a selected tag the glyph is the on-accent color, so the fill grows toward the text color and the glyph keeps its contrast. */
+  :global(.tags-styled-tag[data-selected] .tags-styled-remove[data-hovered]) {
+    background: color-mix(in srgb, var(--tags-styled-accent), CanvasText 40%);
+  }
+
+  :global(.tags-styled-tag[data-selected] .tags-styled-remove[data-pressed]) {
+    background: color-mix(in srgb, var(--tags-styled-accent), CanvasText 55%);
   }
 
   :global(.tags-styled-remove[data-disabled]) {
