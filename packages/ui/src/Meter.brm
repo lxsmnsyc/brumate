@@ -35,6 +35,7 @@
   import { described } from './description.brm.ts';
   import { LocaleContext } from './locale.ts';
   import { progressOf } from './progress.ts';
+  import { mergeStyle } from './style.ts';
 
   /**
    * A value in a range, such as the space left on a disk:
@@ -51,6 +52,7 @@
     formatOptions,
     content,
     children,
+    style,
     ...rest
   } = $props<MeterProps<T>>();
   let { ref } = $props<MeterOwnProps<T>>();
@@ -71,7 +73,7 @@
   aria-valuemax=maxValue
   aria-valuetext=(valueLabel ?? state.valueText)
   aria-labelledby=(labelled ? labelId : undefined)
-  style=(`--percentage: ${state.percentage}%`)
+  style=(mergeStyle(`--percentage: ${state.percentage}%`, style))
   {...rest}
 >
   {children}

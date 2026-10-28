@@ -33,6 +33,7 @@
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, ModalOverlayContext, OverlayTriggerContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
+  import { mergeStyle } from './style.ts';
   import {
     containTab,
     focusInto,
@@ -65,6 +66,7 @@
     transition = false,
     onOpenChange,
     children,
+    style,
     ...rest
   } = $props<ModalOverlayProps>();
   // It takes a binding of a value that can be undefined, so a part can pass its own `isOpen` on.
@@ -236,7 +238,7 @@
           ref=$bind(overlay)
           id=(trigger?.overlayId ?? ownId)
           data-modal-overlay
-          style="position: fixed; inset: 0"
+          style=(mergeStyle('position: fixed; inset: 0', style))
           inert=(leaving || undefined)
           data-closed=($untrack(transition || undefined))
           onKeyDown=keyDown

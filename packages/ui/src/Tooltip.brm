@@ -35,6 +35,7 @@
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
   import { followTrigger } from './position.ts';
+  import { mergeStyle } from './style.ts';
   import { TooltipTriggerContext, keepStops, runStops } from './tooltip.ts';
   import { enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
@@ -60,6 +61,7 @@
     containerPadding = 12,
     transition = false,
     children,
+    style,
     ...rest
   } = $props<TooltipProps<T>>();
   let { ref } = $props<TooltipOwnProps<T>>();
@@ -171,7 +173,7 @@
         ref=$bind(ref)
         id=(trigger?.tooltipId)
         role="tooltip"
-        style="position: fixed; top: 0; left: 0"
+        style=(mergeStyle('position: fixed; top: 0; left: 0', style))
         data-closed=($untrack(transition || undefined))
         onPointerEnter=entered
         onPointerLeave=left

@@ -9,13 +9,14 @@
 
 <script>
   import { $props } from 'brumate/signals';
+  import { mergeStyle } from './style.ts';
 
   /**
    * An arrow from a Popover to its trigger. The Popover
    * places it along its side, with `left` or `top`, and gives it `data-placement`, the side of
    * the trigger that the popover is on, so CSS can point it.
    */
-  const { children, ...rest } = $props<OverlayArrowProps>();
+  const { children, style, ...rest } = $props<OverlayArrowProps>();
 </script>
 
-<div data-overlay-arrow aria-hidden="true" style="position: absolute" {...rest}>{children}</div>
+<div data-overlay-arrow aria-hidden="true" style=(mergeStyle('position: absolute', style)) {...rest}>{children}</div>

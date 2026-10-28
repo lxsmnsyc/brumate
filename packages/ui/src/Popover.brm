@@ -64,6 +64,7 @@
     release,
   } from './overlay.ts';
   import { followTrigger } from './position.ts';
+  import { mergeStyle } from './style.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
   /**
@@ -96,6 +97,7 @@
     transition = false,
     onOpenChange,
     children,
+    style,
     ...rest
   } = $props<PopoverProps<T>>();
   let { isOpen } = $props<PopoverOwnProps<T>>();
@@ -275,7 +277,7 @@
     ref=$bind(ref)
     id=(trigger?.overlayId ?? ownId)
     tabindex="-1"
-    style="position: fixed; top: 0; left: 0"
+    style=(mergeStyle('position: fixed; top: 0; left: 0', style))
     inert=(leaving || undefined)
     data-closed=($untrack(transition || undefined))
     onKeyDown=keyDown
