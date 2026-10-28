@@ -132,11 +132,11 @@
   }
 
   :global(.color-field-styled-submit[data-hovered]) {
-    filter: brightness(1.1);
+    background: color-mix(in srgb, var(--color-field-styled-accent) 85%, CanvasText);
   }
 
   :global(.color-field-styled-submit[data-pressed]) {
-    filter: brightness(0.9);
+    background: color-mix(in srgb, var(--color-field-styled-accent) 70%, CanvasText);
   }
 
   :global(.color-field-styled-submit[data-focus-visible]) {

@@ -55,6 +55,7 @@ Every part inside is optional.
 - `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and type in the last field.
 - `onChange` gets the color as text in every shape, each time an edit from any part makes another color.
 - A ColorPicker is not a form field and has no reset of its own. A ColorField, ColorArea, ColorSlider or ColorWheel inside it with no `value` writes the picker on a reset of its form, with the color the picker had when the form rendered. The server renders the color it starts with.
+- With a request that refuses, a ColorPicker on main today can show the refused value in its parts: the field draws the new text before the picker asks, and a refusal leaves it drawn, while the swatch and your signal keep the old color. The node `ui-refused-write-sync` (#332) makes the parts show the kept value. Press Lock above and use the last one to see which you get.
 
 See [State](./state.md) for the other parts.
 

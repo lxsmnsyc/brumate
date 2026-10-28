@@ -63,7 +63,7 @@ An area for two channels of a color.
 
 ## Keyboard
 
-The arrows act on either input of the thumb, and each moves its own axis. The other keys act on the axis of the input that has focus. A key with Ctrl, Meta or Alt moves nothing.
+The arrows act on either input of the thumb, and each moves its own axis. The other keys act on the axis of the input that has focus. Ctrl, Alt or Meta with an arrow moves the thumb one step, since the range input handles the key. Only a pointer press ignores the modifiers.
 
 | Key          | Action                                                                   |
 | ------------ | ------------------------------------------------------------------------ |
@@ -127,7 +127,7 @@ An area edits two channels, so the third needs a slider. Both use `colorSpace="h
 - There is one tab stop. When focus was last on the y input, the x input is out of the tab order (`tabindex="-1"`) and hidden from screen readers (`aria-hidden="true"`). The y input is out of both until it has the focus or a key changed the value.
 - The focus goes to the input of the axis that a key moved.
 - A screen reader hears the value of the input, the other axis and the third channel, and a name of the color without its alpha, such as `Saturation 50%, Brightness 80%, Hue 210°, blue`. After a change from a key it hears only the input and the color, such as `Saturation 51%, blue`, until the focus leaves.
-- A key with Ctrl, Meta or Alt moves nothing. Until the loader of the page matches the modifiers, such a key is still prevented, so Cmd+Left does not go back.
+- Ctrl, Alt or Meta with an arrow moves the thumb one step, since the range input handles the key. Only a pointer press ignores the modifiers.
 
 ## Pointer
 

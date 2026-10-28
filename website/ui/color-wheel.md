@@ -71,7 +71,7 @@ A circular track for the hue of a color.
 
 ## Keyboard
 
-The keys act on the thumb. A key with Ctrl, Meta or Alt moves nothing.
+The keys act on the thumb. Ctrl, Alt or Meta with an arrow moves the thumb one step, since the range input handles the key. Only a pointer press ignores the modifiers.
 
 | Key                        | Action                                                                                                                        |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |

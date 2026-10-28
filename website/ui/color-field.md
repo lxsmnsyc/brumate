@@ -21,7 +21,7 @@ A field for a color, as hex or as one channel.
 - `value` is a color of CSS, such as `#e2445a`, or `null` when the field is empty. It starts its own state, or binds with `$bind`, and `onChange` gets each change. See [State](./state.md).
 - The value keeps the format it was given, such as `hsl(210, 50%, 40%)`, and is hex when it started empty. Editing keeps the alpha of the color.
 - A field of a channel edits a color at full precision, and gives back the format of the caller. `value` and `onChange` change only when an edit makes another color, so typed hex in another case, or a blur without typing, changes nothing.
-- `name` sends the hex, or the channel value, as it reads in the input, also before the code of the page loads.
+- `name` sends the hex as it reads in the input, also before the code of the page loads. A channel field sends the number of the channel, so an alpha input that reads `100%` sends `1`.
 - A reset of the form gives back the first value.
 - `isRequired` asks the browser to check the field on a submit, and the `FieldError` shows the message.
 - It shows `data-channel`, which is `hex` without a channel, and `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.

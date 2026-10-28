@@ -1,11 +1,9 @@
 <script>
   import { $bind, $signal } from 'brumate/signals';
   import Button from '@brumate/ui/Button.brm';
-  import ColorArea from '@brumate/ui/ColorArea.brm';
   import ColorField from '@brumate/ui/ColorField.brm';
   import ColorPicker from '@brumate/ui/ColorPicker.brm';
   import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
-  import ColorThumb from '@brumate/ui/ColorThumb.brm';
   import Input from '@brumate/ui/Input.brm';
   import Label from '@brumate/ui/Label.brm';
 

@@ -9,7 +9,7 @@
     <!-- The track is clipped to the ring, so a wrapper carries its badge. -->
     <div style="position: absolute; inset: 0" data-mark="2" data-mark-side="inside"><ColorWheelTrack /></div>
     <!-- A thumb is placed with position: absolute, so the picture keeps it. -->
-    <ColorThumb class="ui-color-thumb" style="position: absolute" data-mark="3" />
+    <ColorThumb class="ui-color-thumb" style="position: absolute" data-mark="3" data-mark-side="bottom" />
   </ColorWheel>
 </div>
 

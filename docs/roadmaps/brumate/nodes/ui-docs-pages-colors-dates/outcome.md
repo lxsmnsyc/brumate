@@ -16,7 +16,7 @@ The seven pages of the color parts: ColorPicker, ColorSwatch, ColorSlider, Color
 
 - Every claim was read against packages/ui/src and checked in Chrome. No page claims a reset for ColorPicker or ColorSwatchPicker, which are not form fields. A ColorField inside a ColorPicker writes the picker on a reset of its form, which the ColorPicker form use case shows with a Reset button.
 - ui-refused-write-sync (#332) is not on main. The pages describe main: a refused `$bind` request leaves the part drawing the refused value (ColorSlider, ColorArea, ColorWheel, ColorField, and a ColorPicker through its field). Measured in Chrome with the state demos. Each page says that #332 changes this. Whichever PR lands second removes the sentence (a line that starts "With a request that refuses" in each Controlled and uncontrolled section).
-- Colors use `light-dark()` and system colors. Every styled example draws its focus as bands (page color, then accent) and sets `outline: none`. The checked contrast: axe `color-contrast` finds nothing on the seven pages in light and dark, with the site theme toggled against the OS setting, and the accent ring colors (#2a76b2, #6fb2e6) are above 3:1 on the stage.
+- Colors use `light-dark()` and system colors. Every styled example draws its focus as bands (page color, then accent) and sets `outline: none`. Axe `color-contrast` finds nothing at rest on the seven pages in light and dark, with the site theme toggled against the OS setting. Axe sees only the rest state, so the hover and press states were measured in Chrome with a real pointer: the Save button of ColorFieldStyled is 4.85:1 at rest, 6.26:1 on hover and 8.16:1 pressed in light, and 8.09, 9.25 and 10.54 in dark. The accent ring colors (#2a76b2, #6fb2e6) are above 3:1 on the stage. The other states (item rings of the swatch pickers, thumbs, input borders) were not measured one by one.
 - The disabled ColorSlider and ColorField dim the track and the input, not the text, since dimmed text failed 4.5:1 in axe.
 - e2e/suites/website.mjs has one flow for the seven pages in both schemes (styled CSS shows, callouts equal the listed pieces, axe finds nothing). It excludes `.props-table`, which fails `scrollable-region-focusable` on main (node ui-scroll-focus). Delete the exclude when that node lands.
 - No change to website/src/routes/ui/_layout.brm. The state and use-case demos use its existing classes.
@@ -30,6 +30,7 @@ The seven pages of the color parts: ColorPicker, ColorSwatch, ColorSlider, Color
 
 - Keys: ArrowRight 40 times fast on the wheel, 20 on the slider and the area, ArrowUp on a channel field. Values and text stay equal.
 - Forms: each form demo submits without a reload, sends the names it has (`hue`, `s` and `b`, `brand`, `background` and `opacity`), and Reset gives back the first values.
+- A key with Ctrl, Alt or Meta moves a thumb one step, so the pages say that only a pointer press ignores the modifiers.
 - The picker: a preset click writes the field, a typed color unselects every preset, and a part with its own `value` moves alone.
 - Lock then edit: the last control of each state demo shows the refused value and keeps the signal (the #332 case).
 

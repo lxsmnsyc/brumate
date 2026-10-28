@@ -9,8 +9,8 @@
 <ColorSlider class="ui-color-slider" channel="hue" value="hsl(210, 80%, 50%)" style="margin-bottom: 1rem" data-mark="1" data-mark-side="bottom">
   <Label data-mark="2" data-mark-side="after">Hue</Label>
   <SliderOutput data-mark="3" data-mark-side="after" />
-  <SliderTrack class="ui-color-track" data-mark="4">
+  <SliderTrack class="ui-color-track" data-mark="4" data-mark-side="inside">
     <!-- A thumb is placed with position: absolute, so the picture keeps it. -->
-    <ColorThumb class="ui-color-thumb" style="position: absolute" data-mark="5" />
+    <ColorThumb class="ui-color-thumb" style="position: absolute" data-mark="5" data-mark-side="bottom" />
   </SliderTrack>
 </ColorSlider>

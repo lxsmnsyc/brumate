@@ -5,5 +5,5 @@
 
 <ColorArea class="ui-color-area" xChannel="saturation" yChannel="brightness" value="hsb(210, 80%, 90%)" aria-label="Saturation and brightness" data-mark="1">
   <!-- A thumb is placed with position: absolute, so the picture keeps it. -->
-  <ColorThumb class="ui-color-thumb" style="position: absolute" data-mark="2" />
+  <ColorThumb class="ui-color-thumb" style="position: absolute" data-mark="2" data-mark-side="bottom" />
 </ColorArea>
