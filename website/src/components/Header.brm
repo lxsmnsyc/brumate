@@ -58,7 +58,7 @@
   /* Header */
 
   .brand-section {
-    color: var(--accent);
+    color: var(--accent-strong);
   }
 
   .header {

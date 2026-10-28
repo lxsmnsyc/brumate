@@ -3,6 +3,9 @@
    styles in its <style> block. */
 
 :root {
+  /* --accent is for lines, outlines and large marks. Text or an icon on an orange fill uses
+     --accent-fill with --on-accent, and on a blue fill --cool with --on-cool, so both themes
+     reach 4.5:1. */
   --bg: #fbfaf8;
   --surface: #f2efea;
   --surface-strong: #e9e4dc;
@@ -11,11 +14,14 @@
   --border: #e3ddd4;
   --accent: #d4612a;
   --accent-strong: #9f4116;
+  --accent-fill: #bb4f1b;
+  --on-accent: #fff;
   --danger: #b3261e;
   --warn: #8a5a00;
   --success: #2da44e;
   --accent-soft: #fbe7dc;
-  --cool: #2f7fbf;
+  --cool: #2a76b2;
+  --on-cool: #fff;
   --code-bg: #f6f3ee;
   --header-height: 3.5rem;
   --radius: 10px;
@@ -35,11 +41,14 @@
     --border: #2f2a25;
     --accent: #f08a52;
     --accent-strong: #f6a679;
+    --accent-fill: #f08a52;
+    --on-accent: #141210;
     --danger: #f28b82;
     --warn: #e3b341;
     --success: #3fb950;
     --accent-soft: #3a2116;
     --cool: #6fb2e6;
+    --on-cool: #141210;
     --code-bg: #1a1714;
     --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
     color-scheme: dark;
@@ -55,11 +64,14 @@
   --border: #2f2a25;
   --accent: #f08a52;
   --accent-strong: #f6a679;
+  --accent-fill: #f08a52;
+  --on-accent: #141210;
   --danger: #f28b82;
   --warn: #e3b341;
   --success: #3fb950;
   --accent-soft: #3a2116;
   --cool: #6fb2e6;
+  --on-cool: #141210;
   --code-bg: #1a1714;
   --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
   color-scheme: dark;
@@ -112,8 +124,8 @@ pre {
 
 .button.primary {
   border-color: transparent;
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-fill);
+  color: var(--on-accent);
 }
 
 .button.primary:hover {
