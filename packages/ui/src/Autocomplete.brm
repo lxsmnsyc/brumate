@@ -15,7 +15,7 @@
 </script>
 
 <script>
-  import { $id, $props, $setContext, $signal } from 'brumate/signals';
+  import { $effect, $id, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { CollectionFocusContext, enabledItems, keyOf, moveFrom } from './collection.ts';
   import { FieldInputContext } from './contexts.ts';
@@ -39,8 +39,13 @@
   let activeKey = $signal<Key | null>(null);
   // The ID of the active item, which the input names in `aria-activedescendant`.
   let activeId = $signal<string>();
-  // The text the collection shows the items of, which changes as the user types.
+  // The text the collection shows the items of: the text the field shows, and the text that code
+  // writes to `inputValue`.
   let filterText = $signal(inputValue);
+  // The last text that the field or the code gave, so the same text does not call the setter again.
+  let seen = $signal(inputValue);
+  // The value of `inputValue` that the effect below has seen, so it reacts to code, not to the field.
+  let known = $signal(inputValue);
   // The text of the last filter, so a filter again with the same text, such as after the active
   // item changed, keeps the active item.
   let appliedText = $signal(inputValue);
@@ -88,13 +93,28 @@
   }
 
   function changed(value: string) {
-    if (value === filterText) {
+    if (value === seen) {
       return;
     }
-    inputValue = value;
+    seen = value;
     filterText = value;
+    if (value !== inputValue) {
+      inputValue = value;
+    }
+    // A setter that refuses leaves the old text, which is not a write from code.
+    known = inputValue;
     onInputChange?.(value);
   }
+
+  // A write from code changes the filter, also when the field does not show it.
+  $effect(() => {
+    const next = inputValue;
+    if (next !== known) {
+      known = next;
+      seen = next;
+      filterText = next;
+    }
+  });
 
   // A field can change its text with no `input` event, such as a SearchField that Escape or its
   // Button clears, so the text is read again once the key or the press has done its work.

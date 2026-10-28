@@ -22,7 +22,7 @@ A field that picks one item from a list, which opens from a button.
 - A `Select` holds a `Label`, a `Button` with a `SelectValue`, a `Popover` with a [ListBox](./list-box.md), and can hold a `Text` with `slot="description"` and a `FieldError`.
 - `selectedKey` is the key of the selected item, or `null`. `selectedKey=(key)` starts its own selection, and `selectedKey=$bind(signal)` writes the caller's. See [State](./state.md).
 - `onSelectionChange` gets each new key.
-- `isOpen` alone starts the list open, and `isOpen=$bind(signal)` writes the caller's. `onOpenChange` gets each change.
+- `isOpen` alone holds its own state, which starts closed, and `isOpen=$bind(signal)` writes the caller's. `onOpenChange` gets each change.
 - `isDisabled` keeps the list closed, and `disabledKeys` on the ListBox, or `isDisabled` on an item, keeps items from selection.
 - The Select shows `data-open`, `data-disabled`, `data-invalid` and `data-required`.
 
@@ -178,7 +178,7 @@ A reset of the form gives back the key that the Select started with.
 
 - `name` sends the key of the selected item with its form, in an input out of sight. It goes with the form also before the code of the page loads.
 - `isRequired` asks the browser to check the field when its form is sent. The FieldError shows the message of the browser, and focus moves to the Button.
-- A server error for the `name` in a [Form](./form.md) shows in the FieldError until the selection changes.
+- A server error for the `name` in a [Form](./form.md) shows in the FieldError until the user picks an item. An error that arrives after a pick shows too.
 - `isInvalid` marks the field invalid.
 
 ## Names
