@@ -5,7 +5,7 @@ status: done
 priority: should
 type: refactor
 outline: false
-milestone: smaller-client
+milestone: 0.4.0
 target:
 from:
 size: S

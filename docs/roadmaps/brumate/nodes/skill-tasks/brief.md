@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: chore
 outline: false
-milestone: agent-skill
+milestone: 0.5.0
 target:
 from:
 size: S

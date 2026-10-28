@@ -3,7 +3,7 @@ id: i18n
 title: Internationalization
 status: todo
 priority: later
-type: feature
+type: story
 outline: true
 milestone: backlog
 target:

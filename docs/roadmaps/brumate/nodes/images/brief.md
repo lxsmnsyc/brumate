@@ -3,7 +3,7 @@ id: images
 title: Images
 status: todo
 priority: later
-type: feature
+type: story
 outline: true
 milestone: backlog
 target:

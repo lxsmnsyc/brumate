@@ -5,7 +5,7 @@ status: done
 priority: should
 type: docs
 outline: false
-milestone: ui-0.1
+milestone: 0.4.0
 target:
 from:
 size: M

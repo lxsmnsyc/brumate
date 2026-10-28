@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: chore
 outline: false
-milestone: ui-0.1
+milestone: 0.4.0
 target:
 from:
 size: M
@@ -21,6 +21,45 @@ shared: []
 reserves: []
 provides: []
 depends_on:
+  - on: bind-read-your-writes
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: checkbox-description
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: code-examples
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: date-field-sync
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: field-error-clears
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: overlay-focus-fixes
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: overlay-navigation-cleanup
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: runtime-event-cancel
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: tokenfield-sync
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: try-sample-console
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: ui-docs-pages-collections-3
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: ui-docs-pages-utilities
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: ui-skill
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
   - on: size-trim
     kind: hard
     why: it is the last must node of core-correct; the review runs once the core changes have landed

@@ -5,7 +5,7 @@ status: done
 priority: should
 type: fix
 outline: false
-milestone: core-correct
+milestone: 0.4.0
 target:
 from:
 size: M

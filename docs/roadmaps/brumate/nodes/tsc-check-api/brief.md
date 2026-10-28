@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: refactor
 outline: false
-milestone: agent-skill
+milestone: 0.5.0
 target:
 from:
 size: M

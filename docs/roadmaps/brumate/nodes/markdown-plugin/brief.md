@@ -3,7 +3,7 @@ id: markdown-plugin
 title: Markdown with components, for apps
 status: todo
 priority: later
-type: feature
+type: story
 outline: true
 milestone: backlog
 target:

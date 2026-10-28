@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: release
 outline: false
-milestone: ui-0.1
+milestone: 0.4.0
 target: main
 from: main
 size: S
@@ -23,6 +23,12 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: bind-read-your-writes
+    kind: hard
+    why: in the 0.4.0 cut
+  - on: runtime-event-cancel
+    kind: hard
+    why: in the 0.4.0 cut
   - on: changeset-review
     kind: hard
     why: the changelog comes from the trimmed changesets

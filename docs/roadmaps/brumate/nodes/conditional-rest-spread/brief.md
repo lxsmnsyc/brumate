@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: feature
 outline: false
-milestone: core-correct
+milestone: 0.5.0
 target:
 from:
 size: S

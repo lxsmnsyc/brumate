@@ -3,7 +3,7 @@ id: embedding
 title: Embedding in other sites
 status: todo
 priority: later
-type: feature
+type: story
 outline: true
 milestone: backlog
 target:

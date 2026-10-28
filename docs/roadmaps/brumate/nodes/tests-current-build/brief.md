@@ -5,7 +5,7 @@ status: done
 priority: must
 type: chore
 outline: false
-milestone: core-correct
+milestone: 0.4.0
 target:
 from:
 size: S

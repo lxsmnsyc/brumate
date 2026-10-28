@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: feature
 outline: false
-milestone: types
+milestone: 0.5.0
 target:
 from:
 size: S

@@ -3,7 +3,7 @@ id: server-components
 title: "Server components and #server"
 status: todo
 priority: later
-type: feature
+type: story
 outline: true
 milestone: backlog
 target:

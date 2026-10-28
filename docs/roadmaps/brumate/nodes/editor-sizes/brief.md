@@ -5,7 +5,7 @@ status: todo
 priority: could
 type: feature
 outline: false
-milestone: agent-skill
+milestone: 0.6.0
 target:
 from:
 size: M

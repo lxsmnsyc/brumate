@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: fix
 outline: false
-milestone: core-correct
+milestone: 0.4.0
 target:
 from:
 size: S
@@ -37,7 +37,7 @@ A `prevent` modifier or a handler that cancels an event works when its `b-on` is
 - Found by pending-submit (#330) and confirmed by its review. The delegated document listener is marked passive when the markup is scanned at load, from the `b-on` entries found then (boot.ts, about lines 316-329 and 356). A `prevent` that appears later never makes it non-passive, so `preventDefault()` in `apply` (about line 240) does nothing. The document capture `onEvent` also runs before any listener on a form, so a form listener cannot pre-empt a delegated `onSubmit`.
 - #330 works around both with a capture `submit` listener on window per submit Button. This node should let that go.
 - Shapes to weigh, with their cost: non-passive delegation for `click` and `submit` (never scroll events), re-running `delegate()` when `b-on` is written at run time (inserts.ts about line 406, templates.ts about line 443), or a `cancel()` helper that works in any phase. Measure the todos size and keep it within 0.3 kB.
-- Not in the 0.4.0 cut unless the maintainer adds it.
+- In the 0.4.0 cut (the maintainer, 2026-10-29).
 
 ## Acceptance
 

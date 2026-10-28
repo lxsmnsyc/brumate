@@ -5,7 +5,7 @@ status: todo
 priority: could
 type: spike
 outline: false
-milestone: smaller-client
+milestone: 0.6.0
 target:
 from:
 size: M

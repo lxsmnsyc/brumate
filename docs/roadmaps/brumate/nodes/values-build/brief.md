@@ -3,7 +3,7 @@ id: values-build
 title: Functions for values
 status: todo
 priority: later
-type: feature
+type: story
 outline: true
 milestone: backlog
 target:

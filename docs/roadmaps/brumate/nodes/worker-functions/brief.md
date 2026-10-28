@@ -3,7 +3,7 @@ id: worker-functions
 title: Worker functions
 status: todo
 priority: later
-type: feature
+type: story
 outline: true
 milestone: backlog
 target:

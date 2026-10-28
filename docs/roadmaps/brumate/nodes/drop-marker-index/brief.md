@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: refactor
 outline: false
-milestone: smaller-client
+milestone: 0.5.0
 target:
 from:
 size: L
