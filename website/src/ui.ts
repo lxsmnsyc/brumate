@@ -90,7 +90,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   title: section.title,
   pages: section.pages
     .filter((slug) => slug in pages)
-    .map((slug) => ({ slug, title: slug === '' ? 'Overview' : pages[slug]!.title })),
+    .map((slug) => ({ slug, title: pages[slug]!.title })),
 }));
 
 /** The cards of the home of the section: a demo of each part, and the section about it. */

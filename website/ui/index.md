@@ -2,7 +2,7 @@
 
 Accessible, unstyled parts for brumate pages. The server renders them, the browser keeps their state, and a part you do not render ships nothing.
 
-[Start](./introduction.md) | [All parts](./parts.md) | [Design influences](./influences.md)
+[Introduction](./introduction.md) | [All parts](./parts.md) | [Design influences](./influences.md)
 
 ## Try the parts
 
@@ -47,15 +47,15 @@ The code of a part comes with the page that renders it, so the first press needs
 | Page that renders                 | JS, gzip | More than a page without parts |
 | --------------------------------- | -------- | ------------------------------ |
 | No part                           | 23.3 kB  | 0                              |
-| `Checkbox`                        | 23.3 kB  | 0.04 kB                        |
+| `Checkbox`                        | 27.6 kB  | 4.3 kB                         |
 | `Button`                          | 27.8 kB  | 4.6 kB                         |
 | `Tabs` with a list and two panels | 33.7 kB  | 10.4 kB                        |
-| `Dialog`, closed                  | 37.5 kB  | 14.3 kB                        |
+| `Dialog`, closed                  | 37.5 kB  | 14.2 kB                        |
 | `Select` with two options, closed | 48.4 kB  | 25.2 kB                        |
 
-The first row is the loader and the core of brumate, which every page with a script loads. A `Checkbox` ships almost nothing, since a native box checks without code, and only an indeterminate box loads more. A layer ships the code of every part inside it, such as the `Button`, `Popover` and `ListBox` of a `Select`.
+The first row is the loader and the core of brumate, which every page with a script loads. A `Checkbox` is the smallest, with the code of its state and its press handling. A layer ships the code of every part inside it, such as the `Button`, `Popover` and `ListBox` of a `Select`.
 
-These numbers come from `node scripts/measure-ui-sizes.mjs` in the `website` folder. It builds a small page for each row, renders it on the server, and adds up the gzip size of the files that the page loads. The sizes change as the parts and the compiler change, so run it again for the current ones.
+These numbers come from `node scripts/measure-ui-sizes.mjs` in the `website` folder. It builds a small page for each row, renders it on the server, and adds up the gzip size of the JavaScript that the first server render of the page loads, the loader, the core and the bundles that the server preloads. CSS is not counted, and neither is a part that the client shows later. The sizes change as the parts and the compiler change, so run it again for the current ones.
 
 ## Works without scripts
 
