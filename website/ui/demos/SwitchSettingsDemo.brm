@@ -1,0 +1,27 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Switch from '@brumate/ui/Switch.brm';
+
+  let airplane = $signal(false);
+  let wifi = $signal(true);
+  let notify = $signal(true);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <Switch class="ui-box" name="airplane" isSelected=$bind(airplane) onChange=((on) => { if (on) wifi = false; })>
+    <span class="ui-track" aria-hidden="true"></span>
+    Airplane mode
+  </Switch>
+  <Switch class="ui-box" name="wifi" isSelected=$bind(wifi) isDisabled=airplane>
+    <span class="ui-track" aria-hidden="true"></span>
+    Wi-Fi
+  </Switch>
+  <Switch class="ui-box" name="notify" isSelected=$bind(notify) onChange=((on) => (log = `Notifications ${on ? 'on' : 'off'}.`))>
+    <span class="ui-track" aria-hidden="true"></span>
+    Notifications
+  </Switch>
+  <Button type="reset" class="ui-button">Reset the settings</Button>
+  <p role="status">{log}</p>
+</form>

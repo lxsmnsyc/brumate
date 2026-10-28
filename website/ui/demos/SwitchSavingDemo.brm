@@ -1,0 +1,28 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Switch from '@brumate/ui/Switch.brm';
+
+  let enabled = $signal(false);
+  let version = $signal(0);
+  let status = $signal('Nothing saved yet.');
+
+  // The switch moves at once. The save follows, and only the last toggle reports.
+  function save(next: boolean) {
+    const mine = version + 1;
+    version = mine;
+    status = 'Saving';
+    setTimeout(() => {
+      if (version === mine) {
+        status = `Saved: backups are ${next ? 'on' : 'off'}.`;
+      }
+    }, 700);
+  }
+</script>
+
+<div class="ui-stack">
+  <Switch class="ui-box" isSelected=$bind(enabled) onChange=save>
+    <span class="ui-track" aria-hidden="true"></span>
+    Backups
+  </Switch>
+  <p role="status">{status}</p>
+</div>

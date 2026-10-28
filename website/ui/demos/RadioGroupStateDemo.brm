@@ -1,0 +1,40 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
+
+  let mine = $signal<string | null>('b');
+  let asked = $signal<string | null>('b');
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <RadioGroup class="ui-group" orientation="horizontal">
+    <Label>Own state</Label>
+    <Radio class="ui-box" value="a"><span class="ui-mark round" aria-hidden="true"></span>A</Radio>
+    <Radio class="ui-box" value="b"><span class="ui-mark round" aria-hidden="true"></span>B</Radio>
+  </RadioGroup>
+  <RadioGroup class="ui-group" orientation="horizontal" value="b">
+    <Label>Starts at B</Label>
+    <Radio class="ui-box" value="a"><span class="ui-mark round" aria-hidden="true"></span>A</Radio>
+    <Radio class="ui-box" value="b"><span class="ui-mark round" aria-hidden="true"></span>B</Radio>
+  </RadioGroup>
+  <RadioGroup class="ui-group" orientation="horizontal" value=$bind(mine) onChange=((next) => (log = `changed to ${next}`))>
+    <Label>Writes your signal</Label>
+    <Radio class="ui-box" value="a"><span class="ui-mark round" aria-hidden="true"></span>A</Radio>
+    <Radio class="ui-box" value="b"><span class="ui-mark round" aria-hidden="true"></span>B</Radio>
+  </RadioGroup>
+  <RadioGroup class="ui-group" orientation="horizontal" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <Label>Asks you first</Label>
+    <Radio class="ui-box" value="a"><span class="ui-mark round" aria-hidden="true"></span>A</Radio>
+    <Radio class="ui-box" value="b"><span class="ui-mark round" aria-hidden="true"></span>B</Radio>
+  </RadioGroup>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine ?? 'none'}. Asks: {asked ?? 'none'}. Last callback: {log || 'none'}.</p>
+</form>

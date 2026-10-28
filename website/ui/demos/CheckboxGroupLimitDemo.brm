@@ -1,0 +1,33 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  const max = 2;
+  let picks = $signal(['red']);
+  let note = $signal('');
+
+  // The group asks first. A third box is refused, and the group keeps the list.
+  function request(next: string[]) {
+    if (next.length > max) {
+      note = `Pick at most ${max}.`;
+      return;
+    }
+    note = '';
+    picks = next;
+  }
+</script>
+
+<CheckboxGroup class="ui-field" name="colors" value=$bind(picks, request)>
+  <Label>Colors</Label>
+  #for (color of ['red', 'green', 'blue'] by color) {
+    <Checkbox class="ui-box" value=color>
+      <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+      {color}
+    </Checkbox>
+  }
+  <Text slot="description" class="ui-help">{note || `Pick up to ${max}.`}</Text>
+</CheckboxGroup>

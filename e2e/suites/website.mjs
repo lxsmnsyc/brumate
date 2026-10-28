@@ -352,6 +352,59 @@ export async function run({ browser, url, runner }) {
         'the link loaded a new page',
       );
     });
+    // The panel counts the scripts that the navigation loaded, however it started.
+    const checkPanel = async () => {
+      const panel = page.locator('[data-network]');
+      await panel.waitFor({ timeout: 5000 });
+      await page
+        .locator('[data-network] [data-total]', { hasText: /KB$/ })
+        .waitFor({ timeout: 5000 });
+      const text = await panel.textContent();
+      // The home page loaded its code before the visit to /docs, so a return loads nothing new.
+      assert(
+        text.includes('Nothing new') && !text.includes('Index'),
+        `the panel lists the scripts of the first load: ${text}`,
+      );
+      assert(text.includes('0 KB'), `the panel does not read 0 KB: ${text}`);
+    };
+    const backToDocs = async () => {
+      // The next flows start from /docs.
+      await page.locator('.header-nav a', { hasText: 'Docs' }).click();
+      await page.waitForURL(`${url}/docs`, { timeout: 5000 });
+      await page.locator('.docs .sidebar').waitFor({ timeout: 5000 });
+    };
+    await flow(
+      '/docs: the brand link returns to / with a panel of the navigation only',
+      async () => {
+        await page.locator('.brand').click();
+        await page.waitForURL(`${url}/`, { timeout: 5000 });
+        await checkPanel();
+        await backToDocs();
+      },
+    );
+    await flow('/docs: a navigation with no click returns to / with the same panel', async () => {
+      // A fresh load of /, then two navigations with no click.
+      await page.goto(`${url}/`, { waitUntil: 'load' });
+      await page.evaluate(() => (window.__e2eSamePage = true));
+      const visit = (to) =>
+        page.evaluate(
+          (target) =>
+            document.dispatchEvent(
+              new CustomEvent('brumate:navigate', {
+                cancelable: true,
+                detail: { url: target, replace: false, scroll: true, done() {} },
+              }),
+            ),
+          to,
+        );
+      await visit('/docs');
+      await page.waitForURL(`${url}/docs`, { timeout: 5000 });
+      await page.locator('.docs .sidebar').waitFor({ timeout: 5000 });
+      await visit('/');
+      await page.waitForURL(`${url}/`, { timeout: 5000 });
+      await checkPanel();
+      await backToDocs();
+    });
     await flow('/docs: a sidebar link navigates on the client', async () => {
       await page.locator('.sidebar a[href="/docs/state"]').click();
       await page.waitForURL(`${url}/docs/state`, { timeout: 5000 });
@@ -531,6 +584,35 @@ export async function run({ browser, url, runner }) {
           'file-trigger',
           'drop-zone',
         ]) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            assert((await page.locator('.styled pre').count()) === 1, `/ui/${slug} shows no CSS`);
+            const marks = await page.locator('.anatomy [data-mark]').count();
+            const items = await page.locator('.anatomy-list li').count();
+            assert(
+              pieces.has(slug) ? marks > 0 && marks === items : marks === 0,
+              `/ui/${slug}: ${marks} callouts for ${items} listed pieces`,
+            );
+            await page.addScriptTag({ path: axe });
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run(document.querySelector('article'));
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow(
+      '/ui: the pages of Forms that are done have a styled example, and an anatomy picture where they have pieces',
+      async () => {
+        const pieces = new Set(['checkbox-group', 'radio-group', 'form']);
+        for (const slug of ['checkbox', 'switch', 'checkbox-group', 'radio-group', 'form']) {
           for (const scheme of ['light', 'dark']) {
             await page.emulateMedia({ colorScheme: scheme });
             await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });

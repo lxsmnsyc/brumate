@@ -1,0 +1,35 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  let mine = $signal(true);
+  let asked = $signal(true);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <Checkbox class="ui-box">
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+    Own state
+  </Checkbox>
+  <Checkbox class="ui-box" isSelected>
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+    Starts on, then keeps its own copy
+  </Checkbox>
+  <Checkbox class="ui-box" isSelected=$bind(mine) onChange=((next) => (log = `changed to ${next}`))>
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+    Writes your signal
+  </Checkbox>
+  <Checkbox class="ui-box" isSelected=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+    Asks you first
+  </Checkbox>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine ? 'on' : 'off'}. Asks: {asked ? 'on' : 'off'}. Last callback: {log || 'none'}.</p>
+</form>
