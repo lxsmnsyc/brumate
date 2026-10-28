@@ -1,0 +1,19 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  let { total = 0 } = $props();
+  let own = $signal(0);
+</script>
+
+<button class="idle" onClick=(() => {
+  ((globalThis as any).__handlerWait ??= []).push('idle');
+})>Idle</button>
+<button class="add" onClick=(() => {
+  ((globalThis as any).__handlerWait ??= []).push('add');
+  total += 1;
+})>Add</button>
+<button class="local" onClick=(() => {
+  ((globalThis as any).__handlerWait ??= []).push('local');
+  own += 1;
+})>Local</button>
+<p class="own">{own}</p>

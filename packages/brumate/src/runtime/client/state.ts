@@ -16,6 +16,8 @@ export interface ClientModule {
   props: Record<string, number>;
   /** Scope kind, then slot, to the updates that read it. */
   g: Record<number, Record<number, Update[]>>;
+  /** The handlers that can write a slot of another component. The others write only their own. */
+  w?: string[];
   /**
    * Imports a part of the module. A module without it holds every part
    * itself, as a small component's module does.

@@ -433,26 +433,32 @@ function trigger(scope: Scope, slot: number): void {
   // `waiting` is set only while a pass runs.
   if (waiting) {
     // Its code starts to load now, so the pass waits no longer than the first write.
-    waiting.push([scope, slot, updateCode(scope, slot)]);
+    waiting.push([scope, slot, updateCode(scope, slot).catch((error) => fail(scope, error))]);
     return;
   }
   const list: [Scope, number, Promise<unknown>?][] = [[scope, slot]];
   if (running > 0) {
     waiting = list;
   }
-  const loading = loadModule(id).then(async (loaded) => {
-    await (loaded.g[scope.k]?.[slot] && loadPart(loaded, 'update'));
-    const waits: unknown[] = [...loadingCode, children];
-    for (const [, , load] of list) {
-      waits.push(load);
-    }
-    await Promise.allSettled(waits);
-    pass(() => {
-      for (const [target, at] of list) {
-        queueWrite(target, at);
+  const loading = loadModule(id)
+    .then(async (loaded) => {
+      await (loaded.g[scope.k]?.[slot] && loadPart(loaded, 'update'));
+      const waits: unknown[] = [...loadingCode, children];
+      for (const [, , load] of list) {
+        waits.push(load);
       }
+      await Promise.allSettled(waits);
+      pass(() => {
+        for (const [target, at] of list) {
+          queueWrite(target, at);
+        }
+      });
+    })
+    .catch((error: unknown) => {
+      // The write cannot run. Its effects do not wait for it any longer.
+      fail(scope, error);
+      flushEffects();
     });
-  });
   loadingUpdates.add(loading);
   void loading.finally(() => loadingUpdates.delete(loading));
 }
@@ -472,13 +478,21 @@ function loadUpdate(scope: Scope, slot?: number): Promise<unknown> {
 }
 
 /**
- * Loads the update code of a component and of the components above it, which a write of a bound
- * prop reaches, so the writes of a handler run before it returns. A handler waits for it.
+ * Loads the update code that a write of a handler can need, so its writes run before it returns.
+ * A handler that is not in `w` of its module writes only the slots of its own component, and
+ * waits for the code of that component. A handler in `w` also waits for the components above it, which a
+ * write of a bound prop reaches, and for the scope that its children render in.
  */
-export async function updateReady(scope: Scope | undefined): Promise<unknown> {
-  return (
-    scope && Promise.all([loadUpdate(scope), updateReady(scope.p ?? scope.o), updateReady(scope.t)])
-  );
+export async function updateReady(scope: Scope | undefined, ref?: string): Promise<unknown> {
+  if (!scope) {
+    return;
+  }
+  const root = rootOf(scope);
+  const own = ref && !(await loadModule(root.m!)).w?.includes(ref.split('#')[1]!);
+  return Promise.all([
+    loadUpdate(scope),
+    own ? loadUpdate(root) : Promise.all([updateReady(scope.p ?? scope.o), updateReady(scope.t)]),
+  ]);
 }
 
 /** The writes of the pass that runs that wait for code, to run as one pass of their own. */

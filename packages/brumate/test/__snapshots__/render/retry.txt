@@ -43,6 +43,7 @@ export * from "./retry.brm?brumate-client&part=update";
 export const id = "Retry_pyus3c";
 export const props = {  };
 export const g = { 3: { 0: [[3, "u1"]] } };
+export const w = ["h2"];
 
 # Client part: h2
 import * as $$b from 'brumate/client';
