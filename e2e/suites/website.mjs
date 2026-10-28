@@ -226,6 +226,23 @@ export async function run({ browser, url, runner }) {
     await page.close();
   }
 
+  // The shop list of the home page names chunks, so a rename would empty it.
+  {
+    const page = await browser.newPage();
+    const errors = watch(page);
+    await step('/: the shop list shows the bundle of the shop', { page, errors }, async () => {
+      await page.goto(`${url}/`, { waitUntil: 'load' });
+      const rows = page.locator('[data-network] ol li:not(.empty)');
+      await rows.first().waitFor({ timeout: TIMEOUT });
+      const names = await rows.locator('.file').allTextContents();
+      assert(
+        names.some((name) => name.startsWith('Index')),
+        `the shop list shows ${JSON.stringify(names)}, without the bundle of the page`,
+      );
+    });
+    await page.close();
+  }
+
   // The validation sample of the forms page.
   {
     const page = await browser.newPage();

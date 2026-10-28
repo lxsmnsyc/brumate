@@ -1,7 +1,7 @@
 ---
 id: website-fixes
 title: Fix the home link, the shop demo, highlighting and the error section
-status: active
+status: done
 priority: should
 type: fix
 outline: false
