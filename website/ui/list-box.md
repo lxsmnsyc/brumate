@@ -16,6 +16,15 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 
 ## Anatomy
 
+```brm anatomy ListBoxAnatomy
+`ListBox`: Holds the items and the selection. It is a `listbox` and takes one stop of Tab.
+`ListBoxSection`: Groups items. It is named by its Header, or by `aria-label`. Optional.
+`Header`: Names the section.
+`ListBoxItem`: One option. Its `id` is its key, and it shows `data-selected` when it is selected.
+`Text` with `slot="label"`: Names an item whose content is more than text. The item needs `hasLabel`. Optional.
+`Text` with `slot="description"`: Describes the item. The item needs `hasDescription`. Optional.
+```
+
 ```html
 <ListBox>
   <ListBoxSection>
@@ -29,7 +38,7 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 </>
 ```
 
-The sections, and the `Text` elements in an item, are optional.
+The sections, and the `Text` elements in an item, are optional. An item holds text, or a label and a description.
 
 ## Props
 
@@ -95,11 +104,46 @@ The keys act while an item has focus. With `orientation="horizontal"`, Left and 
 
 ## Controlled and uncontrolled
 
-`selectedKeys` holds the keys of the selected items. `selectedKeys=(['cat'])` starts the list's own selection, and `selectedKeys=$bind(signal)` writes your signal. `onSelectionChange` gets the keys after each change. The list is read only with `selectionMode="none"`, the default. See [State](./state.md).
+`selectedKeys` holds the keys of the selected items, as a list. How you pass it picks who keeps it. The lists here select several items:
+
+```brm demo ListBoxStateDemo
+
+```
+
+- `selectedKeys` alone, or nothing, makes the list keep its own selection. `selectedKeys=(['cat'])` is where that selection starts. Pick another item and the list keeps the pick. A new value from you replaces it.
+- `selectedKeys=$bind(signal)` writes your signal. Change the signal and the list follows.
+- `selectedKeys=$bind(signal, (next) => ...)` asks you first. The list shows what you keep, so a request that you ignore leaves the old keys. Press Lock above and pick an item in the last list.
+- `onSelectionChange` gets the keys after each change, in every shape.
+- The list is read only with `selectionMode="none"`, the default.
+- A ListBox is not a form field. It has no `name` and no reset, so a reset of a form leaves its selection as it is. The server renders the selection it starts with. See [State](./state.md).
 
 ## Styling
 
 Style an item with the data attributes above, such as `[data-selected]` and `[data-focus-visible]`, and the list with `[data-orientation]`. See [Styling](./styling.md).
+
+This stylesheet styles every state of an item: rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled. Its tokens are at the top, and they follow the color scheme. Tab into the list and press the arrow keys, then Space.
+
+```brm styled ListBoxStyled
+
+```
+
+## Use cases
+
+### A filterable list
+
+The list renders the items that match the text of a [SearchField](./search-field.md), from a `#for` over a derived list, with the key as `by`. The selection is a list of keys, so it stays when the item leaves the list. Typing in the list still moves focus to the item whose text starts with the letters, among the items that show.
+
+```brm demo ListBoxFilterDemo
+
+```
+
+### A multiple selection with a toolbar
+
+A [Toolbar](./toolbar.md) above the list holds the buttons that act on the selection. `Select all` writes every key into the bound signal, `Clear` empties it, and `Delete` removes the selected items from the data and clears the signal. Select a few folders, press Delete, then Restore.
+
+```brm demo ListBoxToolbarDemo
+
+```
 
 ## Items from data
 
@@ -148,6 +192,7 @@ With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets 
 
 - An item is an `option`. It shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
 - A `Text` with `slot="label"` names an item, and one with `slot="description"` describes it. A part cannot read its children, so add `hasLabel` and `hasDescription` to the item that has them.
+- An item with `hasDescription` and no `hasLabel` is named by its whole content, the description included, and the description is read again as its description. Give such an item a label.
 - The list shows `data-orientation`.
 - An option is read as one piece of text, so it holds no fields or buttons. The list takes the keys of a field inside. A [GridList](./grid-list.md) holds rows with controls.
 

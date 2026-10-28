@@ -6,7 +6,7 @@
   export interface ButtonOwnProps<T extends AsTarget = 'button'> {
     /** The element, bound with `ref=$bind(signal)`. */
     ref?: Bindable<TargetElement<T> | undefined>;
-    /** The `type` of a native button. A pending button is always `button`. */
+    /** The `type` of a native button. A pending reset button is `button`. A pending submit button keeps `submit` and cancels its form's submit. */
     type?: 'button' | 'submit' | 'reset';
     /** The slot of the context of a part that holds this button, such as "increment". */
     slot?: string | null;
@@ -46,11 +46,12 @@
 </script>
 
 <script generics="T extends AsTarget = 'button'">
-  import { $getContext, $handler, $memo, $props } from 'brumate/signals';
+  import { $bind, $getContext, $handler, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { contextAttributes, slotProps } from './slots.ts';
+  import SubmitGuard from './SubmitGuard.brm';
 
   /**
    * A button. It presses with a pointer, Enter, Space, or a
@@ -160,11 +161,15 @@
     focusChanged,
   );
 
+  // A pending reset button is a plain button, so it resets nothing. A pending submit button keeps
+  // its type, so the form still has its submit button and its default button, and the button
+  // cancels the submit itself.
+  const kind = $memo(pending && type === 'reset' ? 'button' : type);
+
   // A submit or reset button keeps Space, so the browser clicks it and sends its form.
   // Other buttons prevent it, so the browser does not scroll the page or click them.
-  // A pending button is a plain button, so it sends nothing again.
   function keys() {
-    return native && !pending && (type === 'submit' || type === 'reset')
+    return native && (kind === 'submit' || kind === 'reset')
       ? { onKeyDown: $handler(onKeyDown), onKeyUp: $handler(onKeyUp) }
       : {
           onKeyDown: $handler(prevent(onKeyDown, 'Space')),
@@ -179,7 +184,7 @@
 -->
 <{as ?? 'button'}
   ref=$bind(ref)
-  type=(native ? (pending ? 'button' : type) : undefined)
+  type=(native ? kind : undefined)
   href=(disabled ? undefined : href)
   role=(native ? undefined : 'button')
   tabindex=(native || disabled ? undefined : 0)
@@ -205,3 +210,6 @@
   {...attributes}
   {...rest}
 >{children}</>
+#if (native && type === 'submit') {
+  <SubmitGuard ref=$bind(ref) />
+}

@@ -71,7 +71,7 @@ The group adds no keys. Each box takes the keys of a [Checkbox](./checkbox.md#ke
 
 - `value` alone, or nothing, makes the group keep its own list. `value=(['b'])` is where that list starts, and a new value from you replaces it.
 - `value=$bind(signal)` writes your signal. Change the signal and the boxes follow.
-- `value=$bind(signal, (next) => ...)` asks you first. The group shows what you keep, so a request that you ignore leaves the old list. Press Lock above and click a box of the last group. The line under the groups shows that Asks keeps its list. The hidden input of a box that you refused is not put back yet, so a form would still post it until the next reset.
+- `value=$bind(signal, (next) => ...)` asks you first. The group shows what you keep, so a request that you ignore leaves the old list. Press Lock above and click a box of the last group. The line under the groups shows that Asks keeps its list.
 - `onChange` gets the list in every shape, each time the user changes it.
 - A reset of the form gives back the list that the group started with, as a write: with `$bind(signal, request)`, your request can refuse it.
 - The server renders the list it starts with. See [State](./state.md).
@@ -98,7 +98,7 @@ A group bound to a signal gives the page the list of the kinds. With none checke
 
 ### A limit of choices
 
-The request of `$bind` can refuse a list. This one keeps at most two colors, and says so in the description. The group shows what you keep, so the box that the user clicked is drawn off again. The hidden input of that box is not put back yet. Check the list on the server too.
+The request of `$bind` can refuse a list. This one keeps at most two colors, and says so in the description. The group shows what you keep, so the box that the user clicked is drawn off again. Check the list on the server too.
 
 ```brm demo CheckboxGroupLimitDemo
 

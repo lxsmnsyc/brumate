@@ -114,7 +114,7 @@
         <a href=(`${base}ui/styling`)>Styling</a>
       </div>
       <div class="row-media">
-        <div class="code">{unstyled}</div>
+        <div class="code" role="group" aria-label="Unstyled example" tabindex="0">{unstyled}</div>
       </div>
     </article>
 
@@ -147,7 +147,7 @@
         <a href=(`${base}ui/resuming`)>How the parts resume</a>
       </div>
       <div class="row-media">
-        <div class="code">{usage}</div>
+        <div class="code" role="group" aria-label="Usage example" tabindex="0">{usage}</div>
       </div>
     </article>
   </section>

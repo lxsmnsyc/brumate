@@ -80,8 +80,9 @@
   const invalid = $memo(isInvalid || errors.length > 0);
 
   function toggle(item: string, checked: boolean) {
-    value = checked ? [...value.filter((other) => other !== item), item] : value.filter((other) => other !== item);
-    onChange?.(value);
+    const next = checked ? [...value.filter((other) => other !== item), item] : value.filter((other) => other !== item);
+    value = next;
+    onChange?.(next);
   }
 
   function invalidated(text: string) {

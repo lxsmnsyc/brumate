@@ -1,0 +1,107 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Checkbox from '../../src/Checkbox.brm';
+  import CheckboxGroup from '../../src/CheckboxGroup.brm';
+  import ColorArea from '../../src/ColorArea.brm';
+  import ColorField from '../../src/ColorField.brm';
+  import ColorPicker from '../../src/ColorPicker.brm';
+  import ColorSlider from '../../src/ColorSlider.brm';
+  import ColorSwatch from '../../src/ColorSwatch.brm';
+  import ColorThumb from '../../src/ColorThumb.brm';
+  import ColorWheel from '../../src/ColorWheel.brm';
+  import ColorWheelTrack from '../../src/ColorWheelTrack.brm';
+  import DateInput from '../../src/DateInput.brm';
+  import DateRangePicker from '../../src/DateRangePicker.brm';
+  import Group from '../../src/Group.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import NumberField from '../../src/NumberField.brm';
+  import Radio from '../../src/Radio.brm';
+  import RadioGroup from '../../src/RadioGroup.brm';
+  import SliderTrack from '../../src/SliderTrack.brm';
+  import Switch from '../../src/Switch.brm';
+  import TimeField from '../../src/TimeField.brm';
+
+  // Each state has a setter that refuses once `held` is on.
+  let held = $signal(false);
+  let count = $signal(3);
+  let hex = $signal<string | null>('#e2445a');
+  let hue = $signal('hsl(210, 50%, 50%)');
+  let area = $signal('hsb(210, 50%, 80%)');
+  let wheel = $signal('hsb(210, 50%, 80%)');
+  let time = $signal<string | null>('14:30');
+  let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
+  let picked = $signal('hsb(210, 50%, 80%)');
+  let toppings = $signal(['ham']);
+  let size = $signal<string | null>('small');
+  let box = $signal(false);
+  // This switch takes a write after a delay, as a save does.
+  let later = $signal(false);
+
+  function save(next: boolean) {
+    setTimeout(() => (later = next), 300);
+  }
+</script>
+
+<form class="form">
+  <NumberField class="number" name="count" minValue=(0) maxValue=(20) value=$bind(count, (next) => { if (!held) count = next; })>
+    <Label>Count</Label>
+    <Group>
+      <Button slot="decrement" class="minus">-</Button>
+      <Input class="number-input" />
+      <Button slot="increment" class="plus">+</Button>
+    </Group>
+  </NumberField>
+  <ColorField class="hex" name="hex" value=$bind(hex, (next) => { if (!held) hex = next; })>
+    <Label>Hex</Label>
+    <Input class="hex-input" />
+  </ColorField>
+  <ColorSlider class="slider" channel="hue" name="hue" value=$bind(hue, (next) => { if (!held) hue = next; })>
+    <SliderTrack class="slider-track" style="width: 200px; height: 20px">
+      <ColorThumb class="slider-thumb" />
+    </SliderTrack>
+  </ColorSlider>
+  <ColorArea class="area" xChannel="saturation" yChannel="brightness" xName="s" yName="b" value=$bind(area, (next) => { if (!held) area = next; })>
+    <ColorThumb class="area-thumb" />
+  </ColorArea>
+  <ColorWheel class="wheel" name="wheel" outerRadius=(100) innerRadius=(60) value=$bind(wheel, (next) => { if (!held) wheel = next; })>
+    <ColorWheelTrack class="wheel-track" />
+    <ColorThumb class="wheel-thumb" />
+  </ColorWheel>
+  <TimeField class="time" name="time" value=$bind(time, (next) => { if (!held) time = next; })>
+    <Label>Time</Label>
+    <DateInput class="time-input" />
+  </TimeField>
+  <DateRangePicker class="stay" startName="from" endName="to" value=$bind(stay, (next) => { if (!held) stay = next; })>
+    <Label>Stay</Label>
+    <Group>
+      <DateInput slot="start" class="stay-start" />
+      <DateInput slot="end" class="stay-end" />
+    </Group>
+  </DateRangePicker>
+  <ColorPicker value=$bind(picked, (next) => { if (!held) picked = next; })>
+    <ColorArea class="pk-area" xChannel="saturation" yChannel="brightness"><ColorThumb class="pk-area-thumb" /></ColorArea>
+    <ColorSlider class="pk-slider" channel="hue"><SliderTrack style="width: 200px; height: 20px"><ColorThumb class="pk-slider-thumb" /></SliderTrack></ColorSlider>
+    <ColorField class="pk-field"><Input class="pk-field-input" /></ColorField>
+    <ColorSwatch class="pk-swatch" />
+  </ColorPicker>
+  <button class="reset" type="reset">Reset</button>
+</form>
+<form class="choices">
+  <CheckboxGroup class="toppings" name="topping" value=$bind(toppings, (next) => { if (!held) toppings = next; })>
+    <Label>Toppings</Label>
+    <Checkbox class="ham" value="ham">Ham</Checkbox>
+    <Checkbox class="egg" value="egg">Egg</Checkbox>
+  </CheckboxGroup>
+  <RadioGroup class="sizes" name="size" value=$bind(size, (next) => { if (!held) size = next; })>
+    <Label>Size</Label>
+    <Radio class="small" value="small">Small</Radio>
+    <Radio class="large" value="large">Large</Radio>
+  </RadioGroup>
+  <Checkbox class="box" name="box" isSelected=$bind(box, (next) => { if (!held) box = next; })>Box</Checkbox>
+  <Switch class="later" name="later" isSelected=$bind(later, save)>Later</Switch>
+</form>
+<button class="hold" type="button" onClick=(() => (held = true))>Hold</button>
+<p class="state">{JSON.stringify([count, hex, hue, area, wheel, time, stay, picked, toppings, size, box, later])}</p>
+<p class="held-flag">{String(held)}</p>

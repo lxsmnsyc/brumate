@@ -44,6 +44,9 @@ depends_on:
   - on: ui-docs-pages-collections
     kind: hard
     why: every /ui page complete is the ui-0.1 acceptance
+  - on: ui-docs-pages-utilities
+    kind: hard
+    why: every /ui page complete is the ui-0.1 acceptance
   - on: ui-docs-pages-layout
     kind: hard
     why: every /ui page complete is the ui-0.1 acceptance
@@ -83,6 +86,21 @@ depends_on:
   - on: pending-submit
     kind: hard
     why: a pending submit must not send its form twice
+  - on: children-handler-refs
+    kind: hard
+    why: a function used in children that render later crashes in the browser
+  - on: overlay-start-open
+    kind: hard
+    why: an overlay with an open start value must open on load
+  - on: overlay-focus-fixes
+    kind: hard
+    why: focus and repeat fixes the maintainer chose to ship
+  - on: checkbox-description
+    kind: hard
+    why: a form checkbox must tie its description and error to its input
+  - on: field-error-clears
+    kind: hard
+    why: a fixed field must clear its error
   - on: handler-code-wait
     kind: hard
     why: a handler waits on unrelated update code, and a failed load leaves effects stuck

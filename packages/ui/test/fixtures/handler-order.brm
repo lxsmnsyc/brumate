@@ -1,0 +1,48 @@
+<script>
+  import { $bind, $effect, $signal, $untrack } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Menu from '../../src/Menu.brm';
+  import MenuItem from '../../src/MenuItem.brm';
+  import MenuTrigger from '../../src/MenuTrigger.brm';
+  import Popover from '../../src/Popover.brm';
+  import Tab from '../../src/Tab.brm';
+  import TabList from '../../src/TabList.brm';
+  import TabPanel from '../../src/TabPanel.brm';
+  import Tabs from '../../src/Tabs.brm';
+  import type { Key } from '../../src/collection.ts';
+
+  // Each handler and effect writes its name here, so the test reads the order.
+  let order = $signal<string[]>([]);
+  let align = $signal<Key[]>(['left']);
+  let tab = $signal<Key | null>('one');
+
+  function log(name: string) {
+    order = [...order, name];
+  }
+
+  $effect(() => {
+    const name = `effect ${tab}`;
+    $untrack(log(name));
+  });
+</script>
+
+<main class="page">
+  <MenuTrigger>
+    <Button class="trigger">Align</Button>
+    <Popover>
+      <Menu class="menu" aria-label="Align" selectionMode="single" selectedKeys=$bind(align, (next) => (align = next)) onSelectionChange=(() => log('selection')) onAction=(() => log('action')) onClose=(() => log('close'))>
+        <MenuItem id="left" class="left">Left</MenuItem>
+        <MenuItem id="center" class="center">Center</MenuItem>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <Tabs class="tabs" selectedKey=$bind(tab, (next) => (tab = next)) onSelectionChange=(() => log('tabs'))>
+    <TabList aria-label="Sections">
+      <Tab id="one" class="tab-one">One</Tab>
+      <Tab id="two" class="tab-two">Two</Tab>
+    </TabList>
+    <TabPanel id="one">One.</TabPanel>
+    <TabPanel id="two">Two.</TabPanel>
+  </Tabs>
+  <p class="state">{JSON.stringify(order)}</p>
+</main>

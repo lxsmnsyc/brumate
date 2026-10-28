@@ -1,0 +1,38 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import GridList from '@brumate/ui/GridList.brm';
+  import GridListItem from '@brumate/ui/GridListItem.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import { moveKeys } from '@brumate/ui/data.ts';
+  import type { ReorderEvent } from '@brumate/ui/drop.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  let tracks = $signal(['Opening', 'Rain', 'Night train', 'Closing']);
+  let playing = $signal<Key | null>(null);
+
+  function remove(track: string) {
+    tracks = tracks.filter((item) => item !== track);
+    if (playing === track) {
+      playing = null;
+    }
+  }
+
+  function reorder(event: ReorderEvent) {
+    const after = event.target.dropPosition === 'after';
+    tracks = moveKeys(tracks, event.target.key, event.keys, after, (track) => track);
+  }
+</script>
+
+<div class="ui-stack">
+  <GridList class="ui-gridlist" aria-label="Tracks" onAction=((key) => (playing = key)) onReorder=reorder>
+    #for (track of tracks by track) {
+      <GridListItem id=track class="ui-gridrow" textValue=track>
+        <Button slot="drag" class="ui-grip"><Icon name="grip" size=(16) /></Button>
+        {track}{playing === track ? ' (playing)' : ''}
+        <Button class="ui-button" aria-label=(`Remove ${track}`) onPress=(() => remove(track))>Remove</Button>
+      </GridListItem>
+    }
+  </GridList>
+  <p>Now playing: {playing ?? 'nothing'}. Press a row or Enter to play it.</p>
+</div>

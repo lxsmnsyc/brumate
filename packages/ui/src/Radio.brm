@@ -74,16 +74,25 @@
     }
     // A read-only group keeps its choice. The browser checked this radio already.
     if (readOnly) {
-      input.checked = false;
-      const checked = input.form?.querySelector<HTMLInputElement>(
-        `input[name="${CSS.escape(input.name)}"][value="${CSS.escape(group?.value ?? '')}"]`,
-      );
-      if (checked) {
-        checked.checked = true;
-      }
+      keepChoice(input);
       return;
     }
     group?.select(value);
+    // A setter that refuses leaves the old choice, so the inputs go back to it.
+    if (!selected) {
+      keepChoice(input);
+    }
+  }
+
+  /** Unchecks the radio that the browser checked, and checks the one that the group keeps. */
+  function keepChoice(input: HTMLInputElement) {
+    input.checked = false;
+    const checked = input.form?.querySelector<HTMLInputElement>(
+      `input[name="${CSS.escape(input.name)}"][value="${CSS.escape(group?.value ?? '')}"]`,
+    );
+    if (checked) {
+      checked.checked = true;
+    }
   }
 
   // The first invalid field of the form gets focus, as the browser does with its own message.

@@ -24,6 +24,14 @@ Tabs that show one panel at a time.
 
 ## Anatomy
 
+```brm anatomy TabsAnatomy
+`Tabs`: Holds the selection. It shows `data-orientation`.
+`TabList`: Holds the tabs. It is a `tablist`, takes one stop of Tab, and needs `aria-label`.
+`Tab`: One tab. Its `id` is its key, and it shows `data-selected` when it is selected.
+`SelectionIndicator`: A bar that moves to the selected tab. Optional.
+`TabPanel`: The content of one tab, with the `id` of that tab. Only the selected one renders.
+```
+
 ```html
 <Tabs>
   <TabList>
@@ -96,11 +104,45 @@ Horizontal tabs use Left and Right, and leave Up and Down to the page. With `ori
 
 ## Controlled and uncontrolled
 
-`selectedKey` holds the key of the selected tab. `selectedKey=(key)` starts the tabs' own selection, and `selectedKey=$bind(signal)` writes your signal. `onSelectionChange` gets each new key. With no key, the first tab is selected. See [State](./state.md).
+`selectedKey` holds the key of the selected tab, or `null`. How you pass it picks who keeps it:
+
+```brm demo TabsStateDemo
+
+```
+
+- `selectedKey` alone, or nothing, makes the Tabs keep their own selection. With no key, the first tab is selected. `selectedKey="b"` is where that selection starts. Press another tab and the Tabs keep the pick. A new value from you replaces it.
+- `selectedKey=$bind(signal)` writes your signal. Change the signal and the Tabs follow.
+- `selectedKey=$bind(signal, (next) => ...)` asks you first. The Tabs show what you keep, so a request that you ignore leaves the old key. Press Lock above and press a tab in the last row.
+- `onSelectionChange` gets each new key, in every shape.
+- Tabs are not a form field. They have no `name` and no reset, so a reset of a form leaves the selected tab as it is. The server renders the tab that the Tabs start with. See [State](./state.md).
 
 ## Styling
 
 Style a tab with the data attributes above, such as `[data-selected]`, and the tabs with `[data-orientation]`. A [SelectionIndicator](./selection-indicator.md) in a tab draws a mark that moves between tabs. See [Styling](./styling.md).
+
+This stylesheet styles every state of a tab: rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled, with a bar that slides between tabs. Its tokens are at the top, and they follow the color scheme. Tab to the list, press the arrow keys, and note that Billing is skipped.
+
+```brm styled TabsStyled
+
+```
+
+## Use cases
+
+### Steps in order
+
+The tabs after the furthest step that you reached are disabled with `disabledKeys`, and the Back and Next buttons write the bound `selectedKey`. A disabled tab cannot be selected by a press or by the arrow keys, which skip it. The buttons clamp the step, so a fast double press on Next stops at the last step.
+
+```brm demo TabsStepsDemo
+
+```
+
+### Fields in a panel
+
+A panel that is not selected does not render, so a field in it starts empty when its tab is selected again. `shouldForceMount` on a TabPanel keeps it on the page, hidden, with its state. Type in both fields, switch tabs, and come back.
+
+```brm demo TabsFormDemo
+
+```
 
 ## Focus and keys
 

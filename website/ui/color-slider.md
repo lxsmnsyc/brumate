@@ -111,7 +111,7 @@ The keys act on the thumb. Ctrl, Alt or Meta with an arrow moves the thumb one s
 - `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and move the last slider.
 - `onChange` gets the color as text in every shape, each time an edit makes another color. `onChangeEnd` gets it once a drag or a key ends.
 - A reset of the form gives back the first color, as a write: with `$bind(signal, request)`, your request can refuse it. The server renders the color it starts with.
-- With a request that refuses, a ColorSlider on main today can show the refused value: the part draws the new color before it asks, and a refusal leaves it drawn. The node `ui-refused-write-sync` (#332) makes it show the kept value. Press Lock above and use the last one to see which you get.
+- With a request that refuses, the ColorSlider shows the color you keep, and so do its inputs. Press Lock above and use the last one to see it.
 
 See [State](./state.md) for the other parts.
 

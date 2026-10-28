@@ -1,0 +1,38 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import GridList from '@brumate/ui/GridList.brm';
+  import GridListItem from '@brumate/ui/GridListItem.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  const first = ['Notes.txt', 'Photos', 'Budget.xlsx', 'Music', 'Resume.pdf'];
+  let files = $signal(first);
+  let picked = $signal<Key[]>([]);
+
+  // A key that leaves the list leaves the selection too.
+  function drop(keys: Key[]) {
+    files = files.filter((file) => !keys.includes(file));
+    picked = picked.filter((key) => !keys.includes(key));
+  }
+</script>
+
+<div class="ui-stack">
+  <div class="ui-row">
+    <Button class="ui-button" isDisabled=(picked.length === 0) onPress=(() => drop(picked))>Delete {picked.length} selected</Button>
+    <Button class="ui-button" onPress=(() => { files = first; picked = []; })>Restore</Button>
+  </div>
+  <GridList class="ui-gridlist" aria-label="Files" selectionMode="multiple" selectedKeys=$bind(picked)>
+    #for (file of files by file) {
+      <GridListItem id=file class="ui-gridrow" textValue=file>
+        <Checkbox slot="selection" class="ui-box" aria-label=(`Select ${file}`)>
+          <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+        </Checkbox>
+        {file}
+        <Button class="ui-button" aria-label=(`Delete ${file}`) onPress=(() => drop([file]))>Delete</Button>
+      </GridListItem>
+    }
+  </GridList>
+  <p>{picked.length} of {files.length} selected.</p>
+</div>

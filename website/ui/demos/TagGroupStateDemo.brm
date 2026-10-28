@@ -1,0 +1,51 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Tag from '@brumate/ui/Tag.brm';
+  import TagGroup from '@brumate/ui/TagGroup.brm';
+  import TagList from '@brumate/ui/TagList.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let mine = $signal<Key[]>(['dog']);
+  let locked = $signal(false);
+  let log = $signal('');
+  const animals = ['Cat', 'Dog', 'Panda'];
+</script>
+
+<div class="ui-stack">
+  <TagGroup class="ui-field" selectionMode="multiple">
+    <Label>Own state</Label>
+    <TagList class="ui-taglist">
+      #for (name of animals by name) {
+        <Tag id=(name.toLowerCase()) class="ui-tag">{name}</Tag>
+      }
+    </TagList>
+  </TagGroup>
+  <TagGroup class="ui-field" selectionMode="multiple" selectedKeys=(['cat'])>
+    <Label>Starts at Cat, then keeps its own copy</Label>
+    <TagList class="ui-taglist">
+      #for (name of animals by name) {
+        <Tag id=(name.toLowerCase()) class="ui-tag">{name}</Tag>
+      }
+    </TagList>
+  </TagGroup>
+  <TagGroup class="ui-field" selectionMode="multiple" selectedKeys=$bind(mine) onSelectionChange=((keys) => (log = `changed to ${keys.join(', ') || 'nothing'}`))>
+    <Label>Writes your signal</Label>
+    <TagList class="ui-taglist">
+      #for (name of animals by name) {
+        <Tag id=(name.toLowerCase()) class="ui-tag">{name}</Tag>
+      }
+    </TagList>
+  </TagGroup>
+  <TagGroup class="ui-field" selectionMode="multiple" selectedKeys=$bind(mine, (next) => { if (!locked) mine = next; })>
+    <Label>Asks you first</Label>
+    <TagList class="ui-taglist">
+      #for (name of animals by name) {
+        <Tag id=(name.toLowerCase()) class="ui-tag">{name}</Tag>
+      }
+    </TagList>
+  </TagGroup>
+  <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <p>Signal: {mine.join(', ') || 'none'}. Last callback: {log || 'none'}.</p>
+</div>

@@ -92,7 +92,7 @@ The keys act while the input has focus. A key with Shift, Ctrl, Alt or Meta is l
 - `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and type in the last field.
 - `onChange` gets the color as text, or `null`, in every shape, each time an edit makes another value.
 - A reset of the form gives back the first value, as a write: with `$bind(signal, request)`, your request can refuse it. The server renders the value it starts with.
-- With a request that refuses, a ColorField on main today can show the refused value: the part draws the new color before it asks, and a refusal leaves it drawn. The node `ui-refused-write-sync` (#332) makes it show the kept value. Press Lock above and use the last one to see which you get.
+- With a request that refuses, the ColorField shows the color you keep, and so do its inputs. Press Lock above and use the last one to see it.
 
 See [State](./state.md) for the other parts.
 

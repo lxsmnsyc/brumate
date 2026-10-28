@@ -1,0 +1,37 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  const countries = ['Argentina', 'Australia', 'Austria', 'Belgium', 'Brazil', 'Canada', 'Chile', 'Denmark', 'Finland', 'France', 'Germany', 'Ireland'];
+  let query = $signal('');
+  let picked = $signal<Key[]>([]);
+  // The list shows the countries that contain the text, and the selection stays with its keys.
+  const shown = $memo(countries.filter((country) => country.toLowerCase().includes(query.trim().toLowerCase())));
+</script>
+
+<div class="ui-stack">
+  <SearchField class="ui-field" value=$bind(query)>
+    <Label>Find a country</Label>
+    <span class="ui-group">
+      <span class="ui-input-icon"><Icon name="search" /><Input class="ui-input" /></span>
+      <Button class="ui-button ui-icon-button"><Icon name="close" /></Button>
+    </span>
+  </SearchField>
+  #if (shown.length > 0) {
+    <ListBox class="ui-listbox" aria-label="Countries" selectionMode="single" selectedKeys=$bind(picked)>
+      #for (country of shown by country) {
+        <ListBoxItem id=country class="ui-option">{country}</ListBoxItem>
+      }
+    </ListBox>
+  } #else {
+    <p class="ui-help">No country matches.</p>
+  }
+  <p>{shown.length} of {countries.length} shown. Selected: {picked[0] ?? 'none'}.</p>
+</div>
