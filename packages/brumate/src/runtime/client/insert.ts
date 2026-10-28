@@ -171,8 +171,18 @@ export function insertHTML(
     markerObserver?.takeRecords();
   }
   options.inserted?.();
-  for (const fn of afterInsert.splice(0)) {
-    fn();
+  // A callback can add more, such as the call of a setter after the write of a ref. Those run
+  // in this insert too, and a callback must not add itself again, or this never ends. The queue
+  // is taken first, so a throw leaves nothing for the next insert, and a nested insert runs
+  // only its own.
+  const queued = afterInsert.splice(0);
+  try {
+    for (let fn = queued.shift(); fn; fn = queued.shift()) {
+      fn();
+      queued.push(...afterInsert.splice(0));
+    }
+  } finally {
+    afterInsert.length = 0;
   }
   // HTML from the server, such as `children`, can be older than the values on the client.
   if (server.length > 0) {

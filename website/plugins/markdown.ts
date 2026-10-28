@@ -29,11 +29,13 @@ export const SITE_PAGES: Set<string> = new Set(
 );
 
 /** The pages of the section of @brumate/ui, from the files in `website/ui`. */
-export const UI_PAGES: Set<string> = new Set(
-  readdirSync(new URL('../ui/', import.meta.url))
+export const UI_PAGES: Set<string> = new Set([
+  // The landing page at /ui is a route, not a Markdown file.
+  '',
+  ...readdirSync(new URL('../ui/', import.meta.url))
     .filter((file) => file.endsWith('.md'))
-    .map((file) => (file === 'index.md' ? '' : file.slice(0, -3))),
-);
+    .map((file) => file.slice(0, -3)),
+]);
 
 /** The folder of the pages of @brumate/ui. */
 const UI_DIRECTORY = fileURLToPath(new URL('../ui/', import.meta.url));

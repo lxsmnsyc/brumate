@@ -1,0 +1,14 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import SetterRefRelay2 from './SetterRefRelay2.brm';
+
+  let root = $signal<HTMLElement>();
+  let calls = $signal('');
+
+  function take(element: HTMLElement | undefined) {
+    calls = `${calls}${element?.tagName ?? 'none'};`;
+  }
+</script>
+
+<SetterRefRelay2 ref=$bind(root, take) />
+<p class="calls">{calls}</p>

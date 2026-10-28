@@ -38,7 +38,7 @@ Fix four small faults of the website. The home link shows the brand mark. The bu
 
 ## Context
 
-- BrandMark.brm is used in Header.brm, but the mark does not show. The favicon is logo.svg.
+- BrandMark.brm is used in Header.brm, but the mark does not show. The favicon is logo.svg. The maintainer saw it on 2026-10-28 in both home links: "brumate" on the site and "brumate/ui" in the /ui header (the `.brand-section` link); each shows the text with no mark. Fix both.
 - `NETWORK_SCRIPT` in website/src/scripts.ts keeps every script resource.
 - `BLOCK_KEYWORDS` in packages/brumate/src/highlight.ts lacks `reveal` and `defer`, and lists `repeat`. The parser list is in packages/brumate/src/parser.ts.
 - `.type-error` in website/src/routes/index.brm has `border-left: 3px solid #d1242f`.
@@ -50,7 +50,7 @@ Fix four small faults of the website. The home link shows the brand mark. The bu
 ## Acceptance
 
 - [ ] A test fails when the highlighter and the parser list different block keywords.
-- [ ] The header shows the mark in Chrome, on /, /docs and /ui.
+- [ ] The header shows the mark in Chrome, on /, /docs and /ui, before "brumate" and before "brumate/ui", in light and dark.
 - [ ] The shop demo lists only the bundles of the shop.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 

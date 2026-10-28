@@ -1,0 +1,9 @@
+<script>
+  import { $bind, $props, type Bindable } from 'brumate/signals';
+  import RefRelay from './RefRelay.brm';
+
+  // A second level of relay.
+  let { ref } = $props<{ ref?: Bindable<HTMLElement> }>();
+</script>
+
+<RefRelay ref=$bind(ref) />

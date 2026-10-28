@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { label = 'Rest', ...rest } = $props<{ label?: string; [name: string]: unknown }>();
+</script>
+
+<button class="inner" {...rest}>{label}</button>

@@ -1,12 +1,16 @@
 <script>
-  import { $props } from 'brumate/signals';
+  import { $memo, $props, $route } from 'brumate/signals';
   import DocsShell from '../../components/DocsShell.brm';
   import { sections } from '../../ui.ts';
 
   const { children } = $props();
+  const route = $route();
+  const base = import.meta.env.BASE_URL;
+  // The landing page at /ui has no sidebar, like the home page.
+  const landing = $memo(route.url.pathname.replace(/\/$/, '') === `${base}ui`);
 </script>
 
-<DocsShell section="ui" {sections} label="Parts">{children}</DocsShell>
+<DocsShell section="ui" {sections} label="Parts" bare=landing>{children}</DocsShell>
 
 <style>
   /*
@@ -39,6 +43,7 @@
   :global(.ui-gallery) {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    grid-auto-rows: 1fr;
     gap: 1rem;
     margin: 1.5rem 0 2.5rem;
     padding: 0;
@@ -61,16 +66,35 @@
     border-color: var(--accent);
   }
 
+  /*
+    Every preview has the same box. The demo is inside it at its natural size, and a script sets
+    --fit to scale it down to fit, never up. Before the script runs, 0.8 fits most demos.
+  */
   :global(.ui-card .ui-demo-stage) {
-    flex: 1;
-    justify-content: center;
-    align-content: center;
-    min-height: 10rem;
+    position: relative;
+    flex: none;
+    height: 14rem;
+    padding: 1rem;
+    overflow: hidden;
     border-bottom: 1px solid var(--border);
   }
 
+  :global(.ui-fit) {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: center;
+    width: max-content;
+    max-width: 24rem;
+    transform: translate(-50%, -50%) scale(var(--fit, 0.8));
+  }
+
   /* A line of text in a preview takes a row of its own, under the parts. */
-  :global(.ui-card .ui-demo-stage > p) {
+  :global(.ui-card .ui-fit > p) {
     flex-basis: 100%;
     margin: 0;
     text-align: center;
