@@ -38,6 +38,9 @@ depends_on:
   - on: ui-docs-pages-forms
     kind: hard
     why: every /ui page complete is the ui-0.1 acceptance
+  - on: ui-docs-pages-collections-3
+    kind: hard
+    why: every /ui page complete is the ui-0.1 acceptance
   - on: ui-docs-pages-collections-2
     kind: hard
     why: every /ui page complete is the ui-0.1 acceptance
@@ -101,6 +104,9 @@ depends_on:
   - on: field-error-clears
     kind: hard
     why: a fixed field must clear its error
+  - on: combobox-fixes
+    kind: hard
+    why: ComboBox, Select and Autocomplete form bugs must be fixed in the first ui release
   - on: handler-code-wait
     kind: hard
     why: a handler waits on unrelated update code, and a failed load leaves effects stuck

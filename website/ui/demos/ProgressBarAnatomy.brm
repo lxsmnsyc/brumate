@@ -1,0 +1,11 @@
+<script>
+  import Label from '@brumate/ui/Label.brm';
+  import ProgressBar from '@brumate/ui/ProgressBar.brm';
+</script>
+
+<!-- A style on the part would replace the --percentage that it sets, so a wrapper sizes it. -->
+<div style="width: min(100%, 18rem)">
+  <ProgressBar class="ui-bar" value=(60) data-mark="1">
+    <Label data-mark="2" data-mark-side="after">Uploading</Label>
+  </ProgressBar>
+</div>

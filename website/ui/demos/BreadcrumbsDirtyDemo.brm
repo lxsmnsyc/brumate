@@ -1,0 +1,26 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Breadcrumb from '@brumate/ui/Breadcrumb.brm';
+  import Breadcrumbs from '@brumate/ui/Breadcrumbs.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Link from '@brumate/ui/Link.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  let title = $signal('');
+</script>
+
+<div class="ui-stack">
+  <nav aria-label="Editor">
+    <Breadcrumbs class="ui-group" isDisabled=(title !== '')>
+      <Breadcrumb class="ui-crumb"><Link class="ui-link" href="#breadcrumbs">Posts</Link><Icon name="arrow-right" size=(12) /></Breadcrumb>
+      <Breadcrumb isCurrent><Link class="ui-link" href="#breadcrumbs">New post</Link></Breadcrumb>
+    </Breadcrumbs>
+  </nav>
+  <TextField class="ui-field" value=$bind(title)>
+    <Label>Title</Label>
+    <Input class="ui-input" />
+  </TextField>
+  <p>{title === '' ? 'The trail works.' : 'The trail is disabled while the title has text.'}</p>
+</div>

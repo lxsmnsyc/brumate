@@ -1,7 +1,7 @@
 ---
 id: ui-docs-pages-layout
 title: Anatomy, use cases, CSS and state on the pages of navigation, status, layout and utilities
-status: active
+status: done
 priority: should
 type: docs
 outline: false

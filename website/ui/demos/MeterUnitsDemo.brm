@@ -1,0 +1,16 @@
+<script>
+  import Label from '@brumate/ui/Label.brm';
+  import Meter from '@brumate/ui/Meter.brm';
+</script>
+
+<div class="ui-stack">
+  <Meter class="ui-bar" value=(96) maxValue=(256) formatOptions=({ style: 'unit', unit: 'gigabyte' })>
+    <Label>Storage, 96 of 256 GB</Label>
+  </Meter>
+  <Meter class="ui-bar" value=(420) maxValue=(500) formatOptions=({ style: 'currency', currency: 'EUR' })>
+    <Label>Budget spent</Label>
+  </Meter>
+  <Meter class="ui-bar" value=(3) minValue=(1) maxValue=(5) valueLabel="Good">
+    <Label>Password strength</Label>
+  </Meter>
+</div>

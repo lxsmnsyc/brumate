@@ -1,0 +1,20 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosureGroup from '@brumate/ui/DisclosureGroup.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+</script>
+
+<DisclosureGroup class="ui-accordion" expandedKeys=(['shipping']) style="width: min(100%, 20rem)" data-mark="1">
+  <Disclosure id="shipping" class="ui-disclosure" data-mark="2" data-mark-side="inside">
+    <Button slot="trigger" class="ui-disclosure-trigger" data-mark="3" data-mark-side="bottom">Shipping</Button>
+    <!-- The panel clips its content, which would clip the badge. -->
+    <DisclosurePanel class="ui-disclosure-panel" style="overflow: visible" data-mark="4" data-mark-side="bottom">
+      <p>Orders leave the shop in two days.</p>
+    </DisclosurePanel>
+  </Disclosure>
+  <Disclosure id="returns" class="ui-disclosure">
+    <Button slot="trigger" class="ui-disclosure-trigger">Returns</Button>
+    <DisclosurePanel class="ui-disclosure-panel"><p>Send it back within thirty days.</p></DisclosurePanel>
+  </Disclosure>
+</DisclosureGroup>

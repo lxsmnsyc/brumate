@@ -1,0 +1,14 @@
+<script>
+  import Breadcrumb from '@brumate/ui/Breadcrumb.brm';
+  import Breadcrumbs from '@brumate/ui/Breadcrumbs.brm';
+  import Link from '@brumate/ui/Link.brm';
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<nav aria-label="Trail">
+  <Breadcrumbs class="ui-group" style="gap: 1.6rem" data-mark="1">
+    <Breadcrumb class="ui-crumb" data-mark="2" data-mark-side="bottom"><Link class="ui-link" href="#breadcrumbs" data-mark="3">Home</Link><Icon name="arrow-right" size=(12) /></Breadcrumb>
+    <Breadcrumb class="ui-crumb"><Link class="ui-link" href="#breadcrumbs">Parts</Link><Icon name="arrow-right" size=(12) /></Breadcrumb>
+    <Breadcrumb isCurrent><Link class="ui-link" href="#breadcrumbs">Breadcrumbs</Link></Breadcrumb>
+  </Breadcrumbs>
+</nav>
