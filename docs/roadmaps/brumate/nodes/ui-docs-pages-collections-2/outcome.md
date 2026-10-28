@@ -25,7 +25,7 @@ The PR stops here because each page needs an anatomy picture, a styled example, 
 - Menu state demo: the trigger of a bound `isOpen` writes the signal on press and on Escape, and a write from a button opens and closes the menu. A refused `isOpen` (Lock, then press or ArrowDown) leaves the menu closed and `aria-expanded` false. Lock cannot be pressed while the menu is open, since a press outside closes it first, so the demo does not show a refused close.
 - Row menus: Move to top, Duplicate and Delete change the list and the message, and focus goes back to the Button of the row. After Delete the Button is gone and focus goes to the page. The page says so.
 - Choices that stay open: a checkbox item keeps the menu open and changes the list, and a single sort closes it. A second press of the checked radio item with `disallowEmptySelection` keeps it checked.
-- ComboBox: typing filters, ArrowDown opens with all the items, Enter picks and a second Enter sends the form, Reset clears the text and key and closes the list, `allowsCustomValue` keeps a guest name and clears the key on an edit, `menuTrigger="focus"` opens on focus.
+- ComboBox: typing filters, ArrowDown opens with all the items, Enter picks and a second Enter sends the form, Reset clears the text and key and closes the list, `allowsCustomValue` keeps a guest name and clears the key when the field commits with different text (blur in the demo), `menuTrigger="focus"` opens on focus.
 - Autocomplete: the palette opens with the field focused (`autofocus` on the Input, the Dialog alone takes focus otherwise), typing hides the items that do not match, the first match is active, ArrowDown and Enter run the next one, and the dialog closes with focus back on its Button. A fresh palette opens with an empty field and all the items. The ListBox with `filter` keeps a selected item that is filtered out.
 
 ## Part bugs found, not fixed here
@@ -35,7 +35,7 @@ Each is its own fix from main.
 - (a) ComboBox and Select hide a server error that arrives after the user picks an item. `edited` in ComboBox.brm and Select.brm becomes true at the pick and is cleared only by a form reset, so `validationErrors` of a Form for the field's `name` show only before the first pick. The Form page says a field shows them until the user edits it. The page says so, and the demos use `isInvalid` with a message in the FieldError.
 - (b) ComboBox does not show the message of the browser for `isRequired`. The browser blocks the submit and shows its own bubble on the input, and the FieldError stays empty (Select copies it). The page says so.
 - (c) A refused `selectedKey` leaves the picked text in the input of a ComboBox, while the key stays the old one. The text is a state of its own, and the page says so.
-- (d) A write from code to a bound `inputValue` of an Autocomplete does not change the filter. `filterText` follows only the typing (the `input` event, Escape and a press), and the field shows the new text with every item hidden. The page says to use the signal to read the text.
+- (d) A write from code to a bound `inputValue` of an Autocomplete does not change the filter. `filterText` follows only the typing (the `input` event, Escape and a press), and the field shows the new text while the items stay as they were. The page says to use the signal to read the text.
 - (e) Pressing Enter or ArrowUp, then a key, in the same millisecond as a Menu or a Dialog opens sends the key before focus is inside, so it is lost. A person cannot type that fast, so it is a note and not a bug of use.
 
 ## Deviations

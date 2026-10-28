@@ -89,7 +89,7 @@ Focus stays in the field. `aria-activedescendant` on the input names the active 
 
 The Autocomplete has no element to style. Style the field and the collection inside with their own data attributes. See [Styling](./styling.md).
 
-This stylesheet styles the field, its clear button and the Menu: rest, hover, focus inside the field, an empty field, and the items with hover, press, the active item and disabled. Its tokens are at the top, and they follow the color scheme. Focus stays in the field, so the active item shows `data-focused`. Type `fi`, then press the arrow keys and Enter.
+This stylesheet styles the field, its clear button and the Menu: rest, hover, focus inside the field, an empty field, and the items with hover, press, the active item and disabled. Its tokens are at the top, and they follow the color scheme. Focus stays in the field, so the active item shows `data-focused`. Type `fi`, then press the arrow keys and Enter. A `display` rule on an item overrides the `hidden` attribute that the filter sets, so keep `[hidden] { display: none }` for the item class if you set `display`.
 
 ```brm styled AutocompleteStyled
 
@@ -99,7 +99,7 @@ This stylesheet styles the field, its clear button and the Menu: rest, hover, fo
 
 ### A command palette in a dialog
 
-An Autocomplete in a Dialog of a Modal gives a palette. The Dialog takes focus when it opens, so the Input has `autofocus` to move it to the field. The arrow keys and Enter act on the commands while focus stays in the field. The action closes the dialog through the signal of the `DialogTrigger`.
+An Autocomplete in a Dialog of a Modal gives a palette. The Dialog takes focus when it opens, so the Input has `autofocus` to move it to the field. The arrow keys and Enter act on the commands while focus stays in the field. The action closes the dialog through the signal of the `DialogTrigger`. The first Escape clears the text, and the second closes the dialog.
 
 ```brm demo AutocompletePaletteDemo
 

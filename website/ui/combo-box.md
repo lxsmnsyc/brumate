@@ -33,7 +33,7 @@ A text field with a list of suggestions, which shows the items that match what w
 `Button`: Opens and closes the list. It is out of the order of Tab.
 `Text` with `slot="description"`: Describes the field. Optional.
 `FieldError`: Shows the errors of the field while it is invalid. Optional.
-`Popover`: Places the list by the field, as wide as the field.
+`Popover`: Places the list by the field. The part sets `--trigger-width`, which a stylesheet can use for its width.
 `ListBox`: Holds the items.
 `ListBoxItem`: One suggestion. Its `id` is its key.
 ```
@@ -99,7 +99,7 @@ Focus stays in the input. `aria-activedescendant` names the active item.
 
 - `selectedKey` and `inputValue` alone, or nothing, make the field keep its own state. `selectedKey=('cat')` and `inputValue=('Cat')` are where it starts. Pick another item and the field keeps the pick.
 - `$bind(signal)` writes your signal. Change the signals and the field follows, as the third button shows. Set the key and the text together, since the text in the input is its own value.
-- `selectedKey=$bind(signal, (next) => ...)` asks you first. The field shows what you keep, so a request that you ignore leaves the old key. Press Lock and pick an item in the last field: the key stays, but the input keeps the text of the item that was picked, since the text is a state of its own.
+- `selectedKey=$bind(signal, (next) => ...)` asks you first. The field shows what you keep, so a request that you ignore leaves the old key. Press Lock and pick an item in the last field: the key stays, but the input keeps the text of the item that was picked, since the text is a state of its own. It also stays after the field loses focus when the old key is not `null`.
 - `isOpen` holds whether the list is open in the same way. A start value of `true` does not open the list on load: an [effect never runs when the page loads](../docs/effects.md).
 - `onSelectionChange`, `onInputChange` and `onOpenChange` get each change, in every shape.
 - A ComboBox is a form field. A reset of its form gives back the key and the text that it started with, and closes the list. With `$bind`, the reset is a write to your signal, and a setter can refuse it. See [State](./state.md#form-reset).
@@ -127,7 +127,7 @@ This stylesheet styles the box, the Button and the list: rest, hover, focus in t
 
 ### A name that is not on the list
 
-`allowsCustomValue` keeps what was typed, and the form gets the text. `menuTrigger="focus"` opens the list when the input gets focus. A text that is not the text of the selected item clears the selection, so the demo tells a team member from a guest by the key.
+`allowsCustomValue` keeps what was typed, and the form gets the text. `menuTrigger="focus"` opens the list when the input gets focus. Typed text that differs from the selected item clears the selection when the field commits (blur, Enter with no active item, or Escape), or when the text becomes empty. The demo tells a team member from a guest by the key.
 
 ```brm demo ComboBoxCustomDemo
 
@@ -146,7 +146,7 @@ This stylesheet styles the box, the Button and the list: rest, hover, focus in t
 
 - Escape closes the list, and puts the text of the selected item back in the input, or clears it when nothing is selected. It never clears the selection. An Escape with nothing to undo goes on to the element around, such as a Dialog.
 - Focus that leaves the field does the same.
-- `allowsCustomValue` keeps what was typed. Text that is not the text of the selected item clears the selection.
+- `allowsCustomValue` keeps what was typed. When the field commits, text that is not the text of the selected item clears the selection.
 - `isRequired` makes the input required, with `aria-required`.
 
 ## Forms

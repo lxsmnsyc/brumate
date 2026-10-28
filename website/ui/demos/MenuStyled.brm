@@ -66,7 +66,7 @@
     --menu-styled-bg: Canvas;
     --menu-styled-text: CanvasText;
     --menu-styled-muted: color-mix(in srgb, CanvasText 68%, Canvas);
-    --menu-styled-border: color-mix(in srgb, CanvasText 45%, Canvas);
+    --menu-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
     --menu-styled-accent: light-dark(#2a76b2, #6fb2e6);
     --menu-styled-on-accent: light-dark(#fff, #101418);
     --menu-styled-hover: color-mix(in srgb, var(--menu-styled-accent) 14%, Canvas);
