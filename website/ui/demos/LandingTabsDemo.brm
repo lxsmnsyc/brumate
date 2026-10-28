@@ -1,0 +1,31 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
+</script>
+
+<Tabs>
+  <TabList class="ui-tablist" aria-label="Parts">
+    <Tab id="tabs" class="ui-tab">Tabs</Tab>
+    <Tab id="dialog" class="ui-tab">Dialog</Tab>
+  </TabList>
+  <TabPanel id="tabs" class="ui-tabpanel">Arrow keys move between tabs, and Tab leaves the list.</TabPanel>
+  <TabPanel id="dialog" class="ui-tabpanel">
+    <DialogTrigger>
+      <Button class="ui-button">Open a dialog</Button>
+      <Popover class="ui-popover" transition>
+        <Dialog class="ui-dialog">
+          <Heading slot="title" level=(4)>A dialog</Heading>
+          <p>It takes focus, its title names it, and Escape closes it.</p>
+          <Button slot="close" class="ui-button">Close</Button>
+        </Dialog>
+      </Popover>
+    </DialogTrigger>
+  </TabPanel>
+</Tabs>
