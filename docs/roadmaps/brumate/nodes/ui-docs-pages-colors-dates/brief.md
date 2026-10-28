@@ -1,7 +1,7 @@
 ---
 id: ui-docs-pages-colors-dates
 title: Anatomy, use cases, CSS and state on the pages of Colors and dates
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
