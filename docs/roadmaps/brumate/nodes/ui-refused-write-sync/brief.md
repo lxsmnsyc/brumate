@@ -1,7 +1,7 @@
 ---
 id: ui-refused-write-sync
 title: A part shows the value its caller keeps when a $bind setter refuses a write
-status: active
+status: done
 priority: should
 type: fix
 outline: false

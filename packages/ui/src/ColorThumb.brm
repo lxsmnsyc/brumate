@@ -39,7 +39,16 @@
     if (!thumb || thumb.isDisabled) {
       return;
     }
-    thumb.onInputChange(index, Number(event.currentTarget.value));
+    const element = event.currentTarget;
+    thumb.onInputChange(index, Number(element.value));
+    // A setter that refuses leaves the old value, so the input goes back to it once the part
+    // has drawn.
+    setTimeout(() => {
+      const kept = thumb.inputs[index]?.value;
+      if (kept !== undefined) {
+        element.value = String(kept);
+      }
+    }, 0);
   }
 
   // The input gets all its keys, which the part turns into moves. A key with a modifier is left

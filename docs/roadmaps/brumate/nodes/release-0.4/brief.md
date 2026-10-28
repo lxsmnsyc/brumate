@@ -38,6 +38,9 @@ depends_on:
   - on: ui-docs-pages-forms
     kind: hard
     why: every /ui page complete is the ui-0.1 acceptance
+  - on: ui-docs-pages-collections-3
+    kind: hard
+    why: every /ui page complete is the ui-0.1 acceptance
   - on: ui-docs-pages-collections-2
     kind: hard
     why: every /ui page complete is the ui-0.1 acceptance
