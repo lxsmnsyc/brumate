@@ -415,17 +415,15 @@ export async function run({ browser, url, runner }) {
         });
         assert(violations.length === 0, `axe found on /ui: ${violations.join(', ')}`);
         // The grid of cards is on the landing page, and every card has the same size.
-        const sizes = await page
-          .locator('.ui-card')
-          .evaluateAll((cards) => [
-            ...new Set(
-              cards.map((card) => {
-                const stage = card.querySelector('.ui-demo-stage').getBoundingClientRect();
-                const box = card.getBoundingClientRect();
-                return `${Math.round(box.width)}x${Math.round(box.height)} ${Math.round(stage.width)}x${Math.round(stage.height)}`;
-              }),
-            ),
-          ]);
+        const sizes = await page.locator('.ui-card').evaluateAll((cards) => [
+          ...new Set(
+            cards.map((card) => {
+              const stage = card.querySelector('.ui-demo-stage').getBoundingClientRect();
+              const box = card.getBoundingClientRect();
+              return `${Math.round(box.width)}x${Math.round(box.height)} ${Math.round(stage.width)}x${Math.round(stage.height)}`;
+            }),
+          ),
+        ]);
         assert(sizes.length === 1, `the cards have different sizes: ${sizes.join(', ')}`);
         const cards = await page.locator('.ui-card').count();
         assert(cards >= 10, `the gallery has ${cards} cards`);
