@@ -78,7 +78,8 @@ const BARE_VALUE_CHARS = range([
 ]);
 
 // Sorted longest first by the compiler, so `else if` beats `else`.
-const BLOCK_KEYWORDS = [
+// A test checks the list against the keywords of the parser.
+export const BLOCK_KEYWORDS: string[] = [
   'if',
   'else if',
   'else',
@@ -94,6 +95,8 @@ const BLOCK_KEYWORDS = [
   'head',
   'client',
   'offscreen',
+  'reveal',
+  'defer',
   'key',
   'template',
 ];
