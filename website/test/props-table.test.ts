@@ -94,10 +94,11 @@ describe('renderProps', () => {
   });
 
   it('wraps the table in a focusable scroll group', () => {
-    const html = renderProps([]);
+    const html = renderProps([], 'TextField');
     expect(html).toContain(
-      '<div class="props-scroll" role="group" aria-label="Props" tabindex="0">',
+      '<div class="props-scroll" role="group" aria-label="TextField props" tabindex="0">',
     );
+    expect(html.trimEnd().endsWith('</table>\n</div>')).toBe(true);
   });
 });
 

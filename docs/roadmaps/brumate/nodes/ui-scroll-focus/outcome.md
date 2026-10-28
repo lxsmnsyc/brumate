@@ -19,3 +19,9 @@ Axe's `scrollable-region-focusable` named one node on each of /ui/calendar, /ui/
 - e2e `--only website --no-build`: 51 passed, 1 failed (the known /docs/control-flow "Not connected"). The sidebar flow and the color flow pass without the exclude.
 - oxfmt, oxlint, brumate-tsc, website tests (114), check-samples (63 samples) and the website build pass.
 - No changeset: only the private website changed.
+
+## Review round
+
+- Every markdown table is wrapped in `.table-scroll` and every code block `pre` gets `tabindex="0"`, `role="group"` and a label (the nearest heading, or "Table" / "Code"). `.prose table` is no longer `display: block`. Props tables are labelled `<Part> props`.
+- New e2e flow: axe `scrollable-region-focusable` on every /docs and /ui page at 375px and 1280px. Zero hits.
+- Contract log line added to contracts/props-table.md.

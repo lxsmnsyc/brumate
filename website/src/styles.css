@@ -170,25 +170,21 @@ pre {
 }
 
 .prose table {
-  display: block;
   width: 100%;
   border-collapse: collapse;
-  overflow-x: auto;
   font-size: 0.925rem;
 }
 
-.prose .props-scroll {
+.prose .props-scroll,
+.prose .table-scroll {
   overflow-x: auto;
 }
 
-.prose .props-scroll:focus-visible {
+.prose .props-scroll:focus-visible,
+.prose .table-scroll:focus-visible,
+.prose pre:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-.prose .props-table {
-  display: table;
-  overflow: visible;
 }
 
 .prose th,
