@@ -80,8 +80,8 @@ Focus stays in the field. `aria-activedescendant` on the input names the active 
 ```
 
 - `inputValue` alone, or nothing, makes the Autocomplete keep its own text. `inputValue=('open')` is where it starts, and the field needs the same text in its `value`, since the field holds the text that the user sees.
-- `inputValue=$bind(signal)` writes your signal with each change of the text. A write from your code does not change the text of the field or the items that show, so use the signal to read the text, not to set it.
-- `inputValue=$bind(signal, (next) => ...)` asks first. A request that you ignore leaves the old text in the signal, and the field and the items still follow the typing. Press Lock and type in the last field.
+- `inputValue=$bind(signal)` writes your signal with each change of the text. A write from your code changes the items that show. The text of the field changes only when its `value` binds the same signal.
+- `inputValue=$bind(signal, (next) => ...)` asks first. A request that you ignore leaves the old text in the signal, and the items keep filtering by it, while the field shows what the user typed. Press Lock and type in the last field.
 - `onInputChange` gets the text after each change, in every shape.
 - An Autocomplete is not a form field. It has no `name` and no reset handler, so a reset of a form does not write its `inputValue`. The SearchField or the TextField inside is a form field of its own. See [State](./state.md#form-reset).
 

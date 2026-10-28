@@ -8,7 +8,7 @@
     onOpenChange?: (open: boolean) => void;
     /** A `Button` and a `Popover` with a `Menu`. */
     children?: unknown;
-    /** Whether the menu is open. Alone it starts the menu open, and `$bind` writes your signal. */
+    /** Whether the menu is open. Alone it holds its own state, which starts closed, and `$bind` writes your signal. */
     isOpen?: Bindable<boolean>;
   }
 </script>

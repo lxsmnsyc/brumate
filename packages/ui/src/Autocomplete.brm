@@ -15,7 +15,7 @@
 </script>
 
 <script>
-  import { $id, $props, $setContext, $signal } from 'brumate/signals';
+  import { $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { CollectionFocusContext, enabledItems, keyOf, moveFrom } from './collection.ts';
   import { FieldInputContext } from './contexts.ts';
@@ -39,8 +39,8 @@
   let activeKey = $signal<Key | null>(null);
   // The ID of the active item, which the input names in `aria-activedescendant`.
   let activeId = $signal<string>();
-  // The text the collection shows the items of, which changes as the user types.
-  let filterText = $signal(inputValue);
+  // The text the collection shows the items of: the text that is kept, whoever wrote it.
+  const filterText = $memo(inputValue);
   // The text of the last filter, so a filter again with the same text, such as after the active
   // item changed, keeps the active item.
   let appliedText = $signal(inputValue);
@@ -88,11 +88,10 @@
   }
 
   function changed(value: string) {
-    if (value === filterText) {
+    if (value === inputValue) {
       return;
     }
     inputValue = value;
-    filterText = value;
     onInputChange?.(value);
   }
 

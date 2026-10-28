@@ -99,7 +99,7 @@ Focus stays in the input. `aria-activedescendant` names the active item.
 
 - `selectedKey` and `inputValue` alone, or nothing, make the field keep its own state. `selectedKey=('cat')` and `inputValue=('Cat')` are where it starts. Pick another item and the field keeps the pick.
 - `$bind(signal)` writes your signal. Change the signals and the field follows, as the third button shows. Set the key and the text together, since the text in the input is its own value.
-- `selectedKey=$bind(signal, (next) => ...)` asks you first. The field shows what you keep, so a request that you ignore leaves the old key. Press Lock and pick an item in the last field: the key stays, but the input keeps the text of the item that was picked, since the text is a state of its own. It also stays after the field loses focus when the old key is not `null`.
+- `selectedKey=$bind(signal, (next) => ...)` asks you first. The field shows what you keep, so a request that you ignore leaves the old key. Press Lock and pick an item in the last field: the key stays, and the input shows the text of the kept item. `onSelectionChange` still gets the request.
 - `isOpen` holds whether the list is open in the same way. A start value of `true` does not open the list on load: an [effect never runs when the page loads](../docs/effects.md).
 - `onSelectionChange`, `onInputChange` and `onOpenChange` get each change, in every shape.
 - A ComboBox is a form field. A reset of its form gives back the key and the text that it started with, and closes the list. With `$bind`, the reset is a write to your signal, and a setter can refuse it. See [State](./state.md#form-reset).
@@ -119,7 +119,7 @@ This stylesheet styles the box, the Button and the list: rest, hover, focus in t
 
 ### A required field in a form
 
-`isRequired` makes the input required, and `name` sends the key of the selected item. The browser blocks the submit of an empty field and shows its own message on the input. The ComboBox does not copy that message into the FieldError. An error of your own is `isInvalid` with a message in the FieldError, as the demo does for Japan, and the demo clears it when the selection changes. Reset gives the field its start state back.
+`isRequired` makes the input required, and `name` sends the key of the selected item. The browser blocks the submit of an empty field, and the FieldError shows its message. It goes once the field has text. An error of your own is `isInvalid` with a message in the FieldError, as the demo does for Japan, and the demo clears it when the selection changes. Reset gives the field its start state back.
 
 ```brm demo ComboBoxFormDemo
 
@@ -151,7 +151,7 @@ This stylesheet styles the box, the Button and the list: rest, hover, focus in t
 
 ## Forms
 
-`name` sends the key of the selected item with its form, or the text of the input with `allowsCustomValue`. `formValue="key"` or `"text"` chooses. The value goes with the form also before the code of the page loads. A server error for the `name` in a [Form](./form.md) shows in the FieldError until the user picks an item. An error that arrives after a pick does not show until the form is reset, so for that case set `isInvalid` yourself.
+`name` sends the key of the selected item with its form, or the text of the input with `allowsCustomValue`. `formValue="key"` or `"text"` chooses. The value goes with the form also before the code of the page loads. A server error for the `name` in a [Form](./form.md) shows in the FieldError until the user picks an item. An error that arrives after a pick shows too.
 
 ## How it filters
 
