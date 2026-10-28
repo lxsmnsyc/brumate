@@ -16,7 +16,7 @@ A preview of a link or a button, such as a card of the author behind a name. It 
 ## Closing
 
 - Leaving the trigger and the preview hides it after `closeDelay`, 200 milliseconds by default. The pointer can move from the trigger onto the preview.
-- Focus that leaves both hides it at once, and so does a press of the trigger. A press on plain content outside moves no focus, so it hides nothing.
+- Focus that leaves both hides it at once, and so does a press of the trigger from the keyboard. A press of the mouse hides it, and the pointer that stays on the trigger shows it again. A press on plain content outside moves no focus, so it hides nothing.
 - Escape hides it, and gives focus back to the trigger. That focus does not show it again.
 
 ## Anatomy
@@ -71,7 +71,7 @@ The preview renders at the end of the page, in a [layer](./layers.md), so Tab mo
 
 ```
 
-- `isOpen` alone, or nothing, makes the `PreviewTrigger` keep its own state: hover, focus, Escape and a press change it. `isOpen=(true)` is meant as the state where it starts, but a start value of `true` does not show a preview when the page loads: checked in Chrome on this site, nothing appeared. Hover and focus show it.
+- `isOpen` alone, or nothing, makes the `PreviewTrigger` keep its own state: hover, focus, Escape and a press change it. `isOpen=(true)` is meant as the state where it starts, but it does not show on load: an [effect never runs when the page loads](../docs/effects.md), and the preview opens from one on its open value, which a start value of `true` never changes. Open it from an event.
 - `isOpen=$bind(signal)` writes your signal. "Show or hide the second" sets it, and the preview follows.
 - `isOpen=$bind(signal, (next) => ...)` asks you first. The preview shows what you keep, so a request that you ignore leaves it hidden. Lock the last one, then hover its link.
 - `onOpenChange` gets each new state in every shape.
@@ -101,7 +101,7 @@ Each name in the text has its own `PreviewTrigger`. Hover one and the card shows
 
 ### A Button that previews and presses
 
-The trigger can be a `Button`. The preview shows a file's first lines on hover or focus. A press opens the file, and hides the preview.
+The trigger can be a `Button`. The preview shows a file's first lines on hover or focus. A press runs `onPress` and opens the file. After a hover the card fades out and then shows again within about 370 ms, since the pointer is still on the trigger. A press with the keyboard hides it.
 
 ```brm demo PreviewTriggerFilesDemo
 

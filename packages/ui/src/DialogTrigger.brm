@@ -6,7 +6,7 @@
     onOpenChange?: (open: boolean) => void;
     /** A `Button` and an overlay, such as a `Popover` or a `Modal`. */
     children?: unknown;
-    /** Whether the overlay is open. Alone it starts open, and `$bind` writes your signal. */
+    /** Whether the overlay is open. Alone it holds its own state, which starts closed, and `$bind` writes your signal. An effect never runs when the page loads, so an open start value does not open it. */
     isOpen?: Bindable<boolean>;
   }
 </script>
@@ -20,7 +20,7 @@
    * aria-expanded and aria-controls, and a press toggles the overlay. It gets no aria-haspopup. It renders
    * only its children.
    *
-   * `isOpen` alone starts it open, and `isOpen=$bind(signal)` writes the caller's.
+   * `isOpen` alone holds its own state, which starts closed, and `isOpen=$bind(signal)` writes the caller's. An open start value does not open it on load.
    */
   const { onOpenChange, children } = $props<DialogTriggerProps>();
   let { isOpen = false } = $props<DialogTriggerProps>();

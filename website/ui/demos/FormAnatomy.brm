@@ -1,0 +1,24 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<Form class="ui-form" validationErrors=({ email: 'This email has an account' }) style="width: fit-content; padding: 1rem; border: 1px dashed var(--muted); border-radius: 8px" data-mark="1">
+  <TextField class="ui-field" name="email" type="email" value="ada@example.com" style="width: fit-content" data-mark="2">
+    <Label data-mark="3" data-mark-side="after">Email</Label>
+    <!-- An input cannot carry a badge, so a wrapper does. -->
+    <span class="form-anatomy-input" data-mark="4"><Input class="ui-input" /></span>
+    <FieldError class="ui-error" style="justify-self: start" data-mark="5" data-mark-side="after" />
+  </TextField>
+  <Button type="submit" class="ui-button" data-mark="6">Sign up</Button>
+</Form>
+
+<style>
+  :global(.form-anatomy-input) {
+    display: grid;
+  }
+</style>

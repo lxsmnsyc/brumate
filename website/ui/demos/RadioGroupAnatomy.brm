@@ -1,0 +1,21 @@
+<script>
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<RadioGroup class="ui-field" value="medium" isInvalid style="width: fit-content" data-mark="1">
+  <Label data-mark="2" data-mark-side="after">Size</Label>
+  <Radio class="ui-box" value="small">
+    <span class="ui-mark round" aria-hidden="true"></span>
+    Small
+  </Radio>
+  <Radio class="ui-box" value="medium" data-mark="3" data-mark-side="after">
+    <span class="ui-mark round" aria-hidden="true"></span>
+    Medium
+  </Radio>
+  <Text slot="description" class="ui-help" data-mark="4" data-mark-side="after">Pick the size you wear.</Text>
+  <FieldError class="ui-error" style="justify-self: start" data-mark="5" data-mark-side="after">Pick a size.</FieldError>
+</RadioGroup>

@@ -1,0 +1,91 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+
+  let color = $signal('hsb(210, 80%, 90%)');
+</script>
+
+<div class="color-area-styled-row">
+  <ColorArea class="color-area-styled" xChannel="saturation" yChannel="brightness" value=$bind(color) aria-label="Saturation and brightness">
+    <ColorThumb class="color-area-styled-thumb" />
+  </ColorArea>
+  <ColorArea class="color-area-styled" xChannel="saturation" yChannel="brightness" value="hsb(30, 70%, 80%)" isDisabled aria-label="Disabled area">
+    <ColorThumb class="color-area-styled-thumb" />
+  </ColorArea>
+  <div class="color-area-styled-preview">
+    <ColorSwatch class="color-area-styled-swatch" color=color />
+    <code>{color}</code>
+  </div>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.color-area-styled-row) {
+    --color-area-styled-page: Canvas;
+    --color-area-styled-text: CanvasText;
+    --color-area-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    align-items: start;
+    color: var(--color-area-styled-text);
+  }
+
+  /* The part gives the gradient as --area-background, and the blend mode for rgb. */
+  :global(.color-area-styled) {
+    width: 11rem;
+    height: 11rem;
+    border-radius: 0.75rem;
+    background: var(--area-background);
+    background-blend-mode: var(--area-background-blend-mode);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-area-styled-text) 50%, var(--color-area-styled-page));
+  }
+
+  :global(.color-area-styled-thumb) {
+    box-sizing: border-box;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    outline: none;
+    box-shadow: 0 0 0 1.5px #000, inset 0 0 0 1.5px #000;
+    transition: scale 0.12s;
+  }
+
+  :global(.color-area-styled-thumb[data-dragging]) {
+    scale: 1.2;
+  }
+
+  :global(.color-area-styled-thumb[data-focus-visible]) {
+    box-shadow:
+      0 0 0 1.5px #000,
+      0 0 0 3.5px var(--color-area-styled-page),
+      0 0 0 6px var(--color-area-styled-accent),
+      inset 0 0 0 1.5px #000;
+  }
+
+  :global(.color-area-styled[data-disabled]) {
+    opacity: 0.5;
+  }
+
+  :global(.color-area-styled-preview) {
+    display: grid;
+    gap: 0.5rem;
+    justify-items: start;
+  }
+
+  :global(.color-area-styled-swatch) {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-area-styled-text) 50%, var(--color-area-styled-page));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.color-area-styled-thumb) {
+      transition: none;
+    }
+  }
+</style>

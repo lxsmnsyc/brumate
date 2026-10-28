@@ -68,7 +68,7 @@ A `Dialog` has no state. The `DialogTrigger` around it holds whether the overlay
 
 ```
 
-- `isOpen` alone, or nothing, makes the `DialogTrigger` keep its own state. A press of the Button toggles it, and so do Escape and a press outside, which close the overlay through the trigger. `isOpen=(true)` is meant as the state where it starts, but a start value of `true` does not show an overlay when the page loads: checked in Chrome on this site, nothing appeared. Start it closed and open it from an event. The demo above does not use it.
+- `isOpen` alone, or nothing, makes the `DialogTrigger` keep its own state. A press of the Button toggles it, and so do Escape and a press outside, which close the overlay through the trigger. `isOpen=(true)` is meant as the state where it starts, but it does not show on load: an [effect never runs when the page loads](../docs/effects.md), and the overlay opens from one on its open value, which a start value of `true` never changes. Open it from an event. The demo above does not use it.
 - `isOpen=$bind(signal)` writes your signal. Press "Open or close from outside" and the signal opens the popover that the second button owns.
 - `isOpen=$bind(signal, (next) => ...)` asks you first. The overlay shows what you keep, so a request that you ignore leaves it closed. Lock the last one and press its Button.
 - `onOpenChange` gets each new state in every shape. An overlay can also take its own `isOpen`, with no `DialogTrigger`: see [Popover](./popover.md#controlled-and-uncontrolled) and [Modal](./modal.md#controlled-and-uncontrolled).
@@ -98,7 +98,7 @@ A `Modal` with a `Dialog` of `role="alertdialog"` asks before something that can
 
 ### A form in a popover
 
-The Popover holds a [Form](./form.md) inside its Dialog. The browser checks the required name when Save is pressed, and `onSubmit` runs only for a valid name, so it saves and closes the popover by writing the signal of the `DialogTrigger`. `onOpenChange` copies the saved name into the draft each time the popover opens, so Cancel throws a draft away. `autofocus` on the Input moves focus to the field.
+The Popover holds a [Form](./form.md) inside its Dialog. The form is a component of its own, `DialogRenameForm`, and its `onSubmit` is `prevent(submit)`: `prevent` stops the browser from sending the form and loading the page again, and it must wrap the handler in the attribute, since a listener that calls `event.preventDefault()` itself is passive and refused. The browser checks the required name when Save is pressed, and `onSubmit` runs only for a valid name, so the form calls `onSave`, which saves and closes the popover by writing the signal of the `DialogTrigger`. `onOpenChange` copies the saved name into the draft each time the popover opens, so Cancel throws a draft away. `autofocus` on the Input moves focus to the field.
 
 ```brm demo DialogRenameDemo
 

@@ -22,6 +22,12 @@ A list of color swatches, to pick one.
 
 ## Anatomy
 
+```brm anatomy ColorSwatchPickerAnatomy
+`ColorSwatchPicker`: The listbox of colors. It shows `data-layout`.
+`ColorSwatchPickerItem`: One color. The selected item shows `data-selected`.
+`ColorSwatch`: Shows the color of the item. Optional.
+```
+
 ```html
 <ColorSwatchPicker>
   <ColorSwatchPickerItem>
@@ -84,11 +90,47 @@ The selection follows focus. A disabled item is skipped.
 
 ## Controlled and uncontrolled
 
-`value` holds a color of CSS. A plain `value` starts the list's own state, and `value=$bind(signal)` writes your signal. `onChange` gets the color of the item that the user picks, in the format of the item. Inside a [ColorPicker](./color-picker.md), a list without a `value` reads and writes the color of the picker. See [State](./state.md).
+`value` holds a color of CSS. How you pass it picks who keeps it:
+
+```brm demo ColorSwatchPickerStateDemo
+
+```
+
+- `value` alone, or nothing, makes the list keep its own color. Without one, no item is selected until the user picks. `value="#f59e0b"` is where it starts. Pick another and the list keeps the pick. A new value from you replaces it.
+- `value=$bind(signal)` writes your signal. Change the signal and the list follows.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock above and pick a color in the last list. The list shows what you keep, so a request that you ignore leaves the old selection.
+- `onChange` gets the color of the item that the user picks, in the format of the item, in every shape.
+- A ColorSwatchPicker is not a form field: it sends nothing with a form, and a reset does not touch it. Set your signal yourself on a reset. The server renders the selected item.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the items with the data attributes above, and the list with `data-layout`. A ColorSwatch inside an item has `--color`. See [Styling](./styling.md).
+
+This stylesheet styles an item in rest, hover, press, keyboard focus, selected, selected and hovered, and disabled. The ring grows with the state, and the keyboard ring has two bands. Press the arrow keys in the list, since the selection follows focus.
+
+```brm styled ColorSwatchPickerStyled
+
+```
+
+## Use cases
+
+### The color of a label
+
+A `layout="stack"` list moves with ArrowUp and ArrowDown only. The chip below takes its color from the signal.
+
+```brm demo ColorSwatchPickerLabelDemo
+
+```
+
+### Presets and a custom color
+
+Inside a [ColorPicker](./color-picker.md), the list and a ColorField share the color. Type a color that no preset has, and every item is unselected, since an item is selected when its color equals the value.
+
+```brm demo ColorSwatchPickerCustomDemo
+
+```
 
 ## Layout
 

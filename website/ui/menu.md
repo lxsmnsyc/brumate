@@ -114,7 +114,7 @@ These are the attributes of a `MenuItem`. The `Button` of the trigger shows [its
 
 ## Controlled and uncontrolled
 
-`isOpen` on the `MenuTrigger` holds whether the menu is open. `isOpen` alone starts it open, and `isOpen=$bind(signal)` writes your signal. `onOpenChange` gets each change. `selectedKeys` on the `Menu` holds the checked items in a menu with `selectionMode`, and starts its own state or binds with `$bind`. `onSelectionChange` gets the keys after each change. See [State](./state.md).
+`isOpen` on the `MenuTrigger` holds whether the menu is open. `isOpen` alone holds its own state, which starts closed, and `isOpen=$bind(signal)` writes your signal. A start value of `true` does not open the menu on load: an [effect never runs when the page loads](../docs/effects.md), and the menu opens from an effect. `onOpenChange` gets each change. `selectedKeys` on the `Menu` holds the checked items in a menu with `selectionMode`, and starts its own state or binds with `$bind`. `onSelectionChange` gets the keys after each change. See [State](./state.md).
 
 ## Styling
 

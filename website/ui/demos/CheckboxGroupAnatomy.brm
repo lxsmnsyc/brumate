@@ -1,0 +1,22 @@
+<script>
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<CheckboxGroup class="ui-field" value=(['cheese']) isInvalid style="width: fit-content" data-mark="1">
+  <Label data-mark="2" data-mark-side="after">Toppings</Label>
+  <Checkbox class="ui-box" value="cheese" data-mark="3" data-mark-side="after">
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+    Cheese
+  </Checkbox>
+  <Checkbox class="ui-box" value="olives">
+    <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+    Olives
+  </Checkbox>
+  <Text slot="description" class="ui-help" data-mark="4" data-mark-side="after">Pick the ones you like.</Text>
+  <FieldError class="ui-error" style="justify-self: start" data-mark="5" data-mark-side="after">Pick at least one.</FieldError>
+</CheckboxGroup>

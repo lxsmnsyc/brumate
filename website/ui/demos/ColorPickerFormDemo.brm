@@ -1,0 +1,45 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorField from '@brumate/ui/ColorField.brm';
+  import ColorPicker from '@brumate/ui/ColorPicker.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorSwatchPicker from '@brumate/ui/ColorSwatchPicker.brm';
+  import ColorSwatchPickerItem from '@brumate/ui/ColorSwatchPickerItem.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  let sent = $signal('Nothing sent.');
+  const presets = ['#e2445a', '#f59e0b', '#2ea043', '#2563eb', '#8b5cf6'];
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent brand=${data.get('brand')}.`;
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(submit))>
+  <ColorPicker value="#2563eb">
+    <ColorSwatchPicker class="ui-swatch-picker" aria-label="Presets">
+      #for (item of presets by item) {
+        <ColorSwatchPickerItem class="ui-swatch-option" color=item><ColorSwatch class="ui-swatch" /></ColorSwatchPickerItem>
+      }
+    </ColorSwatchPicker>
+    <div class="ui-row ui-color-row">
+      <ColorField class="ui-field" name="brand" isRequired>
+        <Label>Brand color</Label>
+        <Input class="ui-input" />
+      </ColorField>
+      <ColorSwatch class="ui-swatch" />
+    </div>
+  </ColorPicker>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Save</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p role="status">{sent}</p>
+</Form>

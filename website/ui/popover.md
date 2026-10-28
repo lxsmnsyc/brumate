@@ -88,7 +88,7 @@ Inside a `DialogTrigger`, the trigger holds whether the popover is open, with `i
 
 ```
 
-- `isOpen` alone, or nothing, makes the `DialogTrigger` keep its own state. A press of the Button toggles it, and so does Escape or focus that leaves a non-modal popover. `isOpen=(true)` is meant as the state where it starts, but a start value of `true` does not show an overlay when the page loads: checked in Chrome on this site, nothing appeared. Start it closed and open it from an event.
+- `isOpen` alone, or nothing, makes the `DialogTrigger` keep its own state. A press of the Button toggles it, and so does Escape or focus that leaves a non-modal popover. `isOpen=(true)` is meant as the state where it starts, but it does not show on load: an [effect never runs when the page loads](../docs/effects.md), and the popover opens from one on its open value, which a start value of `true` never changes. Open it from an event.
 - `isOpen=$bind(signal)` on the `DialogTrigger` writes your signal. "Open or close from outside" sets it, and the popover follows.
 - `isOpen=$bind(signal, (next) => ...)` asks you first. The popover shows what you keep, so a request that you ignore leaves it closed. Lock the last one and press its Button.
 - `onOpenChange` of the `DialogTrigger` gets each new state in every shape.

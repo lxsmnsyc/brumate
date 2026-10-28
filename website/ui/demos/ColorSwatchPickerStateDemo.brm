@@ -1,0 +1,42 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorSwatchPicker from '@brumate/ui/ColorSwatchPicker.brm';
+  import ColorSwatchPickerItem from '@brumate/ui/ColorSwatchPickerItem.brm';
+
+  let mine = $signal('#2563eb');
+  let asked = $signal('#2563eb');
+  let locked = $signal(false);
+  let log = $signal('');
+  const colors = ['#e2445a', '#f59e0b', '#2ea043', '#2563eb', '#8b5cf6'];
+</script>
+
+<div class="ui-stack">
+  <p>Own state</p>
+  <ColorSwatchPicker class="ui-swatch-picker" aria-label="Own state">
+    #for (item of colors by item) {
+      <ColorSwatchPickerItem class="ui-swatch-option" color=item><ColorSwatch class="ui-swatch" /></ColorSwatchPickerItem>
+    }
+  </ColorSwatchPicker>
+  <p>Starts at orange, then keeps its own copy</p>
+  <ColorSwatchPicker class="ui-swatch-picker" aria-label="Starts at orange" value="#f59e0b">
+    #for (item of colors by item) {
+      <ColorSwatchPickerItem class="ui-swatch-option" color=item><ColorSwatch class="ui-swatch" /></ColorSwatchPickerItem>
+    }
+  </ColorSwatchPicker>
+  <p>Writes your signal</p>
+  <ColorSwatchPicker class="ui-swatch-picker" aria-label="Writes your signal" value=$bind(mine) onChange=((next) => (log = `changed to ${next}`))>
+    #for (item of colors by item) {
+      <ColorSwatchPickerItem class="ui-swatch-option" color=item><ColorSwatch class="ui-swatch" /></ColorSwatchPickerItem>
+    }
+  </ColorSwatchPicker>
+  <p>Asks you first</p>
+  <ColorSwatchPicker class="ui-swatch-picker" aria-label="Asks you first" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    #for (item of colors by item) {
+      <ColorSwatchPickerItem class="ui-swatch-option" color=item><ColorSwatch class="ui-swatch" /></ColorSwatchPickerItem>
+    }
+  </ColorSwatchPicker>
+  <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <p>Writes: {mine}. Asks: {asked}. Last callback: {log || 'none'}.</p>
+</div>

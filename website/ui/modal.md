@@ -98,7 +98,7 @@ Inside a `DialogTrigger`, the trigger holds whether the modal is open. A modal w
 - Inside a `DialogTrigger` with no `isOpen`, the trigger keeps the state. A press of the Button toggles it. Escape closes it, and so does a press on the overlay with `isDismissable`.
 - A modal with `isOpen=$bind(signal)` writes your signal. Your own button sets it, with no trigger. `onOpenChange` runs when the modal closes itself, and not when you write the signal.
 - `isOpen=$bind(signal, (next) => ...)` asks you first. The modal makes a request when Escape would close it, and shows what you keep. Press "Asks you first", press Lock in the dialog, then Escape: the request is refused and the modal stays. Your own write, as the Close button does, is not a request, so it always works. Keep such a lock short, since a modal that refuses to close traps the user.
-- `isOpen=(true)` alone is meant to start a modal open, but a start value of `true` does not show an overlay when the page loads: checked in Chrome on this site, nothing appeared. Start it closed and open it from an event.
+- `isOpen=(true)` alone is meant to start a modal open, but it does not show on load: an [effect never runs when the page loads](../docs/effects.md), and the overlay opens from one on its open value, which a start value of `true` never changes. Open it from an event.
 - A Modal is not a form field, so a reset of a form around it changes nothing. The server renders no modal: it opens once the code loads.
 
 See [State](./state.md) for the other parts.

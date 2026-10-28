@@ -1,0 +1,39 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
+  import Switch from '@brumate/ui/Switch.brm';
+
+  let saved = $signal('Nothing saved yet.');
+
+  function save(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    saved = `Saved theme=${data.get('theme')}, digest=${data.get('digest') ?? 'off'}, beta=${data.get('beta') ?? 'off'}.`;
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(save))>
+  <RadioGroup class="ui-field" name="theme" value="system">
+    <Label>Theme</Label>
+    <Radio class="ui-box" value="system"><span class="ui-mark round" aria-hidden="true"></span>System</Radio>
+    <Radio class="ui-box" value="light"><span class="ui-mark round" aria-hidden="true"></span>Light</Radio>
+    <Radio class="ui-box" value="dark"><span class="ui-mark round" aria-hidden="true"></span>Dark</Radio>
+  </RadioGroup>
+  <Switch class="ui-box" name="digest" value="on" isSelected>
+    <span class="ui-track" aria-hidden="true"></span>
+    Weekly digest
+  </Switch>
+  <Switch class="ui-box" name="beta" value="on">
+    <span class="ui-track" aria-hidden="true"></span>
+    Beta features
+  </Switch>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Save</Button>
+    <Button type="reset" class="ui-button">Discard changes</Button>
+  </div>
+  <p role="status">{saved}</p>
+</Form>

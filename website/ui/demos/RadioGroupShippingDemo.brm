@@ -1,0 +1,33 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let sent = $signal('');
+
+  function submit(event: SubmitEvent) {
+    sent = `Sent shipping=${new FormData(event.currentTarget as HTMLFormElement).get('shipping')}.`;
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(submit))>
+  <RadioGroup class="ui-field" name="shipping" isRequired>
+    <Label>Shipping</Label>
+    <Radio class="ui-box" value="standard"><span class="ui-mark round" aria-hidden="true"></span>Standard, 5 days</Radio>
+    <Radio class="ui-box" value="express"><span class="ui-mark round" aria-hidden="true"></span>Express, 2 days</Radio>
+    <Radio class="ui-box" value="pickup" isDisabled><span class="ui-mark round" aria-hidden="true"></span>Pickup, not here yet</Radio>
+    <Text slot="description" class="ui-help">Nothing is chosen, so Order shows the error.</Text>
+    <FieldError class="ui-error" />
+  </RadioGroup>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Order</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p role="status">{sent}</p>
+</Form>
