@@ -1,7 +1,7 @@
 ---
 id: combobox-fixes
 title: ComboBox, Select and Autocomplete keep errors, required messages, picked text and filters right
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

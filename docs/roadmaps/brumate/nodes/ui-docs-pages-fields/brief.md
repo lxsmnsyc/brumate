@@ -1,7 +1,7 @@
 ---
 id: ui-docs-pages-fields
 title: Anatomy, use cases, CSS and state on the pages of the text and number fields
-status: todo
+status: active
 priority: should
 type: docs
 outline: false

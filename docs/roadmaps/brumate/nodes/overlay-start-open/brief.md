@@ -1,7 +1,7 @@
 ---
 id: overlay-start-open
 title: An overlay given an open start value renders open on load
-status: todo
+status: active
 priority: should
 type: fix
 outline: false
