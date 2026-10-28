@@ -14,7 +14,7 @@
   <Slider class="ui-slider" value=$bind(volume)>
     <Label>Volume</Label>
     <SliderOutput />
-    <SliderTrack class="ui-track">
+    <SliderTrack class="ui-slider-track">
       <SliderThumb class="ui-thumb" />
     </SliderTrack>
   </Slider>
@@ -27,7 +27,7 @@
   >
     <Label>Price</Label>
     <SliderOutput />
-    <SliderTrack class="ui-track">
+    <SliderTrack class="ui-slider-track">
       <SliderThumb class="ui-thumb" index=(0) aria-label="Minimum" />
       <SliderThumb class="ui-thumb" index=(1) aria-label="Maximum" />
     </SliderTrack>
