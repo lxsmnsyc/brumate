@@ -1,0 +1,24 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import DialogRenameForm from './DialogRenameForm.brm';
+
+  let name = $signal('Quarterly report');
+  let draft = $signal('Quarterly report');
+  let open = $signal(false);
+</script>
+
+<p>File: <strong>{name}</strong></p>
+<DialogTrigger isOpen=$bind(open) onOpenChange=((next) => { if (next) draft = name; })>
+  <Button class="ui-button">Rename</Button>
+  <Popover class="ui-popover" placement="bottom start" transition>
+    <Dialog class="ui-dialog">
+      <Heading slot="title" level=(4)>Rename the file</Heading>
+      <DialogRenameForm draft=$bind(draft) onSave=(() => { name = draft.trim(); open = false; }) />
+    </Dialog>
+  </Popover>
+</DialogTrigger>

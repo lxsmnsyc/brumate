@@ -1,0 +1,202 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Sheet from '@brumate/ui/Sheet.brm';
+
+  const sides: ('start' | 'end' | 'top' | 'bottom')[] = ['start', 'end', 'top', 'bottom'];
+</script>
+
+<div class="sheet-styled-root">
+  #for (side of sides by side) {
+    <DialogTrigger>
+      <Button class="sheet-styled-trigger">{side}</Button>
+      <Sheet class="sheet-styled-box" {side} transition>
+        <Dialog class="sheet-styled-dialog">
+          <Heading slot="title" level=(4) class="sheet-styled-title">A sheet on the {side} side</Heading>
+          <p class="sheet-styled-text">A press on the dim area closes it.</p>
+          <Button slot="close" class="sheet-styled-close">Close</Button>
+        </Dialog>
+      </Sheet>
+    </DialogTrigger>
+  }
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
+  :global(.sheet-styled-root),
+  :global([data-modal-overlay]:has(> .sheet-styled-box)) {
+    --sheet-styled-bg: Canvas;
+    --sheet-styled-text: CanvasText;
+    --sheet-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --sheet-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --sheet-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --sheet-styled-on-accent: light-dark(#fff, #101418);
+    --sheet-styled-danger: light-dark(#c4271d, #f28b82);
+    --sheet-styled-radius: 8px;
+    color: var(--sheet-styled-text);
+  }
+
+  :global(.sheet-styled-trigger) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--sheet-styled-border);
+    border-radius: var(--sheet-styled-radius);
+    background: var(--sheet-styled-bg);
+    color: var(--sheet-styled-text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.sheet-styled-trigger)[data-hovered] {
+    border-color: var(--sheet-styled-accent);
+  }
+
+  :global(.sheet-styled-trigger)[data-pressed] {
+    background: color-mix(in srgb, var(--sheet-styled-accent) 14%, var(--sheet-styled-bg));
+  }
+
+  :global(.sheet-styled-trigger)[aria-expanded='true'] {
+    border-color: var(--sheet-styled-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sheet-styled-accent) 25%, transparent);
+  }
+
+  /* Two bands, so the ring shows on the page and on a fill. */
+  :global(.sheet-styled-trigger)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--sheet-styled-bg), 0 0 0 4px var(--sheet-styled-accent);
+  }
+
+  :global(.sheet-styled-trigger)[data-disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.sheet-styled-close) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: var(--sheet-styled-radius);
+    background: var(--sheet-styled-accent);
+    color: var(--sheet-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.sheet-styled-close)[data-hovered] {
+    background: color-mix(in srgb, var(--sheet-styled-accent) 85%, CanvasText);
+  }
+
+  :global(.sheet-styled-close)[data-pressed] {
+    background: color-mix(in srgb, var(--sheet-styled-accent) 70%, CanvasText);
+  }
+
+  :global(.sheet-styled-close)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--sheet-styled-bg), 0 0 0 4px var(--sheet-styled-accent);
+  }
+
+  :global(.sheet-styled-root) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* A sheet sets no style on its overlay, so the dim area is chosen from the sheet inside it. */
+  :global([data-modal-overlay]:has(> .sheet-styled-box)) {
+    z-index: 20;
+    background: rgb(0 0 0 / 45%);
+    transition: opacity 0.2s;
+  }
+
+  :global([data-modal-overlay][data-closed]:has(> .sheet-styled-box)) {
+    opacity: 0;
+  }
+
+  :global(.sheet-styled-box) {
+    position: fixed;
+    box-sizing: border-box;
+    padding: 1.25rem;
+    background: var(--sheet-styled-bg);
+    box-shadow: 0 0 32px rgb(0 0 0 / 30%);
+    outline: none;
+    transition: translate 0.25s;
+  }
+
+  /* The edge of the window, as data-side gives it. */
+  :global(.sheet-styled-box[data-side='left']),
+  :global(.sheet-styled-box[data-side='right']) {
+    inset-block: 0;
+    width: min(18rem, 85vw);
+  }
+
+  :global(.sheet-styled-box[data-side='top']),
+  :global(.sheet-styled-box[data-side='bottom']) {
+    inset-inline: 0;
+    max-height: 60vh;
+  }
+
+  :global(.sheet-styled-box[data-side='left']) {
+    left: 0;
+    border-inline-end: 1px solid var(--sheet-styled-border);
+  }
+
+  :global(.sheet-styled-box[data-side='right']) {
+    right: 0;
+    border-inline-start: 1px solid var(--sheet-styled-border);
+  }
+
+  :global(.sheet-styled-box[data-side='top']) {
+    top: 0;
+    border-block-end: 1px solid var(--sheet-styled-border);
+  }
+
+  :global(.sheet-styled-box[data-side='bottom']) {
+    bottom: 0;
+    border-block-start: 1px solid var(--sheet-styled-border);
+  }
+
+  :global([data-closed] > .sheet-styled-box[data-side='left']) {
+    translate: -100% 0;
+  }
+
+  :global([data-closed] > .sheet-styled-box[data-side='right']) {
+    translate: 100% 0;
+  }
+
+  :global([data-closed] > .sheet-styled-box[data-side='top']) {
+    translate: 0 -100%;
+  }
+
+  :global([data-closed] > .sheet-styled-box[data-side='bottom']) {
+    translate: 0 100%;
+  }
+
+  :global(.sheet-styled-dialog) {
+    display: grid;
+    gap: 0.75rem;
+    justify-items: start;
+    outline: none;
+  }
+
+  :global(.sheet-styled-title) {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  :global(.sheet-styled-text) {
+    margin: 0;
+    color: var(--sheet-styled-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.sheet-styled-trigger),
+    :global(.sheet-styled-close),
+    :global([data-modal-overlay]:has(> .sheet-styled-box)),
+    :global(.sheet-styled-box) {
+      transition: none;
+    }
+  }
+</style>

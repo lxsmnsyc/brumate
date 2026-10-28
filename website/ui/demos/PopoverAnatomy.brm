@@ -1,0 +1,22 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+</script>
+
+<!-- The picture draws the trigger and the Popover as blocks of their own, since a real Popover renders in a layer at the end of <body>. -->
+<Button class="ui-button" data-mark="1">Share</Button>
+<div class="ui-popover" style="position: relative; width: min(100%, 22rem)" data-mark="2">
+  <span style="position: absolute; top: 0; left: 2rem; width: 12px; height: 12px" data-mark="3" data-mark-side="after"><OverlayArrow class="ui-arrow" data-placement="bottom" /></span>
+  <Dialog class="ui-dialog" aria-label="Share the page" style="padding: 0.5rem; border: 1px dashed var(--muted); border-radius: 6px"  data-mark="4" data-mark-side="bottom">
+    <Heading slot="title" level=(4) class="anatomy-self" data-mark="5" data-mark-side="after">Share the page</Heading>
+    <p>Anyone with the address can read it.</p>
+  </Dialog>
+</div>
+
+<style>
+  :global(.anatomy-self) {
+    justify-self: start;
+  }
+</style>

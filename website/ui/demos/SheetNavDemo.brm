@@ -1,0 +1,26 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Sheet from '@brumate/ui/Sheet.brm';
+
+  const pages = ['Home', 'Projects', 'Settings'];
+  let page = $signal('Home');
+</script>
+
+<div class="ui-stack">
+  <DialogTrigger>
+    <Button class="ui-button">Menu</Button>
+    <Sheet class="ui-sheet" transition>
+      <Dialog class="ui-dialog">
+        <Heading slot="title" level=(4)>Go to</Heading>
+        #for (name of pages by name) {
+          <Button slot="close" class="ui-button" onPress=(() => (page = name))>{name}</Button>
+        }
+      </Dialog>
+    </Sheet>
+  </DialogTrigger>
+  <p>You are on <strong>{page}</strong>.</p>
+</div>

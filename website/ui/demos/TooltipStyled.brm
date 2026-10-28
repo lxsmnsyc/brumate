@@ -1,0 +1,137 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Tooltip from '@brumate/ui/Tooltip.brm';
+  import TooltipTrigger from '@brumate/ui/TooltipTrigger.brm';
+
+  const tips = [
+    { label: 'Bold', placement: 'top' },
+    { label: 'Italic', placement: 'bottom' },
+    { label: 'Underline', placement: 'end' },
+  ] as const;
+</script>
+
+<div class="tooltip-styled-root">
+  #for (tip of tips by tip.label) {
+    <TooltipTrigger delay=(300)>
+      <Button class="tooltip-styled-trigger" aria-label=(tip.label)>{tip.label.charAt(0)}</Button>
+      <Tooltip class="tooltip-styled-tip" placement=(tip.placement) offset=(8) transition>
+        <OverlayArrow class="tooltip-styled-arrow" />
+        {tip.label}
+      </Tooltip>
+    </TooltipTrigger>
+  }
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
+  :global(.tooltip-styled-root),
+  :global(.tooltip-styled-tip) {
+    --tooltip-styled-bg: Canvas;
+    --tooltip-styled-text: CanvasText;
+    --tooltip-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --tooltip-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --tooltip-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --tooltip-styled-on-accent: light-dark(#fff, #101418);
+    --tooltip-styled-danger: light-dark(#c4271d, #f28b82);
+    --tooltip-styled-radius: 8px;
+    color: var(--tooltip-styled-text);
+  }
+
+  :global(.tooltip-styled-trigger) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--tooltip-styled-border);
+    border-radius: var(--tooltip-styled-radius);
+    background: var(--tooltip-styled-bg);
+    color: var(--tooltip-styled-text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.tooltip-styled-trigger)[data-hovered] {
+    border-color: var(--tooltip-styled-accent);
+  }
+
+  :global(.tooltip-styled-trigger)[data-pressed] {
+    background: color-mix(in srgb, var(--tooltip-styled-accent) 14%, var(--tooltip-styled-bg));
+  }
+
+  :global(.tooltip-styled-trigger)[aria-expanded='true'] {
+    border-color: var(--tooltip-styled-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tooltip-styled-accent) 25%, transparent);
+  }
+
+  /* Two bands, so the ring shows on the page and on a fill. */
+  :global(.tooltip-styled-trigger)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--tooltip-styled-bg), 0 0 0 4px var(--tooltip-styled-accent);
+  }
+
+  :global(.tooltip-styled-trigger)[data-disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.tooltip-styled-root) {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  :global(.tooltip-styled-trigger) {
+    min-width: 2.5rem;
+    padding-inline: 0;
+    font-weight: 700;
+  }
+
+  /* The tip is a dark chip in both themes. It fades in, and data-closed is the hidden look. */
+  :global(.tooltip-styled-tip) {
+    z-index: 30;
+    max-width: 16rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    background: light-dark(#1d2630, #e7edf3);
+    color: light-dark(#fff, #101418);
+    font-size: 0.8125rem;
+    transition: opacity 0.15s;
+  }
+
+  :global(.tooltip-styled-tip[data-closed]) {
+    opacity: 0;
+  }
+
+  /* The tooltip sets left or top of the arrow along the side, and CSS points it. */
+  :global(.tooltip-styled-arrow) {
+    width: 8px;
+    height: 8px;
+    background: light-dark(#1d2630, #e7edf3);
+    rotate: 45deg;
+  }
+
+  :global(.tooltip-styled-arrow[data-placement='top']) {
+    bottom: -4px;
+    margin-left: -4px;
+  }
+
+  :global(.tooltip-styled-arrow[data-placement='bottom']) {
+    top: -4px;
+    margin-left: -4px;
+  }
+
+  :global(.tooltip-styled-arrow[data-placement='right']) {
+    left: -4px;
+    margin-top: -4px;
+  }
+
+  :global(.tooltip-styled-arrow[data-placement='left']) {
+    right: -4px;
+    margin-top: -4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.tooltip-styled-trigger),
+    :global(.tooltip-styled-tip) {
+      transition: none;
+    }
+  }
+</style>

@@ -1,0 +1,35 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Link from '@brumate/ui/Link.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import PreviewTrigger from '@brumate/ui/PreviewTrigger.brm';
+
+  let shown = $signal(false);
+  let gated = $signal(false);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<div class="ui-stack">
+  <!-- The trigger keeps its own state, which hover and focus change. -->
+  <PreviewTrigger delay=(300)>
+    <Link class="ui-link" href="#preview-trigger-state">Own state</Link>
+    <Popover class="ui-popover" placement="bottom start" transition><p>Hover or tab to the link.</p></Popover>
+  </PreviewTrigger>
+  <!-- The trigger writes your signal. -->
+  <PreviewTrigger delay=(300) isOpen=$bind(shown) onOpenChange=((next) => (log = next ? 'shown' : 'hidden'))>
+    <Link class="ui-link" href="#preview-trigger-state">Writes your signal</Link>
+    <Popover class="ui-popover" placement="bottom start" transition><p>Your signal says {shown ? 'shown' : 'hidden'}.</p></Popover>
+  </PreviewTrigger>
+  <!-- The trigger asks you first. Lock refuses a request to show. -->
+  <PreviewTrigger delay=(300) isOpen=$bind(gated, (next) => { if (!locked || !next) gated = next; })>
+    <Link class="ui-link" href="#preview-trigger-state">Asks you first</Link>
+    <Popover class="ui-popover" placement="bottom start" transition><p>You let it show.</p></Popover>
+  </PreviewTrigger>
+  <div class="ui-actions" style="justify-content: start">
+    <Button class="ui-button" onPress=(() => (shown = !shown))>Show or hide the second</Button>
+    <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the last one</Button>
+  </div>
+  <p>Signal: {shown ? 'shown' : 'hidden'}. Last callback: {log || 'none'}. Last one is {locked ? 'locked' : 'free'}.</p>
+</div>

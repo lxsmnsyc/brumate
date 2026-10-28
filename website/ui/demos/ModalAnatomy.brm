@@ -1,0 +1,24 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+</script>
+
+<!-- The picture draws the trigger, the overlay, the Modal and the Dialog as blocks of their own, since a real ModalOverlay renders in a layer at the end of <body>. -->
+<Button class="ui-button" data-mark="1">Delete the draft</Button>
+<div class="ui-backdrop" style="position: relative; width: min(100%, 30rem); box-sizing: border-box; border-radius: 8px" data-mark="2">
+  <div data-mark="3" style="width: min(24rem, 100%)"><div class="ui-modal" style="width: auto">
+    <Dialog role="alertdialog" class="ui-dialog" aria-label="Delete the draft" style="padding: 0.5rem; border: 1px dashed var(--muted); border-radius: 6px"  data-mark="4" data-mark-side="bottom">
+      <Heading slot="title" level=(4) class="anatomy-self" data-mark="5" data-mark-side="after">Delete the draft?</Heading>
+      <p>It cannot come back.</p>
+      <Button slot="close" class="ui-button" style="justify-self: start" data-mark="6">Cancel</Button>
+    </Dialog>
+  </div>
+  </div>
+</div>
+
+<style>
+  :global(.anatomy-self) {
+    justify-self: start;
+  }
+</style>
