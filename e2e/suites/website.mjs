@@ -394,15 +394,16 @@ export async function run({ browser, url, runner }) {
         await page.waitForFunction(
           () => {
             const nav = document.querySelector('.header-nav')?.textContent ?? '';
-            return nav.includes('Parts') && !nav.includes('REPL');
+            return nav.includes('brumate') && !nav.includes('REPL') && !nav.includes('Parts');
           },
           null,
           { timeout: 5000 },
         );
         // The landing page has no sidebar, like the home page, and its parts work.
         assert(await page.locator('.sidebar').isHidden(), 'the landing page shows a sidebar');
-        await page.locator('.ui-box', { hasText: 'Wi-Fi is off' }).click();
-        await page.locator('.ui-box', { hasText: 'Wi-Fi is on' }).waitFor({ timeout: 5000 });
+        const stage = page.locator('.stage-section');
+        await stage.locator('.ui-box', { hasText: 'Wi-Fi is off' }).click();
+        await stage.locator('.ui-box', { hasText: 'Wi-Fi is on' }).waitFor({ timeout: 5000 });
         await page.addScriptTag({ path: axe });
         // The primary button of the site, white on the accent color, is as on the home page.
         const violations = await page.evaluate(async () => {
@@ -412,10 +413,19 @@ export async function run({ browser, url, runner }) {
           return result.violations.map((violation) => violation.id);
         });
         assert(violations.length === 0, `axe found on /ui: ${violations.join(', ')}`);
-        // The grid of cards is on its own page, which the header links to.
-        await page.locator('.header-nav a', { hasText: 'Parts' }).click();
-        await page.waitForURL(`${url}/ui/parts`, { timeout: 5000 });
-        await page.locator('.ui-gallery').waitFor({ timeout: 5000 });
+        // The grid of cards is on the landing page, and every card has the same size.
+        const sizes = await page
+          .locator('.ui-card')
+          .evaluateAll((cards) => [
+            ...new Set(
+              cards.map((card) => {
+                const stage = card.querySelector('.ui-demo-stage').getBoundingClientRect();
+                const box = card.getBoundingClientRect();
+                return `${Math.round(box.width)}x${Math.round(box.height)} ${Math.round(stage.width)}x${Math.round(stage.height)}`;
+              }),
+            ),
+          ]);
+        assert(sizes.length === 1, `the cards have different sizes: ${sizes.join(', ')}`);
         const cards = await page.locator('.ui-card').count();
         assert(cards >= 10, `the gallery has ${cards} cards`);
       },

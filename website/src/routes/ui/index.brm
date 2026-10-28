@@ -4,6 +4,7 @@
   import ControlsDemo from '../../../ui/demos/LandingControlsDemo.brm';
   import TabsDemo from '../../../ui/demos/LandingTabsDemo.brm';
   import { unstyled, usage } from '../../ui-landing.ts';
+  import { demos, gallery } from '../../ui.ts';
 
   const base = import.meta.env.BASE_URL;
 </script>
@@ -28,7 +29,7 @@
     </p>
     <div class="actions">
       <a class="button primary" href=(`${base}ui/introduction`)>Get started</a>
-      <a class="button" href=(`${base}ui/parts`)>All parts</a>
+      <a class="button" href=(`${base}ui#parts`)>All parts</a>
     </div>
     <pre class="install"><span class="prompt">$</span> pnpm add @brumate/ui</pre>
   </section>
@@ -108,34 +109,18 @@
     </article>
   </section>
 
-  <section class="section">
-    <h2>What the parts cover</h2>
-    <div class="features">
-      <article class="feature">
-        <h3>Buttons and links</h3>
-        <p>Button, toggle buttons, link, file trigger and drop zone, with one press for a mouse, a touch and a key.</p>
-      </article>
-      <article class="feature">
-        <h3>Forms</h3>
-        <p>Text, search, number and token fields, sliders, checkboxes, radios and switches. A form checks and posts its fields by name.</p>
-      </article>
-      <article class="feature">
-        <h3>Layers</h3>
-        <p>Dialog, modal, popover, sheet, menu, tooltip and toast. Focus moves in, and returns to where it was.</p>
-      </article>
-      <article class="feature">
-        <h3>Collections</h3>
-        <p>Select, combo box, list box, tabs, tree, table and grid list, with selection and type-ahead.</p>
-      </article>
-      <article class="feature">
-        <h3>Dates and colors</h3>
-        <p>Calendars, date and time fields, and color areas, wheels, sliders and pickers, in the locale of the reader.</p>
-      </article>
-      <article class="feature">
-        <h3>State you own</h3>
-        <p>A part takes its value with <code>$bind</code>, so a signal of your page stays the one source of truth.</p>
-      </article>
-    </div>
+  <section class="section" id="parts">
+    <h2>Every part</h2>
+    <p class="section-lead">A card for each part. The preview is a picture, so open the page of the part to use it.</p>
+    <ul class="ui-gallery">
+      #for (card of gallery by card.title) {
+        <li class="ui-card">
+          <div class="ui-demo-stage" inert><{demos[card.demo]} /></div>
+          <a class="ui-card-title" href=(`${base}ui/${card.href}`)>{card.title}</a>
+          <p>{card.summary}</p>
+        </li>
+      }
+    </ul>
   </section>
 
   <section class="section cta">
@@ -143,7 +128,7 @@
     <p>Install the package, import a part and style its data attributes.</p>
     <div class="actions">
       <a class="button primary" href=(`${base}ui/introduction`)>Get started</a>
-      <a class="button" href=(`${base}ui/parts`)>All parts</a>
+      <a class="button" href=(`${base}ui#parts`)>All parts</a>
     </div>
   </section>
 </main>
@@ -409,5 +394,9 @@
   .tabs-stage {
     padding: 1.5rem;
     background: var(--surface);
+  }
+
+  #parts {
+    scroll-margin-top: calc(var(--header-height) + 1rem);
   }
 </style>

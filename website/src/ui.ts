@@ -25,7 +25,7 @@ for (const [file, demo] of Object.entries(
 export const sections: { title: string; pages: { slug: string; title: string }[] }[] = [
   {
     title: 'Start',
-    pages: ['introduction', 'parts', 'styling', 'state', 'resuming', 'layers', 'influences'],
+    pages: ['introduction', 'styling', 'state', 'resuming', 'layers', 'influences'],
   },
   {
     title: 'Buttons',
