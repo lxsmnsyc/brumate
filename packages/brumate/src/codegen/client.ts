@@ -342,10 +342,42 @@ class ClientGenerator {
     return result;
   }
 
+  /** The sites that the renders of children run, other than handlers and effects. */
+  private childrenSites(): Site[] {
+    const result: Site[] = [];
+    for (const [node, { scope }] of this.plan.childrenRenders) {
+      const start = node.children[0]!.start;
+      const end = node.children.at(-1)!.end;
+      for (const site of this.model.sites) {
+        const at = site.node as { start: number; end: number };
+        if (
+          site.scope === scope &&
+          !DEFERRED_SITES.has(site.kind) &&
+          start <= at.start &&
+          at.end <= end
+        ) {
+          result.push(site);
+        }
+      }
+    }
+    return result;
+  }
+
   /** Decides which part holds each client root, update and function. */
   private placeCode(): void {
     for (const [site, symbol] of this.plan.symbols) {
-      this.reach.set(symbol, this.closure([site]));
+      const seed = [site];
+      // A template part renders the markup of its templates, so their sites are part of it.
+      if (symbol.startsWith('t')) {
+        for (const scope of this.templateScopes(symbol)) {
+          for (const item of this.model.sites) {
+            if (isWithin(item.scope, scope) && !DEFERRED_SITES.has(item.kind)) {
+              seed.push(item);
+            }
+          }
+        }
+      }
+      this.reach.set(symbol, this.closure(seed));
     }
     const updates = [...this.plan.clientSites].filter(
       (site) =>
@@ -357,6 +389,10 @@ class ClientGenerator {
           updates.push(site);
         }
       }
+    }
+    // The render of children runs in the update part, so the sites in them are part of it.
+    for (const site of this.childrenSites()) {
+      updates.push(site);
     }
     this.reach.set('update', this.closure(updates));
     for (const declaration of this.model.declarations) {
@@ -434,6 +470,14 @@ class ClientGenerator {
     if (withChildren) {
       for (const node of this.plan.childrenRenders.keys()) {
         componentNames(node.children, names);
+      }
+      // What the sites in the children read, such as `prevent` in `onSubmit=(prevent(…))`.
+      for (const site of this.childrenSites()) {
+        for (const read of site.reads) {
+          if (read.declaration.kind === 'import') {
+            names.add(read.declaration.name);
+          }
+        }
       }
     }
     const result: string[] = [];
@@ -1630,6 +1674,11 @@ class ClientGenerator {
       for (const site of this.model.sites) {
         if (site.scope === scope && within(site.node as { start: number; end: number })) {
           for (const read of site.reads) {
+            // A handler is named by its table entry, so its function is not a local here. The
+            // update part does not import a function that only handlers reach.
+            if (read.declaration.kind === 'function' && DEFERRED_SITES.has(site.kind)) {
+              continue;
+            }
             if (!inside.some((item) => isWithin(read.declaration.scope, item))) {
               declarations.add(read.declaration);
             }

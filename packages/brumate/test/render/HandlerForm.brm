@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { onSubmit, children } = $props<{ onSubmit?: (event: Event) => void; children?: unknown }>();
+</script>
+
+<form {onSubmit}>{children}</form>

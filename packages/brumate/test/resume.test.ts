@@ -6235,3 +6235,76 @@ describe('a handler waits only for', () => {
     await waitFor(() => expect(log()).toContain('effect 1'));
   });
 });
+
+describe('functions used in children that render later', () => {
+  it('defines a function used at the top and in children', async () => {
+    await resume('handlerRefs', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.go')).not.toBeNull());
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.n')).toBe('1'));
+    click(document.querySelector('.top')!);
+    await waitFor(() => expect(text('.n')).toBe('2'));
+  });
+
+  it('defines a function used in nested children', async () => {
+    await resume('handlerRefsNested', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.one')).not.toBeNull());
+    click(document.querySelectorAll('.toggle')[1]!);
+    await waitFor(() => expect(document.querySelector('.two')).not.toBeNull());
+    click(document.querySelector('.two')!);
+    click(document.querySelector('.one')!);
+    await waitFor(() => expect(text('.n')).toBe('2'));
+  });
+
+  it('defines a function used in a template that renders later', async () => {
+    await resume('handlerRefsTemplate', {});
+    click(document.querySelector('.tpl-add')!);
+    await waitFor(() => expect(document.querySelector('.go')).not.toBeNull());
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.n')).toBe('1'));
+    click(document.querySelector('.top')!);
+    await waitFor(() => expect(text('.n')).toBe('2'));
+  });
+
+  it('defines a function used in a template that a block renders later', async () => {
+    await resume('handlerRefsSlot', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.go')).not.toBeNull());
+    click(document.querySelector('.go')!);
+    await waitFor(() => expect(text('.n')).toBe('1'));
+    click(document.querySelector('.top')!);
+    await waitFor(() => expect(text('.n')).toBe('2'));
+  });
+
+  it('defines a wrapper from brumate/events used in children that render later', async () => {
+    await resume('handlerRefsPrevent', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('form')).not.toBeNull());
+    document
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(text('.n')).toBe('1'));
+  });
+
+  for (const [name, used, selectors] of [
+    ['handlerRefsProp', 'a function passed as a prop of a component in children', ['.cb', '.top']],
+    ['handlerRefsPropOnce', 'a function passed as a prop, used once', ['.cb']],
+    [
+      'handlerRefsTemplateProp',
+      'a function passed as a prop in a template that renders later',
+      ['.cb', '.top'],
+    ],
+  ] as const) {
+    it(`defines ${used}`, async () => {
+      await resume(name, {});
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(document.querySelector('.cb')).not.toBeNull());
+      for (const selector of selectors) {
+        click(document.querySelector(selector)!);
+      }
+      await waitFor(() => expect(text('.n')).toBe(String(selectors.length)));
+    });
+  }
+});

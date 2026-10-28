@@ -1,0 +1,16 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TplList from './TplList.brm';
+
+  let n = $signal(0);
+  function bump() {
+    n += 1;
+  }
+</script>
+
+<button class="top" onClick=bump>top</button>
+<TplList item=row />
+<p class="n">{n}</p>
+#template row(label: string) {
+  <button class="go" onClick=bump>{label}</button>
+}
