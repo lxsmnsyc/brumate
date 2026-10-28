@@ -1,0 +1,15 @@
+<script>
+  import './events-aug';
+
+  function show(detail: string) {
+    console.log(detail);
+  }
+</script>
+
+<!-- Handlers of several words are written in camel case. -->
+<div
+  onKeyDown=((event) => show(event.key))
+  onFocusOut=((event) => show(event.type))
+  onItemAction=((event) => show(event.detail))
+></div>
+<window onKeyDown=((event) => show(event.key)) />

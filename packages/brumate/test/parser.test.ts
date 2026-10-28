@@ -46,6 +46,18 @@ describe('syntax errors', () => {
       'Modifiers apply to elements. Put ":prevent" on the element that the component renders (Test.brm:1:7)',
     ],
     [
+      '<input onKeydown=go />',
+      '"onKeydown" is not an event name. Write "onKeyDown" (Test.brm:1:8)',
+    ],
+    [
+      '<input {onFocusout} />',
+      '"onFocusout" is not an event name. Write "onFocusOut" (Test.brm:1:8)',
+    ],
+    [
+      '<window onPointerdown=go />',
+      '"onPointerdown" is not an event name. Write "onPointerDown" (Test.brm:1:9)',
+    ],
+    [
       '<button onClick="go()">x</button>',
       'An event handler must be an expression, not a string (Test.brm:1:9)',
     ],

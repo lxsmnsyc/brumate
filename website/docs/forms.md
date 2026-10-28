@@ -269,7 +269,7 @@ Enter in a field presses the first submit button of the form. `defaultSubmit` is
 
 ### Validating in the browser
 
-`attrs` holds an `onFocusout` and an `onInput` handler. They validate the fields with the schema in the browser, so errors show before a submit:
+`attrs` holds an `onFocusOut` and an `onInput` handler. They validate the fields with the schema in the browser, so errors show before a submit:
 
 - A field shows its errors once the user leaves it. After that, they change as the user types.
 - After a submit, every field shows its errors as the user types.

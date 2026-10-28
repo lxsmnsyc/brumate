@@ -3,6 +3,9 @@ declare module 'brumate/elements' {
   interface ElementEvents {
     itemaction: CustomEvent<string>;
   }
+  interface ElementEventNames {
+    itemaction: 'ItemAction';
+  }
 }
 
 export {};

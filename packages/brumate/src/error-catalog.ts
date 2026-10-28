@@ -108,6 +108,11 @@ const SYNTAX: ErrorEntry[] = [
     '<form onSubmit=(prevent(send))></form>',
   ),
   entry(
+    '"{name}" is not an event name. Write "{camel}"',
+    'An event of more than one word is written in camel case. The lower-case form is an error.',
+    '<input onKeyDown=(handle) onFocusOut=(handle) />',
+  ),
+  entry(
     'Modifiers apply to elements. Put ":{modifier}" on the element that the component renders',
     'An event modifier is on a component, which only passes the handler on.',
     '<form onSubmit=(prevent(send))></form>',

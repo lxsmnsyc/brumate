@@ -135,7 +135,7 @@ export function createForm<S extends StandardSchemaV1, D = StandardSchemaV1.Infe
     result,
     fields,
     errors,
-    attrs: { id, onFocusout: $handler(check), onInput: $handler(check) },
+    attrs: { id, onFocusOut: $handler(check), onInput: $handler(check) },
     defaultSubmit: DEFAULT_SUBMIT,
   };
 }

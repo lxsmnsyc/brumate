@@ -31,10 +31,9 @@ export const label: ElementProps<'label'> = { for: 'name' };
 export const input: ElementProps<'input'> = { type: 'text', maxlength: 4, readonly: true };
 export const shape: ElementProps<'path'> = { d: 'M0 0', 'stroke-width': 2, viewBox: '0 0 1 1' };
 
-// A handler is written in camel case, or as the name of the event.
+// A handler is written in camel case only.
 export const keys: ElementProps<'div'> = {
   onKeyDown: (event) => event.key,
-  onKeydown: (event) => event.key,
   onPointerDown: (event) => event.pointerId,
   onFocusIn: (event) => event.relatedTarget,
 };
@@ -75,14 +74,19 @@ declare module '../elements' {
   interface ElementEvents {
     itemaction: CustomEvent<string>;
   }
+  interface ElementEventNames {
+    itemaction: 'ItemAction';
+  }
   interface Elements {
     'x-card': ElementProps<'div'> & { heading?: string };
   }
 }
 export const custom: ElementProps<'x-card'> = {
   heading: 'Title',
-  onItemaction: (event) => event.detail.length,
+  onItemAction: (event) => event.detail.length,
 };
+// @ts-expect-error A custom event with a camel name has no lower-case attribute.
+export const customLower: ElementProps<'x-card'> = { onItemaction: () => {} };
 export const customEvent: ElementEvents['itemaction'] | undefined = undefined;
 
 // Every tag of the DOM has attributes.
@@ -177,8 +181,9 @@ export const autocompleteBoolean: ElementProps<'input'> = { autocomplete: false 
 export const autocompleteForm: ElementProps<'form'> = { autocomplete: true };
 export const keyPress: ElementProps<'input'> = {
   onKeyPress: (event) => event.key,
-  onKeypress: (event) => event.key,
 };
+// @ts-expect-error The lower-case form of a handler of several words is not an attribute.
+export const lowerKeys: ElementProps<'div'> = { onKeydown: (event) => event.key };
 export const handler: EventHandler<HTMLButtonElement, MouseEvent> = (event) =>
   event.currentTarget.value;
 export const handlerProp: ElementProps<'button'> = { onClick: handler };
