@@ -73,7 +73,6 @@
   import { VirtualizerContext } from './virtualizer.ts';
   import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
   import { TableContext, TableResizeContext, nextSort } from './table.ts';
-  import { afterWrite } from './fields.ts';
 
   /**
    * A table of rows and columns that the user can move through, select and sort. It holds a
@@ -160,17 +159,9 @@
   }
 
   function setSelection(next: Key[]) {
-    const before = selectedKeys;
-    if (!sameKeys(next, before)) {
+    if (!sameKeys(next, selectedKeys)) {
       selectedKeys = next;
-      // The change handler gets the keys that the caller keeps, and only when they changed.
-      afterWrite(
-        before,
-        next,
-        () => selectedKeys,
-        (kept) => onSelectionChange?.(kept),
-        sameKeys,
-      );
+      onSelectionChange?.(next);
     }
   }
 

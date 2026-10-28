@@ -69,31 +69,3 @@ export function onFormReset(
     timers.clear();
   };
 }
-
-/**
- * Calls `changed` with the value that the caller keeps after a write, if it is not `before`. A
- * part that writes its own state reads the new value at once. A `$bind(signal, fn)` setter
- * decides, and the part reads what the caller keeps only after the caller drew, so the check
- * waits until then. A setter that refuses, or keeps the old value, calls nothing.
- */
-export function afterWrite<T>(
-  before: T,
-  next: T,
-  read: () => T,
-  changed: (kept: T) => void,
-  same: (a: T, b: T) => boolean = Object.is,
-): void {
-  const now = read();
-  if (same(now, next)) {
-    if (!same(now, before)) {
-      changed(now);
-    }
-    return;
-  }
-  setTimeout(() => {
-    const kept = read();
-    if (!same(kept, before)) {
-      changed(kept);
-    }
-  }, 0);
-}

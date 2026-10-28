@@ -36,7 +36,7 @@
   import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { FieldErrorContext, LabelContext, RadioGroupContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { afterWrite, describedBy, onFormReset } from './fields.ts';
+  import { describedBy, onFormReset } from './fields.ts';
 
   /**
    * A group of radios. It holds a Label, its Radios, a
@@ -75,15 +75,8 @@
   const invalid = $memo(isInvalid || errors.length > 0);
 
   function select(next: string) {
-    const before = value;
     value = next;
-    // The change handler gets the choice that the caller keeps, and only when it changed.
-    afterWrite(
-      before,
-      next as string | null,
-      () => value,
-      (kept) => onChange?.(kept as string),
-    );
+    onChange?.(next);
   }
 
   function invalidated(text: string) {

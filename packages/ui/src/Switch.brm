@@ -25,7 +25,7 @@
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { afterWrite, onFormReset } from './fields.ts';
+  import { onFormReset } from './fields.ts';
 
   /**
    * A switch: a <label> around a native checkbox with
@@ -87,18 +87,11 @@
       input.checked = isSelected;
       return;
     }
-    const before = isSelected;
+    isSelected = input.checked;
+    // A setter that refuses leaves the old state, so the input goes back to it.
     const next = input.checked;
-    isSelected = next;
-    // The input shows the state that the caller keeps, and the change handler gets it only when
-    // it changed.
     input.checked = isSelected;
-    afterWrite(
-      before,
-      next,
-      () => isSelected,
-      (kept) => onChange?.(kept),
-    );
+    onChange?.(next);
   }
 </script>
 

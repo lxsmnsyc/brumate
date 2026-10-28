@@ -67,7 +67,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { afterWrite, describedBy, firstErrors, messagesOf, onFormReset } from './fields.ts';
+  import { describedBy, firstErrors, messagesOf, onFormReset } from './fields.ts';
 
   /**
    * A text field. It holds a Label, an Input or a
@@ -156,16 +156,9 @@
   const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
 
   function change(next: string) {
-    const before = value;
     value = next;
     edited = form?.validationErrors ?? null;
-    // The change handler gets the text that the caller keeps, and only when it changed.
-    afterWrite(
-      before,
-      next,
-      () => value,
-      (kept) => onChange?.(kept),
-    );
+    onChange?.(next);
   }
 
   // The message that blocks the form in the native behavior: the errors

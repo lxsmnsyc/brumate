@@ -45,7 +45,6 @@
   import { formatColor, parseColor, tryParseColor } from './color.ts';
   import { ColorPickerContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
-  import { afterWrite } from './fields.ts';
 
   /**
    * A list of color swatches that the user picks one from. Its items are ColorSwatchPickerItem
@@ -106,16 +105,7 @@
       if (picker && !passed) {
         picker.setValue(parseColor(text), text);
       } else {
-        const before = value;
         value = text;
-        // The change handler gets the color that the caller keeps, and only when it changed.
-        afterWrite(
-          before,
-          text,
-          () => value,
-          (kept) => onChange?.(kept),
-        );
-        return;
       }
       onChange?.(text);
     }

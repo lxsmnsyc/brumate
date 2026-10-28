@@ -45,7 +45,7 @@
   import { constrain, outOfRange, toDate, todayString } from './calendar.ts';
   import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { afterWrite, describedBy, messagesOf } from './fields.ts';
+  import { describedBy, messagesOf } from './fields.ts';
   import { DateStringsContext } from './date-strings.ts';
   import { LocaleContext } from './locale.ts';
   import { dateSegments, formField } from './date-field.brm.ts';
@@ -127,21 +127,11 @@
   // The field has a value once every segment is set.
   $effect(() => {
     const next = date;
-    const before = $untrack(value);
-    if (next !== before) {
+    if (next !== $untrack(value)) {
       $untrack((value = next));
-      // The change handler gets the date that the caller keeps, and only when it changed.
-      const kept = $untrack(value);
-      afterWrite(
-        before,
-        next,
-        () => $untrack(value),
-        (after) => {
-          edited = true;
-          changed();
-          onChange?.(after);
-        },
-      );
+      edited = true;
+      changed();
+      onChange?.(next);
     }
   });
 

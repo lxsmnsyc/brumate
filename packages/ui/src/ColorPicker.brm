@@ -16,7 +16,6 @@
   import { $effect, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { ColorPickerContext } from './contexts.ts';
   import { formatLike, parseColor, sameColor, toSpace, tryParseColor } from './color.ts';
-  import { afterWrite } from './fields.ts';
 
   /**
    * Holds a color for the color parts inside it. It has
@@ -52,20 +51,20 @@
     }
   });
 
-  function setValue(next: Color, text?: string) {
+  function setValue(next: Color, text?: string): Color {
     const written = text ?? formatLike(next, value);
+    const before = value;
+    const prev = color;
     color = next;
-    if (tryParseColor(written) && !sameColor(written, value)) {
-      const before = value;
+    if (tryParseColor(written) && !sameColor(written, before)) {
       value = written;
-      // The change handler gets the color that the caller keeps, and only when it changed.
-      afterWrite(
-        before,
-        written,
-        () => value,
-        (kept) => onChange?.(kept),
-      );
+      onChange?.(written);
+      // A setter that refuses leaves the old value, and the picker shows that one.
+      if (value !== written) {
+        color = Object.is(value, before) ? prev : fresh(value);
+      }
     }
+    return color;
   }
 
   $setContext(ColorPickerContext, { value, color, setValue });

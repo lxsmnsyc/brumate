@@ -39,7 +39,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { afterWrite, describedBy, onFormReset } from './fields.ts';
+  import { describedBy, onFormReset } from './fields.ts';
 
   /**
    * A group of checkboxes. It holds a Label, its
@@ -80,16 +80,9 @@
   const invalid = $memo(isInvalid || errors.length > 0);
 
   function toggle(item: string, checked: boolean) {
-    const before = value;
     const next = checked ? [...value.filter((other) => other !== item), item] : value.filter((other) => other !== item);
     value = next;
-    // The change handler gets the list that the caller keeps, and only when it changed.
-    afterWrite(
-      before,
-      next,
-      () => value,
-      (kept) => onChange?.(kept),
-    );
+    onChange?.(next);
   }
 
   function invalidated(text: string) {

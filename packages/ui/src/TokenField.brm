@@ -31,7 +31,7 @@
   import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { afterWrite, onFormReset } from './fields.ts';
+  import { onFormReset } from './fields.ts';
   import { TokenFieldContext, sameSegments, segmentsText } from './token-field.ts';
 
   /**
@@ -69,17 +69,9 @@
   const text = $memo(segmentsText(value));
 
   function setValue(next: TokenSegment[]) {
-    const before = value;
-    if (!sameSegments(next, before)) {
+    if (!sameSegments(next, value)) {
       value = next;
-      // The change handler gets the segments that the caller keeps, and only when they changed.
-      afterWrite(
-        before,
-        next,
-        () => value,
-        (kept) => onChange?.(kept),
-        sameSegments,
-      );
+      onChange?.(next);
     }
   }
 

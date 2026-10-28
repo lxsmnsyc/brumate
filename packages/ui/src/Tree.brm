@@ -81,7 +81,6 @@
   import { VirtualizerContext } from './virtualizer.ts';
   import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
   import TreeRow from './TreeRow.brm';
-  import { afterWrite } from './fields.ts';
 
   /**
    * A list of rows that nest and open and close. It renders a
@@ -153,17 +152,9 @@
   const gridId = $id();
 
   function setSelection(next: Key[]) {
-    const before = selectedKeys;
-    if (!sameKeys(next, before)) {
+    if (!sameKeys(next, selectedKeys)) {
       selectedKeys = next;
-      // The change handler gets the keys that the caller keeps, and only when they changed.
-      afterWrite(
-        before,
-        next,
-        () => selectedKeys,
-        (kept) => onSelectionChange?.(kept),
-        sameKeys,
-      );
+      onSelectionChange?.(next);
     }
   }
 

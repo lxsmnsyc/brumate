@@ -35,7 +35,6 @@
   import Button from './Button.brm';
   import { ToggleButtonContext, ToggleGroupContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
-  import { afterWrite } from './fields.ts';
 
   /**
    * A button that stays pressed. It is a Button with
@@ -69,22 +68,14 @@
   function toggle(event: PressEvent) {
     const given = slotProps(context, slot);
     // The new state, before the write changes `selected`.
-    const before = selected;
+    const next = !selected;
     if (group && id !== undefined) {
       group.toggle(id);
     } else {
-      isSelected = !before;
+      isSelected = next;
     }
-    // The change handlers get the state that the caller keeps, and only when it changed.
-    afterWrite(
-      before,
-      !before,
-      () => selected,
-      (kept) => {
-        given.onChange?.(kept);
-        onChange?.(kept);
-      },
-    );
+    given.onChange?.(next);
+    onChange?.(next);
     given.onPress?.(event);
     onPress?.(event);
   }

@@ -66,7 +66,6 @@
   import { DialogContext, FieldInputContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import { MENU_ITEMS, MenuContext, MenuTriggerContext, SubmenuContext } from './menu.ts';
-  import { afterWrite } from './fields.ts';
 
   /**
    * A list of actions or options. It opens in a Popover from a
@@ -120,17 +119,9 @@
         request: { shift: false, toggle: true },
         disabled: disabledKeys,
       });
-      const before = selectedKeys;
-      if (!sameKeys(next, before)) {
+      if (!sameKeys(next, selectedKeys)) {
         selectedKeys = next;
-        // The change handler gets the keys that the caller keeps, and only when they changed.
-        afterWrite(
-          before,
-          next,
-          () => selectedKeys,
-          (kept) => onSelectionChange?.(kept),
-          sameKeys,
-        );
+        onSelectionChange?.(next);
       }
     }
     onAction?.(key);

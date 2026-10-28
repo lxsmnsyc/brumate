@@ -64,7 +64,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { afterWrite, describedBy, isFirstInvalid, messagesOf, onFormReset } from './fields.ts';
+  import { describedBy, isFirstInvalid, messagesOf, onFormReset } from './fields.ts';
 
   /**
    * A field that picks one item from a list. It holds a
@@ -158,19 +158,10 @@
 
   function select(key: Key) {
     remember(key);
-    const before = selectedKey;
-    if (key !== before) {
+    if (key !== selectedKey) {
       selectedKey = key;
-      // The change handler gets the key that the caller keeps, and only when it changed.
-      afterWrite(
-        before,
-        key,
-        () => selectedKey,
-        (kept) => {
-          edited = true;
-          onSelectionChange?.(kept);
-        },
-      );
+      edited = true;
+      onSelectionChange?.(key);
     }
     // The browser checks the new value at once, so its message goes away.
     nativeErrors = [];

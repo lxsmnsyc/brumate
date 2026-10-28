@@ -33,23 +33,25 @@ function type(page: Page, selector: string, value: string) {
   input.dispatchEvent(new FocusEvent('blur'));
 }
 
-it('gives the handler the value that a rounding or uppercasing setter keeps, and only when it changed', async () => {
+it('tells the handler the value that the user asked for, and shows the value that the setter keeps', async () => {
   const page = await handlers();
   type(page, '.number-input', '14');
-  await page.waitFor(() => expect(state(page)[0]).toEqual([['number', 10]]), 10000);
-  // 12 rounds to the 10 that was kept before, so nothing changed.
-  const before = state(page)[0].length;
-  type(page, '.number-input', '12');
-  await new Promise((done) => setTimeout(done, 200));
-  expect(state(page)[0]).toHaveLength(before);
-  expect((page.get('.number-input') as HTMLInputElement).value).toBe('10');
+  await page.waitFor(() => expect(state(page)[0]).toEqual([['number', 14]]), 10000);
+  // The setter rounds to the 10 that it keeps, and the field shows that one.
+  await page.waitFor(() => expect(state(page)[2]).toBe(10));
+  await page.waitFor(() =>
+    expect((page.get('.number-input') as HTMLInputElement).value).toBe('10'),
+  );
   type(page, '.hex-input', '#123abc');
-  await page.waitFor(() => expect(state(page)[0]).toContainEqual(['hex', '#123ABC']), 10000);
-  expect((page.get('.hex-input') as HTMLInputElement).value).toBe('#123ABC');
-  expect(state(page)[3]).toBe('#123ABC');
+  await page.waitFor(() => expect(state(page)[0]).toHaveLength(2), 10000);
+  expect(String(state(page)[0][1]![1]).toLowerCase()).toBe('#123abc');
+  await page.waitFor(() => expect(state(page)[3]).toBe('#123ABC'));
+  await page.waitFor(() =>
+    expect((page.get('.hex-input') as HTMLInputElement).value).toBe('#123ABC'),
+  );
 });
 
-it('calls no change handler when a setter refuses', async () => {
+it('tells the handler the value that the user asked for when a setter refuses, and keeps the display', async () => {
   const page = await handlers();
   type(page, '.text-input', 'ab');
   type(page, '.search-input', 'qq');
@@ -63,21 +65,23 @@ it('calls no change handler when a setter refuses', async () => {
   (page.get('.fruit-trigger') as HTMLElement).click();
   await page.waitFor(() => expect(document.querySelector('.pear')).not.toBeNull(), 10000);
   (document.querySelector('.pear') as HTMLElement).click();
-  // Every setter ran, and none of them kept the value.
-  await page.waitFor(
-    () =>
-      expect([...state(page)[1]].toSorted()).toEqual([
-        'box',
-        'fruit',
-        'power',
-        'search',
-        'sizes',
-        'slider',
-        'text',
-        'toppings',
-      ]),
-    10000,
-  );
+  await page.waitFor(() => expect(state(page)[1]).toHaveLength(8), 10000);
   await new Promise((done) => setTimeout(done, 200));
-  expect(state(page)[0]).toEqual([]);
+  const calls = Object.fromEntries(state(page)[0] as [string, unknown][]);
+  expect(calls).toEqual({
+    text: 'ab',
+    search: 'qq',
+    slider: 70,
+    box: true,
+    power: true,
+    sizes: 'large',
+    toppings: ['ham', 'egg'],
+    fruit: 'pear',
+  });
+  // The setters kept the old values, and so do the parts and their inputs.
+  expect(thumb.value).toBe('50');
+  for (const selector of ['.box', '.power', '.large', '.egg']) {
+    expect((page.get(`${selector} input`) as HTMLInputElement).checked).toBe(false);
+    expect(page.get(selector).hasAttribute('data-selected')).toBe(false);
+  }
 });

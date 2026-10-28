@@ -5,7 +5,9 @@
   import CheckboxGroup from '../../src/CheckboxGroup.brm';
   import ColorArea from '../../src/ColorArea.brm';
   import ColorField from '../../src/ColorField.brm';
+  import ColorPicker from '../../src/ColorPicker.brm';
   import ColorSlider from '../../src/ColorSlider.brm';
+  import ColorSwatch from '../../src/ColorSwatch.brm';
   import ColorThumb from '../../src/ColorThumb.brm';
   import ColorWheel from '../../src/ColorWheel.brm';
   import ColorWheelTrack from '../../src/ColorWheelTrack.brm';
@@ -30,6 +32,7 @@
   let wheel = $signal('hsb(210, 50%, 80%)');
   let time = $signal<string | null>('14:30');
   let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
+  let picked = $signal('hsb(210, 50%, 80%)');
   let toppings = $signal(['ham']);
   let size = $signal<string | null>('small');
   let box = $signal(false);
@@ -77,6 +80,12 @@
       <DateInput slot="end" class="stay-end" />
     </Group>
   </DateRangePicker>
+  <ColorPicker value=$bind(picked, (next) => { if (!held) picked = next; })>
+    <ColorArea class="pk-area" xChannel="saturation" yChannel="brightness"><ColorThumb class="pk-area-thumb" /></ColorArea>
+    <ColorSlider class="pk-slider" channel="hue"><SliderTrack style="width: 200px; height: 20px"><ColorThumb class="pk-slider-thumb" /></SliderTrack></ColorSlider>
+    <ColorField class="pk-field"><Input class="pk-field-input" /></ColorField>
+    <ColorSwatch class="pk-swatch" />
+  </ColorPicker>
   <button class="reset" type="reset">Reset</button>
 </form>
 <form class="choices">
@@ -94,5 +103,5 @@
   <Switch class="later" name="later" isSelected=$bind(later, save)>Later</Switch>
 </form>
 <button class="hold" type="button" onClick=(() => (held = true))>Hold</button>
-<p class="state">{JSON.stringify([count, hex, hue, area, wheel, time, stay, toppings, size, box, later])}</p>
+<p class="state">{JSON.stringify([count, hex, hue, area, wheel, time, stay, picked, toppings, size, box, later])}</p>
 <p class="held-flag">{String(held)}</p>

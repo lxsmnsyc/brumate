@@ -30,7 +30,7 @@
   import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { NumberFormatter } from '@internationalized/number';
   import { LabelContext } from './contexts.ts';
-  import { afterWrite, onFormReset } from './fields.ts';
+  import { onFormReset } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import { snapToStep } from './numbers.ts';
   import { SliderContext, thumbId } from './slider.ts';
@@ -108,10 +108,6 @@
       : texts.join(', ');
   }
 
-  function sameValue(a: number | number[], b: number | number[]): boolean {
-    return a === b || (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, at) => item === b[at]));
-  }
-
   function emit(list: number[]): number | number[] {
     return Array.isArray(value) ? list : list[0]!;
   }
@@ -127,17 +123,9 @@
       return;
     }
     const list = values.map((item, at) => (at === index ? snapped : item));
-    const before = value;
     const written = emit(list);
     value = written;
-    // The change handler gets the value that the caller keeps, and only when it changed.
-    afterWrite(
-      before,
-      written,
-      () => value,
-      (kept) => onChange?.(kept),
-      sameValue,
-    );
+    onChange?.(written);
   }
 
   function setDragging(index: number, next: boolean) {

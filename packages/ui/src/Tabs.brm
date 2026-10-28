@@ -31,7 +31,6 @@
   import { $client, $effect, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
   import { enabledItems, keyOf } from './collection.ts';
   import { TabsContext } from './tabs.ts';
-  import { afterWrite } from './fields.ts';
 
   /**
    * Tabs that show one panel at a time. It holds a TabList with
@@ -76,14 +75,8 @@
     const first = list ? enabledItems(list, 'tab')[0] : undefined;
     const key = first ? keyOf(first) : undefined;
     if (key !== undefined) {
-      const before = selectedKey;
       selectedKey = key;
-      afterWrite(
-        before,
-        key,
-        () => selectedKey,
-        (kept) => onSelectionChange?.(kept as Key),
-      );
+      onSelectionChange?.(key);
     }
   }
   $client(() => check(), 'idle');
@@ -95,15 +88,8 @@
 
   function select(key: Key) {
     if (key !== selectedKey && !isDisabled && !disabledKeys.includes(key)) {
-      const before = selectedKey;
       selectedKey = key;
-      // The change handler gets the key that the caller keeps, and only when it changed.
-      afterWrite(
-        before,
-        key,
-        () => selectedKey,
-        (kept) => onSelectionChange?.(kept as Key),
-      );
+      onSelectionChange?.(key);
     }
   }
 

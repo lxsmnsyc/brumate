@@ -58,15 +58,16 @@ function shown(page: Page) {
       ...values('.slider input'),
       page.get('.slider-thumb input').getAttribute('aria-valuetext'),
     ],
-    area: [
-      ...values('.area input'),
-      ...[...document.querySelectorAll('.area input')].map((item) =>
-        item.getAttribute('aria-valuetext'),
-      ),
-    ],
+    area: values('.area input'),
     wheel: [...values('.wheel input'), page.get('.wheel input').getAttribute('aria-valuetext')],
     wheelThumb: page.get('.wheel-thumb').getAttribute('style'),
     time: [texts(page, '.time-input'), ...values('.time input')],
+    picker: [
+      input(page, '.pk-field-input').value,
+      ...values('.pk-area input'),
+      ...values('.pk-slider input'),
+      page.get('.pk-swatch').getAttribute('style'),
+    ],
     stay: [texts(page, '.stay-start'), texts(page, '.stay-end'), ...values('.stay input')],
   };
 }
@@ -80,6 +81,8 @@ async function edit(page: Page) {
   slide(input(page, '.wheel input'), 100);
   step(page, '.time-input [data-type="hour"]', 'ArrowUp');
   step(page, '.stay-start [data-type="day"]', 'ArrowUp');
+  type(input(page, '.pk-field-input'), '#2563eb');
+  slide(input(page, '.pk-slider input'), 120);
   await new Promise((done) => setTimeout(done, 100));
 }
 
@@ -105,6 +108,7 @@ it('shows what the caller keeps when a setter refuses an edit or a reset', async
   expect(kept).not.toEqual(first);
   expect(edited[0]).toBe(7);
   expect(edited[1]).toBe('#0000FF');
+  expect(edited[7]).not.toBe('hsb(210, 50%, 80%)');
   page.click('.hold');
   await page.waitFor(() => expect(page.text('.held-flag')).toBe('true'));
   // Edits that the setters refuse leave the display as it was.
@@ -115,6 +119,9 @@ it('shows what the caller keeps when a setter refuses an edit or a reset', async
   slide(input(page, '.wheel input'), 20);
   step(page, '.time-input [data-type="hour"]', 'ArrowUp');
   step(page, '.stay-start [data-type="day"]', 'ArrowUp');
+  type(input(page, '.pk-field-input'), '#ff0000');
+  slide(input(page, '.pk-area input'), 20);
+  slide(input(page, '.pk-slider input'), 10);
   press('PageUp', input(page, '.number-input'));
   press('PageUp', input(page, '.hex-input'));
   step(page, '.stay-end [data-type="day"]', 'ArrowDown');
@@ -138,7 +145,7 @@ it('puts the inputs of groups and boxes back after a refused click', async () =>
   page.get('.large input').click();
   page.get('.box input').click();
   await page.waitFor(
-    () => expect(state(page).slice(7, 10)).toEqual([['ham', 'egg'], 'large', true]),
+    () => expect(state(page).slice(8, 11)).toEqual([['ham', 'egg'], 'large', true]),
     10000,
   );
   page.click('.hold');
@@ -147,7 +154,7 @@ it('puts the inputs of groups and boxes back after a refused click', async () =>
   page.get('.small input').click();
   page.get('.box input').click();
   await new Promise((done) => setTimeout(done, 100));
-  expect(state(page).slice(7, 10)).toEqual([['ham', 'egg'], 'large', true]);
+  expect(state(page).slice(8, 11)).toEqual([['ham', 'egg'], 'large', true]);
   expect(checked('.toppings')).toEqual([true, true]);
   expect(checked('.sizes')).toEqual([false, true]);
   expect(checked('.box')).toEqual([true]);

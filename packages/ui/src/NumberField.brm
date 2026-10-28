@@ -68,7 +68,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { afterWrite, describedBy, messagesOf, onFormReset } from './fields.ts';
+  import { describedBy, messagesOf, onFormReset } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import {
     addStep,
@@ -194,19 +194,10 @@
   }
 
   function setValue(next: number) {
-    const before = value;
-    if (!Object.is(next, before)) {
+    if (!Object.is(next, value)) {
       value = next;
-      // The change handler gets the number that the caller keeps, and only when it changed.
-      afterWrite(
-        before,
-        next,
-        () => value,
-        (kept) => {
-          edited = true;
-          onChange?.(kept);
-        },
-      );
+      edited = true;
+      onChange?.(next);
     }
     text = format(value);
   }
