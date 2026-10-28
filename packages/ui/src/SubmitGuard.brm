@@ -2,7 +2,7 @@
   import type { Bindable } from 'brumate/signals';
   import { $client, $props } from 'brumate/signals';
 
-  let { ref } = $props<{ ref?: Bindable<HTMLElement | undefined> }>();
+  let { ref } = $props<{ ref?: Bindable<Element | undefined> }>();
 
   // Cancels a submit of the form while the submit button is pending: a click on it, or Enter in a
   // field, which the browser sends as a click on the default button, the first submit button of
