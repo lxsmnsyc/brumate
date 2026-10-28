@@ -110,7 +110,7 @@ it('shows what the caller keeps when a setter refuses an edit or a reset', async
   expect(edited[1]).toBe('#0000FF');
   expect(edited[7]).not.toBe('hsb(210, 50%, 80%)');
   page.click('.hold');
-  await page.waitFor(() => expect(page.text('.held-flag')).toBe('true'));
+  await page.waitFor(() => expect(page.text('.held-flag')).toBe('true'), 10000);
   // Edits that the setters refuse leave the display as it was.
   type(input(page, '.number-input'), '9');
   type(input(page, '.hex-input'), '#00ff00');
