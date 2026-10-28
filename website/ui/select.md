@@ -28,6 +28,17 @@ A field that picks one item from a list, which opens from a button.
 
 ## Anatomy
 
+```brm anatomy SelectAnatomy
+`Label`: Names the field. It is read with the value as the name of the Button.
+`Button`: Opens the list. It shows the focus ring and `aria-expanded`.
+`SelectValue`: Shows the text of the selected item, or the placeholder.
+`Text` with `slot="description"`: Describes the field. Optional.
+`Popover`: Holds the list. It opens next to the Button and closes on Escape or a press outside.
+`ListBoxItem`: One choice. The selected item shows `data-selected`.
+```
+
+The picture draws the Popover in place, open, so that it can carry a number. The real Popover opens in a layer at the end of the page.
+
 ```html
 <Select>
   <Label />
@@ -96,11 +107,47 @@ The items show [the attributes of a ListBoxItem](./list-box.md#data-attributes).
 
 ## Controlled and uncontrolled
 
-`selectedKey` holds the key of the selected item, or `null`. `selectedKey=(key)` starts the field's own selection, and `selectedKey=$bind(signal)` writes your signal. `onSelectionChange` gets each new key. `isOpen` holds whether the list is open in the same way, and `onOpenChange` gets each change. A reset of the form gives back the key that the Select started with. See [State](./state.md).
+`selectedKey` holds the key of the selected item, or `null`. `isOpen` holds whether the list is open in the same way. How you pass each one picks who keeps it:
+
+```brm demo SelectStateDemo
+
+```
+
+- `selectedKey` alone, or nothing, makes the Select keep its own selection. `selectedKey="cat"` is where that selection starts. Pick another item and the Select keeps the pick. A new value from you replaces it.
+- `selectedKey=$bind(signal)` writes your signal. Change the signal and the Select follows.
+- `selectedKey=$bind(signal, (next) => ...)` asks you first. The Select shows what you keep, so a request that you ignore leaves the old key. Press Lock above and pick an item in the last field.
+- `onSelectionChange` gets each new key in every shape, and `onOpenChange` each change of `isOpen`.
+- A reset of the form gives back the key that the Select started with, as a write: with `$bind(signal, request)`, your request can refuse it. The server renders the key it starts with.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
-Style the field with the data attributes above, such as `[data-open]` and `[data-invalid]`, and the value with `[data-placeholder]`. The Button and the items show their own attributes. See [Styling](./styling.md).
+Style the field with the data attributes above, such as `[data-open]` and `[data-invalid]`, and the value with `[data-placeholder]`. The Button and the items show their own attributes. The Popover sets `--trigger-width`, the width of the Button, and `--available-height`, the room left in the window. See [Styling](./styling.md) for the attributes of every part.
+
+This stylesheet styles every state: rest, hover, press, keyboard focus, open, invalid, disabled, and the items of the list. Open the list, tab to the Button, or press Order with nothing chosen. Its tokens are at the top, and they follow the color scheme.
+
+```brm styled SelectStyled
+
+```
+
+## Use cases
+
+### A Select in a form
+
+Put `name` on the Select and it sends the key with its form, also before the code of the page loads. `isRequired` makes the browser check it, and the FieldError shows the message. A Reset button gives back the key that the Select started with.
+
+```brm demo SelectFormDemo
+
+```
+
+### Sections with descriptions
+
+A `ListBoxSection` with a `Header` groups the items. An item with a `Text` of `slot="label"` and one of `slot="description"` needs `hasLabel` and `hasDescription`, and `textValue` sets what the Button shows and what typing matches.
+
+```brm demo SelectSectionsDemo
+
+```
 
 ## Opening and choosing
 

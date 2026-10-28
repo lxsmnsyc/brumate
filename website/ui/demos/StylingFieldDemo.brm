@@ -1,0 +1,107 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<Form class="styling-field-form">
+  <TextField class="styling-field" name="email" type="email" isRequired>
+    <Label class="styling-field-label">Email</Label>
+    <Input class="styling-field-input" />
+    <Text slot="description" class="styling-field-help">We send the receipt here.</Text>
+    <FieldError class="styling-field-error" />
+  </TextField>
+  <TextField class="styling-field" isDisabled value="Locked">
+    <Label class="styling-field-label">Plan</Label>
+    <Input class="styling-field-input" />
+  </TextField>
+  <Button type="submit" class="styling-field-submit">Send</Button>
+</Form>
+
+<style>
+  :global(.styling-field-form) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --styling-field-accent: light-dark(#2a76b2, #6fb2e6);
+    --styling-field-danger: light-dark(#c4271d, #f28b82);
+    display: grid;
+    gap: 0.75rem;
+    width: min(18rem, 100%);
+  }
+
+  :global(.styling-field) {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  :global(.styling-field-label) {
+    font-weight: 600;
+  }
+
+  :global(.styling-field-input) {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas);
+    border-radius: 8px;
+    background: Canvas;
+    color: CanvasText;
+    font: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.styling-field-input[data-hovered]) {
+    border-color: var(--styling-field-accent);
+  }
+
+  :global(.styling-field-input[data-focused]) {
+    border-color: var(--styling-field-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--styling-field-accent) 25%, transparent);
+    outline: none;
+  }
+
+  :global(.styling-field-input[data-invalid]) {
+    border-color: var(--styling-field-danger);
+  }
+
+  :global(.styling-field-input[data-invalid][data-focused]) {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--styling-field-danger) 25%, transparent);
+  }
+
+  :global(.styling-field-input[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* The field carries the state of the whole group, so a label can use it too. */
+  :global(.styling-field[data-invalid] .styling-field-label) {
+    color: var(--styling-field-danger);
+  }
+
+  :global(.styling-field-help) {
+    color: color-mix(in srgb, CanvasText 60%, Canvas);
+    font-size: 0.875rem;
+  }
+
+  :global(.styling-field-error) {
+    color: var(--styling-field-danger);
+    font-size: 0.875rem;
+  }
+
+  :global(.styling-field-submit) {
+    justify-self: start;
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--styling-field-accent);
+    color: Canvas;
+    font: inherit;
+    font-weight: 600;
+  }
+
+  :global(.styling-field-submit[data-focus-visible]) {
+    outline: 2px solid var(--styling-field-accent);
+    outline-offset: 2px;
+  }
+</style>

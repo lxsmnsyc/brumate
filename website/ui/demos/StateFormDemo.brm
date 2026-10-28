@@ -1,0 +1,17 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<Form class="ui-form">
+  <TextField class="ui-field" name="name" value="Ada">
+    <Label>Name</Label>
+    <Input class="ui-input" />
+  </TextField>
+  <div class="ui-row">
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+</Form>

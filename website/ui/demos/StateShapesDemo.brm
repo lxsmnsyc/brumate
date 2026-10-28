@@ -1,0 +1,16 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+
+  let subscribed = $signal(false);
+  let locked = $signal(false);
+</script>
+
+<div class="ui-stack">
+  <Checkbox class="ui-box"><span class="ui-mark" aria-hidden="true"></span>Own state, starts off</Checkbox>
+  <Checkbox class="ui-box" isSelected><span class="ui-mark" aria-hidden="true"></span>Own copy, starts on</Checkbox>
+  <Checkbox class="ui-box" isSelected=$bind(subscribed)><span class="ui-mark" aria-hidden="true"></span>Writes your signal</Checkbox>
+  <Checkbox class="ui-box" isSelected=$bind(subscribed, (next) => { if (!locked) subscribed = next; })><span class="ui-mark" aria-hidden="true"></span>Asks you first</Checkbox>
+  <label class="ui-box"><input type="checkbox" checked=(locked) onChange=(() => (locked = !locked)) /> Lock the signal</label>
+  <p>Signal: {String(subscribed)}.</p>
+</div>

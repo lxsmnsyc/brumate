@@ -1,0 +1,220 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Select from '@brumate/ui/Select.brm';
+  import SelectValue from '@brumate/ui/SelectValue.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  const sizes = ['Small', 'Medium', 'Large', 'Extra large'];
+</script>
+
+<Form class="select-styled-form">
+  <Select class="select-styled" name="size" isRequired>
+    <Label class="select-styled-label">Size</Label>
+    <Button class="select-styled-button"><SelectValue class="select-styled-value" /></Button>
+    <Text slot="description" class="select-styled-help">Pick the size of your order.</Text>
+    <FieldError class="select-styled-error" />
+    <Popover class="select-styled-popover">
+      <ListBox class="select-styled-list">
+        #for (size of sizes by size) {
+          <ListBoxItem id=(size.toLowerCase()) class="select-styled-item" isDisabled=(size === 'Extra large')>{size}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </Select>
+  <Button type="submit" class="select-styled-submit">Order</Button>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.select-styled-form),
+  :global(.select-styled-popover) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --select-styled-bg: Canvas;
+    --select-styled-text: CanvasText;
+    --select-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --select-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --select-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --select-styled-on-accent: light-dark(#fff, #101418);
+    --select-styled-danger: light-dark(#c4271d, #f28b82);
+    --select-styled-radius: 8px;
+  }
+
+  :global(.select-styled-form) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: end;
+    color: var(--select-styled-text);
+  }
+
+  :global(.select-styled) {
+    display: grid;
+    gap: 0.3rem;
+    width: 14rem;
+  }
+
+  :global(.select-styled-label) {
+    font-weight: 600;
+  }
+
+  /* The button: rest, hover, press, focus, open, disabled and invalid. */
+  :global(.select-styled-button) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--select-styled-border);
+    border-radius: var(--select-styled-radius);
+    background: var(--select-styled-bg);
+    color: var(--select-styled-text);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.select-styled-button)::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    rotate: 45deg;
+    translate: 0 -2px;
+    transition: rotate 0.15s;
+  }
+
+  :global(.select-styled-button[data-hovered]) {
+    border-color: var(--select-styled-accent);
+  }
+
+  :global(.select-styled-button[data-pressed]) {
+    background: color-mix(in srgb, var(--select-styled-accent) 12%, var(--select-styled-bg));
+  }
+
+  :global(.select-styled-button[data-focus-visible]) {
+    outline: 2px solid var(--select-styled-accent);
+    outline-offset: 2px;
+  }
+
+  :global(.select-styled[data-open] .select-styled-button) {
+    border-color: var(--select-styled-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--select-styled-accent) 25%, transparent);
+  }
+
+  :global(.select-styled[data-open] .select-styled-button)::after {
+    rotate: 225deg;
+    translate: 0 2px;
+  }
+
+  :global(.select-styled[data-disabled] .select-styled-button) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.select-styled[data-invalid] .select-styled-button) {
+    border-color: var(--select-styled-danger);
+  }
+
+  :global(.select-styled-value[data-placeholder]) {
+    color: var(--select-styled-muted);
+  }
+
+  :global(.select-styled-help) {
+    color: var(--select-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.select-styled-error) {
+    color: var(--select-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  /* The list: as wide as the button, and it fades and rises while it opens and closes. */
+  :global(.select-styled-popover) {
+    box-sizing: border-box;
+    width: var(--trigger-width);
+    max-height: var(--available-height);
+    overflow: auto;
+    border: 1px solid var(--select-styled-border);
+    border-radius: var(--select-styled-radius);
+    background: var(--select-styled-bg);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+    transition: opacity 0.15s, translate 0.15s;
+  }
+
+  :global(.select-styled-popover[data-closed]) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+
+  :global(.select-styled-list) {
+    display: grid;
+    padding: 0.25rem;
+    outline: none;
+  }
+
+  /* The items: hover, keyboard focus, selected and disabled. */
+  :global(.select-styled-item) {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    outline: none;
+  }
+
+  :global(.select-styled-item[data-hovered]) {
+    background: color-mix(in srgb, var(--select-styled-accent) 12%, var(--select-styled-bg));
+  }
+
+  /* Two bands, so the ring shows on the page and on the accent fill of a selected item. */
+  :global(.select-styled-item[data-focus-visible]) {
+    box-shadow:
+      inset 0 0 0 2px var(--select-styled-accent),
+      inset 0 0 0 4px var(--select-styled-bg);
+  }
+
+  :global(.select-styled-item[data-selected]) {
+    background: var(--select-styled-accent);
+    color: var(--select-styled-on-accent);
+  }
+
+  :global(.select-styled-item[data-selected])::after {
+    content: '✓';
+  }
+
+  :global(.select-styled-item[data-disabled]) {
+    color: var(--select-styled-muted);
+    cursor: not-allowed;
+  }
+
+  :global(.select-styled-submit) {
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: var(--select-styled-radius);
+    background: var(--select-styled-accent);
+    color: var(--select-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  :global(.select-styled-submit[data-focus-visible]) {
+    outline: 2px solid var(--select-styled-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.select-styled-button),
+    :global(.select-styled-button)::after,
+    :global(.select-styled-popover) {
+      transition: none;
+    }
+  }
+</style>
