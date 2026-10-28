@@ -5,69 +5,63 @@
   let saved = $signal(0);
 </script>
 
-<Button class="sb" onPress=(() => saved++)>Save ({saved})</Button>
-<Button class="sb sb-quiet">Cancel</Button>
-<Button class="sb" isDisabled>Disabled</Button>
-<Button class="sb" isPending>Pending</Button>
+<Button class="styling-button" onPress=(() => saved++)>Save ({saved})</Button>
+<Button class="styling-button styling-button-quiet">Cancel</Button>
+<Button class="styling-button" isDisabled>Disabled</Button>
+<Button class="styling-button" isPending>Pending</Button>
 
 <style>
-  :global(.sb) {
-    --sb-accent: #2a76b2;
-    --sb-on-accent: #fff;
+  :global(.styling-button) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --styling-button-accent: light-dark(#2a76b2, #6fb2e6);
+    --styling-button-on-accent: light-dark(#fff, #101418);
     padding: 0.5rem 1rem;
     border: 1px solid transparent;
     border-radius: 8px;
-    background: var(--sb-accent);
-    color: var(--sb-on-accent);
+    background: var(--styling-button-accent);
+    color: var(--styling-button-on-accent);
     font: inherit;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.15s, scale 0.1s;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :global(.sb) {
-      --sb-accent: #6fb2e6;
-      --sb-on-accent: #101418;
-    }
+  :global(.styling-button[data-hovered]) {
+    background: color-mix(in srgb, var(--styling-button-accent) 85%, CanvasText);
   }
 
-  :global(.sb[data-hovered]) {
-    background: color-mix(in srgb, var(--sb-accent) 85%, CanvasText);
-  }
-
-  :global(.sb[data-pressed]) {
+  :global(.styling-button[data-pressed]) {
     scale: 0.97;
   }
 
-  :global(.sb[data-focus-visible]) {
-    outline: 2px solid var(--sb-accent);
+  :global(.styling-button[data-focus-visible]) {
+    outline: 2px solid var(--styling-button-accent);
     outline-offset: 2px;
   }
 
-  :global(.sb[data-disabled]) {
+  :global(.styling-button[data-disabled]) {
     opacity: 0.45;
     cursor: not-allowed;
   }
 
   /* A pending button keeps its focus and presses nothing. */
-  :global(.sb[data-pending]) {
+  :global(.styling-button[data-pending]) {
     cursor: progress;
     opacity: 0.7;
   }
 
-  :global(.sb-quiet) {
+  :global(.styling-button-quiet) {
     border-color: color-mix(in srgb, CanvasText 25%, Canvas);
     background: transparent;
     color: inherit;
   }
 
-  :global(.sb-quiet[data-hovered]) {
+  :global(.styling-button-quiet[data-hovered]) {
     background: color-mix(in srgb, CanvasText 8%, Canvas);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.sb) {
+    :global(.styling-button) {
       transition: none;
     }
   }

@@ -11,7 +11,7 @@
 <!-- The picture draws the list open in place, since a real Popover renders in a layer at the end of <body>. -->
 <Select class="ui-select" selectedKey="cat">
   <Label data-mark="1" data-mark-side="after">Favorite animal</Label>
-  <Button class="ui-button ui-select-button" data-mark="2"><SelectValue class="ui-select-value" data-mark="3" data-mark-side="after" /></Button>
+  <Button class="ui-button ui-select-button" data-mark="2"><SelectValue class="ui-select-value" data-mark="3" data-mark-side="after" render=catValue /></Button>
   <Text slot="description" class="ui-help" data-mark="4" data-mark-side="after">Pick the one you like best.</Text>
 </Select>
 <div class="anatomy-popover" data-mark="5">
@@ -20,3 +20,7 @@
     <ListBoxItem id="dog" class="ui-option">Dog</ListBoxItem>
   </ListBox>
 </div>
+
+#template catValue(state) {
+  Cat
+}

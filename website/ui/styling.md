@@ -22,7 +22,7 @@ The parts render no CSS. Style them with classes and the `data-*` attributes of 
 ```
 
 - A `class` that you pass adds to the classes of the part.
-- The styles of a component are scoped to the elements that it writes. A part renders its own elements, so select them with `:global`, under a class of yours.
+- The styles of a component are scoped to the elements that it writes. A part renders its own elements, so select them with `:global`, under a class of yours. The examples on this page are written as brumate components, so their rules say `:global(.name)`. In a plain stylesheet, write `.name` and drop `:global(...)`.
 - An attribute is there only while the state is on, such as `[data-selected]`. It is never `data-selected="false"`.
 
 ## The attributes
@@ -79,12 +79,13 @@ An overlay renders in a layer at the end of `<body>`, so a rule that depends on 
 
 ## Dark mode
 
-The parts have no colors, so dark mode is the CSS you write. Two ways work, and the examples above use both:
+The parts have no colors, so dark mode is the CSS you write. The examples above follow the theme of the page, in both directions, with no media query:
 
-- Use system colors such as `Canvas`, `CanvasText` and `color-mix()`, which follow `color-scheme`.
-- Keep the colors in custom properties on the root class of the part, and override them in `@media (prefers-color-scheme: dark)`. For a switch in the page, override them under `[data-theme='dark']` too. Check the contrast of text on the accent in both themes.
+- Set `color-scheme: light dark` on the page, or `color-scheme: dark` for a dark theme. The system colors (`Canvas`, `CanvasText`) and `light-dark(a, b)` then pick their color from it. This site sets `color-scheme` from its theme toggle, so the examples follow the toggle and not only the system setting.
+- Keep the colors in custom properties on the root class of the part, as `--select-styled-accent: light-dark(#2a76b2, #6fb2e6)`. A rule for an overlay puts the custom properties on the overlay class as well, since the layer is not inside your root.
+- `@media (prefers-color-scheme: dark)` is the other way. It follows the system and ignores a toggle in the page, so use it only when the page has no toggle.
 
-A rule for an overlay puts the custom properties on the overlay class as well, since the layer is not inside your root.
+Check the contrast of text on the accent in both themes.
 
 ## Boxes
 

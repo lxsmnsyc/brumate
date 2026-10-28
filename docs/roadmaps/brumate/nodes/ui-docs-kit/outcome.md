@@ -47,20 +47,35 @@ The demo is a part with a full stylesheet in its own `<style>` block, so the pag
 
 Under `## Controlled and uncontrolled`, give a live demo of the shapes that the part has (own, own copy, `$bind`, `$bind` with a setter), then one bullet each for when to use it, the change callbacks, the form reset and the server render. SelectStateDemo is the model.
 
+### Parts that the picture cannot mark directly
+
+- A part that is `position: absolute` or `fixed`, a table row or cell, or one whose element uses `::before` itself cannot carry a badge. Wrap it in an element of your own and put `data-mark` on the wrapper.
+- A Dialog or a DatePicker needs several inert layers drawn in place (the trigger, the overlay, the dialog). Draw each one in a block of its own with a `data-mark`. The Select-sized `max-width` of `.anatomy-popover` does not fit them: give the wrapper a class of your own, or override it.
+- The demo name must end in `Anatomy` (`SelectAnatomy`). The drift test fails otherwise.
+
 ### Checklist
 
-1. `brm anatomy` above the tag tree, one line per piece, same order as the tags.
-2. Every piece marked with `data-mark`, and the count of marks equals the lines.
-3. One `brm styled` example with the states above, and its own class prefix.
-4. A state section with a live demo, if the part has state.
-5. Use cases (`## Use cases`, after Styling) that compose parts, each with a live demo.
-6. `node scripts/check-samples.ts`, the build, and the e2e flow for the page (copy the /ui/select flow with the new slug).
+1. `brm anatomy` above the tag tree, one line per piece, in the order of the tags. Each line starts with the tag name in backticks.
+2. Every piece marked with `data-mark`, numbers 1 to N once each, N equal to the lines. `website/test/anatomy.test.ts` checks this, the demo files, and the order against the tag tree.
+3. For an overlay part (Popover, Dialog, Modal, Menu, ...): one visible sentence under the picture, "The picture draws the Popover in place, open, so that it can carry a number. The real Popover opens in a layer at the end of the page." The test requires the words "draws the Popover in place" when the demo has an `anatomy-popover` block.
+4. A text that the picture shows must match the text of the real part. A SelectValue shows the key before the code loads, so pass `render` with a template that names the item.
+5. One `brm styled` example with the states above. Class names are long and readable, `<part>-styled-<piece>` (`select-styled-button`), and no class is shared with another demo. The test checks the second rule.
+6. Colors in `light-dark()` (and system colors) so the demo follows the site toggle in both directions. Never `@media (prefers-color-scheme)` alone.
+7. A focus ring that shows on the fill of a selected item: two bands, an accent one and an inner one in the page color.
+8. A state section with a live demo, if the part has state. Say what the part does on a form reset: see the list below.
+9. Use cases (`## Use cases`, after Styling) that compose parts, each with a live demo.
+10. `node scripts/check-samples.ts`, the website tests and build, and an e2e flow for the page (copy the /ui/select flow with the new slug).
+
+### Form reset, as state.md states it
+
+- Reset: TextField, NumberField, Select, Slider, ColorField, ColorSlider, ColorArea, ColorWheel, DateField, TimeField, DateRangePicker. The reset is a write, so a `$bind` setter can refuse it.
+- No reset handler in packages/ui/src: Checkbox, Switch, CheckboxGroup, RadioGroup, ComboBox, SearchField, TokenField. The node ui-form-reset adds them. DatePicker, ToggleButton and the rest were not checked.
 
 ## Deviations
 
 - The anatomy block takes its list from the fence body, not from the tag tree, so it can drift. The checklist asks the author to compare them.
 - No use case of a list loaded from the server: a server function needs the server of the site, which the demos do not run. Left for the family nodes if a page needs it.
-- The popover in the picture is drawn in place, not the real Popover.
+- The popover in the picture is drawn in place, not the real Popover. A sentence under the picture says so.
 
 ## Gotchas
 

@@ -12,5 +12,5 @@
   <Checkbox class="ui-box" isSelected=$bind(subscribed)><span class="ui-mark" aria-hidden="true"></span>Writes your signal</Checkbox>
   <Checkbox class="ui-box" isSelected=$bind(subscribed, (next) => { if (!locked) subscribed = next; })><span class="ui-mark" aria-hidden="true"></span>Asks you first</Checkbox>
   <label class="ui-box"><input type="checkbox" checked=(locked) onChange=(() => (locked = !locked)) /> Lock the signal</label>
-  <p>Signal: {subscribed}.</p>
+  <p>Signal: {String(subscribed)}.</p>
 </div>

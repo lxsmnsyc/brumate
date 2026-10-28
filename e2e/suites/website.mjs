@@ -487,6 +487,46 @@ export async function run({ browser, url, runner }) {
       },
     );
     await flow(
+      '/ui/styling: the styled examples follow the theme toggle, with no contrast violations',
+      async () => {
+        // The toggle of the site, not the system setting, picks the theme. Each system setting
+        // meets both choices of the toggle.
+        for (const system of ['light', 'dark']) {
+          await page.emulateMedia({ colorScheme: system });
+          await page.goto(`${url}/ui/styling`, { waitUntil: 'load' });
+          for (const theme of ['light', 'dark']) {
+            await page.evaluate((name) => {
+              document.documentElement.dataset.theme = name;
+            }, theme);
+            // The examples animate their colors, so wait for the change to settle.
+            await page.waitForTimeout(400);
+            // The accent of the examples is a fill, so a selected item shows it behind its text.
+            const fill = await page.evaluate(
+              () =>
+                getComputedStyle(document.querySelector('.styling-list-item[data-selected]'))
+                  .backgroundColor,
+            );
+            assert(
+              theme === 'dark' ? fill === 'rgb(111, 178, 230)' : fill === 'rgb(42, 118, 178)',
+              `the selected item is ${fill} in the ${theme} theme with a ${system} system`,
+            );
+            await page.addScriptTag({ path: axe });
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run(document.querySelector('article'), {
+                runOnly: ['color-contrast'],
+              });
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in ${theme}/${system}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow(
       '/ui: each page of the sidebar loads, with no accessibility violations',
       async () => {
         await page.goto(`${url}/ui`, { waitUntil: 'load' });

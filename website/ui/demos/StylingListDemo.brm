@@ -5,16 +5,17 @@
   const names = ['Aardvark', 'Cat', 'Dog', 'Kangaroo', 'Panda'];
 </script>
 
-<ListBox class="sl" aria-label="Animals" selectionMode="multiple" selectedKeys=(['cat', 'dog'])>
+<ListBox class="styling-list" aria-label="Animals" selectionMode="multiple" selectedKeys=(['cat', 'dog'])>
   #for (name of names by name) {
-    <ListBoxItem id=(name.toLowerCase()) class="sl-item" isDisabled=(name === 'Panda')>{name}</ListBoxItem>
+    <ListBoxItem id=(name.toLowerCase()) class="styling-list-item" isDisabled=(name === 'Panda')>{name}</ListBoxItem>
   }
 </ListBox>
 
 <style>
-  :global(.sl) {
-    --sl-accent: #2a76b2;
-    --sl-on-accent: #fff;
+  :global(.styling-list) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --styling-list-accent: light-dark(#2a76b2, #6fb2e6);
+    --styling-list-on-accent: light-dark(#fff, #101418);
     display: grid;
     width: min(16rem, 100%);
     padding: 0.25rem;
@@ -25,19 +26,12 @@
     outline: none;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :global(.sl) {
-      --sl-accent: #6fb2e6;
-      --sl-on-accent: #101418;
-    }
-  }
-
-  :global(.sl[data-focus-visible]) {
-    outline: 2px solid var(--sl-accent);
+  :global(.styling-list[data-focus-visible]) {
+    outline: 2px solid var(--styling-list-accent);
     outline-offset: 2px;
   }
 
-  :global(.sl-item) {
+  :global(.styling-list-item) {
     display: flex;
     justify-content: space-between;
     padding: 0.4rem 0.6rem;
@@ -46,25 +40,30 @@
     transition: background 0.1s;
   }
 
-  :global(.sl-item[data-hovered]) {
-    background: color-mix(in srgb, var(--sl-accent) 12%, Canvas);
+  :global(.styling-list-item[data-hovered]) {
+    background: color-mix(in srgb, var(--styling-list-accent) 12%, Canvas);
   }
 
-  /* The ring follows the keyboard, not the pointer. */
-  :global(.sl-item[data-focus-visible]) {
-    box-shadow: inset 0 0 0 2px var(--sl-accent);
+  /*
+    The ring follows the keyboard, not the pointer. It has two bands, an accent one and an inner
+    one in the page color, so it shows on the page and on the accent fill of a selected item.
+  */
+  :global(.styling-list-item[data-focus-visible]) {
+    box-shadow:
+      inset 0 0 0 2px var(--styling-list-accent),
+      inset 0 0 0 4px Canvas;
   }
 
-  :global(.sl-item[data-selected]) {
-    background: var(--sl-accent);
-    color: var(--sl-on-accent);
+  :global(.styling-list-item[data-selected]) {
+    background: var(--styling-list-accent);
+    color: var(--styling-list-on-accent);
   }
 
-  :global(.sl-item[data-selected])::after {
+  :global(.styling-list-item[data-selected])::after {
     content: '✓';
   }
 
-  :global(.sl-item[data-disabled]) {
+  :global(.styling-list-item[data-disabled]) {
     opacity: 0.45;
   }
 </style>

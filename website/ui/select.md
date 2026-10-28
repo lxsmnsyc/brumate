@@ -37,6 +37,8 @@ A field that picks one item from a list, which opens from a button.
 `ListBoxItem`: One choice. The selected item shows `data-selected`.
 ```
 
+The picture draws the Popover in place, open, so that it can carry a number. The real Popover opens in a layer at the end of the page.
+
 ```html
 <Select>
   <Label />
@@ -115,7 +117,7 @@ The items show [the attributes of a ListBoxItem](./list-box.md#data-attributes).
 - `selectedKey=$bind(signal)` writes your signal. Change the signal and the Select follows.
 - `selectedKey=$bind(signal, (next) => ...)` asks you first. The Select shows what you keep, so a request that you ignore leaves the old key. Press Lock above and pick an item in the last field.
 - `onSelectionChange` gets each new key in every shape, and `onOpenChange` each change of `isOpen`.
-- A reset of the form gives back the key that the Select started with. The server renders the key it starts with.
+- A reset of the form gives back the key that the Select started with, as a write: with `$bind(signal, request)`, your request can refuse it. The server renders the key it starts with.
 
 See [State](./state.md) for the other parts.
 

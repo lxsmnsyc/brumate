@@ -39,11 +39,15 @@ There is no `defaultSelected` or `defaultValue`: a `let` prop of brumate already
 
 ## Form reset
 
-A part with a `name` takes part in its form. A reset of the form gives back the value that the part started with, in every shape. With `$bind(signal)`, the signal gets that value back too. Change the name, then press Reset:
+A `reset` of the form gives some parts back the value that they started with. Change the name, then press Reset:
 
 ```brm demo StateFormDemo
 
 ```
+
+- These parts reset: `TextField`, `NumberField`, `Select`, `Slider`, `ColorField`, `ColorSlider`, `ColorArea`, `ColorWheel`, `DateField`, `TimeField` and `DateRangePicker`. Each one writes its value back, as an assignment to its prop.
+- These parts do not reset yet: `Checkbox`, `Switch`, `CheckboxGroup`, `RadioGroup`, `ComboBox`, `SearchField` and `TokenField`. A native checkbox unchecks, but the state of the part, its signal and `data-selected`, stays. Keep your own reset button for them, or set the signal yourself. The parts not named here are not checked.
+- The reset is a write, so it follows the shape of the state. With `$bind(signal)`, the signal gets the start value back. With `$bind(signal, request)`, the request gets it like any new value, and a request that refuses it leaves the old value. A part with its own state or its own copy resets with no help.
 
 ## The server render
 
