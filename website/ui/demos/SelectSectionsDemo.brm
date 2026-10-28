@@ -1,0 +1,53 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Header from '@brumate/ui/Header.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import ListBoxSection from '@brumate/ui/ListBoxSection.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Select from '@brumate/ui/Select.brm';
+  import SelectValue from '@brumate/ui/SelectValue.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let region = $signal<Key | null>('fra');
+  const groups = [
+    {
+      name: 'Europe',
+      items: [
+        { id: 'fra', name: 'Frankfurt', note: 'Germany, 12 ms' },
+        { id: 'dub', name: 'Dublin', note: 'Ireland, 18 ms' },
+      ],
+    },
+    {
+      name: 'Asia',
+      items: [
+        { id: 'sin', name: 'Singapore', note: 'Singapore, 140 ms' },
+        { id: 'tok', name: 'Tokyo', note: 'Japan, 160 ms' },
+      ],
+    },
+  ];
+</script>
+
+<Select class="ui-select" selectedKey=$bind(region)>
+  <Label>Region</Label>
+  <Button class="ui-button ui-select-button"><SelectValue class="ui-select-value" /></Button>
+  <Popover class="ui-popover ui-select-popover">
+    <ListBox class="ui-listbox">
+      #for (group of groups by group.name) {
+        <ListBoxSection>
+          <Header class="ui-listbox-header">{group.name}</Header>
+          #for (item of group.items by item.id) {
+            <ListBoxItem id=(item.id) textValue=(item.name) class="ui-option" hasLabel hasDescription>
+              <Text slot="label">{item.name}</Text>
+              <Text slot="description" class="ui-help">{item.note}</Text>
+            </ListBoxItem>
+          }
+        </ListBoxSection>
+      }
+    </ListBox>
+  </Popover>
+</Select>
+<p>Region: {region ?? 'none'}.</p>

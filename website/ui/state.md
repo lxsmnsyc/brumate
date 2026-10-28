@@ -1,6 +1,12 @@
 # State
 
-A part with state has one prop for it, such as `isSelected` of a `Checkbox` or `value` of a `TextField`. How you pass it picks who keeps the state.
+A part with state has one prop for it, such as `isSelected` of a `Checkbox` or `value` of a `TextField`. How you pass it picks who keeps the state. The four shapes below are all live. Each checkbox holds its own copy, except the last two, which share your signal. Lock it and the last one stops taking changes.
+
+```brm demo StateShapesDemo
+
+```
+
+## The four shapes
 
 ```html
 <!-- The part keeps its own state, which starts off. -->
@@ -16,14 +22,57 @@ A part with state has one prop for it, such as `isSelected` of a `Checkbox` or `
 <Checkbox isSelected=$bind(subscribed, (next) => { if (!locked) subscribed = next; })>Subscribe</Checkbox>
 ```
 
-- Each part also calls `onChange` with the new value, in every shape.
-- A value of `null` is a value like any other, such as the `value` of a `RadioGroup` with nothing chosen.
-- On the server, nothing writes, so every shape renders the value that it starts with.
+| Shape                    | Use it when                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| No prop                  | The part is the only one that cares, and a form reads it.                                        |
+| A value with no `$bind`  | You know where it starts and do not need to read it back. This is `defaultValue` in other kits.  |
+| `$bind(signal)`          | Other code reads or writes the state, such as a summary, a filter or a reset button of your own. |
+| `$bind(signal, request)` | A change needs a check first, such as a lock, a limit of choices, or a confirm. You decide.      |
 
 There is no `defaultSelected` or `defaultValue`: a `let` prop of brumate already does both. See [Props that the component writes](../docs/components.md#props-that-the-component-writes).
 
-| State          | Parts                                                     |
-| -------------- | --------------------------------------------------------- |
-| `isSelected`   | `ToggleButton`, `Checkbox`, `Switch`                      |
-| `value`        | `TextField`, `SearchField`, `CheckboxGroup`, `RadioGroup` |
-| `selectedKeys` | `ToggleButtonGroup`                                       |
+## Change callbacks
+
+- Each part calls its change handler with the new value, in every shape: `onChange`, or `onSelectionChange` and `onOpenChange` for keys and overlays.
+- With `$bind(signal)`, the handler runs after the signal is written. With a setter, it runs after your setter, and only if you accepted.
+- A value of `null` is a value like any other, such as the `selectedKey` of a `Select` with nothing chosen.
+
+## Form reset
+
+A `reset` of the form gives some parts back the value that they started with. Change the name, then press Reset:
+
+```brm demo StateFormDemo
+
+```
+
+- These parts reset: `TextField`, `NumberField`, `Select`, `Slider`, `ColorField`, `ColorSlider`, `ColorArea`, `ColorWheel`, `DateField`, `TimeField` and `DateRangePicker`. Each one writes its value back, as an assignment to its prop.
+- These parts do not reset yet: `Checkbox`, `Switch`, `CheckboxGroup`, `RadioGroup`, `ComboBox`, `SearchField` and `TokenField`. A native checkbox unchecks, but the state of the part, its signal and `data-selected`, stays. Keep your own reset button for them, or set the signal yourself. The parts not named here are not checked.
+- The reset is a write, so it follows the shape of the state. With `$bind(signal)`, the signal gets the start value back. With `$bind(signal, request)`, the request gets it like any new value, and a request that refuses it leaves the old value. A part with its own state or its own copy resets with no help.
+
+## The server render
+
+On the server nothing writes, so every shape renders the value that it starts with. The HTML is complete and a form works before the code loads. A part such as a Select that shows the text of its choice shows the key until the code loads, unless you give it a `render` template.
+
+## The state props of every part
+
+Each of these takes a plain value, or `$bind` as above. The change handler is named on the page of the part.
+
+| Part                                                                                          | State props                           |
+| --------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `ToggleButton`, `Checkbox`, `Switch`                                                          | `isSelected`                          |
+| `TextField`, `SearchField`, `NumberField`, `TokenField`, `CheckboxGroup`, `RadioGroup`        | `value`                               |
+| `Slider`, `ColorSlider`, `ColorArea`, `ColorWheel`, `ColorField`, `ColorPicker`               | `value`                               |
+| `ColorSwatchPicker`, `DateField`, `TimeField`, `RangeCalendar`                                | `value`                               |
+| `Calendar`                                                                                    | `value`, `focusedValue`               |
+| `DatePicker`, `DateRangePicker`                                                               | `value`, `isOpen`                     |
+| `Select`                                                                                      | `selectedKey`, `isOpen`               |
+| `ComboBox`                                                                                    | `inputValue`, `selectedKey`, `isOpen` |
+| `Autocomplete`                                                                                | `inputValue`                          |
+| `Tabs`                                                                                        | `selectedKey`                         |
+| `ListBox`, `GridList`, `Menu`, `TagGroup`, `ToggleButtonGroup`                                | `selectedKeys`                        |
+| `Table`                                                                                       | `selectedKeys`, `sortDescriptor`      |
+| `Tree`                                                                                        | `selectedKeys`, `expandedKeys`        |
+| `NavigationTree`, `DisclosureGroup`                                                           | `expandedKeys`                        |
+| `Disclosure`                                                                                  | `isExpanded`                          |
+| `DialogTrigger`, `Popover`, `Modal`, `ModalOverlay`, `Sheet`, `MenuTrigger`, `TooltipTrigger` | `isOpen`                              |
+| `PreviewTrigger`                                                                              | `isOpen`                              |

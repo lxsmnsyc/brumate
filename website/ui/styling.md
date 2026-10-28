@@ -1,6 +1,6 @@
 # Styling
 
-The parts render no CSS. Style them with classes and the `data-*` attributes of their state.
+The parts render no CSS. Style them with classes and the `data-*` attributes of their state. This page styles one part of each kind in full, with the CSS beside the result.
 
 ```html
 <Button class="button">Save</Button>
@@ -22,7 +22,7 @@ The parts render no CSS. Style them with classes and the `data-*` attributes of 
 ```
 
 - A `class` that you pass adds to the classes of the part.
-- The styles of a component are scoped to the elements that it writes. A part renders its own elements, so select them with `:global`, under a class of yours.
+- The styles of a component are scoped to the elements that it writes. A part renders its own elements, so select them with `:global`, under a class of yours. The examples on this page are written as brumate components, so their rules say `:global(.name)`. In a plain stylesheet, write `.name` and drop `:global(...)`.
 - An attribute is there only while the state is on, such as `[data-selected]`. It is never `data-selected="false"`.
 
 ## The attributes
@@ -38,6 +38,54 @@ The parts render no CSS. Style them with classes and the `data-*` attributes of 
 | `data-invalid`       | A field has errors.                                                     |
 
 Each part lists its own attributes on its page.
+
+## A button
+
+A button has rest, hover, press, keyboard focus, disabled and pending. Each is an attribute, so each is one rule. Press, tab and hover below.
+
+```brm styled StylingButtonDemo
+
+```
+
+## A field
+
+The field holds the state of the group, and the `Input` holds its own. Style the border on the input and the label on the field. `data-invalid` comes from `isInvalid`, a failed `isRequired` or a server error, and `FieldError` shows only while it holds. Send the form empty to see it.
+
+```brm styled StylingFieldDemo
+
+```
+
+## A collection
+
+A list has one rule for each state of an item. `data-focus-visible` is the ring of the keyboard, `data-hovered` never fires on touch, and `data-selected` is the choice. Select two items, then use the arrow keys.
+
+```brm styled StylingListDemo
+
+```
+
+## An overlay
+
+An overlay renders in a layer at the end of `<body>`, so a rule that depends on a parent of the trigger does not reach it. Give the overlay its own class. `transition` on the Popover keeps it in the page while it leaves, and `data-closed` marks the closed look, so CSS animates both ways. The [Transition](./transition.md) page covers the steps.
+
+```brm styled StylingOverlayDemo
+
+```
+
+## Transitions
+
+- Put the resting look on the class and the closed look on `[data-closed]`, with a `transition` on the class. The same rule plays on the way in and the way out.
+- `data-enter` and `data-leave` mark the frames of the move, for a keyframe animation.
+- Wrap the rule in `@media (prefers-reduced-motion: reduce)` and set `transition: none`, as each example above does.
+
+## Dark mode
+
+The parts have no colors, so dark mode is the CSS you write. The examples above follow the theme of the page, in both directions, with no media query:
+
+- Set `color-scheme: light dark` on the page, or `color-scheme: dark` for a dark theme. The system colors (`Canvas`, `CanvasText`) and `light-dark(a, b)` then pick their color from it. This site sets `color-scheme` from its theme toggle, so the examples follow the toggle and not only the system setting.
+- Keep the colors in custom properties on the root class of the part, as `--select-styled-accent: light-dark(#2a76b2, #6fb2e6)`. A rule for an overlay puts the custom properties on the overlay class as well, since the layer is not inside your root.
+- `@media (prefers-color-scheme: dark)` is the other way. It follows the system and ignores a toggle in the page, so use it only when the page has no toggle.
+
+Check the contrast of text on the accent in both themes.
 
 ## Boxes
 

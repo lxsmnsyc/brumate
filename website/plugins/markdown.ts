@@ -61,7 +61,7 @@ export interface LiveFile {
 export type PagePart =
   | { html: unknown }
   | { files: LiveFile[] }
-  | { demo: string; source: unknown }
+  | { demo: string; source: unknown; variant?: 'anatomy' | 'styled'; label?: string }
   | { gallery: true };
 
 export interface Page {
@@ -108,11 +108,19 @@ const LANGUAGES = {
   json: json(),
 };
 
-/** The name of a demo of @brumate/ui: a code block such as ```` ```brm demo ButtonDemo ````. */
-function demoName(token: { type: string; info: string }): string | undefined {
-  return token.type === 'fence'
-    ? /^(?:brm|html)\s+demo\s+(\w+)/.exec(token.info.trim())?.[1]
-    : undefined;
+/**
+ * A demo of @brumate/ui: a code block such as ```` ```brm demo ButtonDemo ````. `anatomy` is an
+ * anatomy picture, and `styled` is a styled example (see the outcome of ui-docs-kit).
+ */
+function demoName(token: {
+  type: string;
+  info: string;
+}): { kind: 'demo' | 'anatomy' | 'styled'; name: string } | undefined {
+  const match =
+    token.type === 'fence'
+      ? /^(?:brm|html)\s+(demo|anatomy|styled)\s+(\w+)/.exec(token.info.trim())
+      : null;
+  return match ? { kind: match[1] as 'demo' | 'anatomy' | 'styled', name: match[2]! } : undefined;
 }
 
 /**
@@ -321,11 +329,26 @@ export default function markdown(): Plugin {
         if (demo) {
           // The demo is a component next to the page, and the page shows its source.
           flush(index);
-          const file = path.join(path.dirname(id), 'demos', `${demo}.brm`);
+          const file = path.join(path.dirname(id), 'demos', `${demo.name}.brm`);
           this.addWatchFile(file);
-          const source = readFileSync(file, 'utf8').trim();
-          const html = focusableCode(parser.render(`\`\`\`html\n${source}\n\`\`\``));
-          parts.push(`{ demo: ${JSON.stringify(demo)}, source: raw(${JSON.stringify(html)}) }`);
+          let html: string;
+          let extra = '';
+          if (demo.kind === 'anatomy') {
+            // The body of the block is one line for each numbered piece.
+            const lines = token.content.split('\n').filter((line) => line.trim());
+            html = parser.render(lines.map((line, number) => `${number + 1}. ${line}`).join('\n'));
+            const label = `Anatomy of ${demo.name.replace(/Anatomy$/, '')}`;
+            extra = `, variant: "anatomy", label: ${JSON.stringify(label)}`;
+          } else {
+            const source = readFileSync(file, 'utf8').trim();
+            html = focusableCode(parser.render(`\`\`\`html\n${source}\n\`\`\``));
+            if (demo.kind === 'styled') {
+              extra = ', variant: "styled"';
+            }
+          }
+          parts.push(
+            `{ demo: ${JSON.stringify(demo.name)}, source: raw(${JSON.stringify(html)})${extra} }`,
+          );
           index++;
           start = index;
           continue;

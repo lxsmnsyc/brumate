@@ -1,0 +1,68 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+
+  let saved = $signal(0);
+</script>
+
+<Button class="styling-button" onPress=(() => saved++)>Save ({saved})</Button>
+<Button class="styling-button styling-button-quiet">Cancel</Button>
+<Button class="styling-button" isDisabled>Disabled</Button>
+<Button class="styling-button" isPending>Pending</Button>
+
+<style>
+  :global(.styling-button) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --styling-button-accent: light-dark(#2a76b2, #6fb2e6);
+    --styling-button-on-accent: light-dark(#fff, #101418);
+    padding: 0.5rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: var(--styling-button-accent);
+    color: var(--styling-button-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, scale 0.1s;
+  }
+
+  :global(.styling-button[data-hovered]) {
+    background: color-mix(in srgb, var(--styling-button-accent) 85%, CanvasText);
+  }
+
+  :global(.styling-button[data-pressed]) {
+    scale: 0.97;
+  }
+
+  :global(.styling-button[data-focus-visible]) {
+    outline: 2px solid var(--styling-button-accent);
+    outline-offset: 2px;
+  }
+
+  :global(.styling-button[data-disabled]) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* A pending button keeps its focus and presses nothing. */
+  :global(.styling-button[data-pending]) {
+    cursor: progress;
+    opacity: 0.7;
+  }
+
+  :global(.styling-button-quiet) {
+    border-color: color-mix(in srgb, CanvasText 25%, Canvas);
+    background: transparent;
+    color: inherit;
+  }
+
+  :global(.styling-button-quiet[data-hovered]) {
+    background: color-mix(in srgb, CanvasText 8%, Canvas);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.styling-button) {
+      transition: none;
+    }
+  }
+</style>
