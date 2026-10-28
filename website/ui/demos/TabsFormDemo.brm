@@ -1,0 +1,28 @@
+<script>
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<Tabs>
+  <TabList class="ui-tablist" aria-label="Order">
+    <Tab id="name" class="ui-tab">Name</Tab>
+    <Tab id="note" class="ui-tab">Note</Tab>
+  </TabList>
+  <TabPanel id="name" class="ui-tabpanel">
+    <TextField class="ui-field">
+      <Label>Name (starts empty each time)</Label>
+      <Input class="ui-input" />
+    </TextField>
+  </TabPanel>
+  <TabPanel id="note" class="ui-tabpanel" shouldForceMount>
+    <TextField class="ui-field">
+      <Label>Note (kept while hidden)</Label>
+      <Input class="ui-input" />
+    </TextField>
+  </TabPanel>
+</Tabs>

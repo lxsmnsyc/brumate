@@ -1,7 +1,7 @@
 ---
 id: ui-docs-pages-collections
 title: Anatomy, use cases, CSS and state on the pages of Collections
-status: active
+status: done
 priority: should
 type: docs
 outline: false

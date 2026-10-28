@@ -1,0 +1,37 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import Tag from '@brumate/ui/Tag.brm';
+  import TagGroup from '@brumate/ui/TagGroup.brm';
+  import TagList from '@brumate/ui/TagList.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  const topics = ['News', 'Travel', 'Music', 'Gaming'];
+  const posts = [
+    { title: 'The week in review', topic: 'News' },
+    { title: 'Twelve hours in Lisbon', topic: 'Travel' },
+    { title: 'A new album, track by track', topic: 'Music' },
+    { title: 'The trains of Japan', topic: 'Travel' },
+    { title: 'The best games of the year', topic: 'Gaming' },
+    { title: 'A festival field guide', topic: 'Music' },
+  ];
+  let picked = $signal<Key[]>([]);
+  // With no tag selected, every post shows.
+  const shown = $memo(posts.filter((post) => picked.length === 0 || picked.includes(post.topic)));
+</script>
+
+<div class="ui-stack">
+  <TagGroup class="ui-field" selectionMode="multiple" selectedKeys=$bind(picked)>
+    <Label>Topics</Label>
+    <TagList class="ui-taglist">
+      #for (topic of topics by topic) {
+        <Tag id=topic class="ui-tag">{topic}</Tag>
+      }
+    </TagList>
+  </TagGroup>
+  <ul>
+    #for (post of shown by post.title) {
+      <li>{post.title} ({post.topic})</li>
+    }
+  </ul>
+</div>

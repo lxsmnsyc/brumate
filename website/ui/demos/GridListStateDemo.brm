@@ -1,0 +1,37 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import GridList from '@brumate/ui/GridList.brm';
+  import GridListItem from '@brumate/ui/GridListItem.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let mine = $signal<Key[]>(['dog']);
+  let locked = $signal(false);
+  let log = $signal('');
+  const animals = ['Cat', 'Dog', 'Panda'];
+</script>
+
+<div class="ui-stack">
+  <GridList class="ui-gridlist" aria-label="Own state" selectionMode="multiple">
+    #for (name of animals by name) {
+      <GridListItem id=(name.toLowerCase()) class="ui-gridrow">{name}</GridListItem>
+    }
+  </GridList>
+  <GridList class="ui-gridlist" aria-label="Starts at Cat, then keeps its own copy" selectionMode="multiple" selectedKeys=(['cat'])>
+    #for (name of animals by name) {
+      <GridListItem id=(name.toLowerCase()) class="ui-gridrow">{name}</GridListItem>
+    }
+  </GridList>
+  <GridList class="ui-gridlist" aria-label="Writes your signal" selectionMode="multiple" selectedKeys=$bind(mine) onSelectionChange=((keys) => (log = `changed to ${keys.join(', ') || 'nothing'}`))>
+    #for (name of animals by name) {
+      <GridListItem id=(name.toLowerCase()) class="ui-gridrow">{name}</GridListItem>
+    }
+  </GridList>
+  <GridList class="ui-gridlist" aria-label="Asks you first" selectionMode="multiple" selectedKeys=$bind(mine, (next) => { if (!locked) mine = next; })>
+    #for (name of animals by name) {
+      <GridListItem id=(name.toLowerCase()) class="ui-gridrow">{name}</GridListItem>
+    }
+  </GridList>
+  <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <p>Signal: {mine.join(', ') || 'none'}. Last callback: {log || 'none'}.</p>
+</div>

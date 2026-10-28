@@ -1,0 +1,43 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  const steps = [
+    { id: 'account', name: 'Account', text: 'Choose a name for the account.' },
+    { id: 'plan', name: 'Plan', text: 'Choose how much room you need.' },
+    { id: 'review', name: 'Review', text: 'Check the choices and finish.' },
+  ];
+  let step = $signal<Key | null>('account');
+  // The furthest step that Next has reached. The tabs after it stay disabled.
+  let reached = $signal(0);
+  const at = $memo(steps.findIndex((item) => item.id === step));
+  const locked = $memo(steps.slice(reached + 1).map((item) => item.id));
+
+  function go(to: number) {
+    const next = Math.max(0, Math.min(to, steps.length - 1));
+    reached = Math.max(reached, next);
+    step = steps[next]!.id;
+  }
+</script>
+
+<div class="ui-stack">
+  <Tabs selectedKey=$bind(step) disabledKeys=locked>
+    <TabList class="ui-tablist" aria-label="Steps">
+      #for (item of steps by item.id) {
+        <Tab id=(item.id) class="ui-tab">{item.name}</Tab>
+      }
+    </TabList>
+    #for (item of steps by item.id) {
+      <TabPanel id=(item.id) class="ui-tabpanel">{item.text}</TabPanel>
+    }
+  </Tabs>
+  <div class="ui-row">
+    <Button class="ui-button" isDisabled=(at <= 0) onPress=(() => go(at - 1))>Back</Button>
+    <Button class="ui-button" isDisabled=(at >= steps.length - 1) onPress=(() => go(at + 1))>Next</Button>
+  </div>
+</div>

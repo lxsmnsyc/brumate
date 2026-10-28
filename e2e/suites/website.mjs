@@ -813,6 +813,41 @@ export async function run({ browser, url, runner }) {
       assert((await toast.count()) === 0, 'the close button left the toast');
     });
     await flow(
+      '/ui: the pages of Collections have an anatomy picture and a styled example',
+      async () => {
+        for (const slug of ['list-box', 'tabs', 'tag-group', 'grid-list']) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            assert((await page.locator('.styled pre').count()) === 1, `/ui/${slug} shows no CSS`);
+            const marks = await page.locator('.anatomy [data-mark]').count();
+            const items = await page.locator('.anatomy-list li').count();
+            assert(
+              marks > 0 && marks === items,
+              `/ui/${slug}: ${marks} callouts for ${items} listed pieces`,
+            );
+            await page.addScriptTag({ path: axe });
+            // An option with a label and a description is named by its label alone and described
+            // by the description, on purpose. axe compares the name with all the visible text of
+            // the option and reports label-content-name-mismatch, which is a false positive for
+            // it, so only those options are left out.
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run({
+                include: ['article'],
+                exclude: ['[role=option][aria-labelledby][aria-describedby]'],
+              });
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow(
       '/ui/styling: the styled examples follow the theme toggle, with no contrast violations',
       async () => {
         // The toggle of the site, not the system setting, picks the theme. Each system setting
@@ -869,7 +904,12 @@ export async function run({ browser, url, runner }) {
           }
           await page.addScriptTag({ path: axe });
           const violations = await page.evaluate(async () => {
-            const result = await window.axe.run(document.querySelector('article'));
+            const result = await window.axe.run({
+              include: ['article'],
+              // A described option is named by its label alone, on purpose. axe reports
+              // label-content-name-mismatch on it, which is a false positive.
+              exclude: ['[role=option][aria-labelledby][aria-describedby]'],
+            });
             return result.violations.map((violation) => violation.id);
           });
           if (violations.length > 0) {
