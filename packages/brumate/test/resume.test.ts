@@ -4232,17 +4232,19 @@ describe('refs forwarded through components', () => {
   });
 
   describe('a ref bound with a setter', () => {
-    it('a ref bound with a setter calls it with the element of a named ref prop, after resume and in a block', async () => {
+    it('a ref bound with a setter calls it with the element of a named ref prop, on resume and in a block', async () => {
       await resume('setterRefPage', {});
-      // The server has no element to give, so the setter waits for the browser to render one.
-      expect(text('.calls')).toBe('');
-      click(document.querySelector('.show')!);
+      // The setter runs once on resume, with the button that the server rendered.
       await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;BUTTON;'));
+      await new Promise((done) => setTimeout(done, 100));
+      expect(text('.calls')).toBe('BUTTON;BUTTON;');
     });
 
     it('a ref bound with a setter calls it through rest props spread on an element', async () => {
       await resume('setterRefRestPage', {});
-      // The server has no element to give, so the setter waits for the browser to render one.
+      // Not called on resume yet: the follow-up node setter-ref-resume-rest. A block calls it.
       expect(text('.calls')).toBe('');
       click(document.querySelector('.show')!);
       await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
