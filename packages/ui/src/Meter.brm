@@ -73,7 +73,7 @@
   aria-valuemax=maxValue
   aria-valuetext=(valueLabel ?? state.valueText)
   aria-labelledby=(labelled ? labelId : undefined)
-  style=(mergeStyle(`--percentage: ${state.percentage}%`, style))
+  style=(mergeStyle(style, `--percentage: ${state.percentage}%`))
   {...rest}
 >
   {children}

@@ -1,0 +1,46 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import DialogTrigger from '../../src/DialogTrigger.brm';
+  import ModalOverlay from '../../src/ModalOverlay.brm';
+  import Popover from '../../src/Popover.brm';
+  import Tooltip from '../../src/Tooltip.brm';
+  import TooltipTrigger from '../../src/TooltipTrigger.brm';
+
+  let live = $signal(false);
+</script>
+
+<button class="live" type="button" onClick=(() => (live = !live))>Live</button>
+<DialogTrigger>
+  <Button class="pop-trigger">Popover</Button>
+  <Popover class="pop" style=(live ? 'color: red' : 'color: blue')>
+    <Dialog aria-label="Popover">Text</Dialog>
+  </Popover>
+</DialogTrigger>
+<DialogTrigger>
+  <Button class="pop-object-trigger">Popover</Button>
+  <Popover class="pop-object" style={ color: 'red', position: 'static' }>
+    <Dialog aria-label="Popover">Text</Dialog>
+  </Popover>
+</DialogTrigger>
+<TooltipTrigger delay=(0) closeDelay=(0)>
+  <Button class="tip-trigger">Tip</Button>
+  <Tooltip class="tip" style="color: red; position: static">Tip</Tooltip>
+</TooltipTrigger>
+<TooltipTrigger delay=(0) closeDelay=(0)>
+  <Button class="tip-object-trigger">Tip</Button>
+  <Tooltip class="tip-object" style={ color: 'red' }>Tip</Tooltip>
+</TooltipTrigger>
+<DialogTrigger>
+  <Button class="modal-trigger">Modal</Button>
+  <ModalOverlay class="modal" style="color: red; position: static">
+    <Dialog aria-label="Modal">Text</Dialog>
+  </ModalOverlay>
+</DialogTrigger>
+<DialogTrigger>
+  <Button class="modal-object-trigger">Modal</Button>
+  <ModalOverlay class="modal-object" style={ color: 'red', inset: 'auto' }>
+    <Dialog aria-label="Modal">Text</Dialog>
+  </ModalOverlay>
+</DialogTrigger>

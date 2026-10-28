@@ -173,7 +173,7 @@
         ref=$bind(ref)
         id=(trigger?.tooltipId)
         role="tooltip"
-        style=(mergeStyle('position: fixed; top: 0; left: 0', style))
+        style=(mergeStyle(style, 'position: fixed; top: 0; left: 0'))
         data-closed=($untrack(transition || undefined))
         onPointerEnter=entered
         onPointerLeave=left

@@ -84,7 +84,7 @@
   aria-valuetext=(isIndeterminate ? undefined : (valueLabel ?? state.valueText))
   data-indeterminate=(isIndeterminate || undefined)
   aria-labelledby=(labelled ? labelId : undefined)
-  style=(mergeStyle(isIndeterminate ? undefined : `--percentage: ${state.percentage}%`, style))
+  style=(mergeStyle(style, isIndeterminate ? undefined : `--percentage: ${state.percentage}%`))
   {...rest}
 >
   {children}

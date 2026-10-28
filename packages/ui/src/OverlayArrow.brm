@@ -19,4 +19,9 @@
   const { children, style, ...rest } = $props<OverlayArrowProps>();
 </script>
 
-<div data-overlay-arrow aria-hidden="true" style=(mergeStyle('position: absolute', style)) {...rest}>{children}</div>
+<div
+  data-overlay-arrow
+  aria-hidden="true"
+  style=(mergeStyle(style, 'position: absolute'))
+  {...rest}
+>{children}</div>

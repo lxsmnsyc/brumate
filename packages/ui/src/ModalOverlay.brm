@@ -238,7 +238,7 @@
           ref=$bind(overlay)
           id=(trigger?.overlayId ?? ownId)
           data-modal-overlay
-          style=(mergeStyle('position: fixed; inset: 0', style))
+          style=(mergeStyle(style, 'position: fixed; inset: 0'))
           inert=(leaving || undefined)
           data-closed=($untrack(transition || undefined))
           onKeyDown=keyDown

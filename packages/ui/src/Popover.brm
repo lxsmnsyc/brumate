@@ -277,7 +277,7 @@
     ref=$bind(ref)
     id=(trigger?.overlayId ?? ownId)
     tabindex="-1"
-    style=(mergeStyle('position: fixed; top: 0; left: 0', style))
+    style=(mergeStyle(style, 'position: fixed; top: 0; left: 0'))
     inert=(leaving || undefined)
     data-closed=($untrack(transition || undefined))
     onKeyDown=keyDown

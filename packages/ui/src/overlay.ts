@@ -1,3 +1,5 @@
+import { keepStyle } from './position.ts';
+
 // The page around an open overlay: what is inert behind it, where focus goes in it, and when a
 // press outside closes it. They hide the page with `inert` in place of aria-hidden.
 
@@ -441,8 +443,9 @@ export function lockScroll(): () => void {
  */
 export function followViewport(element: HTMLElement): () => void {
   const viewport = window.visualViewport;
+  const { put, stop } = keepStyle(element);
   const update = (): void => {
-    element.style.setProperty(
+    put(
       '--visual-viewport-height',
       `${viewport?.height ?? document.documentElement.clientHeight}px`,
     );
@@ -453,5 +456,6 @@ export function followViewport(element: HTMLElement): () => void {
   return () => {
     viewport?.removeEventListener('resize', update);
     window.removeEventListener('resize', update);
+    stop();
   };
 }
