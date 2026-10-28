@@ -29,7 +29,8 @@ A reset goes through the setter, as Select did. Reasons:
 
 ## Open
 
-- Review round: TextField, NumberField, Select, Slider, the color parts and the date parts now use `onFormReset` too, so a prevented reset changes none of them. Their reset now runs after the browser's, in a timer.
+- Review round: TextField, NumberField, Select, Slider, the color parts and the date parts now use `onFormReset` too, so a prevented reset changes none of them. Their reset now runs after the browser's, in a timer. Chrome shows no flash with the timer.
+- With a setter that refuses, NumberField, ColorField, ColorSlider, ColorArea, ColorWheel, TimeField and DateRangePicker show a value that differs from the one the caller keeps (Chrome): NumberField shows 3 and its inputs say 7, ColorField shows #E2445A while the edit is #0000FF, the thumbs of the color sliders jump back, TimeField shows 2:30 PM while its hidden input keeps 15:32, DateRangePicker shows 10/12/2026 while its hidden input keeps 2026-11-14. Main has the same problem for any refused write. The docs say so. The node `ui-refused-write-sync` fixes them.
 - The form is resolved once, when the part loads. A part whose input moves to another form later keeps listening to the first.
 - website/ui/state.md: #323 merged first. The merge keeps its structure and demo, and replaces its "Form reset" lists (7 parts that do not reset) with one list of every part, through the setter.
 - `settled` is checked in Chrome by the review. happy-dom passes the held test without it. No e2e step was added: the example page of e2e/suites/ui.mjs has no form with these parts, and the test would need a new page.
