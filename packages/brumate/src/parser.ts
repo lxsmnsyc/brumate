@@ -53,7 +53,8 @@ const VOID_ELEMENTS = new Set([
   'wbr',
 ]);
 
-const BLOCK_KEYWORDS = new Set([
+/** The keywords that open a block. The highlighter lists the same ones. */
+export const BLOCK_KEYWORDS: Set<string> = new Set([
   'if',
   'for',
   'repeat',
@@ -71,7 +72,8 @@ const BLOCK_KEYWORDS = new Set([
   'template',
 ]);
 
-const BRANCH_KEYWORDS = new Set(['else', 'catch', 'case', 'default']);
+/** The keywords of the branches of a block. */
+export const BRANCH_KEYWORDS: Set<string> = new Set(['else', 'catch', 'case', 'default']);
 
 const MODIFIERS = new Set<string>(['prevent', 'stop', 'passive', 'once', 'capture']);
 

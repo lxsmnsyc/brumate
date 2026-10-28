@@ -44,7 +44,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     CollectionFocusContext,
@@ -65,7 +65,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf } from './fields.ts';
+  import { describedBy, messagesOf, onFormReset } from './fields.ts';
 
   /**
    * A text field with a list of suggestions. It holds a
@@ -105,6 +105,9 @@
   let { selectedKey = null } = $props<ComboBoxProps<T>>();
   let { inputValue = '' } = $props<ComboBoxProps<T>>();
   let { isOpen = false } = $props<ComboBoxProps<T>>();
+  // The key and the text that a reset of the form gives back.
+  let initialKey = $signal(selectedKey);
+  let initialText = $signal(inputValue);
 
   const form = $getContext(FormContext);
   const rootId = $id();
@@ -132,6 +135,20 @@
     edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
   );
   const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
+
+  // A reset of the form gives back the first key and text, as it does for a field of the browser.
+  $client(
+    () =>
+      onFormReset(document.getElementById(rootId), () => {
+        selectedKey = initialKey;
+        inputValue = initialText;
+        selectedText = undefined;
+        filterText = '';
+        edited = false;
+        setOpen(false);
+      }),
+    'load',
+  );
 
   function list() {
     return document.getElementById(listId);

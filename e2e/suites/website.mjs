@@ -226,6 +226,23 @@ export async function run({ browser, url, runner }) {
     await page.close();
   }
 
+  // The shop list of the home page names chunks, so a rename would empty it.
+  {
+    const page = await browser.newPage();
+    const errors = watch(page);
+    await step('/: the shop list shows the bundle of the shop', { page, errors }, async () => {
+      await page.goto(`${url}/`, { waitUntil: 'load' });
+      const rows = page.locator('[data-network] ol li:not(.empty)');
+      await rows.first().waitFor({ timeout: TIMEOUT });
+      const names = await rows.locator('.file').allTextContents();
+      assert(
+        names.some((name) => name.startsWith('Index')),
+        `the shop list shows ${JSON.stringify(names)}, without the bundle of the page`,
+      );
+    });
+    await page.close();
+  }
+
   // The validation sample of the forms page.
   {
     const page = await browser.newPage();
@@ -335,17 +352,36 @@ export async function run({ browser, url, runner }) {
         'the link loaded a new page',
       );
     });
-    await flow('/docs: the brand link returns to / with a filled network panel', async () => {
-      await page.locator('.brand').click();
-      await page.waitForURL(`${url}/`, { timeout: 5000 });
-      await page.locator('[data-network]').waitFor({ timeout: 5000 });
-      await page.locator('[data-network] ol li:not(.empty)').first().waitFor({ timeout: 5000 });
-      const total = (await page.locator('[data-network] [data-total]').textContent()).trim();
-      assert(total !== '0 KB' && total !== '0.0 KB', `the network panel reads ${total}`);
-      await page.locator('.header-nav a', { hasText: 'Docs' }).click();
-      await page.waitForURL(`${url}/docs`, { timeout: 5000 });
-      await page.locator('.docs .sidebar').waitFor({ timeout: 5000 });
-    });
+    await flow(
+      '/docs: the brand link returns to / with a panel of the navigation only',
+      async () => {
+        const panel = page.locator('[data-network]');
+        await page.locator('.brand').click();
+        await page.waitForURL(`${url}/`, { timeout: 5000 });
+        await panel.waitFor({ timeout: 5000 });
+        // The panel renders when it appears. It counts the scripts that the navigation loaded.
+        await page
+          .locator('[data-network] [data-total]', { hasText: /KB$/ })
+          .waitFor({ timeout: 5000 });
+        const text = await panel.textContent();
+        assert(
+          !text.includes('loader') && !text.includes('Nothing yet'),
+          `the panel lists the scripts of the first load: ${text}`,
+        );
+        assert(
+          /Nothing new|\d KB/.test(text),
+          `the panel shows neither a row nor a note after the navigation: ${text}`,
+        );
+        const total = Number.parseFloat(
+          await page.locator('[data-network] [data-total]').textContent(),
+        );
+        assert(total < 20, `the panel reads ${total} KB, more than this navigation loaded`);
+        // The next flows start from /docs.
+        await page.locator('.header-nav a', { hasText: 'Docs' }).click();
+        await page.waitForURL(`${url}/docs`, { timeout: 5000 });
+        await page.locator('.docs .sidebar').waitFor({ timeout: 5000 });
+      },
+    );
     await flow('/docs: a sidebar link navigates on the client', async () => {
       await page.locator('.sidebar a[href="/docs/state"]').click();
       await page.waitForURL(`${url}/docs/state`, { timeout: 5000 });

@@ -78,7 +78,7 @@
     withChannelValue,
   } from './color.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf } from './fields.ts';
+  import { describedBy, messagesOf, onFormReset } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import { addStep, clamp, listenToWheel, snapToStep, stopWheel } from './numbers.ts';
 
@@ -451,18 +451,12 @@
 
   // A reset of the form gives back the first value, as it does for a field of the browser.
   $client(() => {
-    const owner = input()?.form;
-    if (!owner) {
-      return undefined;
-    }
-    function reset() {
+    return onFormReset(input(), () => {
       setValue(initialValue, fresh(initialValue));
       edited = false;
       committed = false;
       nativeErrors = [];
-    }
-    owner.addEventListener('reset', reset);
-    return () => owner.removeEventListener('reset', reset);
+    });
   }, 'load');
 
   // The channel field has a name when the caller gives none.

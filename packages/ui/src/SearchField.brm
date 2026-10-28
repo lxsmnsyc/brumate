@@ -31,10 +31,10 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { ButtonContext, InputContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy } from './fields.ts';
+  import { describedBy, onFormReset } from './fields.ts';
 
   /**
    * A search field. It holds a Label, an Input and a
@@ -59,6 +59,8 @@
     ...rest
   } = $props<SearchFieldProps<T>>();
   let { value = '' } = $props<SearchFieldProps<T>>();
+  // The text that a reset of the form gives back.
+  let initial = $signal(value);
 
   const inputId = $id();
   const labelId = $id();
@@ -76,6 +78,22 @@
     onClear?.();
     document.getElementById(inputId)?.focus();
   }
+
+  // A reset of the form gives back the first text, as it does for a field of the browser.
+  $client(() => {
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+    return onFormReset(
+      input,
+      () => {
+        value = initial;
+      },
+      () => {
+        if (input) {
+          input.value = value;
+        }
+      },
+    );
+  }, 'load');
 
   function keyDown(key: string, event: KeyboardEvent) {
     if (isDisabled || isReadOnly) {

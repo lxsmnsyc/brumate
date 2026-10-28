@@ -2,7 +2,7 @@
 // date of a DateRangePicker. A component passes its value and its limits, and gets the segments,
 // the date that they hold, and the functions of the DateFieldContext.
 import { $client, $effect, $memo, $signal, $untrack } from 'brumate/signals';
-import { isFirstInvalid } from './fields.ts';
+import { isFirstInvalid, onFormReset } from './fields.ts';
 import type { DateString } from './calendar.ts';
 import type { DatePlaceholders } from './date-strings.ts';
 import {
@@ -94,17 +94,11 @@ export function formField(inputId: string, onReset: () => void) {
 
   // A reset of the form gives back the first value, as it does for a field of the browser.
   $client(() => {
-    const owner = (document.getElementById(inputId) as HTMLInputElement | null)?.form;
-    if (!owner) {
-      return undefined;
-    }
-    function reset() {
+    return onFormReset(document.getElementById(inputId) as HTMLInputElement | null, () => {
       committed = false;
       nativeErrors = [];
       onReset();
-    }
-    owner.addEventListener('reset', reset);
-    return () => owner.removeEventListener('reset', reset);
+    });
   }, 'load');
 
   return {

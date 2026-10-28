@@ -33,10 +33,10 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { FieldErrorContext, LabelContext, RadioGroupContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy } from './fields.ts';
+  import { describedBy, onFormReset } from './fields.ts';
 
   /**
    * A group of radios. It holds a Label, its Radios, a
@@ -61,6 +61,8 @@
   } = $props<RadioGroupProps<T>>();
   let { value = null } = $props<RadioGroupOwnProps<T>>();
   let { ref } = $props<RadioGroupOwnProps<T>>();
+  // The value that a reset of the form gives back.
+  let initial = $signal(value);
 
   // The radios of a group share a name, which makes them one group for the browser.
   const ownName = $id();
@@ -80,6 +82,16 @@
   function invalidated(text: string) {
     message = text;
   }
+
+  // A reset of the form gives back the first choice. Each radio puts its native input back in step.
+  $client(
+    () =>
+      onFormReset(ref, () => {
+        value = initial;
+        message = '';
+      }),
+    'load',
+  );
 
   $setContext(LabelContext, { id: labelId });
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });

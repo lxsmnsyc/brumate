@@ -28,9 +28,10 @@
 </script>
 
 <script>
-  import { $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
+  import { onFormReset } from './fields.ts';
   import { TokenFieldContext, sameSegments, segmentsText } from './token-field.ts';
 
   /**
@@ -58,6 +59,9 @@
     ...rest
   } = $props<TokenFieldProps>();
   let { value = [] } = $props<TokenFieldProps>();
+  let { ref } = $props<{ ref?: Bindable<HTMLDivElement | undefined> }>();
+  // The segments that a reset of the form gives back.
+  let initial = $signal(value);
 
   const labelId = $id();
   const descriptionId = $id();
@@ -70,6 +74,9 @@
       onChange?.(next);
     }
   }
+
+  // A reset of the form gives back the first segments. The box follows the value.
+  $client(() => onFormReset(ref, () => setValue(initial)), 'load');
 
   // The box of the field is no element that a label can point at, so the label names it by ID.
   $setContext(LabelContext, { id: labelId });
@@ -89,7 +96,7 @@
   });
 </script>
 
-<div data-disabled=(isDisabled || undefined) data-readonly=(isReadOnly || undefined) {...rest}>
+<div ref=$bind(ref) data-disabled=(isDisabled || undefined) data-readonly=(isReadOnly || undefined) {...rest}>
   {children}
   #if (name) {
     <input type="hidden" {name} value=text disabled=(isDisabled || undefined) />
