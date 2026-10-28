@@ -36,7 +36,7 @@ It compiles every `.brm` file under the current directory, and runs `brumate-tsc
 With `--json`, each problem is one line:
 
 ```json
-{"file":"src/App.brm","range":{"start":{"line":5,"column":3},"end":{"line":5,"column":4}},"severity":"error","message":"Cannot assign to memo \"double\"","code":"BRM117","link":"https://brumate.dev/docs/errors#brm117","source":"brumate"}
+{"file":"src/App.brm","range":{"start":{"line":5,"column":3},"end":{"line":5,"column":4}},"severity":"error","message":"Cannot assign to memo \"double\"","code":"BRM117","link":"https://brumate-docs.vercel.app/docs/errors#brm117","source":"brumate"}
 ```
 
 - `range` has 1-based lines and columns. The type checker gives a start only, so its end is the start.

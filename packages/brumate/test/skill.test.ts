@@ -352,8 +352,8 @@ describe('the catalog', () => {
   for (const file of readdirSync(SRC, { recursive: true, encoding: 'utf8' }).filter((name) =>
     name.endsWith('.ts'),
   )) {
-    // The build (vite.ts) and the runtime report their own errors, not those of a .brm file.
-    if (file === 'vite.ts' || file.startsWith('runtime/')) {
+    // The build (vite.ts), brumate check and the runtime report their own errors, not those of a .brm file.
+    if (file === 'vite.ts' || file === 'check-command.ts' || file.startsWith('runtime/')) {
       continue;
     }
     for (const message of reported(file)) {

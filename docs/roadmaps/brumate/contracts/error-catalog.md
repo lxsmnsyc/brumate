@@ -59,3 +59,4 @@ packages/brumate/test/skill.test.ts.
 
 - v1: draft.
 - v1: frozen, with the shape unchanged. brumate-check fills `code` and `link` of each entry, and `renderErrors()` already prints them.
+- v1, additive: the compiler writes an error as `message [BRM012] (File.brm:3:7)`, with the code of the entry before the place. `findError` accepts a message with the code, with or without the place. `code` and `link` are filled for every entry, and `test/error-codes.json` pins each code to its message.

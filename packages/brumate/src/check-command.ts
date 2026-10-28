@@ -1,13 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { readFile, stat } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { CompileError, compile } from './compile.ts';
 import type { Diagnostic } from './model.ts';
 import { findError } from './error-catalog.ts';
 import { BrumateError, getLocation } from './error.ts';
-import { defaultExclude, findFiles } from './files.ts';
+import { collectSources } from './files.ts';
 import { analyzeProjectProps } from './project.ts';
 
 /** A place in a file. Lines and columns start at 1. */
@@ -65,8 +64,10 @@ function toPosix(file: string): string {
 
 function fromDiagnostic(source: string, file: string, diagnostic: Diagnostic): CheckRecord {
   const entry = diagnostic.severity === 'error' ? findError(diagnostic.message) : undefined;
-  const start = getLocation(source, diagnostic.range.start);
-  const end = getLocation(source, Math.max(diagnostic.range.start, diagnostic.range.end));
+  // A range at the end of the file stays in the file.
+  const first = Math.min(diagnostic.range.start, source.length);
+  const start = getLocation(source, first);
+  const end = getLocation(source, Math.min(Math.max(first, diagnostic.range.end), source.length));
   return {
     file,
     range: { start, end },
@@ -108,7 +109,7 @@ function checkFile(
       return [
         {
           file,
-          range: { start, end: getLocation(source, error.offset + 1) },
+          range: { start, end: getLocation(source, Math.min(error.offset + 1, source.length)) },
           severity: 'error',
           message,
           code: entry?.code ?? null,
@@ -121,7 +122,7 @@ function checkFile(
   }
 }
 
-const TS_LINE = /^(.+?)\((\d+),(\d+)\): (error|warning) (TS\d+|BRM): (.*)$/;
+const TS_LINE = /^(.+?)\((\d+),(\d+)\): (error|warning) (TS\d+|BRM\d*): (.*)$/;
 const TS_GLOBAL = /^(error|warning) (TS\d+): (.*)$/;
 
 /** Reads the lines that `tsc` prints without colors. */
@@ -133,7 +134,7 @@ export function parseTypeOutput(output: string, root: string): CheckRecord[] {
     if (match) {
       last = undefined;
       // Syntax errors of `.brm` files are reported by the compiler, with their codes.
-      if (match[5] === 'BRM') {
+      if (match[5]!.startsWith('BRM')) {
         continue;
       }
       const position = { line: Number(match[2]), column: Number(match[3]) };
@@ -165,7 +166,7 @@ export function parseTypeOutput(output: string, root: string): CheckRecord[] {
     }
     // The lines under a message, indented, belong to it.
     if (last && /^\s+\S/.test(line)) {
-      last.message += `\n${line.trim()}`;
+      last.message += `\n${line}`;
     }
   }
   return records;
@@ -178,7 +179,10 @@ export function parseTypeOutput(output: string, root: string): CheckRecord[] {
  */
 function typeCheck(root: string, tscBin?: string): { records: CheckRecord[]; note?: string } {
   if (!existsSync(path.join(root, 'tsconfig.json'))) {
-    return { records: [], note: 'The type check was skipped: there is no tsconfig.json here.' };
+    return {
+      records: [],
+      note: 'The type check was skipped: there is no tsconfig.json in the current directory.',
+    };
   }
   let bin: string;
   try {
@@ -198,20 +202,28 @@ function typeCheck(root: string, tscBin?: string): { records: CheckRecord[]; not
     maxBuffer: 64 * 1024 * 1024,
   });
   const records = parseTypeOutput(`${result.stdout}\n${result.stderr}`, root);
-  if (result.status !== 0 && errorCount(records) === 0) {
-    // A failure that has no error line of TypeScript, such as a missing tsconfig.json. A failure
-    // of syntax errors only is reported by the compiler.
+  const fail = (message: string): void => {
+    records.push({
+      file: null,
+      range: null,
+      severity: 'error',
+      message,
+      code: null,
+      link: null,
+      source: 'typescript',
+    });
+  };
+  if (result.error) {
+    // The process did not start, ran too long for a timeout, or printed more than maxBuffer.
+    fail(`The type check did not finish: ${result.error.message}`);
+  } else if (result.signal) {
+    fail(`The type check was stopped by ${result.signal}`);
+  } else if (result.status !== 0 && errorCount(records) === 0) {
+    // A failure that has no error line of TypeScript, such as an unreadable tsconfig.json. A
+    // failure of syntax errors only is reported by the compiler.
     const text = `${result.stdout}${result.stderr}`.trim();
-    if (text && !/error BRM:/.test(text)) {
-      records.push({
-        file: null,
-        range: null,
-        severity: 'error',
-        message: text,
-        code: null,
-        link: null,
-        source: 'typescript',
-      });
+    if (!/error BRM\d*:/.test(text)) {
+      fail(text || `The type check ended with status ${result.status}`);
     }
   }
   return { records };
@@ -219,43 +231,30 @@ function typeCheck(root: string, tscBin?: string): { records: CheckRecord[]; not
 
 /** Compiles every `.brm` file under the root, and runs the type checker. */
 export async function check(root: string, options: CheckOptions = {}): Promise<CheckResult> {
-  const project = await findFiles(root, defaultExclude);
-  const sources = new Map<string, string>();
-  const texts = await Promise.all(project.map((file) => readFile(file, 'utf8')));
-  for (const [index, file] of project.entries()) {
-    sources.set(file, texts[index]!);
-  }
-  const props = analyzeProjectProps(sources);
-
-  const targets: string[] = [];
-  const paths = options.paths ?? [];
-  if (paths.length === 0) {
-    targets.push(...project);
-  }
-  const found = await Promise.all(
-    paths.map(async (target) => {
-      const absolute = path.resolve(root, target);
-      return (await stat(absolute)).isDirectory()
-        ? findFiles(absolute, defaultExclude)
-        : [toPosix(absolute)];
-    }),
-  );
-  for (const files of found) {
-    targets.push(...files);
-  }
-  // Files outside the project are read here.
-  const extra: string[] = [];
-  for (const file of targets) {
-    if (!sources.has(file)) {
-      extra.push(file);
+  const records: CheckRecord[] = [];
+  // A path that does not exist is a problem of its own. The others are still checked.
+  const paths: string[] = [];
+  for (const target of options.paths ?? []) {
+    if (existsSync(path.resolve(root, target))) {
+      paths.push(target);
+    } else {
+      records.push({
+        file: toPosix(target),
+        range: null,
+        severity: 'error',
+        message: 'This file or directory does not exist',
+        code: null,
+        link: null,
+        source: 'brumate',
+      });
     }
   }
-  const extraTexts = await Promise.all(extra.map((file) => readFile(file, 'utf8')));
-  for (const [index, file] of extra.entries()) {
-    sources.set(file, extraTexts[index]!);
-  }
+  const missingOnly = paths.length === 0 && (options.paths?.length ?? 0) > 0;
+  const { sources, targets } = missingOnly
+    ? { sources: new Map<string, string>(), targets: [] }
+    : await collectSources(root, paths);
+  const props = analyzeProjectProps(sources);
 
-  const records: CheckRecord[] = [];
   for (const file of targets) {
     const parents = props.get(file);
     records.push(

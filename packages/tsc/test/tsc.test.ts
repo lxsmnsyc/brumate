@@ -80,3 +80,13 @@ it('reports type errors in .brm files at their place in the file', () => {
   ]);
   expect(result.status).not.toBe(0);
 });
+
+it('prints the code of a syntax error in place of BRM', () => {
+  const project = fileURLToPath(new URL('./fixture-syntax/tsconfig.json', import.meta.url));
+  const result = spawnSync(process.execPath, [bin, '-p', project], { encoding: 'utf8' });
+  const line = `${result.stdout}${result.stderr}`
+    .split('\n')
+    .find((text) => text.includes('Broken.brm'));
+  expect(line).toMatch(/Broken\.brm\(1,\d+\): error BRM\d{3}: [^[]+$/);
+  expect(result.status).not.toBe(0);
+});

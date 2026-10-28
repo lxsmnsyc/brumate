@@ -13,15 +13,19 @@ export interface ErrorEntry {
 }
 
 /**
- * Codes are stable. The first entry is BRM001, and each new entry takes the
- * number after the last one that was ever assigned. Never renumber a code,
- * never reuse one, and never change the order of the entries to fit the
- * codes. When an error is removed, delete its entry and leave its number
- * unused. A test checks that every code is unique and in the form BRMnnn.
+ * Codes are stable. A new entry takes the next number that was never used,
+ * wherever the entry sits in the catalog. Never change the code of an entry,
+ * and never reuse a code. When an error is removed, delete its entry and
+ * leave its number unused. test/error-codes.json pins each code to its
+ * message, so a test fails when a code changes or is reused. Add the code of
+ * a new entry to it with `UPDATE_SKILL=1 npx vitest run test/check-command.test.ts`.
  */
 
+/** The address of the docs site. Change it here when the site moves. */
+export const DOCS_SITE = 'https://brumate-docs.vercel.app';
+
 /** The page of the docs that explains every code, with one anchor for each. */
-export const ERRORS_PAGE = 'https://brumate.dev/docs/errors';
+export const ERRORS_PAGE: string = `${DOCS_SITE}/docs/errors`;
 
 /** The link to the explanation of a code. */
 export function errorLink(code: string): string {

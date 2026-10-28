@@ -4,12 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { check, formatRecord, parseTypeOutput } from '../src/check-command.ts';
+import { check, errorCount, formatRecord, parseTypeOutput } from '../src/check-command.ts';
 import type { CheckRecord } from '../src/check-command.ts';
 import { compile } from '../src/index.ts';
 import { ERRORS, errorLink, findError, renderErrorsPage } from '../src/error-catalog.ts';
 
 const CLI = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
+const CODES = fileURLToPath(new URL('./error-codes.json', import.meta.url));
 const PAGE = fileURLToPath(new URL('../../../website/docs/errors.md', import.meta.url));
 
 const roots: string[] = [];
@@ -52,23 +53,37 @@ const WRONG = `<script>\n  ${IMPORT}\n  let count = $signal(0);\n  const double 
 const SYNTAX = '<div>\n  <p>Text</p>\n';
 
 describe('codes', () => {
-  it('gives every entry a unique code of the form BRMnnn, in the order of the catalog', () => {
+  it('gives every entry a unique code of the form BRMnnn', () => {
     const seen = new Set<string>();
-    let last = 0;
     for (const entry of ERRORS) {
       expect(entry.code).toMatch(/^BRM\d{3}$/);
       expect(seen.has(entry.code!)).toBe(false);
       seen.add(entry.code!);
-      const number = Number(entry.code!.slice(3));
-      expect(number).toBeGreaterThan(last);
-      last = number;
       expect(entry.link).toBe(errorLink(entry.code!));
     }
   });
 
-  it('keeps the codes that were assigned first', () => {
-    expect(ERRORS[0]!.code).toBe('BRM001');
-    expect(ERRORS[0]!.message).toBe('Unterminated comment');
+  it('pins each code to its message in test/error-codes.json', () => {
+    const pinned = JSON.parse(readFileSync(CODES, 'utf8')) as Record<string, string>;
+    if (process.env.UPDATE_SKILL) {
+      // A new code is added. A code that is there never changes.
+      for (const entry of ERRORS) {
+        pinned[entry.code!] ??= entry.message;
+      }
+      const sorted: Record<string, string> = {};
+      for (const code of Object.keys(pinned).toSorted()) {
+        sorted[code] = pinned[code]!;
+      }
+      writeFileSync(CODES, `${JSON.stringify(sorted, null, 2)}\n`);
+      return;
+    }
+    // A changed code or a reused code shows as a different message for a code. A new entry
+    // needs its code in the file, so a code that was removed is never given again.
+    for (const entry of ERRORS) {
+      expect(pinned[entry.code!], `${entry.code} is not pinned to this message`).toBe(
+        entry.message,
+      );
+    }
   });
 
   it('adds the code to the message of a syntax error and of a compile error', () => {
@@ -95,7 +110,9 @@ describe('codes', () => {
     const page = readFileSync(PAGE, 'utf8');
     for (const entry of ERRORS) {
       expect(page).toContain(`\n## ${entry.code}\n`);
-      expect(entry.link).toBe(`https://brumate.dev/docs/errors#${entry.code!.toLowerCase()}`);
+      expect(entry.link).toBe(
+        `https://brumate-docs.vercel.app/docs/errors#${entry.code!.toLowerCase()}`,
+      );
     }
   });
 });
@@ -150,6 +167,27 @@ describe('check', () => {
     }
   });
 
+  it('reports a path that does not exist, and still checks the others', async () => {
+    const root = project({ 'A.brm': WRONG });
+    const { records } = await check(root, { types: false, paths: ['nope.brm', 'A.brm'] });
+    expect(records[0]).toMatchObject({
+      file: 'nope.brm',
+      severity: 'error',
+      message: 'This file or directory does not exist',
+    });
+    expect(records).toHaveLength(2);
+    const only = await check(root, { types: false, paths: ['nope.brm'] });
+    expect(errorCount(only.records)).toBe(1);
+  });
+
+  it('keeps a range at the end of the file inside the file', async () => {
+    const root = project({ 'A.brm': '<p>{count' });
+    const { records } = await check(root, { types: false });
+    const end = records[0]!.range!.end;
+    expect(end.line).toBe(1);
+    expect(end.column).toBeLessThanOrEqual('<p>{count'.length + 1);
+  });
+
   it('formats a record as a line', () => {
     expect(
       formatRecord({
@@ -158,11 +196,11 @@ describe('check', () => {
         severity: 'error',
         message: 'Unexpected closing tag',
         code: 'BRM009',
-        link: 'https://brumate.dev/docs/errors#brm009',
+        link: 'https://brumate-docs.vercel.app/docs/errors#brm009',
         source: 'brumate',
       }),
     ).toBe(
-      'A.brm:5:3: error BRM009: Unexpected closing tag\n  https://brumate.dev/docs/errors#brm009',
+      'A.brm:5:3: error BRM009: Unexpected closing tag\n  https://brumate-docs.vercel.app/docs/errors#brm009',
     );
   });
 });
@@ -189,6 +227,31 @@ describe.skipIf(!TSC_BUILT)('type check', () => {
     expect(first!.range!.start).toEqual({ line: 9, column: 19 });
     expect(first!.message).toBe("Type 'string' is not assignable to type 'number'.");
     expect(first!.severity).toBe('error');
+  }, 60_000);
+});
+
+describe('a type check that fails', () => {
+  function typed(script: string): ReturnType<typeof check> {
+    const root = project({ 'A.brm': GOOD, 'tsconfig.json': '{}', 'tsc.js': script });
+    return check(root, { tscBin: join(root, 'tsc.js') });
+  }
+
+  it('is an error when the process is killed', async () => {
+    const { records } = await typed("process.kill(process.pid, 'SIGKILL');");
+    expect(errorCount(records)).toBe(1);
+    expect(records[0]!.message).toContain('SIGKILL');
+  });
+
+  it('is an error when it ends with a status and prints nothing', async () => {
+    const { records } = await typed('process.exitCode = 3;');
+    expect(errorCount(records)).toBe(1);
+    expect(records[0]!.message).toContain('status 3');
+  });
+
+  it('is an error when it prints more than the buffer holds', async () => {
+    const { records } = await typed("process.stdout.write('x'.repeat(70 * 1024 * 1024));");
+    expect(errorCount(records)).toBe(1);
+    expect(records[0]!.message).toContain('did not finish');
   });
 });
 
@@ -208,7 +271,7 @@ describe('type output', () => {
         range: { start: { line: 9, column: 19 }, end: { line: 9, column: 19 } },
         severity: 'error',
         message:
-          "Type 'string' is not assignable to type 'number'.\nThe types of the property are not compatible.",
+          "Type 'string' is not assignable to type 'number'.\n  The types of the property are not compatible.",
         code: 'TS2322',
         link: null,
         source: 'typescript',
@@ -253,7 +316,7 @@ describe('brumate check', () => {
     expect(files(records)).toEqual(['A.brm', 'B.brm']);
     for (const record of records) {
       expect(record.code).toMatch(/^BRM\d{3}$/);
-      expect(record.link).toMatch(/^https:\/\/brumate\.dev\/docs\/errors#brm\d{3}$/);
+      expect(record.link).toMatch(/^https:\/\/brumate-docs\.vercel\.app\/docs\/errors#brm\d{3}$/);
       expect(record.range!.start.line).toBeGreaterThan(0);
     }
   });
@@ -278,6 +341,13 @@ describe('brumate check', () => {
     const { status, err } = run(root, '--json');
     expect(status).toBe(0);
     expect(err).toContain('tsconfig.json');
+  });
+
+  it('exits with 1 for a path that does not exist, without a stack', () => {
+    const { status, err, out } = run(project({ 'A.brm': GOOD }), '--no-types', 'nope.brm');
+    expect(status).toBe(1);
+    expect(err).not.toContain('ENOENT');
+    expect(out[0]).toContain('nope.brm: error: This file or directory does not exist');
   });
 
   it('rejects an unknown flag', () => {

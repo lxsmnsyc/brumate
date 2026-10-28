@@ -1,5 +1,7 @@
 export type * from './ast.ts';
 export { analyze } from './analyze.ts';
+export { errorLink, findError } from './error-catalog.ts';
+export type { ErrorEntry } from './error-catalog.ts';
 export { BrumateError, getLocation } from './error.ts';
 export type { Location } from './error.ts';
 export { buildGraph } from './graph.ts';

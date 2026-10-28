@@ -8,7 +8,7 @@ It is generated from `src/error-catalog.ts`. Do not edit it by hand.
 
 A comment starts and never ends.
 
-https://brumate.dev/docs/errors#brm001
+https://brumate-docs.vercel.app/docs/errors#brm001
 
 ```brm fragment
 <!-- A comment ends with -->
@@ -21,7 +21,7 @@ https://brumate.dev/docs/errors#brm001
 
 A string in code starts and never ends.
 
-https://brumate.dev/docs/errors#brm002
+https://brumate-docs.vercel.app/docs/errors#brm002
 
 ```brm fragment
 const name = 'Ada';
@@ -31,7 +31,7 @@ const name = 'Ada';
 
 A template string starts and never ends.
 
-https://brumate.dev/docs/errors#brm003
+https://brumate-docs.vercel.app/docs/errors#brm003
 
 ```brm fragment
 const label = `Hello ${name}`;
@@ -41,7 +41,7 @@ const label = `Hello ${name}`;
 
 A regular expression starts and never ends.
 
-https://brumate.dev/docs/errors#brm004
+https://brumate-docs.vercel.app/docs/errors#brm004
 
 ```brm fragment
 const digits = /\d+/;
@@ -51,7 +51,7 @@ const digits = /\d+/;
 
 Code has a bracket that closes nothing.
 
-https://brumate.dev/docs/errors#brm005
+https://brumate-docs.vercel.app/docs/errors#brm005
 
 ```brm fragment
 const list = [1, 2];
@@ -61,7 +61,7 @@ const list = [1, 2];
 
 Code opens a bracket and never closes it. The message names the closing one.
 
-https://brumate.dev/docs/errors#brm006
+https://brumate-docs.vercel.app/docs/errors#brm006
 
 ```brm fragment
 const list = [1, 2];
@@ -71,7 +71,7 @@ const list = [1, 2];
 
 A `#` block opens with `{` and the file ends before its `}`.
 
-https://brumate.dev/docs/errors#brm007
+https://brumate-docs.vercel.app/docs/errors#brm007
 
 ```brm fragment
 #if (open) {
@@ -83,7 +83,7 @@ https://brumate.dev/docs/errors#brm007
 
 An element is never closed.
 
-https://brumate.dev/docs/errors#brm008
+https://brumate-docs.vercel.app/docs/errors#brm008
 
 ```brm fragment
 <div>
@@ -95,7 +95,7 @@ https://brumate.dev/docs/errors#brm008
 
 A closing tag has no opening tag.
 
-https://brumate.dev/docs/errors#brm009
+https://brumate-docs.vercel.app/docs/errors#brm009
 
 ```brm fragment
 <p>Text</p>
@@ -105,7 +105,7 @@ https://brumate.dev/docs/errors#brm009
 
 A `<script>` is inside an element, or after other markup in a block.
 
-https://brumate.dev/docs/errors#brm010
+https://brumate-docs.vercel.app/docs/errors#brm010
 
 ```brm fragment
 #for (item of items) {
@@ -120,7 +120,7 @@ https://brumate.dev/docs/errors#brm010
 
 A `<style>` is inside an element or a block.
 
-https://brumate.dev/docs/errors#brm011
+https://brumate-docs.vercel.app/docs/errors#brm011
 
 ```brm fragment
 <style>
@@ -135,7 +135,7 @@ https://brumate.dev/docs/errors#brm011
 
 A `#template` is inside an element, or after other markup in a block.
 
-https://brumate.dev/docs/errors#brm012
+https://brumate-docs.vercel.app/docs/errors#brm012
 
 ```brm fragment
 #template price(amount: number) {
@@ -147,7 +147,7 @@ https://brumate.dev/docs/errors#brm012
 
 A branch such as `#else` or `#catch` comes without the block that it belongs to.
 
-https://brumate.dev/docs/errors#brm013
+https://brumate-docs.vercel.app/docs/errors#brm013
 
 ```brm fragment
 #if (open) {
@@ -161,7 +161,7 @@ https://brumate.dev/docs/errors#brm013
 
 A `<` starts a tag with no name.
 
-https://brumate.dev/docs/errors#brm014
+https://brumate-docs.vercel.app/docs/errors#brm014
 
 ```brm fragment
 <p>1 &lt; 2</p>
@@ -171,7 +171,7 @@ https://brumate.dev/docs/errors#brm014
 
 `<window>` and `<document>` take no children, so they close with `/>`.
 
-https://brumate.dev/docs/errors#brm015
+https://brumate-docs.vercel.app/docs/errors#brm015
 
 ```brm fragment
 <window onKeyDown=(handler) />
@@ -181,7 +181,7 @@ https://brumate.dev/docs/errors#brm015
 
 A closing tag is not complete.
 
-https://brumate.dev/docs/errors#brm016
+https://brumate-docs.vercel.app/docs/errors#brm016
 
 ```brm fragment
 <p>Text</p>
@@ -191,7 +191,7 @@ https://brumate.dev/docs/errors#brm016
 
 A tag starts and the file ends before its `>`.
 
-https://brumate.dev/docs/errors#brm017
+https://brumate-docs.vercel.app/docs/errors#brm017
 
 ```brm fragment
 <input value=name>
@@ -201,7 +201,7 @@ https://brumate.dev/docs/errors#brm017
 
 Two attributes touch each other.
 
-https://brumate.dev/docs/errors#brm018
+https://brumate-docs.vercel.app/docs/errors#brm018
 
 ```brm fragment
 <input id=name type="text">
@@ -211,7 +211,7 @@ https://brumate.dev/docs/errors#brm018
 
 `<window>` and `<document>` take event handlers and nothing else.
 
-https://brumate.dev/docs/errors#brm019
+https://brumate-docs.vercel.app/docs/errors#brm019
 
 ```brm fragment
 <document onKeyDown=(handler) />
@@ -221,7 +221,7 @@ https://brumate.dev/docs/errors#brm019
 
 A `{` in a tag holds something other than `...rest` or a name.
 
-https://brumate.dev/docs/errors#brm020
+https://brumate-docs.vercel.app/docs/errors#brm020
 
 ```brm fragment
 <a {href} {...rest}>Open</a>
@@ -231,7 +231,7 @@ https://brumate.dev/docs/errors#brm020
 
 A tag has a character where an attribute name belongs.
 
-https://brumate.dev/docs/errors#brm021
+https://brumate-docs.vercel.app/docs/errors#brm021
 
 ```brm fragment
 <input disabled>
@@ -241,7 +241,7 @@ https://brumate.dev/docs/errors#brm021
 
 The modifier after an event name is not one of the known ones.
 
-https://brumate.dev/docs/errors#brm022
+https://brumate-docs.vercel.app/docs/errors#brm022
 
 ```brm fragment
 <form onSubmit=(prevent(send))></form>
@@ -251,7 +251,7 @@ https://brumate.dev/docs/errors#brm022
 
 An event modifier is on a component, which only passes the handler on.
 
-https://brumate.dev/docs/errors#brm023
+https://brumate-docs.vercel.app/docs/errors#brm023
 
 ```brm fragment
 <form onSubmit=(prevent(send))></form>
@@ -261,7 +261,7 @@ https://brumate.dev/docs/errors#brm023
 
 An event attribute has no `=` and no value.
 
-https://brumate.dev/docs/errors#brm024
+https://brumate-docs.vercel.app/docs/errors#brm024
 
 ```brm fragment
 <button onClick=(() => count++)>Add</button>
@@ -271,7 +271,7 @@ https://brumate.dev/docs/errors#brm024
 
 The value of an event attribute is a quoted string.
 
-https://brumate.dev/docs/errors#brm025
+https://brumate-docs.vercel.app/docs/errors#brm025
 
 ```brm fragment
 <button onClick=(() => count++)>Add</button>
@@ -281,7 +281,7 @@ https://brumate.dev/docs/errors#brm025
 
 An attribute name has two or more `:`.
 
-https://brumate.dev/docs/errors#brm026
+https://brumate-docs.vercel.app/docs/errors#brm026
 
 ```brm fragment
 <svg xlink:href="#icon"></svg>
@@ -291,7 +291,7 @@ https://brumate.dev/docs/errors#brm026
 
 `ref` has a value that is not `$bind(name)`.
 
-https://brumate.dev/docs/errors#brm027
+https://brumate-docs.vercel.app/docs/errors#brm027
 
 ```brm fragment
 <input ref=$bind(input)>
@@ -301,7 +301,7 @@ https://brumate.dev/docs/errors#brm027
 
 The `prefetch` attribute no longer exists.
 
-https://brumate.dev/docs/errors#brm028
+https://brumate-docs.vercel.app/docs/errors#brm028
 
 ```brm fragment
 <a href="/about">About</a>
@@ -311,7 +311,7 @@ https://brumate.dev/docs/errors#brm028
 
 An attribute value holds an element.
 
-https://brumate.dev/docs/errors#brm029
+https://brumate-docs.vercel.app/docs/errors#brm029
 
 ```brm fragment
 <List item=row />
@@ -325,7 +325,7 @@ https://brumate.dev/docs/errors#brm029
 
 An attribute has `=` and nothing after it.
 
-https://brumate.dev/docs/errors#brm030
+https://brumate-docs.vercel.app/docs/errors#brm030
 
 ```brm fragment
 <input value=name>
@@ -335,7 +335,7 @@ https://brumate.dev/docs/errors#brm030
 
 An attribute value without quotes has an operator or a space in it.
 
-https://brumate.dev/docs/errors#brm031
+https://brumate-docs.vercel.app/docs/errors#brm031
 
 ```brm fragment
 <button disabled=(count > 3)>Add</button>
@@ -345,7 +345,7 @@ https://brumate.dev/docs/errors#brm031
 
 A tag has text where its `>` belongs.
 
-https://brumate.dev/docs/errors#brm032
+https://brumate-docs.vercel.app/docs/errors#brm032
 
 ```brm fragment
 <input value=name>
@@ -355,7 +355,7 @@ https://brumate.dev/docs/errors#brm032
 
 A `<script>` or `<style>` attribute has `=` without a quoted value.
 
-https://brumate.dev/docs/errors#brm033
+https://brumate-docs.vercel.app/docs/errors#brm033
 
 ```brm fragment
 <script generics="T"></script>
@@ -365,7 +365,7 @@ https://brumate.dev/docs/errors#brm033
 
 A `<script>` or `<style>` is not closed.
 
-https://brumate.dev/docs/errors#brm034
+https://brumate-docs.vercel.app/docs/errors#brm034
 
 ```brm fragment
 <script>
@@ -377,7 +377,7 @@ https://brumate.dev/docs/errors#brm034
 
 A `<script>` has an attribute other than `module` and `generics`.
 
-https://brumate.dev/docs/errors#brm035
+https://brumate-docs.vercel.app/docs/errors#brm035
 
 ```brm fragment
 <script module>
@@ -389,7 +389,7 @@ https://brumate.dev/docs/errors#brm035
 
 A file has two module scripts.
 
-https://brumate.dev/docs/errors#brm036
+https://brumate-docs.vercel.app/docs/errors#brm036
 
 ```brm fragment
 <script module>
@@ -402,7 +402,7 @@ https://brumate.dev/docs/errors#brm036
 
 A file has two instance scripts.
 
-https://brumate.dev/docs/errors#brm037
+https://brumate-docs.vercel.app/docs/errors#brm037
 
 ```brm fragment
 <script>
@@ -415,7 +415,7 @@ https://brumate.dev/docs/errors#brm037
 
 A `<style>` names another language.
 
-https://brumate.dev/docs/errors#brm038
+https://brumate-docs.vercel.app/docs/errors#brm038
 
 ```brm fragment
 <style lang="scss">
@@ -431,7 +431,7 @@ https://brumate.dev/docs/errors#brm038
 
 `#reveal` has an option that it does not know.
 
-https://brumate.dev/docs/errors#brm039
+https://brumate-docs.vercel.app/docs/errors#brm039
 
 ```brm fragment
 #reveal ('sequential', collapsed) {
@@ -443,7 +443,7 @@ https://brumate.dev/docs/errors#brm039
 
 `collapsed` goes with `sequential` only.
 
-https://brumate.dev/docs/errors#brm040
+https://brumate-docs.vercel.app/docs/errors#brm040
 
 ```brm fragment
 #reveal ('sequential', collapsed) {
@@ -455,7 +455,7 @@ https://brumate.dev/docs/errors#brm040
 
 A `#reveal` body starts with a `<script>`.
 
-https://brumate.dev/docs/errors#brm041
+https://brumate-docs.vercel.app/docs/errors#brm041
 
 ```brm fragment
 <script>
@@ -470,7 +470,7 @@ https://brumate.dev/docs/errors#brm041
 
 A block that takes a condition or a list has no `(`.
 
-https://brumate.dev/docs/errors#brm042
+https://brumate-docs.vercel.app/docs/errors#brm042
 
 ```brm fragment
 #if (open) {
@@ -482,7 +482,7 @@ https://brumate.dev/docs/errors#brm042
 
 The parentheses of a block are empty.
 
-https://brumate.dev/docs/errors#brm043
+https://brumate-docs.vercel.app/docs/errors#brm043
 
 ```brm fragment
 #if (open) {
@@ -494,7 +494,7 @@ https://brumate.dev/docs/errors#brm043
 
 The header of a block is not followed by `{`.
 
-https://brumate.dev/docs/errors#brm044
+https://brumate-docs.vercel.app/docs/errors#brm044
 
 ```brm fragment
 #if (open) {
@@ -506,7 +506,7 @@ https://brumate.dev/docs/errors#brm044
 
 `#switch` has no `{` after it.
 
-https://brumate.dev/docs/errors#brm045
+https://brumate-docs.vercel.app/docs/errors#brm045
 
 ```brm fragment
 #switch {
@@ -520,7 +520,7 @@ https://brumate.dev/docs/errors#brm045
 
 A `<script>` at the start of a block has attributes such as `module`.
 
-https://brumate.dev/docs/errors#brm046
+https://brumate-docs.vercel.app/docs/errors#brm046
 
 ```brm fragment
 #for (item of items) {
@@ -535,7 +535,7 @@ https://brumate.dev/docs/errors#brm046
 
 A `#try` body is not followed by `#catch`.
 
-https://brumate.dev/docs/errors#brm047
+https://brumate-docs.vercel.app/docs/errors#brm047
 
 ```brm fragment
 #try {
@@ -549,7 +549,7 @@ https://brumate.dev/docs/errors#brm047
 
 The header of `#catch` names something other than a plain error name and a plain reset name.
 
-https://brumate.dev/docs/errors#brm048
+https://brumate-docs.vercel.app/docs/errors#brm048
 
 ```brm fragment
 #catch (error, reset) {
@@ -561,7 +561,7 @@ https://brumate.dev/docs/errors#brm048
 
 A `#client` block names another trigger.
 
-https://brumate.dev/docs/errors#brm049
+https://brumate-docs.vercel.app/docs/errors#brm049
 
 ```brm fragment
 #client ('idle') {
@@ -573,7 +573,7 @@ https://brumate.dev/docs/errors#brm049
 
 A `#` starts a block that does not exist.
 
-https://brumate.dev/docs/errors#brm050
+https://brumate-docs.vercel.app/docs/errors#brm050
 
 ```brm fragment
 #if (open) {
@@ -585,7 +585,7 @@ https://brumate.dev/docs/errors#brm050
 
 The header of `#repeat` is not `index of count`.
 
-https://brumate.dev/docs/errors#brm051
+https://brumate-docs.vercel.app/docs/errors#brm051
 
 ```brm fragment
 #repeat (star of 5) {
@@ -597,7 +597,7 @@ https://brumate.dev/docs/errors#brm051
 
 The header of `#for` has no `of`.
 
-https://brumate.dev/docs/errors#brm052
+https://brumate-docs.vercel.app/docs/errors#brm052
 
 ```brm fragment
 #for (item, index of items by item.id) {
@@ -609,7 +609,7 @@ https://brumate.dev/docs/errors#brm052
 
 `window` after a `#for` header has no height.
 
-https://brumate.dev/docs/errors#brm053
+https://brumate-docs.vercel.app/docs/errors#brm053
 
 ```brm fragment
 #for (row of rows by row.id) window(32) {
@@ -621,7 +621,7 @@ https://brumate.dev/docs/errors#brm053
 
 A `#switch` holds markup other than its cases.
 
-https://brumate.dev/docs/errors#brm054
+https://brumate-docs.vercel.app/docs/errors#brm054
 
 ```brm fragment
 #switch {
@@ -638,7 +638,7 @@ https://brumate.dev/docs/errors#brm054
 
 A `#case` comes after the `#default`.
 
-https://brumate.dev/docs/errors#brm055
+https://brumate-docs.vercel.app/docs/errors#brm055
 
 ```brm fragment
 #switch {
@@ -655,7 +655,7 @@ https://brumate.dev/docs/errors#brm055
 
 A `#template` has no parameter list.
 
-https://brumate.dev/docs/errors#brm056
+https://brumate-docs.vercel.app/docs/errors#brm056
 
 ```brm fragment
 #template price(amount: number) {
@@ -667,7 +667,7 @@ https://brumate.dev/docs/errors#brm056
 
 An attribute or a block has code that is not an expression.
 
-https://brumate.dev/docs/errors#brm057
+https://brumate-docs.vercel.app/docs/errors#brm057
 
 ```brm fragment
 <p>{count + 1}</p>
@@ -677,7 +677,7 @@ https://brumate.dev/docs/errors#brm057
 
 The name of a `#for` or `#catch` is not a name or a pattern.
 
-https://brumate.dev/docs/errors#brm058
+https://brumate-docs.vercel.app/docs/errors#brm058
 
 ```brm fragment
 #for ({ id, name } of people by id) {
@@ -689,7 +689,7 @@ https://brumate.dev/docs/errors#brm058
 
 The parameters of a `#template` are not a parameter list.
 
-https://brumate.dev/docs/errors#brm059
+https://brumate-docs.vercel.app/docs/errors#brm059
 
 ```brm fragment
 #template price(amount: number) {
@@ -701,7 +701,7 @@ https://brumate.dev/docs/errors#brm059
 
 Two declarations of one scope have the same name.
 
-https://brumate.dev/docs/errors#brm060
+https://brumate-docs.vercel.app/docs/errors#brm060
 
 ```brm fragment
 let count = $signal(0);
@@ -712,7 +712,7 @@ let total = $signal(0);
 
 `prevent`, `stop`, `once`, `capture` or `transition` has no handler, or `stop`, `once` or `capture` has keys.
 
-https://brumate.dev/docs/errors#brm061
+https://brumate-docs.vercel.app/docs/errors#brm061
 
 ```brm fragment
 <form onSubmit=(prevent(send))></form>
@@ -722,7 +722,7 @@ https://brumate.dev/docs/errors#brm061
 
 Keys are given to `prevent` of an event that is not `onKeyDown`, `onKeyUp` or `onKeyPress`.
 
-https://brumate.dev/docs/errors#brm062
+https://brumate-docs.vercel.app/docs/errors#brm062
 
 ```brm fragment
 <ul onKeyDown=(prevent(move, 'ArrowDown'))></ul>
@@ -732,7 +732,7 @@ https://brumate.dev/docs/errors#brm062
 
 A key of `prevent` is not a string literal of an `event.key`.
 
-https://brumate.dev/docs/errors#brm063
+https://brumate-docs.vercel.app/docs/errors#brm063
 
 ```brm fragment
 <ul onKeyDown=(prevent(move, 'ArrowDown', 'Mod+ArrowUp'))></ul>
@@ -742,7 +742,7 @@ https://brumate.dev/docs/errors#brm063
 
 A key of `prevent` is not a string literal.
 
-https://brumate.dev/docs/errors#brm064
+https://brumate-docs.vercel.app/docs/errors#brm064
 
 ```brm fragment
 <input onKeyDown=(prevent(submit, 'Enter'))>
@@ -752,7 +752,7 @@ https://brumate.dev/docs/errors#brm064
 
 A function with `'use server'` is not `async`.
 
-https://brumate.dev/docs/errors#brm065
+https://brumate-docs.vercel.app/docs/errors#brm065
 
 ```brm fragment
 async function save(list: string[]) {
@@ -765,7 +765,7 @@ async function save(list: string[]) {
 
 `<script module>` has `export default`.
 
-https://brumate.dev/docs/errors#brm066
+https://brumate-docs.vercel.app/docs/errors#brm066
 
 ```brm fragment
 <script module>
@@ -777,7 +777,7 @@ https://brumate.dev/docs/errors#brm066
 
 The instance script has an `export`.
 
-https://brumate.dev/docs/errors#brm067
+https://brumate-docs.vercel.app/docs/errors#brm067
 
 ```brm fragment
 <script module>
@@ -789,7 +789,7 @@ https://brumate.dev/docs/errors#brm067
 
 `$title` has no argument or more than one.
 
-https://brumate.dev/docs/errors#brm068
+https://brumate-docs.vercel.app/docs/errors#brm068
 
 ```brm fragment
 $title('Todos');
@@ -799,7 +799,7 @@ $title('Todos');
 
 A declaration awaits a compile-time function other than `$memo`.
 
-https://brumate.dev/docs/errors#brm069
+https://brumate-docs.vercel.app/docs/errors#brm069
 
 ```brm fragment
 const user = $memo(await load(id));
@@ -809,7 +809,7 @@ const user = $memo(await load(id));
 
 `$props()` is in a module script or a function.
 
-https://brumate.dev/docs/errors#brm070
+https://brumate-docs.vercel.app/docs/errors#brm070
 
 ```brm fragment
 const { name } = $props<{ name: string }>();
@@ -819,7 +819,7 @@ const { name } = $props<{ name: string }>();
 
 The result of `$props()` is not assigned with `const` or `let`.
 
-https://brumate.dev/docs/errors#brm071
+https://brumate-docs.vercel.app/docs/errors#brm071
 
 ```brm fragment
 const { name } = $props<{ name: string }>();
@@ -829,7 +829,7 @@ const { name } = $props<{ name: string }>();
 
 `$props()` has an argument.
 
-https://brumate.dev/docs/errors#brm072
+https://brumate-docs.vercel.app/docs/errors#brm072
 
 ```brm fragment
 const { name } = $props<{ name: string }>();
@@ -839,7 +839,7 @@ const { name } = $props<{ name: string }>();
 
 `$props()` is assigned to an array pattern.
 
-https://brumate.dev/docs/errors#brm073
+https://brumate-docs.vercel.app/docs/errors#brm073
 
 ```brm fragment
 const { name } = $props<{ name: string }>();
@@ -849,7 +849,7 @@ const { name } = $props<{ name: string }>();
 
 `$id()` is not the value of a `const`.
 
-https://brumate.dev/docs/errors#brm074
+https://brumate-docs.vercel.app/docs/errors#brm074
 
 ```brm fragment
 const field = $id();
@@ -859,7 +859,7 @@ const field = $id();
 
 `$id` has an argument.
 
-https://brumate.dev/docs/errors#brm075
+https://brumate-docs.vercel.app/docs/errors#brm075
 
 ```brm fragment
 const field = $id();
@@ -869,7 +869,7 @@ const field = $id();
 
 The argument of `$isPassed` is not a prop of the component.
 
-https://brumate.dev/docs/errors#brm076
+https://brumate-docs.vercel.app/docs/errors#brm076
 
 ```brm fragment
 let { value } = $props<{ value?: Bindable<string> }>();
@@ -880,7 +880,7 @@ const passed = $isPassed(value);
 
 `$navigation` has an argument.
 
-https://brumate.dev/docs/errors#brm077
+https://brumate-docs.vercel.app/docs/errors#brm077
 
 ```brm fragment
 const navigation = $navigation();
@@ -890,7 +890,7 @@ const navigation = $navigation();
 
 `$route` has more than one argument.
 
-https://brumate.dev/docs/errors#brm078
+https://brumate-docs.vercel.app/docs/errors#brm078
 
 ```brm fragment
 const route = $route('/posts/[id]');
@@ -900,7 +900,7 @@ const route = $route('/posts/[id]');
 
 `$getContext` is not the value of a `const`.
 
-https://brumate.dev/docs/errors#brm079
+https://brumate-docs.vercel.app/docs/errors#brm079
 
 ```brm fragment
 const theme = $getContext(ThemeContext);
@@ -910,7 +910,7 @@ const theme = $getContext(ThemeContext);
 
 `$getContext` has no argument or more than one.
 
-https://brumate.dev/docs/errors#brm080
+https://brumate-docs.vercel.app/docs/errors#brm080
 
 ```brm fragment
 const theme = $getContext(ThemeContext);
@@ -920,7 +920,7 @@ const theme = $getContext(ThemeContext);
 
 `$setContext` has fewer or more than two arguments.
 
-https://brumate.dev/docs/errors#brm081
+https://brumate-docs.vercel.app/docs/errors#brm081
 
 ```brm fragment
 $setContext(ThemeContext, theme);
@@ -930,7 +930,7 @@ $setContext(ThemeContext, theme);
 
 `$action` is not the value of a `const`.
 
-https://brumate.dev/docs/errors#brm082
+https://brumate-docs.vercel.app/docs/errors#brm082
 
 ```brm fragment
 const result = $action(save);
@@ -940,7 +940,7 @@ const result = $action(save);
 
 `$action` has no argument, or more than one.
 
-https://brumate.dev/docs/errors#brm083
+https://brumate-docs.vercel.app/docs/errors#brm083
 
 ```brm fragment
 const result = $action(save);
@@ -950,7 +950,7 @@ const result = $action(save);
 
 The argument of `$action` is not a function with `'use server'` in this file.
 
-https://brumate.dev/docs/errors#brm084
+https://brumate-docs.vercel.app/docs/errors#brm084
 
 ```brm fragment
 async function save(data: FormData) {
@@ -963,7 +963,7 @@ const result = $action(save);
 
 `$debounced` or `$throttled` is declared with `let`.
 
-https://brumate.dev/docs/errors#brm085
+https://brumate-docs.vercel.app/docs/errors#brm085
 
 ```brm fragment
 const query = $debounced(text, 300);
@@ -973,7 +973,7 @@ const query = $debounced(text, 300);
 
 A signal, a memo or another value of a compile-time function is declared with a pattern.
 
-https://brumate.dev/docs/errors#brm086
+https://brumate-docs.vercel.app/docs/errors#brm086
 
 ```brm fragment
 let count = $signal(0);
@@ -983,7 +983,7 @@ let count = $signal(0);
 
 `$debounced` or `$throttled` does not have both arguments.
 
-https://brumate.dev/docs/errors#brm087
+https://brumate-docs.vercel.app/docs/errors#brm087
 
 ```brm fragment
 const query = $debounced(text, 300);
@@ -993,7 +993,7 @@ const query = $debounced(text, 300);
 
 The wait of `$debounced` or `$throttled` is not a number literal.
 
-https://brumate.dev/docs/errors#brm088
+https://brumate-docs.vercel.app/docs/errors#brm088
 
 ```brm fragment
 const query = $debounced(text, 300);
@@ -1003,7 +1003,7 @@ const query = $debounced(text, 300);
 
 `$signal` and `$optimistic` need `let`, and `$memo` needs `const`.
 
-https://brumate.dev/docs/errors#brm089
+https://brumate-docs.vercel.app/docs/errors#brm089
 
 ```brm fragment
 let count = $signal(0);
@@ -1014,7 +1014,7 @@ const double = $memo(count * 2);
 
 `$signal`, `$memo` or `$optimistic` has more than one argument.
 
-https://brumate.dev/docs/errors#brm090
+https://brumate-docs.vercel.app/docs/errors#brm090
 
 ```brm fragment
 let count = $signal(0);
@@ -1024,7 +1024,7 @@ let count = $signal(0);
 
 `$memo` or `$optimistic` has no argument.
 
-https://brumate.dev/docs/errors#brm091
+https://brumate-docs.vercel.app/docs/errors#brm091
 
 ```brm fragment
 const double = $memo(count * 2);
@@ -1034,7 +1034,7 @@ const double = $memo(count * 2);
 
 The argument of `$optimistic` is not a name.
 
-https://brumate.dev/docs/errors#brm092
+https://brumate-docs.vercel.app/docs/errors#brm092
 
 ```brm fragment
 let shown = $optimistic(items);
@@ -1044,7 +1044,7 @@ let shown = $optimistic(items);
 
 `$effect` or `$client` is assigned to a name.
 
-https://brumate.dev/docs/errors#brm093
+https://brumate-docs.vercel.app/docs/errors#brm093
 
 ```brm fragment
 $effect(() => {
@@ -1056,7 +1056,7 @@ $effect(() => {
 
 `$effect` or `$client` has no function as its callback.
 
-https://brumate.dev/docs/errors#brm094
+https://brumate-docs.vercel.app/docs/errors#brm094
 
 ```brm fragment
 $effect(() => {
@@ -1068,7 +1068,7 @@ $effect(() => {
 
 The callback of `$effect` or `$client` has parameters.
 
-https://brumate.dev/docs/errors#brm095
+https://brumate-docs.vercel.app/docs/errors#brm095
 
 ```brm fragment
 $effect(() => {
@@ -1080,7 +1080,7 @@ $effect(() => {
 
 The callback of `$effect` or `$client` is `async`.
 
-https://brumate.dev/docs/errors#brm096
+https://brumate-docs.vercel.app/docs/errors#brm096
 
 ```brm fragment
 $effect(() => {
@@ -1092,7 +1092,7 @@ $effect(() => {
 
 `$effect` has more than one argument.
 
-https://brumate.dev/docs/errors#brm097
+https://brumate-docs.vercel.app/docs/errors#brm097
 
 ```brm fragment
 $effect(() => {
@@ -1104,7 +1104,7 @@ $effect(() => {
 
 The second argument of `$client` is another string.
 
-https://brumate.dev/docs/errors#brm098
+https://brumate-docs.vercel.app/docs/errors#brm098
 
 ```brm fragment
 $client(() => {
@@ -1116,7 +1116,7 @@ $client(() => {
 
 The first argument of `$handler` is not a function.
 
-https://brumate.dev/docs/errors#brm099
+https://brumate-docs.vercel.app/docs/errors#brm099
 
 ```brm fragment
 onClick: $handler(prevent(removeAt), index),
@@ -1126,7 +1126,7 @@ onClick: $handler(prevent(removeAt), index),
 
 A handler reads a local value of the function that calls `$handler`.
 
-https://brumate.dev/docs/errors#brm100
+https://brumate-docs.vercel.app/docs/errors#brm100
 
 ```brm fragment
 onClick: $handler(removeAt, index),
@@ -1136,7 +1136,7 @@ onClick: $handler(removeAt, index),
 
 `$handler` has a spread argument.
 
-https://brumate.dev/docs/errors#brm101
+https://brumate-docs.vercel.app/docs/errors#brm101
 
 ```brm fragment
 onClick: $handler(removeAt, index, kind),
@@ -1146,7 +1146,7 @@ onClick: $handler(removeAt, index, kind),
 
 The setter of `$bind` is not a function.
 
-https://brumate.dev/docs/errors#brm102
+https://brumate-docs.vercel.app/docs/errors#brm102
 
 ```brm fragment
 <Toggle on=$bind(open, (next) => (open = next)) />
@@ -1156,7 +1156,7 @@ https://brumate.dev/docs/errors#brm102
 
 The setter of `$bind` reads a local value that is not a value of the component.
 
-https://brumate.dev/docs/errors#brm103
+https://brumate-docs.vercel.app/docs/errors#brm103
 
 ```brm fragment
 <Toggle on=$bind(open, (next) => (open = next)) />
@@ -1166,7 +1166,7 @@ https://brumate.dev/docs/errors#brm103
 
 `$bind` is somewhere else, such as on a `class` or a `<div>`.
 
-https://brumate.dev/docs/errors#brm104
+https://brumate-docs.vercel.app/docs/errors#brm104
 
 ```brm fragment
 <input value=$bind(draft)>
@@ -1176,7 +1176,7 @@ https://brumate.dev/docs/errors#brm104
 
 `$bind` has no argument, or an argument that is not a name.
 
-https://brumate.dev/docs/errors#brm105
+https://brumate-docs.vercel.app/docs/errors#brm105
 
 ```brm fragment
 <Toggle on=$bind(open) />
@@ -1186,7 +1186,7 @@ https://brumate.dev/docs/errors#brm105
 
 The name in `$bind` is a memo, a const prop or another value.
 
-https://brumate.dev/docs/errors#brm106
+https://brumate-docs.vercel.app/docs/errors#brm106
 
 ```brm fragment
 let open = $signal(false);
@@ -1197,7 +1197,7 @@ let open = $signal(false);
 
 The argument of `$isBound` is not a `let` prop.
 
-https://brumate.dev/docs/errors#brm107
+https://brumate-docs.vercel.app/docs/errors#brm107
 
 ```brm fragment
 let { open } = $props<{ open?: Bindable<boolean> }>();
@@ -1208,7 +1208,7 @@ const bound = () => $isBound(open);
 
 The argument of `$isPending` is not a memo that holds a promise.
 
-https://brumate.dev/docs/errors#brm108
+https://brumate-docs.vercel.app/docs/errors#brm108
 
 ```brm fragment
 const results = $memo(search(query));
@@ -1221,7 +1221,7 @@ const results = $memo(search(query));
 
 The first argument of `$produce` is not a signal.
 
-https://brumate.dev/docs/errors#brm109
+https://brumate-docs.vercel.app/docs/errors#brm109
 
 ```brm fragment
 $produce(todos, (draft) => {
@@ -1233,7 +1233,7 @@ $produce(todos, (draft) => {
 
 The second argument of `$produce` is not a function.
 
-https://brumate.dev/docs/errors#brm110
+https://brumate-docs.vercel.app/docs/errors#brm110
 
 ```brm fragment
 $produce(todos, (draft) => {
@@ -1245,7 +1245,7 @@ $produce(todos, (draft) => {
 
 An attribute starts with `b-`.
 
-https://brumate.dev/docs/errors#brm111
+https://brumate-docs.vercel.app/docs/errors#brm111
 
 ```brm fragment
 <div data-id=id></div>
@@ -1255,7 +1255,7 @@ https://brumate.dev/docs/errors#brm111
 
 The name in `ref=$bind(name)` is not a value of the component.
 
-https://brumate.dev/docs/errors#brm112
+https://brumate-docs.vercel.app/docs/errors#brm112
 
 ```brm fragment
 let input = $signal<HTMLInputElement>();
@@ -1266,7 +1266,7 @@ let input = $signal<HTMLInputElement>();
 
 The name in `ref=$bind(name)` is a memo, a const prop or another value.
 
-https://brumate.dev/docs/errors#brm113
+https://brumate-docs.vercel.app/docs/errors#brm113
 
 ```brm fragment
 let input = $signal<HTMLInputElement>();
@@ -1277,7 +1277,7 @@ let input = $signal<HTMLInputElement>();
 
 A `let` prop is used as a `ref` and its type is not `Bindable`.
 
-https://brumate.dev/docs/errors#brm114
+https://brumate-docs.vercel.app/docs/errors#brm114
 
 ```brm fragment
 let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();
@@ -1287,7 +1287,7 @@ let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();
 
 The props object or the rest of `$props()` is used as a whole outside a markup spread: spread in code, passed to a function, `$memo`, `$setContext`, a signal or a variable, or given as a value in markup, such as `title=rest` or `<Badge {rest} />`. The copy loses the `ref` and the live props.
 
-https://brumate.dev/docs/errors#brm115
+https://brumate-docs.vercel.app/docs/errors#brm115
 
 ```brm fragment
 const { class: className, ...rest } = $props();
@@ -1298,7 +1298,7 @@ const { class: className, ...rest } = $props();
 
 Code assigns to, updates or deletes a key of the props object or of the rest of `$props()`.
 
-https://brumate.dev/docs/errors#brm116
+https://brumate-docs.vercel.app/docs/errors#brm116
 
 ```brm fragment
 let title = $signal('');
@@ -1309,7 +1309,7 @@ title = 'New';
 
 Code writes a memo, a const prop or another value that cannot change.
 
-https://brumate.dev/docs/errors#brm117
+https://brumate-docs.vercel.app/docs/errors#brm117
 
 ```brm fragment
 let count = $signal(0);
@@ -1320,7 +1320,7 @@ count = 5;
 
 Setup code, which runs on the server, writes a signal.
 
-https://brumate.dev/docs/errors#brm118
+https://brumate-docs.vercel.app/docs/errors#brm118
 
 ```brm fragment
 let count = $signal(5);
@@ -1330,7 +1330,7 @@ let count = $signal(5);
 
 A server function reads a variable of the instance script.
 
-https://brumate.dev/docs/errors#brm119
+https://brumate-docs.vercel.app/docs/errors#brm119
 
 ```brm fragment
 async function save(user: string) {
@@ -1342,7 +1342,7 @@ async function save(user: string) {
 
 The source of `$optimistic` is a signal.
 
-https://brumate.dev/docs/errors#brm120
+https://brumate-docs.vercel.app/docs/errors#brm120
 
 ```brm fragment
 let shown = $optimistic(items);
@@ -1352,7 +1352,7 @@ let shown = $optimistic(items);
 
 A function with `'use server'` is inside another function or a block.
 
-https://brumate.dev/docs/errors#brm121
+https://brumate-docs.vercel.app/docs/errors#brm121
 
 ```brm fragment
 async function save() {
@@ -1364,7 +1364,7 @@ async function save() {
 
 A compile-time function is used where it is not allowed.
 
-https://brumate.dev/docs/errors#brm122
+https://brumate-docs.vercel.app/docs/errors#brm122
 
 ```brm fragment
 let count = $signal(0);
@@ -1374,7 +1374,7 @@ let count = $signal(0);
 
 `$setContext` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm123
+https://brumate-docs.vercel.app/docs/errors#brm123
 
 ```brm fragment
 $setContext(ThemeContext, theme);
@@ -1384,7 +1384,7 @@ $setContext(ThemeContext, theme);
 
 `$title` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm124
+https://brumate-docs.vercel.app/docs/errors#brm124
 
 ```brm fragment
 $title('Todos');
@@ -1394,7 +1394,7 @@ $title('Todos');
 
 `$id` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm125
+https://brumate-docs.vercel.app/docs/errors#brm125
 
 ```brm fragment
 const field = $id();
@@ -1404,7 +1404,7 @@ const field = $id();
 
 `$isPassed` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm126
+https://brumate-docs.vercel.app/docs/errors#brm126
 
 ```brm fragment
 const passed = $isPassed(value);
@@ -1414,7 +1414,7 @@ const passed = $isPassed(value);
 
 `$getContext` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm127
+https://brumate-docs.vercel.app/docs/errors#brm127
 
 ```brm fragment
 const theme = $getContext(ThemeContext);
@@ -1424,7 +1424,7 @@ const theme = $getContext(ThemeContext);
 
 `$route` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm128
+https://brumate-docs.vercel.app/docs/errors#brm128
 
 ```brm fragment
 const route = $route();
@@ -1434,7 +1434,7 @@ const route = $route();
 
 `$navigation` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm129
+https://brumate-docs.vercel.app/docs/errors#brm129
 
 ```brm fragment
 const navigation = $navigation();
@@ -1444,7 +1444,7 @@ const navigation = $navigation();
 
 `$props` is used in another place than `const { … } = $props()`.
 
-https://brumate.dev/docs/errors#brm130
+https://brumate-docs.vercel.app/docs/errors#brm130
 
 ```brm fragment
 const { name } = $props<{ name: string }>();
@@ -1454,7 +1454,7 @@ const { name } = $props<{ name: string }>();
 
 `$signal` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm131
+https://brumate-docs.vercel.app/docs/errors#brm131
 
 ```brm fragment
 let count = $signal(0);
@@ -1464,7 +1464,7 @@ let count = $signal(0);
 
 `$memo` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm132
+https://brumate-docs.vercel.app/docs/errors#brm132
 
 ```brm fragment
 const double = $memo(count * 2);
@@ -1474,7 +1474,7 @@ const double = $memo(count * 2);
 
 `$debounced` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm133
+https://brumate-docs.vercel.app/docs/errors#brm133
 
 ```brm fragment
 const query = $debounced(text, 300);
@@ -1484,7 +1484,7 @@ const query = $debounced(text, 300);
 
 `$throttled` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm134
+https://brumate-docs.vercel.app/docs/errors#brm134
 
 ```brm fragment
 const position = $throttled(pointer, 100);
@@ -1494,7 +1494,7 @@ const position = $throttled(pointer, 100);
 
 `$optimistic` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm135
+https://brumate-docs.vercel.app/docs/errors#brm135
 
 ```brm fragment
 let shown = $optimistic(items);
@@ -1504,7 +1504,7 @@ let shown = $optimistic(items);
 
 `$action` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm136
+https://brumate-docs.vercel.app/docs/errors#brm136
 
 ```brm fragment
 const result = $action(save);
@@ -1514,7 +1514,7 @@ const result = $action(save);
 
 `$effect` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm137
+https://brumate-docs.vercel.app/docs/errors#brm137
 
 ```brm fragment
 $effect(() => {
@@ -1526,7 +1526,7 @@ $effect(() => {
 
 `$client` is inside a function or a block of code.
 
-https://brumate.dev/docs/errors#brm138
+https://brumate-docs.vercel.app/docs/errors#brm138
 
 ```brm fragment
 $client(() => {
@@ -1538,7 +1538,7 @@ $client(() => {
 
 `$ref` was removed.
 
-https://brumate.dev/docs/errors#brm139
+https://brumate-docs.vercel.app/docs/errors#brm139
 
 ```brm fragment
 let input = $signal<HTMLInputElement>();
@@ -1549,7 +1549,7 @@ let input = $signal<HTMLInputElement>();
 
 `$watch` was removed.
 
-https://brumate.dev/docs/errors#brm140
+https://brumate-docs.vercel.app/docs/errors#brm140
 
 ```brm fragment
 $effect(() => {
@@ -1561,7 +1561,7 @@ $effect(() => {
 
 `$settled` was removed.
 
-https://brumate.dev/docs/errors#brm141
+https://brumate-docs.vercel.app/docs/errors#brm141
 
 ```brm fragment
 $client(() => {
@@ -1573,7 +1573,7 @@ $client(() => {
 
 `$cleanup` was removed.
 
-https://brumate.dev/docs/errors#brm142
+https://brumate-docs.vercel.app/docs/errors#brm142
 
 ```brm fragment
 $effect(() => {
@@ -1586,7 +1586,7 @@ $effect(() => {
 
 `$store` does not exist.
 
-https://brumate.dev/docs/errors#brm143
+https://brumate-docs.vercel.app/docs/errors#brm143
 
 ```brm fragment
 let todos = $signal([]);
@@ -1596,7 +1596,7 @@ let todos = $signal([]);
 
 `$get` was removed. A signal never leaves its file.
 
-https://brumate.dev/docs/errors#brm144
+https://brumate-docs.vercel.app/docs/errors#brm144
 
 ```brm fragment
 // Pass the value, or a function that writes it.
@@ -1607,7 +1607,7 @@ onChange=((next) => (count = next))
 
 `$set` was removed. A signal never leaves its file.
 
-https://brumate.dev/docs/errors#brm145
+https://brumate-docs.vercel.app/docs/errors#brm145
 
 ```brm fragment
 // Pass the value, or a function that writes it.
@@ -1618,7 +1618,7 @@ onChange=((next) => (count = next))
 
 The file imports a name that the compiler knew before it was renamed.
 
-https://brumate.dev/docs/errors#brm146
+https://brumate-docs.vercel.app/docs/errors#brm146
 
 ```brm fragment
 import { $signal } from 'brumate/signals';
@@ -1628,7 +1628,7 @@ import { $signal } from 'brumate/signals';
 
 The file calls a compile-time function that it does not import.
 
-https://brumate.dev/docs/errors#brm147
+https://brumate-docs.vercel.app/docs/errors#brm147
 
 ```brm fragment
 import { $signal } from 'brumate/signals';
@@ -1638,7 +1638,7 @@ import { $signal } from 'brumate/signals';
 
 A value that cannot be sent to the browser, such as a database client, is read by code that runs there.
 
-https://brumate.dev/docs/errors#brm148
+https://brumate-docs.vercel.app/docs/errors#brm148
 
 ```brm fragment
 async function list() {
@@ -1651,7 +1651,7 @@ async function list() {
 
 Code that runs in the browser reads an environment variable of the server.
 
-https://brumate.dev/docs/errors#brm149
+https://brumate-docs.vercel.app/docs/errors#brm149
 
 ```brm fragment
 async function key() {
@@ -1664,7 +1664,7 @@ async function key() {
 
 A value holds an environment variable of the server, and the browser reads the value.
 
-https://brumate.dev/docs/errors#brm150
+https://brumate-docs.vercel.app/docs/errors#brm150
 
 ```brm fragment
 async function key() {
@@ -1677,7 +1677,7 @@ async function key() {
 
 A `#defer` is in markup that only the browser renders.
 
-https://brumate.dev/docs/errors#brm151
+https://brumate-docs.vercel.app/docs/errors#brm151
 
 ```brm fragment
 #defer {
@@ -1689,7 +1689,7 @@ https://brumate.dev/docs/errors#brm151
 
 A `#defer` is in a body that the browser adds later, such as the body of a changing `#if`.
 
-https://brumate.dev/docs/errors#brm152
+https://brumate-docs.vercel.app/docs/errors#brm152
 
 ```brm fragment
 #defer {
@@ -1701,7 +1701,7 @@ https://brumate.dev/docs/errors#brm152
 
 A `<title>`, `<textarea>`, `<style>` or `<script>` holds a changing value next to other content.
 
-https://brumate.dev/docs/errors#brm153
+https://brumate-docs.vercel.app/docs/errors#brm153
 
 ```brm fragment
 <textarea>{`Count ${count}`}</textarea>
@@ -1711,7 +1711,7 @@ https://brumate.dev/docs/errors#brm153
 
 A `<title>` is outside `#head`.
 
-https://brumate.dev/docs/errors#brm154
+https://brumate-docs.vercel.app/docs/errors#brm154
 
 ```brm fragment
 #head {
@@ -1723,7 +1723,7 @@ https://brumate.dev/docs/errors#brm154
 
 No `.brm` file reaches it today: the parser keys every dynamic tag, and a `<{tag}>` whose tag a handler changes compiles. It is kept for a tag that the compiler could not update.
 
-https://brumate.dev/docs/errors#brm155
+https://brumate-docs.vercel.app/docs/errors#brm155
 
 ```brm fragment
 <{tag} class="title">Title</>
@@ -1733,7 +1733,7 @@ https://brumate.dev/docs/errors#brm155
 
 Code that runs again in the browser awaits something other than a memo.
 
-https://brumate.dev/docs/errors#brm156
+https://brumate-docs.vercel.app/docs/errors#brm156
 
 ```brm fragment
 const user = $memo(await load(id));
@@ -1743,7 +1743,7 @@ const user = $memo(await load(id));
 
 Markup that the browser renders awaits something other than a memo.
 
-https://brumate.dev/docs/errors#brm157
+https://brumate-docs.vercel.app/docs/errors#brm157
 
 ```brm fragment
 const user = $memo(await load(id));
@@ -1753,7 +1753,7 @@ const user = $memo(await load(id));
 
 The name or the value of an attribute with a computed name, as in `[name]=value`, changes in the browser.
 
-https://brumate.dev/docs/errors#brm158
+https://brumate-docs.vercel.app/docs/errors#brm158
 
 ```brm fragment
 <div class=(open ? "open" : "closed")></div>
@@ -1763,7 +1763,7 @@ https://brumate.dev/docs/errors#brm158
 
 An element has a computed attribute, as in `[name]=(value)`, and a spread or another computed attribute that can change. The name or the value is a constant, or a signal that nothing writes, so the browser has no code for it, and an update of the element would remove the attribute. Make both a signal that the page writes, or write the attribute without brackets.
 
-https://brumate.dev/docs/errors#brm159
+https://brumate-docs.vercel.app/docs/errors#brm159
 
 ```brm fragment
 let name = $signal('data-x');
@@ -1778,7 +1778,7 @@ let value = $signal('on');
 
 Code that runs in the browser writes a signal in a destructuring assignment.
 
-https://brumate.dev/docs/errors#brm160
+https://brumate-docs.vercel.app/docs/errors#brm160
 
 ```brm fragment
 [first, second] = pair;
@@ -1791,7 +1791,7 @@ second = pair[1];
 
 An optimistic value is changed with `++` or `--`.
 
-https://brumate.dev/docs/errors#brm161
+https://brumate-docs.vercel.app/docs/errors#brm161
 
 ```brm fragment
 shown = shown + 1;
@@ -1801,7 +1801,7 @@ shown = shown + 1;
 
 A `<style>` has CSS that does not parse.
 
-https://brumate.dev/docs/errors#brm162
+https://brumate-docs.vercel.app/docs/errors#brm162
 
 ```brm fragment
 <style>
@@ -1815,7 +1815,7 @@ https://brumate.dev/docs/errors#brm162
 
 A function of a module of reactive logic calls itself, or a loop of functions call each other.
 
-https://brumate.dev/docs/errors#brm163
+https://brumate-docs.vercel.app/docs/errors#brm163
 
 ```brm fragment
 function counter(start: number) {
@@ -1828,7 +1828,7 @@ function counter(start: number) {
 
 The result of a module function is kept as one object.
 
-https://brumate.dev/docs/errors#brm164
+https://brumate-docs.vercel.app/docs/errors#brm164
 
 ```brm fragment
 const { count, increment } = counter(0);
@@ -1838,7 +1838,7 @@ const { count, increment } = counter(0);
 
 The result of a module function is declared with `let`.
 
-https://brumate.dev/docs/errors#brm165
+https://brumate-docs.vercel.app/docs/errors#brm165
 
 ```brm fragment
 const { count, increment } = counter(0);
@@ -1848,7 +1848,7 @@ const { count, increment } = counter(0);
 
 A module function is called inside a function, a condition or a loop.
 
-https://brumate.dev/docs/errors#brm166
+https://brumate-docs.vercel.app/docs/errors#brm166
 
 ```brm fragment
 const { count, increment } = counter(0);
@@ -1858,7 +1858,7 @@ const { count, increment } = counter(0);
 
 The module that the component imports is not on disk.
 
-https://brumate.dev/docs/errors#brm167
+https://brumate-docs.vercel.app/docs/errors#brm167
 
 ```brm fragment
 import { counter } from './counter.brm.ts';
@@ -1868,7 +1868,7 @@ import { counter } from './counter.brm.ts';
 
 The import names a function that the module does not export.
 
-https://brumate.dev/docs/errors#brm168
+https://brumate-docs.vercel.app/docs/errors#brm168
 
 ```brm fragment
 export function counter(start: number) {
@@ -1881,7 +1881,7 @@ export function counter(start: number) {
 
 A module function is an arrow function with an expression body.
 
-https://brumate.dev/docs/errors#brm169
+https://brumate-docs.vercel.app/docs/errors#brm169
 
 ```brm fragment
 export function counter(start: number) {
@@ -1894,7 +1894,7 @@ export function counter(start: number) {
 
 A module function does not end with `return { … }`.
 
-https://brumate.dev/docs/errors#brm170
+https://brumate-docs.vercel.app/docs/errors#brm170
 
 ```brm fragment
 export function counter(start: number) {
@@ -1907,7 +1907,7 @@ export function counter(start: number) {
 
 A module function returns in the middle of its body.
 
-https://brumate.dev/docs/errors#brm171
+https://brumate-docs.vercel.app/docs/errors#brm171
 
 ```brm fragment
 export function counter(start: number) {
@@ -1920,7 +1920,7 @@ export function counter(start: number) {
 
 The result of a module function is destructured with a default, a nested pattern or a rest.
 
-https://brumate.dev/docs/errors#brm172
+https://brumate-docs.vercel.app/docs/errors#brm172
 
 ```brm fragment
 const { count, increment: add } = counter(0);
@@ -1930,7 +1930,7 @@ const { count, increment: add } = counter(0);
 
 The returned object has a computed key, a spread or a method.
 
-https://brumate.dev/docs/errors#brm173
+https://brumate-docs.vercel.app/docs/errors#brm173
 
 ```brm fragment
 return { count, increment };
@@ -1940,7 +1940,7 @@ return { count, increment };
 
 The returned object has a getter or a setter.
 
-https://brumate.dev/docs/errors#brm174
+https://brumate-docs.vercel.app/docs/errors#brm174
 
 ```brm fragment
 return { count, increment };
@@ -1950,7 +1950,7 @@ return { count, increment };
 
 The component destructures a name that the module function does not return.
 
-https://brumate.dev/docs/errors#brm175
+https://brumate-docs.vercel.app/docs/errors#brm175
 
 ```brm fragment
 const { count } = counter(0);
@@ -1960,7 +1960,7 @@ const { count } = counter(0);
 
 A module function returns one local under two keys.
 
-https://brumate.dev/docs/errors#brm176
+https://brumate-docs.vercel.app/docs/errors#brm176
 
 ```brm fragment
 return { count, increment };
@@ -1970,7 +1970,7 @@ return { count, increment };
 
 A name of the module function is also a name of the component.
 
-https://brumate.dev/docs/errors#brm177
+https://brumate-docs.vercel.app/docs/errors#brm177
 
 ```brm fragment
 const { count: first } = counter(0);
@@ -1981,7 +1981,7 @@ const { count: second } = counter(10);
 
 A module function has a destructured or default parameter.
 
-https://brumate.dev/docs/errors#brm178
+https://brumate-docs.vercel.app/docs/errors#brm178
 
 ```brm fragment
 export function counter(start: number) {
@@ -1994,7 +1994,7 @@ export function counter(start: number) {
 
 A module function reads a value of its module that is not exported.
 
-https://brumate.dev/docs/errors#brm179
+https://brumate-docs.vercel.app/docs/errors#brm179
 
 ```brm fragment
 export const STEP = 1;

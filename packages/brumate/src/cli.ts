@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { cp, readFile, stat } from 'node:fs/promises';
+import { cp } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { check, errorCount, formatRecord } from './check-command.ts';
 import { CompileError } from './compile.ts';
-import { defaultExclude, findFiles } from './files.ts';
+import { collectSources } from './files.ts';
 import { inspect } from './inspect.ts';
 import type { InspectReport } from './inspect.ts';
 import { analyzeProjectProps } from './project.ts';
@@ -47,31 +47,8 @@ async function inspectCommand(args: string[]): Promise<number> {
   const root = process.cwd();
 
   // Props are analyzed across every file under the current directory.
-  const project = await findFiles(root, defaultExclude);
-  const sources = new Map<string, string>();
-  for (const [index, source] of (
-    await Promise.all(project.map((file) => readFile(file, 'utf8')))
-  ).entries()) {
-    sources.set(project[index]!, source);
-  }
+  const { sources, targets } = await collectSources(root, paths);
   const props = analyzeProjectProps(sources);
-
-  const found = await Promise.all(
-    (paths.length > 0 ? paths : ['.']).map(async (target) => {
-      const absolute = path.resolve(root, target);
-      return (await stat(absolute)).isDirectory()
-        ? findFiles(absolute, defaultExclude)
-        : [toPosix(absolute)];
-    }),
-  );
-  const targets = found.flat();
-  // Files outside the current directory are read here.
-  const extra = targets.filter((file) => !sources.has(file));
-  for (const [index, source] of (
-    await Promise.all(extra.map((file) => readFile(file, 'utf8')))
-  ).entries()) {
-    sources.set(extra[index]!, source);
-  }
 
   const reports: InspectReport[] = [];
   const texts: string[] = [];

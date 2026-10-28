@@ -1,4 +1,4 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { hasUseServer, isScriptFile } from './server-files.ts';
 
@@ -89,4 +89,55 @@ export async function findScripts(
   };
   await visit(root);
   return result.toSorted();
+}
+
+/**
+ * Reads every `.brm` file under a root, and finds the files that the paths
+ * name: a file, or the files under a directory. Without paths, the targets are
+ * the whole project. A file outside the root is read too. A path that does not
+ * exist throws.
+ */
+export async function collectSources(
+  root: string,
+  paths: string[],
+): Promise<{ sources: Map<string, string>; targets: string[] }> {
+  const project = await findFiles(root, defaultExclude);
+  const sources = new Map<string, string>();
+  const reads: Promise<string>[] = [];
+  for (const file of project) {
+    reads.push(readFile(file, 'utf8'));
+  }
+  const texts = await Promise.all(reads);
+  for (const [index, file] of project.entries()) {
+    sources.set(file, texts[index]!);
+  }
+
+  const targets: string[] = paths.length === 0 ? [...project] : [];
+  const lookups: Promise<string[]>[] = [];
+  for (const target of paths) {
+    const absolute = path.resolve(root, target);
+    lookups.push(
+      stat(absolute).then((info) =>
+        info.isDirectory()
+          ? findFiles(absolute, defaultExclude)
+          : [absolute.split(path.sep).join('/')],
+      ),
+    );
+  }
+  for (const found of await Promise.all(lookups)) {
+    targets.push(...found);
+  }
+  const extra: string[] = [];
+  const extraReads: Promise<string>[] = [];
+  for (const file of targets) {
+    if (!sources.has(file)) {
+      extra.push(file);
+      extraReads.push(readFile(file, 'utf8'));
+    }
+  }
+  const extraTexts = await Promise.all(extraReads);
+  for (const [index, file] of extra.entries()) {
+    sources.set(file, extraTexts[index]!);
+  }
+  return { sources, targets };
 }
