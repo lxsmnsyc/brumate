@@ -1,0 +1,35 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ComboBox from '@brumate/ui/ComboBox.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let person = $signal<Key | null>(null);
+  let text = $signal('');
+  const team = ['Ada', 'Grace', 'Linus', 'Margaret'];
+</script>
+
+<div class="ui-stack">
+  <ComboBox class="ui-select" allowsCustomValue menuTrigger="focus" selectedKey=$bind(person) inputValue=$bind(text)>
+    <Label>Assign to</Label>
+    <div class="ui-combobox-box">
+      <Input class="ui-input" placeholder="Pick or type a name" />
+      <Button class="ui-button ui-select-button" />
+    </div>
+    <Text slot="description" class="ui-help">A name that is not on the team is kept as typed.</Text>
+    <Popover class="ui-popover ui-select-popover">
+      <ListBox class="ui-listbox">
+        #for (name of team by name) {
+          <ListBoxItem id=(name.toLowerCase()) class="ui-option">{name}</ListBoxItem>
+        }
+      </ListBox>
+    </Popover>
+  </ComboBox>
+  <p>{person !== null ? `Team member: ${person}.` : text === '' ? 'Nobody yet.' : `Guest: ${text}.`}</p>
+</div>

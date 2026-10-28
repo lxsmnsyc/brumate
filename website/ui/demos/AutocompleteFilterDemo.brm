@@ -1,0 +1,28 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let picked = $signal<Key[]>([]);
+  const people = ['Ada', 'Alan', 'Grace', 'Linus', 'Margaret'];
+</script>
+
+<div class="ui-stack">
+  <Autocomplete filter=((text, input) => text.toLowerCase().startsWith(input.toLowerCase()))>
+    <TextField class="ui-field">
+      <Label>Invite by first letters</Label>
+      <Input class="ui-input" placeholder="Type a name" />
+    </TextField>
+    <ListBox class="ui-listbox" aria-label="People" selectionMode="multiple" selectedKeys=$bind(picked)>
+      #for (name of people by name) {
+        <ListBoxItem id=(name) class="ui-option">{name}</ListBoxItem>
+      }
+    </ListBox>
+  </Autocomplete>
+  <p>Invited: {picked.join(', ') || 'nobody'}.</p>
+</div>

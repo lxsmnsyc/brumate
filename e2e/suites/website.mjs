@@ -815,7 +815,15 @@ export async function run({ browser, url, runner }) {
     await flow(
       '/ui: the pages of Collections have an anatomy picture and a styled example',
       async () => {
-        for (const slug of ['list-box', 'tabs', 'tag-group', 'grid-list']) {
+        for (const slug of [
+          'list-box',
+          'tabs',
+          'tag-group',
+          'grid-list',
+          'menu',
+          'combo-box',
+          'autocomplete',
+        ]) {
           for (const scheme of ['light', 'dark']) {
             await page.emulateMedia({ colorScheme: scheme });
             await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
@@ -847,6 +855,98 @@ export async function run({ browser, url, runner }) {
         await page.emulateMedia({ colorScheme: null });
       },
     );
+    await flow('/ui: Menu, ComboBox and Autocomplete open, filter, act and pick', async () => {
+      const settle = () => page.waitForTimeout(800);
+      const visit = async (slug) => {
+        await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+        await settle();
+      };
+      const shown = (selector) =>
+        page
+          .locator(selector)
+          .evaluateAll((items) =>
+            items.filter((item) => item.offsetParent !== null).map((item) => item.textContent),
+          );
+      // Menu: ArrowDown opens it at the first item, Enter acts, and focus returns to the Button.
+      await visit('menu');
+      const names = () => page.locator('.menu-row span').allInnerTexts();
+      assert((await names()).join() === 'Notes.txt,Budget.xlsx,Photos.zip', 'the rows start wrong');
+      const actions = page.getByRole('button', { name: 'Actions for Notes.txt' });
+      await actions.focus();
+      await page.keyboard.press('ArrowDown');
+      await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'menuitem');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      await settle();
+      assert((await names()).includes('Copy of Notes.txt'), 'Duplicate added no row');
+      assert(
+        (await page.evaluate(() => document.activeElement?.getAttribute('aria-label'))) ===
+          'Actions for Notes.txt',
+        'focus did not return to the Button',
+      );
+      // A menu that is open takes Escape, and the state demo follows its signal.
+      await page.getByRole('button', { name: 'Open the second menu' }).click();
+      await page.getByRole('menuitem', { name: 'Size' }).waitFor();
+      await page.keyboard.press('Escape');
+      await settle();
+      assert(
+        (await page.locator('p', { hasText: 'Second menu:' }).innerText()).includes(
+          'Second menu: closed',
+        ),
+        'Escape left the signal open',
+      );
+      // A menu with a multiple selection stays open after a press.
+      await page.getByRole('button', { name: 'Show', exact: true }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'City' }).click();
+      await settle();
+      assert(
+        (await page.getByRole('menuitemcheckbox', { name: 'Role' }).count()) === 1,
+        'the menu closed after a press',
+      );
+      assert(
+        (await page.locator('.menu-view-list li').first().innerText()).includes('London'),
+        'the list did not show the city',
+      );
+      await page.keyboard.press('Escape');
+      // ComboBox: typing filters, Enter picks, and a reset gives the start state back.
+      await visit('combo-box');
+      const form = page.locator('form', { has: page.getByRole('combobox', { name: 'Country' }) });
+      const country = form.getByRole('combobox');
+      await country.click();
+      await page.keyboard.type('jap');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      assert((await country.inputValue()) === 'Japan', 'Enter did not pick Japan');
+      await form.getByRole('button', { name: 'Save' }).click();
+      await settle();
+      assert(
+        (await form.locator('.ui-error').innerText()) === 'We do not ship to Japan yet.',
+        'the error did not show',
+      );
+      await form.getByRole('button', { name: 'Reset' }).click();
+      await settle();
+      assert((await country.inputValue()) === '', 'Reset left the text');
+      await country.click();
+      await page.keyboard.type('ke');
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      await page.keyboard.press('Enter');
+      await form.getByText('Sent country=ke.').waitFor({ timeout: 5000 });
+      // Autocomplete: typing hides the items that do not match, and Enter acts on the active one.
+      await visit('autocomplete');
+      await page.getByRole('button', { name: 'Commands' }).click();
+      await page.waitForFunction(() => document.activeElement?.matches('[role=dialog] input'));
+      await page.keyboard.type('sa');
+      await settle();
+      assert(
+        (await shown('[role=dialog] [role=menuitem]')).join() === 'Save',
+        'the palette did not filter',
+      );
+      await page.keyboard.press('Enter');
+      await settle();
+      assert((await page.locator('[role=dialog]').count()) === 0, 'the palette stayed open');
+      await page.getByText('Ran: save.').waitFor({ timeout: 5000 });
+    });
     await flow(
       '/ui/styling: the styled examples follow the theme toggle, with no contrast violations',
       async () => {

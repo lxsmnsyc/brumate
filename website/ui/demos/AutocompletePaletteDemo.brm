@@ -1,0 +1,49 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let shown = $signal(false);
+  let last = $signal('nothing yet');
+  const commands = [
+    { id: 'new', name: 'New file' },
+    { id: 'open', name: 'Open file' },
+    { id: 'save', name: 'Save' },
+    { id: 'theme', name: 'Change theme' },
+    { id: 'close', name: 'Close tab' },
+  ];
+</script>
+
+<div class="ui-stack">
+  <DialogTrigger isOpen=$bind(shown)>
+    <Button class="ui-button">Commands</Button>
+    <ModalOverlay class="ui-backdrop" transition>
+      <Modal class="ui-modal">
+        <Dialog class="ui-dialog" aria-label="Commands">
+          <Autocomplete>
+            <SearchField class="ui-field">
+              <Label>Find a command</Label>
+              <Input class="ui-input" autofocus />
+            </SearchField>
+            <Menu class="ui-menu" aria-label="Commands" onAction=((key) => { last = String(key); shown = false; })>
+              #for (command of commands by command.id) {
+                <MenuItem id=(command.id) class="ui-menu-item">{command.name}</MenuItem>
+              }
+            </Menu>
+          </Autocomplete>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  </DialogTrigger>
+  <p>Ran: {last}.</p>
+</div>

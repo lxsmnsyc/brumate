@@ -24,11 +24,21 @@ A search field that filters a Menu or a ListBox next to it, such as for a list o
 
 ## Anatomy
 
+```brm anatomy AutocompleteAnatomy
+`SearchField`: The field. It holds the text, and it is a form field of its own.
+`Label`: Names the field.
+`Input`: Holds the text. Focus stays here, and `aria-activedescendant` names the active item. The badge is on a wrapper.
+`Button`: Clears the field. It is out of the order of Tab. Optional.
+`Menu`: The collection that the text filters. It is out of the order of Tab.
+`MenuItem`: One command. It shows only while its text matches.
+```
+
 ```html
 <Autocomplete>
   <SearchField>
     <Label />
     <Input />
+    <Button />
   </>
   <Menu>
     <MenuItem />
@@ -36,7 +46,7 @@ A search field that filters a Menu or a ListBox next to it, such as for a list o
 </>
 ```
 
-The collection can be a `ListBox` in place of the `Menu`, and the field a `TextField` in place of the `SearchField`.
+The `Autocomplete` renders no element of its own, so it has no number. The picture holds the text `fi`, and its Menu lists only the items that match it. The collection can be a `ListBox` in place of the `Menu`, and the field a `TextField` in place of the `SearchField`.
 
 ## Props
 
@@ -63,11 +73,45 @@ Focus stays in the field. `aria-activedescendant` on the input names the active 
 
 ## Controlled and uncontrolled
 
-`inputValue` holds the text of the field. `inputValue=(text)` starts its own state, and `inputValue=$bind(signal)` writes your signal. `onInputChange` gets each change. The selection belongs to the Menu or the ListBox inside. See [State](./state.md).
+`inputValue` holds the text that filters the items. How you pass it picks who keeps it:
+
+```brm demo AutocompleteStateDemo
+
+```
+
+- `inputValue` alone, or nothing, makes the Autocomplete keep its own text. `inputValue=('open')` is where it starts, and the field needs the same text in its `value`, since the field holds the text that the user sees.
+- `inputValue=$bind(signal)` writes your signal with each change of the text. A write from your code does not change the text of the field or the items that show, so use the signal to read the text, not to set it.
+- `inputValue=$bind(signal, (next) => ...)` asks first. A request that you ignore leaves the old text in the signal, and the field and the items still follow the typing. Press Lock and type in the last field.
+- `onInputChange` gets the text after each change, in every shape.
+- An Autocomplete is not a form field. It has no `name` and no reset handler, so a reset of a form does not write its `inputValue`. The SearchField or the TextField inside is a form field of its own. See [State](./state.md#form-reset).
 
 ## Styling
 
 The Autocomplete has no element to style. Style the field and the collection inside with their own data attributes. See [Styling](./styling.md).
+
+This stylesheet styles the field, its clear button and the Menu: rest, hover, focus inside the field, an empty field, and the items with hover, press, the active item and disabled. Its tokens are at the top, and they follow the color scheme. Focus stays in the field, so the active item shows `data-focused`. Type `fi`, then press the arrow keys and Enter.
+
+```brm styled AutocompleteStyled
+
+```
+
+## Use cases
+
+### A command palette in a dialog
+
+An Autocomplete in a Dialog of a Modal gives a palette. The Dialog takes focus when it opens, so the Input has `autofocus` to move it to the field. The arrow keys and Enter act on the commands while focus stays in the field. The action closes the dialog through the signal of the `DialogTrigger`.
+
+```brm demo AutocompletePaletteDemo
+
+```
+
+### A ListBox that picks several
+
+The collection can be a ListBox with a selection, and `filter` changes the match. This one matches the start of a name. Typing filters the list, and Enter or a press selects the active item. A selected item that is filtered out stays selected.
+
+```brm demo AutocompleteFilterDemo
+
+```
 
 ## Filtering
 
