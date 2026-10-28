@@ -1,0 +1,34 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Switch from '@brumate/ui/Switch.brm';
+
+  let mine = $signal(true);
+  let asked = $signal(true);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <Switch class="ui-box">
+    <span class="ui-track" aria-hidden="true"></span>
+    Own state
+  </Switch>
+  <Switch class="ui-box" isSelected>
+    <span class="ui-track" aria-hidden="true"></span>
+    Starts on, then keeps its own copy
+  </Switch>
+  <Switch class="ui-box" isSelected=$bind(mine) onChange=((next) => (log = `changed to ${next}`))>
+    <span class="ui-track" aria-hidden="true"></span>
+    Writes your signal
+  </Switch>
+  <Switch class="ui-box" isSelected=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <span class="ui-track" aria-hidden="true"></span>
+    Asks you first
+  </Switch>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine ? 'on' : 'off'}. Asks: {asked ? 'on' : 'off'}. Last callback: {log || 'none'}.</p>
+</form>

@@ -1,0 +1,24 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Tooltip from '@brumate/ui/Tooltip.brm';
+  import TooltipTrigger from '@brumate/ui/TooltipTrigger.brm';
+</script>
+
+<!-- One Button opens a Popover and has a Tooltip. Escape hides the tooltip first, and then the popover. -->
+<DialogTrigger>
+  <TooltipTrigger delay=(300)>
+    <Button class="ui-button">Share</Button>
+    <Tooltip class="ui-tooltip" offset=(8) transition>Share this page</Tooltip>
+  </TooltipTrigger>
+  <Popover class="ui-popover" placement="bottom start" transition>
+    <Dialog class="ui-dialog">
+      <Heading slot="title" level=(4)>Share</Heading>
+      <p>Anyone with the address can read it.</p>
+      <Button slot="close" class="ui-button">Done</Button>
+    </Dialog>
+  </Popover>
+</DialogTrigger>

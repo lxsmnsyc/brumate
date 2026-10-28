@@ -1,0 +1,13 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+</script>
+
+<!-- The picture draws the Tooltip in place, above the Button, since a real Tooltip renders in a layer at the end of <body>. -->
+<div style="display: flex; flex-direction: column-reverse; gap: 1.2rem; align-items: start">
+  <Button class="ui-button" aria-label="Copy" data-mark="1">Copy</Button>
+  <div class="ui-tooltip" style="position: relative; padding: 0.65rem 1rem" data-mark="2">
+    Copy the link
+    <span style="position: absolute; bottom: 0; right: 1.4rem; width: 8px; height: 8px" data-mark="3" data-mark-side="after"><OverlayArrow class="ui-tooltip-arrow" data-placement="top" /></span>
+  </div>
+</div>

@@ -1,0 +1,34 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ColorField from '@brumate/ui/ColorField.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  let sent = $signal('Nothing sent.');
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent background=${data.get('background')}, opacity=${data.get('opacity')}.`;
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(submit))>
+  <ColorField class="ui-field" name="background" isRequired>
+    <Label>Background</Label>
+    <Input class="ui-input" />
+    <FieldError class="ui-error" />
+  </ColorField>
+  <ColorField class="ui-field" name="opacity" channel="alpha" value="#2563eb">
+    <Label>Opacity</Label>
+    <Input class="ui-input" />
+  </ColorField>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button">Save</Button>
+    <Button type="reset" class="ui-button">Reset</Button>
+  </div>
+  <p role="status">{sent}</p>
+</Form>

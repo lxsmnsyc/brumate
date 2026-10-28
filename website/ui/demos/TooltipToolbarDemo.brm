@@ -1,0 +1,31 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
+  import Tooltip from '@brumate/ui/Tooltip.brm';
+  import TooltipTrigger from '@brumate/ui/TooltipTrigger.brm';
+
+  const tools = [
+    { name: 'Bold', glyph: 'B', key: 'Ctrl+B' },
+    { name: 'Italic', glyph: 'I', key: 'Ctrl+I' },
+    { name: 'Underline', glyph: 'U', key: 'Ctrl+U' },
+  ];
+  let last = $signal('none');
+</script>
+
+<div class="ui-stack">
+  <Toolbar class="ui-group" aria-label="Format">
+    #for (tool of tools by tool.name) {
+      <TooltipTrigger>
+        <Button class="ui-button" aria-label=(tool.name) onPress=(() => (last = tool.name))>{tool.glyph}</Button>
+        <Tooltip class="ui-tooltip" offset=(8) transition>
+          <OverlayArrow class="ui-tooltip-arrow" />
+          {tool.name} ({tool.key})
+        </Tooltip>
+      </TooltipTrigger>
+    }
+  </Toolbar>
+  <p>Last pressed: {last}.</p>
+</div>

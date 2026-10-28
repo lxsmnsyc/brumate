@@ -12,6 +12,14 @@ Checkboxes with one value, the list of the checked ones.
 
 ## Anatomy
 
+```brm anatomy CheckboxGroupAnatomy
+`CheckboxGroup`: Holds the boxes and the list of the checked values. It is a `group`.
+`Label`: Names the group.
+`Checkbox`: One choice, named by its `value`.
+`Text`: Describes the group, with `slot="description"`.
+`FieldError`: Shows while the group is invalid. The picture forces it with `isInvalid`.
+```
+
 ```html
 <CheckboxGroup>
   <Label />
@@ -31,7 +39,7 @@ A group holds one or more Checkboxes. The `Label`, the `Text` and the `FieldErro
 
 ```
 
-See the [Checkbox](./checkbox.md#props) page for the props of a box, and the [TextField](./text-field.md#props) page for the Label, Text and FieldError.
+The props of a box are on the [Checkbox](./checkbox.md#props) page. Those of the Label, Text and FieldError are on the [TextField](./text-field.md#props) page.
 
 ## Data attributes
 
@@ -55,8 +63,43 @@ The group adds no keys. Each box takes the keys of a [Checkbox](./checkbox.md#ke
 
 ## Controlled and uncontrolled
 
-`value` holds the list of the `value` of each checked box. `value=([...])` starts the group's own value, and `value=$bind(signal)` writes your signal. `onChange` gets the list each time the user changes it. See [State](./state.md).
+`value` holds the list of the `value` of each checked box. How you pass it picks who keeps it:
+
+```brm demo CheckboxGroupStateDemo
+
+```
+
+- `value` alone, or nothing, makes the group keep its own list. `value=(['b'])` is where that list starts, and a new value from you replaces it.
+- `value=$bind(signal)` writes your signal. Change the signal and the boxes follow.
+- `value=$bind(signal, (next) => ...)` asks you first. The group shows what you keep, so a request that you ignore leaves the old list. Press Lock above and click a box of the last group. The line under the groups shows that Asks keeps its list. The hidden input of a box that you refused is not put back yet, so a form would still post it until the next reset.
+- `onChange` gets the list in every shape, each time the user changes it.
+- A reset of the form gives back the list that the group started with, as a write: with `$bind(signal, request)`, your request can refuse it.
+- The server renders the list it starts with. See [State](./state.md).
 
 ## Styling
 
-Style the group with the data attributes above, and each box from its own. See [Styling](./styling.md).
+Style the group with the data attributes above, and each box from its own, such as `[data-selected]`. See [Styling](./styling.md).
+
+This stylesheet turns the boxes into chips that fill when checked. It styles rest, hover, press, checked, checked and hovered, checked and pressed, keyboard focus, invalid and disabled, and the description and the error. Clear all the chips and press Order. The group is required, and the error shows once its code has loaded.
+
+```brm styled CheckboxGroupStyled
+
+```
+
+## Use cases
+
+### A filter bar
+
+A group bound to a signal gives the page the list of the kinds. With none checked, the list shows everything.
+
+```brm demo CheckboxGroupFilterDemo
+
+```
+
+### A limit of choices
+
+The request of `$bind` can refuse a list. This one keeps at most two colors, and says so in the description. The group shows what you keep, so the box that the user clicked is drawn off again. The hidden input of that box is not put back yet. Check the list on the server too.
+
+```brm demo CheckboxGroupLimitDemo
+
+```

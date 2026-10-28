@@ -1,0 +1,193 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Toast from '@brumate/ui/Toast.brm';
+  import ToastContent from '@brumate/ui/ToastContent.brm';
+  import ToastRegion from '@brumate/ui/ToastRegion.brm';
+  import { toastQueue } from '@brumate/ui/toast.ts';
+  import Icon from '../../src/components/Icon.brm';
+  import type { QueuedToast } from '@brumate/ui/toast.ts';
+
+  interface Notice {
+    kind: 'success' | 'error';
+    title: string;
+    description: string;
+  }
+
+  let count = 0;
+
+  function show(kind: Notice['kind']) {
+    count += 1;
+    toastQueue<Notice>('styled').add(
+      kind === 'success'
+        ? { kind, title: 'Draft saved', description: 'Version ' + count + ' is safe.' }
+        : { kind, title: 'Could not save', description: 'Check the connection.' },
+      { timeout: 5000 },
+    );
+  }
+</script>
+
+<div class="toast-styled-root">
+  <Button class="toast-styled-trigger" onPress=(() => show('success'))>Save</Button>
+  <Button class="toast-styled-trigger" onPress=(() => show('error'))>Fail to save</Button>
+</div>
+<ToastRegion queue="styled" class="toast-styled-region" toast=notice transition />
+
+#template notice(toast: QueuedToast<Notice>) {
+  <Toast {toast} class="toast-styled-toast" data-kind=(toast.content.kind)>
+    <ToastContent class="toast-styled-content">
+      <Text slot="title" class="toast-styled-title">{toast.content.title}</Text>
+      <Text slot="description" class="toast-styled-text">{toast.content.description}</Text>
+    </ToastContent>
+    <Button slot="close" class="toast-styled-close"><Icon name="close" size=(14) /></Button>
+  </Toast>
+}
+
+<style>
+  :global(.toast-styled-root) {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
+  :global(.toast-styled-root),
+  :global(.toast-styled-region) {
+    --toast-styled-bg: Canvas;
+    --toast-styled-text: CanvasText;
+    --toast-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --toast-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --toast-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --toast-styled-on-accent: light-dark(#fff, #101418);
+    --toast-styled-danger: light-dark(#c4271d, #f28b82);
+    --toast-styled-radius: 8px;
+    color: var(--toast-styled-text);
+  }
+
+  :global(.toast-styled-trigger) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--toast-styled-border);
+    border-radius: var(--toast-styled-radius);
+    background: var(--toast-styled-bg);
+    color: var(--toast-styled-text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.toast-styled-trigger)[data-hovered] {
+    border-color: var(--toast-styled-accent);
+  }
+
+  :global(.toast-styled-trigger)[data-pressed] {
+    background: color-mix(in srgb, var(--toast-styled-accent) 14%, var(--toast-styled-bg));
+  }
+
+  :global(.toast-styled-trigger)[aria-expanded='true'] {
+    border-color: var(--toast-styled-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--toast-styled-accent) 25%, transparent);
+  }
+
+  /* Two bands, so the ring shows on the page and on a fill. */
+  :global(.toast-styled-trigger)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--toast-styled-bg), 0 0 0 4px var(--toast-styled-accent);
+  }
+
+  :global(.toast-styled-trigger)[data-disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* The region has no style of its own. Place it in a corner, and stack the toasts. */
+  :global(.toast-styled-region) {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 40;
+    display: grid;
+    gap: 0.5rem;
+    width: min(22rem, calc(100vw - 2rem));
+    outline: none;
+  }
+
+  /* The toast: rest, hover, keyboard focus, and the closed look it has while it comes and goes. */
+  :global(.toast-styled-toast) {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0.75rem 0.75rem 1rem;
+    border: 1px solid var(--toast-styled-border);
+    border-inline-start: 4px solid var(--toast-styled-accent);
+    border-radius: var(--toast-styled-radius);
+    background: var(--toast-styled-bg);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 22%);
+    transition: opacity 0.2s, translate 0.2s, border-color 0.15s;
+  }
+
+  :global(.toast-styled-toast[data-kind='error']) {
+    border-inline-start-color: var(--toast-styled-danger);
+  }
+
+  :global(.toast-styled-toast:hover) {
+    border-color: var(--toast-styled-accent);
+  }
+
+  :global(.toast-styled-toast:focus-visible) {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--toast-styled-bg), 0 0 0 4px var(--toast-styled-accent);
+  }
+
+  :global(.toast-styled-toast[data-closed]) {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+
+  :global(.toast-styled-content) {
+    display: grid;
+    flex: 1;
+    gap: 0.125rem;
+    font-size: 0.875rem;
+  }
+
+  :global(.toast-styled-title) {
+    font-weight: 600;
+  }
+
+  :global(.toast-styled-text) {
+    color: var(--toast-styled-muted);
+  }
+
+  :global(.toast-styled-close) {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--toast-styled-muted);
+    cursor: pointer;
+  }
+
+  :global(.toast-styled-close[data-hovered]) {
+    background: color-mix(in srgb, var(--toast-styled-accent) 14%, var(--toast-styled-bg));
+    color: var(--toast-styled-text);
+  }
+
+  :global(.toast-styled-close[data-pressed]) {
+    background: color-mix(in srgb, var(--toast-styled-accent) 26%, var(--toast-styled-bg));
+  }
+
+  :global(.toast-styled-close[data-focus-visible]) {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--toast-styled-bg), 0 0 0 4px var(--toast-styled-accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.toast-styled-trigger),
+    :global(.toast-styled-toast) {
+      transition: none;
+    }
+  }
+</style>

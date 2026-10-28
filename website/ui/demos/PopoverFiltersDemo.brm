@@ -1,0 +1,49 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  const items = [
+    { name: 'Report', kind: 'doc' },
+    { name: 'Budget', kind: 'sheet' },
+    { name: 'Roadmap', kind: 'doc' },
+    { name: 'Forecast', kind: 'sheet' },
+    { name: 'Logo', kind: 'image' },
+  ];
+
+  let kinds = $signal<string[]>([]);
+  const shown = $memo(kinds.length === 0 ? items : items.filter((item) => kinds.includes(item.kind)));
+</script>
+
+<div class="ui-stack">
+  <DialogTrigger>
+    <Button class="ui-button">Filters{kinds.length > 0 ? ' (' + kinds.length + ')' : ''}</Button>
+    <Popover class="ui-popover" placement="bottom start" transition>
+      <Dialog class="ui-dialog">
+        <Heading slot="title" level=(4)>Kinds</Heading>
+        <CheckboxGroup class="ui-field" aria-label="Kinds" value=$bind(kinds)>
+          #for (kind of ['doc', 'sheet', 'image'] by kind) {
+            <Checkbox class="ui-box" value=kind>
+              <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
+              {kind}
+            </Checkbox>
+          }
+        </CheckboxGroup>
+        <Button class="ui-button" onPress=(() => (kinds = []))>Clear</Button>
+        <Button slot="close" class="ui-button">Done</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+  <ul style="margin: 0">
+    #for (item of shown by item.name) {
+      <li>{item.name}, {item.kind}</li>
+    }
+  </ul>
+</div>

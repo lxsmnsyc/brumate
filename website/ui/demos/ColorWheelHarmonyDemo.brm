@@ -1,0 +1,40 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import ColorWheel from '@brumate/ui/ColorWheel.brm';
+  import ColorWheelTrack from '@brumate/ui/ColorWheelTrack.brm';
+  import { channelValue, formatColor, parseColor, withChannelValue } from '@brumate/ui/color.ts';
+
+  let color = $signal('hsl(210, 80%, 50%)');
+
+  // The color with its hue turned by `degrees`.
+  function turned(text: string, degrees: number): string {
+    const base = parseColor(text);
+    const hue = (channelValue(base, 'hue') + degrees + 360) % 360;
+    return formatColor(withChannelValue(base, 'hue', hue), 'hsl');
+  }
+
+  const complement = $memo(turned(color, 180));
+  const left = $memo(turned(color, -30));
+  const right = $memo(turned(color, 30));
+</script>
+
+<div class="ui-row harmony">
+  <ColorWheel class="ui-color-wheel" value=$bind(color) outerRadius=(90) innerRadius=(66)>
+    <ColorWheelTrack />
+    <ColorThumb class="ui-color-thumb" />
+  </ColorWheel>
+  <div class="ui-stack">
+    <div class="ui-row"><ColorSwatch class="ui-swatch" color=color /><span>Base {color}</span></div>
+    <div class="ui-row"><ColorSwatch class="ui-swatch" color=complement /><span>Complement {complement}</span></div>
+    <div class="ui-row"><ColorSwatch class="ui-swatch" color=left /><span>Near, -30 degrees {left}</span></div>
+    <div class="ui-row"><ColorSwatch class="ui-swatch" color=right /><span>Near, +30 degrees {right}</span></div>
+  </div>
+</div>
+
+<style>
+  :global(.harmony) {
+    align-items: center;
+  }
+</style>

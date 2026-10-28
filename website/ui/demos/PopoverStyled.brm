@@ -1,0 +1,158 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+
+  const actions = ['Copy the link', 'Send by email', 'Print'];
+</script>
+
+<div class="popover-styled-root">
+  <DialogTrigger>
+    <Button class="popover-styled-trigger">Share</Button>
+    <Popover class="popover-styled-popover" offset=(10) transition>
+      <OverlayArrow class="popover-styled-arrow" />
+      <Dialog class="popover-styled-dialog" aria-label="Share the page">
+        #for (action of actions by action) {
+          <Button class="popover-styled-item">{action}</Button>
+        }
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
+  :global(.popover-styled-root),
+  :global(.popover-styled-popover) {
+    --popover-styled-bg: Canvas;
+    --popover-styled-text: CanvasText;
+    --popover-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --popover-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --popover-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --popover-styled-on-accent: light-dark(#fff, #101418);
+    --popover-styled-danger: light-dark(#c4271d, #f28b82);
+    --popover-styled-radius: 8px;
+    color: var(--popover-styled-text);
+  }
+
+  :global(.popover-styled-trigger) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--popover-styled-border);
+    border-radius: var(--popover-styled-radius);
+    background: var(--popover-styled-bg);
+    color: var(--popover-styled-text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.popover-styled-trigger)[data-hovered] {
+    border-color: var(--popover-styled-accent);
+  }
+
+  :global(.popover-styled-trigger)[data-pressed] {
+    background: color-mix(in srgb, var(--popover-styled-accent) 14%, var(--popover-styled-bg));
+  }
+
+  :global(.popover-styled-trigger)[aria-expanded='true'] {
+    border-color: var(--popover-styled-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--popover-styled-accent) 25%, transparent);
+  }
+
+  /* Two bands, so the ring shows on the page and on a fill. */
+  :global(.popover-styled-trigger)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--popover-styled-bg), 0 0 0 4px var(--popover-styled-accent);
+  }
+
+  :global(.popover-styled-trigger)[data-disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* The popover is as wide as its trigger at least: --trigger-width is set by the popover. */
+  :global(.popover-styled-popover) {
+    z-index: 20;
+    box-sizing: border-box;
+    min-width: max(var(--trigger-width), 12rem);
+    max-height: var(--available-height);
+    padding: 0.35rem;
+    border: 1px solid var(--popover-styled-border);
+    border-radius: var(--popover-styled-radius);
+    background: var(--popover-styled-bg);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 22%);
+    transition: opacity 0.18s, translate 0.18s;
+  }
+
+  /* It rises from the side of its trigger, and data-placement says which side it took. */
+  :global(.popover-styled-popover[data-closed]) {
+    opacity: 0;
+    translate: 0 4px;
+  }
+
+  :global(.popover-styled-popover[data-closed][data-placement='top']) {
+    translate: 0 -4px;
+  }
+
+  /* The popover sets left or top of the arrow along the side, and CSS points it. */
+  :global(.popover-styled-arrow) {
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    border: 1px solid var(--popover-styled-border);
+    border-right: 0;
+    border-bottom: 0;
+    background: var(--popover-styled-bg);
+  }
+
+  :global(.popover-styled-arrow[data-placement='bottom']) {
+    top: -7px;
+    rotate: 45deg;
+  }
+
+  :global(.popover-styled-arrow[data-placement='top']) {
+    bottom: -7px;
+    rotate: 225deg;
+  }
+
+  :global(.popover-styled-dialog) {
+    display: grid;
+    outline: none;
+  }
+
+  /* The items: rest, hover, press and keyboard focus. */
+  :global(.popover-styled-item) {
+    padding: 0.45rem 0.65rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--popover-styled-text);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  :global(.popover-styled-item[data-hovered]) {
+    background: color-mix(in srgb, var(--popover-styled-accent) 14%, var(--popover-styled-bg));
+  }
+
+  :global(.popover-styled-item[data-pressed]) {
+    background: color-mix(in srgb, var(--popover-styled-accent) 26%, var(--popover-styled-bg));
+  }
+
+  :global(.popover-styled-item[data-focus-visible]) {
+    outline: none;
+    box-shadow:
+      inset 0 0 0 2px var(--popover-styled-accent),
+      inset 0 0 0 4px var(--popover-styled-bg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.popover-styled-trigger),
+    :global(.popover-styled-popover) {
+      transition: none;
+    }
+  }
+</style>

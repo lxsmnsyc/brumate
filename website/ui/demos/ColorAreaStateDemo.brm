@@ -1,0 +1,38 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+
+  let mine = $signal('hsb(210, 80%, 90%)');
+  let asked = $signal('hsb(210, 80%, 90%)');
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <ColorArea class="ui-color-area color-area-state" xChannel="saturation" yChannel="brightness" aria-label="Own state" >
+    <ColorThumb class="ui-color-thumb" />
+  </ColorArea>
+  <ColorArea class="ui-color-area color-area-state" xChannel="saturation" yChannel="brightness" aria-label="Starts at orange, then keeps its own copy" value="hsb(30, 80%, 90%)">
+    <ColorThumb class="ui-color-thumb" />
+  </ColorArea>
+  <ColorArea class="ui-color-area color-area-state" xChannel="saturation" yChannel="brightness" aria-label="Writes your signal" value=$bind(mine) onChange=((next) => (log = `changed to ${next}`))>
+    <ColorThumb class="ui-color-thumb" />
+  </ColorArea>
+  <ColorArea class="ui-color-area color-area-state" xChannel="saturation" yChannel="brightness" aria-label="Asks you first" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <ColorThumb class="ui-color-thumb" />
+  </ColorArea>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine}. Asks: {asked}. Last callback: {log || 'none'}.</p>
+</form>
+
+<style>
+  :global(.color-area-state) {
+    width: 8rem;
+    height: 8rem;
+  }
+</style>

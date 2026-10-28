@@ -1,0 +1,34 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Tooltip from '@brumate/ui/Tooltip.brm';
+  import TooltipTrigger from '@brumate/ui/TooltipTrigger.brm';
+
+  let shown = $signal(false);
+  let gated = $signal(false);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<div class="ui-stack">
+  <!-- The trigger keeps its own state, which hover and focus change. -->
+  <TooltipTrigger delay=(300)>
+    <Button class="ui-button">Own state</Button>
+    <Tooltip class="ui-tooltip" offset=(8) transition>Hover or tab to me</Tooltip>
+  </TooltipTrigger>
+  <!-- The trigger writes your signal, so your button can show it too. -->
+  <TooltipTrigger delay=(300) isOpen=$bind(shown) onOpenChange=((next) => (log = next ? 'shown' : 'hidden'))>
+    <Button class="ui-button">Writes your signal</Button>
+    <Tooltip class="ui-tooltip" offset=(8) transition>Your signal says {shown ? 'shown' : 'hidden'}</Tooltip>
+  </TooltipTrigger>
+  <!-- The trigger asks you first. Lock refuses a request to show. -->
+  <TooltipTrigger delay=(300) isOpen=$bind(gated, (next) => { if (!locked || !next) gated = next; })>
+    <Button class="ui-button">Asks you first</Button>
+    <Tooltip class="ui-tooltip" offset=(8) transition>You let me show</Tooltip>
+  </TooltipTrigger>
+  <div class="ui-actions" style="justify-content: start">
+    <Button class="ui-button" onPress=(() => (shown = !shown))>Show or hide the second</Button>
+    <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the last one</Button>
+  </div>
+  <p>Signal: {shown ? 'shown' : 'hidden'}. Last callback: {log || 'none'}. Last one is {locked ? 'locked' : 'free'}.</p>
+</div>

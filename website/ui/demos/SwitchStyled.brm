@@ -1,0 +1,109 @@
+<script>
+  import Switch from '@brumate/ui/Switch.brm';
+</script>
+
+<div class="switch-styled-list">
+  <Switch class="switch-styled" isSelected><span class="switch-styled-track" aria-hidden="true"></span>Wi-Fi</Switch>
+  <Switch class="switch-styled"><span class="switch-styled-track" aria-hidden="true"></span>Bluetooth</Switch>
+  <Switch class="switch-styled" isSelected isReadOnly><span class="switch-styled-track" aria-hidden="true"></span>Managed by your admin</Switch>
+  <Switch class="switch-styled" isDisabled><span class="switch-styled-track" aria-hidden="true"></span>Disabled</Switch>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.switch-styled-list) {
+    --switch-styled-page: Canvas;
+    --switch-styled-off: color-mix(in srgb, CanvasText 30%, Canvas);
+    --switch-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --switch-styled-knob: light-dark(#fff, #101418);
+    display: grid;
+    justify-items: start;
+    gap: 0.6rem;
+    color: CanvasText;
+  }
+
+  :global(.switch-styled) {
+    display: inline-flex;
+    gap: 0.6rem;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  :global(.switch-styled-track) {
+    position: relative;
+    width: 2.5rem;
+    height: 1.4rem;
+    border-radius: 1rem;
+    background: var(--switch-styled-off);
+    transition: background-color 0.15s;
+  }
+
+  :global(.switch-styled-track)::after {
+    content: '';
+    position: absolute;
+    top: 0.2rem;
+    left: 0.2rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--switch-styled-knob);
+    transition: translate 0.15s, width 0.15s;
+  }
+
+  :global(.switch-styled[data-hovered] .switch-styled-track) {
+    background: color-mix(in srgb, CanvasText 42%, Canvas);
+  }
+
+  /* A press stretches the knob. */
+  :global(.switch-styled[data-pressed] .switch-styled-track)::after {
+    width: 1.2rem;
+  }
+
+  :global(.switch-styled[data-selected] .switch-styled-track) {
+    background: var(--switch-styled-accent);
+  }
+
+  :global(.switch-styled[data-selected] .switch-styled-track)::after {
+    translate: 1.1rem 0;
+  }
+
+  :global(.switch-styled[data-selected][data-pressed] .switch-styled-track)::after {
+    translate: 0.9rem 0;
+  }
+
+  :global(.switch-styled[data-selected][data-hovered] .switch-styled-track) {
+    background: color-mix(in srgb, var(--switch-styled-accent), CanvasText 15%);
+  }
+
+  :global(.switch-styled[data-selected][data-pressed] .switch-styled-track) {
+    background: color-mix(in srgb, var(--switch-styled-accent), CanvasText 28%);
+  }
+
+  /* Two bands outside the track, so the ring shows next to the fill. */
+  :global(.switch-styled[data-focus-visible] .switch-styled-track) {
+    box-shadow:
+      0 0 0 2px var(--switch-styled-page),
+      0 0 0 4px var(--switch-styled-accent);
+  }
+
+  /* No outline on the label: the ring is drawn on the box. */
+  :global(.switch-styled[data-focus-visible]) {
+    outline: none;
+  }
+
+  :global(.switch-styled[data-readonly]) {
+    cursor: default;
+  }
+
+  :global(.switch-styled[data-disabled]) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.switch-styled-track),
+    :global(.switch-styled-track)::after {
+      transition: none;
+    }
+  }
+</style>

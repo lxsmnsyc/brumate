@@ -63,7 +63,7 @@
   <section class="section">
     <h2>Try it on this page</h2>
     <p class="section-lead">
-      This shop page is a brumate component, rendered when this page was built. The list on the right shows the scripts that the shop needs.
+      This shop page is a brumate component, rendered when this page was built. The list on the right shows the scripts that the shop needs. After a client navigation to this page, it lists only the scripts that the navigation loaded.
       The code of the page came with it, so a color or a cart update runs at once, with no request.
       Turn on X-ray to see which parts ship code and which ship as HTML only.
     </p>
@@ -124,7 +124,7 @@
         <a href=(`${base}docs/async-data`)>Loading data</a>
       </div>
       <div class="row-media">
-        <div class="code">{streaming}</div>
+        <div class="code" role="group" aria-label="Streaming example" tabindex="0">{streaming}</div>
         <div class="browser" aria-hidden="true">
           <div class="browser-bar"><span></span><span></span><span></span></div>
           <div class="browser-page stream-demo">
@@ -146,7 +146,7 @@
         <a href=(`${base}docs/server-functions`)>Server functions</a>
       </div>
       <div class="row-media">
-        <div class="code">{serverFunctions}</div>
+        <div class="code" role="group" aria-label="Server functions example" tabindex="0">{serverFunctions}</div>
         <div class="wire" role="img" aria-label="The browser calls like(1). The server runs the body of like with the database and sends back the result, 13 likes.">
           <span class="wire-end">Browser<small>on click</small></span>
           <span class="wire-lines">
@@ -168,7 +168,7 @@
         <a href=(`${base}docs/typescript`)>TypeScript</a>
       </div>
       <div class="row-media">
-        <div class="code">{typed}</div>
+        <div class="code" role="group" aria-label="Typed example" tabindex="0">{typed}</div>
         <p class="type-error"><span>error</span> A function cannot be sent to the client. Keep it out of the signal or memo</p>
       </div>
     </article>

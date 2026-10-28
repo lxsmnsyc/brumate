@@ -16,10 +16,18 @@ A preview of a link or a button, such as a card of the author behind a name. It 
 ## Closing
 
 - Leaving the trigger and the preview hides it after `closeDelay`, 200 milliseconds by default. The pointer can move from the trigger onto the preview.
-- Focus that leaves both hides it at once, and so does a press of the trigger. A press on plain content outside moves no focus, so it hides nothing.
+- Focus that leaves both hides it at once, and so does a press of the trigger from the keyboard. A press of the mouse hides it, and the pointer that stays on the trigger shows it again. A press on plain content outside moves no focus, so it hides nothing.
 - Escape hides it, and gives focus back to the trigger. That focus does not show it again.
 
 ## Anatomy
+
+```brm anatomy PreviewTriggerAnatomy
+`Link`: The trigger. It gets `aria-expanded` and `aria-controls`. A `Button` works too.
+`Popover`: The preview. It is not modal, and it can hold links and buttons.
+`OverlayArrow`: Points from the preview to the trigger. Optional.
+```
+
+The picture draws the Popover in place, open, under the trigger, so that it can carry a number. The real Popover shows in a layer at the end of the page, next to the trigger, and the rest of the page stays active.
 
 ```html
 <PreviewTrigger>
@@ -57,8 +65,44 @@ The preview renders at the end of the page, in a [layer](./layers.md), so Tab mo
 
 ## Controlled and uncontrolled
 
-`isOpen` holds whether the preview shows. `isOpen=(true)` starts it shown, and `isOpen=$bind(signal)` writes your signal. `onOpenChange` gets each new state. See [State](./state.md).
+`isOpen` holds whether the preview shows. Hover and focus from the keyboard change it in every shape below:
+
+```brm demo PreviewTriggerStateDemo
+
+```
+
+- `isOpen` alone, or nothing, makes the `PreviewTrigger` keep its own state: hover, focus, Escape and a press change it. `isOpen=(true)` is meant as the state where it starts, but it does not show on load: an [effect never runs when the page loads](../docs/effects.md), and the preview opens from one on its open value, which a start value of `true` never changes. Open it from an event.
+- `isOpen=$bind(signal)` writes your signal. "Show or hide the second" sets it, and the preview follows.
+- `isOpen=$bind(signal, (next) => ...)` asks you first. The preview shows what you keep, so a request that you ignore leaves it hidden. Lock the last one, then hover its link.
+- `onOpenChange` gets each new state in every shape.
+- A PreviewTrigger is not a form field, so a reset of a form around it changes nothing. The server renders the trigger and no preview.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the preview as a [Popover](./popover.md#styling). See [Styling](./styling.md).
+
+This stylesheet styles the link in every state (rest, hover, press, keyboard focus, and `aria-expanded` while the preview shows), the card with its closed look, the arrow on both sides, and the Follow button. Hover the name, or Tab to it. Its tokens are at the top, and they follow the color scheme.
+
+```brm styled PreviewTriggerStyled
+
+```
+
+## Use cases
+
+### Names in a text
+
+Each name in the text has its own `PreviewTrigger`. Hover one and the card shows after `delay`. Move to the next name and its card shows at once, since one preview has just shown. The pointer can go from the name onto the card to press Follow.
+
+```brm demo PreviewTriggerMentionsDemo
+
+```
+
+### A Button that previews and presses
+
+The trigger can be a `Button`. The preview shows a file's first lines on hover or focus. A press runs `onPress` and opens the file. After a hover the card fades out and then shows again within about 370 ms, since the pointer is still on the trigger. A press with the keyboard hides it.
+
+```brm demo PreviewTriggerFilesDemo
+
+```

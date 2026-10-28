@@ -1,0 +1,42 @@
+<script module>
+  import type { Bindable } from 'brumate/signals';
+
+  export interface DialogRenameFormProps {
+    /** The name in the field. */
+    draft: Bindable<string>;
+    /** Runs when the browser accepts the name and the form is sent. */
+    onSave: () => void;
+  }
+</script>
+
+<script>
+  import { prevent } from 'brumate/events';
+  import { $bind, $props } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  const { onSave } = $props<DialogRenameFormProps>();
+  let { draft } = $props<DialogRenameFormProps>();
+
+  // The form sends only when the browser accepts the name. prevent() stops the browser from
+  // loading the page again, and it must wrap the handler in the attribute.
+  function submit() {
+    onSave();
+  }
+</script>
+
+<Form onSubmit=(prevent(submit)) class="ui-dialog">
+  <TextField class="ui-field" value=$bind(draft) isRequired>
+    <Label>Name</Label>
+    <Input class="ui-input" autofocus />
+    <FieldError class="ui-error" />
+  </TextField>
+  <div class="ui-actions">
+    <Button slot="close" class="ui-button">Cancel</Button>
+    <Button type="submit" class="ui-button">Save</Button>
+  </div>
+</Form>
