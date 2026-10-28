@@ -385,7 +385,7 @@ export async function run({ browser, url, runner }) {
         await page.evaluate(() => (window.__e2eSamePage = true));
         await page.locator('.header-nav a', { hasText: 'UI' }).click();
         await page.waitForURL(`${url}/ui`, { timeout: 5000 });
-        await page.locator('.ui-gallery').waitFor({ timeout: 5000 });
+        await page.locator('.ui-demo').first().waitFor({ timeout: 5000 });
         assert(
           await page.evaluate(() => window.__e2eSamePage === true),
           'the link loaded a new page',
@@ -399,10 +399,14 @@ export async function run({ browser, url, runner }) {
           null,
           { timeout: 5000 },
         );
-        const cards = await page.locator('.ui-card').count();
-        assert(cards >= 10, `the gallery has ${cards} cards`);
         const sidebar = await page.locator('.sidebar').textContent();
         assert(!sidebar.includes('Routing'), 'the sidebar shows the docs of brumate');
+        // The grid of cards is on its own page, which the header links to.
+        await page.locator('.header-nav a', { hasText: 'Parts' }).click();
+        await page.waitForURL(`${url}/ui/parts`, { timeout: 5000 });
+        await page.locator('.ui-gallery').waitFor({ timeout: 5000 });
+        const cards = await page.locator('.ui-card').count();
+        assert(cards >= 10, `the gallery has ${cards} cards`);
       },
     );
     await flow('/ui: a card opens its page, and its preview takes no input', async () => {
