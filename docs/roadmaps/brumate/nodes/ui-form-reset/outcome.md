@@ -31,5 +31,5 @@ A reset goes through the setter, as Select did. Reasons:
 
 - TextField, NumberField, Select, Slider, the color parts and the date parts keep their own copies of the reset listener. They could call `onFormReset`. Not done, to keep the diff to the node.
 - They also do not use `settled`. A text input of TextField with a setter that refuses a reset can show the browser's default until the next render. Not tested in a real browser.
-- website/ui/state.md: PR #323 rewrites the same page and has its own "Form reset" section, which says these seven parts do not reset. The second PR to merge resolves it: take the text of this PR for the section.
+- website/ui/state.md: #323 merged first. The merge keeps its structure and demo, and replaces its "Form reset" lists (7 parts that do not reset) with one list of every part, through the setter.
 - happy-dom passes the held test without `settled`, so `settled` is checked only by reading, not by a test.
