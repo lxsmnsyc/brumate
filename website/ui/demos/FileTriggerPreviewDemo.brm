@@ -1,0 +1,29 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import FileTrigger from '@brumate/ui/FileTrigger.brm';
+
+  let url = $signal('');
+  let name = $signal('');
+
+  function picked(list: FileList | null) {
+    const file = list?.[0];
+    if (!file) {
+      return;
+    }
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+    url = URL.createObjectURL(file);
+    name = file.name;
+  }
+</script>
+
+<div class="ui-row">
+  <FileTrigger acceptedFileTypes=(['image/png', 'image/jpeg']) onSelect=picked>
+    <Button class="ui-button">{url ? 'Change the photo' : 'Choose a photo'}</Button>
+  </FileTrigger>
+  #if (url) {
+    <img src=url alt=(`Preview of ${name}`) width="64" height="64" style="object-fit: cover; border-radius: 50%">
+  }
+</div>

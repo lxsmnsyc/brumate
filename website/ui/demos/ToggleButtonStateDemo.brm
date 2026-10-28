@@ -1,0 +1,22 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+
+  let mine = $signal(true);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<div class="ui-stack">
+  <div class="ui-row">
+    <ToggleButton class="ui-button">Own state</ToggleButton>
+    <ToggleButton class="ui-button" isSelected>Starts on, keeps its own copy</ToggleButton>
+  </div>
+  <div class="ui-row">
+    <ToggleButton class="ui-button" isSelected=$bind(mine) onChange=((next) => (log = `changed to ${next}`))>Writes your signal</ToggleButton>
+    <ToggleButton class="ui-button" isSelected=$bind(mine, (next) => { if (!locked) mine = next; })>Asks you first</ToggleButton>
+    <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'}</Button>
+  </div>
+  <p>Signal: {mine ? 'on' : 'off'}. Last callback: {log || 'none'}.</p>
+</div>

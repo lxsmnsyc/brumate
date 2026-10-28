@@ -1,0 +1,39 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import DropZone from '@brumate/ui/DropZone.brm';
+  import FileTrigger from '@brumate/ui/FileTrigger.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import type { DropEvent, DropOperation } from '@brumate/ui/drop.ts';
+
+  let names = $signal<string[]>([]);
+  let over = $signal(false);
+
+  // Files show as their types, such as image/png. Refuse a drag that holds no image.
+  function images(types: Set<string>, allowed: DropOperation[]): DropOperation {
+    for (const type of types) {
+      if (type.startsWith('image/')) {
+        return allowed[0] ?? 'cancel';
+      }
+    }
+    return 'cancel';
+  }
+
+  function dropped(event: DropEvent) {
+    const next = [...names];
+    for (const item of event.items) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        next.push(item.name);
+      }
+    }
+    names = next;
+  }
+</script>
+
+<DropZone class="ui-dropzone" getDropOperation=images onDrop=dropped onDropEnter=(() => (over = true)) onDropExit=(() => (over = false))>
+  <Text slot="label">{over ? 'Let go to add the images' : 'Drop images here'}</Text>
+  <FileTrigger allowsMultiple acceptedFileTypes=(['image/*']) onSelect=((files) => (names = [...names, ...[...(files ?? [])].map((file) => file.name)]))>
+    <Button class="ui-button">Browse</Button>
+  </FileTrigger>
+</DropZone>
+<p>{names.length === 0 ? 'No images yet.' : names.join(', ')}</p>

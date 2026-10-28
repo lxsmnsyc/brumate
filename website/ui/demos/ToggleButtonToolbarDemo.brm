@@ -1,0 +1,14 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
+
+  let bold = $signal(false);
+  let italic = $signal(true);
+</script>
+
+<Toolbar class="ui-group" aria-label="Format">
+  <ToggleButton class="ui-button" isSelected=$bind(bold) aria-label="Bold"><b>B</b></ToggleButton>
+  <ToggleButton class="ui-button" isSelected=$bind(italic) aria-label="Italic"><i>I</i></ToggleButton>
+</Toolbar>
+<p style=(`font-weight: ${bold ? 700 : 400}; font-style: ${italic ? 'italic' : 'normal'}`)>The quick brown fox.</p>

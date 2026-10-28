@@ -1,0 +1,13 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import DropZone from '@brumate/ui/DropZone.brm';
+  import FileTrigger from '@brumate/ui/FileTrigger.brm';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<DropZone class="ui-dropzone" data-mark="1">
+  <Text slot="label" data-mark="2" data-mark-side="after">Drop files here</Text>
+  <FileTrigger>
+    <Button class="ui-button" data-mark="3">Browse</Button>
+  </FileTrigger>
+</DropZone>

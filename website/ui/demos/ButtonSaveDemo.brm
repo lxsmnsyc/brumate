@@ -1,0 +1,34 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import Button from '@brumate/ui/Button.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  let saving = $signal(false);
+  let saved = $signal('');
+
+  function save(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    saving = true;
+    saved = '';
+    setTimeout(() => {
+      saving = false;
+      saved = `Saved "${data.get('title')}".`;
+    }, 1200);
+  }
+</script>
+
+<Form class="ui-form" onSubmit=(prevent(save))>
+  <TextField class="ui-field" name="title" value="Quarterly plan">
+    <Label>Title</Label>
+    <Input class="ui-input" />
+  </TextField>
+  <div class="ui-row">
+    <Button type="submit" class="ui-button" isPending=saving>{saving ? 'Saving' : 'Save'}</Button>
+    <Button type="reset" class="ui-button" isDisabled=saving>Reset</Button>
+  </div>
+  <p role="status">{saved}</p>
+</Form>

@@ -1,0 +1,62 @@
+<script>
+  import Link from '@brumate/ui/Link.brm';
+</script>
+
+<nav class="link-styled-nav" aria-label="Styled">
+  <Link class="link-styled" href="#styled">Link</Link>
+  <Link class="link-styled" href="#styled" isCurrent>Current</Link>
+  <Link class="link-styled" isDisabled>Disabled</Link>
+</nav>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.link-styled-nav) {
+    --link-styled-color: light-dark(#1f5f94, #8cc3ee);
+    --link-styled-hover: light-dark(#10304d, #cde6fa);
+    --link-styled-muted: color-mix(in srgb, CanvasText 55%, Canvas);
+    display: flex;
+    gap: 1.25rem;
+  }
+
+  /* Rest, hover, press, keyboard focus, current and disabled. */
+  :global(.link-styled) {
+    color: var(--link-styled-color);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 0.25em;
+    transition: text-decoration-color 0.15s, color 0.15s;
+    cursor: pointer;
+  }
+
+  :global(.link-styled[data-hovered]) {
+    color: var(--link-styled-hover);
+    text-decoration-color: currentColor;
+  }
+
+  :global(.link-styled[data-pressed]) {
+    opacity: 0.7;
+  }
+
+  :global(.link-styled[data-focus-visible]) {
+    outline: 2px solid var(--link-styled-color);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  :global(.link-styled[data-current]) {
+    font-weight: 700;
+    text-decoration-color: currentColor;
+  }
+
+  :global(.link-styled[data-disabled]) {
+    color: var(--link-styled-muted);
+    text-decoration: line-through;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.link-styled) {
+      transition: none;
+    }
+  }
+</style>

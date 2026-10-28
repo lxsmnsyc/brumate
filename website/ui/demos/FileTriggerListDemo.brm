@@ -1,0 +1,33 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import FileTrigger from '@brumate/ui/FileTrigger.brm';
+
+  interface Picked {
+    name: string;
+    size: number;
+  }
+
+  let files = $signal<Picked[]>([]);
+
+  function picked(list: FileList | null) {
+    const next = [...files];
+    for (const file of list ?? []) {
+      next.push({ name: file.name, size: file.size });
+    }
+    files = next;
+  }
+</script>
+
+<FileTrigger allowsMultiple onSelect=picked>
+  <Button class="ui-button">Add files</Button>
+</FileTrigger>
+<ul>
+  #for (file of files by file.name) {
+    <li>
+      {file.name}, {Math.ceil(file.size / 1024)} KB
+      <Button class="ui-button" aria-label=(`Remove ${file.name}`) onPress=(() => (files = files.filter((item) => item.name !== file.name)))>Remove</Button>
+    </li>
+  }
+</ul>
+<p>{files.length === 0 ? 'No files yet.' : `${files.length} files.`}</p>

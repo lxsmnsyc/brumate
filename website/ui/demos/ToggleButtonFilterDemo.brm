@@ -1,0 +1,27 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+
+  let open = $signal(true);
+  let mine = $signal(false);
+  let urgent = $signal(false);
+
+  const issues = [
+    { id: 1, title: 'Fix the login', open: true, mine: true, urgent: false },
+    { id: 2, title: 'Update the docs', open: true, mine: false, urgent: false },
+    { id: 3, title: 'Ship 0.2', open: false, mine: true, urgent: true },
+    { id: 4, title: 'Reply to the audit', open: true, mine: true, urgent: true },
+  ];
+  const shown = $memo(issues.filter((issue) => (!open || issue.open) && (!mine || issue.mine) && (!urgent || issue.urgent)));
+</script>
+
+<div class="ui-row">
+  <ToggleButton class="ui-button" isSelected=$bind(open)>Open</ToggleButton>
+  <ToggleButton class="ui-button" isSelected=$bind(mine)>Mine</ToggleButton>
+  <ToggleButton class="ui-button" isSelected=$bind(urgent)>Urgent</ToggleButton>
+</div>
+<ul>
+  #for (issue of shown by issue.id) {
+    <li>{issue.title}</li>
+  }
+</ul>

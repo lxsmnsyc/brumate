@@ -1,0 +1,19 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Link from '@brumate/ui/Link.brm';
+
+  let page = $signal('overview');
+  const pages = [
+    { id: 'overview', name: 'Overview' },
+    { id: 'usage', name: 'Usage' },
+    { id: 'billing', name: 'Billing' },
+  ];
+</script>
+
+<nav aria-label="Account" class="ui-row">
+  #for (item of pages by item.id) {
+    <Link class="ui-link" href=(`#${item.id}`) isCurrent=(page === item.id) onPress=(() => (page = item.id))>{item.name}</Link>
+  }
+  <Link class="ui-link" isDisabled>Admin</Link>
+</nav>
+<p>You are on {page}.</p>

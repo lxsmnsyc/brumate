@@ -1,0 +1,71 @@
+<script>
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+</script>
+
+<div class="toggle-styled-row">
+  <ToggleButton class="toggle-styled">Mute</ToggleButton>
+  <ToggleButton class="toggle-styled" isSelected>Pinned</ToggleButton>
+  <ToggleButton class="toggle-styled" isDisabled>Disabled</ToggleButton>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.toggle-styled-row) {
+    --toggle-styled-bg: Canvas;
+    --toggle-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
+    --toggle-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --toggle-styled-on-accent: light-dark(#fff, #101418);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    color: CanvasText;
+  }
+
+  /* Rest, hover, press, keyboard focus, on and disabled. */
+  :global(.toggle-styled) {
+    padding: 0.45rem 1rem;
+    border: 1px solid var(--toggle-styled-border);
+    border-radius: 8px;
+    background: var(--toggle-styled-bg);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+
+  :global(.toggle-styled[data-hovered]) {
+    border-color: var(--toggle-styled-accent);
+  }
+
+  :global(.toggle-styled[data-pressed]) {
+    background: color-mix(in srgb, var(--toggle-styled-accent) 18%, var(--toggle-styled-bg));
+  }
+
+  /* Two bands, so the ring shows on the page and on the accent fill of an on button. */
+  :global(.toggle-styled[data-focus-visible]) {
+    outline: 2px solid var(--toggle-styled-accent);
+    outline-offset: 2px;
+    box-shadow: inset 0 0 0 2px var(--toggle-styled-bg);
+  }
+
+  :global(.toggle-styled[data-selected]) {
+    border-color: var(--toggle-styled-accent);
+    background: var(--toggle-styled-accent);
+    color: var(--toggle-styled-on-accent);
+  }
+
+  :global(.toggle-styled[data-selected])::before {
+    content: '✓ ';
+  }
+
+  :global(.toggle-styled[data-disabled]) {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.toggle-styled) {
+      transition: none;
+    }
+  }
+</style>

@@ -1,0 +1,31 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+
+  let mine = $signal(['b']);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<div class="ui-stack">
+  <ToggleButtonGroup class="ui-group" aria-label="Own state">
+    <ToggleButton id="a" class="ui-button">A</ToggleButton>
+    <ToggleButton id="b" class="ui-button">B</ToggleButton>
+  </ToggleButtonGroup>
+  <ToggleButtonGroup class="ui-group" aria-label="Starts at B" selectedKeys=(['b'])>
+    <ToggleButton id="a" class="ui-button">A</ToggleButton>
+    <ToggleButton id="b" class="ui-button">B</ToggleButton>
+  </ToggleButtonGroup>
+  <ToggleButtonGroup class="ui-group" aria-label="Writes your signal" selectedKeys=$bind(mine) onSelectionChange=((keys) => (log = `changed to ${keys.join(', ') || 'nothing'}`))>
+    <ToggleButton id="a" class="ui-button">A</ToggleButton>
+    <ToggleButton id="b" class="ui-button">B</ToggleButton>
+  </ToggleButtonGroup>
+  <ToggleButtonGroup class="ui-group" aria-label="Asks you first" selectedKeys=$bind(mine, (next) => { if (!locked) mine = next; })>
+    <ToggleButton id="a" class="ui-button">A</ToggleButton>
+    <ToggleButton id="b" class="ui-button">B</ToggleButton>
+  </ToggleButtonGroup>
+  <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <p>Signal: {mine.join(', ') || 'none'}. Last callback: {log || 'none'}.</p>
+</div>
