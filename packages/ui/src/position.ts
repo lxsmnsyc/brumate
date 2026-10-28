@@ -151,6 +151,7 @@ export function followTrigger(
   placed: (position: Position) => void,
 ): () => void {
   let frame = 0;
+  const { put, stop } = keepStyle(overlay);
   const update = (): void => {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
@@ -163,10 +164,10 @@ export function followTrigger(
         },
         options,
       );
-      overlay.style.top = `${position.top}px`;
-      overlay.style.left = `${position.left}px`;
-      overlay.style.setProperty('--trigger-width', `${trigger.getBoundingClientRect().width}px`);
-      overlay.style.setProperty('--available-height', `${position.maxHeight}px`);
+      put('top', `${position.top}px`);
+      put('left', `${position.left}px`);
+      put('--trigger-width', `${trigger.getBoundingClientRect().width}px`);
+      put('--available-height', `${position.maxHeight}px`);
       placed(position);
     });
   };
@@ -182,5 +183,67 @@ export function followTrigger(
     document.removeEventListener('scroll', update, { capture: true });
     window.removeEventListener('resize', update);
     sizes.disconnect();
+    stop();
+  };
+}
+
+/**
+ * Sets properties on the style of an element, and sets them again when a new `style` attribute
+ * replaces them, such as a `style` prop that changes. `stop` ends it.
+ */
+export function keepStyle(element: HTMLElement): {
+  put: (name: string, value: string) => void;
+  stop: () => void;
+} {
+  const kept = new Map<string, string>();
+  const observer = new MutationObserver(() => {
+    for (const [name, value] of kept) {
+      if (element.style.getPropertyValue(name) !== value) {
+        element.style.setProperty(name, value);
+      }
+    }
+  });
+  observer.observe(element, { attributes: true, attributeFilter: ['style'] });
+  return {
+    put(name, value) {
+      kept.set(name, value);
+      element.style.setProperty(name, value);
+    },
+    stop() {
+      observer.disconnect();
+    },
+  };
+}
+
+/**
+ * Places the arrows of an overlay along its side, and keeps their `left` and `top` when a new
+ * `style` attribute replaces them. `stop` ends it.
+ */
+export function keepArrows(overlay: HTMLElement): {
+  place: (position: Position) => void;
+  stop: () => void;
+} {
+  const kept = new Map<HTMLElement, ReturnType<typeof keepStyle>>();
+  return {
+    place(position) {
+      overlay.dataset.placement = position.side;
+      const vertical = position.side === 'top' || position.side === 'bottom';
+      for (const arrow of overlay.querySelectorAll<HTMLElement>('[data-overlay-arrow]')) {
+        arrow.dataset.placement = position.side;
+        let keeper = kept.get(arrow);
+        if (!keeper) {
+          keeper = keepStyle(arrow);
+          kept.set(arrow, keeper);
+        }
+        keeper.put('left', vertical ? `${position.arrow}px` : '');
+        keeper.put('top', vertical ? '' : `${position.arrow}px`);
+      }
+    },
+    stop() {
+      for (const keeper of kept.values()) {
+        keeper.stop();
+      }
+      kept.clear();
+    },
   };
 }

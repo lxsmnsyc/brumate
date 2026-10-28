@@ -37,6 +37,7 @@
   import { described } from './description.brm.ts';
   import { LocaleContext } from './locale.ts';
   import { progressOf } from './progress.ts';
+  import { mergeStyle } from './style.ts';
 
   /**
    * The progress of a task: role="progressbar" with the value, the range and its text in the
@@ -54,6 +55,7 @@
     formatOptions,
     content,
     children,
+    style,
     ...rest
   } = $props<ProgressBarProps<T>>();
   let { ref } = $props<ProgressBarOwnProps<T>>();
@@ -82,7 +84,7 @@
   aria-valuetext=(isIndeterminate ? undefined : (valueLabel ?? state.valueText))
   data-indeterminate=(isIndeterminate || undefined)
   aria-labelledby=(labelled ? labelId : undefined)
-  style=(isIndeterminate ? undefined : `--percentage: ${state.percentage}%`)
+  style=(mergeStyle(style, isIndeterminate ? undefined : `--percentage: ${state.percentage}%`))
   {...rest}
 >
   {children}

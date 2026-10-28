@@ -63,7 +63,8 @@
     pressOutside,
     release,
   } from './overlay.ts';
-  import { followTrigger } from './position.ts';
+  import { followTrigger, keepArrows } from './position.ts';
+  import { mergeStyle } from './style.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
   /**
@@ -96,6 +97,7 @@
     transition = false,
     onOpenChange,
     children,
+    style,
     ...rest
   } = $props<PopoverProps<T>>();
   let { isOpen } = $props<PopoverOwnProps<T>>();
@@ -154,7 +156,9 @@
     const stops: (() => void)[] = [];
     hold(element, stops, returnTo, trigger?.triggerId, Boolean(trigger?.isPreview));
     if (anchor) {
+      const arrows = keepArrows(element);
       stops.push(
+        arrows.stop,
         followTrigger(
           anchor,
           element,
@@ -166,15 +170,7 @@
             containerPadding,
             direction: locale.direction,
           },
-          (position) => {
-            element.dataset.placement = position.side;
-            for (const arrow of element.querySelectorAll<HTMLElement>('[data-overlay-arrow]')) {
-              arrow.dataset.placement = position.side;
-              const vertical = position.side === 'top' || position.side === 'bottom';
-              arrow.style.left = vertical ? `${position.arrow}px` : '';
-              arrow.style.top = vertical ? '' : `${position.arrow}px`;
-            }
-          },
+          arrows.place,
         ),
       );
     }
@@ -275,7 +271,7 @@
     ref=$bind(ref)
     id=(trigger?.overlayId ?? ownId)
     tabindex="-1"
-    style="position: fixed; top: 0; left: 0"
+    style=(mergeStyle(style, 'position: fixed; top: 0; left: 0'))
     inert=(leaving || undefined)
     data-closed=($untrack(transition || undefined))
     onKeyDown=keyDown

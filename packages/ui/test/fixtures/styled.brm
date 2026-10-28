@@ -1,0 +1,15 @@
+<script>
+  import Label from '../../src/Label.brm';
+  import Meter from '../../src/Meter.brm';
+  import OverlayArrow from '../../src/OverlayArrow.brm';
+  import ProgressBar from '../../src/ProgressBar.brm';
+</script>
+
+<Meter class="meter-string" value=(40) style="width: 200px"><Label>Disk</Label></Meter>
+<Meter class="meter-object" value=(40) style={ width: '200px', '--gap': '2px' }><Label>Disk</Label></Meter>
+<Meter class="meter-none" value=(40)><Label>Disk</Label></Meter>
+<ProgressBar class="bar-string" value=(3) maxValue=(4) style="width: 200px"><Label>Upload</Label></ProgressBar>
+<ProgressBar class="bar-object" value=(3) maxValue=(4) style={ width: '200px', '--gap': '2px' }><Label>Upload</Label></ProgressBar>
+<ProgressBar class="bar-none" value=(3) maxValue=(4)><Label>Upload</Label></ProgressBar>
+<ProgressBar class="bar-wait" isIndeterminate style="width: 200px"><Label>Upload</Label></ProgressBar>
+<OverlayArrow class="arrow" style="left: 4px" />
