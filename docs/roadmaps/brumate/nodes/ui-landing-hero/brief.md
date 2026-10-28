@@ -1,7 +1,7 @@
 ---
 id: ui-landing-hero
 title: The /ui landing page in the style of the brumate home page
-status: active
+status: done
 priority: should
 type: docs
 outline: false
