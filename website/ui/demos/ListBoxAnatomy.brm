@@ -1,0 +1,21 @@
+<script>
+  import Header from '@brumate/ui/Header.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import ListBoxSection from '@brumate/ui/ListBoxSection.brm';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<!-- The list clips its content, so the number of the list sits on a wrapper. -->
+<div style="width: min(16rem, 100%)" data-mark="1">
+  <ListBox class="ui-listbox" style="width: 100%" aria-label="Animals" selectionMode="single" selectedKeys=(['dog'])>
+    <ListBoxSection data-mark="2" data-mark-side="bottom">
+      <Header class="ui-listbox-header" style="justify-self: start; width: fit-content" data-mark="3" data-mark-side="after">Mammals</Header>
+      <ListBoxItem id="cat" class="ui-option" style="display: grid" data-mark="4" data-mark-side="inside" textValue="Cat" hasDescription>
+        <span style="justify-self: start">Cat</span>
+        <Text slot="description" class="ui-help" style="justify-self: start" data-mark="5" data-mark-side="after">Purrs.</Text>
+      </ListBoxItem>
+      <ListBoxItem id="dog" class="ui-option">Dog</ListBoxItem>
+    </ListBoxSection>
+  </ListBox>
+</div>

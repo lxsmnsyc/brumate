@@ -23,6 +23,15 @@ A group of tags, which the user can select and remove.
 
 ## Anatomy
 
+```brm anatomy TagGroupAnatomy
+`TagGroup`: Holds the selection and the removal. It has no role of its own.
+`Label`: Names the list.
+`TagList`: Holds the tags. It is a `grid`, takes one stop of Tab, and is named by the Label.
+`Tag`: One tag, a `row`. Its `id` is its key, and it shows `data-selected` when it is selected.
+`Button` with `slot="remove"`: Removes its tag. It is out of the order of Tab. Optional.
+`Text` with `slot="description"`: Describes the list. Optional.
+```
+
 ```html
 <TagGroup>
   <Label />
@@ -86,11 +95,46 @@ Right to left, Left and Right turn around.
 
 ## Controlled and uncontrolled
 
-`selectedKeys` holds the keys of the selected tags. `selectedKeys=(['a'])` starts the group's own selection, and `selectedKeys=$bind(signal)` writes your signal. `onSelectionChange` gets the keys after each change. The group never holds the tags: `onRemove` gets the keys, and you remove them from your list. See [State](./state.md).
+`selectedKeys` holds the keys of the selected tags, as a list. How you pass it picks who keeps it:
+
+```brm demo TagGroupStateDemo
+
+```
+
+- `selectedKeys` alone, or nothing, makes the group keep its own selection. `selectedKeys=(['cat'])` is where that selection starts. Press another tag and the group keeps the pick. A new value from you replaces it.
+- `selectedKeys=$bind(signal)` writes your signal. Change the signal and the group follows.
+- `selectedKeys=$bind(signal, (next) => ...)` asks you first. The group shows what you keep, so a request that you ignore leaves the old keys. Press Lock above and press a tag in the last group.
+- `onSelectionChange` gets the keys after each change, in every shape.
+- The group never holds the tags. `onRemove` gets the keys, and you remove them from your list.
+- A TagGroup is not a form field. It has no `name` and no reset, so a reset of a form leaves its selection as it is. The server renders the selection it starts with. See [State](./state.md).
 
 ## Styling
 
-Style a tag with the data attributes above, such as `[data-selected]` and `[data-focus-visible]`. See [Styling](./styling.md).
+Style a tag with the data attributes above, such as `[data-selected]` and `[data-focus-visible]`. The remove Button shows its own attributes. See [Styling](./styling.md).
+
+This stylesheet styles every state of a tag: rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled, and the remove button. Its tokens are at the top, and they follow the color scheme. Tab to the list, press the arrow keys and Space, then Delete.
+
+```brm styled TagGroupStyled
+
+```
+
+## Use cases
+
+### Tags that filter a list
+
+A group with `selectionMode="multiple"` and a bound `selectedKeys` is a filter. The list below shows the posts of the selected topics, and all of them while no tag is selected.
+
+```brm demo TagGroupFilterDemo
+
+```
+
+### Tags that the user adds and removes
+
+The tags are data of yours: the form adds a text to the list, and `onRemove` takes the keys out of it. A key is the text of the tag, so the form skips a text that a tag has already, whatever its case, and a second press of Add does nothing. Focus a tag and press Delete, or press its × button.
+
+```brm demo TagGroupEditDemo
+
+```
 
 ## Removing
 

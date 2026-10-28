@@ -1,0 +1,145 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Tag from '@brumate/ui/Tag.brm';
+  import TagGroup from '@brumate/ui/TagGroup.brm';
+  import TagList from '@brumate/ui/TagList.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import { $signal } from 'brumate/signals';
+
+  const first = ['News', 'Travel', 'Music', 'Gaming', 'Archive'];
+  let tags = $signal(first);
+</script>
+
+<TagGroup
+  class="tags-styled"
+  selectionMode="multiple"
+  selectedKeys=(['Travel'])
+  disabledKeys=(['Archive'])
+  onRemove=((keys) => (tags = tags.filter((tag) => !keys.includes(tag))))
+>
+  <Label class="tags-styled-label">Topics</Label>
+  <TagList class="tags-styled-list">
+    #for (tag of tags by tag) {
+      <Tag id=tag class="tags-styled-tag">{tag}<Button slot="remove" class="tags-styled-remove">×</Button></Tag>
+    }
+  </TagList>
+  <Text slot="description" class="tags-styled-help">Select the ones to show. Delete removes a tag.</Text>
+</TagGroup>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.tags-styled) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --tags-styled-bg: Canvas;
+    --tags-styled-text: CanvasText;
+    --tags-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --tags-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --tags-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --tags-styled-on-accent: light-dark(#fff, #101418);
+    display: grid;
+    gap: 0.4rem;
+    color: var(--tags-styled-text);
+  }
+
+  :global(.tags-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.tags-styled-help) {
+    color: var(--tags-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.tags-styled-list) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    outline: none;
+  }
+
+  /* A tag: rest, hover, press, keyboard focus, selected and disabled. */
+  :global(.tags-styled-tag) {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+    padding: 0.2rem 0.4rem 0.2rem 0.75rem;
+    border: 1px solid var(--tags-styled-border);
+    border-radius: 999px;
+    background: var(--tags-styled-bg);
+    outline: none;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+
+  :global(.tags-styled-tag[data-hovered]) {
+    border-color: var(--tags-styled-accent);
+    background: color-mix(in srgb, var(--tags-styled-accent) 12%, var(--tags-styled-bg));
+  }
+
+  :global(.tags-styled-tag[data-pressed]) {
+    background: color-mix(in srgb, var(--tags-styled-accent) 24%, var(--tags-styled-bg));
+  }
+
+  /* Two bands, so the ring shows on the page and on the accent fill of a selected tag. */
+  :global(.tags-styled-tag[data-focus-visible]) {
+    box-shadow:
+      0 0 0 2px var(--tags-styled-bg),
+      0 0 0 4px var(--tags-styled-accent);
+  }
+
+  :global(.tags-styled-tag[data-selected]) {
+    border-color: var(--tags-styled-accent);
+    background: var(--tags-styled-accent);
+    color: var(--tags-styled-on-accent);
+  }
+
+  /* A selected tag gets darker in a light theme and lighter in a dark one, so its text keeps its contrast. */
+  :global(.tags-styled-tag[data-selected][data-hovered]) {
+    background: color-mix(in srgb, var(--tags-styled-accent), CanvasText 15%);
+  }
+
+  :global(.tags-styled-tag[data-selected][data-pressed]) {
+    background: color-mix(in srgb, var(--tags-styled-accent), CanvasText 28%);
+  }
+
+  :global(.tags-styled-tag[data-disabled]) {
+    border-style: dashed;
+    color: var(--tags-styled-muted);
+    cursor: not-allowed;
+  }
+
+  /* The remove button is a round target inside the tag. */
+  :global(.tags-styled-remove) {
+    display: inline-grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  :global(.tags-styled-remove[data-hovered]) {
+    background: color-mix(in srgb, currentColor 20%, transparent);
+  }
+
+  :global(.tags-styled-remove[data-pressed]) {
+    background: color-mix(in srgb, currentColor 35%, transparent);
+  }
+
+  :global(.tags-styled-remove[data-disabled]) {
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.tags-styled-tag) {
+      transition: none;
+    }
+  }
+</style>

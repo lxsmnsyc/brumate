@@ -1,0 +1,44 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Tag from '@brumate/ui/Tag.brm';
+  import TagGroup from '@brumate/ui/TagGroup.brm';
+  import TagList from '@brumate/ui/TagList.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  let tags = $signal(['design', 'docs']);
+  let draft = $signal('');
+
+  // A tag is its key, so the same text twice is not added.
+  function add() {
+    const text = draft.trim();
+    if (text && !tags.some((tag) => tag.toLowerCase() === text.toLowerCase())) {
+      tags = [...tags, text];
+    }
+    draft = '';
+  }
+</script>
+
+<div class="ui-stack">
+  <Form class="ui-row" style="align-items: end" onSubmit=(prevent(add))>
+    <TextField class="ui-field" value=$bind(draft)>
+      <Label>New tag</Label>
+      <Input class="ui-input" />
+    </TextField>
+    <Button class="ui-button" type="submit">Add</Button>
+  </Form>
+  <TagGroup class="ui-field" onRemove=((keys) => (tags = tags.filter((tag) => !keys.includes(tag))))>
+    <Label>Tags</Label>
+    <TagList class="ui-taglist">
+      #for (tag of tags by tag) {
+        <Tag id=tag class="ui-tag">{tag}<Button slot="remove" class="ui-tag-remove">×</Button></Tag>
+      }
+    </TagList>
+    <Text slot="description" class="ui-help">Focus a tag and press Delete or Backspace, or press ×.</Text>
+  </TagGroup>
+</div>

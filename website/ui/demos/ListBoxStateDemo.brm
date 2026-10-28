@@ -1,0 +1,37 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let mine = $signal<Key[]>(['dog']);
+  let locked = $signal(false);
+  let log = $signal('');
+  const animals = ['Cat', 'Dog', 'Panda'];
+</script>
+
+<div class="ui-stack">
+  <ListBox class="ui-listbox" aria-label="Own state" selectionMode="multiple">
+    #for (name of animals by name) {
+      <ListBoxItem id=(name.toLowerCase()) class="ui-option">{name}</ListBoxItem>
+    }
+  </ListBox>
+  <ListBox class="ui-listbox" aria-label="Starts at Cat, then keeps its own copy" selectionMode="multiple" selectedKeys=(['cat'])>
+    #for (name of animals by name) {
+      <ListBoxItem id=(name.toLowerCase()) class="ui-option">{name}</ListBoxItem>
+    }
+  </ListBox>
+  <ListBox class="ui-listbox" aria-label="Writes your signal" selectionMode="multiple" selectedKeys=$bind(mine) onSelectionChange=((keys) => (log = `changed to ${keys.join(', ') || 'nothing'}`))>
+    #for (name of animals by name) {
+      <ListBoxItem id=(name.toLowerCase()) class="ui-option">{name}</ListBoxItem>
+    }
+  </ListBox>
+  <ListBox class="ui-listbox" aria-label="Asks you first" selectionMode="multiple" selectedKeys=$bind(mine, (next) => { if (!locked) mine = next; })>
+    #for (name of animals by name) {
+      <ListBoxItem id=(name.toLowerCase()) class="ui-option">{name}</ListBoxItem>
+    }
+  </ListBox>
+  <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <p>Signal: {mine.join(', ') || 'none'}. Last callback: {log || 'none'}.</p>
+</div>

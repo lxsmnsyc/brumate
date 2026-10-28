@@ -1,0 +1,145 @@
+<script>
+  import Header from '@brumate/ui/Header.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import ListBoxSection from '@brumate/ui/ListBoxSection.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  const groups = [
+    {
+      name: 'Sweet',
+      items: [
+        { id: 'apple', name: 'Apple', note: 'Crisp' },
+        { id: 'mango', name: 'Mango', note: 'Soft' },
+        { id: 'grape', name: 'Grape', note: 'In bunches' },
+      ],
+    },
+    {
+      name: 'Sour',
+      items: [
+        { id: 'lemon', name: 'Lemon', note: 'Sharp' },
+        { id: 'durian', name: 'Durian', note: 'Out of season' },
+      ],
+    },
+  ];
+</script>
+
+<ListBox class="listbox-styled" aria-label="Fruit" selectionMode="multiple" selectedKeys=(['apple']) disabledKeys=(['durian'])>
+  #for (group of groups by group.name) {
+    <ListBoxSection class="listbox-styled-section">
+      <Header class="listbox-styled-header">{group.name}</Header>
+      #for (item of group.items by item.id) {
+        <ListBoxItem id=(item.id) class="listbox-styled-item" textValue=(item.name) hasDescription>
+          <span class="listbox-styled-name">{item.name}</span>
+          <Text slot="description" class="listbox-styled-note">{item.note}</Text>
+        </ListBoxItem>
+      }
+    </ListBoxSection>
+  }
+</ListBox>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.listbox-styled) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --listbox-styled-bg: Canvas;
+    --listbox-styled-text: CanvasText;
+    --listbox-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --listbox-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --listbox-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --listbox-styled-on-accent: light-dark(#fff, #101418);
+    --listbox-styled-radius: 8px;
+    display: grid;
+    gap: 0.25rem;
+    box-sizing: border-box;
+    width: min(18rem, 100%);
+    padding: 0.35rem;
+    border: 1px solid var(--listbox-styled-border);
+    border-radius: var(--listbox-styled-radius);
+    background: var(--listbox-styled-bg);
+    color: var(--listbox-styled-text);
+    outline: none;
+  }
+
+  :global(.listbox-styled-header) {
+    padding: 0.4rem 0.6rem 0.2rem;
+    color: var(--listbox-styled-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* An item: rest, hover, press, keyboard focus, selected and disabled. */
+  :global(.listbox-styled-item) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 0.5rem;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  :global(.listbox-styled-name) {
+    font-weight: 600;
+  }
+
+  :global(.listbox-styled-note) {
+    grid-column: 1;
+    color: var(--listbox-styled-muted);
+    font-size: 0.8125rem;
+  }
+
+  :global(.listbox-styled-item[data-hovered]) {
+    background: color-mix(in srgb, var(--listbox-styled-accent) 14%, var(--listbox-styled-bg));
+  }
+
+  :global(.listbox-styled-item[data-pressed]) {
+    background: color-mix(in srgb, var(--listbox-styled-accent) 26%, var(--listbox-styled-bg));
+  }
+
+  /* Two bands, so the ring shows on the page and on the accent fill of a selected item. */
+  :global(.listbox-styled-item[data-focus-visible]) {
+    box-shadow:
+      inset 0 0 0 2px var(--listbox-styled-accent),
+      inset 0 0 0 4px var(--listbox-styled-bg);
+  }
+
+  :global(.listbox-styled-item[data-selected]) {
+    background: var(--listbox-styled-accent);
+    color: var(--listbox-styled-on-accent);
+  }
+
+  :global(.listbox-styled-item[data-selected])::after {
+    content: '✓';
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  /* A selected item gets darker in a light theme and lighter in a dark one, so its text keeps its contrast. */
+  :global(.listbox-styled-item[data-selected][data-hovered]) {
+    background: color-mix(in srgb, var(--listbox-styled-accent), CanvasText 15%);
+  }
+
+  :global(.listbox-styled-item[data-selected][data-pressed]) {
+    background: color-mix(in srgb, var(--listbox-styled-accent), CanvasText 28%);
+  }
+
+  :global(.listbox-styled-item[data-selected] .listbox-styled-note) {
+    color: inherit;
+  }
+
+  :global(.listbox-styled-item[data-disabled]) {
+    color: var(--listbox-styled-muted);
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.listbox-styled-item) {
+      transition: none;
+    }
+  }
+</style>

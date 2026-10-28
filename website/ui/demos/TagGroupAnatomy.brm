@@ -1,0 +1,18 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Tag from '@brumate/ui/Tag.brm';
+  import TagGroup from '@brumate/ui/TagGroup.brm';
+  import TagList from '@brumate/ui/TagList.brm';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<TagGroup class="ui-field" selectionMode="multiple" selectedKeys=(['travel']) onRemove=(() => {}) data-mark="1" style="max-width: 24rem">
+  <Label data-mark="2" data-mark-side="after">Categories</Label>
+  <TagList class="ui-taglist" data-mark="3">
+    <Tag id="news" class="ui-tag" data-mark="4">News<Button slot="remove" class="ui-tag-remove" data-mark="5" data-mark-side="bottom">×</Button></Tag>
+    <Tag id="travel" class="ui-tag">Travel<Button slot="remove" class="ui-tag-remove">×</Button></Tag>
+    <Tag id="music" class="ui-tag">Music<Button slot="remove" class="ui-tag-remove">×</Button></Tag>
+  </TagList>
+  <Text slot="description" class="ui-help" data-mark="6" data-mark-side="after">Select the ones to show.</Text>
+</TagGroup>

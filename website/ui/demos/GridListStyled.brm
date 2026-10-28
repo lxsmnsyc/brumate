@@ -1,0 +1,189 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import GridList from '@brumate/ui/GridList.brm';
+  import GridListItem from '@brumate/ui/GridListItem.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  const files = [
+    { id: 'notes', name: 'Notes.txt', size: '4 KB' },
+    { id: 'photos', name: 'Photos', size: '2.1 GB' },
+    { id: 'budget', name: 'Budget.xlsx', size: '88 KB' },
+    { id: 'locked', name: 'Archive.zip', size: 'Locked' },
+  ];
+  let picked = $signal<Key[]>(['notes']);
+</script>
+
+<GridList class="gridlist-styled" aria-label="Files" selectionMode="multiple" selectedKeys=$bind(picked) disabledKeys=(['locked'])>
+  #for (file of files by file.id) {
+    <GridListItem id=(file.id) class="gridlist-styled-row" textValue=(file.name)>
+      <Checkbox slot="selection" class="gridlist-styled-box" aria-label=(`Select ${file.name}`)>
+        <span class="gridlist-styled-check" aria-hidden="true"></span>
+      </Checkbox>
+      <span class="gridlist-styled-name">{file.name}</span>
+      <span class="gridlist-styled-size">{file.size}</span>
+      <Button class="gridlist-styled-open" isDisabled=(file.id === 'locked')>Open</Button>
+    </GridListItem>
+  }
+</GridList>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.gridlist-styled) {
+    /* light-dark() follows color-scheme, which the page sets for its theme. */
+    --gridlist-styled-bg: Canvas;
+    --gridlist-styled-text: CanvasText;
+    --gridlist-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --gridlist-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --gridlist-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --gridlist-styled-on-accent: light-dark(#fff, #101418);
+    --gridlist-styled-radius: 8px;
+    display: grid;
+    gap: 2px;
+    box-sizing: border-box;
+    width: min(28rem, 100%);
+    padding: 0.35rem;
+    border: 1px solid var(--gridlist-styled-border);
+    border-radius: var(--gridlist-styled-radius);
+    background: var(--gridlist-styled-bg);
+    color: var(--gridlist-styled-text);
+    outline: none;
+  }
+
+  /* A row: rest, hover, press, keyboard focus, selected and disabled. */
+  :global(.gridlist-styled-row) {
+    display: flex;
+    gap: 0.7rem;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    outline: none;
+    transition: background-color 0.15s;
+  }
+
+  :global(.gridlist-styled-row[data-hovered]) {
+    background: color-mix(in srgb, var(--gridlist-styled-accent) 12%, var(--gridlist-styled-bg));
+  }
+
+  :global(.gridlist-styled-row[data-pressed]) {
+    background: color-mix(in srgb, var(--gridlist-styled-accent) 22%, var(--gridlist-styled-bg));
+  }
+
+  :global(.gridlist-styled-row[data-selected]) {
+    background: color-mix(in srgb, var(--gridlist-styled-accent) 20%, var(--gridlist-styled-bg));
+  }
+
+  :global(.gridlist-styled-row[data-selected][data-hovered]) {
+    background: color-mix(in srgb, var(--gridlist-styled-accent) 30%, var(--gridlist-styled-bg));
+  }
+
+  :global(.gridlist-styled-row[data-selected][data-pressed]) {
+    background: color-mix(in srgb, var(--gridlist-styled-accent) 40%, var(--gridlist-styled-bg));
+  }
+
+  /* Two bands, so the ring shows on the page and on the tint of a selected row. */
+  :global(.gridlist-styled-row[data-focus-visible]) {
+    box-shadow:
+      inset 0 0 0 2px var(--gridlist-styled-accent),
+      inset 0 0 0 4px var(--gridlist-styled-bg);
+  }
+
+  :global(.gridlist-styled-row[data-disabled]) {
+    color: var(--gridlist-styled-muted);
+    cursor: not-allowed;
+  }
+
+  :global(.gridlist-styled-name) {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  :global(.gridlist-styled-size) {
+    color: var(--gridlist-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  /* The tint of a selected row is too dark for the muted color, so its size takes the text color. */
+  :global(.gridlist-styled-row[data-selected] .gridlist-styled-size) {
+    color: var(--gridlist-styled-text);
+  }
+
+  /* The checkbox of the selection slot. */
+  :global(.gridlist-styled-box) {
+    display: inline-flex;
+    cursor: pointer;
+  }
+
+  :global(.gridlist-styled-check) {
+    display: inline-grid;
+    place-items: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    border: 2px solid var(--gridlist-styled-muted);
+    border-radius: 5px;
+    color: var(--gridlist-styled-on-accent);
+    font-size: 0.8rem;
+    line-height: 1;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+
+  :global(.gridlist-styled-box[data-hovered] .gridlist-styled-check) {
+    border-color: var(--gridlist-styled-accent);
+  }
+
+  :global(.gridlist-styled-box[data-selected] .gridlist-styled-check) {
+    border-color: var(--gridlist-styled-accent);
+    background: var(--gridlist-styled-accent);
+  }
+
+  :global(.gridlist-styled-box[data-selected] .gridlist-styled-check)::after {
+    content: '✓';
+  }
+
+  :global(.gridlist-styled-box[data-focus-visible] .gridlist-styled-check) {
+    outline: 2px solid var(--gridlist-styled-accent);
+    outline-offset: 2px;
+  }
+
+  :global(.gridlist-styled-box[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* The button in the row keeps its own press. */
+  :global(.gridlist-styled-open) {
+    padding: 0.2rem 0.7rem;
+    border: 1px solid var(--gridlist-styled-border);
+    border-radius: 6px;
+    background: var(--gridlist-styled-bg);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :global(.gridlist-styled-open[data-hovered]) {
+    border-color: var(--gridlist-styled-accent);
+  }
+
+  :global(.gridlist-styled-open[data-pressed]) {
+    background: color-mix(in srgb, var(--gridlist-styled-accent) 22%, var(--gridlist-styled-bg));
+  }
+
+  :global(.gridlist-styled-open[data-focus-visible]) {
+    outline: 2px solid var(--gridlist-styled-accent);
+    outline-offset: 2px;
+  }
+
+  :global(.gridlist-styled-open[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.gridlist-styled-row),
+    :global(.gridlist-styled-check) {
+      transition: none;
+    }
+  }
+</style>

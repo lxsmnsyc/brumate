@@ -1,0 +1,26 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import GridList from '@brumate/ui/GridList.brm';
+  import GridListItem from '@brumate/ui/GridListItem.brm';
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<GridList class="ui-gridlist" style="margin-inline-end: 1.2rem" aria-label="Files" selectionMode="multiple" selectedKeys=(['notes']) onReorder=(() => {}) data-mark="1">
+  <GridListItem id="notes" class="ui-gridrow" textValue="Notes.txt" style="gap: 1.6rem" data-mark="2" data-mark-side="after">
+    <Button slot="drag" class="ui-grip" data-mark="4"><Icon name="grip" size=(16) /></Button>
+    <Checkbox slot="selection" class="ui-box" aria-label="Select Notes.txt" data-mark="3" data-mark-side="after">
+      <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+    </Checkbox>
+    Notes.txt
+    <Button class="ui-button" data-mark="5" data-mark-side="bottom">Open</Button>
+  </GridListItem>
+  <GridListItem id="photos" class="ui-gridrow" textValue="Photos">
+    <Button slot="drag" class="ui-grip"><Icon name="grip" size=(16) /></Button>
+    <Checkbox slot="selection" class="ui-box" aria-label="Select Photos">
+      <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+    </Checkbox>
+    Photos
+    <Button class="ui-button">Open</Button>
+  </GridListItem>
+</GridList>
