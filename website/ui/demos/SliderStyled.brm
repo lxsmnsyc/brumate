@@ -1,0 +1,179 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Slider from '@brumate/ui/Slider.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderThumb from '@brumate/ui/SliderThumb.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let volume = $signal(40);
+  let range = $signal([20, 70]);
+  let sent = $signal('');
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent volume=${data.get('volume')}, from=${data.get('from')}, to=${data.get('to')}.`;
+  }
+</script>
+
+<Form class="slider-styled-form" onSubmit=(prevent(submit))>
+  <Slider class="slider-styled" value=$bind(volume)>
+    <Label class="slider-styled-label">Volume</Label>
+    <SliderOutput class="slider-styled-output" />
+    <SliderTrack class="slider-styled-track">
+      <div class="slider-styled-fill" style=(`left: 0; width: ${volume}%`)></div>
+      <SliderThumb class="slider-styled-thumb" name="volume" />
+    </SliderTrack>
+  </Slider>
+  <Slider class="slider-styled" value=$bind(range)>
+    <Label class="slider-styled-label">Range</Label>
+    <SliderOutput class="slider-styled-output" />
+    <SliderTrack class="slider-styled-track">
+      <div class="slider-styled-fill" style=(`left: ${range[0]}%; width: ${range[1] - range[0]}%`)></div>
+      <SliderThumb class="slider-styled-thumb" index=(0) name="from" aria-label="From" />
+      <SliderThumb class="slider-styled-thumb" index=(1) name="to" aria-label="To" />
+    </SliderTrack>
+  </Slider>
+  <Slider class="slider-styled" isDisabled value=(60)>
+    <Label class="slider-styled-label">Locked</Label>
+    <SliderOutput class="slider-styled-output" />
+    <SliderTrack class="slider-styled-track">
+      <div class="slider-styled-fill" style="left: 0; width: 60%"></div>
+      <SliderThumb class="slider-styled-thumb" />
+    </SliderTrack>
+  </Slider>
+  <Button type="submit" class="slider-styled-submit">Send</Button>
+  <p role="status" class="slider-styled-status">{sent}</p>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.slider-styled-form) {
+    --slider-styled-page: light-dark(#f2efea, #1d1a17);
+    --slider-styled-rail: light-dark(#8d857b, #6f675d);
+    --slider-styled-muted: light-dark(#5a544d, #b3aaa0);
+    --slider-styled-accent: light-dark(#1d5d91, #6fb2e6);
+    --slider-styled-on-accent: light-dark(#fff, #101418);
+    display: grid;
+    justify-items: start;
+    gap: 1.1rem;
+    width: min(100%, 20rem);
+    color: CanvasText;
+  }
+
+  :global(.slider-styled) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.3rem;
+    width: 100%;
+  }
+
+  :global(.slider-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.slider-styled-output) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :global(.slider-styled-track) {
+    position: relative;
+    grid-column: 1 / -1;
+    height: 1.75rem;
+  }
+
+  :global(.slider-styled-track::before) {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 6px;
+    transform: translateY(-50%);
+    border-radius: 3px;
+    background: var(--slider-styled-rail);
+  }
+
+  :global(.slider-styled-fill) {
+    position: absolute;
+    top: 50%;
+    height: 6px;
+    transform: translateY(-50%);
+    border-radius: 3px;
+    background: var(--slider-styled-accent);
+  }
+
+  :global(.slider-styled-thumb) {
+    top: 50%;
+    width: 1.4rem;
+    height: 1.4rem;
+    margin-top: -0.7rem;
+    border: 2px solid var(--slider-styled-accent);
+    border-radius: 50%;
+    background: var(--slider-styled-page);
+    cursor: grab;
+    transition: background-color 0.15s, transform 0.15s;
+  }
+
+  :global(.slider-styled-thumb:hover) {
+    background: color-mix(in srgb, var(--slider-styled-accent) 25%, var(--slider-styled-page));
+  }
+
+  :global(.slider-styled-thumb[data-dragging]) {
+    background: var(--slider-styled-accent);
+    cursor: grabbing;
+  }
+
+  /* Two bands, an accent one outside and one in the color of the page between. */
+  :global(.slider-styled-thumb[data-focus-visible]) {
+    outline: 2px solid var(--slider-styled-accent);
+    outline-offset: 3px;
+  }
+
+  :global(.slider-styled-thumb[data-disabled]) {
+    border-color: var(--slider-styled-rail);
+    cursor: not-allowed;
+  }
+
+  :global(.slider-styled-track[data-disabled] .slider-styled-fill) {
+    background: var(--slider-styled-rail);
+  }
+
+  :global(.slider-styled-submit) {
+    padding: 0.4rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--slider-styled-accent);
+    color: var(--slider-styled-on-accent);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :global(.slider-styled-submit[data-hovered]) {
+    background: color-mix(in srgb, var(--slider-styled-accent), CanvasText 15%);
+  }
+
+  :global(.slider-styled-submit[data-pressed]) {
+    background: color-mix(in srgb, var(--slider-styled-accent), CanvasText 28%);
+  }
+
+  :global(.slider-styled-submit[data-focus-visible]) {
+    outline: 2px solid var(--slider-styled-accent);
+    outline-offset: 2px;
+  }
+
+  :global(.slider-styled-status) {
+    margin: 0;
+    color: var(--slider-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.slider-styled-thumb) {
+      transition: none;
+    }
+  }
+</style>

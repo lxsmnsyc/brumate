@@ -1,0 +1,79 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Slider from '@brumate/ui/Slider.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderThumb from '@brumate/ui/SliderThumb.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let low = $signal(50);
+  let mid = $signal(50);
+  let high = $signal(50);
+  const preset = (a: number, b: number, c: number) => {
+    low = a;
+    mid = b;
+    high = c;
+  };
+</script>
+
+<div class="ui-stack">
+  <div class="slidermixer-bands">
+    <Slider class="slidermixer-band" orientation="vertical" value=$bind(low)>
+      <Label>Low</Label>
+      <SliderOutput />
+      <SliderTrack class="slidermixer-track"><SliderThumb class="ui-thumb slidermixer-thumb" /></SliderTrack>
+    </Slider>
+    <Slider class="slidermixer-band" orientation="vertical" value=$bind(mid)>
+      <Label>Mid</Label>
+      <SliderOutput />
+      <SliderTrack class="slidermixer-track"><SliderThumb class="ui-thumb slidermixer-thumb" /></SliderTrack>
+    </Slider>
+    <Slider class="slidermixer-band" orientation="vertical" value=$bind(high)>
+      <Label>High</Label>
+      <SliderOutput />
+      <SliderTrack class="slidermixer-track"><SliderThumb class="ui-thumb slidermixer-thumb" /></SliderTrack>
+    </Slider>
+  </div>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => preset(50, 50, 50))>Flat</Button>
+    <Button class="ui-button" onClick=(() => preset(80, 40, 70))>Smile</Button>
+    <Button class="ui-button" onClick=(() => preset(30, 60, 90))>Bright</Button>
+  </div>
+</div>
+
+<style>
+  :global(.slidermixer-bands) {
+    display: flex;
+    gap: 2rem;
+  }
+
+  :global(.slidermixer-band) {
+    display: grid;
+    justify-items: center;
+    gap: 0.5rem;
+  }
+
+  :global(.slidermixer-track) {
+    position: relative;
+    width: 1.25rem;
+    height: 9rem;
+  }
+
+  :global(.slidermixer-track::before) {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 4px;
+    transform: translateX(-50%);
+    border-radius: 2px;
+    background: var(--border);
+  }
+
+  :global(.slidermixer-thumb) {
+    top: auto;
+    margin-top: 0;
+  }
+</style>

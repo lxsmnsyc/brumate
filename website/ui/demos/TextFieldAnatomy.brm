@@ -1,0 +1,26 @@
+<script>
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<TextField class="ui-field" value="ada@" isInvalid style="width: 18rem; max-width: calc(100% - 0.75rem)" data-mark="1">
+  <Label data-mark="2" data-mark-side="after">Email</Label>
+  <span class="textfield-anatomy-input" data-mark="3">
+    <Input class="ui-input" />
+  </span>
+  <Text slot="description" class="ui-help" data-mark="4" data-mark-side="after">We send the receipt here.</Text>
+  <FieldError class="ui-error" style="justify-self: start" data-mark="5" data-mark-side="after">Enter a full address.</FieldError>
+</TextField>
+
+<style>
+  :global(.textfield-anatomy-input) {
+    display: flex;
+  }
+
+  :global(.textfield-anatomy-input .ui-input) {
+    flex: 1;
+  }
+</style>

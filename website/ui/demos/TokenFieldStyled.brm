@@ -1,0 +1,139 @@
+<script>
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Token from '@brumate/ui/Token.brm';
+  import TokenField from '@brumate/ui/TokenField.brm';
+  import TokenInput from '@brumate/ui/TokenInput.brm';
+  import type { TokenSegment } from '@brumate/ui/token-field.ts';
+
+  const start: TokenSegment[] = [
+    { type: 'text', text: 'Ask ' },
+    { type: 'token', text: '@ada' },
+    { type: 'text', text: ' about ' },
+    { type: 'token', text: '#launch' },
+    { type: 'text', text: ' ' },
+  ];
+</script>
+
+<div class="tokenfield-styled-stack">
+  <TokenField class="tokenfield-styled" pattern="[#@]\S+" placeholder="Write a message" value=(start)>
+    <Label class="tokenfield-styled-label">Message</Label>
+    <TokenInput class="tokenfield-styled-input" token=chip />
+    <Text slot="description" class="tokenfield-styled-help">Type a @name or a #tag, then a space. Select a token to see its look.</Text>
+  </TokenField>
+  <TokenField class="tokenfield-styled" pattern="[#@]\S+" placeholder="Nothing to write yet">
+    <Label class="tokenfield-styled-label">Empty</Label>
+    <TokenInput class="tokenfield-styled-input" token=chip />
+  </TokenField>
+  <TokenField class="tokenfield-styled" pattern="[#@]\S+" isReadOnly value=(start)>
+    <Label class="tokenfield-styled-label">Read only</Label>
+    <TokenInput class="tokenfield-styled-input" token=chip />
+  </TokenField>
+  <TokenField class="tokenfield-styled" pattern="[#@]\S+" isDisabled value=(start)>
+    <Label class="tokenfield-styled-label">Disabled</Label>
+    <TokenInput class="tokenfield-styled-input" token=chip />
+  </TokenField>
+</div>
+
+#template chip(segment) {
+  <Token class=(segment.text.startsWith('@') ? 'tokenfield-styled-token tokenfield-styled-mention' : 'tokenfield-styled-token')>{segment.text}</Token>
+}
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.tokenfield-styled-stack) {
+    --tokenfield-styled-field: light-dark(#fff, #0f0d0b);
+    --tokenfield-styled-border: light-dark(#76706a, #8d857b);
+    --tokenfield-styled-muted: light-dark(#5a544d, #b3aaa0);
+    --tokenfield-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --tokenfield-styled-chip: light-dark(#e3edf6, #223548);
+    --tokenfield-styled-chip-border: light-dark(#2a76b2, #6fb2e6);
+    --tokenfield-styled-mention: light-dark(#fbe7dc, #4a2a1a);
+    --tokenfield-styled-mention-border: light-dark(#a34517, #f0a070);
+    --tokenfield-styled-selected: light-dark(#2a76b2, #6fb2e6);
+    --tokenfield-styled-on-selected: light-dark(#fff, #101418);
+    display: grid;
+    gap: 1rem;
+    width: min(100%, 24rem);
+    color: CanvasText;
+  }
+
+  :global(.tokenfield-styled) {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  :global(.tokenfield-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.tokenfield-styled-input) {
+    min-height: 2.5rem;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--tokenfield-styled-border);
+    border-radius: 8px;
+    background: var(--tokenfield-styled-field);
+    line-height: 1.9;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.tokenfield-styled-input:hover) {
+    border-color: var(--tokenfield-styled-accent);
+  }
+
+  /* Two bands, an accent one and an inner one in the color of the field. */
+  :global(.tokenfield-styled-input[data-focus-visible]) {
+    outline: none;
+    border-color: var(--tokenfield-styled-accent);
+    box-shadow:
+      0 0 0 2px var(--tokenfield-styled-accent),
+      inset 0 0 0 2px var(--tokenfield-styled-field);
+  }
+
+  :global(.tokenfield-styled-input[data-empty]::before) {
+    color: var(--tokenfield-styled-muted);
+  }
+
+  :global(.tokenfield-styled-input[data-readonly]) {
+    border-style: dashed;
+  }
+
+  :global(.tokenfield-styled-input[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.tokenfield-styled-token) {
+    padding: 0.05rem 0.5rem;
+    border: 1px solid var(--tokenfield-styled-chip-border);
+    border-radius: 999px;
+    background: var(--tokenfield-styled-chip);
+  }
+
+  :global(.tokenfield-styled-mention) {
+    border-color: var(--tokenfield-styled-mention-border);
+    background: var(--tokenfield-styled-mention);
+    font-weight: 600;
+  }
+
+  :global(.tokenfield-styled-token[data-selected]) {
+    border-color: var(--tokenfield-styled-selected);
+    background: var(--tokenfield-styled-selected);
+    color: var(--tokenfield-styled-on-selected);
+  }
+
+  :global(.tokenfield-styled-token[data-disabled]) {
+    opacity: 0.8;
+  }
+
+  :global(.tokenfield-styled-help) {
+    color: var(--tokenfield-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.tokenfield-styled-input) {
+      transition: none;
+    }
+  }
+</style>

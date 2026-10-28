@@ -1,0 +1,48 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import NumberField from '@brumate/ui/NumberField.brm';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<NumberField class="ui-field" value=(12) minValue=(1) maxValue=(10) style="width: 14rem; max-width: calc(100% - 0.75rem)" data-mark="1">
+  <Label data-mark="2" data-mark-side="after">Guests</Label>
+  <Group class="ui-number numberfield-anatomy-group" data-mark="3" data-mark-side="bottom" style="width: 100%">
+    <span class="numberfield-anatomy-wrap" data-mark="4">
+      <Button slot="decrement" class="ui-step">−</Button>
+    </span>
+    <span class="numberfield-anatomy-input" data-mark="5">
+      <Input class="ui-input" />
+    </span>
+    <span class="numberfield-anatomy-wrap" data-mark="6">
+      <Button slot="increment" class="ui-step">+</Button>
+    </span>
+  </Group>
+  <Text slot="description" class="ui-help" data-mark="7" data-mark-side="after">Between 1 and 10.</Text>
+  <FieldError class="ui-error" style="justify-self: start" data-mark="8" data-mark-side="after">The table seats 10.</FieldError>
+</NumberField>
+
+<style>
+  /* The badge of the group sits in the middle of its lower edge, so it does not read as the minus button. */
+  :global(.anatomy-stage .numberfield-anatomy-group[data-mark]::before) {
+    inset-inline-start: calc(50% - 0.7rem);
+  }
+
+  :global(.numberfield-anatomy-wrap) {
+    display: inline-flex;
+  }
+
+  :global(.numberfield-anatomy-input) {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+  }
+
+  :global(.numberfield-anatomy-input .ui-input) {
+    flex: 1;
+    min-width: 0;
+  }
+</style>

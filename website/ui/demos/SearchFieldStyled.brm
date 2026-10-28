@@ -1,0 +1,138 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<div class="searchfield-styled-stack">
+  <SearchField class="searchfield-styled" value="menu">
+    <Label class="searchfield-styled-label">Search the docs</Label>
+    <div class="searchfield-styled-box">
+      <Icon name="search" class="searchfield-styled-glass" />
+      <Input class="searchfield-styled-input" placeholder="Search" />
+      <Button class="searchfield-styled-clear"><Icon name="close" size=(14) /></Button>
+    </div>
+    <Text slot="description" class="searchfield-styled-help">Enter searches. Escape clears.</Text>
+  </SearchField>
+  <SearchField class="searchfield-styled" isDisabled>
+    <Label class="searchfield-styled-label">Search is off</Label>
+    <div class="searchfield-styled-box">
+      <Icon name="search" class="searchfield-styled-glass" />
+      <Input class="searchfield-styled-input" placeholder="Search" />
+      <Button class="searchfield-styled-clear"><Icon name="close" size=(14) /></Button>
+    </div>
+  </SearchField>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.searchfield-styled-stack) {
+    --searchfield-styled-field: light-dark(#fff, #0f0d0b);
+    --searchfield-styled-border: light-dark(#76706a, #8d857b);
+    --searchfield-styled-muted: light-dark(#5a544d, #b3aaa0);
+    --searchfield-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --searchfield-styled-hover: light-dark(#e3ddd4, #3a342d);
+    --searchfield-styled-press: light-dark(#d2cabd, #4a4239);
+    display: grid;
+    gap: 1rem;
+    width: min(100%, 20rem);
+    color: CanvasText;
+  }
+
+  :global(.searchfield-styled) {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  :global(.searchfield-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.searchfield-styled-box) {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 0.4rem 0 0.65rem;
+    border: 1px solid var(--searchfield-styled-border);
+    border-radius: 999px;
+    background: var(--searchfield-styled-field);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.searchfield-styled-box:hover) {
+    border-color: var(--searchfield-styled-accent);
+  }
+
+  /* Two bands, an accent one and an inner one in the color of the field. */
+  :global(.searchfield-styled-box:has([data-focus-visible])) {
+    border-color: var(--searchfield-styled-accent);
+    box-shadow:
+      0 0 0 2px var(--searchfield-styled-accent),
+      inset 0 0 0 2px var(--searchfield-styled-field);
+  }
+
+  :global(.searchfield-styled-glass) {
+    flex: none;
+    color: var(--searchfield-styled-muted);
+  }
+
+  :global(.searchfield-styled-input) {
+    flex: 1;
+    min-width: 0;
+    padding: 0.45rem 0.25rem;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: CanvasText;
+    font: inherit;
+  }
+
+  :global(.searchfield-styled-input::placeholder) {
+    color: var(--searchfield-styled-muted);
+  }
+
+  :global(.searchfield-styled-clear) {
+    display: inline-flex;
+    padding: 0.3rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: CanvasText;
+    cursor: pointer;
+  }
+
+  :global(.searchfield-styled-clear[data-hovered]) {
+    background: var(--searchfield-styled-hover);
+  }
+
+  :global(.searchfield-styled-clear[data-pressed]) {
+    background: var(--searchfield-styled-press);
+  }
+
+  :global(.searchfield-styled-clear[data-focus-visible]) {
+    outline: 2px solid var(--searchfield-styled-accent);
+  }
+
+  :global(.searchfield-styled[data-empty] .searchfield-styled-clear) {
+    visibility: hidden;
+  }
+
+  :global(.searchfield-styled[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.searchfield-styled-help) {
+    color: var(--searchfield-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.searchfield-styled-box) {
+      transition: none;
+    }
+  }
+</style>

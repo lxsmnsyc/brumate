@@ -1,0 +1,37 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  let mine = $signal('Ada');
+  let asked = $signal('Ada');
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <TextField class="ui-field">
+    <Label>Own state</Label>
+    <Input class="ui-input" />
+  </TextField>
+  <TextField class="ui-field" value="Ada">
+    <Label>Starts at Ada</Label>
+    <Input class="ui-input" />
+  </TextField>
+  <TextField class="ui-field" value=$bind(mine) onChange=((next) => (log = `asked for "${next}"`))>
+    <Label>Writes your signal</Label>
+    <Input class="ui-input" />
+  </TextField>
+  <TextField class="ui-field" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <Label>Asks you first</Label>
+    <Input class="ui-input" />
+  </TextField>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (mine = 'Grace'))>Write Grace to the third</Button>
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: "{mine}". Asks: "{asked}". Last callback: {log || 'none'}.</p>
+</form>

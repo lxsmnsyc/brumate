@@ -27,6 +27,14 @@ A field of text with tokens in it, such as mentions, tags or commands, which the
 
 ## Anatomy
 
+```brm anatomy TokenFieldAnatomy
+`TokenField`: Holds the segments and the settings of the field.
+`Label`: Names the box.
+`TokenInput`: The box the user types in. It is an element with `contenteditable`.
+`Token`: One token. The `token` template renders it for each token.
+`Text`: Describes the box, with `slot="description"`.
+```
+
 ```html
 <TokenField>
   <Label />
@@ -98,11 +106,46 @@ The browser edits the text of the box, so its usual keys work. These are the key
 
 ## Controlled and uncontrolled
 
-`value` holds the segments. `value=([...])` starts the field's own value, and `value=$bind(signal)` writes your signal. `onChange` gets the segments each time they change. See [State](./state.md).
+`value` holds the segments. How you pass it picks who keeps it:
+
+```brm demo TokenFieldStateDemo
+
+```
+
+- `value` alone, or nothing, makes the field keep its own segments. `value=([...])` is where they start, and a new value from you replaces them.
+- `value=$bind(signal)` writes your signal. Change the signal and the box follows. The first button writes a new list to the third field.
+- `value=$bind(signal, (next) => ...)` asks you first. `onChange` gets the segments that the user asked for, and the setter decides what is kept. Press Lock and type in the last field: the signal keeps the old segments, but the box keeps what was typed. Unlock and press Reset, and the box still shows the typed text, since the first segments are the ones that the signal holds and nothing writes the box. The next edit that you accept writes the box again. This is a bug of the field, and the node `tokenfield-sync` fixes it.
+- `onChange` runs only when the segments differ from the ones that the field has.
+- A reset of the form gives back the segments that the field started with, as a write, and the signal gets them. The box follows, except after a refused edit (above). See [State](./state.md).
+- The server renders the segments it starts with.
 
 ## Styling
 
 Style the box with the data attributes above, and show the placeholder from `data-placeholder` with `[data-empty]::before`. See [Styling](./styling.md).
+
+This stylesheet styles rest, hover, keyboard focus as two bands, empty with its placeholder, read only and disabled, and two kinds of token, also while the selection covers it. Select a token with the mouse or Shift and the arrow keys.
+
+```brm styled TokenFieldStyled
+
+```
+
+## Use cases
+
+### A message that a form sends
+
+With `name`, a form sends the text of the value. Each token is sent as its text.
+
+```brm demo TokenFieldMessageDemo
+
+```
+
+### A search with filters
+
+`role="searchbox"` marks the field as a search. The tokens are the filters, and the text around them is a word of the title. The page reads the signal.
+
+```brm demo TokenFieldFilterDemo
+
+```
 
 ## Editing
 
