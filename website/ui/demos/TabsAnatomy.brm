@@ -1,0 +1,16 @@
+<script>
+  import SelectionIndicator from '@brumate/ui/SelectionIndicator.brm';
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
+</script>
+
+<Tabs selectedKey="venus" data-mark="1" data-mark-side="bottom" style="max-width: 24rem">
+  <TabList class="ui-tablist ui-tablist-sliding" aria-label="Planets" data-mark="2">
+    <Tab id="mercury" class="ui-tab">Mercury</Tab>
+    <Tab id="venus" class="ui-tab" data-mark="3">Venus<SelectionIndicator class="ui-indicator" data-mark="4" data-mark-side="bottom" style="position: absolute" /></Tab>
+    <Tab id="earth" class="ui-tab">Earth</Tab>
+  </TabList>
+  <TabPanel id="venus" class="ui-tabpanel" data-mark="5">The hottest planet, under thick clouds.</TabPanel>
+</Tabs>

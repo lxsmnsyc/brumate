@@ -1,0 +1,32 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  const first = ['Inbox', 'Drafts', 'Sent', 'Archive', 'Spam', 'Trash'];
+  let folders = $signal(first);
+  let picked = $signal<Key[]>([]);
+
+  function remove() {
+    folders = folders.filter((folder) => !picked.includes(folder));
+    picked = [];
+  }
+</script>
+
+<div class="ui-stack">
+  <Toolbar class="ui-group" aria-label="Folders">
+    <Button class="ui-button" onPress=(() => (picked = [...folders]))>Select all</Button>
+    <Button class="ui-button" isDisabled=(picked.length === 0) onPress=(() => (picked = []))>Clear</Button>
+    <Button class="ui-button" isDisabled=(picked.length === 0) onPress=remove>Delete</Button>
+    <Button class="ui-button" onPress=(() => (folders = first))>Restore</Button>
+  </Toolbar>
+  <ListBox class="ui-listbox" aria-label="Folders" selectionMode="multiple" selectedKeys=$bind(picked)>
+    #for (folder of folders by folder) {
+      <ListBoxItem id=folder class="ui-option">{folder}</ListBoxItem>
+    }
+  </ListBox>
+  <p>{picked.length} of {folders.length} selected.</p>
+</div>
