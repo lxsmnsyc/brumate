@@ -20,6 +20,7 @@ import type {
   TemplateDecl,
 } from './ast.ts';
 import { createFail } from './error.ts';
+import { camelEventName } from './event-names.ts';
 import type { Fail } from './error.ts';
 import { parseExpression, parseParameters, parsePattern, parseScript } from './oxc.ts';
 import type { oxc } from './oxc.ts';
@@ -412,6 +413,18 @@ class Parser {
     }
   }
 
+  /** A handler of an element is written in camel case: `onKeyDown`, not `onKeydown`. */
+  private checkEventName(
+    name: string,
+    owner: 'element' | 'component' | 'dynamic' | 'listener',
+    start: number,
+  ): void {
+    const camel = owner === 'component' || owner === 'dynamic' ? undefined : camelEventName(name);
+    if (camel) {
+      this.fail(`"${name}" is not an event name. Write "${camel}"`, start);
+    }
+  }
+
   private parseAttribute(owner: 'element' | 'component' | 'dynamic' | 'listener'): Attribute {
     const start = this.pos;
     if (this.peek() === '{') {
@@ -431,6 +444,7 @@ class Parser {
       }
       // `{onClick}` is a handler, the same as `onClick=onClick`, as in Svelte.
       if (/^on[A-Z]/.test(name)) {
+        this.checkEventName(name, owner, start);
         return {
           kind: 'event',
           start,
@@ -472,6 +486,7 @@ class Parser {
     if (/^on[A-Z]/.test(fullName)) {
       const name = parts[0]!;
       const modifiers = parts.slice(1);
+      this.checkEventName(name, owner, start);
       for (const modifier of modifiers) {
         if (!MODIFIERS.has(modifier)) {
           this.fail(`Unknown event modifier ":${modifier}"`, start);

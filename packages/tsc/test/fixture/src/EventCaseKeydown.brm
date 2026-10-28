@@ -1,0 +1,2 @@
+<!-- The lower-case form of a handler of several words is an error. -->
+<div onKeydown=(() => {})></div>

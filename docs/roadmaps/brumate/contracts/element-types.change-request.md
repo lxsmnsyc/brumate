@@ -22,3 +22,32 @@ None. Nothing checks plain elements yet.
 ## Decision
 
 Accepted by the maintainer on 2026-10-27. The node element-values makes the change and bumps the contract to v1.1.
+
+---
+
+# Change request: element-types v1.2 to v1.3
+
+- From node: camel-event-names (PR #317)
+- Status: proposed, the maintainer decides
+
+## Problem
+
+The Behavior rule for handlers says the markup writes an event in camel case (`onKeyDown`) or as the event name (`onKeydown`). The maintainer asked for camel case as the one form on 2026-10-27.
+
+## Proposed change
+
+- The handler rule becomes: a handler is `on` plus the event, in camel case only. The lower-case form of an event of more than one word (`onKeydown`) is a compile error at the attribute, reported by the parser, and not an attribute in the types. Events of one word (`onClick`) are unchanged.
+- `ElementEventNames` is a new public export of `brumate/elements`: an interface from the lower-case event to its camel word (`keydown: 'KeyDown'`). An app that merges a custom event of several words into `ElementEvents` merges its camel word here (`itemaction: 'ItemAction'`). Without an entry the attribute keeps the one-word name (`onItemaction`).
+- `Handlers<E>` accepts fewer keys: the lower-case keys of the events of several words are gone. It is one mapped type over `ElementEvents`, named through `ElementEventNames`.
+
+## Affected nodes
+
+Every node that writes a handler of an event of several words, and any app that merges custom events. In this repo the PR renames them all.
+
+## Workaround in place
+
+None needed. The PR changes the types and the parser at once.
+
+## Decision
+
+Pending.

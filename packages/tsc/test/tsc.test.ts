@@ -14,7 +14,7 @@ it('reports type errors in .brm files at their place in the file', () => {
     // The union of the event names is long and changes with the DOM types.
     .map((line) => line.replace(/(parameter of type '"input" \|).*$/, '$1 ...'))
     // So is the type of the attributes of an element.
-    .map((line) => line.replace(/(type '\{ onInput\?).*$/, '$1 ...'));
+    .map((line) => line.replace(/(type 'Handlers<HTMLDivElement>).*$/, '$1 ...'));
   // `sign-in.brm` imports `SignIn`, the name that its file name gives the component, with no error.
   expect(errors).toEqual([
     // A prop with the wrong type, at the prop.
@@ -40,7 +40,7 @@ it('reports type errors in .brm files at their place in the file', () => {
     "Dynamic.brm(19,11): error TS2353: Object literal may only specify known properties, and 'bogus' does not exist in type 'ToggleProps'.",
     "Dynamic.brm(20,11): error TS2353: Object literal may only specify known properties, and 'children' does not exist in type 'ToggleProps'.",
     "Dynamic.brm(21,47): error TS2339: Property 'nope' does not exist on type '(EventTarget & HTMLElement) | (EventTarget & SVGElement)'.",
-    "Dynamic.brm(22,10): error TS2353: Object literal may only specify known properties, and 'onFooBar' does not exist in type '{ onInput? ...",
+    "Dynamic.brm(22,10): error TS2353: Object literal may only specify known properties, and 'onFooBar' does not exist in type 'Handlers<HTMLDivElement> ...",
     'Dynamic.brm(23,10): error TS2345: Argument of type \'{ tabindex: "x"; }\' is not assignable to parameter of type \'Html<"div", {}>\'.',
     // A component with a spread still reports a required prop that no spread gives, at the tag.
     // A prop that a spread gives, also as an optional key or in `c && { ... }`, and a spread of
@@ -79,4 +79,12 @@ it('reports type errors in .brm files at their place in the file', () => {
     "Spreads.brm(21,11): error TS2345: Argument of type 'false | { nope: number; }' is not assignable to parameter of type '$$Falsy | ({ nope: number; } & { nope: { \"nope is not an attribute of <div>\": never; }; })'.",
   ]);
   expect(result.status).not.toBe(0);
+  // The lower-case form of a handler of several words is a compile error at the attribute. A file
+  // reports one such error, so each name has its own file. `EventCase.brm` writes the camel names,
+  // also of the merged `itemaction`, with no error.
+  const compile = result.stderr.split('\n').filter((line) => line.includes('error BRM'));
+  expect(compile.map((line) => line.replace(/^.*src\//, '')).toSorted()).toEqual([
+    'EventCaseFocusout.brm(2,8): error BRM: "onFocusout" is not an event name. Write "onFocusOut"',
+    'EventCaseKeydown.brm(2,6): error BRM: "onKeydown" is not an event name. Write "onKeyDown"',
+  ]);
 });

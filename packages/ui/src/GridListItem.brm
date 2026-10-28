@@ -163,7 +163,7 @@
   ref=$bind(ref)
   role="row"
   data-action=(acts || undefined)
-  onItemaction=(() => onAction?.())
+  onItemAction=(() => onAction?.())
   tabindex="-1"
   data-key=(keyAttribute(id))
   data-text-value=textValue

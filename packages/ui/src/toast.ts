@@ -9,6 +9,9 @@ declare module 'brumate/elements' {
     /** A queue sends it to its regions when a toast is added, updated or closed. */
     toastchange: Event;
   }
+  interface ElementEventNames {
+    toastchange: 'ToastChange';
+  }
 }
 
 /** A toast of a queue: its key, and the content that the region renders. */
