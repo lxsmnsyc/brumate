@@ -43,6 +43,7 @@
     inertOutside,
     keepFocus,
     lockScroll,
+    queueLoad,
     release,
   } from './overlay.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
@@ -85,6 +86,9 @@
   let mounted = $signal(false);
   let rested = $signal(false);
   let leaving = $signal(false);
+  // Whether it is shown or opening, and not leaving. A change to the value it already shows, such as
+  // the first write of a bound start value, opens nothing again.
+  let shown = $signal(false);
   let run = $signal(0);
   let overlay = $signal<HTMLElement>();
   let layer = $signal<HTMLElement>();
@@ -122,6 +126,7 @@
   }
 
   async function show(token: number) {
+    shown = true;
     mounted = true;
     const returnTo = document.activeElement;
     await nextFrame();
@@ -170,6 +175,7 @@
   }
 
   async function hide(token: number) {
+    shown = false;
     rested = false;
     const element = overlay;
     if (transition && element) {
@@ -192,27 +198,38 @@
     mounted = false;
   }
 
+  // When the overlay leaves the page while it is open, such as with an #if around it, its element
+  // goes with it, and what it held on the page is given back.
+  function leave() {
+    const element = overlay;
+    if (element && !element.isConnected) {
+      release(element, layer);
+    }
+  }
+
   $effect(() => {
     const next = wanted;
     $untrack(change(next));
-    // When the overlay leaves the page while it is open, such as with an #if around it, its
-    // element goes with it, and what it held on the page is given back.
-    return () => {
-      const element = overlay;
-      if (element && !element.isConnected) {
-        release(element, layer);
-      }
-    };
+    return leave;
   });
 
-  // An effect never runs when the page loads, so a start value of `true` opens it here.
+  // An effect never runs when the page loads, so a start value of `true` opens it here, after the
+  // modals before it. Its cleanup runs even when the value never changes.
   $client(() => {
-    if (wanted && !mounted) {
-      change(true);
-    }
+    queueLoad(() => {
+      if (wanted && !shown) {
+        run += 1;
+        leaving = false;
+        return show(run);
+      }
+    });
+    return leave;
   }, 'load');
 
   function change(next: boolean) {
+    if (next && shown) {
+      return;
+    }
     run += 1;
     if (next) {
       leaving = false;

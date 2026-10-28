@@ -47,6 +47,7 @@ for (const kind of [
   'modal-own',
   'overlay-own',
   'menu',
+  'sheet',
 ] as const) {
   it(`${kind}: a true start value is open after load, with focus in and the page inert`, async () => {
     const page = await start(kind);
@@ -108,4 +109,48 @@ it('preview: one that started open closes when the pointer leaves to the page', 
   pointer('pointerover', page.get('.outside'));
   await page.waitFor(() => expect(find('.layer')).toBeNull());
   await page.waitFor(() => expect(page.text('.state')).toBe('false'));
+});
+
+it('sheet, select and combobox: a true start value is open after load', async () => {
+  for (const kind of ['sheet', 'select', 'combobox']) {
+    // oxlint-disable-next-line no-await-in-loop
+    const page = await start(kind);
+    // oxlint-disable-next-line no-await-in-loop
+    await page.waitFor(() => expect(find('.layer')).not.toBeNull());
+    expect(find('.layer')!.closest('[inert]')).toBeNull();
+    unmount?.();
+    for (const layer of document.querySelectorAll('[data-layer]')) {
+      layer.remove();
+    }
+    for (const element of document.querySelectorAll('[inert]')) {
+      element.removeAttribute('inert');
+    }
+  }
+});
+
+it('two modals that start open stack: the later is on top, the earlier is inert, Escape closes the top first', async () => {
+  const page = await start('two');
+  await page.waitFor(() => expect(find('.second-dialog')).not.toBeNull());
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.second-dialog')));
+  expect(find('.second')!.closest('[inert]')).toBeNull();
+  expect(find('.first')!.closest('[inert]')).not.toBeNull();
+  document.activeElement!.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+  );
+  await page.waitFor(() => expect(find('.second')).toBeNull());
+  expect(page.text('.state')).toBe('true');
+  await page.waitFor(() => expect(find('.first')!.closest('[inert]')).toBeNull());
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.first-dialog')));
+  document.activeElement!.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+  );
+  await page.waitFor(() => expect(find('.first')).toBeNull());
+  await page.waitFor(() => expect(page.get('.page').closest('[inert]')).toBeNull());
+});
+
+it('a non-modal popover that starts open leaves focus in a field that is being typed in', async () => {
+  const page = await start('typing');
+  await page.waitFor(() => expect(find('.layer')).not.toBeNull());
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect(document.activeElement).toBe(page.get('.typing'));
 });

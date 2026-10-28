@@ -77,9 +77,13 @@
   $setContext(LinkContext, null);
 
   let mounted = $signal(false);
+  // Whether it is shown or opening, and not leaving. A change to the value it already shows, such as
+  // the first write of a bound start value, opens nothing again.
+  let shown = $signal(false);
   let run = $signal(0);
 
   async function show(token: number) {
+    shown = true;
     mounted = true;
     await nextFrame();
     const element = ref as HTMLElement | undefined;
@@ -119,6 +123,7 @@
   }
 
   async function hide(token: number) {
+    shown = false;
     const element = ref as HTMLElement | undefined;
     if (transition && element) {
       if (!(await leaveSteps(element, stepClasses(), { current: () => token === run }))) {
@@ -131,25 +136,32 @@
     mounted = false;
   }
 
+  function leave() {
+    const element = ref as HTMLElement | undefined;
+    if (element && !element.isConnected) {
+      runStops(element);
+    }
+  }
+
   $effect(() => {
     const next = Boolean(trigger?.isOpen);
     $untrack(change(next));
-    return () => {
-      const element = ref as HTMLElement | undefined;
-      if (element && !element.isConnected) {
-        runStops(element);
-      }
-    };
+    return leave;
   });
 
-  // An effect never runs when the page loads, so a start value of `true` opens it here.
+  // An effect never runs when the page loads, so a start value of `true` shows it here. Its
+  // cleanup runs even when the value never changes.
   $client(() => {
-    if (Boolean(trigger?.isOpen) && !mounted) {
+    if (Boolean(trigger?.isOpen) && !shown) {
       change(true);
     }
+    return leave;
   }, 'load');
 
   function change(next: boolean) {
+    if (next && shown) {
+      return;
+    }
     run += 1;
     if (next) {
       void show(run);

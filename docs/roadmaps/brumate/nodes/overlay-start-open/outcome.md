@@ -12,7 +12,17 @@ An overlay with an open start value opens on load, in every part that has one: P
 
 ## Tests
 
-packages/ui/test/start-open.test.ts, with the fixture test/fixtures/start-open.brm. Written first: all 9 failed on main. Now 10 pass. Each of popover, popover with own `isOpen`, modal, modal with own `isOpen`, overlay with own `isOpen` and menu has: open after load, focus in the dialog or menu, the page inert, scroll locked, `aria-expanded` set with a trigger. Also: Escape closes a modal that started open and gives focus back to the trigger, a tooltip shows and describes its trigger, a preview shows and a press of the trigger hides it, and a preview closes when the pointer leaves for the page.
+packages/ui/test/start-open.test.ts, with the fixture test/fixtures/start-open.brm. 19 tests. The first 15 failed on main before the fix and pass now. The last 4 came with the review round and also fail without it: Sheet, Select and ComboBox start open, two modals that start open stack, and a non-modal popover leaves focus in a field being typed in.
+
+- Popover (own `isOpen` and with DialogTrigger), Modal, Modal with own `isOpen`, ModalOverlay with own `isOpen` and Menu: open after load, focus inside, page inert, scroll locked, `aria-expanded` on the trigger. Popover and Modal have focus on the dialog.
+- Escape closes a modal that started open and gives focus back to the trigger. A tooltip shows and describes its trigger. A preview shows, a press of the trigger hides it, and it closes when the pointer leaves.
+- Two modals that start open: the later is on top, the earlier is inert, Escape closes the top one first, then the other.
+
+## Review round
+
+- Two modals that start open: the loads ran together, and each modal's inert marked the other. The loads now run one after another through `queueLoad` in overlay.ts, in document order. The loaded effect made a second `show` of each overlay on the first write of the bound value, which was the same bug a second time, so `change(true)` now does nothing for an overlay that is shown or opening (`shown`). `keepFocus` leaves focus alone while its layer is inert, since an overlay above it made it so.
+- Focus: a modal, sheet or menu that starts open takes focus even from a field the reader focused (documented). A non-modal popover leaves it in a field being typed in.
+- Popover, ModalOverlay and Tooltip give back what they hold when they leave the page before any change. PreviewTrigger stops its follow on unmount.
 
 ## Checked in Chrome
 

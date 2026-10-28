@@ -149,6 +149,11 @@
     if (isOpen) {
       startedOpen.set(overlayId, follow());
     }
+    // The trigger leaves the page with the value unchanged: stop the follow.
+    return () => {
+      startedOpen.get(overlayId)?.();
+      startedOpen.delete(overlayId);
+    };
   }, 'load');
 
   // While it is open, the page decides when it closes.

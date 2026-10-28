@@ -137,7 +137,7 @@ These are the attributes of a `MenuItem`. The `Button` of the trigger shows [its
 
 ```
 
-- `isOpen` alone, or nothing, makes the trigger keep its own state, which starts closed. `isOpen=(true)`, or a bound signal that starts `true`, opens the menu once the page has loaded, with focus in the menu and the page inert as after a press. The server renders no menu.
+- `isOpen` alone, or nothing, makes the trigger keep its own state, which starts closed. `isOpen=(true)`, or a bound signal that starts `true`, opens the menu once the page has loaded, with focus in the menu and the page inert as after a press. The server renders no menu. An overlay that starts open takes focus when the code loads, even from a field the reader already focused, since the page behind it is inert.
 - `isOpen=$bind(signal)` writes your signal. Change the signal and the menu opens or closes, as the second button shows.
 - `isOpen=$bind(signal, (next) => ...)` asks you first. Press Lock, then try to open the third menu: the request is refused and the menu stays closed.
 - `selectedKeys=(['name'])` is where an own selection starts. `selectedKeys=$bind(signal)` writes your signal, and `selectedKeys=$bind(signal, request)` asks first, as on a [ListBox](./list-box.md#controlled-and-uncontrolled).
