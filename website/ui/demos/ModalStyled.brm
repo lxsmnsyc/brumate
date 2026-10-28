@@ -1,0 +1,201 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+</script>
+
+<div class="modal-styled-root">
+  <DialogTrigger>
+    <Button class="modal-styled-trigger">Delete the draft</Button>
+    <ModalOverlay class="modal-styled-backdrop" isDismissable transition>
+      <Modal class="modal-styled-box">
+        <Dialog role="alertdialog" class="modal-styled-dialog">
+          <Heading slot="title" level=(4) class="modal-styled-title">Delete the draft?</Heading>
+          <p class="modal-styled-text">It cannot come back. A press on the dim area keeps it.</p>
+          <div class="modal-styled-actions">
+            <Button slot="close" class="modal-styled-cancel">Cancel</Button>
+            <Button slot="close" class="modal-styled-delete">Delete</Button>
+          </div>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  </DialogTrigger>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
+  :global(.modal-styled-root),
+  :global(.modal-styled-backdrop) {
+    --modal-styled-bg: Canvas;
+    --modal-styled-text: CanvasText;
+    --modal-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --modal-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --modal-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --modal-styled-on-accent: light-dark(#fff, #101418);
+    --modal-styled-danger: light-dark(#c4271d, #f28b82);
+    --modal-styled-radius: 8px;
+    color: var(--modal-styled-text);
+  }
+
+  :global(.modal-styled-trigger) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--modal-styled-border);
+    border-radius: var(--modal-styled-radius);
+    background: var(--modal-styled-bg);
+    color: var(--modal-styled-text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.modal-styled-trigger)[data-hovered] {
+    border-color: var(--modal-styled-accent);
+  }
+
+  :global(.modal-styled-trigger)[data-pressed] {
+    background: color-mix(in srgb, var(--modal-styled-accent) 14%, var(--modal-styled-bg));
+  }
+
+  :global(.modal-styled-trigger)[aria-expanded='true'] {
+    border-color: var(--modal-styled-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--modal-styled-accent) 25%, transparent);
+  }
+
+  /* Two bands, so the ring shows on the page and on a fill. */
+  :global(.modal-styled-trigger)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--modal-styled-bg), 0 0 0 4px var(--modal-styled-accent);
+  }
+
+  :global(.modal-styled-trigger)[data-disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.modal-styled-cancel) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--modal-styled-border);
+    border-radius: var(--modal-styled-radius);
+    background: var(--modal-styled-bg);
+    color: var(--modal-styled-text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.modal-styled-cancel)[data-hovered] {
+    border-color: var(--modal-styled-accent);
+  }
+
+  :global(.modal-styled-cancel)[data-pressed] {
+    background: color-mix(in srgb, var(--modal-styled-accent) 14%, var(--modal-styled-bg));
+  }
+
+  :global(.modal-styled-cancel)[aria-expanded='true'] {
+    border-color: var(--modal-styled-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--modal-styled-accent) 25%, transparent);
+  }
+
+  /* Two bands, so the ring shows on the page and on a fill. */
+  :global(.modal-styled-cancel)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--modal-styled-bg), 0 0 0 4px var(--modal-styled-accent);
+  }
+
+  :global(.modal-styled-cancel)[data-disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.modal-styled-delete) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: var(--modal-styled-radius);
+    background: var(--modal-styled-danger);
+    color: var(--modal-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.modal-styled-delete)[data-hovered] {
+    background: color-mix(in srgb, var(--modal-styled-danger) 85%, CanvasText);
+  }
+
+  :global(.modal-styled-delete)[data-pressed] {
+    background: color-mix(in srgb, var(--modal-styled-danger) 70%, CanvasText);
+  }
+
+  :global(.modal-styled-delete)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--modal-styled-bg), 0 0 0 4px var(--modal-styled-danger);
+  }
+
+  /* The overlay covers the window. It fades in, and the box scales in with it. */
+  :global(.modal-styled-backdrop) {
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgb(0 0 0 / 50%);
+    transition: opacity 0.2s;
+  }
+
+  :global(.modal-styled-backdrop[data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.modal-styled-box) {
+    box-sizing: border-box;
+    width: min(24rem, 100%);
+    max-height: calc(var(--visual-viewport-height) * 0.9);
+    overflow: auto;
+    padding: 1.25rem;
+    border: 1px solid var(--modal-styled-border);
+    border-radius: 12px;
+    background: var(--modal-styled-bg);
+    box-shadow: 0 24px 48px rgb(0 0 0 / 30%);
+    outline: none;
+    transition: scale 0.2s;
+  }
+
+  :global(.modal-styled-backdrop[data-closed] > .modal-styled-box) {
+    scale: 0.96;
+  }
+
+  :global(.modal-styled-dialog) {
+    display: grid;
+    gap: 0.75rem;
+    outline: none;
+  }
+
+  :global(.modal-styled-title) {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+
+  :global(.modal-styled-text) {
+    margin: 0;
+    color: var(--modal-styled-muted);
+  }
+
+  :global(.modal-styled-actions) {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.modal-styled-trigger),
+    :global(.modal-styled-cancel),
+    :global(.modal-styled-delete),
+    :global(.modal-styled-backdrop),
+    :global(.modal-styled-box) {
+      transition: none;
+    }
+  }
+</style>

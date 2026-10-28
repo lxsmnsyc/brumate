@@ -1,0 +1,49 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Toast from '@brumate/ui/Toast.brm';
+  import ToastContent from '@brumate/ui/ToastContent.brm';
+  import ToastRegion from '@brumate/ui/ToastRegion.brm';
+  import { toastQueue } from '@brumate/ui/toast.ts';
+  import Icon from '../../src/components/Icon.brm';
+  import type { QueuedToast } from '@brumate/ui/toast.ts';
+
+  interface Removed {
+    name: string;
+    index: number;
+  }
+
+  let notes = $signal(['Milk', 'Bread', 'Eggs']);
+
+  function remove(index: number) {
+    const name = notes[index]!;
+    notes = notes.filter((_, at) => at !== index);
+    toastQueue<Removed>('undo').add({ name, index }, { timeout: 5000 });
+  }
+
+</script>
+
+<ul class="ui-stack" style="padding: 0; list-style: none">
+  #for (note, index of notes by note) {
+    <li class="ui-actions" style="justify-content: space-between; align-items: center">
+      <span>{note}</span>
+      <Button class="ui-button" aria-label=('Remove ' + note) onPress=(() => remove(index))>Remove</Button>
+    </li>
+  }
+  #if (notes.length === 0) {
+    <li>The list is empty.</li>
+  }
+</ul>
+<ToastRegion queue="undo" class="ui-toasts" toast=removed transition />
+
+#template removed(toast: QueuedToast<Removed>) {
+  <Toast {toast} class="ui-toast">
+    <ToastContent class="ui-toast-content">
+      <Text slot="title" class="ui-toast-title">{toast.content.name} removed</Text>
+      <!-- Undo puts the note back where it was, and closes the toast that offered it. -->
+      <Button class="ui-button" onPress=(() => { notes = [...notes.slice(0, toast.content.index), toast.content.name, ...notes.slice(toast.content.index)]; toastQueue('undo').close(toast.key); })>Undo</Button>
+    </ToastContent>
+    <Button slot="close" class="ui-icon-button"><Icon name="close" size=(14) /></Button>
+  </Toast>
+}

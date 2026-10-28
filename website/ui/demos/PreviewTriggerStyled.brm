@@ -1,0 +1,146 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Link from '@brumate/ui/Link.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import PreviewTrigger from '@brumate/ui/PreviewTrigger.brm';
+</script>
+
+<p class="preview-styled-root">
+  Written by
+  <PreviewTrigger>
+    <Link class="preview-styled-link" href="#preview-trigger">Ada Lovelace</Link>
+    <Popover class="preview-styled-card" placement="bottom start" offset=(10) transition>
+      <OverlayArrow class="preview-styled-arrow" />
+      <div class="preview-styled-body">
+        <strong>Ada Lovelace</strong>
+        <span class="preview-styled-text">Writes about engines and the numbers of Bernoulli.</span>
+        <Button class="preview-styled-follow">Follow</Button>
+      </div>
+    </Popover>
+  </PreviewTrigger>
+  in 1843.
+</p>
+
+<style>
+  /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
+  :global(.preview-styled-root),
+  :global(.preview-styled-card) {
+    --preview-styled-bg: Canvas;
+    --preview-styled-text: CanvasText;
+    --preview-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --preview-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --preview-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --preview-styled-on-accent: light-dark(#fff, #101418);
+    --preview-styled-danger: light-dark(#c4271d, #f28b82);
+    --preview-styled-radius: 8px;
+    color: var(--preview-styled-text);
+  }
+
+  :global(.preview-styled-follow) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: var(--preview-styled-radius);
+    background: var(--preview-styled-accent);
+    color: var(--preview-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.preview-styled-follow)[data-hovered] {
+    background: color-mix(in srgb, var(--preview-styled-accent) 85%, CanvasText);
+  }
+
+  :global(.preview-styled-follow)[data-pressed] {
+    background: color-mix(in srgb, var(--preview-styled-accent) 70%, CanvasText);
+  }
+
+  :global(.preview-styled-follow)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--preview-styled-bg), 0 0 0 4px var(--preview-styled-accent);
+  }
+
+  /* The link: rest, hover, press, keyboard focus and the preview that shows (aria-expanded). */
+  :global(.preview-styled-link) {
+    color: var(--preview-styled-accent);
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  :global(.preview-styled-link[data-hovered]),
+  :global(.preview-styled-link[aria-expanded='true']) {
+    text-decoration-style: solid;
+  }
+
+  :global(.preview-styled-link[data-pressed]) {
+    color: color-mix(in srgb, var(--preview-styled-accent) 70%, CanvasText);
+  }
+
+  :global(.preview-styled-link[data-focus-visible]) {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--preview-styled-bg), 0 0 0 4px var(--preview-styled-accent);
+  }
+
+  /* The card fades and rises. It is not modal, so the page behind it stays live. */
+  :global(.preview-styled-card) {
+    z-index: 20;
+    box-sizing: border-box;
+    width: 18rem;
+    padding: 1rem;
+    border: 1px solid var(--preview-styled-border);
+    border-radius: 10px;
+    background: var(--preview-styled-bg);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 22%);
+    transition: opacity 0.18s, translate 0.18s;
+  }
+
+  :global(.preview-styled-card[data-closed]) {
+    opacity: 0;
+    translate: 0 4px;
+  }
+
+  :global(.preview-styled-card[data-closed][data-placement='top']) {
+    translate: 0 -4px;
+  }
+
+  :global(.preview-styled-arrow) {
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
+    border: 1px solid var(--preview-styled-border);
+    border-right: 0;
+    border-bottom: 0;
+    background: var(--preview-styled-bg);
+  }
+
+  :global(.preview-styled-arrow[data-placement='bottom']) {
+    top: -7px;
+    rotate: 45deg;
+  }
+
+  :global(.preview-styled-arrow[data-placement='top']) {
+    bottom: -7px;
+    rotate: 225deg;
+  }
+
+  :global(.preview-styled-body) {
+    display: grid;
+    gap: 0.5rem;
+    justify-items: start;
+  }
+
+  :global(.preview-styled-text) {
+    color: var(--preview-styled-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.preview-styled-follow),
+    :global(.preview-styled-card) {
+      transition: none;
+    }
+  }
+</style>

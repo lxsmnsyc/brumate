@@ -556,6 +556,42 @@ export async function run({ browser, url, runner }) {
       },
     );
     await flow(
+      '/ui: the pages of Overlays that are done have an anatomy picture and a styled example',
+      async () => {
+        for (const slug of [
+          'dialog',
+          'popover',
+          'modal',
+          'sheet',
+          'tooltip',
+          'preview-trigger',
+          'toast',
+        ]) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            assert((await page.locator('.styled pre').count()) === 1, `/ui/${slug} shows no CSS`);
+            const marks = await page.locator('.anatomy [data-mark]').count();
+            const items = await page.locator('.anatomy-list li').count();
+            assert(
+              marks > 0 && marks === items,
+              `/ui/${slug}: ${marks} callouts for ${items} pieces`,
+            );
+            await page.addScriptTag({ path: axe });
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run(document.querySelector('article'));
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow(
       '/ui/styling: the styled examples follow the theme toggle, with no contrast violations',
       async () => {
         // The toggle of the site, not the system setting, picks the theme. Each system setting

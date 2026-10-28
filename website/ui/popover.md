@@ -14,6 +14,16 @@ An overlay beside its trigger, such as a menu of settings.
 
 ## Anatomy
 
+```brm anatomy PopoverAnatomy
+`Button`: Opens the popover. It gets `aria-expanded`, and `aria-controls` while the popover is open.
+`Popover`: The layer beside the trigger. It sets `data-placement`, `--trigger-width` and `--available-height`.
+`OverlayArrow`: Points from the popover to the trigger. The popover moves it along the side. Optional.
+`Dialog`: The content that people act on. It takes focus when the popover opens.
+`Heading` with `slot="title"`: Names the dialog. Optional with `aria-label`.
+```
+
+The picture draws the Popover in place, open, as a block of its own under the trigger, so that each layer can carry a number. The real Popover opens in a layer at the end of the page, next to the trigger, and the rest of the page is inert while it is open.
+
 ```html
 <DialogTrigger>
   <Button />
@@ -72,11 +82,48 @@ The `OverlayArrow` and the `Heading` are optional. The `DialogTrigger` is option
 
 ## Controlled and uncontrolled
 
-Inside a `DialogTrigger`, the trigger holds whether the popover is open, with `isOpen` and `onOpenChange`. A `Popover` with its own `isOpen` ignores the trigger: `isOpen=(true)` starts it open, and `isOpen=$bind(signal)` writes your signal. Its `onOpenChange` then runs when the popover closes itself. See [State](./state.md).
+Inside a `DialogTrigger`, the trigger holds whether the popover is open, with `isOpen` and `onOpenChange`. These popovers are not modal (`isNonModal`), so the buttons below stay usable while one is open:
+
+```brm demo PopoverStateDemo
+
+```
+
+- `isOpen` alone, or nothing, makes the `DialogTrigger` keep its own state. A press of the Button toggles it, and so does Escape or focus that leaves a non-modal popover. `isOpen=(true)` is meant as the state where it starts, but a start value of `true` does not show an overlay when the page loads: checked in Chrome on this site, nothing appeared. Start it closed and open it from an event.
+- `isOpen=$bind(signal)` on the `DialogTrigger` writes your signal. "Open or close from outside" sets it, and the popover follows.
+- `isOpen=$bind(signal, (next) => ...)` asks you first. The popover shows what you keep, so a request that you ignore leaves it closed. Lock the last one and press its Button.
+- `onOpenChange` of the `DialogTrigger` gets each new state in every shape.
+- A `Popover` with its own `isOpen` ignores the trigger: `isOpen=$bind(signal)` writes your signal, and its `onOpenChange` runs when the popover closes itself. It is placed next to a trigger only inside a `DialogTrigger`.
+- A Popover is not a form field, so a reset of a form around it changes nothing. The server renders the Button, and no popover: it opens once the code loads. In a Select, the content stays in the page while it is closed.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the popover with the data attributes above, such as `[data-placement='top']` and `[data-closed]`. It sets the CSS custom properties `--trigger-width`, the width of the trigger, and `--available-height`, the height that is left in the window. See [Styling](./styling.md).
+
+This stylesheet styles the trigger in every state (rest, hover, press, keyboard focus, open), the closed look of the popover on both sides, the arrow on both sides, and the items in the popover. The popover is at least as wide as its trigger. Press Share, then Tab through the items. Its tokens are at the top, and they follow the color scheme.
+
+```brm styled PopoverStyled
+
+```
+
+## Use cases
+
+### Where it opens
+
+`placement` picks the side. Press each button: `bottom start` and `bottom end` line up with the start and the end of the trigger, `top` opens above it, and `end` opens beside it. When the popover does not fit on the side that you asked for, it flips, and `data-placement` and the arrow follow. Scroll the demo toward the edge of the window and open `top` to see it.
+
+```brm demo PopoverPlacementDemo
+
+```
+
+### A filter in a popover
+
+A popover holds more than a menu. This one holds a [CheckboxGroup](./checkbox-group.md) bound to a signal, so the list behind it changes as you tick, and the trigger shows how many filters apply. Tab stays inside the popover, and Escape or a press outside closes it with the filters kept.
+
+```brm demo PopoverFiltersDemo
+
+```
 
 ## Placement
 

@@ -18,6 +18,17 @@ A dialog over the page, which the user deals with before they go on, such as a c
 
 ## Anatomy
 
+```brm anatomy ModalAnatomy
+`Button`: Opens the modal. It gets `aria-expanded`, and `aria-controls` while the modal is open.
+`ModalOverlay`: Covers the window and dims the page. Optional.
+`Modal`: The box over the overlay.
+`Dialog`: The dialog. Here an `alertdialog`, since the modal needs an answer.
+`Heading` with `slot="title"`: Names the dialog.
+`Button` with `slot="close"`: Closes the modal.
+```
+
+The picture draws the trigger, the ModalOverlay, the Modal and the Dialog in place, open, each as a block of its own, so that each layer can carry a number. The real overlay opens in a layer at the end of the page, over the whole window, and the rest of the page is inert while it is open.
+
 ```html
 <DialogTrigger>
   <Button />
@@ -78,11 +89,47 @@ The `ModalOverlay` is optional: a `Modal` renders one around itself. The `Dialog
 
 ## Controlled and uncontrolled
 
-Inside a `DialogTrigger`, the trigger holds whether the modal is open, with `isOpen` and `onOpenChange`. A modal with its own `isOpen` ignores the trigger: `isOpen=(true)` starts it open, and `isOpen=$bind(signal)` writes your signal. Its `onOpenChange` then runs when the modal closes itself. See [State](./state.md).
+Inside a `DialogTrigger`, the trigger holds whether the modal is open. A modal with its own `isOpen` ignores the trigger:
+
+```brm demo ModalStateDemo
+
+```
+
+- Inside a `DialogTrigger` with no `isOpen`, the trigger keeps the state. A press of the Button toggles it. Escape closes it, and so does a press on the overlay with `isDismissable`.
+- A modal with `isOpen=$bind(signal)` writes your signal. Your own button sets it, with no trigger. `onOpenChange` runs when the modal closes itself, and not when you write the signal.
+- `isOpen=$bind(signal, (next) => ...)` asks you first. The modal makes a request when Escape would close it, and shows what you keep. Press "Asks you first", press Lock in the dialog, then Escape: the request is refused and the modal stays. Your own write, as the Close button does, is not a request, so it always works. Keep such a lock short, since a modal that refuses to close traps the user.
+- `isOpen=(true)` alone is meant to start a modal open, but a start value of `true` does not show an overlay when the page loads: checked in Chrome on this site, nothing appeared. Start it closed and open it from an event.
+- A Modal is not a form field, so a reset of a form around it changes nothing. The server renders no modal: it opens once the code loads.
+
+See [State](./state.md) for the other parts.
 
 ## Styling
 
 Style the overlay and the box with the data attributes above, such as `[data-closed]` on the overlay. The overlay sets `--visual-viewport-height`. See [Styling](./styling.md).
+
+This stylesheet styles the trigger, the Cancel button and the danger button in every state, the dim overlay, and the box, which scales in as the overlay fades in. Press Delete the draft, Tab through the two buttons, then press the dim area. Its tokens are at the top, and they follow the color scheme.
+
+```brm styled ModalStyled
+
+```
+
+## Use cases
+
+### Unsaved changes
+
+A form in a modal can lose work, so this one guards itself. `isKeyboardDismissDisabled` follows the form: while the text differs from the saved one, Escape does nothing. Cancel then opens a second Modal over the first, and Escape closes only that one. The press on a clean form closes at once.
+
+```brm demo ModalUnsavedDemo
+
+```
+
+### Opened from code
+
+A modal needs no trigger. When the work ends, the code sets the signal that `isOpen` is bound to. This one opens when a slow action is done. The pending Button keeps its focus, and the modal gives focus back to it when it closes.
+
+```brm demo ModalPublishDemo
+
+```
 
 ## Animating it
 

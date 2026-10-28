@@ -1,0 +1,150 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+</script>
+
+<div class="dialog-styled-root">
+  <DialogTrigger>
+    <Button class="dialog-styled-trigger">Rename</Button>
+    <Popover class="dialog-styled-popover" placement="bottom start" transition>
+      <Dialog class="dialog-styled-dialog">
+        <Heading slot="title" level=(4) class="dialog-styled-title">Rename the file</Heading>
+        <p class="dialog-styled-text">The new name shows in the list at once.</p>
+        <div class="dialog-styled-actions">
+          <Button slot="close" class="dialog-styled-close">Done</Button>
+        </div>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
+  :global(.dialog-styled-root),
+  :global(.dialog-styled-popover) {
+    --dialog-styled-bg: Canvas;
+    --dialog-styled-text: CanvasText;
+    --dialog-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
+    --dialog-styled-border: color-mix(in srgb, CanvasText 25%, Canvas);
+    --dialog-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --dialog-styled-on-accent: light-dark(#fff, #101418);
+    --dialog-styled-danger: light-dark(#c4271d, #f28b82);
+    --dialog-styled-radius: 8px;
+    color: var(--dialog-styled-text);
+  }
+
+  :global(.dialog-styled-trigger) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--dialog-styled-border);
+    border-radius: var(--dialog-styled-radius);
+    background: var(--dialog-styled-bg);
+    color: var(--dialog-styled-text);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.dialog-styled-trigger)[data-hovered] {
+    border-color: var(--dialog-styled-accent);
+  }
+
+  :global(.dialog-styled-trigger)[data-pressed] {
+    background: color-mix(in srgb, var(--dialog-styled-accent) 14%, var(--dialog-styled-bg));
+  }
+
+  :global(.dialog-styled-trigger)[aria-expanded='true'] {
+    border-color: var(--dialog-styled-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dialog-styled-accent) 25%, transparent);
+  }
+
+  /* Two bands, so the ring shows on the page and on a fill. */
+  :global(.dialog-styled-trigger)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--dialog-styled-bg), 0 0 0 4px var(--dialog-styled-accent);
+  }
+
+  :global(.dialog-styled-trigger)[data-disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.dialog-styled-close) {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: var(--dialog-styled-radius);
+    background: var(--dialog-styled-accent);
+    color: var(--dialog-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.dialog-styled-close)[data-hovered] {
+    background: color-mix(in srgb, var(--dialog-styled-accent) 85%, CanvasText);
+  }
+
+  :global(.dialog-styled-close)[data-pressed] {
+    background: color-mix(in srgb, var(--dialog-styled-accent) 70%, CanvasText);
+  }
+
+  :global(.dialog-styled-close)[data-focus-visible] {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--dialog-styled-bg), 0 0 0 4px var(--dialog-styled-accent);
+  }
+
+  /* The popover is a layer outside the root: z-index puts it above the header of the page. */
+  :global(.dialog-styled-popover) {
+    z-index: 20;
+    box-sizing: border-box;
+    max-width: 20rem;
+    padding: 1rem;
+    border: 1px solid var(--dialog-styled-border);
+    border-radius: var(--dialog-styled-radius);
+    background: var(--dialog-styled-bg);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 22%);
+    transition: opacity 0.18s, translate 0.18s;
+  }
+
+  :global(.dialog-styled-popover[data-closed]) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+
+  :global(.dialog-styled-popover[data-placement='top'][data-closed]) {
+    translate: 0 4px;
+  }
+
+  /* The dialog takes focus when it opens, so it draws no ring of its own. */
+  :global(.dialog-styled-dialog) {
+    display: grid;
+    gap: 0.75rem;
+    outline: none;
+  }
+
+  :global(.dialog-styled-title) {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  :global(.dialog-styled-text) {
+    margin: 0;
+    color: var(--dialog-styled-muted);
+  }
+
+  :global(.dialog-styled-actions) {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.dialog-styled-trigger),
+    :global(.dialog-styled-close),
+    :global(.dialog-styled-popover) {
+      transition: none;
+    }
+  }
+</style>

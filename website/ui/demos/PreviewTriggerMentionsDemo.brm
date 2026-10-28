@@ -1,0 +1,28 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Link from '@brumate/ui/Link.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import PreviewTrigger from '@brumate/ui/PreviewTrigger.brm';
+
+  const people = [
+    { name: 'Ada Lovelace', about: 'Wrote the first program for an engine.' },
+    { name: 'Grace Hopper', about: 'Built the first compiler.' },
+  ];
+</script>
+
+<p>
+  Notes by
+  #for (person, index of people by person.name) {
+    <PreviewTrigger>
+      <Link class="ui-link" href="#preview-trigger-mentions">{person.name}</Link>
+      <Popover class="ui-popover" placement="bottom start" transition>
+        <div class="ui-dialog">
+          <strong>{person.name}</strong>
+          <span>{person.about}</span>
+          <Button class="ui-button">Follow</Button>
+        </div>
+      </Popover>
+    </PreviewTrigger>
+    {index < people.length - 1 ? ' and ' : '.'}
+  }
+</p>

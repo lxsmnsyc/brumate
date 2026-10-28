@@ -1,0 +1,51 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Sheet from '@brumate/ui/Sheet.brm';
+  
+
+  let open = $signal(false);
+  let gated = $signal(false);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<div class="ui-stack">
+  <!-- The DialogTrigger holds the state. -->
+  <DialogTrigger>
+    <Button class="ui-button">Held by the trigger</Button>
+    <Sheet class="ui-sheet"  transition>
+      <Dialog class="ui-dialog">
+      <Heading slot="title" level=(4)>Held by the trigger</Heading>
+      <p>Press Escape or the button.</p>
+      <Button slot="close" class="ui-button">Close</Button>
+    </Dialog>
+    </Sheet>
+  </DialogTrigger>
+  <!-- The Sheet writes your signal. Your own buttons open it. -->
+  <div class="ui-actions" style="justify-content: start">
+    <Button class="ui-button" onPress=(() => (open = true))>Writes your signal</Button>
+    <Button class="ui-button" onPress=(() => { locked = false; gated = true; })>Asks you first</Button>
+  </div>
+  <Sheet class="ui-sheet" isOpen=$bind(open) onOpenChange=((next: boolean) => (log = next ? 'opened' : 'closed')) transition>
+    <Dialog class="ui-dialog">
+      <Heading slot="title" level=(4)>Writes your signal</Heading>
+      <p>Press Escape or the button.</p>
+      <Button slot="close" class="ui-button">Close</Button>
+    </Dialog>
+  </Sheet>
+  <Sheet class="ui-sheet" isOpen=$bind(gated, (next: boolean) => { if (!locked || next) gated = next; }) side="end" transition>
+    <Dialog class="ui-dialog">
+      <Heading slot="title" level=(4)>Asks you first</Heading>
+      <p>{locked ? 'Escape and a press outside ask you, and you refuse.' : 'Escape closes it.'}</p>
+      <div class="ui-actions">
+        <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'}</Button>
+        <Button class="ui-button" onPress=(() => (gated = false))>Close</Button>
+      </div>
+    </Dialog>
+  </Sheet>
+  <p>Signal: {open ? 'open' : 'closed'}. Last callback: {log || 'none'}. Last one is {gated ? (locked ? 'open and locked' : 'open') : 'closed'}.</p>
+</div>
