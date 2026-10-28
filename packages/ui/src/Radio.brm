@@ -58,7 +58,7 @@
     const input = document.getElementById(inputId) as HTMLInputElement | null;
     return onFormReset(
       input,
-      () => {},
+      undefined,
       () => {
         if (input) {
           input.checked = selected;

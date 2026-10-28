@@ -30,6 +30,7 @@
   import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { NumberFormatter } from '@internationalized/number';
   import { LabelContext } from './contexts.ts';
+  import { onFormReset } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import { snapToStep } from './numbers.ts';
   import { SliderContext, thumbId } from './slider.ts';
@@ -139,15 +140,12 @@
 
   // A reset of the form gives back the first values, as it does for a field of the browser.
   $client(() => {
-    const owner = (document.getElementById(thumbId({ id }, 0)) as HTMLInputElement | null)?.form;
-    if (!owner) {
-      return undefined;
-    }
-    function reset() {
-      value = initialValue;
-    }
-    owner.addEventListener('reset', reset);
-    return () => owner.removeEventListener('reset', reset);
+    return onFormReset(
+      document.getElementById(thumbId({ id }, 0)) as HTMLInputElement | null,
+      () => {
+        value = initialValue;
+      },
+    );
   }, 'load');
 
   $setContext(LabelContext, { id: labelId });

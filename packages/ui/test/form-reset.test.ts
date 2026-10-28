@@ -131,3 +131,19 @@ it('sends the reset through the setter, so a setter that refuses keeps the value
     [{ type: 'text', text: 'hi there' }],
   ]);
 });
+
+it('keeps the value when a later listener prevents the reset', async () => {
+  const page = await resets();
+  await edit(page, 'own');
+  const form = inside('own', '.reset').closest('form') as HTMLFormElement;
+  // The page listens after the parts, as an app that asks "discard changes?" does.
+  const stop = (event: Event) => event.preventDefault();
+  form.addEventListener('reset', stop);
+  form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+  await new Promise((done) => setTimeout(done, 100));
+  expectShown('own', false);
+  // Once the page lets it through, the parts reset.
+  form.removeEventListener('reset', stop);
+  form.reset();
+  await page.waitFor(() => expectShown('own', true));
+});

@@ -68,7 +68,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf } from './fields.ts';
+  import { describedBy, messagesOf, onFormReset } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import {
     addStep,
@@ -344,18 +344,12 @@
 
   // A reset of the form gives back the first number, as it does for a field of the browser.
   $client(() => {
-    const owner = input()?.form;
-    if (!owner) {
-      return undefined;
-    }
-    function reset() {
+    return onFormReset(input(), () => {
       setValue(initialValue);
       edited = false;
       committed = false;
       nativeErrors = [];
-    }
-    owner.addEventListener('reset', reset);
-    return () => owner.removeEventListener('reset', reset);
+    });
   }, 'load');
 
   /** A press of a Button steps at once, and again while it is held. Focus stays in the input. */

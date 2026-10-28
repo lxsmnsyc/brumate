@@ -64,7 +64,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, isFirstInvalid, messagesOf } from './fields.ts';
+  import { describedBy, isFirstInvalid, messagesOf, onFormReset } from './fields.ts';
 
   /**
    * A field that picks one item from a list. It holds a
@@ -218,18 +218,15 @@
 
   // A reset of the form gives back the first key, as it does for a field of the browser.
   $client(() => {
-    const owner = (document.getElementById(inputId) as HTMLInputElement | null)?.form;
-    if (!owner) {
-      return undefined;
-    }
-    function reset() {
-      selectedKey = initialKey;
-      committed = false;
-      nativeErrors = [];
-      edited = false;
-    }
-    owner.addEventListener('reset', reset);
-    return () => owner.removeEventListener('reset', reset);
+    return onFormReset(
+      document.getElementById(inputId) as HTMLInputElement | null,
+      () => {
+        selectedKey = initialKey;
+        committed = false;
+        nativeErrors = [];
+        edited = false;
+      },
+    );
   }, 'load');
 
   $setContext(LabelContext, { id: labelId });

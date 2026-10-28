@@ -39,13 +39,15 @@ There is no `defaultSelected` or `defaultValue`: a `let` prop of brumate already
 
 ## Form reset
 
-A `reset` of the form gives every part with state the value that it started with. Change the name, then press Reset:
+A `reset` of the form gives every form field the value that it started with. Change the name, then press Reset:
 
 ```brm demo StateFormDemo
 
 ```
 
-- Every part resets: `TextField`, `SearchField`, `NumberField`, `TokenField`, `Checkbox`, `Switch`, `CheckboxGroup`, `RadioGroup`, `Select`, `ComboBox`, `Slider`, the color parts and the date parts. Its `data-*` attributes and its hidden input follow. There are no exceptions.
+- These form fields reset: `TextField`, `SearchField`, `NumberField`, `TokenField`, `Checkbox`, `Switch`, `CheckboxGroup`, `RadioGroup`, `Select`, `ComboBox`, `Slider`, `ColorField`, `ColorSlider`, `ColorArea`, `ColorWheel`, `DateField`, `TimeField` and `DateRangePicker`. Their `data-*` attributes and their hidden input follow.
+- The other parts are not form fields, since a form sends nothing of them, and they do not reset: `ToggleButton`, `ToggleButtonGroup`, `Calendar`, `RangeCalendar`, `Autocomplete`, `TagGroup`, `ListBox`, `Tabs` and the rest. Set their signal yourself on a reset.
+- A reset that another listener prevents changes nothing.
 - The reset is a write, as an edit is, so it follows the shape of the state. With `$bind(signal)`, the signal gets the start value back. With `$bind(signal, request)`, the request gets it like any new value, and a request that refuses it leaves the old value. The part and its input then show what you keep. A part with its own state or its own copy resets with no help.
 - The start value is the one that the part had when it rendered. A `Checkbox` in a `CheckboxGroup` and a `Radio` reset with their group.
 
