@@ -1,0 +1,17 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import { prevent } from 'brumate/events';
+  import HandlerWrap from './HandlerWrap.brm';
+  import HandlerForm from './HandlerForm.brm';
+
+  let n = $signal(0);
+  let name = $signal('');
+</script>
+
+<HandlerWrap>
+  <HandlerForm onSubmit=(prevent(() => (n += 1)))>
+    <input class="name" value=$bind(name) />
+    <button class="send" type="submit">send</button>
+  </HandlerForm>
+</HandlerWrap>
+<p class="n">{n}</p>

@@ -1,0 +1,86 @@
+<script>
+  import Breadcrumb from '@brumate/ui/Breadcrumb.brm';
+  import Breadcrumbs from '@brumate/ui/Breadcrumbs.brm';
+  import Link from '@brumate/ui/Link.brm';
+</script>
+
+<nav aria-label="Styled trail">
+  <Breadcrumbs class="crumbs-styled">
+    <Breadcrumb class="crumbs-styled-item"><Link class="crumbs-styled-link" href="#styled">Home</Link></Breadcrumb>
+    <Breadcrumb class="crumbs-styled-item"><Link class="crumbs-styled-link" href="#styled">Shop</Link></Breadcrumb>
+    <Breadcrumb class="crumbs-styled-item"><Link class="crumbs-styled-link" isDisabled>Sale</Link></Breadcrumb>
+    <Breadcrumb class="crumbs-styled-item" isCurrent><Link class="crumbs-styled-link" href="#styled">Shoes</Link></Breadcrumb>
+  </Breadcrumbs>
+</nav>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.crumbs-styled) {
+    --crumbs-styled-link: light-dark(#1f5f94, #8cc3ee);
+    --crumbs-styled-hover: light-dark(#10304d, #cde6fa);
+    --crumbs-styled-muted: color-mix(in srgb, CanvasText 62%, Canvas);
+    --crumbs-styled-ring: light-dark(#2a76b2, #6fb2e6);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: CanvasText;
+  }
+
+  :global(.crumbs-styled[data-disabled]) {
+    opacity: 0.6;
+  }
+
+  /* The separator is drawn on every step but the first. */
+  :global(.crumbs-styled-item + .crumbs-styled-item)::before {
+    margin-inline-end: 0.4rem;
+    color: var(--crumbs-styled-muted);
+    content: '/';
+  }
+
+  /* Rest, hover, press, keyboard focus, disabled and current. */
+  :global(.crumbs-styled-link) {
+    color: var(--crumbs-styled-link);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 0.25em;
+    transition: text-decoration-color 0.15s, color 0.15s;
+    cursor: pointer;
+  }
+
+  :global(.crumbs-styled-link[data-hovered]) {
+    color: var(--crumbs-styled-hover);
+    text-decoration-color: currentColor;
+  }
+
+  :global(.crumbs-styled-link[data-pressed]) {
+    opacity: 0.7;
+  }
+
+  :global(.crumbs-styled-link[data-focus-visible]) {
+    outline: 2px solid var(--crumbs-styled-ring);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  :global(.crumbs-styled-link[data-disabled]) {
+    color: var(--crumbs-styled-muted);
+    text-decoration: line-through;
+    cursor: not-allowed;
+  }
+
+  :global(.crumbs-styled-item[data-current] .crumbs-styled-link) {
+    color: CanvasText;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: default;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.crumbs-styled-link) {
+      transition: none;
+    }
+  }
+</style>

@@ -1,0 +1,30 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+  import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
+
+  let style = $signal(['bold']);
+  let size = $signal(16);
+  let text = $signal('Hello');
+</script>
+
+<div class="ui-stack">
+  <Toolbar class="ui-group" aria-label="Format">
+    <ToggleButtonGroup class="ui-group" aria-label="Style" selectionMode="multiple" selectedKeys=$bind(style)>
+      <ToggleButton id="bold" class="ui-button">Bold</ToggleButton>
+      <ToggleButton id="italic" class="ui-button">Italic</ToggleButton>
+    </ToggleButtonGroup>
+    <Separator orientation="vertical" class="ui-separator" />
+    <Button class="ui-button" onPress=(() => (size = Math.max(10, size - 2)))>Smaller</Button>
+    <Button class="ui-button" onPress=(() => (size = Math.min(28, size + 2)))>Larger</Button>
+    <TextField value=$bind(text)><Label><VisuallyHidden>Text</VisuallyHidden></Label><Input class="ui-input" style="width: 8rem" /></TextField>
+  </Toolbar>
+  <p style=(`font-size: ${size}px; font-weight: ${style.includes('bold') ? 700 : 400}; font-style: ${style.includes('italic') ? 'italic' : 'normal'}`)>{text}</p>
+</div>

@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import HandlerSlot from './HandlerSlot.brm';
+  import HandlerCallback from './HandlerCallback.brm';
+  let n = $signal(0);
+  function bump() { n += 1; }
+</script>
+<button class="top" onClick=bump>top</button>
+<HandlerSlot item=row />
+<p class="n">{n}</p>
+#template row(label: string) {
+  <HandlerCallback cb=bump />
+}

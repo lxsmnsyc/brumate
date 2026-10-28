@@ -1,0 +1,18 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+</script>
+
+<div class="ui-accordion" style="width: min(100%, 20rem)">
+  <Disclosure class="ui-disclosure" isExpanded=(true) data-mark="1">
+    <Heading level=(2) data-mark="2" data-mark-side="bottom">
+      <Button slot="trigger" class="ui-disclosure-trigger" data-mark="3" data-mark-side="inside">Shipping</Button>
+    </Heading>
+    <!-- The panel clips its content, which would clip the badge. -->
+    <DisclosurePanel class="ui-disclosure-panel" style="overflow: visible" data-mark="4">
+      <p>Orders leave the shop in two days.</p>
+    </DisclosurePanel>
+  </Disclosure>
+</div>
