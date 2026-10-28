@@ -3,6 +3,26 @@ import { keepStyle } from './position.ts';
 // The page around an open overlay: what is inert behind it, where focus goes in it, and when a
 // press outside closes it. They hide the page with `inert` in place of aria-hidden.
 
+let loading: Promise<void> = Promise.resolve();
+
+/**
+ * Runs the open of an overlay that starts open, after the ones before it. Two modals that start
+ * open then stack as two opened by presses do: the later one is on top, the earlier one is inert
+ * under it, and neither marks the other inert while it is still opening.
+ */
+export function queueLoad(open: () => Promise<void> | undefined): void {
+  loading = loading.then(open).catch(() => undefined);
+}
+
+/** Whether the element takes text, such as an input a reader is typing in. */
+export function takesText(element: Element | null): boolean {
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement ||
+    (element instanceof HTMLElement && element.isContentEditable)
+  );
+}
+
 const FOCUSABLE =
   'a[href], area[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), iframe, summary, [contenteditable], [tabindex]';
 
@@ -373,6 +393,8 @@ export function keepFocus(layer: Element, overlay: HTMLElement): () => void {
     const target = event.target as HTMLElement;
     if (layer.contains(target)) {
       last = target;
+    } else if (layer.closest('[inert]')) {
+      // Another overlay opened above this one and made it inert, so focus belongs to that one.
     } else if (!target.closest?.('[data-toast-region]')) {
       back();
     }

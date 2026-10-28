@@ -80,7 +80,7 @@ The `OverlayArrow` is described on the [Popover](./popover.md#props) page.
 
 ```
 
-- `isOpen` alone, or nothing, makes the `TooltipTrigger` keep its own state: hover, focus, blur, a press and Escape change it. `isOpen=(true)` is meant as the state where it starts, but it does not show on load: an [effect never runs when the page loads](../docs/effects.md), and the tooltip opens from one on its open value, which a start value of `true` never changes. Open it from an event.
+- `isOpen` alone, or nothing, makes the `TooltipTrigger` keep its own state: hover, focus, blur, a press and Escape change it. `isOpen=(true)`, or a bound signal that starts `true`, shows the tooltip once the page has loaded. The server renders no tooltip, since it needs the rect of its trigger.
 - `isOpen=$bind(signal)` writes your signal. Hover the second button and the signal says shown. "Show or hide the second" sets the signal, and the tooltip follows at once, with no `delay`.
 - `isOpen=$bind(signal, (next) => ...)` asks you first. The tooltip shows what you keep, so a request that you ignore leaves it hidden. Lock the last one, then hover or tab to its Button.
 - `onOpenChange` gets each new state in every shape.

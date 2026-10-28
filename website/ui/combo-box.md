@@ -100,7 +100,7 @@ Focus stays in the input. `aria-activedescendant` names the active item.
 - `selectedKey` and `inputValue` alone, or nothing, make the field keep its own state. `selectedKey=('cat')` and `inputValue=('Cat')` are where it starts. Pick another item and the field keeps the pick.
 - `$bind(signal)` writes your signal. Change the signals and the field follows, as the third button shows. Set the key and the text together, since the text in the input is its own value.
 - `selectedKey=$bind(signal, (next) => ...)` asks you first. The field shows what you keep, so a request that you ignore leaves the old key. Press Lock and pick an item in the last field: the key stays, and the input shows the text of the kept item. `onSelectionChange` still gets the request.
-- `isOpen` holds whether the list is open in the same way. A start value of `true` does not open the list on load: an [effect never runs when the page loads](../docs/effects.md).
+- `isOpen` holds whether the list is open in the same way.
 - `onSelectionChange`, `onInputChange` and `onOpenChange` get each change, in every shape.
 - A ComboBox is a form field. A reset of its form gives back the key and the text that it started with, and closes the list. With `$bind`, the reset is a write to your signal, and a setter can refuse it. See [State](./state.md#form-reset).
 - The server renders the hidden input with the key, so the value goes with the form before the code loads.
