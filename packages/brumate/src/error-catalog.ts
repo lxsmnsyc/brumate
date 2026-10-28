@@ -17,7 +17,8 @@ export interface ErrorEntry {
  * wherever the entry sits in the catalog. Never change the code of an entry,
  * and never reuse a code. When an error is removed, delete its entry and
  * leave its number unused. test/error-codes.json pins each code to its
- * message, so a test fails when a code changes or is reused. Add the code of
+ * message, so a test fails when a code changes or is reused. Rewording a
+ * message needs a hand edit of that file, for the same code. Add the code of
  * a new entry to it with `UPDATE_SKILL=1 npx vitest run test/check-command.test.ts`.
  */
 
@@ -154,6 +155,12 @@ const SYNTAX: ErrorEntry[] = [
     'Unknown event modifier ":{modifier}"',
     'The modifier after an event name is not one of the known ones.',
     '<form onSubmit=(prevent(send))></form>',
+  ),
+  entry(
+    'BRM180',
+    '"{name}" is not an event name. Write "{camel}"',
+    'An event of more than one word is written in camel case. The lower-case form is an error.',
+    '<input onKeyDown=(handle) onFocusOut=(handle) />',
   ),
   entry(
     'BRM023',

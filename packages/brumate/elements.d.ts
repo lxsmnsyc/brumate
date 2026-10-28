@@ -147,86 +147,115 @@ type BoundChecked = BindableMark<unknown> & WritableMark<boolean>;
 
 type Handler<Ev, E> = EventHandler<E, Ev>;
 
-// The events whose name has more than one word. The markup can write them in camel case, as
-// `onKeyDown`, or as `onKeydown`. The compiler lower-cases the name.
-type CamelEvent =
-  | 'AnimationCancel'
-  | 'AnimationEnd'
-  | 'AnimationIteration'
-  | 'AnimationStart'
-  | 'AuxClick'
-  | 'BeforeInput'
-  | 'BeforeMatch'
-  | 'BeforeToggle'
-  | 'CanPlay'
-  | 'CanPlayThrough'
-  | 'CompositionEnd'
-  | 'CompositionStart'
-  | 'CompositionUpdate'
-  | 'ContextLost'
-  | 'ContextMenu'
-  | 'ContextRestored'
-  | 'CueChange'
-  | 'DblClick'
-  | 'DragEnd'
-  | 'DragEnter'
-  | 'DragLeave'
-  | 'DragOver'
-  | 'DragStart'
-  | 'DurationChange'
-  | 'FocusIn'
-  | 'FocusOut'
-  | 'FormData'
-  | 'FullscreenChange'
-  | 'FullscreenError'
-  | 'GotPointerCapture'
-  | 'KeyDown'
-  | 'KeyPress'
-  | 'KeyUp'
-  | 'LoadedData'
-  | 'LoadedMetadata'
-  | 'LoadStart'
-  | 'LostPointerCapture'
-  | 'MouseDown'
-  | 'MouseEnter'
-  | 'MouseLeave'
-  | 'MouseMove'
-  | 'MouseOut'
-  | 'MouseOver'
-  | 'MouseUp'
-  | 'PointerCancel'
-  | 'PointerDown'
-  | 'PointerEnter'
-  | 'PointerLeave'
-  | 'PointerMove'
-  | 'PointerOut'
-  | 'PointerOver'
-  | 'PointerRawUpdate'
-  | 'PointerUp'
-  | 'RateChange'
-  | 'ScrollEnd'
-  | 'SecurityPolicyViolation'
-  | 'SelectionChange'
-  | 'SelectStart'
-  | 'SlotChange'
-  | 'TimeUpdate'
-  | 'TouchCancel'
-  | 'TouchEnd'
-  | 'TouchMove'
-  | 'TouchStart'
-  | 'TransitionCancel'
-  | 'TransitionEnd'
-  | 'TransitionRun'
-  | 'TransitionStart'
-  | 'VolumeChange';
+/**
+ * The camel-case name of each event whose name has more than one word, by the name of the event:
+ * `keydown` is `onKeyDown`. A handler is written in camel case only. An app that merges an event
+ * of several words into `ElementEvents` names it here: `interface ElementEventNames { itemaction:
+ * 'ItemAction' }`. An event with no entry here has the name of one word, `onItemaction`.
+ */
+export interface ElementEventNames {
+  afterprint: 'AfterPrint';
+  animationcancel: 'AnimationCancel';
+  animationend: 'AnimationEnd';
+  animationiteration: 'AnimationIteration';
+  animationstart: 'AnimationStart';
+  auxclick: 'AuxClick';
+  beforeinput: 'BeforeInput';
+  beforematch: 'BeforeMatch';
+  beforeprint: 'BeforePrint';
+  beforetoggle: 'BeforeToggle';
+  beforeunload: 'BeforeUnload';
+  canplay: 'CanPlay';
+  canplaythrough: 'CanPlayThrough';
+  compositionend: 'CompositionEnd';
+  compositionstart: 'CompositionStart';
+  compositionupdate: 'CompositionUpdate';
+  contextlost: 'ContextLost';
+  contextmenu: 'ContextMenu';
+  contextrestored: 'ContextRestored';
+  cuechange: 'CueChange';
+  dblclick: 'DblClick';
+  devicemotion: 'DeviceMotion';
+  deviceorientation: 'DeviceOrientation';
+  deviceorientationabsolute: 'DeviceOrientationAbsolute';
+  dragend: 'DragEnd';
+  dragenter: 'DragEnter';
+  dragleave: 'DragLeave';
+  dragover: 'DragOver';
+  dragstart: 'DragStart';
+  durationchange: 'DurationChange';
+  focusin: 'FocusIn';
+  focusout: 'FocusOut';
+  formdata: 'FormData';
+  fullscreenchange: 'FullscreenChange';
+  fullscreenerror: 'FullscreenError';
+  gamepadconnected: 'GamepadConnected';
+  gamepaddisconnected: 'GamepadDisconnected';
+  gotpointercapture: 'GotPointerCapture';
+  hashchange: 'HashChange';
+  keydown: 'KeyDown';
+  keypress: 'KeyPress';
+  keyup: 'KeyUp';
+  languagechange: 'LanguageChange';
+  loadstart: 'LoadStart';
+  loadeddata: 'LoadedData';
+  loadedmetadata: 'LoadedMetadata';
+  lostpointercapture: 'LostPointerCapture';
+  messageerror: 'MessageError';
+  mousedown: 'MouseDown';
+  mouseenter: 'MouseEnter';
+  mouseleave: 'MouseLeave';
+  mousemove: 'MouseMove';
+  mouseout: 'MouseOut';
+  mouseover: 'MouseOver';
+  mouseup: 'MouseUp';
+  orientationchange: 'OrientationChange';
+  pagehide: 'PageHide';
+  pagereveal: 'PageReveal';
+  pageshow: 'PageShow';
+  pageswap: 'PageSwap';
+  pointercancel: 'PointerCancel';
+  pointerdown: 'PointerDown';
+  pointerenter: 'PointerEnter';
+  pointerleave: 'PointerLeave';
+  pointerlockchange: 'PointerLockChange';
+  pointerlockerror: 'PointerLockError';
+  pointermove: 'PointerMove';
+  pointerout: 'PointerOut';
+  pointerover: 'PointerOver';
+  pointerrawupdate: 'PointerRawUpdate';
+  pointerup: 'PointerUp';
+  popstate: 'PopState';
+  ratechange: 'RateChange';
+  readystatechange: 'ReadyStateChange';
+  rejectionhandled: 'RejectionHandled';
+  scrollend: 'ScrollEnd';
+  securitypolicyviolation: 'SecurityPolicyViolation';
+  selectstart: 'SelectStart';
+  selectionchange: 'SelectionChange';
+  slotchange: 'SlotChange';
+  timeupdate: 'TimeUpdate';
+  touchcancel: 'TouchCancel';
+  touchend: 'TouchEnd';
+  touchmove: 'TouchMove';
+  touchstart: 'TouchStart';
+  transitioncancel: 'TransitionCancel';
+  transitionend: 'TransitionEnd';
+  transitionrun: 'TransitionRun';
+  transitionstart: 'TransitionStart';
+  unhandledrejection: 'UnhandledRejection';
+  visibilitychange: 'VisibilityChange';
+  volumechange: 'VolumeChange';
+}
 
-/** The handlers of an element: `onClick` for `click`, and the name of each event. */
+/** The camel-case word of an event: its entry in `ElementEventNames`, or the name capitalized. */
+type EventWord<K extends string> = K extends keyof ElementEventNames
+  ? ElementEventNames[K]
+  : Capitalize<K>;
+
+/** The handlers of an element: `onClick` for `click`, and `onKeyDown` for `keydown`. */
 export type Handlers<E> = {
-  [K in keyof ElementEvents & string as `on${Capitalize<K>}`]?: Handler<ElementEvents[K], E>;
-} & {
-  [N in CamelEvent as `on${N}`]?: Lowercase<N> extends keyof ElementEvents
-    ? Handler<ElementEvents[Lowercase<N>], E>
-    : never;
+  [K in keyof ElementEvents & string as `on${EventWord<K>}`]?: Handler<ElementEvents[K], E>;
 };
 
 /**

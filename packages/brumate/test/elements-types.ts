@@ -3,6 +3,7 @@ import { $bind, $signal } from 'brumate/signals';
 import type { Bindable, BindableMark, Unbound } from 'brumate/signals';
 import type {
   Component,
+  ElementEventNames,
   ElementEvents,
   ElementOf,
   ElementProps,
@@ -31,10 +32,9 @@ export const label: ElementProps<'label'> = { for: 'name' };
 export const input: ElementProps<'input'> = { type: 'text', maxlength: 4, readonly: true };
 export const shape: ElementProps<'path'> = { d: 'M0 0', 'stroke-width': 2, viewBox: '0 0 1 1' };
 
-// A handler is written in camel case, or as the name of the event.
+// A handler is written in camel case only.
 export const keys: ElementProps<'div'> = {
   onKeyDown: (event) => event.key,
-  onKeydown: (event) => event.key,
   onPointerDown: (event) => event.pointerId,
   onFocusIn: (event) => event.relatedTarget,
 };
@@ -75,14 +75,19 @@ declare module '../elements' {
   interface ElementEvents {
     itemaction: CustomEvent<string>;
   }
+  interface ElementEventNames {
+    itemaction: 'ItemAction';
+  }
   interface Elements {
     'x-card': ElementProps<'div'> & { heading?: string };
   }
 }
 export const custom: ElementProps<'x-card'> = {
   heading: 'Title',
-  onItemaction: (event) => event.detail.length,
+  onItemAction: (event) => event.detail.length,
 };
+// @ts-expect-error A custom event with a camel name has no lower-case attribute.
+export const customLower: ElementProps<'x-card'> = { onItemaction: () => {} };
 export const customEvent: ElementEvents['itemaction'] | undefined = undefined;
 
 // Every tag of the DOM has attributes.
@@ -177,8 +182,9 @@ export const autocompleteBoolean: ElementProps<'input'> = { autocomplete: false 
 export const autocompleteForm: ElementProps<'form'> = { autocomplete: true };
 export const keyPress: ElementProps<'input'> = {
   onKeyPress: (event) => event.key,
-  onKeypress: (event) => event.key,
 };
+// @ts-expect-error The lower-case form of a handler of several words is not an attribute.
+export const lowerKeys: ElementProps<'div'> = { onKeydown: (event) => event.key };
 export const handler: EventHandler<HTMLButtonElement, MouseEvent> = (event) =>
   event.currentTarget.value;
 export const handlerProp: ElementProps<'button'> = { onClick: handler };
@@ -239,3 +245,71 @@ export const wrongStaticNumber: ElementProps<'textarea'> = { rows: 'three' };
 export const unitlessWidth: ElementProps<'div'> = { style: { width: 12 } };
 // @ts-expect-error A number has no unit for `fontSize` either.
 export const unitlessFontSize: ElementProps<'div'> = { style: { fontSize: 12 } };
+
+// Every event of the DOM is either in `ElementEventNames`, when its name has more than one word,
+// or listed here as a word of its own. A new event in the DOM types fails this line until it is
+// sorted. `DOMContentLoaded` has capitals in its name, which a handler name cannot carry, and the
+// `webkit*` names are old aliases of events that have their own entry, so they keep the
+// lower-case name and the parser does not report them.
+type OneWord =
+  | 'abort'
+  | 'blur'
+  | 'cancel'
+  | 'change'
+  | 'click'
+  | 'close'
+  | 'command'
+  | 'copy'
+  | 'cut'
+  | 'drag'
+  | 'drop'
+  | 'emptied'
+  | 'ended'
+  | 'error'
+  | 'focus'
+  | 'input'
+  | 'invalid'
+  | 'load'
+  | 'message'
+  | 'offline'
+  | 'online'
+  | 'paste'
+  | 'pause'
+  | 'play'
+  | 'playing'
+  | 'progress'
+  | 'reset'
+  | 'resize'
+  | 'scroll'
+  | 'seeked'
+  | 'seeking'
+  | 'select'
+  | 'stalled'
+  | 'storage'
+  | 'submit'
+  | 'suspend'
+  | 'toggle'
+  | 'unload'
+  | 'waiting'
+  | 'wheel'
+  | 'DOMContentLoaded'
+  | 'webkitanimationend'
+  | 'webkitanimationiteration'
+  | 'webkitanimationstart'
+  | 'webkittransitionend';
+type DomEvents =
+  | keyof WindowEventMap
+  | keyof DocumentEventMap
+  | keyof HTMLElementEventMap
+  | keyof SVGElementEventMap;
+export const everyEventSorted: [Exclude<DomEvents, keyof ElementEventNames | OneWord>] extends [
+  never,
+]
+  ? true
+  : false = true;
+// And an entry that names no event of the DOM is a mistake, but the one that this file merges.
+export const noStrayEntry: [Exclude<keyof ElementEventNames, DomEvents | 'itemaction'>] extends [
+  never,
+]
+  ? true
+  : false = true;

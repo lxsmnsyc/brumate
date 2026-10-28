@@ -247,6 +247,16 @@ https://brumate-docs.vercel.app/docs/errors#brm022
 <form onSubmit=(prevent(send))></form>
 ```
 
+## BRM180: "{name}" is not an event name. Write "{camel}"
+
+An event of more than one word is written in camel case. The lower-case form is an error.
+
+https://brumate-docs.vercel.app/docs/errors#brm180
+
+```brm fragment
+<input onKeyDown=(handle) onFocusOut=(handle) />
+```
+
 ## BRM023: Modifiers apply to elements. Put ":{modifier}" on the element that the component renders
 
 An event modifier is on a component, which only passes the handler on.

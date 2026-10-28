@@ -177,5 +177,6 @@
   "BRM176": "{name} returns {local} as {first} and as {key}. Return each local once, and give the other key a function of its own",
   "BRM177": "{name} is declared twice",
   "BRM178": "Parameters of {name} must be plain names",
-  "BRM179": "{name} reads {local}, which {specifier} does not export. Export it, so the component can import it"
+  "BRM179": "{name} reads {local}, which {specifier} does not export. Export it, so the component can import it",
+  "BRM180": "\"{name}\" is not an event name. Write \"{camel}\""
 }

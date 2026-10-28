@@ -11,6 +11,9 @@ declare module 'brumate/elements' {
     /** A ListBox or a GridList sends it to an item with an action of its own on Enter. */
     itemaction: CustomEvent;
   }
+  interface ElementEventNames {
+    itemaction: 'ItemAction';
+  }
 }
 
 /** The key of an item: its `id`, a string or a number. */

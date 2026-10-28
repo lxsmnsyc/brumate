@@ -1,6 +1,6 @@
 ---
 name: element-types
-version: 1.2
+version: 1.3
 status: frozen
 defined_by: element-types
 ---
@@ -63,7 +63,7 @@ export interface ElementEvents extends HTMLElementEventMap {}
 
 - An attribute is in `Elements` only when HTML or SVG has it as an attribute, not every field of the DOM interface. `tabIndex` is an error, `tabindex` takes a number.
 - Names are as the markup writes them, such as `tabindex`, `for`, `viewBox` and `stroke-width`.
-- A handler is `on` plus the event. The markup writes it in camel case (`onKeyDown`, `onFocusIn`, `onContextLost`, `onPointerRawUpdate`) or as the event name (`onKeydown`), as the compiler lower-cases it. The event is the event of the name with `currentTarget` typed as the element. An event that the DOM does not have is added by merging into `ElementEvents`.
+- A handler is `on` plus the event, in camel case only (`onKeyDown`, `onFocusIn`, `onContextLost`, `onPointerRawUpdate`). The lower-case form of an event of more than one word (`onKeydown`) is a compile error at the attribute and is not in the types. Events of one word (`onClick`) are unchanged. The event is the event of the name with `currentTarget` typed as the element. An event that the DOM does not have is added by merging into `ElementEvents`; an event of several words also merges its camel word into `ElementEventNames` (`itemaction: 'ItemAction'`), or its attribute keeps the one-word name (`onItemaction`).
 - Attributes with a closed set of values (`type` of `input` and `button`, `method`, `loading`) take a union. `target` takes the known names or any string. `data-*` takes any value. `aria-*` takes a string, number, boolean, `null` or `undefined`.
 - `class` takes a `ClassValue`: a string, or an array or an object of them, where `false`, `0`, `0n`, `null` and `undefined` add nothing. A number is not a class value. `style` takes a string or a `StyleObject`, with camel-case names of CSS properties and `--` variables, and a value that is a string, `false`, `null` or `undefined`. A number is allowed only for the properties without a unit (`opacity`, `zIndex`, `flexGrow`, `lineHeight`, ...) and for `--` variables, since the runtime prints it with no unit.
 - Number attributes (`tabindex`, `rows`, `cols`, `colspan`, `maxlength`, ...) take ``number | `${number}` ``, since a static attribute is a string.
@@ -108,4 +108,5 @@ packages/brumate/test/elements-types.ts, checked by `tsc --noEmit -p .` in packa
 - v1, second review: the write side of `ref` is required, `BoundSignal<T>` is the return type of `$bind`.
 - v1, review fixes: `ref` is `BindableMark<unknown> & WritableMark<E>`; added `Template`; `Component` has `brumateId` and defaults to `never`; check.ts, types.d.ts and the typecheck script changed as above; added the camel events `onContextLost`, `onContextRestored` and `onPointerRawUpdate`.
 - v1: frozen by element-types. From the proposal it changes: `Component<P>` answers `Promise<Markup>` and defaults to `never`; `Elements` has the SVG tags; added `ElementOf`, `ElementEvents`, `Handlers` and `GlobalAttributes`; `Markup` and `Component` names are kept.
+- v1.3, camel-event-names (change request accepted on 2026-10-28): handlers are camel case only, and the lower-case form of an event of several words is a compile error; `ElementEventNames` is exported; `Handlers` drops the lower-case keys of events of several words.
 - v1.2, element-checks (change request accepted on 2026-10-27): `autocorrect?: Attr<boolean | 'on' | 'off'>` in `GlobalAttributes`, and `webkitdirectory?: Attr<boolean>` on `input`. `focusable` on `svg` is not added: only IE11 and old Edge used it, so the website's Icon drops it.
