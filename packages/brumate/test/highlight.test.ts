@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BLOCK_KEYWORDS as highlighted } from '../src/highlight.ts';
+import { BLOCK_KEYWORDS as highlighted } from '../src/highlight-keywords.ts';
 import { BLOCK_KEYWORDS, BRANCH_KEYWORDS } from '../src/parser.ts';
 
 describe('the block keywords of the highlighter', () => {

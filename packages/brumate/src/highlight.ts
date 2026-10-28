@@ -29,6 +29,7 @@ import * as TOKENS from '@twinkleplop/core/tokens';
 import { tokenize as css } from '@twinkleplop/css';
 import { tokenize as tsx } from '@twinkleplop/tsx';
 import { dark, light } from '@twinkleplop/theme-github/tokens';
+import { BLOCK_KEYWORDS } from './highlight-keywords.ts';
 
 const WHITESPACE = [' ', '\t', '\n', '\r'];
 
@@ -76,30 +77,6 @@ const BARE_VALUE_CHARS = range([
   ['\\', '\\'],
   ['^', '~'],
 ]);
-
-// Sorted longest first by the compiler, so `else if` beats `else`.
-// A test checks the list against the keywords of the parser.
-export const BLOCK_KEYWORDS: string[] = [
-  'if',
-  'else if',
-  'else',
-  'for',
-  'repeat',
-  'switch',
-  'case',
-  'default',
-  'try',
-  'catch',
-  'loading',
-  'portal',
-  'head',
-  'client',
-  'offscreen',
-  'reveal',
-  'defer',
-  'key',
-  'template',
-];
 
 const RAW = TOKENS.raw_svelte_expression;
 

@@ -87,7 +87,7 @@
           {shop.report.staticMarkup.elements} of its elements ship as HTML only. The X-ray switch is CSS, with no script.
         </p>
       </div>
-      <Network title="Scripts of the shop" only="^(core|Index|Shop)(_|:|$)" />
+      <Network title="Scripts of the shop" only="core Index Shop" />
     </div>
   </section>
 
