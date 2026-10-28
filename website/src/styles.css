@@ -241,3 +241,247 @@ input[type='radio'] {
   accent-color: var(--accent);
   vertical-align: -0.15em;
 }
+
+/* The marketing pages: the home page and the landing page of @brumate/ui. */
+
+.home {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 1rem 4rem;
+}
+
+.hero {
+  position: relative;
+  padding: 5rem 0 3.5rem;
+  text-align: center;
+}
+
+.hero-glow {
+  position: absolute;
+  inset: 0 10% auto;
+  z-index: -1;
+  height: 22rem;
+  background:
+    radial-gradient(
+      closest-side at 35% 50%,
+      color-mix(in srgb, var(--cool) 22%, transparent),
+      transparent
+    ),
+    radial-gradient(
+      closest-side at 65% 50%,
+      color-mix(in srgb, var(--accent) 24%, transparent),
+      transparent
+    );
+  filter: blur(20px);
+}
+
+.home .eyebrow {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  max-width: 44rem;
+  margin: 0 auto;
+  font-size: clamp(2.3rem, 6vw, 3.8rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, var(--cool), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lead {
+  max-width: 38rem;
+  margin: 1.4rem auto 0;
+  color: var(--muted);
+  font-size: 1.125rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.install {
+  display: inline-block;
+  margin: 1.75rem 0 0;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--code-bg);
+  font-size: 0.9rem;
+}
+
+.prompt {
+  margin-right: 0.6rem;
+  color: var(--muted);
+  user-select: none;
+}
+
+.section {
+  padding: 3rem 0 0;
+}
+
+.section h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+}
+
+.section-lead {
+  max-width: 46rem;
+  margin: 0.6rem 0 1.5rem;
+  color: var(--muted);
+}
+
+.ships-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: center;
+}
+
+@media (max-width: 52rem) {
+  .ships-section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+.browser-bar em {
+  margin-left: 0.75rem;
+  color: var(--muted);
+  font: normal 0.75rem var(--mono);
+}
+
+/* The features with code, text on one side and the code on the other. */
+
+.rows {
+  display: grid;
+  gap: 4.5rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.row:nth-child(even) .row-text {
+  order: 2;
+}
+
+.row h2 {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+
+.row-text p:not(.eyebrow) {
+  color: var(--muted);
+}
+
+.row-text > a {
+  font-weight: 600;
+}
+
+.row-text > a::after {
+  /* An arrow icon, in the color of the link. */
+  content: '';
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-inline-start: 0.3em;
+  vertical-align: -0.1em;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.row-media {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.row-media .code {
+  margin: 0;
+}
+
+.browser {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.browser-bar {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.browser-bar span {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--surface-strong);
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem;
+}
+
+.feature {
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.feature h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+}
+
+.feature p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.cta {
+  text-align: center;
+  padding-top: 4rem;
+}
+
+.cta p {
+  color: var(--muted);
+}
+
+@media (max-width: 52rem) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  .row:nth-child(even) .row-text {
+    order: 0;
+  }
+}

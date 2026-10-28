@@ -405,10 +405,11 @@ export async function run({ browser, url, runner }) {
         await stage.locator('.ui-box', { hasText: 'Wi-Fi is off' }).click();
         await stage.locator('.ui-box', { hasText: 'Wi-Fi is on' }).waitFor({ timeout: 5000 });
         await page.addScriptTag({ path: axe });
-        // The primary button of the site, white on the accent color, is as on the home page.
+        // The colors of the primary button and of the /ui mark in the header fail the contrast
+        // rule on every page. A separate fix from main corrects them, so only they are excluded.
         const violations = await page.evaluate(async () => {
-          const result = await window.axe.run(document.querySelector('main'), {
-            rules: { 'color-contrast': { enabled: false } },
+          const result = await window.axe.run({
+            exclude: [['.button.primary'], ['.brand-section']],
           });
           return result.violations.map((violation) => violation.id);
         });
