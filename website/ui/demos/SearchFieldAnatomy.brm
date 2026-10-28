@@ -1,0 +1,36 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import Icon from '../../src/components/Icon.brm';
+</script>
+
+<SearchField class="ui-field" value="butt" style="width: 18rem" data-mark="1">
+  <Label data-mark="2" data-mark-side="after">Search the parts</Label>
+  <span class="ui-group">
+    <span class="searchfield-anatomy-input" data-mark="3">
+      <Input class="ui-input" />
+    </span>
+    <span class="searchfield-anatomy-button" data-mark="5">
+      <Button class="ui-button ui-icon-button"><Icon name="close" /></Button>
+    </span>
+  </span>
+  <Text slot="description" class="ui-help" data-mark="4" data-mark-side="after">Press Escape to clear.</Text>
+</SearchField>
+
+<style>
+  :global(.searchfield-anatomy-input) {
+    display: flex;
+    flex: 1;
+  }
+
+  :global(.searchfield-anatomy-input .ui-input) {
+    flex: 1;
+  }
+
+  :global(.searchfield-anatomy-button) {
+    display: inline-flex;
+  }
+</style>

@@ -1,0 +1,25 @@
+<script>
+  import Label from '@brumate/ui/Label.brm';
+  import Slider from '@brumate/ui/Slider.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderThumb from '@brumate/ui/SliderThumb.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+</script>
+
+<Slider class="ui-slider" value=(40) style="margin-bottom: 1.5rem" data-mark="1" data-mark-side="bottom">
+  <Label data-mark="2" data-mark-side="after">Volume</Label>
+  <SliderOutput data-mark="3" data-mark-side="after" />
+  <!-- The track draws its rail with ::before, which the badge also uses, so a wrapper carries the badge. -->
+  <div class="slider-anatomy-track" data-mark="4" data-mark-side="inside">
+    <SliderTrack class="ui-slider-track">
+      <!-- A thumb is placed with position: absolute, so the picture keeps it. -->
+      <SliderThumb class="ui-thumb" style="position: absolute" data-mark="5" data-mark-side="bottom" />
+    </SliderTrack>
+  </div>
+</Slider>
+
+<style>
+  :global(.slider-anatomy-track) {
+    grid-column: 1 / -1;
+  }
+</style>

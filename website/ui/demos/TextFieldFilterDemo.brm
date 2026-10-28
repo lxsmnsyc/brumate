@@ -1,0 +1,26 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  const cities = ['Amsterdam', 'Athens', 'Berlin', 'Bern', 'Lisbon', 'Lyon', 'Madrid', 'Milan'];
+  let query = $signal('');
+  const shown = $memo(cities.filter((city) => city.toLowerCase().includes(query.trim().toLowerCase())));
+</script>
+
+<div class="ui-stack">
+  <TextField class="ui-field" value=$bind(query)>
+    <Label>Find a city</Label>
+    <Input class="ui-input" placeholder="Try a or ly" />
+    <Text slot="description" class="ui-help">{shown.length} of {cities.length} shown.</Text>
+  </TextField>
+  <ul aria-label="Cities">
+    #for (city of shown by city) {
+      <li>{city}</li>
+    } #else {
+      <li>No city matches.</li>
+    }
+  </ul>
+</div>

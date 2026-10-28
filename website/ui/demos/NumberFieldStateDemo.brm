@@ -1,0 +1,54 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import NumberField from '@brumate/ui/NumberField.brm';
+
+  let mine = $signal(2);
+  let asked = $signal(2);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <NumberField class="ui-field" minValue=(0) maxValue=(10)>
+    <Label>Own state</Label>
+    <Group class="ui-number">
+      <Button slot="decrement" class="ui-step">−</Button>
+      <Input class="ui-input" />
+      <Button slot="increment" class="ui-step">+</Button>
+    </Group>
+  </NumberField>
+  <NumberField class="ui-field" minValue=(0) maxValue=(10) value=(2)>
+    <Label>Starts at 2</Label>
+    <Group class="ui-number">
+      <Button slot="decrement" class="ui-step">−</Button>
+      <Input class="ui-input" />
+      <Button slot="increment" class="ui-step">+</Button>
+    </Group>
+  </NumberField>
+  <NumberField class="ui-field" minValue=(0) maxValue=(10) value=$bind(mine) onChange=((next) => (log = `asked for ${next}`))>
+    <Label>Writes your signal</Label>
+    <Group class="ui-number">
+      <Button slot="decrement" class="ui-step">−</Button>
+      <Input class="ui-input" />
+      <Button slot="increment" class="ui-step">+</Button>
+    </Group>
+  </NumberField>
+  <NumberField class="ui-field" minValue=(0) maxValue=(10) value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <Label>Asks you first</Label>
+    <Group class="ui-number">
+      <Button slot="decrement" class="ui-step">−</Button>
+      <Input class="ui-input" />
+      <Button slot="increment" class="ui-step">+</Button>
+    </Group>
+  </NumberField>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (mine = 7))>Write 7 to the third</Button>
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine}. Asks: {asked}. Last callback: {log || 'none'}.</p>
+</form>

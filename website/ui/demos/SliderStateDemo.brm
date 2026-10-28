@@ -1,0 +1,43 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Slider from '@brumate/ui/Slider.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderThumb from '@brumate/ui/SliderThumb.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let mine = $signal(30);
+  let asked = $signal(30);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<form class="ui-stack">
+  <Slider class="ui-slider">
+    <Label>Own state</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-slider-track"><SliderThumb class="ui-thumb" /></SliderTrack>
+  </Slider>
+  <Slider class="ui-slider" value=(30)>
+    <Label>Starts at 30</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-slider-track"><SliderThumb class="ui-thumb" /></SliderTrack>
+  </Slider>
+  <Slider class="ui-slider" value=$bind(mine) onChange=((next) => (log = `asked for ${next}`))>
+    <Label>Writes your signal</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-slider-track"><SliderThumb class="ui-thumb" /></SliderTrack>
+  </Slider>
+  <Slider class="ui-slider" value=$bind(asked, (next) => { if (!locked) asked = next; })>
+    <Label>Asks you first</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-slider-track"><SliderThumb class="ui-thumb" /></SliderTrack>
+  </Slider>
+  <div class="ui-row">
+    <Button class="ui-button" onClick=(() => (mine = 80))>Write 80 to the third</Button>
+    <Button class="ui-button" onClick=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+    <Button type="reset" class="ui-button">Reset the form</Button>
+  </div>
+  <p>Writes: {mine}. Asks: {asked}. Last callback: {log || 'none'}.</p>
+</form>

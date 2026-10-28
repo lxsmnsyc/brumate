@@ -1,0 +1,31 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  const parts = ['Button', 'Checkbox', 'ComboBox', 'DateField', 'Menu', 'NumberField', 'Select', 'Slider', 'Switch', 'Tabs'];
+  let query = $signal('');
+  let found = $signal('');
+  let recent = $signal<string[]>([]);
+  const results = $memo(parts.filter((part) => part.toLowerCase().includes(found.toLowerCase())));
+
+  function search(text: string) {
+    const word = text.trim();
+    found = word;
+    if (word && !recent.includes(word)) {
+      recent = [word, ...recent].slice(0, 3);
+    }
+  }
+</script>
+
+<div class="ui-stack">
+  <SearchField class="ui-field" value=$bind(query) onSubmit=(search) onClear=(() => (found = ''))>
+    <Label>Search the parts</Label>
+    <Input class="ui-input" placeholder="Type, then press Enter" />
+    <Text slot="description" class="ui-help">Enter searches. Escape clears the text and the results.</Text>
+  </SearchField>
+  <p>{found ? `${results.length} results for "${found}": ${results.join(', ') || 'none'}.` : `All ${parts.length} parts.`}</p>
+  <p>Recent: {recent.join(', ') || 'none'}.</p>
+</div>

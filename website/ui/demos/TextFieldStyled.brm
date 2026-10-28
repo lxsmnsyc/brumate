@@ -1,0 +1,157 @@
+<script>
+  import { prevent } from 'brumate/events';
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  let sent = $signal('');
+
+  function submit(event: SubmitEvent) {
+    const data = new FormData(event.currentTarget as HTMLFormElement);
+    sent = `Sent ${data.get('email')}.`;
+  }
+</script>
+
+<Form class="textfield-styled-form" onSubmit=(prevent(submit))>
+  <TextField class="textfield-styled" name="email" type="email" isRequired>
+    <Label class="textfield-styled-label">Email</Label>
+    <Input class="textfield-styled-input" placeholder="you@example.com" />
+    <Text slot="description" class="textfield-styled-help">We send the receipt here. Press Send with it empty to see the error.</Text>
+    <FieldError class="textfield-styled-error" />
+  </TextField>
+  <TextField class="textfield-styled" value="ada" isReadOnly>
+    <Label class="textfield-styled-label">Account</Label>
+    <Input class="textfield-styled-input" />
+  </TextField>
+  <TextField class="textfield-styled" isDisabled value="Not editable">
+    <Label class="textfield-styled-label">Plan</Label>
+    <Input class="textfield-styled-input" />
+  </TextField>
+  <Button type="submit" class="textfield-styled-submit">Send</Button>
+  <p role="status" class="textfield-styled-status">{sent}</p>
+</Form>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.textfield-styled-form) {
+    --textfield-styled-page: light-dark(#f2efea, #1d1a17);
+    --textfield-styled-field: light-dark(#fff, #0f0d0b);
+    --textfield-styled-border: light-dark(#76706a, #8d857b);
+    --textfield-styled-muted: light-dark(#5a544d, #b3aaa0);
+    --textfield-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --textfield-styled-on-accent: light-dark(#fff, #101418);
+    --textfield-styled-danger: light-dark(#b3261e, #f28b82);
+    display: grid;
+    justify-items: start;
+    gap: 0.9rem;
+    width: min(100%, 20rem);
+    color: CanvasText;
+  }
+
+  :global(.textfield-styled) {
+    display: grid;
+    gap: 0.3rem;
+    width: 100%;
+  }
+
+  :global(.textfield-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.textfield-styled-input) {
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--textfield-styled-border);
+    border-radius: 8px;
+    background: var(--textfield-styled-field);
+    color: CanvasText;
+    font: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.textfield-styled-input[data-hovered]) {
+    border-color: var(--textfield-styled-accent);
+  }
+
+  /* Two bands, an accent one and an inner one in the color of the field. */
+  :global(.textfield-styled-input[data-focus-visible]) {
+    outline: none;
+    border-color: var(--textfield-styled-accent);
+    box-shadow:
+      0 0 0 2px var(--textfield-styled-accent),
+      inset 0 0 0 2px var(--textfield-styled-field);
+  }
+
+  :global(.textfield-styled-input[data-invalid]) {
+    border-color: var(--textfield-styled-danger);
+  }
+
+  :global(.textfield-styled-input[data-invalid][data-focus-visible]) {
+    box-shadow:
+      0 0 0 2px var(--textfield-styled-danger),
+      inset 0 0 0 2px var(--textfield-styled-field);
+  }
+
+  :global(.textfield-styled-input::placeholder) {
+    color: var(--textfield-styled-muted);
+  }
+
+  :global(.textfield-styled-input[readonly]) {
+    background: var(--textfield-styled-page);
+    border-style: dashed;
+  }
+
+  :global(.textfield-styled-input[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  :global(.textfield-styled-help) {
+    color: var(--textfield-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  :global(.textfield-styled-error) {
+    color: var(--textfield-styled-danger);
+    font-size: 0.875rem;
+  }
+
+  :global(.textfield-styled-submit) {
+    padding: 0.4rem 1rem;
+    border: 0;
+    border-radius: 8px;
+    background: var(--textfield-styled-accent);
+    color: var(--textfield-styled-on-accent);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :global(.textfield-styled-submit[data-hovered]) {
+    background: color-mix(in srgb, var(--textfield-styled-accent), CanvasText 15%);
+  }
+
+  :global(.textfield-styled-submit[data-pressed]) {
+    background: color-mix(in srgb, var(--textfield-styled-accent), CanvasText 28%);
+  }
+
+  :global(.textfield-styled-submit[data-focus-visible]) {
+    outline: 2px solid var(--textfield-styled-accent);
+    outline-offset: 2px;
+  }
+
+  :global(.textfield-styled-status) {
+    margin: 0;
+    color: var(--textfield-styled-muted);
+    font-size: 0.875rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.textfield-styled-input) {
+      transition: none;
+    }
+  }
+</style>

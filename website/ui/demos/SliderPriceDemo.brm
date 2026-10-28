@@ -1,0 +1,46 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import Slider from '@brumate/ui/Slider.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderThumb from '@brumate/ui/SliderThumb.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  const rooms = [
+    { name: 'Harbor view', price: 90 },
+    { name: 'Garden', price: 140 },
+    { name: 'Loft', price: 220 },
+    { name: 'Suite', price: 410 },
+    { name: 'Penthouse', price: 780 },
+  ];
+  let range = $signal([50, 500]);
+  // The list changes when the user lets go, so it does not jump during a drag.
+  let applied = $signal([50, 500]);
+  const shown = $memo(rooms.filter((room) => room.price >= applied[0] && room.price <= applied[1]));
+</script>
+
+<div class="ui-stack">
+  <Slider
+    class="ui-slider"
+    minValue=(0)
+    maxValue=(800)
+    step=(10)
+    value=$bind(range)
+    onChangeEnd=((value) => (applied = value as number[]))
+    formatOptions=({ style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+  >
+    <Label>Price per night</Label>
+    <SliderOutput />
+    <SliderTrack class="ui-slider-track">
+      <SliderThumb class="ui-thumb" index=(0) aria-label="Lowest price" />
+      <SliderThumb class="ui-thumb" index=(1) aria-label="Highest price" />
+    </SliderTrack>
+  </Slider>
+  <ul aria-label="Rooms">
+    #for (room of shown by room.name) {
+      <li>{room.name}, ${room.price}</li>
+    } #else {
+      <li>No room in this range.</li>
+    }
+  </ul>
+</div>
