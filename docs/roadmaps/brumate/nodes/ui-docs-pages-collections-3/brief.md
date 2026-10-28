@@ -1,7 +1,7 @@
 ---
 id: ui-docs-pages-collections-3
 title: Anatomy, use cases, CSS and state on the Table, Tree and data pages
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
