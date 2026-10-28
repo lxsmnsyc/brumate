@@ -1,0 +1,127 @@
+<script>
+  import { sizes } from '../ui-landing.ts';
+
+  const base = sizes[0]!.total;
+  const max = sizes[sizes.length - 1]!.total;
+  const percent = (value: number): string => `${((value / max) * 100).toFixed(1)}%`;
+  const added = (total: number): string => (total - base).toFixed(1);
+</script>
+
+<ul class="sizes">
+  #for (size of sizes by size.name) {
+    <li class="size">
+      <span class="size-name">{size.name}{size.note ? ` (${size.note})` : ''}</span>
+      <span class="size-bar" aria-hidden="true">
+        <i class="size-core" style=(`width: ${percent(base)}`)></i>
+        <i class="size-part" style=(`width: ${percent(size.total - base)}`)></i>
+      </span>
+      <span class="size-value">
+        {size.total.toFixed(1)} kB
+        #if (size.total > base) {
+          <small>+{added(size.total)}</small>
+        }
+      </span>
+    </li>
+  }
+</ul>
+<p class="sizes-legend" aria-hidden="true">
+  <span class="core">Loader and core of brumate</span>
+  <span class="part">Code of the parts</span>
+</p>
+
+<style>
+  .sizes {
+    display: grid;
+    gap: 0.9rem;
+    margin: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    list-style: none;
+  }
+
+  .size {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 1fr) 6.5rem;
+    gap: 0.9rem;
+    align-items: center;
+    font-size: 0.9rem;
+  }
+
+  .size-name {
+    font-weight: 600;
+  }
+
+  .size-bar {
+    display: flex;
+    height: 0.85rem;
+    border-radius: 999px;
+    background: var(--surface-strong);
+    overflow: hidden;
+  }
+
+  .size-bar i {
+    display: block;
+    height: 100%;
+  }
+
+  .size-core {
+    background: var(--cool);
+  }
+
+  .size-part {
+    background: var(--accent);
+  }
+
+  .size-value {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    text-align: right;
+  }
+
+  .size-value small {
+    margin-left: 0.35rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  .sizes-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin: 0.75rem 0 0;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .sizes-legend span::before {
+    content: '';
+    display: inline-block;
+    width: 0.8rem;
+    height: 0.8rem;
+    margin-right: 0.4rem;
+    border-radius: 3px;
+    vertical-align: -0.1rem;
+  }
+
+  .sizes-legend .core::before {
+    background: var(--cool);
+  }
+
+  .sizes-legend .part::before {
+    background: var(--accent);
+  }
+
+  @media (max-width: 40rem) {
+    .size {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.35rem 0.9rem;
+    }
+
+    .size-bar {
+      grid-column: 1 / -1;
+      order: 3;
+    }
+  }
+</style>
