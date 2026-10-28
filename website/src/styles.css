@@ -163,6 +163,7 @@ pre {
 }
 
 .prose :not(pre) > code {
+  overflow-wrap: anywhere;
   padding: 0.1rem 0.35rem;
   border-radius: 5px;
   background: var(--surface-strong);

@@ -25,3 +25,5 @@ Axe's `scrollable-region-focusable` named one node on each of /ui/calendar, /ui/
 - Every markdown table is wrapped in `.table-scroll` and every code block `pre` gets `tabindex="0"`, `role="group"` and a label (the nearest heading, or "Table" / "Code"). `.prose table` is no longer `display: block`. Props tables are labelled `<Part> props`.
 - New e2e flow: axe `scrollable-region-focusable` on every /docs and /ui page at 375px and 1280px. Zero hits.
 - Contract log line added to contracts/props-table.md.
+- The code cards of /ui/ and the home page (`.row-media .code`) are focusable, labelled groups. The flow also covers `/docs/` and `/ui/`.
+- Inline `<code>` overflowed /docs/deploying at 375px on main too (no wrap rule). Fixed with `overflow-wrap: anywhere` on inline code in prose.

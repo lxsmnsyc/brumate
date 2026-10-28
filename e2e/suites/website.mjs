@@ -896,6 +896,8 @@ export async function run({ browser, url, runner }) {
               slugs.add(href);
             }
           }
+          slugs.add('/docs/');
+          slugs.add('/ui/');
           assert(slugs.size > 60, `the sidebars link to ${slugs.size} pages`);
           for (const slug of slugs) {
             const response = await page.goto(`${url}${slug}`, { waitUntil: 'load' });
