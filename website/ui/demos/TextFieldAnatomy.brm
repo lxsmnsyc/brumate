@@ -6,7 +6,7 @@
   import TextField from '@brumate/ui/TextField.brm';
 </script>
 
-<TextField class="ui-field" value="ada@" isInvalid style="width: 18rem" data-mark="1">
+<TextField class="ui-field" value="ada@" isInvalid style="width: 18rem; max-width: calc(100% - 0.75rem)" data-mark="1">
   <Label data-mark="2" data-mark-side="after">Email</Label>
   <span class="textfield-anatomy-input" data-mark="3">
     <Input class="ui-input" />

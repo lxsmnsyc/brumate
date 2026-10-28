@@ -13,7 +13,7 @@
   ];
 </script>
 
-<TokenField class="ui-field" value=(message) pattern="[#@]\S+" style="width: 20rem" data-mark="1">
+<TokenField class="ui-field" value=(message) pattern="[#@]\S+" style="width: 20rem; max-width: calc(100% - 0.75rem)" data-mark="1">
   <Label class="ui-label" data-mark="2" data-mark-side="after">Message</Label>
   <span class="tokenfield-anatomy-input" data-mark="3">
     <TokenInput class="ui-input ui-token-input" token=chip />
@@ -22,10 +22,16 @@
 </TokenField>
 
 #template chip(segment) {
-  <Token class="ui-token ui-mention tokenfield-anatomy-token" data-mark="4" data-mark-side="bottom">{segment.text}</Token>
+  <Token class="ui-token ui-mention tokenfield-anatomy-token" data-mark="4">{segment.text}</Token>
 }
 
 <style>
+  /* The badge of a token sits above its corner, so it does not cover the text. */
+  :global(.anatomy-stage .tokenfield-anatomy-token[data-mark]::before) {
+    top: -1.1rem;
+    inset-inline-end: -0.4rem;
+  }
+
   :global(.tokenfield-anatomy-input) {
     display: block;
   }

@@ -8,9 +8,9 @@
   import Text from '@brumate/ui/Text.brm';
 </script>
 
-<NumberField class="ui-field" value=(12) minValue=(1) maxValue=(10) style="width: 14rem" data-mark="1">
+<NumberField class="ui-field" value=(12) minValue=(1) maxValue=(10) style="width: 14rem; max-width: calc(100% - 0.75rem)" data-mark="1">
   <Label data-mark="2" data-mark-side="after">Guests</Label>
-  <Group class="ui-number" data-mark="3" data-mark-side="bottom" style="width: 100%">
+  <Group class="ui-number numberfield-anatomy-group" data-mark="3" data-mark-side="bottom" style="width: 100%">
     <span class="numberfield-anatomy-wrap" data-mark="4">
       <Button slot="decrement" class="ui-step">−</Button>
     </span>
@@ -26,6 +26,11 @@
 </NumberField>
 
 <style>
+  /* The badge of the group sits in the middle of its lower edge, so it does not read as the minus button. */
+  :global(.anatomy-stage .numberfield-anatomy-group[data-mark]::before) {
+    inset-inline-start: calc(50% - 0.7rem);
+  }
+
   :global(.numberfield-anatomy-wrap) {
     display: inline-flex;
   }

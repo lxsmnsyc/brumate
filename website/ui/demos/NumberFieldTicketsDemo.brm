@@ -9,7 +9,7 @@
 
   const price = 18.5;
   let seats = $signal(2);
-  const total = $memo(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(seats * price));
+  const total = $memo(Number.isNaN(seats) ? 'none' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(seats * price));
 </script>
 
 <div class="ui-stack">
@@ -22,5 +22,5 @@
     </Group>
     <Text slot="description" class="ui-help">Up to 8 seats, $18.50 each.</Text>
   </NumberField>
-  <p>{seats} {seats === 1 ? 'seat' : 'seats'}: {total}.</p>
+  <p>{Number.isNaN(seats) ? 'No seats' : `${seats} ${seats === 1 ? 'seat' : 'seats'}`}: {total}.</p>
 </div>

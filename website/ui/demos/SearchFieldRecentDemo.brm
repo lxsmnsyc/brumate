@@ -14,8 +14,8 @@
   function search(text: string) {
     const word = text.trim();
     found = word;
-    if (word && !recent.includes(word)) {
-      recent = [word, ...recent].slice(0, 3);
+    if (word) {
+      recent = [word, ...recent.filter((item) => item !== word)].slice(0, 3);
     }
   }
 </script>
@@ -26,6 +26,6 @@
     <Input class="ui-input" placeholder="Type, then press Enter" />
     <Text slot="description" class="ui-help">Enter searches. Escape clears the text and the results.</Text>
   </SearchField>
-  <p>{found ? `${results.length} results for "${found}": ${results.join(', ') || 'none'}.` : `All ${parts.length} parts.`}</p>
+  <p>{found ? `${results.length} ${results.length === 1 ? 'result' : 'results'} for "${found}": ${results.join(', ') || 'none'}.` : `All ${parts.length} parts.`}</p>
   <p>Recent: {recent.join(', ') || 'none'}.</p>
 </div>

@@ -704,7 +704,7 @@ export async function run({ browser, url, runner }) {
       await page.keyboard.type('se');
       await page.keyboard.press('Enter');
       assert(
-        (await page.locator('p', { hasText: 'results for' }).innerText()).includes('Select'),
+        (await page.locator('p', { hasText: /results? for/ }).innerText()).includes('Select'),
         'Enter did not search',
       );
       await page.keyboard.press('Escape');
@@ -779,7 +779,7 @@ export async function run({ browser, url, runner }) {
       await discount.click();
       await page.keyboard.press('ArrowUp');
       assert((await discount.inputValue()) === '15%', 'the percent did not step by 5%');
-      await page.keyboard.press('Meta+A');
+      await page.keyboard.press('ControlOrMeta+A');
       await page.keyboard.press('Backspace');
       await percent.getByRole('button', { name: 'Send' }).click();
       await settle();
@@ -910,7 +910,7 @@ export async function run({ browser, url, runner }) {
       const rename = page.locator('button.ui-button[aria-expanded]', { hasText: /^Rename$/ });
       await rename.click();
       await page.waitForFunction(() => document.activeElement?.matches('[role=dialog] input'));
-      await page.keyboard.press('Control+A');
+      await page.keyboard.press('ControlOrMeta+A');
       await page.keyboard.type('Annual');
       await page.keyboard.press('Enter');
       await page.getByText('File: Annual').waitFor({ timeout: 5000 });
