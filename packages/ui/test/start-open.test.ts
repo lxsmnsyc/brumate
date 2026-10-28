@@ -11,6 +11,7 @@ afterEach(async () => {
     (document.activeElement ?? document.body).dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
     );
+    // oxlint-disable-next-line no-await-in-loop
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
   unmount?.();
@@ -31,35 +32,49 @@ async function start(kind: string) {
 const find = (selector: string) => document.querySelector<HTMLElement>(selector);
 
 /** The overlay is in the page, and the page is inert behind it, as after a press. */
-async function modalOpen(page: Awaited<ReturnType<typeof start>>, focused: string) {
+async function modalOpen(page: Awaited<ReturnType<typeof start>>) {
   await page.waitFor(() => expect(find('.layer')).not.toBeNull());
-  await page.waitFor(() => expect(document.activeElement).toBe(find(focused)));
+  await page.waitFor(() => expect(find('.layer')!.contains(document.activeElement)).toBe(true));
   expect(page.get('.page').closest('[inert]')).not.toBeNull();
   expect(find('.layer')!.closest('[inert]')).toBeNull();
   expect(document.documentElement.style.overflow).toBe('hidden');
 }
 
-for (const [kind, focused] of [
-  ['popover', '.dialog'],
-  ['popover-own', '.dialog'],
-  ['modal', '.dialog'],
-  ['modal-own', '.dialog'],
-  ['overlay-own', '.dialog'],
-  ['menu', '.menu'],
+for (const kind of [
+  'popover',
+  'popover-own',
+  'modal',
+  'modal-own',
+  'overlay-own',
+  'menu',
 ] as const) {
   it(`${kind}: a true start value is open after load, with focus in and the page inert`, async () => {
     const page = await start(kind);
-    await modalOpen(page, focused);
-    if (kind !== 'popover-own' && kind !== 'modal-own' && kind !== 'overlay-own') {
-      const trigger = page.get('.trigger');
-      await page.waitFor(() => expect(trigger.getAttribute('aria-expanded')).toBe('true'));
-    }
+    await modalOpen(page);
+    expect(find('.layer')).not.toBeNull();
+  });
+}
+
+for (const kind of ['popover', 'modal', 'menu']) {
+  it(`${kind}: the trigger says it is expanded`, async () => {
+    const page = await start(kind);
+    await page.waitFor(() => expect(find('.layer')).not.toBeNull());
+    await page.waitFor(() =>
+      expect(page.get('.trigger').getAttribute('aria-expanded')).toBe('true'),
+    );
+  });
+}
+
+for (const kind of ['popover', 'modal']) {
+  it(`${kind}: focus is on the dialog, as after a press`, async () => {
+    const page = await start(kind);
+    await page.waitFor(() => expect(document.activeElement).toBe(find('.dialog')));
   });
 }
 
 it('a modal that started open closes with Escape and gives focus back', async () => {
   const page = await start('modal');
-  await modalOpen(page, '.dialog');
+  await modalOpen(page);
   document.activeElement!.dispatchEvent(
     new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
   );

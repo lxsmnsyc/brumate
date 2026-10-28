@@ -21,10 +21,10 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
   import { isFocusVisible } from './interactions.ts';
-  import { cancelLongPress, dismissed, followPreview, startLongPress } from './preview.ts';
+  import { cancelLongPress, dismissed, followPreview, startLongPress, startedOpen } from './preview.ts';
   import { previews } from './tooltip.ts';
 
   /**
@@ -145,17 +145,16 @@
 
   // A start value of `true` follows from load, since an effect never runs then. The first run of
   // the effect gives that follow back.
-  let loaded = $signal<(() => void) | undefined>();
   $client(() => {
     if (isOpen) {
-      loaded = follow();
+      startedOpen.set(overlayId, follow());
     }
   }, 'load');
 
   // While it is open, the page decides when it closes.
   $effect(() => {
-    $untrack(loaded?.());
-    $untrack((loaded = undefined));
+    startedOpen.get(overlayId)?.();
+    startedOpen.delete(overlayId);
     if (!isOpen) {
       return undefined;
     }
