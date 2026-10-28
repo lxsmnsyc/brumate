@@ -1,7 +1,7 @@
 ---
 id: brumate-check
 title: brumate check, with codes and links for compile errors
-status: active
+status: done
 priority: should
 type: feature
 outline: false
