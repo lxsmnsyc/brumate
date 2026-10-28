@@ -39,7 +39,7 @@
     <Search {section} />
     <nav class="header-nav" aria-label="Main">
       #if (section === 'ui') {
-        <a href=(`${base}ui`)>Parts</a>
+        <a href=(`${base}ui/parts`)>Parts</a>
         <a href=(`${base}docs`)>brumate</a>
       } #else {
         <a href=(`${base}docs`)>Docs</a>

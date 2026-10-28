@@ -23,7 +23,10 @@ for (const [file, demo] of Object.entries(
 
 /** The sections of the sidebar, in reading order. Each part has a page of its own. */
 export const sections: { title: string; pages: { slug: string; title: string }[] }[] = [
-  { title: 'Start', pages: ['', 'styling', 'state', 'resuming', 'layers', 'influences'] },
+  {
+    title: 'Start',
+    pages: ['', 'introduction', 'parts', 'styling', 'state', 'resuming', 'layers', 'influences'],
+  },
   {
     title: 'Buttons',
     pages: ['button', 'toggle-button', 'toggle-button-group', 'link', 'file-trigger', 'drop-zone'],
@@ -87,7 +90,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   title: section.title,
   pages: section.pages
     .filter((slug) => slug in pages)
-    .map((slug) => ({ slug, title: slug === '' ? 'Introduction' : pages[slug]!.title })),
+    .map((slug) => ({ slug, title: slug === '' ? 'Overview' : pages[slug]!.title })),
 }));
 
 /** The cards of the home of the section: a demo of each part, and the section about it. */
