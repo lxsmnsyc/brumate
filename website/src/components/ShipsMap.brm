@@ -132,8 +132,8 @@
   }
 
   .ships-switch label:has(input:checked) {
-    background: var(--accent);
-    color: #fff;
+    background: var(--accent-fill);
+    color: var(--on-accent);
   }
 
   .ships-switch label:has(input:focus-visible) {

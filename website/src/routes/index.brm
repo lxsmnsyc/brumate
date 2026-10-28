@@ -529,8 +529,8 @@
 
   .xray:has(.xray-toggle input:checked) :global([data-xray='handler'])::after {
     content: 'ships code';
-    background: var(--accent);
-    color: #fff;
+    background: var(--accent-fill);
+    color: var(--on-accent);
   }
 
   .xray:has(.xray-toggle input:checked) :global([data-xray='update'])::after {
@@ -744,8 +744,8 @@
     top: -0.7rem;
     padding: 0.05rem 0.45rem;
     border-radius: 999px;
-    background: var(--accent);
-    color: #fff;
+    background: var(--accent-fill);
+    color: var(--on-accent);
     font-size: 0.75rem;
   }
 
@@ -783,7 +783,7 @@
   }
 
   .type-error span {
-    color: #d1242f;
+    color: var(--danger);
     font-weight: 700;
   }
 
