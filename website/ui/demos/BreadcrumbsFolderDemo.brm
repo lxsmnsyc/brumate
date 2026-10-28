@@ -1,0 +1,35 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import Breadcrumb from '@brumate/ui/Breadcrumb.brm';
+  import Breadcrumbs from '@brumate/ui/Breadcrumbs.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Link from '@brumate/ui/Link.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  const folders: Record<string, string[]> = { files: ['Photos', 'Docs'], Photos: ['Spring', 'Summer'], Docs: [], Spring: [], Summer: [] };
+  let path = $signal(['files']);
+  const here = $memo(path[path.length - 1]);
+</script>
+
+<div class="ui-stack">
+  <nav aria-label="Folder">
+    <Breadcrumbs class="ui-group">
+      #for (name of path by name) {
+        <Breadcrumb class="ui-crumb" isCurrent=(name === here)>
+          <Link class="ui-link" onPress=(() => (path = path.slice(0, path.indexOf(name) + 1)))>{name}</Link>
+          #if (name !== here) {
+            <Icon name="arrow-right" size=(12) />
+          }
+        </Breadcrumb>
+      }
+    </Breadcrumbs>
+  </nav>
+  <div class="ui-group">
+    #for (name of folders[here] by name) {
+      <Button class="ui-button" onPress=(() => (path = [...path, name]))>{name}</Button>
+    }
+    #if (folders[here].length === 0) {
+      <span>This folder is empty.</span>
+    }
+  </div>
+</div>

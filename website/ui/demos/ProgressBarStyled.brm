@@ -1,0 +1,95 @@
+<script>
+  import Label from '@brumate/ui/Label.brm';
+  import ProgressBar from '@brumate/ui/ProgressBar.brm';
+</script>
+
+#template bar(state) {
+  #if (!state.isIndeterminate) {
+    <span class="progress-styled-value">{state.valueText}</span>
+  }
+  <span class="progress-styled-track"><span class="progress-styled-fill"></span></span>
+}
+
+<div class="progress-styled-list">
+  <ProgressBar class="progress-styled" value=(64) content=bar>
+    <Label class="progress-styled-label">Uploading</Label>
+  </ProgressBar>
+  <ProgressBar class="progress-styled" isIndeterminate content=bar>
+    <Label class="progress-styled-label">Waiting for the server</Label>
+  </ProgressBar>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.progress-styled-list) {
+    --progress-styled-track: color-mix(in srgb, CanvasText 18%, Canvas);
+    --progress-styled-fill: light-dark(#2a76b2, #6fb2e6);
+    display: grid;
+    gap: 1rem;
+    width: 100%;
+    max-width: 22rem;
+    color: CanvasText;
+  }
+
+  :global(.progress-styled) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.3rem 1rem;
+  }
+
+  :global(.progress-styled-label) {
+    font-weight: 600;
+  }
+
+  :global(.progress-styled-value) {
+    grid-row: 1;
+    grid-column: 2;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :global(.progress-styled-track) {
+    grid-column: 1 / -1;
+    height: 0.6rem;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: var(--progress-styled-track);
+  }
+
+  :global(.progress-styled-fill) {
+    display: block;
+    width: var(--percentage);
+    height: 100%;
+    border-radius: 1rem;
+    background: var(--progress-styled-fill);
+    transition: width 0.3s;
+  }
+
+  /* An indeterminate bar has no --percentage, so a stripe of fixed width slides across. */
+  :global(.progress-styled[data-indeterminate] .progress-styled-fill) {
+    width: 40%;
+    transition: none;
+    animation: progress-styled-slide 1.2s ease-in-out infinite alternate;
+  }
+
+  @keyframes progress-styled-slide {
+    from {
+      translate: 0;
+    }
+    to {
+      translate: 150%;
+    }
+  }
+
+  /* With reduced motion the stripe stops, and fills the track in a lighter shade. */
+  @media (prefers-reduced-motion: reduce) {
+    :global(.progress-styled-fill) {
+      transition: none;
+    }
+
+    :global(.progress-styled[data-indeterminate] .progress-styled-fill) {
+      width: 100%;
+      animation: none;
+      opacity: 0.5;
+    }
+  }
+</style>

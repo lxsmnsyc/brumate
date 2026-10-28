@@ -15,6 +15,13 @@ A section that the user expands and collapses, such as a question of an FAQ.
 
 ## Anatomy
 
+```brm anatomy DisclosureAnatomy
+`Disclosure`: Holds the state, and names the trigger and the panel to each other.
+`Heading`: Optional. Puts the trigger in a heading of the page.
+`Button`: The trigger, with `slot="trigger"`. It gets `aria-expanded` and `aria-controls`.
+`DisclosurePanel`: The content. It is hidden while the disclosure is collapsed.
+```
+
 ```html
 <Disclosure>
   <Heading>
@@ -24,7 +31,7 @@ A section that the user expands and collapses, such as a question of an FAQ.
 </>
 ```
 
-The `Heading` is optional.
+The `Heading` is optional. The picture draws the disclosure expanded, with the panel's clipping turned off, so that its badge shows.
 
 ## Props
 
@@ -70,11 +77,27 @@ The trigger shows the data attributes of a [Button](./button.md#data-attributes)
 
 ## Controlled and uncontrolled
 
-`isExpanded` holds the state. `isExpanded=(true)` starts the disclosure expanded, and `isExpanded=$bind(signal)` writes your signal. `onExpandedChange` gets each new state. In a [DisclosureGroup](./disclosure-group.md), the group holds the state, and a disclosure that the group collapses, because another one opened, does not run its own `onExpandedChange`. The `onExpandedChange` of the group does. See [State](./state.md).
+`isExpanded` holds the state. How you pass it picks who keeps it:
+
+```brm demo DisclosureStateDemo
+
+```
+
+- `isExpanded` alone, or nothing, makes the disclosure keep its own state. It starts collapsed. `isExpanded=(true)` is where that state starts, and a press changes it from there.
+- `isExpanded=$bind(signal)` writes your signal. Change the signal and the disclosure follows. The last two disclosures above share one signal.
+- `isExpanded=$bind(signal, (next) => ...)` asks you first. The disclosure shows what you keep, so a request that you ignore leaves it as it was. Press Lock, then the last disclosure.
+- `onExpandedChange` gets each new state when the disclosure changes by itself, which is a press or find in page. It does not run when you write the signal. In a [DisclosureGroup](./disclosure-group.md), the group holds the state, and a disclosure that the group collapses, because another one opened, does not run its own `onExpandedChange`. The `onExpandedChange` of the group does.
+- A disclosure is not a form field, so a form reset leaves it as it is. The server renders the state it starts with, panel and `hidden` included. See [State](./state.md).
 
 ## Styling
 
-Style the disclosure and its panel with the data attributes above, such as `[data-expanded]`. See [Animating the panel](#animating-the-panel) for `--disclosure-panel-height`, and [Styling](./styling.md).
+Style the disclosure and its panel with the data attributes above, such as `[data-expanded]`. The trigger shows `aria-expanded` too, which is handy for a chevron. See [Animating the panel](#animating-the-panel) for `--disclosure-panel-height`, and [Styling](./styling.md).
+
+This stylesheet makes a card list: rest, hover, press, a two-band focus ring, expanded, disabled, and a panel that grows from nothing to its height. Press Tab to see the ring.
+
+```brm styled DisclosureStyled
+
+```
 
 ## Animating the panel
 
@@ -106,3 +129,21 @@ Style the disclosure and its panel with the data attributes above, such as `[dat
 | `'offscreen'` | Stays in an [`#offscreen`](../docs/control-flow.md#offscreen) block, with its state, and its effects pause. |
 
 With `true` and `'offscreen'`, a panel that starts collapsed has no content in the page that the server sends, so find in page and search engines do not reach it. Keep the default for text that people search for.
+
+## Use cases
+
+### Terms that must be opened
+
+`onExpandedChange` runs when the user opens the disclosure, so the page can know that the terms were opened. The Accept button waits for it.
+
+```brm demo DisclosureTermsDemo
+
+```
+
+### Options that keep their state
+
+`unmount="offscreen"` takes the collapsed panel out of the page and keeps its state. Type an address, collapse the section and open it again: the field still holds the text. With the default `unmount={false}` the content stays in the page too, and find in page reaches it. Use `'offscreen'` when the content is heavy and the page does not need to find it.
+
+```brm demo DisclosureOptionsDemo
+
+```

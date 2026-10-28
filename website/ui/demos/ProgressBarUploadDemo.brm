@@ -1,0 +1,48 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ProgressBar from '@brumate/ui/ProgressBar.brm';
+
+  let sent = $signal(0);
+  let running = $signal(false);
+  // Each start or cancel makes a new run, so an old timer sees that it is stale and stops.
+  let run = $signal(0);
+
+  function start() {
+    if (running) {
+      return;
+    }
+    if (sent >= 100) {
+      sent = 0;
+    }
+    running = true;
+    run += 1;
+    const mine = run;
+    const timer = setInterval(() => {
+      if (mine !== run) {
+        clearInterval(timer);
+        return;
+      }
+      sent = Math.min(100, sent + 5);
+      if (sent >= 100) {
+        running = false;
+        clearInterval(timer);
+      }
+    }, 150);
+  }
+
+  function cancel() {
+    run += 1;
+    running = false;
+    sent = 0;
+  }
+</script>
+
+<div class="ui-stack">
+  <ProgressBar class="ui-bar" value=(sent)><Label>{running ? 'Uploading' : sent >= 100 ? 'Done' : 'Ready'}</Label></ProgressBar>
+  <div class="ui-group">
+    <Button class="ui-button" isDisabled=(running) onPress=start>{sent >= 100 ? 'Upload again' : 'Upload'}</Button>
+    <Button class="ui-button" isDisabled=(!running) onPress=cancel>Cancel</Button>
+  </div>
+</div>

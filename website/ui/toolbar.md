@@ -16,6 +16,14 @@ A toolbar where the arrow keys move focus between its items.
 
 ## Anatomy
 
+```brm anatomy ToolbarAnatomy
+`Toolbar`: Moves focus between its items with the arrow keys.
+`Button`: An item. Any part that takes focus can be one.
+`Separator`: A line between groups of items.
+`ToggleButtonGroup`: A group of items inside the toolbar. It leaves its keys to the toolbar.
+`ToggleButton`: An item of that group.
+```
+
 ```html
 <Toolbar>
   <Button />
@@ -26,7 +34,7 @@ A toolbar where the arrow keys move focus between its items.
 </>
 ```
 
-The items are any parts that take focus, such as buttons, links and fields. The `Separator` and the `ToggleButtonGroup` are optional.
+The items are any parts that take focus, such as buttons, links and fields. The `Separator` and the `ToggleButtonGroup` are optional. The `Separator` is only a line, so it is not an item that focus stops on.
 
 ## Props
 
@@ -55,3 +63,31 @@ Focus stops at the first and the last item. A text field keeps the keys that mov
 ## Styling
 
 Style the toolbar with `[data-orientation='vertical']`. See [Styling](./styling.md).
+
+This stylesheet makes a horizontal and a vertical bar. Its items have hover, press, on, disabled and a two-band focus ring. Press Tab to enter a bar, then the arrow keys to move in it.
+
+```brm styled ToolbarStyled
+
+```
+
+## State
+
+A toolbar keeps no value. The item that Tab stops at is the one that had focus last, and the toolbar keeps that as the `tabindex` of its items, in the page, not in a signal. A form reset leaves it as it is. The items hold their own state: see [ToggleButtonGroup](./toggle-button-group.md#controlled-and-uncontrolled).
+
+## Use cases
+
+### A formatting bar
+
+Toggle buttons write a list, buttons change a size within limits, and a text field takes the keys that move its caret. Once focus is in the field, the arrow keys, Home and End stay in it, and Tab leaves it. The size buttons clamp the size and stay enabled: a button that disables itself while it has focus drops focus to the page, since the browser does that for any disabled button.
+
+```brm demo ToolbarEditorDemo
+
+```
+
+### Right to left
+
+Inside an [I18nProvider](./i18n-provider.md) with an Arabic locale, ArrowLeft moves to the next item. Put `dir="rtl"` on an element yourself, since the provider renders none.
+
+```brm demo ToolbarArabicDemo
+
+```

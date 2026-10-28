@@ -1,0 +1,23 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+
+  let query = $signal('');
+  let searched = $signal('');
+</script>
+
+<div class="ui-stack">
+  <TextField value=$bind(query)>
+    <Label><VisuallyHidden>Search the shop</VisuallyHidden></Label>
+    <Group class="ui-group" aria-label="Search">
+      <Input class="ui-input" placeholder="Search" />
+      <Button class="ui-button" isDisabled=(query === '') onPress=(() => (searched = query))>Search</Button>
+    </Group>
+  </TextField>
+  <p>{searched === '' ? 'Nothing searched yet.' : `Searched for "${searched}".`}</p>
+</div>

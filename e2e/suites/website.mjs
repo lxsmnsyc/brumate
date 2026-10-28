@@ -818,6 +818,128 @@ export async function run({ browser, url, runner }) {
       assert((await toast.count()) === 0, 'the close button left the toast');
     });
     await flow(
+      '/ui: the pages of navigation, status and layout that are done have an anatomy picture and a styled example',
+      async () => {
+        const slugs = [
+          'disclosure',
+          'disclosure-group',
+          'breadcrumbs',
+          'toolbar',
+          'meter',
+          'progress-bar',
+          'group',
+        ];
+        for (const slug of slugs) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            assert((await page.locator('.styled pre').count()) === 1, `/ui/${slug} shows no CSS`);
+            const marks = await page.locator('.anatomy [data-mark]').count();
+            const items = await page.locator('.anatomy-list li').count();
+            assert(
+              marks > 0 && marks === items,
+              `/ui/${slug}: ${marks} callouts for ${items} pieces`,
+            );
+            await page.addScriptTag({ path: axe });
+            // The props table scrolls and fails scrollable-region-focusable on main (node
+            // ui-scroll-focus). Delete the exclude when that node lands.
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run({
+                include: ['article'],
+                exclude: ['.props-table'],
+              });
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow(
+      '/ui: the accordion, the toolbar and the upload respond to keys and presses',
+      async () => {
+        const settle = () => page.waitForTimeout(600);
+        const visit = async (slug) => {
+          await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+          await page.waitForTimeout(1500);
+        };
+        const focused = () =>
+          page.evaluate(() => (document.activeElement?.textContent ?? '').trim().slice(0, 30));
+        // DisclosureGroup: a press opens one and closes the one that was open.
+        await visit('disclosure-group');
+        const steps = page.locator('.ui-accordion', { hasText: '1. Address' });
+        const triggers = steps.locator('button.ui-disclosure-trigger');
+        assert(
+          (await triggers.nth(0).getAttribute('aria-expanded')) === 'true',
+          'the first step does not start open',
+        );
+        await steps.getByRole('button', { name: 'Continue' }).click();
+        await settle();
+        assert(
+          (await triggers.nth(0).getAttribute('aria-expanded')) === 'false',
+          'step 1 stayed open',
+        );
+        assert(
+          (await triggers.nth(1).getAttribute('aria-expanded')) === 'true',
+          'step 2 did not open',
+        );
+        // Disclosure: Enter opens the terms, and the Accept button wakes up.
+        await visit('disclosure');
+        const terms = page.locator('.ui-stack', { hasText: 'Terms of use' });
+        const accept = terms.getByRole('button', { name: 'Accept' });
+        assert(await accept.isDisabled(), 'Accept starts enabled');
+        await terms.getByRole('button', { name: 'Terms of use' }).focus();
+        await page.keyboard.press('Enter');
+        await settle();
+        assert(!(await accept.isDisabled()), 'opening the terms did not enable Accept');
+        // Toolbar: the arrow keys move focus and Home and End go to the ends.
+        await visit('toolbar');
+        const editor = page.locator('.ui-stack', { hasText: 'Hello' });
+        await editor.getByRole('button', { name: 'Bold' }).focus();
+        await page.keyboard.press('ArrowRight');
+        assert((await focused()) === 'Italic', `ArrowRight went to "${await focused()}"`);
+        await page.keyboard.press('End');
+        assert(
+          await editor.locator('input').evaluate((input) => input === document.activeElement),
+          'End did not reach the field',
+        );
+        // Tab stops at one item, so Shift+Tab from the field leaves the toolbar.
+        await page.keyboard.press('Shift+Tab');
+        assert(
+          !(await editor
+            .locator('[role=toolbar]')
+            .evaluate((bar) => bar.contains(document.activeElement))),
+          'Shift+Tab stayed in the toolbar',
+        );
+        await editor.getByRole('button', { name: 'Larger' }).focus();
+        await page.keyboard.press('Home');
+        assert((await focused()) === 'Bold', `Home went to "${await focused()}"`);
+        // Right to left: ArrowLeft moves to the next item.
+        const arabic = page.locator('div[dir=rtl] [role=toolbar]');
+        await arabic.getByRole('button').first().focus();
+        await page.keyboard.press('ArrowLeft');
+        assert(
+          (await focused()) === (await arabic.getByRole('button').nth(1).innerText()),
+          'ArrowLeft did not move on right to left',
+        );
+        // ProgressBar: two quick presses start one upload, and Cancel resets it.
+        await visit('progress-bar');
+        const upload = page.locator('.ui-stack', { hasText: 'Cancel' }).first();
+        const bar = upload.locator('[role=progressbar]');
+        await upload.getByRole('button', { name: 'Upload', exact: true }).dblclick();
+        await page.waitForTimeout(800);
+        const value = Number(await bar.getAttribute('aria-valuenow'));
+        assert(value > 0 && value <= 30, `two timers ran: the value is ${value}`);
+        await upload.getByRole('button', { name: 'Cancel' }).click();
+        await settle();
+        assert((await bar.getAttribute('aria-valuenow')) === '0', 'Cancel left the value');
+      },
+    );
+    await flow(
       '/ui/styling: the styled examples follow the theme toggle, with no contrast violations',
       async () => {
         // The toggle of the site, not the system setting, picks the theme. Each system setting

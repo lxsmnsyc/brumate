@@ -1,0 +1,121 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosureGroup from '@brumate/ui/DisclosureGroup.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+
+  const items = [
+    { id: 'shipping', title: 'Shipping', text: 'Orders leave the shop in two days.' },
+    { id: 'returns', title: 'Returns', text: 'Send it back within thirty days.' },
+    { id: 'care', title: 'Care', text: 'Wash it cold, and dry it flat.' },
+  ];
+</script>
+
+<DisclosureGroup class="group-styled-list" expandedKeys=(['shipping'])>
+  #for (item of items by item.id) {
+    <Disclosure id=(item.id) class="group-styled-item">
+      <Button slot="trigger" class="group-styled-trigger">{item.title}</Button>
+      <DisclosurePanel transition class="group-styled-panel">
+        <p>{item.text}</p>
+      </DisclosurePanel>
+    </Disclosure>
+  }
+</DisclosureGroup>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.group-styled-list) {
+    --group-styled-border: color-mix(in srgb, CanvasText 45%, Canvas);
+    --group-styled-hover: color-mix(in srgb, CanvasText 8%, Canvas);
+    --group-styled-press: color-mix(in srgb, CanvasText 16%, Canvas);
+    --group-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --group-styled-page: Canvas;
+    display: grid;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 24rem;
+    color: CanvasText;
+  }
+
+  :global(.group-styled-list[data-disabled]) {
+    opacity: 0.6;
+  }
+
+  /* Each disclosure is a card. The open one shows an accent bar on its edge. */
+  :global(.group-styled-item) {
+    overflow: hidden;
+    border: 1px solid var(--group-styled-border);
+    border-radius: 10px;
+  }
+
+  :global(.group-styled-item[data-expanded]) {
+    box-shadow: inset 4px 0 0 var(--group-styled-accent);
+  }
+
+  /* Rest, hover, press, keyboard focus, expanded and disabled. */
+  :global(.group-styled-trigger) {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.7rem 0.9rem 0.7rem 1rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-align: start;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  /* A plus that turns into a minus. */
+  :global(.group-styled-trigger)::after {
+    content: '+';
+  }
+
+  :global(.group-styled-item[data-expanded] .group-styled-trigger)::after {
+    content: '\2212';
+  }
+
+  :global(.group-styled-trigger[data-hovered]) {
+    background: var(--group-styled-hover);
+  }
+
+  :global(.group-styled-trigger[data-pressed]) {
+    background: var(--group-styled-press);
+  }
+
+  :global(.group-styled-trigger[data-focus-visible]) {
+    outline: none;
+    box-shadow:
+      inset 0 0 0 2px var(--group-styled-accent),
+      inset 0 0 0 4px var(--group-styled-page);
+  }
+
+  :global(.group-styled-trigger[data-disabled]) {
+    cursor: not-allowed;
+  }
+
+  :global(.group-styled-panel) {
+    height: var(--disclosure-panel-height, auto);
+    overflow: clip;
+    transition:
+      height 0.25s,
+      opacity 0.25s;
+  }
+
+  :global(.group-styled-panel[data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.group-styled-panel p) {
+    margin: 0;
+    padding: 0 1rem 0.8rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.group-styled-panel) {
+      transition: none;
+    }
+  }
+</style>

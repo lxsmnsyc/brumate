@@ -1,0 +1,24 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+
+  let read = $signal(false);
+  let accepted = $signal(false);
+</script>
+
+<div class="ui-stack">
+  <div class="ui-accordion">
+    <Disclosure class="ui-disclosure" onExpandedChange=((next) => { if (next) read = true; })>
+      <Button slot="trigger" class="ui-disclosure-trigger">Terms of use</Button>
+      <DisclosurePanel transition class="ui-disclosure-panel">
+        <p>The shop keeps your address to send the order, and for nothing else.</p>
+      </DisclosurePanel>
+    </Disclosure>
+  </div>
+  <Button class="ui-button" isDisabled=(!read || accepted) onPress=(() => (accepted = true))>
+    {accepted ? 'Accepted' : 'Accept'}
+  </Button>
+  <p>{read ? 'You opened the terms.' : 'Open the terms to accept them.'}</p>
+</div>

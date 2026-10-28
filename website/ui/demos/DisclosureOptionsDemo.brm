@@ -1,0 +1,23 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<div class="ui-stack">
+  <div class="ui-accordion">
+    <Disclosure class="ui-disclosure">
+      <Button slot="trigger" class="ui-disclosure-trigger">Advanced options</Button>
+      <DisclosurePanel transition unmount="offscreen" class="ui-disclosure-panel">
+        <TextField class="ui-field" style="padding: 0 0.9rem 0.8rem">
+          <Label>Proxy address</Label>
+          <Input class="ui-input" />
+        </TextField>
+      </DisclosurePanel>
+    </Disclosure>
+  </div>
+  <p>Type an address, collapse the section and open it again. The text stays.</p>
+</div>

@@ -1,0 +1,148 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+</script>
+
+<div class="disclosure-styled">
+  <Disclosure class="disclosure-styled-item" isExpanded=(true)>
+    <Heading level=(2) class="disclosure-styled-heading">
+      <Button slot="trigger" class="disclosure-styled-trigger">Open</Button>
+    </Heading>
+    <DisclosurePanel transition class="disclosure-styled-panel">
+      <p>Shown, and the chevron points up.</p>
+    </DisclosurePanel>
+  </Disclosure>
+  <Disclosure class="disclosure-styled-item">
+    <Heading level=(2) class="disclosure-styled-heading">
+      <Button slot="trigger" class="disclosure-styled-trigger">Collapsed</Button>
+    </Heading>
+    <DisclosurePanel transition class="disclosure-styled-panel">
+      <p>The panel grows from nothing to its height.</p>
+    </DisclosurePanel>
+  </Disclosure>
+  <Disclosure class="disclosure-styled-item" isDisabled>
+    <Heading level=(2) class="disclosure-styled-heading">
+      <Button slot="trigger" class="disclosure-styled-trigger">Disabled</Button>
+    </Heading>
+    <DisclosurePanel transition class="disclosure-styled-panel">
+      <p>Never shown.</p>
+    </DisclosurePanel>
+  </Disclosure>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.disclosure-styled) {
+    --disclosure-styled-border: color-mix(in srgb, CanvasText 45%, Canvas);
+    --disclosure-styled-hover: color-mix(in srgb, CanvasText 8%, Canvas);
+    --disclosure-styled-press: color-mix(in srgb, CanvasText 16%, Canvas);
+    --disclosure-styled-open: color-mix(in srgb, CanvasText 5%, Canvas);
+    --disclosure-styled-ring: light-dark(#2a76b2, #6fb2e6);
+    --disclosure-styled-page: Canvas;
+    width: 100%;
+    max-width: 24rem;
+    overflow: hidden;
+    border: 1px solid var(--disclosure-styled-border);
+    border-radius: 10px;
+    color: CanvasText;
+  }
+
+  :global(.disclosure-styled-item + .disclosure-styled-item) {
+    border-top: 1px solid var(--disclosure-styled-border);
+  }
+
+  /* The page styles its h2, and a class alone is weaker, so name the element too. */
+  :global(.disclosure-styled-item h2.disclosure-styled-heading) {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 1rem;
+    letter-spacing: normal;
+  }
+
+  /* Rest, hover, press, keyboard focus, expanded and disabled. */
+  :global(.disclosure-styled-trigger) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-align: start;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  /* The chevron is drawn by the border of the pseudo-element, so it follows the text color. */
+  :global(.disclosure-styled-trigger)::after {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    content: '';
+    rotate: 45deg;
+    translate: 0 -2px;
+    transition: rotate 0.2s;
+  }
+
+  :global(.disclosure-styled-trigger[data-hovered]) {
+    background: var(--disclosure-styled-hover);
+  }
+
+  :global(.disclosure-styled-trigger[data-pressed]) {
+    background: var(--disclosure-styled-press);
+  }
+
+  :global(.disclosure-styled-trigger[aria-expanded='true']) {
+    background: var(--disclosure-styled-open);
+  }
+
+  :global(.disclosure-styled-trigger[aria-expanded='true'])::after {
+    rotate: 225deg;
+    translate: 0 2px;
+  }
+
+  /* Two bands, so the ring shows on every fill of the trigger. */
+  :global(.disclosure-styled-trigger[data-focus-visible]) {
+    outline: none;
+    box-shadow:
+      inset 0 0 0 2px var(--disclosure-styled-ring),
+      inset 0 0 0 4px var(--disclosure-styled-page);
+  }
+
+  :global(.disclosure-styled-trigger[data-disabled]) {
+    color: color-mix(in srgb, CanvasText 60%, Canvas);
+    cursor: not-allowed;
+  }
+
+  /* The panel moves between nothing and the height it holds, and fades. */
+  :global(.disclosure-styled-panel) {
+    height: var(--disclosure-panel-height, auto);
+    overflow: clip;
+    transition:
+      height 0.25s,
+      opacity 0.25s;
+  }
+
+  :global(.disclosure-styled-panel[data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.disclosure-styled-panel p) {
+    margin: 0;
+    padding: 0 0.9rem 0.8rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.disclosure-styled-trigger)::after,
+    :global(.disclosure-styled-panel) {
+      transition: none;
+    }
+  }
+</style>

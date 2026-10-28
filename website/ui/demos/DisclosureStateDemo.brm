@@ -1,0 +1,34 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+
+  let mine = $signal(false);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<div class="ui-stack">
+  <div class="ui-accordion">
+    <Disclosure class="ui-disclosure">
+      <Button slot="trigger" class="ui-disclosure-trigger">Own state</Button>
+      <DisclosurePanel class="ui-disclosure-panel"><p>The disclosure keeps it.</p></DisclosurePanel>
+    </Disclosure>
+    <Disclosure class="ui-disclosure" isExpanded=(true)>
+      <Button slot="trigger" class="ui-disclosure-trigger">Starts expanded</Button>
+      <DisclosurePanel class="ui-disclosure-panel"><p>The start value is true.</p></DisclosurePanel>
+    </Disclosure>
+    <Disclosure class="ui-disclosure" isExpanded=$bind(mine) onExpandedChange=((next) => (log = next ? 'expanded' : 'collapsed'))>
+      <Button slot="trigger" class="ui-disclosure-trigger">Writes your signal</Button>
+      <DisclosurePanel class="ui-disclosure-panel"><p>It follows the signal.</p></DisclosurePanel>
+    </Disclosure>
+    <Disclosure class="ui-disclosure" isExpanded=$bind(mine, (next) => { if (!locked) mine = next; })>
+      <Button slot="trigger" class="ui-disclosure-trigger">Asks you first</Button>
+      <DisclosurePanel class="ui-disclosure-panel"><p>It shares the signal.</p></DisclosurePanel>
+    </Disclosure>
+  </div>
+  <Button class="ui-button" onPress=(() => (mine = !mine))>Write the signal</Button>
+  <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <p>Signal: {mine ? 'expanded' : 'collapsed'}. Last callback: {log || 'none'}.</p>
+</div>
