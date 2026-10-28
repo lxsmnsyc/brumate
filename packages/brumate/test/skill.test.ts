@@ -108,7 +108,9 @@ function firstMessage(error: unknown): string {
   if (error instanceof CompileError) {
     return error.diagnostics[0]!.message;
   }
-  return (error as Error).message.replace(/(?:\s\([^()]*:\d+:\d+\))+$/, '');
+  return (error as Error).message
+    .replace(/(?:\s\([^()]*:\d+:\d+\))+$/, '')
+    .replace(/\s\[BRM\d+\]$/, '');
 }
 
 describe('the code blocks', () => {

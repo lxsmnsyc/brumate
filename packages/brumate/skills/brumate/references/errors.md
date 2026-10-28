@@ -4,9 +4,11 @@ The compiler reports each error with the place in the file, as `message (File.br
 
 It is generated from `src/error-catalog.ts`. Do not edit it by hand.
 
-## Unterminated comment
+## BRM001: Unterminated comment
 
 A comment starts and never ends.
+
+https://brumate.dev/docs/errors#brm001
 
 ```brm fragment
 <!-- A comment ends with -->
@@ -15,49 +17,61 @@ A comment starts and never ends.
 </script>
 ```
 
-## Unterminated string
+## BRM002: Unterminated string
 
 A string in code starts and never ends.
+
+https://brumate.dev/docs/errors#brm002
 
 ```brm fragment
 const name = 'Ada';
 ```
 
-## Unterminated template literal
+## BRM003: Unterminated template literal
 
 A template string starts and never ends.
+
+https://brumate.dev/docs/errors#brm003
 
 ```brm fragment
 const label = `Hello ${name}`;
 ```
 
-## Unterminated regular expression
+## BRM004: Unterminated regular expression
 
 A regular expression starts and never ends.
+
+https://brumate.dev/docs/errors#brm004
 
 ```brm fragment
 const digits = /\d+/;
 ```
 
-## Unexpected "{char}"
+## BRM005: Unexpected "{char}"
 
 Code has a bracket that closes nothing.
 
+https://brumate.dev/docs/errors#brm005
+
 ```brm fragment
 const list = [1, 2];
 ```
 
-## Expected "{char}"
+## BRM006: Expected "{char}"
 
 Code opens a bracket and never closes it. The message names the closing one.
 
+https://brumate.dev/docs/errors#brm006
+
 ```brm fragment
 const list = [1, 2];
 ```
 
-## Expected "}" to close the block
+## BRM007: Expected "}" to close the block
 
 A `#` block opens with `{` and the file ends before its `}`.
+
+https://brumate.dev/docs/errors#brm007
 
 ```brm fragment
 #if (open) {
@@ -65,9 +79,11 @@ A `#` block opens with `{` and the file ends before its `}`.
 }
 ```
 
-## Unexpected end of file, expected a closing tag
+## BRM008: Unexpected end of file, expected a closing tag
 
 An element is never closed.
+
+https://brumate.dev/docs/errors#brm008
 
 ```brm fragment
 <div>
@@ -75,17 +91,21 @@ An element is never closed.
 </div>
 ```
 
-## Unexpected closing tag
+## BRM009: Unexpected closing tag
 
 A closing tag has no opening tag.
+
+https://brumate.dev/docs/errors#brm009
 
 ```brm fragment
 <p>Text</p>
 ```
 
-## <script> must be at the top level or at the start of a block
+## BRM010: <script> must be at the top level or at the start of a block
 
 A `<script>` is inside an element, or after other markup in a block.
+
+https://brumate.dev/docs/errors#brm010
 
 ```brm fragment
 #for (item of items) {
@@ -96,9 +116,11 @@ A `<script>` is inside an element, or after other markup in a block.
 }
 ```
 
-## <style> must be at the top level
+## BRM011: <style> must be at the top level
 
 A `<style>` is inside an element or a block.
+
+https://brumate.dev/docs/errors#brm011
 
 ```brm fragment
 <style>
@@ -109,9 +131,11 @@ A `<style>` is inside an element or a block.
 <p>Text</p>
 ```
 
-## #template must be at the top level or at the start of a block
+## BRM012: #template must be at the top level or at the start of a block
 
 A `#template` is inside an element, or after other markup in a block.
+
+https://brumate.dev/docs/errors#brm012
 
 ```brm fragment
 #template price(amount: number) {
@@ -119,9 +143,11 @@ A `#template` is inside an element, or after other markup in a block.
 }
 ```
 
-## #{branch} must follow its block
+## BRM013: #{branch} must follow its block
 
 A branch such as `#else` or `#catch` comes without the block that it belongs to.
+
+https://brumate.dev/docs/errors#brm013
 
 ```brm fragment
 #if (open) {
@@ -131,129 +157,161 @@ A branch such as `#else` or `#catch` comes without the block that it belongs to.
 }
 ```
 
-## Expected a tag name
+## BRM014: Expected a tag name
 
 A `<` starts a tag with no name.
+
+https://brumate.dev/docs/errors#brm014
 
 ```brm fragment
 <p>1 &lt; 2</p>
 ```
 
-## <{name}> must end with "/>"
+## BRM015: <{name}> must end with "/>"
 
 `<window>` and `<document>` take no children, so they close with `/>`.
+
+https://brumate.dev/docs/errors#brm015
 
 ```brm fragment
 <window onKeyDown=(handler) />
 ```
 
-## Expected </{name}>
+## BRM016: Expected </{name}>
 
 A closing tag is not complete.
+
+https://brumate.dev/docs/errors#brm016
 
 ```brm fragment
 <p>Text</p>
 ```
 
-## Unexpected end of file, expected ">"
+## BRM017: Unexpected end of file, expected ">"
 
 A tag starts and the file ends before its `>`.
+
+https://brumate.dev/docs/errors#brm017
 
 ```brm fragment
 <input value=name>
 ```
 
-## Expected whitespace between attributes
+## BRM018: Expected whitespace between attributes
 
 Two attributes touch each other.
+
+https://brumate.dev/docs/errors#brm018
 
 ```brm fragment
 <input id=name type="text">
 ```
 
-## Only event handlers are allowed here
+## BRM019: Only event handlers are allowed here
 
 `<window>` and `<document>` take event handlers and nothing else.
+
+https://brumate.dev/docs/errors#brm019
 
 ```brm fragment
 <document onKeyDown=(handler) />
 ```
 
-## Expected a spread or a shorthand attribute
+## BRM020: Expected a spread or a shorthand attribute
 
 A `{` in a tag holds something other than `...rest` or a name.
+
+https://brumate.dev/docs/errors#brm020
 
 ```brm fragment
 <a {href} {...rest}>Open</a>
 ```
 
-## Expected an attribute name
+## BRM021: Expected an attribute name
 
 A tag has a character where an attribute name belongs.
+
+https://brumate.dev/docs/errors#brm021
 
 ```brm fragment
 <input disabled>
 ```
 
-## Unknown event modifier ":{modifier}"
+## BRM022: Unknown event modifier ":{modifier}"
 
 The modifier after an event name is not one of the known ones.
 
+https://brumate.dev/docs/errors#brm022
+
 ```brm fragment
 <form onSubmit=(prevent(send))></form>
 ```
 
-## Modifiers apply to elements. Put ":{modifier}" on the element that the component renders
+## BRM023: Modifiers apply to elements. Put ":{modifier}" on the element that the component renders
 
 An event modifier is on a component, which only passes the handler on.
 
+https://brumate.dev/docs/errors#brm023
+
 ```brm fragment
 <form onSubmit=(prevent(send))></form>
 ```
 
-## Expected an event handler
+## BRM024: Expected an event handler
 
 An event attribute has no `=` and no value.
 
+https://brumate.dev/docs/errors#brm024
+
 ```brm fragment
 <button onClick=(() => count++)>Add</button>
 ```
 
-## An event handler must be an expression, not a string
+## BRM025: An event handler must be an expression, not a string
 
 The value of an event attribute is a quoted string.
 
+https://brumate.dev/docs/errors#brm025
+
 ```brm fragment
 <button onClick=(() => count++)>Add</button>
 ```
 
-## An attribute name can have one ":" namespace
+## BRM026: An attribute name can have one ":" namespace
 
 An attribute name has two or more `:`.
+
+https://brumate.dev/docs/errors#brm026
 
 ```brm fragment
 <svg xlink:href="#icon"></svg>
 ```
 
-## ref takes $bind, as in ref=$bind(name)
+## BRM027: ref takes $bind, as in ref=$bind(name)
 
 `ref` has a value that is not `$bind(name)`.
+
+https://brumate.dev/docs/errors#brm027
 
 ```brm fragment
 <input ref=$bind(input)>
 ```
 
-## prefetch is removed. The code of the page loads when it starts
+## BRM028: prefetch is removed. The code of the page loads when it starts
 
 The `prefetch` attribute no longer exists.
+
+https://brumate.dev/docs/errors#brm028
 
 ```brm fragment
 <a href="/about">About</a>
 ```
 
-## Markup is not allowed in attribute values. Use a #template.
+## BRM029: Markup is not allowed in attribute values. Use a #template.
 
 An attribute value holds an element.
+
+https://brumate.dev/docs/errors#brm029
 
 ```brm fragment
 <List item=row />
@@ -263,41 +321,51 @@ An attribute value holds an element.
 }
 ```
 
-## Expected an attribute value
+## BRM030: Expected an attribute value
 
 An attribute has `=` and nothing after it.
+
+https://brumate.dev/docs/errors#brm030
 
 ```brm fragment
 <input value=name>
 ```
 
-## Wrap this attribute value in parentheses
+## BRM031: Wrap this attribute value in parentheses
 
 An attribute value without quotes has an operator or a space in it.
+
+https://brumate.dev/docs/errors#brm031
 
 ```brm fragment
 <button disabled=(count > 3)>Add</button>
 ```
 
-## Expected ">" to end <{name}>
+## BRM032: Expected ">" to end <{name}>
 
 A tag has text where its `>` belongs.
+
+https://brumate.dev/docs/errors#brm032
 
 ```brm fragment
 <input value=name>
 ```
 
-## Expected a quoted value
+## BRM033: Expected a quoted value
 
 A `<script>` or `<style>` attribute has `=` without a quoted value.
+
+https://brumate.dev/docs/errors#brm033
 
 ```brm fragment
 <script generics="T"></script>
 ```
 
-## Expected {close}
+## BRM034: Expected {close}
 
 A `<script>` or `<style>` is not closed.
+
+https://brumate.dev/docs/errors#brm034
 
 ```brm fragment
 <script>
@@ -305,9 +373,11 @@ A `<script>` or `<style>` is not closed.
 </script>
 ```
 
-## Unknown <script> attribute "{name}"
+## BRM035: Unknown <script> attribute "{name}"
 
 A `<script>` has an attribute other than `module` and `generics`.
+
+https://brumate.dev/docs/errors#brm035
 
 ```brm fragment
 <script module>
@@ -315,9 +385,11 @@ A `<script>` has an attribute other than `module` and `generics`.
 </script>
 ```
 
-## A file can have one <script module>
+## BRM036: A file can have one <script module>
 
 A file has two module scripts.
+
+https://brumate.dev/docs/errors#brm036
 
 ```brm fragment
 <script module>
@@ -326,9 +398,11 @@ A file has two module scripts.
 </script>
 ```
 
-## A file can have one <script>
+## BRM037: A file can have one <script>
 
 A file has two instance scripts.
+
+https://brumate.dev/docs/errors#brm037
 
 ```brm fragment
 <script>
@@ -337,9 +411,11 @@ A file has two instance scripts.
 </script>
 ```
 
-## lang must be "css", "scss" or "less"
+## BRM038: lang must be "css", "scss" or "less"
 
 A `<style>` names another language.
+
+https://brumate.dev/docs/errors#brm038
 
 ```brm fragment
 <style lang="scss">
@@ -351,29 +427,35 @@ A `<style>` names another language.
 </style>
 ```
 
-## #reveal takes an order, 'sequential', 'backwards', 'together' or 'natural', and collapsed, such as #reveal ('sequential', collapsed)
+## BRM039: #reveal takes an order, 'sequential', 'backwards', 'together' or 'natural', and collapsed, such as #reveal ('sequential', collapsed)
 
 `#reveal` has an option that it does not know.
 
+https://brumate.dev/docs/errors#brm039
+
 ```brm fragment
 #reveal ('sequential', collapsed) {
   …
 }
 ```
 
-## collapsed shows the fallback of the next body to show, so it needs the order 'sequential', not '{order}'
+## BRM040: collapsed shows the fallback of the next body to show, so it needs the order 'sequential', not '{order}'
 
 `collapsed` goes with `sequential` only.
 
+https://brumate.dev/docs/errors#brm040
+
 ```brm fragment
 #reveal ('sequential', collapsed) {
   …
 }
 ```
 
-## #reveal has no script of its own
+## BRM041: #reveal has no script of its own
 
 A `#reveal` body starts with a `<script>`.
+
+https://brumate.dev/docs/errors#brm041
 
 ```brm fragment
 <script>
@@ -384,39 +466,47 @@ A `#reveal` body starts with a `<script>`.
 }
 ```
 
-## Expected "(" after #{keyword}
+## BRM042: Expected "(" after #{keyword}
 
 A block that takes a condition or a list has no `(`.
 
+https://brumate.dev/docs/errors#brm042
+
 ```brm fragment
 #if (open) {
   <p>Open</p>
 }
 ```
 
-## Expected an expression after #{keyword}
+## BRM043: Expected an expression after #{keyword}
 
 The parentheses of a block are empty.
 
+https://brumate.dev/docs/errors#brm043
+
 ```brm fragment
 #if (open) {
   <p>Open</p>
 }
 ```
 
-## Expected "{" after #{keyword}
+## BRM044: Expected "{" after #{keyword}
 
 The header of a block is not followed by `{`.
 
+https://brumate.dev/docs/errors#brm044
+
 ```brm fragment
 #if (open) {
   <p>Open</p>
 }
 ```
 
-## Expected "{" after #switch
+## BRM045: Expected "{" after #switch
 
 `#switch` has no `{` after it.
+
+https://brumate.dev/docs/errors#brm045
 
 ```brm fragment
 #switch {
@@ -426,9 +516,11 @@ The header of a block is not followed by `{`.
 }
 ```
 
-## The script of a block takes no attributes
+## BRM046: The script of a block takes no attributes
 
 A `<script>` at the start of a block has attributes such as `module`.
+
+https://brumate.dev/docs/errors#brm046
 
 ```brm fragment
 #for (item of items) {
@@ -439,9 +531,11 @@ A `<script>` at the start of a block has attributes such as `module`.
 }
 ```
 
-## #try needs a #catch block
+## BRM047: #try needs a #catch block
 
 A `#try` body is not followed by `#catch`.
+
+https://brumate.dev/docs/errors#brm047
 
 ```brm fragment
 #try {
@@ -451,9 +545,11 @@ A `#try` body is not followed by `#catch`.
 }
 ```
 
-## Expected "(error, reset)" after #catch
+## BRM048: Expected "(error, reset)" after #catch
 
 The header of `#catch` names something other than a plain error name and a plain reset name.
+
+https://brumate.dev/docs/errors#brm048
 
 ```brm fragment
 #catch (error, reset) {
@@ -461,9 +557,11 @@ The header of `#catch` names something other than a plain error name and a plain
 }
 ```
 
-## The trigger of #{keyword} must be "visible", "idle" or "load"
+## BRM049: The trigger of #{keyword} must be "visible", "idle" or "load"
 
 A `#client` block names another trigger.
+
+https://brumate.dev/docs/errors#brm049
 
 ```brm fragment
 #client ('idle') {
@@ -471,9 +569,11 @@ A `#client` block names another trigger.
 }
 ```
 
-## Unknown block #{keyword}
+## BRM050: Unknown block #{keyword}
 
 A `#` starts a block that does not exist.
+
+https://brumate.dev/docs/errors#brm050
 
 ```brm fragment
 #if (open) {
@@ -481,9 +581,11 @@ A `#` starts a block that does not exist.
 }
 ```
 
-## Expected "index of count" after #repeat
+## BRM051: Expected "index of count" after #repeat
 
 The header of `#repeat` is not `index of count`.
+
+https://brumate.dev/docs/errors#brm051
 
 ```brm fragment
 #repeat (star of 5) {
@@ -491,9 +593,11 @@ The header of `#repeat` is not `index of count`.
 }
 ```
 
-## Expected "item of list" or "item, index of list" after #for
+## BRM052: Expected "item of list" or "item, index of list" after #for
 
 The header of `#for` has no `of`.
+
+https://brumate.dev/docs/errors#brm052
 
 ```brm fragment
 #for (item, index of items by item.id) {
@@ -501,9 +605,11 @@ The header of `#for` has no `of`.
 }
 ```
 
-## Expected the height of an item in window(height)
+## BRM053: Expected the height of an item in window(height)
 
 `window` after a `#for` header has no height.
+
+https://brumate.dev/docs/errors#brm053
 
 ```brm fragment
 #for (row of rows by row.id) window(32) {
@@ -511,10 +617,12 @@ The header of `#for` has no `of`.
 }
 ```
 
-## Only #case and #default are allowed in #switch
+## BRM054: Only #case and #default are allowed in #switch
 
 A `#switch` holds markup other than its cases.
 
+https://brumate.dev/docs/errors#brm054
+
 ```brm fragment
 #switch {
   #case (tab === 1) {
@@ -526,10 +634,12 @@ A `#switch` holds markup other than its cases.
 }
 ```
 
-## #default must be the last branch of #switch
+## BRM055: #default must be the last branch of #switch
 
 A `#case` comes after the `#default`.
 
+https://brumate.dev/docs/errors#brm055
+
 ```brm fragment
 #switch {
   #case (tab === 1) {
@@ -541,9 +651,11 @@ A `#case` comes after the `#default`.
 }
 ```
 
-## Expected "(" after the name of the template
+## BRM056: Expected "(" after the name of the template
 
 A `#template` has no parameter list.
+
+https://brumate.dev/docs/errors#brm056
 
 ```brm fragment
 #template price(amount: number) {
@@ -551,17 +663,21 @@ A `#template` has no parameter list.
 }
 ```
 
-## Expected an expression
+## BRM057: Expected an expression
 
 An attribute or a block has code that is not an expression.
+
+https://brumate.dev/docs/errors#brm057
 
 ```brm fragment
 <p>{count + 1}</p>
 ```
 
-## Expected a binding pattern
+## BRM058: Expected a binding pattern
 
 The name of a `#for` or `#catch` is not a name or a pattern.
+
+https://brumate.dev/docs/errors#brm058
 
 ```brm fragment
 #for ({ id, name } of people by id) {
@@ -569,9 +685,11 @@ The name of a `#for` or `#catch` is not a name or a pattern.
 }
 ```
 
-## Expected parameters
+## BRM059: Expected parameters
 
 The parameters of a `#template` are not a parameter list.
+
+https://brumate.dev/docs/errors#brm059
 
 ```brm fragment
 #template price(amount: number) {
@@ -579,50 +697,62 @@ The parameters of a `#template` are not a parameter list.
 }
 ```
 
-## "{name}" is already declared
+## BRM060: "{name}" is already declared
 
 Two declarations of one scope have the same name.
+
+https://brumate.dev/docs/errors#brm060
 
 ```brm fragment
 let count = $signal(0);
 let total = $signal(0);
 ```
 
-## {name} takes a handler
+## BRM061: {name} takes a handler
 
 `prevent`, `stop`, `once`, `capture` or `transition` has no handler, or `stop`, `once` or `capture` has keys.
+
+https://brumate.dev/docs/errors#brm061
 
 ```brm fragment
 <form onSubmit=(prevent(send))></form>
 ```
 
-## Only prevent of a keyboard event takes keys, such as onKeyDown
+## BRM062: Only prevent of a keyboard event takes keys, such as onKeyDown
 
 Keys are given to `prevent` of an event that is not `onKeyDown`, `onKeyUp` or `onKeyPress`.
+
+https://brumate.dev/docs/errors#brm062
 
 ```brm fragment
 <ul onKeyDown=(prevent(move, 'ArrowDown'))></ul>
 ```
 
-## Name each key of prevent as a string of its event.key, such as 'ArrowDown', 'Space' or 'a', with a modifier to hold if it needs one, such as 'Mod+ArrowDown'
+## BRM063: Name each key of prevent as a string of its event.key, such as 'ArrowDown', 'Space' or 'a', with a modifier to hold if it needs one, such as 'Mod+ArrowDown'
 
 A key of `prevent` is not a string literal of an `event.key`.
+
+https://brumate.dev/docs/errors#brm063
 
 ```brm fragment
 <ul onKeyDown=(prevent(move, 'ArrowDown', 'Mod+ArrowUp'))></ul>
 ```
 
-## Name each key of prevent as a string, such as 'Enter'
+## BRM064: Name each key of prevent as a string, such as 'Enter'
 
 A key of `prevent` is not a string literal.
+
+https://brumate.dev/docs/errors#brm064
 
 ```brm fragment
 <input onKeyDown=(prevent(submit, 'Enter'))>
 ```
 
-## Server function "{name}" must be async
+## BRM065: Server function "{name}" must be async
 
 A function with `'use server'` is not `async`.
+
+https://brumate.dev/docs/errors#brm065
 
 ```brm fragment
 async function save(list: string[]) {
@@ -631,158 +761,196 @@ async function save(list: string[]) {
 }
 ```
 
-## The module script cannot have a default export
+## BRM066: The module script cannot have a default export
 
 `<script module>` has `export default`.
 
+https://brumate.dev/docs/errors#brm066
+
 ```brm fragment
 <script module>
   export const MAX = 10;
 </script>
 ```
 
-## A script cannot export values. Use <script module>
+## BRM067: A script cannot export values. Use <script module>
 
 The instance script has an `export`.
 
+https://brumate.dev/docs/errors#brm067
+
 ```brm fragment
 <script module>
   export const MAX = 10;
 </script>
 ```
 
-## $title takes one argument, the title
+## BRM068: $title takes one argument, the title
 
 `$title` has no argument or more than one.
+
+https://brumate.dev/docs/errors#brm068
 
 ```brm fragment
 $title('Todos');
 ```
 
-## await works with $memo, not {name}
+## BRM069: await works with $memo, not {name}
 
 A declaration awaits a compile-time function other than `$memo`.
+
+https://brumate.dev/docs/errors#brm069
 
 ```brm fragment
 const user = $memo(await load(id));
 ```
 
-## $props() can only be called in the component script
+## BRM070: $props() can only be called in the component script
 
 `$props()` is in a module script or a function.
 
+https://brumate.dev/docs/errors#brm070
+
 ```brm fragment
 const { name } = $props<{ name: string }>();
 ```
 
-## Assign $props() to a const or a let
+## BRM071: Assign $props() to a const or a let
 
 The result of `$props()` is not assigned with `const` or `let`.
 
+https://brumate.dev/docs/errors#brm071
+
 ```brm fragment
 const { name } = $props<{ name: string }>();
 ```
 
-## $props() takes no arguments
+## BRM072: $props() takes no arguments
 
 `$props()` has an argument.
 
+https://brumate.dev/docs/errors#brm072
+
 ```brm fragment
 const { name } = $props<{ name: string }>();
 ```
 
-## Assign $props() to a name or an object pattern
+## BRM073: Assign $props() to a name or an object pattern
 
 `$props()` is assigned to an array pattern.
 
+https://brumate.dev/docs/errors#brm073
+
 ```brm fragment
 const { name } = $props<{ name: string }>();
 ```
 
-## Create an ID with "const name = $id()"
+## BRM074: Create an ID with "const name = $id()"
 
 `$id()` is not the value of a `const`.
 
+https://brumate.dev/docs/errors#brm074
+
 ```brm fragment
 const field = $id();
 ```
 
-## $id takes no arguments
+## BRM075: $id takes no arguments
 
 `$id` has an argument.
 
+https://brumate.dev/docs/errors#brm075
+
 ```brm fragment
 const field = $id();
 ```
 
-## $isPassed takes a prop that the component destructures, such as $isPassed(value)
+## BRM076: $isPassed takes a prop that the component destructures, such as $isPassed(value)
 
 The argument of `$isPassed` is not a prop of the component.
+
+https://brumate.dev/docs/errors#brm076
 
 ```brm fragment
 let { value } = $props<{ value?: Bindable<string> }>();
 const passed = $isPassed(value);
 ```
 
-## $navigation takes no arguments
+## BRM077: $navigation takes no arguments
 
 `$navigation` has an argument.
+
+https://brumate.dev/docs/errors#brm077
 
 ```brm fragment
 const navigation = $navigation();
 ```
 
-## $route takes at most one argument, the path of the route
+## BRM078: $route takes at most one argument, the path of the route
 
 `$route` has more than one argument.
+
+https://brumate.dev/docs/errors#brm078
 
 ```brm fragment
 const route = $route('/posts/[id]');
 ```
 
-## Read a context with "const name = $getContext(Context)"
+## BRM079: Read a context with "const name = $getContext(Context)"
 
 `$getContext` is not the value of a `const`.
 
+https://brumate.dev/docs/errors#brm079
+
 ```brm fragment
 const theme = $getContext(ThemeContext);
 ```
 
-## $getContext takes one argument, the context
+## BRM080: $getContext takes one argument, the context
 
 `$getContext` has no argument or more than one.
 
+https://brumate.dev/docs/errors#brm080
+
 ```brm fragment
 const theme = $getContext(ThemeContext);
 ```
 
-## $setContext takes two arguments, the context and the value
+## BRM081: $setContext takes two arguments, the context and the value
 
 `$setContext` has fewer or more than two arguments.
+
+https://brumate.dev/docs/errors#brm081
 
 ```brm fragment
 $setContext(ThemeContext, theme);
 ```
 
-## Declare the result of a form with "const name = $action(serverFunction)"
+## BRM082: Declare the result of a form with "const name = $action(serverFunction)"
 
 `$action` is not the value of a `const`.
 
+https://brumate.dev/docs/errors#brm082
+
 ```brm fragment
 const result = $action(save);
 ```
 
-## $action needs a server function of this file as its only argument
+## BRM083: $action needs a server function of this file as its only argument
 
 `$action` has no argument, or more than one.
 
+https://brumate.dev/docs/errors#brm083
+
 ```brm fragment
 const result = $action(save);
 ```
 
-## $action needs a server function of this file, and {name} is not one
+## BRM084: $action needs a server function of this file, and {name} is not one
 
 The argument of `$action` is not a function with `'use server'` in this file.
+
+https://brumate.dev/docs/errors#brm084
 
 ```brm fragment
 async function save(data: FormData) {
@@ -791,104 +959,128 @@ async function save(data: FormData) {
 const result = $action(save);
 ```
 
-## Declare {name} with const
+## BRM085: Declare {name} with const
 
 `$debounced` or `$throttled` is declared with `let`.
 
+https://brumate.dev/docs/errors#brm085
+
 ```brm fragment
 const query = $debounced(text, 300);
 ```
 
-## {name} cannot be destructured
+## BRM086: {name} cannot be destructured
 
 A signal, a memo or another value of a compile-time function is declared with a pattern.
 
+https://brumate.dev/docs/errors#brm086
+
 ```brm fragment
 let count = $signal(0);
 ```
 
-## {name} takes a value and a wait in milliseconds
+## BRM087: {name} takes a value and a wait in milliseconds
 
 `$debounced` or `$throttled` does not have both arguments.
 
+https://brumate.dev/docs/errors#brm087
+
 ```brm fragment
 const query = $debounced(text, 300);
 ```
 
-## The wait of {name} must be a number of milliseconds, such as 300
+## BRM088: The wait of {name} must be a number of milliseconds, such as 300
 
 The wait of `$debounced` or `$throttled` is not a number literal.
 
+https://brumate.dev/docs/errors#brm088
+
 ```brm fragment
 const query = $debounced(text, 300);
 ```
 
-## Declare {name} with {expected}
+## BRM089: Declare {name} with {expected}
 
 `$signal` and `$optimistic` need `let`, and `$memo` needs `const`.
 
+https://brumate.dev/docs/errors#brm089
+
 ```brm fragment
 let count = $signal(0);
 const double = $memo(count * 2);
 ```
 
-## {name} takes one argument
+## BRM090: {name} takes one argument
 
 `$signal`, `$memo` or `$optimistic` has more than one argument.
 
+https://brumate.dev/docs/errors#brm090
+
 ```brm fragment
 let count = $signal(0);
 ```
 
-## {name} needs a value
+## BRM091: {name} needs a value
 
 `$memo` or `$optimistic` has no argument.
+
+https://brumate.dev/docs/errors#brm091
 
 ```brm fragment
 const double = $memo(count * 2);
 ```
 
-## $optimistic needs the name of a value, such as a memo
+## BRM092: $optimistic needs the name of a value, such as a memo
 
 The argument of `$optimistic` is not a name.
+
+https://brumate.dev/docs/errors#brm092
 
 ```brm fragment
 let shown = $optimistic(items);
 ```
 
-## {name} does not return a value
+## BRM093: {name} does not return a value
 
 `$effect` or `$client` is assigned to a name.
 
+https://brumate.dev/docs/errors#brm093
+
 ```brm fragment
 $effect(() => {
   document.title = title;
 });
 ```
 
-## {name} needs a function
+## BRM094: {name} needs a function
 
 `$effect` or `$client` has no function as its callback.
 
+https://brumate.dev/docs/errors#brm094
+
 ```brm fragment
 $effect(() => {
   document.title = title;
 });
 ```
 
-## The callback of {name} takes no parameters
+## BRM095: The callback of {name} takes no parameters
 
 The callback of `$effect` or `$client` has parameters.
 
+https://brumate.dev/docs/errors#brm095
+
 ```brm fragment
 $effect(() => {
   document.title = title;
 });
 ```
 
-## The callback of {name} cannot be async
+## BRM096: The callback of {name} cannot be async
 
 The callback of `$effect` or `$client` is `async`.
+
+https://brumate.dev/docs/errors#brm096
 
 ```brm fragment
 $effect(() => {
@@ -896,9 +1088,11 @@ $effect(() => {
 });
 ```
 
-## $effect takes one argument
+## BRM097: $effect takes one argument
 
 `$effect` has more than one argument.
+
+https://brumate.dev/docs/errors#brm097
 
 ```brm fragment
 $effect(() => {
@@ -906,9 +1100,11 @@ $effect(() => {
 });
 ```
 
-## The trigger of $client must be "visible", "idle" or "load"
+## BRM098: The trigger of $client must be "visible", "idle" or "load"
 
 The second argument of `$client` is another string.
+
+https://brumate.dev/docs/errors#brm098
 
 ```brm fragment
 $client(() => {
@@ -916,83 +1112,103 @@ $client(() => {
 }, 'idle');
 ```
 
-## $handler needs a function as its first argument: a function expression, a function of the script, or one of them in a wrapper of brumate/events
+## BRM099: $handler needs a function as its first argument: a function expression, a function of the script, or one of them in a wrapper of brumate/events
 
 The first argument of `$handler` is not a function.
+
+https://brumate.dev/docs/errors#brm099
 
 ```brm fragment
 onClick: $handler(prevent(removeAt), index),
 ```
 
-## The handler reads "{name}", a value of the function around $handler, which the browser does not have. Pass it as an argument: $handler(fn, {name})
+## BRM100: The handler reads "{name}", a value of the function around $handler, which the browser does not have. Pass it as an argument: $handler(fn, {name})
 
 A handler reads a local value of the function that calls `$handler`.
+
+https://brumate.dev/docs/errors#brm100
 
 ```brm fragment
 onClick: $handler(removeAt, index),
 ```
 
-## The arguments of $handler cannot be spread
+## BRM101: The arguments of $handler cannot be spread
 
 `$handler` has a spread argument.
+
+https://brumate.dev/docs/errors#brm101
 
 ```brm fragment
 onClick: $handler(removeAt, index, kind),
 ```
 
-## The second argument of $bind is a function that takes the new value: a function expression, or a function of the script
+## BRM102: The second argument of $bind is a function that takes the new value: a function expression, or a function of the script
 
 The setter of `$bind` is not a function.
 
+https://brumate.dev/docs/errors#brm102
+
 ```brm fragment
 <Toggle on=$bind(open, (next) => (open = next)) />
 ```
 
-## The setter reads "{name}", a value of the function around $bind, which the browser does not have
+## BRM103: The setter reads "{name}", a value of the function around $bind, which the browser does not have
 
 The setter of `$bind` reads a local value that is not a value of the component.
 
+https://brumate.dev/docs/errors#brm103
+
 ```brm fragment
 <Toggle on=$bind(open, (next) => (open = next)) />
 ```
 
-## Pass $bind(name) as the value of a prop of a component, or of value or checked of an input, a select or a textarea
+## BRM104: Pass $bind(name) as the value of a prop of a component, or of value or checked of an input, a select or a textarea
 
 `$bind` is somewhere else, such as on a `class` or a `<div>`.
+
+https://brumate.dev/docs/errors#brm104
 
 ```brm fragment
 <input value=$bind(draft)>
 ```
 
-## $bind takes the name of a signal, and a function that writes it, such as $bind(open) or $bind(open, (next) => (open = next))
+## BRM105: $bind takes the name of a signal, and a function that writes it, such as $bind(open) or $bind(open, (next) => (open = next))
 
 `$bind` has no argument, or an argument that is not a name.
+
+https://brumate.dev/docs/errors#brm105
 
 ```brm fragment
 <Toggle on=$bind(open) />
 ```
 
-## $bind takes a signal, or a prop that the component destructures with let, and "{name}" is not one
+## BRM106: $bind takes a signal, or a prop that the component destructures with let, and "{name}" is not one
 
 The name in `$bind` is a memo, a const prop or another value.
+
+https://brumate.dev/docs/errors#brm106
 
 ```brm fragment
 let open = $signal(false);
 <Toggle on=$bind(open) />
 ```
 
-## $isBound takes a prop that the component destructures with let, such as $isBound(open)
+## BRM107: $isBound takes a prop that the component destructures with let, such as $isBound(open)
 
 The argument of `$isBound` is not a `let` prop.
+
+https://brumate.dev/docs/errors#brm107
 
 ```brm fragment
 let { open } = $props<{ open?: Bindable<boolean> }>();
 const bound = () => $isBound(open);
 ```
 
-## $isPending needs an async $memo as its only argument
+## BRM108: $isPending needs an async $memo as its only argument
 
 The argument of `$isPending` is not a memo that holds a promise.
+
+https://brumate.dev/docs/errors#brm108
 
 ```brm fragment
 const results = $memo(search(query));
@@ -1001,98 +1217,120 @@ const results = $memo(search(query));
 }
 ```
 
-## $produce needs a signal as its first argument
+## BRM109: $produce needs a signal as its first argument
 
 The first argument of `$produce` is not a signal.
 
+https://brumate.dev/docs/errors#brm109
+
 ```brm fragment
 $produce(todos, (draft) => {
   draft.push(todo);
 });
 ```
 
-## $produce needs a recipe function as its second argument
+## BRM110: $produce needs a recipe function as its second argument
 
 The second argument of `$produce` is not a function.
 
+https://brumate.dev/docs/errors#brm110
+
 ```brm fragment
 $produce(todos, (draft) => {
   draft.push(todo);
 });
 ```
 
-## "{name}" is reserved. Brumate writes the attributes that start with "b-"
+## BRM111: "{name}" is reserved. Brumate writes the attributes that start with "b-"
 
 An attribute starts with `b-`.
+
+https://brumate.dev/docs/errors#brm111
 
 ```brm fragment
 <div data-id=id></div>
 ```
 
-## "{name}" is not declared
+## BRM112: "{name}" is not declared
 
 The name in `ref=$bind(name)` is not a value of the component.
 
+https://brumate.dev/docs/errors#brm112
+
 ```brm fragment
 let input = $signal<HTMLInputElement>();
 <input ref=$bind(input)>
 ```
 
-## ref takes a $signal, or a prop that the component destructures with let, but "{name}" is {kind}
+## BRM113: ref takes a $signal, or a prop that the component destructures with let, but "{name}" is {kind}
 
 The name in `ref=$bind(name)` is a memo, a const prop or another value.
 
+https://brumate.dev/docs/errors#brm113
+
 ```brm fragment
 let input = $signal<HTMLInputElement>();
 <input ref=$bind(input)>
 ```
 
-## The prop "{name}" is not Bindable. Type it as Bindable<HTMLElement>, so a parent can bind it
+## BRM114: The prop "{name}" is not Bindable. Type it as Bindable<HTMLElement>, so a parent can bind it
 
 A `let` prop is used as a `ref` and its type is not `Bindable`.
+
+https://brumate.dev/docs/errors#brm114
 
 ```brm fragment
 let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();
 ```
 
-## "{name}" is the props object, so read one key at a time, destructure it, or spread it in markup
+## BRM115: "{name}" is the props object, so read one key at a time, destructure it, or spread it in markup
 
 The props object or the rest of `$props()` is used as a whole outside a markup spread: spread in code, passed to a function, `$memo`, `$setContext`, a signal or a variable, or given as a value in markup, such as `title=rest` or `<Badge {rest} />`. The copy loses the `ref` and the live props.
+
+https://brumate.dev/docs/errors#brm115
 
 ```brm fragment
 const { class: className, ...rest } = $props();
 <button {...rest} class=className>
 ```
 
-## "{name}" is the props object, and props are read-only. Copy the key to a $signal or a $memo to change it
+## BRM116: "{name}" is the props object, and props are read-only. Copy the key to a $signal or a $memo to change it
 
 Code assigns to, updates or deletes a key of the props object or of the rest of `$props()`.
+
+https://brumate.dev/docs/errors#brm116
 
 ```brm fragment
 let title = $signal('');
 title = 'New';
 ```
 
-## Cannot assign to {kind} "{name}"
+## BRM117: Cannot assign to {kind} "{name}"
 
 Code writes a memo, a const prop or another value that cannot change.
+
+https://brumate.dev/docs/errors#brm117
 
 ```brm fragment
 let count = $signal(0);
 count = 5;
 ```
 
-## Signal "{name}" can only be written in event handlers, effects, $client callbacks and functions
+## BRM118: Signal "{name}" can only be written in event handlers, effects, $client callbacks and functions
 
 Setup code, which runs on the server, writes a signal.
+
+https://brumate.dev/docs/errors#brm118
 
 ```brm fragment
 let count = $signal(5);
 ```
 
-## Server function "{name}" captures "{variable}". Pass it as an argument
+## BRM119: Server function "{name}" captures "{variable}". Pass it as an argument
 
 A server function reads a variable of the instance script.
+
+https://brumate.dev/docs/errors#brm119
 
 ```brm fragment
 async function save(user: string) {
@@ -1100,17 +1338,21 @@ async function save(user: string) {
 }
 ```
 
-## $optimistic follows a memo, an action or a prop, not a signal
+## BRM120: $optimistic follows a memo, an action or a prop, not a signal
 
 The source of `$optimistic` is a signal.
+
+https://brumate.dev/docs/errors#brm120
 
 ```brm fragment
 let shown = $optimistic(items);
 ```
 
-## Declare server functions at the top level of a script
+## BRM121: Declare server functions at the top level of a script
 
 A function with `'use server'` is inside another function or a block.
+
+https://brumate.dev/docs/errors#brm121
 
 ```brm fragment
 async function save() {
@@ -1118,129 +1360,161 @@ async function save() {
 }
 ```
 
-## {name} cannot be used here
+## BRM122: {name} cannot be used here
 
 A compile-time function is used where it is not allowed.
+
+https://brumate.dev/docs/errors#brm122
 
 ```brm fragment
 let count = $signal(0);
 ```
 
-## Call $setContext at the top level of a script
+## BRM123: Call $setContext at the top level of a script
 
 `$setContext` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm123
 
 ```brm fragment
 $setContext(ThemeContext, theme);
 ```
 
-## Call $title at the top level of a script
+## BRM124: Call $title at the top level of a script
 
 `$title` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm124
 
 ```brm fragment
 $title('Todos');
 ```
 
-## Create an ID with "const name = $id()" at the top level of a script
+## BRM125: Create an ID with "const name = $id()" at the top level of a script
 
 `$id` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm125
 
 ```brm fragment
 const field = $id();
 ```
 
-## Check a prop with "const name = $isPassed(prop)" at the top level of the component script
+## BRM126: Check a prop with "const name = $isPassed(prop)" at the top level of the component script
 
 `$isPassed` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm126
 
 ```brm fragment
 const passed = $isPassed(value);
 ```
 
-## Read a context with "const name = $getContext(Context)" at the top level of a script
+## BRM127: Read a context with "const name = $getContext(Context)" at the top level of a script
 
 `$getContext` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm127
 
 ```brm fragment
 const theme = $getContext(ThemeContext);
 ```
 
-## Read the route with "const name = $route()" at the top level of a script
+## BRM128: Read the route with "const name = $route()" at the top level of a script
 
 `$route` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm128
 
 ```brm fragment
 const route = $route();
 ```
 
-## Read the navigation with "const name = $navigation()" at the top level of a script
+## BRM129: Read the navigation with "const name = $navigation()" at the top level of a script
 
 `$navigation` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm129
 
 ```brm fragment
 const navigation = $navigation();
 ```
 
-## Call $props() as the value of a const in the component script
+## BRM130: Call $props() as the value of a const in the component script
 
 `$props` is used in another place than `const { … } = $props()`.
+
+https://brumate.dev/docs/errors#brm130
 
 ```brm fragment
 const { name } = $props<{ name: string }>();
 ```
 
-## Declare a signal with "let name = $signal(value)" at the top level of a script
+## BRM131: Declare a signal with "let name = $signal(value)" at the top level of a script
 
 `$signal` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm131
 
 ```brm fragment
 let count = $signal(0);
 ```
 
-## Declare a memo with "const name = $memo(value)" at the top level of a script
+## BRM132: Declare a memo with "const name = $memo(value)" at the top level of a script
 
 `$memo` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm132
 
 ```brm fragment
 const double = $memo(count * 2);
 ```
 
-## Declare a debounced value with "const name = $debounced(value, ms)" at the top level of a script
+## BRM133: Declare a debounced value with "const name = $debounced(value, ms)" at the top level of a script
 
 `$debounced` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm133
 
 ```brm fragment
 const query = $debounced(text, 300);
 ```
 
-## Declare a throttled value with "const name = $throttled(value, ms)" at the top level of a script
+## BRM134: Declare a throttled value with "const name = $throttled(value, ms)" at the top level of a script
 
 `$throttled` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm134
 
 ```brm fragment
 const position = $throttled(pointer, 100);
 ```
 
-## Declare an optimistic value with "let name = $optimistic(source)" at the top level of a script
+## BRM135: Declare an optimistic value with "let name = $optimistic(source)" at the top level of a script
 
 `$optimistic` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm135
 
 ```brm fragment
 let shown = $optimistic(items);
 ```
 
-## Declare the result of a form with "const name = $action(serverFunction)" at the top level of a script
+## BRM136: Declare the result of a form with "const name = $action(serverFunction)" at the top level of a script
 
 `$action` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm136
 
 ```brm fragment
 const result = $action(save);
 ```
 
-## Call $effect at the top level of a script
+## BRM137: Call $effect at the top level of a script
 
 `$effect` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm137
 
 ```brm fragment
 $effect(() => {
@@ -1248,9 +1522,11 @@ $effect(() => {
 });
 ```
 
-## Call $client at the top level of a script
+## BRM138: Call $client at the top level of a script
 
 `$client` is inside a function or a block of code.
+
+https://brumate.dev/docs/errors#brm138
 
 ```brm fragment
 $client(() => {
@@ -1258,18 +1534,22 @@ $client(() => {
 }, 'idle');
 ```
 
-## $ref is not supported. Use a $signal with ref=$bind(name)
+## BRM139: $ref is not supported. Use a $signal with ref=$bind(name)
 
 `$ref` was removed.
+
+https://brumate.dev/docs/errors#brm139
 
 ```brm fragment
 let input = $signal<HTMLInputElement>();
 <input ref=$bind(input)>
 ```
 
-## $watch is not supported. Use $effect
+## BRM140: $watch is not supported. Use $effect
 
 `$watch` was removed.
+
+https://brumate.dev/docs/errors#brm140
 
 ```brm fragment
 $effect(() => {
@@ -1277,9 +1557,11 @@ $effect(() => {
 });
 ```
 
-## $settled is not supported. Use $client
+## BRM141: $settled is not supported. Use $client
 
 `$settled` was removed.
+
+https://brumate.dev/docs/errors#brm141
 
 ```brm fragment
 $client(() => {
@@ -1287,9 +1569,11 @@ $client(() => {
 });
 ```
 
-## $cleanup is not supported. Return a cleanup function from $effect or $client
+## BRM142: $cleanup is not supported. Return a cleanup function from $effect or $client
 
 `$cleanup` was removed.
+
+https://brumate.dev/docs/errors#brm142
 
 ```brm fragment
 $effect(() => {
@@ -1298,51 +1582,63 @@ $effect(() => {
 });
 ```
 
-## $store is not supported yet
+## BRM143: $store is not supported yet
 
 `$store` does not exist.
+
+https://brumate.dev/docs/errors#brm143
 
 ```brm fragment
 let todos = $signal([]);
 ```
 
-## $get is not supported. Signals cannot leave the file
+## BRM144: $get is not supported. Signals cannot leave the file
 
 `$get` was removed. A signal never leaves its file.
 
+https://brumate.dev/docs/errors#brm144
+
 ```brm fragment
 // Pass the value, or a function that writes it.
 onChange=((next) => (count = next))
 ```
 
-## $set is not supported. Signals cannot leave the file
+## BRM145: $set is not supported. Signals cannot leave the file
 
 `$set` was removed. A signal never leaves its file.
 
+https://brumate.dev/docs/errors#brm145
+
 ```brm fragment
 // Pass the value, or a function that writes it.
 onChange=((next) => (count = next))
 ```
 
-## {name} was renamed to {renamed}. Import {renamed} from '{module}'
+## BRM146: {name} was renamed to {renamed}. Import {renamed} from '{module}'
 
 The file imports a name that the compiler knew before it was renamed.
 
+https://brumate.dev/docs/errors#brm146
+
 ```brm fragment
 import { $signal } from 'brumate/signals';
 ```
 
-## Import {name} from '{module}'
+## BRM147: Import {name} from '{module}'
 
 The file calls a compile-time function that it does not import.
 
+https://brumate.dev/docs/errors#brm147
+
 ```brm fragment
 import { $signal } from 'brumate/signals';
 ```
 
-## "{name}" holds a new {kind}, which cannot be sent to the browser, and code that runs in the browser reads it{reader}. Use it in a server function, or create it in the browser, such as in $client
+## BRM148: "{name}" holds a new {kind}, which cannot be sent to the browser, and code that runs in the browser reads it{reader}. Use it in a server function, or create it in the browser, such as in $client
 
 A value that cannot be sent to the browser, such as a database client, is read by code that runs there.
+
+https://brumate.dev/docs/errors#brm148
 
 ```brm fragment
 async function list() {
@@ -1351,10 +1647,12 @@ async function list() {
 }
 ```
 
-## {what} is read by code that runs in the browser ({site}). Read it in a server function
+## BRM149: {what} is read by code that runs in the browser ({site}). Read it in a server function
 
 Code that runs in the browser reads an environment variable of the server.
 
+https://brumate.dev/docs/errors#brm149
+
 ```brm fragment
 async function key() {
   'use server';
@@ -1362,10 +1660,12 @@ async function key() {
 }
 ```
 
-## "{name}" holds {what} and code that runs in the browser reads it. Keep server variables out of values that the browser reads
+## BRM150: "{name}" holds {what} and code that runs in the browser reads it. Keep server variables out of values that the browser reads
 
 A value holds an environment variable of the server, and the browser reads the value.
 
+https://brumate.dev/docs/errors#brm150
+
 ```brm fragment
 async function key() {
   'use server';
@@ -1373,37 +1673,45 @@ async function key() {
 }
 ```
 
-## #defer cannot be inside a #client body
+## BRM151: #defer cannot be inside a #client body
 
 A `#defer` is in markup that only the browser renders.
 
+https://brumate.dev/docs/errors#brm151
+
 ```brm fragment
 #defer {
   <Comments />
 }
 ```
 
-## #defer cannot be in markup that the browser renders
+## BRM152: #defer cannot be in markup that the browser renders
 
 A `#defer` is in a body that the browser adds later, such as the body of a changing `#if`.
 
+https://brumate.dev/docs/errors#brm152
+
 ```brm fragment
 #defer {
   <Comments />
 }
 ```
 
-## A value that changes in <{tag}> must be its whole content, such as <{tag}>{`Count ${count}`}</{tag}>
+## BRM153: A value that changes in <{tag}> must be its whole content, such as <{tag}>{`Count ${count}`}</{tag}>
 
 A `<title>`, `<textarea>`, `<style>` or `<script>` holds a changing value next to other content.
+
+https://brumate.dev/docs/errors#brm153
 
 ```brm fragment
 <textarea>{`Count ${count}`}</textarea>
 ```
 
-## Put <title> in #head, as <meta> and <link>, such as #head { <title>{`${count} left`}</title> }
+## BRM154: Put <title> in #head, as <meta> and <link>, such as #head { <title>{`${count} left`}</title> }
 
 A `<title>` is outside `#head`.
+
+https://brumate.dev/docs/errors#brm154
 
 ```brm fragment
 #head {
@@ -1411,41 +1719,51 @@ A `<title>` is outside `#head`.
 }
 ```
 
-## A dynamic tag that changes on the client is not supported yet
+## BRM155: A dynamic tag that changes on the client is not supported yet
 
 No `.brm` file reaches it today: the parser keys every dynamic tag, and a `<{tag}>` whose tag a handler changes compiles. It is kept for a tag that the compiler could not update.
+
+https://brumate.dev/docs/errors#brm155
 
 ```brm fragment
 <{tag} class="title">Title</>
 ```
 
-## Code that the browser updates can await only a memo. Load the promise in a memo instead
+## BRM156: Code that the browser updates can await only a memo. Load the promise in a memo instead
 
 Code that runs again in the browser awaits something other than a memo.
 
+https://brumate.dev/docs/errors#brm156
+
 ```brm fragment
 const user = $memo(await load(id));
 ```
 
-## Markup that the browser renders can await only a memo. Load the promise in a memo instead
+## BRM157: Markup that the browser renders can await only a memo. Load the promise in a memo instead
 
 Markup that the browser renders awaits something other than a memo.
 
+https://brumate.dev/docs/errors#brm157
+
 ```brm fragment
 const user = $memo(await load(id));
 ```
 
-## This attribute cannot change on the client yet
+## BRM158: This attribute cannot change on the client yet
 
 The name or the value of an attribute with a computed name, as in `[name]=value`, changes in the browser.
+
+https://brumate.dev/docs/errors#brm158
 
 ```brm fragment
 <div class=(open ? "open" : "closed")></div>
 ```
 
-## This computed attribute has a name or value with no code in the browser, so it cannot stay when the attributes of the element update
+## BRM159: This computed attribute has a name or value with no code in the browser, so it cannot stay when the attributes of the element update
 
 An element has a computed attribute, as in `[name]=(value)`, and a spread or another computed attribute that can change. The name or the value is a constant, or a signal that nothing writes, so the browser has no code for it, and an update of the element would remove the attribute. Make both a signal that the page writes, or write the attribute without brackets.
+
+https://brumate.dev/docs/errors#brm159
 
 ```brm fragment
 let name = $signal('data-x');
@@ -1456,9 +1774,11 @@ let value = $signal('on');
 <p {...props} data-x="on"></p>
 ```
 
-## Destructuring assignment to a signal is not supported in client code yet
+## BRM160: Destructuring assignment to a signal is not supported in client code yet
 
 Code that runs in the browser writes a signal in a destructuring assignment.
+
+https://brumate.dev/docs/errors#brm160
 
 ```brm fragment
 [first, second] = pair;
@@ -1467,17 +1787,21 @@ first = pair[0];
 second = pair[1];
 ```
 
-## Assign to "{name}" with = instead of {op}
+## BRM161: Assign to "{name}" with = instead of {op}
 
 An optimistic value is changed with `++` or `--`.
+
+https://brumate.dev/docs/errors#brm161
 
 ```brm fragment
 shown = shown + 1;
 ```
 
-## Invalid CSS: {message}
+## BRM162: Invalid CSS: {message}
 
 A `<style>` has CSS that does not parse.
+
+https://brumate.dev/docs/errors#brm162
 
 ```brm fragment
 <style>
@@ -1487,9 +1811,11 @@ A `<style>` has CSS that does not parse.
 </style>
 ```
 
-## Module functions call each other too deeply. A module function cannot call itself
+## BRM163: Module functions call each other too deeply. A module function cannot call itself
 
 A function of a module of reactive logic calls itself, or a loop of functions call each other.
+
+https://brumate.dev/docs/errors#brm163
 
 ```brm fragment
 function counter(start: number) {
@@ -1498,42 +1824,52 @@ function counter(start: number) {
 }
 ```
 
-## Destructure what {name} returns, as in const { value } = {name}(…)
+## BRM164: Destructure what {name} returns, as in const { value } = {name}(…)
 
 The result of a module function is kept as one object.
 
+https://brumate.dev/docs/errors#brm164
+
 ```brm fragment
 const { count, increment } = counter(0);
 ```
 
-## Declare what {name} returns with const
+## BRM165: Declare what {name} returns with const
 
 The result of a module function is declared with `let`.
 
+https://brumate.dev/docs/errors#brm165
+
 ```brm fragment
 const { count, increment } = counter(0);
 ```
 
-## Call {name} at the top level of a script, as in const { value } = {name}(…). Its signals become values of the component, so it cannot run in a function, a condition or a loop
+## BRM166: Call {name} at the top level of a script, as in const { value } = {name}(…). Its signals become values of the component, so it cannot run in a function, a condition or a loop
 
 A module function is called inside a function, a condition or a loop.
 
+https://brumate.dev/docs/errors#brm166
+
 ```brm fragment
 const { count, increment } = counter(0);
 ```
 
-## Cannot read {specifier}
+## BRM167: Cannot read {specifier}
 
 The module that the component imports is not on disk.
+
+https://brumate.dev/docs/errors#brm167
 
 ```brm fragment
 import { counter } from './counter.brm.ts';
 ```
 
-## {specifier} does not export a function named {name}
+## BRM168: {specifier} does not export a function named {name}
 
 The import names a function that the module does not export.
 
+https://brumate.dev/docs/errors#brm168
+
 ```brm fragment
 export function counter(start: number) {
   let count = $signal(start);
@@ -1541,10 +1877,12 @@ export function counter(start: number) {
 }
 ```
 
-## {name} needs a body that ends with return { … }
+## BRM169: {name} needs a body that ends with return { … }
 
 A module function is an arrow function with an expression body.
 
+https://brumate.dev/docs/errors#brm169
+
 ```brm fragment
 export function counter(start: number) {
   let count = $signal(start);
@@ -1552,10 +1890,12 @@ export function counter(start: number) {
 }
 ```
 
-## {name} must end with return { … }, an object of what it gives
+## BRM170: {name} must end with return { … }, an object of what it gives
 
 A module function does not end with `return { … }`.
 
+https://brumate.dev/docs/errors#brm170
+
 ```brm fragment
 export function counter(start: number) {
   let count = $signal(start);
@@ -1563,10 +1903,12 @@ export function counter(start: number) {
 }
 ```
 
-## {name} can return only at its end
+## BRM171: {name} can return only at its end
 
 A module function returns in the middle of its body.
 
+https://brumate.dev/docs/errors#brm171
+
 ```brm fragment
 export function counter(start: number) {
   let count = $signal(start);
@@ -1574,58 +1916,72 @@ export function counter(start: number) {
 }
 ```
 
-## Destructure {name} with plain names, as in const { value, other: renamed } = {name}(…)
+## BRM172: Destructure {name} with plain names, as in const { value, other: renamed } = {name}(…)
 
 The result of a module function is destructured with a default, a nested pattern or a rest.
+
+https://brumate.dev/docs/errors#brm172
 
 ```brm fragment
 const { count, increment: add } = counter(0);
 ```
 
-## {name} must return an object with plain keys
+## BRM173: {name} must return an object with plain keys
 
 The returned object has a computed key, a spread or a method.
 
+https://brumate.dev/docs/errors#brm173
+
 ```brm fragment
 return { count, increment };
 ```
 
-## {name} cannot return getters or setters. Return the values themselves
+## BRM174: {name} cannot return getters or setters. Return the values themselves
 
 The returned object has a getter or a setter.
 
+https://brumate.dev/docs/errors#brm174
+
 ```brm fragment
 return { count, increment };
 ```
 
-## {name} does not return {key}
+## BRM175: {name} does not return {key}
 
 The component destructures a name that the module function does not return.
+
+https://brumate.dev/docs/errors#brm175
 
 ```brm fragment
 const { count } = counter(0);
 ```
 
-## {name} returns {local} as {first} and as {key}. Return each local once, and give the other key a function of its own
+## BRM176: {name} returns {local} as {first} and as {key}. Return each local once, and give the other key a function of its own
 
 A module function returns one local under two keys.
+
+https://brumate.dev/docs/errors#brm176
 
 ```brm fragment
 return { count, increment };
 ```
 
-## {name} is declared twice
+## BRM177: {name} is declared twice
 
 A name of the module function is also a name of the component.
+
+https://brumate.dev/docs/errors#brm177
 
 ```brm fragment
 const { count: first } = counter(0);
 const { count: second } = counter(10);
 ```
 
-## Parameters of {name} must be plain names
+## BRM178: Parameters of {name} must be plain names
 
 A module function has a destructured or default parameter.
+
+https://brumate.dev/docs/errors#brm178
 
 ```brm fragment
 export function counter(start: number) {
@@ -1634,9 +1990,11 @@ export function counter(start: number) {
 }
 ```
 
-## {name} reads {local}, which {specifier} does not export. Export it, so the component can import it
+## BRM179: {name} reads {local}, which {specifier} does not export. Export it, so the component can import it
 
 A module function reads a value of its module that is not exported.
+
+https://brumate.dev/docs/errors#brm179
 
 ```brm fragment
 export const STEP = 1;

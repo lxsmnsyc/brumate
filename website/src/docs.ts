@@ -22,6 +22,7 @@ const labels: Record<string, string> = {
   effects: 'Effects',
   'reactive-modules': 'Shared logic',
   forms: 'Forms',
+  errors: 'Compile errors',
   security: 'Security',
   environment: 'Environment variables',
   packages: 'Publishing',
@@ -40,7 +41,7 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   { title: 'Data', pages: ['server-functions', 'async-data', 'forms'] },
   { title: 'Pages', pages: ['routing', 'navigation', 'page-metadata'] },
   { title: 'Production', pages: ['security', 'environment', 'testing', 'deploying', 'packages'] },
-  { title: 'Tools', pages: ['typescript', 'editor', 'inspect'] },
+  { title: 'Tools', pages: ['typescript', 'editor', 'inspect', 'errors'] },
   {
     title: 'Reference',
     pages: [

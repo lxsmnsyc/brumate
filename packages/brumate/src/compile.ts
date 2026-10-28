@@ -13,7 +13,7 @@ import { analyze } from './analyze.ts';
 import { generateClient } from './codegen/client.ts';
 import { generateRender } from './codegen/render.ts';
 import { generateServer } from './codegen/server.ts';
-import { BrumateError, codeFrame, getLocation } from './error.ts';
+import { BrumateError, codeFrame, getLocation, withCode } from './error.ts';
 import type { Location } from './error.ts';
 import { buildGraph } from './graph.ts';
 import type { Diagnostic } from './model.ts';
@@ -133,7 +133,7 @@ export class CompileError extends Error {
   constructor(source: string, filename: string, diagnostics: Diagnostic[]) {
     const lines = diagnostics.map((diagnostic) => {
       const { line, column } = getLocation(source, diagnostic.range.start);
-      return `${diagnostic.message} (${filename}:${line}:${column})`;
+      return `${withCode(diagnostic.message)} (${filename}:${line}:${column})`;
     });
     super(lines.join('\n'));
     this.name = 'CompileError';
@@ -231,7 +231,7 @@ function expand(
         const at = origin(error.offset);
         const where = at.module ? ` (${locationIn(at.module, at.offset)})` : '';
         throw new BrumateError(
-          `${error.message.replace(/ \([^()]*:\d+:\d+\)$/, '')}${where}`,
+          `${error.message.replace(/ \([^()]*:\d+:\d+\)$/, '').replace(/ \[BRM\d+\]$/, '')}${where}`,
           source,
           at.call?.start ?? at.offset,
           filename,

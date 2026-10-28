@@ -5,7 +5,8 @@ function error(source: string): string {
   try {
     parse(source, { filename: 'Test.brm' });
   } catch (caught) {
-    return (caught as Error).message;
+    // The code of the catalog entry sits before the place. The tests name the message.
+    return (caught as Error).message.replace(/ \[BRM\d+\]/, '');
   }
   throw new Error('Expected a syntax error');
 }
