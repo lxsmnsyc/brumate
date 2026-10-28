@@ -1,0 +1,6 @@
+<script>
+  import { $props } from 'brumate/signals';
+  const { cb } = $props<{ cb: () => void }>();
+</script>
+
+<button class="cb" onClick=cb>cb</button>
