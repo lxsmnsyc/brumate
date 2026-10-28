@@ -1,0 +1,16 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Input from '@brumate/ui/Input.brm';
+</script>
+
+<Group class="ui-group" aria-label="Search" data-mark="1" style="gap: 0.9rem; padding: 0.6rem 0.8rem; border: 1px dashed var(--muted); border-radius: 8px">
+  <span class="group-anatomy-input" data-mark="2"><Input class="ui-input" aria-label="Query" value="shoes" /></span>
+  <Button class="ui-button" data-mark="3">Search</Button>
+</Group>
+
+<style>
+  :global(.group-anatomy-input) {
+    display: grid;
+  }
+</style>

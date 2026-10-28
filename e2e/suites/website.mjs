@@ -848,6 +848,240 @@ export async function run({ browser, url, runner }) {
       },
     );
     await flow(
+      '/ui: the pages of navigation, status and layout that are done have an anatomy picture and a styled example',
+      async () => {
+        const slugs = [
+          'disclosure',
+          'disclosure-group',
+          'breadcrumbs',
+          'toolbar',
+          'meter',
+          'progress-bar',
+          'group',
+        ];
+        for (const slug of slugs) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            assert((await page.locator('.styled pre').count()) === 1, `/ui/${slug} shows no CSS`);
+            const marks = await page.locator('.anatomy [data-mark]').count();
+            const items = await page.locator('.anatomy-list li').count();
+            assert(
+              marks > 0 && marks === items,
+              `/ui/${slug}: ${marks} callouts for ${items} pieces`,
+            );
+            await page.addScriptTag({ path: axe });
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run(document.querySelector('article'));
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+      },
+    );
+    await flow(
+      '/ui: the accordion, the toolbar and the upload respond to keys and presses',
+      async () => {
+        const settle = () => page.waitForTimeout(600);
+        const visit = async (slug) => {
+          await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+          await page.waitForTimeout(1500);
+        };
+        const focused = () =>
+          page.evaluate(() => (document.activeElement?.textContent ?? '').trim().slice(0, 30));
+        // DisclosureGroup: a press opens one and closes the one that was open.
+        await visit('disclosure-group');
+        const steps = page.locator('.ui-accordion', { hasText: '1. Address' });
+        const triggers = steps.locator('button.ui-disclosure-trigger');
+        assert(
+          (await triggers.nth(0).getAttribute('aria-expanded')) === 'true',
+          'the first step does not start open',
+        );
+        await steps.getByRole('button', { name: 'Continue' }).click();
+        await settle();
+        assert(
+          (await triggers.nth(0).getAttribute('aria-expanded')) === 'false',
+          'step 1 stayed open',
+        );
+        assert(
+          (await triggers.nth(1).getAttribute('aria-expanded')) === 'true',
+          'step 2 did not open',
+        );
+        assert(
+          (await focused()).startsWith('2. Payment'),
+          `focus is on "${await focused()}" after Continue`,
+        );
+        // Without allowsMultipleExpanded, a press on another trigger closes the open one. The
+        // presses go through the part, not a signal.
+        const cards = page.locator('.group-styled-list .group-styled-trigger');
+        const openCount = () =>
+          cards.evaluateAll(
+            (list) => list.filter((item) => item.getAttribute('aria-expanded') === 'true').length,
+          );
+        assert((await openCount()) === 1, 'the styled group does not start with one open');
+        await cards.nth(1).click();
+        await settle();
+        assert((await openCount()) === 1, `${await openCount()} are open after one more press`);
+        assert(
+          (await cards.nth(1).getAttribute('aria-expanded')) === 'true',
+          'the pressed item did not open',
+        );
+        await cards.nth(2).click();
+        await settle();
+        assert((await openCount()) === 1, `${await openCount()} are open after two presses`);
+        // With allowsMultipleExpanded they add up.
+        const every = page.locator('.ui-stack', { hasText: 'Expand all' });
+        await every.getByRole('button', { name: 'Collapse all' }).click();
+        await every.getByRole('button', { name: 'Setup', exact: true }).click();
+        await every.getByRole('button', { name: 'Usage', exact: true }).click();
+        await settle();
+        assert(
+          (await every.locator('p').last().innerText()).startsWith('2 of 3'),
+          'two presses did not leave two open',
+        );
+        // Disclosure: Enter opens the terms, and the Accept button wakes up.
+        await visit('disclosure');
+        const terms = page.locator('.ui-stack', { hasText: 'Terms of use' });
+        const accept = terms.getByRole('button', { name: 'Accept' });
+        assert(await accept.isDisabled(), 'Accept starts enabled');
+        await terms.getByRole('button', { name: 'Terms of use' }).focus();
+        await page.keyboard.press('Enter');
+        await settle();
+        assert(!(await accept.isDisabled()), 'opening the terms did not enable Accept');
+        await accept.focus();
+        await page.keyboard.press('Enter');
+        await settle();
+        assert(
+          (await focused()) === 'Accepted',
+          `focus is on "${await focused()}" after Accept, not on the button`,
+        );
+        // unmount="offscreen" keeps the typed text across a collapse.
+        const options = page.locator('.ui-stack', { hasText: 'Advanced options' });
+        const section = options.getByRole('button', { name: 'Advanced options' });
+        await section.click();
+        await settle();
+        await options.locator('input').fill('proxy:8080');
+        await section.click();
+        await settle();
+        assert(
+          (await section.getAttribute('aria-expanded')) === 'false',
+          'the section stayed open',
+        );
+        await section.click();
+        await settle();
+        assert(
+          (await options.locator('input').inputValue()) === 'proxy:8080',
+          'the collapse lost the typed text',
+        );
+        // Toolbar: the arrow keys move focus and Home and End go to the ends.
+        await visit('toolbar');
+        const editor = page.locator('.ui-stack', { hasText: 'Hello' });
+        await editor.getByRole('button', { name: 'Bold' }).focus();
+        await page.keyboard.press('ArrowRight');
+        assert((await focused()) === 'Italic', `ArrowRight went to "${await focused()}"`);
+        await page.keyboard.press('End');
+        assert(
+          await editor.locator('input').evaluate((input) => input === document.activeElement),
+          'End did not reach the field',
+        );
+        // Tab stops at one item, so Shift+Tab from the field leaves the toolbar.
+        await page.keyboard.press('Shift+Tab');
+        assert(
+          !(await editor
+            .locator('[role=toolbar]')
+            .evaluate((bar) => bar.contains(document.activeElement))),
+          'Shift+Tab stayed in the toolbar',
+        );
+        await editor.getByRole('button', { name: 'Larger' }).focus();
+        await page.keyboard.press('Home');
+        assert((await focused()) === 'Bold', `Home went to "${await focused()}"`);
+        // Right to left: ArrowLeft moves to the next item.
+        const arabic = page.locator('div[dir=rtl] [role=toolbar]');
+        await arabic.getByRole('button').first().focus();
+        await page.keyboard.press('ArrowLeft');
+        assert(
+          (await focused()) === (await arabic.getByRole('button').nth(1).innerText()),
+          'ArrowLeft did not move on right to left',
+        );
+        // ProgressBar: two quick presses start one upload, and Cancel resets it.
+        await visit('progress-bar');
+        const upload = page.locator('.ui-stack', { hasText: 'Cancel' }).first();
+        const bar = upload.locator('[role=progressbar]');
+        await upload.getByRole('button', { name: 'Upload', exact: true }).dblclick();
+        await page.waitForTimeout(800);
+        const value = Number(await bar.getAttribute('aria-valuenow'));
+        assert(value > 0 && value <= 30, `two timers ran: the value is ${value}`);
+        await upload.getByRole('button', { name: 'Cancel' }).click();
+        await settle();
+        assert((await bar.getAttribute('aria-valuenow')) === '0', 'Cancel left the value');
+        // The buttons keep focus when they are pressed with the keyboard.
+        await upload.getByRole('button', { name: 'Upload', exact: true }).focus();
+        await page.keyboard.press('Enter');
+        assert((await focused()) === 'Upload', `focus is on "${await focused()}" after Upload`);
+        await upload.getByRole('button', { name: 'Cancel' }).focus();
+        await page.keyboard.press('Enter');
+        await settle();
+        assert((await focused()) === 'Cancel', `focus is on "${await focused()}" after Cancel`);
+        // The fill has the width that --percentage says (64%, 38%, 72% and 94%).
+        const fill = (selector) =>
+          page.evaluate((query) => {
+            const element = document.querySelector(query);
+            return (
+              (element.getBoundingClientRect().width /
+                element.parentElement.getBoundingClientRect().width) *
+              100
+            );
+          }, selector);
+        const wide = await fill('.progress-styled-list .progress-styled-fill');
+        assert(Math.abs(wide - 64) < 1, `the ProgressBar fill is ${wide}% wide, not 64%`);
+        await visit('meter');
+        const meterFill = await fill(".meter-styled-fill[data-level='high']");
+        assert(Math.abs(meterFill - 72) < 1, `the Meter fill is ${meterFill}% wide, not 72%`);
+        // Breadcrumbs: a press on a step cuts the path, and focus goes to the list of folders.
+        await visit('breadcrumbs');
+        const folders = page.locator('.ui-stack:has(nav[aria-label=Folder])');
+        const trail = folders.locator('nav');
+        await folders.getByRole('button', { name: 'Photos' }).click();
+        await folders.getByRole('button', { name: 'Spring' }).click();
+        await settle();
+        assert((await trail.locator('li').count()) === 3, 'the path is not three steps');
+        await trail.getByRole('link', { name: 'Photos' }).click();
+        await settle();
+        assert((await trail.locator('li').count()) === 2, 'a press on a step left the path');
+        assert(
+          await folders
+            .locator('[role=group][tabindex="-1"]')
+            .evaluate((list) => list === document.activeElement),
+          'focus did not go to the list of folders',
+        );
+        // Group: the focus ring follows focus inside, and the disabled one says so.
+        await visit('group');
+        const frames = page.locator('.group-styled');
+        assert(
+          (await frames.nth(2).getAttribute('data-disabled')) !== null &&
+            (await frames.nth(2).locator('input').isDisabled()),
+          'the disabled group is not disabled',
+        );
+        assert((await frames.nth(1).getAttribute('data-invalid')) !== null, 'no data-invalid');
+        await frames.nth(0).locator('input').focus();
+        assert(
+          (await frames.nth(0).getAttribute('data-focus-within')) !== null,
+          'no data-focus-within with focus inside',
+        );
+        // Enter in the search field searches.
+        const search = page.locator('.ui-stack:has(form)');
+        await search.locator('input').fill('shoes');
+        await page.keyboard.press('Enter');
+        await settle();
+        assert((await search.innerText()).includes('Searched for "shoes"'), 'Enter did not search');
+      },
+    );
+    await flow(
       '/ui/styling: the styled examples follow the theme toggle, with no contrast violations',
       async () => {
         // The toggle of the site, not the system setting, picks the theme. Each system setting

@@ -1,0 +1,19 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Meter from '@brumate/ui/Meter.brm';
+
+  let charge = $signal(55);
+  const note = $memo(charge < 20 ? 'Low. Plug in the charger.' : charge === 100 ? 'Full.' : 'Fine.');
+</script>
+
+<div class="ui-stack">
+  <Meter class="ui-bar" value=(charge)><Label>Battery</Label></Meter>
+  <div class="ui-group">
+    <!-- The buttons clamp and stay enabled, so focus stays where it is at 0% and at 100%. -->
+    <Button class="ui-button" onPress=(() => (charge = Math.max(0, charge - 15)))>Use 15%</Button>
+    <Button class="ui-button" onPress=(() => (charge = Math.min(100, charge + 15)))>Charge 15%</Button>
+  </div>
+  <p>{note}</p>
+</div>

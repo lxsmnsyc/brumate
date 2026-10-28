@@ -1,0 +1,15 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import I18nProvider from '@brumate/ui/I18nProvider.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
+</script>
+
+<I18nProvider locale="ar-EG">
+  <div dir="rtl" lang="ar">
+    <Toolbar class="ui-group" aria-label="الإجراءات">
+      <Button class="ui-button">الأول</Button>
+      <Button class="ui-button">الثاني</Button>
+      <Button class="ui-button">الثالث</Button>
+    </Toolbar>
+  </div>
+</I18nProvider>

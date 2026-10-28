@@ -1,0 +1,32 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosureGroup from '@brumate/ui/DisclosureGroup.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+
+  let mine = $signal(['b']);
+  let locked = $signal(false);
+  let log = $signal('');
+</script>
+
+<div class="ui-stack">
+  <DisclosureGroup class="ui-accordion">
+    <Disclosure id="a" class="ui-disclosure"><Button slot="trigger" class="ui-disclosure-trigger">Own state A</Button><DisclosurePanel class="ui-disclosure-panel"><p>A</p></DisclosurePanel></Disclosure>
+    <Disclosure id="b" class="ui-disclosure"><Button slot="trigger" class="ui-disclosure-trigger">Own state B</Button><DisclosurePanel class="ui-disclosure-panel"><p>B</p></DisclosurePanel></Disclosure>
+  </DisclosureGroup>
+  <DisclosureGroup class="ui-accordion" expandedKeys=(['b'])>
+    <Disclosure id="a" class="ui-disclosure"><Button slot="trigger" class="ui-disclosure-trigger">Starts at B, A</Button><DisclosurePanel class="ui-disclosure-panel"><p>A</p></DisclosurePanel></Disclosure>
+    <Disclosure id="b" class="ui-disclosure"><Button slot="trigger" class="ui-disclosure-trigger">Starts at B, B</Button><DisclosurePanel class="ui-disclosure-panel"><p>B</p></DisclosurePanel></Disclosure>
+  </DisclosureGroup>
+  <DisclosureGroup class="ui-accordion" expandedKeys=$bind(mine) onExpandedChange=((keys) => (log = `changed to ${keys.join(', ') || 'nothing'}`))>
+    <Disclosure id="a" class="ui-disclosure"><Button slot="trigger" class="ui-disclosure-trigger">Writes your signal, A</Button><DisclosurePanel class="ui-disclosure-panel"><p>A</p></DisclosurePanel></Disclosure>
+    <Disclosure id="b" class="ui-disclosure"><Button slot="trigger" class="ui-disclosure-trigger">Writes your signal, B</Button><DisclosurePanel class="ui-disclosure-panel"><p>B</p></DisclosurePanel></Disclosure>
+  </DisclosureGroup>
+  <DisclosureGroup class="ui-accordion" expandedKeys=$bind(mine, (next) => { if (!locked) mine = next; })>
+    <Disclosure id="a" class="ui-disclosure"><Button slot="trigger" class="ui-disclosure-trigger">Asks you first, A</Button><DisclosurePanel class="ui-disclosure-panel"><p>A</p></DisclosurePanel></Disclosure>
+    <Disclosure id="b" class="ui-disclosure"><Button slot="trigger" class="ui-disclosure-trigger">Asks you first, B</Button><DisclosurePanel class="ui-disclosure-panel"><p>B</p></DisclosurePanel></Disclosure>
+  </DisclosureGroup>
+  <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the signal</Button>
+  <p>Signal: {mine.join(', ') || 'none'}. Last callback: {log || 'none'}.</p>
+</div>

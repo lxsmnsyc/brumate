@@ -1,0 +1,115 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Input from '@brumate/ui/Input.brm';
+</script>
+
+<div class="group-styled-stack">
+  <Group class="group-styled" aria-label="Search">
+    <Input class="group-styled-input" aria-label="Query" placeholder="Search" />
+    <Button class="group-styled-button">Go</Button>
+  </Group>
+  <Group class="group-styled" aria-label="Invalid search" isInvalid>
+    <Input class="group-styled-input" aria-label="Invalid query" value="a" />
+    <Button class="group-styled-button">Go</Button>
+  </Group>
+  <Group class="group-styled" aria-label="Disabled search" isDisabled>
+    <Input class="group-styled-input" aria-label="Disabled query" value="shoes" disabled />
+    <Button class="group-styled-button" isDisabled>Go</Button>
+  </Group>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.group-styled-stack) {
+    --group-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
+    --group-styled-hover: color-mix(in srgb, CanvasText 75%, Canvas);
+    --group-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --group-styled-invalid: light-dark(#b3261e, #ff8a80);
+    --group-styled-on-accent: light-dark(#fff, #101418);
+    display: grid;
+    gap: 0.9rem;
+    width: 100%;
+    max-width: 22rem;
+    color: CanvasText;
+  }
+
+  /* The group draws one frame for the input and the button. It reacts to its own attributes. */
+  :global(.group-styled) {
+    display: flex;
+    overflow: hidden;
+    border: 2px solid var(--group-styled-border);
+    border-radius: 10px;
+    background: Canvas;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  :global(.group-styled[data-hovered]) {
+    border-color: var(--group-styled-hover);
+  }
+
+  :global(.group-styled[data-focus-within]) {
+    border-color: var(--group-styled-accent);
+  }
+
+  :global(.group-styled[data-focus-visible]) {
+    box-shadow: 0 0 0 2px Canvas, 0 0 0 4px var(--group-styled-accent);
+  }
+
+  :global(.group-styled[data-invalid]) {
+    border-color: var(--group-styled-invalid);
+  }
+
+  :global(.group-styled[data-disabled]) {
+    opacity: 0.6;
+  }
+
+  /* The input has no frame of its own, and the group's ring says that focus is inside. */
+  :global(.group-styled-input) {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.7rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+  }
+
+  :global(.group-styled-input[data-focus-visible]),
+  :global(.group-styled-input:focus-visible) {
+    outline: none;
+  }
+
+  :global(.group-styled-button) {
+    padding: 0.5rem 1rem;
+    border: 0;
+    background: var(--group-styled-accent);
+    color: var(--group-styled-on-accent);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  :global(.group-styled-button[data-hovered]) {
+    background: color-mix(in srgb, var(--group-styled-accent), CanvasText 15%);
+  }
+
+  :global(.group-styled-button[data-pressed]) {
+    background: color-mix(in srgb, var(--group-styled-accent), CanvasText 28%);
+  }
+
+  :global(.group-styled-button[data-focus-visible]) {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--group-styled-on-accent);
+  }
+
+  :global(.group-styled-button[data-disabled]) {
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.group-styled) {
+      transition: none;
+    }
+  }
+</style>

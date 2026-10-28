@@ -1,0 +1,31 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosureGroup from '@brumate/ui/DisclosureGroup.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+
+  const ids = ['intro', 'setup', 'usage'];
+  const items = [
+    { id: 'intro', title: 'Introduction', text: 'What the part does.' },
+    { id: 'setup', title: 'Setup', text: 'Install it and import it.' },
+    { id: 'usage', title: 'Usage', text: 'Put it in a page.' },
+  ];
+  let open = $signal(['intro']);
+</script>
+
+<div class="ui-stack">
+  <div class="ui-group">
+    <Button class="ui-button" onPress=(() => (open = ids))>Expand all</Button>
+    <Button class="ui-button" onPress=(() => (open = []))>Collapse all</Button>
+  </div>
+  <DisclosureGroup class="ui-accordion" allowsMultipleExpanded expandedKeys=$bind(open)>
+    #for (item of items by item.id) {
+      <Disclosure id=(item.id) class="ui-disclosure">
+        <Button slot="trigger" class="ui-disclosure-trigger">{item.title}</Button>
+        <DisclosurePanel transition class="ui-disclosure-panel"><p>{item.text}</p></DisclosurePanel>
+      </Disclosure>
+    }
+  </DisclosureGroup>
+  <p>{open.length} of {ids.length} open.</p>
+</div>

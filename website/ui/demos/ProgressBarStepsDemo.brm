@@ -1,0 +1,23 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ProgressBar from '@brumate/ui/ProgressBar.brm';
+
+  const steps = ['Account', 'Profile', 'Plan', 'Done'];
+  let step = $signal(1);
+  let waiting = $signal(false);
+</script>
+
+<div class="ui-stack">
+  <ProgressBar class="ui-bar" value=(step) minValue=(1) maxValue=(steps.length) isIndeterminate=(waiting) valueLabel=(`Step ${step} of ${steps.length}`)>
+    <Label>{waiting ? 'Saving' : steps[step - 1]}</Label>
+  </ProgressBar>
+  <div class="ui-group">
+    <!-- The buttons stay enabled and clamp, so focus stays where it is. -->
+    <Button class="ui-button" onPress=(() => { if (!waiting) step = Math.max(1, step - 1); })>Back</Button>
+    <Button class="ui-button" onPress=(() => { if (!waiting) step = Math.min(steps.length, step + 1); })>Next</Button>
+    <Button class="ui-button" onPress=(() => (waiting = true))>Save</Button>
+    <Button class="ui-button" onPress=(() => (waiting = false))>Finish saving</Button>
+  </div>
+</div>
