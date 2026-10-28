@@ -1,7 +1,7 @@
 ---
 id: ui-docs-pages-dates
 title: Anatomy, use cases, CSS and state on the pages of the date parts
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
