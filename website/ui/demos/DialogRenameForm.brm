@@ -11,7 +11,7 @@
 
 <script>
   import { prevent } from 'brumate/events';
-  import { $props } from 'brumate/signals';
+  import { $bind, $props } from 'brumate/signals';
   import Button from '@brumate/ui/Button.brm';
   import FieldError from '@brumate/ui/FieldError.brm';
   import Form from '@brumate/ui/Form.brm';

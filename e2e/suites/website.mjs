@@ -735,7 +735,7 @@ export async function run({ browser, url, runner }) {
       const dialogUrl = page.url();
       const rename = page.locator('button.ui-button[aria-expanded]', { hasText: /^Rename$/ });
       await rename.click();
-      await page.locator('[role=dialog] input').waitFor();
+      await page.waitForFunction(() => document.activeElement?.matches('[role=dialog] input'));
       await page.keyboard.press('Control+A');
       await page.keyboard.type('Annual');
       await page.keyboard.press('Enter');
@@ -744,29 +744,40 @@ export async function run({ browser, url, runner }) {
       assert(page.url() === dialogUrl, `the rename form went to ${page.url()}`);
       assert((await focused()) === 'Rename', `focus is on "${await focused()}" after saving`);
       await rename.click();
-      await page.locator('[role=dialog] input').waitFor();
+      await page.waitForFunction(() => document.activeElement?.matches('[role=dialog] input'));
       await page.keyboard.press('Escape');
       await settle();
       assert((await focused()) === 'Rename', `focus is on "${await focused()}" after Escape`);
       // Modal: a second modal opens over the first, and Escape closes only the top one.
       await visit('modal');
       await page.locator('button.ui-button', { hasText: /^Edit the greeting$/ }).click();
-      await page.locator('[data-modal-overlay] input').waitFor();
+      await page.waitForFunction(() =>
+        document.activeElement?.matches('[data-modal-overlay] input'),
+      );
       await page.keyboard.type('!');
-      await page.locator('[role=dialog] button', { hasText: /^Cancel$/ }).click();
-      await page.locator('[role=alertdialog]').waitFor();
+      await page
+        .locator('[data-modal-overlay] [role=dialog] button', { hasText: /^Cancel$/ })
+        .click();
+      await page.locator('[data-modal-overlay] [role=alertdialog]').waitFor();
+      await page.waitForFunction(() => document.activeElement?.closest('[role=alertdialog]'));
       assert((await page.locator('[data-modal-overlay]').count()) === 2, 'no nested modal');
       await page.keyboard.press('Escape');
       await settle();
-      assert((await page.locator('[data-modal-overlay]').count()) === 1, 'Escape closed both');
-      await page.locator('[role=dialog] button', { hasText: /^Cancel$/ }).click();
-      await page.locator('[role=alertdialog] button', { hasText: /^Discard$/ }).click();
+      const left = await page.locator('[data-modal-overlay]').count();
+      assert(left === 1, `${left} modals are left after Escape`);
+      await page
+        .locator('[data-modal-overlay] [role=dialog] button', { hasText: /^Cancel$/ })
+        .click();
+      await page
+        .locator('[data-modal-overlay] [role=alertdialog] button', { hasText: /^Discard$/ })
+        .click();
       await settle();
       assert((await page.locator('[data-modal-overlay]').count()) === 0, 'Discard left a modal');
       // Sheet: opens from its trigger and Escape closes it.
       await visit('sheet');
       await page.locator('.sheet-styled-trigger', { hasText: 'start' }).click();
       await page.locator('.sheet-styled-box').waitFor();
+      await page.waitForFunction(() => document.activeElement?.closest('[role=dialog]'));
       await page.keyboard.press('Escape');
       await settle();
       assert((await page.locator('.sheet-styled-box').count()) === 0, 'Escape left the sheet');
@@ -775,6 +786,7 @@ export async function run({ browser, url, runner }) {
       const share = page.locator('.popover-styled-trigger');
       await share.click();
       await page.locator('.popover-styled-popover').waitFor();
+      await page.waitForFunction(() => document.activeElement?.closest('[role=dialog]'));
       await page.keyboard.press('Escape');
       await settle();
       assert((await focused()) === 'Share', `focus is on "${await focused()}" after Escape`);
@@ -783,7 +795,7 @@ export async function run({ browser, url, runner }) {
       await page.locator('.tooltip-styled-trigger').first().focus();
       await page.keyboard.press('Tab');
       await page.keyboard.press('Shift+Tab');
-      await page.locator('[role=tooltip]').waitFor();
+      await page.locator('[role=tooltip]:not([data-closed])').first().waitFor();
       await page.keyboard.press('Escape');
       await settle();
       assert((await page.locator('[role=tooltip]').count()) === 0, 'Escape left the tooltip');
