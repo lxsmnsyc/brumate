@@ -112,3 +112,26 @@ it('(d) filters by a text that code writes to a bound inputValue', async () => {
   await page.waitFor(() => expect(page.get('.search-apple').hidden).toBe(true));
   expect(page.get('.search-banana').hidden).toBe(false);
 });
+
+it('(b) shows the required message again when the field is cleared after a check', async () => {
+  const page = await fixes();
+  const need = page.get('.need-input') as HTMLInputElement;
+  need.dispatchEvent(new Event('invalid', { cancelable: true }));
+  await page.waitFor(() => expect(page.get('.need-error').textContent).not.toBe(''));
+  need.focus();
+  type(need, 'x');
+  await page.waitFor(() => expect(page.get('.need').hasAttribute('data-invalid')).toBe(false));
+  type(need, '');
+  await page.waitFor(() => expect(page.get('.need').hasAttribute('data-invalid')).toBe(true));
+  expect(page.get('.need-error').textContent).not.toBe('');
+});
+
+it('(d) filters by the text of the field when a setter refuses it', async () => {
+  const page = await fixes();
+  const input = page.get('.refusing-input') as HTMLInputElement;
+  input.focus();
+  type(input, 'bana');
+  await page.waitFor(() => expect(page.get('.refusing-apple').hidden).toBe(true));
+  expect(page.get('.refusing-banana').hidden).toBe(false);
+  expect(state(page)[5]).toBe('');
+});

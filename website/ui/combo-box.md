@@ -119,7 +119,7 @@ This stylesheet styles the box, the Button and the list: rest, hover, focus in t
 
 ### A required field in a form
 
-`isRequired` makes the input required, and `name` sends the key of the selected item. The browser blocks the submit of an empty field, and the FieldError shows its message. It goes once the field has text. An error of your own is `isInvalid` with a message in the FieldError, as the demo does for Japan, and the demo clears it when the selection changes. Reset gives the field its start state back.
+`isRequired` makes the input required, and `name` sends the key of the selected item. The browser blocks the submit of an empty field, and the FieldError shows its message. The message follows the field: it goes when the field is valid, and comes back when the field is empty again. An error of your own is `isInvalid` with a message in the FieldError, as the demo does for Japan, and the demo clears it when the selection changes. Reset gives the field its start state back.
 
 ```brm demo ComboBoxFormDemo
 

@@ -22,6 +22,7 @@
   let kept = $signal<Key | null>('apple');
   let requests = $signal<(Key | null)[]>([]);
   let query = $signal('');
+  let refused = $signal('');
 </script>
 
 <main class="page">
@@ -85,6 +86,15 @@
       <ListBoxItem id="banana" class="search-banana">Banana</ListBoxItem>
     </ListBox>
   </Autocomplete>
+  <Autocomplete inputValue=$bind(refused, (next) => {})>
+    <TextField class="refusing">
+      <Input class="refusing-input" aria-label="Refusing" />
+    </TextField>
+    <ListBox class="refusing-list" aria-label="Refusing fruit">
+      <ListBoxItem id="apple" class="refusing-apple">Apple</ListBoxItem>
+      <ListBoxItem id="banana" class="refusing-banana">Banana</ListBoxItem>
+    </ListBox>
+  </Autocomplete>
   <button class="write" type="button" onClick=(() => (query = 'ban'))>Write</button>
-  <p class="state">{JSON.stringify([fruit, size, kept, requests, query])}</p>
+  <p class="state">{JSON.stringify([fruit, size, kept, requests, query, refused])}</p>
 </main>
