@@ -1,0 +1,591 @@
+{
+  "round": 2,
+  "claims": {
+    "J1": {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Today a memo that loads again in the browser keeps its old value and is pending; readers see the old value, so a #loading body keeps its content. The website documents this and points to $isPending.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:26; website/docs/async-data.md:77"
+      }
+    },
+    "J2": {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "The client runtime has no #loading code. A #loading fallback exists only in the server stream (fallback first, body in a <template>, swap script). Fallbacks the browser renders exist only for #try/#catch (runtime/client/errors.ts) and #client (branches.ts:143).",
+      "evidence": {
+        "type": "measured",
+        "source": "grep fallback packages/brumate/src/runtime/client/*.ts; website/docs/client-modules.md:116-119"
+      }
+    },
+    "J3": {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "Precedent for shipping a fallback: a #try ships its #catch body to the browser only when it reads a memo.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:128"
+      }
+    },
+    "J4": {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "#offscreen (visible) hides its body and keeps it in the page, alive (like React Activity hidden). Runtime: branches.ts offscreen().",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:91; packages/brumate/src/runtime/client/branches.ts:166"
+      }
+    },
+    "J5": {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The grammar already has `#loading (expr)`: LoadingBlock.on is parsed, analyzed and type-checked, but no codegen reads it. Measured: with `#loading (data) {...} #else {...}` the server output drops the boundary and the fallback, and renders the body in place. That is a silent bug on main today.",
+      "evidence": {
+        "type": "measured",
+        "source": "node evidence/loading-header.mjs; ast.ts:220, analyze.ts:1439, check.ts:1187, git log -S block.on (only parser and type-check commits)",
+        "detail": "evidence/loading-header.txt"
+      }
+    },
+    "J6": {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "The client runtime already throws a NotReady error when a memo computes while reading a loading value (updates.ts:319, caught at :375), so the throw half of throw-to-boundary exists; nothing catches it at a boundary.",
+      "evidence": {
+        "type": "measured",
+        "source": "grep NotReady packages/brumate/src/runtime/client/updates.ts"
+      }
+    },
+    "J7": {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "Core features are compiled out per app when no component uses them (features.ts: lateMarkup, blocks, ...), so an opt-in feature can cost 0 bytes to apps that do not use it.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/features.ts"
+      }
+    },
+    "J8": {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "Client JS before load: 13.9 kB gzip todos, 23.6 kB dashboard (2026-10-25 change); the project tracks client size as a primary goal.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/performance.md:29; memory compiler-client-plan"
+      }
+    },
+    "J9": {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "Files an implementer reads: runtime/client/updates.ts 26.6 kB, branches.ts 12.6 kB, errors.ts 2.7 kB, blocks.ts 9.2 kB, plan.ts 27.3 kB, codegen 261 kB total (markup.ts holds #loading). About 20k tokens of runtime plus the codegen parts it touches.",
+      "evidence": {
+        "type": "measured",
+        "source": "wc -c"
+      }
+    },
+    "J10": {
+      "id": "J10",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Prior art, Solid 2 (local ../solid, 2026-10-23): <Loading> keeps content through a refetch by default. `on` is a tracked dependency list: a write to what it reads re-arms the boundary, which shows its fallback while something under it is pending. Children stay alive behind the fallback. A read of the same data outside the boundary holds the frame so the fallback never shows (DEV warns LOADING_ON_OUTSIDE_HOLD). Brumate's LoadingBlock.on mirrors this prop name.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "../solid/packages/signals/src/boundaries.ts:775-801; packages/solid/src/client/flow.ts:512",
+        "detail": "stale by default, opt-in re-arm per boundary via on"
+      }
+    },
+    "J11": {
+      "id": "J11",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Prior art, React and Solid 1.x: Suspense shows its fallback again when a read under it suspends on update, unless the update is in a transition (startTransition/useTransition) or reads a deferred value. Svelte 5 <svelte:boundary pending> shows pending only on the first render, then keeps content with $effect.pending(). Vue <Suspense> re-enters pending only when its root content is replaced, with a timeout prop.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "React docs: Suspense 'Preventing already revealed content from hiding'; Solid 1.x docs useTransition; Svelte 5 docs svelte:boundary; Vue docs Suspense",
+        "detail": "older libraries default to fallback; newer ones default to stale and add opt-ins"
+      }
+    },
+    "P1": {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Option C: `#loading (memo) {...} #else {...}` re-arms on the client. When a memo named in `on` loads again, the boundary hides its body (kept alive like #offscreen, so state and DOM survive) and shows the #else body; when the value arrives it swaps back. Without `on`, behavior is today's stale content. Names the dependency like Solid 2's `on`, so no new keyword and the grammar already parses it (J5). Q1 rules out $isPending in the body, so the boundary itself must do this.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "../solid/packages/signals/src/boundaries.ts:775-801; docs/decisions.md:91; runtime/client/branches.ts:166 offscreen()",
+        "detail": "Solid 2 on = opt-in re-arm, children stay alive; brumate already has hide/show of a live body"
+      },
+      "estimate": {
+        "value": 0.5,
+        "unit": "kB gzip client, only in apps using `on`"
+      }
+    },
+    "P2": {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Ship step 1, from main as its own PR: make the server honor `#loading (expr)`. Today codegen ignores LoadingBlock.on and silently drops the boundary and fallback (J5). Either read `on` (server already streams, so `on` can mean: the first render waits on those memos, same as no header) or have the analyzer error until step 2 lands. Needs: one codegen branch in markup.ts emitLoading (~1840) or a check.ts diagnostic.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/loading-header.txt (J5); codegen/markup.ts:1839",
+        "detail": "main bug rule: fix branched from main, own PR"
+      },
+      "estimate": {
+        "value": 1,
+        "unit": "small PR, ~1 session, ~15k tokens"
+      }
+    },
+    "P3": {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Ship step 2: client runtime for re-arm. (a) Compiler ships the #else body to the client only for a #loading with `on`, as #try ships #catch only when it reads a memo (J3), gated by a features.ts flag so other apps pay 0 bytes (J7). (b) A small `loadingBoundary(scope, anchor, memos, render, kind)` reuses blockStart/rangeEnd/hiding from offscreen and the pending() check in updates.ts:407; the NotReady throw already exists (J6). (c) Estimate: errors.ts is 2.7 kB raw for a comparable fallback mechanism, offscreen is part of branches.ts 12.6 kB, so the new code is about 1 kB raw.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/errors.ts catchInto; branches.ts offscreen(); updates.ts:407 pending(); features.ts"
+      },
+      "estimate": {
+        "value": 0.5,
+        "unit": "kB gzip, 0 for apps without `on`"
+      }
+    },
+    "P4": {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Ship step 3: docs and dev guard. Update website/docs/async-data.md:77 (replace the $isPending advice with `on`), add a decisions.md entry, and a DEV warning like Solid's LOADING_ON_OUTSIDE_HOLD when a read of the same memo outside the boundary makes the fallback unreachable. Tests: client test that a second load shows #else then restores the same DOM nodes and input state.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "../solid/packages/signals/src/boundaries.ts (LOADING_ON_OUTSIDE_HOLD); website/docs/async-data.md:77"
+      },
+      "estimate": {
+        "value": 1,
+        "unit": "docs+tests PR, ~20k tokens"
+      }
+    },
+    "P5": {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Option A, `$fresh(memo)`: a memo primitive whose read throws NotReady to the nearest #loading while it reloads. Cheaper to describe (no grammar change) but the choice sits in the script, far from the markup that shows it, and the same memo cannot be stale in one place and fresh in another without two declarations. Needs the same client boundary code as P1 (nothing catches NotReady at a boundary today, J6) plus a new compiled primitive, so it is P1's runtime cost plus a new $-primitive and server semantics for a function that has no meaning on the server.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/updates.ts:319-375 NotReady; docs/decisions.md:26"
+      },
+      "estimate": {
+        "value": 0.8,
+        "unit": "kB gzip client, plus a new primitive in analyzer, checker and docs"
+      }
+    },
+    "P6": {
+      "id": "P6",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Option B, a new boundary block (for example #refresh or #reload): cheapest to reason about per block, but adds a keyword to a language that already has #loading with a dead `on` header, so it makes two blocks with overlapping jobs and a second fallback syntax. Decisions rule syntax proposals against new # blocks that are not markup; this is markup, but P1 reaches the same result with zero new syntax.",
+      "evidence": {
+        "type": "source",
+        "source": "ast.ts:220 LoadingBlock.on; memory syntax-proposals (check decisions.md first)"
+      },
+      "estimate": {
+        "value": 1.2,
+        "unit": "kB gzip client, plus parser, analyzer, checker, docs, tests"
+      }
+    },
+    "P7": {
+      "id": "P7",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Option D, keep stale content and add nothing: 0 bytes, 0 tokens. The cost is that Q1 rules out the only documented way (#if $isPending inside the body), so users have no sanctioned way to show loading on update. Cheapest on all three axes, fails the goal; only the P2 bug fix would remain.",
+      "evidence": {
+        "type": "user",
+        "source": "Q1",
+        "question": "Q1"
+      },
+      "estimate": {
+        "value": 0,
+        "unit": "kB client"
+      }
+    },
+    "O1": {
+      "id": "O1",
+      "round": 1,
+      "by": "opponent",
+      "kind": "cost",
+      "text": "The server emits no #loading markers when the memos are settled: emitLoading renders the body in place (the inPlace branch) and writes '<!--l..-->', the fallback and '<!--/l-->' only in the else branch. A client re-arm needs an anchor and a restorable body in every render of a `#loading (on)`, so the compiler must add markers (HTML bytes on every response) and ship the #else body plus the client code of any component in it, even when the first load never waits.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/codegen/markup.ts:1839-1880 emitLoading; docs/decisions.md:128"
+      },
+      "axis": "device",
+      "severity": "high",
+      "answers": [
+        "P3"
+      ],
+      "estimate": {
+        "value": 0.3,
+        "unit": "kB gzip more than P3 states, per #else with a component; estimate from errors.ts sized 2.7 kB raw"
+      }
+    },
+    "O2": {
+      "id": "O2",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P3 says the NotReady throw already exists (J6), so the boundary is small. A reload never throws: a memo that loads again keeps its value and is marked in loadingSlots, and only the first compute throws NotReady, caught inside the memo. So the boundary is a subscriber to pending(), not a catcher, and nothing in J6 is reused. The 0.5 kB figure has no measured basis.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/updates.ts:213, 268, 375, 407 (pending reads loadingSlots)"
+      },
+      "axis": "device",
+      "severity": "medium",
+      "answers": [
+        "P3",
+        "P1"
+      ]
+    },
+    "O3": {
+      "id": "O3",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P4's DEV warning for a same-memo read outside the boundary is not needed. In Solid the hold comes from throw-based reads (LOADING_ON_OUTSIDE_HOLD). In brumate pending is a flag, so a read outside cannot hold the frame and the fallback stays reachable. Dropping it saves code in the dev runtime and about a third of the P4 tokens.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "../solid/packages/signals/src/boundaries.ts:775-801; runtime/client/updates.ts:407",
+        "detail": "the warning guards a throw-based design that brumate does not have"
+      },
+      "axis": "tokens",
+      "severity": "low",
+      "answers": [
+        "P4"
+      ],
+      "estimate": {
+        "value": 7,
+        "unit": "k tokens saved, estimate"
+      }
+    },
+    "O4": {
+      "id": "O4",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "text": "pending() is also true while the server still streams the value (scope.s[slot] instanceof Promise). A boundary that arms on pending() at resume would show #else over a body the server swapped in, or hide a body that is not loaded again. The re-arm must start only after the first settle, which needs a state bit per boundary. Likelihood high on pages with streaming memos; the cost is a bug, not bytes.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/updates.ts:407-409; branches.ts:166 offscreen state in start.data"
+      },
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P1",
+        "P3"
+      ]
+    },
+    "O5": {
+      "id": "O5",
+      "round": 1,
+      "by": "opponent",
+      "kind": "alternative",
+      "text": "Compile `#loading (m) {A} #else {B}` on the client to existing parts: `#offscreen (!$isPending(m)) {A}` plus `#if ($isPending(m)) {B}`. Hide, keep-alive, ID numbering after the block, and $isPending reads already exist, so the new runtime is 0 kB beyond the #else body. Q1 rules out users writing $isPending in the body; it does not rule out the compiler lowering to it. Needs the O4 first-settle guard and the O1 marker, but both are compiler output, not a new runtime function.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/branches.ts:166 offscreen; codegen/patch.ts:261; docs/decisions.md:28,103"
+      },
+      "axis": "device",
+      "severity": "medium",
+      "answers": [
+        "P1",
+        "P3"
+      ],
+      "estimate": {
+        "value": 0,
+        "unit": "kB gzip runtime added (estimate; compiler-only lowering)"
+      }
+    },
+    "O6": {
+      "id": "O6",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "text": "$fresh makes a memo read throw while it reloads. A read in an event handler or an effect has no boundary or memo compute to catch NotReady (it is caught only in memo compute, updates.ts:375), so those reads would throw uncaught. P5 undercounts this: it needs rules in the analyzer for where a $fresh read is legal.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/updates.ts:319-375"
+      },
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P5"
+      ]
+    },
+    "O7": {
+      "id": "O7",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P7 says Q1 leaves no sanctioned way. Q1 only rules out #if($isPending) inside the body; $isPending for styles (a class or attribute on stale content, such as dimming or a spinner) is the stated use and costs 0 bytes. Option D plus a docs paragraph on that covers a large share of 'show loading on update' and is cheaper than any proposal; the open question is whether dimming is enough.",
+      "evidence": {
+        "type": "user",
+        "source": "Q1 answer",
+        "question": "Q1"
+      },
+      "axis": "time",
+      "severity": "low",
+      "answers": [
+        "P7"
+      ]
+    },
+    "J12": {
+      "id": "J12",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "Verified: memo() sends a promise to asyncMemo and only a NotReady thrown during compute goes to startLoading; pending() is loadingSlots.has(key) || scope.s[slot] instanceof Promise, so it is true while the server still streams the value.",
+      "evidence": {
+        "type": "measured",
+        "source": "packages/brumate/src/runtime/client/updates.ts:353-410"
+      }
+    },
+    "J13": {
+      "id": "J13",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "Verified: in the server output of `#loading {...} #else {...}`, the settled branch renders the body with no <!--l--> markers; markers and fallback appear only in the streaming branch.",
+      "evidence": {
+        "type": "measured",
+        "source": "node evidence/loading-header.mjs",
+        "detail": "evidence/loading-header.txt"
+      }
+    },
+    "P8": {
+      "id": "P8",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Why a fresh-UI feature beats stale (answers P7, O7, Q3). Stale is wrong, not ugly, when the body is a function of the key that changed. (1) A search or detail view: `user = $memo(load(id))`; after the id changes, the body keeps showing the old user's name, avatar and form fields while the new one loads, and a click on 'Delete' or a submit inside it acts on the wrong record. Dimming with $isPending (O7) does not stop the click or the typing into a stale input. (2) Pagination or filter tables: the old rows sit under a new page number or filter chip, so the page states something false. (3) Prices, balances, permissions: a stale 'admin' panel after the user switches account is a security-flavored mistake. Dimming covers only cases where stale is a correct, merely old, picture (a feed refreshing); that is a large share but not these. The opt-in costs 0 bytes to apps that do not use it (J7), and Solid 2, Vue and React all give the fallback-on-update option, so users of those expect it.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "React docs Suspense 'Preventing already revealed content from hiding' (J11); ../solid/packages/signals/src/boundaries.ts:775-801 (J10); website/docs/async-data.md:77",
+        "detail": "React's default is fallback on update and it needs a transition to opt out; Solid 2 keeps stale and opts in with `on`; both ship both modes because both cases occur"
+      },
+      "estimate": {
+        "value": 3,
+        "unit": "concrete cases where stale content misleads or lets a user act on the wrong record"
+      }
+    },
+    "P9": {
+      "id": "P9",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Revised P3, a concrete runtime against O1, O2, O4. Compiler: a `#loading (m...)` always emits markers on the server (<!--l-->, <!--/l-->, and the #else body in a template) even when settled, only for blocks with a header (answers O1; blocks without a header keep J13 output). Client: `loadingOn(scope, anchor, slots, render, kind)` runs as an effect on the pending() of each slot in `on`, not a NotReady catcher (answers O2). State bit in the marker data as in offscreen (`start.data` 0 body, 1 fallback, -1 not settled): the effect does nothing until pending() has been false once, so a streaming value never arms it (answers O4). On pending true it hides the body with the `hiding` holder and renders #else once; on false it removes #else and shows the body again; a newer load before the first finishes changes nothing, because pending stays true.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/updates.ts:213,268,407; branches.ts:166-205 offscreen state in start.data; errors.ts catchInto; codegen/markup.ts:1839-1880"
+      },
+      "estimate": {
+        "value": 0.6,
+        "unit": "kB gzip, basis: offscreen+hiding reuse leaves one effect, one state bit and one render call, about 1.5 kB raw like catchInto (errors.ts is 2.7 kB raw for 1 function with module loading); gzip ratio about 0.35-0.4; plus per-boundary HTML of two comments"
+      }
+    },
+    "P10": {
+      "id": "P10",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "O5 verdict: adopt the lowering idea for the runtime, not as source rewriting. Checked decisions.md:103-105: bodies of #offscreen and #if are numbered after a block ID, and #loading bodies are numbered after the boundary ID (5.0). If the compiler wrapped the body A in a synthetic #offscreen, the scope IDs inside A would shift against the server render unless the server output wraps the same way, and the server has no #offscreen for a streamed body. So the compiler would have to lower on both sides, and I did not run it. The safe form is P9: the boundary itself is the owner of body A (its scope kind is already the boundary's child) and calls the existing hiding holder directly, so no ID is added. I did not test hiding on a scope that streams in a template; that is the one open check, and a test in P4 covers it (second load after a streamed first load).",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:103-105; branches.ts:166-205; codegen/patch.ts:261"
+      },
+      "estimate": {
+        "value": 0,
+        "unit": "kB beyond P9 if hiding is reused directly"
+      }
+    },
+    "P11": {
+      "id": "P11",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Delay (Q2): show #else at once by default, and add no delay in v1. Prior art: React throttles only the reveal of a fallback (300 ms, FALLBACK_THROTTLE_MS) so that a stream of fallbacks does not flicker, and it avoids the fallback entirely for transitions; Vue <Suspense> has a `timeout` prop whose default shows the fallback only after the timeout, but only on pending updates, and it is an explicit prop; Solid 2 shows the fallback at once when `on` re-arms and offers no default delay; Svelte shows pending at once. Every library has a way to hold the fallback, none hides it by default for fast loads. Because brumate keeps the body alive behind the fallback (hidden, not destroyed), a flash costs a layout flip, not state loss, so the cost of a flash is lower than in React. Decision: no default delay; if wanted later, add a second header argument (`#loading (m, 200)`) as a non-breaking opt-in, which is 0 bytes until used.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "React: Suspense fallback throttle FALLBACK_THROTTLE_MS = 300 in react-reconciler (recalled from source, not re-read here); Vue 3 docs Suspense `timeout` prop; ../solid/packages/signals/src/boundaries.ts:775-801; Svelte 5 docs svelte:boundary",
+        "detail": "React and Vue citations are from memory of docs and source, not fetched in this session; weakest evidence tier"
+      },
+      "estimate": {
+        "value": 0,
+        "unit": "kB in v1; about 0.1 kB gzip if a timer is added later"
+      }
+    },
+    "P12": {
+      "id": "P12",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Re-estimate and order: step 1 (P2, bug fix from main) about 15k tokens; step 2 (P9) about 0.6 kB gzip only in apps that use a header, 0 otherwise, plus two marker comments per header block (about 20 bytes of HTML); step 3 docs and tests (P4 without the DEV warning, per O3) about 13k tokens. Against client budgets (13.9 kB todos, 23.6 kB dashboard, J8), 0.6 kB is 2.5-4.3 percent for the apps that opt in. The #else body ships to the client only for blocks with a header (J3).",
+      "evidence": {
+        "type": "source",
+        "source": "docs/performance.md:29 (J8); evidence/loading-header.txt; O3 estimate 7k tokens saved from the 20k P4 estimate"
+      },
+      "estimate": {
+        "value": 0.6,
+        "unit": "kB gzip for opt-in apps; 0 for others"
+      }
+    },
+    "O8": {
+      "id": "O8",
+      "round": 2,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P8 case 1 (click or typing on a stale record) is handled by existing means: `disabled=$isPending(user)` on the buttons and inputs, the pattern that async-data.md uses for $isPending. #key does not help, because the memo keeps the old value, so a new body would read the same stale data. Case 3 is not a security gap: actions go through server functions that check the user on the server, so stale UI is not an authorization boundary. Case 2 (old rows under a new page number) is fixed by rendering the page number from the loaded data. What P8 does show: these fixes are per element and easy to forget, so the boundary would be a safer default, not the only way.",
+      "evidence": {
+        "type": "source",
+        "source": "website/docs/async-data.md:20-30,101-110; docs/decisions.md:74 (#key); docs/decisions.md:28"
+      },
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P8"
+      ]
+    },
+    "O9": {
+      "id": "O9",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "text": "P9 says the state bit sits in the marker data 'as in offscreen', but offscreen finds its marker with blockStart, which looks up `b<scope id>:<anchor>`. The #loading marker is `l<boundary>` with no scope id or anchor, so neither blockStart nor the 0/1/-1 state parse applies. The compiler needs a new marker form (or a second b-marker) on every header block, and rangeEnd's depth count must treat it right (MARKER already matches `l`). P9's '20 bytes of HTML' and 'reuse' are not shown for this.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/blocks.ts:31 MARKER, 230-235 blockStart; branches.ts:166-185 offscreen state parse; codegen/markup.ts:1860-1866 (<!--l boundary-->)"
+      },
+      "axis": "device",
+      "severity": "medium",
+      "answers": [
+        "P9",
+        "P12"
+      ]
+    },
+    "O10": {
+      "id": "O10",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "text": "P10 leaves open that hiding works on a body that streamed in. offscreen hides by finding the body in scope.children with k === kind, and the streamed body is rendered in the boundary's own ID space, so I found no code that links it as a child of the component scope. If it is not linked, hide() finds no body and the re-arm silently does nothing after a streamed first load, the common case. Not tested by either side; a 20-line client test would settle it.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/branches.ts:196-203 (child.k === kind); scopes.ts:190 (parent link); runtime/server.ts:1038-1050 defer in its own ID space",
+        "detail": "source read only, not run"
+      },
+      "axis": "time",
+      "severity": "high",
+      "answers": [
+        "P9",
+        "P10"
+      ]
+    },
+    "O11": {
+      "id": "O11",
+      "round": 2,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P11 misreads both sources, which I fetched. React's FALLBACK_THROTTLE_MS (300) in finishConcurrentRender delays committing newly resolved content after a fallback so that fallbacks do not follow each other quickly; it does not delay showing a fallback. Vue's timeout keeps the OLD content until the timeout ends and then shows the fallback; the docs name no default. So Vue is a delay design that shows stale content for the delay, which is the thing the user wants removed. For brumate a delay reopens the stale window (a click on the wrong record for N ms), so no delay by default is consistent with Q3; I have no evidence for a better number than 0, and a 200 ms figure would be a guess.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://raw.githubusercontent.com/facebook/react/main/packages/react-reconciler/src/ReactFiberWorkLoop.js (FALLBACK_THROTTLE_MS, finishConcurrentRender); https://vuejs.org/guide/built-ins/suspense (timeout)",
+        "detail": "fetched 2026-10-29; React comment is about throttling how quickly new content appears"
+      },
+      "axis": "time",
+      "severity": "low",
+      "answers": [
+        "P11"
+      ]
+    },
+    "O12": {
+      "id": "O12",
+      "round": 2,
+      "by": "opponent",
+      "kind": "cost",
+      "text": "P12's 0.6 kB is a ratio guess. Measured: errors.ts is 2684 B raw and 1155 B gzip with comments, and offscreen() lines 166-205 are 575 B gzip with comments; minified these are smaller, so 0.6 kB for the runtime is plausible, but the estimate leaves out the per-block compiled call (anchor, slots, render, kind) and the #else body's own compiled code and any component it imports. I put the real opt-in cost at 0.6 kB plus about 0.1 kB per header block plus the fallback body; still small against 13.9 kB, so I do not dispute adopting it, only the 'one function' basis.",
+      "evidence": {
+        "type": "measured",
+        "source": "wc -c and gzip -9c on runtime/client/errors.ts and sed -n 166,205p runtime/client/branches.ts"
+      },
+      "axis": "device",
+      "severity": "low",
+      "answers": [
+        "P12",
+        "P9"
+      ],
+      "estimate": {
+        "value": 0.7,
+        "unit": "kB gzip plus the #else body, per opt-in app (estimate)"
+      }
+    },
+    "O13": {
+      "id": "O13",
+      "round": 2,
+      "by": "opponent",
+      "kind": "concession",
+      "text": "I concede the O7 claim that dimming covers a large share, as far as bodies with editable controls go. P8 names real cases (forms and actions on a changed record), and Q3 makes fresh-only UI the point of the debate. Dimming alone is not enough there; O8 shows disabling covers actions, but not a stale display.",
+      "why": "Q3: the user wants the fresh-UI feature argued, and P8 case 1 shows a stale editable body",
+      "answers": [
+        "O7"
+      ]
+    },
+    "J14": {
+      "id": "J14",
+      "round": 2,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "Streamed #loading body scopes are created with the component scope as parent ($$ctx.scope(2, $$s1) in the defer branch), and resume adds every scope with record.p to its parent's children set.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/loading-header.txt; packages/brumate/src/runtime/client/resume.ts:185-191"
+      }
+    }
+  }
+}
