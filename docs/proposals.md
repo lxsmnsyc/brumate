@@ -567,7 +567,7 @@ interface Channel<T extends Record<string, (...args: never[]) => unknown>> {
 - `run` and `close` are the methods of the channel, not of the object, so a function can be called `close` or `run` without a clash.
 - A call sends its arguments over the connection, runs the function, and settles with its result. A call that throws rejects with the error's name and message, as a call of a server function does.
 - Arguments and results go through the serializer of server functions: values, promises, and async iterables that stream. A channel in an argument or a result is a channel on the other side too, so a function can hand out another channel, such as one for each document that a user opens.
-- A side can call only the functions of a channel that the other side gave it. A channel has an ID on its connection, which means nothing on another one, so there is no route to guess.
+- A side can call only the functions of a channel that the other side gave it. A channel has an ID on its connection, which means nothing on another one, so there is no route to guess. Two connections, such as two devices, make the same IDs, and that is fine: each endpoint looks up an ID only in its own map. The server never keeps channels in a map keyed by the ID alone.
 - Calls on one channel arrive in the order they were made.
 - `createChannel` returns a `Channel` too, whose `run` calls the functions in place. Sent to the other side, it is a channel that calls them over the connection.
 
@@ -591,11 +591,12 @@ Both sides use the same `Channel`: the browser calls the server's with `chat.run
 - The browser opens the connection when client code calls the socket function, not with the page, so a page that never calls it loads nothing.
 - The arguments of a call can have a schema, as the arguments of a server function can, and rate limits apply to each call.
 - Closing the root channel, from either end, ends the connection, as does `getSocket().close()` on the server.
-- When the connection drops, a `reconnect` option calls the socket function again with the same arguments, and the channels that the browser holds go on with the new connection. Calls go by name, so a channel needs nothing of the old connection, and a component keeps the channel it has. Calls in flight when it dropped reject.
+- When the connection drops, a `reconnect` option calls the socket function again with the same arguments. The root channel that the browser holds goes on with the root that the new call returns, so a component keeps the channel it has. The channels that the browser passed in the arguments go on too, since the arguments are sent again. Calls in flight when it dropped reject.
+- Other channels close when the connection drops, even with `reconnect`, and the app asks for them again on the new root. The new connection starts its IDs again, so a channel of the old one could match a different channel of the new one by its ID: a channel for one document would call the functions of another. Each connection has an epoch, and a channel keeps the epoch it was made on. A call on a channel of an older epoch rejects.
 - On the server, while a page renders, a call of a socket function calls it directly, with channels that call the functions in place. A component can render its first value without a connection.
 - The transport is WebSocket, with a fallback to the stream that server functions already use and a `POST` for each call. With Nitro, the WebSocket side uses its crossws support, which runs on Node, Bun, Deno and Cloudflare. A server of the app's own passes the upgrade to a handler that brumate exports.
 
-Prior art: Cap'n Web, from Cloudflare, passes functions by reference as stubs over WebSocket and HTTP. A channel calls by name instead, so it keeps its types without a proxy, and it survives a reconnection.
+Prior art: Cap'n Web, from Cloudflare, passes functions by reference as stubs over WebSocket and HTTP. A channel calls by name instead, so it keeps its types without a proxy, and its root survives a reconnection.
 
 #### Where the channel core lives
 
@@ -655,6 +656,27 @@ Before this is built, check that seroval tests plugins before its own handling o
 - The transport closing, such as a worker that crashed or a WebSocket that dropped, does the same for every channel on it.
 - `error` rejects `run` if the result had not started, and fails what still waits otherwise. It carries the error's name and message only, as a server function does.
 - A `FinalizationRegistry` on a held channel sends `close` when the channel is garbage collected.
+
+##### Cleanups when the connection closes
+
+A connection closes when either end closes the root channel, when `getSocket().close()` runs, or when the transport ends: a WebSocket that drops, a tab that closes, a worker that crashes or is terminated. Each end cleans up what it has, in this order:
+
+1. The endpoint stops taking messages, so no call starts after the close.
+2. Every channel on it closes. `closed` settles, and later calls of `run` reject.
+3. The streams it sends stop. For an async iterable, it calls `return()`, so the producer's `finally` runs, such as a generator that holds a database cursor. A promise that it sends has nothing to stop, and its value is dropped when it settles.
+4. The streams it reads fail. A `for await` over an iterable of the other side throws, and a promise of the other side rejects.
+5. The `onClose` of each channel that this end made runs, the nested channels first and the root last, since the root often owns what the nested ones use. An `onClose` that throws, or returns a promise that rejects, is reported, and the others still run.
+6. On the server, `getSocket().onClose` runs last.
+
+Calls that the end runs for the other side, when the connection closes, keep running, since JavaScript cannot stop a function. `getSocket().signal` aborts when the connection closes, so a function passes it to `fetch`, a database query or a loop, and stops early. Their results are dropped.
+
+A function often calls a channel and ignores the promise, such as `client.run('message', message)` in a room that sends to every member. Between the drop and the `onClose` that leaves the room, those calls reject, and nothing reads them. As with the refs of a stream, the promise that `run` returns after a close claims its own rejection, so it is not reported as unhandled. Code that awaits it still sees the error.
+
+What each end can know:
+
+- The server learns of a dropped WebSocket only when a send fails or a ping goes unanswered. A connection whose browser vanished, such as a laptop that slept, looks open until then, and its cleanups wait. The endpoint sends a ping on an interval, and closes the connection when the answers stop, so cleanups run within a known time.
+- A worker that crashes or is terminated runs none of its own cleanups. The browser's end still runs its own. To end a worker cleanly, the browser sends `close`, the worker runs its cleanups and then closes itself, and the browser terminates it only if it has not closed within a timeout.
+- A `MessagePort` does not tell its other end that it closed in every runtime. A worker transport learns of a crash from the worker's `error` event, and a bare port needs the same ping as a WebSocket.
 
 ##### Over `postMessage`
 
