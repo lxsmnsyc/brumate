@@ -31,6 +31,7 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 - Write a branch on the line of the closing brace, as the style: `} #else if (…) {` and `} #else {`. The compiler also accepts `#else` on the next line.
 - A `#for` has a key: `#for (item, index of items by item.id) { … }`. Without `by`, each item is its own key.
 - `$effect` never runs on mount. Its first run is after the first change of a value it reads. Code that must run when the page loads or comes into view is `$client(callback, trigger)`. The default trigger is `'visible'`.
+- Reach for a handler first, then `$memo`, and `$effect` last. An effect is only for work outside the page's state, such as an element method, a cookie, `document.title`, a timer or a library. Never write an effect that only sets a signal from other signals: that value is a `$memo`, or a write in the handler.
 - An element that browser code needs is `ref=$bind(name)`, where `name` is a signal. A bare `ref=name` is an error.
 - To let a child write a value, destructure its prop with `let` and type it `Bindable<T>`. The parent passes `$bind(signal)`.
 - A component never receives a signal. A function prop writes the parent's value: `onChange=((next) => (count = next))`.

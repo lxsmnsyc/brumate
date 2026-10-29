@@ -10,17 +10,26 @@ A component renders on the server, so its script never runs in the browser. To r
 <script>
   import { $effect, $signal } from 'brumate/signals';
 
-  let count = $signal(0);
-  let message = $signal('The effect has not run yet.');
+  let open = $signal(false);
+  let dialog = $signal<HTMLDialogElement>();
 
   $effect(() => {
-    message = `The effect ran when count became ${count}.`;
+    if (open) {
+      dialog!.showModal();
+    } else {
+      dialog!.close();
+    }
   });
 </script>
 
-<button onClick=(() => count++)>Clicked {count} times</button>
-<p>{message}</p>
+<button onClick=(() => (open = true))>Open the dialog</button>
+<dialog ref=$bind(dialog) onClose=(() => (open = false))>
+  <p>The effect opened this dialog.</p>
+  <button onClick=(() => (open = false))>Close</button>
+</dialog>
 ```
+
+The effect does work that markup cannot do: it calls `showModal()` and `close()` on the element. `onClose` keeps `open` in step when Escape closes the dialog.
 
 - An effect never runs when the page loads. Its first run is after the first change of a value it reads. The server already rendered the page with the current values, so there is nothing to catch up on.
 - It never runs on the server.
@@ -28,6 +37,45 @@ A component renders on the server, so its script never runs in the browser. To r
 - In a hidden [`#offscreen`](./control-flow.md#offscreen) body, it does not run. Its cleanup runs when the body hides, and it runs again when the body shows.
 
 For code that must run when the page loads, use [`$client`](#client).
+
+### When you do not need an effect
+
+An effect is for work outside the page's state: an element method, a cookie, `document.title`, a timer or a library. An effect that only writes signals from other signals should be a memo or a handler:
+
+- A value computed from other values is a `$memo`. It is up to date as soon as the values it reads change.
+- A value that changes because of an event is written in the handler of that event.
+
+This effect copies `count` into `message`:
+
+```brm
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+  let message = $signal('Clicked 0 times');
+
+  $effect(() => {
+    message = `Clicked ${count} times`;
+  });
+</script>
+
+<button onClick=(() => count++)>Add</button>
+<p>{message}</p>
+```
+
+The effect writes `message` after the page has updated for `count`, so one click updates the page twice. A memo computes in the same update as `count`:
+
+```brm live
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+  const message = $memo(`Clicked ${count} times`);
+</script>
+
+<button onClick=(() => count++)>Add</button>
+<p>{message}</p>
+```
 
 ### Cleanup
 
