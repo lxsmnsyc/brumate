@@ -23,6 +23,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: check-package-imports
+    kind: hard
+    why: in the 0.4.0 cut
   - on: bind-read-your-writes
     kind: hard
     why: in the 0.4.0 cut
