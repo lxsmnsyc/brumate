@@ -597,6 +597,10 @@ Both sides use the same `Channel`: the browser calls the server's with `chat.run
 
 Prior art: Cap'n Web, from Cloudflare, passes functions by reference as stubs over WebSocket and HTTP. A channel calls by name instead, so it keeps its types without a proxy, and it survives a reconnection.
 
+#### Where the channel core lives
+
+The channel core has no part that needs brumate: `createChannel`, the `Channel` type, the seroval plugin that turns a channel in a value into a channel on the other side, call IDs, ordering, closing, and a transport interface of `send`, `onMessage` and `onClose`. It is built in brumate as an internal module that imports only seroval and takes the transport and extra serializer plugins as arguments. Once socket functions and worker functions both use it, it moves to a `seroval-rpc` package, and `brumate/channel` re-exports it. The directives, the worker loader, the connection, reconnection, the fallback and auth stay in brumate.
+
 Cost: about 3 weeks. The serializer and the call protocol of server functions exist. Most of the work is the channels on both sides, their release, reconnection, the fallback and the WebSocket handler for Nitro and for a server of the app's own.
 
 ## Tooling
