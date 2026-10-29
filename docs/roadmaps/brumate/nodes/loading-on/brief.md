@@ -24,7 +24,7 @@ depends_on:
     kind: hard
     why: replaces the compile error with the meaning of the header
   - on: streamed-memo-reads
-    kind: soft
+    kind: hard
     why: both read pending() of a streamed slot, so the first-settle rule should match
 ---
 

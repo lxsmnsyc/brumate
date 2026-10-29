@@ -23,10 +23,7 @@ shared:
   - packages/brumate/test/**
 reserves: []
 provides: []
-depends_on:
-  - on: streamed-memo-reads
-    kind: soft
-    why: both change how a streamed slot settles in resume.ts and updates.ts
+depends_on: []
 ---
 
 # A late state record does not overwrite a memo that loaded again
