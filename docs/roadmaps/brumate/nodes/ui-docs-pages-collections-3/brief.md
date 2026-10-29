@@ -1,7 +1,7 @@
 ---
 id: ui-docs-pages-collections-3
 title: Anatomy, use cases, CSS and state on the Table, Tree and data pages
-status: active
+status: done
 priority: should
 type: docs
 outline: false
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-28
+spent: 190835
 owns:
   - website/ui/table.md
   - website/ui/tree.md
