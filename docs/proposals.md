@@ -29,6 +29,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Offline pages](#offline-pages)                                                               | Runtime  | Medium | Medium |
 | [Observability](#observability)                                                               | Runtime  | Medium | Medium |
 | [Ordered updates](#ordered-updates)                                                           | Runtime  | Medium | Medium |
+| [Async effects](#async-effects)                                                               | Runtime  | Medium | Small  |
 | [External scripts](#external-scripts)                                                         | Syntax   | Medium | Small  |
 | [What ships, in the editor](#what-ships-in-the-editor)                                        | Tooling  | Medium | Medium |
 | [Accessibility checks in tests](#accessibility-checks-in-tests)                               | Tooling  | Medium | Small  |
@@ -345,6 +346,60 @@ To check:
 The tests mark each case with `it.fails`. The fix turns them into `it`.
 
 Cost: a few days for the order, and a day or two more for batching, since it uses the queue of bindings that the order adds. The change is a pass in the compiler that ranks memos, the `table` of the client codegen, and `run`, `memo`, `writeSlot` and `handle` of the core.
+
+### Async effects
+
+`BRM096` rejects an `async` callback in `$effect` and `$client`. Some setup has to wait before it can return its cleanup:
+
+```ts
+$effect(async () => {
+  const foo = await createFoo(options);
+  return async () => await foo.clean();
+});
+```
+
+Without `async`, the same effect needs a flag for a run that went stale while `createFoo` was pending:
+
+```ts
+$effect(() => {
+  let foo: Foo | undefined;
+  let gone = false;
+  createFoo(options).then((value) => {
+    if (gone) {
+      void value.clean();
+    } else {
+      foo = value;
+    }
+  });
+  return () => {
+    gone = true;
+    void foo?.clean();
+  };
+});
+```
+
+Without the flag, a `foo` that settles after the next run, or after its scope went, is never cleaned. A rejection of `createFoo` or of `clean` is unhandled, so it never reaches the `#try` around the effect.
+
+The change: drop `BRM096`. The compiler sees that the callback is `async` and calls `asyncEffect` in place of `effect`, so a page without an async effect does not load it. `asyncEffect` follows these rules:
+
+1. A run that goes stale while it is pending, because the effect runs again or its scope goes, runs its cleanup as soon as it settles.
+2. One run at a time. The next run starts after the run before it and its cleanup have settled. Changes that come while it waits make one run, which reads the values of that moment. So a `foo` that holds a socket, a camera or a port is cleaned before the next `createFoo`.
+3. A scope that goes does not wait. A closed `#if`, a hidden `#offscreen` body or a page that navigation leaves calls the cleanup and goes on, as it does now. When an `#offscreen` body shows again, its run waits for that cleanup, by rule 2.
+4. A rejection of the run or of its cleanup goes to `fail(scope, error)`, as a throw of a sync effect does.
+5. The cleanup can be a function, an async function, or an object with `[Symbol.dispose]` or `[Symbol.asyncDispose]`, such as a `DisposableStack`. The ones that return a promise are what rule 2 waits for.
+
+The compiler finds the reads of an async callback, so a read after an `await` is a dependency, as in a sync callback. A write after an `await` is outside the pass of the effects, so it makes its own pass, as a write after an `await` in a handler does. The docs of effects say so.
+
+Left for later: an `AbortSignal` for a run that went stale, so `createFoo` can stop early. `BRM095` rejects parameters of the callback, so this would change that rule too. Without it the rules stay correct, and a stale run costs one `createFoo` that is cleaned at once.
+
+To check:
+
+- `effect` of the core accepts `[Symbol.dispose]` as the cleanup of a sync effect too. It is one check, and it makes rule 5 the same for both.
+- A `$client` callback runs once, so rule 2 applies to it only when an `#offscreen` body shows again.
+- The devtools count a run when it settles, and show a run that is pending.
+- Tests: a run that goes stale and settles after, a scope that goes while a run is pending, two changes while a cleanup is pending make one run, a rejection in the run and in the cleanup reach `#try`, and each form of cleanup in rule 5.
+
+Cost: two or three days for `asyncEffect`, the switch in the compiler, its tests, and the docs of effects and `BRM096`.
 
 ### One table of the fields with scope IDs
 
