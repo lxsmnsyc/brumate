@@ -256,9 +256,7 @@
       },
       "axis": "device",
       "severity": "high",
-      "answers": [
-        "P3"
-      ],
+      "answers": ["P3"],
       "estimate": {
         "value": 0.3,
         "unit": "kB gzip more than P3 states, per #else with a component; estimate from errors.ts sized 2.7 kB raw"
@@ -276,10 +274,7 @@
       },
       "axis": "device",
       "severity": "medium",
-      "answers": [
-        "P3",
-        "P1"
-      ]
+      "answers": ["P3", "P1"]
     },
     "O3": {
       "id": "O3",
@@ -294,9 +289,7 @@
       },
       "axis": "tokens",
       "severity": "low",
-      "answers": [
-        "P4"
-      ],
+      "answers": ["P4"],
       "estimate": {
         "value": 7,
         "unit": "k tokens saved, estimate"
@@ -314,10 +307,7 @@
       },
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P1",
-        "P3"
-      ]
+      "answers": ["P1", "P3"]
     },
     "O5": {
       "id": "O5",
@@ -331,10 +321,7 @@
       },
       "axis": "device",
       "severity": "medium",
-      "answers": [
-        "P1",
-        "P3"
-      ],
+      "answers": ["P1", "P3"],
       "estimate": {
         "value": 0,
         "unit": "kB gzip runtime added (estimate; compiler-only lowering)"
@@ -352,9 +339,7 @@
       },
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P5"
-      ]
+      "answers": ["P5"]
     },
     "O7": {
       "id": "O7",
@@ -369,9 +354,7 @@
       },
       "axis": "time",
       "severity": "low",
-      "answers": [
-        "P7"
-      ]
+      "answers": ["P7"]
     },
     "J12": {
       "id": "J12",
@@ -487,9 +470,7 @@
       },
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P8"
-      ]
+      "answers": ["P8"]
     },
     "O9": {
       "id": "O9",
@@ -503,10 +484,7 @@
       },
       "axis": "device",
       "severity": "medium",
-      "answers": [
-        "P9",
-        "P12"
-      ]
+      "answers": ["P9", "P12"]
     },
     "O10": {
       "id": "O10",
@@ -521,10 +499,7 @@
       },
       "axis": "time",
       "severity": "high",
-      "answers": [
-        "P9",
-        "P10"
-      ]
+      "answers": ["P9", "P10"]
     },
     "O11": {
       "id": "O11",
@@ -539,9 +514,7 @@
       },
       "axis": "time",
       "severity": "low",
-      "answers": [
-        "P11"
-      ]
+      "answers": ["P11"]
     },
     "O12": {
       "id": "O12",
@@ -555,10 +528,7 @@
       },
       "axis": "device",
       "severity": "low",
-      "answers": [
-        "P12",
-        "P9"
-      ],
+      "answers": ["P12", "P9"],
       "estimate": {
         "value": 0.7,
         "unit": "kB gzip plus the #else body, per opt-in app (estimate)"
@@ -571,9 +541,7 @@
       "kind": "concession",
       "text": "I concede the O7 claim that dimming covers a large share, as far as bodies with editable controls go. P8 names real cases (forms and actions on a changed record), and Q3 makes fresh-only UI the point of the debate. Dimming alone is not enough there; O8 shows disabling covers actions, but not a stale display.",
       "why": "Q3: the user wants the fresh-UI feature argued, and P8 case 1 shows a stale editable body",
-      "answers": [
-        "O7"
-      ]
+      "answers": ["O7"]
     },
     "J14": {
       "id": "J14",

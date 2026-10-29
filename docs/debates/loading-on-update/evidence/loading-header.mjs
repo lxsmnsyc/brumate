@@ -11,8 +11,22 @@ const mk = (h) => `<script>
 } #else { <p>Loading</p> }
 <button onClick={next}>x</button>`;
 for (const h of ['', ' (data)']) {
-  try { const r = await compile(mk(h), { filename: 'A.brm' });
-    console.log(JSON.stringify(h), 'OK server-len', r.server.length, 'client parts', Object.keys(r.parts), JSON.stringify(r.parts.update).length);
-  } catch (e) { console.log(JSON.stringify(h), 'ERR', e.message.split('\n')[0]); }
+  try {
+    const r = await compile(mk(h), { filename: 'A.brm' });
+    console.log(
+      JSON.stringify(h),
+      'OK server-len',
+      r.server.length,
+      'client parts',
+      Object.keys(r.parts),
+      JSON.stringify(r.parts.update).length,
+    );
+  } catch (e) {
+    console.log(JSON.stringify(h), 'ERR', e.message.split('\n')[0]);
+  }
 }
-for (const h of ['', ' (data)']) { const r = await compile(mk(h), { filename: 'A.brm' }); console.log('#####', h); console.log(r.server); }
+for (const h of ['', ' (data)']) {
+  const r = await compile(mk(h), { filename: 'A.brm' });
+  console.log('#####', h);
+  console.log(r.server);
+}

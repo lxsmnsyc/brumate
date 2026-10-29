@@ -286,9 +286,7 @@
       },
       "axis": "device",
       "severity": "high",
-      "answers": [
-        "P3"
-      ],
+      "answers": ["P3"],
       "estimate": {
         "value": 0.3,
         "unit": "kB gzip more than P3 states, per #else with a component; estimate from errors.ts sized 2.7 kB raw"
@@ -308,10 +306,7 @@
       },
       "axis": "device",
       "severity": "medium",
-      "answers": [
-        "P3",
-        "P1"
-      ],
+      "answers": ["P3", "P1"],
       "ruling": "upheld",
       "ruling_why": "J12: a reload goes through asyncMemo and loadingSlots, never NotReady."
     },
@@ -328,9 +323,7 @@
       },
       "axis": "tokens",
       "severity": "low",
-      "answers": [
-        "P4"
-      ],
+      "answers": ["P4"],
       "estimate": {
         "value": 7,
         "unit": "k tokens saved, estimate"
@@ -349,10 +342,7 @@
       },
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P1",
-        "P3"
-      ],
+      "answers": ["P1", "P3"],
       "ruling": "upheld",
       "ruling_why": "J12: pending() includes scope.s[slot] instanceof Promise, true while the server streams."
     },
@@ -368,10 +358,7 @@
       },
       "axis": "device",
       "severity": "medium",
-      "answers": [
-        "P1",
-        "P3"
-      ],
+      "answers": ["P1", "P3"],
       "estimate": {
         "value": 0,
         "unit": "kB gzip runtime added (estimate; compiler-only lowering)"
@@ -391,9 +378,7 @@
       },
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P5"
-      ],
+      "answers": ["P5"],
       "ruling": "upheld"
     },
     {
@@ -409,9 +394,7 @@
       },
       "axis": "time",
       "severity": "low",
-      "answers": [
-        "P7"
-      ],
+      "answers": ["P7"],
       "ruling": "rejected",
       "ruling_why": "Conceded by O13, which names P8 and Q3."
     },
@@ -540,9 +523,7 @@
       },
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P8"
-      ],
+      "answers": ["P8"],
       "ruling": "upheld",
       "ruling_why": "As a partial answer; it does not beat P8."
     },
@@ -558,10 +539,7 @@
       },
       "axis": "device",
       "severity": "medium",
-      "answers": [
-        "P9",
-        "P12"
-      ],
+      "answers": ["P9", "P12"],
       "ruling": "upheld"
     },
     {
@@ -577,10 +555,7 @@
       },
       "axis": "time",
       "severity": "high",
-      "answers": [
-        "P9",
-        "P10"
-      ],
+      "answers": ["P9", "P10"],
       "ruling": "open",
       "ruling_why": "J14 makes it less likely: streamed body scopes carry their parent and resume links them into parent.children. Whether hiding's kind match finds them is untested; a client test in step 2 settles it."
     },
@@ -597,9 +572,7 @@
       },
       "axis": "time",
       "severity": "low",
-      "answers": [
-        "P11"
-      ],
+      "answers": ["P11"],
       "ruling": "upheld"
     },
     {
@@ -614,10 +587,7 @@
       },
       "axis": "device",
       "severity": "low",
-      "answers": [
-        "P12",
-        "P9"
-      ],
+      "answers": ["P12", "P9"],
       "estimate": {
         "value": 0.7,
         "unit": "kB gzip plus the #else body, per opt-in app (estimate)"
@@ -631,9 +601,7 @@
       "kind": "concession",
       "text": "I concede the O7 claim that dimming covers a large share, as far as bodies with editable controls go. P8 names real cases (forms and actions on a changed record), and Q3 makes fresh-only UI the point of the debate. Dimming alone is not enough there; O8 shows disabling covers actions, but not a stale display.",
       "why": "Q3: the user wants the fresh-UI feature argued, and P8 case 1 shows a stale editable body",
-      "answers": [
-        "O7"
-      ],
+      "answers": ["O7"],
       "ruling": "upheld"
     },
     {
@@ -661,21 +629,14 @@
     {
       "id": "Q2",
       "by": "proponent",
-      "blocks": [
-        "P1",
-        "P3"
-      ],
+      "blocks": ["P1", "P3"],
       "ask": "Should a re-armed #loading hold back a flash of the fallback for fast reloads (a delay such as 200 ms before showing #else), or show it at once?",
       "answer": "The user asks what the optimal choice is. The debate must decide it with evidence."
     },
     {
       "id": "Q3",
       "by": "judge",
-      "blocks": [
-        "P7",
-        "O7",
-        "P1"
-      ],
+      "blocks": ["P7", "O7", "P1"],
       "ask": "When a #loading body's data loads again in the browser, is styling the old content (dimming, a spinner via $isPending) enough, or must the boundary be able to swap to its #else fallback?",
       "answer": "That is the point of the debate: decide whether #loading should have a feature that shows only fresh UI and not the stale UI that memos keep. The debate must argue it, not the user."
     }
