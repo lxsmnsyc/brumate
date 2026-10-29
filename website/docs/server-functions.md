@@ -218,6 +218,62 @@ Throw a `ServerError` to answer with a message and a status. The call in the bro
 - The status of a `ServerError` defaults to 400.
 - Any other error answers with status 500 and a generic message, so details of the server do not reach the browser. The server logs the error.
 
+### Errors as values
+
+A thrown error reaches the browser as a message, and `catch` types it as `unknown`. To let the page tell errors apart by type, return them as values. The browser gets the return type of the server function, so TypeScript narrows the result and checks each case:
+
+```brm live
+<script module>
+  type Renamed =
+    | { ok: true; name: string }
+    | { ok: false; error: 'empty' }
+    | { ok: false; error: 'taken'; suggestion: string };
+
+  const taken = new Set(['ada', 'grace']);
+</script>
+
+<script>
+  import { $signal } from 'brumate/signals';
+
+  async function rename(input: string): Promise<Renamed> {
+    'use server';
+    const name = input.trim().toLowerCase();
+    if (name === '') {
+      return { ok: false, error: 'empty' };
+    }
+    if (taken.has(name)) {
+      return { ok: false, error: 'taken', suggestion: `${name}2` };
+    }
+    return { ok: true, name };
+  }
+
+  function describe(result: Renamed): string {
+    if (result.ok) {
+      return `Saved as ${result.name}`;
+    }
+    switch (result.error) {
+      case 'empty':
+        return 'A name is required';
+      case 'taken':
+        return `That name is taken. Try ${result.suggestion}`;
+    }
+  }
+
+  let draft = $signal('');
+  let result = $signal<Renamed>();
+</script>
+
+<input aria-label="Name" value=draft onInput=((event) => (draft = event.currentTarget.value))>
+<button onClick=(async () => (result = await rename(draft)))>Save</button>
+#if (result) {
+  <p role=(result.ok ? 'status' : 'alert')>{describe(result)}</p>
+}
+```
+
+- An error value can carry data, such as `suggestion`. It crosses the connection as any other value does. See [Serialization](./reference-serialization.md).
+- A new case in the union, such as `{ ok: false; error: 'reserved' }`, is a type error in `describe`. `describe` must return a string, so the page has to handle the case.
+- Keep `throw` for errors that the page does not tell apart. Throw a `ServerError` for a message and a status. Any other error is a bug.
+
 ## The request
 
 `getEvent()` from `brumate/server` returns the event of the call: its request, and methods that change the response. Call it before the first `await` of the function, and keep it in a variable:
