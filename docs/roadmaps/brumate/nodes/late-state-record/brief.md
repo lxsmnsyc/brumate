@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: fix
 outline: false
-milestone: 0.5.0
+milestone: 0.4.0
 target:
 from:
 size: S

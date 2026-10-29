@@ -21,6 +21,15 @@ shared: []
 reserves: []
 provides: []
 depends_on:
+  - on: loading-header-error
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: streamed-memo-reads
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
+  - on: late-state-record
+    kind: hard
+    why: the review runs after every node of the 0.4.0 cut
   - on: check-package-imports
     kind: hard
     why: the review runs after every node of the 0.4.0 cut
