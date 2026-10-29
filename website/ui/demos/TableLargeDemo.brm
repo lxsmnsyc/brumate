@@ -1,0 +1,46 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Cell from '@brumate/ui/Cell.brm';
+  import Column from '@brumate/ui/Column.brm';
+  import Row from '@brumate/ui/Row.brm';
+  import Table from '@brumate/ui/Table.brm';
+  import TableBody from '@brumate/ui/TableBody.brm';
+  import TableHeader from '@brumate/ui/TableHeader.brm';
+  import Virtualizer from '@brumate/ui/Virtualizer.brm';
+  import type { SortDescriptor } from '@brumate/ui/table.ts';
+
+  interface Order {
+    id: string;
+    name: string;
+    amount: number;
+  }
+  const orders: Order[] = Array.from({ length: 3000 }, (_, index) => ({
+    id: `o${index}`,
+    name: `Order ${String(index + 1).padStart(4, '0')}`,
+    amount: (index * 7919) % 1000,
+  }));
+  let sort = $signal<SortDescriptor | null>({ column: 'name', direction: 'ascending' });
+  const sorted = $memo(
+    [...orders].sort((a, b) => {
+      const order = sort?.column === 'amount' ? a.amount - b.amount : a.name.localeCompare(b.name);
+      return sort?.direction === 'descending' ? -order : order;
+    }),
+  );
+</script>
+
+<Virtualizer class="ui-virtualizer" rowHeight=(34)>
+  <Table class="ui-table" aria-label="3000 orders" items=sorted getTextValue=((order) => order.name) selectionMode="multiple" sortDescriptor=$bind(sort)>
+    <TableHeader>
+      <Column id="name" class="ui-column" isRowHeader allowsSorting>Order</Column>
+      <Column id="amount" class="ui-column ui-number" allowsSorting>Amount</Column>
+    </TableHeader>
+    <TableBody item=order />
+  </Table>
+</Virtualizer>
+
+#template order(order: Order) {
+  <Row id=(order.id) class="ui-tablerow">
+    <Cell class="ui-cell">{order.name}</Cell>
+    <Cell class="ui-cell ui-number">{order.amount}</Cell>
+  </Row>
+}

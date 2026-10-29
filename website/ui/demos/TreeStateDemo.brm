@@ -1,0 +1,44 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  interface Node {
+    id: string;
+    name: string;
+    children?: Node[];
+  }
+  const nodes: Node[] = [
+    { id: 'a', name: 'Alpha', children: [{ id: 'a1', name: 'Alpha one' }] },
+    { id: 'b', name: 'Beta', children: [{ id: 'b1', name: 'Beta one' }] },
+  ];
+  let bound = $signal<Key[]>([]);
+  let locked = $signal(false);
+  let asked = $signal<Key[]>([]);
+  let log = $signal('none');
+</script>
+
+<div class="ui-stack">
+  <Tree class="ui-tree" aria-label="Own state" items=nodes item=node expandedKeys=(['a']) />
+  <Tree class="ui-tree" aria-label="Bound state" items=nodes item=node expandedKeys=$bind(bound) onExpandedChange=((keys) => (log = `${keys.length} open`)) />
+  <Tree class="ui-tree" aria-label="Asked state" items=nodes item=node expandedKeys=$bind(asked, (next) => { if (!locked) asked = next; }) />
+  <div class="ui-row">
+    <Button class="ui-button" onPress=(() => (bound = ['a', 'b']))>Open both in the second tree</Button>
+    <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the third tree</Button>
+  </div>
+  <p>Second tree: {bound.join(', ') || 'none open'}, last change {log}. Third tree: {asked.join(', ') || 'none open'}.</p>
+</div>
+
+#template node(node) {
+  <TreeItem class="ui-treerow" textValue=(node.name)>
+    #if (node.children) {
+      <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>
+    } #else {
+      <span class="ui-chevron" aria-hidden="true"></span>
+    }
+    {node.name}
+  </TreeItem>
+}

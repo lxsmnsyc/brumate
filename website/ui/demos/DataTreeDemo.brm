@@ -1,0 +1,50 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import { treeData } from '@brumate/ui/data.brm.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  interface Task {
+    id: string;
+    name: string;
+    children?: Task[];
+  }
+  const { items, selectedKeys, move } = treeData<Task>({
+    initialItems: [
+      { id: 'today', name: 'Today', children: [{ id: 'mail', name: 'Answer mail' }, { id: 'tax', name: 'File taxes' }] },
+      { id: 'later', name: 'Later', children: [] },
+    ],
+  });
+  let moved = $signal('nothing');
+
+  function send(parent: string) {
+    const key = selectedKeys[0];
+    if (key === undefined || key === 'today' || key === 'later') {
+      return;
+    }
+    move(key, parent, 0);
+    moved = `${key} to ${parent}`;
+  }
+</script>
+
+<div class="ui-stack">
+  <Tree class="ui-tree" aria-label="Tasks" items=items item=task selectionMode="single" selectedKeys=$bind(selectedKeys) expandedKeys=(['today', 'later']) />
+  <div class="ui-row">
+    <Button class="ui-button" onPress=(() => send('later'))>Move to Later</Button>
+    <Button class="ui-button" onPress=(() => send('today'))>Move to Today</Button>
+  </div>
+  <p>Moved: {moved}.</p>
+</div>
+
+#template task(node) {
+  <TreeItem class="ui-treerow" textValue=(node.value.name)>
+    #if (node.children) {
+      <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>
+    } #else {
+      <span class="ui-chevron" aria-hidden="true"></span>
+    }
+    {node.value.name}
+  </TreeItem>
+}

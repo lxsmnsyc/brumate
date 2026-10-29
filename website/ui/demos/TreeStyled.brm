@@ -1,0 +1,145 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  interface Folder {
+    id: string;
+    name: string;
+    children?: Folder[];
+  }
+  const folders: Folder[] = [
+    {
+      id: 'src',
+      name: 'src',
+      children: [
+        { id: 'app', name: 'app.brm' },
+        { id: 'lib', name: 'lib', children: [{ id: 'util', name: 'util.ts' }] },
+        { id: 'old', name: 'old.ts' },
+      ],
+    },
+    { id: 'readme', name: 'README.md' },
+  ];
+  let picked = $signal<Key[]>(['app']);
+  let open = $signal<Key[]>(['src']);
+</script>
+
+<div class="tree-styled-demo">
+  <Tree class="tree-styled" aria-label="Project" items=folders item=entry selectionMode="single" disabledKeys=(['old']) selectedKeys=$bind(picked) expandedKeys=$bind(open) />
+</div>
+
+#template entry(entry) {
+  <TreeItem class="tree-styled-item" textValue=(entry.name)>
+    #if (entry.children) {
+      <Button slot="chevron" class="tree-styled-chevron" aria-hidden="true"></Button>
+    } #else {
+      <span class="tree-styled-gap" aria-hidden="true"></span>
+    }
+    {entry.name}
+  </TreeItem>
+}
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.tree-styled-demo) {
+    --tree-styled-bg: Canvas;
+    --tree-styled-text: CanvasText;
+    --tree-styled-muted: color-mix(in srgb, CanvasText 68%, Canvas);
+    --tree-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
+    --tree-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --tree-styled-hover: color-mix(in srgb, var(--tree-styled-accent) 10%, Canvas);
+    --tree-styled-selected: color-mix(in srgb, var(--tree-styled-accent) 24%, Canvas);
+    color: var(--tree-styled-text);
+  }
+
+  :global(.tree-styled) {
+    display: grid;
+    width: min(20rem, 100%);
+    padding: 0.25rem;
+    border: 1px solid var(--tree-styled-border);
+    border-radius: 8px;
+    background: var(--tree-styled-bg);
+    outline: none;
+  }
+
+  :global(.tree-styled:focus-visible) {
+    outline: 2px solid var(--tree-styled-accent);
+    outline-offset: 2px;
+  }
+
+  /* A row is indented by its level: rest, hover, press, selected, keyboard focus and disabled. */
+  :global(.tree-styled-item) {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    padding: 0.3rem 0.5rem;
+    padding-inline-start: calc(0.5rem + (var(--tree-item-level) - 1) * 1.25rem);
+    border-radius: 6px;
+    outline: none;
+    transition: background-color 0.15s;
+  }
+
+  :global(.tree-styled-item[data-hovered]) {
+    background: var(--tree-styled-hover);
+  }
+
+  :global(.tree-styled-item[data-pressed]) {
+    background: color-mix(in srgb, var(--tree-styled-accent) 32%, Canvas);
+  }
+
+  :global(.tree-styled-item[data-selected]) {
+    background: var(--tree-styled-selected);
+    font-weight: 600;
+  }
+
+  /* Two bands, so the ring shows on the page and on a selected row. */
+  :global(.tree-styled-item[data-focus-visible]) {
+    box-shadow:
+      inset 0 0 0 2px var(--tree-styled-accent),
+      inset 0 0 0 4px var(--tree-styled-bg);
+  }
+
+  :global(.tree-styled-item[data-disabled]) {
+    color: var(--tree-styled-muted);
+    text-decoration: line-through;
+  }
+
+  /* The chevron points right when the row is closed and down when it is open. */
+  :global(.tree-styled-chevron),
+  :global(.tree-styled-gap) {
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+  }
+
+  :global(.tree-styled-chevron)::before {
+    display: block;
+    content: '▸';
+    text-align: center;
+    transition: rotate 0.15s;
+  }
+
+  :global(.tree-styled-item[data-expanded] .tree-styled-chevron)::before {
+    rotate: 90deg;
+  }
+
+  :global(.tree-styled-item:dir(rtl) .tree-styled-chevron)::before {
+    content: '◂';
+  }
+
+  :global(.tree-styled-item[data-expanded]:dir(rtl) .tree-styled-chevron)::before {
+    rotate: -90deg;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.tree-styled-item),
+    :global(.tree-styled-chevron)::before {
+      transition: none;
+    }
+  }
+</style>

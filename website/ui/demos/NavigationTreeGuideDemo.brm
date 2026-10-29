@@ -1,0 +1,44 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import NavigationTree from '@brumate/ui/NavigationTree.brm';
+  import NavigationTreeItem from '@brumate/ui/NavigationTreeItem.brm';
+  import NavigationTreeItemLink from '@brumate/ui/NavigationTreeItemLink.brm';
+  import type { NavigationNode } from '@brumate/ui/navigation-tree.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  interface Page extends NavigationNode {
+    title: string;
+    children?: Page[];
+  }
+  const pages: Page[] = [
+    { id: 'intro', title: 'Introduction', href: '#intro' },
+    {
+      id: 'parts',
+      title: 'Parts',
+      children: [
+        { id: 'buttons', title: 'Buttons', href: '#buttons' },
+        { id: 'fields', title: 'Fields', href: '#fields' },
+      ],
+    },
+  ];
+  let route = $signal('#fields');
+</script>
+
+<div class="ui-stack">
+  <nav aria-label="Guide sections">
+    <NavigationTree class="ui-tree" aria-label="Guide sections" items=pages item=page selectedRoute=(route) expandedKeys=(['parts']) />
+  </nav>
+  <p>Page: {route.slice(1)}. Close Parts and its row shows a dot.</p>
+</div>
+
+#template page(page) {
+  <NavigationTreeItem class="ui-treerow ui-navrow" textValue=(page.title) href=(page.href)>
+    #if (page.children) {
+      <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>
+    } #else {
+      <span class="ui-chevron" aria-hidden="true"></span>
+    }
+    <NavigationTreeItemLink class="ui-navlink" onClick=(() => (route = page.href ?? route))>{page.title}</NavigationTreeItemLink>
+  </NavigationTreeItem>
+}

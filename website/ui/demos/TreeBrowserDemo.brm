@@ -1,0 +1,42 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  interface File {
+    id: string;
+    name: string;
+    children?: File[];
+  }
+  const files: File[] = [
+    {
+      id: 'docs',
+      name: 'Documents',
+      children: [
+        { id: 'cv', name: 'cv.pdf' },
+        { id: 'plan', name: 'plan.md' },
+      ],
+    },
+    { id: 'photos', name: 'Photos', children: [{ id: 'beach', name: 'beach.jpg' }] },
+    { id: 'notes', name: 'notes.txt' },
+  ];
+  let opened = $signal('nothing');
+</script>
+
+<div class="ui-stack">
+  <Tree class="ui-tree" aria-label="Files" items=files item=file onAction=((key) => (opened = String(key))) />
+  <p>Opened: {opened}.</p>
+</div>
+
+#template file(file) {
+  <TreeItem class="ui-treerow" textValue=(file.name)>
+    #if (file.children) {
+      <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>
+    } #else {
+      <span class="ui-chevron" aria-hidden="true"></span>
+    }
+    {file.name}
+  </TreeItem>
+}

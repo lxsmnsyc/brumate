@@ -1,0 +1,28 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Virtualizer from '@brumate/ui/Virtualizer.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  interface City {
+    id: string;
+    name: string;
+  }
+  const cities: City[] = Array.from({ length: 10000 }, (_, index) => ({
+    id: `c${index}`,
+    name: `City ${index + 1}`,
+  }));
+  let picked = $signal<Key[]>([]);
+</script>
+
+<div class="ui-stack">
+  <Virtualizer class="ui-virtualizer" rowHeight=(34)>
+    <ListBox class="ui-listbox" aria-label="10000 cities" items=cities item=city getTextValue=((city) => city.name) selectionMode="single" selectedKeys=$bind(picked) />
+  </Virtualizer>
+  <p>Chosen: {picked[0] ?? 'none'}.</p>
+</div>
+
+#template city(city: City) {
+  <ListBoxItem id=(city.id) class="ui-option" textValue=(city.name)>{city.name}</ListBoxItem>
+}

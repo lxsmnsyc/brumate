@@ -25,6 +25,51 @@ The parameter of the `item` template of the Tree takes its type from `items`, he
 
 Both are [reactive modules](../docs/reactive-modules.md): a component calls one at the top level of its script and destructures what it needs. The items and the selection are signals of the component, so the page state holds them and the server renders them.
 
+## Anatomy
+
+`listData` and `treeData` render nothing, so they have no tags and no picture. The parts of a page that uses one are:
+
+- The module call at the top of the script, which gives the signals and the changes.
+- A collection, such as a [ListBox](./list-box.md) or a [Tree](./tree.md), with `items=items` and an `item` template.
+- `selectedKeys=$bind(selectedKeys)` on the collection, so that the selection is the module's.
+- Buttons, fields and handlers that call the changes.
+
+## Controlled and uncontrolled
+
+The module is the state, and the collection is bound to it. `selectedKeys=$bind(selectedKeys)` gives the collection the module's signal, so a press on a row writes it, and `setSelectedKeys(keys)` and `addKeysToSelection(keys)` change the collection from code:
+
+```brm demo DataStateDemo
+
+```
+
+- `initialItems`, `initialSelectedKeys` and `initialFilterText` start the state once. A later change of the arguments does not reset it.
+- `selectedKeys=$bind(selectedKeys, request)` asks you first, as on any part, and your `request` can refuse a change.
+- A selection that the collection owns (`selectedKeys=(['dog'])`) is a second state, apart from the module's. Bind one of them, not both.
+- A reset of a form does not touch the module.
+- The server renders the items and the selection that the module starts with.
+
+## Styling
+
+The module has no markup and no classes. Style the collection that shows its items, with the data attributes of that part. See [Styling](./styling.md).
+
+## Use cases
+
+### A list to filter, reorder and clear
+
+`filterText` and `setFilterText` hold the text of a field, and `items` keeps the items that `filter` accepts. `moveBefore(key, keys)` moves the selected items to the top, and `removeSelectedItems()` removes them. A removed item leaves the selection. Select Panda, move it to the top, then filter for `sn`.
+
+```brm demo DataListDemo
+
+```
+
+### A tree to edit
+
+`treeData` keeps the nodes and the parents. `move(key, toParentKey, index)` moves a node with its children, and a move into the node itself is refused. Select a task and press a button.
+
+```brm demo DataTreeDemo
+
+```
+
 ## `listData`
 
 ```ts

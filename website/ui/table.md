@@ -34,6 +34,19 @@ Rows and columns of data, which the user can move through with the keys, select 
 
 ## Anatomy
 
+```brm anatomy TableAnatomy
+`ResizableTableContainer`: Lets the columns resize and scrolls a Table that is wider than it.
+`Table`: Holds the header and the body. It is named by `aria-label` or `aria-labelledby`.
+`TableHeader`: Holds the columns.
+`Column`: A header cell. It sorts when it has `allowsSorting`.
+`Checkbox` with `slot="selection"`: In a Column, selects every row.
+`ColumnResizer`: Resizes its column with a drag or the keys.
+`TableBody`: Holds the rows.
+`Row`: One item. Its `id` is its key.
+`Cell`: One value of a row, in the order of the columns.
+`Checkbox` with `slot="selection"`: In a Cell, selects its row.
+```
+
 ```html
 <ResizableTableContainer>
   <Table>
@@ -54,7 +67,7 @@ Rows and columns of data, which the user can move through with the keys, select 
 </>
 ```
 
-The `ResizableTableContainer`, the `ColumnResizer` and the Checkbox elements with `slot="selection"` are optional. A Row has a Cell for each Column.
+The picture marks the pieces of a table through elements of its own, since a table, a row, a cell and a header cannot carry a number. The 3 sits on the text of the Name header, the 6 at the end of that column, the 7 on the text of the Kind cell of the first row, the 8 on a cell of the second row, and the 9 on the Name cell of the first row. The `ResizableTableContainer`, the `ColumnResizer` and the Checkbox elements with `slot="selection"` are optional. A Row has a Cell for each Column.
 
 ## Props
 
@@ -169,9 +182,43 @@ Right to left, Left and Right turn around.
 
 `selectedKeys` holds the keys of the selected rows, and `sortDescriptor` holds the sort, `{ column, direction }`. `selectedKeys=(['a'])` and `sortDescriptor=({ column: 'name', direction: 'ascending' })` start the table's own state, and `$bind(signal)` writes your signal. `onSelectionChange` and `onSortChange` get each change. The Table does not reorder the rows: sort them by `sortDescriptor`. See [State](./state.md).
 
+```brm demo TableStateDemo
+
+```
+
+- Own state: `selectedKeys=(['Ada'])` is where the selection starts. The first table keeps it, and the page does not see it.
+- `$bind(signal)` writes your signal on each change, and a write from code, such as the first button, changes the selection. The same holds for `sortDescriptor`, with the second button.
+- `$bind(signal, request)` asks you first. The third table takes one row at most: a second row calls `request`, which leaves the signal as it is, and the selection stays.
+- A sort does not move the rows. The last table reorders them from its signal.
+- A Table is not a form field. It has no `name` and no reset, so a reset of a form leaves its selection and sort as they are. The server renders the selection it starts with, and the rows it has.
+
 ## Styling
 
 Style a row with the data attributes above, such as `[data-selected]`, and a column with `[data-sort-direction]`. A resizer shows `[data-resizing]`. See [Styling](./styling.md).
+
+This stylesheet styles a header at rest, on hover, on press and with keyboard focus, the arrow of the sorted column, the resizer, the rows (hover, selected, keyboard focus, disabled) and the Checkbox. Its tokens are at the top, and they follow the color scheme. Press a header to sort, drag the edge of Name, or use Tab and the arrow keys. Linus is disabled.
+
+```brm styled TableStyled
+
+```
+
+## Use cases
+
+### Actions on the selected rows
+
+Keep the rows in a signal and `selectedKeys` in another. A button reads the keys and changes the rows. A `$memo` can total the selected rows. After the action, clear the selection, since the keys of removed rows would stay in it.
+
+```brm demo TableBulkDemo
+
+```
+
+### A long table
+
+Pass `items` to the Table and an `item` template to its `TableBody`, and put the Table in a [Virtualizer](./virtualizer.md). It renders about twenty rows of 3000, and sorting by `sortDescriptor` orders all of them. Press a header, then End to reach the last row.
+
+```brm demo TableLargeDemo
+
+```
 
 ## Rows from data
 

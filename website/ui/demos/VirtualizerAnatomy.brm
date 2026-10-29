@@ -1,0 +1,43 @@
+<script>
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import Virtualizer from '@brumate/ui/Virtualizer.brm';
+
+  interface File {
+    id: string;
+    name: string;
+  }
+  const files: File[] = Array.from({ length: 5000 }, (_, index) => ({
+    id: `file-${index}`,
+    name: `Photo ${String(index + 1).padStart(4, '0')}.jpg`,
+  }));
+</script>
+
+<div class="virtualizer-anatomy-box" data-mark="1" data-mark-side="bottom">
+  <Virtualizer class="ui-virtualizer virtualizer-anatomy" rowHeight=(32)>
+    <Tree class="ui-tree" aria-label="5000 photos" items=files item=file />
+  </Virtualizer>
+</div>
+
+#template file(file) {
+  #if (file.id === 'file-0') {
+    <TreeItem class="ui-treerow" textValue=(file.name)><span class="virtualizer-anatomy-self" data-mark="2" data-mark-side="after">{file.name}</span></TreeItem>
+  } #else {
+    <TreeItem class="ui-treerow" textValue=(file.name)>{file.name}</TreeItem>
+  }
+}
+
+<style>
+  :global(.virtualizer-anatomy-box) {
+    padding: 0.8rem 0.8rem 1.4rem;
+    width: min(22rem, 100%);
+  }
+
+  :global(.virtualizer-anatomy-self) {
+    display: inline-block;
+  }
+
+  :global(.virtualizer-anatomy) {
+    height: 9rem;
+  }
+</style>

@@ -1174,6 +1174,10 @@ export async function run({ browser, url, runner }) {
           'menu',
           'combo-box',
           'autocomplete',
+          'table',
+          'tree',
+          'navigation-tree',
+          'virtualizer',
         ]) {
           for (const scheme of ['light', 'dark']) {
             await page.emulateMedia({ colorScheme: scheme });
@@ -1298,6 +1302,63 @@ export async function run({ browser, url, runner }) {
       await settle();
       assert((await page.locator('[role=dialog]').count()) === 0, 'the palette stayed open');
       await page.getByText('Ran: save.').waitFor({ timeout: 5000 });
+    });
+    await flow('/ui: Table, Tree, NavigationTree, Virtualizer and Data use cases act', async () => {
+      const settle = () => page.waitForTimeout(800);
+      const visit = async (slug) => {
+        await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+        await settle();
+      };
+      // Table: a selected row is deleted, and the count follows.
+      await visit('table');
+      const invoices = page.getByRole('grid', { name: 'Invoices' });
+      await invoices.getByRole('checkbox', { name: 'Select Acme' }).click({ force: true });
+      await page.getByRole('button', { name: 'Delete 1 selected' }).click();
+      await page.getByText('3 invoices.').waitFor({ timeout: 5000 });
+      assert((await invoices.getByText('Acme').count()) === 0, 'the row stayed');
+      // Table: a long table renders a few of its rows.
+      const long = await page
+        .getByRole('grid', { name: '3000 orders' })
+        .locator('tbody tr')
+        .count();
+      assert(long > 0 && long < 100, `the long table rendered ${long} rows`);
+      // Tree: a press acts on a row, and the folder picker saves its choice.
+      await visit('tree');
+      await page
+        .locator('.ui-stack', { hasText: 'Opened:' })
+        .getByRole('row', { name: 'notes.txt' })
+        .click();
+      await page.getByText('Opened: notes.').waitFor({ timeout: 5000 });
+      await page.getByRole('button', { name: 'Open all' }).click();
+      await page.getByRole('row', { name: 'Team' }).waitFor({ timeout: 5000 });
+      await page.getByRole('row', { name: 'Team' }).click();
+      await page.getByRole('button', { name: 'Save here' }).click();
+      await page.getByText('Saved in: team.').waitFor({ timeout: 5000 });
+      // NavigationTree: a link moves the current page.
+      await visit('navigation-tree');
+      const guide = page.getByRole('treegrid', { name: 'Guide sections' });
+      await guide.getByRole('link', { name: 'Buttons' }).click();
+      await page.getByText('Page: buttons.').waitFor({ timeout: 5000 });
+      assert(
+        (await guide.getByRole('link', { name: 'Buttons' }).getAttribute('aria-current')) ===
+          'page',
+        'the link is not the current page',
+      );
+      // Virtualizer: the list renders a few of its 10000 options.
+      await visit('virtualizer');
+      const options = await page
+        .getByRole('listbox', { name: '10000 cities' })
+        .getByRole('option')
+        .count();
+      assert(options > 0 && options < 100, `the long list rendered ${options} options`);
+      // Data: the filter hides items and a move changes the tree.
+      await visit('data');
+      await page.getByLabel('Filter pets').fill('sn');
+      await page.getByText('Shown: 1.').waitFor({ timeout: 5000 });
+      await page.getByLabel('Filter pets').fill('');
+      await page.getByRole('row', { name: 'Answer mail' }).click();
+      await page.getByRole('button', { name: 'Move to Later' }).click();
+      await page.getByText('Moved: mail to later.').waitFor({ timeout: 5000 });
     });
     await flow(
       '/ui: the pages of navigation, status and layout that are done have an anatomy picture and a styled example',

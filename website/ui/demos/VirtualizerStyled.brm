@@ -1,0 +1,89 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import Virtualizer from '@brumate/ui/Virtualizer.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  interface File {
+    id: string;
+    name: string;
+  }
+  const files: File[] = Array.from({ length: 5000 }, (_, index) => ({
+    id: `file-${index}`,
+    name: `Photo ${String(index + 1).padStart(4, '0')}.jpg`,
+  }));
+  let picked = $signal<Key[]>(['file-2']);
+</script>
+
+<div class="virtualizer-styled-demo">
+  <Virtualizer class="virtualizer-styled" rowHeight=(34)>
+    <Tree class="virtualizer-styled-tree" aria-label="5000 photos" items=files item=file selectionMode="single" selectedKeys=$bind(picked) />
+  </Virtualizer>
+</div>
+
+#template file(file) {
+  <TreeItem class="virtualizer-styled-row" textValue=(file.name)>{file.name}</TreeItem>
+}
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.virtualizer-styled-demo) {
+    --virtualizer-styled-bg: Canvas;
+    --virtualizer-styled-text: CanvasText;
+    --virtualizer-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
+    --virtualizer-styled-accent: light-dark(#2a76b2, #6fb2e6);
+    --virtualizer-styled-hover: color-mix(in srgb, var(--virtualizer-styled-accent) 10%, Canvas);
+    --virtualizer-styled-selected: color-mix(in srgb, var(--virtualizer-styled-accent) 24%, Canvas);
+    color: var(--virtualizer-styled-text);
+  }
+
+  /* The box that scrolls: a height, a border, and room for the scrollbar. */
+  :global(.virtualizer-styled) {
+    box-sizing: border-box;
+    width: min(20rem, 100%);
+    height: 14rem;
+    border: 1px solid var(--virtualizer-styled-border);
+    border-radius: 8px;
+    background: var(--virtualizer-styled-bg);
+    scrollbar-gutter: stable;
+  }
+
+  :global(.virtualizer-styled:focus-within) {
+    border-color: var(--virtualizer-styled-accent);
+  }
+
+  :global(.virtualizer-styled-tree) {
+    display: block;
+    outline: none;
+  }
+
+  /* A row has the height of rowHeight, so the box can place it. */
+  :global(.virtualizer-styled-row) {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    height: 34px;
+    padding-inline: 0.75rem;
+    outline: none;
+  }
+
+  :global(.virtualizer-styled-row[data-hovered]) {
+    background: var(--virtualizer-styled-hover);
+  }
+
+  :global(.virtualizer-styled-row[data-pressed]) {
+    background: color-mix(in srgb, var(--virtualizer-styled-accent) 32%, Canvas);
+  }
+
+  :global(.virtualizer-styled-row[data-selected]) {
+    background: var(--virtualizer-styled-selected);
+    font-weight: 600;
+  }
+
+  :global(.virtualizer-styled-row[data-focus-visible]) {
+    box-shadow:
+      inset 0 0 0 2px var(--virtualizer-styled-accent),
+      inset 0 0 0 4px var(--virtualizer-styled-bg);
+  }
+</style>

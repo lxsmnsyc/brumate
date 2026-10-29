@@ -1,0 +1,57 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import Icon from '../../src/components/Icon.brm';
+
+  const files = [
+    { id: 'docs', name: 'Documents', children: [{ id: 'cv', name: 'cv.pdf' }] },
+    { id: 'notes', name: 'notes.txt' },
+  ];
+</script>
+
+<div class="tree-anatomy-box">
+  <Tree class="ui-tree" aria-label="Files" items=files item=file selectionMode="multiple" expandedKeys=(['docs']) selectedKeys=(['cv']) data-mark="1" data-mark-side="bottom" />
+</div>
+
+#template file(file) {
+  #if (file.children) {
+    <TreeItem class="ui-treerow" textValue=(file.name) data-mark="2" data-mark-side="inside">
+      <span class="tree-anatomy-self" data-mark="3"><Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button></span>
+      <Checkbox slot="selection" class="ui-box" aria-label=(`Select ${file.name}`)>
+        <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+      </Checkbox>
+      {file.name}
+    </TreeItem>
+  } #else if (file.id === 'cv') {
+    <TreeItem class="ui-treerow" textValue=(file.name)>
+      <span class="ui-chevron" aria-hidden="true"></span>
+      <span class="tree-anatomy-self" data-mark="4" data-mark-side="bottom">
+        <Checkbox slot="selection" class="ui-box" aria-label=(`Select ${file.name}`)>
+          <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+        </Checkbox>
+      </span>
+      {file.name}
+    </TreeItem>
+  } #else {
+    <TreeItem class="ui-treerow" textValue=(file.name)>
+      <span class="ui-chevron" aria-hidden="true"></span>
+      <Checkbox slot="selection" class="ui-box" aria-label=(`Select ${file.name}`)>
+        <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+      </Checkbox>
+      {file.name}
+    </TreeItem>
+  }
+}
+
+<style>
+  :global(.tree-anatomy-box) {
+    padding: 0.8rem 0.8rem 1.2rem;
+    width: min(24rem, 100%);
+  }
+
+  :global(.tree-anatomy-self) {
+    display: inline-grid;
+  }
+</style>

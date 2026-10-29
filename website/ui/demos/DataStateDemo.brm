@@ -1,0 +1,33 @@
+<script>
+  import { $bind } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import { listData } from '@brumate/ui/data.brm.ts';
+
+  interface Pet {
+    id: string;
+    name: string;
+  }
+  const { items, selectedKeys, setSelectedKeys, addKeysToSelection } = listData<Pet>({
+    initialItems: [
+      { id: 'cat', name: 'Cat' },
+      { id: 'dog', name: 'Dog' },
+      { id: 'panda', name: 'Panda' },
+    ],
+    initialSelectedKeys: ['dog'],
+  });
+</script>
+
+<div class="ui-stack">
+  <ListBox class="ui-listbox" aria-label="Pets" items=items item=pet selectionMode="multiple" selectedKeys=$bind(selectedKeys) />
+  <div class="ui-row">
+    <Button class="ui-button" onPress=(() => setSelectedKeys(['cat']))>Select only Cat</Button>
+    <Button class="ui-button" onPress=(() => addKeysToSelection(['panda']))>Add Panda</Button>
+  </div>
+  <p>Selected: {selectedKeys.join(', ') || 'none'}.</p>
+</div>
+
+#template pet(pet: Pet) {
+  <ListBoxItem id=(pet.id) class="ui-option" textValue=(pet.name)>{pet.name}</ListBoxItem>
+}

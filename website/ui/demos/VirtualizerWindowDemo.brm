@@ -1,0 +1,32 @@
+<script>
+  import Cell from '@brumate/ui/Cell.brm';
+  import Column from '@brumate/ui/Column.brm';
+  import Row from '@brumate/ui/Row.brm';
+  import Table from '@brumate/ui/Table.brm';
+  import TableBody from '@brumate/ui/TableBody.brm';
+  import TableHeader from '@brumate/ui/TableHeader.brm';
+  import Virtualizer from '@brumate/ui/Virtualizer.brm';
+
+  const logs = Array.from({ length: 2000 }, (_, index) => ({
+    id: `l${index}`,
+    time: `${String(Math.floor(index / 60)).padStart(2, '0')}:${String(index % 60).padStart(2, '0')}`,
+    text: index % 7 === 0 ? 'Retry' : 'Request served',
+  }));
+</script>
+
+<Virtualizer class="ui-virtualizer">
+  <Table class="ui-table" aria-label="2000 log lines">
+    <TableHeader>
+      <Column id="time" class="ui-column" isRowHeader>Time</Column>
+      <Column id="text" class="ui-column">Message</Column>
+    </TableHeader>
+    <TableBody>
+      #for (log of logs by log.id) window(32) {
+        <Row id=(log.id) class="ui-tablerow">
+          <Cell class="ui-cell">{log.time}</Cell>
+          <Cell class="ui-cell">{log.text}</Cell>
+        </Row>
+      }
+    </TableBody>
+  </Table>
+</Virtualizer>

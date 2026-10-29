@@ -1,0 +1,70 @@
+<script>
+  import Cell from '@brumate/ui/Cell.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Column from '@brumate/ui/Column.brm';
+  import ColumnResizer from '@brumate/ui/ColumnResizer.brm';
+  import ResizableTableContainer from '@brumate/ui/ResizableTableContainer.brm';
+  import Row from '@brumate/ui/Row.brm';
+  import Table from '@brumate/ui/Table.brm';
+  import TableBody from '@brumate/ui/TableBody.brm';
+  import TableHeader from '@brumate/ui/TableHeader.brm';
+</script>
+
+<!-- The table is in wrappers where its element cannot carry a badge. -->
+<div class="table-anatomy-box" data-mark="1">
+  <ResizableTableContainer class="ui-resizable">
+    <div class="table-anatomy-table" data-mark="2" data-mark-side="bottom">
+      <Table class="ui-table" aria-label="Files" selectionMode="multiple" selectedKeys=(['notes'])>
+        <TableHeader>
+          <Column class="ui-column ui-select-column">
+            <span class="table-anatomy-self" data-mark="5">
+              <Checkbox slot="selection" class="ui-box" aria-label="Select all" />
+            </span>
+          </Column>
+          <Column id="name" class="ui-column ui-resizable-column" isRowHeader defaultWidth=(180)>
+            <span tabindex="-1" class="table-anatomy-self" data-mark="3" data-mark-side="after">Name</span>
+            <ColumnResizer class="ui-resizer" />
+            <span class="table-anatomy-grip" data-mark="6"></span>
+          </Column>
+          <Column id="kind" class="ui-column"><span class="table-anatomy-self" data-mark="4">Kind</span></Column>
+        </TableHeader>
+        <TableBody>
+          <Row id="notes" class="ui-tablerow">
+            <Cell class="ui-cell"><span class="table-anatomy-self" data-mark="10"><Checkbox slot="selection" class="ui-box" aria-label="Select Notes.txt" /></span></Cell>
+            <Cell class="ui-cell"><span class="table-anatomy-self" data-mark="9" data-mark-side="after">Notes.txt</span></Cell>
+            <Cell class="ui-cell"><span class="table-anatomy-self" data-mark="7" data-mark-side="after">Text</span></Cell>
+          </Row>
+          <Row id="photo" class="ui-tablerow">
+            <Cell class="ui-cell"><Checkbox slot="selection" class="ui-box" aria-label="Select Beach.jpg" /></Cell>
+            <Cell class="ui-cell"><span class="table-anatomy-self" data-mark="8" data-mark-side="after">Beach.jpg</span></Cell>
+            <Cell class="ui-cell">Image</Cell>
+          </Row>
+        </TableBody>
+      </Table>
+    </div>
+  </ResizableTableContainer>
+</div>
+
+<style>
+  :global(.table-anatomy-box) {
+    padding: 1.2rem 0.8rem 1.8rem;
+    border: 1px dashed var(--muted);
+    border-radius: var(--radius);
+  }
+
+  :global(.table-anatomy-table) {
+    width: min(32rem, 100%);
+  }
+
+  :global(.table-anatomy-self) {
+    display: inline-block;
+  }
+
+  /* A point at the end of the Name column, since a resizer is a thin bar that clips a number. */
+  :global(.table-anatomy-grip) {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0.9rem;
+    width: 1px;
+  }
+</style>
