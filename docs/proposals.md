@@ -601,6 +601,70 @@ Prior art: Cap'n Web, from Cloudflare, passes functions by reference as stubs ov
 
 The channel core has no part that needs brumate: `createChannel`, the `Channel` type, the seroval plugin that turns a channel in a value into a channel on the other side, call IDs, ordering, closing, and a transport interface of `send`, `onMessage` and `onClose`. It is built in brumate as an internal module that imports only seroval and takes the transport and extra serializer plugins as arguments. Once socket functions and worker functions both use it, it moves to a `seroval-rpc` package, and `brumate/channel` re-exports it. The directives, the worker loader, the connection, reconnection, the fallback and auth stay in brumate.
 
+#### Inside a channel
+
+A call streams its result by default, as a server function does: `run` settles with the first node of the result, and the promises and async iterables in it settle as their nodes arrive. The arguments stream the same way, since they can hold promises, iterables and channels too. Over HTTP, `stream.ts` frames seroval nodes as bytes. A message transport such as `postMessage` or a WebSocket delivers whole messages in order, so it needs no framing. It needs three other things: many calls on one connection, flow control, and cancelling.
+
+One endpoint serves each transport, and holds every stream and channel on it:
+
+```ts
+interface Transport {
+  send(message: Message, transfer?: Transferable[]): void;
+  onMessage(handler: (message: Message) => void): void;
+  onClose(handler: (reason: unknown) => void): void;
+  close(): void;
+}
+
+type Message =
+  // The caller starts a call, with the first node of its arguments.
+  | { t: 'call'; c: number; s: number; n: string; a: SerovalNode }
+  // The next node of a stream: arguments from the caller, the result from the callee.
+  | { t: 'chunk'; s: number; d: SerovalNode }
+  | { t: 'done'; s: number }
+  | { t: 'error'; s: number; e: { name: string; message: string } }
+  // The reader gave up on a stream, such as an iterator that returned early.
+  | { t: 'cancel'; s: number }
+  // The reader used items of an iterable, and the sender can send `n` more.
+  | { t: 'credit'; s: number; n: number }
+  | { t: 'close'; c: number };
+```
+
+- A call has two streams with the same ID: the arguments from the caller and the result from the callee. The type of the message tells them apart.
+- The side that opened the transport makes even IDs, and the other side odd ones, so the two never clash and need no handshake.
+- A `SerovalNode` is a plain object, so `postMessage` sends it as is, with no `JSON.stringify`. A WebSocket transport stringifies the whole message.
+- The sender runs `toCrossJSONStream` with a new `refs` map for each stream, and sends each node in a message. The first node of the arguments goes in `call`, and the first node of the result is the first `chunk`.
+- The receiver reads each node with `fromCrossJSON` into the `refs` of its stream, as `fromChunkStream` does. The `Refs` class and `failPending` of `stream.ts` move to code that both share.
+- The callee reads the arguments, runs the function, and streams its result back on the same ID.
+- Object identity holds within one stream, not across calls.
+
+##### Flow control
+
+`postMessage` has no backpressure, and seroval reads an async iterable as fast as it yields. A fast generator would fill the port, and a reader that stops early could not stop the producer. So a plugin serializes an async iterable as a stream of its own, before seroval's own handling of iterables:
+
+- The sender reads the iterable itself, and keeps at most a window of items in flight, such as 16 over a port and fewer over a WebSocket.
+- The receiver makes an async iterator. As it reads items, it sends `credit` in batches, such as each half of the window.
+- `return()` on the receiver, such as a `break` out of `for await`, sends `cancel`. The sender calls `return()` of the iterable, so the producer's `finally` runs.
+
+A promise needs no flow control, since it has one value.
+
+Before this is built, check that seroval tests plugins before its own handling of async iterables. If it does not, seroval gets a hook for it, or the channel wraps iterables in a marker class before it serializes them.
+
+##### Ending
+
+- `close` cancels the streams of the channel and fails what still waits in their refs. Calls in flight reject.
+- The transport closing, such as a worker that crashed or a WebSocket that dropped, does the same for every channel on it.
+- `error` rejects `run` if the result had not started, and fails what still waits otherwise. It carries the error's name and message only, as a server function does.
+- A `FinalizationRegistry` on a held channel sends `close` when the channel is garbage collected.
+
+##### Over `postMessage`
+
+- One port delivers in order, so calls on one channel arrive in order with no sequence numbers. The callee starts calls in the order they arrive, and they can finish in any order.
+- An `ArrayBuffer`, a `MessagePort` or a `ReadableStream` can be transferred instead of copied. A transfer empties the sender's copy, so it is opt-in: a `transfer(value)` marker that a plugin adds to the transfer list of `send`. A WebSocket transport serializes it instead.
+- The channel plugin serializes a channel as its ID on the endpoint, and the receiver makes a `Channel` on the same transport.
+- A worker's first call waits in the port's queue until the worker listens, so a worker needs no handshake.
+
+The endpoint, the messages and the plugins for iterables and channels go to `seroval-rpc` with the rest of the core. Brumate keeps the byte framing of HTTP and its own plugins, which it passes to the endpoint.
+
 Cost: about 3 weeks. The serializer and the call protocol of server functions exist. Most of the work is the channels on both sides, their release, reconnection, the fallback and the WebSocket handler for Nitro and for a server of the app's own.
 
 ## Tooling
