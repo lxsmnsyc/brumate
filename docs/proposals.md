@@ -32,6 +32,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [External scripts](#external-scripts)                                                         | Syntax   | Medium | Small  |
 | [What ships, in the editor](#what-ships-in-the-editor)                                        | Tooling  | Medium | Medium |
 | [Accessibility checks in tests](#accessibility-checks-in-tests)                               | Tooling  | Medium | Small  |
+| [Effects that only copy signals](#effects-that-only-copy-signals)                             | Tooling  | Medium | Small  |
 | [One table of the fields with scope IDs](#one-table-of-the-fields-with-scope-ids)             | Runtime  | High   | Small  |
 | [Fields typed before the code loads](#fields-typed-before-the-code-loads)                     | Runtime  | High   | Medium |
 | [Tests against the current build](#tests-against-the-current-build)                           | Tooling  | Medium | Small  |
@@ -869,6 +870,39 @@ The e2e suite of `@brumate/ui` runs axe-core on each part in Chrome. Tests of co
 - happy-dom has no layout, so rules that need it, such as color contrast, are off there. They run in browser mode.
 
 Cost: a day or two.
+
+### Effects that only copy signals
+
+An effect that only sets a signal from other signals is a memo written the long way. It is a common misuse of effects in React, and agents write it often. In brumate it updates the page twice for one change, once for the signals it reads and once for the signal it writes. [When you do not need an effect](../website/docs/effects.md#when-you-do-not-need-an-effect) shows it and its `$memo` form.
+
+```brm
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+  let message = $signal('Clicked 0 times');
+
+  // Warning: "message" is written only by this effect. Use const message = $memo(…)
+  $effect(() => {
+    message = `Clicked ${count} times`;
+  });
+</script>
+```
+
+The analyzer warns when all of these hold:
+
+- The body of the effect only assigns signals, maybe under `if`. It calls no function, has no `await` and returns no cleanup. A call can reach an element, `document` or a library, so any call ends the check.
+- Each signal that it assigns is written nowhere else: not in a handler, a `$client` callback, another effect or a `$bind`. The analyzer already collects the writes of each name, for the warning on a `Bindable` prop that is never written.
+
+The second rule keeps the warning off an effect that resets a value that the user also writes, such as `page = 1` when the `query` prop changes. That value is state, and no memo can replace it.
+
+- The message names the signal and the memo that replaces it. With one assignment and no `if`, it gives the memo: ``const message = $memo(`Clicked ${count} times`)``.
+- It is a warning, not an error. Effects that write signals stay valid, as the timer in the effects docs does through `$untrack`.
+- `brumate check`, the editor and the dev server show it, as they show the other warnings.
+
+Not planned: a ban on `$effect`, or a rule against every effect that writes a signal. Real uses need both, such as a `<dialog>`, cookies and the overlays of `@brumate/ui`.
+
+Cost: a day. One check in `analyze.ts`, a catalog entry, and tests for each rule and each case that stays quiet.
 
 ### Embedding in other sites
 
