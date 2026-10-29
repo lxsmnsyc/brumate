@@ -27,6 +27,13 @@ A tree of links, such as the pages of a site or of a guide, which shows the page
 
 ## Anatomy
 
+```brm anatomy NavigationTreeAnatomy
+`NavigationTree`: Holds the rows. Put it in a `nav` with a label. It selects nothing.
+`NavigationTreeItem`: One row. It shows `data-current` for the page that shows, and `data-current-ancestor` while it is closed and holds that page.
+`Button` with `slot="chevron"`: Opens and closes the row.
+`NavigationTreeItemLink`: The link of the row, to the `href` of its item. It has `aria-current="page"` for the current page.
+```
+
 ```html
 <NavigationTree>
   <NavigationTreeItem>
@@ -95,9 +102,44 @@ Right to left, Left and Right turn around.
 
 `expandedKeys` holds the keys of the open items. `expandedKeys=(['docs'])` starts the tree's own state, and `expandedKeys=$bind(signal)` writes your signal. `onExpandedChange` gets the keys after each change. `selectedRoute` is set by the caller, usually from the route. Nothing is selected. See [State](./state.md).
 
+```brm demo NavigationTreeStateDemo
+
+```
+
+- Own state: `expandedKeys=(['a'])` is where the open rows start. The first tree keeps them, and the page does not see them.
+- `$bind(signal)` writes your signal on each change, and a write from code changes the tree, as the first button shows.
+- `$bind(signal, request)` asks you first. Press Lock, then open a row of the third tree: `request` leaves the signal as it is, and the row stays closed.
+- `onExpandedChange` gets each change, in every shape.
+- `selectedRoute` is not state of the tree. It is a prop that the caller sets, so a change of the route changes the current row. The server renders the rows that are open and the current page.
+- A NavigationTree is not a form field. It has no `name` and no reset.
+
 ## Styling
 
 Style the page that shows with `[data-current]`, and a closed item that holds it with `[data-current-ancestor]`. `--tree-item-level` holds the level of the row, to indent it. See [Styling](./styling.md).
+
+This stylesheet styles a row at rest, on hover, on press, as the current page, as a closed row that holds the current page (a dot), with keyboard focus, and disabled, with the indent by level and the chevron. Its tokens are at the top, and they follow the color scheme. Tables is the current page. Close Guides to see the dot, and press a link to move the current page. Charts is disabled.
+
+```brm styled NavigationTreeStyled
+
+```
+
+## Use cases
+
+### A sidebar for a guide
+
+Give `selectedRoute` the route of the page that shows. Here a signal holds it and a press on a link sets it. A site sets it from the address. The link of the current row has `aria-current="page"`, and a closed row that holds it shows `data-current-ancestor`, so close Parts and the dot shows where the page is.
+
+```brm demo NavigationTreeGuideDemo
+
+```
+
+### Pages that are not available
+
+A disabled item, by `isDisabled` on it or `disabledKeys` on the tree, has a link that is a `span` with `role="link"`, `aria-disabled` and `data-disabled`. It does not navigate and is not a tab stop. Put the reason in its text, since a screen reader reads it with the link.
+
+```brm demo NavigationTreeDisabledDemo
+
+```
 
 ## Focus and keys
 

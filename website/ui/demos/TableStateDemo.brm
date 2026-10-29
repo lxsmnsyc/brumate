@@ -1,0 +1,66 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Cell from '@brumate/ui/Cell.brm';
+  import Column from '@brumate/ui/Column.brm';
+  import Row from '@brumate/ui/Row.brm';
+  import Table from '@brumate/ui/Table.brm';
+  import TableBody from '@brumate/ui/TableBody.brm';
+  import TableHeader from '@brumate/ui/TableHeader.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import type { SortDescriptor } from '@brumate/ui/table.ts';
+
+  const names = ['Ada', 'Alan', 'Grace'];
+  let free = $signal<Key[]>([]);
+  let capped = $signal<Key[]>([]);
+  let order = $signal<SortDescriptor | null>(null);
+  let note = $signal('');
+</script>
+
+<div class="ui-stack">
+  <Table class="ui-table" aria-label="Own selection" selectionMode="multiple" selectedKeys=(['Ada'])>
+    <TableHeader>
+      <Column id="name" class="ui-column" isRowHeader>Own state, Ada selected</Column>
+    </TableHeader>
+    <TableBody>
+      #for (name of names by name) {
+        <Row id=(name) class="ui-tablerow"><Cell class="ui-cell">{name}</Cell></Row>
+      }
+    </TableBody>
+  </Table>
+  <Table class="ui-table" aria-label="Bound selection" selectionMode="multiple" selectedKeys=$bind(free)>
+    <TableHeader>
+      <Column id="name" class="ui-column" isRowHeader>Writes your signal</Column>
+    </TableHeader>
+    <TableBody>
+      #for (name of names by name) {
+        <Row id=(name) class="ui-tablerow"><Cell class="ui-cell">{name}</Cell></Row>
+      }
+    </TableBody>
+  </Table>
+  <Table class="ui-table" aria-label="Capped selection" selectionMode="multiple" selectedKeys=$bind(capped, (next) => { if (next.length <= 1) capped = next; else note = 'Only one row can be selected.'; })>
+    <TableHeader>
+      <Column id="name" class="ui-column" isRowHeader>Asks you first, one row at most</Column>
+    </TableHeader>
+    <TableBody>
+      #for (name of names by name) {
+        <Row id=(name) class="ui-tablerow"><Cell class="ui-cell">{name}</Cell></Row>
+      }
+    </TableBody>
+  </Table>
+  <Table class="ui-table" aria-label="Sorted names" sortDescriptor=$bind(order)>
+    <TableHeader>
+      <Column id="name" class="ui-column" isRowHeader allowsSorting>Sort, written to your signal</Column>
+    </TableHeader>
+    <TableBody>
+      #for (name of (order?.direction === 'descending' ? [...names].reverse() : names) by name) {
+        <Row id=(name) class="ui-tablerow"><Cell class="ui-cell">{name}</Cell></Row>
+      }
+    </TableBody>
+  </Table>
+  <div class="ui-row">
+    <Button class="ui-button" onPress=(() => (free = ['Alan', 'Grace']))>Select Alan and Grace</Button>
+    <Button class="ui-button" onPress=(() => (order = { column: 'name', direction: 'descending' }))>Sort descending</Button>
+  </div>
+  <p>Bound: {free.join(', ') || 'none'}. Capped: {capped.join(', ') || 'none'}. Sort: {order ? order.direction : 'none'}. {note}</p>
+</div>

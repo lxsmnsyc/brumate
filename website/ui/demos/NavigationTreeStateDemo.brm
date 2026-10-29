@@ -1,0 +1,50 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import NavigationTree from '@brumate/ui/NavigationTree.brm';
+  import NavigationTreeItem from '@brumate/ui/NavigationTreeItem.brm';
+  import NavigationTreeItemLink from '@brumate/ui/NavigationTreeItemLink.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import type { NavigationNode } from '@brumate/ui/navigation-tree.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  interface Page extends NavigationNode {
+    title: string;
+    children?: Page[];
+  }
+  const pages: Page[] = [
+    { id: 'a', title: 'Alpha', children: [{ id: 'a1', title: 'Alpha one', href: '#a1' }] },
+    { id: 'b', title: 'Beta', children: [{ id: 'b1', title: 'Beta one', href: '#b1' }] },
+  ];
+  let bound = $signal<Key[]>([]);
+  let locked = $signal(false);
+  let asked = $signal<Key[]>([]);
+</script>
+
+<div class="ui-stack">
+  <nav aria-label="Own state">
+    <NavigationTree class="ui-tree" aria-label="Own state" items=pages item=page expandedKeys=(['a']) />
+  </nav>
+  <nav aria-label="Bound state">
+    <NavigationTree class="ui-tree" aria-label="Bound state" items=pages item=page expandedKeys=$bind(bound) />
+  </nav>
+  <nav aria-label="Asked state">
+    <NavigationTree class="ui-tree" aria-label="Asked state" items=pages item=page expandedKeys=$bind(asked, (next) => { if (!locked) asked = next; }) />
+  </nav>
+  <div class="ui-row">
+    <Button class="ui-button" onPress=(() => (bound = ['a', 'b']))>Open both in the second tree</Button>
+    <Button class="ui-button" onPress=(() => (locked = !locked))>{locked ? 'Unlock' : 'Lock'} the third tree</Button>
+  </div>
+  <p>Second tree: {bound.join(', ') || 'none open'}. Third tree: {asked.join(', ') || 'none open'}.</p>
+</div>
+
+#template page(page) {
+  <NavigationTreeItem class="ui-treerow ui-navrow" textValue=(page.title) href=(page.href)>
+    #if (page.children) {
+      <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>
+    } #else {
+      <span class="ui-chevron" aria-hidden="true"></span>
+    }
+    <NavigationTreeItemLink class="ui-navlink">{page.title}</NavigationTreeItemLink>
+  </NavigationTreeItem>
+}

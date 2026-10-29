@@ -1,0 +1,61 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Cell from '@brumate/ui/Cell.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Column from '@brumate/ui/Column.brm';
+  import Row from '@brumate/ui/Row.brm';
+  import Table from '@brumate/ui/Table.brm';
+  import TableBody from '@brumate/ui/TableBody.brm';
+  import TableHeader from '@brumate/ui/TableHeader.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  let invoices = $signal([
+    { id: 'i1', client: 'Acme', total: 1200 },
+    { id: 'i2', client: 'Globex', total: 480 },
+    { id: 'i3', client: 'Initech', total: 95 },
+    { id: 'i4', client: 'Umbrella', total: 2310 },
+  ]);
+  let picked = $signal<Key[]>([]);
+  const sum = $memo(
+    invoices.reduce((total, invoice) => total + (picked.includes(invoice.id) ? invoice.total : 0), 0),
+  );
+
+  function remove() {
+    invoices = invoices.filter((invoice) => !picked.includes(invoice.id));
+    picked = [];
+  }
+</script>
+
+<div class="ui-stack">
+  <div class="ui-row">
+    <Button class="ui-button" isDisabled=(picked.length === 0) onPress=remove>Delete {picked.length} selected</Button>
+    <span class="bulk-total">Selected total: {sum}</span>
+  </div>
+  <Table class="ui-table" aria-label="Invoices" selectionMode="multiple" selectedKeys=$bind(picked)>
+    <TableHeader>
+      <Column class="ui-column ui-select-column">
+        <Checkbox slot="selection" class="ui-box" aria-label="Select all">
+          <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+        </Checkbox>
+      </Column>
+      <Column id="client" class="ui-column" isRowHeader>Client</Column>
+      <Column id="total" class="ui-column ui-number">Total</Column>
+    </TableHeader>
+    <TableBody>
+      #for (invoice of invoices by invoice.id) {
+        <Row id=(invoice.id) class="ui-tablerow">
+          <Cell class="ui-cell">
+            <Checkbox slot="selection" class="ui-box" aria-label=(`Select ${invoice.client}`)>
+              <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+            </Checkbox>
+          </Cell>
+          <Cell class="ui-cell">{invoice.client}</Cell>
+          <Cell class="ui-cell ui-number">{invoice.total}</Cell>
+        </Row>
+      }
+    </TableBody>
+  </Table>
+  <p>{invoices.length} invoices.</p>
+</div>

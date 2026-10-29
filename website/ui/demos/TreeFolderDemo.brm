@@ -1,0 +1,41 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Tree from '@brumate/ui/Tree.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  interface Folder {
+    id: string;
+    name: string;
+    children?: Folder[];
+  }
+  const folders: Folder[] = [
+    { id: 'home', name: 'Home', children: [{ id: 'docs', name: 'Documents' }, { id: 'pics', name: 'Pictures' }] },
+    { id: 'shared', name: 'Shared', children: [{ id: 'team', name: 'Team' }] },
+  ];
+  let target = $signal<Key[]>(['docs']);
+  let open = $signal<Key[]>(['home']);
+  let saved = $signal('');
+</script>
+
+<div class="ui-stack">
+  <Tree class="ui-tree" aria-label="Save in" items=folders item=folder selectionMode="single" disallowEmptySelection selectedKeys=$bind(target) expandedKeys=$bind(open) />
+  <div class="ui-row">
+    <Button class="ui-button" onPress=(() => (saved = String(target[0])))>Save here</Button>
+    <Button class="ui-button" onPress=(() => (open = ['home', 'shared']))>Open all</Button>
+  </div>
+  <p>Chosen: {target[0]}. Saved in: {saved || 'nowhere'}.</p>
+</div>
+
+#template folder(folder) {
+  <TreeItem class="ui-treerow" textValue=(folder.name)>
+    #if (folder.children) {
+      <Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button>
+    } #else {
+      <span class="ui-chevron" aria-hidden="true"></span>
+    }
+    {folder.name}
+  </TreeItem>
+}

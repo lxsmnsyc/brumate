@@ -1,0 +1,48 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import NavigationTree from '@brumate/ui/NavigationTree.brm';
+  import NavigationTreeItem from '@brumate/ui/NavigationTreeItem.brm';
+  import NavigationTreeItemLink from '@brumate/ui/NavigationTreeItemLink.brm';
+  import type { NavigationNode } from '@brumate/ui/navigation-tree.ts';
+  import Icon from '../../src/components/Icon.brm';
+
+  interface Page extends NavigationNode {
+    title: string;
+    children?: Page[];
+  }
+  const pages: Page[] = [
+    { id: 'guides', title: 'Guides', children: [{ id: 'forms', title: 'Forms', href: '#forms' }] },
+    { id: 'api', title: 'API', href: '#api' },
+  ];
+</script>
+
+<div class="nav-anatomy-box">
+  <nav aria-label="Guide">
+    <NavigationTree class="ui-tree" aria-label="Guide" items=pages item=page selectedRoute="#forms" expandedKeys=(['guides']) data-mark="1" data-mark-side="bottom" />
+  </nav>
+</div>
+
+#template page(page) {
+  #if (page.children) {
+    <NavigationTreeItem class="ui-treerow ui-navrow" textValue=(page.title) href=(page.href) data-mark="2" data-mark-side="inside">
+      <span class="nav-anatomy-self" data-mark="3"><Button slot="chevron" class="ui-chevron"><Icon name="chevron" size=(14) /></Button></span>
+      <NavigationTreeItemLink class="ui-navlink nav-anatomy-self" data-mark="4" data-mark-side="after">{page.title}</NavigationTreeItemLink>
+    </NavigationTreeItem>
+  } #else {
+    <NavigationTreeItem class="ui-treerow ui-navrow" textValue=(page.title) href=(page.href)>
+      <span class="ui-chevron" aria-hidden="true"></span>
+      <NavigationTreeItemLink class="ui-navlink">{page.title}</NavigationTreeItemLink>
+    </NavigationTreeItem>
+  }
+}
+
+<style>
+  :global(.nav-anatomy-box) {
+    padding: 0.8rem 0.8rem 1.2rem;
+    width: min(24rem, 100%);
+  }
+
+  :global(.nav-anatomy-self) {
+    display: inline-grid;
+  }
+</style>

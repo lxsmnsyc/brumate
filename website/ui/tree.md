@@ -27,6 +27,13 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 
 ## Anatomy
 
+```brm anatomy TreeAnatomy
+`Tree`: Holds the rows and moves focus between them. It is named by `aria-label` or `aria-labelledby`.
+`TreeItem`: One row. Its level, its place in the list and, with children, whether it is open are on the row.
+`Button` with `slot="chevron"`: Opens and closes the row.
+`Checkbox` with `slot="selection"`: Selects the row.
+```
+
 ```html
 <Tree>
   <TreeItem>
@@ -90,9 +97,43 @@ Right to left, Left and Right turn around.
 
 `expandedKeys` holds the keys of the open items, and `selectedKeys` the keys of the selected rows. `expandedKeys=(['docs'])` and `selectedKeys=(['a'])` start the tree's own state, and `$bind(signal)` writes your signal. `onExpandedChange` and `onSelectionChange` get the keys after each change. The children of a closed item do not render. See [State](./state.md).
 
+```brm demo TreeStateDemo
+
+```
+
+- Own state: `expandedKeys=(['a'])` is where the open rows start. The first tree keeps them, and the page does not see them. `selectedKeys` works the same.
+- `$bind(signal)` writes your signal on each change, and a write from code changes the tree, as the first button shows. The server renders the rows that are open, so the page is right before its code loads.
+- `$bind(signal, request)` asks you first. Press Lock, then open a row of the third tree: `request` leaves the signal as it is, and the row stays closed. The request gets the whole next list of keys.
+- `onExpandedChange` and `onSelectionChange` get each change, in every shape.
+- A Tree is not a form field. It has no `name` and no reset, so a reset of a form leaves its open rows and its selection as they are.
+
 ## Styling
 
 Style a row with the data attributes above, such as `[data-expanded]` and `[data-selected]`. `--tree-item-level` holds the level of the row, to indent it. See [Styling](./styling.md).
+
+This stylesheet styles a row at rest, on hover, on press, selected, with keyboard focus and disabled, the indent by level, and the chevron, which turns while the row is open and flips right to left. Its tokens are at the top, and they follow the color scheme. Tab into the tree, then use the arrow keys. `old.ts` is disabled.
+
+```brm styled TreeStyled
+
+```
+
+## Use cases
+
+### A file browser
+
+With no selection, `onAction` gets the key of the row that Enter or a press acts on. A row with children still opens with the chevron and with Right. Without `onAction` and with nothing selectable, Enter and a press open and close a row, so give the tree an action only when the rows do something.
+
+```brm demo TreeBrowserDemo
+
+```
+
+### A folder picker
+
+A single selection with `disallowEmptySelection` always holds one folder. The caller writes `expandedKeys` too, so a button can open every row. The Save button reads the signal, so the choice outlives the tree.
+
+```brm demo TreeFolderDemo
+
+```
 
 ## Rows
 

@@ -1,0 +1,25 @@
+<script>
+  import NavigationTree from '@brumate/ui/NavigationTree.brm';
+  import NavigationTreeItem from '@brumate/ui/NavigationTreeItem.brm';
+  import NavigationTreeItemLink from '@brumate/ui/NavigationTreeItemLink.brm';
+  import type { NavigationNode } from '@brumate/ui/navigation-tree.ts';
+
+  interface Step extends NavigationNode {
+    title: string;
+  }
+  const steps: Step[] = [
+    { id: 'account', title: 'Account', href: '#account' },
+    { id: 'billing', title: 'Billing', href: '#billing' },
+    { id: 'team', title: 'Team (needs a plan)', href: '#team' },
+  ];
+</script>
+
+<nav aria-label="Settings">
+  <NavigationTree class="ui-tree" aria-label="Settings" items=steps item=step selectedRoute="#account" disabledKeys=(['team']) />
+</nav>
+
+#template step(step) {
+  <NavigationTreeItem class="ui-treerow" textValue=(step.title) href=(step.href)>
+    <NavigationTreeItemLink class="ui-navlink">{step.title}</NavigationTreeItemLink>
+  </NavigationTreeItem>
+}

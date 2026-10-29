@@ -1,0 +1,38 @@
+<script>
+  import { $bind } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import { listData } from '@brumate/ui/data.brm.ts';
+
+  interface Pet {
+    id: string;
+    name: string;
+  }
+  const { items, selectedKeys, filterText, setFilterText, moveBefore, removeSelectedItems } = listData<Pet>(
+    {
+      initialItems: [
+        { id: 'cat', name: 'Cat' },
+        { id: 'dog', name: 'Dog' },
+        { id: 'panda', name: 'Panda' },
+        { id: 'snake', name: 'Snake' },
+      ],
+    },
+    (pet) => pet.id,
+    (pet, text) => pet.name.toLowerCase().includes(text.toLowerCase()),
+  );
+</script>
+
+<div class="ui-stack">
+  <input class="ui-input" type="search" aria-label="Filter pets" placeholder="Filter" value=(filterText) onInput=((event) => setFilterText(event.currentTarget.value)) />
+  <ListBox class="ui-listbox" aria-label="Pets" items=items item=pet selectionMode="multiple" selectedKeys=$bind(selectedKeys) />
+  <div class="ui-row">
+    <Button class="ui-button" onPress=(() => moveBefore('cat', selectedKeys))>Move to top</Button>
+    <Button class="ui-button" onPress=removeSelectedItems>Remove selected</Button>
+  </div>
+  <p>Selected: {selectedKeys.join(', ') || 'none'}. Shown: {items.length}.</p>
+</div>
+
+#template pet(pet: Pet) {
+  <ListBoxItem id=(pet.id) class="ui-option" textValue=(pet.name)>{pet.name}</ListBoxItem>
+}

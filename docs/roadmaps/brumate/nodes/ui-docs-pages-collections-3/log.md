@@ -1,0 +1,3 @@
+- 2026-10-29: worktree set up. `pnpm` refuses to run with the symlinked node_modules ("unsafe task run state path"), so packages were built with `npx tsdown` and the website with `npx vite build`.
+- BRM167 on DataDemo.brm: `brumate check` compiles with `resolveFromDisk` only (packages/brumate/src/check-command.ts line 90), while vite also calls `resolvePackageImport`. So it is a gap of the check command, not of the Data page. The vite build and the e2e flow compile it. Not fixed here (core file, outside the owned paths). All four Data demos report it.
+- Wrote anatomy, styled, two use cases and a state section for Table, Tree, NavigationTree, Virtualizer. Data has no tags: use cases, state and a note on styling.
