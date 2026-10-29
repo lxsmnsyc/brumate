@@ -23,6 +23,15 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: loading-header-error
+    kind: hard
+    why: in the 0.4.0 cut
+  - on: streamed-memo-reads
+    kind: hard
+    why: in the 0.4.0 cut
+  - on: late-state-record
+    kind: hard
+    why: in the 0.4.0 cut
   - on: check-package-imports
     kind: hard
     why: in the 0.4.0 cut

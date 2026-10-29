@@ -193,6 +193,7 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 - The callback of `$effect` and `$client` takes no parameters and is not `async`.
 - `ref=$bind(name)` writes the element into the signal `name`. On the server it is `undefined`, so read it in handlers, effects and `$client` callbacks.
 - A handler that only writes signals needs no effect: the page updates by itself.
+- An effect that only sets a signal from other signals should be a `$memo`, or a write in the handler that changes them. Keep `$effect` for work outside the page's state: element methods, cookies, `document.title`, timers and libraries.
 
 ```brm wrong: The trigger of $client must be "visible", "idle" or "load"
 <script>
