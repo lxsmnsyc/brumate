@@ -29,6 +29,7 @@ Middleware entry, request locals and timing helpers shipped in 0.2.0. These ship
 | [Offline pages](#offline-pages)                                                               | Runtime  | Medium | Medium |
 | [Observability](#observability)                                                               | Runtime  | Medium | Medium |
 | [Ordered updates](#ordered-updates)                                                           | Runtime  | Medium | Medium |
+| [`$produce` with maps and sets](#produce-with-maps-and-sets)                                  | Runtime  | Medium | Small  |
 | [External scripts](#external-scripts)                                                         | Syntax   | Medium | Small  |
 | [What ships, in the editor](#what-ships-in-the-editor)                                        | Tooling  | Medium | Medium |
 | [Accessibility checks in tests](#accessibility-checks-in-tests)                               | Tooling  | Medium | Small  |
@@ -346,6 +347,28 @@ To check:
 The tests mark each case with `it.fails`. The fix turns them into `it`.
 
 Cost: a few days for the order, and a day or two more for batching, since it uses the queue of bindings that the order adds. The change is a pass in the compiler that ranks memos, the `table` of the client codegen, and `run`, `memo`, `writeSlot` and `handle` of the core.
+
+### `$produce` with maps and sets
+
+`$produce` drafts only plain objects and arrays. A `Map`, a `Set` or an instance of a class goes to the recipe as it is, so two cases go wrong without a message:
+
+- A signal that holds a map: `$produce(tags, (draft) => { draft.set(id, tag) })` changes the map in place and returns nothing. The value is the same object, so `writeSlot` sees no change and nothing updates.
+- A map inside a drafted object: the draft returns the map itself, so `draft.byId.set(id, tag)` changes the map of the old value too. A memo or an effect that kept the old value sees it change.
+
+Two changes, in this order:
+
+1. A warning in dev. When the value cannot be drafted, is an object, and the recipe returns nothing, `$produce` warns with the name of the signal and says to return a new value. The text can follow the warning for changes in place. Production code does not change.
+2. Drafts of maps and sets. A draft of a map copies it on the first `set`, `delete` or `clear`, and drafts the plain objects, arrays, maps and sets it holds as values, as a draft of an object does for its keys. A draft of a set copies it on the first `add`, `delete` or `clear`. `finalize` returns the copy, or the map or set itself when nothing changed, so `Object.is` still cuts off updates. Keys are never drafted.
+
+The warning covers only the value of the signal. Inside a draft, the recipe reading a value that cannot be drafted looks the same as changing it, unless the value is copied, so the second change is what covers maps and sets there. Instances of other classes stay as they are, in both places.
+
+To check:
+
+- The bytes that the drafts of maps and sets add to a page that calls `$produce`. Immer keeps them behind `enableMapSet` for this reason.
+- A copied map keeps the order of its entries, and `set` of a key it has keeps the position of that key.
+- A map whose values are drafted, and a recipe that moves a drafted value to another key, as `finalize` handles for objects today.
+
+Cost: a day for the warning, two or three for the drafts and their tests.
 
 ### One table of the fields with scope IDs
 
