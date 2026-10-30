@@ -30,8 +30,7 @@ const labels: Record<string, string> = {
   'reference-security': 'Security checks',
 };
 
-/** The sections of the sidebar, in reading order. */
-export const sections: { title: string; pages: { slug: string; title: string }[] }[] = [
+const groups = [
   { title: 'Start', pages: ['', 'getting-started', 'tutorial'] },
   { title: 'Components', pages: ['components', 'markup', 'styles'] },
   {
@@ -64,12 +63,19 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
       'client-modules',
     ],
   },
-].map((section) => ({
-  title: section.title,
-  pages: section.pages
-    .filter((slug) => slug in pages)
-    .map((slug) => ({
-      slug,
-      title: slug === '' ? 'Introduction' : (labels[slug] ?? pages[slug]!.title),
-    })),
-}));
+];
+
+/** The sections of the sidebar, in reading order. */
+export const sections: { title: string; pages: { slug: string; title: string }[] }[] = [];
+for (const group of groups) {
+  const entries: { slug: string; title: string }[] = [];
+  for (const slug of group.pages) {
+    if (slug in pages) {
+      entries.push({
+        slug,
+        title: slug === '' ? 'Introduction' : (labels[slug] ?? pages[slug]!.title),
+      });
+    }
+  }
+  sections.push({ title: group.title, pages: entries });
+}

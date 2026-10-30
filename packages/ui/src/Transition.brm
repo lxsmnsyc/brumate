@@ -55,7 +55,7 @@
   } from 'brumate/signals';
   import {
     TransitionContext,
-    classesOf,
+    parseClasses,
     enterSteps,
     leaveSteps,
     nextFrame,
@@ -134,9 +134,9 @@
 
   function startClass() {
     if (opening) {
-      return classesOf(enterFrom).join(' ') || undefined;
+      return parseClasses(enterFrom).join(' ') || undefined;
     }
-    return (rested && classesOf(entered).join(' ')) || undefined;
+    return (rested && parseClasses(entered).join(' ')) || undefined;
   }
 
   function startClosed() {

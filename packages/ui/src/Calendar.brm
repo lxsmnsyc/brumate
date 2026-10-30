@@ -54,7 +54,7 @@
     alignStart,
     constrain,
     constrainStart,
-    endOf,
+    getRangeEnd,
     outOfRange,
     rangeLabel,
     toDate,
@@ -119,7 +119,7 @@
   let {
     focusedValue = constrain(
       toDate(
-        firstOf(picker ? picker.value : value) ?? picker?.placeholderValue ?? todayString(timeZone),
+        findFirstDate(picker ? picker.value : value) ?? picker?.placeholderValue ?? todayString(timeZone),
       ),
       minValue,
       maxValue,
@@ -151,11 +151,11 @@
   let start = $signal(
     alignCenter(toDate(focusedValue), visibleDuration, locale.locale, minValue, maxValue).toString(),
   );
-  const end = $memo(endOf(toDate(start), visibleDuration).toString());
+  const end = $memo(getRangeEnd(toDate(start), visibleDuration).toString());
   const visible = $memo(rangeLabel(toDate(start), toDate(end), locale.locale));
   const label = $memo([ariaLabel, visible].filter(Boolean).join(', '));
   const current = $memo(picker ? picker.value : value);
-  const selection = $memo(selectionOf(current, anchor, hovered));
+  const selection = $memo(readSelection(current, anchor, hovered));
   // A range that is not done is not invalid yet.
   const unavailable = $memo(
     anchor === null &&
@@ -194,7 +194,7 @@
     if (active?.dataset.calendar !== id) {
       return;
     }
-    const attempt = (tries: number) => {
+    function attempt(tries: number) {
       const target = cell(date);
       // Focus that reaches the cell calls here again from the cell, and stays.
       if (target === document.activeElement) {
@@ -205,7 +205,7 @@
       } else if (tries > 0) {
         setTimeout(() => attempt(tries - 1), 10);
       }
-    };
+    }
     attempt(50);
   }
 
@@ -297,12 +297,12 @@
   }
 
   /** The first date of a value: the date, or the start of the range. */
-  function firstOf(current: DateString | DateRange | null): DateString | null {
+  function findFirstDate(current: DateString | DateRange | null): DateString | null {
     return typeof current === 'object' && current !== null ? current.start : current;
   }
 
   /** The dates that show as selected, from the first to the last. */
-  function selectionOf(
+  function readSelection(
     current: DateString | DateRange | null,
     first: DateString | null,
     to: DateString | null,

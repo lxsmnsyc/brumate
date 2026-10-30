@@ -23,7 +23,7 @@
     toDate,
     unitDuration,
     weekDays,
-    weeksOf,
+    getWeeks,
   } from './calendar.ts';
   import CalendarCell from './CalendarCell.brm';
 
@@ -44,7 +44,7 @@
   const start = $memo(
     calendar ? (offset ? toDate(calendar.start).add(offset) : toDate(calendar.start)).toString() : '',
   );
-  const weeks = $memo(calendar ? weeksOf(toDate(start), calendar.locale, calendar.firstDayOfWeek) : []);
+  const weeks = $memo(calendar ? getWeeks(toDate(start), calendar.locale, calendar.firstDayOfWeek) : []);
   const days = $memo(calendar ? weekDays(calendar.locale, calendar.firstDayOfWeek) : []);
   const label = $memo(
     calendar

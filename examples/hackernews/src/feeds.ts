@@ -11,7 +11,7 @@ export const FEEDS = {
 export type FeedPath = keyof typeof FEEDS;
 
 /** The page of a feed that a URL asks for with `?page=`, from 1. */
-export function pageOf(url: string): number {
+export function getPage(url: string): number {
   const page = Number(new URL(url).searchParams.get('page') ?? 1);
   return Number.isInteger(page) && page > 0 ? page : 1;
 }

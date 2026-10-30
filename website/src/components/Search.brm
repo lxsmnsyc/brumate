@@ -20,31 +20,45 @@
   async function find(value: string) {
     query = value;
     open = true;
-    const terms = value.toLowerCase().split(/\s+/).filter(Boolean);
+    const terms: string[] = [];
+    for (const term of value.toLowerCase().split(/\s+/)) {
+      if (term) {
+        terms.push(term);
+      }
+    }
     if (terms.length === 0) {
       results = [];
       return;
     }
     const { index } =
       section === 'ui' ? await import('virtual:ui-search-index') : await import('virtual:search-index');
-    const scored = index.flatMap((entry) => {
+    const scored: (Result & { score: number })[] = [];
+    for (const entry of index) {
       const heading = entry.heading.toLowerCase();
       const text = entry.text.toLowerCase();
-      if (!terms.every((term) => heading.includes(term) || text.includes(term))) {
-        return [];
+      let matches = true;
+      for (const term of terms) {
+        if (!(heading.includes(term) || text.includes(term))) {
+          matches = false;
+          break;
+        }
       }
-      const score = terms.reduce((sum, term) => sum + (heading.includes(term) ? 3 : 1), 0);
+      if (!matches) {
+        continue;
+      }
+      let score = 0;
+      for (const term of terms) {
+        score += heading.includes(term) ? 3 : 1;
+      }
       const at = Math.max(0, text.indexOf(terms[0]!) - 40);
-      return [
-        {
-          score,
-          href: `${base}${section}${entry.page ? `/${entry.page}` : ''}${entry.id ? `#${entry.id}` : ''}`,
-          title: entry.heading,
-          page: entry.pageTitle,
-          text: `${at > 0 ? '…' : ''}${entry.text.slice(at, at + 120)}…`,
-        },
-      ];
-    });
+      scored.push({
+        score,
+        href: `${base}${section}${entry.page ? `/${entry.page}` : ''}${entry.id ? `#${entry.id}` : ''}`,
+        title: entry.heading,
+        page: entry.pageTitle,
+        text: `${at > 0 ? '…' : ''}${entry.text.slice(at, at + 120)}…`,
+      });
+    }
     // Only the answer to the latest query is shown.
     if (query === value) {
       results = scored.toSorted((a, b) => b.score - a.score).slice(0, 8);

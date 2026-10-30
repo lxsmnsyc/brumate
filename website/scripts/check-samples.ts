@@ -9,12 +9,18 @@ const parser = new MarkdownIt();
 let failures = 0;
 let samples = 0;
 
-const pages = folders.flatMap((folder) =>
-  readdirSync(folder)
-    .filter((file) => file.endsWith('.md'))
-    .toSorted()
-    .map((file) => ({ folder, file })),
-);
+const pages: { folder: URL; file: string }[] = [];
+for (const folder of folders) {
+  const markdown: string[] = [];
+  for (const file of readdirSync(folder)) {
+    if (file.endsWith('.md')) {
+      markdown.push(file);
+    }
+  }
+  for (const file of markdown.toSorted()) {
+    pages.push({ folder, file });
+  }
+}
 
 for (const { folder, file: page } of pages) {
   // A sample of a page of @brumate/ui is named with its folder.
@@ -22,13 +28,13 @@ for (const { folder, file: page } of pages) {
   const tokens = parser.parse(readFileSync(new URL(page, folder), 'utf8'), {});
   const groups: { line: number; files: Map<string, string> }[] = [];
   let previous = -2;
-  tokens.forEach((token, index) => {
+  for (const [index, token] of tokens.entries()) {
     const match =
       token.type === 'fence'
         ? /^(?:brm|html|ts)\s+live\b(?:\s+(\S+))?/.exec(token.info.trim())
         : null;
     if (!match) {
-      return;
+      continue;
     }
     if (previous !== index - 1) {
       groups.push({ line: (token.map?.[0] ?? 0) + 1, files: new Map() });
@@ -36,10 +42,15 @@ for (const { folder, file: page } of pages) {
     const group = groups.at(-1)!;
     group.files.set(match[1] ?? (group.files.size === 0 ? 'App.brm' : 'module.ts'), token.content);
     previous = index;
-  });
+  }
   for (const { line, files } of groups) {
     samples++;
-    const components = new Map([...files].filter(([file]) => file.endsWith('.brm')));
+    const components = new Map<string, string>();
+    for (const [file, source] of files) {
+      if (file.endsWith('.brm')) {
+        components.set(file, source);
+      }
+    }
     const liveProps = analyzeProject(components);
     for (const [file, source] of components) {
       try {

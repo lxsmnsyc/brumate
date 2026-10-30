@@ -148,15 +148,15 @@
     // pointerdown and a pointerup of the first button, so the page under a touch is not clicked
     // once the overlay is gone.
     let started = false;
-    const down = (event: PointerEvent): void => {
+    function down(event: PointerEvent): void {
       started = event.button === 0 && event.target === element;
-    };
-    const up = (event: PointerEvent): void => {
+    }
+    function up(event: PointerEvent): void {
       if (started && event.target === element && isDismissable) {
         close();
       }
       started = false;
-    };
+    }
     element.addEventListener('pointerdown', down);
     element.addEventListener('pointerup', up);
     stops.push(() => {

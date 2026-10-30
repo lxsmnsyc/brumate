@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
-import { isRTL, localeOf } from '../src/locale.ts';
+import { isRTL, createLocale } from '../src/locale.ts';
 import Locales from './fixtures/locales.brm?brumate-server';
 
 let unmount: (() => void) | undefined;
@@ -21,7 +21,7 @@ it('tells the direction of a locale by its script', () => {
   // Uzbek in Arabic script is right to left, and in Latin script is not.
   expect(isRTL('uz-Arab')).toBe(true);
   expect(isRTL('uz-Latn')).toBe(false);
-  expect(localeOf('ja-JP')).toEqual({ locale: 'ja-JP', direction: 'ltr' });
+  expect(createLocale('ja-JP')).toEqual({ locale: 'ja-JP', direction: 'ltr' });
 });
 
 it('renders a shortcut left to right, with the attributes of the caller', async () => {

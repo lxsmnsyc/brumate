@@ -36,7 +36,7 @@
   import { LabelContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { LocaleContext } from './locale.ts';
-  import { progressOf } from './progress.ts';
+  import { getProgress } from './progress.ts';
   import { mergeStyle } from './style.ts';
 
   /**
@@ -64,7 +64,7 @@
   const labelId = $id();
   // A Label inside names it. Without one, aria-label does, and the ID goes.
   const { present: labelled } = described(labelId);
-  const state = $memo(progressOf(value, minValue, maxValue, locale.locale, formatOptions));
+  const state = $memo(getProgress(value, minValue, maxValue, locale.locale, formatOptions));
   $setContext(LabelContext, { id: labelId });
 
   // An indeterminate bar has no value, so its content gets none.

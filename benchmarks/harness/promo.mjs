@@ -11,8 +11,16 @@ import { findChrome } from './chrome.mjs';
 
 const folder = fileURLToPath(new URL('../promo/', import.meta.url));
 const names = process.argv.slice(2);
-const layouts =
-  names.length > 0 ? names : readdirSync(folder).filter((file) => file.endsWith('.html'));
+const layouts = [];
+if (names.length > 0) {
+  layouts.push(...names);
+} else {
+  for (const file of readdirSync(folder)) {
+    if (file.endsWith('.html')) {
+      layouts.push(file);
+    }
+  }
+}
 
 const browser = await chromium.launch({ ...findChrome(), headless: true });
 let problems = 0;
@@ -33,7 +41,9 @@ for (const layout of layouts) {
       const pad = parseFloat(getComputedStyle(box).paddingRight);
       for (const element of box.querySelectorAll('*')) {
         const rect = element.getBoundingClientRect();
-        if (rect.width === 0) continue;
+        if (rect.width === 0) {
+          continue;
+        }
         if (rect.right > outer.right - pad + 1 || rect.bottom > outer.bottom + 1) {
           out.push(`"${element.textContent.trim().slice(0, 40)}" spills out of its box`);
         }

@@ -20,7 +20,7 @@
 
 <script generics="V extends NavigationNode">
   import { $memo, $props, $setContext } from 'brumate/signals';
-  import { NavigationTreeContext, ancestorsOf } from './navigation-tree.ts';
+  import { NavigationTreeContext, findAncestors } from './navigation-tree.ts';
   import Tree from './Tree.brm';
 
   /**
@@ -38,7 +38,7 @@
   const { selectedRoute = null, items, item, onExpandedChange, ...rest } = $props<NavigationTreeProps<V>>();
   let { expandedKeys = [] } = $props<NavigationTreeProps<V>>();
 
-  const ancestors = $memo(ancestorsOf(items, selectedRoute));
+  const ancestors = $memo(findAncestors(items, selectedRoute));
   $setContext(NavigationTreeContext, { selectedRoute, ancestors });
 
   function expanded(keys: Key[]) {

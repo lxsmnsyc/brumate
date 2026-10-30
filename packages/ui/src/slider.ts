@@ -46,7 +46,7 @@ export function thumbRange(slider: SliderState, index: number): [number, number]
 }
 
 /** Where a value is on the track, from 0 to 1. */
-export function percentOf(slider: SliderState, value: number): number {
+export function getPercent(slider: SliderState, value: number): number {
   const size = slider.maxValue - slider.minValue;
   return size > 0 ? clamp((value - slider.minValue) / size, 0, 1) : 0;
 }
@@ -89,7 +89,13 @@ export function valueAt(
  * on top of each other.
  */
 export function closestThumb(values: number[], value: number): number {
-  const split = values.findIndex((item) => value - item < 0);
+  let split = -1;
+  for (const [index, item] of values.entries()) {
+    if (value - item < 0) {
+      split = index;
+      break;
+    }
+  }
   if (split === 0) {
     return 0;
   }

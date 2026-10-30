@@ -16,19 +16,19 @@
 
 <script>
   import { $memo, $props, $setContext } from 'brumate/signals';
-  import { DateStringsContext, stringsOf } from './date-strings.ts';
+  import { DateStringsContext, getDateStrings } from './date-strings.ts';
   import type { DateStrings } from './date-strings.ts';
-  import { LocaleContext, localeOf } from './locale.ts';
+  import { LocaleContext, createLocale } from './locale.ts';
 
   /**
    * Gives the parts inside it a locale, and its direction.
    * It renders only its children. Put `lang` and `dir` on an element yourself, such as <html>.
    */
   const { locale = 'en-US', timeZone, strings, children } = $props<I18nProviderProps>();
-  const value = $memo(timeZone === undefined ? localeOf(locale) : { ...localeOf(locale), timeZone });
+  const value = $memo(timeZone === undefined ? createLocale(locale) : { ...createLocale(locale), timeZone });
   $setContext(LocaleContext, value);
   // The strings of the locale, unless the app gives its own.
-  const words = $memo(strings ?? stringsOf(locale));
+  const words = $memo(strings ?? getDateStrings(locale));
   $setContext(DateStringsContext, words);
 </script>
 

@@ -32,7 +32,7 @@ export const NavigationLinkContext: Context<NavigationLinkState | null> =
   createContext<NavigationLinkState | null>('brumate-ui:navigation-link', null);
 
 /** The keys of the items that hold the item whose `href` is the route, outermost first. */
-export function ancestorsOf(items: readonly NavigationNode[], route: string | null): Key[] {
+export function findAncestors(items: readonly NavigationNode[], route: string | null): Key[] {
   if (route === null) {
     return [];
   }
@@ -40,8 +40,15 @@ export function ancestorsOf(items: readonly NavigationNode[], route: string | nu
     if (item.href === route) {
       return [];
     }
-    const inside = item.children ? ancestorsOf(item.children, route) : [];
-    if (inside.length > 0 || item.children?.some((child) => child.href === route)) {
+    const inside = item.children ? findAncestors(item.children, route) : [];
+    let hasChild = false;
+    for (const child of item.children ?? []) {
+      if (child.href === route) {
+        hasChild = true;
+        break;
+      }
+    }
+    if (inside.length > 0 || hasChild) {
       return [item.id, ...inside];
     }
   }

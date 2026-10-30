@@ -52,7 +52,12 @@ function dragItems(data: DataTransfer): DragItem[] | undefined {
 export function dropItems(data: DataTransfer): DropItem[] {
   const items: DropItem[] = [];
   const dragged = dragItems(data);
-  const types = new Set([...data.types].filter((type) => !isInternal(type)));
+  const types = new Set<string>();
+  for (const type of data.types) {
+    if (!isInternal(type)) {
+      types.add(type);
+    }
+  }
   if (dragged) {
     for (const item of dragged) {
       items.push({
@@ -63,7 +68,10 @@ export function dropItems(data: DataTransfer): DropItem[] {
     }
   } else if (types.size > 0) {
     // The text is read now, while the DataTransfer can still be read.
-    const texts = new Map([...types].map((type) => [type, data.getData(type)]));
+    const texts = new Map<string, string>();
+    for (const type of types) {
+      texts.set(type, data.getData(type));
+    }
     items.push({
       kind: 'text',
       types,
@@ -151,5 +159,11 @@ export function allowedOperations(effectAllowed: string | undefined): DropOperat
   ) {
     return all;
   }
-  return all.filter((operation) => effectAllowed.toLowerCase().includes(operation));
+  const allowed: DropOperation[] = [];
+  for (const operation of all) {
+    if (effectAllowed.toLowerCase().includes(operation)) {
+      allowed.push(operation);
+    }
+  }
+  return allowed;
 }

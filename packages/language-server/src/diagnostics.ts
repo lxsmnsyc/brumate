@@ -30,12 +30,18 @@ function toDiagnostic(document: TextDocument, diagnostic: CompilerDiagnostic): D
  */
 export function diagnose(document: TextDocument, filename: string): Diagnostic[] {
   try {
-    return compile(document.getText(), { filename }).warnings.map((warning) =>
-      toDiagnostic(document, warning),
-    );
+    const diagnostics: Diagnostic[] = [];
+    for (const warning of compile(document.getText(), { filename }).warnings) {
+      diagnostics.push(toDiagnostic(document, warning));
+    }
+    return diagnostics;
   } catch (error) {
     if (error instanceof CompileError) {
-      return error.diagnostics.map((diagnostic) => toDiagnostic(document, diagnostic));
+      const diagnostics: Diagnostic[] = [];
+      for (const diagnostic of error.diagnostics) {
+        diagnostics.push(toDiagnostic(document, diagnostic));
+      }
+      return diagnostics;
     }
     if (error instanceof BrumateError) {
       // The code is in the message. It becomes the code of the diagnostic.

@@ -19,7 +19,7 @@
   import { $getContext, $memo, $props, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { LocaleContext } from './locale.ts';
-  import { SliderContext, percentOf, pointAt, startDrag, thumbId, thumbRange, valueAt } from './slider.ts';
+  import { SliderContext, getPercent, pointAt, startDrag, thumbId, thumbRange, valueAt } from './slider.ts';
 
   /**
    * A thumb of a Slider. `index` is the value that it
@@ -49,7 +49,7 @@
   const value = $memo(slider?.values[index] ?? 0);
   const range = $memo(slider ? thumbRange(slider, index) : [0, 100]);
   const inputId = $memo(slider ? thumbId(slider, index) : undefined);
-  const percent = $memo(slider ? percentOf(slider, value) * 100 : 0);
+  const percent = $memo(slider ? getPercent(slider, value) * 100 : 0);
   const vertical = $memo(slider?.orientation === 'vertical');
   const rtl = $memo(locale.direction === 'rtl');
   const disabled = $memo(Boolean(slider?.isDisabled) || isDisabled);
@@ -90,7 +90,7 @@
       return;
     }
     // The thumb keeps the distance to the pointer.
-    const offset = pointAt(slider, track, event.clientX, event.clientY, rtl) - percentOf(slider, value);
+    const offset = pointAt(slider, track, event.clientX, event.clientY, rtl) - getPercent(slider, value);
     slider.setDragging(index, true);
     startDrag(
       event.pointerId,

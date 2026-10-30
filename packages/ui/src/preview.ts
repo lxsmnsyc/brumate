@@ -15,7 +15,7 @@ interface Handlers {
 }
 
 /** The layer of the preview, which holds its panel and the overlays inside it. */
-function layerOf(overlayId: string): Element | null {
+function findLayer(overlayId: string): Element | null {
   return document.getElementById(overlayId)?.closest('[data-layer]') ?? null;
 }
 
@@ -35,12 +35,17 @@ export function followPreview(
   overlayId: string,
   handlers: Handlers,
 ): () => void {
-  const trigger = (): HTMLElement | null => document.getElementById(triggerId);
-  const inside = (target: EventTarget | null): boolean =>
-    target instanceof Node &&
-    (Boolean(trigger()?.contains(target)) || Boolean(layerOf(overlayId)?.contains(target)));
+  function trigger(): HTMLElement | null {
+    return document.getElementById(triggerId);
+  }
+  function inside(target: EventTarget | null): boolean {
+    return (
+      target instanceof Node &&
+      (Boolean(trigger()?.contains(target)) || Boolean(findLayer(overlayId)?.contains(target)))
+    );
+  }
 
-  const over = (event: PointerEvent): void => {
+  function over(event: PointerEvent): void {
     if (event.pointerType === 'touch') {
       return;
     }
@@ -51,9 +56,9 @@ export function followPreview(
       // while the trigger has focus.
       handlers.leave();
     }
-  };
+  }
   // The pointer left the window, or went into a frame, where no pointerover comes.
-  const out = (event: PointerEvent): void => {
+  function out(event: PointerEvent): void {
     if (
       event.pointerType !== 'touch' &&
       event.relatedTarget === null &&
@@ -61,17 +66,17 @@ export function followPreview(
     ) {
       handlers.leave();
     }
-  };
-  const focusIn = (event: FocusEvent): void => {
+  }
+  function focusIn(event: FocusEvent): void {
     if (inside(event.target)) {
       handlers.keep();
     } else {
       handlers.close();
     }
-  };
-  const keyDown = (event: KeyboardEvent): void => {
+  }
+  function keyDown(event: KeyboardEvent): void {
     const active = document.activeElement;
-    const layer = layerOf(overlayId);
+    const layer = findLayer(overlayId);
     const button = trigger();
     if (!button || !layer) {
       return;
@@ -104,7 +109,12 @@ export function followPreview(
         button.focus({ preventScroll: true });
       } else if (!event.shiftKey && at === order.length - 1) {
         // The element after the trigger in the page, outside the preview.
-        const page = tabbables(document.body).filter((element) => !layer.contains(element));
+        const page: HTMLElement[] = [];
+        for (const element of tabbables(document.body)) {
+          if (!layer.contains(element)) {
+            page.push(element);
+          }
+        }
         const next = page[page.indexOf(button) + 1];
         if (next) {
           event.preventDefault();
@@ -112,7 +122,7 @@ export function followPreview(
         }
       }
     }
-  };
+  }
   document.addEventListener('pointerover', over, true);
   document.addEventListener('pointerout', out, true);
   document.addEventListener('focusin', focusIn, true);
@@ -144,11 +154,11 @@ export function startLongPress(
 ): void {
   cancelLongPress(triggerId);
   const element = document.getElementById(triggerId);
-  const menu = (event: Event): void => {
+  function menu(event: Event): void {
     if (element?.contains(event.target as Node)) {
       event.preventDefault();
     }
-  };
+  }
   document.addEventListener('contextmenu', menu, true);
   menus.set(triggerId, () => document.removeEventListener('contextmenu', menu, true));
   presses.set(
@@ -158,12 +168,12 @@ export function startLongPress(
       open();
       // The press of the trigger ends without a press, as the browser ends a press it takes over.
       element?.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId }));
-      const swallow = (event: Event): void => {
+      function swallow(event: Event): void {
         if (element?.contains(event.target as Node)) {
           event.preventDefault();
           event.stopPropagation();
         }
-      };
+      }
       document.addEventListener('click', swallow, { capture: true, once: true });
       setTimeout(() => {
         document.removeEventListener('click', swallow, true);

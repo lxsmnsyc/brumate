@@ -27,7 +27,10 @@ export function slotProps<T extends object>(
   const name = slot ?? DEFAULT_SLOT;
   const found = value.slots[name];
   if (!found) {
-    const names = Object.keys(value.slots).map((key) => `"${key}"`);
+    const names: string[] = [];
+    for (const key of Object.keys(value.slots)) {
+      names.push(`"${key}"`);
+    }
     throw new Error(
       slot === undefined
         ? `A slot prop is needed. Valid names are ${names.join(', ')}.`

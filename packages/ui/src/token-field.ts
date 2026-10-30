@@ -11,7 +11,11 @@ export interface TokenSegment {
 
 /** The text of a value, with each token as its text. */
 export function segmentsText(segments: readonly TokenSegment[]): string {
-  return segments.map((segment) => segment.text).join('');
+  let text = '';
+  for (const segment of segments) {
+    text += segment.text;
+  }
+  return text;
 }
 
 /** The value with text next to text joined, and no empty text. */
@@ -68,10 +72,15 @@ export function tokenize(
 
 /** Whether two values have the same text and tokens. */
 export function sameSegments(a: readonly TokenSegment[], b: readonly TokenSegment[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every((segment, index) => segment.type === b[index]!.type && segment.text === b[index]!.text)
-  );
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (const [index, segment] of a.entries()) {
+    if (segment.type !== b[index]!.type || segment.text !== b[index]!.text) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** What a TokenField gives its TokenInput and its Tokens. */
@@ -110,7 +119,7 @@ export const EDGE = '​';
  */
 export function readSegments(root: Node): TokenSegment[] {
   const segments: TokenSegment[] = [];
-  const visit = (node: Node): void => {
+  function visit(node: Node): void {
     for (const child of node.childNodes) {
       if (child.nodeType === 3) {
         segments.push({ type: 'text', text: (child as Text).data.replaceAll(EDGE, '') });
@@ -132,7 +141,7 @@ export function readSegments(root: Node): TokenSegment[] {
         }
       }
     }
-  };
+  }
   visit(root);
   return normalize(segments);
 }
@@ -164,7 +173,7 @@ export function placeCaret(root: Node, offset: number): void {
   }
   let left = offset;
   const range = document.createRange();
-  const walk = (node: Node): boolean => {
+  function walk(node: Node): boolean {
     for (const child of node.childNodes) {
       if (child.nodeType === 3) {
         const text = (child as Text).data;
@@ -198,7 +207,7 @@ export function placeCaret(root: Node, offset: number): void {
       }
     }
     return false;
-  };
+  }
   if (!walk(root)) {
     range.selectNodeContents(root);
     range.collapse(false);

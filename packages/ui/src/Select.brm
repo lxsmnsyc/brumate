@@ -53,8 +53,8 @@
     ListBoxGivenContext,
     SelectValueContext,
     isTyping,
-    itemsOf,
-    keyOf,
+    findItems,
+    readItemKey,
     textOfItem,
     typeahead,
   } from './collection.ts';
@@ -67,7 +67,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, isFirstInvalid, messagesOf, onFormReset } from './fields.ts';
+  import { describedBy, isFirstInvalid, parseMessages, onFormReset } from './fields.ts';
 
   /**
    * A field that picks one item from a list. It holds a
@@ -124,7 +124,7 @@
   const serverErrors = $memo(
     form && edited === form.validationErrors
       ? []
-      : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
+      : parseMessages(name ? (form?.validationErrors[name] as string | string[]) : undefined),
   );
   const errors = $memo([...serverErrors, ...(committed ? nativeErrors : [])]);
   const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
@@ -152,12 +152,20 @@
   function items() {
     const list =
       document.getElementById(overlayId) ?? document.getElementById(`${overlayId}-closed`);
-    return list ? itemsOf(list.querySelector('[data-collection]') ?? list, 'option') : [];
+    return list ? findItems(list.querySelector('[data-collection]') ?? list, 'option') : [];
   }
 
   /** Keeps the text of an item, which the SelectValue shows. */
   function remember(key: Key | null) {
-    const found = key === null ? undefined : items().find((element) => keyOf(element) === key);
+    let found: HTMLElement | undefined;
+    if (key !== null) {
+      for (const element of items()) {
+        if (readItemKey(element) === key) {
+          found = element;
+          break;
+        }
+      }
+    }
     selectedText = (found && textOfItem(found)) || undefined;
     textKey = key;
   }
@@ -202,8 +210,19 @@
     if (isOpen || isDisabled) {
       return;
     }
-    const enabled = items().filter((item) => item.getAttribute('aria-disabled') !== 'true');
-    const at = enabled.findIndex((item) => keyOf(item) === selectedKey);
+    const enabled: HTMLElement[] = [];
+    for (const item of items()) {
+      if (item.getAttribute('aria-disabled') !== 'true') {
+        enabled.push(item);
+      }
+    }
+    let at = -1;
+    for (const [index, item] of enabled.entries()) {
+      if (readItemKey(item) === selectedKey) {
+        at = index;
+        break;
+      }
+    }
     let next: HTMLElement | undefined;
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       // With nothing selected, both keys select the first item.
@@ -211,7 +230,7 @@
     } else {
       next = typeahead(button, enabled, enabled[at], event);
     }
-    const key = next && keyOf(next);
+    const key = next && readItemKey(next);
     if (key !== undefined) {
       select(key);
     }

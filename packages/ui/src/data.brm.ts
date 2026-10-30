@@ -41,16 +41,26 @@ export function listData<T>(
   let filterText = $signal(options.initialFilterText ?? '');
   const items = $memo(filter ? all.filter((item) => filter(item, filterText)) : all);
 
-  function keyOf(item: T): Key {
+  function readKey(item: T): Key {
     return getKey ? getKey(item) : defaultKey(item);
   }
 
-  function indexOf(key: Key): number {
-    return all.findIndex((item) => keyOf(item) === key);
+  function findKeyIndex(key: Key): number {
+    for (const [index, item] of all.entries()) {
+      if (readKey(item) === key) {
+        return index;
+      }
+    }
+    return -1;
   }
 
   function getItem(key: Key): T | undefined {
-    return all.find((item) => keyOf(item) === key);
+    for (const item of all) {
+      if (readKey(item) === key) {
+        return item;
+      }
+    }
+    return undefined;
   }
 
   function insert(index: number, ...values: T[]) {
@@ -58,14 +68,14 @@ export function listData<T>(
   }
 
   function insertBefore(key: Key, ...values: T[]) {
-    const at = indexOf(key);
+    const at = findKeyIndex(key);
     if (at !== -1) {
       all = insertAt(all, at, values);
     }
   }
 
   function insertAfter(key: Key, ...values: T[]) {
-    const at = indexOf(key);
+    const at = findKeyIndex(key);
     if (at !== -1) {
       all = insertAt(all, at + 1, values);
     }
@@ -80,9 +90,15 @@ export function listData<T>(
   }
 
   function remove(...keys: Key[]) {
-    all = removeKeys(all, keys, keyOf);
+    all = removeKeys(all, keys, readKey);
     // A removed item leaves the selection.
-    selectedKeys = selectedKeys.filter((key) => !keys.includes(key));
+    const kept: Key[] = [];
+    for (const key of selectedKeys) {
+      if (!keys.includes(key)) {
+        kept.push(key);
+      }
+    }
+    selectedKeys = kept;
   }
 
   function removeSelectedItems() {
@@ -90,24 +106,33 @@ export function listData<T>(
   }
 
   function move(key: Key, toIndex: number) {
-    const at = indexOf(key);
+    const at = findKeyIndex(key);
     if (at === -1) {
       return;
     }
-    const rest = all.filter((_, index) => index !== at);
+    const rest: T[] = [];
+    for (const [index, item] of all.entries()) {
+      if (index !== at) {
+        rest.push(item);
+      }
+    }
     all = insertAt(rest, toIndex, [all[at]!]);
   }
 
   function moveBefore(key: Key, keys: Key[]) {
-    all = moveKeys(all, key, keys, false, keyOf);
+    all = moveKeys(all, key, keys, false, readKey);
   }
 
   function moveAfter(key: Key, keys: Key[]) {
-    all = moveKeys(all, key, keys, true, keyOf);
+    all = moveKeys(all, key, keys, true, readKey);
   }
 
   function update(key: Key, value: T) {
-    all = all.map((item) => (keyOf(item) === key ? value : item));
+    const next: T[] = [];
+    for (const item of all) {
+      next.push(readKey(item) === key ? value : item);
+    }
+    all = next;
   }
 
   function setSelectedKeys(keys: Key[]) {
@@ -115,11 +140,23 @@ export function listData<T>(
   }
 
   function addKeysToSelection(keys: Key[]) {
-    selectedKeys = [...selectedKeys, ...keys.filter((key) => !selectedKeys.includes(key))];
+    const added: Key[] = [];
+    for (const key of keys) {
+      if (!selectedKeys.includes(key)) {
+        added.push(key);
+      }
+    }
+    selectedKeys = [...selectedKeys, ...added];
   }
 
   function removeKeysFromSelection(keys: Key[]) {
-    selectedKeys = selectedKeys.filter((key) => !keys.includes(key));
+    const kept: Key[] = [];
+    for (const key of selectedKeys) {
+      if (!keys.includes(key)) {
+        kept.push(key);
+      }
+    }
+    selectedKeys = kept;
   }
 
   function setFilterText(text: string) {
@@ -166,19 +203,19 @@ export function treeData<T>(
   getKey?: (item: T) => Key,
   getChildren?: (item: T) => readonly T[] | null | undefined,
 ) {
-  function keyOf(item: T): Key {
+  function readKey(item: T): Key {
     return getKey ? getKey(item) : defaultKey(item);
   }
 
-  function childrenOf(item: T): readonly T[] | null | undefined {
+  function readChildren(item: T): readonly T[] | null | undefined {
     return getChildren ? getChildren(item) : (item as { children?: readonly T[] | null }).children;
   }
 
-  function nodesOf(values: readonly T[], parentKey: Key | null): TreeDataNode<T>[] {
-    return buildNodes(values, parentKey, keyOf, childrenOf);
+  function createNodes(values: readonly T[], parentKey: Key | null): TreeDataNode<T>[] {
+    return buildNodes(values, parentKey, readKey, readChildren);
   }
 
-  let items = $signal<TreeDataNode<T>[]>(nodesOf(options.initialItems ?? [], null));
+  let items = $signal<TreeDataNode<T>[]>(createNodes(options.initialItems ?? [], null));
   let selectedKeys = $signal<Key[]>([...(options.initialSelectedKeys ?? [])]);
 
   function getItem(key: Key): TreeDataNode<T> | undefined {
@@ -187,7 +224,7 @@ export function treeData<T>(
 
   function insert(parentKey: Key | null, index: number, ...values: T[]) {
     items = changeChildren(items, parentKey, (children) =>
-      insertAt(children, index, nodesOf(values, parentKey)),
+      insertAt(children, index, createNodes(values, parentKey)),
     );
   }
 
@@ -197,8 +234,14 @@ export function treeData<T>(
       return;
     }
     items = changeChildren(items, node.parentKey, (children) => {
-      const at = children.findIndex((child) => child.id === key);
-      return insertAt(children, after ? at + 1 : at, nodesOf(values, node.parentKey));
+      let at = -1;
+      for (const [index, child] of children.entries()) {
+        if (child.id === key) {
+          at = index;
+          break;
+        }
+      }
+      return insertAt(children, after ? at + 1 : at, createNodes(values, node.parentKey));
     });
   }
 
@@ -221,12 +264,21 @@ export function treeData<T>(
 
   function remove(...keys: Key[]) {
     // A removed node takes its children with it, and they leave the selection too.
-    const gone = keys.flatMap((key) => {
+    const gone: Key[] = [];
+    for (const key of keys) {
       const node = getItem(key);
-      return node ? keysWithin(node) : [];
-    });
+      if (node) {
+        gone.push(...keysWithin(node));
+      }
+    }
     items = removeNodes(items, keys);
-    selectedKeys = selectedKeys.filter((key) => !gone.includes(key));
+    const kept: Key[] = [];
+    for (const key of selectedKeys) {
+      if (!gone.includes(key)) {
+        kept.push(key);
+      }
+    }
+    selectedKeys = kept;
   }
 
   function removeSelectedItems() {
@@ -250,24 +302,45 @@ export function treeData<T>(
     if (!node || keys.includes(target)) {
       return;
     }
-    const moved = keys
+    const moved: TreeDataNode<T>[] = [];
+    for (const [at, key] of keys.entries()) {
       // A key twice moves once, and a node inside a moved node moves with it.
-      .filter(
-        (key, at) =>
-          keys.indexOf(key) === at &&
-          !keys.some((other) => {
-            const found = other === key ? undefined : getItem(other);
-            return found !== undefined && keysWithin(found).includes(key);
-          }),
-      )
-      .map((key) => getItem(key))
-      .filter((found) => found !== undefined)
+      if (keys.indexOf(key) !== at) {
+        continue;
+      }
+      let inside = false;
+      for (const other of keys) {
+        const parent = other === key ? undefined : getItem(other);
+        if (parent !== undefined && keysWithin(parent).includes(key)) {
+          inside = true;
+          break;
+        }
+      }
+      if (inside) {
+        continue;
+      }
+      const found = getItem(key);
+      if (found === undefined) {
+        continue;
+      }
       // A node cannot move next to a node inside it.
-      .filter((found) => !keysWithin(found).includes(target))
-      .map((found) => ({ ...found, parentKey: node.parentKey }));
-    const movedKeys = moved.map((found) => found.id);
+      if (keysWithin(found).includes(target)) {
+        continue;
+      }
+      moved.push({ ...found, parentKey: node.parentKey });
+    }
+    const movedKeys: Key[] = [];
+    for (const found of moved) {
+      movedKeys.push(found.id);
+    }
     items = changeChildren(removeNodes(items, movedKeys), node.parentKey, (children) => {
-      const at = children.findIndex((child) => child.id === target);
+      let at = -1;
+      for (const [index, child] of children.entries()) {
+        if (child.id === target) {
+          at = index;
+          break;
+        }
+      }
       return insertAt(children, after ? at + 1 : at, moved);
     });
   }
@@ -285,10 +358,14 @@ export function treeData<T>(
     if (!node) {
       return;
     }
-    const [replaced] = nodesOf([value], node.parentKey);
-    items = changeChildren(items, node.parentKey, (children) =>
-      children.map((child) => (child.id === key ? replaced! : child)),
-    );
+    const [replaced] = createNodes([value], node.parentKey);
+    items = changeChildren(items, node.parentKey, (children) => {
+      const next: TreeDataNode<T>[] = [];
+      for (const child of children) {
+        next.push(child.id === key ? replaced! : child);
+      }
+      return next;
+    });
   }
 
   function setSelectedKeys(keys: Key[]) {

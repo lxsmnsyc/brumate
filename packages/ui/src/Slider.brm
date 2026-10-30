@@ -78,14 +78,18 @@
   const label = $memo(rangeLabel(values));
 
   function order(list: number[]): number[] {
-    return list.map((item, index) =>
-      snapToStep(
-        item,
-        index === 0 ? minValue : list[index - 1],
-        index === list.length - 1 ? maxValue : list[index + 1],
-        step,
-      ),
-    );
+    const snapped: number[] = [];
+    for (const [index, item] of list.entries()) {
+      snapped.push(
+        snapToStep(
+          item,
+          index === 0 ? minValue : list[index - 1],
+          index === list.length - 1 ? maxValue : list[index + 1],
+          step,
+        ),
+      );
+    }
+    return snapped;
   }
 
   function format(number: number): string {
@@ -102,7 +106,10 @@
         return formatter.formatRange(list[0]!, list[1]!);
       }
     }
-    const texts = list.map((item) => format(item));
+    const texts: string[] = [];
+    for (const item of list) {
+      texts.push(format(item));
+    }
     return typeof Intl.ListFormat === 'function'
       ? new Intl.ListFormat(locale.locale, { type: 'unit' }).format(texts)
       : texts.join(', ');
@@ -114,9 +121,18 @@
 
   /** True for two values with the same numbers. */
   function sameNumbers(a: number | number[], b: number | number[]): boolean {
-    return Array.isArray(a) && Array.isArray(b)
-      ? a.length === b.length && a.every((item, at) => item === b[at])
-      : a === b;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) {
+        return false;
+      }
+      for (const [at, item] of a.entries()) {
+        if (item !== b[at]) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return a === b;
   }
 
   function setThumb(index: number, next: number) {
@@ -129,7 +145,10 @@
     if (snapped === values[index]) {
       return;
     }
-    const list = values.map((item, at) => (at === index ? snapped : item));
+    const list: number[] = [];
+    for (const [at, item] of values.entries()) {
+      list.push(at === index ? snapped : item);
+    }
     const written = emit(list);
     const before = value;
     value = written;
@@ -146,7 +165,13 @@
       }
       return;
     }
-    dragging = dragging.filter((item) => item !== index);
+    const remaining: number[] = [];
+    for (const item of dragging) {
+      if (item !== index) {
+        remaining.push(item);
+      }
+    }
+    dragging = remaining;
     onChangeEnd?.(emit(values));
   }
 

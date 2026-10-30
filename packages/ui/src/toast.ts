@@ -83,9 +83,11 @@ export class ToastQueue<T> {
 
   /** The toasts that show, newest first. */
   get visibleToasts(): QueuedToast<T>[] {
-    return this.entries
-      .slice(0, this.maxVisibleToasts)
-      .map(({ key, content }) => ({ key, content }));
+    const visible: QueuedToast<T>[] = [];
+    for (const { key, content } of this.entries.slice(0, this.maxVisibleToasts)) {
+      visible.push({ key, content });
+    }
+    return visible;
   }
 
   /** Adds a toast, and returns its key. */
@@ -102,7 +104,13 @@ export class ToastQueue<T> {
 
   /** Closes a toast by its key. */
   close(key: string): void {
-    const index = this.entries.findIndex((entry) => entry.key === key);
+    let index = -1;
+    for (const [at, entry] of this.entries.entries()) {
+      if (entry.key === key) {
+        index = at;
+        break;
+      }
+    }
     if (index === -1) {
       return;
     }
@@ -136,13 +144,13 @@ export class ToastQueue<T> {
       return;
     }
     // Only the toasts that show count down.
-    this.entries.forEach((entry, index) => {
+    for (const [index, entry] of this.entries.entries()) {
       if (index < this.maxVisibleToasts) {
         entry.timer?.resume();
       } else {
         entry.timer?.pause();
       }
-    });
+    }
   }
 
   private update(): void {
@@ -239,9 +247,15 @@ export function listenForF6(): void {
       return;
     }
     // A toast that leaves is inert, so F6 goes to the first one that stays.
-    const toast = [
-      ...document.querySelectorAll<HTMLElement>('[role=region][data-queue] [data-toast-key]'),
-    ].find((element) => !element.closest('[inert]'));
+    let toast: HTMLElement | undefined;
+    for (const element of document.querySelectorAll<HTMLElement>(
+      '[role=region][data-queue] [data-toast-key]',
+    )) {
+      if (!element.closest('[inert]')) {
+        toast = element;
+        break;
+      }
+    }
     if (toast) {
       toast.focus();
       // A toast that cannot take focus leaves the key to the browser.

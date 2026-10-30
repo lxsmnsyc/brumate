@@ -103,7 +103,7 @@ export const SEGMENT_NAMES: Record<SegmentType, string> = {
 const TIME_PLACEHOLDER = '––';
 
 /** The parts of a date, or none for no date. */
-export function partsOf(value: DateString | null): DateParts {
+export function parseDateParts(value: DateString | null): DateParts {
   if (value === null) {
     return {};
   }
@@ -112,7 +112,7 @@ export function partsOf(value: DateString | null): DateParts {
 }
 
 /** The date of parts that are all set, with a day that fits its month, or null. */
-export function dateOf(parts: DateParts): DateString | null {
+export function createDateString(parts: DateParts): DateString | null {
   if (parts.year === undefined || parts.month === undefined || parts.day === undefined) {
     return null;
   }
@@ -121,7 +121,7 @@ export function dateOf(parts: DateParts): DateString | null {
 }
 
 /** The range of a part: the months of a year, the days of the month that is set, or years. */
-function rangeOf(
+function createRange(
   type: 'year' | 'month' | 'day',
   parts: DateParts,
   placeholder: CalendarDate,
@@ -141,7 +141,7 @@ function rangeOf(
 }
 
 /** The segments of a date in a locale, with the parts that are set. */
-export function segmentsOf(
+export function createSegments(
   parts: DateParts,
   placeholder: DateString,
   locale: string,
@@ -163,14 +163,23 @@ export function segmentsOf(
     calendar: 'gregory',
     timeZone: 'UTC',
   });
-  return formatter.formatToParts(shown.toDate('UTC')).map((part, index) => {
+  const segments: Segment[] = [];
+  for (const [index, part] of formatter.formatToParts(shown.toDate('UTC')).entries()) {
     if (part.type !== 'year' && part.type !== 'month' && part.type !== 'day') {
-      return { type: 'literal', text: part.value, min: 0, max: 0, isPlaceholder: false, index };
+      segments.push({
+        type: 'literal',
+        text: part.value,
+        min: 0,
+        max: 0,
+        isPlaceholder: false,
+        index,
+      });
+      continue;
     }
     const type = part.type;
-    const [min, max] = rangeOf(type, parts, base);
+    const [min, max] = createRange(type, parts, base);
     const value = parts[type];
-    return {
+    segments.push({
       type,
       text: value === undefined ? placeholders[type] : part.value,
       value,
@@ -178,8 +187,9 @@ export function segmentsOf(
       max,
       isPlaceholder: value === undefined,
       index,
-    };
-  });
+    });
+  }
+  return segments;
 }
 
 /** A part of a date. */
@@ -211,7 +221,7 @@ export function jumpPart(
   to: 'min' | 'max',
   placeholder: DateString,
 ): DateParts {
-  const [min, max] = rangeOf(type, parts, toDate(placeholder));
+  const [min, max] = createRange(type, parts, toDate(placeholder));
   return { ...parts, [type]: to === 'min' ? min : max };
 }
 
@@ -227,7 +237,7 @@ export function stepPart(
   if (current === undefined) {
     return { ...parts, [type]: base[type] };
   }
-  const [min, max] = rangeOf(type, parts, base);
+  const [min, max] = createRange(type, parts, base);
   // Years do not go around.
   if (type === 'year') {
     return { ...parts, year: Math.min(max, Math.max(min, current + delta)) };
@@ -247,7 +257,7 @@ export function typeDigit(
   digit: number,
   placeholder: DateString,
 ): { parts: DateParts; typed: string; full: boolean } {
-  const [, max] = rangeOf(type, parts, toDate(placeholder));
+  const [, max] = createRange(type, parts, toDate(placeholder));
   let text = `${typed}${digit}`;
   let number = Number(text);
   if (number > max) {
@@ -276,23 +286,34 @@ export function erasePart(parts: DateParts, type: DateSegmentType | TimeSegmentT
   return next;
 }
 
-const pad = (number: number): string => String(number).padStart(2, '0');
+function pad(number: number): string {
+  return String(number).padStart(2, '0');
+}
+
+/** The numbers of the parts of a time, such as `[9, 30]` for `09:30`. */
+function splitTime(value: TimeString): number[] {
+  const numbers: number[] = [];
+  for (const text of value.split(':')) {
+    numbers.push(Number(text));
+  }
+  return numbers;
+}
 
 /** The largest number of each part of a time. */
 const TIME_MAX: Record<TimeSegmentType, number> = { hour: 23, minute: 59, second: 59 };
 
 /** The parts of a time, or none for no time. */
-export function timePartsOf(value: TimeString | null): DateParts {
+export function parseTimeParts(value: TimeString | null): DateParts {
   if (value === null) {
     return {};
   }
-  const [hour = 0, minute = 0, second = 0] = value.split(':').map(Number);
+  const [hour = 0, minute = 0, second = 0] = splitTime(value);
   return { hour, minute, second, dayPeriod: hour >= 12 ? 1 : 0 };
 }
 
 /** A time as seconds since midnight, so times of other lengths compare, such as `09:30` and `09:30:00`. */
-export function secondsOf(value: TimeString): number {
-  const [hour = 0, minute = 0, second = 0] = value.split(':').map(Number);
+export function getSeconds(value: TimeString): number {
+  const [hour = 0, minute = 0, second = 0] = splitTime(value);
   return hour * 3600 + minute * 60 + second;
 }
 
@@ -300,7 +321,7 @@ export function secondsOf(value: TimeString): number {
  * The time of parts that are all set, to the granularity, or null. On a 12-hour clock, AM or PM
  * must be set too.
  */
-export function timeOf(
+export function createTimeString(
   parts: DateParts,
   granularity: TimeGranularity,
   twelve = false,
@@ -328,7 +349,7 @@ export function usesDayPeriod(locale: string, hourCycle?: 12 | 24): boolean {
 }
 
 /** The segments of a time in a locale, with the parts that are set. */
-export function timeSegmentsOf(
+export function createTimeSegments(
   parts: DateParts,
   placeholder: TimeString,
   locale: string,
@@ -336,8 +357,8 @@ export function timeSegmentsOf(
   hourCycle?: 12 | 24,
 ): Segment[] {
   const twelve = usesDayPeriod(locale, hourCycle);
-  const base = timePartsOf(placeholder);
-  const period = periodOf(parts, base);
+  const base = parseTimeParts(placeholder);
+  const period = getPeriod(parts, base);
   // An hour that is not set shows the placeholder's, in the period that is set.
   const hour = parts.hour ?? (base.hour! % 12) + period * 12;
   const formatter = new DateFormatter(locale, {
@@ -353,7 +374,8 @@ export function timeSegmentsOf(
   const shown = new Date(
     Date.UTC(2000, 0, 1, hour, parts.minute ?? base.minute!, parts.second ?? base.second!),
   );
-  return formatter.formatToParts(shown).map((part, index) => {
+  const segments: Segment[] = [];
+  for (const [index, part] of formatter.formatToParts(shown).entries()) {
     const literal = {
       type: 'literal' as const,
       text: part.value,
@@ -364,7 +386,7 @@ export function timeSegmentsOf(
     };
     if (part.type === 'dayPeriod') {
       // AM or PM is a part of its own, which shows the placeholder's until it is set.
-      return {
+      segments.push({
         type: 'dayPeriod',
         text: part.value,
         value: period,
@@ -372,15 +394,17 @@ export function timeSegmentsOf(
         max: 1,
         isPlaceholder: parts.dayPeriod === undefined,
         index,
-      };
+      });
+      continue;
     }
     if (part.type !== 'hour' && part.type !== 'minute' && part.type !== 'second') {
-      return literal;
+      segments.push(literal);
+      continue;
     }
     const type = part.type;
     const value = parts[type];
     const shownValue = type === 'hour' && twelve && value !== undefined ? value % 12 || 12 : value;
-    return {
+    segments.push({
       type,
       text: value === undefined ? TIME_PLACEHOLDER : part.value,
       value: shownValue,
@@ -388,12 +412,13 @@ export function timeSegmentsOf(
       max: type === 'hour' && twelve ? 12 : TIME_MAX[type],
       isPlaceholder: value === undefined,
       index,
-    };
-  });
+    });
+  }
+  return segments;
 }
 
 /** AM, 0, or PM, 1: the part that is set, or that of the hour, or that of the placeholder. */
-function periodOf(parts: DateParts, base: DateParts): number {
+function getPeriod(parts: DateParts, base: DateParts): number {
   if (parts.dayPeriod !== undefined) {
     return parts.dayPeriod;
   }
@@ -420,8 +445,8 @@ export function stepTime(
   placeholder: TimeString,
   twelve = false,
 ): DateParts {
-  const base = timePartsOf(placeholder);
-  const period = periodOf(parts, base);
+  const base = parseTimeParts(placeholder);
+  const period = getPeriod(parts, base);
   if (type === 'dayPeriod') {
     // A period that is not set takes the placeholder's first.
     return withPeriod(parts, parts.dayPeriod === undefined ? period : 1 - period);
@@ -450,12 +475,12 @@ export function jumpTime(
   placeholder: TimeString,
   twelve = false,
 ): DateParts {
-  const base = timePartsOf(placeholder);
+  const base = parseTimeParts(placeholder);
   if (type === 'dayPeriod') {
     return withPeriod(parts, to === 'min' ? 0 : 1);
   }
   if (type === 'hour' && twelve) {
-    return { ...parts, hour: (to === 'min' ? 0 : 11) + periodOf(parts, base) * 12 };
+    return { ...parts, hour: (to === 'min' ? 0 : 11) + getPeriod(parts, base) * 12 };
   }
   return { ...parts, [type]: to === 'min' ? 0 : TIME_MAX[type] };
 }
@@ -467,10 +492,14 @@ export function dayPeriodNames(locale: string): [string, string] {
     hour12: true,
     timeZone: 'UTC',
   });
-  const name = (hour: number) =>
-    format
-      .formatToParts(new Date(Date.UTC(2000, 0, 1, hour)))
-      .find((part) => part.type === 'dayPeriod')?.value ?? (hour < 12 ? 'AM' : 'PM');
+  function name(hour: number) {
+    for (const part of format.formatToParts(new Date(Date.UTC(2000, 0, 1, hour)))) {
+      if (part.type === 'dayPeriod') {
+        return part.value;
+      }
+    }
+    return hour < 12 ? 'AM' : 'PM';
+  }
   return [name(0), name(12)];
 }
 
@@ -487,16 +516,18 @@ export function typeTime(
   twelve: boolean,
   locale = 'en-US',
 ): { parts: DateParts; typed: string; full: boolean } {
-  const base = timePartsOf(placeholder);
-  const period = periodOf(parts, base);
+  const base = parseTimeParts(placeholder);
+  const period = getPeriod(parts, base);
   if (type === 'dayPeriod') {
     // A letter picks AM or PM by the start of its text in the locale.
     const letter = char.toLocaleLowerCase(locale);
-    const [am, pm] = dayPeriodNames(locale).map((name) => name.toLocaleLowerCase(locale));
-    if (am!.startsWith(letter)) {
+    const [amName, pmName] = dayPeriodNames(locale);
+    const am = amName.toLocaleLowerCase(locale);
+    const pm = pmName.toLocaleLowerCase(locale);
+    if (am.startsWith(letter)) {
       return { parts: withPeriod(parts, 0), typed: '', full: true };
     }
-    if (pm!.startsWith(letter)) {
+    if (pm.startsWith(letter)) {
       return { parts: withPeriod(parts, 1), typed: '', full: true };
     }
     return { parts, typed, full: false };

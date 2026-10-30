@@ -47,7 +47,11 @@
       #for (todo of todos by todo.id) {
         <script>
           function toggle() {
-            todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item));
+            const next: Todo[] = [];
+            for (const item of todos) {
+              next.push(item.id === todo.id ? { ...item, done: !item.done } : item);
+            }
+            todos = next;
           }
         </script>
         <li class={ done: todo.done }>

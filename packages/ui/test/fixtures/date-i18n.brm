@@ -11,12 +11,12 @@
   import I18nProvider from '../../src/I18nProvider.brm';
   import Label from '../../src/Label.brm';
   import TimeField from '../../src/TimeField.brm';
-  import { stringsOf } from '../../src/date-strings.ts';
+  import { getDateStrings } from '../../src/date-strings.ts';
 
   const { locale = 'en-US', timeZone, strings, focused = '2026-10-15', min, max } = $props<{
     locale?: string;
     timeZone?: string;
-    strings?: ReturnType<typeof stringsOf>;
+    strings?: ReturnType<typeof getDateStrings>;
     focused?: string;
     min?: string;
     max?: string;

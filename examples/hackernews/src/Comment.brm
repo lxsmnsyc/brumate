@@ -9,7 +9,11 @@
 
   /** The comments under a comment, at every depth. */
   function count(of: Data): number {
-    return of.comments.reduce((sum, reply) => sum + 1 + count(reply), 0);
+    let sum = 0;
+    for (const reply of of.comments) {
+      sum += 1 + count(reply);
+    }
+    return sum;
   }
   // The comment renders on the server. Only `open` and this count go to the browser, so a
   // thread folds without loading its text again.

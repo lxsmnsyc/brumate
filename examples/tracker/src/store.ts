@@ -86,7 +86,12 @@ export function allIssues(): Issue[] {
 }
 
 export function findIssue(id: number): Issue | undefined {
-  return issues.find((issue) => issue.id === id);
+  for (const issue of issues) {
+    if (issue.id === id) {
+      return issue;
+    }
+  }
+  return undefined;
 }
 
 export function addIssue(data: Pick<Issue, 'title' | 'body' | 'author' | 'labels'>): Issue {
@@ -115,7 +120,13 @@ export function changeIssue(
 }
 
 export function removeIssue(id: number): void {
-  issues = issues.filter((issue) => issue.id !== id);
+  const kept: Issue[] = [];
+  for (const issue of issues) {
+    if (issue.id !== id) {
+      kept.push(issue);
+    }
+  }
+  issues = kept;
 }
 
 export function log(text: string): void {

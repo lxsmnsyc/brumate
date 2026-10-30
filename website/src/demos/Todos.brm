@@ -29,12 +29,21 @@
 </form>
 <ul class="demo-list">
   #for (todo of todos by todo.id) {
+    <script>
+      function toggle() {
+        const next: Todo[] = [];
+        for (const item of todos) {
+          next.push(item.id === todo.id ? { ...item, done: !item.done } : item);
+        }
+        todos = next;
+      }
+    </script>
     <li>
       <label>
         <input
           type="checkbox"
           checked=todo.done
-          onChange=(() => (todos = todos.map((item) => (item.id === todo.id ? { ...item, done: !item.done } : item))))
+          onChange=toggle
         >
         <span class={ done: todo.done }>{todo.title}</span>
       </label>
