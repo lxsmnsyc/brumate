@@ -1,0 +1,46 @@
+# Archive
+
+Done nodes whose folders were removed. Their full text is in git history.
+
+- as-collections: as and ref on the collection parts (done, #272, milestone 0.4.0)
+- as-live-props: Live props reach a component that a page gives to a part in as (done, #276, milestone 0.4.0)
+- as-passed-on: Live props reach a component that one part passes on to another in as (done, milestone 0.4.0)
+- as-sound: Rebuild as.ts on the element types of brumate (done, milestone 0.4.0)
+- binding-shift: Navigation moves the scope IDs of bindings (done, #261, milestone 0.4.0)
+- bound-element-signal: A signal bound to a component's ref may hold an element (done, milestone 0.4.0)
+- component-prop-render: A component in a prop renders in markup that the browser renders (done, #257, milestone 0.4.0)
+- component-tag-handlers: A component in a dynamic tag keeps the handlers of its caller in the browser (done, #262, milestone 0.4.0)
+- component-tag-live-props: A dynamic tag that names a component updates its live props (done, #264, milestone 0.4.0)
+- component-tag-spread: A live spread on a dynamic tag that names a component reaches the component (done, #286, milestone 0.4.0)
+- docs-colors-dates: Complete the docs of Colors and Dates (done, milestone 0.4.0)
+- drop-react-aria-refs: Describe the parts without naming React Aria (done, milestone 0.4.0)
+- dynamic-spread-anchor: A forwarded ref survives a spread on a component (done, #255, milestone 0.4.0)
+- dynamic-spread-handlers: A dynamic tag keeps the handlers of a spread in the browser (done, #256, milestone 0.4.0)
+- dynamic-tag-rest-ref: A ref in the rest props reaches a dynamic tag that spreads them (done, milestone 0.4.0)
+- dynamic-tag-types: A dynamic tag checks its attributes and types its handlers from its tag (done, milestone 0.4.0)
+- element-checks: Check the attributes of plain elements, and type children and templates (done, milestone 0.4.0)
+- element-types: Types for elements, markup and components (done, #263, milestone 0.4.0)
+- fields-typed-early: Fields typed before the code loads (done, #206, milestone 0.4.0)
+- handler-merge-trim: Measure and trim the merged handlers of #264 (done, #297, milestone 0.4.0)
+- memo-error-resume: A memo that failed on the server holds its error in the browser (done, milestone 0.4.0)
+- memo-errors-at-read: A memo that throws holds the error, and a read of it throws (done, milestone 0.4.0)
+- memo-errors-server: A memo that throws on the server renders the nearest #catch (done, milestone 0.4.0)
+- nested-template-imports: A component in a template inside a block is imported (done, #254, milestone 0.4.0)
+- props-types-main: Props types and typed as on main (done, #245, milestone 0.4.0)
+- ref-from-as: The ref of a part takes the element type of its as target (done, milestone 0.4.0)
+- ref-reaches-element: A ref bound on Link, Button or Heading reaches its element (done, #277, milestone 0.4.0)
+- ref-type-parts: The forwarded ref of the collection parts, Link, Button and Heading takes an optional element (done, milestone 0.4.0)
+- rest-prop-handlers: A live rest prop keeps the scope of handlers in a component tag (done, #264, milestone 0.4.0)
+- rest-ref-spread: A ref in the rest props reaches the element that spreads them (done, milestone 0.4.0)
+- scope-id-table: One table of the fields with scope IDs (done, #249, milestone 0.4.0)
+- size-trim: Bring the client size back near the baseline (done, milestone 0.4.0)
+- spread-children-live: A spread onto a component does not render its children again (done, #278, milestone 0.4.0)
+- style-vars-target: A live style variable of a part updates on a component in as (done, milestone 0.4.0)
+- template-context-types: An untyped template parameter takes its type from the prop it is passed to (done, milestone 0.4.0)
+- template-value-imports: A template imports a component named only in an attribute value (done, milestone 0.4.0)
+- tests-current-build: Tests compile with the current compiler (done, #248, milestone 0.4.0)
+- ui-landing: A landing page for @brumate/ui (done, milestone 0.4.0)
+
+## Dropped
+
+client-arrived-cleanups: $client cleanups run when a page that arrived by client navigation is left. The repro was a race in the check (wave-14.md).
