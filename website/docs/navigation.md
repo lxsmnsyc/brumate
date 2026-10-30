@@ -19,7 +19,7 @@ A navigation changes only the attributes of `<html>` that the pages sent, such a
 
 - An attribute that a script added in the browser stays, such as a `data-theme` that a script sets from a saved choice.
 - When a script changed an attribute that a page sends, the value of the new page wins.
-- The first navigation does not remove the attributes of the page that the browser loaded, because it cannot tell them from those of a script. Later navigations remove the attributes of the pages they leave.
+- The server adds a `b-html` attribute to `<html>` with the names of the attributes it sent, so the first navigation removes them too, and a script's attributes are told apart. Do not set or remove `b-html` yourself.
 
 The code for this loads on the first navigation, so pages that never navigate do not load it. Client code that a page already loaded is not loaded again.
 

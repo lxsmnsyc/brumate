@@ -203,6 +203,8 @@ describe('documents', () => {
     module.release('Ada');
     const page = (await readAll(renderToStream(module.default, {}, { scripts }))).join('');
     expect(page.startsWith('<!doctype html><html')).toBe(true);
+    // The tag names its attributes, so client navigation can tell them from those of scripts.
+    expect(page).toMatch(/^<!doctype html><html [^>]*lang="en" b-html="[^"]*\blang\b[^"]*">/);
     // The stylesheet and the title go into the head.
     const head = page.slice(page.indexOf('<head'), page.indexOf('</head>'));
     expect(head).toContain('<style b-style=');

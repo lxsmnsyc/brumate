@@ -628,15 +628,19 @@ describe('builds', () => {
   });
 });
 
-/** Navigates to a page whose `<html>` has the given attributes. */
+/** Navigates to a page whose `<html>` has the given attributes, and `b-html` that names them. */
 async function visitWith(url: string, attributes: string): Promise<void> {
+  const names = [...attributes.matchAll(/([\w-]+)=/g)].map((match) => match[1]).join(' ');
   vi.stubGlobal(
     'fetch',
     vi.fn(
       async () =>
-        new Response(`<!doctype html><html ${attributes}><body><p>${url}</p></body></html>`, {
-          headers: { 'content-type': 'text/html' },
-        }),
+        new Response(
+          `<!doctype html><html ${attributes} b-html="${names}"><body><p>${url}</p></body></html>`,
+          {
+            headers: { 'content-type': 'text/html' },
+          },
+        ),
     ),
   );
   await navigate({ url, push: true, leave: async () => {}, enter: () => {} });
@@ -656,5 +660,22 @@ describe('the attributes of <html>', () => {
     await visitWith('/c', 'lang="es"');
     expect(root.getAttribute('lang')).toBe('es');
     expect(root.dataset.theme).toBe('dark');
+  });
+
+  it('removes an attribute of the first page on the first navigation', async () => {
+    const root = document.documentElement;
+    for (const name of root.getAttributeNames()) {
+      root.removeAttribute(name);
+    }
+    // What the server sent for the first page, and what a script added.
+    root.setAttribute('class', 'docs');
+    root.setAttribute('dir', 'rtl');
+    root.setAttribute('b-html', 'class dir');
+    root.dataset.theme = 'dark';
+    await visitWith('/first', 'lang="en"');
+    expect(root.hasAttribute('class')).toBe(false);
+    expect(root.hasAttribute('dir')).toBe(false);
+    expect(root.dataset.theme).toBe('dark');
+    expect(root.getAttribute('lang')).toBe('en');
   });
 });

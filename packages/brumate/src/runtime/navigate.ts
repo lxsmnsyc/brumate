@@ -61,8 +61,6 @@ async function transition(visit: Visit, update: () => void): Promise<void> {
 }
 
 let controller: AbortController | undefined;
-/** The names of the attributes of `<html>` that the last page of a navigation sent. */
-let sent: string[] = [];
 
 const STATE = 'script[b-state]';
 // A route that a block of its layout renders has a scope ID with a dot, such as `3.0`.
@@ -774,17 +772,15 @@ export async function navigate(visit: Visit): Promise<void> {
     return;
   }
   await transition(visit, () => {
-    // Only the attributes that a server page sent change. Those that a script set stay.
+    // Only the attributes that a server page sent change. `b-html` names those of this page.
     const root = document.documentElement;
-    for (const name of sent) {
+    for (const name of [...(root.getAttribute('b-html') ?? '').split(' '), 'b-html']) {
       if (!next.documentElement.hasAttribute(name)) {
         root.removeAttribute(name);
       }
     }
-    sent = [];
     for (const attribute of next.documentElement.attributes) {
       root.setAttribute(attribute.name, attribute.value);
-      sent.push(attribute.name);
     }
     // Read before the head moves, because moving the <title> clears it in `next`.
     const title = next.title;

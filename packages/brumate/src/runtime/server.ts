@@ -2598,6 +2598,28 @@ export interface DocumentOptions extends RenderOptions {
 export type StreamOptions = DocumentOptions;
 
 const HTML = /<html[\s>]/i;
+const HTML_TAG = /^<html((?:"[^"]*"|'[^']*'|[^>"'])*)>/i;
+const ATTRIBUTE_NAME = /([^\s"'<>/=]+)(?:=(?:"[^"]*"|'[^']*'|[^\s"'>]+))?/g;
+
+/**
+ * Adds `b-html` to the `<html>` tag, with the names of the attributes that the page sent, so
+ * client navigation can tell them from those that a script sets.
+ */
+function nameHtmlAttributes(page: string): string {
+  const tag = HTML_TAG.exec(page);
+  if (!tag) {
+    return page;
+  }
+  const names: string[] = [];
+  for (const attribute of tag[1]!.matchAll(ATTRIBUTE_NAME)) {
+    names.push(attribute[1]!);
+  }
+  if (names.length === 0) {
+    return page;
+  }
+  const end = tag[0].length - 1;
+  return `${page.slice(0, end)} b-html="${escapeAttribute(names.join(' '))}"${page.slice(end)}`;
+}
 
 /**
  * Inserts markup before `</body>`, or at the end if there is none. `index`
@@ -2635,7 +2657,7 @@ function firstRender(
   }
   // Markup before <html>, such as the stylesheet of the root component, belongs in the head.
   const headContent = html.slice(0, match.index) + head;
-  let page = html.slice(match.index);
+  let page = nameHtmlAttributes(html.slice(match.index));
   // The page is lowercased once, to find its tags whatever their case.
   const lower = page.toLowerCase();
   const headEnd = lower.indexOf('</head>');
