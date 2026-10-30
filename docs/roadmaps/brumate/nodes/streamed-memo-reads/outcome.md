@@ -31,7 +31,7 @@ Design: [pending-handler-reads debate](../../../../debates/pending-handler-reads
 
 - `pnpm lint` (no errors outside docs/debates), `pnpm typecheck`, `pnpm build`: pass. `pnpm format:check` fails only on the 22 files of docs/debates that main has.
 - `npx vitest run` in packages/brumate: 1199 passed. `pnpm --filter website check:samples`: 65 samples, 0 problems. A scan of every `brm` sample in website/docs finds no new BRM182 to BRM184.
-- `pnpm bench`: see the PR.
+- `pnpm bench --only brumate --scenario todos --metrics browser`: JS before `load` 14,876 B gzip on main (origin/main sources, same machine), 15,016 B on the branch, +140 B.
 
 ## Size
 
