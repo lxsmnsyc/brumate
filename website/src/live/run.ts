@@ -296,6 +296,9 @@ export async function runSample(
     {
       base: run * 1_000_000,
       request: new Request(location.href),
+      // A sample is a lesson, not a server. In production the render logs the error that a
+      // `#catch` renders and hides its message, and the sample shows that error on purpose.
+      dev: true,
     },
   );
   if (!isLatest()) {
