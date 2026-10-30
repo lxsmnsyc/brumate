@@ -50,7 +50,7 @@
     border-radius: 999px;
     background: Highlight;
     transition-duration: 0.25s;
-    transition-timing-function: ease-out;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
   :global(.selection-indicator-text) {

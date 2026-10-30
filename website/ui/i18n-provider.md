@@ -6,7 +6,7 @@ Gives the parts inside it a locale and its direction.
 
 ```
 
-- `locale` is a language tag, such as `ar-EG`. The default is `en-US`, so the server and the browser format numbers the same way. It can change at run time, as in the demo, and the parts that format with it show the new format.
+- `locale` is a language tag, such as `ar-EG`. The default is `en-US`, so the server and the browser format numbers the same way. It can change at run time, and the parts that format with it show the new format. See [A locale switch](#a-locale-switch).
 - The direction comes from the script of the locale. A [Toolbar](./toolbar.md) turns its arrow keys around right to left, and a [Popover](./popover.md#placement) reads `start` and `end` in it.
 - `timeZone` is an IANA time zone, such as `Asia/Tokyo`. It decides what today is in the date parts. Without it, the server uses its own time zone for the first render and the browser takes its own after that.
 - `strings` replaces the words of the date parts with a whole set, in one prop. See [Date strings](#date-strings).
@@ -45,7 +45,7 @@ The server looks up the table once and writes only that language into the page, 
 
 ### A locale switch
 
-The Meter formats its value in the locale, and the direction comes from the element that you put `dir` on. Each locale has its own `I18nProvider` inside an `#if`, so a switch builds the parts again with the new locale.
+The Meter formats its value in the locale, and the direction comes from the element that you put `dir` on. One `I18nProvider` takes the locale from a signal, so a button that sets the signal changes the format of the Meter.
 
 ```brm demo I18nProviderLocaleDemo
 

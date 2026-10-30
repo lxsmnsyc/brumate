@@ -1,18 +1,11 @@
 <script>
-  import { $signal } from 'brumate/signals';
-  import Button from '@brumate/ui/Button.brm';
   import I18nProvider from '@brumate/ui/I18nProvider.brm';
   import Label from '@brumate/ui/Label.brm';
   import Meter from '@brumate/ui/Meter.brm';
-
-  let locale = $signal('ar-EG');
 </script>
 
-<Button class="ui-button" onPress=(() => (locale = 'ar-EG'))>العربية</Button>
-<Button class="ui-button" onPress=(() => (locale = 'de-DE'))>Deutsch</Button>
-<Button class="ui-button" onPress=(() => (locale = 'en-US'))>English</Button>
-<I18nProvider {locale}>
-  <div dir=(locale === 'ar-EG' ? 'rtl' : 'ltr') lang=locale>
+<I18nProvider locale="ar-EG">
+  <div dir="rtl" lang="ar-EG">
     <Meter class="ui-bar" value=(72) formatOptions=({ style: 'decimal' })><Label>Space used</Label></Meter>
   </div>
 </I18nProvider>
