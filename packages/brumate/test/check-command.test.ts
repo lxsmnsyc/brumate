@@ -373,7 +373,7 @@ describe('server imports', () => {
 const USER = (specifier: string): string =>
   `<script>\n  import { counter } from '${specifier}';\n  const { count } = counter(1);\n</script>\n<p>{count}</p>\n`;
 
-async function codesOf(sources: Record<string, string>): Promise<(string | null)[]> {
+async function checkCodes(sources: Record<string, string>): Promise<(string | null)[]> {
   const { records } = await check(project(sources), { types: false });
   const result: (string | null)[] = [];
   for (const record of records) {
@@ -392,18 +392,18 @@ describe('package imports', () => {
   };
 
   it('reads a module of reactive logic from a package of components', async () => {
-    expect(await codesOf({ ...PACKAGE, 'A.brm': USER('@acme/ui/counter.brm.ts') })).toEqual([]);
+    expect(await checkCodes({ ...PACKAGE, 'A.brm': USER('@acme/ui/counter.brm.ts') })).toEqual([]);
   });
 
   it('still reports a module that no package has', async () => {
-    expect(await codesOf({ ...PACKAGE, 'A.brm': USER('@acme/ui/missing.brm.ts') })).toEqual([
+    expect(await checkCodes({ ...PACKAGE, 'A.brm': USER('@acme/ui/missing.brm.ts') })).toEqual([
       'BRM167',
     ]);
   });
 
   it('does not read a package that has no brumate field', async () => {
     expect(
-      await codesOf({
+      await checkCodes({
         ...PACKAGE,
         'node_modules/@acme/ui/package.json':
           '{"name":"@acme/ui","version":"1.0.0","exports":{"./counter.brm.ts":"./counter.brm.ts"}}',
@@ -413,7 +413,7 @@ describe('package imports', () => {
   });
 
   it('finds a use server file of a package', async () => {
-    const found = await codesOf({
+    const found = await checkCodes({
       ...PACKAGE,
       'node_modules/@acme/ui/package.json':
         '{"name":"@acme/ui","version":"1.0.0","brumate":true,"exports":{"./issues.ts":"./issues.ts"}}',
