@@ -28,7 +28,7 @@
 
 - `pnpm --filter website check:samples`: 65 samples, 0 problems. `pnpm --filter website build`: pass.
 - `pnpm lint` (warnings only, none in my files), `pnpm format:check`, `pnpm typecheck`: pass.
-- `node e2e/run.mjs --only website`: see the pull request.
+- `node e2e/run.mjs --only website`: 69 passed, 1 failed (the known flake "/docs/control-flow: 10 live samples render", Not connected). The step "the utility pages have their examples" passes; it clicks `de-DE` on the I18nProvider page and asserts the Meter `aria-valuetext` changes.
 
 ## Size
 
