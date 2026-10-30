@@ -23,6 +23,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: memo-prop-browser-child
+    kind: hard
+    why: in the 0.4.0 cut (found by #373; $memo(prop) is the documented read of a promise prop)
   - on: html-attributes-navigation
     kind: hard
     why: in the 0.4.0 cut (a 0.3.0 bug the maintainer reported, 2026-10-30)
