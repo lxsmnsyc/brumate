@@ -1,0 +1,16 @@
+base     8749
+lane.js +38 B
+cap2.js +38 B
+endreject.js +40 B
+guessreset.js +-2 B
+upd.js +2 B
+all five +214 B
+p1+p4+all five +351 B
+Sketches appended to the benchmarks/brumate core chunk on main, gzip -9; no wiring, no codegen metadata, no effect skip. Same method as ../opponent-size/README.txt.
+
+Cumulative (the single-file numbers above undercount; gzip deltas are not additive):
+../opponent-size/p1.js ../opponent-size/p4.js lane.js +184 B
+../opponent-size/p1.js ../opponent-size/p4.js lane.js cap2.js +239 B
+../opponent-size/p1.js ../opponent-size/p4.js lane.js cap2.js guessreset.js +263 B
+../opponent-size/p1.js ../opponent-size/p4.js lane.js cap2.js guessreset.js upd.js +292 B
+../opponent-size/p1.js ../opponent-size/p4.js lane.js cap2.js guessreset.js upd.js endreject.js +351 B

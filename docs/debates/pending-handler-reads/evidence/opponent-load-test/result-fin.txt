@@ -1,0 +1,4 @@
+request 1 /drop
+/drop at 2 s: ["loading",[]]
+/drop at 12 s: ["loading",[]]
+/drop goto error: page.goto: Target page, context or browser has been closed

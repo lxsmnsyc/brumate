@@ -23,6 +23,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: promise-prop-memo
+    kind: hard
+    why: in the 0.4.0 cut (debate pending-handler-reads, 2026-10-30)
   - on: loading-header-error
     kind: hard
     why: in the 0.4.0 cut
