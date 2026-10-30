@@ -40,7 +40,7 @@ Every ui page follows the section order of the props-table contract (`plugins/pr
 - Topic sections (Segments, Cells, Hex, Channel) sit before Use cases on some pages and after on others. Pick one.
 - Keyboard content is under "Keyboard", "Focus and keys", "Keys and screen readers" or "Drag from the keys"; "Rows from data", "Items from data", "Rows", "Items"; "Style" vs "Styling". Decide whether pages get an "Accessibility" heading.
 - Missing sections to check: Data attributes (dialog, file-trigger, form, color-picker, color-swatch, data, i18n-provider, keyboard), Anatomy pictures (color-picker, data, file-trigger, selection-indicator, transition), styled examples (heading, i18n-provider, keyboard, visually-hidden, data, selection-indicator). Add only where the part has something to show.
-- `.brm` samples use ```` ```html ```` on most pages and ```` ```brm ```` on some, in both `website/ui` and `website/docs`. Pick one (check what the highlighter does).
+- `.brm` samples use ` ```html ` on most pages and ` ```brm ` on some, in both `website/ui` and `website/docs`. Pick one (check what the highlighter does).
 - The ui introduction has no install line and no note that `brumate` is a peer dependency.
 - `ModalContent` exports a props type with no props table; decide whether it is public.
 
