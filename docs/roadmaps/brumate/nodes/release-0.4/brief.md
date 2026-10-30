@@ -23,6 +23,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: html-attributes-navigation
+    kind: hard
+    why: in the 0.4.0 cut (a 0.3.0 bug the maintainer reported, 2026-10-30)
   - on: color-area-page-keys
     kind: hard
     why: in the 0.4.0 cut (a main bug found by the review of #370)
