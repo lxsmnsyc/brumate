@@ -450,9 +450,32 @@ class ClientGenerator {
     names: Set<string>,
     components: boolean | Scope[],
     withChildren = components === true,
+    copiesModule = false,
   ): string[] {
     // `true` for the scopes that render functions render, or the scopes of a template part.
-    const rendered = components === true ? this.renderedScopes() : components || [];
+    const rendered = [...(components === true ? this.renderedScopes() : components || [])];
+    // The templates that the children call or pass on, such as `cell=day`, render in the update part.
+    if (withChildren) {
+      for (const site of this.childrenSites()) {
+        const used = [
+          ...site.calls,
+          ...site.reads.map((read) => read.declaration).filter((item) => item.kind === 'template'),
+        ];
+        for (const callee of used) {
+          const template = this.model.scopes.find(
+            (item) =>
+              callee.kind === 'template' &&
+              item.template?.name === callee.name &&
+              item.parent === callee.scope,
+          );
+          for (const item of template ? this.inside(template) : []) {
+            if (!rendered.includes(item)) {
+              rendered.push(item);
+            }
+          }
+        }
+      }
+    }
     for (const scope of rendered) {
       componentNames(scope.body?.children ?? [], names);
       // A component named in an attribute value, such as `as=Link`, is a read of the markup.
@@ -482,7 +505,9 @@ class ClientGenerator {
     }
     const result: string[] = [];
     for (const program of this.programs()) {
-      if (program === this.file.moduleScript?.program) {
+      // The shared part copies the imports of the module script itself. Another part imports
+      // the names that its code reads, as the imports of the instance script.
+      if (copiesModule && program === this.file.moduleScript?.program) {
         continue;
       }
       for (const statement of program.body) {
@@ -570,7 +595,10 @@ class ClientGenerator {
     const names = new Set(
       [...reads].filter((item) => item.kind === 'import').map((item) => item.name),
     );
-    const lines = ["import * as $$b from 'brumate/client';", ...this.importsFor(names, false)];
+    const lines = [
+      "import * as $$b from 'brumate/client';",
+      ...this.importsFor(names, false, false, this.usesModuleScript()),
+    ];
     if (this.usesModuleScript()) {
       for (const statement of this.file.moduleScript!.program.body) {
         if (statement.type === 'ImportDeclaration' && !isMacroImport(statement)) {
