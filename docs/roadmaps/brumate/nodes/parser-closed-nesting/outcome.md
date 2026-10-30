@@ -9,14 +9,14 @@
   - an element other than the table parts directly in `<table>`, `<thead>`, `<tbody>`, `<tfoot>` or `<tr>`.
   - Nothing is checked through a component, a dynamic tag, `#portal`, `#head` or `#offscreen`, and nothing inside `<svg>` or `<math>`.
 - Catalog entry, docs entry (`website/docs/errors.md`), pinned message (`test/error-codes.json`) and the skill copy (`skills/brumate/references/errors.md`).
-- Dev check: `component()` in `runtime/server.ts` takes a sixth argument, set by the compiler (`codegen/markup.ts`) only for a component inside a `<p>`. In development (`dev: true`) a component whose output starts with an element that closes the `<p>` makes the render throw, naming `<Name> in file:line:col`, with BRM185. Production renders are unchanged.
+- Dev check: `component()` in `runtime/server.ts` takes a sixth argument, set by the compiler (`codegen/markup.ts`) only in dev builds, for a component inside a `<p>`. In development (`dev: true`) a component whose output starts with an element that closes the `<p>` makes the render throw, naming `<Name> in file:line:col`, with BRM185. Production renders are unchanged.
 - Tests: `packages/brumate/test/nesting.test.ts` (13 reports, 15 silent cases, components/portals, the server hint, dev throw, production render, no-false-positive for inline output).
 - Changeset: `.changeset/parser-closed-nesting.md` (brumate minor).
 
 ## Deviations
 
 - New file `packages/brumate/src/nesting.ts`, and edits to `src/codegen/markup.ts` (the hint argument), `src/runtime/server.ts` (the brief lists `runtime/server/**`, which is a file here) and `skills/brumate/references/errors.md` (mirror of the catalog). None is in the brief's shared paths.
-- The server hint is not dev-only in the bundle: a component inside a `<p>` carries one string in the production server code. The check runs only in development.
+- The hint is dev-only: the compiler emits it when `hideNames` is unset (the dev server), so a build carries nothing.
 - The server check covers `<p>` only. Other cases are compile-time only.
 - `<table>` in `<p>` is not reported (quirks mode keeps the `<p>`).
 - Dev check is an error, not a warning.
@@ -28,6 +28,7 @@
 ## Gotchas
 
 - Components pass children through; a `<div>` in the children of a component inside a `<p>` is not seen, since the compiler does not know where the component puts them.
+- Follow-up: the server check covers `<p>` only. Extending it to `<a>`, `<form>`, `<button>`, `<li>` and table ancestors would need the hint on more component calls in dev.
 - Dynamic tags (`<Dynamic>`/`as` at runtime) are not checked on the server, since `dynamic()` does not carry the hint.
 
 ## Proposed learnings

@@ -71,6 +71,8 @@ describe('markup that the HTML parser closes or moves', () => {
     }).server;
     expect(outside).toContain('"<Box> in Page.brm:2:25"');
     expect(outside).not.toContain('Page.brm:2:6"');
+    const build = compile(`${script}<p>T <Box /></p>`, { filename: 'Page.brm', hideNames: true });
+    expect(build.server).not.toContain('<Box> in');
     const other = compile(`${script}<div><Box /></div><p><button><Box /></button></p>`, {
       filename: 'Page.brm',
     }).server;

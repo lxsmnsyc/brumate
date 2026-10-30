@@ -280,7 +280,9 @@ export class Emitter {
     this.wait = options.mode === 'server' ? 'await ' : '';
     this.async = options.mode === 'server' ? 'async ' : '';
     this.ctxArgument = options.mode === 'server' ? '$$ctx' : 'undefined';
-    this.inParagraph = options.mode === 'server' ? paragraphComponents(file) : new Set();
+    // Only the dev server checks, so a build carries no hint.
+    this.inParagraph =
+      options.mode === 'server' && !plan.hideNames ? paragraphComponents(file) : new Set();
     this.blocking = blockingMemos(plan);
     this.inline = options.mode === 'server' ? plainValues(plan, this.blocking) : new Set();
     for (const site of plan.graph.model.sites) {
