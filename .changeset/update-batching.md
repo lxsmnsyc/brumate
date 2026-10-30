@@ -2,7 +2,7 @@
 'brumate': minor
 ---
 
-A handler is one update pass.
+Breaking: a handler is one update pass. Bindings run when the handler returns, and memo and binding errors go to the nearest `#try` in place of the handler that wrote.
 
 - Its writes compute a memo when the handler reads it. The bindings, such as the DOM text or an effect that reads two signals, run once when the handler returns. A state between two writes no longer shows or throws.
 - `flush()` from `brumate/signals` runs the waiting bindings at once, for a handler that must focus or measure what it rendered.
