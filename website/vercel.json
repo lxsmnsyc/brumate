@@ -6,6 +6,7 @@
       "main": true
     }
   },
+  "ignoreCommand": "git diff --quiet \"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\" HEAD -- :/website :/packages :/package.json :/pnpm-lock.yaml :/pnpm-workspace.yaml",
   "buildCommand": "pnpm --filter \"website^...\" build && pnpm build",
   "outputDirectory": "dist/client",
   "cleanUrls": true,
