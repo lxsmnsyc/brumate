@@ -1,0 +1,17 @@
+<script module>
+  export function fail(): Promise<string> {
+    return new Promise((_done, reject) => setTimeout(() => reject(new Error('Nope')), 50));
+  }
+</script>
+
+<script>
+  import { $signal } from 'brumate/signals';
+  import PromiseMemoChild from './PromiseMemoChild.brm';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <PromiseMemoChild value=(fail()) />
+}

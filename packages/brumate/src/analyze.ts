@@ -183,6 +183,39 @@ function range(node: Range): Range {
  * interfaces and the type aliases of the scripts.
  */
 function bindableNames(type: oxc.Node, file: SFCFile): string[] {
+  return memberNames(type, file, isBindableType);
+}
+
+/** True for `Bindable<...>`. */
+function isBindableType(annotation: oxc.Node | undefined): boolean {
+  return (
+    annotation?.type === 'TSTypeReference' &&
+    annotation.typeName.type === 'Identifier' &&
+    annotation.typeName.name === 'Bindable'
+  );
+}
+
+/** True for `Promise<...>`, or a union that holds one. */
+function isPromiseType(annotation: oxc.Node | undefined): boolean {
+  if (annotation?.type === 'TSUnionType') {
+    return annotation.types.some(isPromiseType);
+  }
+  if (annotation?.type === 'TSParenthesizedType') {
+    return isPromiseType(annotation.typeAnnotation);
+  }
+  return (
+    annotation?.type === 'TSTypeReference' &&
+    annotation.typeName.type === 'Identifier' &&
+    annotation.typeName.name === 'Promise'
+  );
+}
+
+/** The names of the members of a props type whose type passes `test`. */
+function memberNames(
+  type: oxc.Node,
+  file: SFCFile,
+  test: (annotation: oxc.Node | undefined) => boolean,
+): string[] {
   let members: oxc.Node[] | undefined;
   if (type.type === 'TSTypeLiteral') {
     members = type.members;
@@ -200,18 +233,14 @@ function bindableNames(type: oxc.Node, file: SFCFile): string[] {
       if (statement.type === 'TSInterfaceDeclaration' && statement.id.name === name) {
         members = statement.body.body;
       } else if (statement.type === 'TSTypeAliasDeclaration' && statement.id.name === name) {
-        return bindableNames(statement.typeAnnotation, file);
+        return memberNames(statement.typeAnnotation, file, test);
       }
     }
   }
   return (members ?? []).flatMap((member) => {
     const annotation =
       member.type === 'TSPropertySignature' ? member.typeAnnotation?.typeAnnotation : undefined;
-    const isBindable =
-      annotation?.type === 'TSTypeReference' &&
-      annotation.typeName.type === 'Identifier' &&
-      annotation.typeName.name === 'Bindable';
-    if (!isBindable || member.type !== 'TSPropertySignature' || member.computed) {
+    if (!test(annotation) || member.type !== 'TSPropertySignature' || member.computed) {
       return [];
     }
     if (member.key.type === 'Identifier') {
@@ -269,6 +298,7 @@ class Analyzer {
     checkNesting(this.file, (message, at) => this.report('error', message, at));
     this.addProvidedFunctions();
     this.checkBindableProps();
+    this.markPromiseProps();
 
     for (const site of this.sites) {
       new Resolver(this, site).run();
@@ -307,6 +337,26 @@ class Analyzer {
         };
         declaration.reads.push(read);
         reference.site.reads.push(read);
+      }
+    }
+  }
+
+  /** Marks the props that the type of `$props<T>()` writes as `Promise<...>`. */
+  private markPromiseProps(): void {
+    const names = new Set<string>();
+    for (const type of this.propsTypes) {
+      for (const name of memberNames(type, this.file, isPromiseType)) {
+        names.add(name);
+      }
+    }
+    for (const declaration of this.declarations) {
+      if (
+        declaration.kind === 'prop' &&
+        declaration.scope === this.component &&
+        declaration.propKey !== undefined &&
+        names.has(declaration.propKey)
+      ) {
+        declaration.promise = true;
       }
     }
   }

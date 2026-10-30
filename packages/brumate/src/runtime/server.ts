@@ -809,7 +809,21 @@ export class Context {
         values.indexOf(value) === slot
       ) {
         wrapped ??= [...values];
-        wrapped[slot] = new PropPromise(value);
+        // In production the state carries a safe error, as for a memo. The read of the promise
+        // logs the real one.
+        wrapped[slot] = new PropPromise(
+          this.isDev()
+            ? value
+            : value.catch((error: unknown) => {
+                const safe = new Error(
+                  error instanceof ServerError
+                    ? error.message
+                    : 'The page could not compute a value',
+                );
+                safe.stack = '';
+                throw safe;
+              }),
+        );
       }
     }
     entry.props = undefined;

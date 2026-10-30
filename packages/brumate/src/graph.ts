@@ -129,6 +129,19 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
   return false;
 }
 
+/** True if the expression of a site is a prop that is typed as a promise, such as `$memo(user)`. */
+function isPropValue(site: Site | undefined): boolean {
+  let node = site?.node;
+  while (node?.type === 'ParenthesizedExpression') {
+    node = node.expression;
+  }
+  if (node?.type !== 'Identifier') {
+    return false;
+  }
+  const declaration = lookup(site!.scope, node.name);
+  return declaration?.kind === 'prop' && declaration.promise === true;
+}
+
 /** True if a site's expression is a function, such as a function passed as a prop. */
 /** True for a site whose value is a `#template`, such as the prop `item=option`. */
 export function isTemplateValue(site: Site): boolean {
@@ -359,6 +372,9 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         // A server function can ask the client to load the memo again.
         (isMemoKind(declaration.kind) &&
           [...(declaration.site?.calls ?? [])].some((callee) => callee.refreshed)) ||
+        // A memo of a prop, which can be a promise: its value arrives later, also in a component
+        // that the browser renders.
+        (declaration.kind === 'memo' && isPropValue(declaration.site)) ||
         // Handlers write an optimistic value.
         (declaration.optimistic !== undefined &&
           declaration.writes.some((write) => reached.has(write.site))) ||

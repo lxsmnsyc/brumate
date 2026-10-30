@@ -489,33 +489,40 @@ describe('resume', () => {
       expect(unhandled).toEqual([]);
     });
 
-    it('rejects a streamed promise prop in a handler, with no unhandled rejection', async () => {
-      const unhandled: unknown[] = [];
-      const onUnhandled = (error: unknown): void => {
-        unhandled.push(error);
-      };
-      process.on('unhandledRejection', onUnhandled);
-      onTestFinished(() => {
-        process.off('unhandledRejection', onUnhandled);
-      });
-      (globalThis as { reads?: Reads }).reads = [];
-      onTestFinished(() => {
-        delete (globalThis as { reads?: Reads }).reads;
-      });
-      const server = await import(file('promiseReject.brm.ts'));
-      server.reset();
-      const { html, state, pending } = await renderParts(server.default, {});
-      show(html + state);
-      await startLoader();
-      click(document.querySelector('.await')!);
-      server.reject('Nope');
-      for await (const chunk of pending) {
-        appendChunk(chunk);
-      }
-      await waitFor(() => expect(reads('await')).toEqual([['await', 'Nope']]));
-      await new Promise((done) => setTimeout(done, 50));
-      expect(unhandled).toEqual([]);
-    });
+    // In production the state carries a generic error, not the real one.
+    it.each([
+      [true, 'Nope'],
+      [false, 'The page could not compute a value'],
+    ])(
+      'rejects a streamed promise prop in a handler, with no unhandled rejection (dev %s)',
+      async (dev, message) => {
+        const unhandled: unknown[] = [];
+        const onUnhandled = (error: unknown): void => {
+          unhandled.push(error);
+        };
+        process.on('unhandledRejection', onUnhandled);
+        onTestFinished(() => {
+          process.off('unhandledRejection', onUnhandled);
+        });
+        (globalThis as { reads?: Reads }).reads = [];
+        onTestFinished(() => {
+          delete (globalThis as { reads?: Reads }).reads;
+        });
+        const server = await import(file('promiseReject.brm.ts'));
+        server.reset();
+        const { html, state, pending } = await renderParts(server.default, {}, { dev });
+        show(html + state);
+        await startLoader();
+        click(document.querySelector('.await')!);
+        server.reject('Nope');
+        for await (const chunk of pending) {
+          appendChunk(chunk);
+        }
+        await waitFor(() => expect(reads('await')).toEqual([['await', message]]));
+        await new Promise((done) => setTimeout(done, 50));
+        expect(unhandled).toEqual([]);
+      },
+    );
 
     it('reports no unhandled rejection when nobody reads a rejected promise prop', async () => {
       const unhandled: unknown[] = [];
@@ -568,6 +575,54 @@ describe('resume', () => {
       });
       click(document.querySelector('.await')!);
       await waitFor(() => expect(reads('await')).toHaveLength(2));
+    });
+
+    it.each([
+      ['promiseMemoBrowser', '.shown', 'Ada'],
+      ['promiseMemoBrowserReject', '.caught', 'Caught Error: Nope'],
+    ])(
+      'loads a memo in a child that the browser renders, in %s',
+      async (name, selector, expected) => {
+        const server = await import(file(`${name}.brm.ts`));
+        const { html, state, pending } = await renderParts(server.default, {});
+        show(html + state);
+        for await (const chunk of pending) {
+          appendChunk(chunk);
+        }
+        await startLoader();
+        click(document.querySelector('.show')!);
+        await waitFor(() => expect(text(selector)).toBe(expected));
+      },
+    );
+
+    it('shows a pending memo of a promise prop as empty text and no attribute in a browser-rendered child', async () => {
+      const server = await import(file('promiseMemoAttr.brm.ts'));
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await startLoader();
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.shown')).not.toBeNull());
+      expect(text('.shown')).toBe('');
+      expect(document.querySelector('.shown')!.hasAttribute('data-name')).toBe(false);
+      await waitFor(() => expect(text('.shown')).toBe('Ada'));
+      expect(document.querySelector('.shown')!.getAttribute('data-name')).toBe('Ada');
+    });
+
+    it('shows a pending memo of a promise prop as empty text in a textarea', async () => {
+      const server = await import(file('promiseMemoArea.brm.ts'));
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await startLoader();
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('textarea')).not.toBeNull());
+      expect(document.querySelector('textarea')!.value).toBe('');
+      await waitFor(() => expect(document.querySelector('textarea')!.value).toBe('Ada'));
     });
 
     it('passes a promise that is not a loading memo to a handler as a value', async () => {

@@ -1,0 +1,8 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+
+  const { value } = $props<{ value: Promise<string> }>();
+  const shown = $memo(value);
+</script>
+
+<textarea>{shown}</textarea>
