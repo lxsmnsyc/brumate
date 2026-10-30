@@ -1,6 +1,6 @@
 ---
 id: promise-in-markup
-title: A promise in markup renders its value
+title: A promise in markup renders its value, in text and in attributes
 status: todo
 priority: should
 type: feature
@@ -28,11 +28,11 @@ depends_on:
     why: the spike settles how the browser waits for a value; a promise in markup should wait the same way
 ---
 
-# A promise in markup renders its value
+# A promise in markup renders its value, in text and in attributes
 
 ## Goal
 
-A promise is a native value in markup: `<p>{Promise.resolve('hello world')}</p>` renders `hello world` once the promise settles, and the nearest `#loading` shows its fallback while it is pending, on the server (streamed) and in the browser. A rejected promise goes to the nearest `#catch`. The same holds for a promise in an attribute value if that makes sense (decide). Today a promise in markup is an error or prints `[object Promise]` (check which).
+A promise is a native value in markup: `<p>{Promise.resolve('hello world')}</p>` renders `hello world` once the promise settles, and the nearest `#loading` shows its fallback while it is pending, on the server (streamed) and in the browser. A rejected promise goes to the nearest `#catch`. The same holds for a promise in an attribute value (the maintainer, 2026-10-30): `<p title={fetchTitle()} />` sets `title` once the promise settles. Decide what the attribute holds while pending (absent is the expected answer), how it streams on the server (the element is already sent when the value lands, so the browser sets it, or the boundary waits), and which attributes cannot wait (event handlers, `ref`, `$bind`, and others that must be there on first paint). Today a promise in markup is an error or prints `[object Promise]` (check which).
 
 Prior art: React 19 accepts a promise (thenable) as a child and renders it with Suspense, as `use` does.
 
