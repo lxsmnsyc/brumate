@@ -86,6 +86,10 @@ export function shiftState(ids: Core['scopeIds'], state: PageState, by: number):
       seen.add(value);
       if (Array.isArray(value)) {
         for (const [index, item] of value.entries()) {
+          // A hole stays a hole.
+          if (!(index in value)) {
+            continue;
+          }
           value[index] = shiftValue(item);
         }
       } else if (Object.getPrototypeOf(value) === Object.prototype) {

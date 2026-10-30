@@ -49,7 +49,7 @@ export interface ClientOutput {
    * The render functions of the client entry that fill a nested `#if` or `#for` of a clone,
    * for the render module, which imports them.
    */
-  getFill: (block: Block) => Fill | undefined;
+  fillOf: (block: Block) => Fill | undefined;
   diagnostics: Diagnostic[];
 }
 
@@ -303,7 +303,7 @@ class ClientGenerator {
         parts,
         loaders: empty,
         clientCode,
-        getFill: (block) => this.createFill(block),
+        fillOf: (block) => this.createFill(block),
         diagnostics: this.diagnostics,
       };
     }
@@ -324,7 +324,7 @@ class ClientGenerator {
       parts,
       loaders,
       clientCode,
-      getFill: (block) => this.createFill(block),
+      fillOf: (block) => this.createFill(block),
       diagnostics: this.diagnostics,
     };
   }

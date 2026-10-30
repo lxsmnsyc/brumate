@@ -541,14 +541,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
     const [own, ownServer, ...found] = await Promise.all(searches);
     // The scripts of the app, which can import files of packages.
-    appScripts = [];
+    // The list is assigned once, after the search, so a lookup during the search sees the last one.
+    const scripts: string[] = [];
     if (packages.length > 0) {
       for (const file of await findScripts(root, exclude)) {
         if (ownFile(file)) {
-          appScripts.push(file);
+          scripts.push(file);
         }
       }
     }
+    appScripts = scripts;
     files.clear();
     serverFiles.clear();
     for (const file of own!) {

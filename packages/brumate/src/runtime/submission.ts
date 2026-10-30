@@ -82,9 +82,12 @@ function echo(value: unknown, hidden: Set<string>, path: PathSegment[] = []): un
     return undefined;
   }
   if (Array.isArray(value)) {
-    const copy: unknown[] = [];
+    // oxlint-disable-next-line unicorn/no-new-array -- A list posted with gaps keeps them.
+    const copy: unknown[] = new Array(value.length);
     for (const [index, item] of value.entries()) {
-      copy.push(echo(item, hidden, [...path, index]));
+      if (index in value) {
+        copy[index] = echo(item, hidden, [...path, index]);
+      }
     }
     return copy;
   }
@@ -149,9 +152,12 @@ export async function parseSubmission<S extends StandardSchemaV1>(
         const keys: Record<string, string[]> = {};
         const items = list === undefined ? undefined : getAt(payload, parsePath(list)!);
         if (list !== undefined && Array.isArray(items)) {
-          const itemKeys: string[] = [];
+          // oxlint-disable-next-line unicorn/no-new-array -- A list posted with gaps keeps them.
+          const itemKeys: string[] = new Array(items.length);
           for (let index = 0; index < items.length; index++) {
-            itemKeys.push(`${id}-${index}`);
+            if (index in items) {
+              itemKeys[index] = `${id}-${index}`;
+            }
           }
           keys[list] = itemKeys;
         }

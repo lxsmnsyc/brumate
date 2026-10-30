@@ -3508,6 +3508,8 @@ async function keepPage(key: string, response: Response, event: RequestEvent): P
       kept.push([name, value]);
     }
   }
+  // The body streams, so the tags of late bodies, such as of `#loading`, are in only after it ends.
+  const body = await response.clone().text();
   const tags: Record<string, string> = {};
   for (const [tag, version] of event.cacheTags) {
     tags[tag] = version ?? versions[tag]!;
@@ -3515,7 +3517,7 @@ async function keepPage(key: string, response: Response, event: RequestEvent): P
   const page: KeptPage = {
     status: response.status,
     headers: kept,
-    body: await response.clone().text(),
+    body,
     expires: Date.now() + maxAge * 1000,
     tags,
   };

@@ -635,36 +635,38 @@ export function formFields<T>(
       const name = own.name;
       const itemKeys = Object.hasOwn(keys, name) ? keys[name] : undefined;
       const defaults: unknown[] = Array.isArray(fallback) ? fallback : [];
-      const list: unknown[] = [];
+      // oxlint-disable-next-line unicorn/no-new-array -- A list posted with gaps keeps them.
+      const list: unknown[] = new Array(items.length);
       for (const [index, item] of items.entries()) {
-        list.push(
-          Object.assign(
-            // A new item takes the shape of the first default item.
-            field([...path, index], defaults[index] ?? defaults[0], item) as object,
-            {
-              key: itemKeys?.[index] ?? String(index),
-              index,
-              remove: intentButton({ type: 'remove', name, index }, press),
-              moveUp: intentButton(
-                {
-                  type: 'reorder',
-                  name,
-                  from: index,
-                  to: Math.max(index - 1, 0),
-                },
-                press,
-              ),
-              moveDown: intentButton(
-                {
-                  type: 'reorder',
-                  name,
-                  from: index,
-                  to: Math.min(index + 1, items.length - 1),
-                },
-                press,
-              ),
-            },
-          ),
+        if (!(index in items)) {
+          continue;
+        }
+        list[index] = Object.assign(
+          // A new item takes the shape of the first default item.
+          field([...path, index], defaults[index] ?? defaults[0], item) as object,
+          {
+            key: itemKeys?.[index] ?? String(index),
+            index,
+            remove: intentButton({ type: 'remove', name, index }, press),
+            moveUp: intentButton(
+              {
+                type: 'reorder',
+                name,
+                from: index,
+                to: Math.max(index - 1, 0),
+              },
+              press,
+            ),
+            moveDown: intentButton(
+              {
+                type: 'reorder',
+                name,
+                from: index,
+                to: Math.min(index + 1, items.length - 1),
+              },
+              press,
+            ),
+          },
         );
       }
       return Object.assign(own, { list, insert: intentButton({ type: 'insert', name }, press) });
