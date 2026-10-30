@@ -42,12 +42,12 @@ import {
   isAsyncIterable,
   isBinding,
   isSlotReference,
-  isPropPromise,
   parseId,
+  receiveProps,
 } from './shared.ts';
 import { functionReferences } from './calls.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
-import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
+import type { PackedState, PageState, PropSink, ScopeId, ScopeState } from './shared.ts';
 import {
   Redirect,
   RequestEvent,
@@ -317,7 +317,7 @@ function madeAfter(mark: Mark, id: ScopeId): boolean {
 }
 
 /** A scope of a render: its record, and what the server keeps of it while the page renders. */
-export interface ScopeEntry {
+export interface ScopeEntry extends PropSink {
   id: ScopeId;
   /** The prefix of the ID and the number after it, such as `'5.'` and `1`, or `''` and `3`. */
   prefix: string;
@@ -542,6 +542,7 @@ export class Context {
     this.scopes.push(entry);
     space.entries.push(entry);
     this.last = entry;
+    receiveProps(entry);
     return id;
   }
 
@@ -785,11 +786,16 @@ export class Context {
     let wrapped: unknown[] | undefined;
     for (let slot = 0; slot < values.length; slot++) {
       const value = values[slot];
-      if (isPropPromise(value) && values.indexOf(value) === slot) {
+      if (
+        value instanceof Promise &&
+        entry.props?.includes(value) &&
+        values.indexOf(value) === slot
+      ) {
         wrapped ??= [...values];
         wrapped[slot] = new PropPromise(value);
       }
     }
+    entry.props = undefined;
     if (wrapped) {
       entry.record.s = wrapped;
     }

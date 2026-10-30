@@ -1,7 +1,7 @@
 // The tree of scopes: finding a scope, making one for markup that the client renders, and
 // removing one with what it owns.
 
-import { parseId } from '../shared.ts';
+import { parseId, receiveProps } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
 import { MARKER, clear, portals, rangeEnd, rendered, sweepIndexes } from './blocks.ts';
 import type { Render } from './branches.ts';
@@ -264,6 +264,7 @@ export function createScope(
     created.n = new Array(nodes);
   }
   rendered.push(created);
+  receiveProps(created);
   // A component that the browser renders loads its code, as the components of the page do.
   if (module !== undefined) {
     loadComponent(module);

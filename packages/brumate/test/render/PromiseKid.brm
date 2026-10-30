@@ -1,0 +1,17 @@
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+
+  // The promise of the page, which the parent also passes on as a prop.
+  let s = $signal((globalThis as { later?: Promise<string> }).later!);
+  let n = $signal(0);
+
+  function note(name: string, ...values: unknown[]): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, ...values]);
+  }
+
+  $effect(() => {
+    note('kid', n, s);
+  });
+</script>
+
+<button class="kid" onClick=(() => n++)>{n}</button>

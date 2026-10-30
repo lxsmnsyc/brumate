@@ -263,7 +263,10 @@ export function unbind(
   for (const key of names ?? Object.keys(props)) {
     const value = props[key];
     if (value instanceof Promise) {
-      markPropPromise(value);
+      const sink = (globalThis as Record<symbol, PropSink | undefined>)[RECEIVING];
+      if (sink) {
+        (sink.props ??= []).push(value);
+      }
     }
     if (isBinding(value)) {
       result ??= { ...props };
@@ -300,17 +303,20 @@ export class PropPromise {
 }
 
 // Symbol.for, so copies of the runtime agree on the marks.
-const PROP_PROMISE = Symbol.for('brumate.propPromise');
 const PROP_WRAPPER = Symbol.for('brumate.propWrapper');
+const RECEIVING = Symbol.for('brumate.receivingProps');
 
-/** Marks a promise that `unbind` found among props. */
-function markPropPromise(promise: object): void {
-  (promise as Record<symbol, unknown>)[PROP_PROMISE] = true;
+/** A scope that collects the promise props that its component receives. */
+export interface PropSink {
+  props?: Promise<unknown>[] | undefined;
 }
 
-/** True for a promise that `unbind` found among props. */
-export function isPropPromise(value: unknown): value is Promise<unknown> {
-  return value instanceof Promise && PROP_PROMISE in value;
+/**
+ * Makes `sink` the scope that the next `unbind` calls belong to. A component creates its root
+ * scope and unbinds its props in the same turn, so no other component runs between them.
+ */
+export function receiveProps(sink: PropSink): void {
+  (globalThis as Record<symbol, unknown>)[RECEIVING] = sink;
 }
 
 /** True for the wrapper that holds a promise prop in the page state. */

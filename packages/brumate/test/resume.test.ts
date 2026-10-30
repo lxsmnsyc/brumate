@@ -438,6 +438,56 @@ describe('resume', () => {
       });
     });
 
+    // Only the slot of the prop is a plain promise: another scope that holds the same promise,
+    // such as a signal, still gets the value when it lands.
+    it.each([
+      ['promiseSiblingChildFirst', 'kid'],
+      ['promiseSiblingKidFirst', 'kid'],
+      ['promisePassOn', 'parent'],
+    ])('treats only the prop slot as a promise in %s', async (name, who) => {
+      (globalThis as { reads?: Reads }).reads = [];
+      onTestFinished(() => {
+        delete (globalThis as { reads?: Reads }).reads;
+        delete (globalThis as { later?: unknown }).later;
+      });
+      const server = await import(file(`${name}.brm.ts`));
+      server.reset();
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      await startLoader();
+      server.release('Ada');
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      click(document.querySelector(`.${who}`)!);
+      await waitFor(() => expect(reads(who)).toContainEqual([who, 1, 'Ada']));
+      // The child still awaits its promise prop.
+      click(document.querySelector('.await')!);
+      await waitFor(() => expect(reads('await')).toEqual([['await', 'Ada']]));
+    });
+
+    it('reports no unhandled rejection when a browser-rendered child never reads its rejected promise prop', async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (error: unknown): void => {
+        unhandled.push(error);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      const server = await import(file('promiseRejectBrowser.brm.ts'));
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await startLoader();
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.await')).not.toBeNull());
+      await new Promise((done) => setTimeout(done, 100));
+      expect(unhandled).toEqual([]);
+    });
+
     it('rejects a streamed promise prop in a handler, with no unhandled rejection', async () => {
       const unhandled: unknown[] = [];
       const onUnhandled = (error: unknown): void => {

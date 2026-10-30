@@ -93,6 +93,8 @@ export interface Scope {
    * whether or not it settled.
    */
   plain?: Set<number>;
+  /** The promise props that the component received, until `setSlots` takes them. */
+  props?: Promise<unknown>[] | undefined;
   /** The scopes inside it, made with the first one. */
   children?: Set<Scope>;
   /** The `b-root` of the render that the server rendered the scope in. */
