@@ -86,11 +86,18 @@
   );
   const groupText = $getContext(TextContext);
   const groupError = $getContext(FieldErrorContext);
+  // The slots sit inside the label, so aria-hidden keeps them out of the name of the input. The
+  // input still names them in aria-describedby, which reads hidden elements.
   $setContext(
     TextContext,
-    group ? groupText : { slots: { description: { id: descriptionId } } },
+    group ? groupText : { slots: { description: { id: descriptionId, 'aria-hidden': 'true' } } },
   );
-  $setContext(FieldErrorContext, group ? groupError : { id: errorId, isInvalid: invalid, errors });
+  $setContext(
+    FieldErrorContext,
+    group
+      ? groupError
+      : { id: errorId, isInvalid: invalid, errors, attributes: { 'aria-hidden': 'true' } },
+  );
 
   const {
     hovered,

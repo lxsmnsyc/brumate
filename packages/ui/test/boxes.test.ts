@@ -174,3 +174,45 @@ it('ties the description and the error of a standalone Checkbox and Switch to th
     expect(box.getAttribute('aria-describedby')).toBe(`${page.get(text).id} ${page.get(error).id}`);
   }
 });
+
+// The name of the input by the rules of a native label: the text of the label without the
+// input and the aria-hidden elements. The description joins the text of the elements it names.
+function accessibleName(box: HTMLInputElement): string {
+  const read = (node: Node): string => {
+    if (node === box) {
+      return '';
+    }
+    if (node instanceof Element && node.getAttribute('aria-hidden') === 'true') {
+      return '';
+    }
+    if (node.nodeType === 3) {
+      return node.textContent ?? '';
+    }
+    return [...node.childNodes].map(read).join(' ');
+  };
+  return read(box.closest('label')!).replace(/\s+/g, ' ').trim();
+}
+
+function accessibleDescription(box: HTMLInputElement): string {
+  const ids = (box.getAttribute('aria-describedby') ?? '').split(' ').filter(Boolean);
+  return ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' ');
+}
+
+it('keeps the description and the error out of the name of a standalone Checkbox and Switch', async () => {
+  const page = await boxes();
+  const cases = [
+    ['.described', 'Agree', 'Needed.', 'Needed. Please agree.'],
+    ['.described-switch', 'Notify', 'Mails.', 'Mails. Cannot be off.'],
+  ];
+  for (const [selector, name, description] of cases) {
+    const box = input(page, selector);
+    await page.waitFor(() => expect(accessibleDescription(box)).toBe(description));
+    expect(accessibleName(box)).toBe(name);
+  }
+  (page.get('.flag') as HTMLElement).click();
+  for (const [selector, name, , both] of cases) {
+    const box = input(page, selector);
+    await page.waitFor(() => expect(accessibleDescription(box)).toBe(both));
+    expect(accessibleName(box)).toBe(name);
+  }
+});
