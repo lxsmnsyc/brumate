@@ -129,13 +129,17 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
   return false;
 }
 
-/** True if the expression of a site is a prop, such as `$memo(user)`. */
+/** True if the expression of a site is a prop that is typed as a promise, such as `$memo(user)`. */
 function isPropValue(site: Site | undefined): boolean {
   let node = site?.node;
   while (node?.type === 'ParenthesizedExpression') {
     node = node.expression;
   }
-  return node?.type === 'Identifier' && lookup(site!.scope, node.name)?.kind === 'prop';
+  if (node?.type !== 'Identifier') {
+    return false;
+  }
+  const declaration = lookup(site!.scope, node.name);
+  return declaration?.kind === 'prop' && declaration.promise === true;
 }
 
 /** True if a site's expression is a function, such as a function passed as a prop. */

@@ -777,3 +777,32 @@ describe('imports of brumate/signals', () => {
     expect(Object.values(output.parts).join('\n') + output.client).toContain('flush');
   });
 });
+
+describe('memo of a prop', () => {
+  const memoOf = (type: string): ReturnType<typeof compile> =>
+    compile(
+      `<script>
+  import { $memo, $props } from 'brumate/signals';
+
+  const { value } = $props<{ value: ${type} }>();
+  const shown = $memo(value);
+</script>
+
+<p>{shown}</p>
+`,
+      { filename: 'Item.brm', liveProps: new Set() },
+    );
+
+  it('ships no update code for a prop that is not a promise', () => {
+    const result = memoOf('number');
+    expect(Object.keys(result.parts)).not.toContain('update');
+    expect(result.client).not.toContain('update');
+  });
+
+  it('ships update code for a prop that a parent can pass a promise for', () => {
+    for (const type of ['Promise<number>', 'number | Promise<number>']) {
+      const result = memoOf(type);
+      expect(Object.keys(result.parts)).toContain('update');
+    }
+  });
+});

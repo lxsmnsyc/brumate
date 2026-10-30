@@ -2,9 +2,9 @@
 
 ## Built
 
-- `packages/brumate/src/graph.ts`: a memo whose expression is a bare prop (`$memo(user)`) is live (`isPropValue`), so a child that the browser renders gets update code for its readers. The existing `setSlots` and `asyncMemo` path then writes the value, or the error to `#catch`, when the promise settles.
+- `packages/brumate/src/graph.ts`: a memo whose expression is a bare prop that `$props<T>` types as `Promise<...>` (or a union with one) is live (`isPropValue`; `analyze.ts` sets `Declaration.promise`). A `$memo` of any other prop keeps main's output (codegen test "memo of a prop"), so a child that the browser renders gets update code for its readers. The existing `setSlots` and `asyncMemo` path then writes the value, or the error to `#catch`, when the promise settles.
 - Tests in `test/resume.test.ts` ("loads a memo in a child that the browser renders"), fixtures `PromiseMemoChild.brm`, `promiseMemoBrowser.brm`, `promiseMemoBrowserReject.brm`: the value shows after the promise resolves, and a rejection shows the `#catch` body. They fail on main (`[object Promise]`, no `#catch`). The resumed tests of #373 still pass.
-- `runtime/html.ts`: a pending promise inserts as empty text (`insertValue`) and writes no attribute (`attributeText`), so a browser-rendered child no longer shows `[object Promise]`. Test: "shows a pending memo of a promise prop as empty text and no attribute" (fixtures `PromiseMemoAttrChild.brm`, `promiseMemoAttr.brm`).
+- `runtime/html.ts`: a pending promise inserts as empty text (`insertValue`, `textValue` for `<textarea>`; any object with a `then`, as the server's `insert` checks) and writes no attribute (`attributeText`), so a browser-rendered child no longer shows `[object Promise]`. Test: "shows a pending memo of a promise prop as empty text and no attribute" (fixtures `PromiseMemoAttrChild.brm`, `promiseMemoAttr.brm`).
 - `website/docs/async-data.md`: notes the missing fallback in browser-rendered markup.
 - Changeset: brumate patch.
 
@@ -27,8 +27,8 @@
 
 ## Verification
 
-- New tests fail on main and pass on the branch. `pnpm --filter brumate test`: all tests pass. `pnpm lint` (only existing e2e warnings), `pnpm format:check`, `pnpm typecheck` pass.
-- Todos bench, client JS in dist: 80.8 kB / 28.8 kB on main and on the branch (no change).
+- New tests fail on main and pass on the branch. `pnpm --filter brumate test`: 1270 tests pass. `pnpm lint` (only existing e2e warnings), `pnpm format:check`, `pnpm typecheck` pass.
+- Todos bench, client JS in dist: 80.8 kB / 28.8 kB on main, 80.9 kB / 28.8 kB on the branch.
 
 ## Size
 

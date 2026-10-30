@@ -41,18 +41,22 @@ export function escapeAttribute(value: string): string {
   return /[&<"]/.test(value) ? value.replace(/[&<"]/g, toEscape) : value;
 }
 
-/** Renders a value inserted in markup. Promises are not awaited. */
+/** True for a promise, or any object with a `then` function, as the server awaits it. */
+function isThenable(value: unknown): boolean {
+  return (
+    value !== null &&
+    (typeof value === 'object' || typeof value === 'function') &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  );
+}
+
+/** Renders a value inserted in markup. A promise is not awaited: it renders empty. */
 export function insertValue(value: unknown): string {
   if (isRaw(value)) {
     return value[RAW];
   }
   // A memo of a promise that is still loading: empty until its value lands.
-  if (
-    value === null ||
-    value === undefined ||
-    typeof value === 'boolean' ||
-    value instanceof Promise
-  ) {
+  if (value === null || value === undefined || typeof value === 'boolean' || isThenable(value)) {
     return '';
   }
   if (Array.isArray(value)) {
@@ -69,7 +73,7 @@ export function textValue(value: unknown): string {
   if (isRaw(value)) {
     return value[RAW];
   }
-  if (value === null || value === undefined || typeof value === 'boolean') {
+  if (value === null || value === undefined || typeof value === 'boolean' || isThenable(value)) {
     return '';
   }
   if (Array.isArray(value)) {
@@ -180,12 +184,7 @@ export function attributeText(name: string, value: unknown): string | undefined 
     value = (value as unknown as { value: unknown }).value;
   }
   // A promise is a memo that is still loading: the attribute is absent until its value lands.
-  if (
-    value === null ||
-    value === undefined ||
-    typeof value === 'function' ||
-    value instanceof Promise
-  ) {
+  if (value === null || value === undefined || typeof value === 'function' || isThenable(value)) {
     return undefined;
   }
   if (typeof value === 'boolean') {

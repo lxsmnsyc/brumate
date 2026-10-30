@@ -65,6 +65,8 @@ export interface Declaration {
    * `const { user: { name } } = $props()`. Undefined for the props object.
    */
   propKey?: string;
+  /** True for a prop whose `$props<T>` type is written as `Promise<...>`, or a union with one. */
+  promise?: boolean;
   /** True for the props object (`const props = $props()`) and the rest of `$props()`. */
   whole?: boolean;
   /** For `const result = $action(fn)`, the name of the server function. */
