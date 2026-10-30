@@ -444,6 +444,7 @@ describe('resume', () => {
       ['promiseSiblingChildFirst', 'kid'],
       ['promiseSiblingKidFirst', 'kid'],
       ['promisePassOn', 'parent'],
+      ['promiseLate', 'kid'],
     ])('treats only the prop slot as a promise in %s', async (name, who) => {
       (globalThis as { reads?: Reads }).reads = [];
       onTestFinished(() => {

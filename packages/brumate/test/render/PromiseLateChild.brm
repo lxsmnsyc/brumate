@@ -1,0 +1,17 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // The props are read after an await, while other components render.
+  await new Promise((done) => setTimeout(done, 20));
+  const { value } = $props<{ value: Promise<string> }>();
+
+  function note(name: string, ...values: unknown[]): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, ...values]);
+  }
+
+  async function wait() {
+    note('await', await value);
+  }
+</script>
+
+<button class="await" onClick=wait>Await</button>

@@ -57,7 +57,15 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   const patch = new Patch(file.source);
   const blocking = blockingMemos(plan);
   const inline = plainValues(plan, blocking);
-  addValueEdits(patch, file, model.sites, 'server', inline, lazyMemos(blocking, inline));
+  addValueEdits(
+    patch,
+    file,
+    model.sites,
+    'server',
+    inline,
+    lazyMemos(blocking, inline),
+    model.component.id,
+  );
   addEventEdits(patch, model);
   const source = (node: { start: number; end: number }): string =>
     patch.slice(node.start, node.end);

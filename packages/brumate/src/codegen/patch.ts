@@ -79,6 +79,7 @@ export function addValueEdits(
   mode: 'server' | 'client' = 'server',
   inline: Set<Declaration> = new Set(),
   lazy: Set<Declaration> = new Set(),
+  component?: number,
 ): void {
   const sitesByNode = new Map<object, Site>();
   // The names that each `$props()` destructures, by the call.
@@ -233,12 +234,20 @@ export function addValueEdits(
         const names = propNames.get(node);
         // A rest prop leaves out the props that another `$props()` call names.
         const others = names && restCalls.has(node) ? otherNames(node) : [];
-        let code = '$$b.unbind($$props)';
-        if (others.length > 0) {
-          code = `$$b.unbind($$props, ${JSON.stringify(names)}, ${JSON.stringify(others)})`;
-        } else if (names) {
-          code = `$$b.unbind($$props, ${JSON.stringify(names)})`;
+        // The scope of the component collects the promise props, so the page state can tell them
+        // from the memos that stream. It is passed here since the call can follow an `await`.
+        const sink =
+          component === undefined
+            ? ''
+            : `${mode === 'server' ? '$$ctx' : '$$b'}.sink($$s${component})`;
+        // Arguments the call leaves out are `undefined` when a later one follows.
+        const list = ['$$props', names ? JSON.stringify(names) : 'undefined'];
+        list.push(others.length > 0 ? JSON.stringify(others) : 'undefined');
+        list.push(sink || 'undefined');
+        while (list.at(-1) === 'undefined') {
+          list.pop();
         }
+        const code = `$$b.unbind(${list.join(', ')})`;
         patch.replace(node.start, node.end, code);
         return;
       }

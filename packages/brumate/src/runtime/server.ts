@@ -43,7 +43,6 @@ import {
   isBinding,
   isSlotReference,
   parseId,
-  receiveProps,
 } from './shared.ts';
 import { functionReferences } from './calls.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
@@ -542,7 +541,6 @@ export class Context {
     this.scopes.push(entry);
     space.entries.push(entry);
     this.last = entry;
-    receiveProps(entry);
     return id;
   }
 
@@ -765,6 +763,11 @@ export class Context {
     return new Map(
       this.scopes.flatMap((entry) => (entry.source ? [[entry.id, entry.source] as const] : [])),
     );
+  }
+
+  /** The scope that `unbind` collects the promise props of its component in. */
+  sink(scope: ScopeId): PropSink {
+    return this.entry(scope);
   }
 
   slots(scope: ScopeId, values: unknown[], names?: string[]): void {

@@ -9,7 +9,7 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Offscreen_1oupne3");
   $$html += $$ctx.style("Offscreen_1oupne3", $$css);
-  const { first = 'a' }: { first?: 'a' | 'b' } = $$b.unbind($$props, ["first"]);
+  const { first = 'a' }: { first?: 'a' | 'b' } = $$b.unbind($$props, ["first"], undefined, $$ctx.sink($$s1));
   let tab = (first);
   let count = (0);
   let inner = (true);
@@ -323,7 +323,7 @@ export default function Offscreen($$props: Record<string, any>): string | Docume
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Offscreen_1oupne3");
   $$b.addStyle("Offscreen_1oupne3", $$css);
-  const { first = 'a' }: { first?: 'a' | 'b' } = $$b.unbind($$props, ["first"]);
+  const { first = 'a' }: { first?: 'a' | 'b' } = $$b.unbind($$props, ["first"], undefined, $$b.sink($$s1));
   let tab = (first);
   let count = (0);
   let inner = (true);
