@@ -1,7 +1,7 @@
 ---
 id: overlay-navigation-cleanup
 title: A client navigation away from an open overlay removes its layer and the inert page
-status: todo
+status: active
 priority: should
 type: fix
 outline: false
