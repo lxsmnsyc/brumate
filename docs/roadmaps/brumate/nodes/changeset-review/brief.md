@@ -1,7 +1,7 @@
 ---
 id: changeset-review
 title: Review and trim the pending changesets before the release
-status: todo
+status: done
 priority: should
 type: chore
 outline: false
