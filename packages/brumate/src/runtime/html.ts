@@ -30,7 +30,9 @@ export function rawHTML(value: Raw): string {
 
 const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 
-const toEscape = (char: string): string => ESCAPES[char]!;
+function toEscape(char: string): string {
+  return ESCAPES[char]!;
+}
 
 // Most text has nothing to escape, so a test without the global flag skips the replace.
 export function escape(value: string): string {
@@ -60,7 +62,11 @@ export function insertValue(value: unknown): string {
     return '';
   }
   if (Array.isArray(value)) {
-    return value.map(insertValue).join('');
+    let result = '';
+    for (const item of value) {
+      result += insertValue(item);
+    }
+    return result;
   }
   return escape(String(value));
 }
@@ -77,7 +83,11 @@ export function textValue(value: unknown): string {
     return '';
   }
   if (Array.isArray(value)) {
-    return value.map(textValue).join('');
+    let result = '';
+    for (const item of value) {
+      result += textValue(item);
+    }
+    return result;
   }
   return String(value);
 }
@@ -122,10 +132,13 @@ export function classAttribute(classes: string): string {
 
 function styleValue(value: unknown): string {
   if (typeof value === 'object' && value !== null) {
-    return Object.entries(value)
-      .filter(([, item]) => item !== null && item !== undefined && item !== false)
-      .map(([name, item]) => `${toKebabCase(name)}:${String(item)}`)
-      .join(';');
+    const declarations: string[] = [];
+    for (const [name, item] of Object.entries(value)) {
+      if (item !== null && item !== undefined && item !== false) {
+        declarations.push(`${toKebabCase(name)}:${String(item)}`);
+      }
+    }
+    return declarations.join(';');
   }
   return String(value);
 }
@@ -347,10 +360,22 @@ export function onAttribute(on: string[], own: string): string {
 
 /** The value of `b-on`, in the order of `onAttribute`. */
 export function onValue(on: string[], own: string): string {
-  const bindings = on.filter((entry) => /=\$(bind#|set:)/.test(entry));
-  return [...bindings, own, ...on.filter((entry) => !bindings.includes(entry))]
-    .filter(Boolean)
-    .join(' ');
+  const bindings: string[] = [];
+  const rest: string[] = [];
+  for (const entry of on) {
+    if (/=\$(bind#|set:)/.test(entry)) {
+      bindings.push(entry);
+    } else {
+      rest.push(entry);
+    }
+  }
+  const parts: string[] = [];
+  for (const part of [...bindings, own, ...rest]) {
+    if (part) {
+      parts.push(part);
+    }
+  }
+  return parts.join(' ');
 }
 
 /** Renders an object of attributes. */
@@ -405,12 +430,14 @@ export function actionAttributes(
 ): string {
   const methodText = method ? ` ${method}="post"` : '';
   // The key of a form of a function that `idempotent` made, so a second post gets the first result.
-  const query = [
-    build === undefined ? '' : `__build=${encodeURIComponent(build)}`,
-    key === undefined ? '' : `__key=${key}`,
-  ]
-    .filter(Boolean)
-    .join('&');
+  const params: string[] = [];
+  if (build !== undefined) {
+    params.push(`__build=${encodeURIComponent(build)}`);
+  }
+  if (key !== undefined) {
+    params.push(`__key=${key}`);
+  }
+  const query = params.join('&');
   if (result !== undefined) {
     // The form posts to its page, which renders with the result. With the
     // loader, the result is written into the `$action` at `result` instead.

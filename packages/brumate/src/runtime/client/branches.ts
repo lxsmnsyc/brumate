@@ -7,7 +7,7 @@ import { blockStart, rangeEnd } from './blocks.ts';
 import { loadModule, loadPart } from './code.ts';
 import { insertHTML } from './insert.ts';
 import { call } from './references.ts';
-import { afterInsert, disposeKinds, inPlace, removeBlock, rootOf } from './scopes.ts';
+import { afterInsert, disposeKinds, inPlace, removeBlock, findRoot } from './scopes.ts';
 import { comments, hiding, scopes, setHiding } from './state.ts';
 import type { Scope } from './state.ts';
 
@@ -278,7 +278,7 @@ function display(element: Element): CSSStyleDeclaration | undefined {
 function createHiding(): Hiding {
   const bodies = new Set<HiddenBody>();
   const nodes = new WeakMap<Node, Saved>();
-  const hideNode = (node: Node): void => {
+  function hideNode(node: Node): void {
     const saved = nodes.get(node);
     if (saved) {
       saved.n++;
@@ -299,8 +299,8 @@ function createHiding(): Hiding {
       });
       style.setProperty('display', 'none', 'important');
     }
-  };
-  const showNode = (node: Node): void => {
+  }
+  function showNode(node: Node): void {
     const saved = nodes.get(node);
     if (!saved || --saved.n > 0) {
       return;
@@ -320,7 +320,7 @@ function createHiding(): Hiding {
     if (!saved.a && element.getAttribute('style') === '') {
       element.removeAttribute('style');
     }
-  };
+  }
   return {
     bodies,
     nodes,
@@ -329,7 +329,12 @@ function createHiding(): Hiding {
       const record: HiddenBody = { scope: body, ranges: [[start, end]] };
       body.h = record;
       bodies.add(record);
-      const inside = [...scopes.values()].filter((scope) => within(scope, body));
+      const inside: Scope[] = [];
+      for (const scope of scopes.values()) {
+        if (within(scope, body)) {
+          inside.push(scope);
+        }
+      }
       for (const scope of inside) {
         // The content of a `#portal` in the body, elsewhere in the page.
         const portal = comments.get(`P${scope.id}`);
@@ -338,7 +343,9 @@ function createHiding(): Hiding {
         }
       }
       for (const range of record.ranges) {
-        between(range).forEach(hideNode);
+        for (const node of between(range)) {
+          hideNode(node);
+        }
       }
       // Effects and `$client` callbacks that ran stop, and run again when the body shows.
       for (const scope of inside) {
@@ -358,12 +365,14 @@ function createHiding(): Hiding {
       bodies.delete(record);
       for (const range of record.ranges) {
         if (range[0].isConnected) {
-          between(range).forEach(showNode);
+          for (const node of between(range)) {
+            showNode(node);
+          }
         }
       }
       for (const scope of scopes.values()) {
         if (scope.w && within(scope, body) && !hidden(scope)) {
-          const ref = `${rootOf(scope).m}#`;
+          const ref = `${findRoot(scope).m}#`;
           for (const name of scope.w) {
             void call(ref + name, scope, []);
           }

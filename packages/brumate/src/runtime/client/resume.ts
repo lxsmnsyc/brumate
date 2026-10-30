@@ -138,7 +138,9 @@ function unpackState(state: PackedState): PageState {
     }
     // Scopes inside a `#loading` body: their IDs are this prefix and a number.
     const prefix = flags & PREFIX ? (group[at++] as string) : '';
-    const id = (n: number): ScopeId => (prefix ? prefix + n : n);
+    function id(n: number): ScopeId {
+      return prefix ? prefix + n : n;
+    }
     // The first slot of a taken item is not written. The gap before the slots holds its place.
     const skip = source && flags & ITEM_SLOT ? 1 : 0;
     let n = flags & (OWNER | PREFIX) ? 0 : base;
@@ -302,14 +304,14 @@ export function leaveRoutes(): void {
  * stays. `brumate/testing` calls it when a mounted component unmounts.
  */
 export function removeRoot(root: string): void {
-  const inside = (scope: Scope): boolean => {
+  function inside(scope: Scope): boolean {
     for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
       if (current.r === root) {
         return true;
       }
     }
     return false;
-  };
+  }
   // Deleting from a map while iterating it is safe.
   for (const scope of scopes.values()) {
     if (inside(scope)) {
@@ -367,40 +369,45 @@ export function remount(
   hooks.added = restoreRemounts;
   for (const { id, before, after, signals } of detail) {
     const names = new Set(signals);
-    const instances = [...scopes.values()].filter((scope) => scope.m === id);
-    remounts.set(id, {
-      after,
-      // The signals of the script of the component. Signals of blocks, such as of a `#for`
-      // body, start again.
-      values: instances.map((root) => {
+    // The signals of the script of the component. Signals of blocks, such as of a `#for`
+    // body, start again.
+    const kept: Record<string, unknown>[] = [];
+    for (const root of scopes.values()) {
+      if (root.m === id) {
         const values: Record<string, unknown> = {};
-        (before[root.k] ?? []).forEach((name, slot) => {
+        for (const [slot, name] of (before[root.k] ?? []).entries()) {
           if (names.has(name)) {
             values[name] = root.s[slot];
           }
-        });
-        return values;
-      }),
-    });
+        }
+        kept.push(values);
+      }
+    }
+    remounts.set(id, { after, values: kept });
   }
 }
 
 /** Writes back the values of signals that `onRemount` kept, into the instances of the new page. */
 function restoreRemounts(added: Scope[]): void {
   for (const [id, { after, values }] of remounts) {
-    const instances = added.filter((scope) => scope.m === id);
+    const instances: Scope[] = [];
+    for (const scope of added) {
+      if (scope.m === id) {
+        instances.push(scope);
+      }
+    }
     if (instances.length === 0) {
       continue;
     }
     remounts.delete(id);
-    instances.forEach((root, index) => {
+    for (const [index, root] of instances.entries()) {
       const saved = values[index];
-      (after[root.k] ?? []).forEach((name, slot) => {
+      for (const [slot, name] of (after[root.k] ?? []).entries()) {
         if (saved && name in saved) {
           set(root, slot, saved[name]);
         }
-      });
-    });
+      }
+    }
   }
 }
 

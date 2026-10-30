@@ -2,6 +2,9 @@
 // and `static-loader.ts` starts it without, so a site that turns navigation
 // off does not have its code, or the parts of the core that only it uses, in
 // its bundle.
+//
+// This file keeps its arrow functions and its Array methods, for size: the loader ships to every
+// page, and the function declarations and loops measured 20 to 50 bytes of gzip larger.
 
 import { HAS_ACTIONS, HAS_BLOCKS, HAS_LATE_MARKUP, HAS_LISTENERS } from './features.ts';
 import type * as Client from './client.ts';

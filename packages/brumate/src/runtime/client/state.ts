@@ -54,7 +54,7 @@ export interface ClientModule {
 export type Part = Record<string, unknown>;
 
 /** The part that holds an export: `h<n>` and `c<n>` have their own, the rest are in `update`. */
-export function partOf(name: string): string {
+export function getPart(name: string): string {
   return /^[hct]\d/.test(name) ? name : 'update';
 }
 

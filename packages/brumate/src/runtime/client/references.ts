@@ -2,7 +2,7 @@
 
 import { loadOnce } from '../skew.ts';
 import { codeReady, loadModule, loadPart, loadedFunction } from './code.ts';
-import { build, partOf, rpcPrefix, skew } from './state.ts';
+import { build, getPart, rpcPrefix, skew } from './state.ts';
 import type { Scope } from './state.ts';
 
 export type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
@@ -14,7 +14,7 @@ export async function resolve(ref: string): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
   try {
     const module = await loadModule(id);
-    const part = await loadPart(module, partOf(name));
+    const part = await loadPart(module, getPart(name));
     return part[name] as Handler;
   } catch (error) {
     // After a deploy, the files of a build can be gone. The page loads again, with the new code,

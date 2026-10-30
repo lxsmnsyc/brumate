@@ -135,6 +135,7 @@ export class RenderedChildren extends Children {
     // holds the place, and the children render there once both are ready, where they were
     // inserted, so they read the contexts there.
     const marker = `C${(nextChildren += 1)}`;
+    // An arrow: it reads `this` and `super` of the class.
     const fill = (tries: number): void => {
       const node = findMarker(marker);
       if (!node) {
