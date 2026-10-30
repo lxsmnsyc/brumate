@@ -16,15 +16,11 @@
       <Button class="ui-button" onPress=(() => (locale = item))>{item}</Button>
     }
   </Toolbar>
-  #for (item of locales by item) {
-    #if (locale === item) {
-      <I18nProvider locale=item>
-        <div dir=(item === 'ar-EG' ? 'rtl' : 'ltr') lang=item>
-          <Meter class="ui-bar" value=(1234.5) maxValue=(5000) formatOptions=({ style: 'unit', unit: 'megabyte' })>
-            <Label>Used</Label>
-          </Meter>
-        </div>
-      </I18nProvider>
-    }
-  }
+  <I18nProvider {locale}>
+    <div dir=(locale === 'ar-EG' ? 'rtl' : 'ltr') lang=locale>
+      <Meter class="ui-bar" value=(1234.5) maxValue=(5000) formatOptions=({ style: 'unit', unit: 'megabyte' })>
+        <Label>Used</Label>
+      </Meter>
+    </div>
+  </I18nProvider>
 </div>
