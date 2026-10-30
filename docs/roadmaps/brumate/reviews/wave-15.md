@@ -47,16 +47,14 @@
 ## After the restart of 2026-10-30
 
 - Merged: #379 (memo-prop-browser-child done), #381 (perf-pass-0.4 done; no option built for 0.4.0, follow-ups usage-pruning-spike, loader-preload-spike, direct-update-calls), #382 to #386 (ts-style across the repo, helper renames, a 30 s limit for the ui client-part-imports test), #388 (docs/architecture.md, the contributor guide).
-- Open: #387 (root typecheck with `--no-sort`: CI step 53 s to 28 s on Node 24), #389 (stale notes in decisions.md, the roadmap README, example client entries, README, highlight.ts), and chore/ui-part-sizes (pushed WIP, no PR; based on 21571276, needs a rebase and one commit).
+- Also merged: #387 (root typecheck with `--no-sort`: CI step 53 s to 28 s on Node 24) and #389 (stale notes). The ui part size follow-up of #384 was dropped: the maintainer does not mind the size (+1.0 kB gzip of 304 kB, bundled).
 - The maintainer: `.ts` on relative import paths is a personal dislike, removal skipped for now. Exported `<noun>Of` helpers that only the compiler or the parts call are not public API.
 - Left for changeset-review: `.changeset/config.json` ignores only `example-todos` and `example-ui-kit` of the private examples; `examples/ui`, `language-core` and `typescript-plugin` have no tests of their own.
 
 ## Worktrees left
 
-- .claude/worktrees/typecheck-no-sort (#387), .claude/worktrees/stale-notes (#389), .claude/worktrees/ui-part-sizes (draft). Remove each after its PR merges.
+None.
 
 ## Resume
 
-1. Check #387 and #389; remove merged worktrees and branches.
-   ui-part-sizes: bundled and minified, #384 grew the ui client chunks by +1,004 B gzip of 303,900 B (0.3%); the WIP is at -215 B but reverts 40 files (+285/-926 against main) and lacks the size comments and checks. Worst per component on main: GridList +280, Tree +242, Table +219, ListBox +163 B. Ask the maintainer: finish it (comments, checks, draft PR) or drop it. Scripts: the old session scratchpad ps/ (bundle.mjs, percomp.sh, revert2.mjs).
-2. changeset-review (read its brief), then release-0.4 (the maintainer merges #98).
+1. changeset-review (read its brief), then release-0.4 (the maintainer merges #98).
