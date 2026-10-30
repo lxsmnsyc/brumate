@@ -872,7 +872,7 @@ class ClientGenerator {
       }
       if (site.kind === 'client') {
         this.emit(
-          `export function ${symbol}($$s) {\n  $$b.effect($$s, ${JSON.stringify(symbol)}, ${code});\n}`,
+          `export function ${symbol}($$s) {\n  $$b.effect($$s, ${JSON.stringify(symbol)}, ${code}, 1);\n}`,
         );
       } else {
         this.emit(this.handlerExport(site, symbol, code, base));

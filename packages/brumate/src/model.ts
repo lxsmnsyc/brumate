@@ -171,6 +171,8 @@ export interface Site {
    * the modifiers that `b-on` holds, such as `prevent(Enter)`.
    */
   modifiers?: string[];
+  /** True for the handler prop of a component, such as `onPick=(…)`, which the child calls. */
+  handlerProp?: boolean;
   /** The block whose header this site is. */
   block?: Block;
   /** The trigger of a `$client` site. */

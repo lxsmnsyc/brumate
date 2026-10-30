@@ -1,5 +1,5 @@
 <script>
-  import { $effect, $memo, $signal } from 'brumate/signals';
+  import { $effect, $isPending, $memo, $signal } from 'brumate/signals';
 
   async function slow(value: string, delay: number) {
     'use server';
@@ -22,6 +22,10 @@
   });
 
   function read() {
+    if ($isPending(data)) {
+      note('handler', 'pending');
+      return;
+    }
     note('handler', data);
   }
 </script>

@@ -1,0 +1,215 @@
+import type { Range } from './ast.ts';
+import { upstreamMemos } from './model.ts';
+import type { Declaration, Site } from './model.ts';
+import { children } from './oxc.ts';
+import type { oxc } from './oxc.ts';
+
+/** Reports a read that the compiler rejects, at its place. */
+type Report = (name: string, at: Range) => void;
+
+/**
+ * True for a memo that can lack a value in the browser: it is async, or it reads an async memo,
+ * and it is not declared with `await $memo(…)`.
+ */
+function lacksValue(declaration: Declaration): boolean {
+  if (declaration.awaited) {
+    return false;
+  }
+  if (declaration.kind === 'async-memo') {
+    return true;
+  }
+  if (declaration.kind !== 'memo') {
+    return false;
+  }
+  return upstreamMemos(declaration).some((memo) => memo.kind === 'async-memo' && !memo.awaited);
+}
+
+/** The sites whose code runs from an event: handlers, `$client` callbacks and handler props. */
+function isRoot(site: Site): boolean {
+  return site.kind === 'event' || site.kind === 'client' || site.handlerProp === true;
+}
+
+/**
+ * Reports each read of a memo that can lack a value in code that runs from an event: a handler,
+ * a handler prop of a component, a `$client` callback, and the functions of the same script that
+ * they call. A read is fine after `$isPending(memo)` of the memo, or of a memo that reads it.
+ */
+export function checkPendingReads(
+  sites: Site[],
+  pendingCalls: { reference: { range: Range; declaration: Declaration } }[],
+  report: Report,
+): void {
+  // `$isPending(name)` calls by the start of their argument.
+  const pending = new Map<number, Declaration>();
+  for (const { reference } of pendingCalls) {
+    pending.set(reference.range.start, reference.declaration);
+  }
+  const done = new Set<Site>();
+  const reported = new Set<number>();
+  const visit = (site: Site): void => {
+    if (done.has(site)) {
+      return;
+    }
+    done.add(site);
+    for (const read of site.reads) {
+      const declaration = read.declaration;
+      // The argument of `$isPending`, the reads that it adds for the memos upstream, and the read
+      // of its source that a write of `$optimistic` adds (at the source's declaration).
+      if (
+        read.range.start === read.range.end ||
+        read.range.start === declaration.range.start ||
+        pending.has(read.range.start) ||
+        !lacksValue(declaration) ||
+        reported.has(read.range.start)
+      ) {
+        continue;
+      }
+      if (!isGuarded(site.node, read.range.start, declaration, pending)) {
+        reported.add(read.range.start);
+        report(declaration.name, read.range);
+      }
+    }
+    for (const called of site.calls) {
+      if (called.kind === 'function' && called.site) {
+        visit(called.site);
+      }
+    }
+  };
+  for (const site of sites) {
+    if (isRoot(site)) {
+      visit(site);
+    }
+  }
+}
+
+/** True when `$isPending` of `guard` tells whether `memo` has a value. */
+function covers(guard: Declaration, memo: Declaration): boolean {
+  return guard === memo || upstreamMemos(guard).includes(memo);
+}
+
+/**
+ * What a test says about a memo: `pending` when it is true while the memo loads, `ready` when it
+ * is true once the memo has a value.
+ */
+function condition(
+  test: oxc.Node,
+  memo: Declaration,
+  pending: Map<number, Declaration>,
+): 'pending' | 'ready' | undefined {
+  switch (test.type) {
+    case 'CallExpression': {
+      const [target] = test.arguments;
+      if (test.callee.type === 'Identifier' && test.callee.name === '$isPending' && target) {
+        const guard = pending.get(target.start);
+        return guard && covers(guard, memo) ? 'pending' : undefined;
+      }
+      return undefined;
+    }
+    case 'UnaryExpression': {
+      if (test.operator !== '!') {
+        return undefined;
+      }
+      const inner = condition(test.argument, memo, pending);
+      if (inner === 'pending') {
+        return 'ready';
+      }
+      return inner === 'ready' ? 'pending' : undefined;
+    }
+    case 'LogicalExpression': {
+      const left = condition(test.left, memo, pending);
+      const right = condition(test.right, memo, pending);
+      // `a || b` is true when a guard is pending, or when both are ready, as `a && b` with pending.
+      if (test.operator === '||') {
+        return left === 'pending' || right === 'pending' ? 'pending' : undefined;
+      }
+      if (test.operator === '&&') {
+        return left === 'ready' || right === 'ready' ? 'ready' : undefined;
+      }
+      return undefined;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/** True when a statement always leaves the function, or the block around it. */
+function exits(statement: oxc.Node): boolean {
+  if (statement.type === 'ReturnStatement' || statement.type === 'ThrowStatement') {
+    return true;
+  }
+  if (statement.type === 'BlockStatement') {
+    const last = statement.body.at(-1);
+    return last !== undefined && exits(last);
+  }
+  return false;
+}
+
+/** Finds the chain of nodes from `root` to the identifier that starts at `start`. */
+function pathTo(root: oxc.Node, start: number): oxc.Node[] | undefined {
+  if (root.start > start || root.end <= start) {
+    return undefined;
+  }
+  if (root.type === 'Identifier' && root.start === start) {
+    return [root];
+  }
+  for (const [, child] of children(root)) {
+    const path = pathTo(child, start);
+    if (path) {
+      return [root, ...path];
+    }
+  }
+  return undefined;
+}
+
+/** True when a guard on `memo` comes before the read that starts at `start` in `root`. */
+function isGuarded(
+  root: oxc.Node,
+  start: number,
+  memo: Declaration,
+  pending: Map<number, Declaration>,
+): boolean {
+  const path = pathTo(root, start);
+  if (!path) {
+    return false;
+  }
+  for (let i = 0; i < path.length - 1; i++) {
+    const node = path[i]!;
+    const child = path[i + 1]!;
+    if (
+      (node.type === 'IfStatement' || node.type === 'ConditionalExpression') &&
+      child !== node.test
+    ) {
+      const kind = condition(node.test, memo, pending);
+      if (
+        (child === node.consequent && kind === 'ready') ||
+        (child === node.alternate && kind === 'pending')
+      ) {
+        return true;
+      }
+    } else if (node.type === 'LogicalExpression' && child === node.right) {
+      const kind = condition(node.left, memo, pending);
+      if (
+        (node.operator === '&&' && kind === 'ready') ||
+        (node.operator === '||' && kind === 'pending')
+      ) {
+        return true;
+      }
+    } else if (node.type === 'BlockStatement' || node.type === 'Program') {
+      // An earlier `if ($isPending(memo)) return;` in the same block.
+      for (const statement of node.body) {
+        if (statement === child) {
+          break;
+        }
+        if (
+          statement.type === 'IfStatement' &&
+          !statement.alternate &&
+          exits(statement.consequent) &&
+          condition(statement.test, memo, pending) === 'pending'
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}

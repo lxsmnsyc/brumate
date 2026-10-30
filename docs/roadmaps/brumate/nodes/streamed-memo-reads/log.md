@@ -2,3 +2,10 @@
 - Tests: streamedMemoReads.brm (server stream, effect and handler), streamedMemoBrowser.brm + StreamedMemoChild.brm (browser-created memo). All three failed on base without the fix.
 - A browser-created scope's effect did not run when its first load landed (same on base); left as is.
 - Changed the old assertion that `get()` returns a Promise (resume.test.ts, two places) to undefined plus `pending` true.
+- Design change (maintainer, 2026-10-30): handlers never get `undefined`, since it is unsound. Rebased on main (BRM181 was taken, so the new code is BRM182).
+- Compile error BRM182 in src/pending-reads.ts: reads of async memos (or memos that read them, not `await $memo`) in handlers, handler props of components, `$client` callbacks and the functions they call, unless `$isPending` guards the read in the same function. Reads that `$optimistic` writes add at the source's declaration are skipped.
+- Runtime: handlers and `$client` throw for a promise in `loadingValues` (streamed or browser-rendered slot). Other promises pass through. `$client` now compiles to `effect(..., 1)` and counts as a handler.
+- Effects skip and rerun when `NotReady.source` settles, after `loadingUpdates`, unless a change ran them first.
+- `set` outside a pass: `trigger` wraps `queueWrite` in `pass`, which flushes effects. Confirmed by the settle test.
+- `await $memo(…)` in a component the browser renders gives the promise, not the value: the render function is sync (`const user = (Promise.resolve(…))`). The exemption of awaited memos is a gap there. Not fixed.
+- A prop site that reads a memo makes the server wait for it, so a streamed memo that only handlers read cannot reach a handler prop through a function prop; the unseen-read cases are unit tests of the client API.

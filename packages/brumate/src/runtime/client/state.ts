@@ -300,3 +300,9 @@ export const insertedChildren: { from: Scope | undefined; at: Scope }[] = [];
  * instead of calling again, so a server function is called once per row.
  */
 export const renderedLoads: Set<string> = new Set();
+
+/**
+ * The promises that the page knows are values still loading: a memo that the server streams, and
+ * a memo that the browser rendered. Any other promise in a slot is a plain value.
+ */
+export const loadingValues: WeakSet<object> = new WeakSet();

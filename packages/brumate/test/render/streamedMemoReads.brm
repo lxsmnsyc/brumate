@@ -20,7 +20,7 @@
 </script>
 
 <script>
-  import { $effect, $memo, $signal } from 'brumate/signals';
+  import { $effect, $isPending, $memo, $signal } from 'brumate/signals';
 
   let n = $signal(0);
   // No markup reads it, so the page does not wait for it.
@@ -36,7 +36,12 @@
     return undefined;
   });
 
+  // The check of $isPending makes the read safe.
   function read() {
+    if ($isPending(data)) {
+      note('handler', 'pending');
+      return;
+    }
     note('handler', data);
   }
 </script>

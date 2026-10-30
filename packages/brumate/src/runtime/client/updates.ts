@@ -29,6 +29,7 @@ import {
   loads,
   memoControllers,
   modules,
+  loadingValues,
   renderedLoads,
   scopes,
   timers,
@@ -43,13 +44,24 @@ export function get(scope: Scope, slot: number): any {
     settle(scope);
   }
   const value = scope.s[slot];
-  // A value that the server still streams. A memo or an effect that reads it waits for it.
   if (value instanceof Promise) {
-    if (computing > 0 || runningEffects > 0) {
+    // A memo that reads any promise waits for it.
+    if (computing > 0) {
       throw new NotReady(value);
     }
-    // A handler reads no promise: the value has not arrived, and no earlier one exists.
-    return undefined;
+    // A value that the page knows is still loading, such as one that the server streams.
+    if (loadingValues.has(value)) {
+      // An effect skips the run, and runs again when the value arrives.
+      if (runningEffects > 0) {
+        throw new NotReady(value);
+      }
+      // A handler or a `$client` callback has no value to read.
+      if (handling > 0) {
+        throw new Error(
+          'A handler read a memo that has no value yet. Check $isPending(memo) first, or declare the memo with await $memo(…)',
+        );
+      }
+    }
   }
   // A memo that threw holds its error, and each read of it throws.
   if (value instanceof MemoError) {
@@ -334,6 +346,22 @@ let computing = 0;
 
 // More than 0 while an effect runs, so reading a value that is still loading skips the run.
 let runningEffects = 0;
+
+// More than 0 while a handler or a `$client` callback runs.
+let handling = 0;
+
+/** Runs a handler, which throws when it reads a memo that has no value yet. */
+export function handler<T>(run: () => T): T {
+  handling++;
+  try {
+    return run();
+  } finally {
+    handling--;
+  }
+}
+
+// The effects that skipped their run, by scope and name, so one run follows the value.
+const skipped: Map<string, object> = new Map();
 
 /** The key of the memo that computes, if any. */
 let memoKey: string | undefined;
@@ -799,29 +827,57 @@ function flushEffects(): void {
   }
 }
 
-/** Runs an effect or a `$client` callback, after the cleanup of its previous run. */
-export function effect(scope: Scope, name: string, callback: () => unknown): void {
+/**
+ * Runs an effect, or a `$client` callback when `client` is set, after the cleanup of its previous
+ * run. An effect that reads a value that is still loading skips the run, and runs again when the
+ * value arrives. A `$client` callback is a handler: the same read throws.
+ */
+export function effect(
+  scope: Scope,
+  name: string,
+  callback: () => unknown,
+  client?: boolean,
+): void {
   // In a hidden `#offscreen` body, it runs when the body shows.
   if (hiding?.paused(scope, name)) {
     return;
   }
+  const key = `${scope.id}:${name}`;
+  skipped.delete(key);
   scope.cleanups ??= new Map();
   scope.cleanups.get(name)?.();
   let cleanup: unknown;
   const start = DEV ? performance.now() : 0;
-  runningEffects++;
+  if (client) {
+    handling++;
+  } else {
+    runningEffects++;
+  }
   try {
     cleanup = callback();
   } catch (error) {
-    // The value it reads is still loading. The run is skipped, and the next change runs it.
     if (error instanceof NotReady) {
+      // The run is skipped. It runs again when the value arrives, unless a change ran it first.
+      const token = {};
+      skipped.set(key, token);
       scope.cleanups.set(name, noop);
+      const again = (): void => {
+        if (skipped.get(key) === token && scopes.get(scope.id) === scope) {
+          effect(scope, name, callback);
+        }
+      };
+      // After the writes that the value starts, which can run the effect themselves.
+      void error.source.then(() => Promise.allSettled(loadingUpdates)).then(again, noop);
       return;
     }
     // The error goes to the nearest `#try` around the effect. The effect runs again on the next change.
     fail(scope, error);
   } finally {
-    runningEffects--;
+    if (client) {
+      handling--;
+    } else {
+      runningEffects--;
+    }
   }
   // An entry without a cleanup too, so a hidden `#offscreen` body knows what to run again.
   let stored = typeof cleanup === 'function' ? (cleanup as () => void) : noop;

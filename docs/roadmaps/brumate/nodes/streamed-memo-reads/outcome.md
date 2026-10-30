@@ -2,26 +2,24 @@
 
 ## Built
 
-- `get()` in `packages/brumate/src/runtime/client/updates.ts`: a slot that holds a promise never reads as the promise. In a memo or an effect it throws `NotReady`; elsewhere (handlers, `$client` callbacks) it returns `undefined`. `effect()` catches `NotReady` and skips the run; the settle of the slot runs the effect again.
-- `setSlots` in `packages/brumate/src/runtime/client/components.ts`: the promise that a browser render puts in a slot now settles the slot when it lands, if no memo took it over. Before, a memo that no markup reads and no change had computed kept the promise forever.
-- Tests in `packages/brumate/test/resume.test.ts` (fixtures `streamedMemoReads.brm`, `streamedMemoBrowser.brm`, `StreamedMemoChild.brm`): effect, handler, and browser-created memo. The two old assertions that `get()` returns a `Promise` now expect `undefined` and `pending` true.
-- Docs: `website/docs/effects.md` and `website/docs/async-data.md` ("Reads while a memo is pending").
-- Changeset `.changeset/streamed-memo-reads.md` (brumate, patch).
+- Compile error BRM182 (`packages/brumate/src/pending-reads.ts`, called from `analyze.ts`, entry in `error-catalog.ts`): a handler, a handler prop of a component, or a `$client` callback, and the functions of the same script that they call, that reads a memo that can lack a value is an error at the read. A memo can lack a value when it is async or reads an async memo, and is not declared with `await $memo(…)`. A read is fine after a `$isPending` guard on the memo or on a memo that reads it, in the same function: an earlier `if (…) return/throw`, `if (!…) { … }`, the else of `if (…)`, `?:`, `&&` and `||`.
+- Runtime (`updates.ts`, `handlers.ts`, `resume.ts`, `components.ts`, `state.ts`): a handler or a `$client` callback that reads a slot the page knows is loading (a streamed or browser-rendered promise, kept in `loadingValues`) throws an error into the nearest `#try`. Any other promise in a slot is a value. The error has no memo name, since the browser does not know names.
+- Effects skip a run that reads such a slot, and run again when its promise settles (`NotReady.source`), unless a change ran them first. Memos are unchanged.
+- `$client` compiles to `$$b.effect(…, 1)` and is treated like a handler. Two codegen snapshots changed.
+- `setSlots` settles the slot from the render promise of a browser-created memo (reviewed as correct).
+- Docs: async-data.md ("Reads while a memo is pending"), effects.md, errors.md (both copies), decisions.md. Changeset: brumate minor.
+- Tests: `diagnostics.test.ts` (errors and every guard form), `resume.test.ts` (effect, guarded handler, handler prop, unit tests of the client API for the throw, `$client`, rerun, and pass-through, and the browser-created memo).
 
 ## Deviations
 
-- Edited `packages/brumate/src/runtime/client/components.ts`, which the brief does not list. The browser-created case needed it (the slot never left the promise otherwise).
-- Handlers get `undefined` while no value exists, and the last settled value after (a recomputing memo keeps its old value in the slot).
-
-## Stubs left
-
-- None.
+- Edited `components.ts`, `handlers.ts`, `resume.ts`, `state.ts`, `analyze.ts`, `model.ts`, `error-catalog.ts`, `codegen/client.ts`, `pending-reads.ts`, the errors.md files, `docs/decisions.md` and two fixtures (`optimistic.brm` now checks `$isPending`), as the new design needs.
+- The cases "handler prop clicked in the child" and "child effect through a function prop" are partly unit tests: a prop site that reads a memo makes the server wait for it, so a streamed memo cannot reach a function prop in a compiled page.
 
 ## Gotchas
 
-- Any slot that holds a promise now reads as pending outside a memo, as it already did inside one. A promise passed as a prop and read in a handler gives `undefined`.
-- A skipped effect has already run its previous cleanup.
-- The full `vitest run` of packages/brumate fails different tests on each run under load (render/resume file-level, devtools, inspect, "waits only for the update code", which also flakes on base). Each passes alone.
+- `await $memo(…)` in a component the browser renders yields the promise, not the value (the render function is sync, so the `await` is dropped). The compiler exempts awaited memos anyway, so a handler read of one in a browser-rendered component is not caught.
+- A signal whose value is a promise that the server streamed is also treated as loading.
+- Any `$client` now ships `, 1` more.
 
 ## Proposed learnings
 
@@ -29,11 +27,10 @@
 
 ## Verification
 
-- All new tests fail on base without the fix and pass with it.
-- `pnpm lint && pnpm format:check && pnpm typecheck` pass (after `pnpm build`).
-- `vitest run test/resume.test.ts`: 351 passed. render, devtools, inspect pass alone.
+- `pnpm lint && pnpm format:check && pnpm typecheck`: pass.
+- `npx vitest run` in packages/brumate: 1186 passed. `pnpm --filter website check:samples`: 65 samples, 0 problems. `brumate check --no-types` on packages/ui: no errors.
 - `pnpm bench` not run.
 
 ## Size
 
-- Estimated M, actual M.
+- Estimated M, actual L.

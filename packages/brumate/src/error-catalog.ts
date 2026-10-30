@@ -169,6 +169,12 @@ const SYNTAX: ErrorEntry[] = [
     '#loading (data) {\n  <p>{data.name}</p>\n} #else {\n  <p>Loading</p>\n}',
   ),
   entry(
+    'BRM182',
+    'The handler reads "{name}", a memo that can lack a value. Check $isPending({name}) first, or declare it with await $memo(…)',
+    'A handler, a handler prop or a `$client` callback reads an async memo that may still be loading, with no `$isPending` check before the read.',
+    '<script>\n  const user = $memo(getUser(id));\n  function save() {\n    if ($isPending(user)) return;\n    send(user.name);\n  }\n</script>',
+  ),
+  entry(
     'BRM023',
     'Modifiers apply to elements. Put ":{modifier}" on the element that the component renders',
     'An event modifier is on a component, which only passes the handler on.',

@@ -1,0 +1,42 @@
+<script module>
+  function arm(): Promise<string> {
+    return new Promise<string>((resolve) => {
+      open = resolve;
+    });
+  }
+
+  let open: (value: string) => void = () => {};
+
+  export let ready = arm();
+
+  /** A new promise for the next test. */
+  export function reset(): void {
+    ready = arm();
+  }
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  import { $isPending, $memo } from 'brumate/signals';
+  import StreamedMemoReader from './StreamedMemoReader.brm';
+
+  // No markup reads it, so the page does not wait for it.
+  const data = $memo(await ready);
+
+  function note(name: string, ...values: unknown[]): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, ...values]);
+  }
+
+  function pick() {
+    if ($isPending(data)) {
+      note('pick', 'pending');
+      return;
+    }
+    note('pick', data);
+  }
+</script>
+
+<StreamedMemoReader onPick=pick />

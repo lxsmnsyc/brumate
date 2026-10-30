@@ -114,10 +114,21 @@ const busy = $isPending(count);
 
 ### Reads while a memo is pending
 
-Outside a memo, a read never returns the promise of a value that is still loading. This holds for a memo that only an effect reads, which the page does not wait for, and for a memo that a component creates in the browser.
+A memo that loads has no value until it arrives. A handler cannot read it before then, so it checks `$isPending` first:
 
+```brm
+function save() {
+  if ($isPending(profile)) return;
+  send(profile.name);
+}
+```
+
+- A handler, a handler prop of a component and a `$client` callback that read a memo that can lack a value are a compile error, [BRM182](./errors.md#brm182). A memo can lack a value when it is async, or reads an async memo, and is not declared with `await $memo(…)`. The compiler follows the functions of the same script that the handler calls, and reports the read in the file that holds it.
+- These guards count: an earlier `if ($isPending(memo)) return;` (or `throw`), a read inside `if (!$isPending(memo)) { … }` or in the `else` of `if ($isPending(memo))`, `$isPending(memo) ? … : read`, and `!$isPending(memo) && read`. A check of a memo that reads the memo counts too.
+- A read that the compiler cannot follow, such as a function that a parent passes as a prop, throws an error at run time when the memo has no value yet. It goes to the nearest [`#try`](./control-flow.md#try-and-catch) like other handler errors.
 - An [effect](./effects.md#effect) that reads the memo skips that run, and runs again when the value arrives.
-- A handler or a `$client` callback gets `undefined` until the first value arrives. Once there is a value, it gets the last one.
+- Once the memo has a value, a handler reads the last one while a new value loads.
+- A promise in a signal or a prop is an ordinary value. Only a memo that the page is still loading has no value to read.
 
 ## On the client
 

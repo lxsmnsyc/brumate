@@ -3,7 +3,7 @@
 </script>
 
 <script>
-  import { $action, $memo, $optimistic } from 'brumate/signals';
+  import { $action, $isPending, $memo, $optimistic } from 'brumate/signals';
   import { getEvent } from 'brumate/server';
 
   async function list() {
@@ -29,6 +29,9 @@
 
   function guess(event: SubmitEvent) {
     const form = new FormData(event.currentTarget as HTMLFormElement);
+    if ($isPending(shown)) {
+      return;
+    }
     shown = [...shown, String(form.get('name'))];
   }
 </script>

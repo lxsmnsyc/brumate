@@ -271,6 +271,22 @@ A `#loading` block has a header in parentheses. The compiler reads no meaning fr
 }
 ```
 
+## BRM182
+
+`The handler reads "{name}", a memo that can lack a value. Check $isPending({name}) first, or declare it with await $memo(…)`
+
+A handler, a handler prop or a `$client` callback reads an async memo that may still be loading, with no `$isPending` check before the read.
+
+```brm
+<script>
+  const user = $memo(getUser(id));
+  function save() {
+    if ($isPending(user)) return;
+    send(user.name);
+  }
+</script>
+```
+
 ## BRM023
 
 `Modifiers apply to elements. Put ":{modifier}" on the element that the component renders`

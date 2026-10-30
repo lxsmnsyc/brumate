@@ -20,6 +20,7 @@ import type {
   TemplateDecl,
 } from './ast.ts';
 import { lookup, upstreamMemos } from './model.ts';
+import { checkPendingReads } from './pending-reads.ts';
 import { KEY_NAMES } from './runtime/events.ts';
 import type {
   Declaration,
@@ -271,6 +272,13 @@ class Analyzer {
     this.addPendingReads();
     this.resolveRefs();
     this.check();
+    checkPendingReads(this.sites, this.pendingCalls, (name, at) =>
+      this.report(
+        'error',
+        `The handler reads "${name}", a memo that can lack a value. Check $isPending(${name}) first, or declare it with await $memo(…)`,
+        at,
+      ),
+    );
 
     return {
       module: this.module,
@@ -1317,7 +1325,11 @@ class Analyzer {
             scope,
             attribute.handler,
             isComponent ? `prop ${tag}.${attribute.name}` : `event ${tag}.${attribute.event}`,
-            { owner: node, event: isComponent ? undefined : attribute },
+            {
+              owner: node,
+              event: isComponent ? undefined : attribute,
+              handlerProp: isComponent,
+            },
           );
           if (!isComponent) {
             this.readWrappers(site, attribute, scope);

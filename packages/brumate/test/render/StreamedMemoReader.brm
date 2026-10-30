@@ -1,0 +1,23 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { onPick } = $props<{ onPick: () => void }>();
+
+  let held = $signal<unknown>(0);
+
+  function note(name: string, ...values: unknown[]): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, ...values]);
+  }
+
+  function hold() {
+    held = Promise.resolve(1);
+  }
+
+  function readHeld() {
+    note('held', held instanceof Promise);
+  }
+</script>
+
+<button class="pick" onClick=onPick>Pick</button>
+<button class="hold" onClick=hold>Hold</button>
+<button class="held" onClick=readHeld>Held</button>

@@ -271,6 +271,22 @@ https://brumate-docs.vercel.app/docs/errors#brm181
 }
 ```
 
+## BRM182: The handler reads "{name}", a memo that can lack a value. Check $isPending({name}) first, or declare it with await $memo(…)
+
+A handler, a handler prop or a `$client` callback reads an async memo that may still be loading, with no `$isPending` check before the read.
+
+https://brumate-docs.vercel.app/docs/errors#brm182
+
+```brm fragment
+<script>
+  const user = $memo(getUser(id));
+  function save() {
+    if ($isPending(user)) return;
+    send(user.name);
+  }
+</script>
+```
+
 ## BRM023: Modifiers apply to elements. Put ":{modifier}" on the element that the component renders
 
 An event modifier is on a component, which only passes the handler on.

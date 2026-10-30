@@ -426,3 +426,104 @@ describe('#loading header', () => {
     expect(() => compile(page(''), { filename: 'Test.brm' })).not.toThrow();
   });
 });
+
+describe('reads of a memo that can lack a value', () => {
+  /** A component with an async memo, `user`, and a memo that reads it, `name`. */
+  function page(body: string, markup = '<button onClick=run>Run</button>'): string {
+    return `<script>
+import { $client, $effect, $isPending, $memo, $signal } from 'brumate/signals';
+import Child from './Child.brm';
+async function getUser(id: number) {
+  'use server';
+  return { name: 'Ada' + id };
+}
+let id = $signal(1);
+const user = $memo(getUser(id));
+const name = $memo(user.name);
+const ready = await $memo(getUser(id));
+function log(value: unknown) {}
+${body}
+</script>
+
+${markup}`;
+  }
+  const build = (body: string, markup?: string) =>
+    compile(page(body, markup), { filename: 'Test.brm' });
+  const message = 'a memo that can lack a value. Check $isPending(';
+
+  it('fails when a handler reads an async memo', () => {
+    expect(() => build('function run() { log(user); }')).toThrow(
+      `The handler reads "user", ${message}user) first, or declare it with await $memo(…)`,
+    );
+  });
+
+  it('fails when a handler reads a memo that reads an async memo', () => {
+    expect(() => build('function run() { log(name); }')).toThrow('The handler reads "name"');
+  });
+
+  it('fails in a function that a handler calls, and at an inline handler', () => {
+    expect(() => build('function show() { log(user); }\nfunction run() { show(); }')).toThrow(
+      'The handler reads "user"',
+    );
+    expect(() => build('', '<button onClick=(() => log(user))>Run</button>')).toThrow(
+      'The handler reads "user"',
+    );
+  });
+
+  it('fails at the definition of a handler passed to a component', () => {
+    expect(() => build('function run() { log(user); }', '<Child onPick=run />')).toThrow(
+      'The handler reads "user"',
+    );
+    expect(() => build('', '<Child onPick=(() => log(user)) />')).toThrow(
+      'The handler reads "user"',
+    );
+  });
+
+  it('fails in a $client callback', () => {
+    expect(() => build('$client(() => log(user), "idle");', '')).toThrow(
+      'The handler reads "user"',
+    );
+  });
+
+  it('accepts a read of a memo declared with await $memo', () => {
+    expect(() => build('function run() { log(ready); }')).not.toThrow();
+  });
+
+  it('accepts a read that $isPending guards', () => {
+    const guarded = [
+      'function run() { if ($isPending(user)) return; log(user); }',
+      'function run() { if ($isPending(user)) { throw new Error("wait"); } log(user); }',
+      'function run() { if (!$isPending(user)) { log(user); } }',
+      'function run() { if ($isPending(user)) { log(0); } else { log(user); } }',
+      'function run() { $isPending(user) ? log(0) : log(user); }',
+      'function run() { !$isPending(user) && log(user); }',
+      'function run() { $isPending(user) || log(user); }',
+      // A memo that reads the memo checks for it too.
+      'function run() { if ($isPending(name)) return; log(user); }',
+      'function run() { if ($isPending(name)) return; log(name); }',
+      // The check is in the function that reads.
+      'function show() { if ($isPending(user)) return; log(user); }\nfunction run() { show(); }',
+    ];
+    for (const body of guarded) {
+      expect(() => build(body)).not.toThrow();
+    }
+  });
+
+  it('fails when the check comes after the read, or covers only one branch', () => {
+    expect(() => build('function run() { log(user); if ($isPending(user)) return; }')).toThrow(
+      'The handler reads "user"',
+    );
+    expect(() => build('function run() { if (!$isPending(user)) { log(0); } log(user); }')).toThrow(
+      'The handler reads "user"',
+    );
+  });
+
+  it('accepts a read of an async memo in an effect, a memo and the markup', () => {
+    expect(() =>
+      build(
+        'function run() {}\n$effect(() => log(user));\nconst again = $memo(user.name);',
+        '<p>{user.name}</p><button onClick=run>Run</button>',
+      ),
+    ).not.toThrow();
+  });
+});
