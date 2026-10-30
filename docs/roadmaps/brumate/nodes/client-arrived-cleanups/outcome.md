@@ -17,7 +17,7 @@
 ## Gotchas
 
 - On a partial route replace the markup of the old route goes before its cleanups run (they run when the next state record drops its scopes). A full replace runs `leavePage` first. A cleanup must not depend on `isConnected` either way (#355 already handles it).
-- The claim in #355's outcome ("`leavePage` never runs on a client-arrived page") is likely a misreading: on the Back path the route drop runs the cleanup, not `leavePage`.
+- The #355 repro is a race in its check. `page.goBack()` sets `location.pathname` at once, but the old route's cleanups run when the new page's state record is read, after the fetch. Waiting for the pathname and asserting at once sees the old layer. The cleanup does run (probe: `remove 17.0.1.4`, layers 0 after 1.5 s). #355's e2e step must wait for the new page. "`leavePage` never runs" is true but irrelevant: a partial replace uses `removeScope`.
 
 ## Proposed learnings
 
@@ -26,7 +26,7 @@
 ## Verification
 
 - `npx vitest run test/resume.test.ts -t "arrived by client"` in packages/brumate: 2 pass on main code.
-- Chrome probe on the website with and without #355's overlay files: cleanup runs on Back; with #355, 0 layers after Back.
+- Chrome probe on the website with #355's overlay files and the exact steps of the #355 worker: 1 layer right after the pathname changes, 0 after 1.5 s; the cleanups of scopes 17.0.1.4 and -6 are logged by `removeScope`.
 
 ## Size
 
