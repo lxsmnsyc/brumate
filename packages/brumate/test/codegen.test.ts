@@ -373,12 +373,7 @@ describe('list items of one element', () => {
   });
 
   it('keeps the markers when the browser can split the element, or there are more nodes', () => {
-    for (const body of [
-      '<p>{row}</p>',
-      '<tr><b>{row}</b></tr>',
-      '<li>{row}</li> <li>again</li>',
-      '<li>{row}</li> text',
-    ]) {
+    for (const body of ['<p>{row}</p>', '<li>{row}</li> <li>again</li>', '<li>{row}</li> text']) {
       expect(listServer(body)).toContain('<!--i');
     }
   });

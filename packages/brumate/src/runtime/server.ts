@@ -17,6 +17,7 @@ import {
   styleElement,
 } from './html.ts';
 import { MODIFIERS } from './events.ts';
+import { closesParagraph, firstTag } from '../nesting.ts';
 import type { Raw } from './html.ts';
 import { callPlugins, serialOptions, plugins, syncPlugins } from './serial.ts';
 import { serverSecrets } from './secrets.ts';
@@ -1490,6 +1491,7 @@ export function component<P>(
   ctx: Context,
   scope?: ScopeId,
   anchor?: number,
+  paragraph?: string,
 ): Promise<string> {
   // A request for a `#defer` body sends only that body, so the rest of the page renders no more
   // components once the body has started, and loads no more of their data.
@@ -1505,14 +1507,42 @@ export function component<P>(
   const given = (props as { children?: unknown } | undefined)?.children;
   // Children that the browser renders itself need no HTML from the server.
   if (!(given instanceof Children) || given[CHILDREN_REF]) {
-    return Child(props, ctx) as Promise<string>;
+    return checkParagraph(Child(props, ctx) as Promise<string>, ctx, paragraph);
   }
   // Children that the component did not insert render after it, inside its root scope, so the
   // page state has their HTML for the browser.
   const root = ctx.peek();
-  return (Child(props, ctx) as Promise<string>).then(async (html) => {
-    if (given[RAW] === undefined) {
-      await given[LAZY](ctx, root);
+  return checkParagraph(
+    (Child(props, ctx) as Promise<string>).then(async (html) => {
+      if (given[RAW] === undefined) {
+        await given[LAZY](ctx, root);
+      }
+      return html;
+    }),
+    ctx,
+    paragraph,
+  );
+}
+
+/**
+ * In development, throws when a component inside a `<p>` starts with an element that closes the
+ * `<p>`. `paragraph` names the component and where it is, and only the compiler sets it. The
+ * browser splits the markers of the blocks of the page there, so it is an error before that.
+ */
+function checkParagraph(
+  rendered: Promise<string>,
+  ctx: Context,
+  paragraph: string | undefined,
+): Promise<string> {
+  if (paragraph === undefined || !ctx.isDev()) {
+    return rendered;
+  }
+  return rendered.then((html) => {
+    const tag = typeof html === 'string' ? firstTag(html) : undefined;
+    if (tag !== undefined && closesParagraph(tag)) {
+      throw new Error(
+        `${paragraph} renders <${tag}>, which the HTML parser does not keep inside a <p>: it closes the <p> and splits the markers of the page [BRM185]. Move the component out of the <p>, or make it render a <span>, as with as="span"`,
+      );
     }
     return html;
   });
