@@ -287,6 +287,33 @@ interface Held {
 
 const held = new WeakMap<Element, Held>();
 
+/**
+ * Where focus should go back to, from an overlay that closed while another still made the page
+ * inert. With transitions, two overlays that close in one step end one after the other, and the
+ * first to end finds its target still inert. The next one to end tries these when its own fail.
+ */
+let orphans: HTMLElement[] = [];
+
+/** The layers that gave back what they held. Their markup is about to leave the page. */
+const released = new WeakSet<Element>();
+
+/** True for an element inside a layer that already gave back what it held. */
+function inReleased(element: Element): boolean {
+  const layer = element.closest('[data-layer]');
+  return layer !== null && released.has(layer);
+}
+
+/** Finds the element that can take focus back among the candidates, and gives it focus. */
+function focusBack(candidates: (Element | null | undefined)[]): boolean {
+  for (const candidate of candidates) {
+    if (canFocus(candidate) && !inReleased(candidate)) {
+      candidate.focus({ preventScroll: true });
+      return true;
+    }
+  }
+  return false;
+}
+
 /** The element of the selection, which Tab moves on from when no element has focus. */
 function selectionPoint(): HTMLElement | null {
   const node = window.getSelection()?.focusNode;
@@ -358,9 +385,14 @@ export function release(overlay: Element, layer: Element | undefined): void {
     return;
   }
   held.delete(overlay);
+  if (layer) {
+    released.add(layer);
+  }
   for (const stop of entry.stops) {
     stop();
   }
+  const waiting = orphans;
+  orphans = [];
   const active = document.activeElement;
   if (active && active !== document.body && !layer?.contains(active) && active.isConnected) {
     return;
@@ -369,11 +401,22 @@ export function release(overlay: Element, layer: Element | undefined): void {
     return;
   }
   const trigger = entry.triggerId ? document.getElementById(entry.triggerId) : null;
-  if (canFocus(entry.returnTo)) {
-    entry.returnTo.focus({ preventScroll: true });
-  } else if (canFocus(trigger)) {
-    trigger.focus({ preventScroll: true });
-  } else if (entry.startPoint?.isConnected) {
+  if (focusBack([entry.returnTo, trigger])) {
+    return;
+  }
+  if (focusBack(waiting)) {
+    return;
+  }
+  // The target is in the page but inert, because an overlay above or beside this one has not
+  // given the page back yet. The one that does tries it.
+  orphans.push(...waiting);
+  for (const target of [entry.returnTo, trigger]) {
+    if (target instanceof HTMLElement && target.isConnected && target.closest('[inert]')) {
+      orphans.push(target);
+      break;
+    }
+  }
+  if (entry.startPoint?.isConnected) {
     setStartPoint(entry.startPoint);
   }
 }

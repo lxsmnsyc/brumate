@@ -51,6 +51,12 @@
   } #else if (kind === 'two') {
     <Modal class="first" isOpen=$bind(held)><Dialog class="first-dialog" aria-label="First"><input class="field" aria-label="Name"></Dialog></Modal>
     <Modal class="second" isOpen=$bind(second)><Dialog class="second-dialog" aria-label="Second"><input class="field2" aria-label="Other"></Dialog></Modal>
+  } #else if (kind === 'mixed') {
+    <Modal class="first" isOpen=$bind(held)><Dialog class="first-dialog" aria-label="First"><input class="field" aria-label="Name"></Dialog></Modal>
+    <MenuTrigger isOpen=$bind(second)>
+      <Button class="trigger">Actions</Button>
+      <Popover class="layer"><Menu class="menu"><MenuItem id="a" class="item">Copy</MenuItem></Menu></Popover>
+    </MenuTrigger>
   } #else if (kind === 'sheet') {
     <Sheet class="layer" isOpen=$bind(held)><Dialog class="dialog" aria-label="Menu"><input class="field" aria-label="Name"></Dialog></Sheet>
   } #else if (kind === 'select') {

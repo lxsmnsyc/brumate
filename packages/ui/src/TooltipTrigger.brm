@@ -69,7 +69,11 @@
 
   function open(immediate: boolean) {
     if (!isDisabled) {
-      tooltips.show(tooltipId, delay, immediate, () => setOpen(true), () => setOpen(false));
+      tooltips.show(tooltipId, delay, immediate, () => {
+        setOpen(true);
+        // A setter that refused leaves it closed.
+        return isOpen;
+      }, () => setOpen(false));
     }
   }
 

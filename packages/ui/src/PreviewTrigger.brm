@@ -69,7 +69,11 @@
 
   function open(immediate: boolean) {
     if (!isDisabled) {
-      previews.show(overlayId, delay, immediate, () => setOpen(true), () => setOpen(false));
+      previews.show(overlayId, delay, immediate, () => {
+        setOpen(true);
+        // A setter that refused leaves it closed.
+        return isOpen;
+      }, () => setOpen(false));
     }
   }
 
@@ -113,6 +117,8 @@
     if (event.pointerType === 'touch') {
       startLongPress(triggerId, event.pointerId, () => open(true));
     } else {
+      // The focus that this press gives the trigger does not show the preview again.
+      dismissed.add(triggerId);
       close(true);
     }
   }
