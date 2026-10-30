@@ -18,7 +18,7 @@ let $$t: any;
 export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Todos_t3g9lr");
-  const { initial } = $$b.unbind($$props, ["initial"]);
+  const { initial } = $$b.unbind($$props, ["initial"], undefined, $$ctx.sink($$s1));
   let todos = (initial);
   let draft = ('');
   const $$p_left = $$b.memo(() => (todos.filter((todo) => !todo.done).length), $$ctx, "left");
@@ -153,7 +153,7 @@ const $$t0 = $$b.template("<h1>Todos</h1><form b-x=\"0\" b-on=\"submit:prevent=T
 export default function Todos($$props: { initial: Todo[] }): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Todos_t3g9lr");
-  const { initial } = $$b.unbind($$props, ["initial"]);
+  const { initial } = $$b.unbind($$props, ["initial"], undefined, $$b.sink($$s1));
   let todos = (initial);
   let draft = ('');
   const left = (todos.filter((todo) => !todo.done).length);

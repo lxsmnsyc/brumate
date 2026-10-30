@@ -77,6 +77,7 @@ export {
   removeScope,
   scopeOf,
   setOwner,
+  sink,
 } from './client/scopes.ts';
 export { DEVTOOLS, build, hooks, rpcPrefix, scopes, skew } from './client/state.ts';
 export type { ClientModule, CoreOptions, DevtoolsHooks, Part, Scope } from './client/state.ts';

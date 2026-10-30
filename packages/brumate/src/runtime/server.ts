@@ -34,6 +34,7 @@ import {
   OWNER,
   PARTS,
   PREFIX,
+  PropPromise,
   SOURCE,
   MemoError,
   SlotReference,
@@ -45,7 +46,7 @@ import {
 } from './shared.ts';
 import { functionReferences } from './calls.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
-import type { PackedState, PageState, ScopeId, ScopeState } from './shared.ts';
+import type { PackedState, PageState, PropSink, ScopeId, ScopeState } from './shared.ts';
 import {
   Redirect,
   RequestEvent,
@@ -315,7 +316,7 @@ function madeAfter(mark: Mark, id: ScopeId): boolean {
 }
 
 /** A scope of a render: its record, and what the server keeps of it while the page renders. */
-export interface ScopeEntry {
+export interface ScopeEntry extends PropSink {
   id: ScopeId;
   /** The prefix of the ID and the number after it, such as `'5.'` and `1`, or `''` and `3`. */
   prefix: string;
@@ -764,6 +765,11 @@ export class Context {
     );
   }
 
+  /** The scope that `unbind` collects the promise props of its component in. */
+  sink(scope: ScopeId): PropSink {
+    return this.entry(scope);
+  }
+
   slots(scope: ScopeId, values: unknown[], names?: string[]): void {
     const entry = this.entry(scope);
     entry.record.s = values;
@@ -777,6 +783,24 @@ export class Context {
       for (const [slot, value] of forwarded) {
         values[slot] = value;
       }
+    }
+    // A promise that a parent passed as a prop stays a promise in the browser. The first slot
+    // that holds it is the prop: a memo of the prop holds the same promise in a later slot.
+    let wrapped: unknown[] | undefined;
+    for (let slot = 0; slot < values.length; slot++) {
+      const value = values[slot];
+      if (
+        value instanceof Promise &&
+        entry.props?.includes(value) &&
+        values.indexOf(value) === slot
+      ) {
+        wrapped ??= [...values];
+        wrapped[slot] = new PropPromise(value);
+      }
+    }
+    entry.props = undefined;
+    if (wrapped) {
+      entry.record.s = wrapped;
     }
   }
 

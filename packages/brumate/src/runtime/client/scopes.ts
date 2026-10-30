@@ -301,3 +301,8 @@ export function makeId(scope: Scope | ScopeId, index: number): string {
 export function setOwner(scope: Scope | ScopeId): void {
   owner = resolveScope(scope);
 }
+
+/** The scope that `unbind` collects the promise props of its component in. */
+export function sink(scope: ScopeId): Scope | undefined {
+  return scopes.get(scope);
+}

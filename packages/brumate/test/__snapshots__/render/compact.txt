@@ -7,7 +7,7 @@ let $$t: any;
 export default async function Compact($$props: { initial: Row[] }, $$ctx: $$b.Context): Promise<string> {
   let $$html = '';
   const $$s1 = $$ctx.scope(1, undefined, "Compact_omhyaj");
-  const { initial } = $$b.unbind($$props, ["initial"]);
+  const { initial } = $$b.unbind($$props, ["initial"], undefined, $$ctx.sink($$s1));
   let rows = (initial);
   let picks = (0);
   $$html += "<button class=\"reverse\" b-b=\"" + $$s1 + ":0\" b-on=\"click=Compact_omhyaj#h2\">Reverse</button><button class=\"drop\" b-b=\"" + $$s1 + ":1\" b-on=\"click=Compact_omhyaj#h3\">Drop</button><button class=\"clear\" b-b=\"" + $$s1 + ":2\" b-on=\"click=Compact_omhyaj#h4\">Clear</button><button class=\"add\" b-b=\"" + $$s1 + ":3\" b-on=\"click=Compact_omhyaj#h5\">Add</button><button class=\"pick\" b-b=\"" + $$s1 + ":4\" b-on=\"click=Compact_omhyaj#h6\">Pick</button><ul>";
@@ -203,7 +203,7 @@ const $$t2 = $$b.template("<button b-x=\"0\" class=\"reverse\" b-on=\"click=Comp
 export default function Compact($$props: { initial: Row[] }): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Compact_omhyaj");
-  const { initial } = $$b.unbind($$props, ["initial"]);
+  const { initial } = $$b.unbind($$props, ["initial"], undefined, $$b.sink($$s1));
   let rows = (initial);
   let picks = (0);
   const $$body2 = ($$item0, $$index1) => {

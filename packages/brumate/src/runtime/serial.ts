@@ -34,12 +34,13 @@ import {
   ElementReference,
   PARTS,
   isBinding,
+  isPropWrapper,
   isSlotReference,
   onSerialOptions,
   onValuePlugin,
   stateValues,
 } from './shared.ts';
-import type { ChildrenReference, MemoError, ScopeId } from './shared.ts';
+import type { ChildrenReference, MemoError, PropPromise, ScopeId } from './shared.ts';
 import type { ValuePlugin } from './values.ts';
 import type { Binding, SlotReference } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
@@ -235,6 +236,16 @@ const MemoErrorPlugin = createPlugin<MemoError, { e: SerovalNode }>({
   deserialize: (node, ctx) => stateValues.x(ctx.deserialize(node.e)),
 });
 
+/** A promise prop in the page state. See `PropPromise`. */
+const PropPromisePlugin = createPlugin<PropPromise, { p: SerovalNode }>({
+  tag: 'brumate/prop-promise',
+  skipPlainObjects: true,
+  test: isPropWrapper,
+  parse: parsers((value) => ({ p: value.promise })),
+  serialize: (node, ctx) => `$b.q(${ctx.serialize(node.p)})`,
+  deserialize: (node, ctx) => stateValues.q(ctx.deserialize(node.p)),
+});
+
 /** HTML, such as the `children` of a component, so the client can insert it again. */
 const RawPlugin = createPlugin<Raw, { h: SerovalNode }>({
   tag: 'brumate/raw',
@@ -331,6 +342,7 @@ const valuePlugins: Plugin<any, any>[] = [
   MergedPlugin,
   InternalPlugin,
   MemoErrorPlugin,
+  PropPromisePlugin,
   ChildrenPlugin,
   RawPlugin,
   ComponentPlugin,

@@ -5,7 +5,7 @@ import { isBinding } from '../shared.ts';
 import { loadModule } from './code.ts';
 import { modules, scopes } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
-import { asyncMemo, get, isThenable, set, writeSlot } from './updates.ts';
+import { get, set, writeSlot } from './updates.ts';
 
 /** Writes a prop of a child component. */
 // The keys that the spreads of child components passed last, by the child's scope and anchor.
@@ -55,13 +55,14 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
   const apply = (module: ClientModule): void => {
     const slot = module.props[name];
     if (slot !== undefined) {
-      // A promise loads as an async memo does: the prop keeps its value, and is pending until it settles.
-      if (isThenable(value)) {
-        asyncMemo(child, slot, Promise.resolve(value));
+      // The parent's value. A promise stays a promise: the child awaits it, or loads it with $memo.
+      if (value instanceof Promise) {
+        (child.plain ??= new Set()).add(slot);
       } else {
-        // The parent's value. A bound prop does not write it back.
-        writeSlot(child, slot, value);
+        child.plain?.delete(slot);
       }
+      // A bound prop does not write it back.
+      writeSlot(child, slot, value);
       return;
     }
     const all = module.props['*'];

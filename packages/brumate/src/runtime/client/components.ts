@@ -176,7 +176,17 @@ export function setSlots(id: ScopeId, values: unknown[]): void {
   // memo takes. Its failure is the memo's to report, not an unhandled rejection.
   for (let slot = 0; slot < values.length; slot++) {
     const value = values[slot];
-    if (isThenable(value)) {
+    // A promise that a parent passed as a prop stays a promise. A memo of the prop holds the same
+    // promise in a later slot, which loads.
+    if (
+      value instanceof Promise &&
+      scopes.get(id)!.props?.includes(value) &&
+      values.indexOf(value) === slot
+    ) {
+      (scopes.get(id)!.plain ??= new Set()).add(slot);
+      // Nothing handles its rejection unless the child reads it.
+      value.catch(noop);
+    } else if (isThenable(value)) {
       const key = `${id}:${slot}`;
       renderedLoads.add(key);
       loadingValues.add(value);
@@ -190,6 +200,7 @@ export function setSlots(id: ScopeId, values: unknown[]): void {
       }, noop);
     }
   }
+  scopes.get(id)!.props = undefined;
 }
 
 export function setItem(id: ScopeId, value: unknown): void {

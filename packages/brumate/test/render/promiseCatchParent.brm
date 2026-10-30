@@ -1,0 +1,17 @@
+<script module>
+  export function load(id: number): Promise<string> {
+    return new Promise((done, fail) =>
+      setTimeout(() => (id > 1 ? fail(new Error(`No user ${id}`)) : done(`User ${id}`)), 20),
+    );
+  }
+</script>
+
+<script>
+  import { $signal } from 'brumate/signals';
+  import PromiseCatchChild from './PromiseCatchChild.brm';
+
+  let id = $signal(1);
+</script>
+
+<button class="next" onClick=(() => id++)>Next</button>
+<PromiseCatchChild value=(load(id)) />

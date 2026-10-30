@@ -88,8 +88,8 @@ describe('the table of scope IDs', () => {
       }
     };
     visit(program);
-    // `MemoError` holds an error, which has no scope IDs.
-    const withoutIds: string[] = ['MemoError'];
+    // `MemoError` holds an error and `PropPromise` a promise, which have no scope IDs.
+    const withoutIds: string[] = ['MemoError', 'PropPromise'];
     const listed = [
       ...SCOPE_IDS.references.map((type) => type.name),
       ...SCOPE_IDS.holders.map((type) => type.name),

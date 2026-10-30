@@ -1,0 +1,28 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  function arm(): Promise<string> {
+    return new Promise<string>((resolve) => {
+      open = resolve;
+    });
+  }
+
+  export let later = arm();
+
+  export function reset(): void {
+    later = arm();
+    (globalThis as { later?: Promise<string> }).later = later;
+  }
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  import PromiseKid from "./PromiseKid.brm";
+  import PromiseLateChild from "./PromiseLateChild.brm";
+</script>
+
+<PromiseKid />
+<PromiseLateChild value=(later) />

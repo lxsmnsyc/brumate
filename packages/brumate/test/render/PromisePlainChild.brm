@@ -1,0 +1,37 @@
+<script>
+  import { $client, $effect, $memo, $props, $signal } from 'brumate/signals';
+
+  const { value } = $props<{ value: Promise<string> }>();
+  const shown = $memo(value);
+  let n = $signal(0);
+
+  function note(name: string, ...values: unknown[]): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, ...values]);
+  }
+
+  async function wait() {
+    note('await', await value);
+  }
+
+  function chain() {
+    value.then((result) => note('then', result));
+  }
+
+  $effect(() => {
+    const run = n;
+    value.then((result) => note('effect', run, result));
+  });
+
+  $client(() => {
+    value.then((result) => note('client', result));
+  }, 'load');
+</script>
+
+<button class="await" onClick=wait>Await</button>
+<button class="bump" onClick=(() => n++)>{n}</button>
+<button class="then" onClick=chain>Then</button>
+#loading {
+  <p class="shown">{shown}</p>
+} #else {
+  <p class="shown">Loading</p>
+}

@@ -410,14 +410,164 @@ describe('resume', () => {
       );
     });
 
-    it('throws into a handler that reads a promise prop before it settles', async () => {
-      const { finish } = await streaming('promiseProp');
-      click(document.querySelector('.read')!);
-      await waitFor(() => expect(reads('prop error')).toHaveLength(1));
-      expect(String(reads('prop error')[0]![1])).toContain('await $resolve(memo)');
+    it('lets a child await and chain a promise prop before and after it settles', async () => {
+      const { finish } = await streaming('promisePlain');
+      click(document.querySelector('.await')!);
+      click(document.querySelector('.then')!);
+      click(document.querySelector('.bump')!);
+      await new Promise((done) => setTimeout(done, 20));
+      expect(reads('await')).toEqual([]);
+      expect(text('.shown')).toBe('Loading');
       await finish();
-      click(document.querySelector('.read')!);
-      await waitFor(() => expect(reads('prop')).toEqual([['prop', 'Ada']]));
+      await waitFor(() => {
+        expect(reads('await')).toEqual([['await', 'Ada']]);
+        expect(reads('then')).toEqual([['then', 'Ada']]);
+        expect(reads('effect')).toEqual([['effect', 1, 'Ada']]);
+        expect(reads('client')).toEqual([['client', 'Ada']]);
+      });
+      expect(text('.shown')).toBe('Ada');
+      // After it settled, the same reads give the value at once.
+      click(document.querySelector('.await')!);
+      click(document.querySelector('.then')!);
+      await waitFor(() => {
+        expect(reads('await')).toEqual([
+          ['await', 'Ada'],
+          ['await', 'Ada'],
+        ]);
+        expect(reads('then')).toHaveLength(2);
+      });
+    });
+
+    // Only the slot of the prop is a plain promise: another scope that holds the same promise,
+    // such as a signal, still gets the value when it lands.
+    it.each([
+      ['promiseSiblingChildFirst', 'kid'],
+      ['promiseSiblingKidFirst', 'kid'],
+      ['promisePassOn', 'parent'],
+      ['promiseLate', 'kid'],
+    ])('treats only the prop slot as a promise in %s', async (name, who) => {
+      (globalThis as { reads?: Reads }).reads = [];
+      onTestFinished(() => {
+        delete (globalThis as { reads?: Reads }).reads;
+        delete (globalThis as { later?: unknown }).later;
+      });
+      const server = await import(file(`${name}.brm.ts`));
+      server.reset();
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      await startLoader();
+      server.release('Ada');
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      click(document.querySelector(`.${who}`)!);
+      await waitFor(() => expect(reads(who)).toContainEqual([who, 1, 'Ada']));
+      // The child still awaits its promise prop.
+      click(document.querySelector('.await')!);
+      await waitFor(() => expect(reads('await')).toEqual([['await', 'Ada']]));
+    });
+
+    it('reports no unhandled rejection when a browser-rendered child never reads its rejected promise prop', async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (error: unknown): void => {
+        unhandled.push(error);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      const server = await import(file('promiseRejectBrowser.brm.ts'));
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await startLoader();
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.await')).not.toBeNull());
+      await new Promise((done) => setTimeout(done, 100));
+      expect(unhandled).toEqual([]);
+    });
+
+    it('rejects a streamed promise prop in a handler, with no unhandled rejection', async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (error: unknown): void => {
+        unhandled.push(error);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      (globalThis as { reads?: Reads }).reads = [];
+      onTestFinished(() => {
+        delete (globalThis as { reads?: Reads }).reads;
+      });
+      const server = await import(file('promiseReject.brm.ts'));
+      server.reset();
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      await startLoader();
+      click(document.querySelector('.await')!);
+      server.reject('Nope');
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await waitFor(() => expect(reads('await')).toEqual([['await', 'Nope']]));
+      await new Promise((done) => setTimeout(done, 50));
+      expect(unhandled).toEqual([]);
+    });
+
+    it('reports no unhandled rejection when nobody reads a rejected promise prop', async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (error: unknown): void => {
+        unhandled.push(error);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      const server = await import(file('promiseReject.brm.ts'));
+      server.reset();
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      await startLoader();
+      server.reject('Nope');
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await new Promise((done) => setTimeout(done, 50));
+      expect(unhandled).toEqual([]);
+    });
+
+    it('shows the #catch body when the memo of a promise prop rejects', async () => {
+      await resume('promiseCatchParent', {});
+      expect(text('.name')).toBe('User 1');
+      click(document.querySelector('.next')!);
+      await waitFor(() => expect(text('.caught')).toBe('Caught Error: No user 2'));
+    });
+
+    it('lets a child that the browser renders await and chain a promise prop', async () => {
+      (globalThis as { reads?: Reads }).reads = [];
+      onTestFinished(() => {
+        delete (globalThis as { reads?: Reads }).reads;
+      });
+      const server = await import(file('promiseBrowser.brm.ts'));
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await startLoader();
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.await')).not.toBeNull());
+      click(document.querySelector('.await')!);
+      click(document.querySelector('.then')!);
+      await waitFor(() => {
+        expect(reads('await')).toEqual([['await', 'Ada']]);
+        expect(reads('then')).toEqual([['then', 'Ada']]);
+      });
+      click(document.querySelector('.await')!);
+      await waitFor(() => expect(reads('await')).toHaveLength(2));
     });
 
     it('passes a promise that is not a loading memo to a handler as a value', async () => {

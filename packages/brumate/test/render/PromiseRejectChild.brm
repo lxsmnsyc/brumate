@@ -7,13 +7,14 @@
     ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, ...values]);
   }
 
-  function read() {
+  async function wait() {
     try {
-      note('prop', value);
+      await value;
+      note('await', 'resolved');
     } catch (error) {
-      note('prop error', (error as Error).message);
+      note('await', (error as Error).message);
     }
   }
 </script>
 
-<button class="read" onClick=read>Read</button>
+<button class="await" onClick=wait>Await</button>

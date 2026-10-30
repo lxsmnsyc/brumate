@@ -11,6 +11,7 @@
 
   export function reset(): void {
     later = arm();
+    (globalThis as { later?: Promise<string> }).later = later;
   }
 
   export function release(value: string): void {
@@ -19,7 +20,9 @@
 </script>
 
 <script>
-  import PromisePropChild from './PromisePropChild.brm';
+  import PromiseKid from "./PromiseKid.brm";
+  import PromisePlainChild from "./PromisePlainChild.brm";
 </script>
 
-<PromisePropChild value=(later) />
+<PromisePlainChild value=(later) />
+<PromiseKid />
