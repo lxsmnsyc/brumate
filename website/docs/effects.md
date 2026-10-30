@@ -33,6 +33,7 @@ The effect does work that markup cannot do: it calls `showModal()` and `close()`
 
 - An effect never runs when the page loads. Its first run is after the first change of a value it reads. The server already rendered the page with the current values, so there is nothing to catch up on.
 - It never runs on the server.
+- When it reads a memo that has no value yet, such as one the server still streams, that run is skipped, and the effect runs again when the value arrives, also when it reaches the memo through a function that a parent passed. An effect that needs the value in its own run uses `$resolve(memo).then(…)`, since an effect callback cannot be `async`. If the load fails, the error goes to the nearest [`#try`](./control-flow.md#try-and-catch). The cleanup of the previous run has already run when a run is skipped. See [reads while a memo is pending](./async-data.md#reads-while-a-memo-is-pending).
 - It can write signals. After a change, effects run after the page has updated, once each.
 - In a hidden [`#offscreen`](./control-flow.md#offscreen) body, it does not run. Its cleanup runs when the body hides, and it runs again when the body shows.
 
@@ -245,6 +246,8 @@ A preference such as the theme, a dismissed banner or the width of a panel belon
 - `'load'` runs the callback as soon as the page loads, before anyone interacts with it. The compiler warns about it: prefer `'visible'` or `'idle'`.
 - Use `$client` for browser APIs that the server does not have, such as `window`, `localStorage` or a chart library.
 - With `'visible'`, a callback that reads an element of the same markup through `ref` waits for that element, so a chart low on the page renders when the chart comes into view. See [Behaviors of an element](#behaviors-of-an-element).
+
+A `$client` callback is a handler for reads of a memo that has no value yet: the read is a compile error unless `$isPending` guards it or the code waits with `await $resolve(memo)`. See [reads while a memo is pending](./async-data.md#reads-while-a-memo-is-pending).
 
 ## `#client` blocks
 

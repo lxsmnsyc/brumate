@@ -144,7 +144,7 @@ export function c16($$s) {
   $$b.effect($$s, "c16", () => {
         log$($$s.p, 'a client');
         return () => log$($$s.p, 'a client cleanup');
-      });
+      }, 1);
 }
 
 # Client part: h17

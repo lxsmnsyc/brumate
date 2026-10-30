@@ -119,6 +119,20 @@ export function $isPending(_memo: unknown): boolean {
 }
 
 /**
+ * Waits for a memo to have its value, and gives it. It resolves at once when the memo is settled,
+ * and after the load when the memo loads its first value or loads again. When the inputs of the
+ * memo change while it waits, it waits for the load of the current inputs. It rejects with the
+ * error of the memo, when `timeout` milliseconds pass, or when `signal` aborts. Use it in a handler,
+ * an effect or a `$client` callback, never where a memo computes or markup renders.
+ */
+export function $resolve<T>(
+  _memo: T,
+  _options?: { timeout?: number; signal?: AbortSignal },
+): Promise<Awaited<T>> {
+  return compileTimeOnly('$resolve');
+}
+
+/**
  * True when the parent passed a prop with `$bind`, so a write of it reaches the parent. The prop is
  * one that the component destructures with `let`. Always false on the server, where nothing writes.
  */

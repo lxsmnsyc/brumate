@@ -1,0 +1,56 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  function arm(): Promise<string> {
+    return new Promise<string>((resolve) => {
+      open = resolve;
+    });
+  }
+
+  export let ready = arm();
+
+  /** A new promise for the next test. */
+  export function reset(): void {
+    ready = arm();
+  }
+
+  export function release(value: string): void {
+    open(value);
+  }
+
+</script>
+
+<script>
+  import { $effect, $isPending, $memo, $resolve, $signal } from 'brumate/signals';
+
+  let n = $signal(0);
+  // No markup reads it, so the page does not wait for it.
+  const data = $memo(await ready);
+
+  // What the effect and the handler read, for the test.
+  function note(name: string, ...values: unknown[]): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, ...values]);
+  }
+
+  $effect(() => {
+    note('effect', n, data);
+    return undefined;
+  });
+
+  // The check of $isPending makes the read safe.
+  function read() {
+    if ($isPending(data)) {
+      note('handler', 'pending');
+      return;
+    }
+    note('handler', data);
+  }
+
+  async function wait() {
+    note('waited', await $resolve(data));
+  }
+</script>
+
+<button class="bump" onClick=(() => n++)>{n}</button>
+<button class="read" onClick=read>Read</button>
+<button class="wait" onClick=wait>Wait</button>

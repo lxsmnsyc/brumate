@@ -8,7 +8,7 @@ import { holdPlace, insertHTML } from './insert.ts';
 import { resolve } from './references.ts';
 import type { Handler } from './references.ts';
 import { resolveScope } from './scopes.ts';
-import { insertedChildren } from './state.ts';
+import { insertedChildren, updating } from './state.ts';
 import type { Scope } from './state.ts';
 
 /**
@@ -146,7 +146,10 @@ export class RenderedChildren extends Children {
         }
         return;
       }
-      insertHTML(node, super.render(at));
+      insertHTML(
+        node,
+        updating(() => super.render(at)),
+      );
       node.remove();
     };
     void this.load().then(() => fill(100));

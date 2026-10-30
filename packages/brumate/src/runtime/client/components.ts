@@ -10,10 +10,10 @@ import type { Children } from './children.ts';
 import { callable, spread } from './handlers.ts';
 import { holdPlace, markCloned, parseHTML } from './insert.ts';
 import { nextId, resolveScope, setOwner } from './scopes.ts';
-import { renderedLoads, scopes, valueRenders } from './state.ts';
+import { loadingValues, loads, renderedLoads, scopes, valueRenders } from './state.ts';
 import type { Scope } from './state.ts';
 import { setContent } from './templates.ts';
-import { isThenable, noop } from './updates.ts';
+import { isThenable, noop, set } from './updates.ts';
 
 /** A component's client render function, from its `?brumate-render` module. */
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
@@ -177,8 +177,17 @@ export function setSlots(id: ScopeId, values: unknown[]): void {
   for (let slot = 0; slot < values.length; slot++) {
     const value = values[slot];
     if (isThenable(value)) {
-      renderedLoads.add(`${id}:${slot}`);
-      Promise.resolve(value).catch(noop);
+      const key = `${id}:${slot}`;
+      renderedLoads.add(key);
+      loadingValues.add(value);
+      // A memo that no markup reads, and no change has computed yet, takes its value from the render.
+      Promise.resolve(value).then((result) => {
+        const scope = scopes.get(id);
+        if (scope?.s[slot] === value && !loads.has(key)) {
+          renderedLoads.delete(key);
+          set(scope, slot, result);
+        }
+      }, noop);
     }
   }
 }

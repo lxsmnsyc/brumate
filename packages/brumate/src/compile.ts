@@ -9,6 +9,7 @@ import type { ModuleCall, Origin, ReactiveModule, ResolveModule } from './module
 import { SHARED_QUERY, sharedSites } from './shared-module.ts';
 import type { SharedContext } from './shared-module.ts';
 import type { SourceMap } from './sourcemap.ts';
+import { checkPendingReads } from './pending-reads.ts';
 import { analyze } from './analyze.ts';
 import { generateClient } from './codegen/client.ts';
 import { generateRender } from './codegen/render.ts';
@@ -344,6 +345,9 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
       }
     }
   }
+  checkPendingReads(model.sites, model.pendingCalls, (message, range) =>
+    model.diagnostics.push({ severity: 'error', message, range }),
+  );
   const graph = buildGraph(model, { liveProps: options.liveProps });
   const diagnostics = [
     ...model.diagnostics,

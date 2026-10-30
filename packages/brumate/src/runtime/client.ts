@@ -110,6 +110,7 @@ export {
   isBound,
   memo,
   pending,
+  resolve,
   set,
   timed,
   update,

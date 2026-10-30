@@ -1,0 +1,25 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  function arm(): Promise<string> {
+    return new Promise<string>((resolve) => {
+      open = resolve;
+    });
+  }
+
+  export let later = arm();
+
+  export function reset(): void {
+    later = arm();
+  }
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  import PromisePropChild from './PromisePropChild.brm';
+</script>
+
+<PromisePropChild value=(later) />

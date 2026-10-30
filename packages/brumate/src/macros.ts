@@ -22,6 +22,7 @@ export const MACROS: Set<string> = new Set([
   '$untrack',
   '$produce',
   '$isPending',
+  '$resolve',
   '$isBound',
   '$isPassed',
   '$setContext',

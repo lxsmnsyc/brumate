@@ -171,6 +171,8 @@ export interface Site {
    * the modifiers that `b-on` holds, such as `prevent(Enter)`.
    */
   modifiers?: string[];
+  /** True for the handler prop of a component, such as `onPick=(…)`, which the child calls. */
+  handlerProp?: boolean;
   /** The block whose header this site is. */
   block?: Block;
   /** The trigger of a `$client` site. */
@@ -206,6 +208,8 @@ export interface SemanticModel {
   /** The `$bind` calls, with the declaration of their name and the site of their setter. */
   bindings: { call: oxc.CallExpression; declaration: Declaration; setter?: Site }[];
   diagnostics: Diagnostic[];
+  /** The `$isPending(memo)` and `$resolve(memo)` calls, with the read of their memo. */
+  pendingCalls: { reference: Reference; at: Range }[];
 }
 
 /** Returns true if `scope` is `ancestor` or inside it. */

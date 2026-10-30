@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ResolveGoneChild from './ResolveGoneChild.brm';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+<button class="hide" onClick=(() => (show = false))>Hide</button>
+#if (show) {
+  <ResolveGoneChild />
+}

@@ -47,6 +47,7 @@ import {
   options,
   parts,
   refs,
+  loadingValues,
   renderedLoads,
   scopes,
   setHiding,
@@ -226,6 +227,7 @@ function addScopes(state: PageState, root: string): Scope[] {
       scope.s[i] = value;
       // A value that a later state record settles replaces its promise.
       if (value instanceof Promise) {
+        loadingValues.add(value);
         void value.then((result) => {
           settled.set(value, result);
           if (scope.s[i] === value) {

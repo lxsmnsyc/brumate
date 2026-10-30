@@ -116,7 +116,7 @@ import * as $$b from 'brumate/client';
 export function c4($$s) {
   $$b.effect($$s, "c4", () => {
     $$b.get($$s, 2).focus();
-  });
+  }, 1);
 }
 
 # Client part: h6

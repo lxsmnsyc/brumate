@@ -29,9 +29,13 @@ import {
   loads,
   memoControllers,
   modules,
+  exempt,
+  loadingValues,
   renderedLoads,
   scopes,
   timers,
+  updating,
+  waiters,
 } from './state.ts';
 import type { Scope } from './state.ts';
 
@@ -43,9 +47,23 @@ export function get(scope: Scope, slot: number): any {
     settle(scope);
   }
   const value = scope.s[slot];
-  // A value that the server still streams. A memo that reads it waits for it.
-  if (computing > 0 && value instanceof Promise) {
-    throw new NotReady(value);
+  if (value instanceof Promise) {
+    // A memo that reads any promise waits for it.
+    if (computing > 0) {
+      throw new NotReady(value);
+    }
+    if (loadingValues.has(value)) {
+      // An effect skips the run, and runs again when the value arrives.
+      if (runningEffects > 0) {
+        throw new NotReady(value);
+      }
+      // Code that updates the page reads the promise. Anything else has no value to read.
+      if (exempt === 0) {
+        throw new Error(
+          'This value is still loading. Wait for it with await $resolve(memo), or check $isPending(memo) first',
+        );
+      }
+    }
   }
   // A memo that threw holds its error, and each read of it throws.
   if (value instanceof MemoError) {
@@ -328,6 +346,76 @@ class NotReady extends Error {
 // More than 0 while a memo computes, so reading a value that is still loading stops it.
 let computing = 0;
 
+// More than 0 while an effect runs, so reading a value that is still loading skips the run.
+let runningEffects = 0;
+
+/**
+ * `$resolve(memo, { timeout, signal })`: resolves with the value of the memo once it is no longer
+ * pending, also after a load that its inputs started. `isLoading` tells whether the memo or a
+ * memo that it reads loads, and `read` gives the value or throws the error of the memo.
+ */
+export function resolve(
+  scope: Scope,
+  isLoading: () => boolean,
+  read: () => unknown,
+  options?: { timeout?: number; signal?: AbortSignal },
+): Promise<unknown> {
+  return new Promise((done, reject) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const end = (finish: () => void): void => {
+      clearTimeout(timer);
+      waiters.delete(check);
+      options?.signal?.removeEventListener('abort', abort);
+      finish();
+    };
+    const abort = (): void => end(() => reject(options!.signal!.reason));
+    const check = (): void => {
+      // The memo left the page with its component.
+      if (scopes.get(scope.id) !== scope) {
+        const gone = new Error('The component left the page');
+        gone.name = 'AbortError';
+        end(() => reject(gone));
+        return;
+      }
+      // Writes that wait for the code of an update can start a load of the memo.
+      if (loadingUpdates.size > 0) {
+        void Promise.allSettled(loadingUpdates).then(check);
+        return;
+      }
+      if (!draining) {
+        for (const scope of dirty) {
+          settle(scope);
+        }
+      }
+      if (isLoading()) {
+        return;
+      }
+      try {
+        const value = read();
+        end(() => done(value));
+      } catch (error) {
+        end(() => reject(error));
+      }
+    };
+    if (options?.signal?.aborted) {
+      abort();
+      return;
+    }
+    options?.signal?.addEventListener('abort', abort);
+    if (options?.timeout !== undefined) {
+      timer = setTimeout(
+        () => end(() => reject(new Error(`The value did not load in ${options.timeout} ms`))),
+        options.timeout,
+      );
+    }
+    waiters.set(check, scope);
+    check();
+  });
+}
+
+// The effects that skipped their run, by scope and name, so one run follows the value.
+const skipped: Map<string, object> = new Map();
+
 /** The key of the memo that computes, if any. */
 let memoKey: string | undefined;
 
@@ -421,6 +509,9 @@ export function update(scope: Scope, slot: number, delta: number, prefix: boolea
 }
 
 function trigger(scope: Scope, slot: number): void {
+  for (const check of waiters.keys()) {
+    check();
+  }
   const id = rootOf(scope).m!;
   const children = childrenReady(scope);
   if (modules.has(id) && loadedParts.has(`${id}:update`) && loadingCode.size === 0 && !children) {
@@ -669,7 +760,7 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
               : 'Update loop',
           );
         }
-        fn(target);
+        updating(() => fn(target));
       } catch (error) {
         fail(target, error);
       }
@@ -792,21 +883,62 @@ function flushEffects(): void {
   }
 }
 
-/** Runs an effect or a `$client` callback, after the cleanup of its previous run. */
-export function effect(scope: Scope, name: string, callback: () => unknown): void {
+/**
+ * Runs an effect, or a `$client` callback when `client` is set, after the cleanup of its previous
+ * run. An effect that reads a value that is still loading skips the run, and runs again when the
+ * value arrives. A `$client` callback is a handler: the same read throws.
+ */
+export function effect(
+  scope: Scope,
+  name: string,
+  callback: () => unknown,
+  client?: boolean,
+): void {
   // In a hidden `#offscreen` body, it runs when the body shows.
   if (hiding?.paused(scope, name)) {
     return;
   }
+  const key = `${scope.id}:${name}`;
+  skipped.delete(key);
   scope.cleanups ??= new Map();
   scope.cleanups.get(name)?.();
   let cleanup: unknown;
   const start = DEV ? performance.now() : 0;
+  if (!client) {
+    runningEffects++;
+  }
   try {
     cleanup = callback();
   } catch (error) {
+    if (error instanceof NotReady) {
+      // The run is skipped. It runs again when the value arrives, unless a change ran it first.
+      const token = {};
+      skipped.set(key, token);
+      scope.cleanups.set(name, noop);
+      const again = (): void => {
+        if (skipped.get(key) === token && scopes.get(scope.id) === scope) {
+          effect(scope, name, callback);
+        }
+      };
+      // After the writes that the value starts, which can run the effect themselves.
+      void error.source.then(
+        () => Promise.allSettled(loadingUpdates).then(again),
+        // The error reaches the nearest `#try`.
+        (reason: unknown) => {
+          if (skipped.get(key) === token) {
+            skipped.delete(key);
+            fail(scope, reason);
+          }
+        },
+      );
+      return;
+    }
     // The error goes to the nearest `#try` around the effect. The effect runs again on the next change.
     fail(scope, error);
+  } finally {
+    if (!client) {
+      runningEffects--;
+    }
   }
   // An entry without a cleanup too, so a hidden `#offscreen` body knows what to run again.
   let stored = typeof cleanup === 'function' ? (cleanup as () => void) : noop;
