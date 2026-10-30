@@ -1,7 +1,7 @@
 ---
 id: ui-docs-pages-utilities
 title: Use cases and styled examples on the pages of the utility parts
-status: active
+status: done
 priority: should
 type: docs
 outline: false
