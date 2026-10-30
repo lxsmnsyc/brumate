@@ -298,6 +298,7 @@ export async function runSample(
       request: new Request(location.href),
       // A sample is a lesson, not a server. In production the render logs the error that a
       // `#catch` renders and hides its message, and the sample shows that error on purpose.
+      // Dev mode also turns on the dev-only checks, such as BRM185 for a block in a <p>.
       dev: true,
     },
   );
