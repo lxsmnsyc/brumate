@@ -143,6 +143,17 @@
     }
   }
 
+  // A client navigation runs the cleanups of the page before it removes its markup, so the
+  // tooltip is still in the page. The scope is gone for good, so its stops run.
+  function leavePage() {
+    const element = ref as HTMLElement | undefined;
+    if (element) {
+      runStops(element);
+      // A route that leaves keeps the markup of a portal, so the layer goes here.
+      element.closest('[data-layer]')?.remove();
+    }
+  }
+
   $effect(() => {
     const next = Boolean(trigger?.isOpen);
     $untrack(change(next));
@@ -155,7 +166,7 @@
     if (Boolean(trigger?.isOpen) && !shown) {
       change(true);
     }
-    return leave;
+    return leavePage;
   }, 'load');
 
   function change(next: boolean) {
