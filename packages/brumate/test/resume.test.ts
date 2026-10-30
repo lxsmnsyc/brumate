@@ -3532,6 +3532,87 @@ describe('effect cleanups', () => {
   });
 });
 
+describe('a page that arrived by client navigation', () => {
+  /** Leaves the first page for a route of the same layout, then leaves that route for a third one. */
+  async function leaveArrived(startCore: boolean): Promise<string[]> {
+    const log: string[] = [];
+    (globalThis as { arrivedLog?: string[] }).arrivedLog = log;
+    onTestFinished(() => {
+      delete (globalThis as { arrivedLog?: string[] }).arrivedLog;
+      history.replaceState({}, '', '/');
+    });
+    history.replaceState(null, '', '/');
+    vi.resetModules();
+    const counter = await import(file('counter.brm.ts'));
+    const arrived = await import(file('arrivedCleanups.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const first = await runtime.render(counter.default, {}, { base: 1, route: 'root' });
+    const second = await runtime.render(
+      arrived.default,
+      {},
+      { base: Number(/b-next="(\d+)"/.exec(first.state)![1]), route: 'root' },
+    );
+    const third = await runtime.render(
+      counter.default,
+      {},
+      { base: Number(/b-next="(\d+)"/.exec(second.state)![1]), route: 'root' },
+    );
+    const links = '<a class="to-b" href="/b">B</a><a class="to-c" href="/c">C</a>';
+    const pages = new Map([
+      ['/b', { route: second, root: Number(/b-root="(\d+)"/.exec(second.state)![1]) }],
+      ['/c', { route: third, root: Number(/b-root="(\d+)"/.exec(third.state)![1]) }],
+    ]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string) => {
+        const url = new URL(input, 'http://localhost/').pathname;
+        const { route, root } = pages.get(url)!;
+        return new Response(
+          `<!doctype html><html><head></head><body>${links}${region(url, root, route.html)}${route.state}</body></html>`,
+          { headers: { 'content-type': 'text/html' } },
+        );
+      }),
+    );
+    show(`${links}${region('/', 1, first.html)}${first.state}`);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({ load: (id) => import(modules.get(id)!) });
+    if (startCore) {
+      click(document.querySelector('button')!);
+    }
+    await waitFor(() => expect(text('p')).toBe(startCore ? '1 / 2' : '0 / 0'));
+    // The test DOM does not run the state records that navigation adds, so they run as they come.
+    const records = new MutationObserver((changes) => {
+      for (const change of changes) {
+        for (const node of change.addedNodes) {
+          if (node.nodeName === 'SCRIPT' && (node as Element).hasAttribute('b-roots')) {
+            run(node as Element);
+          }
+        }
+      }
+    });
+    records.observe(document.body, { childList: true });
+    onTestFinished(() => records.disconnect());
+    document.querySelector<HTMLAnchorElement>('.to-b')!.click();
+    await waitFor(() => expect(document.querySelector('.inc')).not.toBeNull());
+    // A click starts the core on the page that arrived, and runs its effects.
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(log).toEqual(expect.arrayContaining(['effect 1', 'client'])));
+    log.length = 0;
+    document.querySelector<HTMLAnchorElement>('.to-c')!.click();
+    await waitFor(() => expect(document.querySelector('.inc')).toBeNull());
+    await pause();
+    return log;
+  }
+
+  for (const startCore of [false, true]) {
+    it(`runs its effect and $client cleanups when the next navigation leaves it${startCore ? ', after the core ran on the first page' : ''}`, async () => {
+      const log = await leaveArrived(startCore);
+      expect(log).toEqual(expect.arrayContaining(['effect cleanup', 'client cleanup']));
+    });
+  }
+});
+
 describe('several roots', () => {
   it('resumes two roots on one page when the second starts above the first', async () => {
     const counter = await import(file('counter.brm.ts'));

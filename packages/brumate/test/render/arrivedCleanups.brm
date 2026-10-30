@@ -1,0 +1,22 @@
+<script>
+  import { $client, $effect, $signal } from 'brumate/signals';
+
+  // An effect and a `$client` callback with cleanups, that a test reads from a log.
+  let count = $signal(0);
+
+  function log(entry: string) {
+    (globalThis as { arrivedLog?: string[] }).arrivedLog?.push(entry);
+  }
+
+  $effect(() => {
+    log(`effect ${count}`);
+    return () => log('effect cleanup');
+  });
+
+  $client(() => {
+    log('client');
+    return () => log('client cleanup');
+  }, 'idle');
+</script>
+
+<button class="inc" onClick=(() => count++)>{count}</button>
