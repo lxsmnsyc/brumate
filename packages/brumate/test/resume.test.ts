@@ -489,33 +489,40 @@ describe('resume', () => {
       expect(unhandled).toEqual([]);
     });
 
-    it('rejects a streamed promise prop in a handler, with no unhandled rejection', async () => {
-      const unhandled: unknown[] = [];
-      const onUnhandled = (error: unknown): void => {
-        unhandled.push(error);
-      };
-      process.on('unhandledRejection', onUnhandled);
-      onTestFinished(() => {
-        process.off('unhandledRejection', onUnhandled);
-      });
-      (globalThis as { reads?: Reads }).reads = [];
-      onTestFinished(() => {
-        delete (globalThis as { reads?: Reads }).reads;
-      });
-      const server = await import(file('promiseReject.brm.ts'));
-      server.reset();
-      const { html, state, pending } = await renderParts(server.default, {});
-      show(html + state);
-      await startLoader();
-      click(document.querySelector('.await')!);
-      server.reject('Nope');
-      for await (const chunk of pending) {
-        appendChunk(chunk);
-      }
-      await waitFor(() => expect(reads('await')).toEqual([['await', 'Nope']]));
-      await new Promise((done) => setTimeout(done, 50));
-      expect(unhandled).toEqual([]);
-    });
+    // In production the state carries a generic error, not the real one.
+    it.each([
+      [true, 'Nope'],
+      [false, 'The page could not compute a value'],
+    ])(
+      'rejects a streamed promise prop in a handler, with no unhandled rejection (dev %s)',
+      async (dev, message) => {
+        const unhandled: unknown[] = [];
+        const onUnhandled = (error: unknown): void => {
+          unhandled.push(error);
+        };
+        process.on('unhandledRejection', onUnhandled);
+        onTestFinished(() => {
+          process.off('unhandledRejection', onUnhandled);
+        });
+        (globalThis as { reads?: Reads }).reads = [];
+        onTestFinished(() => {
+          delete (globalThis as { reads?: Reads }).reads;
+        });
+        const server = await import(file('promiseReject.brm.ts'));
+        server.reset();
+        const { html, state, pending } = await renderParts(server.default, {}, { dev });
+        show(html + state);
+        await startLoader();
+        click(document.querySelector('.await')!);
+        server.reject('Nope');
+        for await (const chunk of pending) {
+          appendChunk(chunk);
+        }
+        await waitFor(() => expect(reads('await')).toEqual([['await', message]]));
+        await new Promise((done) => setTimeout(done, 50));
+        expect(unhandled).toEqual([]);
+      },
+    );
 
     it('reports no unhandled rejection when nobody reads a rejected promise prop', async () => {
       const unhandled: unknown[] = [];

@@ -33,3 +33,7 @@
 ## Size
 
 - Estimated S, actual S (the fix is a few lines; most time went to finding that the cause is in the graph and that a broad rule changes server output).
+
+## After the rebase onto #376
+
+- A promise-typed prop that a memo reads is now a slot, so its rejection reached the page state with the real message. In production `Context.slots` (`runtime/server.ts`) now wraps the promise of a `PropPromise` so a rejection carries a generic error (the message of a `ServerError`, else "The page could not compute a value"). It does not log; the read of the memo or the `#catch` logs the real error. The #373 test of a rejected prop in a handler runs in dev (real error) and in production (generic error).
