@@ -396,6 +396,11 @@
   }
 
   function keyDown(event: KeyboardEvent) {
+    pressed(event);
+    recheck();
+  }
+
+  function pressed(event: KeyboardEvent) {
     if ((event.target as Element).id !== inputId || locked) {
       return;
     }
@@ -431,6 +436,11 @@
   }
 
   function wheel(event: WheelEvent) {
+    scrolled(event);
+    recheck();
+  }
+
+  function scrolled(event: WheelEvent) {
     // A scroll that is mostly sideways, as on a trackpad, is not a step.
     if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
       return;

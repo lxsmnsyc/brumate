@@ -50,3 +50,27 @@ it('clears the error of a NumberField once the number is valid', async () => {
   await page.waitFor(() => expect(page.container.querySelector('.number-error')).toBeNull());
   expect(page.get('.number').hasAttribute('data-invalid')).toBe(false);
 });
+
+function press(input: HTMLInputElement, key: string) {
+  input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+}
+
+it('clears the error of a ColorField when a key steps the color', async () => {
+  const page = await fields();
+  const input = page.get('.color-input') as HTMLInputElement;
+  submit(input);
+  await page.waitFor(() => expect(page.container.querySelector('.color-error')).not.toBeNull());
+  press(input, 'ArrowUp');
+  await page.waitFor(() => expect(page.container.querySelector('.color-error')).toBeNull());
+  expect(page.get('.color').hasAttribute('data-invalid')).toBe(false);
+});
+
+it('clears the error of a NumberField when a key steps the number', async () => {
+  const page = await fields();
+  const input = page.get('.number-input') as HTMLInputElement;
+  submit(input);
+  await page.waitFor(() => expect(page.container.querySelector('.number-error')).not.toBeNull());
+  press(input, 'ArrowUp');
+  await page.waitFor(() => expect(page.container.querySelector('.number-error')).toBeNull());
+  expect(page.get('.number').hasAttribute('data-invalid')).toBe(false);
+});
