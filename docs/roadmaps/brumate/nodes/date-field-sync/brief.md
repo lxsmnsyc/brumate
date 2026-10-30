@@ -1,7 +1,7 @@
 ---
 id: date-field-sync
 title: DateField shows the kept date, follows the locale and blocks an out-of-range submit
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

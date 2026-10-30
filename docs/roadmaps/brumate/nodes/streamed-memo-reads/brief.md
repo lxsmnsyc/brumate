@@ -1,7 +1,7 @@
 ---
 id: streamed-memo-reads
 title: Effects and handlers never read the promise of a memo that is still streaming
-status: todo
+status: active
 priority: should
 type: fix
 outline: false
