@@ -76,6 +76,18 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 - When the values that the body reads are ready as the block renders, such as a value the page waited for with [`await`](#await), the body renders in place: no fallback, no swap. A body that renders a component, a dynamic tag, a template or a prop always streams, because those can wait on their own.
 - On the client, a `#loading` body keeps its content while a new value loads. Use `$isPending` to show that it is loading again.
 
+### When a value fails
+
+A memo that fails inside a `#loading` body renders the nearest [`#catch`](./control-flow.md#try-and-catch), as it does when the page waits for the value. The `#try` can be in the body or around the `#loading` block. The server sends the error to the browser, which renders the `#catch` body in place of the `#try` body. In development the `#catch` gets the real error. In production it gets a generic one, and the server logs the real one.
+
+Without a `#try` around the block, the fallback stays, the server logs the error, and the page gets a `brumate:error` event on `window`.
+
+### When the stream ends early
+
+The browser can lose the connection before a `#loading` body arrives. After a client navigation, the page notices when the stream ends with a fallback still in place. It treats that body as a failure with the message `The page stopped loading before this part arrived`, so the nearest `#catch` renders it, or `brumate:error` fires when there is none. A `#defer` block is not affected, since it waits for its trigger.
+
+When the browser loads the page itself, it gives the page no event for a connection that dropped: Chromium leaves the document loading and fires neither `DOMContentLoaded` nor `load`. The fallbacks stay, and the browser shows that the page did not finish. A reload gets the whole page.
+
 ### Reveal order
 
 `#loading` bodies show as their data arrives, in any order, so a page with several of them can jump around while it streams. `#reveal` shows them in an order:

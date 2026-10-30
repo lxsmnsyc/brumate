@@ -213,6 +213,31 @@ describe('navigate', () => {
     expect(script?.ownerDocument).toBe(document);
   });
 
+  it('fails a #loading boundary whose body never arrives, when the stream ends', async () => {
+    document.head.innerHTML = '';
+    document.body.innerHTML = '<p>old page</p>';
+    const queue: [HTMLScriptElement, () => unknown][] = [];
+    (globalThis as { $brm?: unknown }).$brm = queue;
+    // A boundary that loses its body, and a #defer block, which waits for its trigger.
+    const { response, next } = respond([
+      '<!doctype html><html><head></head><body><!--l0--><p>Loading</p><!--/l-->' +
+        '<template b-b="0:0" b-defer="visible:1:0"></template><!--l1--><p>Later</p><!--/l--></body></html>',
+    ]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response),
+    );
+    const done = navigate({ url: '/next', push: true, leave: async () => {}, enter: () => {} });
+    next();
+    await tick();
+    // The stream ends before the body arrives.
+    next();
+    await done;
+    expect(queue.map(([script]) => script.getAttribute('b-fail'))).toEqual(['0']);
+    expect(String(queue[0]![1]())).toBe('Error: The page stopped loading before this part arrived');
+    delete (globalThis as { $brm?: unknown }).$brm;
+  });
+
   it('gives the swap scripts of a later page the nonce of the loaded page', async () => {
     vi.resetModules();
     const fresh = await import('../src/runtime/navigate.ts');

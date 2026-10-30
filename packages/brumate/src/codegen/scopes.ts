@@ -136,6 +136,31 @@ export function lazyMemos(blocking: Set<Declaration>, inline: Set<Declaration>):
 }
 
 /**
+ * Returns the memos that the body of a `#loading` or `#defer` block waits for, which are not
+ * plain values. Like `lazyMemos`, they hold their error until a read, so a `#try` inside the
+ * body gets it.
+ */
+export function bodyMemos(
+  plan: Plan,
+  blocking: Set<Declaration>,
+  inline: Set<Declaration>,
+): Set<Declaration> {
+  const result = new Set<Declaration>();
+  for (const scope of plan.bodyScopes.values()) {
+    const kind = scope.block?.kind;
+    if (kind !== 'loading' && kind !== 'defer') {
+      continue;
+    }
+    for (const declaration of awaitedMemos(plan, scope, blocking)) {
+      if (!inline.has(declaration)) {
+        result.add(declaration);
+      }
+    }
+  }
+  return result;
+}
+
+/**
  * Returns the memos that a `#loading` body waits for before it renders:
  * the memos that its markup reads, and the memos that a `#loading` body
  * inside it reads with `await`. Memos that the page or a body around it

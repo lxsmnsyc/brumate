@@ -854,4 +854,30 @@ export async function navigate(visit: Visit): Promise<void> {
   }
   sink.close();
   append([...sink.body.childNodes], shift);
+  failPending();
+}
+
+/**
+ * Called when the stream of a page ends. A `#loading` boundary that still shows its fallback
+ * lost its body, such as when the connection dropped, so it fails like a body that threw on the
+ * server. Each `#try` around one renders its `#catch`, and the core reports the rest.
+ */
+function failPending(): void {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_COMMENT);
+  const lost: string[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const id = /^l([\d.]+)$/.exec((node as Comment).data)?.[1];
+    // The body of a `#defer` block waits for its trigger.
+    if (id !== undefined && !(node.previousSibling as Element | null)?.hasAttribute?.('b-defer')) {
+      lost.push(id);
+    }
+  }
+  const queue = ((globalThis as { $brm?: unknown[] }).$brm ??= []);
+  for (const id of lost) {
+    const script = document.createElement('script');
+    script.setAttribute('b-state', '');
+    script.setAttribute('b-fail', id);
+    document.body.append(script);
+    queue.push([script, () => new Error('The page stopped loading before this part arrived')]);
+  }
 }

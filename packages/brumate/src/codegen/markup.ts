@@ -615,7 +615,8 @@ export class Emitter {
 
   /**
    * Waits for a memo that the markup reads, and keeps its error for the read: the markup reads
-   * the memo in place, so the `#try` around the read gets the error.
+   * the memo in place, so the `#try` around the read gets the error. A `#loading` or `#defer`
+   * body waits for the memos that only it reads the same way.
    */
   private awaitHeld(declaration: Declaration): void {
     this.line(`let ${declaration.name};`);
@@ -1893,7 +1894,7 @@ export class Emitter {
     this.line(`$$ctx.defer(${boundary}, async ($$ctx) => {`);
     this.line(`let $$html = '';`);
     for (const declaration of memos) {
-      this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
+      this.awaitHeld(declaration);
     }
     this.emitBody(block.body);
     this.flush();
@@ -1938,7 +1939,7 @@ export class Emitter {
       if (this.inline.has(declaration)) {
         continue;
       }
-      this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
+      this.awaitHeld(declaration);
     }
     this.emitBody(block.body);
     this.flush();

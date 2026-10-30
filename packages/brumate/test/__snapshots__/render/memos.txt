@@ -34,7 +34,7 @@ export default async function Memos($$props: Record<string, never>, $$ctx: $$b.C
     $$ctx.enter($$boundary0);
     const late = $$b.read($$p_late);
     const $$s2 = $$ctx.scope(2, $$s1);
-    $$html += "<p class=\"late\" b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert((late), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
+    $$html += "<p class=\"late\" b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert(($$b.read($$p_late)), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
     $$ctx.leave();
   } else {
     $$html += "<!--l" + $$boundary0 + "-->" + $$ctx.fallbackStart($$boundary0);
@@ -44,9 +44,10 @@ export default async function Memos($$props: Record<string, never>, $$ctx: $$b.C
     $$html += $$ctx.fallbackEnd($$boundary0) + "<!--/l-->";
     $$ctx.defer($$boundary0, async ($$ctx) => {
       let $$html = '';
-      const late = (($$t = $$b.ready($$p_late)) instanceof Promise ? await $$t : $$t);
+      let late;
+      try { late = (($$t = $$b.ready($$p_late)) instanceof Promise ? await $$t : $$t); } catch {}
       const $$s2 = $$ctx.scope(2, $$s1);
-      $$html += "<p class=\"late\" b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert((late), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
+      $$html += "<p class=\"late\" b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert(($$b.read($$p_late)), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
       return $$html;
     });
   }

@@ -1674,6 +1674,87 @@ describe('resume', () => {
     });
   });
 
+  describe('an error inside a streamed #loading body', () => {
+    /** Shows a page with a memo that rejects after the page, and streams the rest. */
+    async function streamed(name: string, dev: boolean): Promise<{ events: unknown[] }> {
+      const server = await import(file(`${name}.brm.ts`));
+      let reject!: (error: unknown) => void;
+      const wait = new Promise<string>((_, fail) => (reject = fail));
+      wait.catch(() => {});
+      const page = await renderParts(server.default, { wait }, { dev });
+      show(page.html + page.state);
+      await startLoader();
+      const events: unknown[] = [];
+      window.addEventListener('brumate:error', (event) => {
+        events.push((event as CustomEvent<{ error: unknown }>).detail.error);
+      });
+      expect(text('.fallback')).toBe('Loading');
+      reject(new Error('The service is down'));
+      for await (const chunk of page.pending) {
+        appendChunk(chunk);
+      }
+      return { events };
+    }
+
+    const messages = [
+      [true, 'Error: The service is down'],
+      [false, 'Error: The page could not render this part'],
+    ] as const;
+
+    it.each(messages)('renders the #catch inside the body (dev %s)', async (dev, message) => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await streamed('streamedCatchInside', dev);
+      await waitFor(() => expect(text('.caught')).toBe(message));
+      expect(document.querySelector('.fallback')).toBeNull();
+      expect(document.querySelector('.data')).toBeNull();
+      // Production logs the real error once, and the browser never sees it.
+      expect(log).toHaveBeenCalledTimes(dev ? 0 : 1);
+      expect(document.body.innerHTML.includes('The service is down')).toBe(dev);
+      log.mockRestore();
+    });
+
+    it.each(messages)('renders the #catch around the boundary (dev %s)', async (dev, message) => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await streamed('streamedCatchAround', dev);
+      await waitFor(() => expect(text('.caught')).toBe(message));
+      expect(document.querySelector('.fallback')).toBeNull();
+      expect(text('.before')).toBe('before');
+      expect(document.body.innerHTML.includes('The service is down')).toBe(dev);
+      log.mockRestore();
+    });
+
+    it('renders the #catch around a boundary whose stream ended, as navigation reports it', async () => {
+      const server = await import(file('streamedCatchAround.brm.ts'));
+      const wait = new Promise<string>(() => {});
+      const page = await renderParts(server.default, { wait });
+      show(page.html + page.state);
+      await startLoader();
+      // The record that navigation adds when the stream ends before the body.
+      const script = document.createElement('script');
+      script.setAttribute('b-state', '');
+      script.setAttribute('b-fail', '0.0');
+      document.body.append(script);
+      (globalThis as unknown as { $brm: unknown[] }).$brm.push([
+        script,
+        () => new Error('The page stopped loading before this part arrived'),
+      ]);
+      await waitFor(() =>
+        expect(text('.caught')).toBe('Error: The page stopped loading before this part arrived'),
+      );
+      expect(document.querySelector('.fallback')).toBeNull();
+    });
+
+    it('reports the error to the page when no #try is around', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { events } = await streamed('streamedCatchNo', true);
+      await waitFor(() => expect(events).toHaveLength(1));
+      expect(String(events[0])).toBe('Error: The service is down');
+      // The fallback stays, as there is nothing to show instead.
+      expect(text('.fallback')).toBe('Loading');
+      log.mockRestore();
+    });
+  });
+
   it('renders a #try body again with reset', async () => {
     await resume('retry', {}, {}, undefined, { dev: true });
     expect(text('.error')).toBe('Error: Not ready');

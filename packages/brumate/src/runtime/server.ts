@@ -2049,6 +2049,8 @@ export interface StateAttributes {
   params?: Record<string, string>;
   /** The ID of the build that rendered the page, on its first record, for skew protection. */
   build?: string;
+  /** The ID of a `#loading` boundary whose body failed. The record is the error. */
+  fail?: ScopeId;
 }
 
 /**
@@ -2088,6 +2090,9 @@ export function stateScript(
   if (attributes.build !== undefined) {
     extra += ` b-build="${escapeAttribute(attributes.build)}"`;
   }
+  if (attributes.fail !== undefined) {
+    extra += ` b-fail="${attributes.fail}"`;
+  }
   return `<script${extra}>${attributes.define ? RECORD : ''}$bR(($R,$b)=>(${code}))</script>`;
 }
 
@@ -2104,6 +2109,31 @@ const SWAP = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"
 // In development, the swap keeps the fallback that it removes and the body that it adds, by
 // boundary, so the devtools can show the fallback again.
 const SWAP_DEV = `function $bS(i){var t=document.querySelector('template[b-l="'+i+'"]'),w=document.createTreeWalker(document.body,128),s,n,d=0;while(n=w.nextNode())if(n.data==='l'+i){s=n;break}if(!s||!t)return;var p=s.parentNode,f=[];for(n=s.nextSibling;n;){if(n.nodeType===8){if(n.data==='/l'){if(!d)break;d--}else if(/^l\\d/.test(n.data))d++}var x=n.nextSibling;f.push(p.removeChild(n));n=x}(self.$bD||(self.$bD={}))[i]={f:f,b:[].slice.call(t.content.childNodes)};p.insertBefore(t.content,s);p.removeChild(s);n&&p.removeChild(n);t.remove()}`;
+
+/**
+ * The record that tells the browser a `#loading` body failed. Its code is the error, and the
+ * browser hands it to the nearest `#try` around the boundary.
+ */
+function failScript(
+  error: unknown,
+  refs: Map<unknown, number>,
+  boundary: ScopeId,
+  root: number | string | undefined,
+  nonce: string | undefined,
+): string {
+  let code: string;
+  try {
+    code = crossSerialize(error, { plugins: syncPlugins, ...serialOptions(), refs });
+  } catch {
+    // An error that cannot be sent is shown by its message.
+    code = crossSerialize(new Error(String(error)), {
+      plugins: syncPlugins,
+      ...serialOptions(),
+      refs,
+    });
+  }
+  return stateScript(code, false, { root, nonce, fail: boundary });
+}
 
 export interface RenderResult {
   /** The markup. A `#loading` body that is not ready shows its fallback. */
@@ -2437,9 +2467,19 @@ export async function render<P>(
         });
       },
       (error: unknown) => {
-        // The fallback stays in the page.
-        console.error(error);
-        turn(skip);
+        if (boundary.cancelled || boundary.around || stopped()) {
+          console.error(error);
+          turn(skip);
+          return;
+        }
+        // The body never arrives, so the browser gets the error, for the `#try` around the boundary.
+        turn((after) => {
+          if (ctx.isDev()) {
+            console.error(error);
+          }
+          pending().push(failScript(caught(error, ctx), refs, boundary.id, root, nonce));
+          skip(after);
+        });
       },
     );
   });
