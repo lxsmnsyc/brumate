@@ -59,7 +59,14 @@ const groups = [
   },
   {
     title: 'Dates',
-    pages: ['calendar', 'range-calendar', 'date-field', 'time-field', 'date-picker'],
+    pages: [
+      'calendar',
+      'range-calendar',
+      'date-field',
+      'time-field',
+      'date-picker',
+      'date-range-picker',
+    ],
   },
   {
     title: 'Overlays',
@@ -446,6 +453,12 @@ export const gallery: { title: string; summary: string; href: string; demo: stri
     summary: 'A line between two parts of the content.',
     href: 'separator',
     demo: 'SeparatorDemo',
+  },
+  {
+    title: 'Heading',
+    summary: 'A heading whose level follows its place, and that names a dialog.',
+    href: 'heading',
+    demo: 'HeadingDialogDemo',
   },
   {
     title: 'Transition',

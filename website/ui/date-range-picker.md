@@ -89,6 +89,16 @@ The `Label`, the description `Text` and the `FieldError` are optional.
 
 The segments take the keys of a [DateField](./date-field.md#keyboard), and the RangeCalendar takes the keys of a [RangeCalendar](./range-calendar.md#keyboard). `Escape` closes the Popover.
 
+## Keyboard
+
+The segments of each DateInput take the keys of a [DateField](./date-field.md#keyboard), and the RangeCalendar takes the keys of a [RangeCalendar](./range-calendar.md#keyboard).
+
+| Key                | Action                                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`              | Moves focus through the segments of the start date, then of the end date, then to the Button.                               |
+| `Enter` or `Space` | On the Button, opens the Popover. In the RangeCalendar, picks the first date, then the last date, and closes the Popover.   |
+| `Escape`           | In the RangeCalendar, drops a first date that has no last date and closes the Popover. Elsewhere in the Popover, closes it. |
+
 ## Controlled and uncontrolled
 
 `value` holds the range as `{ start, end }` of `YYYY-MM-DD` dates, or `null` until both dates are set, and `isOpen` holds whether the Popover shows. How you pass them picks who keeps them. Change a picker below and use the buttons under them:
