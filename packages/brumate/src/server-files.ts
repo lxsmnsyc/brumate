@@ -6,6 +6,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseSync } from 'oxc-parser';
+import type { BrumatePackage } from './packages.ts';
+import { resolveComponentPackage } from './packages.ts';
 import { functionId } from './plan.ts';
 
 /** The import of the stubs, which call server functions with `rpc` of the core. */
@@ -282,4 +284,17 @@ export function findServerImport(importer: string, specifier: string): string | 
       existsSync(candidate) &&
       hasUseServer(readFileSync(candidate, 'utf8')),
   );
+}
+
+/**
+ * The file of server functions that a package of components exports under a
+ * bare specifier, or undefined.
+ */
+export function findPackageServerFile(
+  packages: BrumatePackage[],
+  importer: string,
+  specifier: string,
+): string | undefined {
+  const file = resolveComponentPackage(packages, specifier, importer);
+  return file && isScriptFile(file) && hasUseServer(readFileSync(file, 'utf8')) ? file : undefined;
 }

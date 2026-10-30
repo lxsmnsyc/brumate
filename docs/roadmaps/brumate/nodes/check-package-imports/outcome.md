@@ -7,7 +7,8 @@
 
 ## Deviations
 
-- None. The server-function follow-up for package imports is covered. tsconfig aliases and folder index files are not: they need the alias resolution of vite, which check does not have.
+- `packages/brumate/src/vite.ts`, `packages.ts` and `server-files.ts`: the package resolution of vite moved into `resolveComponentPackage` (packages.ts) and `findPackageServerFile` (server-files.ts), which vite.ts and check-command.ts both call. Vite behavior is unchanged (vite and packages tests pass).
+- The server-function follow-up for package imports is covered. tsconfig aliases and folder index files are not: they need the alias resolution of vite, which check does not have.
 
 ## Stubs left
 
@@ -23,7 +24,7 @@
 
 ## Verification
 
-- `vitest run test/check-command.test.ts`: pass. `npx brumate check --no-types demos` in website/ui: no errors.
+- `vitest run test/check-command.test.ts`: pass. `npx brumate check ui/demos` in website (with the type check): no errors.
 
 ## Size
 
