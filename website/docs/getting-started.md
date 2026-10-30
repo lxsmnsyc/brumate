@@ -169,7 +169,7 @@ An edit of a [module of reactive logic](./reactive-modules.md) updates the compo
 pnpm brumate-tsc --noEmit
 ```
 
-[TypeScript](./typescript.md) describes what is checked, and [Editors](./editor.md) sets up VS Code.
+[TypeScript](./typescript.md) describes what is checked, and [Editors](./editor.md) sets up VS Code. `npx brumate check` compiles every `.brm` file and type-checks the project in one run. `npx brumate skill` copies a skill for coding agents into `.claude/skills/brumate`.
 
 ## Next
 

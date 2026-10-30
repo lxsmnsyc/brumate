@@ -106,6 +106,8 @@ The callback can return a function. It runs before the next run of the effect, a
 
 Stopping writes `running`, so the effect runs again. Its cleanup clears the timer of the last run first.
 
+A value that only the cleanup reads is not a dependency. The effect does not run again when it changes, and the cleanup reads its latest value when it runs.
+
 ### Effects depend on the functions they call
 
 An effect depends on every value that it reads. That includes values read in the functions that it calls, and in callbacks that it creates, such as the timer above. This is why the timer uses `$untrack(seconds++)`: without it, the effect would depend on `seconds` and restart the timer every second.
@@ -352,4 +354,5 @@ Code that runs in the browser can throw: a handler, the promise that an async ha
 - `onError(error, info)` of the loader receives every error first, such as for a reporting service, also the ones that a `#try` catches. `info.scope` is the ID of the scope of the code.
 - A memo that throws, or whose promise rejects, holds the error as its value. Each read of it throws, so the error goes to the nearest `#try` around the code that read it: an insert, a binding, another memo, an effect or a handler. Code that does not read the memo runs as usual, also in the same write. When the memo computes again without a throw, it holds the value again. A memo that nothing reads keeps its error silently. A memo that computes again into a promise keeps its old error while the promise loads.
 - On the server the same holds: a memo that throws fails where it is read, and the `#catch` body of a `#try` around the read renders. This holds wherever the memo is declared. An awaited memo, `const foo = await $memo(bar())`, throws where it is declared, since `await` reads it there.
-- A handler that throws stops there.
+- In production, a memo that fails on the server and holds its error in the browser carries the message of a `ServerError`, or "The page could not compute a value". The real error shows in development only, with its name, message and `cause`. A stack is never sent.
+- A handler that throws stops there. An error of a memo or a binding that a write reaches does not stop the handler. It goes to the nearest `#try`.
