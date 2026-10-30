@@ -78,6 +78,8 @@ export function sameSegments(a: readonly TokenSegment[], b: readonly TokenSegmen
 export interface TokenFieldState {
   value: TokenSegment[];
   setValue: (value: TokenSegment[]) => void;
+  /** Counts the times the box must show the value again: a refused edit and a reset. */
+  revision: number;
   pattern: string | undefined;
   placeholder: string | undefined;
   allowsNewlines: boolean;

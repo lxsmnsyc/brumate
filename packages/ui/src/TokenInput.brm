@@ -55,14 +55,36 @@
   const editable = $memo(!field.isDisabled && !field.isReadOnly);
   // Whether the box was read once, for text that the user typed before this code loaded.
   let synced = $signal(false);
+  // The tokens of the value, each with a key of its text and its place among the same text, so a
+  // new token gets a new stamp, and a stamp is not reused for other text.
+  const marks = $memo(stampsOf(field.value));
   $setContext(TokenContext, { isDisabled: disabled });
 
+  function stampsOf(value: TokenSegment[]) {
+    const seen: Record<string, number> = {};
+    const list: { key: string; segment: TokenSegment }[] = [];
+    for (const segment of value) {
+      if (segment.type === 'token') {
+        const count = seen[segment.text] ?? 0;
+        seen[segment.text] = count + 1;
+        list.push({ key: `${count}:${segment.text}`, segment });
+      }
+    }
+    return list;
+  }
+
   /** Writes the box from the value, with each token copied from its stamp. */
-  function write(value: TokenSegment[]) {
+  function write(value: TokenSegment[], again = true) {
     const element = box;
-    const marks = stamps?.querySelectorAll<HTMLElement>(':scope > [data-stamp]') ?? [];
+    const nodesOfStamps = stamps?.querySelectorAll<HTMLElement>(':scope > [data-stamp]') ?? [];
     if (!element) {
       return;
+    }
+    // The stamps render after the value changes. Stamps of other tokens are old, so wait for
+    // them to render, then write again.
+    const tokens = value.filter((segment) => segment.type === 'token');
+    if (again && tokens.some((segment, at) => nodesOfStamps[at]?.getAttribute('data-stamp') !== segment.text)) {
+      setTimeout(() => write(field!.value, false), 0);
     }
     const nodes: Node[] = [];
     let index = 0;
@@ -74,8 +96,8 @@
       const span = document.createElement('span');
       span.setAttribute('data-token', segment.text);
       span.contentEditable = 'false';
-      const stamp = marks[index++];
-      if (stamp) {
+      const stamp = nodesOfStamps[index++];
+      if (stamp?.getAttribute('data-stamp') === segment.text) {
         span.append(...[...stamp.childNodes].map((node) => node.cloneNode(true)));
       } else {
         span.textContent = segment.text;
@@ -94,6 +116,8 @@
   $effect(() => {
     const value = field.value;
     const element = box;
+    // A refused edit and a reset write the box, though the value stays.
+    field.revision;
     // The composition and the caret are no reason to write: the value is.
     if (!element || $untrack(composing)) {
       return;
@@ -225,11 +249,11 @@
 </div>
 <!-- The tokens of the value, rendered by the template, which the box copies. -->
 <div ref=$bind(stamps) hidden aria-hidden="true">
-  #for (segment of field.value.filter((one) => one.type === 'token') by index) {
-    <span data-stamp>#if (token) {
-        {token(segment)}
+  #for (stamp of marks by stamp.key) {
+    <span data-stamp=(stamp.segment.text)>#if (token) {
+        {token(stamp.segment)}
       } #else {
-        <Token>{segment.text}</Token>
+        <Token>{stamp.segment.text}</Token>
       }</span>
   }
 </div>
