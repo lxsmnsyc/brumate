@@ -29,11 +29,11 @@ async function page() {
 }
 
 it.each([
-  ['modal-trigger', 'overlay', true],
-  ['popover-trigger', 'popover', true],
+  ['modal-trigger', 'overlay', 'modal-dialog', true],
+  ['popover-trigger', 'popover', 'popover-dialog', true],
 ])(
   '%s: releases the page while hidden, and opens again when shown',
-  async (trigger, part, locks) => {
+  async (trigger, part, dialog, locks) => {
     const mounted = await page();
     pressWith(mounted.get(`.${trigger}`));
     await mounted.waitFor(() => expect(visibleNow(`.${part}`)).toBe(true));
@@ -43,9 +43,13 @@ it.each([
     await mounted.waitFor(() => expect(visibleNow(`.${part}`)).toBe(false));
     expect(document.querySelector('[inert]')).toBeNull();
     expect(document.documentElement.style.overflow).toBe('');
+    // Focus went back to the trigger when the overlay released the page.
+    expect(document.activeElement).toBe(mounted.get(`.${trigger}`));
     mounted.get('.toggle').click();
     await mounted.waitFor(() => expect(visibleNow(`.${part}`)).toBe(true));
     expect(document.documentElement.style.overflow).toBe('hidden');
+    expect(mounted.get('.page').closest('[inert]')).not.toBeNull();
+    await mounted.waitFor(() => expect(document.activeElement).toBe(find(`.${dialog}`)));
     expect(mounted.get(`.${trigger}`).getAttribute('aria-expanded')).toBe('true');
   },
 );
