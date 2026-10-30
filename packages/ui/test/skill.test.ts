@@ -2,6 +2,7 @@
 // is written out with its imports of `@brumate/ui` turned into paths in `src`, compiled by the
 // plugin, rendered on the server. A block marked `wrong: message`
 // fails to compile with exactly that message.
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -60,6 +61,10 @@ function blocks(file: string): Block[] {
 
 const all = FILES.flatMap(blocks);
 const right = all.filter((block) => block.info === '');
+const typed = all.flatMap((block) => {
+  const found = /^type-error: (TS\d+)$/.exec(block.info);
+  return found ? [{ block, code: found[1]! }] : [];
+});
 const wrong = all.flatMap((block) => {
   const found = /^wrong: (.*)$/.exec(block.info);
   return found ? [{ block, text: found[1]! }] : [];
@@ -77,8 +82,33 @@ function pathOf(block: Block): string {
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
-for (const block of right) {
+for (const block of [...right, ...typed.map((item) => item.block)]) {
   writeFileSync(pathOf(block), page(block));
+}
+// The files are in a hidden folder that the config of the package does not include, so they get
+// a config of their own.
+writeFileSync(
+  `${OUT}tsconfig.json`,
+  JSON.stringify({ extends: '../../../tsconfig.json', include: ['*.brm'] }),
+);
+
+/** The errors of the type check of the blocks, by file name. */
+function typeErrors(): Map<string, string[]> {
+  let output = '';
+  try {
+    output = execFileSync(
+      'node',
+      [join(ROOT, '../tsc/bin/brumate-tsc.js'), '--noEmit', '-p', `${OUT}tsconfig.json`],
+      { encoding: 'utf8', stdio: 'pipe', cwd: ROOT },
+    );
+  } catch (error) {
+    output = String((error as { stdout?: string }).stdout ?? '');
+  }
+  const found = new Map<string, string[]>();
+  for (const [, file, code] of output.matchAll(/([^/\s]+\.brm)\(\d+,\d+\): error (TS\d+)/g)) {
+    found.set(file!, [...(found.get(file!) ?? []), code!]);
+  }
+  return found;
 }
 
 /** The first error that a file reports, without its place and its code. */
@@ -136,7 +166,8 @@ describe('the skill', () => {
   it('has code blocks to test', () => {
     expect(right.length).toBeGreaterThan(20);
     expect(wrong.length).toBeGreaterThanOrEqual(3);
-    expect(all.length).toBe(right.length + wrong.length);
+    expect(typed.length).toBeGreaterThanOrEqual(1);
+    expect(all.length).toBe(right.length + wrong.length + typed.length);
   });
 
   it('imports only parts that exist', () => {
@@ -171,6 +202,22 @@ describe('the code blocks', () => {
       for (const name of names) {
         expect(block.source).not.toMatch(new RegExp(`\\b${name}\\.value\\b`));
       }
+    },
+  );
+
+  const checked = typeErrors();
+
+  it.each(right.map((block) => [`${block.file}:${block.line}`, block] as const))(
+    '%s type-checks',
+    (_name, block) => {
+      expect(checked.get(pathOf(block).split('/').pop()!) ?? []).toEqual([]);
+    },
+  );
+
+  it.each(typed.map((item) => [`${item.block.file}:${item.block.line}`, item] as const))(
+    '%s fails the type check with the error that it names',
+    (_name, { block, code }) => {
+      expect(checked.get(pathOf(block).split('/').pop()!)).toContain(code);
     },
   );
 

@@ -2,7 +2,15 @@
 
 Most parts render one element, and take `as` to render another, and `ref` to give you that element.
 
-Parts with `as`: `Button`, `Link`, `ToggleButton`, `Label`, `Text`, `Heading`, `Header`, `Group`, `Separator`, `Keyboard`, `VisuallyHidden`, `Toolbar`, `ToggleButtonGroup`, `Disclosure`, `DisclosureGroup`, `DisclosurePanel`, `RadioGroup`, `CheckboxGroup`, `Meter`, `ProgressBar`, `Toast`, `ToastRegion`, `Dialog`, `Popover`, `Tooltip`, the fields (`TextField`, `SearchField`, `NumberField`, `DateField`, `TimeField`, `ColorField`, `Select`, `ComboBox`, `DateRangePicker`), and the collections (`ListBox`, `ListBoxItem`, `Menu`, `MenuItem`, `GridList`, `GridListItem`, `Tree`, `TreeItem`, `Tabs`, `TabList`, `Tab`, `TabPanel`, `TagGroup`, `TagList`, `Tag`). A part that has no `as` renders what its meaning needs, such as the native input of a `Checkbox`.
+Parts with `as` and their default element:
+
+- `button`: `Button`, `ToggleButton`.
+- `a`: `Link` (a `span` without `href`).
+- `label`: `Label`. `span`: `Text`, `FieldError`, `SelectionIndicator`, `VisuallyHidden`. `kbd`: `Keyboard`. `header`: `Header`. `h3`: `Heading` (`h1` to `h6` by `level`). `h2`: `CalendarHeading`. `hr`: `Separator` (a `div` when vertical).
+- `section`: `Dialog`.
+- `div`: `Group`, `Transition`, `Toolbar`, `ToggleButtonGroup`, `Disclosure`, `DisclosureGroup`, `DisclosurePanel`, `RadioGroup`, `CheckboxGroup`, `Meter`, `ProgressBar`, `Toast`, `ToastRegion`, `Popover`, `Tooltip`, the fields (`TextField`, `SearchField`, `NumberField`, `DateField`, `TimeField`, `ColorField`, `Select`, `ComboBox`, `DateRangePicker`) and the collections (`ListBox`, `ListBoxItem`, `Menu`, `MenuItem`, `GridList`, `GridListItem`, `Tree`, `TreeItem`, `Tabs`, `TabList`, `Tab`, `TabPanel`, `TagGroup`, `TagList`, `Tag`).
+
+A part that has no `as` renders what its meaning needs, such as the native input of a `Checkbox`, a `Radio` or a `Switch`, and `Input`, `Table`, `Slider` and `Modal`.
 
 ## An element
 
@@ -18,7 +26,7 @@ Parts with `as`: `Button`, `Link`, `ToggleButton`, `Label`, `Text`, `Heading`, `
 
 - `as="a"` takes `href`: the other props are those of the target. A prop that the target does not take is a type error, and so is a wrong value type.
 - The part keeps its role and its place in the order of Tab. `as="a"` on a `Button` renders `role="button"`.
-- The default element is `div`, `button` for `ToggleButton`, `section` for `Dialog`, and the natural one for the rest (`a`, `label`, `h3`).
+- The default element is in the list above.
 
 ## A ref
 

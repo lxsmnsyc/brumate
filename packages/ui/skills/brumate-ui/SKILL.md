@@ -36,7 +36,7 @@ The parts render the markup, roles and ARIA attributes, handle the keyboard, poi
 - `slot` picks between parts of one type in a context: `<Text slot="description">`, `<Button slot="increment">`, `<Checkbox slot="selection">`. A slot that the context does not have throws. See [references/slots-and-contexts.md](references/slots-and-contexts.md).
 - State is one prop: `value`, `isSelected`, `selectedKey`, `selectedKeys`, `isOpen`. Pass nothing, a plain value (the start), `$bind(signal)` (the part writes your signal) or `$bind(signal, request)` (you decide each write). There is no `defaultValue` or `defaultSelected`. A signal is never a prop value without `$bind`. See [references/state.md](references/state.md).
 - Handlers are `onPress`, `onChange`, `onSelectionChange`, `onOpenChange` and `onAction`, not `onClick`. A part calls a change handler only when the kept value changed, and with that value.
-- A handler is a function in the attribute. The browser wrappers of `brumate/events` (`prevent`, `stop`) wrap it, and a `:prevent` modifier on a part is an error:
+- A handler is a function in the attribute. `prevent` and `stop` of `brumate/events` act on DOM events, such as `onSubmit` of a `Form`, not on the `onPress` of a part. A `:prevent` modifier on a part is an error:
 
 ```brm wrong: Modifiers apply to elements. Put ":prevent" on the element that the component renders
 <script>
@@ -44,6 +44,16 @@ The parts render the markup, roles and ARIA attributes, handle the keyboard, poi
 </script>
 
 <Button onPress:prevent=(() => {})>Go</Button>
+```
+
+- A prop that a part does not take is a type error, found by `brumate-tsc`, not by the compiler:
+
+```brm type-error: TS2561
+<script>
+  import Button from '@brumate/ui/Button.brm';
+</script>
+
+<Button isDisbled>Go</Button>
 ```
 
 - Keys are the `id` of an item: `<ListBoxItem id="cat">`. A number stays a number: `id=(2)`.

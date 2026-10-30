@@ -60,7 +60,6 @@ A date is a `YYYY-MM-DD` string, or `null` until every segment is set. A time is
 ```
 
 - `Calendar` needs `aria-label`. `onChange` gets each date that is picked, and `onFocusChange` each date that gets focus.
-- `RangeCalendar` and `DateRangePicker` hold a start and an end.
 
 ## DatePicker
 
@@ -102,6 +101,74 @@ A `DateField` with a button that opens a `Calendar` in a `Popover` with a `Dialo
     </Dialog>
   </Popover>
 </DatePicker>
+```
+
+## DateRangePicker and RangeCalendar
+
+A range is `{ start, end }` of `YYYY-MM-DD` dates, or `null` until both are set. A `DateRangePicker` has two `DateInput` parts, picked by `slot="start"` and `slot="end"`. `startName` and `endName` post the two dates.
+
+```brm
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>(null);
+</script>
+
+<DateRangePicker startName="from" endName="to" value=$bind(stay)>
+  <Label>Stay</Label>
+  <Group>
+    <DateInput slot="start" />
+    <span aria-hidden="true">-</span>
+    <DateInput slot="end" />
+    <Button aria-label="Calendar">▾</Button>
+  </Group>
+  <Popover>
+    <Dialog>
+      <RangeCalendar>
+        <header>
+          <Button slot="previous">‹</Button>
+          <CalendarHeading />
+          <Button slot="next">›</Button>
+        </header>
+        <CalendarGrid />
+      </RangeCalendar>
+    </Dialog>
+  </Popover>
+</DateRangePicker>
+```
+
+A `RangeCalendar` on its own has the shape of a `Calendar` and needs `aria-label`:
+
+```brm
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>(null);
+</script>
+
+<RangeCalendar aria-label="Stay" value=$bind(stay)>
+  <header>
+    <Button slot="previous">‹</Button>
+    <CalendarHeading />
+    <Button slot="next">›</Button>
+  </header>
+  <CalendarGrid />
+</RangeCalendar>
+<p>{stay ? `From ${stay.start} to ${stay.end}.` : 'Pick the first night, then the last.'}</p>
 ```
 
 ## Colors

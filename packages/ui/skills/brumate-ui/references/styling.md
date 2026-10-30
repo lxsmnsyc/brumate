@@ -43,7 +43,7 @@ The parts render no CSS. Style them with classes and the `data-*` attributes of 
 | `data-invalid`       | A field has errors.                                                     |
 | `data-readonly`      | A field is read only.                                                   |
 | `data-required`      | A field is required.                                                    |
-| `data-pending`       | A `Button` is pending.                                                  |
+| `data-pending`       | A `Button` has `isPending`.                                             |
 | `data-open`          | A `Select`, `ComboBox` or `DatePicker` has its list open.               |
 | `data-expanded`      | A `Disclosure`, a tree row or a panel is open.                          |
 | `data-placeholder`   | A `SelectValue` shows nothing chosen.                                   |

@@ -10,7 +10,6 @@
 ## Deviations
 
 - The blocks render on the server and are not resumed. The plugin scans components at start, so a file that the test writes later has no manifest entry.
-- The blocks are not typechecked, so a wrong prop name inside a block is not caught.
 - Edits outside the owned paths: `.changeset/ui-skill.md` (shared) and the node folder only.
 
 ## Stubs left
@@ -22,7 +21,8 @@
 - A change to a prop, a slot or a rule in `website/ui` that the skill states needs the same change in the skill. The test catches a block that no longer compiles or renders, not a rule that went stale.
 - Blocks import `@brumate/ui/X.brm`, the form a user writes. The test turns it into a path in `src`.
 - A bare `ref=name` on a component compiles. Only an element reports BRM027, so the wrong block uses an element.
-- The skill does not copy itself into a project (no `npx` command like `brumate skill`). The folder ships in the package: copy `node_modules/@brumate/ui/skills/brumate-ui`.
+- Blocks are type-checked with brumate-tsc through a tsconfig that the test writes in `test/.output/skill`. A block marked `type-error: TSxxxx` must fail with that code.
+- No install command: copy `node_modules/@brumate/ui/skills/brumate-ui` into `.claude/skills/` (documented in website/ui/introduction.md).
 
 ## Proposed learnings
 

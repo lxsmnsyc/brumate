@@ -31,6 +31,14 @@ Import a part from `@brumate/ui`, and use it as any component:
 > [!NOTE]
 > `@brumate/ui` is in the brumate repository, and is not published yet.
 
+## A skill for agents
+
+The package ships a skill in the Agent Skills format, for agents that write pages with the parts. Copy it into the skills of your project:
+
+```sh
+cp -r node_modules/@brumate/ui/skills/brumate-ui .claude/skills/
+```
+
 ## How the parts work together
 
 A part that holds other parts gives them their IDs and state through a context. A `TextField` names its `Label`, `Input` and `FieldError` for each other:

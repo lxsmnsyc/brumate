@@ -6,17 +6,22 @@ A part that holds other parts provides props for each type of part in a context.
 
 A `slot` picks which props a part takes from a context that has several parts of one type:
 
-| Slot                     | Part       | Inside                                                                             |
-| ------------------------ | ---------- | ---------------------------------------------------------------------------------- |
-| `description`            | `Text`     | a field                                                                            |
-| `label`, `description`   | `Text`     | a `ListBoxItem` or a `MenuItem` (needs `hasLabel` or `hasDescription` on the item) |
-| `title`                  | `Heading`  | a `Dialog`                                                                         |
-| `close`                  | `Button`   | a `Dialog`, a `Toast`                                                              |
-| `increment`, `decrement` | `Button`   | a `NumberField`                                                                    |
-| `previous`, `next`       | `Button`   | a `Calendar`, a `RangeCalendar`                                                    |
-| `selection`              | `Checkbox` | a `Table` row or column, a `GridList` or `Tree` item                               |
-| `chevron`                | `Button`   | a `TreeItem`                                                                       |
-| `remove`                 | `Button`   | a `Tag`                                                                            |
+| Slot                     | Part        | Inside                                                                                                                                                                                                                  |
+| ------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`            | `Text`      | `TextField`, `SearchField`, `NumberField`, `DateField`, `TimeField`, `ColorField`, `Select`, `ComboBox`, `DatePicker`, `DateRangePicker`, `TokenField`, `CheckboxGroup`, `RadioGroup`, `TagGroup`, `Checkbox`, `Switch` |
+| `label`, `description`   | `Text`      | `ListBoxItem`, `MenuItem` (needs `hasLabel` or `hasDescription` on the item); `label` alone in a `DropZone`                                                                                                             |
+| `title`, `description`   | `Text`      | `ToastContent`                                                                                                                                                                                                          |
+| `errorMessage`           | `Text`      | `Calendar`, for an invalid value                                                                                                                                                                                        |
+| `title`                  | `Heading`   | `Dialog`                                                                                                                                                                                                                |
+| `close`                  | `Button`    | `Dialog`, `Toast`                                                                                                                                                                                                       |
+| `trigger`                | `Button`    | `Disclosure` (also in a `DisclosureGroup`)                                                                                                                                                                              |
+| `increment`, `decrement` | `Button`    | `NumberField`                                                                                                                                                                                                           |
+| `previous`, `next`       | `Button`    | `Calendar`, `RangeCalendar`                                                                                                                                                                                             |
+| `chevron`                | `Button`    | `TreeItem`                                                                                                                                                                                                              |
+| `drag`                   | `Button`    | `GridListItem`, in a `GridList` with `onReorder`                                                                                                                                                                        |
+| `remove`                 | `Button`    | `Tag`                                                                                                                                                                                                                   |
+| `selection`              | `Checkbox`  | `GridListItem`, `TreeItem`, `Row` and `Cell`, `Column`                                                                                                                                                                  |
+| `start`, `end`           | `DateInput` | `DateRangePicker`                                                                                                                                                                                                       |
 
 ```brm
 <script>
