@@ -894,6 +894,25 @@ export async function run({ browser, url, runner }) {
     );
   });
 
+  await step('Tabs: an indicator with a timing function that has commas slides', async () => {
+    await page.goto(`${url}/`);
+    // The value of the .ui-indicator rule of the website.
+    await page.addStyleTag({
+      content:
+        '.planet-bar { transition-duration: 0.25s; transition-timing-function: cubic-bezier(0.2, 0, 0, 1); }',
+    });
+    await page.locator('.planet-tab >> text=Mercury').click();
+    await page.waitForFunction(
+      () => document.querySelector('.planet-panel')?.textContent === 'The closest to the Sun.',
+    );
+    await page.locator('.planet-tab >> text=Venus').click();
+    await page.waitForFunction(() => document.querySelector('.planet-bar')?.getAnimations().length);
+    const easing = await page.evaluate(
+      () => document.querySelector('.planet-bar').getAnimations()[0].effect.getTiming().easing,
+    );
+    assert(easing === 'cubic-bezier(0.2, 0, 0, 1)', `the indicator eases with ${easing}`);
+  });
+
   await step('TagGroup: the arrow keys move between tags, and Delete removes one', async () => {
     await page.goto(`${url}/`);
     await page.locator('#taggroup').evaluate((heading) => heading.setAttribute('tabindex', '-1'));
