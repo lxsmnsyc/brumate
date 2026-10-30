@@ -1,6 +1,6 @@
 ---
 id: store-lens-spike
-title: "Spike: $store and lens utilities"
+title: "Spike: a path-tracked store and lens utilities"
 status: todo
 priority: could
 type: spike
@@ -26,7 +26,7 @@ depends_on:
     why: a store write that touches several paths must be one pass, which batching defines
 ---
 
-# Spike: $store and lens utilities
+# Spike: a path-tracked store and lens utilities
 
 ## Goal
 
