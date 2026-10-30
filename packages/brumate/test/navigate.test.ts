@@ -629,7 +629,7 @@ describe('builds', () => {
 });
 
 /** Navigates to a page whose `<html>` has the given attributes. */
-async function go(url: string, attributes: string): Promise<void> {
+async function visitWith(url: string, attributes: string): Promise<void> {
   vi.stubGlobal(
     'fetch',
     vi.fn(
@@ -645,15 +645,15 @@ async function go(url: string, attributes: string): Promise<void> {
 describe('the attributes of <html>', () => {
   it('keeps those that a script set, and follows those that the pages send', async () => {
     const root = document.documentElement;
-    await go('/a', 'lang="en" class="x"');
+    await visitWith('/a', 'lang="en" class="x"');
     root.dataset.theme = 'dark';
-    await go('/b', 'lang="fr"');
+    await visitWith('/b', 'lang="fr"');
     expect(root.dataset.theme).toBe('dark');
     expect(root.getAttribute('lang')).toBe('fr');
     expect(root.hasAttribute('class')).toBe(false);
     // A value that a script changed on a sent attribute goes back to the page's value.
     root.setAttribute('lang', 'de');
-    await go('/c', 'lang="es"');
+    await visitWith('/c', 'lang="es"');
     expect(root.getAttribute('lang')).toBe('es');
     expect(root.dataset.theme).toBe('dark');
   });
