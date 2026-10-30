@@ -40,7 +40,7 @@ Design basis: silmaril (local checkout at ~/Documents/GitHub/silmaril, README "S
 
 - Asked by the maintainer on 2026-10-30 for a later version.
 - docs/decisions.md says "There is no `$store`." This node changes that decision with the maintainer's approval; record the new decision there.
-- Name clash: store-lens-spike (0.6.0) uses `$store` for a store with reads per path. This node takes the name `$store` for the contract; the spike should pick another name or build on this contract. Settle this before either is refined.
+- Name (the maintainer, 2026-10-30): this node keeps `$store`. store-lens-spike's path-tracked store gets a new name through a goal debate later.
 - Questions for the refine: the server render (read `get()` once, never subscribe); resume (does the value go into the page state, or does the browser call `get()` on resume, and what if they differ); a store read inside `$memo`; batching of several store updates into one pass; whether brumate ships its own small `Store` class (as `silmaril/store` does) or only the contract; types for read-only and writable stores; the cost in the client.
 - Check docs/decisions.md and proposals.md before proposing syntax.
 
