@@ -84,7 +84,7 @@ Each item of the proposals maps to one node, or to built work:
 - Tooling: content mappers -> content-mapper (#3); tests against the current build -> tests-current-build; what ships in the editor -> editor-sizes; devtools -> built except history -> devtools-history; workbench -> built steps 1 to 3, step 4 -> workbench-stories; accessibility checks in tests -> a11y-in-tests; embedding -> embedding
 - Agent support: the skill -> brm-skill; llms.txt -> llms-txt; copy in the devtools -> devtools-copy; brumate check -> brumate-check; the tasks -> skill-tasks; an MCP server -> mcp-server
 - Compiler: steps 1 and 2 -> built (#147, 4d1d0f14, 624e210b); step 3 -> partly built, the rest -> drop-marker-index; step 4 -> values-spike, values-build; fixed walks -> fixed-walks; inlining and constant folding (2026-10-26) -> inlining-spike, inlining-build
-- Client size (2026-10-30, after perf-pass-0.4): prune the runtime by use -> usage-pruning-spike; fewer files and no preload helper -> loader-preload-spike; reactive graph at compile time -> compiled-graph
+- Client size (2026-10-30, after perf-pass-0.4): prune the runtime by use -> usage-pruning-spike; fewer files and no preload helper -> loader-preload-spike; the compiled update table as direct calls -> direct-update-calls
 - Library: Headless UI phases 0 to 7, components from packages, nested TransitionChild -> built; leave animations for `#for` -> for-leave; takeaway 1 -> docs-generator and the four docs-* nodes; 2 -> popover-sizing; 3 -> fieldset; 4 -> context-menu; 5 -> color-scheme; 6 and 9 -> popover-group-alert; 7 and 8 -> part-guides; 10 -> feed; internationalization -> i18n; images -> images; Markdown with components -> markdown-plugin
 - Types (2026-10-26): brumate has no element, markup or component type -> element-types, element-checks; as.ts is unsound and opaque -> as-sound; the parts fall back to `any` for values -> ui-generics
 - Polymorphism and ref (2026-10-26): props types -> props-types-main (#245); `as` on more parts -> as-controls, as-collections; ref forwarding -> built (#243), its visible gap -> visible-forwarded-ref
@@ -102,4 +102,4 @@ Each item of the proposals maps to one node, or to built work:
 - split-ui-examples: the user approves the layout change.
 - props-table, once docs-generator freezes it: the user reviews the page format before the docs nodes start.
 - values-spike and inlining-spike: the user decides go or no-go.
-- usage-pruning-spike and loader-preload-spike: the user decides go or no-go. compiled-graph needs a goal debate before its refine.
+- usage-pruning-spike and loader-preload-spike: the user decides go or no-go. direct-update-calls needs a goal debate before its refine.
