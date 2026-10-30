@@ -147,7 +147,7 @@ export function awaitsPromise(plan: Plan): boolean {
 export function generateRender(
   file: SFCFile,
   plan: Plan,
-  fillOf?: (block: Block) => Fill | undefined,
+  getFill?: (block: Block) => Fill | undefined,
 ): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
@@ -239,9 +239,9 @@ export function generateRender(
     return `$$${name}`;
   }
   const fills =
-    fillOf &&
+    getFill &&
     ((block: Block): Fill | undefined => {
-      const fill = fillOf(block);
+      const fill = getFill(block);
       if (fill?.kind === 'if') {
         const renders: string[] = [];
         for (const name of fill.renders) {
