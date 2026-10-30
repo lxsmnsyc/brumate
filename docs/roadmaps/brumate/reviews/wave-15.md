@@ -33,7 +33,7 @@
 
 ## Process notes
 
-- GOAL.md says one fresh reviewer for every code PR. Until midway through this wave the orchestrator followed plan.py's per-node `self` mode instead, so #363 to #367, #369 and #371 had only the worker's own review. The maintainer was told; fresh reviews after the fact were offered, not run.
+- Review mode: GOAL.md said `review: fresh  # ...`, but plan.py does not strip inline comments, read an unknown value and fell back to `auto`. So S, docs and chore nodes self-reviewed (#363 to #367, #369, #371), which is the skills' intended `auto` behavior. The maintainer chose `review: auto` on 2026-10-30; the parser bug gets a fix in the agent-skills repo.
 - Stale `dist` and `test/.output` in worktrees gave false results twice (a stale brumate dist showed hint strings in a production build; #379's CI failure does not reproduce locally). Rebuild before measuring, and clear generated output when CI and local disagree.
 - CI tests a PR merged with main at trigger time; two PRs that both pass can still fail together (#375 met a new runtime-helpers test). Merge one, then rerun the other's CI when they touch the same files.
 - Agents must never use `pkill` or kill processes they did not start (one killed others' e2e runs).

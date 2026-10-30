@@ -1,6 +1,8 @@
 ---
 milestones: ["0.4.0", "0.5.0", "0.6.0", backlog]
-review: fresh  # the maintainer's choice, 2026-10-27: one fresh reviewer for every pull request that changes code
+# S, docs and chore nodes self-review; the rest, and gates, contracts, releases and hotfixes, get a fresh
+# reviewer (the maintainer, 2026-10-30; this is what ran since 2026-10-27, when an inline comment hid `fresh`).
+review: auto
 merge:
   # The user chose auto-merge on 2026-10-26. The orchestrator merges the pull requests that pass
   # plan.py can-merge, and the rest wait for the user.
