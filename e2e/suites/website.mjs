@@ -962,9 +962,14 @@ export async function run({ browser, url, runner }) {
       await segment(form.locator('.ui-field'), 2).click();
       await page.keyboard.press('End');
       await press(form, 'Save');
+      // A date past maxValue sets a custom validity, so the browser blocks the submit and shows the error.
       assert(
-        (await status(form)) === 'Fix the field first.',
+        (await status(form)) === 'Nothing sent.',
         `the form says "${await status(form)}"`,
+      );
+      assert(
+        await form.locator('.ui-field[data-invalid]').isVisible(),
+        'a date past the limit left the field valid',
       );
       await press(form, 'Reset');
       await press(form, 'Save');
