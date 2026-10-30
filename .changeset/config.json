@@ -5,7 +5,7 @@
   "format": "auto",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "ignore": ["website", "example-todos", "example-ui-kit"],
+  "ignore": ["website", "example-todos", "example-ui-kit", "bench-brumate-0.3"],
   "fixed": [],
   "linked": [],
   "updateInternalDependencies": "patch",

@@ -192,7 +192,7 @@ importers:
   benchmarks/brumate-0.3:
     dependencies:
       brumate:
-        specifier: 0.3.0
+        specifier: npm:brumate@0.3.0
         version: 0.3.0(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
     devDependencies:
       vite:
