@@ -180,18 +180,25 @@ function ownNeeds(file: SFCFile, options: ClassifyOptions): Need[] {
     },
   );
   for (const call of calls) {
-    if (!functions.some((fn) => fn.start <= call.start && call.end <= fn.end)) {
+    let inside = false;
+    for (const fn of functions) {
+      if (fn.start <= call.start && call.end <= fn.end) {
+        inside = true;
+        break;
+      }
+    }
+    if (!inside) {
       needs.push({ kind: 'route', name: (call.callee as oxc.IdentifierReference).name });
     }
   }
   const defaults = elementDefaults(file);
-  const visit = (node: Markup): void => {
+  function visit(node: Markup): void {
     if (node.kind === 'defer') {
       needs.push({ kind: 'defer', name: '#defer' });
     } else if (node.kind === 'dynamic' && !hasElementDefault(node.tag.ast, defaults)) {
       needs.push({ kind: 'dynamic', name: '<{…}>' });
     }
-  };
+  }
   forEachNode(file.children, visit);
   for (const template of file.templates) {
     forEachNode(template.body.children, visit);
@@ -202,14 +209,14 @@ function ownNeeds(file: SFCFile, options: ClassifyOptions): Need[] {
 /** The import specifiers of the components that a file renders. */
 function renderedComponents(file: SFCFile): Set<string> {
   const sources = new Set<string>();
-  const visit = (node: Markup): void => {
+  function visit(node: Markup): void {
     if (node.kind === 'component') {
       const source = importSource(file, node.name.split('.')[0]!);
       if (source) {
         sources.add(source);
       }
     }
-  };
+  }
   forEachNode(file.children, visit);
   for (const template of file.templates) {
     forEachNode(template.body.children, visit);
@@ -217,7 +224,9 @@ function renderedComponents(file: SFCFile): Set<string> {
   return sources;
 }
 
-const key = (need: Need): string => `${need.kind}:${need.name}`;
+function key(need: Need): string {
+  return `${need.kind}:${need.name}`;
+}
 
 /**
  * Classifies every component of a project, by file. A file that does not parse or analyze is
@@ -391,9 +400,15 @@ function propsMembers(
     return undefined;
   }
   if (name === 'Partial' && argument) {
-    return propsMembers(argument, file, seen, known)?.map(
-      (member) => ({ ...member, optional: true }) as oxc.Node,
-    );
+    const members = propsMembers(argument, file, seen, known);
+    if (!members) {
+      return undefined;
+    }
+    const optional: oxc.Node[] = [];
+    for (const member of members) {
+      optional.push({ ...member, optional: true } as oxc.Node);
+    }
+    return optional;
   }
   if (known.has(name)) {
     return known.get(name);
@@ -456,7 +471,7 @@ function literalValue(node: oxc.Node): unknown {
 }
 
 /** The control for a type, or undefined for a function, which the workbench cannot make. */
-function controlOf(
+function getControl(
   type: oxc.Node | undefined,
   file: SFCFile,
   seen = new Set<string>(),
@@ -471,7 +486,7 @@ function controlOf(
     type.typeName.name === 'Bindable' &&
     type.typeArguments?.params[0]
   ) {
-    return controlOf(type.typeArguments.params[0], file, seen);
+    return getControl(type.typeArguments.params[0], file, seen);
   }
   switch (type.type) {
     case 'TSStringKeyword':
@@ -484,7 +499,7 @@ function controlOf(
     case 'TSConstructorType':
       return undefined;
     case 'TSParenthesizedType':
-      return controlOf(type.typeAnnotation, file, seen);
+      return getControl(type.typeAnnotation, file, seen);
     case 'TSArrayType':
     case 'TSTupleType':
       return { kind: 'json', empty: [] };
@@ -505,19 +520,22 @@ function controlOf(
           return { kind: 'json', empty: {} };
         }
         if (declaration?.type === 'TSTypeAliasDeclaration') {
-          return controlOf(declaration.typeAnnotation, file, new Set(seen).add(name));
+          return getControl(declaration.typeAnnotation, file, new Set(seen).add(name));
         }
       }
       return { kind: 'json' };
     case 'TSUnionType': {
-      const types = type.types.filter(
-        (item: oxc.Node) => item.type !== 'TSUndefinedKeyword' && item.type !== 'TSNullKeyword',
-      );
+      const types: oxc.Node[] = [];
+      for (const item of type.types as oxc.Node[]) {
+        if (item.type !== 'TSUndefinedKeyword' && item.type !== 'TSNullKeyword') {
+          types.push(item);
+        }
+      }
       const options: (string | number)[] = [];
       for (const item of types) {
         const value = item.type === 'TSLiteralType' ? literalValue(item.literal) : undefined;
         if (typeof value !== 'string' && typeof value !== 'number') {
-          return types.length === 1 ? controlOf(types[0], file, seen) : { kind: 'json' };
+          return types.length === 1 ? getControl(types[0], file, seen) : { kind: 'json' };
         }
         options.push(value);
       }
@@ -578,7 +596,7 @@ export function propControls(file: SFCFile): Control[] | undefined {
         const control =
           name === 'children'
             ? { kind: 'text' as const }
-            : controlOf(member.typeAnnotation?.typeAnnotation, file);
+            : getControl(member.typeAnnotation?.typeAnnotation, file);
         if (!control) {
           byName.delete(name);
           continue;

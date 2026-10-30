@@ -218,15 +218,19 @@ export async function validateValues(schema: FormSchema, value: unknown): Promis
   const result = (await schema['~standard'].validate(value)) as {
     issues?: readonly { message: string; path?: readonly (PathSegment | { key: PropertyKey })[] }[];
   };
-  return groupIssues(
-    (result.issues ?? []).map((issue) => ({
-      message: String(issue.message),
-      path: issue.path?.map((segment) => {
+  const issues: FormIssue[] = [];
+  for (const issue of result.issues ?? []) {
+    let path: (string | number)[] | undefined;
+    if (issue.path) {
+      path = [];
+      for (const segment of issue.path) {
         const key = typeof segment === 'object' ? segment.key : segment;
-        return typeof key === 'number' ? key : String(key);
-      }),
-    })),
-  );
+        path.push(typeof key === 'number' ? key : String(key));
+      }
+    }
+    issues.push({ message: String(issue.message), path });
+  }
+  return groupIssues(issues);
 }
 
 /**
@@ -259,8 +263,9 @@ export type Intent =
   | { type: 'reset'; name?: string }
   | { type: 'validate'; name: string };
 
-const isIndex = (value: unknown): value is number =>
-  Number.isInteger(value) && (value as number) >= 0 && (value as number) <= MAX_INDEX;
+function isIndex(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= MAX_INDEX;
+}
 
 /**
  * Reads the intent that a submit button posted, as JSON. Undefined for a
@@ -461,14 +466,19 @@ export type Field<T> = FieldState<T> &
 /** The fields of an object, by key. */
 export type Fields<T> = { [K in keyof T]-?: Field<T[K]> };
 
-const isFile = (value: unknown): boolean => typeof Blob !== 'undefined' && value instanceof Blob;
+function isFile(value: unknown): boolean {
+  return typeof Blob !== 'undefined' && value instanceof Blob;
+}
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' &&
-  value !== null &&
-  !Array.isArray(value) &&
-  !isFile(value) &&
-  !(value instanceof Date);
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !isFile(value) &&
+    !(value instanceof Date)
+  );
+}
 
 /** The attributes of a submit button that posts an intent. */
 export function intentButton(
@@ -521,11 +531,15 @@ export function applyLocalIntent(
   const current = localSince(local, result);
   const before = getAt(values.value, parsePath(intent.name)!);
   const length = Array.isArray(before) ? before.length : 0;
-  const keys = [
-    ...(current?.keys[intent.name] ??
-      (result && !result.reset ? result.keys[intent.name] : undefined) ??
-      Array.from({ length }, (_, index) => String(index))),
-  ];
+  let known =
+    current?.keys[intent.name] ?? (result && !result.reset ? result.keys[intent.name] : undefined);
+  if (!known) {
+    known = [];
+    for (let index = 0; index < length; index++) {
+      known.push(String(index));
+    }
+  }
+  const keys = [...known];
   if (intent.type === 'insert') {
     keys.splice(intent.index ?? keys.length, 0, `n${nextKey++}`);
   } else if (intent.type === 'remove') {
@@ -563,24 +577,32 @@ export function formFields<T>(
   // The errors of the reply for the items of a list that the browser changed are of other items.
   const replied: Record<string, string[]> = {};
   for (const [name, messages] of Object.entries(result && !result.reset ? result.errors : {})) {
-    if (!Object.keys(changes?.keys ?? {}).some((list) => name.startsWith(`${list}[`))) {
+    let changed = false;
+    for (const list of Object.keys(changes?.keys ?? {})) {
+      if (name.startsWith(`${list}[`)) {
+        changed = true;
+        break;
+      }
+    }
+    if (!changed) {
       replied[name] = messages;
     }
   }
   // The errors that the browser found replace those of the reply, for the fields that it checked.
   const current = checkedSince(checked, result);
-  const shows = (name: string): boolean =>
-    current !== undefined && (current.all || current.touched.includes(name));
-  const errorsOf = (name: string): string[] | undefined => {
+  function shows(name: string): boolean {
+    return current !== undefined && (current.all || current.touched.includes(name));
+  }
+  function getErrors(name: string): string[] | undefined {
     const source = shows(name) ? current!.errors : replied;
     return Object.hasOwn(source, name) ? source[name] : undefined;
-  };
+  }
 
-  const state = (path: PathSegment[], shown: unknown): FieldState => {
+  function state(path: PathSegment[], shown: unknown): FieldState {
     const name = formatPath(path);
     const fieldId = `${id}-${name}`;
     const errorId = `${fieldId}-error`;
-    const messages = errorsOf(name);
+    const messages = getErrors(name);
     const attrs: FieldAttributes = { name, id: fieldId };
     if (messages) {
       attrs['aria-invalid'] = 'true';
@@ -599,12 +621,12 @@ export function formFields<T>(
       attrs,
       errorAttrs: submitted ? { id: errorId, role: 'alert' } : { id: errorId },
     };
-  };
+  }
 
   // After a submit, the fields show what was posted, and a field that was not posted, such as a
   // checkbox that was not checked, is empty. The default value still gives the shape.
   const posted = value !== undefined;
-  const field = (path: PathSegment[], fallback: unknown, sent: unknown): unknown => {
+  function field(path: PathSegment[], fallback: unknown, sent: unknown): unknown {
     const shown = posted ? sent : fallback;
     const own = state(path, shown);
     // A list stays a list when nothing of it was posted, such as a list with no items.
@@ -613,8 +635,13 @@ export function formFields<T>(
       const name = own.name;
       const itemKeys = Object.hasOwn(keys, name) ? keys[name] : undefined;
       const defaults: unknown[] = Array.isArray(fallback) ? fallback : [];
-      const list = items.map((item, index) =>
-        Object.assign(
+      // oxlint-disable-next-line unicorn/no-new-array -- A list posted with gaps keeps them.
+      const list: unknown[] = new Array(items.length);
+      for (const [index, item] of items.entries()) {
+        if (!(index in items)) {
+          continue;
+        }
+        list[index] = Object.assign(
           // A new item takes the shape of the first default item.
           field([...path, index], defaults[index] ?? defaults[0], item) as object,
           {
@@ -640,8 +667,8 @@ export function formFields<T>(
               press,
             ),
           },
-        ),
-      );
+        );
+      }
       return Object.assign(own, { list, insert: intentButton({ type: 'insert', name }, press) });
     }
     if (isPlainObject(shown) || isPlainObject(fallback)) {
@@ -658,7 +685,7 @@ export function formFields<T>(
       return path.length === 0 ? fields : Object.assign(own, { fields });
     }
     return own;
-  };
+  }
 
   return field([], defaultValue, value) as Fields<T>;
 }

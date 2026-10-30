@@ -296,7 +296,9 @@ export const rawGrammar: Grammar = define_grammar({
 
 let tsxLanguage: ReturnType<typeof tsx> | undefined;
 let cssLanguage: ReturnType<typeof css> | undefined;
-const embedTsx = (input: string) => (tsxLanguage ??= tsx())(input);
+function embedTsx(input: string) {
+  return (tsxLanguage ??= tsx())(input);
+}
 
 export const tokenize: LanguageFactory = create_language(compile(rawGrammar), [
   always(
@@ -322,10 +324,13 @@ export function language(options?: LanguageOptions) {
  */
 export function themeCSS(theme: 'dark' | 'light' = 'dark'): string {
   const palette = theme === 'dark' ? dark : light;
-  return Object.entries(palette)
-    .filter(([token]) => token !== 'background_color')
-    .map(([token, color]) => `.twinkleplop .${token} { color: ${color}; }`)
-    .join('\n');
+  const rules: string[] = [];
+  for (const [token, color] of Object.entries(palette)) {
+    if (token !== 'background_color') {
+      rules.push(`.twinkleplop .${token} { color: ${color}; }`);
+    }
+  }
+  return rules.join('\n');
 }
 
 /** Highlights code of a file by its extension: `.brm`, `.css`, or TypeScript and the rest. */

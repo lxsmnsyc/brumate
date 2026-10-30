@@ -69,12 +69,15 @@ export function renderImport(
   statement: oxc.ImportDeclaration,
   names: Set<string>,
 ): string | undefined {
-  const specifiers = statement.specifiers.filter((specifier) => {
+  const specifiers: typeof statement.specifiers = [];
+  for (const specifier of statement.specifiers) {
     if (specifier.type === 'ImportSpecifier' && specifier.importKind === 'type') {
-      return false;
+      continue;
     }
-    return names.has(specifier.local.name);
-  });
+    if (names.has(specifier.local.name)) {
+      specifiers.push(specifier);
+    }
+  }
   if (statement.importKind === 'type' || specifiers.length === 0) {
     return undefined;
   }
@@ -124,13 +127,17 @@ export function clientModuleScript(file: SFCFile, plan: Plan): string[] {
 
 /** True if the render of the component awaits a promise, outside memos and the code of handlers. */
 export function awaitsPromise(plan: Plan): boolean {
-  return plan.graph.model.sites.some(
-    (site) =>
+  for (const site of plan.graph.model.sites) {
+    if (
       site.awaits &&
       site.kind !== 'memo' &&
       site.kind !== 'function' &&
-      !SKIPPED_SITES.has(site.kind),
-  );
+      !SKIPPED_SITES.has(site.kind)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -140,7 +147,7 @@ export function awaitsPromise(plan: Plan): boolean {
 export function generateRender(
   file: SFCFile,
   plan: Plan,
-  fillOf?: (block: Block) => Fill | undefined,
+  getFill?: (block: Block) => Fill | undefined,
 ): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
@@ -158,9 +165,13 @@ export function generateRender(
       }
     }
   }
-  const usesModule = [...names].some(
-    (name) => model.module.declarations.get(name)?.kind === 'module',
-  );
+  let usesModule = false;
+  for (const name of names) {
+    if (model.module.declarations.get(name)?.kind === 'module') {
+      usesModule = true;
+      break;
+    }
+  }
 
   const header = ["import * as $$b from 'brumate/client';"];
   const moduleBody: string[] = [];
@@ -180,14 +191,16 @@ export function generateRender(
     const isModule = program === file.moduleScript?.program;
     for (const statement of program.body) {
       if (statement.type === 'ImportDeclaration') {
-        const code =
-          isModule && usesModule
-            ? renderImport(
-                file,
-                statement,
-                new Set(statement.specifiers.map((specifier) => specifier.local.name)),
-              )
-            : renderImport(file, statement, names);
+        let code: string | undefined;
+        if (isModule && usesModule) {
+          const own = new Set<string>();
+          for (const specifier of statement.specifiers) {
+            own.add(specifier.local.name);
+          }
+          code = renderImport(file, statement, own);
+        } else {
+          code = renderImport(file, statement, names);
+        }
         if (code) {
           header.push(code);
         }
@@ -208,9 +221,12 @@ export function generateRender(
     }
   }
 
-  const setup = (file.instanceScript?.program.body ?? []).filter(
-    (statement) => statement.type !== 'ImportDeclaration' && !TYPE_DECLARATIONS.has(statement.type),
-  );
+  const setup: oxc.Node[] = [];
+  for (const statement of file.instanceScript?.program.body ?? []) {
+    if (statement.type !== 'ImportDeclaration' && !TYPE_DECLARATIONS.has(statement.type)) {
+      setup.push(statement);
+    }
+  }
   if (plan.styles.css) {
     // A build (`hideNames`) sends the stylesheet without comments and whitespace.
     const css = plan.hideNames ? minifyCSS(plan.styles.css) : plan.styles.css;
@@ -218,16 +234,20 @@ export function generateRender(
   }
   // The render functions of the client entry that fill the nested blocks of the clone.
   const imported = new Set<string>();
-  const local = (name: string): string => {
+  function local(name: string): string {
     imported.add(name);
     return `$$${name}`;
-  };
+  }
   const fills =
-    fillOf &&
+    getFill &&
     ((block: Block): Fill | undefined => {
-      const fill = fillOf(block);
+      const fill = getFill(block);
       if (fill?.kind === 'if') {
-        return { kind: 'if', renders: fill.renders.map(local) };
+        const renders: string[] = [];
+        for (const name of fill.renders) {
+          renders.push(local(name));
+        }
+        return { kind: 'if', renders };
       }
       return fill && { kind: 'for', render: local(fill.render) };
     });
@@ -251,7 +271,7 @@ export function generateRender(
   // The templates of the module, for the markup and the children that clone.
   const constants = new Map<string, string>();
   const templates: string[] = [];
-  const hoist = (code: string): string => {
+  function hoist(code: string): string {
     let name = constants.get(code);
     if (!name) {
       name = `$$t${constants.size}`;
@@ -259,8 +279,8 @@ export function generateRender(
       templates.push(`const ${name} = ${code};`);
     }
     return name;
-  };
-  const emit = (fill: boolean): { emitter: Emitter; cloned: boolean } => {
+  }
+  function emit(fill: boolean): { emitter: Emitter; cloned: boolean } {
     const emitter = new Emitter(file, plan, patch, {
       mode: 'client',
       functions: true,
@@ -278,7 +298,7 @@ export function generateRender(
     emitter.line(emitter.returnLine(0, cloned));
     emitter.close();
     return { emitter, cloned };
-  };
+  }
   let emitted = fills ? emit(true) : undefined;
   // Markup that fills its blocks must clone, so markup that cannot renders again with its blocks.
   if (!emitted?.cloned) {
@@ -288,8 +308,12 @@ export function generateRender(
     emitted = emit(false);
   } else if (imported.size > 0) {
     const base = file.filename.split(/[\\/]/).pop()!;
+    const aliases: string[] = [];
+    for (const name of imported) {
+      aliases.push(`${name} as $$${name}`);
+    }
     header.push(
-      `import { ${[...imported].map((name) => `${name} as $$${name}`).join(', ')} } from ${JSON.stringify(`./${base}?brumate-client`)};`,
+      `import { ${aliases.join(', ')} } from ${JSON.stringify(`./${base}?brumate-client`)};`,
     );
   }
   moduleBody.push(...templates);

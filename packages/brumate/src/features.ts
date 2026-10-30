@@ -49,7 +49,7 @@ export function allFeatures(): Features {
 }
 
 /** The features of the core that a compiled component uses. */
-export function featuresOf(result: CompileResult): Features {
+export function getFeatures(result: CompileResult): Features {
   const client = [result.client, result.render, ...Object.values(result.parts)].join('\n');
   // A `#client` body has no markup on the server, so its titles, listeners and forms are only in
   // the code of the browser.

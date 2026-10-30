@@ -67,12 +67,18 @@ function isLiveProp(declaration: Declaration, liveProps: Set<string> | undefined
   }
   if (declaration.kind === 'props-rest') {
     // The rest changes when a prop that is not destructured by name changes.
-    const named = new Set(
-      [...declaration.scope.declarations.values()].flatMap((item) =>
-        item.propKey ? [item.propKey] : [],
-      ),
-    );
-    return [...liveProps].some((key) => !named.has(key));
+    const named = new Set<string>();
+    for (const item of declaration.scope.declarations.values()) {
+      if (item.propKey) {
+        named.add(item.propKey);
+      }
+    }
+    for (const key of liveProps) {
+      if (!named.has(key)) {
+        return true;
+      }
+    }
+    return false;
   }
   if (declaration.propKey === undefined) {
     // The props object, or a computed key.
@@ -83,14 +89,68 @@ function isLiveProp(declaration: Declaration, liveProps: Set<string> | undefined
   );
 }
 
+/** True if any of the sites was reached. */
+function anyReached(items: { site: Site }[], reached: Set<Site>): boolean {
+  for (const item of items) {
+    if (reached.has(item.site)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** True if any of the items is in the set. */
+function anyIn<T>(items: Iterable<T>, set: Set<T>): boolean {
+  for (const item of items) {
+    if (set.has(item)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** True if a function that the declaration calls asks the client to load again. */
+function callsRefreshed(declaration: Declaration): boolean {
+  for (const callee of declaration.site?.calls ?? []) {
+    if (callee.refreshed) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** True if the declaration is referenced from one of the scopes. */
+function hasRefIn(declaration: Declaration, scopes: Set<Scope>): boolean {
+  for (const ref of declaration.refs) {
+    if (scopes.has(ref.scope)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Finds the scope of the body of a block. */
+function findBodyScope(model: SemanticModel, block: Block & { kind: 'try' }): Scope | undefined {
+  for (const scope of model.scopes) {
+    if (scope.block === block && scope.body === block.body) {
+      return scope;
+    }
+  }
+  return undefined;
+}
+
 /** True if client code reads the `reset` function of a `#try` block. */
 export function resetUsed(model: SemanticModel, block: Block, reached: Set<Site>): boolean {
-  return model.declarations.some(
-    (declaration) =>
+  for (const declaration of model.declarations) {
+    if (
       declaration.kind === 'reset' &&
       declaration.block === block &&
-      declaration.reads.some((read) => reached.has(read.site)),
-  );
+      anyReached(declaration.reads, reached)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Sites whose code runs in the browser after the page renders, and can throw there. */
@@ -103,7 +163,7 @@ const CLIENT_CODE = new Set(['event', 'effect', 'client']);
  * the `#catch` body in the browser, so both bodies ship.
  */
 export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 'try' }): boolean {
-  const body = model.scopes.find((scope) => scope.block === block && scope.body === block.body);
+  const body = findBodyScope(model, block);
   if (body === undefined) {
     return false;
   }
@@ -184,17 +244,17 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
   const incoming = new Map<GraphNode, GraphNode[]>();
   const diagnostics: Diagnostic[] = [];
 
-  const addNode = (node: GraphNode): GraphNode => {
+  function addNode(node: GraphNode): GraphNode {
     nodes.push(node);
     incoming.set(node, []);
     return node;
-  };
-  const addEdge = (from: GraphNode, to: GraphNode): void => {
+  }
+  function addEdge(from: GraphNode, to: GraphNode): void {
     if (!incoming.get(to)!.includes(from)) {
       edges.push({ from, to });
       incoming.get(to)!.push(from);
     }
-  };
+  }
 
   for (const declaration of model.declarations) {
     if (SOURCE_KINDS.has(declaration.kind)) {
@@ -233,7 +293,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
   }
 
   // The values that a site depends on, through the functions it calls.
-  const dependencies = (site: Site, seen = new Set<Site>()): Declaration[] => {
+  function dependencies(site: Site, seen = new Set<Site>()): Declaration[] {
     if (seen.has(site)) {
       return [];
     }
@@ -251,7 +311,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
       }
     }
     return result;
-  };
+  }
 
   for (const [site, node] of siteNodes) {
     // A function prop is a fixed reference to a handler, which reads current values when it runs.
@@ -294,7 +354,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
   const reached = new Set<Site>();
   const created = new Set<Scope>();
 
-  const reach = (site: Site): void => {
+  function reach(site: Site): void {
     if (reached.has(site)) {
       return;
     }
@@ -304,7 +364,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         reach(callee.site);
       }
     }
-  };
+  }
 
   for (let changed = true; changed;) {
     changed = false;
@@ -330,7 +390,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
           // client code of the body renders the `#catch` body.
           (block.kind === 'try' &&
             (resetUsed(model, block, reached) || tryCatchesClient(model, block))) ||
-          (headers.get(block) ?? []).some((node) => live.has(node)) ||
+          anyIn(headers.get(block) ?? [], live) ||
           (block.kind === 'try' && scope.body === block.fallback && tryChanges(block)));
       const templateUsed = scope.kind === 'template' && templateCallChanges(scope);
       if (parentCreated || blockLive || templateUsed) {
@@ -364,23 +424,20 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         // A prop of `let` that client code writes, also when every parent passes a constant.
         (declaration.kind === 'prop' &&
           declaration.writable === true &&
-          declaration.writes.some((write) => reached.has(write.site))) ||
+          anyReached(declaration.writes, reached)) ||
         // A provider above can change the value.
         declaration.kind === 'context' ||
         // A form writes the result of its server function.
         declaration.kind === 'action' ||
         // A server function can ask the client to load the memo again.
-        (isMemoKind(declaration.kind) &&
-          [...(declaration.site?.calls ?? [])].some((callee) => callee.refreshed)) ||
+        (isMemoKind(declaration.kind) && callsRefreshed(declaration)) ||
         // A memo of a prop, which can be a promise: its value arrives later, also in a component
         // that the browser renders.
         (declaration.kind === 'memo' && isPropValue(declaration.site)) ||
         // Handlers write an optimistic value.
-        (declaration.optimistic !== undefined &&
-          declaration.writes.some((write) => reached.has(write.site))) ||
+        (declaration.optimistic !== undefined && anyReached(declaration.writes, reached)) ||
         (declaration.kind === 'signal' &&
-          (declaration.writes.some((write) => reached.has(write.site)) ||
-            declaration.refs.some((ref) => created.has(ref.scope)))) ||
+          (anyReached(declaration.writes, reached) || hasRefIn(declaration, created))) ||
         (declaration.kind === 'error' &&
           declaration.block?.kind === 'try' &&
           tryChanges(declaration.block)) ||
@@ -394,7 +451,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
     for (let propagated = true; propagated;) {
       propagated = false;
       for (const node of nodes) {
-        if (!live.has(node) && incoming.get(node)!.some((from) => live.has(from))) {
+        if (!live.has(node) && anyIn(incoming.get(node)!, live)) {
           live.add(node);
           propagated = true;
         }
@@ -409,18 +466,21 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
   // A template's arguments change when a call to it changes or runs on the client.
   function templateCallChanges(scope: Scope): boolean {
     const template = scope.template && lookup(scope.parent!, scope.template.name);
-    return model.sites.some((site) => {
+    for (const site of model.sites) {
       if (!template || !site.calls.has(template)) {
-        return false;
+        continue;
       }
       const node = siteNodes.get(site);
-      return reached.has(site) || (node !== undefined && live.has(node));
-    });
+      if (reached.has(site) || (node !== undefined && live.has(node))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // A #try can fail on the client only if its body changes there.
   function tryChanges(block: Block & { kind: 'try' }): boolean {
-    const body = model.scopes.find((scope) => scope.block === block && scope.body === block.body);
+    const body = findBodyScope(model, block);
     if (!body) {
       return false;
     }
@@ -429,7 +489,12 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         return true;
       }
     }
-    return model.scopes.some((scope) => created.has(scope) && isWithin(scope, body));
+    for (const scope of model.scopes) {
+      if (created.has(scope) && isWithin(scope, body)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   for (const [site, node] of siteNodes) {

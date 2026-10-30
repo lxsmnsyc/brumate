@@ -7,6 +7,7 @@ import {
   resolveMacros,
 } from './macros.ts';
 import type {
+  Attribute,
   Block,
   Body,
   ComponentNode,
@@ -198,7 +199,12 @@ function isBindableType(annotation: oxc.Node | undefined): boolean {
 /** True for `Promise<...>`, or a union that holds one. */
 function isPromiseType(annotation: oxc.Node | undefined): boolean {
   if (annotation?.type === 'TSUnionType') {
-    return annotation.types.some(isPromiseType);
+    for (const type of annotation.types) {
+      if (isPromiseType(type)) {
+        return true;
+      }
+    }
+    return false;
   }
   if (annotation?.type === 'TSParenthesizedType') {
     return isPromiseType(annotation.typeAnnotation);
@@ -221,14 +227,17 @@ function memberNames(
     members = type.members;
   } else if (type.type === 'TSTypeReference' && type.typeName.type === 'Identifier') {
     const name = type.typeName.name;
-    const statements = [
+    const statements: oxc.Node[] = [];
+    for (const statement of [
       ...(file.moduleScript?.program.body ?? []),
       ...(file.instanceScript?.program.body ?? []),
-    ].map((statement) =>
-      statement.type === 'ExportNamedDeclaration' && statement.declaration
-        ? statement.declaration
-        : statement,
-    );
+    ]) {
+      statements.push(
+        statement.type === 'ExportNamedDeclaration' && statement.declaration
+          ? statement.declaration
+          : statement,
+      );
+    }
     for (const statement of statements) {
       if (statement.type === 'TSInterfaceDeclaration' && statement.id.name === name) {
         members = statement.body.body;
@@ -237,17 +246,45 @@ function memberNames(
       }
     }
   }
-  return (members ?? []).flatMap((member) => {
+  const names: string[] = [];
+  for (const member of members ?? []) {
     const annotation =
       member.type === 'TSPropertySignature' ? member.typeAnnotation?.typeAnnotation : undefined;
     if (!test(annotation) || member.type !== 'TSPropertySignature' || member.computed) {
-      return [];
+      continue;
     }
     if (member.key.type === 'Identifier') {
-      return [member.key.name];
+      names.push(member.key.name);
+    } else if (member.key.type === 'Literal') {
+      names.push(String(member.key.value));
     }
-    return member.key.type === 'Literal' ? [String(member.key.value)] : [];
-  });
+  }
+  return names;
+}
+
+/**
+ * The value, or the values of the keys of an object and the items of a list, also inside
+ * each other, such as `{ slots: { increment: { onPress } } }` or `{ items: [{ run }] }`.
+ */
+function readProvidedValues(value: oxc.Node): oxc.Node[] {
+  const values: oxc.Node[] = [];
+  if (value.type === 'ObjectExpression') {
+    for (const property of value.properties) {
+      if (property.type === 'Property' && !property.computed) {
+        values.push(...readProvidedValues(property.value));
+      }
+    }
+    return values;
+  }
+  if (value.type === 'ArrayExpression') {
+    for (const element of value.elements) {
+      if (element && element.type !== 'SpreadElement') {
+        values.push(...readProvidedValues(element));
+      }
+    }
+    return values;
+  }
+  return [value];
 }
 
 export function analyze(file: SFCFile): SemanticModel {
@@ -367,6 +404,15 @@ class Analyzer {
    * changes the parent's value. It reads the type in the file: a type
    * literal, or an interface or a type alias of the scripts.
    */
+  private isBindableProp(propKey: string): boolean {
+    for (const type of this.propsTypes) {
+      if (bindableNames(type, this.file).includes(propKey)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private checkBindableProps(): void {
     const bindable = new Set<string>();
     for (const type of this.propsTypes) {
@@ -377,18 +423,23 @@ class Analyzer {
     if (bindable.size === 0) {
       return;
     }
-    const props = this.declarations.filter(
-      (declaration) =>
+    const props: Declaration[] = [];
+    const written = new Set<string>();
+    for (const declaration of this.declarations) {
+      if (
         declaration.kind === 'prop' &&
         declaration.scope === this.component &&
         declaration.propKey !== undefined &&
-        bindable.has(declaration.propKey),
-    );
-    const written = new Set(
-      props.filter((declaration) => declaration.writable).map((declaration) => declaration.propKey),
-    );
+        bindable.has(declaration.propKey)
+      ) {
+        props.push(declaration);
+        if (declaration.writable) {
+          written.add(declaration.propKey);
+        }
+      }
+    }
     for (const declaration of props) {
-      if (!written.has(declaration.propKey)) {
+      if (!written.has(declaration.propKey!)) {
         this.report(
           'warning',
           `The prop "${declaration.propKey}" is Bindable, but the component reads it with const and never writes it. Destructure it with let`,
@@ -525,15 +576,22 @@ class Analyzer {
         break;
       }
       if (rest.length > 0) {
-        const keys = rest.map((key) =>
-          key.type === 'Literal' && typeof key.value === 'string' ? key.value : undefined,
-        );
-        const wrong = rest.find((_, index) => {
+        const keys: (string | undefined)[] = [];
+        for (const key of rest) {
+          keys.push(
+            key.type === 'Literal' && typeof key.value === 'string' ? key.value : undefined,
+          );
+        }
+        let wrong: oxc.Node | undefined;
+        for (const [index, item] of rest.entries()) {
           const key = keys[index];
           // A key can name a modifier that must be held, such as `Mod+ArrowDown`.
           const base = key?.replace(/^(?:Mod|Ctrl|Meta|Alt)\+/, '');
-          return base === undefined || !(KEY_NAMES.includes(base) || /^[A-Za-z0-9]$/.test(base));
-        });
+          if (base === undefined || !(KEY_NAMES.includes(base) || /^[A-Za-z0-9]$/.test(base))) {
+            wrong = item;
+            break;
+          }
+        }
         if (!KEY_EVENTS.has(attribute.event)) {
           this.report(
             'error',
@@ -838,9 +896,13 @@ class Analyzer {
         this.report('error', '$id takes no arguments', call);
       }
       const declaration = this.addDeclaration(scope, id.name, 'const', id);
-      declaration.idIndex = [...scope.declarations.values()].filter(
-        (item) => item.idIndex !== undefined,
-      ).length;
+      let idCount = 0;
+      for (const item of scope.declarations.values()) {
+        if (item.idIndex !== undefined) {
+          idCount++;
+        }
+      }
+      declaration.idIndex = idCount;
       return;
     }
 
@@ -1055,23 +1117,11 @@ class Analyzer {
    * `toggle` in `$setContext(Theme, { theme, toggle })`, at any depth.
    */
   private addProvidedFunctions(): void {
-    for (const site of this.sites.filter((item) => item.kind === 'provide')) {
-      // The value, or the values of the keys of an object and the items of a list, also inside
-      // each other, such as `{ slots: { increment: { onPress } } }` or `{ items: [{ run }] }`.
-      const valuesOf = (value: oxc.Node): oxc.Node[] => {
-        if (value.type === 'ObjectExpression') {
-          return value.properties.flatMap((property) =>
-            property.type === 'Property' && !property.computed ? valuesOf(property.value) : [],
-          );
-        }
-        if (value.type === 'ArrayExpression') {
-          return value.elements.flatMap((element) =>
-            element && element.type !== 'SpreadElement' ? valuesOf(element) : [],
-          );
-        }
-        return [value];
-      };
-      for (const part of valuesOf(site.node)) {
+    for (const site of this.sites) {
+      if (site.kind !== 'provide') {
+        continue;
+      }
+      for (const part of readProvidedValues(site.node)) {
         const isFunctionPart =
           isFunction(part) ||
           (part.type === 'Identifier' &&
@@ -1109,8 +1159,11 @@ class Analyzer {
         return;
       }
     }
-    if (call.arguments.slice(1).some((argument) => argument.type === 'SpreadElement')) {
-      this.report('error', 'The arguments of $handler cannot be spread', call);
+    for (const argument of call.arguments.slice(1)) {
+      if (argument.type === 'SpreadElement') {
+        this.report('error', 'The arguments of $handler cannot be spread', call);
+        break;
+      }
     }
     this.createSite('prop', scope, fn, 'handler', {
       handler: call,
@@ -1168,10 +1221,17 @@ class Analyzer {
       if (name === undefined || !WRAPPERS.has(name) || !handler) {
         break;
       }
-      const names = keys.map((key) =>
-        key.type === 'Literal' && typeof key.value === 'string' ? key.value : undefined,
-      );
-      if (names.some((key) => key === undefined)) {
+      const names: (string | undefined)[] = [];
+      let unnamed = false;
+      for (const key of keys) {
+        const keyName =
+          key.type === 'Literal' && typeof key.value === 'string' ? key.value : undefined;
+        if (keyName === undefined) {
+          unnamed = true;
+        }
+        names.push(keyName);
+      }
+      if (unnamed) {
         this.report('error', "Name each key of prevent as a string, such as 'Enter'", node);
       }
       modifiers.push(names.length > 0 ? `${name}(${names.join(',')})` : name);
@@ -1566,9 +1626,7 @@ class Analyzer {
         declaration.kind === 'prop' &&
         this.propsTypes.length > 0 &&
         declaration.propKey !== undefined &&
-        !this.propsTypes.some((type) =>
-          bindableNames(type, this.file).includes(declaration.propKey!),
-        )
+        !this.isBindableProp(declaration.propKey)
       ) {
         this.report(
           'error',
@@ -1630,13 +1688,21 @@ class Analyzer {
         this.linkOptimistic(site.declaration);
       }
       if (site.kind === 'memo' && site.declaration) {
-        const callsServer = [...site.calls].some(
-          (declaration) => declaration.kind === 'server-function',
-        );
+        let callsServer = false;
+        for (const declaration of site.calls) {
+          if (declaration.kind === 'server-function') {
+            callsServer = true;
+            break;
+          }
+        }
         // A function imported from a `'use server'` module is a server function too.
-        const importsServer = site.reads.some(
-          (read) => read.declaration.serverImport !== undefined,
-        );
+        let importsServer = false;
+        for (const read of site.reads) {
+          if (read.declaration.serverImport !== undefined) {
+            importsServer = true;
+            break;
+          }
+        }
         if (callsServer || importsServer || site.awaits) {
           site.declaration.kind = 'async-memo';
         }
@@ -1650,7 +1716,13 @@ class Analyzer {
    */
   private linkOptimistic(declaration: Declaration): void {
     const site = declaration.site!;
-    const source = site.reads.find((read) => read.range.start === site.range.start)?.declaration;
+    let source: Declaration | undefined;
+    for (const read of site.reads) {
+      if (read.range.start === site.range.start) {
+        source = read.declaration;
+        break;
+      }
+    }
     if (!source) {
       return;
     }
@@ -1703,7 +1775,12 @@ class Resolver {
   }
 
   private isLocal(name: string): boolean {
-    return this.locals.some((scope) => scope.has(name));
+    for (const scope of this.locals) {
+      if (scope.has(name)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private withLocals(names: Iterable<string>, callback: () => void): void {
@@ -1764,12 +1841,15 @@ class Resolver {
     }
     const owner = this.site.owner;
     // On an element, it is the value of an input, a select or a text area, or whether a box is checked.
-    const element =
-      this.site.kind === 'attribute' && owner?.kind === 'element'
-        ? owner.attributes.find(
-            (attribute) => attribute.kind === 'value' && attribute.value.ast === this.site.node,
-          )
-        : undefined;
+    let element: Attribute | undefined;
+    if (this.site.kind === 'attribute' && owner?.kind === 'element') {
+      for (const attribute of owner.attributes) {
+        if (attribute.kind === 'value' && attribute.value.ast === this.site.node) {
+          element = attribute;
+          break;
+        }
+      }
+    }
     const onElement =
       element?.kind === 'value' &&
       (element.name === 'value' || element.name === 'checked') &&
@@ -1806,9 +1886,13 @@ class Resolver {
       return;
     }
     declaration.bound = true;
-    const attribute = owner?.attributes.find(
-      (candidate) => candidate.kind === 'value' && candidate.value.ast === this.site.node,
-    );
+    let attribute: Attribute | undefined;
+    for (const candidate of owner?.attributes ?? []) {
+      if (candidate.kind === 'value' && candidate.value.ast === this.site.node) {
+        attribute = candidate;
+        break;
+      }
+    }
     if (attribute?.kind === 'value') {
       (declaration.boundAs ??= new Set()).add(attribute.name);
     }
@@ -1912,12 +1996,12 @@ class Resolver {
       case 'ForInStatement':
       case 'ForOfStatement': {
         const declaration = node.type === 'ForStatement' ? node.init : node.left;
-        const names =
-          declaration?.type === 'VariableDeclaration'
-            ? declaration.declarations.flatMap((item) =>
-                getPatternNames(item.id).map((name) => name.name),
-              )
-            : [];
+        const names: string[] = [];
+        if (declaration?.type === 'VariableDeclaration') {
+          for (const item of declaration.declarations) {
+            names.push(...readPatternNames(item.id));
+          }
+        }
         this.withLocals(names, () => {
           if (node.type === 'ForStatement') {
             this.visitChildren(node);
@@ -1935,7 +2019,11 @@ class Resolver {
       }
       case 'SwitchStatement':
         this.visit(node.discriminant);
-        this.withLocals(lexicalNames(node.cases.flatMap((item) => item.consequent)), () => {
+        const consequents: oxc.Node[] = [];
+        for (const item of node.cases) {
+          consequents.push(...item.consequent);
+        }
+        this.withLocals(lexicalNames(consequents), () => {
           for (const item of node.cases) {
             if (item.test) {
               this.visit(item.test);
@@ -1947,15 +2035,12 @@ class Resolver {
         });
         return;
       case 'CatchClause':
-        this.withLocals(
-          node.param ? getPatternNames(node.param).map((name) => name.name) : [],
-          () => {
-            if (node.param) {
-              this.visitDefaults(node.param);
-            }
-            this.visit(node.body);
-          },
-        );
+        this.withLocals(node.param ? readPatternNames(node.param) : [], () => {
+          if (node.param) {
+            this.visitDefaults(node.param);
+          }
+          this.visit(node.body);
+        });
         return;
       case 'VariableDeclaration':
         for (const declarator of node.declarations) {
@@ -2090,9 +2175,13 @@ class Resolver {
               );
             }
             this.visitChildren(node);
-            const reference = this.site.reads.find(
-              (read) => target?.type === 'Identifier' && read.range.start === target.start,
-            );
+            let reference: Reference | undefined;
+            for (const read of this.site.reads) {
+              if (target?.type === 'Identifier' && read.range.start === target.start) {
+                reference = read;
+                break;
+              }
+            }
             if (target?.type === 'Identifier' && reference) {
               this.analyzer.pendingCalls.push({ reference, at: range(node) });
               if (
@@ -2181,7 +2270,10 @@ class Resolver {
     if (!isSite && hasUseServer(fn)) {
       this.analyzer.report('error', 'Declare server functions at the top level of a script', fn);
     }
-    const names = fn.params.flatMap((param) => getPatternNames(param).map((name) => name.name));
+    const names: string[] = [];
+    for (const param of fn.params) {
+      names.push(...readPatternNames(param));
+    }
     if (fn.type === 'FunctionExpression' && fn.id) {
       names.push(fn.id.name);
     }
@@ -2343,13 +2435,22 @@ function unwrapTypes(node: oxc.Node): oxc.Node {
   return node;
 }
 
+/** Returns the names that a binding pattern declares. */
+function readPatternNames(pattern: oxc.Node): string[] {
+  const names: string[] = [];
+  for (const name of getPatternNames(pattern)) {
+    names.push(name.name);
+  }
+  return names;
+}
+
 /** Returns the names that statements declare in their own block. */
 function lexicalNames(statements: oxc.Node[]): string[] {
   const names: string[] = [];
   for (const statement of statements) {
     if (statement.type === 'VariableDeclaration') {
       for (const declarator of statement.declarations) {
-        names.push(...getPatternNames(declarator.id).map((name) => name.name));
+        names.push(...readPatternNames(declarator.id));
       }
     } else if (
       (statement.type === 'FunctionDeclaration' || statement.type === 'ClassDeclaration') &&
@@ -2369,7 +2470,7 @@ function varNames(node: oxc.Node, names: string[] = []): string[] {
     }
     if (child.type === 'VariableDeclaration' && child.kind === 'var') {
       for (const declarator of child.declarations) {
-        names.push(...getPatternNames(declarator.id).map((name) => name.name));
+        names.push(...readPatternNames(declarator.id));
       }
     }
     varNames(child, names);
@@ -2383,7 +2484,7 @@ function varNames(node: oxc.Node, names: string[] = []): string[] {
  */
 function freeNames(node: oxc.Node): Set<string> {
   const free = new Set<string>();
-  const visit = (current: oxc.Node, bound: Set<string>): void => {
+  function visit(current: oxc.Node, bound: Set<string>): void {
     if (isFunction(current)) {
       const inner = new Set(bound);
       for (const param of current.params) {
@@ -2425,7 +2526,7 @@ function freeNames(node: oxc.Node): Set<string> {
     for (const [, child] of children(current)) {
       visit(child, bound);
     }
-  };
+  }
   visit(node, new Set());
   return free;
 }

@@ -65,12 +65,23 @@ export function pruneBuilds(
       builds = [];
     }
   }
-  builds = builds.filter((build) => build.id !== id);
+  const others: BuildEntry[] = [];
+  for (const build of builds) {
+    if (build.id !== id) {
+      others.push(build);
+    }
+  }
+  builds = others;
   builds.push({ id, at: now, files });
   builds.sort((a, b) => a.at - b.at);
   const kept = builds.slice(Math.max(0, builds.length - 1 - keep));
   const dropped = builds.slice(0, builds.length - kept.length);
-  const keptFiles = new Set(kept.flatMap((build) => build.files));
+  const keptFiles = new Set<string>();
+  for (const build of kept) {
+    for (const file of build.files) {
+      keptFiles.add(file);
+    }
+  }
   for (const build of dropped) {
     for (const file of build.files) {
       if (!keptFiles.has(file)) {
@@ -81,5 +92,9 @@ export function pruneBuilds(
   mkdirSync(path.join(directory, '.brumate'), { recursive: true });
   writeFileSync(path.join(directory, BUILD_FILE), `${JSON.stringify({ build: id })}\n`);
   writeFileSync(list, `${JSON.stringify({ builds: kept }, null, 2)}\n`);
-  return dropped.map((build) => build.id);
+  const droppedIds: string[] = [];
+  for (const build of dropped) {
+    droppedIds.push(build.id);
+  }
+  return droppedIds;
 }

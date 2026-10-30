@@ -43,7 +43,7 @@ export interface PrerenderManifest {
 type Handle = (request: Request, options: object) => Promise<Response | undefined>;
 
 /** The file of a page: `index.html` in a folder of its path. */
-function fileOf(pathname: string): string {
+function getPageFile(pathname: string): string {
   const clean = pathname.replace(/^\/+|\/+$/g, '');
   return clean ? `${clean}/index.html` : 'index.html';
 }
@@ -93,7 +93,13 @@ export async function prerender(
   const manifest = JSON.parse(
     await readFile(path.join(client, '.vite/manifest.json'), 'utf8'),
   ) as Record<string, ManifestChunk>;
-  const entry = Object.values(manifest).find((chunk) => chunk.isEntry);
+  let entry: ManifestChunk | undefined;
+  for (const chunk of Object.values(manifest)) {
+    if (chunk.isEntry) {
+      entry = chunk;
+      break;
+    }
+  }
   if (!entry) {
     throw new Error('The client build has no entry. Build the client before the server.');
   }
@@ -117,13 +123,13 @@ export async function prerender(
     }
     // oxlint-disable-next-line no-await-in-loop -- Pages render one by one, and each can add links.
     const html = await response.text();
-    const file = path.join(client, fileOf(pathname));
+    const file = path.join(client, getPageFile(pathname));
     // oxlint-disable-next-line no-await-in-loop -- Pages render one by one, and each can add links.
     await mkdir(path.dirname(file), { recursive: true });
     // oxlint-disable-next-line no-await-in-loop -- Pages render one by one, and each can add links.
     await writeFile(file, html);
     written.push(pathname);
-    pages[pathname] = { file: fileOf(pathname), scripts: scriptHashes(html) };
+    pages[pathname] = { file: getPageFile(pathname), scripts: scriptHashes(html) };
     if (options.crawl !== false) {
       for (const link of links(html, base)) {
         if (!seen.has(link)) {
@@ -141,10 +147,13 @@ export async function prerender(
     written.push('404');
     pages['404'] = { file: '404.html', scripts: scriptHashes(html) };
   }
-  const result: PrerenderManifest = {
-    pages,
-    scripts: [...new Set(Object.values(pages).flatMap((page) => page.scripts))],
-  };
+  const scripts = new Set<string>();
+  for (const page of Object.values(pages)) {
+    for (const script of page.scripts) {
+      scripts.add(script);
+    }
+  }
+  const result: PrerenderManifest = { pages, scripts: [...scripts] };
   await mkdir(path.join(client, '.brumate'), { recursive: true });
   await writeFile(
     path.join(client, '.brumate/prerender.json'),

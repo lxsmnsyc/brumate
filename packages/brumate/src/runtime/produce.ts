@@ -41,7 +41,7 @@ function prepare(state: DraftState): Record<PropertyKey, unknown> {
   return state.copy!;
 }
 
-function stateOf(value: unknown): DraftState | undefined {
+function getDraftState(value: unknown): DraftState | undefined {
   return typeof value === 'object' && value !== null
     ? ((value as Record<PropertyKey, unknown>)[DRAFT] as DraftState | undefined)
     : undefined;
@@ -139,7 +139,7 @@ function finalize(state: DraftState): unknown {
   }
   // Drafts can also be assigned to other keys, such as when an array is reordered.
   for (const key of Reflect.ownKeys(copy)) {
-    const draft = stateOf(copy[key]);
+    const draft = getDraftState(copy[key]);
     if (draft) {
       copy[key] = finalize(draft);
     }
@@ -168,7 +168,7 @@ export function produce<T>(base: T, recipe: (draft: T) => T | void): T {
 
 /** Replaces the drafts in a value that a recipe returns, such as the result of `draft.filter(…)`. */
 function resolve(value: unknown, seen: Set<unknown>): unknown {
-  const draft = stateOf(value);
+  const draft = getDraftState(value);
   if (draft) {
     return finalize(draft);
   }

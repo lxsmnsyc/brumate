@@ -122,7 +122,13 @@ interface Plan {
  */
 function plan(old: Region[], next: Region[], result: Plan): Plan | undefined {
   for (const region of next) {
-    const before = old.find((item) => item.name === region.name);
+    let before: Region | undefined;
+    for (const item of old) {
+      if (item.name === region.name) {
+        before = item;
+        break;
+      }
+    }
     if (!before) {
       return undefined;
     }
@@ -193,12 +199,13 @@ function planRoutes(next: Document, state: Element | null, requested: number): P
     replace: [],
     alias: new Map(),
   });
-  if (
-    !result ||
-    result.replace.length === 0 ||
-    !result.replace.every(([before, region]) => complete(before) && complete(region))
-  ) {
+  if (!result || result.replace.length === 0) {
     return undefined;
+  }
+  for (const [before, region] of result.replace) {
+    if (!complete(before) || !complete(region)) {
+      return undefined;
+    }
   }
   return result;
 }
@@ -229,9 +236,19 @@ function replaceRoutes(next: Document, state: Element, result: Plan): Node[] {
   }
   keepStyles(removed);
   // The core drops the scopes of the old routes, and adds only the scopes of the new ones.
-  state.setAttribute('b-drop', result.replace.map(([before]) => before.root).join(','));
-  state.setAttribute('b-roots', result.replace.map(([, region]) => region.root).join(','));
-  state.setAttribute('b-alias', [...result.alias].map(([from, to]) => `${from}:${to}`).join(','));
+  const dropped: string[] = [];
+  const roots: string[] = [];
+  for (const [before, region] of result.replace) {
+    dropped.push(before.root);
+    roots.push(region.root);
+  }
+  const aliases: string[] = [];
+  for (const [from, to] of result.alias) {
+    aliases.push(`${from}:${to}`);
+  }
+  state.setAttribute('b-drop', dropped.join(','));
+  state.setAttribute('b-roots', roots.join(','));
+  state.setAttribute('b-alias', aliases.join(','));
   // The records run as they are added, after the IDs and these attributes are set.
   for (const script of next.body.querySelectorAll<HTMLScriptElement>(STATE)) {
     document.body.append(runnable(script));
@@ -267,10 +284,28 @@ function announce(text: string): void {
  * cannot take the focus gets `tabindex="-1"` until it loses it.
  */
 function moveFocus(added: Node[]): void {
-  const elements = added.filter((node): node is Element => node.nodeType === 1);
-  const heading =
-    elements.find((element) => element.matches('h1')) ??
-    elements.map((element) => element.querySelector('h1')).find(Boolean);
+  const elements: Element[] = [];
+  for (const node of added) {
+    if (node.nodeType === 1) {
+      elements.push(node as Element);
+    }
+  }
+  // An added element that is an `<h1>` wins over one that holds an `<h1>`.
+  let heading: Element | null | undefined;
+  for (const element of elements) {
+    if (element.matches('h1')) {
+      heading = element;
+      break;
+    }
+  }
+  if (!heading) {
+    for (const element of elements) {
+      heading = element.querySelector('h1');
+      if (heading) {
+        break;
+      }
+    }
+  }
   const target = (heading ?? document.querySelector('main') ?? document.body) as HTMLElement;
   if (!target.hasAttribute('tabindex') && target !== document.body) {
     target.setAttribute('tabindex', '-1');
@@ -314,13 +349,13 @@ const IDS = ['b-v', 'b-l', 'b-h', 'b-next'];
  */
 function shiftIds(root: Node, shift: Shift): void {
   // An ID inside a boundary moves with its boundary, the number before the first dot.
-  const add = (value: string): string => {
+  function add(value: string): string {
     const dot = value.indexOf('.');
     return dot === -1
       ? String(Number(value) + shift.by)
       : `${Number(value.slice(0, dot)) + shift.by}${value.slice(dot)}`;
-  };
-  const visit = (node: Node): void => {
+  }
+  function visit(node: Node): void {
     if (node.nodeType === 8) {
       const comment = node as Comment;
       const region = REGION.exec(comment.data);
@@ -358,16 +393,12 @@ function shiftIds(root: Node, shift: Shift): void {
     // `change=Switch#h4@5.0` or `click=App#h2@5@%5B1%5D` with the arguments of `$handler`.
     const on = element.getAttribute('b-on');
     if (on?.includes('@')) {
-      element.setAttribute(
-        'b-on',
-        on
-          .split(' ')
-          .map((entry) => {
-            const [ref, scope, ...args] = entry.split('@');
-            return scope === undefined ? entry : [ref, add(scope), ...args].join('@');
-          })
-          .join(' '),
-      );
+      const entries: string[] = [];
+      for (const entry of on.split(' ')) {
+        const [ref, scope, ...args] = entry.split('@');
+        entries.push(scope === undefined ? entry : [ref, add(scope), ...args].join('@'));
+      }
+      element.setAttribute('b-on', entries.join(' '));
     }
     // A `#defer` block: `<trigger>:<boundary>:<base>`. The page now renders from the new base.
     const defer = element.getAttribute('b-defer');
@@ -394,7 +425,7 @@ function shiftIds(root: Node, shift: Shift): void {
       : element.childNodes) {
       visit(child);
     }
-  };
+  }
   visit(root);
 }
 
@@ -415,13 +446,13 @@ function base(): number {
 let loadedNonce: string | undefined;
 
 /** The nonce of a script. Browsers hide the attribute once the page loads, and keep the property. */
-function nonceOf(script: HTMLScriptElement): string | null {
+function readNonce(script: HTMLScriptElement): string | null {
   return script.nonce || script.getAttribute('nonce');
 }
 
 function pageNonce(): string | undefined {
   for (const script of loadedNonce ? [] : document.querySelectorAll('script')) {
-    loadedNonce = nonceOf(script) || undefined;
+    loadedNonce = readNonce(script) || undefined;
     if (loadedNonce) {
       break;
     }
@@ -438,7 +469,7 @@ function runnable(script: HTMLScriptElement): HTMLScriptElement {
     }
   }
   // A script that its server gave a nonce runs under the policy of the loaded page.
-  const nonce = nonceOf(script);
+  const nonce = readNonce(script);
   if (nonce) {
     copy.nonce = pageNonce() ?? nonce;
     // A DOM without the property, such as in tests, reads the attribute.
@@ -610,18 +641,21 @@ function report(
     return;
   }
   // The slots that were replaced, by their start comment, since each walk of the page makes new regions.
-  const replaced = new Set(routes?.replace.map(([before]) => before.start));
+  const replaced = new Set<Comment>();
+  for (const [before] of routes?.replace ?? []) {
+    replaced.add(before.start);
+  }
   // The routes of the page before, without those that were replaced or are inside one. The root
   // layout is outside every slot.
   const kept: string[] = [];
-  const walk = (list: Region[]): void => {
+  function walk(list: Region[]): void {
     for (const region of list) {
       if (!replaced.has(region.start)) {
         kept.push(region.key);
         walk(region.children);
       }
     }
-  };
+  }
   if (routes) {
     const scripts = document.querySelectorAll(`${STATE}[b-route]`);
     const root = scripts[scripts.length - 1]?.getAttribute('b-route');
@@ -636,15 +670,15 @@ function report(
   } else if (visit.push) {
     kind = 'push';
   }
+  const swaps: { slot: string; from: string; to: string }[] = [];
+  for (const [before, after] of routes?.replace ?? []) {
+    swaps.push({ slot: after.name, from: before.key, to: after.key });
+  }
   hooks.navigated({
     url: visit.url,
     kind,
     kept,
-    replaced: (routes?.replace ?? []).map(([before, after]) => ({
-      slot: after.name,
-      from: before.key,
-      to: after.key,
-    })),
+    replaced: swaps,
     full: !routes,
     shift: shift?.by,
     start,
@@ -701,11 +735,11 @@ export async function navigate(visit: Visit): Promise<void> {
   url.hash = new URL(visit.url, location.href).hash;
   const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
   // Frees the connection of a page that a later navigation replaced.
-  const stop = (): void => {
+  function stop(): void {
     reader.cancel().catch(() => {});
-  };
+  }
   // The next chunk, or nothing once a later navigation started.
-  const read = async (): Promise<ReadableStreamReadResult<string> | undefined> => {
+  async function read(): Promise<ReadableStreamReadResult<string> | undefined> {
     try {
       const chunk = await reader.read();
       if (!current.signal.aborted) {
@@ -718,7 +752,7 @@ export async function navigate(visit: Visit): Promise<void> {
     }
     stop();
     return undefined;
-  };
+  }
 
   // The first render ends with </html>. What comes after it streams in later.
   let text = '';

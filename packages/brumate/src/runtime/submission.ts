@@ -69,7 +69,9 @@ export interface IntentSubmission extends SubmissionBase {
 export type Submission<T> = SuccessfulSubmission<T> | FailedSubmission | IntentSubmission;
 
 /** True for a file, so it is not sent back. */
-const isBlob = (value: unknown): boolean => typeof Blob !== 'undefined' && value instanceof Blob;
+function isBlob(value: unknown): boolean {
+  return typeof Blob !== 'undefined' && value instanceof Blob;
+}
 
 /** The values to send back: without files and hidden fields. */
 function echo(value: unknown, hidden: Set<string>, path: PathSegment[] = []): unknown {
@@ -80,7 +82,14 @@ function echo(value: unknown, hidden: Set<string>, path: PathSegment[] = []): un
     return undefined;
   }
   if (Array.isArray(value)) {
-    return value.map((item, index) => echo(item, hidden, [...path, index]));
+    // oxlint-disable-next-line unicorn/no-new-array -- A list posted with gaps keeps them.
+    const copy: unknown[] = new Array(value.length);
+    for (const [index, item] of value.entries()) {
+      if (index in value) {
+        copy[index] = echo(item, hidden, [...path, index]);
+      }
+    }
+    return copy;
   }
   if (typeof value === 'object' && value !== null) {
     const copy: Record<string, unknown> = {};
@@ -126,38 +135,47 @@ export async function parseSubmission<S extends StandardSchemaV1>(
 ): Promise<Submission<StandardSchemaV1.InferOutput<S>>> {
   const hidden = new Set(options.hide);
   const id = replyId();
-  const make = (
+  function make(
     status: SubmissionResult['status'],
     payload: Record<string, unknown> | undefined,
     issues: ValidationIssue[],
     list?: string,
-  ) => ({
-    payload,
-    reply(reply: ReplyOptions = {}): SubmissionResult {
-      const grouped = groupIssues(issues);
-      const errors = { ...grouped.errors };
-      for (const [name, messages] of Object.entries(reply.fieldErrors ?? {})) {
-        errors[name] = [...(Object.hasOwn(errors, name) ? errors[name]! : []), ...messages];
-      }
-      const keys: Record<string, string[]> = {};
-      const items = list === undefined ? undefined : getAt(payload, parsePath(list)!);
-      if (list !== undefined && Array.isArray(items)) {
-        keys[list] = items.map((_, index) => `${id}-${index}`);
-      }
-      const result: SubmissionResult = {
-        status,
-        value: reply.reset ? undefined : echo(payload, hidden),
-        errors: reply.reset ? {} : errors,
-        formErrors: [...grouped.formErrors, ...(reply.formErrors ?? [])],
-        keys: reply.reset ? {} : keys,
-        id,
-      };
-      if (reply.reset) {
-        result.reset = true;
-      }
-      return result;
-    },
-  });
+  ) {
+    return {
+      payload,
+      reply(reply: ReplyOptions = {}): SubmissionResult {
+        const grouped = groupIssues(issues);
+        const errors = { ...grouped.errors };
+        for (const [name, messages] of Object.entries(reply.fieldErrors ?? {})) {
+          errors[name] = [...(Object.hasOwn(errors, name) ? errors[name]! : []), ...messages];
+        }
+        const keys: Record<string, string[]> = {};
+        const items = list === undefined ? undefined : getAt(payload, parsePath(list)!);
+        if (list !== undefined && Array.isArray(items)) {
+          // oxlint-disable-next-line unicorn/no-new-array -- A list posted with gaps keeps them.
+          const itemKeys: string[] = new Array(items.length);
+          for (let index = 0; index < items.length; index++) {
+            if (index in items) {
+              itemKeys[index] = `${id}-${index}`;
+            }
+          }
+          keys[list] = itemKeys;
+        }
+        const result: SubmissionResult = {
+          status,
+          value: reply.reset ? undefined : echo(payload, hidden),
+          errors: reply.reset ? {} : errors,
+          formErrors: [...grouped.formErrors, ...(reply.formErrors ?? [])],
+          keys: reply.reset ? {} : keys,
+          id,
+        };
+        if (reply.reset) {
+          result.reset = true;
+        }
+        return result;
+      },
+    };
+  }
 
   const raw = form.get(INTENT);
   const values = formValues(form, (name) => name === INTENT);
@@ -183,10 +201,13 @@ export async function parseSubmission<S extends StandardSchemaV1>(
     // Only the errors of the field and of the fields in it, so untouched fields show none.
     const result = await safeParse(schema, payload);
     const name = intent.name;
-    const issues = (result.issues ?? []).filter((issue) => {
+    const issues: ValidationIssue[] = [];
+    for (const issue of result.issues ?? []) {
       const path = issue.path ? formatPath(issue.path) : '';
-      return path === name || path.startsWith(`${name}.`) || path.startsWith(`${name}[`);
-    });
+      if (path === name || path.startsWith(`${name}.`) || path.startsWith(`${name}[`)) {
+        issues.push(issue);
+      }
+    }
     return { status: 'intent', intent, ...make('intent', payload, issues) };
   }
   return { status: 'intent', intent, ...make('intent', payload, [], applied.list) };

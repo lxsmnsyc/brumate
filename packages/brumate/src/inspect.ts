@@ -99,7 +99,7 @@ export function report(
   const roots: InspectEntry[] = [];
   for (const [site, symbol] of plan.symbols) {
     const reached = new Set<string>();
-    const visit = (current: Site): void => {
+    function visit(current: Site): void {
       for (const callee of current.calls) {
         if (callee.kind === 'server-function') {
           reached.add(`${callee.name} (server)`);
@@ -108,7 +108,7 @@ export function report(
           visit(callee.site);
         }
       }
-    };
+    }
     visit(site);
     let kind = 'runs on the event';
     if (site.kind === 'client') {
@@ -135,9 +135,12 @@ export function report(
       changes.push({ label: nodeLabel(node), at: at(source, declaration.range), reason });
       continue;
     }
-    const from = graph.edges
-      .filter((edge) => edge.to === node && graph.live.has(edge.from))
-      .map((edge) => nodeLabel(edge.from));
+    const from: string[] = [];
+    for (const edge of graph.edges) {
+      if (edge.to === node && graph.live.has(edge.from)) {
+        from.push(nodeLabel(edge.from));
+      }
+    }
     reason = from.length > 0 ? `reads ${list(from)}` : 'changes on the client';
     changes.push({ label: nodeLabel(node), at: at(source, node.site.range), reason });
   }
@@ -145,34 +148,31 @@ export function report(
   const state: InspectReport['state'] = [];
   for (const [scope, layout] of plan.scopes) {
     if (layout.slots.length > 0) {
-      state.push({
-        scope: scopeLabel(source, scope),
-        slots: layout.slots.map((slot) => slot.name),
-      });
+      const slots: string[] = [];
+      for (const slot of layout.slots) {
+        slots.push(slot.name);
+      }
+      state.push({ scope: scopeLabel(source, scope), slots });
     }
   }
 
   let elements = 0;
   let inserts = 0;
-  const count = (node: Markup): void => {
+  function count(node: Markup): void {
     // An element with handlers ships client code, even when it finds its scope from an element around it.
-    if (
-      node.kind === 'element' &&
-      !plan.anchors.has(node) &&
-      !node.attributes.some((attribute) => attribute.kind === 'event')
-    ) {
+    if (node.kind === 'element' && !plan.anchors.has(node) && !hasEvent(node)) {
       elements++;
     } else if (node.kind === 'insert' && !plan.anchors.has(node)) {
       inserts++;
     }
-  };
+  }
   forEachNode(result.file.children, count);
   for (const template of result.file.templates) {
     forEachNode(template.body.children, count);
   }
 
   const sizes: InspectReport['sizes'] = [];
-  const add = (module: string, code: string): void => {
+  function add(module: string, code: string): void {
     // Outside Node, such as in a browser, the gzip size is not measured.
     const zlib = builtin('node:zlib');
     sizes.push({
@@ -180,7 +180,7 @@ export function report(
       bytes: new TextEncoder().encode(code).length,
       gzip: zlib ? zlib.gzipSync(code).length : 0,
     });
-  };
+  }
   add('entry', result.client);
   for (const [name, code] of Object.entries(result.parts)) {
     if (/export /.test(code)) {
@@ -209,9 +209,12 @@ function sourceReason(
 ): string {
   switch (declaration.kind) {
     case 'signal': {
-      const writers = declaration.writes
-        .filter((write) => reached.has(write.site))
-        .map((write) => siteLabel(source, write.site));
+      const writers: string[] = [];
+      for (const write of declaration.writes) {
+        if (reached.has(write.site)) {
+          writers.push(siteLabel(source, write.site));
+        }
+      }
       const unique = [...new Set(writers)];
       if (unique.length > 0) {
         return `written by ${list(unique)}`;
@@ -249,6 +252,16 @@ function sourceReason(
   }
 }
 
+/** True if the markup has an event attribute. */
+function hasEvent(node: Markup & { kind: 'element' }): boolean {
+  for (const attribute of node.attributes) {
+    if (attribute.kind === 'event') {
+      return true;
+    }
+  }
+  return false;
+}
+
 function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? '' : 's'}`;
 }
@@ -256,7 +269,7 @@ function plural(count: number, word: string): string {
 /** Formats a report as text. */
 export function formatReport(value: InspectReport): string {
   const lines = [`${value.name} (${value.filename}) ${value.id}`, ''];
-  const section = (title: string, entries: InspectEntry[]): void => {
+  function section(title: string, entries: InspectEntry[]): void {
     lines.push(title);
     if (entries.length === 0) {
       lines.push('  none');
@@ -265,7 +278,7 @@ export function formatReport(value: InspectReport): string {
       lines.push(`  ${entry.label} (${entry.at})`, `    ${entry.reason}`);
     }
     lines.push('');
-  };
+  }
   section('Client code', value.roots);
   section('Changes on the client', value.changes);
   lines.push('State');

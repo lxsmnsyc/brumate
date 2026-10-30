@@ -1,10 +1,10 @@
 import { expect, it } from 'vitest';
 import { compile } from '../src/index.ts';
-import { featuresOf, joinFeatures, noFeatures, writeFeatures } from '../src/features.ts';
+import { getFeatures, joinFeatures, noFeatures, writeFeatures } from '../src/features.ts';
 
 // The features of the core that a component uses, which turn the code of the others off.
 
-const use = (source: string) => featuresOf(compile(source, { filename: 'App.brm' }));
+const use = (source: string) => getFeatures(compile(source, { filename: 'App.brm' }));
 
 it('finds the children that the browser renders, the templates that it calls, titles and HTML', () => {
   const plain = use(`<script>
