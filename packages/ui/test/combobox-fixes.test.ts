@@ -94,10 +94,10 @@ it('(c) shows the kept item when a setter refuses the pick, also after Tab', asy
     expect(input.getAttribute('aria-activedescendant')).toBe(find('.held-banana')!.id),
   );
   press('Enter', input);
-  await page.waitFor(() => expect(state(page)[3]).toEqual(['banana']));
-  // The key stays, and so does its text.
-  expect(state(page)[2]).toBe('apple');
+  // The key stays, and so does its text. The handler does not hear a pick that was refused.
   await page.waitFor(() => expect(input.value).toBe('Apple'));
+  expect(state(page)[2]).toBe('apple');
+  expect(state(page)[3]).toEqual([]);
   press('Tab', input);
   page.get('.after').focus();
   await new Promise((resolve) => setTimeout(resolve, 20));

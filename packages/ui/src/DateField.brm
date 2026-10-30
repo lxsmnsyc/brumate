@@ -139,6 +139,7 @@
   $effect(() => {
     const next = date;
     if (next !== $untrack(value)) {
+      const before = $untrack(value);
       $untrack((value = next));
       // A setter that refuses leaves the old date, and the segments show that one.
       if ($untrack(value) !== next) {
@@ -146,7 +147,9 @@
       }
       edited = true;
       changed();
-      onChange?.(next);
+      if ($untrack(value) !== before) {
+        onChange?.($untrack(value));
+      }
     }
   });
 

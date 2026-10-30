@@ -227,9 +227,13 @@
     const before = inputValue;
     const beforeText = selectedText;
     if (key !== selectedKey) {
+      const previous = selectedKey;
       selectedKey = key;
       edited = form?.validationErrors ?? null;
-      onSelectionChange?.(key);
+      // The setter of a bound key may keep another key, or none.
+      if (selectedKey !== previous) {
+        onSelectionChange?.(selectedKey);
+      }
     }
     // A setter that refuses leaves the old key, and the input shows the text of that one.
     const kept = selectedKey;
@@ -273,7 +277,9 @@
     recheck();
     if (text === '' && selectedKey !== null) {
       selectedKey = null;
-      onSelectionChange?.(null);
+      if (selectedKey === null) {
+        onSelectionChange?.(null);
+      }
     }
     filterText = text;
     if (menuTrigger !== 'manual' && text !== '') {
@@ -321,7 +327,9 @@
     if (allowsCustomValue) {
       if (selectedKey !== null && inputValue !== selectedText) {
         selectedKey = null;
-        onSelectionChange?.(null);
+        if (selectedKey === null) {
+          onSelectionChange?.(null);
+        }
       }
       return;
     }

@@ -124,8 +124,12 @@
     }
     const list = values.map((item, at) => (at === index ? snapped : item));
     const written = emit(list);
+    const before = value;
     value = written;
-    onChange?.(written);
+    // The setter of a bound value may keep other numbers, or none.
+    if (value !== before) {
+      onChange?.(value);
+    }
   }
 
   function setDragging(index: number, next: boolean) {

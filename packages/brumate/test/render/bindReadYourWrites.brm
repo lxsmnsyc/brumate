@@ -1,0 +1,11 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import BindReadChild from './BindReadChild.brm';
+
+  let rounded = $signal(0);
+  let rounded_seen = $signal('');
+</script>
+
+<BindReadChild value=$bind(rounded, (next: number) => (rounded = Math.round(next))) seen=$bind(rounded_seen) />
+<p class="seen">{rounded_seen}</p>
+<p class="parent">{rounded}</p>

@@ -165,9 +165,13 @@
   function select(key: Key) {
     remember(key);
     if (key !== selectedKey) {
+      const before = selectedKey;
       selectedKey = key;
       edited = form?.validationErrors ?? null;
-      onSelectionChange?.(key);
+      // The setter of a bound key may keep another key, or none.
+      if (selectedKey !== before) {
+        onSelectionChange?.(selectedKey);
+      }
     }
     // The browser checks the new value at once, so its message goes away.
     nativeErrors = [];

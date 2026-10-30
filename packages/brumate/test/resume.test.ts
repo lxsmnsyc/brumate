@@ -4550,6 +4550,17 @@ describe('bindings with a setter', () => {
   });
 });
 
+describe('bound props read their writes', () => {
+  it('reads the value that the setter kept in the same turn', async () => {
+    await resume('bindReadYourWrites', {});
+    click(document.querySelector('.write')!);
+    await waitFor(() => expect(text('.parent')).toBe('2'));
+    // The child read its prop right after the write, before the parent drew.
+    expect(text('.seen')).toBe('2');
+    expect(text('.child-value')).toBe('2');
+  });
+});
+
 describe('bindings through spreads', () => {
   it('binds an element from a rest prop', async () => {
     await resume('bindSpread', {});

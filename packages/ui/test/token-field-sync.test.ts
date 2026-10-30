@@ -34,9 +34,7 @@ function type(box: Element, text: string) {
 
 const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
-// A setter that refuses cannot be told from one that accepts later, until a write reads back
-// what the setter kept. The node bind-read-your-writes fixes that in the runtime.
-it.fails('shows the kept value after a refused edit', async () => {
+it('shows the kept value after a refused edit', async () => {
   const page = await sync();
   const box = page.get('.guarded-input');
   page.get('.hold').click();

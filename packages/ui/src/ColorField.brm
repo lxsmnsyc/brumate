@@ -244,6 +244,7 @@
       text = display(color);
       return;
     }
+    const valueBefore = held;
     const same = next === null || held === null ? next === held : sameColor(next, held);
     let shown = nextColor;
     if (picker && !passed) {
@@ -265,7 +266,11 @@
     }
     if (!same) {
       edited = true;
-      onChange?.(next);
+      // A picker keeps its own value, which it reports. A bound value may keep another text.
+      const kept = picker && !passed ? next : value;
+      if (kept !== valueBefore) {
+        onChange?.(kept);
+      }
     }
     text = display(shown);
   }

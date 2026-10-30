@@ -35,6 +35,14 @@
   let size = $signal<string | null>('small');
   let toppings = $signal(['ham']);
   let fruit = $signal<string | null>('apple');
+  let plain = $signal('');
+  let own = $signal('');
+  // What each accepting field heard, and the event that was running then.
+  let heardBy = $signal<string[]>([]);
+
+  function accepted(name: string, value: string) {
+    heardBy = [...heardBy, `${name}:${value}:${window.event?.type}`];
+  }
 
   function heard(name: string, value: unknown) {
     calls = [...calls, [name, value]];
@@ -92,5 +100,15 @@
       </ListBox>
     </Popover>
   </Select>
+  <!-- A setter that accepts, and a field with its own state, report the same way. -->
+  <TextField class="plain" value=$bind(plain, (next) => (plain = next)) onChange=((next) => accepted('plain', next))>
+    <Label>Plain</Label>
+    <Input class="plain-input" />
+  </TextField>
+  <TextField class="own" value=$bind(own) onChange=((next) => accepted('own', next))>
+    <Label>Own</Label>
+    <Input class="own-input" />
+  </TextField>
+  <p class="heard">{JSON.stringify(heardBy)}</p>
   <p class="state">{JSON.stringify([calls, tried, count, hex])}</p>
 </main>

@@ -81,8 +81,12 @@
     } else {
       next = selectionMode === 'single' ? [id] : [...selectedKeys, id];
     }
+    const before = selectedKeys;
     selectedKeys = next;
-    onSelectionChange?.(next);
+    // The setter of a bound value may keep other keys, or none.
+    if (selectedKeys !== before) {
+      onSelectionChange?.(selectedKeys);
+    }
   }
 
   function keyDown(event: KeyboardEvent & { currentTarget: Element }) {

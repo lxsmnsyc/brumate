@@ -58,10 +58,12 @@
     color = next;
     if (tryParseColor(written) && !sameColor(written, before)) {
       value = written;
-      onChange?.(written);
       // A setter that refuses leaves the old value, and the picker shows that one.
       if (value !== written) {
         color = Object.is(value, before) ? prev : fresh(value);
+      }
+      if (value !== before) {
+        onChange?.(value);
       }
     }
     return color;

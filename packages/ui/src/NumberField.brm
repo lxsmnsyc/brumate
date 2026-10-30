@@ -194,10 +194,14 @@
   }
 
   function setValue(next: number) {
-    if (!Object.is(next, value)) {
+    const before = value;
+    if (!Object.is(next, before)) {
       value = next;
       edited = true;
-      onChange?.(next);
+      // The setter of a bound value may round the number, or keep the old one.
+      if (!Object.is(value, before)) {
+        onChange?.(value);
+      }
     }
     text = format(value);
   }

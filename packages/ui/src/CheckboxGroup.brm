@@ -81,8 +81,12 @@
 
   function toggle(item: string, checked: boolean) {
     const next = checked ? [...value.filter((other) => other !== item), item] : value.filter((other) => other !== item);
+    const before = value;
     value = next;
-    onChange?.(next);
+    // The setter of a bound value may keep other items, or none.
+    if (value !== before) {
+      onChange?.(value);
+    }
   }
 
   function invalidated(text: string) {

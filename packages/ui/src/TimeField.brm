@@ -142,7 +142,8 @@
   function update(next: DateParts) {
     parts = next;
     const time = timeOf(next, granularity, twelve);
-    if (time !== value) {
+    const before = value;
+    if (time !== before) {
       value = time;
       // A setter that refuses leaves the old time, and the segments show that one.
       if (value !== time) {
@@ -150,7 +151,9 @@
       }
       edited = true;
       changed();
-      onChange?.(time);
+      if (value !== before) {
+        onChange?.(value);
+      }
     }
   }
 

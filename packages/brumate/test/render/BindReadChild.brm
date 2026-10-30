@@ -1,0 +1,14 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  let { value = 0, seen = '' } = $props();
+
+  // Writes the prop, then reads it in the same turn.
+  function write(next: number) {
+    value = next;
+    seen = String(value);
+  }
+</script>
+
+<button class="write" onClick=(() => write(1.7))>Write</button>
+<p class="child-value">{value}</p>
