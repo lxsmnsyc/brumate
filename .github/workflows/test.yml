@@ -14,9 +14,10 @@ on:
     paths-ignore:
       - 'docs/**'
 
-# A new push to a pull request cancels the run of the push before it.
+# A new push to a pull request cancels the run of the push before it. The draft flag is in
+# the group, so a late run for a draft, which skips its jobs, cannot cancel the ready run.
 concurrency:
-  group: test-${{ github.event.pull_request.number || github.ref }}
+  group: test-${{ github.event.pull_request.number || github.ref }}-${{ github.event.pull_request.draft }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
