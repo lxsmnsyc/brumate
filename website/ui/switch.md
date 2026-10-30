@@ -52,7 +52,7 @@ The label shows the state:
 - A reset of the form gives back the state that the switch started with, as a write: with `$bind(signal, request)`, your request can refuse it.
 - The server renders the state it starts with. See [State](./state.md).
 
-A standalone Switch does not yet tie a description to its input either. The node `checkbox-description` is meant to add it.
+A `Text` with `slot="description"` in the children is named in the `aria-describedby` of the input. `isInvalid` marks the switch with `aria-invalid` and `data-invalid`, and a `FieldError` in the children shows then and is named too. Both are inside the label, so the label text includes them.
 
 ## Styling
 

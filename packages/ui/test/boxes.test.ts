@@ -150,3 +150,27 @@ it('renders a Switch as a checkbox with the role of a switch', async () => {
   await page.waitFor(() => expect(page.text('.values')).toMatch(/\|true$/));
   expect(page.get('.dark').hasAttribute('data-selected')).toBe(true);
 });
+
+it('ties the description and the error of a standalone Checkbox and Switch to the input', async () => {
+  const page = await boxes();
+  for (const [selector, text, error] of [
+    ['.described', '.described-text', '.described-error'],
+    ['.described-switch', '.switch-text', '.switch-error'],
+  ]) {
+    const box = input(page, selector);
+    await page.waitFor(() => expect(page.get(text).id).not.toBe(''));
+    expect(box.getAttribute('aria-describedby')).toBe(page.get(text).id);
+    expect(box.hasAttribute('aria-invalid')).toBe(false);
+    expect(document.querySelector(error)).toBeNull();
+  }
+  (page.get('.flag') as HTMLElement).click();
+  for (const [selector, text, error] of [
+    ['.described', '.described-text', '.described-error'],
+    ['.described-switch', '.switch-text', '.switch-error'],
+  ]) {
+    const box = input(page, selector);
+    await page.waitFor(() => expect(document.querySelector(error)).not.toBeNull());
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(box.getAttribute('aria-describedby')).toBe(`${page.get(text).id} ${page.get(error).id}`);
+  }
+});

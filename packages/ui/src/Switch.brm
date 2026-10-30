@@ -11,6 +11,8 @@
     isDisabled?: boolean;
     /** Keeps the state: a click does not toggle the switch. */
     isReadOnly?: boolean;
+    /** Marks the switch as invalid. A FieldError in the children shows while it is. */
+    isInvalid?: boolean;
     /** Runs with the new state when the user toggles the switch. */
     onChange?: (selected: boolean) => void;
     /** The content of the label. Draw the switch here. */
@@ -21,11 +23,13 @@
 </script>
 
 <script>
-  import { $client, $id, $memo, $props, $signal } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { onFormReset } from './fields.ts';
+  import { FieldErrorContext, TextContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
+  import { describedBy, onFormReset } from './fields.ts';
 
   /**
    * A switch: a <label> around a native checkbox with
@@ -36,14 +40,31 @@
    * `isSelected` alone starts its own state as on, and `isSelected=$bind(signal)` writes the
    * caller's.
    */
-  const { name, value, isDisabled = false, isReadOnly = false, onChange, children, ...rest } =
-    $props<SwitchProps>();
+  const {
+    name,
+    value,
+    isDisabled = false,
+    isReadOnly = false,
+    isInvalid = false,
+    onChange,
+    children,
+    ...rest
+  } = $props<SwitchProps>();
   let { isSelected = false } = $props<SwitchProps>();
   // The state that a reset of the form gives back.
   let initial = $signal(isSelected);
   const inputId = $id();
 
   const disabled = $memo(isDisabled);
+
+  // The children can hold a Text with `slot="description"` and a FieldError. The input names
+  // them in aria-describedby, and the error only while the switch is invalid.
+  const descriptionId = $id();
+  const { present: hasDescription } = described(descriptionId);
+  const errorId = $id();
+  const describing = $memo(describedBy(hasDescription && descriptionId, isInvalid && errorId));
+  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(FieldErrorContext, { id: errorId, isInvalid, errors: [] });
 
   const {
     hovered,
@@ -103,6 +124,7 @@
   data-focus-visible=(focusVisible || undefined)
   data-disabled=(isDisabled || undefined)
   data-readonly=(isReadOnly || undefined)
+  data-invalid=(isInvalid || undefined)
   {onPointerEnter}
   {onPointerLeave}
   {onPointerDown}
@@ -127,6 +149,8 @@
       checked=isSelected
       disabled=(isDisabled || undefined)
       aria-readonly=(isReadOnly ? 'true' : undefined)
+      aria-invalid=(isInvalid ? 'true' : undefined)
+      aria-describedby=describing
       onChange=change
       onClick=(prevent(keep))
     />
@@ -141,6 +165,8 @@
       checked=isSelected
       disabled=(isDisabled || undefined)
       aria-readonly=(isReadOnly ? 'true' : undefined)
+      aria-invalid=(isInvalid ? 'true' : undefined)
+      aria-describedby=describing
       onChange=change
     />
   }

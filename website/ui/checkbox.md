@@ -70,7 +70,7 @@ This stylesheet draws a box and a check in plain CSS. It styles rest, hover, pre
 
 ### Consent in a sign-up form
 
-`name` and `value` post the box with the form. A box that must be on before the form goes is checked in the submit handler, and `isInvalid` marks it. The text under the box says why. A standalone Checkbox does not yet tie a description or an error to its input: only a [CheckboxGroup](./checkbox-group.md) does. The node `checkbox-description` is meant to add it. Press Create account with the second box off.
+`name` and `value` post the box with the form. A box that must be on before the form goes is checked in the submit handler, and `isInvalid` marks it. Put a `Text` with `slot="description"` and a `FieldError` in the children of the box. The input names the description in `aria-describedby`, and the error too while the box is invalid, so a screen reader reads them with the box. A Checkbox in a [CheckboxGroup](./checkbox-group.md) takes them from the group instead. Both are inside the label, so the label text includes them. Press Create account with the second box off.
 
 ```brm demo CheckboxConsentDemo
 
