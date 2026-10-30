@@ -381,7 +381,15 @@
   /** A press of a Button steps at once, and again while it is held. Focus stays in the input. */
   function held(sign: 1 | -1, event: PressEvent) {
     input()?.focus({ preventScroll: true });
-    startRepeat(inputId, () => stepBy(sign), event.pointerType === 'touch' ? 600 : 400);
+    startRepeat(
+      inputId,
+      () => {
+        const moved = stepBy(sign);
+        recheck();
+        return moved;
+      },
+      event.pointerType === 'touch' ? 600 : 400,
+    );
   }
 
   function released() {

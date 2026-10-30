@@ -1,7 +1,9 @@
 <script>
   import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
   import ColorField from '../../src/ColorField.brm';
   import FieldError from '../../src/FieldError.brm';
+  import Group from '../../src/Group.brm';
   import Input from '../../src/Input.brm';
   import Label from '../../src/Label.brm';
   import NumberField from '../../src/NumberField.brm';
@@ -19,7 +21,11 @@
     </ColorField>
     <NumberField class="number" name="count" isRequired value=$bind(count)>
       <Label>Count</Label>
-      <Input class="number-input" />
+      <Group>
+        <Button slot="decrement" class="number-minus">-</Button>
+        <Input class="number-input" />
+        <Button slot="increment" class="number-plus">+</Button>
+      </Group>
       <FieldError class="number-error" />
     </NumberField>
   </form>

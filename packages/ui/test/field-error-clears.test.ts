@@ -1,6 +1,7 @@
 // The native error of a field clears once its value is valid again.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
+import { pointer } from './interact.ts';
 import FieldErrors from './fixtures/field-errors.brm?brumate-server';
 
 let unmount: (() => void) | undefined;
@@ -71,6 +72,17 @@ it('clears the error of a NumberField when a key steps the number', async () => 
   submit(input);
   await page.waitFor(() => expect(page.container.querySelector('.number-error')).not.toBeNull());
   press(input, 'ArrowUp');
+  await page.waitFor(() => expect(page.container.querySelector('.number-error')).toBeNull());
+  expect(page.get('.number').hasAttribute('data-invalid')).toBe(false);
+});
+
+it('clears the error of a NumberField when a step button steps the number', async () => {
+  const page = await fields();
+  const input = page.get('.number-input') as HTMLInputElement;
+  submit(input);
+  await page.waitFor(() => expect(page.container.querySelector('.number-error')).not.toBeNull());
+  pointer('pointerdown', page.get('.number-plus'));
+  pointer('pointerup', page.get('.number-plus'));
   await page.waitFor(() => expect(page.container.querySelector('.number-error')).toBeNull());
   expect(page.get('.number').hasAttribute('data-invalid')).toBe(false);
 });
