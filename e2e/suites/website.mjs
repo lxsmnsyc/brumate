@@ -1643,6 +1643,100 @@ export async function run({ browser, url, runner }) {
       },
     );
     await flow(
+      '/ui: the utility pages have their examples, with no accessibility violations',
+      async () => {
+        const settle = () => page.waitForTimeout(600);
+        const visit = async (slug) => {
+          await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+          await settle();
+        };
+        const slugs = [
+          'separator',
+          'heading',
+          'transition',
+          'visually-hidden',
+          'keyboard',
+          'i18n-provider',
+          'selection-indicator',
+        ];
+        for (const slug of slugs) {
+          for (const scheme of ['light', 'dark']) {
+            await page.emulateMedia({ colorScheme: scheme });
+            await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+            const styled = slug === 'separator' || slug === 'transition' ? 1 : 0;
+            assert(
+              (await page.locator('.styled pre').count()) === styled,
+              `/ui/${slug} shows the wrong number of CSS blocks`,
+            );
+            await page.addScriptTag({ path: axe });
+            const violations = await page.evaluate(async () => {
+              const result = await window.axe.run(document.querySelector('article'));
+              return result.violations.map((violation) => violation.id);
+            });
+            assert(
+              violations.length === 0,
+              `axe found in /ui/${slug} in ${scheme}: ${violations.join(', ')}`,
+            );
+          }
+        }
+        await page.emulateMedia({ colorScheme: null });
+        // Transition: a leave removes the first note, keeps the second with hidden.
+        await visit('transition');
+        const stage = page.locator('.transition-styled-stage');
+        await stage.getByRole('button', { name: 'Hide both' }).click();
+        await page.waitForTimeout(800);
+        assert(
+          (await stage
+            .locator('.transition-styled-slot')
+            .nth(0)
+            .locator('.transition-styled')
+            .count()) === 0,
+          'the first note stayed in the page',
+        );
+        assert(
+          await stage
+            .locator('.transition-styled-slot')
+            .nth(1)
+            .locator('.transition-styled')
+            .isHidden(),
+          'the second note is not hidden',
+        );
+        await stage.getByRole('button', { name: 'Add an appear note' }).click();
+        await page.waitForTimeout(600);
+        assert(
+          (await stage.locator('> .transition-styled').count()) === 1,
+          'the appear note did not render',
+        );
+        // SelectionIndicator: one pill, in the selected button, which follows a press.
+        await visit('selection-indicator');
+        const group = page.locator('.selection-indicator-group');
+        assert((await group.locator('.selection-indicator-pill').count()) === 1, 'no single pill');
+        await group.locator('.selection-indicator-item', { hasText: 'Month' }).click();
+        await settle();
+        assert(
+          (await group
+            .locator('.selection-indicator-item', { hasText: 'Month' })
+            .locator('.selection-indicator-pill')
+            .count()) === 1,
+          'the pill did not move to Month',
+        );
+        // I18nProvider: the locale changes the number format.
+        await visit('i18n-provider');
+        const bar = page.locator('.ui-bar').last();
+        const before = await bar.getAttribute('aria-valuetext');
+        await page.getByRole('button', { name: 'de-DE' }).click();
+        await settle();
+        const after = await bar.getAttribute('aria-valuetext');
+        assert(before !== after, `the Meter reads ${after} in both locales`);
+        // VisuallyHidden: the skip link shows with focus.
+        await visit('visually-hidden');
+        const skip = page.getByRole('link', { name: 'Skip to the content' });
+        await skip.focus();
+        const box = await skip.boundingBox();
+        assert(box && box.width > 20 && box.height > 5, 'the skip link stayed hidden with focus');
+      },
+    );
+    await flow(
       '/ui/styling: the styled examples follow the theme toggle, with no contrast violations',
       async () => {
         // The toggle of the site, not the system setting, picks the theme. Each system setting

@@ -1,0 +1,23 @@
+<script>
+  import Keyboard from '@brumate/ui/Keyboard.brm';
+
+  const shortcuts = [
+    { name: 'Copy', keys: ['Ctrl', 'C'] },
+    { name: 'Paste', keys: ['Ctrl', 'V'] },
+    { name: 'Find', keys: ['Ctrl', 'F'] },
+  ];
+</script>
+
+<div dir="rtl" lang="ar">
+  <ul class="ui-stack">
+    #for (shortcut of shortcuts by shortcut.name) {
+      <li>
+        {shortcut.name}:
+        #for (key, index of shortcut.keys by key) {
+          #if (index > 0) {+}
+          <Keyboard class="ui-kbd">{key}</Keyboard>
+        }
+      </li>
+    }
+  </ul>
+</div>

@@ -1,0 +1,19 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+</script>
+
+<h2>Account</h2>
+<DialogTrigger>
+  <Button class="ui-button">Delete account</Button>
+  <Popover class="ui-popover" transition>
+    <Dialog class="ui-dialog">
+      <Heading slot="title" level=(3)>Delete this account?</Heading>
+      <p>The title is a level 3 heading under the h2 of the page, and it names the dialog.</p>
+      <Button slot="close" class="ui-button">Cancel</Button>
+    </Dialog>
+  </Popover>
+</DialogTrigger>

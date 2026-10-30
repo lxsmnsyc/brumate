@@ -1,0 +1,9 @@
+<script>
+  import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+</script>
+
+<div class="ui-stack">
+  <VisuallyHidden as="a" href="#skip-target" focusable class="ui-link">Skip to the content</VisuallyHidden>
+  <nav aria-label="Sample menu"><a class="ui-link" href="#skip-target">Home</a> <a class="ui-link" href="#skip-target">Docs</a></nav>
+  <p id="skip-target">Press Tab in this sample to reveal the skip link before the menu.</p>
+</div>

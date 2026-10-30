@@ -28,6 +28,14 @@ Other parts run the same steps with their `transition` prop: [DisclosurePanel](.
 - `appear` runs the enter when the browser renders the content, such as in markup that opens later.
 - `beforeEnter`, `afterEnter`, `beforeLeave` and `afterLeave` follow each step. A transition that another one interrupts never reaches its `afterEnter` or `afterLeave`.
 
+## Styling
+
+This stylesheet fades and slides a note from the data attributes, with no classes. The first note leaves the page after its leave, the second stays with `hidden` (`unmount=false`), and the third one enters on its own when you add it (`appear`). Press Hide both while it is moving, and press it again.
+
+```brm styled TransitionStyled
+
+```
+
 ## Reduced motion
 
 Reduced motion is for the CSS: a transition that a `prefers-reduced-motion` query removes has nothing to wait for.
@@ -87,7 +95,5 @@ A `TransitionChild` takes the props of `Transition`, except `show`.
 | `data-enter`      | Its enter is running.                   |
 | `data-leave`      | Its leave is running.                   |
 | `data-transition` | It is entering or leaving.              |
-
-## Styling
 
 Style the content with the attributes above, or with the classes of `enter`, `enterFrom` and the other class props. See [Styling](./styling.md).

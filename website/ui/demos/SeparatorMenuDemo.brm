@@ -1,0 +1,13 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
+</script>
+
+<Toolbar class="ui-group" aria-label="Document">
+  <Button class="ui-button">Bold</Button>
+  <Button class="ui-button">Italic</Button>
+  <Separator class="ui-separator" orientation="vertical" />
+  <Button class="ui-button">Copy</Button>
+  <Button class="ui-button">Paste</Button>
+</Toolbar>

@@ -1,0 +1,64 @@
+<script>
+  import Separator from '@brumate/ui/Separator.brm';
+</script>
+
+<div class="separator-styled-stage">
+  <section class="separator-styled-card">
+    <h3 class="separator-styled-title">Billing</h3>
+    <p>Invoices and payment methods.</p>
+    <Separator class="separator-styled" />
+    <h3 class="separator-styled-title">Team</h3>
+    <p>Members and their roles.</p>
+  </section>
+  <div class="separator-styled-row">
+    <span>Day</span>
+    <Separator class="separator-styled" orientation="vertical" />
+    <span>Week</span>
+    <Separator class="separator-styled" orientation="vertical" />
+    <span>Month</span>
+  </div>
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.separator-styled-stage) {
+    --separator-styled-line: color-mix(in srgb, CanvasText 50%, Canvas);
+    display: grid;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 22rem;
+    color: CanvasText;
+  }
+
+  :global(.separator-styled-card p),
+  :global(.separator-styled-title) {
+    margin: 0;
+  }
+
+  :global(.separator-styled-title) {
+    font-size: 1rem;
+  }
+
+  :global(.separator-styled) {
+    border: 0;
+    background: var(--separator-styled-line);
+  }
+
+  /* Both orientations: a rule of 1px, across or down. */
+  :global(.separator-styled:not([data-orientation='vertical'])) {
+    height: 1px;
+    margin: 0.9rem 0;
+  }
+
+  :global(.separator-styled[data-orientation='vertical']) {
+    align-self: stretch;
+    width: 1px;
+    margin: 0;
+  }
+
+  :global(.separator-styled-row) {
+    display: flex;
+    gap: 0.9rem;
+    align-items: center;
+  }
+</style>
