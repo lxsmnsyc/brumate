@@ -38,7 +38,7 @@ Probe first against main: the smallest page with a `#if` that renders a child af
 
 ## Acceptance
 
-- [ ] A test: a browser-rendered child shows the `#loading` fallback, then the value of `$memo(user)`; a rejected promise shows `#catch`. It fails on main.
+- [ ] A test: a browser-rendered child shows empty text while pending, then the value of `$memo(user)`; a rejected promise shows `#catch`. It fails on main. (The `#loading` fallback in browser-rendered markup moved to browser-loading-fallback, 0.5.0; the maintainer, 2026-10-30.)
 - [ ] The resumed case from #373 still passes.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
