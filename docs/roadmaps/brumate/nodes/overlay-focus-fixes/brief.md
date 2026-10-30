@@ -1,7 +1,7 @@
 ---
 id: overlay-focus-fixes
 title: Focus and repeat fixes for stacked modals, tooltips and preview cards
-status: active
+status: done
 priority: should
 type: fix
 outline: false
