@@ -388,7 +388,7 @@ A `#loading` body streams in a `<template>` that a script swaps in. A reader tha
 
 ```brm
 #defer ('visible') {
-  <Recommendations user=user />
+  <Recommendations {user} />
 } #else {
   <p>Loading recommendations…</p>
 }
