@@ -23,7 +23,7 @@ const labels: Record<string, string> = {
   'reactive-modules': 'Shared logic',
   forms: 'Forms',
   errors: 'Compile errors',
-  security: 'Security',
+  security: 'Protecting server functions',
   environment: 'Environment variables',
   packages: 'Publishing',
   'reference-plugin': 'Plugin options',

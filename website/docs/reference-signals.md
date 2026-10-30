@@ -1,6 +1,6 @@
 # Compile-time functions
 
-The functions of `brumate/signals` describe state and behavior to the compiler. The compiler replaces every call and removes the import, so none of them ship.
+The functions of `brumate/signals` describe state and behavior to the compiler. The compiler replaces every call and removes the import, so none of them ship. The one exception is `flush`, a function of the runtime, which keeps its import.
 
 ```ts
 import { $memo, $signal } from 'brumate/signals';
@@ -8,7 +8,7 @@ import { $memo, $signal } from 'brumate/signals';
 
 - A call needs the import. A call of a function that the file does not import is a compile error.
 - A renamed import works, as in `import { $signal as signal } from 'brumate/signals'`.
-- They work only in `.brm` files. A call anywhere else throws.
+- They work only in `.brm` files. A call anywhere else throws. `flush` works in any file that runs in the browser.
 - "Top level of a script" means a statement of the component's `<script>`, or of a `<script>` at the start of a block body. It is not inside a function or another statement.
 
 ## Summary
@@ -20,6 +20,7 @@ import { $memo, $signal } from 'brumate/signals';
 | `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md)         |
 | `$debounced(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
 | `$throttled(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
+| `$resolve(memo, options?)`    | `Promise<T>`               | A handler, an effect or a `$client` callback                             | [Async data](./async-data.md)                              |
 | `$isPending(memo)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                              |
 | `$isPassed(prop)`             | `boolean`                  | `const` in the component script                                          | [Components](./components.md#controlled-and-uncontrolled)  |
 | `$isBound(prop)`              | `boolean`                  | Any expression                                                           | [Components](./components.md#controlled-and-uncontrolled)  |
@@ -35,6 +36,8 @@ import { $memo, $signal } from 'brumate/signals';
 | `$title(value)`               | `void`                     | Statement at the top level of a script. Replaced by `<title>` in `#head` | [Page metadata](./page-metadata.md)                        |
 | `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script                                     | [Forms](./forms.md)                                        |
 | `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script                                       | [Forms](./forms.md#showing-a-guess-while-it-posts)         |
+| `$bind(value, set?)`          | a binding                  | The whole value of a prop, `value`, `checked` or `ref`                   | [Components](./components.md)                              |
+| `flush()`                     | `void`                     | A handler, an effect or a `$client` callback                             | [State](./state.md#when-bindings-run)                      |
 | `$handler(fn, ...args)`       | a handler                  | Any expression of a script or a module function                          | [Components](./components.md#handlers-that-a-script-makes) |
 
 ## `$props`
@@ -120,6 +123,33 @@ True when the caller passed the prop with `$bind`, so a write of it changes the 
 - Its argument is a prop that the component destructures with `let`.
 - Server: always false, because nothing writes there.
 
+## `$resolve`
+
+```ts
+function $resolve<T>(memo: T, options?: { timeout?: number; signal?: AbortSignal }): Promise<Awaited<T>>;
+```
+
+Waits until a memo is no longer pending, and gives its value.
+
+- It resolves at once when the memo is settled. When the memo loads its first value or loads again, it resolves after the load.
+- When the inputs of the memo change while it waits, it waits for the load of the current inputs.
+- It rejects with the error of the memo, when `timeout` milliseconds pass, or when `signal` aborts.
+- Use it in a handler, an effect or a `$client` callback, as `await $resolve(memo)`. Never use it where a memo computes or markup renders.
+- A handler that reads an async memo with no value yet is a compile error (BRM182), unless `$isPending` guards the read or it is written with `$resolve`.
+
+## `flush`
+
+```ts
+import { flush } from 'brumate/signals';
+
+function flush(): void;
+```
+
+Runs the bindings that the writes of the handler so far made waiting, so the code after it can read the page. A handler is one update pass, and the page changes when it returns. See [When bindings run](./state.md#when-bindings-run).
+
+- It is a function of the runtime, so its import stays in the output.
+- It does nothing outside a handler, and on the server.
+
 ## `$effect`
 
 ```ts
@@ -130,7 +160,7 @@ Runs `callback` when the values that it reads change.
 
 - A statement at the top level of a script. The callback takes no parameters and cannot be `async`.
 - Server: never runs.
-- Client: never runs on page load. Its first run is after the first change of a value it reads. The returned function runs before the next run and when the scope is removed.
+- Client: never runs on page load. Its first run is after the first change of a value it reads. The returned function runs before the next run and when the scope is removed. A value that only the returned function reads is not a dependency.
 - Reads inside functions that the callback calls count too. Wrap a call in `$untrack` to read without depending on it.
 
 ## `$client`

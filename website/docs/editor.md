@@ -19,6 +19,10 @@ It bundles a language server for styles and diagnostics, and a TypeScript plugin
 - For types, add `@brumate/typescript-plugin` to the TypeScript server of the editor, as [TypeScript](./typescript.md#in-an-editor) describes.
 - The TextMate grammar is in [`packages/vscode/syntaxes`](https://github.com/lxsmnsyc/brumate/blob/main/packages/vscode/syntaxes/brumate.tmLanguage.json). Its scope name is `source.brm`.
 
+## Coding agents
+
+`brumate skill [folder]` copies a skill for `.brm` files into `folder/brumate`, by default `.claude/skills/brumate`. It teaches an agent the syntax, state and events, and lists every compile error with its cause and fix.
+
 ## Limits
 
 - TypeScript 7 does not load plugins, so types in `.brm` files need TypeScript 5.0 to 6. VS Code ships with a version that works.

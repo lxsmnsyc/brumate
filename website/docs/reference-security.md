@@ -1,4 +1,4 @@
-# Security
+# Security checks
 
 What brumate checks for you, and what stays your job: calls from other sites, errors, untrusted input in markup, and inline scripts.
 

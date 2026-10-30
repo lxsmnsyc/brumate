@@ -239,6 +239,8 @@ Type a note, then switch: the field empties, because the body renders again for 
 - An error in the code of the body that runs in the browser is caught too. Both bodies ship when the body holds such code. See [Errors in the browser](./effects.md#errors-in-the-browser).
 - When the body throws on the server, nothing it rendered reaches the page: not its markup, the blocks inside it, or the state of its components. A component's stylesheet that only the body rendered is sent with the next copy of the component, such as one in `#catch`.
 - `reset` runs in the browser. If the body throws again, `#catch` renders again.
+- In development, `error` is the real error. In production, it is a plain `Error` with the message of a `ServerError`, or a generic message such as "The page could not render this part". The real error is logged on the server, and no stack is ever sent.
+- An error in a streamed `#loading` body renders the nearest `#catch`, in the body, around the block or in a parent component. After a client navigation, a `#loading` body that never arrives because the stream ended fires `brumate:error` on `window`, and its fallback stays.
 
 ## `#portal`
 

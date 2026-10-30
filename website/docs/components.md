@@ -28,7 +28,7 @@ A component is a `.brm` file. It has scripts for its state and logic, an optiona
 <button onClick=(() => count++)>{count} of {MAX}</button>
 ```
 
-- `<script>` is the instance script. It runs on the server when the component renders, and never runs again in the browser. Code in it that the browser needs, such as an event handler, is split out and loaded when it is needed.
+- `<script>` is the instance script. It runs on the server when the component renders, and never runs again in the browser. Code in it that the browser needs, such as an event handler, is split out into the client code of the page, which the browser loads when the page starts.
 - `<script module>` runs once per module. Use it for constants, helpers and data that every instance shares.
 - `<style>` is scoped to the component. [Styles](./styles.md) describes it.
 - The markup can come before or after the scripts. Each part is optional.
@@ -74,7 +74,7 @@ const { title, size = 'medium', ...rest } = $props<{
 - A default value, such as `size = 'medium'`, applies when the caller does not pass the prop.
 - A rest element, such as `...rest`, collects the other props. Spread it onto an element with `{...rest}`.
 - On an element with a spread, the attributes apply in their order, so a later one wins. A `class` adds to the others: `<a class="link" {...rest}>` with `class="primary"` in `rest` gets `class="link primary"`.
-- Read props by their names. Do not keep the object of `$props()` and read from it later.
+- Read props by their names. The props object and `...rest` can only be destructured, read one key at a time, or spread in markup. Any other use is a compile error (BRM115): a spread in script code, and passing them to a function, `$memo`, `$setContext`, a signal or a variable. The copy would lose the `ref` and the live props. Use `<button {...rest} class="box">` instead.
 
 ### Props that change
 
@@ -174,6 +174,8 @@ const bound = () => $isBound(value);
 ```
 
 ### Forwarding a ref
+
+A bare `ref=input` is a compile error (BRM027): write `ref=$bind(input)`.
 
 A component that renders an element for its caller can pass the element on. It declares `ref` as a bindable prop, and puts `ref=$bind(ref)` on the element:
 

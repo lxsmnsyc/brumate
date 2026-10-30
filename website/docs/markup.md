@@ -220,7 +220,7 @@ const stop = cancelWhen(form, 'submit', () => form.hasAttribute('data-pending'))
 </ul>
 ```
 
-- The transition holds the writes that the handler makes before its first `await`. Writes after it, such as after a server call, change the page without an animation.
+- The transition holds the writes that the handler makes before its first `await`, and the page changes when that part returns. Writes after it, such as after a server call, change the page without an animation.
 - When the code of the page has not loaded yet, the transition waits for it. The browser keeps the old page on screen until then.
 - `transition(handler, ...types)` gives the transition types, which CSS matches with `:active-view-transition-type(type)`.
 - Without view transitions, or with `prefers-reduced-motion`, the handler runs as it is.

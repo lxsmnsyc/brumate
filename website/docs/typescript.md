@@ -20,7 +20,7 @@ brumate-tsc --noEmit
 }
 ```
 
-A file with a syntax error is reported with the code `BRM`. Its scripts are still checked.
+A file with a syntax error is reported with the code of its compile error, such as `error BRM031`, as `src/App.brm(5,3): error BRM031: message`. [Compile errors](./errors.md) lists the codes. Its scripts are still checked.
 
 ## `brumate check`
 
@@ -64,6 +64,10 @@ In another editor, add the plugin to `tsconfig.json`, and use the TypeScript ver
 - The scripts, as TypeScript.
 - Every expression in the markup: attributes, inserts, block headers and style variables. Each one sees the names around it, such as the item of a `#for`.
 - The props of components. A prop with the wrong type, or one that the component does not take, is reported at the prop, and a missing prop at the tag. The props type is the type argument of `$props<T>()`, or of every call of it together. A component that passes other attributes on takes them with an index signature, such as `[attribute: string]: unknown`.
+- The attributes of elements, against the types of `brumate/elements`. An unknown attribute, a wrong value, a wrong name or value in a spread and a computed attribute are errors at the attribute.
+- `ref` on an element. `ref=$bind(name)` needs a signal that can hold the element, such as `HTMLInputElement | null` for `<input>`.
+- Dynamic tags. `<{tag} ...>` checks its attributes, `ref`, spreads and children against the tag: the attributes of an element name, or the props of a component. A tag that can name any element or component checks the global attributes and leaves its spreads unchecked.
+- The children of a component. They are `Markup`, so a component that takes no `children` prop reports them.
 - Event handlers on elements. The event has the type of its name, such as `MouseEvent` for `onClick`, and `event.currentTarget` is the element, such as `HTMLInputElement` for `<input>`.
 - The items and indexes of `#for`, the `error` and `reset` of `#catch`, and the parameters of `#template`.
 - Links made with `href` from `brumate/routes`, against the route files. See [Routing](./routing.md).
@@ -185,10 +189,47 @@ The props type takes the target, `ButtonProps<'a'>` or `ButtonProps<typeof Link>
 
 Inside the part, a prop that depends on the target has a type that TypeScript cannot resolve. A value of it that goes to `$memo` needs a cast, such as `$memo(as as AsTarget)`. If the part reads many props with exact types, read them from a call of `$props<CardOwnProps>()`, and `as` from another call of `$props<CardProps<T>>()`.
 
-## Not checked yet
+## Element and markup types
 
-- `children` passed to a component has the type `any`.
-- The attributes of elements other than events, such as `class` and `href`.
+`brumate/elements` exports the types that the check uses. Import them in a `.ts` file or a `<script module>`:
+
+| Type                | What it is                                                                |
+| ------------------- | ------------------------------------------------------------------------- |
+| `Elements`          | The attributes of each HTML and SVG element, by tag.                      |
+| `ElementProps<'a'>` | The attributes of one tag, such as `ElementProps<'button'>`.              |
+| `Markup`            | What children, a `#template` and a render give. A string is not `Markup`. |
+| `Component<P>`      | A component with the props `P`.                                           |
+| `PropsOf<C>`        | The props of a component type.                                            |
+
+```ts
+import type { ElementProps, Markup } from 'brumate/elements';
+
+export type CardProps = ElementProps<'section'> & { children?: Markup };
+```
+
+### Custom events and elements
+
+A handler takes its event type from `ElementEvents`. An event that no element fires, such as `onDoubleClick`, is a type error. To add an event that an element sends, merge it into `ElementEvents`:
+
+```ts
+declare module 'brumate/elements' {
+  interface ElementEvents {
+    itemaction: CustomEvent<string>;
+  }
+}
+```
+
+A handler is written in camel case. The name `itemaction` becomes `onItemaction`. For a name of several words, add its camel-case form to `ElementEventNames`, and the handler is `onItemAction`:
+
+```ts
+declare module 'brumate/elements' {
+  interface ElementEventNames {
+    itemaction: 'ItemAction';
+  }
+}
+```
+
+The tag of a custom element is added by merging into `Elements`.
 
 ## TypeScript 7
 

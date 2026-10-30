@@ -33,13 +33,13 @@ brumate resumes:
 - The core reads the state from the page and continues from there. An event that comes before the code has loaded waits for it.
 - No component runs again in the browser to rebuild what the server rendered.
 
-## What happens on the first click
+## What happens on a click
 
 For the counter above:
 
 1. The server renders the button and the paragraph, and writes `count` and `double` into the page.
-2. The page is ready. The browser loads the code of the click handler and of the updates of the two texts, in one bundle with the core.
-3. The click runs the handler.
+2. The page is ready. The browser loads the core and the client code of the page at start, in one bundle: the click handler and the updates of the two texts.
+3. The click runs the handler. A click that comes before the code has loaded waits for it.
 4. The handler adds one to `count`. The texts that read `count` and `double` update.
 
 The compiler decides what each event needs when it compiles the component:

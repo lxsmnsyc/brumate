@@ -184,6 +184,38 @@ Here the list follows the filter as you type, but a new page size only applies w
 
 `$untrack` also covers the functions that the expression calls. [Effects](./effects.md#effects-depend-on-the-functions-they-call) shows why that matters.
 
+## When bindings run
+
+A handler is one update pass. The page changes when the handler returns, not at each write.
+
+- A write computes a memo when the handler reads it. The bindings, such as the text of the page or an effect, run once when the handler returns. A state between two writes never shows and never throws.
+- Each write runs the memos it reaches once, after the memos they read. The updates of a component run before those of the components inside it, so a child gets every new prop and context value before its memos compute.
+- An error of a memo or a binding does not stop the handler that wrote. It goes to the nearest `#try` around the code that threw.
+- A write that has not settled after 10000 rounds stops with an error. A loop through `ref=$bind` can cause it, when an update writes a value that it reads.
+- `flush()` from `brumate/signals` runs the waiting bindings at once, for a handler that must focus or measure what it rendered:
+
+```brm
+<script>
+  import { $signal, flush } from 'brumate/signals';
+
+  let open = $signal(false);
+  let field = $signal<HTMLInputElement>();
+
+  function show() {
+    open = true;
+    flush();
+    field!.focus();
+  }
+</script>
+
+<button onClick=show>Edit</button>
+#if (open) {
+  <input ref=$bind(field)>
+}
+```
+
+`flush` is a function of the runtime, not a compile-time function, so its import stays in the output. It does nothing outside a handler and on the server.
+
 ## Rules and common mistakes
 
 - Changing a value in place does not update anything, because the signal still holds the same object. `todos.push(todo)` and `todo.done = true` are compile warnings, such as `This changes the value of todos in place, so nothing that reads it updates`. Assign a new value, or use `$produce`.
