@@ -1,0 +1,26 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorField from '../../src/ColorField.brm';
+  import FieldError from '../../src/FieldError.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import NumberField from '../../src/NumberField.brm';
+
+  let hex = $signal<string | null>(null);
+  let count = $signal(Number.NaN);
+</script>
+
+<main class="page">
+  <form class="form" onSubmit=((event) => event.preventDefault())>
+    <ColorField class="color" name="hex" isRequired value=$bind(hex)>
+      <Label>Color</Label>
+      <Input class="color-input" />
+      <FieldError class="color-error" />
+    </ColorField>
+    <NumberField class="number" name="count" isRequired value=$bind(count)>
+      <Label>Count</Label>
+      <Input class="number-input" />
+      <FieldError class="number-error" />
+    </NumberField>
+  </form>
+</main>
