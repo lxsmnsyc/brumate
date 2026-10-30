@@ -32,10 +32,10 @@ export const usage = highlight(
  * page with a script loads. The other rows add the code of a part.
  */
 export const sizes: { name: string; note: string; total: number }[] = [
-  { name: 'No part', note: 'the loader and the core', total: 23.3 },
-  { name: 'Checkbox', note: '', total: 27.6 },
-  { name: 'Button', note: '', total: 27.8 },
-  { name: 'Tabs', note: 'a list and two panels', total: 33.6 },
-  { name: 'Dialog', note: 'closed', total: 37.5 },
-  { name: 'Select', note: 'two options, closed', total: 48.4 },
+  { name: 'No part', note: 'the loader and the core', total: 24.4 },
+  { name: 'Checkbox', note: '', total: 30.0 },
+  { name: 'Button', note: '', total: 29.5 },
+  { name: 'Tabs', note: 'a list and two panels', total: 36.3 },
+  { name: 'Dialog', note: 'closed', total: 40.2 },
+  { name: 'Select', note: 'two options, closed', total: 51.6 },
 ];
