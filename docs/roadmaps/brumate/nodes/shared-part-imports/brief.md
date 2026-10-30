@@ -1,7 +1,7 @@
 ---
 id: shared-part-imports
 title: A shared client part imports the names its functions use
-status: active
+status: done
 priority: must
 type: fix
 outline: false
