@@ -209,7 +209,13 @@ class RevealGroup {
 
   /** The body is ready, or failed with nothing to send. `send` writes it, and runs `after` with it. */
   ready(id: ScopeId, send: (after: string) => void): void {
-    const member = this.members.find((item) => item.id === id);
+    let member: (typeof this.members)[number] | undefined;
+    for (const item of this.members) {
+      if (item.id === id) {
+        member = item;
+        break;
+      }
+    }
     if (member) {
       member.send = send;
       this.flush();
@@ -234,7 +240,11 @@ class RevealGroup {
       member.send!(next && this.hidden.has(next.id) ? `$bF(${scriptJSON(next.id)})` : '');
     };
     if (this.order === 'natural') {
-      members.forEach((member, index) => member.send && !member.sent && sendAt(index));
+      for (const [index, member] of members.entries()) {
+        if (member.send && !member.sent) {
+          sendAt(index);
+        }
+      }
     } else if (this.order === 'sequential') {
       for (let index = 0; index < members.length && members[index]!.send; index++) {
         if (!members[index]!.sent) {
@@ -247,10 +257,37 @@ class RevealGroup {
           sendAt(index);
         }
       }
-    } else if (this.closed && members.every((member) => member.send)) {
-      members.forEach((member, index) => !member.sent && sendAt(index));
+    } else if (this.closed) {
+      // Every body must be ready before any is sent.
+      let allReady = true;
+      for (const member of members) {
+        if (!member.send) {
+          allReady = false;
+          break;
+        }
+      }
+      if (allReady) {
+        for (const [index, member] of members.entries()) {
+          if (!member.sent) {
+            sendAt(index);
+          }
+        }
+      }
     }
   }
+}
+
+/** The last entry of the inserted children that comes from `from`. */
+function findLastInserted<T extends { from: ScopeId }>(
+  inserted: readonly T[],
+  from: ScopeId | undefined,
+): T | undefined {
+  for (let index = inserted.length - 1; index >= 0; index--) {
+    if (inserted[index]!.from === from) {
+      return inserted[index];
+    }
+  }
+  return undefined;
 }
 
 /** True if a boundary holds `target`, whose ID starts with the boundary's ID and a dot. */
@@ -546,7 +583,7 @@ export class Context {
       }
     }
     // A scope at the top of children that are inserted elsewhere finds its contexts there.
-    const inserted = root.inserted.findLast((entry) => entry.from === up);
+    const inserted = findLastInserted(root.inserted, up);
     if (inserted) {
       up = inserted.at;
       record.t = inserted.at;
@@ -600,7 +637,7 @@ export class Context {
     const { inserted } = this.root;
     // Children that a component passes on, as `<Select>{children}</Select>`, render where the
     // component that gets them inserts them, so they find their contexts there too.
-    const outer = inserted.findLast((item) => item.from === at);
+    const outer = findLastInserted(inserted, at);
     const entry = { from, at: outer ? outer.at : at, tag: tag ?? outer?.tag };
     if (outer) {
       // The browser finds the component that holds these children by this.
@@ -766,7 +803,11 @@ export class Context {
 
   /** The records of the scopes of this render, by ID, in the order the render made them. */
   get state(): StateMap {
-    return new Map(this.scopes.map((entry) => [entry.id, entry.record]));
+    const state: StateMap = new Map();
+    for (const entry of this.scopes) {
+      state.set(entry.id, entry.record);
+    }
+    return state;
   }
 
   /**
@@ -774,9 +815,13 @@ export class Context {
    * scope, as `[scope, slot]`. The items of a list share one array.
    */
   get sources(): Map<ScopeId, ItemSource> {
-    return new Map(
-      this.scopes.flatMap((entry) => (entry.source ? [[entry.id, entry.source] as const] : [])),
-    );
+    const sources = new Map<ScopeId, ItemSource>();
+    for (const entry of this.scopes) {
+      if (entry.source) {
+        sources.set(entry.id, entry.source);
+      }
+    }
+    return sources;
   }
 
   /** The scope that `unbind` collects the promise props of its component in. */
@@ -939,11 +984,12 @@ export class Context {
       // A `#template` renders where the component that gets it inserts it, so it reads the
       // contexts there, as children do.
       const render = value as unknown as (...rest: unknown[]) => Promise<unknown>;
-      const template = (...rest: unknown[]): Lazy =>
-        new Children(scope, async () => {
+      function template(...rest: unknown[]): Lazy {
+        return new Children(scope, async () => {
           const html = await render(...rest);
           return isRaw(html) ? rawHTML(html) : insertValue(html);
         });
+      }
       functionReferences.set(template, new FunctionReference(ref, scope));
       return template as T;
     }
@@ -1533,10 +1579,16 @@ export function insert(
     return value[LAZY](ctx, scope, tag, anchor);
   }
   if (Array.isArray(value)) {
-    const parts = value.map((item) => insert(item, ctx, scope, tag));
-    return parts.every((part) => typeof part === 'string')
-      ? parts.join('')
-      : Promise.all(parts).then((all) => all.join(''));
+    const parts: (string | Promise<string>)[] = [];
+    let allStrings = true;
+    for (const item of value) {
+      const part = insert(item, ctx, scope, tag);
+      if (typeof part !== 'string') {
+        allStrings = false;
+      }
+      parts.push(part);
+    }
+    return allStrings ? parts.join('') : Promise.all(parts).then((all) => all.join(''));
   }
   return insertValue(value);
 }
@@ -1678,7 +1730,12 @@ function holds(value: unknown, target: unknown, seen = new Set<unknown>()): bool
   } else if (Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype) {
     items = Object.values(value);
   }
-  return items.some((item) => holds(item, target, seen));
+  for (const item of items) {
+    if (holds(item, target, seen)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -1692,7 +1749,13 @@ function unsendable(error: unknown, ctx: Context): Error {
     return error instanceof Error ? error : new Error(String(error));
   }
   for (const { record, names } of ctx.scopes) {
-    const index = (record.s ?? []).findIndex((value) => holds(value, target));
+    let index = -1;
+    for (const [slot, value] of (record.s ?? []).entries()) {
+      if (holds(value, target)) {
+        index = slot;
+        break;
+      }
+    }
     if (index === -1) {
       continue;
     }
@@ -1752,6 +1815,16 @@ function scriptJSON(value: unknown): string {
 /** The fields that a record in a group of `PackedState` can have. */
 const PACKED_FIELDS = new Set(['k', 'p', 'o', 'm', 's', 'i', 'c']);
 
+/** True when a record has a field that `PackedState` has no place for. */
+function hasUnpackedField(record: ScopeState): boolean {
+  for (const field of Object.keys(record)) {
+    if (!PACKED_FIELDS.has(field)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** A group of `PackedState` while `packState` collects it. */
 /** How many of the last groups `packState` compares a record with, before it looks up its name. */
 const RECENT_GROUPS = 4;
@@ -1785,7 +1858,11 @@ function toStateMap(state: PageState | StateMap): StateMap {
   if (state instanceof Map) {
     return state;
   }
-  return new Map(Object.entries(state).map(([key, record]) => [parseId(key), record]));
+  const map: StateMap = new Map();
+  for (const [key, record] of Object.entries(state)) {
+    map.set(parseId(key), record);
+  }
+  return map;
 }
 
 /**
@@ -1800,9 +1877,13 @@ function visitOrdered(entries: readonly ScopeEntry[], visit: (entry: ScopeEntry)
   for (const entry of entries) {
     if (typeof entry.id === 'number') {
       if (entry.id < last) {
-        numbers = entries
-          .filter((item) => typeof item.id === 'number')
-          .toSorted((a, b) => (a.id as number) - (b.id as number));
+        const numeric: ScopeEntry[] = [];
+        for (const item of entries) {
+          if (typeof item.id === 'number') {
+            numeric.push(item);
+          }
+        }
+        numbers = numeric.toSorted((a, b) => (a.id as number) - (b.id as number));
         break;
       }
       last = entry.id;
@@ -1862,10 +1943,11 @@ export function packState(
   sources?: Map<ScopeId, ItemSource>,
 ): PackedState {
   const state = toStateMap(input);
-  const entries = Array.from(state, ([id, record]): ScopeEntry => {
+  const entries: ScopeEntry[] = [];
+  for (const [id, record] of state) {
     const [prefix, n] = splitId(id);
-    return { id, prefix, n, record, ctx: undefined, source: sources?.get(id) };
-  });
+    entries.push({ id, prefix, n, record, ctx: undefined, source: sources?.get(id) });
+  }
   return packEntries(entries, (id) => state.get(id));
 }
 
@@ -1892,7 +1974,7 @@ function packEntries(
       record.k === undefined ||
       base === undefined ||
       (record.p !== undefined && record.o !== undefined) ||
-      !Object.keys(record).every((field) => PACKED_FIELDS.has(field))
+      hasUnpackedField(record)
     ) {
       result[id] = record;
       return;
@@ -1910,15 +1992,20 @@ function packEntries(
     }
     // The scopes of a list come in runs, so the last groups usually hold the record's group,
     // and the name of the group, a new string to hash, is made only when they do not.
-    let group = recent.find(
-      (item) =>
+    let group: PackGroup | undefined;
+    for (const item of recent) {
+      if (
         item.k === record.k &&
         item.base === base &&
         item.flags === flags &&
         item.count === slots.length &&
         item.m === record.m &&
-        item.prefix === prefix,
-    );
+        item.prefix === prefix
+      ) {
+        group = item;
+        break;
+      }
+    }
     if (!group) {
       const name = `${prefix}:${record.k}:${base}:${flags}:${slots.length}:${record.m ?? ''}`;
       group = groups.get(name);
@@ -2016,7 +2103,7 @@ function serializeState(
       : packState(state, sources);
   // A record that holds the value of a server variable is not sent, nor any after it.
   let leaked = false;
-  const send = (code: string, initial: boolean): void => {
+  function send(code: string, initial: boolean): void {
     const error = leaked ? undefined : secretError(code);
     if (error) {
       leaked = true;
@@ -2024,7 +2111,7 @@ function serializeState(
     } else if (!leaked) {
       onRecord(code, initial);
     }
-  };
+  }
   if (last) {
     let code: string | undefined;
     try {
@@ -2235,10 +2322,10 @@ function createQueue<T>(): Queue<T> {
   let wake: (() => void) | undefined;
   let closed = false;
   let failure: { error: unknown } | undefined;
-  const notify = (): void => {
+  function notify(): void {
     wake?.();
     wake = undefined;
-  };
+  }
   return {
     push(item) {
       items.push(item);
@@ -2385,7 +2472,9 @@ export async function render<P>(
   const html = beforeBodyEnd(rendered, ctx.portals.join(''));
   // The queue of `pending` is made only when something is pending, because it costs a lot for a small page.
   let queue: Queue<string> | undefined;
-  const pending = (): Queue<string> => (queue ??= createQueue<string>());
+  function pending(): Queue<string> {
+    return (queue ??= createQueue<string>());
+  }
   // Records share references, so later records can point into earlier ones.
   const refs = new Map<unknown, number>();
   const { nonce } = options;
@@ -2396,32 +2485,32 @@ export async function render<P>(
   let open = 0;
   let swap = false;
   let headSwap = false;
-  const finish = (): void => {
+  function finish(): void {
     open--;
     if (open === 0) {
       queue?.close();
     }
-  };
+  }
   // The page state is the only record when no `#loading` body is pending.
   let boundaries = 0;
   // The function that swaps a body in, which the first swap of the page defines.
   const swapScript = options.dev ? SWAP_DEV : SWAP;
   // `$bF` is defined in the first script that shows a held fallback.
   let fallbackDefined = false;
-  const showFallback = (): string => {
+  function showFallback(): string {
     if (fallbackDefined) {
       return '';
     }
     fallbackDefined = true;
     return `${SHOW_FALLBACK};`;
-  };
-  const serialize = (
+  }
+  function serialize(
     target: Context,
     onScopes: (script: string) => void,
     route?: string,
     onError: (error: unknown) => void = (error) => pending().fail(unsendable(error, target)),
     last = false,
-  ): void => {
+  ): void {
     open++;
     serializeState(
       target,
@@ -2450,13 +2539,13 @@ export async function render<P>(
       undefined,
       last,
     );
-  };
+  }
 
   // Renders the `#catch` body of the nearest `#try` around a boundary whose body failed.
-  const renderCatch = async (
+  async function renderCatch(
     boundary: Boundary,
     error: unknown,
-  ): Promise<{ html: string; ctx: Context; key: string } | undefined> => {
+  ): Promise<{ html: string; ctx: Context; key: string } | undefined> {
     const entry = boundary.catchers.at(-1);
     if (!entry) {
       return undefined;
@@ -2469,12 +2558,14 @@ export async function render<P>(
       console.error(failure);
       return undefined;
     }
-  };
+  }
 
   // In order: the bodies render where they are, so the page waits for every one of them.
   const inOrder: Boundary[] | undefined = ctx.inOrder ? [] : undefined;
   // When the reader of the response leaves, the bodies that are not sent yet are not sent.
-  const stopped = (): boolean => event?.signal.aborted === true;
+  function stopped(): boolean {
+    return event?.signal.aborted === true;
+  }
   event?.signal.addEventListener('abort', () => queue?.close(), { once: true });
   ctx.watch((boundary) => {
     if (inOrder) {
@@ -2485,19 +2576,19 @@ export async function render<P>(
     open++;
     // A body whose `#reveal` holds it waits for its turn. One that is not sent still takes its
     // turn, and can show the fallback after it.
-    const skip = (after: string): void => {
+    function skip(after: string): void {
       if (after) {
         pending().push(`${scriptTag}${showFallback()}${after}</script>`);
       }
       finish();
-    };
-    const turn = (send: (after: string) => void): void => {
+    }
+    function turn(send: (after: string) => void): void {
       if (boundary.group) {
         boundary.group.ready(boundary.id, send);
       } else {
         send('');
       }
-    };
+    }
     boundary.render.then(
       (result) => {
         // A `#try` body around it failed, so the page has no markers for it. A body around the
@@ -3274,7 +3365,9 @@ export async function handleRequest(
   }
   event.call = { id, args };
   // The function runs with its event, so `getEvent()` before its first await returns it.
-  const invoke = (): unknown => withEvent(event, () => fn(...args));
+  function invoke(): unknown {
+    return withEvent(event, () => fn(...args));
+  }
   return runEntry(options.middleware, event, () =>
     runEntry(options.fileMiddleware?.[id], event, () =>
       posted ? handleForm(invoke, event) : answerCall(functions, event, async () => invoke()),
@@ -3300,7 +3393,12 @@ async function answerCall(
     // The client loads again the memos that call the server functions that `refresh` named.
     const { refreshed } = event;
     if (refreshed?.size) {
-      const ids = Object.keys(functions).filter((key) => refreshed.has(unwrap(functions[key])));
+      const ids: string[] = [];
+      for (const key of Object.keys(functions)) {
+        if (refreshed.has(unwrap(functions[key]))) {
+          ids.push(key);
+        }
+      }
       if (ids.length > 0) {
         headers.set('x-brumate-refresh', ids.join(','));
       }
@@ -3374,8 +3472,13 @@ async function keptPage(key: string): Promise<Response | undefined> {
   const page = JSON.parse(text) as KeptPage;
   const tags = Object.keys(page.tags);
   const versions = await tagVersions(tags);
-  if (page.expires <= Date.now() || tags.some((tag) => versions[tag] !== page.tags[tag])) {
+  if (page.expires <= Date.now()) {
     return undefined;
+  }
+  for (const tag of tags) {
+    if (versions[tag] !== page.tags[tag]) {
+      return undefined;
+    }
   }
   const headers = new Headers(page.headers);
   const maxAge = Number(/max-age=(\d+)/.exec(headers.get('cache-control') ?? '')?.[1] ?? 0);
@@ -3392,16 +3495,29 @@ async function keepPage(key: string, response: Response, event: RequestEvent): P
   if (maxAge <= 0) {
     return;
   }
-  const missing = [...event.cacheTags].filter(([, version]) => version === undefined);
-  const versions = await tagVersions(missing.map(([tag]) => tag));
+  const missing: string[] = [];
+  for (const [tag, version] of event.cacheTags) {
+    if (version === undefined) {
+      missing.push(tag);
+    }
+  }
+  const versions = await tagVersions(missing);
+  const kept: [string, string][] = [];
+  for (const [name, value] of response.headers) {
+    if (name !== 'set-cookie') {
+      kept.push([name, value]);
+    }
+  }
+  const tags: Record<string, string> = {};
+  for (const [tag, version] of event.cacheTags) {
+    tags[tag] = version ?? versions[tag]!;
+  }
   const page: KeptPage = {
     status: response.status,
-    headers: [...response.headers].filter(([name]) => name !== 'set-cookie'),
+    headers: kept,
     body: await response.clone().text(),
     expires: Date.now() + maxAge * 1000,
-    tags: Object.fromEntries(
-      [...event.cacheTags].map(([tag, version]) => [tag, version ?? versions[tag]!]),
-    ),
+    tags,
   };
   await cacheStore().set(key, JSON.stringify(page), maxAge);
 }
@@ -3437,18 +3553,26 @@ const warnedPrivate = new Set<string>();
 
 /** Imports every module of a matched route before it renders. */
 async function resolveView(view: RouteView): Promise<ResolvedView> {
+  const names = Object.keys(view.slots);
+  const pending: Promise<ResolvedView>[] = [];
+  for (const slot of Object.values(view.slots)) {
+    pending.push(resolveView(slot));
+  }
   const [module, loading, ...slots] = await Promise.all([
     view.load(),
     view.loading?.(),
-    ...Object.values(view.slots).map(resolveView),
+    ...pending,
   ]);
-  const names = Object.keys(view.slots);
+  const resolved: Record<string, ResolvedView> = {};
+  for (const [index, name] of names.entries()) {
+    resolved[name] = slots[index]!;
+  }
   return {
     key: view.key,
     component: module.default,
     loading: loading?.default,
     cache: (module as { cache?: PageCache }).cache,
-    slots: Object.fromEntries(names.map((name, index) => [name, slots[index]!])),
+    slots: resolved,
   };
 }
 
@@ -3478,10 +3602,11 @@ async function renderView(
 /** The component IDs of a view and of the views in its slots. */
 function viewIds(view: ResolvedView): string[] {
   const id = (view.component as { brumateId?: string }).brumateId;
-  return [
-    ...(id === undefined ? [] : [id]),
-    ...Object.values(view.slots).flatMap((slot) => viewIds(slot)),
-  ];
+  const ids: string[] = id === undefined ? [] : [id];
+  for (const slot of Object.values(view.slots)) {
+    ids.push(...viewIds(slot));
+  }
+  return ids;
 }
 
 function viewComponent(view: ResolvedView, props: Record<string, unknown>): Component {
@@ -3622,24 +3747,30 @@ async function renderPage(
   const path = new URL(request.url).pathname;
   const endRender = event?.traced('render', path) ?? (() => {});
   // Client navigation has the loader and the core already.
-  const hints = request.headers.has('x-brumate-base')
-    ? []
-    : [
-        ...new Set([
-          ...(options.hints ?? []),
-          ...viewIds(view).flatMap((id) => options.bundleHints?.[id] ?? []),
-        ]),
-      ];
+  let hints: string[] = [];
+  if (!request.headers.has('x-brumate-base')) {
+    const wanted: string[] = [...(options.hints ?? [])];
+    for (const id of viewIds(view)) {
+      wanted.push(...(options.bundleHints?.[id] ?? []));
+    }
+    hints = [...new Set(wanted)];
+  }
   // A page with a nonce, under a strict policy, loads only what carries the nonce. A `Link`
   // header cannot, so the links are in the head only.
   const nonce = options.nonce === undefined ? '' : ` nonce="${escapeAttribute(options.nonce)}"`;
-  const links = nonce ? [] : hints.map((url) => `<${url}>; rel=modulepreload`);
+  const links: string[] = [];
+  if (!nonce) {
+    for (const url of hints) {
+      links.push(`<${url}>; rel=modulepreload`);
+    }
+  }
   if (links.length > 0) {
     options.earlyHints?.(links);
   }
-  const preload = hints
-    .map((url) => `<link rel="modulepreload"${nonce} href="${escapeAttribute(url)}">`)
-    .join('');
+  let preload = '';
+  for (const url of hints) {
+    preload += `<link rel="modulepreload"${nonce} href="${escapeAttribute(url)}">`;
+  }
   const parts = await render(
     viewComponent(view, props),
     {},
@@ -3906,7 +4037,7 @@ function fillHoles(
   headers.append('vary', 'x-brumate-defer');
   headers.append('vary', 'x-brumate-base');
   const marked = shell.replace(HOLE, (template) => `${template} b-hole`);
-  const bodies = holes.map(async ([, at, boundary, base]) => {
+  async function loadBody([, at, boundary, base]: RegExpExecArray): Promise<string> {
     const asked = new Headers(request.headers);
     asked.set('x-brumate-defer', `${boundary} ${at}`);
     asked.set('x-brumate-base', base!);
@@ -3923,14 +4054,22 @@ function fillHoles(
       console.error(error);
       return '';
     }
-  });
+  }
+  const bodies: Promise<string>[] = [];
+  for (const hole of holes) {
+    bodies.push(loadBody(hole));
+  }
   const body = new ReadableStream<string>({
     async start(controller) {
       controller.enqueue(marked);
       // Each body as it is ready, so a slow one does not hold back the others.
-      const pending = new Map(
-        bodies.map((body, index) => [index, body.then((html) => ({ html, index }))]),
-      );
+      const pending = new Map<number, Promise<{ html: string; index: number }>>();
+      for (const [index, promise] of bodies.entries()) {
+        pending.set(
+          index,
+          promise.then((html) => ({ html, index })),
+        );
+      }
       while (pending.size > 0) {
         // oxlint-disable-next-line no-await-in-loop -- The bodies stream in the order they are ready.
         const { html, index } = await Promise.race(pending.values());
@@ -3949,7 +4088,12 @@ function fillHoles(
 function withHeaders(answer: Response, headers: Headers): Response {
   // A rendered page has them already.
   const sent = new Set(answer.headers.getSetCookie());
-  const cookies = headers.getSetCookie().filter((cookie) => !sent.has(cookie));
+  const cookies: string[] = [];
+  for (const cookie of headers.getSetCookie()) {
+    if (!sent.has(cookie)) {
+      cookies.push(cookie);
+    }
+  }
   if (cookies.length === 0) {
     return answer;
   }
@@ -4022,7 +4166,12 @@ async function answerRoute(
       return withEvent(options.event, () => handler(request, match.params));
     }
     if (match.view.load === missingPage || request.method !== 'GET') {
-      const allow = Object.keys(endpoint).filter((name) => /^[A-Z]+$/.test(name));
+      const allow: string[] = [];
+      for (const name of Object.keys(endpoint)) {
+        if (/^[A-Z]+$/.test(name)) {
+          allow.push(name);
+        }
+      }
       return new Response('Method not allowed', {
         status: 405,
         headers: { allow: allow.join(', ') },
