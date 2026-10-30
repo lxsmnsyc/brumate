@@ -15,7 +15,7 @@
 
 ## Gotchas
 
-- `keyDown` and `wheel` now call `pressed`/`scrolled` and then `recheck()`, so arrows, Page keys, Home/End, Enter and the wheel re-check. A press of the step buttons of NumberField does not re-check.
+- `keyDown`, `wheel` and the step buttons of NumberField now call `pressed`/`scrolled` and then `recheck()`, so arrows, Page keys, Home/End, Enter and the wheel re-check.
 
 ## Proposed learnings
 
