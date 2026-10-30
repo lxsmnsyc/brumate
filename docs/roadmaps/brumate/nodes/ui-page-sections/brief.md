@@ -23,7 +23,7 @@ reserves: []
 provides: []
 depends_on:
   - on: ui-gallery-from-groups
-    kind: soft
+    kind: hard
     why: both edit the ui pages; the front matter summaries land first
 ---
 
