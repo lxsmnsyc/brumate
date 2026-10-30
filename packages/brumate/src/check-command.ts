@@ -89,9 +89,12 @@ function packageResolver(
   const packages = findPackages(root);
   return (specifier, importer) => {
     const name = splitSpecifier(specifier)?.name;
-    return name !== undefined && packages.some((item) => item.name === name)
-      ? resolvePackageImport(specifier, importer)
-      : undefined;
+    for (const item of packages) {
+      if (item.name === name) {
+        return resolvePackageImport(specifier, importer);
+      }
+    }
+    return undefined;
   };
 }
 
