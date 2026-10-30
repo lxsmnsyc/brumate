@@ -6,6 +6,7 @@
 - Tooltip and preview refusal (fixed): `packages/ui/src/tooltip.ts` `timing().show` takes a callback that may return `false`, and then forgets the overlay as current. `TooltipTrigger.brm` and `PreviewTrigger.brm` return `isOpen` after the write, so a setter that refused is asked again on the next hover or focus. A blur already cleared the state, so a focus after a blur worked; a focus after a hover did not.
 - Preview press (fixed): `PreviewTrigger.brm` adds the trigger to `dismissed` on a mouse or pen press. Chrome focuses the link after the press hides the card, `:focus-visible` matched, and the 500 ms cooldown showed the card again at once, after its leave transition.
 - Modal and menu that both start open (already worked): a Popover opens through `queueLoad` since overlay-start-open. Test only.
+- Review fixes: `orphans` clear when no overlay holds anything any more (`holding` count in overlay.ts), so a target made inert by the app is not focused by a later release. A mouse press dismissal in PreviewTrigger ends on the next pointerleave or key (`pressForgets` in preview.ts), so Tab still shows the card where a press does not focus the trigger (Safari). Tests: modal.test.ts and preview.test.ts, each fails without the fix.
 - Changeset `.changeset/overlay-focus-fixes.md` (patch).
 
 ## Tests

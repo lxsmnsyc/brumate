@@ -313,3 +313,24 @@ it('gives focus back to the first button when the outer modal ends before the in
   expect(document.activeElement).toBe(edit);
   document.body.innerHTML = '';
 });
+
+it('does not focus a kept target in a later release when the target was inert for another reason', () => {
+  document.body.innerHTML = `
+    <main id="app" inert><button id="edit">Edit</button></main>
+    <button id="other">Other</button>
+    <div id="a-layer" data-layer><div id="a"><button id="a-button">A</button></div></div>
+    <div id="b-layer" data-layer><div id="b"><button id="b-button">B</button></div></div>`;
+  const edit = document.getElementById('edit')!;
+  const a = document.getElementById('a')!;
+  const b = document.getElementById('b')!;
+  hold(a, [], edit, 'edit');
+  document.getElementById('a-button')!.focus();
+  (document.activeElement as HTMLElement).blur();
+  // The target is inert by the app, so it is kept, and no overlay is left to take it.
+  release(a, document.getElementById('a-layer')!);
+  document.getElementById('app')!.removeAttribute('inert');
+  hold(b, [], null, undefined);
+  release(b, document.getElementById('b-layer')!);
+  expect(document.activeElement).not.toBe(edit);
+  document.body.innerHTML = '';
+});

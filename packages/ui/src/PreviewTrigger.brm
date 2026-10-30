@@ -24,7 +24,7 @@
   import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
   import { isFocusVisible } from './interactions.ts';
-  import { cancelLongPress, dismissed, followPreview, startLongPress, startedOpen } from './preview.ts';
+  import { cancelLongPress, dismissed, followPreview, pressForgets, startLongPress, startedOpen } from './preview.ts';
   import { previews } from './tooltip.ts';
 
   /**
@@ -92,6 +92,7 @@
   function hoverEnded(event: HoverEvent) {
     given(button)?.onHoverEnd?.(event);
     given(link)?.onHoverEnd?.(event);
+    pressForgets.get(triggerId)?.();
     if (!isOpen) {
       close(false);
     }
@@ -117,8 +118,20 @@
     if (event.pointerType === 'touch') {
       startLongPress(triggerId, event.pointerId, () => open(true));
     } else {
-      // The focus that this press gives the trigger does not show the preview again.
-      dismissed.add(triggerId);
+      if (event.pointerType !== 'keyboard') {
+        // The focus that this press gives the trigger does not show the preview again. A browser
+        // that does not focus the trigger on a press leaves this entry, so the pointer leaving
+        // or a key ends it, and Tab onto the trigger still shows the preview.
+        pressForgets.get(triggerId)?.();
+        dismissed.add(triggerId);
+        const forget = () => {
+          document.removeEventListener('keydown', forget, true);
+          pressForgets.delete(triggerId);
+          dismissed.delete(triggerId);
+        };
+        pressForgets.set(triggerId, forget);
+        document.addEventListener('keydown', forget, true);
+      }
       close(true);
     }
   }

@@ -294,6 +294,9 @@ const held = new WeakMap<Element, Held>();
  */
 let orphans: HTMLElement[] = [];
 
+/** How many overlays hold something now. Orphans are kept only while one does. */
+let holding = 0;
+
 /** The layers that gave back what they held. Their markup is about to leave the page. */
 const released = new WeakSet<Element>();
 
@@ -362,6 +365,9 @@ export function hold(
   fromInside = false,
 ): void {
   const before = held.get(overlay);
+  if (!before) {
+    holding += 1;
+  }
   for (const stop of before?.stops ?? []) {
     stop();
   }
@@ -380,11 +386,21 @@ export function hold(
  * ID, or else Tab moves on from where the selection was.
  */
 export function release(overlay: Element, layer: Element | undefined): void {
+  release_(overlay, layer);
+  // No overlay is left to take a kept target, such as one that an app made inert itself.
+  if (holding <= 0) {
+    holding = 0;
+    orphans = [];
+  }
+}
+
+function release_(overlay: Element, layer: Element | undefined): void {
   const entry = held.get(overlay);
   if (!entry) {
     return;
   }
   held.delete(overlay);
+  holding -= 1;
   if (layer) {
     released.add(layer);
   }
