@@ -2598,6 +2598,34 @@ export interface DocumentOptions extends RenderOptions {
 export type StreamOptions = DocumentOptions;
 
 const HTML = /<html[\s>]/i;
+const HTML_TAG = /^<html((?:"[^"]*"|'[^']*'|[^>"'])*)>/i;
+const ATTRIBUTE_NAME = /([^\s"'<>/=]+)(?:=(?:"[^"]*"|'[^']*'|[^\s"'>]+))?/g;
+
+/**
+ * Adds `b-html` to the `<html>` tag, with the names of the attributes that the page sent, so
+ * client navigation can tell them from those that a script sets.
+ */
+function nameHtmlAttributes(page: string): string {
+  const tag = HTML_TAG.exec(page);
+  if (!tag) {
+    return page;
+  }
+  const names: string[] = [];
+  // The server owns `b-html`, so one that the author wrote is dropped.
+  const attributes = tag[1]!.replace(ATTRIBUTE_NAME, (text, name: string) => {
+    if (name.toLowerCase() === 'b-html') {
+      return '';
+    }
+    names.push(name);
+    return text;
+  });
+  if (attributes === tag[1] && names.length === 0) {
+    // Nothing to name, so the tag stays as written.
+    return page;
+  }
+  const list = names.length > 0 ? ` b-html="${escapeAttribute(names.join(' '))}"` : '';
+  return `${page.slice(0, 5)}${attributes.trimEnd()}${list}>${page.slice(tag[0].length)}`;
+}
 
 /**
  * Inserts markup before `</body>`, or at the end if there is none. `index`
@@ -2635,7 +2663,7 @@ function firstRender(
   }
   // Markup before <html>, such as the stylesheet of the root component, belongs in the head.
   const headContent = html.slice(0, match.index) + head;
-  let page = html.slice(match.index);
+  let page = nameHtmlAttributes(html.slice(match.index));
   // The page is lowercased once, to find its tags whatever their case.
   const lower = page.toLowerCase();
   const headEnd = lower.indexOf('</head>');

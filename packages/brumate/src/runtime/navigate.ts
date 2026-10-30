@@ -772,13 +772,15 @@ export async function navigate(visit: Visit): Promise<void> {
     return;
   }
   await transition(visit, () => {
-    // A copy, because removing an attribute changes the live list.
-    // oxlint-disable-next-line unicorn/no-useless-spread
-    for (const attribute of [...document.documentElement.attributes]) {
-      document.documentElement.removeAttribute(attribute.name);
+    // Only the attributes that a server page sent change. `b-html` names those of this page.
+    const root = document.documentElement;
+    for (const name of [...(root.getAttribute('b-html') ?? '').split(' '), 'b-html']) {
+      if (name && !next.documentElement.hasAttribute(name)) {
+        root.removeAttribute(name);
+      }
     }
     for (const attribute of next.documentElement.attributes) {
-      document.documentElement.setAttribute(attribute.name, attribute.value);
+      root.setAttribute(attribute.name, attribute.value);
     }
     // Read before the head moves, because moving the <title> clears it in `next`.
     const title = next.title;
