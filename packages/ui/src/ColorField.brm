@@ -304,6 +304,13 @@
     }
   });
 
+  // A locale that changes at run time shows the channel in its format.
+  const language = $memo(locale.locale);
+  $effect(() => {
+    language;
+    $untrack((text = display(color)));
+  });
+
   // After a submit, the message follows what is in the field. The input shows the new text after
   // the update, so the check waits for it.
   function recheck() {
