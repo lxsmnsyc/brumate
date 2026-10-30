@@ -23,6 +23,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: color-area-page-keys
+    kind: hard
+    why: in the 0.4.0 cut (a main bug found by the review of #370)
   - on: utility-demo-workarounds
     kind: hard
     why: in the 0.4.0 cut (follow-up of #362, #363, #365)
