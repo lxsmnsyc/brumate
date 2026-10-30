@@ -16,7 +16,9 @@ if (names.length > 0) {
   layouts.push(...names);
 } else {
   for (const file of readdirSync(folder)) {
-    if (file.endsWith('.html')) layouts.push(file);
+    if (file.endsWith('.html')) {
+      layouts.push(file);
+    }
   }
 }
 
@@ -39,7 +41,9 @@ for (const layout of layouts) {
       const pad = parseFloat(getComputedStyle(box).paddingRight);
       for (const element of box.querySelectorAll('*')) {
         const rect = element.getBoundingClientRect();
-        if (rect.width === 0) continue;
+        if (rect.width === 0) {
+          continue;
+        }
         if (rect.right > outer.right - pad + 1 || rect.bottom > outer.bottom + 1) {
           out.push(`"${element.textContent.trim().slice(0, 40)}" spills out of its box`);
         }

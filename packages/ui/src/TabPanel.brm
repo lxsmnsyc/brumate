@@ -24,7 +24,7 @@
 <script generics="T extends AsTarget = 'div'">
   import { $client, $effect, $getContext, $memo, $props, $signal, $untrack } from 'brumate/signals';
   import { tabbables } from './overlay.ts';
-  import { TabsContext, selectedOf, tabId } from './tabs.ts';
+  import { TabsContext, getSelectedKey, tabId } from './tabs.ts';
 
   /**
    * The panel of a tab. `id` is the key of its Tab.
@@ -43,7 +43,7 @@
   let { ref } = $props<TabPanelOwnProps<T>>();
 
   const tabs = $getContext(TabsContext);
-  const selected = $memo(Boolean(tabs) && selectedOf(tabs!) === id);
+  const selected = $memo(Boolean(tabs) && getSelectedKey(tabs!) === id);
   // Whether the content takes Tab, which the browser checks. The server renders the panel as one
   // that takes Tab itself.
   let hasTabbable = $signal(false);

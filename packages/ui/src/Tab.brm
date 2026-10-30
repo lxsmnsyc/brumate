@@ -26,7 +26,7 @@
   import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import { interact } from './interact.brm.ts';
-  import { TabsContext, selectedOf, tabId } from './tabs.ts';
+  import { TabsContext, getSelectedKey, tabId } from './tabs.ts';
 
   /**
    * A tab of a TabList. `id` is its key, and the TabPanel with the
@@ -50,7 +50,7 @@
   if (tabs && tabs.registry.first === undefined && !isDisabled && !tabs.disabledKeys.includes(id)) {
     tabs.registry.first = id;
   }
-  const selected = $memo(Boolean(tabs) && selectedOf(tabs!) === id);
+  const selected = $memo(Boolean(tabs) && getSelectedKey(tabs!) === id);
   const disabled = $memo(
     isDisabled || Boolean(tabs?.isDisabled) || Boolean(tabs?.disabledKeys.includes(id)),
   );

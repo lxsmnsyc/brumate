@@ -29,7 +29,7 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { $client, $effect, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
-  import { enabledItems, keyOf } from './collection.ts';
+  import { enabledItems, readItemKey } from './collection.ts';
   import { TabsContext } from './tabs.ts';
 
   /**
@@ -73,7 +73,7 @@
     }
     const list = element.querySelector<HTMLElement>('[role=tablist][data-collection]');
     const first = list ? enabledItems(list, 'tab')[0] : undefined;
-    const key = first ? keyOf(first) : undefined;
+    const key = first ? readItemKey(first) : undefined;
     if (key !== undefined) {
       selectedKey = key;
       onSelectionChange?.(key);

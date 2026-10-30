@@ -675,23 +675,20 @@ export function areaChannels(
   }
   const space = colorSpace ?? (has(valueSpace) ? valueSpace : undefined) ?? found ?? valueSpace;
   const channels = SPACE_CHANNELS[space];
-  let x = xChannel;
-  if (x === undefined) {
-    for (const channel of channels) {
-      if (channel !== yChannel) {
-        x = channel;
-        break;
-      }
+  const x = xChannel ?? findOtherChannel(channels, yChannel)!;
+  const y = yChannel ?? findOtherChannel(channels, x)!;
+  return { space, x, y };
+}
+
+/** The first channel of a space that is not `skip`. */
+function findOtherChannel(
+  channels: readonly ColorChannel[],
+  skip: ColorChannel | undefined,
+): ColorChannel | undefined {
+  for (const channel of channels) {
+    if (channel !== skip) {
+      return channel;
     }
   }
-  let y = yChannel;
-  if (y === undefined) {
-    for (const channel of channels) {
-      if (channel !== x) {
-        y = channel;
-        break;
-      }
-    }
-  }
-  return { space, x: x!, y: y! };
+  return undefined;
 }

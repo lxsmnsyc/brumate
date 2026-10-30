@@ -34,8 +34,8 @@
     focusItem,
     focusedItem,
     isTyping,
-    keyOf,
-    movementOf,
+    readItemKey,
+    getKeyMovement,
     moveFrom,
     passFocus,
     trackFocusIn,
@@ -97,7 +97,7 @@
     }
     let item: HTMLElement | undefined;
     for (const option of element.querySelectorAll<HTMLElement>('[role=option][data-key]')) {
-      if (keyOf(option) === key) {
+      if (readItemKey(option) === key) {
         item = option;
         break;
       }
@@ -179,7 +179,7 @@
     }
     const items = enabledItems(element, 'option');
     const current = focusedItem(element, 'option');
-    const key = current ? keyOf(current) : undefined;
+    const key = current ? readItemKey(current) : undefined;
     let target: HTMLElement | undefined;
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       const down = event.key === 'ArrowDown';
@@ -191,7 +191,7 @@
       if (layout === 'stack') {
         return;
       }
-      const movement = movementOf(event.key, 'horizontal', locale.direction);
+      const movement = getKeyMovement(event.key, 'horizontal', locale.direction);
       target = moveFrom(element, items, current, movement!, false);
     } else if (event.key === 'Home' || event.key === 'End') {
       target = event.key === 'Home' ? items[0] : items.at(-1);
@@ -215,7 +215,7 @@
         return;
       }
     }
-    const targetKey = target ? keyOf(target) : undefined;
+    const targetKey = target ? readItemKey(target) : undefined;
     focusItem(target);
     if (targetKey !== undefined) {
       select(targetKey);

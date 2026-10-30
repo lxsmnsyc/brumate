@@ -38,7 +38,9 @@ function total(entries) {
   let jsRaw = 0;
   let jsGzip = 0;
   for (const entry of entries) {
-    if (!isScript(entry)) continue;
+    if (!isScript(entry)) {
+      continue;
+    }
     jsFiles++;
     jsRaw += entry.raw;
     jsGzip += entry.gzip;
@@ -59,7 +61,9 @@ async function run(browser, base, pageUrl, steps, { idleMs, prepare }) {
   page.on('request', (request) => phaseOf.set(request, phase));
   page.on('response', (response) => {
     const url = response.url();
-    if (!url.startsWith(base) || url === pageUrl) return;
+    if (!url.startsWith(base) || url === pageUrl) {
+      return;
+    }
     pending.push(
       response.body().then(
         (body) =>
@@ -81,7 +85,9 @@ async function run(browser, base, pageUrl, steps, { idleMs, prepare }) {
   phase = 'idle';
   await page.waitForLoadState('networkidle');
   await sleep(idleMs);
-  if (prepare) await page.evaluate(prepare);
+  if (prepare) {
+    await page.evaluate(prepare);
+  }
 
   const checks = {};
   for (const step of steps) {
@@ -100,12 +106,16 @@ async function run(browser, base, pageUrl, steps, { idleMs, prepare }) {
   await context.close();
 
   const order = [];
-  for (const step of steps) order.push(step.name);
+  for (const step of steps) {
+    order.push(step.name);
+  }
   const phases = {};
   for (const name of ['boot', 'idle', ...order]) {
     const inPhase = [];
     for (const entry of log) {
-      if (entry.phase === name) inPhase.push(entry);
+      if (entry.phase === name) {
+        inPhase.push(entry);
+      }
     }
     phases[name] = total(inPhase);
   }
@@ -114,7 +124,9 @@ async function run(browser, base, pageUrl, steps, { idleMs, prepare }) {
 
 function session(browser, base, order, { idleMs, n }) {
   const steps = [];
-  for (const name of order) steps.push({ name, ...INTERACTIONS[name] });
+  for (const name of order) {
+    steps.push({ name, ...INTERACTIONS[name] });
+  }
   return run(browser, base, `${base}/?n=${n}`, steps, {
     idleMs,
     prepare: () => {
@@ -127,7 +139,9 @@ function failures(sessions) {
   const failed = [];
   for (const s of sessions) {
     for (const [name, value] of Object.entries(s.checks)) {
-      if (value === 'FAILED') failed.push(`${name} (${s.order[0]} first)`);
+      if (value === 'FAILED') {
+        failed.push(`${name} (${s.order[0]} first)`);
+      }
     }
   }
   return failed;
@@ -183,7 +197,9 @@ async function waterfallRun(browser, base, { latency, idleMs, cold, url, step })
       uploadThroughput: (750 * 1024) / 8,
     });
   }
-  if (cold) await throttle();
+  if (cold) {
+    await throttle();
+  }
   await page.goto(url, { waitUntil: 'load' });
   if (!cold) {
     await page.waitForLoadState('networkidle');
@@ -200,7 +216,9 @@ async function waterfallRun(browser, base, { latency, idleMs, cold, url, step })
   );
   function finish(request) {
     const entry = requests.get(request);
-    if (entry) entry.end = performance.now() - start;
+    if (entry) {
+      entry.end = performance.now() - start;
+    }
   }
   page.on('requestfinished', finish);
   page.on('requestfailed', finish);
@@ -215,7 +233,9 @@ async function waterfallRun(browser, base, { latency, idleMs, cold, url, step })
   }
   const list = [];
   for (const entry of requests.values()) {
-    if (ms === 'FAILED' || entry.start <= ms) list.push(entry);
+    if (ms === 'FAILED' || entry.start <= ms) {
+      list.push(entry);
+    }
   }
   await context.close();
   return { ms, requests: list.length, roundTrips: roundTrips(list), log: list };
@@ -297,7 +317,9 @@ function summary(s) {
 
 function sessionErrors(sessions) {
   const errors = [];
-  for (const s of sessions) errors.push(...s.errors);
+  for (const s of sessions) {
+    errors.push(...s.errors);
+  }
   return errors;
 }
 
@@ -311,7 +333,9 @@ export async function measureDashboard(browser, base, { idleMs, preloadOption })
     ? await run(browser, base, `${base}/?preload=off`, MAIN(), options)
     : undefined;
   const sessions = [main, below];
-  if (off) sessions.push(off);
+  if (off) {
+    sessions.push(off);
+  }
   return {
     ...summary(main),
     belowFirst: {

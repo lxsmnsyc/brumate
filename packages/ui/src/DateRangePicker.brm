@@ -44,7 +44,7 @@
   import { dateSegments, formField } from './date-field.brm.ts';
   import { prevent } from 'brumate/events';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf } from './fields.ts';
+  import { describedBy, parseMessages } from './fields.ts';
   import { DateStringsContext } from './date-strings.ts';
   import { LocaleContext } from './locale.ts';
   import { DateRangeFieldContext } from './segments.ts';
@@ -142,9 +142,9 @@
   const errors = $memo([
     ...(edited
       ? []
-      : messagesOf(
+      : parseMessages(
           [startName, endName].flatMap((field) =>
-            field ? messagesOf(form?.validationErrors[field] as string | string[]) : [],
+            field ? parseMessages(form?.validationErrors[field] as string | string[]) : [],
           ),
         )),
     ...(committed ? nativeErrors : []),

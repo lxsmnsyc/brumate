@@ -284,7 +284,7 @@ export function alignCenter(
 }
 
 /** The last date of a visible range. */
-export function endOf(start: CalendarDate, duration: DateDuration): CalendarDate {
+export function getRangeEnd(start: CalendarDate, duration: DateDuration): CalendarDate {
   const span = { ...duration };
   if (span.days) {
     span.days--;
@@ -298,7 +298,7 @@ export function endOf(start: CalendarDate, duration: DateDuration): CalendarDate
  * The weeks of the month that starts at `start`, each a list of seven dates, in the order of the
  * days of the week of the locale.
  */
-export function weeksOf(
+export function getWeeks(
   start: CalendarDate,
   locale: string,
   firstDayOfWeek?: DayOfWeek,

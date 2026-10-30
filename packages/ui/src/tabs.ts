@@ -26,7 +26,7 @@ export const TabsContext: Context<TabsState | null> = createContext<TabsState | 
 );
 
 /** The key of the selected tab: the one that Tabs hold, or the first one. */
-export function selectedOf(tabs: TabsState): Key | undefined {
+export function getSelectedKey(tabs: TabsState): Key | undefined {
   return tabs.selectedKey ?? tabs.registry.first;
 }
 

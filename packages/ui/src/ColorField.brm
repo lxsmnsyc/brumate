@@ -78,7 +78,7 @@
     withChannelValue,
   } from './color.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf, onFormReset } from './fields.ts';
+  import { describedBy, parseMessages, onFormReset } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import { addStep, clamp, listenToWheel, snapToStep, stopWheel } from './numbers.ts';
 
@@ -161,7 +161,7 @@
   let committed = $signal(false);
   let nativeErrors = $signal<string[]>([]);
   const errors = $memo([
-    ...(edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
+    ...(edited ? [] : parseMessages(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
     ...(committed ? nativeErrors : []),
   ]);
   const invalid = $memo(Boolean(isInvalid) || errors.length > 0);

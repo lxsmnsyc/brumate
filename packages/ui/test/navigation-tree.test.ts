@@ -4,7 +4,7 @@ import { mount } from 'virtual:brumate/testing';
 import Navigation from './fixtures/nav-tree-page.brm?brumate-server';
 import NavigationRef from './fixtures/nav-tree-ref-page.brm?brumate-server';
 import { press, pressWith } from './interact.ts';
-import { ancestorsOf } from '../src/navigation-tree.ts';
+import { findAncestors } from '../src/navigation-tree.ts';
 
 let unmount: (() => void) | undefined;
 afterEach(() => {
@@ -22,9 +22,9 @@ it('finds the items that hold the item of a route', () => {
     { id: 'a', href: '/a' },
     { id: 'b', children: [{ id: 'c', children: [{ id: 'd', href: '/d' }] }] },
   ];
-  expect(ancestorsOf(items, '/d')).toEqual(['b', 'c']);
-  expect(ancestorsOf(items, '/a')).toEqual([]);
-  expect(ancestorsOf(items, null)).toEqual([]);
+  expect(findAncestors(items, '/d')).toEqual(['b', 'c']);
+  expect(findAncestors(items, '/a')).toEqual([]);
+  expect(findAncestors(items, null)).toEqual([]);
 });
 
 it('moves between the links with Up and Down, and opens and closes with Right and Left', async () => {

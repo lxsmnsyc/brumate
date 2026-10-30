@@ -82,7 +82,9 @@ export function update(rows) {
 
 /** The rows with the second and the 999th swapped, when there are that many. */
 export function swap(rows) {
-  if (rows.length < 999) return rows;
+  if (rows.length < 999) {
+    return rows;
+  }
   const next = rows.slice();
   [next[1], next[998]] = [rows[998], rows[1]];
   return next;
@@ -92,7 +94,9 @@ export function swap(rows) {
 export function remove(rows, id) {
   const next = [];
   for (const row of rows) {
-    if (row.id !== id) next.push(row);
+    if (row.id !== id) {
+      next.push(row);
+    }
   }
   return next;
 }

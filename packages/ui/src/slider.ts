@@ -46,7 +46,7 @@ export function thumbRange(slider: SliderState, index: number): [number, number]
 }
 
 /** Where a value is on the track, from 0 to 1. */
-export function percentOf(slider: SliderState, value: number): number {
+export function getPercent(slider: SliderState, value: number): number {
   const size = slider.maxValue - slider.minValue;
   return size > 0 ? clamp((value - slider.minValue) / size, 0, 1) : 0;
 }

@@ -78,14 +78,14 @@
     focusItem,
     focusedItem,
     isTyping,
-    keyOf,
+    readItemKey,
     keysBetween,
     keysIn,
-    movementOf,
+    getKeyMovement,
     moveFrom,
     nextSelection,
     passFocus,
-    rangeOf,
+    getShiftRange,
     sameKeys,
     setRange,
     trackFocusIn,
@@ -95,7 +95,7 @@
   import { FieldInputContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import { VirtualizerContext } from './virtualizer.ts';
-  import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
+  import { findEnabledKeys, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
 
   /**
    * A list of options that the user selects from. Its items
@@ -177,11 +177,11 @@
   /** The keys of the options that can take focus. A windowed list reads its data, not the page. */
   function enabledKeys(element: HTMLElement): Key[] {
     if (windowHeight) {
-      return enabledKeysOf(element, 'option', order(), disabledKeys);
+      return findEnabledKeys(element, 'option', order(), disabledKeys);
     }
     const keys: Key[] = [];
     for (const option of enabledItems(element, 'option')) {
-      keys.push(keyOf(option)!);
+      keys.push(readItemKey(option)!);
     }
     return keys;
   }
@@ -207,7 +207,7 @@
       return;
     }
     const element = ref as HTMLElement | undefined;
-    const range = element ? rangeOf(element) : undefined;
+    const range = element ? getShiftRange(element) : undefined;
     const shift = Boolean(element && request.shift && range);
     setSelection(
       nextSelection(chosen, key, {
@@ -284,13 +284,13 @@
     }
     const rendered = enabledItems(element, 'option');
     const current = focusedItem(element, 'option');
-    const key = current ? keyOf(current) : undefined;
-    const movement = movementOf(event.key, orientation, locale.direction);
+    const key = current ? readItemKey(current) : undefined;
+    const movement = getKeyMovement(event.key, orientation, locale.direction);
     const replace = selectionBehavior === 'replace';
     const toggle = event.ctrlKey || event.metaKey;
     if (movement) {
       // Shift extends a range from the item that has focus, when no press started one.
-      if (event.shiftKey && mode === 'multiple' && key !== undefined && !rangeOf(element)) {
+      if (event.shiftKey && mode === 'multiple' && key !== undefined && !getShiftRange(element)) {
         setRange(element, key);
       }
       let targetKey: Key | undefined;
@@ -308,7 +308,7 @@
         focusKey(targetKey);
       } else {
         const target = moveFrom(element, rendered, current, movement, shouldFocusWrap);
-        targetKey = target ? keyOf(target) : undefined;
+        targetKey = target ? readItemKey(target) : undefined;
         focusItem(target);
       }
       if (targetKey === undefined || mode === 'none' || given) {
@@ -374,7 +374,7 @@
       focusKey(foundKey);
     } else {
       const found = typeahead(element, rendered, current, event);
-      foundKey = found ? keyOf(found) : undefined;
+      foundKey = found ? readItemKey(found) : undefined;
       focusItem(found);
     }
     if (foundKey !== undefined && replace && mode !== 'none' && !given) {

@@ -2,11 +2,11 @@
 // rows are not all in the page, so the keys read the data of the items: their order, which are
 // disabled, and the text of each. A collection whose items are written in markup has no data, and
 // reads the page as `collection.ts` does.
-import { itemsOf, keyOf, textOf, typeaheadKey } from './collection.ts';
+import { findItems, readItemKey, getItemText, typeaheadKey } from './collection.ts';
 import type { Key, Movement } from './collection.ts';
 
 /** The element that scrolls a collection, or none for the page. */
-export function scrollerOf(element: HTMLElement): HTMLElement | undefined {
+export function findScroller(element: HTMLElement): HTMLElement | undefined {
   for (let parent = element.parentElement; parent; parent = parent.parentElement) {
     const style = getComputedStyle(parent);
     if (/^(auto|scroll|overlay)$/.test(style.overflowY || style.overflow)) {
@@ -20,7 +20,7 @@ export function scrollerOf(element: HTMLElement): HTMLElement | undefined {
 export function measuredHeight(element: HTMLElement, role: string, fallback: number): number {
   const before = element.querySelector('[data-window=before]');
   const after = element.querySelector('[data-window=after]');
-  const count = itemsOf(element, role).length;
+  const count = findItems(element, role).length;
   const height =
     before && after && count > 0
       ? (after.getBoundingClientRect().top - before.getBoundingClientRect().bottom) / count
@@ -32,16 +32,16 @@ export function measuredHeight(element: HTMLElement, role: string, fallback: num
  * The keys of the rows that can take focus, in order: those of `order` that are not in
  * `disabledKeys`, and not disabled in the page, such as by an `isDisabled` of the row.
  */
-export function enabledKeysOf(
+export function findEnabledKeys(
   element: HTMLElement,
   role: string,
   order: readonly Key[],
   disabledKeys: readonly Key[],
 ): Key[] {
   const disabled = new Set(disabledKeys);
-  for (const item of itemsOf(element, role)) {
+  for (const item of findItems(element, role)) {
     if (item.getAttribute('aria-disabled') === 'true') {
-      disabled.add(keyOf(item)!);
+      disabled.add(readItemKey(item)!);
     }
   }
   const enabled: Key[] = [];
@@ -88,7 +88,7 @@ export function keyAfter(
   const page = Math.max(
     1,
     Math.floor(
-      (scrollerOf(element)?.clientHeight ?? window.innerHeight) /
+      (findScroller(element)?.clientHeight ?? window.innerHeight) /
         measuredHeight(element, role, rowHeight),
     ),
   );
@@ -135,8 +135,8 @@ export function focusKeyIn(
   focus: (item: HTMLElement | undefined) => void,
 ): void {
   function find() {
-    for (const item of itemsOf(element, role)) {
-      if (keyOf(item) === key) {
+    for (const item of findItems(element, role)) {
+      if (readItemKey(item) === key) {
         return item;
       }
     }
@@ -151,7 +151,7 @@ export function focusKeyIn(
     return;
   }
   const size = measuredHeight(element, role, rowHeight);
-  const scroller = scrollerOf(element);
+  const scroller = findScroller(element);
   const box = scroller?.getBoundingClientRect();
   const height = scroller?.clientHeight ?? window.innerHeight;
   // The rows start where the spacer before them does, below any header of the collection.
@@ -196,8 +196,8 @@ export function typeaheadWindowed(
   getTextValue: ((item: never) => string) | undefined,
 ): Key | undefined {
   const shown = new Map<Key | undefined, HTMLElement>();
-  for (const item of itemsOf(element, role)) {
-    shown.set(keyOf(item), item);
+  for (const item of findItems(element, role)) {
+    shown.set(readItemKey(item), item);
   }
   const allowed = new Set(enabled);
   const entries: { key: Key; text: string }[] = [];
@@ -209,7 +209,7 @@ export function typeaheadWindowed(
     entries.push({
       key: row.key,
       text: item
-        ? textOf(item)
+        ? getItemText(item)
         : (getTextValue?.(row.item as never) ?? '').trim().toLocaleLowerCase(),
     });
   }

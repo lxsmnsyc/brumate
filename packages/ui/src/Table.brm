@@ -56,13 +56,13 @@
     enabledItems,
     focusItem,
     isTyping,
-    itemsOf,
-    keyOf,
+    findItems,
+    readItemKey,
     keysIn,
-    lastFocusedOf,
+    getLastFocused,
     moveFrom,
     nextSelection,
-    rangeOf,
+    getShiftRange,
     sameKeys,
     setLastFocused,
     setRange,
@@ -71,7 +71,7 @@
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
   import { VirtualizerContext } from './virtualizer.ts';
-  import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
+  import { findEnabledKeys, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
   import { TableContext, TableResizeContext, nextSort } from './table.ts';
 
   /**
@@ -143,7 +143,7 @@
     const element = root;
     const found: HTMLElement[] = [];
     if (element) {
-      for (const row of itemsOf(element, 'row')) {
+      for (const row of findItems(element, 'row')) {
         if (row.closest('tbody')) {
           found.push(row);
         }
@@ -164,12 +164,12 @@
   /** The keys of the rows that can take focus. A windowed table reads its data, not the page. */
   function enabledKeys(element: HTMLElement): Key[] {
     if (windowHeight) {
-      return enabledKeysOf(element, 'row', order(), disabledKeys);
+      return findEnabledKeys(element, 'row', order(), disabledKeys);
     }
     const keys: Key[] = [];
     for (const row of rows()) {
       if (row.getAttribute('aria-disabled') !== 'true') {
-        keys.push(keyOf(row)!);
+        keys.push(readItemKey(row)!);
       }
     }
     return keys;
@@ -188,7 +188,7 @@
 
   function select(key: Key, request: SelectionRequest) {
     const element = root;
-    const range = element ? rangeOf(element) : undefined;
+    const range = element ? getShiftRange(element) : undefined;
     const shift = Boolean(element && request.shift && range);
     setSelection(
       nextSelection(selectedKeys, key, {
@@ -362,12 +362,12 @@
           rendered.push(row);
         }
       }
-      const last = lastFocusedOf(element);
+      const last = getLastFocused(element);
       const lastCell = element.querySelector<HTMLElement>('[data-last-focused]');
       let lastRow: HTMLElement | undefined;
       let selectedRow: HTMLElement | undefined;
       for (const row of rendered) {
-        if (lastRow === undefined && last !== undefined && keyOf(row) === last) {
+        if (lastRow === undefined && last !== undefined && readItemKey(row) === last) {
           lastRow = row;
         }
         if (selectedRow === undefined && row.getAttribute('aria-selected') === 'true') {
@@ -395,7 +395,7 @@
     element.querySelector('[data-last-focused]')?.removeAttribute('data-last-focused');
     const row = item.closest<HTMLElement>('[role=row][data-key]');
     if (row) {
-      setLastFocused(element, keyOf(row)!);
+      setLastFocused(element, readItemKey(row)!);
     }
     if (item !== row) {
       item.setAttribute('data-last-focused', '');
@@ -447,7 +447,7 @@
     const rowAt = row ? bodyRows.indexOf(row) : -1;
     const column = isRow ? -1 : isHeader ? headers().indexOf(item) : getCells(row!).indexOf(item);
     const rtl = locale.direction === 'rtl';
-    const key = row ? keyOf(row) : undefined;
+    const key = row ? readItemKey(row) : undefined;
     const replace = selectionBehavior === 'replace';
     const toggle = event.ctrlKey || event.metaKey;
     const global = toggle;
@@ -554,7 +554,7 @@
         event.preventDefault();
       }
       // Shift extends a range from the row that has focus, when no press started one.
-      if (event.shiftKey && selectionMode === 'multiple' && key !== undefined && !rangeOf(element)) {
+      if (event.shiftKey && selectionMode === 'multiple' && key !== undefined && !getShiftRange(element)) {
         setRange(element, key);
       }
       const back = event.key === 'ArrowLeft' ? !rtl : event.key === 'ArrowRight' ? rtl : false;
@@ -568,7 +568,7 @@
       } else {
         focusOn(next, back);
         const nextRow = next?.closest<HTMLElement>('[role=row][data-key]');
-        nextKey = nextRow && !next?.closest('thead') ? keyOf(nextRow) : undefined;
+        nextKey = nextRow && !next?.closest('thead') ? readItemKey(nextRow) : undefined;
       }
       if (
         nextKey === undefined ||

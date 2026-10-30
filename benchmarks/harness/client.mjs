@@ -76,7 +76,9 @@ function run(page) {
   return clickAndWait(page, '#run', created(1000));
 }
 async function repeat(times, step) {
-  for (let index = 0; index < times; index++) await step(index);
+  for (let index = 0; index < times; index++) {
+    await step(index);
+  }
 }
 
 // The operations of js-framework-benchmark, each with its own warmup on a page that loaded with
@@ -208,7 +210,9 @@ async function trace(browser, page, action) {
     failure = error;
   }
   const buffer = await browser.stopTracing();
-  if (failure) throw failure;
+  if (failure) {
+    throw failure;
+  }
   return JSON.parse(buffer.toString('utf8')).traceEvents;
 }
 
@@ -225,13 +229,17 @@ function getTasks(events, pid, tid) {
       (event.name === 'RunTask' || event.name === 'ThreadControllerImpl::RunTask')
     ) {
       tasks.push(event);
-      if (event.name === 'RunTask') hasRunTask = true;
+      if (event.name === 'RunTask') {
+        hasRunTask = true;
+      }
     }
   }
   const name = hasRunTask ? 'RunTask' : 'ThreadControllerImpl::RunTask';
   const named = [];
   for (const task of tasks) {
-    if (task.name === name) named.push(task);
+    if (task.name === name) {
+      named.push(task);
+    }
   }
   return named;
 }
@@ -247,13 +255,19 @@ function clickToPaint(events) {
       break;
     }
   }
-  if (!click) throw new Error('the trace has no click');
+  if (!click) {
+    throw new Error('the trace has no click');
+  }
   let end = click.ts + (click.dur ?? 0);
   for (const event of events) {
-    if (event.pid !== click.pid || event.ts < click.ts) continue;
+    if (event.pid !== click.pid || event.ts < click.ts) {
+      continue;
+    }
     // The frames that the wait of the harness asks for commit with nothing to paint, so only a
     // paint ends the span.
-    if (event.name === 'Paint') end = Math.max(end, event.ts + (event.dur ?? 0));
+    if (event.name === 'Paint') {
+      end = Math.max(end, event.ts + (event.dur ?? 0));
+    }
   }
   // Only the part of each task between the click and the paint counts.
   let cpu = 0;
@@ -272,7 +286,9 @@ function mainThread(events, base) {
       break;
     }
   }
-  if (!parse) throw new Error('the trace has no parse of the page');
+  if (!parse) {
+    throw new Error('the trace has no parse of the page');
+  }
   const durations = [];
   let busy = 0;
   for (const task of getTasks(events, parse.pid, parse.tid)) {
@@ -294,7 +310,9 @@ async function heap(page) {
 }
 
 async function throttle(page, cpu) {
-  if (cpu <= 1) return;
+  if (cpu <= 1) {
+    return;
+  }
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpu });
 }
@@ -307,7 +325,9 @@ async function clickAndWait(page, selector, done) {
 
 function summary(samples) {
   const rounded = [];
-  for (const sample of samples) rounded.push(round(sample));
+  for (const sample of samples) {
+    rounded.push(round(sample));
+  }
   return {
     median: round(median(samples)),
     min: round(Math.min(...samples)),
@@ -358,7 +378,9 @@ export async function measureRows(browser, base, { runs, cpu, idleMs }) {
         await context.close();
       }
     }
-    if (samples.length) operations[key] = timings(samples);
+    if (samples.length) {
+      operations[key] = timings(samples);
+    }
   }
 
   // The heap after the page made 1,000 rows, with no rows from the server.
@@ -413,7 +435,9 @@ export async function measureRows(browser, base, { runs, cpu, idleMs }) {
         await context.close();
       }
     }
-    if (samples.length) resumed[key] = timings(samples);
+    if (samples.length) {
+      resumed[key] = timings(samples);
+    }
   }
 
   return {

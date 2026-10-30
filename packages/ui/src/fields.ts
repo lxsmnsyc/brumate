@@ -10,7 +10,7 @@ export function isFirstInvalid(field: HTMLInputElement | HTMLTextAreaElement): b
 }
 
 /** The messages of a value that `validate` returns: a message, a list, or nothing. */
-export function messagesOf(result: string | string[] | true | null | undefined): string[] {
+export function parseMessages(result: string | string[] | true | null | undefined): string[] {
   if (Array.isArray(result)) {
     const messages: string[] = [];
     for (const message of result) {

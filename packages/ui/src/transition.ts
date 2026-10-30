@@ -19,7 +19,7 @@ export const TransitionContext: Context<TransitionParent | null> =
   createContext<TransitionParent | null>('brumate-ui:transition', null);
 
 /** The classes of a class prop: a space-separated list, without the empty ones. */
-export function classesOf(value: string | undefined): string[] {
+export function parseClasses(value: string | undefined): string[] {
   const classes: string[] = [];
   for (const name of (value ?? '').split(/\s+/)) {
     if (name) {
@@ -104,13 +104,13 @@ export interface StepClasses {
 /** The classes of the class props of a transition. A part with `transition` has none. */
 export function stepClasses(props: Partial<Record<keyof StepClasses, string>> = {}): StepClasses {
   return {
-    enter: classesOf(props.enter),
-    enterFrom: classesOf(props.enterFrom),
-    enterTo: classesOf(props.enterTo),
-    entered: classesOf(props.entered),
-    leave: classesOf(props.leave),
-    leaveFrom: classesOf(props.leaveFrom),
-    leaveTo: classesOf(props.leaveTo),
+    enter: parseClasses(props.enter),
+    enterFrom: parseClasses(props.enterFrom),
+    enterTo: parseClasses(props.enterTo),
+    entered: parseClasses(props.entered),
+    leave: parseClasses(props.leave),
+    leaveFrom: parseClasses(props.leaveFrom),
+    leaveTo: parseClasses(props.leaveTo),
   };
 }
 

@@ -63,13 +63,13 @@
     enabledItems,
     focusItem,
     isTyping,
-    itemsOf,
-    keyOf,
+    findItems,
+    readItemKey,
     keysIn,
-    lastFocusedOf,
+    getLastFocused,
     moveFrom,
     nextSelection,
-    rangeOf,
+    getShiftRange,
     sameKeys,
     setLastFocused,
     setRange,
@@ -79,7 +79,7 @@
   import { tabbables } from './overlay.ts';
   import { TreeContext, visibleRows } from './tree.ts';
   import { VirtualizerContext } from './virtualizer.ts';
-  import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
+  import { findEnabledKeys, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
   import TreeRow from './TreeRow.brm';
 
   /**
@@ -187,12 +187,12 @@
    * view, so the rows are the data, with the disabled keys and the rows in view that are disabled.
    */
   function enabledKeys(element: HTMLElement): Key[] {
-    return enabledKeysOf(element, 'row', rowKeys(), disabledKeys);
+    return findEnabledKeys(element, 'row', rowKeys(), disabledKeys);
   }
 
   function select(key: Key, request: SelectionRequest) {
     const element = ref as HTMLElement | undefined;
-    const range = element ? rangeOf(element) : undefined;
+    const range = element ? getShiftRange(element) : undefined;
     const shift = Boolean(element && request.shift && range);
     const order = element ? enabledKeys(element) : [];
     setSelection(
@@ -239,11 +239,11 @@
     // The list passes its focus on to a row.
     if (element && event.target === element && document.activeElement === element) {
       const items = enabledItems(element, 'row');
-      const last = lastFocusedOf(element);
+      const last = getLastFocused(element);
       let lastItem: HTMLElement | undefined;
       let selectedItem: HTMLElement | undefined;
       for (const item of items) {
-        if (lastItem === undefined && last !== undefined && keyOf(item) === last) {
+        if (lastItem === undefined && last !== undefined && readItemKey(item) === last) {
           lastItem = item;
         }
         if (selectedItem === undefined && item.getAttribute('aria-selected') === 'true') {
@@ -258,13 +258,13 @@
     const element = ref as HTMLElement | undefined;
     const row = findRow(event.target);
     if (tabMode && row && element) {
-      setLastFocused(element, keyOf(row)!);
+      setLastFocused(element, readItemKey(row)!);
       return;
     }
     if (element && row) {
       // While a row has focus, Tab leaves the list rather than stopping at it.
       element.tabIndex = -1;
-      setLastFocused(element, keyOf(row)!);
+      setLastFocused(element, readItemKey(row)!);
     }
   }
 
@@ -337,7 +337,7 @@
       return plain ? focusItem(found) : focusRow(found);
     }
     focusKey(
-      typeaheadWindowed(element, 'row', rows, enabledKeys(element), keyOf(row), event, getTextValue),
+      typeaheadWindowed(element, 'row', rows, enabledKeys(element), readItemKey(row), event, getTextValue),
       plain,
     );
   }
@@ -356,7 +356,7 @@
         (target instanceof HTMLInputElement &&
           !/^(checkbox|radio|button|submit|reset)$/.test(target.type)));
     const items = enabledItems(element, 'row');
-    const key = keyOf(row);
+    const key = readItemKey(row);
     const rtl = locale.direction === 'rtl';
     const replace = selectionBehavior === 'replace';
     const toggle = event.ctrlKey || event.metaKey;
@@ -390,7 +390,7 @@
     }
     if (movement) {
       // Shift extends a range from the row that has focus, when no press started one.
-      if (event.shiftKey && selectionMode === 'multiple' && key !== undefined && !rangeOf(element)) {
+      if (event.shiftKey && selectionMode === 'multiple' && key !== undefined && !getShiftRange(element)) {
         setRange(element, key);
       }
       let nextKey: Key | undefined;
@@ -407,7 +407,7 @@
         focusKey(nextKey);
       } else {
         const next = moveFrom(element, items, row, movement, false);
-        nextKey = next ? keyOf(next) : undefined;
+        nextKey = next ? readItemKey(next) : undefined;
         focusRow(next);
       }
       if (nextKey === undefined || selectionMode === 'none') {

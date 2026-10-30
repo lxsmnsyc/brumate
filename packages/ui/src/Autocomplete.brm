@@ -17,7 +17,7 @@
 <script>
   import { $effect, $id, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { CollectionFocusContext, enabledItems, keyOf, moveFrom } from './collection.ts';
+  import { CollectionFocusContext, enabledItems, readItemKey, moveFrom } from './collection.ts';
   import { FieldInputContext } from './contexts.ts';
   import { MENU_ITEMS } from './menu.ts';
 
@@ -77,7 +77,7 @@
     let item: HTMLElement | undefined;
     if (key !== null) {
       for (const element of items()) {
-        if (keyOf(element) === key) {
+        if (readItemKey(element) === key) {
           item = element;
           break;
         }
@@ -94,7 +94,7 @@
     }
     appliedText = filterText;
     const first = items()[0];
-    activate(filterText !== '' && first && shown.length > 0 ? (keyOf(first) ?? null) : null);
+    activate(filterText !== '' && first && shown.length > 0 ? (readItemKey(first) ?? null) : null);
   }
 
   function typed(event: Event) {
@@ -146,14 +146,14 @@
     const all = items();
     let current: HTMLElement | undefined;
     for (const element of all) {
-      if (keyOf(element) === activeKey) {
+      if (readItemKey(element) === activeKey) {
         current = element;
         break;
       }
     }
     if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && list) {
       const next = moveFrom(list, all, current, event.key === 'ArrowDown' ? 'next' : 'previous', true);
-      activate(next ? (keyOf(next) ?? null) : null);
+      activate(next ? (readItemKey(next) ?? null) : null);
       return;
     }
     // Enter presses the active item, as a click with no pointer does.

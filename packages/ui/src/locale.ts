@@ -59,7 +59,7 @@ export function isRTL(locale: string): boolean {
 }
 
 /** The locale and the direction of a language tag. */
-export function localeOf(locale: string): Locale {
+export function createLocale(locale: string): Locale {
   return { locale, direction: isRTL(locale) ? 'rtl' : 'ltr' };
 }
 
@@ -70,5 +70,5 @@ export function localeOf(locale: string): Locale {
  */
 export const LocaleContext: Context<Locale> = createContext<Locale>(
   'brumate-ui:locale',
-  localeOf('en-US'),
+  createLocale('en-US'),
 );

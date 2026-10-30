@@ -46,17 +46,17 @@
   import { formField } from './date-field.brm.ts';
   import { prevent } from 'brumate/events';
   import { DateStringsContext } from './date-strings.ts';
-  import { describedBy, messagesOf } from './fields.ts';
+  import { describedBy, parseMessages } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import {
     DateFieldContext,
     erasePart,
     jumpTime,
-    secondsOf,
+    getSeconds,
     stepTime,
-    timeOf,
-    timePartsOf,
-    timeSegmentsOf,
+    createTimeString,
+    parseTimeParts,
+    createTimeSegments,
     typeTime,
     usesDayPeriod,
   } from './segments.ts';
@@ -107,19 +107,19 @@
   const strings = $getContext(DateStringsContext);
   const twelve = $memo(usesDayPeriod(locale.locale, hourCycle));
   const inputId = $id();
-  let parts = $signal<DateParts>(timePartsOf(value));
+  let parts = $signal<DateParts>(parseTimeParts(value));
   let typed = $signal('');
   let edited = $signal(false);
   // The time that a reset of the form gives back.
   let initialValue = $signal(value);
   const { committed, nativeErrors, invalidated, changed } = formField(inputId, () => {
     value = initialValue;
-    parts = timePartsOf(value);
+    parts = parseTimeParts(value);
     edited = false;
   });
-  const segments = $memo(timeSegmentsOf(parts, placeholderValue, locale.locale, granularity, hourCycle));
+  const segments = $memo(createTimeSegments(parts, placeholderValue, locale.locale, granularity, hourCycle));
   const errors = $memo([
-    ...(edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
+    ...(edited ? [] : parseMessages(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
     ...(committed ? nativeErrors : []),
   ]);
   // Times compare by their seconds, so `09:30:00` is not past `09:30`.
@@ -127,21 +127,21 @@
     isInvalid ||
       errors.length > 0 ||
       (value !== null &&
-        ((minValue !== undefined && secondsOf(value) < secondsOf(minValue)) ||
-          (maxValue !== undefined && secondsOf(value) > secondsOf(maxValue)))),
+        ((minValue !== undefined && getSeconds(value) < getSeconds(minValue)) ||
+          (maxValue !== undefined && getSeconds(value) > getSeconds(maxValue)))),
   );
 
   // A time that the caller sets shows in the segments.
   $effect(() => {
     const next = value;
-    if ($untrack(timeOf(parts, granularity, twelve)) !== next) {
-      $untrack((parts = timePartsOf(next)));
+    if ($untrack(createTimeString(parts, granularity, twelve)) !== next) {
+      $untrack((parts = parseTimeParts(next)));
     }
   });
 
   function update(next: DateParts) {
     parts = next;
-    const time = timeOf(next, granularity, twelve);
+    const time = createTimeString(next, granularity, twelve);
     const before = value;
     if (time !== before) {
       try {
@@ -149,7 +149,7 @@
       } finally {
         // A setter that refuses or throws leaves the old time, and the segments show that one.
         if (value !== time) {
-          parts = timePartsOf(value);
+          parts = parseTimeParts(value);
         }
       }
       edited = true;

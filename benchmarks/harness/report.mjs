@@ -26,7 +26,9 @@ function table(names, labels, rows) {
   const lines = [`| Metric | ${heads.join(' | ')} |`, `| --- |${aligns}`];
   for (const [label, cell] of rows) {
     const values = [];
-    for (const name of names) values.push(cell(name) ?? '–');
+    for (const name of names) {
+      values.push(cell(name) ?? '–');
+    }
     lines.push(`| ${label} | ${values.join(' | ')} |`);
   }
   return lines.join('\n');
@@ -289,14 +291,18 @@ export function markdown(result, metrics) {
   const names = result.options.frameworks;
   const fw = result.frameworks;
   const labels = {};
-  for (const name of names) labels[name] = fw[name].label;
+  for (const name of names) {
+    labels[name] = fw[name].label;
+  }
   const scenarios = result.options.scenarios ?? ['todos'];
 
   const m = result.machine;
   const versionParts = [];
   for (const name of names) {
     const deps = [];
-    for (const [dep, v] of Object.entries(result.versions[name])) deps.push(`${dep}@${v}`);
+    for (const [dep, v] of Object.entries(result.versions[name])) {
+      deps.push(`${dep}@${v}`);
+    }
     versionParts.push(`${labels[name]}: ${deps.join(', ')}`);
   }
   const headerLines = [
@@ -316,12 +322,16 @@ export function markdown(result, metrics) {
   ];
   const header = [];
   for (const line of headerLines) {
-    if (line !== undefined) header.push(line);
+    if (line !== undefined) {
+      header.push(line);
+    }
   }
   const notes = [];
   if (result.notes.length) {
     notes.push('', '## Notes', '');
-    for (const note of result.notes) notes.push(`- ${note}`);
+    for (const note of result.notes) {
+      notes.push(`- ${note}`);
+    }
   }
   const sections = [];
   if (scenarios.includes('todos'))

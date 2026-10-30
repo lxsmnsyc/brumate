@@ -18,7 +18,7 @@
 <script generics="T extends AsTarget = 'div'">
   import { $getContext, $handler, $memo, $props } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { enabledItems, focusItem, keyOf, movementOf, moveFrom } from './collection.ts';
+  import { enabledItems, focusItem, readItemKey, getKeyMovement, moveFrom } from './collection.ts';
   import { LocaleContext } from './locale.ts';
   import { TabsContext } from './tabs.ts';
 
@@ -44,8 +44,8 @@
     const list = event.currentTarget as HTMLElement;
     // Vertical tabs move with Left and Right too.
     const movement =
-      movementOf(event.key, orientation, locale.direction) ??
-      (orientation === 'vertical' ? movementOf(event.key, 'horizontal', locale.direction) : undefined);
+      getKeyMovement(event.key, orientation, locale.direction) ??
+      (orientation === 'vertical' ? getKeyMovement(event.key, 'horizontal', locale.direction) : undefined);
     if (!movement || movement === 'pageDown' || movement === 'pageUp') {
       return;
     }
@@ -59,7 +59,7 @@
     }
     const target = moveFrom(list, items, current, movement, true);
     focusItem(target);
-    const key = target ? keyOf(target) : undefined;
+    const key = target ? readItemKey(target) : undefined;
     if (key !== undefined && tabs?.keyboardActivation !== 'manual') {
       tabs?.select(key);
     }

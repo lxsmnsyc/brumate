@@ -61,15 +61,15 @@
     ListBoxContext,
     enabledItems,
     focusItem,
-    itemsOf,
+    findItems,
     isTyping,
-    keyOf,
+    readItemKey,
     keysBetween,
     keysIn,
-    lastFocusedOf,
+    getLastFocused,
     moveFrom,
     nextSelection,
-    rangeOf,
+    getShiftRange,
     sameKeys,
     setLastFocused,
     setRange,
@@ -79,7 +79,7 @@
   import { LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
   import { VirtualizerContext } from './virtualizer.ts';
-  import { enabledKeysOf, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
+  import { findEnabledKeys, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
 
   /**
    * A list of rows that can hold buttons, checkboxes and links. Its items are GridListItem
@@ -163,11 +163,11 @@
   /** The keys of the rows that can take focus. A windowed list reads its data, not the page. */
   function enabledKeys(element: HTMLElement): Key[] {
     if (windowHeight) {
-      return enabledKeysOf(element, 'row', order(), disabledKeys);
+      return findEnabledKeys(element, 'row', order(), disabledKeys);
     }
     const keys: Key[] = [];
     for (const row of enabledItems(element, 'row')) {
-      keys.push(keyOf(row)!);
+      keys.push(readItemKey(row)!);
     }
     return keys;
   }
@@ -181,7 +181,7 @@
 
   function select(key: Key, request: SelectionRequest) {
     const element = ref as HTMLElement | undefined;
-    const range = element ? rangeOf(element) : undefined;
+    const range = element ? getShiftRange(element) : undefined;
     const shift = Boolean(element && request.shift && range);
     setSelection(
       nextSelection(selectedKeys, key, {
@@ -212,8 +212,8 @@
     const element = ref as HTMLElement | undefined;
     const ordered: Key[] = [];
     if (element) {
-      for (const item of itemsOf(element, 'row')) {
-        const itemKey = keyOf(item)!;
+      for (const item of findItems(element, 'row')) {
+        const itemKey = readItemKey(item)!;
         if (chosen.includes(itemKey)) {
           ordered.push(itemKey);
         }
@@ -227,8 +227,8 @@
     if (!element) {
       return undefined;
     }
-    for (const item of itemsOf(element, 'row')) {
-      if (keyOf(item) === key) {
+    for (const item of findItems(element, 'row')) {
+      if (readItemKey(item) === key) {
         return item;
       }
     }
@@ -243,8 +243,8 @@
     }
     const staying: Key[] = [];
     const targets: DropTarget[] = [];
-    for (const item of itemsOf(element, 'row')) {
-      const itemKey = keyOf(item)!;
+    for (const item of findItems(element, 'row')) {
+      const itemKey = readItemKey(item)!;
       if (!dragging.includes(itemKey)) {
         staying.push(itemKey);
         targets.push({ key: itemKey, dropPosition: 'before' });
@@ -265,8 +265,8 @@
     }
     const order: Key[] = [];
     const rest: Key[] = [];
-    for (const item of itemsOf(element, 'row')) {
-      const itemKey = keyOf(item)!;
+    for (const item of findItems(element, 'row')) {
+      const itemKey = readItemKey(item)!;
       order.push(itemKey);
       if (!keys.includes(itemKey)) {
         rest.push(itemKey);
@@ -382,7 +382,7 @@
     }
     function dragStart(event: DragEvent) {
       const row = findRow(event.target);
-      const key = row ? keyOf(row) : undefined;
+      const key = row ? readItemKey(row) : undefined;
       if (!row || key === undefined || !event.dataTransfer || disabledKeys.includes(key)) {
         return;
       }
@@ -404,7 +404,7 @@
     /** Where a drop at the event goes: by the row under it, unless the row moves. */
     function targetAt(event: DragEvent): DropTarget | undefined {
       const row = findRow(event.target);
-      const key = row ? keyOf(row) : undefined;
+      const key = row ? readItemKey(row) : undefined;
       if (!row || key === undefined || dragging.includes(key)) {
         return undefined;
       }
@@ -500,10 +500,10 @@
     // The list passes its focus on to a row.
     if (element && event.target === element && document.activeElement === element) {
       const rendered = enabledItems(element, 'row');
-      const last = lastFocusedOf(element);
+      const last = getLastFocused(element);
       let target: HTMLElement | undefined;
       for (const row of rendered) {
-        if (last !== undefined && keyOf(row) === last) {
+        if (last !== undefined && readItemKey(row) === last) {
           target = row;
           break;
         }
@@ -526,7 +526,7 @@
     if (element && row) {
       // While a row has focus, Tab leaves the list rather than stopping at it.
       element.tabIndex = -1;
-      setLastFocused(element, keyOf(row)!);
+      setLastFocused(element, readItemKey(row)!);
     }
   }
 
@@ -585,7 +585,7 @@
     // A field in a row keeps its own keys, other than Up, Down and Tab.
     const typing = isField(target, row);
     const rendered = enabledItems(element, 'row');
-    const key = keyOf(row);
+    const key = readItemKey(row);
     const rtl = locale.direction === 'rtl';
     const replace = selectionBehavior === 'replace';
     const toggle = event.ctrlKey || event.metaKey;
@@ -641,7 +641,7 @@
       // Home and End do not scroll the page. The markup prevents the other keys.
       event.preventDefault();
       // Shift extends a range from the row that has focus, when no press started one.
-      if (event.shiftKey && selectionMode === 'multiple' && key !== undefined && !rangeOf(element)) {
+      if (event.shiftKey && selectionMode === 'multiple' && key !== undefined && !getShiftRange(element)) {
         setRange(element, key);
       }
       let nextKey: Key | undefined;
@@ -650,7 +650,7 @@
         focusKey(nextKey);
       } else {
         const next = moveFrom(element, rendered, row, movement, false);
-        nextKey = next ? keyOf(next) : undefined;
+        nextKey = next ? readItemKey(next) : undefined;
         focusItem(next);
       }
       if (nextKey === undefined || selectionMode === 'none') {
@@ -718,7 +718,7 @@
       focusKey(foundKey);
     } else {
       const found = typeahead(element, rendered, row, event);
-      foundKey = found ? keyOf(found) : undefined;
+      foundKey = found ? readItemKey(found) : undefined;
       focusItem(found);
     }
     if (foundKey !== undefined && replace && selectionMode !== 'none') {

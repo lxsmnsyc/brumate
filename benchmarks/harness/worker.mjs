@@ -19,12 +19,20 @@ function checkTodos(html, n) {
   const body = text(html);
   let left = 0;
   for (let i = 0; i < n; i++) {
-    if (i % 3 !== 0) left++;
+    if (i % 3 !== 0) {
+      left++;
+    }
   }
   const problems = [];
-  if (n > 0 && !body.includes(`Todo number ${n}`)) problems.push(`missing "Todo number ${n}"`);
-  if (!new RegExp(`${left}\\s*left`).test(body)) problems.push(`missing "${left} left"`);
-  if (!/Clicked\s*0\s*times/.test(body)) problems.push('missing "Clicked 0 times"');
+  if (n > 0 && !body.includes(`Todo number ${n}`)) {
+    problems.push(`missing "Todo number ${n}"`);
+  }
+  if (!new RegExp(`${left}\\s*left`).test(body)) {
+    problems.push(`missing "${left} left"`);
+  }
+  if (!/Clicked\s*0\s*times/.test(body)) {
+    problems.push('missing "Clicked 0 times"');
+  }
   return problems;
 }
 
@@ -34,7 +42,9 @@ function checkDashboard(html) {
   const problems = [];
   for (const widget of widgets()) {
     for (const part of [widget.title, `Mode: ${widget.modes[0]}`, String(widget.items[0])]) {
-      if (!body.includes(part)) problems.push(`missing "${part}"`);
+      if (!body.includes(part)) {
+        problems.push(`missing "${part}"`);
+      }
     }
   }
   return problems;
@@ -45,7 +55,9 @@ function checkRows(html, n) {
   const body = text(html);
   const problems = [];
   for (const id of [1, n]) {
-    if (!body.includes(label(id))) problems.push(`missing "${label(id)}" of row ${id}`);
+    if (!body.includes(label(id))) {
+      problems.push(`missing "${label(id)}" of row ${id}`);
+    }
   }
   return problems;
 }
@@ -58,8 +70,12 @@ const check = CHECKS[scenario];
 // encoded chunk by chunk as each one arrives, the way a streaming response writes it. This
 // also flattens a rope string, so a renderer that builds one pays for it here.
 async function encode(output) {
-  if (typeof output === 'string') return [Buffer.from(output, 'utf8')];
-  if (output instanceof Uint8Array) return [output];
+  if (typeof output === 'string') {
+    return [Buffer.from(output, 'utf8')];
+  }
+  if (output instanceof Uint8Array) {
+    return [output];
+  }
   const chunks = [];
   for await (const chunk of output) {
     chunks.push(typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk);
@@ -85,7 +101,9 @@ const commands = {
   },
   async warmup({ n, count }) {
     for (let i = 0; i < count; i++) {
-      for (const chunk of await encode(await render(n))) sink += chunk.length;
+      for (const chunk of await encode(await render(n))) {
+        sink += chunk.length;
+      }
     }
     return sink > 0;
   },
@@ -93,10 +111,14 @@ const commands = {
     let count = 0;
     const start = performance.now();
     while (performance.now() - start < ms) {
-      for (const chunk of await encode(await render(n))) sink += chunk.length;
+      for (const chunk of await encode(await render(n))) {
+        sink += chunk.length;
+      }
       count++;
     }
-    if (sink === 0) throw new Error('every page was empty');
+    if (sink === 0) {
+      throw new Error('every page was empty');
+    }
     return count / ((performance.now() - start) / 1000);
   },
 };

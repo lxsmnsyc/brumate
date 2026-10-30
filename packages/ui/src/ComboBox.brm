@@ -56,7 +56,7 @@
     CollectionFocusContext,
     ListBoxGivenContext,
     enabledItems,
-    keyOf,
+    readItemKey,
     moveFrom,
     textOfItem,
   } from './collection.ts';
@@ -71,7 +71,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf, onFormReset } from './fields.ts';
+  import { describedBy, parseMessages, onFormReset } from './fields.ts';
 
   /**
    * A text field with a list of suggestions. It holds a
@@ -144,7 +144,7 @@
   const serverErrors = $memo(
     form && edited === form.validationErrors
       ? []
-      : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined),
+      : parseMessages(name ? (form?.validationErrors[name] as string | string[]) : undefined),
   );
   const errors = $memo([...serverErrors, ...(committed ? nativeErrors : [])]);
   const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
@@ -196,7 +196,7 @@
       return undefined;
     }
     for (const item of element.querySelectorAll<HTMLElement>('[role=option][data-key]')) {
-      if (keyOf(item) === key) {
+      if (readItemKey(item) === key) {
         return item;
       }
     }
@@ -212,13 +212,13 @@
     const element = list();
     const items = element ? enabledItems(element, 'option') : [];
     if (strategy === 'first') {
-      activate(items[0] ? (keyOf(items[0]) ?? null) : null);
+      activate(items[0] ? (readItemKey(items[0]) ?? null) : null);
     } else if (strategy === 'last') {
-      activate(items.at(-1) ? (keyOf(items.at(-1)!) ?? null) : null);
+      activate(items.at(-1) ? (readItemKey(items.at(-1)!) ?? null) : null);
     } else if (activeKey !== null) {
       let known = false;
       for (const item of items) {
-        if (keyOf(item) === activeKey) {
+        if (readItemKey(item) === activeKey) {
           known = true;
           break;
         }
@@ -364,7 +364,7 @@
     const items = element ? enabledItems(element, 'option') : [];
     let current: HTMLElement | undefined;
     for (const item of items) {
-      if (keyOf(item) === activeKey) {
+      if (readItemKey(item) === activeKey) {
         current = item;
         break;
       }
@@ -379,7 +379,7 @@
           return;
         }
         const next = moveFrom(element, items, current, down ? 'next' : 'previous', true);
-        activate(next ? (keyOf(next) ?? null) : null);
+        activate(next ? (readItemKey(next) ?? null) : null);
         return;
       }
       case 'Enter':

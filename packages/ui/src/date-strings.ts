@@ -2,7 +2,7 @@
 // and the labels of the Calendar and the DatePicker. An I18nProvider looks up the strings of its
 // locale while it renders on the server, and the parts read them from a context. Only that object
 // goes to the browser. The table of every language stays on the server: the parts import the
-// context, never `stringsOf`. Outside an I18nProvider the context holds null, and the parts use
+// context, never `getDateStrings`. Outside an I18nProvider the context holds null, and the parts use
 // their English words.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
@@ -157,7 +157,7 @@ function getName(names: Intl.DisplayNames | undefined, type: SegmentName): strin
 }
 
 /** The strings of a locale. A language with no table shows English. */
-export function stringsOf(locale: string): DateStrings {
+export function getDateStrings(locale: string): DateStrings {
   const language = getLanguage(locale);
   const words = LANGUAGES[language] ?? ENGLISH;
   let names: Intl.DisplayNames | undefined;

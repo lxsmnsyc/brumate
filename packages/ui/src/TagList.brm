@@ -24,8 +24,8 @@
     enabledItems,
     focusItem,
     focusedItem,
-    keyOf,
-    lastFocusedOf,
+    readItemKey,
+    getLastFocused,
     moveFrom,
     setLastFocused,
   } from './collection.ts';
@@ -82,10 +82,10 @@
     // The list passes its focus on to a tag.
     if (element && event.target === element && document.activeElement === element) {
       const items = enabledItems(element, 'row');
-      const last = lastFocusedOf(element);
+      const last = getLastFocused(element);
       let lastItem: HTMLElement | undefined;
       for (const item of items) {
-        if (last !== undefined && keyOf(item) === last) {
+        if (last !== undefined && readItemKey(item) === last) {
           lastItem = item;
           break;
         }
@@ -100,7 +100,7 @@
     if (element && item && element.contains(item)) {
       // While a tag has focus, Tab leaves the list rather than stopping at it.
       element.tabIndex = -1;
-      setLastFocused(element, keyOf(item)!);
+      setLastFocused(element, readItemKey(item)!);
     }
   }
 

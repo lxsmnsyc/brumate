@@ -25,7 +25,7 @@ export function keyAttribute(key: Key): string {
 }
 
 /** The key of the element of an item. */
-export function keyOf(element: Element): Key | undefined {
+export function readItemKey(element: Element): Key | undefined {
   const raw = element.getAttribute('data-key');
   if (raw === null) {
     return undefined;
@@ -42,7 +42,7 @@ export function keyOf(element: Element): Key | undefined {
  * `role` is the role of the items, or several separated by `|`, such as the roles of the items of
  * a menu.
  */
-export function itemsOf(root: Element, role: string): HTMLElement[] {
+export function findItems(root: Element, role: string): HTMLElement[] {
   const items: HTMLElement[] = [];
   for (const item of root.querySelectorAll<HTMLElement>(itemSelector(role))) {
     if (item.closest(`[data-collection]`) === root && !item.closest('[hidden]')) {
@@ -55,7 +55,7 @@ export function itemsOf(root: Element, role: string): HTMLElement[] {
 /** The items that can take focus: those that are not disabled. */
 export function enabledItems(root: Element, role: string): HTMLElement[] {
   const enabled: HTMLElement[] = [];
-  for (const item of itemsOf(root, role)) {
+  for (const item of findItems(root, role)) {
     if (item.getAttribute('aria-disabled') !== 'true') {
       enabled.push(item);
     }
@@ -66,7 +66,7 @@ export function enabledItems(root: Element, role: string): HTMLElement[] {
 /** The item of the collection that has focus. */
 export function focusedItem(root: Element, role: string): HTMLElement | undefined {
   const active = document.activeElement;
-  for (const item of itemsOf(root, role)) {
+  for (const item of findItems(root, role)) {
     if (item === active) {
       return item;
     }
@@ -86,7 +86,7 @@ export function focusItem(item: HTMLElement | undefined): void {
 export type Movement = 'next' | 'previous' | 'first' | 'last' | 'pageDown' | 'pageUp';
 
 /** The movement of a key in a collection of an orientation, with the direction of the locale. */
-export function movementOf(
+export function getKeyMovement(
   key: string,
   orientation: 'horizontal' | 'vertical',
   direction: 'ltr' | 'rtl',
@@ -199,7 +199,7 @@ export function moveFrom(
 export function keysBetween(items: HTMLElement[], anchor: Key, to: Key): Key[] {
   const keys: Key[] = [];
   for (const item of items) {
-    const key = keyOf(item);
+    const key = readItemKey(item);
     if (key !== undefined) {
       keys.push(key);
     }
@@ -225,7 +225,7 @@ const TYPEAHEAD = 1000;
 const typed = new WeakMap<Element, { text: string; timer: ReturnType<typeof setTimeout> }>();
 
 /** The text of an item that a typeahead matches: its `data-text-value`, or its text. */
-export function textOf(item: HTMLElement): string {
+export function getItemText(item: HTMLElement): string {
   return (item.dataset.textValue ?? item.textContent ?? '').trim().toLocaleLowerCase();
 }
 
@@ -267,7 +267,7 @@ export function typeahead(
   const at = from ? items.indexOf(from) : 0;
   const order = [...items.slice(Math.max(at, 0)), ...items.slice(0, Math.max(at, 0))];
   for (const item of order) {
-    if (textOf(item).startsWith(text)) {
+    if (getItemText(item).startsWith(text)) {
       return item;
     }
   }
@@ -313,7 +313,7 @@ export function isTyping(root: Element): boolean {
  */
 const ranges = new WeakMap<Element, { anchor: Key; end: Key }>();
 
-export function rangeOf(root: Element): { anchor: Key; end: Key } | undefined {
+export function getShiftRange(root: Element): { anchor: Key; end: Key } | undefined {
   return ranges.get(root);
 }
 
@@ -325,7 +325,7 @@ export function setRange(root: Element, anchor: Key, end: Key = anchor): void {
 /** The item that had focus last, by its collection, which focus goes back to. */
 const lastFocused = new WeakMap<Element, Key>();
 
-export function lastFocusedOf(root: Element): Key | undefined {
+export function getLastFocused(root: Element): Key | undefined {
   return lastFocused.get(root);
 }
 
@@ -333,7 +333,7 @@ export function setLastFocused(root: Element, key: Key): void {
   lastFocused.set(root, key);
 }
 
-/** The selector of the items of a role, as `itemsOf` reads them. */
+/** The selector of the items of a role, as `findItems` reads them. */
 function itemSelector(role: string): string {
   const selectors: string[] = [];
   for (const name of role.split('|')) {
@@ -352,9 +352,9 @@ export function entryItem(
   fallback: (items: HTMLElement[]) => HTMLElement | undefined = (items) => items[0],
 ): HTMLElement | undefined {
   const items = enabledItems(root, role);
-  const last = lastFocusedOf(root);
+  const last = getLastFocused(root);
   for (const item of items) {
-    if (last !== undefined && keyOf(item) === last) {
+    if (last !== undefined && readItemKey(item) === last) {
       return item;
     }
   }
@@ -383,7 +383,7 @@ export function trackFocusIn(root: HTMLElement | undefined, event: FocusEvent, r
   const item = (event.target as Element).closest?.(itemSelector(role));
   if (root && item && root.contains(item)) {
     root.tabIndex = -1;
-    setLastFocused(root, keyOf(item)!);
+    setLastFocused(root, readItemKey(item)!);
   }
 }
 

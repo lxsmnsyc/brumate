@@ -309,6 +309,7 @@ function pipeline(rand, count, exclude) {
   let format;
   do format = int(0, FORMATS.length - 1);
   while (format === exclude);
+  {}
   return {
     format,
     lines: [
@@ -542,7 +543,9 @@ ${layout(list, (w) => `<${w.component} />`, '')}
 /** Writes the generated components of a framework into `<framework>/dashboard/src/<dir>`. */
 export async function write(framework) {
   const writer = WRITERS[framework];
-  if (!writer) throw new Error(`No dashboard writer for "${framework}"`);
+  if (!writer) {
+    throw new Error(`No dashboard writer for "${framework}"`);
+  }
   const benchDir = fileURLToPath(new URL('..', import.meta.url));
   const dir = path.join(benchDir, framework, 'dashboard/src', writer.dir);
   await rm(dir, { recursive: true, force: true });
@@ -552,4 +555,6 @@ export async function write(framework) {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await write(process.argv[2]);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await write(process.argv[2]);
+}

@@ -16,13 +16,13 @@ Gives the parts inside it a locale and its direction.
 
 The date parts read their words from the locale: the placeholders of the segments, the names of the segments for screen readers, and the labels of the Calendar and the DatePicker. English, German, French, Spanish, Japanese and Chinese (Simplified, and Traditional for `zh-Hant`, `zh-TW`, `zh-HK` and `zh-MO`) have a table. Another language shows English words in the order and with the numbers of its locale.
 
-The server looks up the table once and writes only that language into the page, so the browser never loads the other languages. To use your own words, pass the whole set as `strings`. Start from `stringsOf` to change a few:
+The server looks up the table once and writes only that language into the page, so the browser never loads the other languages. To use your own words, pass the whole set as `strings`. Start from `getDateStrings` to change a few:
 
 ```html
 <script>
-  import { stringsOf } from '@brumate/ui/date-strings.ts';
+  import { getDateStrings } from '@brumate/ui/date-strings.ts';
 
-  const strings = { ...stringsOf('de-DE'), previous: 'Früher', next: 'Später' };
+  const strings = { ...getDateStrings('de-DE'), previous: 'Früher', next: 'Später' };
 </script>
 
 <I18nProvider locale="de-DE" {strings}>…</I18nProvider>

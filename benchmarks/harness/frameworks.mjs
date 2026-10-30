@@ -39,8 +39,12 @@ export const SCENARIOS = ['todos', 'dashboard', 'rows'];
 // dashboard and `loadRows()` for the rows.
 export async function loadApp(name, scenario = 'todos') {
   const adapter = await loadAdapter(name);
-  if (scenario === 'dashboard') return adapter.loadDashboard();
-  if (scenario === 'rows') return adapter.loadRows();
+  if (scenario === 'dashboard') {
+    return adapter.loadDashboard();
+  }
+  if (scenario === 'rows') {
+    return adapter.loadRows();
+  }
   return adapter.load();
 }
 

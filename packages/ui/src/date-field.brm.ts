@@ -6,12 +6,12 @@ import { isFirstInvalid, onFormReset } from './fields.ts';
 import type { DateString } from './calendar.ts';
 import type { DatePlaceholders } from './date-strings.ts';
 import {
-  dateOf,
+  createDateString,
   erasePart,
   isDatePart,
   jumpPart,
-  partsOf,
-  segmentsOf,
+  parseDateParts,
+  createSegments,
   stepPart,
   typeDigit,
 } from './segments.ts';
@@ -31,15 +31,15 @@ export function dateSegments(
   isReadOnly: boolean,
 ) {
   // The parts that are set, and the digits typed into the segment that has focus.
-  let parts = $signal<DateParts>(partsOf(value));
+  let parts = $signal<DateParts>(parseDateParts(value));
   let typed = $signal('');
-  const segments = $memo(segmentsOf(parts, placeholder, locale, placeholders));
-  const date = $memo(dateOf(parts));
+  const segments = $memo(createSegments(parts, placeholder, locale, placeholders));
+  const date = $memo(createDateString(parts));
 
   $effect(() => {
     const next = value;
-    if ($untrack(dateOf(parts)) !== next) {
-      $untrack((parts = partsOf(next)));
+    if ($untrack(createDateString(parts)) !== next) {
+      $untrack((parts = parseDateParts(next)));
     }
   });
 
@@ -82,7 +82,7 @@ export function dateSegments(
     /** Shows a date that the field kept in place of the one that was typed. */
     reset: (kept: string | null) => {
       typed = '';
-      parts = partsOf(kept);
+      parts = parseDateParts(kept);
     },
   };
 }

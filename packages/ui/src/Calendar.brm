@@ -54,7 +54,7 @@
     alignStart,
     constrain,
     constrainStart,
-    endOf,
+    getRangeEnd,
     outOfRange,
     rangeLabel,
     toDate,
@@ -151,7 +151,7 @@
   let start = $signal(
     alignCenter(toDate(focusedValue), visibleDuration, locale.locale, minValue, maxValue).toString(),
   );
-  const end = $memo(endOf(toDate(start), visibleDuration).toString());
+  const end = $memo(getRangeEnd(toDate(start), visibleDuration).toString());
   const visible = $memo(rangeLabel(toDate(start), toDate(end), locale.locale));
   const label = $memo([ariaLabel, visible].filter(Boolean).join(', '));
   const current = $memo(picker ? picker.value : value);
