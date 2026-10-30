@@ -87,8 +87,6 @@ The `Label`, the description `Text` and the `FieldError` are optional.
 | `data-invalid`  | The picker is invalid, such as when its start is after its end. |
 | `data-required` | The picker is required.                                         |
 
-The segments take the keys of a [DateField](./date-field.md#keyboard). The RangeCalendar takes the keys of a [RangeCalendar](./range-calendar.md#keyboard). `Escape` closes the Popover.
-
 ## Keyboard
 
 The segments of each DateInput take the keys of a [DateField](./date-field.md#keyboard). The RangeCalendar takes the keys of a [RangeCalendar](./range-calendar.md#keyboard).
