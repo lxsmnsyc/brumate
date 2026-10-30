@@ -1754,27 +1754,6 @@ describe('resume', () => {
       },
     );
 
-    it('renders the #catch around a boundary whose stream ended, as navigation reports it', async () => {
-      const server = await import(file('streamedCatchAround.brm.ts'));
-      const wait = new Promise<string>(() => {});
-      const page = await renderParts(server.default, { wait });
-      show(page.html + page.state);
-      await startLoader();
-      // The record that navigation adds when the stream ends before the body.
-      const script = document.createElement('script');
-      script.setAttribute('b-state', '');
-      script.setAttribute('b-fail', '0.0');
-      document.body.append(script);
-      (globalThis as unknown as { $brm: unknown[] }).$brm.push([
-        script,
-        () => new Error('The page stopped loading before this part arrived'),
-      ]);
-      await waitFor(() =>
-        expect(text('.caught')).toBe('Error: The page stopped loading before this part arrived'),
-      );
-      expect(document.querySelector('.fallback')).toBeNull();
-    });
-
     it('reports the error to the page when no #try is around', async () => {
       const log = vi.spyOn(console, 'error').mockImplementation(() => {});
       const { events } = await streamed('streamedCatchNo', true);

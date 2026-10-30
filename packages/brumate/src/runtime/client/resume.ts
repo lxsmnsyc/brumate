@@ -110,7 +110,7 @@ function readRecord([script, code]: StateRecord): void {
   // The error of a `#loading` body that failed on the server, with no `#try` around it.
   const failed = script.getAttribute('b-fail');
   if (failed !== null) {
-    failBoundary(failed, decoded);
+    failBoundary(decoded);
     return;
   }
   // Records with scopes: the page state, and the state of each `#loading` body.

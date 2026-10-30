@@ -213,11 +213,15 @@ describe('navigate', () => {
     expect(script?.ownerDocument).toBe(document);
   });
 
-  it('fails a #loading boundary whose body never arrives, when the stream ends', async () => {
+  it('fires brumate:error for a #loading boundary whose body never arrives', async () => {
     document.head.innerHTML = '';
     document.body.innerHTML = '<p>old page</p>';
-    const queue: [HTMLScriptElement, () => unknown][] = [];
-    (globalThis as { $brm?: unknown }).$brm = queue;
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errors: unknown[] = [];
+    const listen = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', listen);
     // A boundary that loses its body, and a #defer block, which waits for its trigger.
     const { response, next } = respond([
       '<!doctype html><html><head></head><body><!--l0--><p>Loading</p><!--/l-->' +
@@ -233,9 +237,13 @@ describe('navigate', () => {
     // The stream ends before the body arrives.
     next();
     await done;
-    expect(queue.map(([script]) => script.getAttribute('b-fail'))).toEqual(['0']);
-    expect(String(queue[0]![1]())).toBe('Error: The page stopped loading before this part arrived');
-    delete (globalThis as { $brm?: unknown }).$brm;
+    window.removeEventListener('brumate:error', listen);
+    log.mockRestore();
+    expect(errors.map(String)).toEqual([
+      'Error: The page stopped loading before this part arrived',
+    ]);
+    // The fallback stays.
+    expect(document.body.textContent).toContain('Loading');
   });
 
   it('gives the swap scripts of a later page the nonce of the loaded page', async () => {

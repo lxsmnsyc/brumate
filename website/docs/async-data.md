@@ -84,7 +84,7 @@ Without a `#try` around the block, the fallback stays, the server logs the error
 
 ### When the stream ends early
 
-The browser can lose the connection before a `#loading` body arrives. After a client navigation, the page notices when the stream ends with a fallback still in place. It treats that body as a failure with the message `The page stopped loading before this part arrived`, so the nearest `#catch` renders it, or `brumate:error` fires when there is none. The server is not asked again, so this works for a `#try` that has browser code or reads a memo, whose `#catch` body ships to the page. A `#defer` block is not affected, since it waits for its trigger.
+The browser can lose the connection before a `#loading` body arrives. After a client navigation, the page notices when the stream ends with a fallback still in place. The fallback stays, and the page gets a `brumate:error` event on `window` for each lost body, with the message `The page stopped loading before this part arrived`. No `#catch` renders, because the server is not asked again. A `#defer` block is not affected, since it waits for its trigger.
 
 When the browser loads the page itself, it gives the page no event for a connection that dropped: Chromium leaves the document loading and fires neither `DOMContentLoaded` nor `load`. The fallbacks stay, and the browser shows that the page did not finish. A reload gets the whole page.
 

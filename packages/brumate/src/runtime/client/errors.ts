@@ -1,6 +1,6 @@
 // Reports an error of client code to the nearest `#try`.
 
-import { MARKER, blockStart, findComment, rangeEnd } from './blocks.ts';
+import { blockStart, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
 import { loadModule, loadPart } from './code.ts';
 import { insertHTML } from './insert.ts';
@@ -71,55 +71,10 @@ export function replaceTry(key: string): void {
   template?.remove();
 }
 
-/** The start markers of the blocks around a node, from the inside out. */
-function blocksAround(place: Node): Comment[] {
-  const result: Comment[] = [];
-  for (let up: Node | null = place; up; up = up.parentNode) {
-    let depth = 0;
-    for (let node = up.previousSibling; node; node = node.previousSibling) {
-      const data = node.nodeType === 8 ? (node as Comment).data : '';
-      if (data[0] === '/') {
-        depth++;
-      } else if (MARKER.test(data)) {
-        if (depth === 0) {
-          result.push(node as Comment);
-        } else {
-          depth--;
-        }
-      }
-    }
-  }
-  return result;
-}
-
-/**
- * Reports the error of a `#loading` body that failed on the server. The body never arrives, so
- * the blocks around its boundary come from the markers in the page. The first `#try` among them
- * with a `#catch` body in the browser renders it.
- */
-export function failBoundary(id: string, error: unknown): void {
+/** Reports the error of a `#loading` body that failed on the server, with no `#try` around it. */
+export function failBoundary(error: unknown): void {
   options.onError?.(error, {});
-  const place = findComment(`l${id}`);
-  void (async () => {
-    for (const marker of place ? blocksAround(place) : []) {
-      if (marker.data[0] !== 'b') {
-        continue;
-      }
-      const [owner, anchor] = marker.data.slice(1).split(':') as [string, string];
-      const scope = scopes.get(parseId(owner));
-      // oxlint-disable-next-line no-await-in-loop -- The first `#try` found catches the error.
-      const module = scope && (await loadModule(rootOf(scope).m ?? '').catch(() => undefined));
-      const entry = Object.values(module?.t ?? {}).find(
-        (item) => item[0] === scope!.k && item[1] === Number(anchor),
-      );
-      if (entry) {
-        // oxlint-disable-next-line no-await-in-loop -- It is the last one.
-        await catchInto(scope!, module!, entry, error);
-        return;
-      }
-    }
-    unhandled(error);
-  })();
+  unhandled(error);
 }
 
 /** Renders the `#catch` body of a `#try` with an error, in place of what the block shows. */

@@ -859,25 +859,20 @@ export async function navigate(visit: Visit): Promise<void> {
 
 /**
  * Called when the stream of a page ends. A `#loading` boundary that still shows its fallback
- * lost its body, such as when the connection dropped, so it fails like a body that threw on the
- * server. Each `#try` around one renders its `#catch`, and the core reports the rest.
+ * lost its body, such as when the connection dropped. The page gets a `brumate:error` event for
+ * each, and the fallback stays.
  */
 function failPending(): void {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_COMMENT);
-  const lost: string[] = [];
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const id = /^l([\d.]+)$/.exec((node as Comment).data)?.[1];
     // The body of a `#defer` block waits for its trigger.
-    if (id !== undefined && !(node.previousSibling as Element | null)?.hasAttribute?.('b-defer')) {
-      lost.push(id);
+    if (
+      /^l[\d.]+$/.test((node as Comment).data) &&
+      !(node.previousSibling as Element | null)?.hasAttribute?.('b-defer')
+    ) {
+      const error = new Error('The page stopped loading before this part arrived');
+      window.dispatchEvent(new CustomEvent('brumate:error', { detail: { error } }));
+      console.error(error);
     }
-  }
-  const queue = ((globalThis as { $brm?: unknown[] }).$brm ??= []);
-  for (const id of lost) {
-    const script = document.createElement('script');
-    script.setAttribute('b-state', '');
-    script.setAttribute('b-fail', id);
-    document.body.append(script);
-    queue.push([script, () => new Error('The page stopped loading before this part arrived')]);
   }
 }
