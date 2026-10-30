@@ -1064,8 +1064,8 @@ describe('resume', () => {
     });
     await resume('delegation', {});
     vi.mocked(document.addEventListener).mockRestore();
-    // Only the type with prevent needs a listener that is not passive.
-    expect(flags.get('click')).toEqual({ capture: true, passive: true });
+    // Only the types with prevent, and click and submit, need a listener that is not passive.
+    expect(flags.get('click')).toEqual({ capture: true, passive: false });
     expect(flags.get('focus')).toEqual({ capture: true, passive: true });
     expect(flags.get('wheel')).toEqual({ capture: true, passive: false });
 
@@ -1078,6 +1078,49 @@ describe('resume', () => {
     document.querySelector('.wheel')!.dispatchEvent(wheel);
     expect(wheel.defaultPrevented).toBe(true);
     await waitFor(() => expect(text('.log')).toBe('outer capture, inner, outer focus, wheel'));
+  });
+
+  it('prevents a click or a submit by a modifier written after load', async () => {
+    await resume('cancelEvents', {});
+    const button = document.querySelector('.go')!;
+    const form = document.querySelector('.form')!;
+    // The page is scanned already, and no entry prevented then.
+    for (const [element, type] of [
+      [button, 'click'],
+      [form, 'submit'],
+    ] as const) {
+      element.setAttribute(
+        'b-on',
+        element.getAttribute('b-on')!.replace(`${type}=`, `${type}:prevent=`),
+      );
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      element.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    }
+  });
+
+  it('lets a part cancel a delegated submit before its handler runs', async () => {
+    await resume('cancelEvents', {});
+    const form = document.querySelector('.form') as HTMLFormElement & {
+      bCancels?: Set<(event: Event) => boolean>;
+    };
+    let cancel = true;
+    form.bCancels = new Set([
+      (event) => {
+        if (cancel) {
+          event.preventDefault();
+        }
+        return cancel;
+      },
+    ]);
+    const cancelled = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(cancelled);
+    await pause();
+    expect(cancelled.defaultPrevented).toBe(true);
+    expect(text('.log')).toBe('');
+    cancel = false;
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(text('.log')).toBe('submit'));
   });
 
   it('prevents only the keys that :prevent names, before the handler loads', async () => {

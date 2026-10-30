@@ -21,25 +21,15 @@ async function buttons() {
   return page;
 }
 
-/**
- * Counts the submit listeners that the page adds on the window, which are those of the pending
- * guards of submit Buttons. Call it before `mount`, and call `ready` for the count to wait for.
- */
-function watchGuards() {
-  const add = window.addEventListener.bind(window);
-  let added = 0;
-  window.addEventListener = ((type: string, ...rest: unknown[]) => {
-    if (type === 'submit') {
-      added++;
+/** Waits until the pending guards of submit Buttons, which sit in the `bCancels` of their forms, number `count`. */
+function guardsReady(count: number) {
+  return vi.waitFor(() => {
+    let found = 0;
+    for (const form of document.forms) {
+      found += (form as { bCancels?: Set<unknown> }).bCancels?.size ?? 0;
     }
-    return (add as Function)(type, ...rest);
-  }) as typeof window.addEventListener;
-  return {
-    ready: (count: number) => vi.waitFor(() => expect(added).toBeGreaterThanOrEqual(count)),
-    stop: () => {
-      window.addEventListener = add;
-    },
-  };
+    expect(found).toBeGreaterThanOrEqual(count);
+  });
 }
 
 /** The events so far, without taking them. */
@@ -203,11 +193,9 @@ it('keeps Space on a submit button, so the browser sends its form, and presses o
 });
 
 it('keeps the type of a pending submit button, which neither sends nor hovers', async () => {
-  const guards = watchGuards();
   const page = await buttons();
   // The submit button outside a form has no guard.
-  await guards.ready(2);
-  guards.stop();
+  await guardsReady(2);
   const button = page.get('.sending');
   expect(button.getAttribute('type')).toBe('submit');
   button.click();
@@ -388,11 +376,9 @@ function implicitSubmit(form: Element) {
 }
 
 it('sends a form once while its submit button is pending, by a click or by Enter', async () => {
-  const guards = watchGuards();
   const page = await mount(PendingSubmit, {});
   unmount = page.unmount;
-  await guards.ready(3);
-  guards.stop();
+  await guardsReady(3);
   const form = page.get('.one');
   const save = page.get('.save');
   save.click();
@@ -412,11 +398,9 @@ it('sends a form once while its submit button is pending, by a click or by Enter
 });
 
 it('sends a form with two submit buttons by the button that is not pending', async () => {
-  const guards = watchGuards();
   const page = await mount(PendingSubmit, {});
   unmount = page.unmount;
-  await guards.ready(3);
-  guards.stop();
+  await guardsReady(3);
   page.get('.toggle').click();
   await page.waitFor(() => expect(page.get('.first').hasAttribute('data-pending')).toBe(true));
   // Enter clicks the default button, the first one, which is pending.
@@ -428,38 +412,18 @@ it('sends a form with two submit buttons by the button that is not pending', asy
 });
 
 it('leaves the submit listeners of the page alone while not pending, and removes its own', async () => {
-  const added: unknown[] = [];
-  const removed: unknown[] = [];
-  const add = window.addEventListener.bind(window);
-  const remove = window.removeEventListener.bind(window);
-  window.addEventListener = ((type: string, listener: unknown, ...rest: unknown[]) => {
-    if (type === 'submit') {
-      added.push(listener);
-    }
-    return (add as Function)(type, listener, ...rest);
-  }) as typeof window.addEventListener;
-  window.removeEventListener = ((type: string, listener: unknown, ...rest: unknown[]) => {
-    if (type === 'submit') {
-      removed.push(listener);
-    }
-    return (remove as Function)(type, listener, ...rest);
-  }) as typeof window.removeEventListener;
-  try {
-    const page = await mount(PendingSubmit, {});
-    await vi.waitFor(() => expect(added.length).toBe(3));
-    let others = 0;
-    const count = () => others++;
-    add('submit', count);
-    page.get('.save').click();
-    await page.waitFor(() => expect(page.text('.sent')).toBe('1'));
-    // The button is not pending, so the listener of the page ran.
-    expect(others).toBe(1);
-    expect(added.length).toBeGreaterThan(0);
-    page.unmount();
-    remove('submit', count);
-    await page.waitFor(() => expect(removed).toEqual(expect.arrayContaining(added)));
-  } finally {
-    window.addEventListener = add;
-    window.removeEventListener = remove;
-  }
+  const page = await mount(PendingSubmit, {});
+  await guardsReady(3);
+  const form = page.get('.one') as HTMLFormElement & { bCancels: Set<unknown> };
+  let others = 0;
+  const count = () => others++;
+  document.addEventListener('submit', count);
+  page.get('.save').click();
+  await page.waitFor(() => expect(page.text('.sent')).toBe('1'));
+  // The button is not pending, so the listener of the page ran.
+  expect(others).toBe(1);
+  expect(form.bCancels.size).toBe(1);
+  page.unmount();
+  document.removeEventListener('submit', count);
+  await page.waitFor(() => expect(form.bCancels.size).toBe(0));
 });

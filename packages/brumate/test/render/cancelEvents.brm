@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let log = $signal<string[]>([]);
+  const add = (entry: string) => (log = [...log, entry]);
+</script>
+
+<form class="form" onSubmit=(() => add('submit'))>
+  <button class="go" type="submit" onClick=(() => add('click'))>Go</button>
+</form>
+<p class="log">{log.join(', ')}</p>

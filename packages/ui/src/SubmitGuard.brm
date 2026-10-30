@@ -11,10 +11,10 @@
   // pending one is blocked. When the button is not pending, the listener does nothing, and the
   // other submit listeners of the page run.
   //
-  // The listener is on the window, in the capture phase, so it runs before the listeners that
-  // brumate adds on the document and before those on the form. It runs on load, so it exists
-  // before a press can make the button pending. It reads data-pending, because a signal read in
-  // a $client callback is the value of the load.
+  // The guard is in the set `bCancels` of the form, which the document listener of brumate reads
+  // before it runs any handler, so a delegated `onSubmit` does not run either. It is added on
+  // load, so it exists before a press can make the button pending. It reads data-pending, because
+  // a signal read in a $client callback is the value of the load.
   $client(() => {
     const button = ref as HTMLButtonElement | undefined;
     const form = button?.form;
@@ -30,17 +30,18 @@
       }
       return false;
     };
-    const onSubmit = (event: SubmitEvent) => {
-      if (
-        button.hasAttribute('data-pending') &&
-        event.target === form &&
-        (event.submitter === button || (!event.submitter && isDefault()))
-      ) {
+    const cancel = (event: Event) => {
+      const { submitter } = event as SubmitEvent;
+      if (button.hasAttribute('data-pending') && (submitter === button || (!submitter && isDefault()))) {
         event.preventDefault();
-        event.stopImmediatePropagation();
+        return true;
       }
+      return false;
     };
-    window.addEventListener('submit', onSubmit, true);
-    return () => window.removeEventListener('submit', onSubmit, true);
+    const cancels = ((form as { bCancels?: Set<typeof cancel> }).bCancels ??= new Set());
+    cancels.add(cancel);
+    return () => {
+      cancels.delete(cancel);
+    };
   }, 'load');
 </script>

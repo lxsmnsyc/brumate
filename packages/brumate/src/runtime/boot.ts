@@ -274,6 +274,14 @@ export function boot(
    * of its target. `stop` ends the event where it is.
    */
   const onEvent = (event: Event): void => {
+    // A part cancels an event of its element before any handler, with a function in the set
+    // `bCancels` of the element, for it cannot add a listener that runs before this one.
+    for (const cancel of (event.target as { bCancels?: Set<(event: Event) => boolean> }).bCancels ??
+      []) {
+      if (cancel(event)) {
+        return;
+      }
+    }
     const path: Element[] = [];
     for (
       let node = event.target as Node | null;
@@ -314,9 +322,11 @@ export function boot(
 
   /**
    * Listens to an event type on the document. The listener is passive, so
-   * scrolling does not wait for it, until an entry of the type prevents.
+   * scrolling does not wait for it, until an entry of the type prevents. `click` and `submit` never
+   * scroll, so they are never passive: a `prevent` that is written after load cancels them.
    */
-  const delegate = (type: string, prevent: boolean): void => {
+  const delegate = (type: string, cancel: boolean): void => {
+    const prevent = cancel || type === 'click' || type === 'submit';
     const passive = types.get(type);
     if (passive === false || (passive === true && !prevent)) {
       return;
@@ -449,6 +459,9 @@ export function boot(
       onBlock(root, template);
     }
   };
+
+  // A part can cancel a submit that no `b-on` names, so the document always listens to it.
+  delegate('submit', false);
 
   // A form of an `$action` sends its data with `fetch`, and the core writes the result into the page.
   listen(document, 'submit', (event) => {
