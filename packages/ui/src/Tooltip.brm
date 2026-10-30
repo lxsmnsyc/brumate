@@ -173,11 +173,6 @@
     return leavePage;
   }, 'load');
 
-  // The callback above does not run for a page that a client navigation brings in, so this effect
-  // holds the cleanup for that page. It tracks nothing, so the cleanup runs only when the page
-  // leaves, or an #offscreen body hides.
-  $effect(() => () => $untrack(leavePage()));
-
   function change(next: boolean) {
     if (next && shown) {
       return;
