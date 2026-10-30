@@ -207,6 +207,23 @@
     }
   }
 
+  // A client navigation runs the cleanups of the page before it removes its markup, so the
+  // element is still in the page. The scope is gone for good, so everything is given back.
+  function leavePage() {
+    const element = overlay;
+    if (element) {
+      release(element, layer);
+    }
+    // A route that leaves keeps the markup of a portal, so the layer goes here.
+    layer?.remove();
+    // An #offscreen body that hides runs this too, and runs the client callback again when it shows,
+    // which opens the overlay again if it is still wanted.
+    shown = false;
+    mounted = false;
+    rested = false;
+    leaving = false;
+  }
+
   $effect(() => {
     const next = wanted;
     $untrack(change(next));
@@ -223,7 +240,7 @@
         return show(run);
       }
     });
-    return leave;
+    return leavePage;
   }, 'load');
 
   function change(next: boolean) {

@@ -156,3 +156,14 @@ it('keeps what a DialogTrigger around it gives the button', async () => {
   expect(settings.getAttribute('aria-controls')).toBe(find('.popover')!.id);
   await page.waitFor(() => expect(find('.popover')!.dataset.placement).toBe('bottom'));
 });
+
+it('removes its layer when the page unmounts with it shown', async () => {
+  const page = await tooltips();
+  pointer('pointerenter', page.get('.save'));
+  await wait(20);
+  await page.waitFor(() => expect(find('.tip')).not.toBeNull());
+  page.unmount();
+  unmount = undefined;
+  // The core forgets the scopes of the mount a moment later.
+  await page.waitFor(() => expect(find('[data-layer]')).toBeNull());
+});

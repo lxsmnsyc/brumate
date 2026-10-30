@@ -557,6 +557,37 @@ export async function run({ browser, url, runner }) {
         assert(violations.length === 0, `axe found:\n${violations.join('\n')}`);
       },
     );
+    await flow('/ui/modal: going back from an open modal leaves no layer', async () => {
+      // Reach the page by a client link, so going back is a client navigation too.
+      await page.goto(`${url}/ui/switch`, { waitUntil: 'load' });
+      await page.locator('.sidebar a[href="/ui/modal"]').click();
+      await page.waitForFunction(() => location.pathname === '/ui/modal', null, {
+        timeout: 5000,
+      });
+      await page.locator('article button[aria-expanded]').first().click();
+      // The picture of the anatomy draws overlays too, so only the one in a layer counts.
+      await page.locator('[data-layer] [data-modal-overlay]').first().waitFor({ timeout: 5000 });
+      // The modal locks the scroll a frame after it opens.
+      await page.waitForFunction(() => document.documentElement.style.overflow === 'hidden', null, {
+        timeout: 5000,
+      });
+      await page.goBack();
+      await page.waitForFunction(() => location.pathname === '/ui/switch', null, {
+        timeout: 5000,
+      });
+      // The address changes at once, but the old route's cleanups run when the new page arrives.
+      await page.waitForFunction(() => !document.querySelector('[data-layer]'), null, {
+        timeout: 5000,
+      });
+      const left = await page.evaluate(() => ({
+        layers: document.querySelectorAll('[data-layer]').length,
+        inert: document.querySelectorAll('[inert]').length,
+        overflow: document.documentElement.style.overflow,
+      }));
+      assert(left.layers === 0, `${left.layers} layers stay after the navigation`);
+      assert(left.inert === 0, `${left.inert} inert nodes stay after the navigation`);
+      assert(left.overflow === '', `the root keeps overflow ${left.overflow}`);
+    });
     await flow(
       '/ui/select: the anatomy picture and the styled example, with no accessibility violations',
       async () => {

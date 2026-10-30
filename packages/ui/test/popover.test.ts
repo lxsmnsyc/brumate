@@ -357,3 +357,15 @@ it('leaves Escape to a layer that is open above a non-modal popover', async () =
     above.remove();
   }
 });
+
+it('removes its layer and the inert page when the page unmounts with it open', async () => {
+  const page = await popovers();
+  await open(page);
+  expect(page.get('.page').closest('[inert]')).not.toBeNull();
+  // A client navigation disposes the page, then removes its markup.
+  page.unmount();
+  unmount = undefined;
+  // The core forgets the scopes of the mount a moment later.
+  await page.waitFor(() => expect(find('[data-layer]')).toBeNull());
+  expect(document.querySelector('[inert]')).toBeNull();
+});

@@ -142,6 +142,19 @@ it('gives the page back when an open Modal leaves the page', async () => {
   expect(document.documentElement.style.overflow).toBe('');
 });
 
+it('gives the page back when the page unmounts with a Modal open', async () => {
+  const page = await modals();
+  await open(page);
+  expect(root.style.overflow).toBe('hidden');
+  // A client navigation disposes the page, then removes its markup.
+  page.unmount();
+  unmount = undefined;
+  // The core forgets the scopes of the mount a moment later.
+  await page.waitFor(() => expect(find('[data-layer]')).toBeNull());
+  expect(document.querySelector('[inert]')).toBeNull();
+  expect(root.style.overflow).toBe('');
+});
+
 it('keeps Tab inside', async () => {
   const page = await modals();
   await open(page);
