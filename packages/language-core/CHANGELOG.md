@@ -1,5 +1,56 @@
 # @brumate/language-core
 
+## 0.2.0
+
+### Minor Changes
+
+- 6bbd8e3: Add `dedupeDiagnostics`, which drops each diagnostic that repeats an earlier one with the same file, place, code and message.
+
+### Patch Changes
+
+- Updated dependencies [859f9b9]
+- Updated dependencies [fdc0e73]
+- Updated dependencies [2f62fba]
+- Updated dependencies [c519c4a]
+- Updated dependencies [14ced48]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [296a8ce]
+- Updated dependencies [f80f134]
+- Updated dependencies [393688f]
+- Updated dependencies [c251b27]
+- Updated dependencies [54d4852]
+- Updated dependencies [d939be1]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [b4faafb]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [043532f]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [9b476e6]
+- Updated dependencies [6405647]
+- Updated dependencies [54d4852]
+- Updated dependencies [3cd7155]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [95504b2]
+- Updated dependencies [88b9ac7]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [67a64f7]
+- Updated dependencies [54d4852]
+- Updated dependencies [54d4852]
+- Updated dependencies [39f4baf]
+- Updated dependencies [3b451bb]
+  - brumate@0.4.0
+
 ## 0.1.3
 
 ### Patch Changes

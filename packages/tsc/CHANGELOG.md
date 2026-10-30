@@ -1,5 +1,13 @@
 # @brumate/tsc
 
+## 0.1.4
+
+### Patch Changes
+
+- 6bbd8e3: `brumate-tsc` prints the code of each compile error, such as `error BRM012`, in place of `error BRM`.
+- Updated dependencies [6bbd8e3]
+  - @brumate/language-core@0.2.0
+
 ## 0.1.3
 
 ### Patch Changes

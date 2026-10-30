@@ -1,6 +1,6 @@
 {
   "name": "@brumate/language-core",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Volar language plugin for .brm files",
   "homepage": "https://github.com/lxsmnsyc/brumate",
   "bugs": "https://github.com/lxsmnsyc/brumate/issues",
