@@ -357,9 +357,7 @@
       "kind": "risk",
       "axis": "soundness",
       "severity": "high",
-      "answers": [
-        "P4"
-      ],
+      "answers": ["P4"],
       "text": "P4's fallback (throw for any loading-memo read outside a memo compute or effect, with no handling counter) also fires in markup update code: a component the browser renders keeps the render's promise in the memo slot, the memo's first compute calls startLoading, which triggers the readers while the slot still holds that promise. search.brm's list update b6 then reads it through get() and would throw into #try at every first load; on main it reads the promise and listOf gives []. P4 needs an exemption for update code (a flag set in queue()), which it does not list.",
       "evidence": {
         "type": "measured",
@@ -375,11 +373,7 @@
       "kind": "risk",
       "axis": "soundness",
       "severity": "high",
-      "answers": [
-        "P1",
-        "P5",
-        "P7"
-      ],
+      "answers": ["P1", "P5", "P7"],
       "text": "The wait sits inside `loaded`, and `started = lastHandler.then(() => loaded)` on one module-global chain, so a waiting click holds every later handler on the whole page until navigation, not only those under the same component. Several waits have no bound: a browser-created memo over a server call (rpc has no timeout), a memo of an async generator that settles only at its first yield (documented in async-data.md 'Streams'), and a memo over a promise that a later handler resolves, which deadlocks. React 18's replay (J11) is per boundary: parts already hydrated keep responding, so it does not support a page-wide hold. Likelihood: low per page, impact: a frozen page.",
       "evidence": {
         "type": "measured",
@@ -415,11 +409,7 @@
       "kind": "risk",
       "axis": "soundness",
       "severity": "medium",
-      "answers": [
-        "P2",
-        "P3",
-        "P4"
-      ],
+      "answers": ["P2", "P3", "P4"],
       "text": "Main does not treat a promise prop or a streamed promise signal as an ordinary value: props.ts:57-60 loads a promise prop as an async memo and resume.ts:225-233 replaces every streamed promise slot with its value when it settles. So the docs' Profile sample types `user` as Promise<...> but it holds the object after settle, and PR #352's async-data.md:131 is false on main. P2's own-scope memo list and P4's memo-only marking leave these slots with neither a wait nor a throw while the runtime still swaps them under a handler; the design has to either stop the unwrapping (props.ts, resume.ts and guesses.settled change) or treat them as loading slots (which brings back #352 finding 1).",
       "evidence": {
         "type": "measured",
@@ -435,10 +425,7 @@
       "kind": "cost",
       "axis": "client-size",
       "severity": "low",
-      "answers": [
-        "P6",
-        "P7"
-      ],
+      "answers": ["P6", "P7"],
       "text": "Sketches of the runtime parts measure +66 B gzip for P1+P2's wait, +30 B for P4's memo-only marking and throw, +40 B for P7's wait: P6's ~185 B total is plausible. It leaves out the memo-slot information that resume needs to mark only memo slots (a per-module list or a state flag, codegen bytes per component), O1's update exemption and a bound for O2; with those, expect about 185-230 B gzip on todos.",
       "evidence": {
         "type": "measured",
@@ -458,9 +445,7 @@
       "kind": "risk",
       "axis": "soundness",
       "severity": "low",
-      "answers": [
-        "P1"
-      ],
+      "answers": ["P1"],
       "text": "An `$action` form posts at once from boot.ts, not through handle(), and a guess goes back only when the last server call finishes. A submit handler that waits for a memo writes its $optimistic guess after the post started; if the post fails without changing the source before the memo arrives, the guess stays until some other server call ends. Main already has this window while handler code loads (milliseconds); P1 stretches it to the stream's length. Likelihood low: it needs the guess's source or another read memo to lack a value at submit.",
       "evidence": {
         "type": "measured",
@@ -474,9 +459,7 @@
       "round": 1,
       "by": "opponent",
       "kind": "rebuttal",
-      "answers": [
-        "P5"
-      ],
+      "answers": ["P5"],
       "text": "P5's bound, 'a streamed memo always settles or rejects by the end of the server stream', holds only for a stream that completes. The server sends a pending memo as a promise that resolves when its record arrives; if the connection drops, no client code rejects the state promises left pending (the only readyState hooks index markers and scan markup), so P1's wait never ends and, by O2, every later click on the page waits with it.",
       "evidence": {
         "type": "measured",
@@ -591,9 +574,7 @@
         "detail": "evidence/opponent-size/README.txt",
         "question": "Q3"
       },
-      "answers": [
-        "O8"
-      ],
+      "answers": ["O8"],
       "ruling": "upheld",
       "user_ruling": "rejected",
       "user_why": "The maintainer adopted an explicit primitive, $resolve, close to O8's await memo (Q7)."
@@ -605,10 +586,7 @@
       "kind": "concession",
       "text": "Client size rises from P6's ~185 B to about 260-300 B gzip on todos. Sketches of P1+P4+P9+P10+P11 measure +292 B appended to the core chunk. That overstates a little, since the sketches share no names with the core, and leaves out the per-handler slot lists and memo-slot marking. Dropping the load-time rejection of every pending promise (a further +59 B) keeps O7 bounded through P10 alone. Shipping is unchanged: rework PR #352 for 0.4.0.",
       "why": "O5 counted the parts P6 left out, and my own cumulative sketch (evidence/proponent-size/results.txt) measured +292 B; gzip deltas of single sketches were not additive.",
-      "answers": [
-        "P6",
-        "P5"
-      ],
+      "answers": ["P6", "P5"],
       "ruling": "upheld",
       "user_ruling": "rejected",
       "user_why": "The maintainer chose explicit waiting (Q7): await $resolve(m) in the handler, BRM182 for visible reads, a throw for unseen ones; no implicit wait, list or cap."
@@ -618,9 +596,7 @@
       "round": 2,
       "by": "opponent",
       "kind": "rebuttal",
-      "answers": [
-        "P10"
-      ],
+      "answers": ["P10"],
       "text": "P10's bound for streamed slots does not hold. Tested in Chromium (headless shell 1248 and the chromium channel) with a local server that cut a chunked HTML response, by RST and by FIN: the document stayed 'loading' and fired no DOMContentLoaded or load for 42 s, while a stalled-then-ended response fired load at 4 s. After client navigation the rest of a page streams through a fetch reader (navigate.ts:702-740) long after load fired, so the `load` race gives those slots no wait at all. Streamed slots need a timer too, and the navigation reader's end as their 'page finished' signal.",
       "evidence": {
         "type": "measured",
@@ -636,9 +612,7 @@
       "kind": "risk",
       "axis": "soundness",
       "severity": "medium",
-      "answers": [
-        "P9"
-      ],
+      "answers": ["P9"],
       "text": "Lanes keep order within a form or a component, but not between components, which main keeps (one chain, handlers.ts:229-236). A handler that waits sits in its lane while a later click in another component that does not wait runs at once, so a toolbar 'delete selected' can run before the row click that selected. Handlers that write another component's state are common: ui/dialog.md:101 has a form's onSubmit call onSave, which writes the DialogTrigger's signal. Also, $bind writes skip the chain (handlers.ts:207-216), so a waiting submit handler reads values typed after the submit. Likelihood: low (needs a wait plus a cross-component click inside the cap); with Q3's cap, one chain held at most up to the cap is the order-safe option, at -38 B.",
       "evidence": {
         "type": "measured",
@@ -654,9 +628,7 @@
       "kind": "risk",
       "axis": "soundness",
       "severity": "low",
-      "answers": [
-        "P11"
-      ],
+      "answers": ["P11"],
       "text": "P11 names the update queue and the component render, but two more paths run update or render code that can read a memo slot holding its promise: refresh() in insert.ts:62-79 calls update functions directly (it has its own `refreshing` flag, which get() can check at about 0 B), and children whose code had not loaded render later from children.ts:145-153, outside the render, reading parent slots through cells() getters. The counter must wrap the update run inside queue(), not pass(), since handlers and function-prop calls run inside pass() (handlers.ts:237, references.ts:77). Devtools reads no slot through get(). Each gap would show as a wrong #catch, not a wrong value.",
       "evidence": {
         "type": "measured",
@@ -672,9 +644,7 @@
       "kind": "risk",
       "axis": "soundness",
       "severity": "medium",
-      "answers": [
-        "P12"
-      ],
+      "answers": ["P12"],
       "text": "P12 makes handlers wait for a promise prop but leaves its type wrong: the docs' Profile types `user` as Promise<...> (async-data.md:221), props.ts:57-60 replaces it with the object, and no checker code maps it to Awaited. After P12 a handler always gets the object, so `user.then(...)` goes from working (main, click before settle) to a TypeError every time; `await user` still works. The same holds for a streamed `$signal(promise)`, which also holds a Promise when the browser writes it (P12's own rule), so one signal has two run-time types by where the page rendered. P12 needs the checker to type such props and signals as their awaited value, or a rule that a promise prop is read through $memo, which the docs sample already does.",
       "evidence": {
         "type": "measured",
@@ -707,9 +677,7 @@
       "round": 2,
       "by": "opponent",
       "kind": "concession",
-      "answers": [
-        "O8"
-      ],
+      "answers": ["O8"],
       "why": "Q1 and Q3: the user puts the ideal behavior first and wants clicks to wait up to a cap, so a default throw with an opt-in `await memo` is not the behavior chosen, and P13 is right that under a capped wait it would be a second spelling",
       "text": "Drop O8. Keep its finding that an async handler's promise does not hold lastHandler (handlers.ts:237-240), which O10 relies on.",
       "ruling": "upheld"
@@ -733,83 +701,56 @@
     {
       "id": "Q1",
       "by": "proponent",
-      "blocks": [
-        "P1",
-        "P5",
-        "P8"
-      ],
+      "blocks": ["P1", "P5", "P8"],
       "ask": "When a user clicks while a value the click needs is still streaming in (usually under a second, up to the end of the page stream), should the click wait and then run, with later clicks queued behind it, or fail at once and show the nearest error (#catch) body?",
       "answer": "Whichever is the ideal behavior; the maintainer puts the ideal behavior ahead of shipping speed for 0.4.0 (2026-10-30)."
     },
     {
       "id": "Q2",
       "by": "proponent",
-      "blocks": [
-        "P6",
-        "P8"
-      ],
+      "blocks": ["P6", "P8"],
       "ask": "Should the 0.4.0 release wait for a reworked PR #352 that makes handlers wait (about a day of work), or ship a smaller fix of #352 in 0.4.0 and move waiting to 0.5.0?",
       "answer": "Whichever is the ideal behavior; the maintainer puts the ideal behavior ahead of shipping speed for 0.4.0 (2026-10-30)."
     },
     {
       "id": "Q3",
       "by": "opponent",
-      "blocks": [
-        "O2",
-        "O3",
-        "P1"
-      ],
+      "blocks": ["O2", "O3", "P1"],
       "ask": "If a click waits for data that is still loading, how long may it wait before it gives up and shows the nearest error (#catch) body instead: a few seconds, until the page has finished loading, or with no limit, knowing that while it waits every other click on the page waits too?",
       "answer": "Wait at most until the page has finished loading, or a few seconds for loads the browser starts, then throw into #catch (2026-10-30)."
     },
     {
       "id": "Q4",
       "by": "opponent",
-      "blocks": [
-        "O9",
-        "P10"
-      ],
+      "blocks": ["O9", "P10"],
       "ask": "In Chrome, when a page's connection breaks while it streams, the page never counts as finished loading. How long should a click that waits for a value from that page wait before it shows the error (#catch) body: the same few seconds as for data the browser loads, or longer (for example 30 seconds) so that slow but healthy pages still wait?",
       "answer": "Superseded by Q7: with explicit waiting, the author sets a timeout per $resolve call, and no implicit cap exists (2026-10-30)."
     },
     {
       "id": "Q5",
       "by": "judge",
-      "blocks": [
-        "O13",
-        "P2"
-      ],
+      "blocks": ["O13", "P2"],
       "ask": "Should a waiting handler wait only for the values it reads (a compiler list per handler, about +290 B gzip on todos), or for every loading value of its component (no list, about 55 B smaller, can over-wait)?",
       "answer": "Exact list (2026-10-30)."
     },
     {
       "id": "Q6",
       "by": "judge",
-      "blocks": [
-        "O12",
-        "P12"
-      ],
+      "blocks": ["O12", "P12"],
       "ask": "A promise prop is typed Promise<T> but brumate replaces it at runtime with the settled value. Type it as the settled value, require reading it through $memo in the child, or decide later?",
       "answer": "Read through $memo only: keep the Promise type, and a compile rule requires $memo(prop) in the child before it is read (2026-10-30)."
     },
     {
       "id": "Q7",
       "by": "judge",
-      "blocks": [
-        "P1",
-        "P2",
-        "P9",
-        "P10"
-      ],
+      "blocks": ["P1", "P2", "P9", "P10"],
       "ask": "After the rounds, the maintainer proposed a primitive that turns a memo into a promise (Solid's resolve). Keep the implicit wait and add it for unseen reads (A), or make waiting explicit only: BRM182 stays, and a handler read of a memo with no value yet must be guarded by $isPending or written as await $resolve(m); unseen reads throw and point to $resolve (B)?",
       "answer": "B: explicit waiting with $resolve, BRM182 stays (2026-10-30)."
     },
     {
       "id": "Q8",
       "by": "judge",
-      "blocks": [
-        "P3"
-      ],
+      "blocks": ["P3"],
       "ask": "Should $resolve(m) resolve at once while a memo reloads (giving the old value), or wait until the memo is no longer pending, as Solid's resolve does, so that writing an input and then awaiting $resolve gives the result for the new input?",
       "answer": "Wait until the memo is no longer pending, as Solid does; a plain read gives the last value, which can be stale, with $isPending true (2026-10-30)."
     }

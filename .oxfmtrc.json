@@ -7,6 +7,7 @@
     "pnpm-lock.yaml",
     "**/__snapshots__/**",
     "**/test/.output/**",
-    "benchmarks/results/**"
+    "benchmarks/results/**",
+    "docs/debates/*/evidence/**"
   ]
 }
