@@ -77,8 +77,9 @@
    *   `onChange` are left alone while an edit makes no other color. When `value` changes from
    *   outside, such as from a reset of the form, the color follows it.
    * - Left and Right move x by a step, and Up and Down move y, on either input, by a page with
-   *   Shift. PageUp and PageDown move y by a page. Home and End move x down and up by a page. The
-   *   focus goes to the input of the axis that moved. The inputs have the role description `2D
+   *   Shift. PageUp, PageDown, Home and End act on the axis of the focused input: the pages move it
+   *   by a page, and Home and End go to its ends. The focus goes to the input of the axis that
+   *   moved with an arrow. The inputs have the role description `2D
    *   slider`.
    * - It has one tab stop: the input of y has `tabindex="-1"` and `aria-hidden`, unless it has the
    *   focus or a key just changed the value. A screen reader hears the value, the other axis, the

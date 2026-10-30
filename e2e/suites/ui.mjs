@@ -1600,8 +1600,9 @@ export async function run({ browser, url, runner }) {
     await waitState('hsb(210, 51%, 71%)');
     await page.keyboard.press('Shift+ArrowRight');
     await waitState('hsb(210, 61%, 71%)');
+    // Home goes to the least value of the axis of the focused input, which is x here.
     await page.keyboard.press('Home');
-    await waitState('hsb(210, 51%, 71%)');
+    await waitState('hsb(210, 0%, 71%)');
     // A press at the middle is half of each channel.
     const area = await page.locator('.plane').boundingBox();
     await page.mouse.click(area.x + area.width * 0.5, area.y + area.height * 0.5);
@@ -1780,11 +1781,11 @@ export async function run({ browser, url, runner }) {
     const text = await field.inputValue();
     assert(/^#[0-9A-F]{6}$/.test(text), `the field shows hex, got ${text}`);
     await page.locator('.mix-area input').first().focus();
-    // End moves x a page, as in React Aria.
+    // End moves x to its maximum.
     await page.keyboard.press('End');
     try {
       await page.waitForFunction(
-        () => document.querySelector('.mix-state')?.textContent === 'hsb(210, 60%, 80%)',
+        () => document.querySelector('.mix-state')?.textContent === 'hsb(210, 100%, 80%)',
         undefined,
         { timeout: 5000 },
       );
