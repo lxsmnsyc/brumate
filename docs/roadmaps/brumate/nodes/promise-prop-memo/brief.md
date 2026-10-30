@@ -1,7 +1,7 @@
 ---
 id: promise-prop-memo
 title: A promise prop is a plain promise in the child
-status: active
+status: done
 priority: should
 type: fix
 outline: false

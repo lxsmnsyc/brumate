@@ -1,7 +1,7 @@
 ---
 id: html-attributes-navigation
 title: Client navigation keeps the attributes that scripts set on <html>
-status: active
+status: done
 priority: should
 type: fix
 outline: false
