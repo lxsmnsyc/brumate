@@ -3,7 +3,7 @@
 
 import type { Attribute, ElementNode, Markup, SFCFile } from './ast.ts';
 import type { Diagnostic } from './model.ts';
-import { childrenOf } from './project.ts';
+import { getChildren } from './project.ts';
 
 /** Elements that a keyboard can reach and use without help. */
 const INTERACTIVE = new Set([
@@ -129,7 +129,7 @@ export function checkAccessibility(file: SFCFile): Diagnostic[] {
           dynamicLabel = true;
         }
       }
-      collect(childrenOf(node));
+      collect(getChildren(node));
     }
   }
   for (const nodes of roots) {
@@ -139,7 +139,7 @@ export function checkAccessibility(file: SFCFile): Diagnostic[] {
   function visit(nodes: Markup[], inLabel: boolean): void {
     for (const node of nodes) {
       if (node.kind !== 'element') {
-        visit(childrenOf(node), inLabel);
+        visit(getChildren(node), inLabel);
         continue;
       }
       if (!hasUnknownAttributes(node.attributes)) {

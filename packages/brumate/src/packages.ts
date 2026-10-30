@@ -162,7 +162,7 @@ export function findPackages(root: string): BrumatePackage[] {
 }
 
 /** The package that a file belongs to, or undefined for a file of the app. */
-export function packageOf(packages: BrumatePackage[], file: string): BrumatePackage | undefined {
+export function findPackage(packages: BrumatePackage[], file: string): BrumatePackage | undefined {
   for (const item of packages) {
     if (file.startsWith(`${item.root}/`)) {
       return item;
@@ -335,7 +335,7 @@ export function reachableFiles(
   }
   const pending: string[] = [];
   function add(file: string | undefined): void {
-    if (file && !reached.has(file) && packageOf(packages, file)) {
+    if (file && !reached.has(file) && findPackage(packages, file)) {
       reached.add(file);
       pending.push(file);
     }

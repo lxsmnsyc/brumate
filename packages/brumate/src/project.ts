@@ -108,7 +108,7 @@ export function importedComponents(file: SFCFile): string[] {
 }
 
 /** The markup inside a node: the children of an element, or the bodies of a block. */
-export function childrenOf(node: Markup): Markup[] {
+export function getChildren(node: Markup): Markup[] {
   switch (node.kind) {
     case 'element':
     case 'component':
@@ -153,7 +153,7 @@ export function childrenOf(node: Markup): Markup[] {
 export function forEachNode(nodes: Markup[], visit: (node: Markup) => void): void {
   for (const node of nodes) {
     visit(node);
-    forEachNode(childrenOf(node), visit);
+    forEachNode(getChildren(node), visit);
   }
 }
 

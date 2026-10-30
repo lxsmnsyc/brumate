@@ -35,13 +35,19 @@ import type { CompileOptions, CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
 import { analyzeProject, importedComponents, resolveRelative } from './project.ts';
-import { allFeatures, featuresOf, joinFeatures, readsFeatures, writeFeatures } from './features.ts';
+import {
+  allFeatures,
+  getFeatures,
+  joinFeatures,
+  readsFeatures,
+  writeFeatures,
+} from './features.ts';
 import type { Features } from './features.ts';
 import { BUILD_FILE, clientBuildDirectory, pruneBuilds, readBuildId } from './builds.ts';
 import {
   findPackages,
   packageFileName,
-  packageOf,
+  findPackage,
   reachableFiles,
   resolveComponentPackage,
 } from './packages.ts';
@@ -467,11 +473,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
    */
   function getFileName(file: string): string {
     let normalized = normalizePath(file);
-    let owner = packageOf(packages, normalized);
+    let owner = findPackage(packages, normalized);
     // With `resolve.preserveSymlinks`, Vite names a file of a package by its link.
     if (!owner && normalized.includes('/node_modules/') && existsSync(normalized)) {
       normalized = normalizePath(realpathSync(normalized));
-      owner = packageOf(packages, normalized);
+      owner = findPackage(packages, normalized);
     }
     return owner ? packageFileName(owner, normalized) : relative(file);
   }
@@ -524,7 +530,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
     // A package inside the root, such as one of a workspace, is found once, as a package.
     function ownFile(file: string): boolean {
-      return !packageOf(packages, file);
+      return !findPackage(packages, file);
     }
     const searches = [findFiles(root, exclude), findServerFiles(root, exclude)];
     for (const directory of directories) {
@@ -580,7 +586,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   function reachable(): Set<string> {
     const roots: string[] = [];
     for (const file of files.values()) {
-      if (!packageOf(packages, file)) {
+      if (!findPackage(packages, file)) {
         roots.push(file);
       }
     }
@@ -643,7 +649,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
         seen.add(file);
         const { result } = await compileFile(file);
-        all.push(featuresOf(result));
+        all.push(getFeatures(result));
         const imported: string[] = [];
         for (const specifier of importedComponents(result.file)) {
           const target = resolveComponent(specifier, file);
@@ -983,7 +989,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const query = server ? SERVER_QUERY : '';
     registered = packages.length > 0 ? reachable() : new Set();
     function keep(file: string): boolean {
-      return registered.has(file) || !packageOf(packages, file);
+      return registered.has(file) || !findPackage(packages, file);
     }
     const components: string[] = [];
     for (const file of files.values()) {
@@ -1366,7 +1372,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       // A component of a package is grouped under the name of the package, and the others by
       // their folder.
-      const owner = packageOf(packages, file);
+      const owner = findPackage(packages, file);
       const needs: (typeof found.needs)[number][] = [];
       for (const need of found.needs) {
         needs.push({ ...need, via: need.via && relative(need.via) });
@@ -1497,7 +1503,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const owner = id.split('#')[0]!;
     const file = files.get(owner) ?? serverFiles.get(owner);
     // A file of a package that the app does not reach has no endpoints, as in production.
-    const reached = file && packageOf(packages, file) ? reachable() : undefined;
+    const reached = file && findPackage(packages, file) ? reachable() : undefined;
     if (!file || (reached && !reached.has(file))) {
       response.statusCode = 404;
       response.end(`Unknown server function "${id}"`);
@@ -1787,7 +1793,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         if (counted.has(file)) {
           continue;
         }
-        const used = featuresOf((await compileFile(file)).result);
+        const used = getFeatures((await compileFile(file)).result);
         const missing: (keyof Features)[] = [];
         for (const name of Object.keys(used) as (keyof Features)[]) {
           if (used[name] && !knownFeatures![name]) {
@@ -2019,7 +2025,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         !resolved ||
         resolved.external ||
         resolved.id.includes('?') ||
-        (resolved.id.includes('/node_modules/') && !packageOf(packages, resolved.id))
+        (resolved.id.includes('/node_modules/') && !findPackage(packages, resolved.id))
       ) {
         return resolved;
       }
@@ -2278,7 +2284,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         // A file that becomes, or stops being, a file of server functions changes the registry.
         if (isScriptFile(file)) {
           const normalized = normalizePath(file);
-          if (packages.length > 0 && !packageOf(packages, normalized)) {
+          if (packages.length > 0 && !findPackage(packages, normalized)) {
             const rest: string[] = [];
             for (const item of appScripts) {
               if (item !== normalized) {
