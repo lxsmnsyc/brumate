@@ -189,6 +189,10 @@ async function readAll(
   return chunks;
 }
 
+// The compiler refuses `b-html` in a .brm, so a component that writes markup by hand has it.
+const handWritten = async (): Promise<string> =>
+  '<html lang="en" b-html="x"><head></head><body><p>Page</p></body></html>';
+
 describe('documents', () => {
   const scripts = '<script type="module" async src="/client.js"></script>';
 
@@ -217,6 +221,13 @@ describe('documents', () => {
     // The #loading body resolves later, so it follows the document.
     const later = page.slice(page.indexOf('</html>'));
     expect(later).toMatch(/<template b-l="0"><p [^>]*class="greeting">Hello Ada<\/p>/);
+  });
+
+  it('owns the b-html attribute of the <html> tag', async () => {
+    const page = (await readAll(renderToStream(handWritten, {}))).join('');
+    // The author's value is dropped, and the list never names `b-html`.
+    expect(page.match(/b-html=/g)).toHaveLength(1);
+    expect(page).toContain('<html lang="en" b-html="lang">');
   });
 
   it('streams a complete document with renderToStream', async () => {

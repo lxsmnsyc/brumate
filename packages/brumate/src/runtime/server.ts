@@ -2611,14 +2611,16 @@ function nameHtmlAttributes(page: string): string {
     return page;
   }
   const names: string[] = [];
-  for (const attribute of tag[1]!.matchAll(ATTRIBUTE_NAME)) {
-    names.push(attribute[1]!);
-  }
-  if (names.length === 0) {
-    return page;
-  }
-  const end = tag[0].length - 1;
-  return `${page.slice(0, end)} b-html="${escapeAttribute(names.join(' '))}"${page.slice(end)}`;
+  // The server owns `b-html`, so one that the author wrote is dropped.
+  const attributes = tag[1]!.replace(ATTRIBUTE_NAME, (text, name: string) => {
+    if (name.toLowerCase() === 'b-html') {
+      return '';
+    }
+    names.push(name);
+    return text;
+  });
+  const list = names.length > 0 ? ` b-html="${escapeAttribute(names.join(' '))}"` : '';
+  return `<html${attributes.trimEnd()}${list}>${page.slice(tag[0].length)}`;
 }
 
 /**

@@ -775,7 +775,7 @@ export async function navigate(visit: Visit): Promise<void> {
     // Only the attributes that a server page sent change. `b-html` names those of this page.
     const root = document.documentElement;
     for (const name of [...(root.getAttribute('b-html') ?? '').split(' '), 'b-html']) {
-      if (!next.documentElement.hasAttribute(name)) {
+      if (name && !next.documentElement.hasAttribute(name)) {
         root.removeAttribute(name);
       }
     }
