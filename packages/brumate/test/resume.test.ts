@@ -570,6 +570,24 @@ describe('resume', () => {
       await waitFor(() => expect(reads('await')).toHaveLength(2));
     });
 
+    it.each([
+      ['promiseMemoBrowser', '.shown', 'Ada'],
+      ['promiseMemoBrowserReject', '.caught', 'Caught Error: Nope'],
+    ])(
+      'loads a memo in a child that the browser renders, in %s',
+      async (name, selector, expected) => {
+        const server = await import(file(`${name}.brm.ts`));
+        const { html, state, pending } = await renderParts(server.default, {});
+        show(html + state);
+        for await (const chunk of pending) {
+          appendChunk(chunk);
+        }
+        await startLoader();
+        click(document.querySelector('.show')!);
+        await waitFor(() => expect(text(selector)).toBe(expected));
+      },
+    );
+
     it('passes a promise that is not a loading memo to a handler as a value', async () => {
       await streaming('streamedMemoParent');
       click(document.querySelector('.hold')!);

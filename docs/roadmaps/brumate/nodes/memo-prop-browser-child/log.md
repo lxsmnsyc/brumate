@@ -1,0 +1,8 @@
+# Log: memo-prop-browser-child
+
+- Probe (`promiseMemoBrowser.brm`: `#if (show)` renders `PromiseMemoChild`, which does `$memo(value)` under `#loading`): on main the child showed `[object Promise]` and never the value. A rejected promise never reached `#catch`.
+- Root cause is the compiler graph, not `setSlots`. The parent passes `fetchName()`, which no state changes, so `value` is not a live prop. The memo `$memo(value)` then has no live readers: the child's client module had `g = {}` for it and no update function, so nothing wrote the resolved value into the markup. `setSlots` already took the value from the render (`renderedLoads`, `set`), but no insert listened.
+- Fix: `graph.ts` marks a memo whose expression is a bare prop as live (`isPropValue`). The insert gets its update code, and the existing `setSlots` path then writes the value or the error.
+- Tried first: every `async-memo` and every memo that reads a prop as live. It changed the server output of root pages (bindings and state of `#loading` pages) and failed 8 tests. A bare `$memo(prop)` is the narrow case that can hold a promise.
+- Not done: the `#loading` fallback in markup that the browser renders. The client render of `#loading` (`codegen/markup.ts`, client mode) renders the body in place and never ships the fallback. A fallback with a swap needs a compiler change (an `#if`-like block that follows the pending state of its memos). The first paint shows `[object Promise]` until the promise settles. Proposed as a follow-up node.
+- `await $memo(...)` and `$memo(await ...)` in a child that the browser renders have the same gap (no live readers). Not changed: the broad rule broke server output.
