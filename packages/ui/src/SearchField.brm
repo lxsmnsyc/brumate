@@ -69,8 +69,12 @@
   const empty = $memo(value === '');
 
   function change(next: string) {
+    const before = value;
     value = next;
-    onChange?.(next);
+    // The setter of a bound value may keep another text, or none.
+    if (value !== before) {
+      onChange?.(value);
+    }
   }
 
   function clear() {

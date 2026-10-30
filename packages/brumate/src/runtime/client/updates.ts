@@ -17,7 +17,7 @@ import { findElement } from './blocks.ts';
 import { childrenReady } from './children.ts';
 import { loadModule, loadPart, loadingCode } from './code.ts';
 import { fail } from './errors.ts';
-import { call, setPass } from './references.ts';
+import { call, callNow, setPass } from './references.ts';
 import { afterInsert, descendants, rootOf } from './scopes.ts';
 import {
   DEV,
@@ -104,7 +104,8 @@ export function resetWrites(): void {
  * `$bind` writes the parent's slot too, through any number of levels, and
  * the parent's update of the prop then finds the value already there. A
  * binding with a setter, `$bind(name, fn)`, calls it in place of the write,
- * and the parent's update of the prop writes the value that it keeps.
+ * and the parent's update of the prop writes the value that it keeps, before
+ * the call returns.
  */
 export function set<T>(scope: Scope, slot: number, value: T): T {
   const bound = scope.b?.[slot];
@@ -121,6 +122,9 @@ export function set<T>(scope: Scope, slot: number, value: T): T {
     }
   } else {
     send(bound, value);
+    // The setter wrote the caller's signal, so the update of this prop runs now, and a read
+    // right after the write gets what the setter kept.
+    flush();
   }
   return value;
 }
@@ -138,7 +142,11 @@ export function send(bound: unknown, value: unknown): void {
       }
     });
   } else if (bound instanceof FunctionReference) {
-    void call(bound.ref, scopes.get(bound.scope), [...(bound.args ?? []), value]);
+    const args = [...(bound.args ?? []), value];
+    // A loaded setter runs at once, so the writer reads what it kept.
+    if (!callNow(bound.ref, scopes.get(bound.scope), args)) {
+      void call(bound.ref, scopes.get(bound.scope), args);
+    }
   } else if (typeof bound === 'function') {
     void bound(value);
   }

@@ -176,15 +176,21 @@
     $untrack((endValue = to));
     const next = rangeOf(from, to);
     if (!same(next, $untrack(value))) {
-      $untrack((value = next));
-      // A setter that refuses leaves the old range, and the fields show that one.
-      if (!same($untrack(value), next)) {
-        $untrack((startValue = $untrack(value)?.start ?? null));
-        $untrack((endValue = $untrack(value)?.end ?? null));
+      const before = $untrack(value);
+      try {
+        $untrack((value = next));
+      } finally {
+        // A setter that refuses or throws leaves the old range, and the fields show that one.
+        if (!same($untrack(value), next)) {
+          $untrack((startValue = $untrack(value)?.start ?? null));
+          $untrack((endValue = $untrack(value)?.end ?? null));
+        }
       }
       edited = true;
       changed();
-      onChange?.(next);
+      if (!same($untrack(value), before)) {
+        onChange?.($untrack(value));
+      }
     }
   });
 
@@ -210,9 +216,13 @@
       return;
     }
     if (!same(picked, value)) {
+      const before = value;
       value = picked;
       edited = true;
-      onChange?.(picked);
+      // The setter of a bound value may keep another range, or none.
+      if (!same(value, before)) {
+        onChange?.(value);
+      }
     }
     if (shouldCloseOnSelect) {
       setOpen(false);

@@ -1,4 +1,5 @@
 <script module>
+  import { sameKeys } from './collection.ts';
   import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
 
@@ -81,8 +82,12 @@
 
   function toggle(item: string, checked: boolean) {
     const next = checked ? [...value.filter((other) => other !== item), item] : value.filter((other) => other !== item);
+    const before = value;
     value = next;
-    onChange?.(next);
+    // The setter of a bound value may keep other items, or none.
+    if (!sameKeys(value, before)) {
+      onChange?.(value);
+    }
   }
 
   function invalidated(text: string) {

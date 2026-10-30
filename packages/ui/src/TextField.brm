@@ -156,9 +156,13 @@
   const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
 
   function change(next: string) {
+    const before = value;
     value = next;
     edited = form?.validationErrors ?? null;
-    onChange?.(next);
+    // The setter of a bound value may keep another text, or none.
+    if (value !== before) {
+      onChange?.(value);
+    }
   }
 
   // The message that blocks the form in the native behavior: the errors

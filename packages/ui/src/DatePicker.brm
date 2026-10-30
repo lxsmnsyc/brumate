@@ -87,8 +87,12 @@
       return;
     }
     if (picked !== value) {
+      const before = value;
       value = picked;
-      onChange?.(picked);
+      // The setter of a bound value may keep another date, or none.
+      if (value !== before) {
+        onChange?.(value);
+      }
     }
     if (shouldCloseOnSelect) {
       setOpen(false);

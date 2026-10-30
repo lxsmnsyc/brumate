@@ -120,18 +120,24 @@
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
-  function write(next: Color, text: string) {
+  /** Writes the color, and returns the text that the part keeps. */
+  function write(next: Color, text: string): string {
     if (picker && !passed) {
       picker.setValue(next, text);
+      return text;
     } else {
       const before = value;
       const prev = working;
       working = next;
-      value = text;
-      // A setter that refuses leaves the old value, and the part shows that one.
-      if (value !== text) {
-        working = Object.is(value, before) ? prev : fresh(value);
+      try {
+        value = text;
+      } finally {
+        // A setter that refuses or throws leaves the old value, and the part shows that one.
+        if (value !== text) {
+          working = Object.is(value, before) ? prev : fresh(value);
+        }
       }
+      return value;
     }
   }
 
@@ -260,8 +266,12 @@
       write(next, held);
       return;
     }
-    write(next, text);
-    onChange?.(text);
+    const before = held;
+    const kept = write(next, text);
+    // The setter of a bound value may keep another color, or none.
+    if (kept !== before) {
+      onChange?.(kept);
+    }
   }
 
   function setDragging(next: boolean) {

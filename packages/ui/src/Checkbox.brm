@@ -156,15 +156,20 @@
     message = '';
     // A click clears the indeterminate state of the input. It stays while the prop says so.
     input.indeterminate = mixed;
-    if (group) {
-      group.toggle(value ?? '', input.checked);
-    } else {
-      isSelected = input.checked;
+    const before = selected;
+    try {
+      if (group) {
+        group.toggle(value ?? '', input.checked);
+      } else {
+        isSelected = input.checked;
+      }
+    } finally {
+      // A setter that refuses or throws leaves the old state, so the input goes back to it.
+      input.checked = selected;
     }
-    // A setter that refuses leaves the old state, so the input goes back to it.
-    const next = input.checked;
-    input.checked = selected;
-    onChange?.(next);
+    if (selected !== before) {
+      onChange?.(selected);
+    }
   }
 
   // The browser shows no message of its own. The group shows it in its FieldError.

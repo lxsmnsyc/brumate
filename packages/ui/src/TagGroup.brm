@@ -70,8 +70,12 @@
       disabled: disabledKeys,
     });
     if (!sameKeys(next, selectedKeys)) {
+      const before = selectedKeys;
       selectedKeys = next;
-      onSelectionChange?.(next);
+      // The setter of a bound value may keep other keys, or none.
+      if (!sameKeys(selectedKeys, before)) {
+        onSelectionChange?.(selectedKeys);
+      }
     }
   }
 

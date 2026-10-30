@@ -1,7 +1,7 @@
 // Calls the function that a reference names, such as `Page#h3`, once its code has loaded.
 
 import { loadOnce } from '../skew.ts';
-import { codeReady, loadModule, loadPart } from './code.ts';
+import { codeReady, loadModule, loadPart, loadedFunction } from './code.ts';
 import { build, partOf, rpcPrefix, skew } from './state.ts';
 import type { Scope } from './state.ts';
 
@@ -60,6 +60,23 @@ export function setPass(pass: <T>(run: () => T) => T): void {
   inPass = pass;
 }
 
+// The calls that wait for their turn or their code.
+let waiting = 0;
+
+/**
+ * Calls a function of another component at once, as a pass, when its code has loaded and no call
+ * waits before it, so the caller reads what the function wrote. Returns false when it did not
+ * call, and `call` is the way then.
+ */
+export function callNow(ref: string, scope: Scope | undefined, args: unknown[]): boolean {
+  const fn = waiting === 0 && !codeReady() ? loadedFunction(ref) : undefined;
+  if (!fn) {
+    return false;
+  }
+  inPass(() => fn(scope, ...args));
+  return true;
+}
+
 // The previous call of a function prop or a provided function, once it has started.
 let lastCall: Promise<unknown> = Promise.resolve();
 
@@ -72,8 +89,13 @@ let lastCall: Promise<unknown> = Promise.resolve();
 export function call(ref: string, scope: Scope | undefined, args: unknown[]): Promise<unknown> {
   const code = codeReady();
   const loaded = code ? Promise.all([resolve(ref), code]).then(([fn]) => fn) : resolve(ref);
+  waiting++;
   const started = lastCall
     .then(() => loaded)
+    // A call whose code fails to load stops waiting too, so the next setter can run at once.
+    .finally(() => {
+      waiting--;
+    })
     .then((fn) => ({ value: inPass(() => fn(scope, ...args)) }));
   lastCall = started.catch(() => {});
   return started.then((result) => result.value);

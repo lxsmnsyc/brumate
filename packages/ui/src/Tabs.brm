@@ -88,8 +88,12 @@
 
   function select(key: Key) {
     if (key !== selectedKey && !isDisabled && !disabledKeys.includes(key)) {
+      const before = selectedKey;
       selectedKey = key;
-      onSelectionChange?.(key);
+      // The setter of a bound key may keep another key, or none.
+      if (selectedKey !== before) {
+        onSelectionChange?.(selectedKey);
+      }
     }
   }
 

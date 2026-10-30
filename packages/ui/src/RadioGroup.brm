@@ -75,8 +75,12 @@
   const invalid = $memo(isInvalid || errors.length > 0);
 
   function select(next: string) {
+    const before = value;
     value = next;
-    onChange?.(next);
+    // The setter of a bound value may keep another choice, or none.
+    if (value !== before) {
+      onChange?.(value);
+    }
   }
 
   function invalidated(text: string) {

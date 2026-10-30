@@ -71,9 +71,19 @@
   const text = $memo(segmentsText(value));
 
   function setValue(next: TokenSegment[]) {
-    if (!sameSegments(next, value)) {
-      value = next;
-      onChange?.(next);
+    const before = value;
+    if (!sameSegments(next, before)) {
+      try {
+        value = next;
+      } finally {
+        // The setter of a bound value may keep other segments, or none: the box shows what is kept.
+        if (!sameSegments(value, next)) {
+          revision++;
+        }
+      }
+      if (!sameSegments(value, before)) {
+        onChange?.(value);
+      }
     }
   }
 

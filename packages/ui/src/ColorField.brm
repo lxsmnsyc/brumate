@@ -244,6 +244,7 @@
       text = display(color);
       return;
     }
+    const valueBefore = held;
     const same = next === null || held === null ? next === held : sameColor(next, held);
     let shown = nextColor;
     if (picker && !passed) {
@@ -255,17 +256,25 @@
       const prev = working;
       working = nextColor;
       if (!same) {
-        value = next;
-        // A setter that refuses leaves the old value, and the field shows that one.
-        if (value !== next) {
-          working = Object.is(value, before) ? prev : fresh(value);
-          shown = working;
+        try {
+          value = next;
+        } finally {
+          // A setter that refuses or throws leaves the old value, and the field shows that one.
+          if (value !== next) {
+            working = Object.is(value, before) ? prev : fresh(value);
+            shown = working;
+            text = display(shown);
+          }
         }
       }
     }
     if (!same) {
       edited = true;
-      onChange?.(next);
+      // A picker keeps its own value, which it reports. A bound value may keep another text.
+      const kept = picker && !passed ? next : value;
+      if (kept !== valueBefore) {
+        onChange?.(kept);
+      }
     }
     text = display(shown);
   }

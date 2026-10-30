@@ -156,8 +156,12 @@
 
   function setSelection(next: Key[]) {
     if (!sameKeys(next, chosen)) {
+      const before = selectedKeys;
       selectedKeys = next;
-      onSelectionChange?.(next);
+      // The setter of a bound value may keep other keys, or none.
+      if (!sameKeys(selectedKeys, before)) {
+        onSelectionChange?.(selectedKeys);
+      }
     }
   }
 

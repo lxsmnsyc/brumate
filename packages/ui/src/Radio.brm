@@ -77,10 +77,13 @@
       keepChoice(input);
       return;
     }
-    group?.select(value);
-    // A setter that refuses leaves the old choice, so the inputs go back to it.
-    if (!selected) {
-      keepChoice(input);
+    try {
+      group?.select(value);
+    } finally {
+      // A setter that refuses or throws leaves the old choice, so the inputs go back to it.
+      if (!selected) {
+        keepChoice(input);
+      }
     }
   }
 

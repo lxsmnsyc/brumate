@@ -34,7 +34,7 @@ There is no `defaultSelected` or `defaultValue`: a `let` prop of brumate already
 ## Change callbacks
 
 - Each part calls its change handler with the new value, in every shape: `onChange`, or `onSelectionChange` and `onOpenChange` for keys and overlays.
-- With `$bind(signal)`, the handler runs after the signal is written. With `$bind(signal, setter)`, it runs right after your setter, with the value the user asked for, and the setter decides what is kept. A setter that refuses still gets the handler call. To learn what was kept, read the signal or do it in the setter. The core node `bind-read-your-writes` will later make the handler report the value that was kept.
+- With `$bind(signal)`, the handler runs after the signal is written. With `$bind(signal, setter)`, it runs right after your setter, at once and in the same event, with the value that the signal keeps. A setter that rounds gets the rounded value, and a setter that refuses gets no call, as a write that changes nothing. A setter that accepts later reports through the signal, not through the handler.
 - A value of `null` is a value like any other, such as the `selectedKey` of a `Select` with nothing chosen.
 
 ## Form reset
@@ -49,7 +49,7 @@ A `reset` of the form gives every form field the value that it started with. Cha
 - The other parts are not form fields, since a form sends nothing of them, and they do not reset: `ToggleButton`, `ToggleButtonGroup`, `Calendar`, `RangeCalendar`, `Autocomplete`, `TagGroup`, `ListBox`, `Tabs` and the rest. Set their signal yourself on a reset.
 - A reset that another listener prevents changes nothing.
 - The reset is a write, as an edit is, so it follows the shape of the state. With `$bind(signal)`, the signal gets the start value back. With `$bind(signal, request)`, the request gets it like any new value, and a request that refuses it leaves the old value. A part with its own state or its own copy resets with no help.
-- With a request that refuses, every form field shows what you keep, and so do its inputs, after an edit and after a reset. The exceptions are `TokenField`, whose box keeps the typed text after a refused edit until the next accepted edit or a reset, and `TextField` and `SearchField`: the text that the user typed stays in the input until a reset, and the Escape key of `SearchField` does not clear it. The core node `bind-read-your-writes` fixes these gaps.
+- With a request that refuses, every form field shows what you keep, and so do its inputs, after an edit and after a reset. The exceptions are `TextField` and `SearchField`: the text that the user typed stays in the input until a reset, and the Escape key of `SearchField` does not clear it.
 - The start value is the one that the part had when it rendered. A `Checkbox` in a `CheckboxGroup` and a `Radio` reset with their group.
 
 ## The server render
