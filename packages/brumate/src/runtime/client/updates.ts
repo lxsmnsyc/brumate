@@ -47,7 +47,7 @@ export function get(scope: Scope, slot: number): any {
     settle(scope);
   }
   const value = scope.s[slot];
-  if (value instanceof Promise) {
+  if (value instanceof Promise && !scope.plain?.has(slot)) {
     // A memo that reads any promise waits for it.
     if (computing > 0) {
       throw new NotReady(value);
@@ -501,7 +501,10 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
 
 /** True while a new value of a memo loads, or while the server still streams its value. */
 export function pending(scope: Scope, slot: number): boolean {
-  return loadingSlots.has(`${scope.id}:${slot}`) || scope.s[slot] instanceof Promise;
+  return (
+    loadingSlots.has(`${scope.id}:${slot}`) ||
+    (scope.s[slot] instanceof Promise && !scope.plain?.has(slot))
+  );
 }
 
 /** True when a parent bound the prop of the slot with `$bind`. */

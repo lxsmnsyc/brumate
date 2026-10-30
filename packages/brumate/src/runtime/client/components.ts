@@ -3,7 +3,7 @@
 
 import { VOID_ELEMENTS, onAttribute, ownValue } from '../html.ts';
 import type { Raw } from '../html.ts';
-import { ElementReference, addEntryHandlers } from '../shared.ts';
+import { ElementReference, addEntryHandlers, isPropPromise } from '../shared.ts';
 import type { ComponentValue, ScopeId } from '../shared.ts';
 import { insert } from './children.ts';
 import type { Children } from './children.ts';
@@ -176,7 +176,11 @@ export function setSlots(id: ScopeId, values: unknown[]): void {
   // memo takes. Its failure is the memo's to report, not an unhandled rejection.
   for (let slot = 0; slot < values.length; slot++) {
     const value = values[slot];
-    if (isThenable(value)) {
+    // A promise that a parent passed as a prop stays a promise. A memo of the prop holds the same
+    // promise in a later slot, which loads.
+    if (isPropPromise(value) && values.indexOf(value) === slot) {
+      (scopes.get(id)!.plain ??= new Set()).add(slot);
+    } else if (isThenable(value)) {
       const key = `${id}:${slot}`;
       renderedLoads.add(key);
       loadingValues.add(value);

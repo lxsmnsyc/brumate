@@ -264,6 +264,8 @@ A component can pass a promise to another component as a prop. The child loads i
 
 When the parent passes a new promise, the child keeps the old value until it settles, and `$isPending(profile)` is true meanwhile.
 
+The prop itself stays a promise, as its type says. The child can `await user`, call `user.then(…)` or pass it on to another component, in markup, a handler, an effect or a `$client` callback, before and after it settles. Read it with `$memo(user)` when you want its value in markup, pending until it settles.
+
 ## Streams
 
 A server function can be an async generator. A memo of it takes each value as it arrives:

@@ -11,6 +11,7 @@ import {
   OWNER,
   PREFIX,
   SOURCE,
+  isPropWrapper,
   isSlotReference,
   parseId,
   stateValues,
@@ -225,6 +226,13 @@ function addScopes(state: PageState, root: string): Scope[] {
     for (let i = 0; i < scope.s.length; i++) {
       const value = callable(scope.s[i], seen);
       scope.s[i] = value;
+      // A promise prop stays a promise, which the stream settles. Nothing handles its rejection.
+      if (isPropWrapper(value)) {
+        scope.s[i] = value.promise;
+        (scope.plain ??= new Set()).add(i);
+        value.promise.catch(() => {});
+        continue;
+      }
       // A value that a later state record settles replaces its promise.
       if (value instanceof Promise) {
         loadingValues.add(value);

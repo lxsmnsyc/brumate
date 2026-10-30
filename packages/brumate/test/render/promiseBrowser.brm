@@ -1,0 +1,17 @@
+<script module>
+  export function fetchName(): Promise<string> {
+    return new Promise((done) => setTimeout(() => done('Ada'), 30));
+  }
+</script>
+
+<script>
+  import { $signal } from 'brumate/signals';
+  import PromisePlainChild from './PromisePlainChild.brm';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <PromisePlainChild value=(fetchName()) />
+}

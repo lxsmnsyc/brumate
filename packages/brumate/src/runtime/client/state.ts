@@ -88,6 +88,11 @@ export interface Scope {
    * or the setter of `$bind(name, fn)`, as a function or a reference.
    */
   b?: Record<number, unknown>;
+  /**
+   * The slots that hold a promise prop. It stays a promise, which a read returns as it is,
+   * whether or not it settled.
+   */
+  plain?: Set<number>;
   /** The scopes inside it, made with the first one. */
   children?: Set<Scope>;
   /** The `b-root` of the render that the server rendered the scope in. */

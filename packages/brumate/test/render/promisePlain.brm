@@ -19,7 +19,7 @@
 </script>
 
 <script>
-  import PromisePropChild from './PromisePropChild.brm';
+  import PromisePlainChild from './PromisePlainChild.brm';
 </script>
 
-<PromisePropChild value=(later) />
+<PromisePlainChild value=(later) />

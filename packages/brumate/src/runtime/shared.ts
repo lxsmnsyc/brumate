@@ -262,6 +262,9 @@ export function unbind(
   }
   for (const key of names ?? Object.keys(props)) {
     const value = props[key];
+    if (value instanceof Promise) {
+      markPropPromise(value);
+    }
     if (isBinding(value)) {
       result ??= { ...props };
       result[key] = value.value;
@@ -280,6 +283,39 @@ export class MemoError {
   constructor(error: unknown) {
     this.error = error;
   }
+}
+
+/**
+ * A promise that a parent passed as a prop. It stays a promise in the child, so `await` and
+ * `then` work on it. The page state holds it in this wrapper, so the browser knows the slot is
+ * a prop and does not replace the promise with its value, as it does for a memo that streams.
+ */
+export class PropPromise {
+  readonly promise: Promise<unknown>;
+
+  constructor(promise: Promise<unknown>) {
+    this.promise = promise;
+    (this as Record<symbol, unknown>)[PROP_WRAPPER] = true;
+  }
+}
+
+// Symbol.for, so copies of the runtime agree on the marks.
+const PROP_PROMISE = Symbol.for('brumate.propPromise');
+const PROP_WRAPPER = Symbol.for('brumate.propWrapper');
+
+/** Marks a promise that `unbind` found among props. */
+function markPropPromise(promise: object): void {
+  (promise as Record<symbol, unknown>)[PROP_PROMISE] = true;
+}
+
+/** True for a promise that `unbind` found among props. */
+export function isPropPromise(value: unknown): value is Promise<unknown> {
+  return value instanceof Promise && PROP_PROMISE in value;
+}
+
+/** True for the wrapper that holds a promise prop in the page state. */
+export function isPropWrapper(value: unknown): value is PropPromise {
+  return typeof value === 'object' && value !== null && PROP_WRAPPER in value;
 }
 
 /** A component, which the compiler marks with its ID. */
@@ -323,6 +359,8 @@ export const stateValues: {
   l: (scope: ScopeId, slot: number) => SlotReference;
   /** A binding that a rest prop holds, with its value and its slot. */
   b: (value: unknown, scope: ScopeId, slot: number, set?: unknown) => Binding;
+  /** A promise prop. See `PropPromise`. */
+  q: (promise: Promise<unknown>) => PropPromise;
   /** The error of a memo that failed on the server. See `MemoError`. */
   x: (error: unknown) => MemoError;
   /** A value of the app, which a plugin of the entry makes from its data. */
@@ -341,6 +379,7 @@ export const stateValues: {
   b: HAS_BINDINGS
     ? (value, scope, slot, set) => new Binding(value, new SlotReference(scope, slot), set)
     : unused,
+  q: (promise) => new PropPromise(promise),
   x: (error) => new MemoError(error),
   u: (tag, data) => {
     const plugin = valuePlugins.get(tag);

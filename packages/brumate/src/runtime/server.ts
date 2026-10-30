@@ -34,6 +34,7 @@ import {
   OWNER,
   PARTS,
   PREFIX,
+  PropPromise,
   SOURCE,
   MemoError,
   SlotReference,
@@ -41,6 +42,7 @@ import {
   isAsyncIterable,
   isBinding,
   isSlotReference,
+  isPropPromise,
   parseId,
 } from './shared.ts';
 import { functionReferences } from './calls.ts';
@@ -777,6 +779,19 @@ export class Context {
       for (const [slot, value] of forwarded) {
         values[slot] = value;
       }
+    }
+    // A promise that a parent passed as a prop stays a promise in the browser. The first slot
+    // that holds it is the prop: a memo of the prop holds the same promise in a later slot.
+    let wrapped: unknown[] | undefined;
+    for (let slot = 0; slot < values.length; slot++) {
+      const value = values[slot];
+      if (isPropPromise(value) && values.indexOf(value) === slot) {
+        wrapped ??= [...values];
+        wrapped[slot] = new PropPromise(value);
+      }
+    }
+    if (wrapped) {
+      entry.record.s = wrapped;
     }
   }
 

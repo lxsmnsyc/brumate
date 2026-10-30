@@ -410,14 +410,56 @@ describe('resume', () => {
       );
     });
 
-    it('throws into a handler that reads a promise prop before it settles', async () => {
-      const { finish } = await streaming('promiseProp');
-      click(document.querySelector('.read')!);
-      await waitFor(() => expect(reads('prop error')).toHaveLength(1));
-      expect(String(reads('prop error')[0]![1])).toContain('await $resolve(memo)');
+    it('lets a child await and chain a promise prop before and after it settles', async () => {
+      const { finish } = await streaming('promisePlain');
+      click(document.querySelector('.await')!);
+      click(document.querySelector('.then')!);
+      click(document.querySelector('.bump')!);
+      await new Promise((done) => setTimeout(done, 20));
+      expect(reads('await')).toEqual([]);
+      expect(text('.shown')).toBe('Loading');
       await finish();
-      click(document.querySelector('.read')!);
-      await waitFor(() => expect(reads('prop')).toEqual([['prop', 'Ada']]));
+      await waitFor(() => {
+        expect(reads('await')).toEqual([['await', 'Ada']]);
+        expect(reads('then')).toEqual([['then', 'Ada']]);
+        expect(reads('effect')).toEqual([['effect', 1, 'Ada']]);
+        expect(reads('client')).toEqual([['client', 'Ada']]);
+      });
+      expect(text('.shown')).toBe('Ada');
+      // After it settled, the same reads give the value at once.
+      click(document.querySelector('.await')!);
+      click(document.querySelector('.then')!);
+      await waitFor(() => {
+        expect(reads('await')).toEqual([
+          ['await', 'Ada'],
+          ['await', 'Ada'],
+        ]);
+        expect(reads('then')).toHaveLength(2);
+      });
+    });
+
+    it('lets a child that the browser renders await and chain a promise prop', async () => {
+      (globalThis as { reads?: Reads }).reads = [];
+      onTestFinished(() => {
+        delete (globalThis as { reads?: Reads }).reads;
+      });
+      const server = await import(file('promiseBrowser.brm.ts'));
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await startLoader();
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.await')).not.toBeNull());
+      click(document.querySelector('.await')!);
+      click(document.querySelector('.then')!);
+      await waitFor(() => {
+        expect(reads('await')).toEqual([['await', 'Ada']]);
+        expect(reads('then')).toEqual([['then', 'Ada']]);
+      });
+      click(document.querySelector('.await')!);
+      await waitFor(() => expect(reads('await')).toHaveLength(2));
     });
 
     it('passes a promise that is not a loading memo to a handler as a value', async () => {
