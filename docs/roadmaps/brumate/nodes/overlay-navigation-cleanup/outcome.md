@@ -21,7 +21,7 @@
 
 - Cleanups run before navigation removes the markup, so `isConnected` checks in a cleanup see a connected element. The `$effect` cleanup keeps the check because it also runs on a value change.
 - The core's route drop (`removeScope`) does not remove `#portal` markup; the parts remove their own layer.
-- Core gap: `$client` cleanups (`leavePage`) never run on a page that arrived by a client link, so the next client navigation leaves the overlay layer. A full load works. Repro: client link /ui/switch -> /ui/modal, open the modal, `page.goBack()` leaves 1 layer. It will be fixed in a separate PR from main.
+- On a partial route replace (client link, then Back), the address changes at once but the old route's cleanups run when the new page's state record arrives (`routeRecord` -> `dropScopes` -> `removeScope`), about 1.5 s later. `leavePage` is not the path there. A test of a client navigation must wait for the new page before it checks for layers.
 
 ## Proposed learnings
 
