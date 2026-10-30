@@ -24,9 +24,16 @@ const COOLDOWN = 500;
 export interface Timing {
   /**
    * Shows an overlay: at once when `immediate`, or when another one of its kind showed a moment
-   * ago, or else after `delay`.
+   * ago, or else after `delay`. `show` returns false when the overlay did not open, such as when
+   * a setter refused, so the next hover or focus asks again.
    */
-  show: (id: string, delay: number, immediate: boolean, show: () => void, hide: () => void) => void;
+  show: (
+    id: string,
+    delay: number,
+    immediate: boolean,
+    show: () => boolean | void,
+    hide: () => void,
+  ) => void;
   /** Hides an overlay: at once when `immediate`, or else after `closeDelay`. */
   hide: (id: string, closeDelay: number, immediate: boolean, hide: () => void) => void;
   /** Cancels the hide of an overlay that waits for its close delay. */
@@ -62,13 +69,15 @@ export function timing(): Timing {
     return found;
   }
 
-  function reveal(id: string, show: () => void, hide: () => void): void {
+  function reveal(id: string, show: () => boolean | void, hide: () => void): void {
     if (current && current.id !== id) {
       current.hide();
     }
     current = { id, hide };
     clearTimeout(cooldown);
-    show();
+    if (show() === false && current.id === id) {
+      current = undefined;
+    }
   }
 
   return {

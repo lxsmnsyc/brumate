@@ -10,6 +10,9 @@
 
   let saveOpen = $signal(false);
   let hoverShown = $signal(true);
+  // A setter that refuses every write, and counts how often it is asked.
+  let refused = $signal(false);
+  let asked = $signal(0);
 </script>
 
 <main class="page">
@@ -56,5 +59,10 @@
       <Dialog class="dialog" aria-label="Settings">Settings</Dialog>
     </Popover>
   </DialogTrigger>
+  <TooltipTrigger delay=(60) closeDelay=(300) isOpen=$bind(refused, (next) => { asked += 1; })>
+    <Button class="refusing">Refuse</Button>
+    <Tooltip class="refusing-tip">Never shows</Tooltip>
+  </TooltipTrigger>
+  <p class="asked">{asked}</p>
   <p class="state">{String(saveOpen)}</p>
 </main>

@@ -189,3 +189,6 @@ export function cancelLongPress(triggerId: string): void {
   clearTimeout(presses.get(triggerId));
   presses.delete(triggerId);
 }
+
+/** What ends the dismissal of a press on a trigger, by its ID. */
+export const pressForgets = new Map<string, () => void>();

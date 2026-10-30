@@ -148,6 +148,21 @@ it('two modals that start open stack: the later is on top, the earlier is inert,
   await page.waitFor(() => expect(page.get('.page').closest('[inert]')).toBeNull());
 });
 
+it('a modal and a menu that start open stack: the menu is on top, the modal is inert, Escape closes the menu first', async () => {
+  const page = await start('mixed');
+  await page.waitFor(() => expect(find('.menu')).not.toBeNull());
+  await page.waitFor(() => expect(find('.layer')!.contains(document.activeElement)).toBe(true));
+  expect(find('.layer')!.closest('[inert]')).toBeNull();
+  expect(find('.first')!.closest('[inert]')).not.toBeNull();
+  document.activeElement!.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+  );
+  await page.waitFor(() => expect(find('.menu')).toBeNull());
+  expect(find('.first')).not.toBeNull();
+  await page.waitFor(() => expect(find('.first')!.closest('[inert]')).toBeNull());
+  await page.waitFor(() => expect(document.activeElement).toBe(find('.first-dialog')));
+});
+
 it('a non-modal popover that starts open leaves focus in a field that is being typed in', async () => {
   const page = await start('typing');
   await page.waitFor(() => expect(find('.layer')).not.toBeNull());

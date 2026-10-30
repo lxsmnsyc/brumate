@@ -1167,6 +1167,10 @@ export async function run({ browser, url, runner }) {
         .click();
       await settle();
       assert((await page.locator('[data-modal-overlay]').count()) === 0, 'Discard left a modal');
+      assert(
+        (await focused()) === 'Edit the greeting',
+        `focus is on "${await focused()}" after Discard closed both modals`,
+      );
       // Sheet: opens from its trigger and Escape closes it.
       await visit('sheet');
       await page.locator('.sheet-styled-trigger', { hasText: 'start' }).click();
@@ -1202,6 +1206,18 @@ export async function run({ browser, url, runner }) {
       await page.keyboard.press('Escape');
       await settle();
       assert((await page.locator('.preview-styled-card').count()) === 0, 'Escape left the card');
+      // A press of the trigger after a hover hides the card, and it stays hidden.
+      await page.mouse.move(5, 5);
+      await settle();
+      await page.locator('.preview-styled-link').hover();
+      await page.locator('.preview-styled-card').waitFor();
+      await page.mouse.down();
+      await page.mouse.up();
+      await settle();
+      assert(
+        (await page.locator('.preview-styled-card').count()) === 0,
+        'the card came back after a press of its trigger',
+      );
       // Toast: a button adds one, and its close button removes it.
       await visit('toast');
       await page.locator('.toast-styled-trigger').first().click();

@@ -1,7 +1,7 @@
 // The tests of ModalOverlay, Modal and Sheet.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
-import { lockScroll } from '../src/overlay.ts';
+import { hold, inertOutside, lockScroll, release } from '../src/overlay.ts';
 import Modals from './fixtures/modals.brm?brumate-server';
 import { pointer, press, pressWith } from './interact.ts';
 
@@ -283,4 +283,54 @@ it('reports a close once while the overlay leaves', async () => {
   press('Escape', overlay);
   await page.waitFor(() => expect(find('.own-overlay')).toBeNull());
   expect(page.text('.changes')).toBe('1');
+});
+
+it('gives focus back to the first button when the outer modal ends before the inner one', () => {
+  // With a transition, two modals that close in one step end one after the other.
+  document.body.innerHTML = `
+    <main><button id="edit">Edit</button></main>
+    <div id="outer-layer" data-layer><div id="outer"><button id="cancel">Cancel</button></div></div>
+    <div id="inner-layer" data-layer><div id="inner"><button id="discard">Discard</button></div></div>`;
+  const edit = document.getElementById('edit')!;
+  const cancel = document.getElementById('cancel')!;
+  const outer = document.getElementById('outer')!;
+  const inner = document.getElementById('inner')!;
+  const outerLayer = document.getElementById('outer-layer')!;
+  const innerLayer = document.getElementById('inner-layer')!;
+  edit.focus();
+  hold(outer, [inertOutside(outerLayer)], edit, 'edit');
+  cancel.focus();
+  // The inner modal makes the page and the outer one inert.
+  hold(inner, [inertOutside(innerLayer)], cancel, 'cancel');
+  document.getElementById('discard')!.focus();
+  // Both leave, and focus is lost.
+  (document.activeElement as HTMLElement).blur();
+  release(outer, outerLayer);
+  expect(document.activeElement).toBe(document.body);
+  // The inner modal ends last. Its own target is in the outer layer, which is about to leave, so
+  // the first button gets focus.
+  release(inner, innerLayer);
+  expect(document.activeElement).toBe(edit);
+  document.body.innerHTML = '';
+});
+
+it('does not focus a kept target in a later release when the target was inert for another reason', () => {
+  document.body.innerHTML = `
+    <main id="app" inert><button id="edit">Edit</button></main>
+    <button id="other">Other</button>
+    <div id="a-layer" data-layer><div id="a"><button id="a-button">A</button></div></div>
+    <div id="b-layer" data-layer><div id="b"><button id="b-button">B</button></div></div>`;
+  const edit = document.getElementById('edit')!;
+  const a = document.getElementById('a')!;
+  const b = document.getElementById('b')!;
+  hold(a, [], edit, 'edit');
+  document.getElementById('a-button')!.focus();
+  (document.activeElement as HTMLElement).blur();
+  // The target is inert by the app, so it is kept, and no overlay is left to take it.
+  release(a, document.getElementById('a-layer')!);
+  document.getElementById('app')!.removeAttribute('inert');
+  hold(b, [], null, undefined);
+  release(b, document.getElementById('b-layer')!);
+  expect(document.activeElement).not.toBe(edit);
+  document.body.innerHTML = '';
 });

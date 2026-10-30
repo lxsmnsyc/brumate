@@ -167,3 +167,26 @@ it('removes its layer when the page unmounts with it shown', async () => {
   // The core forgets the scopes of the mount a moment later.
   await page.waitFor(() => expect(find('[data-layer]')).toBeNull());
 });
+
+it('asks a setter that refused again on the next hover within the close delay', async () => {
+  const page = await tooltips();
+  const refusing = page.get('.refusing');
+  pointer('pointerenter', refusing);
+  await page.waitFor(() => expect(page.text('.asked')).toBe('1'));
+  // The pointer returns before the close delay of 300 ms is over.
+  pointer('pointerleave', refusing);
+  await wait(20);
+  pointer('pointerenter', refusing);
+  await page.waitFor(() => expect(page.text('.asked')).toBe('2'));
+  expect(find('.refusing-tip')).toBeNull();
+});
+
+it('asks a setter that refused again on a focus after a hover', async () => {
+  const page = await tooltips();
+  const refusing = page.get('.refusing');
+  pointer('pointerenter', refusing);
+  await page.waitFor(() => expect(page.text('.asked')).toBe('1'));
+  refusing.focus();
+  await page.waitFor(() => expect(page.text('.asked')).toBe('2'));
+  expect(find('.refusing-tip')).toBeNull();
+});

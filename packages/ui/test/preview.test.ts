@@ -159,3 +159,35 @@ it('shows on a long press of a touch, and the release follows no link', async ()
     Element.prototype.matches = matches;
   }
 });
+
+it('stays hidden after a press of the trigger that a hover had opened, also when the press focuses it', async () => {
+  const page = await previews();
+  await hoverOpen(page);
+  const author = page.get('.author');
+  pointer('pointerdown', author);
+  await page.waitFor(() => expect(find('.card')).toBeNull());
+  // The press focuses the trigger after it has hidden the preview.
+  author.focus();
+  pointer('pointerup', author);
+  await wait(700);
+  expect(find('.card')).toBeNull();
+});
+
+it('shows on a Tab onto the trigger after a press that did not focus it', async () => {
+  const page = await previews();
+  await hoverOpen(page);
+  const author = page.get('.author');
+  // Safari does not focus the link on a press.
+  const focus = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = () => {};
+  pointer('pointerdown', author);
+  await page.waitFor(() => expect(find('.card')).toBeNull());
+  pointer('pointerup', author);
+  HTMLElement.prototype.focus = focus;
+  await wait(700);
+  expect(document.activeElement).not.toBe(author);
+  // The press focused nothing. A key, then focus on the trigger, shows the preview.
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+  author.focus();
+  await page.waitFor(() => expect(find('.card')).not.toBeNull());
+});
