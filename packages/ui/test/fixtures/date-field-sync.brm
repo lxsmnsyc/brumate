@@ -1,0 +1,71 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Calendar from '../../src/Calendar.brm';
+  import CalendarGrid from '../../src/CalendarGrid.brm';
+  import DateField from '../../src/DateField.brm';
+  import DateInput from '../../src/DateInput.brm';
+  import DatePicker from '../../src/DatePicker.brm';
+  import DateRangePicker from '../../src/DateRangePicker.brm';
+  import Dialog from '../../src/Dialog.brm';
+  import Group from '../../src/Group.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
+  import Label from '../../src/Label.brm';
+  import Popover from '../../src/Popover.brm';
+
+  // The setters refuse once `held` is on.
+  let held = $signal(false);
+  let locale = $signal('en-US');
+  let due = $signal<string | null>('2026-10-15');
+  let trip = $signal<string | null>('2026-10-15');
+  let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
+  let ranged = $signal<string | null>('2026-10-15');
+</script>
+
+<main>
+  <button class="lock" onClick=(() => (held = true))>Lock</button>
+  <button class="unlock" onClick=(() => (held = false))>Unlock</button>
+  <button class="german" onClick=(() => (locale = 'de-DE'))>German</button>
+  <form class="form">
+    <DateField class="due" name="due" value=$bind(due, (next) => { if (!held) due = next; })>
+      <Label>Due</Label>
+      <DateInput class="due-input" />
+    </DateField>
+    <DatePicker class="trip" name="trip" value=$bind(trip, (next) => { if (!held) trip = next; })>
+      <Label>Trip</Label>
+      <Group>
+        <DateInput class="trip-input" />
+        <Button class="trip-button">v</Button>
+      </Group>
+      <Popover>
+        <Dialog>
+          <Calendar><CalendarGrid /></Calendar>
+        </Dialog>
+      </Popover>
+    </DatePicker>
+    <DateField class="ranged" name="ranged" value=$bind(ranged) minValue="2026-09-01" maxValue="2026-12-31">
+      <Label>Ranged</Label>
+      <DateInput class="ranged-input" />
+    </DateField>
+  </form>
+  <I18nProvider locale=locale>
+    <DateField class="loc-field">
+      <Label>Date</Label>
+      <DateInput class="loc-field-input" />
+    </DateField>
+    <DatePicker class="loc-picker">
+      <Label>Date</Label>
+      <Group><DateInput class="loc-picker-input" /></Group>
+    </DatePicker>
+    <DateRangePicker class="loc-range">
+      <Label>Range</Label>
+      <Group>
+        <DateInput slot="start" class="loc-range-start" />
+        <DateInput slot="end" class="loc-range-end" />
+      </Group>
+    </DateRangePicker>
+  </I18nProvider>
+  <p class="state">{JSON.stringify([due, trip, ranged, stay])}</p>
+  <p class="locale-state">{locale}</p>
+  <p class="held">{String(held)}</p>
+</main>

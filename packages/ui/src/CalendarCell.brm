@@ -27,7 +27,7 @@
    *
    * - A press selects the date. Only the focused date is in the order of Tab.
    * - The button shows `data-selected`, `data-selection-start`, `data-selection-end`,
-   *   `data-focused`, `data-focus-visible`, `data-today`,
+   *   `data-hovered`, `data-focused`, `data-focus-visible`, `data-today`,
    *   `data-disabled`, `data-unavailable`, `data-outside-month`, `data-outside-visible-range`,
    *   `data-invalid` and `data-pressed`.
    * - A date outside the month of its grid is disabled, and its button is hidden.
@@ -110,7 +110,11 @@
   }
 
   // After the first press of a range, the date under the pointer ends the range that shows.
-  function pointerEnter() {
+  function pointerEnter(event: PointerEvent & { currentTarget: HTMLElement }) {
+    // Only a mouse or a pen hovers: a finger that taps is no hover.
+    if (!disabled && event.pointerType !== 'touch') {
+      event.currentTarget.setAttribute('data-hovered', '');
+    }
     if (calendar && selectable) {
       calendar.highlight(date);
     }
@@ -126,6 +130,11 @@
 
   function pointerUp(event: PointerEvent & { currentTarget: HTMLElement }) {
     event.currentTarget.removeAttribute('data-pressed');
+  }
+
+  function pointerLeave(event: PointerEvent & { currentTarget: HTMLElement }) {
+    event.currentTarget.removeAttribute('data-hovered');
+    pointerUp(event);
   }
 
   // A release on a date after a press on another one ends the range there.
@@ -170,7 +179,7 @@
     onPointerEnter=pointerEnter
     onPointerDown=pointerDown
     onPointerUp=released
-    onPointerLeave=pointerUp
+    onPointerLeave=pointerLeave
     {...rest}
   >{children ?? number}</div>
 </td>

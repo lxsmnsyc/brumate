@@ -79,6 +79,11 @@ export function dateSegments(
     settle: () => {
       typed = '';
     },
+    /** Shows a date that the field kept in place of the one that was typed. */
+    reset: (kept: string | null) => {
+      typed = '';
+      parts = partsOf(kept);
+    },
   };
 }
 
@@ -86,14 +91,25 @@ export function dateSegments(
  * The checks of the browser on a submit, and a reset of the form, for the input that posts the
  * value of a field. The input is out of sight, and not of type `hidden`, so the browser checks
  * `required` on it. A failed check shows its message in the FieldError, and focuses the first
- * segment.
+ * segment. `rangeMessage` is the message of a date out of range, or an empty text.
  */
-export function formField(inputId: string, onReset: () => void) {
+export function formField(inputId: string, onReset: () => void, rangeMessage?: string) {
   let committed = $signal(false);
   let nativeErrors = $signal<string[]>([]);
 
+  // A date out of range blocks a submit, with this message. An effect runs only after a change,
+  // so the first message is set at load.
+  $effect(() => {
+    (document.getElementById(inputId) as HTMLInputElement | null)?.setCustomValidity(
+      rangeMessage ?? '',
+    );
+  });
+
   // A reset of the form gives back the first value, as it does for a field of the browser.
   $client(() => {
+    (document.getElementById(inputId) as HTMLInputElement | null)?.setCustomValidity(
+      rangeMessage ?? '',
+    );
     return onFormReset(document.getElementById(inputId) as HTMLInputElement | null, () => {
       committed = false;
       nativeErrors = [];

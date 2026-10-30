@@ -24,8 +24,8 @@
    *   Backspace or Delete takes the last digit away, and moves back from an empty part.
    * - It is editable text, so a touch keyboard shows its digits. The browser does not change the
    *   text itself.
-   * - It shows `data-type`, `data-placeholder`, `data-focused`, `data-readonly`, `data-disabled`
-   *   and `data-invalid`.
+   * - It shows `data-type`, `data-placeholder`, `data-hovered`, `data-focused`,
+   *   `data-focus-visible`, `data-readonly`, `data-disabled` and `data-invalid`.
    */
   const { segment, ...rest } = $props<DateSegmentProps>();
 
@@ -98,12 +98,26 @@
   }
 
   function focusIn(event: FocusEvent & { currentTarget: HTMLElement }) {
-    event.currentTarget.setAttribute('data-focused', '');
+    const target = event.currentTarget;
+    target.setAttribute('data-focused', '');
+    target.toggleAttribute('data-focus-visible', target.matches(':focus-visible'));
   }
 
   function focusOut(event: FocusEvent & { currentTarget: HTMLElement }) {
     event.currentTarget.removeAttribute('data-focused');
+    event.currentTarget.removeAttribute('data-focus-visible');
     field?.settle();
+  }
+
+  // Only a mouse or a pen hovers: a finger that taps is no hover.
+  function pointerEnter(event: PointerEvent & { currentTarget: HTMLElement }) {
+    if (!field?.isDisabled && event.pointerType !== 'touch') {
+      event.currentTarget.setAttribute('data-hovered', '');
+    }
+  }
+
+  function pointerLeave(event: PointerEvent & { currentTarget: HTMLElement }) {
+    event.currentTarget.removeAttribute('data-hovered');
   }
 </script>
 
@@ -140,6 +154,8 @@
     onBeforeInput=(prevent(beforeInput))
     onFocusIn=focusIn
     onFocusOut=focusOut
+    onPointerEnter=pointerEnter
+    onPointerLeave=pointerLeave
     {...rest}
   >{segment.text}</span>
 }

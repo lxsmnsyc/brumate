@@ -108,7 +108,7 @@ See [State](./state.md) for the other parts.
 
 Style the picker with the data attributes above, and the parts inside it with their own. See [DateField](./date-field.md), [RangeCalendar](./range-calendar.md), [Popover](./popover.md) and [Styling](./styling.md).
 
-The Popover is a layer outside the form, so put the custom properties of the example on its class too. A segment and a date have no `data-hovered`, so use `:hover` for the pointer. This stylesheet draws the Group as the box with two inputs and a trigger, the layer that fades while it opens and closes, and the range as a band with round ends. The 22nd is taken, and the dates before the 5th of October and after the 20th of November are out of range. Press Save with no dates to see the error.
+The Popover is a layer outside the form, so put the custom properties of the example on its class too. A segment and a date show `data-hovered`. This stylesheet draws the Group as the box with two inputs and a trigger, the layer that fades while it opens and closes, and the range as a band with round ends. The 22nd is taken, and the dates before the 5th of October and after the 20th of November are out of range. Press Save with no dates to see the error.
 
 ```brm styled DateRangePickerStyled
 

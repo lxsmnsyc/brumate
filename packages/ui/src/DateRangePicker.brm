@@ -101,6 +101,9 @@
   const placeholder = $memo(
     constrain(toDate(placeholderValue ?? todayString(locale.timeZone)), minValue, maxValue).toString(),
   );
+  // The locale and the placeholders can change at run time, so the fields get them as memos.
+  const language = $memo(locale.locale);
+  const placeholders = $memo(strings?.placeholders);
   // The date of each field, which the field follows, and which the range follows once both are set.
   let startValue = $signal<DateString | null>(value?.start ?? null);
   let endValue = $signal<DateString | null>(value?.end ?? null);
@@ -112,7 +115,7 @@
     type: startType,
     erase: startErase,
     settle: startSettle,
-  } = dateSegments(startValue, placeholder, locale.locale, strings?.placeholders, isDisabled, isReadOnly);
+  } = dateSegments(startValue, placeholder, language, placeholders, isDisabled, isReadOnly);
   const {
     segments: endSegments,
     date: endDate,
@@ -121,14 +124,21 @@
     type: endType,
     erase: endErase,
     settle: endSettle,
-  } = dateSegments(endValue, placeholder, locale.locale, strings?.placeholders, isDisabled, isReadOnly);
+  } = dateSegments(endValue, placeholder, language, placeholders, isDisabled, isReadOnly);
   let edited = $signal(false);
+  // A date out of range blocks a submit.
+  const rangeMessage = $memo(
+    value !== null &&
+      [value.start, value.end].some((date) => outOfRange(toDate(date), minValue, maxValue))
+      ? 'The date is outside the allowed range.'
+      : '',
+  );
   const { committed, nativeErrors, invalidated, changed } = formField(startId, () => {
     value = initialValue;
     startValue = value?.start ?? null;
     endValue = value?.end ?? null;
     edited = false;
-  });
+  }, rangeMessage);
   const errors = $memo([
     ...(edited
       ? []
