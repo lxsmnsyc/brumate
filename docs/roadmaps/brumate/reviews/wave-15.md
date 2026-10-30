@@ -10,9 +10,9 @@
 
 ## Open
 
-- #376 streamed-loading-errors: fresh review done, fixes in, ready, CI passes. For the maintainer to merge.
-- #379 memo-prop-browser-child: fresh review done, fixes in, ready. CI fails on `ReferenceError: sameKeys is not defined` (21 times, ui tests). The tests pass locally on main and on the merged tree, so stale generated output may hide it locally. Needs shared-part-imports first, then a rebase and a CI rerun; if it still fails, #379's graph change is the trigger.
-- shared-part-imports (must, a main bug, no PR yet when this was written): the compiler's `shared` client part does not import the names its functions use (ToggleButtonGroup's `toggle` calls `sameKeys`; #372 added the call). Worker told to reproduce from a clean output folder.
+- #376 streamed-loading-errors and #380 shared-part-imports merged after this checkpoint was first written (both marked done). #380 also found the update part missing components passed in a template prop (8 fixtures), and added a guard test that parses every ui client part with oxc-parser.
+- #379 memo-prop-browser-child: rebased onto main after #380; the `sameKeys` failures are gone, but 2 tests from #376 failed on the combination (`resume > an error inside a streamed #loading body > renders the #catch inside / around (dev false)`), while main passes them. Its worker was fixing that on the branch, then pushing for CI. The maintainer merges it, then restarts the session.
+- lxsmnsyc/agent-skills#1: plan.py strips inline `# comments` in frontmatter and warns on unknown `review:`/`run:` values. Ready for the maintainer. That checkout's local main is 2 commits ahead of origin (not pushed), and its `.worktrees/fix-plan-inline-comments` can go after the merge.
 
 ## Decisions (the maintainer)
 
@@ -36,6 +36,7 @@
 - Review mode: GOAL.md said `review: fresh  # ...`, but plan.py does not strip inline comments, read an unknown value and fell back to `auto`. So S, docs and chore nodes self-reviewed (#363 to #367, #369, #371), which is the skills' intended `auto` behavior. The maintainer chose `review: auto` on 2026-10-30; the parser bug gets a fix in the agent-skills repo.
 - Stale `dist` and `test/.output` in worktrees gave false results twice (a stale brumate dist showed hint strings in a production build; #379's CI failure does not reproduce locally). Rebuild before measuring, and clear generated output when CI and local disagree.
 - CI tests a PR merged with main at trigger time; two PRs that both pass can still fail together (#375 met a new runtime-helpers test). Merge one, then rerun the other's CI when they touch the same files.
+- Review mode is `auto` (GOAL.md, 2026-10-30): S, docs and chore nodes self-review, the rest get a fresh reviewer.
 - Agents must never use `pkill` or kill processes they did not start (one killed others' e2e runs).
 
 ## Flakes seen
@@ -45,11 +46,10 @@
 
 ## Worktrees left
 
-- .claude/worktrees/streamed-loading-errors (#376), memo-prop-browser-child (#379), shared-part-imports. Remove each after its PR merges.
+- .claude/worktrees/memo-prop-browser-child (#379). Remove after it merges.
 
 ## Resume
 
-1. Check shared-part-imports: if its worker opened a PR, run a fresh review, mark it ready, CI, hand to the maintainer. If not, read nodes/shared-part-imports/log.md and continue on its worktree.
-2. After shared-part-imports merges: rebase #379 onto main, rerun its CI; if it still fails on `sameKeys`, investigate #379's graph.ts change.
-3. Mark streamed-loading-errors, memo-prop-browser-child and shared-part-imports done as they merge; clean their worktrees and branches.
-4. Then perf-pass-0.4 (gated; run benchmarks one at a time on a quiet machine), then changeset-review, then release-0.4 (the maintainer merges #98).
+1. If #379 merged: mark memo-prop-browser-child done, remove its worktree and branch. If not: read its PR state and nodes/memo-prop-browser-child/log.md, finish the fix for the two #376 tests, push, CI, hand to the maintainer.
+2. Start perf-pass-0.4 (gated; read its brief; run benchmarks one at a time on a quiet machine; add benchmarks/brumate-0.3 with brumate@0.3.0 from npm; compare with Marko 6). The maintainer picks which options to build.
+3. Then changeset-review, then release-0.4 (the maintainer merges #98).
