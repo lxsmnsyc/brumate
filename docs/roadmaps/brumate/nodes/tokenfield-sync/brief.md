@@ -1,7 +1,7 @@
 ---
 id: tokenfield-sync
 title: TokenField's box follows the kept value after a refused write, a reset and a fast edit
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

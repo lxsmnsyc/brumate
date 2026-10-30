@@ -13,6 +13,7 @@
   let toppings = $signal(['cheese']);
   let size = $signal<string | null>(null);
   let dark = $signal(false);
+  let bad = $signal(false);
 </script>
 
 <form class="form">
@@ -40,5 +41,26 @@
     <Radio class="locked-small" value="small">Small</Radio>
     <Radio class="locked-large" value="large">Large</Radio>
   </RadioGroup>
+  <Checkbox class="described" isInvalid=bad>
+    Agree
+    <Text slot="description" class="described-text">Needed.</Text>
+    <FieldError class="described-error">Please agree.</FieldError>
+  </Checkbox>
+  <Switch class="described-switch" isInvalid=bad>
+    Notify
+    <Text slot="description" class="switch-text">Mails.</Text>
+    <FieldError class="switch-error">Cannot be off.</FieldError>
+  </Switch>
+  <Checkbox class="named" isInvalid=bad>
+    <Label as="span" class="named-label">Agree</Label>
+    <Text slot="description" class="named-text">Needed.</Text>
+    <FieldError class="named-error">Please agree.</FieldError>
+  </Checkbox>
+  <Switch class="named-switch" isInvalid=bad>
+    <Label as="span" class="named-switch-label">Notify</Label>
+    <Text slot="description" class="named-switch-text">Mails.</Text>
+    <FieldError class="named-switch-error">Cannot be off.</FieldError>
+  </Switch>
+  <button type="button" class="flag" onClick=(() => (bad = true))>Flag</button>
 </form>
 <p class="values">{String(terms)}|{toppings.join(',')}|{size ?? 'none'}|{String(dark)}</p>

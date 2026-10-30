@@ -3,8 +3,11 @@
   import { $bind, $memo, $signal } from 'brumate/signals';
   import Button from '@brumate/ui/Button.brm';
   import Checkbox from '@brumate/ui/Checkbox.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
   import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
   import Icon from '../../src/components/Icon.brm';
+  import Text from '@brumate/ui/Text.brm';
 
   let accepted = $signal(false);
   let tried = $signal(false);
@@ -28,9 +31,10 @@
   </Checkbox>
   <Checkbox class="ui-box" isSelected=$bind(accepted) isInvalid=blocked>
     <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
-    I accept the terms
+    <Label as="span">I accept the terms</Label>
+    <Text slot="description" class="ui-help">Required.</Text>
+    <FieldError class="ui-error">Accept the terms to continue.</FieldError>
   </Checkbox>
-  <p class=(blocked ? 'ui-error' : 'ui-help')>{blocked ? 'Accept the terms to continue.' : 'Required.'}</p>
   <Button type="submit" class="ui-button">Create account</Button>
   <p role="status">{sent}</p>
 </Form>

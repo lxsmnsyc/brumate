@@ -27,11 +27,12 @@
 </script>
 
 <script>
-  import { $client, $getContext, $id, $memo, $props, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { CheckboxGroupContext } from './contexts.ts';
+  import { CheckboxGroupContext, FieldErrorContext, LabelContext, TextContext } from './contexts.ts';
+  import { described } from './description.brm.ts';
   import { describedBy, isFirstInvalid, onFormReset } from './fields.ts';
 
   /**
@@ -71,6 +72,39 @@
   // this state for every box, so a check of any box clears all of them.
   let failed = $signal(false);
   const invalid = $memo(Boolean(isInvalid || (group ? group.isInvalid : failed)));
+
+  // A box outside a group takes a Text with `slot="description"` and a FieldError in its children,
+  // as a field does. In a group, the group owns both.
+  const descriptionId = $id();
+  const { present: hasDescription } = described(descriptionId);
+  const errorId = $id();
+  // The message of the browser, after a submit with the box off.
+  let message = $signal('');
+  const errors = $memo(failed && message ? [message] : []);
+  const describing = $memo(
+    group ? describedBy(group.describedBy) : describedBy(hasDescription && descriptionId, invalid && errorId),
+  );
+  const labelId = $id();
+  const { present: hasLabel } = described(labelId, false);
+  const groupLabel = $getContext(LabelContext);
+  const groupText = $getContext(TextContext);
+  const groupError = $getContext(FieldErrorContext);
+  // A Label in the children (`as="span"`) names the input, so the description and the error stay
+  // out of its name. Without one, they sit in the text of the label, and aria-hidden keeps them
+  // out of the name. The server cannot see the Label, so a box starts without one: the name is right
+  // before any script runs, and the browser turns the Label on when it finds it. The input still names them in aria-describedby, which reads hidden elements.
+  const hidden = $memo(hasLabel ? undefined : 'true');
+  $setContext(LabelContext, group ? groupLabel : { id: labelId });
+  $setContext(
+    TextContext,
+    group ? groupText : { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } },
+  );
+  $setContext(
+    FieldErrorContext,
+    group
+      ? groupError
+      : { id: errorId, isInvalid: invalid, errors, attributes: { 'aria-hidden': hidden } },
+  );
 
   const {
     hovered,
@@ -119,6 +153,7 @@
       return;
     }
     failed = false;
+    message = '';
     // A click clears the indeterminate state of the input. It stays while the prop says so.
     input.indeterminate = mixed;
     if (group) {
@@ -137,6 +172,7 @@
   function invalidated(event: Event & { currentTarget: HTMLInputElement }) {
     const input = event.currentTarget;
     failed = true;
+    message = input.validationMessage;
     group?.onInvalid(input.validationMessage);
     if (isFirstInvalid(input)) {
       input.focus();
@@ -180,7 +216,8 @@
       required=(required || undefined)
       aria-readonly=(readOnly ? 'true' : undefined)
       aria-invalid=(invalid ? 'true' : undefined)
-      aria-describedby=(describedBy(group?.describedBy))
+      aria-describedby=describing
+      aria-labelledby=(group || !hasLabel ? undefined : labelId)
       onChange=change
       onClick=(prevent(keep))
       onInvalid=(prevent(invalidated))
@@ -197,7 +234,8 @@
       required=(required || undefined)
       aria-readonly=(readOnly ? 'true' : undefined)
       aria-invalid=(invalid ? 'true' : undefined)
-      aria-describedby=(describedBy(group?.describedBy))
+      aria-describedby=describing
+      aria-labelledby=(group || !hasLabel ? undefined : labelId)
       onChange=change
       onInvalid=(prevent(invalidated))
     />

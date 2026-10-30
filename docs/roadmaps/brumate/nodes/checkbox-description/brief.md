@@ -1,7 +1,7 @@
 ---
 id: checkbox-description
 title: A standalone Checkbox or Switch ties a description and an error to its input
-status: active
+status: done
 priority: should
 type: fix
 outline: false
