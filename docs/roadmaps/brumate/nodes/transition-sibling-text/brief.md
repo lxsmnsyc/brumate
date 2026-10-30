@@ -1,7 +1,7 @@
 ---
 id: transition-sibling-text
 title: Text beside a Transition that unmounts does not break the browser render
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

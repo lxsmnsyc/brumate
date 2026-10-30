@@ -1,7 +1,7 @@
 ---
 id: indicator-timing-function
 title: SelectionIndicator accepts a timing function with commas
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

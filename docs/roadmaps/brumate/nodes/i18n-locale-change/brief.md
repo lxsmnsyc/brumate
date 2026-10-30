@@ -1,7 +1,7 @@
 ---
 id: i18n-locale-change
 title: Parts follow a locale change of their I18nProvider
-status: todo
+status: active
 priority: should
 type: fix
 outline: false
