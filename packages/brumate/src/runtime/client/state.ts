@@ -320,3 +320,6 @@ export function updating<T>(run: () => T): T {
     exempt--;
   }
 }
+
+/** What `$resolve` waits in, with the scope of each, checked when a slot changes or a scope leaves. */
+export const waiters: Map<() => void, Scope> = new Map();

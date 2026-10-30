@@ -8,6 +8,7 @@ import { findError } from './error-catalog.ts';
 import { BrumateError, getLocation } from './error.ts';
 import { collectSources } from './files.ts';
 import { analyzeProjectProps } from './project.ts';
+import { findServerImport } from './server-files.ts';
 
 /** A place in a file. Lines and columns start at 1. */
 export interface CheckPosition {
@@ -87,7 +88,12 @@ function checkFile(
   liveProps: Set<string> | undefined,
 ): CheckRecord[] {
   try {
-    const result = compile(source, { filename: file, path: absolute, liveProps });
+    const result = compile(source, {
+      filename: file,
+      path: absolute,
+      liveProps,
+      serverImport: (specifier) => findServerImport(absolute, specifier),
+    });
     const records: CheckRecord[] = [];
     for (const warning of result.warnings) {
       records.push(fromDiagnostic(source, file, warning));

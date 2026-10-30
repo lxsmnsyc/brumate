@@ -466,7 +466,11 @@ export class Rewriter {
             }
             if (node.callee.name === '$resolve' && memo) {
               // `$resolve(memo, options)` waits until the memo is not pending, then reads it.
-              patch.replace(node.start, memo.start, `$$b.resolve(() => ${value}, () => `);
+              patch.replace(
+                node.start,
+                memo.start,
+                `$$b.resolve(${declaration ? path(declaration) : scopeVar}, () => ${value}, () => `,
+              );
               visit(memo);
               for (const rest of node.arguments.slice(1)) {
                 visit(rest);

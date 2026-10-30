@@ -2043,6 +2043,16 @@ class Resolver {
             );
             if (target?.type === 'Identifier' && reference) {
               this.analyzer.pendingCalls.push({ reference, at: range(node) });
+              if (
+                reference.declaration.kind !== 'memo' &&
+                reference.declaration.kind !== 'async-memo'
+              ) {
+                this.analyzer.report(
+                  'error',
+                  '$resolve needs a $memo and, as an option, a timeout or a signal',
+                  node,
+                );
+              }
             }
             return;
           }

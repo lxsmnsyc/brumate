@@ -12,6 +12,8 @@ Design: [pending-handler-reads debate](../../../../debates/pending-handler-reads
 - Docs: async-data.md, effects.md, errors.md (both copies), signals.md of the skill, decisions.md (one entry, and the `await $memo` line corrected). Changeset: brumate minor.
 - Tests: diagnostics.test.ts (BRM182 cases, `$resolve` placement), resume.test.ts (`$resolve`: settled, write then wait, inputs change mid-wait, first load, reject, timeout, abort; effect skip and rerun; handler prop; read after await; promise prop; plain promise in a signal; effect rerun on reject).
 
+- Review round 3: `resolve()` takes the scope of the memo, keeps its waiter in `waiters` (state.ts) and rejects with an `AbortError` when `removeScope` runs. Only an `await $resolve` that always runs before the read (a statement, a declaration or an assignment at the top level of the block) guards it. A parameter hides a `const` check of the same name. `brumate check` passes server-import detection (`findServerImport`). `$resolve` takes memos only.
+
 ## Deviations
 
 - BRM182 runs in `compile.ts`, not `analyze.ts`, because `serverImport` is known only there. `SemanticModel` gets `pendingCalls`.

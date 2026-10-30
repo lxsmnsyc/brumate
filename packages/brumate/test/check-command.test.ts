@@ -354,3 +354,18 @@ describe('brumate check', () => {
     expect(run(project({}), '--nope').status).toBe(1);
   });
 });
+
+describe('server imports', () => {
+  it('finds a handler that reads a memo of a function from a use server file', async () => {
+    const root = project({
+      'src/issues.ts': "'use server';\nexport async function listIssues() {\n  return [];\n}\n",
+      'src/Issues.brm': `<script>\n  import { $memo } from 'brumate/signals';\n  import { listIssues } from './issues.ts';\n  const issues = $memo(listIssues());\n  function count() {\n    console.log(issues.length);\n  }\n</script>\n<button onClick=count>Count</button>\n`,
+    });
+    const { records } = await check(root, { types: false });
+    const codes: (string | null)[] = [];
+    for (const record of records) {
+      codes.push(record.code);
+    }
+    expect(codes).toContain('BRM182');
+  });
+});

@@ -573,6 +573,31 @@ describe('resume', () => {
     }
     const press = (name: string): void => click(document.querySelector(`.${name}`)!);
 
+    it('rejects and drops its waiter when the component leaves the page', async () => {
+      (globalThis as { reads?: Reads }).reads = [];
+      onTestFinished(() => {
+        delete (globalThis as { reads?: Reads }).reads;
+      });
+      vi.resetModules();
+      const server = await import(file('resolveGone.brm.ts'));
+      const child = await import(file('ResolveGoneChild.brm.ts'));
+      const runtime = await import('../src/runtime/server.ts');
+      vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+        runtime.handleRequest(child.rpc, new Request(`http://localhost${url}`, init)),
+      );
+      const { html, state } = await runtime.render(server.default, {});
+      show(html + state);
+      await startLoader();
+      const { waiters } = await import('../src/runtime/client/state.ts');
+      press('show');
+      await waitFor(() => expect(document.querySelector('.ask')).not.toBeNull());
+      press('ask');
+      await waitFor(() => expect(waiters.size).toBe(1));
+      press('hide');
+      await waitFor(() => expect(reads('gone')).toEqual([['gone', 'AbortError']]));
+      expect(waiters.size).toBe(0);
+    });
+
     it('resolves at once with the value of a settled memo', async () => {
       await page();
       press('ask');

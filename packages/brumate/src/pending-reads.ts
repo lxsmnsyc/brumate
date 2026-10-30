@@ -1,7 +1,7 @@
 import type { Range } from './ast.ts';
 import { upstreamMemos } from './model.ts';
 import type { Declaration, Site } from './model.ts';
-import { children } from './oxc.ts';
+import { children, getPatternNames } from './oxc.ts';
 import type { oxc } from './oxc.ts';
 
 /** Reports a read that the compiler rejects, with the message and the place. */
@@ -222,8 +222,8 @@ function exits(statement: oxc.Node): boolean {
   return false;
 }
 
-/** True when the code of a statement waits with `await $resolve(…)` for a memo that covers `memo`. */
-function awaitsResolve(
+/** True when the node is `await $resolve(m)` for a memo that covers `memo`. */
+function isResolveFor(
   node: oxc.Node,
   memo: Declaration,
   pending: Map<number, Declaration>,
@@ -236,24 +236,37 @@ function awaitsResolve(
   ) {
     const target = node.argument.arguments[0];
     const guard = target && pending.get(target.start);
-    if (guard && covers(guard, memo)) {
-      return true;
-    }
-  }
-  // A nested function runs later, so its await does not cover the code after the statement.
-  if (
-    node.type === 'ArrowFunctionExpression' ||
-    node.type === 'FunctionExpression' ||
-    node.type === 'FunctionDeclaration'
-  ) {
-    return false;
-  }
-  for (const [, child] of children(node)) {
-    if (awaitsResolve(child, memo, pending)) {
-      return true;
-    }
+    return guard !== undefined && covers(guard, memo);
   }
   return false;
+}
+
+/**
+ * True when a statement of a block always waits with `await $resolve(…)` for a memo that covers
+ * `memo`: it is the statement itself, the value of an assignment or a declaration, or read from
+ * it. An await inside a condition, a logical expression or a `try` may not run.
+ */
+function alwaysAwaits(
+  node: oxc.Node,
+  memo: Declaration,
+  pending: Map<number, Declaration>,
+): boolean {
+  switch (node.type) {
+    case 'ExpressionStatement':
+      return alwaysAwaits(node.expression, memo, pending);
+    case 'VariableDeclaration':
+      return node.declarations.some(
+        (declarator) => declarator.init && alwaysAwaits(declarator.init, memo, pending),
+      );
+    case 'AssignmentExpression':
+      return alwaysAwaits(node.right, memo, pending);
+    case 'MemberExpression':
+      return alwaysAwaits(node.object, memo, pending);
+    case 'AwaitExpression':
+      return isResolveFor(node, memo, pending);
+    default:
+      return false;
+  }
 }
 
 /** Finds the chain of nodes from `root` to the identifier that starts at `start`. */
@@ -289,6 +302,18 @@ function isGuarded(
   for (let i = 0; i < path.length - 1; i++) {
     const node = path[i]!;
     const child = path[i + 1]!;
+    // A parameter of a function that the read is in hides a constant of the same name outside it.
+    if (
+      node.type === 'ArrowFunctionExpression' ||
+      node.type === 'FunctionExpression' ||
+      node.type === 'FunctionDeclaration'
+    ) {
+      for (const param of node.params) {
+        for (const name of getPatternNames(param)) {
+          aliases.delete(name.name);
+        }
+      }
+    }
     if (node.type === 'BlockStatement' || node.type === 'Program') {
       for (const statement of node.body) {
         if (statement === child) {
@@ -314,7 +339,7 @@ function isGuarded(
         ) {
           return true;
         }
-        if (awaitsResolve(statement, memo, pending)) {
+        if (alwaysAwaits(statement, memo, pending)) {
           return true;
         }
       }

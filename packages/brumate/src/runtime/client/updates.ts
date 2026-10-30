@@ -35,6 +35,7 @@ import {
   scopes,
   timers,
   updating,
+  waiters,
 } from './state.ts';
 import type { Scope } from './state.ts';
 
@@ -348,20 +349,18 @@ let computing = 0;
 // More than 0 while an effect runs, so reading a value that is still loading skips the run.
 let runningEffects = 0;
 
-// What waits in `resolve`, checked when a slot changes.
-const waiters: Set<() => void> = new Set();
-
 /**
  * `$resolve(memo, { timeout, signal })`: resolves with the value of the memo once it is no longer
  * pending, also after a load that its inputs started. `isLoading` tells whether the memo or a
  * memo that it reads loads, and `read` gives the value or throws the error of the memo.
  */
 export function resolve(
+  scope: Scope,
   isLoading: () => boolean,
   read: () => unknown,
   options?: { timeout?: number; signal?: AbortSignal },
 ): Promise<unknown> {
-  return new Promise((done, fail) => {
+  return new Promise((done, reject) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const end = (finish: () => void): void => {
       clearTimeout(timer);
@@ -369,8 +368,15 @@ export function resolve(
       options?.signal?.removeEventListener('abort', abort);
       finish();
     };
-    const abort = (): void => end(() => fail(options!.signal!.reason));
+    const abort = (): void => end(() => reject(options!.signal!.reason));
     const check = (): void => {
+      // The memo left the page with its component.
+      if (scopes.get(scope.id) !== scope) {
+        const gone = new Error('The component left the page');
+        gone.name = 'AbortError';
+        end(() => reject(gone));
+        return;
+      }
       // Writes that wait for the code of an update can start a load of the memo.
       if (loadingUpdates.size > 0) {
         void Promise.allSettled(loadingUpdates).then(check);
@@ -388,7 +394,7 @@ export function resolve(
         const value = read();
         end(() => done(value));
       } catch (error) {
-        end(() => fail(error));
+        end(() => reject(error));
       }
     };
     if (options?.signal?.aborted) {
@@ -398,11 +404,11 @@ export function resolve(
     options?.signal?.addEventListener('abort', abort);
     if (options?.timeout !== undefined) {
       timer = setTimeout(
-        () => end(() => fail(new Error(`The value did not load in ${options.timeout} ms`))),
+        () => end(() => reject(new Error(`The value did not load in ${options.timeout} ms`))),
         options.timeout,
       );
     }
-    waiters.add(check);
+    waiters.set(check, scope);
     check();
   });
 }
@@ -503,7 +509,7 @@ export function update(scope: Scope, slot: number, delta: number, prefix: boolea
 }
 
 function trigger(scope: Scope, slot: number): void {
-  for (const check of waiters) {
+  for (const check of waiters.keys()) {
     check();
   }
   const id = rootOf(scope).m!;

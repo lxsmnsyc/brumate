@@ -3,6 +3,8 @@
 // server functions: the browser gets a stub for each one, which calls the
 // server, and the code of the file never ships.
 
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { parseSync } from 'oxc-parser';
 import { functionId } from './plan.ts';
 
@@ -263,4 +265,21 @@ export function serverModule(source: string, filename: string, id: string): stri
     lines.push(`${local} = __brumateDedupe(${local}, ${JSON.stringify(`${id}#${exported}`)});`);
   }
   return `${code}\n${lines.join('\n')}\n`;
+}
+
+/**
+ * The file of a relative import that holds server functions, such as `./issues` for `issues.ts`
+ * with `'use server'` first, or undefined. A package specifier is not looked up.
+ */
+export function findServerImport(importer: string, specifier: string): string | undefined {
+  if (!specifier.startsWith('.')) {
+    return undefined;
+  }
+  const stem = path.resolve(path.dirname(importer), specifier);
+  return [stem, ...['.ts', '.tsx', '.js', '.mjs'].map((extension) => stem + extension)].find(
+    (candidate) =>
+      isScriptFile(candidate) &&
+      existsSync(candidate) &&
+      hasUseServer(readFileSync(candidate, 'utf8')),
+  );
 }

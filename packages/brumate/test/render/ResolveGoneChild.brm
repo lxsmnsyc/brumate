@@ -1,0 +1,27 @@
+<script>
+  import { $memo, $resolve, $signal } from 'brumate/signals';
+
+  async function slow(value: string, ms: number) {
+    'use server';
+    await new Promise((done) => setTimeout(done, ms));
+    return value;
+  }
+
+  let name = $signal('Ada');
+  const data = $memo(slow(name, 400));
+
+  function note(name: string, value: unknown): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, value]);
+  }
+
+  async function ask() {
+    try {
+      await $resolve(data);
+    } catch (error) {
+      note('gone', (error as Error).name);
+    }
+  }
+</script>
+
+<button class="ask" onClick=ask>Ask</button>
+<button class="rename" onClick=(() => (name = 'Grace'))>Rename</button>

@@ -540,6 +540,32 @@ ${markup}`;
     );
   });
 
+  it('counts only an await $resolve that always runs before the read', () => {
+    const maybe = [
+      'async function run(flag: boolean) { if (flag) await $resolve(user); log(user); }',
+      'async function run(flag: boolean) { flag && (await $resolve(user)); log(user); }',
+      'async function run() { try { await $resolve(user, { timeout: 5 }); } catch {} log(user); }',
+      'async function run() { setTimeout(async () => { await $resolve(user); }); log(user); }',
+    ];
+    for (const body of maybe) {
+      expect(() => build(body)).toThrow('The handler reads "user"');
+    }
+    expect(() =>
+      build(
+        'async function run() { const loaded = (await $resolve(user)).name; log(loaded, user); }',
+      ),
+    ).not.toThrow();
+    expect(() => build('async function run() { await $resolve(user); log(user); }')).not.toThrow();
+  });
+
+  it('does not count a check that a parameter hides', () => {
+    expect(() =>
+      build(
+        'function run() { const waiting = $isPending(user); [1].forEach((waiting) => { if (waiting) return; log(user); }); }',
+      ),
+    ).toThrow('The handler reads "user"');
+  });
+
   it('counts a memo that markup reads outside #loading as having a value', () => {
     expect(() =>
       build('function run() { log(user); }', '<p>{user.name}</p><button onClick=run>Run</button>'),
@@ -583,6 +609,9 @@ function run() { log(issue); }
       '$resolve cannot run where a memo computes or markup renders',
     );
     expect(() => build('async function run() { await $resolve(1); }')).toThrow(
+      '$resolve needs a $memo',
+    );
+    expect(() => build('async function run() { await $resolve(id); }')).toThrow(
       '$resolve needs a $memo',
     );
   });
