@@ -42,11 +42,17 @@ it('animates from the last indicator with the duration of its CSS, and not witho
   await page.waitFor(() => expect(animate).toHaveBeenCalledTimes(1));
   const [frames, options] = animate.mock.calls[0]! as [
     { transform: string }[],
-    { duration: number },
+    { duration: number; easing: string },
   ];
   expect(frames[0]!.transform).toContain('translate(');
   expect(frames[1]!.transform).toBe('none');
   expect(options.duration).toBe(200);
+  // A timing function with commas is not cut at the first one.
+  expect(options.easing).toBe('cubic-bezier(0.2, 0, 0, 1)');
+  animate.mockClear();
+  pressWith(page.get('.tab-list'));
+  await page.waitFor(() => expect(animate).toHaveBeenCalledTimes(1));
+  expect((animate.mock.calls[0]![1] as { easing: string }).easing).toBe('steps(4, end)');
   // An indicator with no transition does not move.
   animate.mockClear();
   pressWith(page.get('.size-s'));
