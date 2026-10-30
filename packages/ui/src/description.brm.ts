@@ -4,9 +4,12 @@
 // leaves the ID out when it is not, after the first render.
 import { $client, $signal } from 'brumate/signals';
 
-/** True until the browser finds no element with the ID. */
-export function described(id: string) {
-  let present = $signal(true);
+/**
+ * True until the browser finds no element with the ID. With `start` false, it is false until
+ * the browser finds one.
+ */
+export function described(id: string, start = true) {
+  let present = $signal(start);
 
   $client(() => {
     present = document.getElementById(id) !== null;

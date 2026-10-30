@@ -65,9 +65,11 @@
   const describing = $memo(describedBy(hasDescription && descriptionId, isInvalid && errorId));
   // A Label in the children (`as="span"`) names the input, so the description and the error stay
   // out of its name. Without one, they sit in the text of the label, and aria-hidden keeps them
-  // out of the name. The input still names them in aria-describedby, which reads hidden elements.
+  // out of the name. The server cannot see the Label, so a box starts without one, and the name
+  // is right before any script runs. The browser turns the Label on when it finds it. The input
+  // names the description and the error in aria-describedby, which reads hidden elements.
   const labelId = $id();
-  const { present: hasLabel } = described(labelId);
+  const { present: hasLabel } = described(labelId, false);
   const hidden = $memo(hasLabel ? undefined : 'true');
   $setContext(LabelContext, { id: labelId });
   $setContext(TextContext, { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } });

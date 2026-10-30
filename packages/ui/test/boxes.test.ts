@@ -1,5 +1,6 @@
 // The tests of Checkbox, CheckboxGroup, RadioGroup and Switch.
 import { afterEach, expect, it } from 'vitest';
+import { render } from 'brumate/server';
 import { mount } from 'virtual:brumate/testing';
 import Boxes from './fixtures/boxes.brm?brumate-server';
 import RequiredGroup from './fixtures/requiredGroup.brm?brumate-server';
@@ -212,7 +213,7 @@ it('keeps the description and the error out of the name of a standalone Checkbox
   for (const [selector, name, description] of cases) {
     const box = input(page, selector);
     await page.waitFor(() => expect(accessibleDescription(box)).toBe(description));
-    await page.waitFor(() => expect(box.hasAttribute('aria-labelledby')).toBe(false));
+    expect(box.hasAttribute('aria-labelledby')).toBe(false);
     expect(accessibleName(box)).toBe(name);
   }
   (page.get('.flag') as HTMLElement).click();
@@ -244,6 +245,7 @@ it('names a standalone Checkbox and Switch by their Label, and leaves the slots 
     want: string,
   ) => {
     await page.waitFor(() => expect(accessibleDescription(box)).toBe(want));
+    await page.waitFor(() => expect(box.hasAttribute('aria-labelledby')).toBe(true));
     expect(accessibleName(box)).toBe(name);
     expect(box.getAttribute('aria-labelledby')).toBe(
       page.get(`${name === 'Agree' ? '.named-label' : '.named-switch-label'}`).id,
@@ -257,5 +259,21 @@ it('names a standalone Checkbox and Switch by their Label, and leaves the slots 
   (page.get('.flag') as HTMLElement).click();
   for (const [selector, name, text, error, , after] of cases) {
     await check(input(page, selector), name, text, error, after);
+  }
+});
+
+it('names the input from the first byte of the server HTML, before any script runs', async () => {
+  const { html } = await render(Boxes, {});
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  for (const [selector, text, error] of [
+    ['.described', '.described-text', '.described-error'],
+    ['.named', '.named-text', '.named-error'],
+    ['.described-switch', '.switch-text', '.switch-error'],
+    ['.named-switch', '.named-switch-text', '.named-switch-error'],
+  ]) {
+    // No Label is known yet, so the name is the text of the label and the slots are hidden.
+    expect(doc.querySelector(`${selector} input`)!.hasAttribute('aria-labelledby')).toBe(false);
+    expect(doc.querySelector(text)!.getAttribute('aria-hidden')).toBe('true');
+    expect(doc.querySelector(error)?.getAttribute('aria-hidden') ?? 'true').toBe('true');
   }
 });

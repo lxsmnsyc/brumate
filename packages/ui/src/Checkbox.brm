@@ -85,13 +85,14 @@
     group ? describedBy(group.describedBy) : describedBy(hasDescription && descriptionId, invalid && errorId),
   );
   const labelId = $id();
-  const { present: hasLabel } = described(labelId);
+  const { present: hasLabel } = described(labelId, false);
   const groupLabel = $getContext(LabelContext);
   const groupText = $getContext(TextContext);
   const groupError = $getContext(FieldErrorContext);
   // A Label in the children (`as="span"`) names the input, so the description and the error stay
   // out of its name. Without one, they sit in the text of the label, and aria-hidden keeps them
-  // out of the name. The input still names them in aria-describedby, which reads hidden elements.
+  // out of the name. The server cannot see the Label, so a box starts without one: the name is right
+  // before any script runs, and the browser turns the Label on when it finds it. The input still names them in aria-describedby, which reads hidden elements.
   const hidden = $memo(hasLabel ? undefined : 'true');
   $setContext(LabelContext, group ? groupLabel : { id: labelId });
   $setContext(
