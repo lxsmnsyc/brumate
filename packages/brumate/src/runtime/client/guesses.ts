@@ -54,14 +54,14 @@ export function guess<T>(
 export function track<T>(request: Promise<T>): Promise<T> {
   calling++;
   const epoch = callEpoch;
-  const done = (): void => {
+  function done(): void {
     if (epoch !== callEpoch) {
       return;
     }
     calling--;
     // Waits a task, so memos that the answer refreshed start to load first.
     setTimeout(() => calling || guesses?.reset(), 0);
-  };
+  }
   request.then(done, done);
   return request;
 }

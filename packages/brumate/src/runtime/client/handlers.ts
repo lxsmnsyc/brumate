@@ -104,6 +104,7 @@ export function callable(value: unknown, seen: Set<object>): unknown {
     }
     // The code of the components on the page loads with the page, and handlers and updates wait
     // for it. So the function runs at once and returns its result, as on the server.
+    // An arrow, to keep the narrowing of `value`.
     const handler = (...args: unknown[]): unknown => {
       const fn = loadedFunction(value.ref);
       const all = [...(value.args ?? []), ...args];
@@ -205,7 +206,9 @@ export function handle(
     return call(ref.slice(5), scope, [fieldValue(element, typed)]);
   }
   if (ref.startsWith('$bind#')) {
-    const [hops = 0, slot = 0] = ref.slice(6).split('.').map(Number);
+    const [hopsText, slotText] = ref.slice(6).split('.');
+    const hops = Number(hopsText ?? 0);
+    const slot = Number(slotText ?? 0);
     let target = scope;
     for (let hop = 0; hop < hops; hop++) {
       target = target?.p;
@@ -296,11 +299,11 @@ export function handlerProp(
   // Its export reads the current values of its scope. Before the code of its component loads,
   // such as while the browser renders the component for the first time, the function of the
   // render runs.
-  const handler = (...args: unknown[]): unknown => {
+  function handler(...args: unknown[]): unknown {
     const fn = loadedFunction(ref);
     const all = [...bound, ...args];
     return fn ? fn(instance, ...all) : (value as (...rest: unknown[]) => unknown)(...all);
-  };
+  }
   // A spread of markup that the browser renders passes it on, with the modifiers of its wrappers.
   // A scope that is not in the page yet has its ID in `scope`.
   handlerReferences.set(

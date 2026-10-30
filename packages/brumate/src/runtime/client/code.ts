@@ -1,7 +1,7 @@
 // Loads the code of components: their modules, their parts, and the components of the page.
 
 import type { Handler } from './references.ts';
-import { loadedParts, loading, modules, options, partOf, parts, valueRenders } from './state.ts';
+import { loadedParts, loading, modules, options, getPart, parts, valueRenders } from './state.ts';
 import type { ClientModule, Part } from './state.ts';
 
 export function loadModule(id: string): Promise<ClientModule> {
@@ -82,6 +82,8 @@ export function loadedFunction(ref: string): Handler | undefined {
     return undefined;
   }
   // A module without `load` holds every part itself.
-  const part = module.load ? loadedParts.get(`${id}:${partOf(name)}`) : (module as unknown as Part);
+  const part = module.load
+    ? loadedParts.get(`${id}:${getPart(name)}`)
+    : (module as unknown as Part);
   return part?.[name] as Handler | undefined;
 }

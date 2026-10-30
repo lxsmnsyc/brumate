@@ -14,7 +14,7 @@ import {
   unindexed,
 } from './blocks.ts';
 import { codeReady, loadModule, loadPart } from './code.ts';
-import { afterInsert, rootOf } from './scopes.ts';
+import { afterInsert, findRoot } from './scopes.ts';
 import { hiding, options, scopes, updating } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
 import { watchTitles } from './titles.ts';
@@ -33,7 +33,7 @@ export function refresh(added: Scope[], memosOnly = false): void {
   // The scopes of each module, which load it once.
   const byModule = new Map<string, Scope[]>();
   for (const scope of added) {
-    const id = rootOf(scope).m;
+    const id = findRoot(scope).m;
     if (!id) {
       continue;
     }
@@ -157,7 +157,13 @@ export function insertHTML(
     }
   }
   // The nodes of the insert, when hidden `#offscreen` markup can contain them.
-  const added = hiding?.bodies.size ? fragments.flatMap((part) => [...part.childNodes]) : undefined;
+  let added: ChildNode[] | undefined;
+  if (hiding?.bodies.size) {
+    added = [];
+    for (const part of fragments) {
+      added.push(...part.childNodes);
+    }
+  }
   for (const part of fragments) {
     if ('parent' in before) {
       before.parent.append(part);
@@ -191,7 +197,12 @@ export function insertHTML(
     refresh(server);
   }
   // Scopes that the client just rendered have its values, but the memos that load start here.
-  const live = client.filter((scope) => scopes.has(scope.id));
+  const live: Scope[] = [];
+  for (const scope of client) {
+    if (scopes.has(scope.id)) {
+      live.push(scope);
+    }
+  }
   if (live.length > 0) {
     refresh(live, true);
   }
@@ -217,7 +228,7 @@ let placedCount = 0;
  * `svg` or `math` when markup in an element, or next to a node, is SVG or MathML. HTML that the
  * browser parses there needs one around it, as the parser of a page would have one.
  */
-export function foreignOf(near: Node | null | undefined): string | undefined {
+export function findForeign(near: Node | null | undefined): string | undefined {
   const element = near?.nodeType === 1 ? (near as Element) : near?.parentNode;
   if (element?.nodeType !== 1 || (element as Element).localName === 'foreignObject') {
     return undefined;
@@ -236,7 +247,7 @@ export function foreignOf(near: Node | null | undefined): string | undefined {
 export function parseHTML(
   html: string,
   near?: Node | null,
-  foreign: string | undefined = foreignOf(near),
+  foreign: string | undefined = findForeign(near),
 ): DocumentFragment {
   const template = document.createElement('template');
   template.innerHTML = trustedHTML(foreign ? `<${foreign}>${html}</${foreign}>` : html);

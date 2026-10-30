@@ -18,7 +18,7 @@ import { childrenReady } from './children.ts';
 import { loadModule, loadPart, loadingCode } from './code.ts';
 import { fail } from './errors.ts';
 import { call, callNow, setPass } from './references.ts';
-import { afterInsert, descendants, rootOf } from './scopes.ts';
+import { afterInsert, descendants, findRoot } from './scopes.ts';
 import {
   DEV,
   devtools,
@@ -213,7 +213,7 @@ export function bindings(
  */
 export function cells(scope: Scope, links: unknown[], names: string[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
-  names.forEach((name, index) => {
+  for (const [index, name] of names.entries()) {
     const ref = links[index];
     let owner = scope;
     let slot: number;
@@ -223,13 +223,13 @@ export function cells(scope: Scope, links: unknown[], names: string[]): Record<s
       [owner, slot] = ref as [Scope, number];
     } else {
       Object.defineProperty(result, name, { get: () => (ref as unknown[])[0], set: () => {} });
-      return;
+      continue;
     }
     Object.defineProperty(result, name, {
       get: () => get(owner, slot),
       set: (value: unknown) => set(owner, slot, value),
     });
-  });
+  }
   return result;
 }
 
@@ -259,14 +259,14 @@ export function timed(
   const key = `${scope.id}:${slot}`;
   const state = timers.get(key) ?? { last: -Infinity };
   timers.set(key, state);
-  const recompute = (): void => {
+  function recompute(): void {
     state.timer = undefined;
     state.last = Date.now();
     // A scope that left the page computes no more.
     if (scopes.get(scope.id) === scope) {
       memo(scope, slot, compute);
     }
-  };
+  }
   const since = Date.now() - state.last;
   if (throttle && state.timer === undefined && since >= ms) {
     recompute();
@@ -298,7 +298,7 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
   const load = ++loadCount;
   loads.set(key, load);
   startLoading(scope, slot, key);
-  const settle = (value?: unknown): void => {
+  function settle(value?: unknown): void {
     if (loads.get(key) !== load) {
       return;
     }
@@ -308,13 +308,13 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
     } else {
       trigger(scope, slot);
     }
-  };
-  const failed = (error: unknown): void => {
+  }
+  function failed(error: unknown): void {
     // A newer load of the memo aborted this one, so only the latest load holds its error.
     if (loads.get(key) === load) {
       hold(scope, slot, key, error);
     }
-  };
+  }
   promise.then((value) => {
     if (!isAsyncIterable(value)) {
       settle(value);
@@ -370,14 +370,16 @@ export function resolve(
 ): Promise<unknown> {
   return new Promise((done, reject) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const end = (finish: () => void): void => {
+    function end(finish: () => void): void {
       clearTimeout(timer);
       waiters.delete(check);
       options?.signal?.removeEventListener('abort', abort);
       finish();
-    };
-    const abort = (): void => end(() => reject(options!.signal!.reason));
-    const check = (): void => {
+    }
+    function abort(): void {
+      end(() => reject(options!.signal!.reason));
+    }
+    function check(): void {
       // The memo left the page with its component.
       if (scopes.get(scope.id) !== scope) {
         const gone = new Error('The component left the page');
@@ -404,7 +406,7 @@ export function resolve(
       } catch (error) {
         end(() => reject(error));
       }
-    };
+    }
     if (options?.signal?.aborted) {
       abort();
       return;
@@ -523,7 +525,7 @@ function trigger(scope: Scope, slot: number): void {
   for (const check of waiters.keys()) {
     check();
   }
-  const id = rootOf(scope).m!;
+  const id = findRoot(scope).m!;
   const children = childrenReady(scope);
   if (modules.has(id) && loadedParts.has(`${id}:update`) && loadingCode.size === 0 && !children) {
     pass(() => queueWrite(scope, slot));
@@ -573,7 +575,7 @@ async function updateCode(scope: Scope, slot: number): Promise<unknown> {
 
 /** Loads the module of a component and its update code, when something reads the slot. */
 function loadUpdate(scope: Scope, slot?: number): Promise<unknown> {
-  return loadModule(rootOf(scope).m!).then((loaded) => {
+  return loadModule(findRoot(scope).m!).then((loaded) => {
     const reads = loaded.g[scope.k];
     return (slot === undefined ? reads : reads?.[slot]) && loadPart(loaded, 'update');
   });
@@ -589,7 +591,7 @@ export async function updateReady(scope: Scope | undefined, ref?: string): Promi
   if (!scope) {
     return;
   }
-  const root = rootOf(scope);
+  const root = findRoot(scope);
   const own = ref && !(await loadModule(root.m!)).w?.includes(ref.split('#')[1]!);
   return Promise.all([
     loadUpdate(scope),
@@ -708,7 +710,7 @@ const dirty: Set<Scope> = new Set();
 function settle(scope: Scope): void {
   // A memo that reads another memo of the scope settles it through `get`, so the order here does not matter.
   if (dirty.delete(scope)) {
-    for (const [rank, bucket] of (levels[depthOf(scope)]?.m ?? []).entries()) {
+    for (const [rank, bucket] of (levels[getDepth(scope)]?.m ?? []).entries()) {
       const key = `${scope.id}:m${rank}`;
       const compute = bucket?.get(key);
       bucket?.delete(key);
@@ -737,7 +739,7 @@ export function flush(): void {
  * each kind, once the code of the component has loaded.
  */
 function queueWrite(scope: Scope, slot: number): void {
-  const id = rootOf(scope).m!;
+  const id = findRoot(scope).m!;
   const module = modules.get(id);
   const updates = loadedParts.get(`${id}:update`);
   if (!module || !updates) {
@@ -758,7 +760,7 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
   const key = `${target.id}:${name}`;
   // An update of a scope that left the page in the pass does not run. An error goes to the
   // nearest `#try` around the update, whether its write ran at once or waited for code.
-  const later = (): void => {
+  function later(): void {
     if (!failed && scopes.get(target.id) === target) {
       try {
         // Past the limit of rounds, the next update fails in place of running.
@@ -776,8 +778,8 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
         fail(target, error);
       }
     }
-  };
-  const depth = depthOf(target);
+  }
+  const depth = getDepth(target);
   const level = (levels[depth] ??= { m: [], b: new Map(), e: new Map() });
   if (name[0] === 'm') {
     (level.m[+name.slice(1)] ??= new Map()).set(key, later);
@@ -793,17 +795,17 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
  * inserts come after the provider, and a template that a shallower component renders comes after
  * the component that wrote it.
  */
-function depthOf(scope: Scope | undefined): number {
+function getDepth(scope: Scope | undefined): number {
   if (!scope) {
     return -1;
   }
   if (!scope.t) {
-    return 1 + depthOf(scope.p ?? scope.o);
+    return 1 + getDepth(scope.p ?? scope.o);
   }
   // Kept for the pass, since the scope where it renders and its parent can reach the same scope.
   let depth = depths.get(scope);
   if (depth === undefined) {
-    depth = 1 + Math.max(depthOf(scope.t), depthOf(scope.p ?? scope.o));
+    depth = 1 + Math.max(getDepth(scope.t), getDepth(scope.p ?? scope.o));
     depths.set(scope, depth);
   }
   return depth;
@@ -926,11 +928,11 @@ export function effect(
       const token = {};
       skipped.set(key, token);
       scope.cleanups.set(name, noop);
-      const again = (): void => {
+      function again(): void {
         if (skipped.get(key) === token && scopes.get(scope.id) === scope) {
           effect(scope, name, callback);
         }
-      };
+      }
       // After the writes that the value starts, which can run the effect themselves.
       void error.source.then(
         () => Promise.allSettled(loadingUpdates).then(again),
