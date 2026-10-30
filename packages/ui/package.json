@@ -5,6 +5,7 @@
   "license": "MIT",
   "files": [
     "src",
+    "skills",
     "LICENSE"
   ],
   "type": "module",
