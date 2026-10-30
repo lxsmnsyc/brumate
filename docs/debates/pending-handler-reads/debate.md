@@ -30,6 +30,7 @@ Explicit waiting. A read never gives a promise or `undefined` typed as the value
    Two fixes from the review of #352:
    - memos of imported `'use server'` functions count as async (J8);
    - a memo that markup reads outside `#loading` counts as having a value, because the server waited for it (J7). This makes the `forms.md` sample compile.
+
 3. **The runtime throws for reads the compiler cannot see**, into the nearest `#try`, with a message that points to `$resolve` (P4).
    - Examples: function props, imported helpers, code after an `await`.
    - The check uses the slot value, not a handler counter, so reads after an `await` are covered (J8).

@@ -24,7 +24,8 @@
     "**/dist/**",
     "**/node_modules/**",
     "**/test/.output/**",
-    "**/brumate-routes.d.ts"
+    "**/brumate-routes.d.ts",
+    "docs/debates/*/evidence/**"
   ],
   "overrides": [
     {
