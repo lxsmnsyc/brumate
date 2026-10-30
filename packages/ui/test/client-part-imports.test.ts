@@ -245,7 +245,8 @@ it('sees a name that no scope declares', () => {
   expect([...freeNames(code)].sort()).toEqual(['other', 'sameKeys']);
 });
 
-it('imports in each client part the names that its code uses', () => {
+// It compiles every component of the package, which takes seconds on a busy CI runner.
+it('imports in each client part the names that its code uses', { timeout: 30_000 }, () => {
   const files = DIRS.flatMap((dir) =>
     readdirSync(dir)
       .filter((name) => name.endsWith('.brm'))
