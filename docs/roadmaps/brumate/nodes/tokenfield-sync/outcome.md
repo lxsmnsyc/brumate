@@ -2,16 +2,16 @@
 
 ## Built
 
-- The box of a TokenField shows the kept value after a refused `$bind` write, after a form reset (also when the kept segments are the first ones), and after quick edits followed by a reset.
-- `TokenField.brm`: a `revision` counter in the context. A reset bumps it. Each edit bumps it one task later, so a setter that refused leaves the box rewritten from the value. `TokenInput.brm` reads it in its write effect.
+- The box of a TokenField shows the first value after a form reset (also when the kept segments are the first ones, and after a composition), and after quick edits followed by a reset. The refused-edit case is NOT fixed: its test is `it.fails` and waits for the node bind-read-your-writes (a per-edit timer was dropped because it flickers and loses typing with a setter that accepts later).
+- `TokenField.brm`: a `revision` counter in the context. A reset bumps it. `TokenInput.brm` reads it in its write effect, and writes it after a composition that a reset interrupted.
 - `TokenInput.brm`: the stamps are keyed by text and by place among equal text, and carry `data-stamp=(text)`. `write()` copies a stamp only when its `data-stamp` matches the token, and writes again after a task when a stamp was not rendered yet.
-- Tests: `packages/ui/test/token-field-sync.test.ts` with `fixtures/token-field-sync.brm` (4 tests). Changeset `.changeset/tokenfield-sync.md` (patch).
+- Tests: `packages/ui/test/token-field-sync.test.ts` with `fixtures/token-field-sync.brm` (6 tests, one `it.fails`). Changeset `.changeset/tokenfield-sync.md` (patch).
 - Docs: dropped the TokenField exception in `website/ui/state.md` and `website/ui/token-field.md`.
 
 ## Deviations
 
 - `e2e/suites/website.mjs` is outside the brief's paths: a step on the token-field page does the refused edit and the quick edits with a reset in Chrome.
-- A setter that accepts late (a save after a delay) also gets its box rewritten from the old value for a moment: a refused write and a late one look the same to the field.
+- The brief's refused-edit case waits for bind-read-your-writes; the docs say so.
 
 ## Stubs left
 
@@ -20,7 +20,7 @@
 ## Gotchas
 
 - A stamp rendered by `#for ... by index` keeps old template content when its segment changes, so the content lagged even when `data-stamp` was new. Keys by text fix it; plain `by segment.text` breaks with the same token twice, so the key has the occurrence number.
-- After `value = next` with a refusing `$bind` setter, the local `value` reads the new segments, so the refusal cannot be seen in the same task.
+- After `value = next` with a refusing `$bind` setter, the local `value` reads the new segments, so the refusal cannot be seen without a runtime read-back.
 
 ## Proposed learnings
 
@@ -28,7 +28,7 @@
 
 ## Verification
 
-- Before the fix 3 of the 3 new case tests failed on main code; after, `npx vitest run test/token-field-sync.test.ts test/token-field.test.ts --maxWorkers=2` passes (19 tests, happy-dom).
+- Before the fix the new case tests failed on main code; after, `npx vitest run test/token-field-sync.test.ts test/token-field.test.ts --maxWorkers=2` passes (21 tests with 1 expected fail, happy-dom).
 - `pnpm lint` has no errors, `pnpm format:check` and `pnpm typecheck` pass.
 - Chrome: see the e2e line in the PR description.
 

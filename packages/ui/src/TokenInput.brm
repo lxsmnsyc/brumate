@@ -49,6 +49,9 @@
   let focused = $signal(false);
   let focusVisible = $signal(false);
   let composing = $signal(false);
+  // The last revision of the field that the box saw, and whether one came during a composition.
+  let lastRevision = $signal(0);
+  let late = $signal(false);
   // Where the caret was in the value, to put it back after the box is written again.
   let caret = $signal<number | undefined>(undefined);
   const disabled = $memo(field.isDisabled);
@@ -84,7 +87,16 @@
     // them to render, then write again.
     const tokens = value.filter((segment) => segment.type === 'token');
     if (again && tokens.some((segment, at) => nodesOfStamps[at]?.getAttribute('data-stamp') !== segment.text)) {
-      setTimeout(() => write(field!.value, false), 0);
+      setTimeout(() => {
+        const element = box;
+        const current = field!.value;
+        // The user may have typed since, or the box may be right already.
+        if (!element || composing || sameSegments(readSegments(element), current)) {
+          return;
+        }
+        write(current, false);
+        showCaret(element);
+      }, 0);
     }
     const nodes: Node[] = [];
     let index = 0;
@@ -116,8 +128,15 @@
   $effect(() => {
     const value = field.value;
     const element = box;
-    // A refused edit and a reset write the box, though the value stays.
-    field.revision;
+    // A reset writes the box, though the value stays.
+    const revision = field.revision;
+    if ($untrack(lastRevision) !== revision) {
+      $untrack((lastRevision = revision));
+      // A reset during a composition is written when the composition ends.
+      if ($untrack(composing)) {
+        $untrack((late = true));
+      }
+    }
     // The composition and the caret are no reason to write: the value is.
     if (!element || $untrack(composing)) {
       return;
@@ -229,6 +248,12 @@
   onCompositionStart=(() => (composing = true))
   onCompositionEnd=(() => {
     composing = false;
+    if (late) {
+      late = false;
+      write(field!.value);
+      showCaret(box!);
+      return;
+    }
     input();
   })
   onFocus=focus

@@ -75,11 +75,6 @@
       value = next;
       onChange?.(next);
     }
-    // A setter that refuses keeps the value, and the box still has the typed text. A write
-    // that is accepted has landed by the end of the task.
-    setTimeout(() => {
-      revision++;
-    }, 0);
   }
 
   // A reset of the form gives back the first segments. The box follows the value.
