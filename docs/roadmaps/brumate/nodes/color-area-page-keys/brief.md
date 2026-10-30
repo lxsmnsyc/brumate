@@ -1,7 +1,7 @@
 ---
 id: color-area-page-keys
 title: ColorArea keeps the other channel when PageDown moves the focused one
-status: active
+status: done
 priority: should
 type: fix
 outline: false

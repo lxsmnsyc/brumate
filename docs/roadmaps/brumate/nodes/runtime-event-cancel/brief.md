@@ -1,7 +1,7 @@
 ---
 id: runtime-event-cancel
 title: Delegated events can be cancelled when a handler or modifier appears after load
-status: active
+status: done
 priority: should
 type: fix
 outline: false
