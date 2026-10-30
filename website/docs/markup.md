@@ -294,7 +294,7 @@ An element with a spread or a computed attribute is not checked, because any att
   </script>
   <p>
     <label for=id>{name}</label>
-    <input id=id>
+    <input {id}>
   </p>
 }
 <button onClick=(() => (fields = [...fields, `Field ${fields.length + 1}`]))>Add a field</button>

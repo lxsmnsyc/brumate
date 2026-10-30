@@ -99,7 +99,7 @@ A prop changes in the browser only when the parent passes a value that can chang
   const { value, max } = $props<{ value: number; max: number }>();
 </script>
 
-<meter value=value min="0" max=max aria-label="Level"></meter>
+<meter {value} min="0" {max} aria-label="Level"></meter>
 <span>{value} of {max}</span>
 ```
 
