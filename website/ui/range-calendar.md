@@ -99,7 +99,7 @@ See [State](./state.md) for the other parts.
 
 Style the dates with `data-selected`, `data-selection-start` and `data-selection-end`, and the other data attributes of a [Calendar](./calendar.md#data-attributes). See [Styling](./styling.md).
 
-A cell has no `data-hovered`, so use `:hover` for the pointer. This stylesheet draws the range as a band with round ends, and styles a date in rest, hover, press, today, keyboard focus, unavailable and out of range. The 22nd is taken, so a range that starts before it stops there.
+A cell shows `data-hovered` under a mouse or a pen. This stylesheet draws the range as a band with round ends, and styles a date in rest, hover, press, today, keyboard focus, unavailable and out of range. The 22nd is taken, so a range that starts before it stops there.
 
 ```brm styled RangeCalendarStyled
 

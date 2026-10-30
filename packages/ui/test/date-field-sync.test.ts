@@ -52,7 +52,7 @@ it('shows the kept date when a write is refused, and after a reset', async () =>
     await view.waitFor(() => expect(texts(view, `.${field}-input`)).toEqual(before));
   }
   expect(JSON.parse(view.text('.state')).slice(0, 2)).toEqual(['2026-10-15', '2026-10-15']);
-  // A reset that the setter refuses leaves the kept date in the segments too.
+  // The setter accepts a write again, then a reset gives back the first date.
   await lock(view, false);
   // The first key of a part loads its code, so the key repeats until it counts.
   await view.waitFor(() => {
@@ -61,12 +61,12 @@ it('shows the kept date when a write is refused, and after a reset', async () =>
     }
     expect(JSON.parse(view.text('.state'))[0]).toBe('2026-10-16');
   });
-  await lock(view, true);
+  // A reset gives back the first date to the segments, as a write.
   (view.get('.form') as HTMLFormElement).reset();
-  // The form gives the reset to the fields after a tick.
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  expect(JSON.parse(view.text('.state'))[0]).toBe('2026-10-16');
-  expect(texts(view, '.due-input')).toEqual(['10', '/', '16', '/', '2026']);
+  await view.waitFor(() => {
+    expect(JSON.parse(view.text('.state'))[0]).toBe('2026-10-15');
+    expect(texts(view, '.due-input')).toEqual(['10', '/', '15', '/', '2026']);
+  });
 });
 
 it('follows a locale that changes at run time', async () => {

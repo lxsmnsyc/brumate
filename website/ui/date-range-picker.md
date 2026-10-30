@@ -30,6 +30,7 @@ Two date fields and a button that opens a RangeCalendar.
 - A date that is only typed so far stays in its input while the value is null.
 - `onChange` gets each change, whether it is typed or picked.
 - `startName` and `endName` post the dates with a form, from hidden inputs. `isRequired` asks the browser to check them on a submit, and the FieldError shows the message. A reset of the form gives back the first range.
+- A date outside `minValue` or `maxValue` blocks a submit. The browser focuses the start input, whichever date is out of range.
 - It shows `data-open`, `data-disabled`, `data-readonly`, `data-invalid` and `data-required`.
 
 ## Anatomy

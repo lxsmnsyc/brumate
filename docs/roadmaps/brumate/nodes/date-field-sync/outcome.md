@@ -12,7 +12,7 @@
 ## Deviations
 
 - `formField` (shared with TimeField) got an optional third argument, so TimeField is unchanged.
-- The pages `website/ui/calendar.md` and `website/ui/range-calendar.md` still say a cell has no `data-hovered`. They are outside this node's paths, so a later docs node should update them. The CSS demos of the date pages still use `:hover`.
+- `website/ui/calendar.md` and `website/ui/range-calendar.md` are outside the brief's paths. One sentence each now says a cell shows `data-hovered`. The CSS demos still use `:hover`.
 - The message text 'The date is outside the allowed range.' is English only and not in DateStrings.
 
 ## Stubs left
@@ -31,7 +31,7 @@
 
 ## Verification
 
-- Before the fix 4 of 5 new tests failed on main code (bugs 1, 2, 3 and hover); after, `npx vitest run test/date-field-sync.test.ts` passes (vitest runs in Chrome).
+- Before the fix 5 of 5 new tests failed on main code; after, `npx vitest run test/date-field-sync.test.ts` passes (vitest runs in Chrome).
 - `pnpm lint` has no errors, `pnpm format:check` passes, `pnpm --filter @brumate/ui typecheck` passes.
 - datefield, datepicker, daterangepicker, date-i18n and refused-writes tests pass with `--maxWorkers=2`.
 
