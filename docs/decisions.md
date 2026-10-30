@@ -4,7 +4,7 @@
 
 - Components run on the server only. The client resumes and never runs a component function again to rebuild state.
 - The reactive graph is built at compile time. The runtime does not record subscriptions.
-- There are twelve compile-time functions: `$props`, `$signal`, `$memo`, `$effect`, `$client`, `$untrack`, `$produce`, `$isPending`, `$setContext`, `$getContext`, `$id` and `$title`.
+- The compile-time functions are the exports of `brumate/signals` (`runtime/signals.ts`): `$action`, `$bind`, `$client`, `$debounced`, `$effect`, `$getContext`, `$handler`, `$id`, `$isBound`, `$isPassed`, `$isPending`, `$memo`, `$navigation`, `$optimistic`, `$produce`, `$props`, `$resolve`, `$route`, `$setContext`, `$signal`, `$throttled`, `$title` and `$untrack`. The compiler replaces every call, and a call outside a `.brm` file throws.
 - `$id()` makes an ID from the scope's ID and the call's position, so server and client agree without counting at runtime.
 - `ref=$bind(name)` writes an element into a `$signal`, or into a `Bindable` `let` prop, which forwards it to the caller. There is no separate ref function. `ref` always takes `$bind`, on elements, dynamic tags and components, so a component forwards a ref as it forwards any bound prop. A setter, `ref=$bind(name, fn)`, reaches an element only through a component prop, named or in the rest props, since an element takes only `ref=$bind(name)`. A bare `ref=name` is a compile error, with no deprecation period. The server never sends an element: the state holds an element reference, which the browser resolves.
 - `$signal` does not track the values in its initial value.
@@ -20,7 +20,7 @@
 - Scope instances link to their parent with `p`, so client code reads outer values by walking up.
 - Lists keep the raw item of each item scope in the state, so keys can be computed again on the client.
 - The Vite plugin finds every `.brm` file under the root, so the manifest and the server registry list all components.
-- A change to a `.brm` file reloads the page instead of replacing modules.
+- A change to a `.brm` file that keeps its markup, slots and update table updates in place (`brumate:update`, `runtime/hot.ts`): new styles replace the old ones, the next event or update loads the new code, and state stays. A change of the markup loads the page again through the client router, and the signals of the component keep their values by name.
 - A component rendered on the client comes from its render module, a third output next to the server and client modules.
 - `#loading` streams out of order: the fallback first, then the body in a `<template>` with its scopes and an inline swap script.
 - Any `$memo` can hold a promise, as in Solid, Compostate and Atemno. Reading a value that is still loading throws a not-ready error that carries the load, and nothing turns a memo into a promise. On the server, a memo computes when it is first read. A memo that read a loading value does not keep the error, so it computes again when read after the load. Markup outside every `#loading` body waits there, and a `#loading` body waits in its own stream chunk. On the client, a memo that reads a loading value keeps its old value and is pending until the value arrives.
