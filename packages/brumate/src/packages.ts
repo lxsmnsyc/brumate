@@ -265,6 +265,24 @@ export function resolvePackageImport(specifier: string, importer: string): strin
   return existsSync(file) ? toPosix(realpathSync(file)) : undefined;
 }
 
+/**
+ * Resolves a bare specifier like `resolvePackageImport`, but only for a
+ * package of components in the list. Returns undefined for any other package.
+ */
+export function resolveComponentPackage(
+  packages: BrumatePackage[],
+  specifier: string,
+  importer: string,
+): string | undefined {
+  const name = splitSpecifier(specifier)?.name;
+  for (const item of packages) {
+    if (item.name === name) {
+      return resolvePackageImport(specifier, importer);
+    }
+  }
+  return undefined;
+}
+
 /** The specifiers that a file imports or exports from, found by a pattern, so it can only find more. */
 export function importSpecifiers(source: string): string[] {
   const result: string[] = [];

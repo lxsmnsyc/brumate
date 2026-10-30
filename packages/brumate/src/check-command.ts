@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { CompileError, compile } from './compile.ts';
@@ -7,8 +7,11 @@ import type { Diagnostic } from './model.ts';
 import { findError } from './error-catalog.ts';
 import { BrumateError, getLocation } from './error.ts';
 import { collectSources } from './files.ts';
+import { resolveFromDisk } from './modules.ts';
+import type { BrumatePackage } from './packages.ts';
+import { findPackages, resolveComponentPackage } from './packages.ts';
 import { analyzeProjectProps } from './project.ts';
-import { findServerImport } from './server-files.ts';
+import { findPackageServerFile, findServerImport } from './server-files.ts';
 
 /** A place in a file. Lines and columns start at 1. */
 export interface CheckPosition {
@@ -86,13 +89,23 @@ function checkFile(
   file: string,
   absolute: string,
   liveProps: Set<string> | undefined,
+  packages: BrumatePackage[],
 ): CheckRecord[] {
   try {
     const result = compile(source, {
       filename: file,
       path: absolute,
       liveProps,
-      serverImport: (specifier) => findServerImport(absolute, specifier),
+      serverImport: (specifier) =>
+        specifier.startsWith('.')
+          ? findServerImport(absolute, specifier)
+          : findPackageServerFile(packages, absolute, specifier),
+      resolveModule: (specifier, importer) => {
+        const local = resolveFromDisk(specifier, importer);
+        const found =
+          local === undefined ? resolveComponentPackage(packages, specifier, importer) : undefined;
+        return found ? { path: found, source: readFileSync(found, 'utf8') } : local;
+      },
     });
     const records: CheckRecord[] = [];
     for (const warning of result.warnings) {
@@ -261,6 +274,7 @@ export async function check(root: string, options: CheckOptions = {}): Promise<C
     : await collectSources(root, paths);
   const props = analyzeProjectProps(sources);
 
+  const packages = findPackages(root);
   for (const file of targets) {
     const parents = props.get(file);
     records.push(
@@ -269,6 +283,7 @@ export async function check(root: string, options: CheckOptions = {}): Promise<C
         toPosix(path.relative(root, file)),
         file,
         parents && new Set(parents.keys()),
+        packages,
       ),
     );
   }

@@ -23,6 +23,7 @@ import { DEFAULT_MERGE } from './codegen/client.ts';
 import { defaultExclude, findFiles, findScripts, findServerFiles } from './files.ts';
 import { clientEnvModule, parseEnvFile } from './env-file.ts';
 import {
+  findPackageServerFile,
   hasServerMiddleware,
   hasUseServer,
   isScriptFile,
@@ -42,8 +43,7 @@ import {
   packageFileName,
   packageOf,
   reachableFiles,
-  resolvePackageImport,
-  splitSpecifier,
+  resolveComponentPackage,
 } from './packages.ts';
 import type { BrumatePackage } from './packages.ts';
 import type { NavigateOptions } from './runtime/boot.ts';
@@ -463,11 +463,6 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
     return owner ? packageFileName(owner, normalized) : relative(file);
   };
-  /** True for a bare specifier that names a package of components. */
-  const isPackageSpecifier = (specifier: string): boolean => {
-    const name = splitSpecifier(specifier)?.name;
-    return name !== undefined && packages.some((item) => item.name === name);
-  };
   /** Files of server functions: scripts whose first statement is `'use server'`, by ID. */
   const serverFiles = new Map<string, string>();
   /** The scripts of the app, when it uses packages of components. */
@@ -476,12 +471,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const serverImport = (importer: string, specifier: string, name: string): string | undefined => {
     // A package of components can export a file of server functions.
     if (!specifier.startsWith('.')) {
-      const file = isPackageSpecifier(specifier)
-        ? resolvePackageImport(specifier, importer)
-        : undefined;
-      return file && isScriptFile(file) && hasUseServer(readFileSync(file, 'utf8'))
-        ? functionId(serverFileId(file), name, !isServe)
-        : undefined;
+      const file = findPackageServerFile(packages, importer, specifier);
+      return file ? functionId(serverFileId(file), name, !isServe) : undefined;
     }
     const stem = path.resolve(path.dirname(importer), specifier);
     const found = [
@@ -567,8 +558,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   /** Resolves a `.brm` file that a component imports: next to it, or from a package of components. */
   const resolveComponent = (specifier: string, importer: string): string | undefined =>
     resolveRelative(specifier, importer) ??
-    (specifier.endsWith('.brm') && isPackageSpecifier(specifier)
-      ? resolvePackageImport(specifier, importer)
+    (specifier.endsWith('.brm')
+      ? resolveComponentPackage(packages, specifier, importer)
       : undefined);
 
   // Props are analyzed across the project, so a change to one file can change the output of others.
@@ -640,9 +631,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     resolveModule: (specifier, importer) => {
       const local = resolveFromDisk(specifier, importer);
       const found =
-        local === undefined && isPackageSpecifier(specifier)
-          ? resolvePackageImport(specifier, importer)
-          : undefined;
+        local === undefined ? resolveComponentPackage(packages, specifier, importer) : undefined;
       return found ? { path: found, source: readFileSync(found, 'utf8') } : local;
     },
   });
