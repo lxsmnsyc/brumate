@@ -274,12 +274,13 @@ export function boot(
    * of its target. `stop` ends the event where it is.
    */
   const onEvent = (event: Event): void => {
-    // A part cancels an event of its element before any handler, with a function in the set
-    // `bCancels` of the element, for it cannot add a listener that runs before this one.
-    for (const cancel of (event.target as { bCancels?: Set<(event: Event) => boolean> }).bCancels ??
-      []) {
-      if (cancel(event)) {
-        return;
+    // The checks of `cancelWhen`, from the target up, run before any handler.
+    for (let node = event.target as Node | null; node; node = node.parentNode) {
+      for (const [type, check] of cancels.get(node as Element) ?? []) {
+        if (type === event.type && check(event)) {
+          event.preventDefault();
+          return;
+        }
       }
     }
     const path: Element[] = [];
@@ -314,6 +315,23 @@ export function boot(
     if (!phase([...path].reverse(), true)) {
       phase(event.bubbles ? path : path.filter((element) => element === event.target), false);
     }
+  };
+
+  // The checks of `cancelWhen`, by element. `events.ts` reaches them through a symbol of the registry.
+  const cancels = new WeakMap<Node, Set<[string, (event: Event) => boolean]>>();
+  (globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.cancel')] = (
+    element: Element,
+    type: string,
+    check: (event: Event) => boolean,
+  ): (() => void) => {
+    const entry: [string, typeof check] = [type, check];
+    let set = cancels.get(element);
+    if (!set) {
+      cancels.set(element, (set = new Set()));
+    }
+    set.add(entry);
+    delegate(type, false);
+    return () => void set.delete(entry);
   };
 
   /** True for an entry that prevents the default action, which a passive listener cannot do. */
@@ -459,9 +477,6 @@ export function boot(
       onBlock(root, template);
     }
   };
-
-  // A part can cancel a submit that no `b-on` names, so the document always listens to it.
-  delegate('submit', false);
 
   // A form of an `$action` sends its data with `fetch`, and the core writes the result into the page.
   listen(document, 'submit', (event) => {

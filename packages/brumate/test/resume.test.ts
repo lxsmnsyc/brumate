@@ -1099,28 +1099,45 @@ describe('resume', () => {
     }
   });
 
-  it('lets a part cancel a delegated submit before its handler runs', async () => {
+  it('cancels a click or a submit inside an element with cancelWhen, before its handler runs', async () => {
     await resume('cancelEvents', {});
-    const form = document.querySelector('.form') as HTMLFormElement & {
-      bCancels?: Set<(event: Event) => boolean>;
-    };
+    const { cancelWhen } = await import('../src/runtime/events.ts');
+    const form = document.querySelector('.form') as HTMLFormElement;
+    const button = document.querySelector('.go')!;
     let cancel = true;
-    form.bCancels = new Set([
-      (event) => {
-        if (cancel) {
-          event.preventDefault();
-        }
-        return cancel;
-      },
-    ]);
+    // A type that scrolls cannot be cancelled.
+    // @ts-expect-error scroll is not a cancelable type
+    const never = () => cancelWhen(form, 'scroll', () => true);
+    expect(never).toBeTypeOf('function');
+    const remove = cancelWhen(form, 'submit', () => cancel);
+    const removeClick = cancelWhen(form, 'click', () => cancel);
+    // A listener that the page adds still runs, and reads that the event is cancelled.
+    const seen: boolean[] = [];
+    const read = (event: Event) => seen.push(event.defaultPrevented);
+    window.addEventListener('click', read);
     const cancelled = new Event('submit', { bubbles: true, cancelable: true });
     form.dispatchEvent(cancelled);
+    // A click on a child of the element is cancelled.
+    const clicked = new Event('click', { bubbles: true, cancelable: true });
+    button.dispatchEvent(clicked);
     await pause();
+    window.removeEventListener('click', read);
     expect(cancelled.defaultPrevented).toBe(true);
+    expect(clicked.defaultPrevented).toBe(true);
+    expect(seen).toEqual([true]);
     expect(text('.log')).toBe('');
+    // Without a true, the handlers run.
     cancel = false;
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await waitFor(() => expect(text('.log')).toBe('submit'));
+    // The cleanup removes the check.
+    cancel = true;
+    remove();
+    removeClick();
+    const free = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(free);
+    expect(free.defaultPrevented).toBe(false);
+    await waitFor(() => expect(text('.log')).toBe('submit, submit'));
   });
 
   it('prevents only the keys that :prevent names, before the handler loads', async () => {

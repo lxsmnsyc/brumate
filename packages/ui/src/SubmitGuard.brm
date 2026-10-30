@@ -1,5 +1,6 @@
 <script>
   import type { Bindable } from 'brumate/signals';
+  import { cancelWhen } from 'brumate/events';
   import { $client, $props } from 'brumate/signals';
 
   let { ref } = $props<{ ref?: Bindable<Element | undefined> }>();
@@ -11,8 +12,8 @@
   // pending one is blocked. When the button is not pending, the listener does nothing, and the
   // other submit listeners of the page run.
   //
-  // The guard is in the set `bCancels` of the form, which the document listener of brumate reads
-  // before it runs any handler, so a delegated `onSubmit` does not run either. It is added on
+  // `cancelWhen` makes the document listener of brumate cancel the submit before any handler, so a
+  // delegated `onSubmit` does not run either. It is added on
   // load, so it exists before a press can make the button pending. It reads data-pending, because
   // a signal read in a $client callback is the value of the load.
   $client(() => {
@@ -30,18 +31,12 @@
       }
       return false;
     };
-    const cancel = (event: Event) => {
-      const { submitter } = event as SubmitEvent;
-      if (button.hasAttribute('data-pending') && (submitter === button || (!submitter && isDefault()))) {
-        event.preventDefault();
-        return true;
-      }
-      return false;
-    };
-    const cancels = ((form as { bCancels?: Set<typeof cancel> }).bCancels ??= new Set());
-    cancels.add(cancel);
-    return () => {
-      cancels.delete(cancel);
-    };
+    return cancelWhen(form, 'submit', (event) => {
+      const { submitter } = event;
+      return (
+        button.hasAttribute('data-pending') &&
+        (submitter === button || (!submitter && isDefault()))
+      );
+    });
   }, 'load');
 </script>

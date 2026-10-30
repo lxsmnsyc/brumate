@@ -21,15 +21,36 @@ async function buttons() {
   return page;
 }
 
-/** Waits until the pending guards of submit Buttons, which sit in the `bCancels` of their forms, number `count`. */
-function guardsReady(count: number) {
-  return vi.waitFor(() => {
-    let found = 0;
-    for (const form of document.forms) {
-      found += (form as { bCancels?: Set<unknown> }).bCancels?.size ?? 0;
-    }
-    expect(found).toBeGreaterThanOrEqual(count);
+/**
+ * Counts the checks that submit Buttons add with `cancelWhen`, and those removed. Call it before
+ * `mount`, and call `ready` for the count to wait for.
+ */
+function watchGuards() {
+  const key = Symbol.for('brumate.cancel');
+  const target = globalThis as { [key: symbol]: unknown };
+  const counts = { added: 0, removed: 0 };
+  let current: unknown;
+  Object.defineProperty(target, key, {
+    configurable: true,
+    get: () => current,
+    set(register: (...args: unknown[]) => () => void) {
+      current = (...args: unknown[]) => {
+        counts.added++;
+        const remove = register(...args);
+        return () => {
+          counts.removed++;
+          remove();
+        };
+      };
+    },
   });
+  return {
+    counts,
+    ready: (count: number) => vi.waitFor(() => expect(counts.added).toBeGreaterThanOrEqual(count)),
+    stop: () => {
+      delete target[key];
+    },
+  };
 }
 
 /** The events so far, without taking them. */
@@ -193,9 +214,11 @@ it('keeps Space on a submit button, so the browser sends its form, and presses o
 });
 
 it('keeps the type of a pending submit button, which neither sends nor hovers', async () => {
+  const guards = watchGuards();
   const page = await buttons();
   // The submit button outside a form has no guard.
-  await guardsReady(2);
+  await guards.ready(2);
+  guards.stop();
   const button = page.get('.sending');
   expect(button.getAttribute('type')).toBe('submit');
   button.click();
@@ -376,9 +399,11 @@ function implicitSubmit(form: Element) {
 }
 
 it('sends a form once while its submit button is pending, by a click or by Enter', async () => {
+  const guards = watchGuards();
   const page = await mount(PendingSubmit, {});
   unmount = page.unmount;
-  await guardsReady(3);
+  await guards.ready(3);
+  guards.stop();
   const form = page.get('.one');
   const save = page.get('.save');
   save.click();
@@ -398,9 +423,11 @@ it('sends a form once while its submit button is pending, by a click or by Enter
 });
 
 it('sends a form with two submit buttons by the button that is not pending', async () => {
+  const guards = watchGuards();
   const page = await mount(PendingSubmit, {});
   unmount = page.unmount;
-  await guardsReady(3);
+  await guards.ready(3);
+  guards.stop();
   page.get('.toggle').click();
   await page.waitFor(() => expect(page.get('.first').hasAttribute('data-pending')).toBe(true));
   // Enter clicks the default button, the first one, which is pending.
@@ -412,9 +439,9 @@ it('sends a form with two submit buttons by the button that is not pending', asy
 });
 
 it('leaves the submit listeners of the page alone while not pending, and removes its own', async () => {
+  const guards = watchGuards();
   const page = await mount(PendingSubmit, {});
-  await guardsReady(3);
-  const form = page.get('.one') as HTMLFormElement & { bCancels: Set<unknown> };
+  await guards.ready(3);
   let others = 0;
   const count = () => others++;
   document.addEventListener('submit', count);
@@ -422,8 +449,9 @@ it('leaves the submit listeners of the page alone while not pending, and removes
   await page.waitFor(() => expect(page.text('.sent')).toBe('1'));
   // The button is not pending, so the listener of the page ran.
   expect(others).toBe(1);
-  expect(form.bCancels.size).toBe(1);
+  expect(guards.counts.removed).toBe(0);
   page.unmount();
   document.removeEventListener('submit', count);
-  await page.waitFor(() => expect(form.bCancels.size).toBe(0));
+  await page.waitFor(() => expect(guards.counts.removed).toBe(guards.counts.added));
+  guards.stop();
 });
