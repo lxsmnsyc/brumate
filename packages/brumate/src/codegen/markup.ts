@@ -2129,7 +2129,7 @@ export class Emitter {
       }
       call = `$$b.fillBranch($$m, ${anchor.scope}, ${anchor.index}, ${index}, [${fill.renders.join(', ')}])`;
     } else if (fill.kind === 'for' && block.kind === 'for') {
-      call = `$$b.fillList($$m, ${anchor.scope}, ${anchor.index}, $$b.listOf(${this.expression(block.list)}), ${fill.render})`;
+      call = `$$b.fillList($$m, ${anchor.scope}, ${anchor.index}, $$b.toList(${this.expression(block.list)}), ${fill.render})`;
     } else {
       return false;
     }
@@ -2196,7 +2196,7 @@ export class Emitter {
       const other = fallback && this.bodyFunction('', () => this.emitBody(fallback));
       const items =
         block.kind === 'for'
-          ? `$$b.listOf(${this.expression(block.list)})`
+          ? `$$b.toList(${this.expression(block.list)})`
           : `Array.from({ length: ${this.expression(block.count)} }, (_, index) => index)`;
       this.code(`$$b.nodes($$b.listNodes(${marks}, ${items}, ${body}, ${other ?? 'undefined'}))`);
       return true;

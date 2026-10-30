@@ -150,7 +150,7 @@ export function b7($$s) {
 const $$k2 = ($$item) => $$item;
 const $$k3 = [6];
 export function b8($$s) {
-  $$b.list($$s, 4, $$b.listOf($$b.get($$s, 1)), $$k2, r5, a5, r6, $$k3);
+  $$b.list($$s, 4, $$b.toList($$b.get($$s, 1)), $$k2, r5, a5, r6, $$k3);
 }
 export function a5($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -281,7 +281,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     const $$e = $$b.clone($$t3), $$f = $$e[0];
     return $$f;
   };
-  $$html += $$b.nodes($$b.listNodes($$s1, 4, $$b.listOf(( list)), $$body4, $$body5)) + "</ul>";
+  $$html += $$b.nodes($$b.listNodes($$s1, 4, $$b.toList(( list)), $$body4, $$body5)) + "</ul>";
   const $$body8 = ($$item6, $$index7) => {
     let $$html = '';
     const item = $$item6;
@@ -289,7 +289,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     $$b.setContent($$e[0], (item));
     return $$f;
   };
-  $$html += $$b.nodes($$b.listNodes(undefined, undefined, $$b.listOf(( ['x', 'y'])), $$body8, undefined));
+  $$html += $$b.nodes($$b.listNodes(undefined, undefined, $$b.toList(( ['x', 'y'])), $$body8, undefined));
   const $$body11 = ($$item9, $$index10) => {
     let $$html = '';
     const n = $$index10;

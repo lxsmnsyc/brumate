@@ -30,7 +30,7 @@ export function resetIds(): void {
 }
 
 /** Returns the instance of a scope by its ID. */
-export function scopeOf(id: ScopeId): Scope | undefined {
+export function getScope(id: ScopeId): Scope | undefined {
   return scopes.get(id);
 }
 

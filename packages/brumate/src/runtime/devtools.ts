@@ -184,7 +184,7 @@ import { LOGO } from './logo.ts';
 export { LOGO };
 
 /** The root scope of a scope, whose `m` names its component. */
-export function rootOf(scope: Scope): Scope {
+export function findRootScope(scope: Scope): Scope {
   let root = scope;
   while (root.p) {
     root = root.p;
@@ -612,7 +612,7 @@ export function installDevtools(
       if (!entry) {
         entry = {
           scope: scope.id,
-          component: rootOf(scope).m ?? '',
+          component: findRootScope(scope).m ?? '',
           k: scope.k,
           name,
           runs: 0,
@@ -648,7 +648,7 @@ export function installDevtools(
     },
     write(scope, slot, value) {
       state.written.add(scope.id);
-      const root = rootOf(scope);
+      const root = findRootScope(scope);
       add({
         kind: 'write',
         text: `scope ${scope.id} slot ${slot} = ${preview(value)}`,
