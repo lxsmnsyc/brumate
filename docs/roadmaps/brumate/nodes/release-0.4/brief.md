@@ -23,6 +23,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: client-arrived-cleanups
+    kind: hard
+    why: in the 0.4.0 cut (found in PR #355, 2026-10-30); the overlay cleanup on navigation is incomplete without it
   - on: promise-prop-memo
     kind: hard
     why: in the 0.4.0 cut (debate pending-handler-reads, 2026-10-30)
