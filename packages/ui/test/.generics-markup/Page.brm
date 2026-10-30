@@ -1,0 +1,15 @@
+<script>
+  import ListBox from '../../src/ListBox.brm';
+
+  interface Animal {
+    id: string;
+    name: string;
+  }
+  const animals: Animal[] = [{ id: 'cat', name: 'Cat' }];
+</script>
+
+<ListBox items=(animals) item=row />
+
+#template row(a: { id: string; size: number }) {
+  <p>(a.size)</p>
+}

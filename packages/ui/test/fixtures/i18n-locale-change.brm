@@ -1,0 +1,46 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Calendar from '../../src/Calendar.brm';
+  import CalendarGrid from '../../src/CalendarGrid.brm';
+  import CalendarHeading from '../../src/CalendarHeading.brm';
+  import I18nProvider from '../../src/I18nProvider.brm';
+  import ColorField from '../../src/ColorField.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import Meter from '../../src/Meter.brm';
+  import NumberField from '../../src/NumberField.brm';
+  import ProgressBar from '../../src/ProgressBar.brm';
+  import Slider from '../../src/Slider.brm';
+  import SliderOutput from '../../src/SliderOutput.brm';
+  import SliderThumb from '../../src/SliderThumb.brm';
+  import SliderTrack from '../../src/SliderTrack.brm';
+
+  let locale = $signal('en-US');
+</script>
+
+<main>
+  <button class="german" onClick=(() => (locale = 'de-DE'))>German</button>
+  <button class="arabic" onClick=(() => (locale = 'ar-EG'))>Arabic</button>
+  <I18nProvider locale=locale>
+    <Meter class="meter" value=(1234.5) maxValue=(5000) formatOptions=({ style: "decimal" })><Label>Space</Label></Meter>
+    <ProgressBar class="progress" value=(1234.5) maxValue=(5000) formatOptions=({ style: "decimal" })><Label>Load</Label></ProgressBar>
+    <NumberField class="number" value=(1234.5)>
+      <Label>Amount</Label>
+      <Input class="number-input" />
+    </NumberField>
+    <Slider class="slider" value=(1234) maxValue=(5000)>
+      <Label>Size</Label>
+      <SliderOutput class="slider-output" />
+      <SliderTrack><SliderThumb class="thumb" /></SliderTrack>
+    </Slider>
+    <ColorField class="color" channel="alpha" value="#ff000080">
+      <Label>Alpha</Label>
+      <Input class="color-input" />
+    </ColorField>
+    <Calendar class="calendar" focusedValue="2026-10-15">
+      <CalendarHeading class="heading" />
+      <CalendarGrid class="grid" />
+    </Calendar>
+  </I18nProvider>
+  <p class="locale-state">{locale}</p>
+</main>
