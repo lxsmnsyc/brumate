@@ -18,10 +18,10 @@ const page = await browser.newPage();
 await page.goto(`http://127.0.0.1:${port}/`);
 await page.waitForLoadState('load');
 await page.waitForTimeout(500);
-const click = async (selector, until) => {
+async function click(selector, until) {
   await page.click(selector);
   await page.waitForFunction(until);
-};
+}
 const session = await page.context().newCDPSession(page);
 await session.send('Profiler.enable');
 await session.send('Profiler.setSamplingInterval', { interval: 50 });
@@ -41,7 +41,8 @@ for (let round = 0; round < rounds + 2; round++) {
   }
   if (!measured) continue;
   const { profile } = await session.send('Profiler.stop');
-  const byId = new Map(profile.nodes.map((node) => [node.id, node]));
+  const byId = new Map();
+  for (const node of profile.nodes) byId.set(node.id, node);
   const interval = (profile.endTime - profile.startTime) / profile.samples.length;
   for (const id of profile.samples) {
     const frame = byId.get(id).callFrame;

@@ -74,12 +74,12 @@
   }
 
   /** The operation of a drag, with the types and operations that it shows. */
-  function operationOf(data: DataTransfer): DropOperation {
+  function readOperation(data: DataTransfer): DropOperation {
     return operation(dragTypes(data), allowedOperations(data.effectAllowed));
   }
 
   function dragEnter(event: DragEvent) {
-    if (!event.dataTransfer || operationOf(event.dataTransfer) === 'cancel') {
+    if (!event.dataTransfer || readOperation(event.dataTransfer) === 'cancel') {
       return;
     }
     depth++;
@@ -90,7 +90,7 @@
   }
 
   function dragOver(event: DragEvent) {
-    const chosen = event.dataTransfer ? operationOf(event.dataTransfer) : 'cancel';
+    const chosen = event.dataTransfer ? readOperation(event.dataTransfer) : 'cancel';
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = chosen === 'cancel' ? 'none' : chosen;
     }
@@ -116,7 +116,7 @@
     if (!data) {
       return;
     }
-    const chosen = operationOf(data);
+    const chosen = readOperation(data);
     if (chosen === 'cancel') {
       return;
     }

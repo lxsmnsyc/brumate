@@ -20,7 +20,13 @@ export const TransitionContext: Context<TransitionParent | null> =
 
 /** The classes of a class prop: a space-separated list, without the empty ones. */
 export function classesOf(value: string | undefined): string[] {
-  return (value ?? '').split(/\s+/).filter(Boolean);
+  const classes: string[] = [];
+  for (const name of (value ?? '').split(/\s+/)) {
+    if (name) {
+      classes.push(name);
+    }
+  }
+  return classes;
 }
 
 export function addClasses(element: Element, classes: string[]): void {
@@ -61,9 +67,14 @@ export async function waitForAnimations(element: Element, subtree = false): Prom
   await Promise.resolve();
   try {
     // An animation that never ends, such as a spinner inside, is not part of the transition.
-    const animations = element.getAnimations({ subtree }).filter(ends);
-    // An animation that is cancelled, such as by the opposite transition, ends the wait too.
-    await Promise.all(animations.map(async (animation) => animation.finished.catch(() => {})));
+    const finished: Promise<unknown>[] = [];
+    for (const animation of element.getAnimations({ subtree })) {
+      if (ends(animation)) {
+        // An animation that is cancelled, such as by the opposite transition, ends the wait too.
+        finished.push(animation.finished.catch(() => {}));
+      }
+    }
+    await Promise.all(finished);
   } catch {
     // A browser without getAnimations goes on at once.
   }

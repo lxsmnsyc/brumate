@@ -43,24 +43,35 @@ export function keyOf(element: Element): Key | undefined {
  * a menu.
  */
 export function itemsOf(root: Element, role: string): HTMLElement[] {
-  const selector = role
-    .split('|')
-    .map((name) => `[role=${name}][data-key]`)
-    .join(', ');
-  return [...root.querySelectorAll<HTMLElement>(selector)].filter(
-    (item) => item.closest(`[data-collection]`) === root && !item.closest('[hidden]'),
-  );
+  const items: HTMLElement[] = [];
+  for (const item of root.querySelectorAll<HTMLElement>(itemSelector(role))) {
+    if (item.closest(`[data-collection]`) === root && !item.closest('[hidden]')) {
+      items.push(item);
+    }
+  }
+  return items;
 }
 
 /** The items that can take focus: those that are not disabled. */
 export function enabledItems(root: Element, role: string): HTMLElement[] {
-  return itemsOf(root, role).filter((item) => item.getAttribute('aria-disabled') !== 'true');
+  const enabled: HTMLElement[] = [];
+  for (const item of itemsOf(root, role)) {
+    if (item.getAttribute('aria-disabled') !== 'true') {
+      enabled.push(item);
+    }
+  }
+  return enabled;
 }
 
 /** The item of the collection that has focus. */
 export function focusedItem(root: Element, role: string): HTMLElement | undefined {
   const active = document.activeElement;
-  return itemsOf(root, role).find((item) => item === active);
+  for (const item of itemsOf(root, role)) {
+    if (item === active) {
+      return item;
+    }
+  }
+  return undefined;
 }
 
 /** Moves focus to an item, and keeps it in view. */
@@ -123,9 +134,13 @@ export function moveFrom(
   // From an item that cannot take focus, such as a disabled one that a click focused, the moves
   // go from where it is: next is the first item after it, and previous the last before it.
   if (from && at === -1 && (movement === 'next' || movement === 'previous')) {
-    const after = items.findIndex(
-      (item) => from.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING,
-    );
+    let after = -1;
+    for (const [index, item] of items.entries()) {
+      if (from.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING) {
+        after = index;
+        break;
+      }
+    }
     if (movement === 'next') {
       if (after !== -1) {
         return items[after];
@@ -182,11 +197,14 @@ export function moveFrom(
 
 /** The keys of the items from `anchor` to `to`, in order, without the disabled ones. */
 export function keysBetween(items: HTMLElement[], anchor: Key, to: Key): Key[] {
-  return keysIn(
-    items.map((item) => keyOf(item)).filter((key): key is Key => key !== undefined),
-    anchor,
-    to,
-  );
+  const keys: Key[] = [];
+  for (const item of items) {
+    const key = keyOf(item);
+    if (key !== undefined) {
+      keys.push(key);
+    }
+  }
+  return keysIn(keys, anchor, to);
 }
 
 /** The keys from `anchor` to `to` in a list of keys, for a collection that is not all rendered. */
@@ -248,7 +266,12 @@ export function typeahead(
   // The search starts at the focused item, so typing its first letter again keeps it.
   const at = from ? items.indexOf(from) : 0;
   const order = [...items.slice(Math.max(at, 0)), ...items.slice(0, Math.max(at, 0))];
-  return order.find((item) => textOf(item).startsWith(text));
+  for (const item of order) {
+    if (textOf(item).startsWith(text)) {
+      return item;
+    }
+  }
+  return undefined;
 }
 
 /** The same for items that are not all rendered: each has a key and its lowercase text. */
@@ -262,12 +285,21 @@ export function typeaheadKey(
   if (text === undefined) {
     return undefined;
   }
-  const at = Math.max(
-    items.findIndex((item) => item.key === from),
-    0,
-  );
+  let found = -1;
+  for (const [index, item] of items.entries()) {
+    if (item.key === from) {
+      found = index;
+      break;
+    }
+  }
+  const at = Math.max(found, 0);
   const order = [...items.slice(at), ...items.slice(0, at)];
-  return order.find((item) => item.text.startsWith(text))?.key;
+  for (const item of order) {
+    if (item.text.startsWith(text)) {
+      return item.key;
+    }
+  }
+  return undefined;
 }
 
 /** True while a typeahead has text, so Space adds to it rather than selecting. */
@@ -303,10 +335,11 @@ export function setLastFocused(root: Element, key: Key): void {
 
 /** The selector of the items of a role, as `itemsOf` reads them. */
 function itemSelector(role: string): string {
-  return role
-    .split('|')
-    .map((name) => `[role=${name}][data-key]`)
-    .join(', ');
+  const selectors: string[] = [];
+  for (const name of role.split('|')) {
+    selectors.push(`[role=${name}][data-key]`);
+  }
+  return selectors.join(', ');
 }
 
 /**
@@ -320,11 +353,17 @@ export function entryItem(
 ): HTMLElement | undefined {
   const items = enabledItems(root, role);
   const last = lastFocusedOf(root);
-  return (
-    items.find((item) => last !== undefined && keyOf(item) === last) ??
-    items.find((item) => item.getAttribute('aria-selected') === 'true') ??
-    fallback(items)
-  );
+  for (const item of items) {
+    if (last !== undefined && keyOf(item) === last) {
+      return item;
+    }
+  }
+  for (const item of items) {
+    if (item.getAttribute('aria-selected') === 'true') {
+      return item;
+    }
+  }
+  return fallback(items);
 }
 
 /** The collection got focus itself: it passes the focus on to an item. */
@@ -403,22 +442,50 @@ export function nextSelection(
   } else if (request.shift && range) {
     // The range replaces the one before it. It replaces the selection, or adds to the rest of it
     // when items toggle.
-    const rest = current.filter((item) => !previousRange.includes(item));
+    const rest: Key[] = [];
+    for (const item of current) {
+      if (!previousRange.includes(item)) {
+        rest.push(item);
+      }
+    }
     next = behavior === 'toggle' ? [...new Set([...rest, ...range])] : range;
   } else if (toggling) {
-    next = selected ? current.filter((item) => item !== key) : [...current, key];
+    if (selected) {
+      next = [];
+      for (const item of current) {
+        if (item !== key) {
+          next.push(item);
+        }
+      }
+    } else {
+      next = [...current, key];
+    }
     if (next.length === 0 && disallowEmpty) {
       next = current;
     }
   } else {
     next = [key];
   }
-  return next.filter((item) => !disabled.includes(item));
+  const allowed: Key[] = [];
+  for (const item of next) {
+    if (!disabled.includes(item)) {
+      allowed.push(item);
+    }
+  }
+  return allowed;
 }
 
 /** True for two selections with the same keys. */
 export function sameKeys(a: Key[], b: Key[]): boolean {
-  return a.length === b.length && a.every((key) => b.includes(key));
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (const key of a) {
+    if (!b.includes(key)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** What a ListBox gives its items and sections. */
@@ -538,10 +605,7 @@ export function filterItems(
   role = 'option',
 ): HTMLElement[] {
   const shown: HTMLElement[] = [];
-  const selector = role
-    .split('|')
-    .map((name) => `[role=${name}][data-key]`)
-    .join(', ');
+  const selector = itemSelector(role);
   for (const item of list.querySelectorAll<HTMLElement>(selector)) {
     const visible = input === '' || matches(textOfItem(item), input);
     item.hidden = !visible;
@@ -550,9 +614,14 @@ export function filterItems(
     }
   }
   for (const section of list.querySelectorAll<HTMLElement>('[role=group]')) {
-    section.hidden = ![...section.querySelectorAll<HTMLElement>(selector)].some(
-      (item) => !item.hidden,
-    );
+    let any = false;
+    for (const item of section.querySelectorAll<HTMLElement>(selector)) {
+      if (!item.hidden) {
+        any = true;
+        break;
+      }
+    }
+    section.hidden = !any;
   }
   return shown;
 }

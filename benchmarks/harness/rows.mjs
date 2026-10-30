@@ -64,15 +64,20 @@ export function label(id) {
 
 /** `count` rows with the IDs from `from` on. */
 export function build(from, count) {
-  return Array.from({ length: count }, (_, index) => ({
-    id: from + index,
-    label: label(from + index),
-  }));
+  const rows = [];
+  for (let index = 0; index < count; index++) {
+    rows.push({ id: from + index, label: label(from + index) });
+  }
+  return rows;
 }
 
 /** Every 10th row, from the first, with ` !!!` at the end of its label. */
 export function update(rows) {
-  return rows.map((row, index) => (index % 10 === 0 ? { ...row, label: `${row.label} !!!` } : row));
+  const next = [];
+  for (const [index, row] of rows.entries()) {
+    next.push(index % 10 === 0 ? { ...row, label: `${row.label} !!!` } : row);
+  }
+  return next;
 }
 
 /** The rows with the second and the 999th swapped, when there are that many. */
@@ -85,5 +90,9 @@ export function swap(rows) {
 
 /** The rows without the one with an ID. */
 export function remove(rows, id) {
-  return rows.filter((row) => row.id !== id);
+  const next = [];
+  for (const row of rows) {
+    if (row.id !== id) next.push(row);
+  }
+  return next;
 }

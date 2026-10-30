@@ -75,7 +75,12 @@
   function toggle(id: string) {
     let next: string[];
     if (selectedKeys.includes(id)) {
-      next = selectedKeys.filter((key) => key !== id);
+      next = [];
+      for (const key of selectedKeys) {
+        if (key !== id) {
+          next.push(key);
+        }
+      }
       if (next.length === 0 && disallowEmptySelection) {
         return;
       }
@@ -103,7 +108,7 @@
   }
 
   // A group with one selection is a radiogroup. Another is a toolbar, or a group in a Toolbar.
-  function roleOf(mode: string, inToolbar: boolean): string {
+  function getRole(mode: string, inToolbar: boolean): string {
     if (mode === 'single') {
       return 'radiogroup';
     }
@@ -118,8 +123,8 @@
 
 <{as ?? 'div'}
   ref=$bind(ref)
-  role=(roleOf(selectionMode, nested))
-  aria-orientation=(roleOf(selectionMode, nested) === 'group' ? undefined : orientation)
+  role=(getRole(selectionMode, nested))
+  aria-orientation=(getRole(selectionMode, nested) === 'group' ? undefined : orientation)
   aria-disabled=(isDisabled ? 'true' : undefined)
   data-orientation=orientation
   data-disabled=(isDisabled || undefined)

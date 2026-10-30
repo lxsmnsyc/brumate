@@ -12,20 +12,37 @@ export function isFirstInvalid(field: HTMLInputElement | HTMLTextAreaElement): b
 /** The messages of a value that `validate` returns: a message, a list, or nothing. */
 export function messagesOf(result: string | string[] | true | null | undefined): string[] {
   if (Array.isArray(result)) {
-    return result.filter(Boolean);
+    const messages: string[] = [];
+    for (const message of result) {
+      if (message) {
+        messages.push(message);
+      }
+    }
+    return messages;
   }
   return typeof result === 'string' && result ? [result] : [];
 }
 
 /** The IDs that aria-describedby names, without the empty ones. */
 export function describedBy(...ids: (string | false | undefined | null)[]): string | undefined {
-  const value = ids.filter(Boolean).join(' ');
+  const named: string[] = [];
+  for (const id of ids) {
+    if (id) {
+      named.push(id);
+    }
+  }
+  const value = named.join(' ');
   return value || undefined;
 }
 
 /** The first list of messages that has any. A field shows one source of errors at a time. */
 export function firstErrors(...lists: string[][]): string[] {
-  return lists.find((list) => list.length > 0) ?? [];
+  for (const list of lists) {
+    if (list.length > 0) {
+      return list;
+    }
+  }
+  return [];
 }
 
 /**

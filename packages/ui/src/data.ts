@@ -20,7 +20,13 @@ export function removeKeys<T>(
   keys: readonly Key[],
   keyOf: (item: T) => Key,
 ): T[] {
-  return items.filter((item) => !keys.includes(keyOf(item)));
+  const kept: T[] = [];
+  for (const item of items) {
+    if (!keys.includes(keyOf(item))) {
+      kept.push(item);
+    }
+  }
+  return kept;
 }
 
 /**
@@ -37,9 +43,22 @@ export function moveKeys<T>(
   if (keys.includes(target)) {
     return [...items];
   }
-  const moved = items.filter((item) => keys.includes(keyOf(item)));
-  const rest = items.filter((item) => !keys.includes(keyOf(item)));
-  const at = rest.findIndex((item) => keyOf(item) === target);
+  const moved: T[] = [];
+  const rest: T[] = [];
+  for (const item of items) {
+    if (keys.includes(keyOf(item))) {
+      moved.push(item);
+    } else {
+      rest.push(item);
+    }
+  }
+  let at = -1;
+  for (const [index, item] of rest.entries()) {
+    if (keyOf(item) === target) {
+      at = index;
+      break;
+    }
+  }
   if (at === -1) {
     return [...items];
   }
@@ -62,16 +81,18 @@ export function buildNodes<T>(
   keyOf: (item: T) => Key,
   childrenOf: (item: T) => readonly T[] | null | undefined,
 ): TreeDataNode<T>[] {
-  return items.map((value) => {
+  const nodes: TreeDataNode<T>[] = [];
+  for (const value of items) {
     const id = keyOf(value);
     const children = childrenOf(value);
-    return {
+    nodes.push({
       id,
       parentKey,
       value,
       children: children ? buildNodes(children, id, keyOf, childrenOf) : null,
-    };
-  });
+    });
+  }
+  return nodes;
 }
 
 /** The node with a key, anywhere in the tree. */
@@ -103,14 +124,19 @@ export function changeChildren<T>(
   if (parentKey === null) {
     return change([...nodes]);
   }
-  return nodes.map((node) => {
+  const changed: TreeDataNode<T>[] = [];
+  for (const node of nodes) {
     if (node.id === parentKey) {
-      return { ...node, children: change([...(node.children ?? [])]) };
+      changed.push({ ...node, children: change([...(node.children ?? [])]) });
+    } else {
+      changed.push(
+        node.children
+          ? { ...node, children: changeChildren(node.children, parentKey, change) }
+          : node,
+      );
     }
-    return node.children
-      ? { ...node, children: changeChildren(node.children, parentKey, change) }
-      : node;
-  });
+  }
+  return changed;
 }
 
 /** The tree without the nodes of the keys, and their children. */
@@ -118,14 +144,20 @@ export function removeNodes<T>(
   nodes: readonly TreeDataNode<T>[],
   keys: readonly Key[],
 ): TreeDataNode<T>[] {
-  return nodes
-    .filter((node) => !keys.includes(node.id))
-    .map((node) =>
-      node.children ? { ...node, children: removeNodes(node.children, keys) } : node,
-    );
+  const kept: TreeDataNode<T>[] = [];
+  for (const node of nodes) {
+    if (!keys.includes(node.id)) {
+      kept.push(node.children ? { ...node, children: removeNodes(node.children, keys) } : node);
+    }
+  }
+  return kept;
 }
 
 /** The node and the keys of the nodes inside it. */
 export function keysWithin<T>(node: TreeDataNode<T>): Key[] {
-  return [node.id, ...(node.children ?? []).flatMap((child) => keysWithin(child))];
+  const keys: Key[] = [node.id];
+  for (const child of node.children ?? []) {
+    keys.push(...keysWithin(child));
+  }
+  return keys;
 }

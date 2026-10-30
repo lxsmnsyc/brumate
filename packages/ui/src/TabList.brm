@@ -50,7 +50,13 @@
       return;
     }
     const items = enabledItems(list, 'tab');
-    const current = items.find((item) => item === document.activeElement);
+    let current: HTMLElement | undefined;
+    for (const item of items) {
+      if (item === document.activeElement) {
+        current = item;
+        break;
+      }
+    }
     const target = moveFrom(list, items, current, movement, true);
     focusItem(target);
     const key = target ? keyOf(target) : undefined;

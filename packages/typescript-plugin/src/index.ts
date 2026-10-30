@@ -14,7 +14,7 @@ const volar: Factory = createLanguageServicePlugin(() => ({
  * The proxy of Volar maps diagnostics back to the file without removing
  * repeats, so the same error of a template used twice is dropped here.
  */
-const plugin: Factory = (modules: Parameters<Factory>[0]) => {
+function plugin(modules: Parameters<Factory>[0]): ReturnType<Factory> {
   const module = volar(modules);
   return {
     ...module,
@@ -35,6 +35,6 @@ const plugin: Factory = (modules: Parameters<Factory>[0]) => {
       });
     },
   };
-};
+}
 
 export default plugin;

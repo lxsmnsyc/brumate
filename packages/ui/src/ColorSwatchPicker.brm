@@ -95,9 +95,13 @@
     if (!element || chosen.includes(key)) {
       return;
     }
-    const item = [...element.querySelectorAll<HTMLElement>('[role=option][data-key]')].find(
-      (option) => keyOf(option) === key,
-    );
+    let item: HTMLElement | undefined;
+    for (const option of element.querySelectorAll<HTMLElement>('[role=option][data-key]')) {
+      if (keyOf(option) === key) {
+        item = option;
+        break;
+      }
+    }
     // The item gives its color as it wrote it, so the value has its format.
     const text = item?.getAttribute('data-color');
     // A disabled item is never selected.
@@ -140,14 +144,18 @@
     }
     const from = current.getBoundingClientRect();
     const middle = from.left + from.width / 2;
-    const beyond = items.filter((item) => {
+    const beyond: HTMLElement[] = [];
+    const tops: number[] = [];
+    for (const item of items) {
       const top = item.getBoundingClientRect().top;
-      return down ? top > from.top + 1 : top < from.top - 1;
-    });
+      if (down ? top > from.top + 1 : top < from.top - 1) {
+        beyond.push(item);
+        tops.push(item.getBoundingClientRect().top);
+      }
+    }
     if (beyond.length === 0) {
       return current;
     }
-    const tops = beyond.map((item) => item.getBoundingClientRect().top);
     const row = down ? Math.min(...tops) : Math.max(...tops);
     let best: HTMLElement | undefined;
     let distance = Infinity;

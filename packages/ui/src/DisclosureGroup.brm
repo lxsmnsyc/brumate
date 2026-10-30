@@ -49,7 +49,12 @@
   function toggle(id: string) {
     let next: string[];
     if (expandedKeys.includes(id)) {
-      next = expandedKeys.filter((key) => key !== id);
+      next = [];
+      for (const key of expandedKeys) {
+        if (key !== id) {
+          next.push(key);
+        }
+      }
     } else {
       next = allowsMultipleExpanded ? [...expandedKeys, id] : [id];
     }

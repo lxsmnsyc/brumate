@@ -47,7 +47,7 @@
   const locale = $getContext(LocaleContext);
 
   /** The movement of a key: Left and Right follow the direction, Up and Down do not. */
-  function movementOf(key: string): Movement | undefined {
+  function getMovement(key: string): Movement | undefined {
     const rtl = locale.direction === 'rtl';
     switch (key) {
       case 'ArrowDown':
@@ -69,7 +69,7 @@
 
   function keyDown(event: KeyboardEvent) {
     const element = ref as HTMLElement | undefined;
-    const movement = movementOf(event.key);
+    const movement = getMovement(event.key);
     if (!element || !movement) {
       return;
     }
@@ -83,7 +83,14 @@
     if (element && event.target === element && document.activeElement === element) {
       const items = enabledItems(element, 'row');
       const last = lastFocusedOf(element);
-      focusItem(items.find((item) => last !== undefined && keyOf(item) === last) ?? items[0]);
+      let lastItem: HTMLElement | undefined;
+      for (const item of items) {
+        if (last !== undefined && keyOf(item) === last) {
+          lastItem = item;
+          break;
+        }
+      }
+      focusItem(lastItem ?? items[0]);
     }
   }
 

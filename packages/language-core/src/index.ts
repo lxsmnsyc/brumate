@@ -54,13 +54,14 @@ function styleCodes(source: string, fileName: string): VirtualCode[] {
   } catch {
     return [];
   }
-  return styles.map((style, index) => {
+  const codes: VirtualCode[] = [];
+  for (const [index, style] of styles.entries()) {
     const start = style.start + source.slice(style.start, style.end).indexOf('>') + 1;
     const content = source.slice(start, start + style.content.length);
     const text = content.replace(/\$\{(?:[^{}]|\{[^{}]*\})*\}/g, (match) =>
       '_'.repeat(match.length),
     );
-    return {
+    codes.push({
       id: `style_${index}`,
       languageId: style.lang,
       snapshot: createSnapshot(text),
@@ -72,8 +73,9 @@ function styleCodes(source: string, fileName: string): VirtualCode[] {
           data: STYLE_FEATURES,
         },
       ],
-    };
-  });
+    });
+  }
+  return codes;
 }
 
 /** The virtual code of a `.brm` file: the file, and the TypeScript generated from it. */
@@ -87,16 +89,20 @@ export function createBrumateVirtualCode(
   if (error) {
     options.onError?.(fileName, error);
   }
-  const script: VirtualCode = {
-    id: 'ts',
-    languageId: 'typescript',
-    snapshot: createSnapshot(code),
-    mappings: mappings.map((mapping): CodeMapping => ({
+  const codeMappings: CodeMapping[] = [];
+  for (const mapping of mappings) {
+    codeMappings.push({
       sourceOffsets: [mapping.source],
       generatedOffsets: [mapping.generated],
       lengths: [mapping.length],
       data: FEATURES,
-    })),
+    });
+  }
+  const script: VirtualCode = {
+    id: 'ts',
+    languageId: 'typescript',
+    snapshot: createSnapshot(code),
+    mappings: codeMappings,
   };
   return {
     id: 'root',
@@ -141,8 +147,12 @@ export function createBrumateLanguagePlugin<T>(
         { extension: 'brm', isMixedContent: true, scriptKind: SCRIPT_KIND_DEFERRED },
       ],
       getServiceScript(root): TypeScriptServiceScript | undefined {
-        const code = root.embeddedCodes?.find((embedded) => embedded.id === 'ts');
-        return code ? { code, extension: '.ts', scriptKind: SCRIPT_KIND_TS } : undefined;
+        for (const code of root.embeddedCodes ?? []) {
+          if (code.id === 'ts') {
+            return { code, extension: '.ts', scriptKind: SCRIPT_KIND_TS };
+          }
+        }
+        return undefined;
       },
     },
   };

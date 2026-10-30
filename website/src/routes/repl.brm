@@ -41,24 +41,55 @@
     nameInput?.focus();
   });
 
-  const language = (name: string): 'brm' | 'ts' => (name.endsWith('.brm') ? 'brm' : 'ts');
+  function language(name: string): 'brm' | 'ts' {
+    return name.endsWith('.brm') ? 'brm' : 'ts';
+  }
   // A line break at the end keeps the last line of the editor and the highlight the same height.
   const sourceHtml = $memo(
     highlight(`${files[active]?.source ?? ''}\n`, language(files[active]?.name ?? '')),
   );
-  const module = $memo(output?.modules.find((item) => item.name === shown) ?? output?.modules[0]);
+  function shownModule() {
+    for (const item of output?.modules ?? []) {
+      if (item.name === shown) {
+        return item;
+      }
+    }
+    return output?.modules[0];
+  }
+  const module = $memo(shownModule());
   const moduleHtml = $memo(module ? highlight(module.code, module.language) : undefined);
-  const sizes = $memo(
-    Promise.all(
-      (output?.modules ?? [])
-        .filter((item) => item.client)
-        .map(async (item) => ({ name: item.name, ...(await measure(item.code)) })),
-    ),
-  );
-  const errors = $memo(logs.filter((log) => log.level === 'error').length);
-  const lines = $memo(
-    Array.from({ length: (files[active]?.source ?? '').split('\n').length }, (_, index) => index + 1).join('\n'),
-  );
+  async function measureClient(item: { name: string; code: string }) {
+    return { name: item.name, ...(await measure(item.code)) };
+  }
+  function measureAll() {
+    const measuring = [];
+    for (const item of output?.modules ?? []) {
+      if (item.client) {
+        measuring.push(measureClient(item));
+      }
+    }
+    return Promise.all(measuring);
+  }
+  const sizes = $memo(measureAll());
+  function countErrors(): number {
+    let count = 0;
+    for (const log of logs) {
+      if (log.level === 'error') {
+        count++;
+      }
+    }
+    return count;
+  }
+  const errors = $memo(countErrors());
+  function numberLines(): string {
+    const numbers: number[] = [];
+    const total = (files[active]?.source ?? '').split('\n').length;
+    for (let index = 0; index < total; index++) {
+      numbers.push(index + 1);
+    }
+    return numbers.join('\n');
+  }
+  const lines = $memo(numberLines());
   /** Moves the divider between the panes to a pointer, in percent of their width. */
   function moveSplit(clientX: number) {
     const box = panes!.getBoundingClientRect();
@@ -80,10 +111,11 @@
   /** Adds a file with a start that runs, for its kind. */
   function addFile() {
     const name = draftName.trim();
-    const problem = validName(
-      name,
-      files.map((file) => file.name),
-    );
+    const names: string[] = [];
+    for (const file of files) {
+      names.push(file.name);
+    }
+    const problem = validName(name, names);
     if (problem) {
       nameError = problem;
       return;
@@ -101,7 +133,13 @@
   }
 
   function removeFile(index: number) {
-    files = files.filter((_, at) => at !== index);
+    const kept: ReplFile[] = [];
+    for (const [at, file] of files.entries()) {
+      if (at !== index) {
+        kept.push(file);
+      }
+    }
+    files = kept;
     if (active >= index) {
       active = Math.max(0, active - 1);
     }
@@ -150,7 +188,7 @@
   // The console of the page shows in the REPL, with the errors that nothing caught.
   $client(() => {
     let count = 0;
-    const text = (value: unknown): string => {
+    function text(value: unknown): string {
       if (typeof value === 'string') {
         return value;
       }
@@ -162,13 +200,20 @@
       } catch {
         return String(value);
       }
-    };
-    const push = (level: string, values: unknown[]) => {
+    }
+    function push(level: string, values: unknown[]) {
       count++;
-      logs = [...$untrack(logs), { id: count, level, text: values.map(text).join(' ') }].slice(-200);
-    };
+      const texts: string[] = [];
+      for (const value of values) {
+        texts.push(text(value));
+      }
+      logs = [...$untrack(logs), { id: count, level, text: texts.join(' ') }].slice(-200);
+    }
     const levels = ['log', 'info', 'warn', 'error'] as const;
-    const originals = levels.map((level) => console[level]);
+    const originals: (typeof console)[(typeof levels)[number]][] = [];
+    for (const level of levels) {
+      originals.push(console[level]);
+    }
     for (const [index, level] of levels.entries()) {
       const original = originals[index]!.bind(console);
       console[level] = (...values: unknown[]) => {
@@ -176,8 +221,12 @@
         original(...values);
       };
     }
-    const onError = (event: ErrorEvent) => push('error', [event.error ?? event.message]);
-    const onRejection = (event: PromiseRejectionEvent) => push('error', [event.reason]);
+    function onError(event: ErrorEvent) {
+      push('error', [event.error ?? event.message]);
+    }
+    function onRejection(event: PromiseRejectionEvent) {
+      push('error', [event.reason]);
+    }
     addEventListener('error', onError);
     addEventListener('unhandledrejection', onRejection);
 

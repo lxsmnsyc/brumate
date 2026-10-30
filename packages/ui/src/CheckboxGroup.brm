@@ -81,7 +81,15 @@
   const invalid = $memo(isInvalid || errors.length > 0);
 
   function toggle(item: string, checked: boolean) {
-    const next = checked ? [...value.filter((other) => other !== item), item] : value.filter((other) => other !== item);
+    const next: string[] = [];
+    for (const other of value) {
+      if (other !== item) {
+        next.push(other);
+      }
+    }
+    if (checked) {
+      next.push(item);
+    }
     const before = value;
     value = next;
     // The setter of a bound value may keep other items, or none.

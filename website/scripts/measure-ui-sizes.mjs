@@ -62,7 +62,9 @@ const scenarios = {
 
 const directory = '.ui-sizes';
 const only = process.argv.slice(2);
-const run = (command) => execSync(command, { cwd: directory, stdio: 'pipe' });
+function run(command) {
+  return execSync(command, { cwd: directory, stdio: 'pipe' });
+}
 
 rmSync(directory, { recursive: true, force: true });
 mkdirSync(`${directory}/src`, { recursive: true });
@@ -114,7 +116,12 @@ try {
     // The server preloads the bundle of the page's component, `App`, and of each component that
     // the HTML names, such as `Button_1qpvhkd#h61`. A component whose code is in the bundle of
     // `App` has no name of its own in the HTML.
-    const roots = new Set(Object.keys(hints.bundles).filter((root) => root.startsWith('App_')));
+    const roots = new Set();
+    for (const root of Object.keys(hints.bundles)) {
+      if (root.startsWith('App_')) {
+        roots.add(root);
+      }
+    }
     for (const root of Object.keys(hints.bundles)) {
       if (html.includes(`${root}#`)) {
         roots.add(root);

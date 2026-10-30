@@ -11,8 +11,17 @@
     };
   }>();
 
-  const kb = (bytes: number): string => `${(bytes / 1024).toFixed(2)} KB`;
-  const total = report.sizes.reduce((sum, size) => sum + size.gzip, 0);
+  function kb(bytes: number): string {
+    return `${(bytes / 1024).toFixed(2)} KB`;
+  }
+  function sumGzip(): number {
+    let sum = 0;
+    for (const size of report.sizes) {
+      sum += size.gzip;
+    }
+    return sum;
+  }
+  const total = sumGzip();
 </script>
 
 <div class="shipped">

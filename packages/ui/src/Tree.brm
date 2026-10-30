@@ -132,16 +132,36 @@
   }
 
   function toggleExpanded(key: Key) {
-    setExpanded(
-      expandedKeys.includes(key)
-        ? expandedKeys.filter((open) => open !== key)
-        : [...expandedKeys, key],
-    );
+    if (expandedKeys.includes(key)) {
+      const remaining: Key[] = [];
+      for (const open of expandedKeys) {
+        if (open !== key) {
+          remaining.push(open);
+        }
+      }
+      setExpanded(remaining);
+    } else {
+      setExpanded([...expandedKeys, key]);
+    }
   }
 
   /** The row that shows the item with a key. */
   function rowFor(key: Key) {
-    return rows.find((row) => row.key === key);
+    for (const row of rows) {
+      if (row.key === key) {
+        return row;
+      }
+    }
+    return undefined;
+  }
+
+  /** The keys of the rows, in order. */
+  function rowKeys(): Key[] {
+    const keys: Key[] = [];
+    for (const row of rows) {
+      keys.push(row.key);
+    }
+    return keys;
   }
 
   const locale = $getContext(LocaleContext);
@@ -167,7 +187,7 @@
    * view, so the rows are the data, with the disabled keys and the rows in view that are disabled.
    */
   function enabledKeys(element: HTMLElement): Key[] {
-    return enabledKeysOf(element, 'row', rows.map((row) => row.key), disabledKeys);
+    return enabledKeysOf(element, 'row', rowKeys(), disabledKeys);
   }
 
   function select(key: Key, request: SelectionRequest) {
@@ -206,7 +226,7 @@
     hasAction,
   });
 
-  function rowOf(target: EventTarget | null) {
+  function findRow(target: EventTarget | null) {
     const element = ref as HTMLElement | undefined;
     const row = (target as Element | null)?.closest?.('[role=row][data-key]') as HTMLElement | null;
     return row && element?.contains(row) && row.closest('[data-collection]') === element
@@ -220,17 +240,23 @@
     if (element && event.target === element && document.activeElement === element) {
       const items = enabledItems(element, 'row');
       const last = lastFocusedOf(element);
-      focusItem(
-        items.find((item) => last !== undefined && keyOf(item) === last) ??
-          items.find((item) => item.getAttribute('aria-selected') === 'true') ??
-          items[0],
-      );
+      let lastItem: HTMLElement | undefined;
+      let selectedItem: HTMLElement | undefined;
+      for (const item of items) {
+        if (lastItem === undefined && last !== undefined && keyOf(item) === last) {
+          lastItem = item;
+        }
+        if (selectedItem === undefined && item.getAttribute('aria-selected') === 'true') {
+          selectedItem = item;
+        }
+      }
+      focusItem(lastItem ?? selectedItem ?? items[0]);
     }
   }
 
   function focusIn(event: FocusEvent) {
     const element = ref as HTMLElement | undefined;
-    const row = rowOf(event.target);
+    const row = findRow(event.target);
     if (tabMode && row && element) {
       setLastFocused(element, keyOf(row)!);
       return;
@@ -290,7 +316,7 @@
       focusKeyIn(
         element,
         'row',
-        rows.map((row) => row.key),
+        rowKeys(),
         key,
         windowHeight,
         plain ? focusItem : focusRow,
@@ -319,7 +345,7 @@
   function keyDown(event: KeyboardEvent) {
     const element = ref as HTMLElement | undefined;
     const target = event.target as HTMLElement;
-    const row = rowOf(target);
+    const row = findRow(target);
     if (!element || !row) {
       return;
     }
@@ -372,7 +398,7 @@
         nextKey = keyAfter(
           element,
           'row',
-          rows.map((place) => place.key),
+          rowKeys(),
           enabledKeys(element),
           key,
           movement,
@@ -453,7 +479,13 @@
       return;
     }
     if ((event.key === 'a' || event.key === 'A') && toggle && selectionMode === 'multiple') {
-      setSelection(rows.map((place) => place.key).filter((item) => !disabledKeys.includes(item)));
+      const selectable: Key[] = [];
+      for (const item of rowKeys()) {
+        if (!disabledKeys.includes(item)) {
+          selectable.push(item);
+        }
+      }
+      setSelection(selectable);
       window.getSelection()?.removeAllRanges();
       return;
     }

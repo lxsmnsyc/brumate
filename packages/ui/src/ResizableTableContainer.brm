@@ -32,7 +32,11 @@
 
   /** The keys of the columns as the page writes them, and their widths, as a map. */
   function asMap(): Map<string, number> {
-    return new Map(Object.entries(widths).map(([key, width]) => [JSON.parse(key) as string, width]));
+    const map = new Map<string, number>();
+    for (const [key, width] of Object.entries(widths)) {
+      map.set(JSON.parse(key) as string, width);
+    }
+    return map;
   }
 
   function start(key: string) {
@@ -49,9 +53,13 @@
   }
 
   function resize(key: string, width: number) {
-    const header = [
-      ...(box?.querySelectorAll<HTMLElement>('thead [role=columnheader][data-key]') ?? []),
-    ].find((one) => one.getAttribute('data-key') === key);
+    let header: HTMLElement | undefined;
+    for (const one of box?.querySelectorAll<HTMLElement>('thead [role=columnheader][data-key]') ?? []) {
+      if (one.getAttribute('data-key') === key) {
+        header = one;
+        break;
+      }
+    }
     const min = Number(header?.getAttribute('data-min-width') ?? 0);
     const max = Number(header?.getAttribute('data-max-width') ?? Infinity);
     widths = { ...widths, [key]: Math.round(clampWidth(width, min, max)) };

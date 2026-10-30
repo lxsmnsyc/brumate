@@ -44,7 +44,13 @@ export function enabledKeysOf(
       disabled.add(keyOf(item)!);
     }
   }
-  return order.filter((key) => !disabled.has(key));
+  const enabled: Key[] = [];
+  for (const key of order) {
+    if (!disabled.has(key)) {
+      enabled.push(key);
+    }
+  }
+  return enabled;
 }
 
 /**
@@ -61,11 +67,24 @@ export function keyAfter(
   rowHeight: number,
   wrap = false,
 ): Key {
-  const places = new Map(order.map((key, index) => [key, index]));
-  const place = (key: Key) => places.get(key) ?? -1;
+  const places = new Map<Key, number>();
+  for (const [index, key] of order.entries()) {
+    places.set(key, index);
+  }
+  function place(key: Key) {
+    return places.get(key) ?? -1;
+  }
   const at = place(from);
-  const before = enabled.filter((key) => place(key) < at);
-  const after = enabled.filter((key) => place(key) > at);
+  const before: Key[] = [];
+  const after: Key[] = [];
+  for (const key of enabled) {
+    if (place(key) < at) {
+      before.push(key);
+    }
+    if (place(key) > at) {
+      after.push(key);
+    }
+  }
   const page = Math.max(
     1,
     Math.floor(
@@ -83,9 +102,19 @@ export function keyAfter(
     case 'previous':
       return before.at(-1) ?? (wrap ? enabled.at(-1) : undefined) ?? from;
     case 'pageDown':
-      return after.findLast((key) => place(key) <= at + page) ?? after[0] ?? from;
+      for (let index = after.length - 1; index >= 0; index--) {
+        if (place(after[index]!) <= at + page) {
+          return after[index]!;
+        }
+      }
+      return after[0] ?? from;
     case 'pageUp':
-      return before.find((key) => place(key) >= at - page) ?? before.at(-1) ?? from;
+      for (const key of before) {
+        if (place(key) >= at - page) {
+          return key;
+        }
+      }
+      return before.at(-1) ?? from;
   }
 }
 
@@ -105,7 +134,14 @@ export function focusKeyIn(
   rowHeight: number | undefined,
   focus: (item: HTMLElement | undefined) => void,
 ): void {
-  const find = () => itemsOf(element, role).find((item) => keyOf(item) === key);
+  function find() {
+    for (const item of itemsOf(element, role)) {
+      if (keyOf(item) === key) {
+        return item;
+      }
+    }
+    return undefined;
+  }
   const found = find();
   const turn = (reveals.get(element) ?? 0) + 1;
   reveals.set(element, turn);
@@ -130,7 +166,7 @@ export function focusKeyIn(
     window.scrollTo({ top: Math.max(0, window.scrollY + top + offset) });
   }
   // The window draws on the next frame after the scroll.
-  const wait = (frames: number) => {
+  function wait(frames: number) {
     const item = find();
     if (turn !== reveals.get(element)) {
       return;
@@ -140,7 +176,7 @@ export function focusKeyIn(
     } else if (frames > 0) {
       requestAnimationFrame(() => wait(frames - 1));
     }
-  };
+  }
   wait(30);
 }
 
@@ -159,18 +195,23 @@ export function typeaheadWindowed(
   event: KeyboardEvent,
   getTextValue: ((item: never) => string) | undefined,
 ): Key | undefined {
-  const shown = new Map(itemsOf(element, role).map((item) => [keyOf(item), item]));
+  const shown = new Map<Key | undefined, HTMLElement>();
+  for (const item of itemsOf(element, role)) {
+    shown.set(keyOf(item), item);
+  }
   const allowed = new Set(enabled);
-  const entries = rows
-    .filter((row) => allowed.has(row.key))
-    .map((row) => {
-      const item = shown.get(row.key);
-      return {
-        key: row.key,
-        text: item
-          ? textOf(item)
-          : (getTextValue?.(row.item as never) ?? '').trim().toLocaleLowerCase(),
-      };
+  const entries: { key: Key; text: string }[] = [];
+  for (const row of rows) {
+    if (!allowed.has(row.key)) {
+      continue;
+    }
+    const item = shown.get(row.key);
+    entries.push({
+      key: row.key,
+      text: item
+        ? textOf(item)
+        : (getTextValue?.(row.item as never) ?? '').trim().toLocaleLowerCase(),
     });
+  }
   return typeaheadKey(element, entries, from, event);
 }

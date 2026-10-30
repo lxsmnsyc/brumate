@@ -41,7 +41,14 @@ export function ancestorsOf(items: readonly NavigationNode[], route: string | nu
       return [];
     }
     const inside = item.children ? ancestorsOf(item.children, route) : [];
-    if (inside.length > 0 || item.children?.some((child) => child.href === route)) {
+    let hasChild = false;
+    for (const child of item.children ?? []) {
+      if (child.href === route) {
+        hasChild = true;
+        break;
+      }
+    }
+    if (inside.length > 0 || hasChild) {
       return [item.id, ...inside];
     }
   }

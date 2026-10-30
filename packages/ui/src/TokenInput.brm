@@ -60,10 +60,10 @@
   let synced = $signal(false);
   // The tokens of the value, each with a key of its text and its place among the same text, so a
   // new token gets a new stamp, and a stamp is not reused for other text.
-  const marks = $memo(stampsOf(field.value));
+  const marks = $memo(getStamps(field.value));
   $setContext(TokenContext, { isDisabled: disabled });
 
-  function stampsOf(value: TokenSegment[]) {
+  function getStamps(value: TokenSegment[]) {
     const seen: Record<string, number> = {};
     const list: { key: string; segment: TokenSegment }[] = [];
     for (const segment of value) {
@@ -95,7 +95,11 @@
       span.contentEditable = 'false';
       const stamp = nodesOfStamps[index++];
       if (stamp?.getAttribute('data-stamp') === segment.text) {
-        span.append(...[...stamp.childNodes].map((node) => node.cloneNode(true)));
+        const copies: Node[] = [];
+        for (const node of stamp.childNodes) {
+          copies.push(node.cloneNode(true));
+        }
+        span.append(...copies);
       } else {
         span.textContent = segment.text;
       }
@@ -196,7 +200,7 @@
 
   // A token shows `data-selected` while the selection covers it.
   $client(() => {
-    const selected = () => {
+    function selected() {
       const element = box;
       const selection = document.getSelection();
       for (const span of element?.querySelectorAll('[data-token]') ?? []) {
@@ -204,7 +208,7 @@
         const covered = Boolean(selection && !selection.isCollapsed && selection.containsNode(span, true));
         part?.toggleAttribute('data-selected', covered);
       }
-    };
+    }
     document.addEventListener('selectionchange', selected);
     return () => document.removeEventListener('selectionchange', selected);
   }, 'visible');

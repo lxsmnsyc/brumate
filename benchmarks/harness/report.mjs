@@ -1,35 +1,55 @@
 import { OPERATIONS, RESUMED } from './client.mjs';
 // Formats a result as a markdown report with one column per framework.
-const num = (value) => Math.round(value).toLocaleString('en-US');
-const kb = (bytes) => (bytes >= 1024 ? `${(bytes / 1024).toFixed(1)} kB` : `${bytes} B`);
-const size = (raw, gzip) => `${kb(raw)} / ${kb(gzip)}`;
-const js = (entry) => (entry ? `${entry.jsFiles} · ${size(entry.jsRaw, entry.jsGzip)}` : '–');
-const ms = (value) => (typeof value === 'number' ? `${value} ms` : value);
+function num(value) {
+  return Math.round(value).toLocaleString('en-US');
+}
+function kb(bytes) {
+  return bytes >= 1024 ? `${(bytes / 1024).toFixed(1)} kB` : `${bytes} B`;
+}
+function size(raw, gzip) {
+  return `${kb(raw)} / ${kb(gzip)}`;
+}
+function js(entry) {
+  return entry ? `${entry.jsFiles} · ${size(entry.jsRaw, entry.jsGzip)}` : '–';
+}
+function ms(value) {
+  return typeof value === 'number' ? `${value} ms` : value;
+}
 
 function table(names, labels, rows) {
-  const lines = [
-    `| Metric | ${names.map((name) => labels[name]).join(' | ')} |`,
-    `| --- |${names.map(() => ' ---: |').join('')}`,
-  ];
+  const heads = [];
+  let aligns = '';
+  for (const name of names) {
+    heads.push(labels[name]);
+    aligns += ' ---: |';
+  }
+  const lines = [`| Metric | ${heads.join(' | ')} |`, `| --- |${aligns}`];
   for (const [label, cell] of rows) {
-    lines.push(`| ${label} | ${names.map((name) => cell(name) ?? '–').join(' | ')} |`);
+    const values = [];
+    for (const name of names) values.push(cell(name) ?? '–');
+    lines.push(`| ${label} | ${values.join(' | ')} |`);
   }
   return lines.join('\n');
 }
 
-const add = (a, b) =>
-  a &&
-  b && {
-    requests: a.requests + b.requests,
-    jsFiles: a.jsFiles + b.jsFiles,
-    jsRaw: a.jsRaw + b.jsRaw,
-    jsGzip: a.jsGzip + b.jsGzip,
-  };
+function add(a, b) {
+  return (
+    a &&
+    b && {
+      requests: a.requests + b.requests,
+      jsFiles: a.jsFiles + b.jsFiles,
+      jsRaw: a.jsRaw + b.jsRaw,
+      jsGzip: a.jsGzip + b.jsGzip,
+    }
+  );
+}
 
 function todosRows(result, metrics) {
   const fw = result.frameworks;
   const rows = [];
-  const browser = (name) => fw[name].browser;
+  function browser(name) {
+    return fw[name].browser;
+  }
 
   if (metrics.has('browser')) {
     rows.push(
@@ -54,7 +74,9 @@ function todosRows(result, metrics) {
     rows.push(['**Build**', () => ''], ['Client JS emitted in dist', (n) => js(fw[n].dist)]);
   }
   if (metrics.has('ssr-size')) {
-    const s = (name) => fw[name].ssrSize;
+    function s(name) {
+      return fw[name].ssrSize;
+    }
     rows.push(
       ['**SSR HTML** (raw / gzip -9)', () => ''],
       ['0 todos', (n) => s(n) && size(s(n)[0].raw, s(n)[0].gzip)],
@@ -64,9 +86,14 @@ function todosRows(result, metrics) {
     );
   }
   if (metrics.has('ssr-speed')) {
-    const s = (name, n) => fw[name].ssrSpeed?.[n];
-    const cell = (name, n) =>
-      s(name, n) && `${num(s(name, n).median)} (${num(s(name, n).min)}–${num(s(name, n).max)})`;
+    function s(name, n) {
+      return fw[name].ssrSpeed?.[n];
+    }
+    function cell(name, n) {
+      return (
+        s(name, n) && `${num(s(name, n).median)} (${num(s(name, n).min)}–${num(s(name, n).max)})`
+      );
+    }
     rows.push(
       [`**SSR renders/s** (median of ${result.options.rounds}, min–max)`, () => ''],
       ['3 todos', (n) => cell(n, 3)],
@@ -74,10 +101,15 @@ function todosRows(result, metrics) {
     );
   }
   if (metrics.has('waterfall')) {
-    const w = (name, kind) => fw[name].waterfall?.[kind];
-    const cell = (name, kind) =>
-      w(name, kind) &&
-      `${w(name, kind).roundTrips} RT · ${w(name, kind).requests} req · ${ms(w(name, kind).ms)}`;
+    function w(name, kind) {
+      return fw[name].waterfall?.[kind];
+    }
+    function cell(name, kind) {
+      return (
+        w(name, kind) &&
+        `${w(name, kind).roundTrips} RT · ${w(name, kind).requests} req · ${ms(w(name, kind).ms)}`
+      );
+    }
     rows.push(
       [`**First counter click, ${result.options.latency} ms RTT**`, () => ''],
       ['After idle', (n) => cell(n, 'idle')],
@@ -87,13 +119,23 @@ function todosRows(result, metrics) {
   return rows;
 }
 
-const checks = (c) => c && `${ms(c.above)} / ${ms(c.below)} / ${ms(c.third)}`;
+function checks(c) {
+  return c && `${ms(c.above)} / ${ms(c.below)} / ${ms(c.third)}`;
+}
 
 function dashboardRows(result, metrics) {
-  const d = (name) => result.frameworks[name].dashboard ?? {};
-  const b = (name) => d(name).browser;
-  const off = (name) => b(name)?.preloadOff;
-  const na = (name) => (b(name) && !off(name) ? 'n/a' : undefined);
+  function d(name) {
+    return result.frameworks[name].dashboard ?? {};
+  }
+  function b(name) {
+    return d(name).browser;
+  }
+  function off(name) {
+    return b(name)?.preloadOff;
+  }
+  function na(name) {
+    return b(name) && !off(name) ? 'n/a' : undefined;
+  }
   const { above, below, third } = result.options.dashboardClicks ?? {};
   const rows = [];
   if (metrics.has('browser')) {
@@ -138,24 +180,33 @@ function dashboardRows(result, metrics) {
     rows.push(['**Build**', () => ''], ['Client JS emitted in dist', (n) => js(d(n).dist)]);
   }
   if (metrics.has('ssr-size')) {
-    const s = (name) => d(name).ssrSize;
+    function s(name) {
+      return d(name).ssrSize;
+    }
     rows.push(
       ['**SSR HTML** (raw / gzip -9)', () => ''],
       ['Dashboard page', (n) => s(n) && size(s(n).raw, s(n).gzip)],
     );
   }
   if (metrics.has('ssr-speed')) {
-    const s = (name) => d(name).ssrSpeed;
+    function s(name) {
+      return d(name).ssrSpeed;
+    }
     rows.push(
       [`**SSR renders/s** (median of ${result.options.rounds}, min–max)`, () => ''],
       ['Dashboard page', (n) => s(n) && `${num(s(n).median)} (${num(s(n).min)}–${num(s(n).max)})`],
     );
   }
   if (metrics.has('waterfall')) {
-    const w = (name, kind) => d(name).waterfall?.[kind];
-    const cell = (name, kind) =>
-      w(name, kind) &&
-      `${w(name, kind).roundTrips} RT · ${w(name, kind).requests} req · ${ms(w(name, kind).ms)}`;
+    function w(name, kind) {
+      return d(name).waterfall?.[kind];
+    }
+    function cell(name, kind) {
+      return (
+        w(name, kind) &&
+        `${w(name, kind).roundTrips} RT · ${w(name, kind).requests} req · ${ms(w(name, kind).ms)}`
+      );
+    }
     rows.push(
       [`**First click on widget ${above}, ${result.options.latency} ms RTT**`, () => ''],
       ['After idle', (n) => cell(n, 'idle')],
@@ -165,11 +216,17 @@ function dashboardRows(result, metrics) {
   return rows;
 }
 
-const mb = (bytes) => `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-const spread = (entry) => entry && `${entry.median} (${entry.min}–${entry.max})`;
+function mb(bytes) {
+  return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+}
+function spread(entry) {
+  return entry && `${entry.median} (${entry.min}–${entry.max})`;
+}
 
 function rowsRows(result, metrics) {
-  const r = (name) => result.frameworks[name].rows ?? {};
+  function r(name) {
+    return result.frameworks[name].rows ?? {};
+  }
   const rows = [];
   if (metrics.has('browser')) {
     const { runs, cpu } = result.options;
@@ -208,14 +265,18 @@ function rowsRows(result, metrics) {
     rows.push(['**Build**', () => ''], ['Client JS emitted in dist', (n) => js(r(n).dist)]);
   }
   if (metrics.has('ssr-size')) {
-    const s = (name) => r(name).ssrSize;
+    function s(name) {
+      return r(name).ssrSize;
+    }
     rows.push(
       ['**SSR HTML** (raw / gzip -9)', () => ''],
       ['1,000 rows', (n) => s(n) && size(s(n).raw, s(n).gzip)],
     );
   }
   if (metrics.has('ssr-speed')) {
-    const s = (name) => r(name).ssrSpeed;
+    function s(name) {
+      return r(name).ssrSpeed;
+    }
     rows.push(
       [`**SSR renders/s** (median of ${result.options.rounds}, min–max)`, () => ''],
       ['1,000 rows', (n) => s(n) && `${num(s(n).median)} (${num(s(n).min)}–${num(s(n).max)})`],
@@ -227,11 +288,18 @@ function rowsRows(result, metrics) {
 export function markdown(result, metrics) {
   const names = result.options.frameworks;
   const fw = result.frameworks;
-  const labels = Object.fromEntries(names.map((name) => [name, fw[name].label]));
+  const labels = {};
+  for (const name of names) labels[name] = fw[name].label;
   const scenarios = result.options.scenarios ?? ['todos'];
 
   const m = result.machine;
-  const header = [
+  const versionParts = [];
+  for (const name of names) {
+    const deps = [];
+    for (const [dep, v] of Object.entries(result.versions[name])) deps.push(`${dep}@${v}`);
+    versionParts.push(`${labels[name]}: ${deps.join(', ')}`);
+  }
+  const headerLines = [
     `# Benchmark results ${result.date}`,
     '',
     `- Machine: ${m.cpu}, ${m.cores} cores, ${m.memoryGb} GB, ${m.platform}`,
@@ -242,20 +310,19 @@ export function markdown(result, metrics) {
     result.git
       ? `- brumate: ${result.git.commit}${result.git.dirty ? ' with uncommitted changes in packages/' : ''}`
       : undefined,
-    `- Versions: ${names
-      .map(
-        (name) =>
-          `${labels[name]}: ${Object.entries(result.versions[name])
-            .map(([dep, v]) => `${dep}@${v}`)
-            .join(', ')}`,
-      )
-      .join('; ')}`,
+    `- Versions: ${versionParts.join('; ')}`,
     `- Scenarios: ${scenarios.join(', ')}`,
     `- Took ${result.durationSeconds} s`,
-  ].filter((line) => line !== undefined);
-  const notes = result.notes.length
-    ? ['', '## Notes', '', ...result.notes.map((note) => `- ${note}`)]
-    : [];
+  ];
+  const header = [];
+  for (const line of headerLines) {
+    if (line !== undefined) header.push(line);
+  }
+  const notes = [];
+  if (result.notes.length) {
+    notes.push('', '## Notes', '');
+    for (const note of result.notes) notes.push(`- ${note}`);
+  }
   const sections = [];
   if (scenarios.includes('todos'))
     sections.push('', '## Todos', '', table(names, labels, todosRows(result, metrics)));

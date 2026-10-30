@@ -136,7 +136,7 @@ const LANGUAGES: Record<string, Words> = {
  * The key of the table of a locale: its language subtag, such as `de` for `de-DE`, and `zh-Hant`
  * for Chinese in Traditional script, which `zh-TW`, `zh-HK` and `zh-MO` have by default.
  */
-function languageOf(locale: string): string {
+function getLanguage(locale: string): string {
   try {
     const { language, script } = new Intl.Locale(locale).maximize();
     return language === 'zh' && script === 'Hant' ? 'zh-Hant' : language;
@@ -146,7 +146,7 @@ function languageOf(locale: string): string {
 }
 
 /** The name of a segment in a locale, from the browser, or the English one. */
-function nameOf(names: Intl.DisplayNames | undefined, type: SegmentName): string {
+function getName(names: Intl.DisplayNames | undefined, type: SegmentName): string {
   try {
     const name = names?.of(type);
     // A locale that the browser lacks answers with the code itself.
@@ -158,7 +158,7 @@ function nameOf(names: Intl.DisplayNames | undefined, type: SegmentName): string
 
 /** The strings of a locale. A language with no table shows English. */
 export function stringsOf(locale: string): DateStrings {
-  const language = languageOf(locale);
+  const language = getLanguage(locale);
   const words = LANGUAGES[language] ?? ENGLISH;
   let names: Intl.DisplayNames | undefined;
   // Only a language with a table gets names from the browser, since the labels are in English
@@ -173,13 +173,13 @@ export function stringsOf(locale: string): DateStrings {
   return {
     ...words,
     segmentNames: {
-      year: nameOf(names, 'year'),
-      month: nameOf(names, 'month'),
-      day: nameOf(names, 'day'),
-      hour: nameOf(names, 'hour'),
-      minute: nameOf(names, 'minute'),
-      second: nameOf(names, 'second'),
-      dayPeriod: nameOf(names, 'dayPeriod'),
+      year: getName(names, 'year'),
+      month: getName(names, 'month'),
+      day: getName(names, 'day'),
+      hour: getName(names, 'hour'),
+      minute: getName(names, 'minute'),
+      second: getName(names, 'second'),
+      dayPeriod: getName(names, 'dayPeriod'),
     },
   };
 }

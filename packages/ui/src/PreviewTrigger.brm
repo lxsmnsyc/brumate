@@ -54,9 +54,9 @@
   const link = $getContext(LinkContext);
   const ownId = $id();
   const overlayId = $id();
-  const triggerId = $memo(idOf(button) ?? idOf(link) ?? ownId);
+  const triggerId = $memo(getId(button) ?? getId(link) ?? ownId);
 
-  function idOf(value: ContextValue<ButtonContextProps | LinkContextProps> | null) {
+  function getId(value: ContextValue<ButtonContextProps | LinkContextProps> | null) {
     return value && !('slots' in value) && typeof value.id === 'string' ? value.id : undefined;
   }
 
@@ -124,11 +124,11 @@
         // or a key ends it, and Tab onto the trigger still shows the preview.
         pressForgets.get(triggerId)?.();
         dismissed.add(triggerId);
-        const forget = () => {
+        function forget() {
           document.removeEventListener('keydown', forget, true);
           pressForgets.delete(triggerId);
           dismissed.delete(triggerId);
-        };
+        }
         pressForgets.set(triggerId, forget);
         document.addEventListener('keydown', forget, true);
       }

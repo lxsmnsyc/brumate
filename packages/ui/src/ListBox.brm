@@ -167,14 +167,23 @@
 
   /** The keys of the items, in order. */
   function order(): Key[] {
-    return (items ?? []).map((one) => one.id);
+    const keys: Key[] = [];
+    for (const one of items ?? []) {
+      keys.push(one.id);
+    }
+    return keys;
   }
 
   /** The keys of the options that can take focus. A windowed list reads its data, not the page. */
   function enabledKeys(element: HTMLElement): Key[] {
-    return windowHeight
-      ? enabledKeysOf(element, 'option', order(), disabledKeys)
-      : enabledItems(element, 'option').map((option) => keyOf(option)!);
+    if (windowHeight) {
+      return enabledKeysOf(element, 'option', order(), disabledKeys);
+    }
+    const keys: Key[] = [];
+    for (const option of enabledItems(element, 'option')) {
+      keys.push(keyOf(option)!);
+    }
+    return keys;
   }
 
   /** The keys of the options from the anchor to a key, in order, that can take focus. */
@@ -357,7 +366,10 @@
     }
     let foundKey: Key | undefined;
     if (windowHeight) {
-      const rows = (items ?? []).map((one) => ({ key: one.id, item: one }));
+      const rows: { key: Key; item: V }[] = [];
+      for (const one of items ?? []) {
+        rows.push({ key: one.id, item: one });
+      }
       foundKey = typeaheadWindowed(element, 'option', rows, enabledKeys(element), key, event, getTextValue);
       focusKey(foundKey);
     } else {

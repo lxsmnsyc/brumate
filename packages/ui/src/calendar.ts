@@ -148,14 +148,14 @@ export function todayString(timeZone?: string): DateString {
  */
 export function watchToday(timeZone: string | undefined, update: (today: DateString) => void) {
   let timer: ReturnType<typeof setTimeout>;
-  const run = () => {
+  function run() {
     clearTimeout(timer);
     // A hidden tab catches up when it shows again.
     if (!document.hidden) {
       update(todayString(timeZone));
     }
     timer = setTimeout(run, 60_050 - (Date.now() % 60_000));
-  };
+  }
   run();
   document.addEventListener('visibilitychange', run);
   return () => {
@@ -194,11 +194,11 @@ export function unitDuration(duration: DateDuration): DateDuration {
   return unit;
 }
 
-function laterOf(a: CalendarDate, b: CalendarDate): CalendarDate {
+function getLater(a: CalendarDate, b: CalendarDate): CalendarDate {
   return a.compare(b) >= 0 ? a : b;
 }
 
-function earlierOf(a: CalendarDate, b: CalendarDate): CalendarDate {
+function getEarlier(a: CalendarDate, b: CalendarDate): CalendarDate {
   return a.compare(b) <= 0 ? a : b;
 }
 
@@ -212,10 +212,10 @@ export function constrainStart(
   max?: DateString,
 ): CalendarDate {
   if (min !== undefined && date.compare(toDate(min)) >= 0) {
-    aligned = laterOf(aligned, alignStart(toDate(min), duration, locale));
+    aligned = getLater(aligned, alignStart(toDate(min), duration, locale));
   }
   if (max !== undefined && date.compare(toDate(max)) <= 0) {
-    aligned = earlierOf(aligned, alignEnd(toDate(max), duration, locale));
+    aligned = getEarlier(aligned, alignEnd(toDate(max), duration, locale));
   }
   return aligned;
 }
@@ -305,9 +305,15 @@ export function weeksOf(
 ): DateString[][] {
   const first = startOfWeek(start, locale, firstDayOfWeek);
   const count = getWeeksInMonth(start, locale, firstDayOfWeek);
-  return Array.from({ length: count }, (_, week) =>
-    Array.from({ length: 7 }, (_, day) => first.add({ weeks: week, days: day }).toString()),
-  );
+  const weeks: DateString[][] = [];
+  for (let week = 0; week < count; week++) {
+    const days: DateString[] = [];
+    for (let day = 0; day < 7; day++) {
+      days.push(first.add({ weeks: week, days: day }).toString());
+    }
+    weeks.push(days);
+  }
+  return weeks;
 }
 
 /** The days of the week of the locale, as a full name and as one or two letters. */
@@ -318,10 +324,12 @@ export function weekDays(
   const first = startOfWeek(today(getLocalTimeZone()), locale, firstDayOfWeek);
   const long = new DateFormatter(locale, { weekday: 'long', timeZone: 'UTC' });
   const narrow = new DateFormatter(locale, { weekday: 'narrow', timeZone: 'UTC' });
-  return Array.from({ length: 7 }, (_, index) => {
+  const days: { name: string; short: string }[] = [];
+  for (let index = 0; index < 7; index++) {
     const date = first.add({ days: index }).toDate('UTC');
-    return { name: long.format(date), short: narrow.format(date) };
-  });
+    days.push({ name: long.format(date), short: narrow.format(date) });
+  }
+  return days;
 }
 
 /**
@@ -396,7 +404,9 @@ export function cellLabel(calendar: CalendarState, date: DateString, selected: b
   });
   const { strings } = calendar;
   let label = formatter.format(toDate(date).toDate('UTC'));
-  const fill = (text: string) => text.replace('{date}', label);
+  function fill(text: string) {
+    return text.replace('{date}', label);
+  }
   if (date === calendar.today) {
     label = fill(strings?.today ?? 'Today, {date}');
   }
@@ -418,10 +428,12 @@ export function dayNumber(date: DateString, locale: string): string {
     calendar: 'gregory',
     timeZone: 'UTC',
   });
-  return (
-    formatter.formatToParts(toDate(date).toDate('UTC')).find((part) => part.type === 'day')
-      ?.value ?? String(toDate(date).day)
-  );
+  for (const part of formatter.formatToParts(toDate(date).toDate('UTC'))) {
+    if (part.type === 'day') {
+      return part.value;
+    }
+  }
+  return String(toDate(date).day);
 }
 
 export { endOfMonth, endOfWeek, startOfMonth, startOfWeek };

@@ -153,6 +153,15 @@
   let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-14' });
   let command = $signal<Key>('none');
   let topics = $signal(['css', 'html', 'js', 'svg']);
+  function removeTopics(keys: Key[]) {
+    const kept: string[] = [];
+    for (const topic of topics) {
+      if (!keys.includes(topic)) {
+        kept.push(topic);
+      }
+    }
+    topics = kept;
+  }
   let pickedFiles = $signal<Key[]>([]);
   let gridFiles = $signal(['notes', 'photos', 'music']);
   let fileOpened = $signal('none');
@@ -181,7 +190,10 @@
   });
   let openFolders = $signal<Key[]>([]);
   // A long list of files, which renders only the rows in view.
-  const manyFiles = Array.from({ length: 1000 }, (_, index) => ({ id: `many-${index}`, name: `File ${index}` }));
+  const manyFiles: { id: string; name: string }[] = [];
+  for (let index = 0; index < 1000; index++) {
+    manyFiles.push({ id: `many-${index}`, name: `File ${index}` });
+  }
   let note = $signal<TokenSegment[]>([{ type: 'text', text: 'Hi ' }]);
   // A tree of links to the sections of this page.
   interface Section extends NavigationNode {
@@ -605,7 +617,7 @@
 
 <section aria-labelledby="taggroup">
   <h2 id="taggroup">TagGroup</h2>
-  <TagGroup onRemove=((keys) => (topics = topics.filter((topic) => !keys.includes(topic))))>
+  <TagGroup onRemove=removeTopics>
     <Label>Topics</Label>
     <TagList class="topic-list">
       #for (topic of topics by topic) {

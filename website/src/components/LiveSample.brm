@@ -6,7 +6,14 @@
   // A code sample of the docs that runs in the page. Editing it runs it again.
   const { files } = $props<{ files: LiveFile[] }>();
 
-  let sources = $signal(files.map((file) => file.source));
+  function initialSources(): string[] {
+    const list: string[] = [];
+    for (const file of files) {
+      list.push(file.source);
+    }
+    return list;
+  }
+  let sources = $signal(initialSources());
   let active = $signal(0);
   let view = $signal<'result' | 'output'>('result');
   let error = $signal('');
@@ -18,7 +25,9 @@
   let result = $signal<HTMLElement>();
   let backdrop = $signal<HTMLElement>();
 
-  const language = (name: string): 'brm' | 'ts' | 'css' => (name.endsWith('.brm') ? 'brm' : 'ts');
+  function language(name: string): 'brm' | 'ts' | 'css' {
+    return name.endsWith('.brm') ? 'brm' : 'ts';
+  }
   // A line break at the end keeps the last line of the editor and the highlight the same height.
   const code = $memo(highlight(`${sources[active]}\n`, language(files[active]!.name)));
 
@@ -33,11 +42,11 @@
     running = true;
     try {
       const { runSample } = await import('../live/run.ts');
-      const next = await runSample(
-        result!,
-        files.map((file, index) => ({ name: file.name, source: sources[index]! })),
-        () => id === runs,
-      );
+      const current: LiveFile[] = [];
+      for (const [index, file] of files.entries()) {
+        current.push({ name: file.name, source: sources[index]! });
+      }
+      const next = await runSample(result!, current, () => id === runs);
       if (id === runs) {
         output = next;
         error = '';

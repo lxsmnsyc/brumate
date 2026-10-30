@@ -160,7 +160,7 @@
           ))),
   );
 
-  function rangeOf(start: DateString | null, end: DateString | null): DateRange | null {
+  function createRange(start: DateString | null, end: DateString | null): DateRange | null {
     return start !== null && end !== null ? { start, end } : null;
   }
 
@@ -174,7 +174,7 @@
     const to = endDate;
     $untrack((startValue = from));
     $untrack((endValue = to));
-    const next = rangeOf(from, to);
+    const next = createRange(from, to);
     if (!same(next, $untrack(value))) {
       const before = $untrack(value);
       try {
@@ -198,7 +198,7 @@
   // is only typed so far stays.
   $effect(() => {
     const next = value;
-    if (!same(next, $untrack(rangeOf(startDate, endDate)))) {
+    if (!same(next, $untrack(createRange(startDate, endDate)))) {
       $untrack((startValue = next?.start ?? null));
       $untrack((endValue = next?.end ?? null));
     }

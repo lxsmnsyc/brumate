@@ -109,9 +109,15 @@ export function tryParseColor(value: string | null | undefined): Color | undefin
   if (hex) {
     let digits = hex[1]!;
     if (digits.length <= 4) {
-      digits = [...digits].map((digit) => digit + digit).join('');
+      let doubled = '';
+      for (const digit of digits) {
+        doubled += digit + digit;
+      }
+      digits = doubled;
     }
-    const at = (index: number) => parseInt(digits.slice(index, index + 2), 16);
+    function at(index: number) {
+      return parseInt(digits.slice(index, index + 2), 16);
+    }
     return {
       space: 'rgb',
       values: [at(0), at(2), at(4)],
@@ -165,20 +171,20 @@ function hslToRgb(hue: number, saturation: number, lightness: number): [number, 
   const s = saturation / 100;
   const l = lightness / 100;
   const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => {
+  function f(n: number) {
     const k = (n + hue / 30) % 12;
     return (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255;
-  };
+  }
   return [f(0), f(8), f(4)];
 }
 
 function hsbToRgb(hue: number, saturation: number, brightness: number): [number, number, number] {
   const s = saturation / 100;
   const v = brightness / 100;
-  const f = (n: number) => {
+  function f(n: number) {
     const k = (n + hue / 60) % 6;
     return (v - v * s * Math.max(0, Math.min(k, 4 - k, 1))) * 255;
-  };
+  }
   return [f(5), f(3), f(1)];
 }
 
@@ -265,12 +271,12 @@ export function channelValue(color: Color, channel: ColorChannel): number {
   if (own >= 0) {
     return color.values[own]!;
   }
-  const space = spaceOf(channel);
+  const space = getSpace(channel);
   return toSpace(color, space).values[SPACE_CHANNELS[space].indexOf(channel)]!;
 }
 
 /** A space that has the channel: the space of the color when it has it, or the first one. */
-function spaceOf(channel: ColorChannel, preferred?: ColorSpace): ColorSpace {
+function getSpace(channel: ColorChannel, preferred?: ColorSpace): ColorSpace {
   if (preferred && SPACE_CHANNELS[preferred].includes(channel)) {
     return preferred;
   }
@@ -293,7 +299,7 @@ export function withChannelValue(color: Color, channel: ColorChannel, value: num
   if (channel === 'alpha') {
     return { ...color, alpha: next };
   }
-  const space = spaceOf(channel, color.space);
+  const space = getSpace(channel, color.space);
   const moved = toSpace(color, space);
   const values = [...moved.values] as [number, number, number];
   values[SPACE_CHANNELS[space].indexOf(channel)] = next;
@@ -349,10 +355,12 @@ export function sameColor(
   }
   const x = toSpace(first, 'rgb').values;
   const y = toSpace(second, 'rgb').values;
-  return (
-    x.every((value, index) => Math.round(value) === Math.round(y[index]!)) &&
-    alphaBits(first.alpha) === alphaBits(second.alpha)
-  );
+  for (const [index, value] of x.entries()) {
+    if (Math.round(value) !== Math.round(y[index]!)) {
+      return false;
+    }
+  }
+  return alphaBits(first.alpha) === alphaBits(second.alpha);
 }
 
 /**
@@ -360,10 +368,10 @@ export function sameColor(
  * channel, and else the space of the channel, such as hsb for the hue of a color in rgb.
  */
 export function editSpace(color: Color, channel: ColorChannel): ColorSpace {
-  return channel === 'alpha' ? color.space : spaceOf(channel, color.space);
+  return channel === 'alpha' ? color.space : getSpace(channel, color.space);
 }
 
-function hexOf(value: number): string {
+function toHex(value: number): string {
   return Math.round(clamp(value, 0, 255))
     .toString(16)
     .padStart(2, '0')
@@ -376,12 +384,15 @@ export function formatColor(color: Color, format: ColorFormat = 'css'): string {
     case 'hex':
     case 'hexa': {
       const [red, green, blue] = toSpace(color, 'rgb').values;
-      const alpha = format === 'hexa' ? hexOf(color.alpha * 255) : '';
-      return `#${hexOf(red)}${hexOf(green)}${hexOf(blue)}${alpha}`;
+      const alpha = format === 'hexa' ? toHex(color.alpha * 255) : '';
+      return `#${toHex(red)}${toHex(green)}${toHex(blue)}${alpha}`;
     }
     case 'rgb':
     case 'rgba': {
-      const [red, green, blue] = toSpace(color, 'rgb').values.map((value) => Math.round(value));
+      const [rawRed, rawGreen, rawBlue] = toSpace(color, 'rgb').values;
+      const red = Math.round(rawRed);
+      const green = Math.round(rawGreen);
+      const blue = Math.round(rawBlue);
       return format === 'rgb'
         ? `rgb(${red}, ${green}, ${blue})`
         : `rgba(${red}, ${green}, ${blue}, ${round(color.alpha, 2)})`;
@@ -391,7 +402,10 @@ export function formatColor(color: Color, format: ColorFormat = 'css'): string {
     case 'hsb':
     case 'hsba': {
       const space = format.startsWith('hsl') ? 'hsl' : 'hsb';
-      const [hue, first, second] = toSpace(color, space).values.map((value) => round(value, 2));
+      const [rawHue, rawFirst, rawSecond] = toSpace(color, space).values;
+      const hue = round(rawHue, 2);
+      const first = round(rawFirst, 2);
+      const second = round(rawSecond, 2);
       const body = `${hue}, ${first}%, ${second}%`;
       return format.endsWith('a')
         ? `${space}a(${body}, ${round(color.alpha, 2)})`
@@ -447,7 +461,16 @@ export function colorName(color: Color): string {
     name = 'black';
   } else {
     // A hue of 360 is past the last end, and it is red, as 0 is.
-    const base = saturation < 12 ? 'gray' : (HUES.find(([end]) => hue < end)?.[1] ?? 'red');
+    let base = 'gray';
+    if (saturation >= 12) {
+      base = 'red';
+      for (const [end, hueName] of HUES) {
+        if (hue < end) {
+          base = hueName;
+          break;
+        }
+      }
+    }
     let shade = '';
     if (lightness < 30) {
       shade = 'dark ';
@@ -501,9 +524,11 @@ export function channelGradient(
   } else if (channel === 'lightness') {
     values = [minValue, (maxValue - minValue) / 2, maxValue];
   }
-  const stops = values
-    .map((value) => formatColor(withChannelValue(base, channel, value)))
-    .join(', ');
+  const colors: string[] = [];
+  for (const value of values) {
+    colors.push(formatColor(withChannelValue(base, channel, value)));
+  }
+  const stops = colors.join(', ');
   const gradient = `linear-gradient(to ${to}, ${stops})`;
   return channel === 'alpha' ? `${gradient}, ${CHECKERBOARD}` : gradient;
 }
@@ -527,24 +552,35 @@ export function areaGradient(
   xTo: 'right' | 'left',
 ): { background: string; blendMode: string } {
   const { space } = color;
-  const to = (channel: ColorChannel) => (channel === x ? xTo : 'top');
-  const at = (set: Partial<Record<ColorChannel, number>>, alpha = 1): string => {
+  function to(channel: ColorChannel) {
+    return channel === x ? xTo : 'top';
+  }
+  function at(set: Partial<Record<ColorChannel, number>>, alpha = 1): string {
     let next: Color = { ...color, alpha };
     for (const [channel, value] of Object.entries(set) as [ColorChannel, number][]) {
       next = withChannelValue(next, channel, value);
     }
     return formatColor(next);
-  };
-  const fixed = SPACE_CHANNELS[space].find((channel) => channel !== x && channel !== y)!;
-  const fixedValue = channelValue(color, fixed);
-  const has = (channel: ColorChannel) => channel === x || channel === y;
+  }
+  let fixed: ColorChannel | undefined;
+  for (const channel of SPACE_CHANNELS[space]) {
+    if (channel !== x && channel !== y) {
+      fixed = channel;
+      break;
+    }
+  }
+  const fixedValue = channelValue(color, fixed!);
+  function has(channel: ColorChannel) {
+    return channel === x || channel === y;
+  }
 
   if (space === 'rgb') {
     const dark = { red: 0, green: 0, blue: 0 };
-    const layers = [x, y].map((channel) =>
-      gradientTo(to(channel), [at(dark), at({ ...dark, [channel]: 255 })]),
-    );
-    const base = at({ ...dark, [fixed]: fixedValue });
+    const layers: string[] = [];
+    for (const channel of [x, y]) {
+      layers.push(gradientTo(to(channel), [at(dark), at({ ...dark, [channel]: 255 })]));
+    }
+    const base = at({ ...dark, [fixed!]: fixedValue });
     layers.push(`linear-gradient(${base}, ${base})`);
     return { background: layers.join(', '), blendMode: 'screen' };
   }
@@ -559,20 +595,18 @@ export function areaGradient(
     if (has(tone)) {
       // The hue at full tone, under black (and white for hsl) toward the ends of the tone.
       const middle = space === 'hsl' ? { [tone]: 50 } : { [tone]: 100 };
-      base.push(
-        gradientTo(
-          to('hue'),
-          hues.map((value) => at({ hue: value, ...middle })),
-        ),
-      );
+      const stops: string[] = [];
+      for (const value of hues) {
+        stops.push(at({ hue: value, ...middle }));
+      }
+      base.push(gradientTo(to('hue'), stops));
     } else {
       // The hue at full saturation, under a gray of the tone that fades out with saturation.
-      base.push(
-        gradientTo(
-          to('hue'),
-          hues.map((value) => at({ hue: value, saturation: 100 })),
-        ),
-      );
+      const stops: string[] = [];
+      for (const value of hues) {
+        stops.push(at({ hue: value, saturation: 100 }));
+      }
+      base.push(gradientTo(to('hue'), stops));
       overlay.push(
         gradientTo(to('saturation'), [at({ hue, saturation: 0 }), at({ hue, saturation: 0 }, 0)]),
       );
@@ -618,16 +652,46 @@ export function areaChannels(
   colorSpace?: ColorSpace,
   valueSpace: ColorSpace = 'rgb',
 ): { space: ColorSpace; x: ColorChannel; y: ColorChannel } {
-  const given = [xChannel, yChannel].filter(Boolean) as ColorChannel[];
-  const has = (candidate: ColorSpace) =>
-    given.every((channel) => SPACE_CHANNELS[candidate].includes(channel));
-  const space =
-    colorSpace ??
-    (has(valueSpace) ? valueSpace : undefined) ??
-    (['hsb', 'hsl', 'rgb'] as const).find(has) ??
-    valueSpace;
+  const given: ColorChannel[] = [];
+  for (const channel of [xChannel, yChannel]) {
+    if (channel) {
+      given.push(channel);
+    }
+  }
+  function has(candidate: ColorSpace) {
+    for (const channel of given) {
+      if (!SPACE_CHANNELS[candidate].includes(channel)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  let found: ColorSpace | undefined;
+  for (const candidate of ['hsb', 'hsl', 'rgb'] as const) {
+    if (has(candidate)) {
+      found = candidate;
+      break;
+    }
+  }
+  const space = colorSpace ?? (has(valueSpace) ? valueSpace : undefined) ?? found ?? valueSpace;
   const channels = SPACE_CHANNELS[space];
-  const x = xChannel ?? channels.find((channel) => channel !== yChannel)!;
-  const y = yChannel ?? channels.find((channel) => channel !== x)!;
-  return { space, x, y };
+  let x = xChannel;
+  if (x === undefined) {
+    for (const channel of channels) {
+      if (channel !== yChannel) {
+        x = channel;
+        break;
+      }
+    }
+  }
+  let y = yChannel;
+  if (y === undefined) {
+    for (const channel of channels) {
+      if (channel !== x) {
+        y = channel;
+        break;
+      }
+    }
+  }
+  return { space, x: x!, y: y! };
 }

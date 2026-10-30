@@ -2,13 +2,17 @@
 // the start of the click event to the end of the last paint after it, as js-framework-benchmark
 // does. The page is not throttled unless `cpu` is above 1.
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const median = (values) => {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function median(values) {
   const sorted = values.toSorted((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-};
-const round = (value) => Math.round(value * 10) / 10;
+}
+function round(value) {
+  return Math.round(value * 10) / 10;
+}
 
 const CATEGORIES = [
   'devtools.timeline',
@@ -60,13 +64,20 @@ async function waitDone(page, done, before) {
 
 // The checks run in the page from their source, so a check that needs a number has it in its
 // source.
-const created = (count) =>
+function created(count) {
   // oxlint-disable-next-line no-new-func
-  new Function('now', 'before', `return now.count === ${count} && now.first !== before.first;`);
-const run = (page) => clickAndWait(page, '#run', created(1000));
-const repeat = async (times, step) => {
+  return new Function(
+    'now',
+    'before',
+    `return now.count === ${count} && now.first !== before.first;`,
+  );
+}
+function run(page) {
+  return clickAndWait(page, '#run', created(1000));
+}
+async function repeat(times, step) {
   for (let index = 0; index < times; index++) await step(index);
-};
+}
 
 // The operations of js-framework-benchmark, each with its own warmup on a page that loaded with
 // no rows: the same click a few times before the click that the trace measures.
@@ -203,27 +214,39 @@ async function trace(browser, page, action) {
 
 // The tasks of the main thread of a renderer. Chrome writes one of two names, by version, and
 // each task counts once.
-function tasksOf(events, pid, tid) {
-  const tasks = events.filter(
-    (event) =>
+function getTasks(events, pid, tid) {
+  const tasks = [];
+  let hasRunTask = false;
+  for (const event of events) {
+    if (
       event.pid === pid &&
       event.tid === tid &&
       event.ph === 'X' &&
-      (event.name === 'RunTask' || event.name === 'ThreadControllerImpl::RunTask'),
-  );
-  const name = tasks.some((task) => task.name === 'RunTask')
-    ? 'RunTask'
-    : 'ThreadControllerImpl::RunTask';
-  return tasks.filter((task) => task.name === name);
+      (event.name === 'RunTask' || event.name === 'ThreadControllerImpl::RunTask')
+    ) {
+      tasks.push(event);
+      if (event.name === 'RunTask') hasRunTask = true;
+    }
+  }
+  const name = hasRunTask ? 'RunTask' : 'ThreadControllerImpl::RunTask';
+  const named = [];
+  for (const task of tasks) {
+    if (task.name === name) named.push(task);
+  }
+  return named;
 }
 
 // From the start of the click to the end of the last paint in the same renderer after it:
 // `paint` is the time that passed, and `cpu` the time that the main thread spent in tasks. A
 // paint waits for the next frame, so `paint` moves in steps of about 16 ms, and `cpu` does not.
 function clickToPaint(events) {
-  const click = events.find(
-    (event) => event.name === 'EventDispatch' && event.args?.data?.type === 'click',
-  );
+  let click;
+  for (const event of events) {
+    if (event.name === 'EventDispatch' && event.args?.data?.type === 'click') {
+      click = event;
+      break;
+    }
+  }
   if (!click) throw new Error('the trace has no click');
   let end = click.ts + (click.dur ?? 0);
   for (const event of events) {
@@ -233,23 +256,31 @@ function clickToPaint(events) {
     if (event.name === 'Paint') end = Math.max(end, event.ts + (event.dur ?? 0));
   }
   // Only the part of each task between the click and the paint counts.
-  const cpu = tasksOf(events, click.pid, click.tid).reduce(
-    (sum, task) =>
-      sum + Math.max(0, Math.min(end, task.ts + task.dur) - Math.max(click.ts, task.ts)),
-    0,
-  );
+  let cpu = 0;
+  for (const task of getTasks(events, click.pid, click.tid)) {
+    cpu += Math.max(0, Math.min(end, task.ts + task.dur) - Math.max(click.ts, task.ts));
+  }
   return { paint: (end - click.ts) / 1000, cpu: cpu / 1000 };
 }
 
 // The time that the main thread of the page spent in tasks, and the longest task.
 function mainThread(events, base) {
-  const parse = events.find(
-    (event) => event.name === 'ParseHTML' && event.args?.beginData?.url?.startsWith(base),
-  );
+  let parse;
+  for (const event of events) {
+    if (event.name === 'ParseHTML' && event.args?.beginData?.url?.startsWith(base)) {
+      parse = event;
+      break;
+    }
+  }
   if (!parse) throw new Error('the trace has no parse of the page');
-  const durations = tasksOf(events, parse.pid, parse.tid).map((task) => task.dur / 1000);
+  const durations = [];
+  let busy = 0;
+  for (const task of getTasks(events, parse.pid, parse.tid)) {
+    durations.push(task.dur / 1000);
+    busy += task.dur / 1000;
+  }
   return {
-    busy: durations.reduce((sum, value) => sum + value, 0),
+    busy,
     longest: Math.max(0, ...durations),
   };
 }
@@ -274,24 +305,35 @@ async function clickAndWait(page, selector, done) {
   await waitDone(page, done, before);
 }
 
-const summary = (samples) => ({
-  median: round(median(samples)),
-  min: round(Math.min(...samples)),
-  max: round(Math.max(...samples)),
-  samples: samples.map(round),
-});
+function summary(samples) {
+  const rounded = [];
+  for (const sample of samples) rounded.push(round(sample));
+  return {
+    median: round(median(samples)),
+    min: round(Math.min(...samples)),
+    max: round(Math.max(...samples)),
+    samples: rounded,
+  };
+}
 
-const timings = (samples) => ({
-  cpu: summary(samples.map((sample) => sample.cpu)),
-  paint: summary(samples.map((sample) => sample.paint)),
-});
+function timings(samples) {
+  const cpu = [];
+  const paint = [];
+  for (const sample of samples) {
+    cpu.push(sample.cpu);
+    paint.push(sample.paint);
+  }
+  return { cpu: summary(cpu), paint: summary(paint) };
+}
 
 // Runs each operation `runs` times, each on a new page.
 export async function measureRows(browser, base, { runs, cpu, idleMs }) {
   const errors = [];
   const failed = [];
   const operations = {};
-  const watch = (page) => page.on('pageerror', (error) => errors.push(error.message));
+  function watch(page) {
+    return page.on('pageerror', (error) => errors.push(error.message));
+  }
 
   for (const [key, operation] of Object.entries(OPERATIONS)) {
     const samples = [];

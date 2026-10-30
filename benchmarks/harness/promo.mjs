@@ -11,8 +11,14 @@ import { findChrome } from './chrome.mjs';
 
 const folder = fileURLToPath(new URL('../promo/', import.meta.url));
 const names = process.argv.slice(2);
-const layouts =
-  names.length > 0 ? names : readdirSync(folder).filter((file) => file.endsWith('.html'));
+const layouts = [];
+if (names.length > 0) {
+  layouts.push(...names);
+} else {
+  for (const file of readdirSync(folder)) {
+    if (file.endsWith('.html')) layouts.push(file);
+  }
+}
 
 const browser = await chromium.launch({ ...findChrome(), headless: true });
 let problems = 0;

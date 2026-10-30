@@ -11,16 +11,21 @@ import { chromium } from 'playwright-core';
 import { findChrome } from './chrome.mjs';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
-const read = (file) => readFileSync(repo + file, 'utf8');
+function read(file) {
+  return readFileSync(repo + file, 'utf8');
+}
 // The logo on the dark tile of an icon, with its outline in the light color.
 const logo = read('website/public/logo.svg')
   .replace(/<style>[\s\S]*?<\/style>/, '')
   .replace('class="line"', 'stroke="#ece8e4"');
-const icon = (size, radius) =>
-  `<body style="margin:0;width:${size}px;height:${size}px;display:grid;place-items:center;background:transparent">` +
-  `<div style="width:${size}px;height:${size}px;display:grid;place-items:center;border-radius:${radius}px;` +
-  `background:radial-gradient(80% 80% at 80% 10%, rgb(240 138 82 / 28%), transparent 70%), #141210">` +
-  `<div style="width:${Math.round(size * 0.66)}px;height:${Math.round(size * 0.66)}px">${logo}</div></div></body>`;
+function icon(size, radius) {
+  return (
+    `<body style="margin:0;width:${size}px;height:${size}px;display:grid;place-items:center;background:transparent">` +
+    `<div style="width:${size}px;height:${size}px;display:grid;place-items:center;border-radius:${radius}px;` +
+    `background:radial-gradient(80% 80% at 80% 10%, rgb(240 138 82 / 28%), transparent 70%), #141210">` +
+    `<div style="width:${Math.round(size * 0.66)}px;height:${Math.round(size * 0.66)}px">${logo}</div></div></body>`
+  );
+}
 
 const images = [
   {

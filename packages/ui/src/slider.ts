@@ -89,7 +89,13 @@ export function valueAt(
  * on top of each other.
  */
 export function closestThumb(values: number[], value: number): number {
-  const split = values.findIndex((item) => value - item < 0);
+  let split = -1;
+  for (const [index, item] of values.entries()) {
+    if (value - item < 0) {
+      split = index;
+      break;
+    }
+  }
   if (split === 0) {
     return 0;
   }

@@ -58,9 +58,12 @@
   /** The input of the field: the first text input that is not in the collection. */
   function field(): HTMLInputElement | undefined {
     const list = collection();
-    return [...(root?.querySelectorAll<HTMLInputElement>('input, textarea') ?? [])].find(
-      (element) => !list?.contains(element) && element.type !== 'hidden',
-    );
+    for (const element of root?.querySelectorAll<HTMLInputElement>('input, textarea') ?? []) {
+      if (!list?.contains(element) && element.type !== 'hidden') {
+        return element;
+      }
+    }
+    return undefined;
   }
 
   function items() {
@@ -71,7 +74,15 @@
   /** Makes an item active, and names it on the input. */
   function activate(key: Key | null) {
     activeKey = key;
-    const item = key === null ? undefined : items().find((element) => keyOf(element) === key);
+    let item: HTMLElement | undefined;
+    if (key !== null) {
+      for (const element of items()) {
+        if (keyOf(element) === key) {
+          item = element;
+          break;
+        }
+      }
+    }
     item?.scrollIntoView?.({ block: 'nearest' });
     activeId = item?.id || undefined;
   }
@@ -133,7 +144,13 @@
     }
     const list = collection();
     const all = items();
-    const current = all.find((element) => keyOf(element) === activeKey);
+    let current: HTMLElement | undefined;
+    for (const element of all) {
+      if (keyOf(element) === activeKey) {
+        current = element;
+        break;
+      }
+    }
     if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && list) {
       const next = moveFrom(list, all, current, event.key === 'ArrowDown' ? 'next' : 'previous', true);
       activate(next ? (keyOf(next) ?? null) : null);

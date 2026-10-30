@@ -153,14 +153,23 @@
 
   /** The keys of the items, in order. */
   function order(): Key[] {
-    return (items ?? []).map((one) => one.id);
+    const keys: Key[] = [];
+    for (const one of items ?? []) {
+      keys.push(one.id);
+    }
+    return keys;
   }
 
   /** The keys of the rows that can take focus. A windowed list reads its data, not the page. */
   function enabledKeys(element: HTMLElement): Key[] {
-    return windowHeight
-      ? enabledKeysOf(element, 'row', order(), disabledKeys)
-      : enabledItems(element, 'row').map((row) => keyOf(row)!);
+    if (windowHeight) {
+      return enabledKeysOf(element, 'row', order(), disabledKeys);
+    }
+    const keys: Key[] = [];
+    for (const row of enabledItems(element, 'row')) {
+      keys.push(keyOf(row)!);
+    }
+    return keys;
   }
 
   /** The keys of the rows from the anchor to a key, in order, that can take focus. */
@@ -201,17 +210,29 @@
   function draggedKeys(key: Key): Key[] {
     const chosen = selectedKeys.includes(key) ? selectedKeys : [key];
     const element = ref as HTMLElement | undefined;
-    const ordered = element
-      ? itemsOf(element, 'row')
-          .map((item) => keyOf(item)!)
-          .filter((item) => chosen.includes(item))
-      : [];
+    const ordered: Key[] = [];
+    if (element) {
+      for (const item of itemsOf(element, 'row')) {
+        const itemKey = keyOf(item)!;
+        if (chosen.includes(itemKey)) {
+          ordered.push(itemKey);
+        }
+      }
+    }
     return ordered.length > 0 ? ordered : [key];
   }
 
   function rowWith(key: Key): HTMLElement | undefined {
     const element = ref as HTMLElement | undefined;
-    return element ? itemsOf(element, 'row').find((item) => keyOf(item) === key) : undefined;
+    if (!element) {
+      return undefined;
+    }
+    for (const item of itemsOf(element, 'row')) {
+      if (keyOf(item) === key) {
+        return item;
+      }
+    }
+    return undefined;
   }
 
   /** Where a drop can go from the keys: before each row that does not move, and after the last. */
@@ -220,9 +241,15 @@
     if (!element) {
       return [];
     }
-    const keys = itemsOf(element, 'row').map((item) => keyOf(item)!);
-    const staying = keys.filter((key) => !dragging.includes(key));
-    const targets: DropTarget[] = staying.map((key) => ({ key, dropPosition: 'before' }));
+    const staying: Key[] = [];
+    const targets: DropTarget[] = [];
+    for (const item of itemsOf(element, 'row')) {
+      const itemKey = keyOf(item)!;
+      if (!dragging.includes(itemKey)) {
+        staying.push(itemKey);
+        targets.push({ key: itemKey, dropPosition: 'before' });
+      }
+    }
     const last = staying.at(-1);
     if (last !== undefined) {
       targets.push({ key: last, dropPosition: 'after' });
@@ -236,14 +263,26 @@
     if (!element) {
       return true;
     }
-    const order = itemsOf(element, 'row').map((item) => keyOf(item)!);
-    const rest = order.filter((key) => !keys.includes(key));
+    const order: Key[] = [];
+    const rest: Key[] = [];
+    for (const item of itemsOf(element, 'row')) {
+      const itemKey = keyOf(item)!;
+      order.push(itemKey);
+      if (!keys.includes(itemKey)) {
+        rest.push(itemKey);
+      }
+    }
     const at = rest.indexOf(target.key);
     if (at < 0) {
       return false;
     }
     rest.splice(target.dropPosition === 'after' ? at + 1 : at, 0, ...keys);
-    return rest.some((key, index) => key !== order[index]);
+    for (const [index, key] of rest.entries()) {
+      if (key !== order[index]) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function aim(target: DropTarget | undefined) {
@@ -265,10 +304,14 @@
     const targets = dropTargets();
     // The first place after the dragged rows, or else the last.
     const row = rowWith(key);
-    const after = targets.find((target) => {
+    let after: DropTarget | undefined;
+    for (const target of targets) {
       const other = rowWith(target.key);
-      return Boolean(row && other && row.compareDocumentPosition(other) & 4 && target.dropPosition === 'before');
-    });
+      if (Boolean(row && other && row.compareDocumentPosition(other) & 4 && target.dropPosition === 'before')) {
+        after = target;
+        break;
+      }
+    }
     aim(after ?? targets.at(-1));
     announcement = `Dragging ${dragging.length === 1 ? 'a row' : `${dragging.length} rows`}. Up and Down choose where, Enter drops, Escape cancels. ${announcement}`;
   }
@@ -298,7 +341,7 @@
     }
     const keyDownNow = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      const row = rowOf(target);
+      const row = findRow(target);
       if (!row || event.defaultPrevented) {
         return;
       }
@@ -337,29 +380,38 @@
     if (!element || !isDraggable) {
       return undefined;
     }
-    const dragStart = (event: DragEvent) => {
-      const row = rowOf(event.target);
+    function dragStart(event: DragEvent) {
+      const row = findRow(event.target);
       const key = row ? keyOf(row) : undefined;
       if (!row || key === undefined || !event.dataTransfer || disabledKeys.includes(key)) {
         return;
       }
       const keys = draggedKeys(key);
-      setDragData(event.dataTransfer, getItems ? getItems(keys) : keys.map((item) => ({ 'text/plain': String(item) })));
+      let dragItems: DragItem[];
+      if (getItems) {
+        dragItems = getItems(keys);
+      } else {
+        dragItems = [];
+        for (const item of keys) {
+          dragItems.push({ 'text/plain': String(item) });
+        }
+      }
+      setDragData(event.dataTransfer, dragItems);
       event.dataTransfer.setData(ROWS_TYPE, gridId);
       event.dataTransfer.effectAllowed = onReorder ? 'copyMove' : 'copy';
       dragging = keys;
-    };
+    }
     /** Where a drop at the event goes: by the row under it, unless the row moves. */
-    const targetAt = (event: DragEvent): DropTarget | undefined => {
-      const row = rowOf(event.target);
+    function targetAt(event: DragEvent): DropTarget | undefined {
+      const row = findRow(event.target);
       const key = row ? keyOf(row) : undefined;
       if (!row || key === undefined || dragging.includes(key)) {
         return undefined;
       }
       const box = row.getBoundingClientRect();
       return { key, dropPosition: event.clientY < box.top + box.height / 2 ? 'before' : 'after' };
-    };
-    const dragOver = (event: DragEvent) => {
+    }
+    function dragOver(event: DragEvent) {
       if (!onReorder || dragging.length === 0 || byKeys) {
         return;
       }
@@ -378,13 +430,13 @@
       if (dropTarget?.key !== target.key || dropTarget.dropPosition !== target.dropPosition) {
         dropTarget = target;
       }
-    };
+    }
     const dragLeave = (event: DragEvent) => {
       if (!element.contains(event.relatedTarget as Node | null)) {
         dropTarget = null;
       }
     };
-    const dropped = (event: DragEvent) => {
+    function dropped(event: DragEvent) {
       if (dragging.length === 0 || byKeys) {
         return;
       }
@@ -395,14 +447,14 @@
       } else {
         endDrag('');
       }
-    };
+    }
     // The source row can go away during the drag, and then its dragend never reaches the list,
     // so the document hears the end of the drag, and a drop elsewhere.
-    const dragEnd = () => {
+    function dragEnd() {
       if (dragging.length > 0 && !byKeys) {
         endDrag('');
       }
-    };
+    }
     element.addEventListener('dragstart', dragStart);
     element.addEventListener('dragover', dragOver);
     element.addEventListener('dragleave', dragLeave);
@@ -435,7 +487,7 @@
     startDrag,
   });
 
-  function rowOf(target: EventTarget | null) {
+  function findRow(target: EventTarget | null) {
     const element = ref as HTMLElement | undefined;
     const row = (target as Element | null)?.closest?.('[role=row][data-key]') as HTMLElement | null;
     return row && element?.contains(row) && row.closest('[data-collection]') === element
@@ -449,17 +501,28 @@
     if (element && event.target === element && document.activeElement === element) {
       const rendered = enabledItems(element, 'row');
       const last = lastFocusedOf(element);
-      focusItem(
-        rendered.find((row) => last !== undefined && keyOf(row) === last) ??
-          rendered.find((row) => row.getAttribute('aria-selected') === 'true') ??
-          rendered[0],
-      );
+      let target: HTMLElement | undefined;
+      for (const row of rendered) {
+        if (last !== undefined && keyOf(row) === last) {
+          target = row;
+          break;
+        }
+      }
+      if (!target) {
+        for (const row of rendered) {
+          if (row.getAttribute('aria-selected') === 'true') {
+            target = row;
+            break;
+          }
+        }
+      }
+      focusItem(target ?? rendered[0]);
     }
   }
 
   function focusIn(event: FocusEvent) {
     const element = ref as HTMLElement | undefined;
-    const row = rowOf(event.target);
+    const row = findRow(event.target);
     if (element && row) {
       // While a row has focus, Tab leaves the list rather than stopping at it.
       element.tabIndex = -1;
@@ -496,8 +559,12 @@
   }
 
   /** The items with their keys, which typeahead reads. */
-  function rowsOf() {
-    return (items ?? []).map((one) => ({ key: one.id, item: one }));
+  function getRows() {
+    const rows: { key: Key; item: V }[] = [];
+    for (const one of items ?? []) {
+      rows.push({ key: one.id, item: one });
+    }
+    return rows;
   }
 
   /** Focuses the row of a key. A windowed list may not render it, so it scrolls it into view. */
@@ -511,7 +578,7 @@
   function keyDown(event: KeyboardEvent) {
     const element = ref as HTMLElement | undefined;
     const target = event.target as HTMLElement;
-    const row = rowOf(target);
+    const row = findRow(target);
     if (!element || !row) {
       return;
     }
@@ -525,9 +592,13 @@
     // A drag from the keys takes the keys until it drops or cancels.
     if (byKeys) {
       const targets = dropTargets();
-      const at = targets.findIndex(
-        (target) => target.key === dropTarget?.key && target.dropPosition === dropTarget.dropPosition,
-      );
+      let at = -1;
+      for (const [position, target] of targets.entries()) {
+        if (target.key === dropTarget?.key && target.dropPosition === dropTarget.dropPosition) {
+          at = position;
+          break;
+        }
+      }
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
         aim(targets[Math.min(Math.max(at + (event.key === 'ArrowDown' ? 1 : -1), 0), targets.length - 1)]);
@@ -643,7 +714,7 @@
     }
     let foundKey: Key | undefined;
     if (windowHeight) {
-      foundKey = typeaheadWindowed(element, 'row', rowsOf(), enabledKeys(element), key, event, getTextValue);
+      foundKey = typeaheadWindowed(element, 'row', getRows(), enabledKeys(element), key, event, getTextValue);
       focusKey(foundKey);
     } else {
       const found = typeahead(element, rendered, row, event);

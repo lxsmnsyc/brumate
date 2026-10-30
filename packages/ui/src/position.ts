@@ -56,7 +56,7 @@ const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'righ
 /** The side and the alignment of a placement, with start and end read in the direction. */
 export function parsePlacement(placement: Placement, direction: 'ltr' | 'rtl'): [Side, Align] {
   const [first, second] = placement.split(' ') as [string, string | undefined];
-  const logical = (value: string): string => {
+  function logical(value: string): string {
     if (value === 'start') {
       return direction === 'rtl' ? 'right' : 'left';
     }
@@ -64,7 +64,7 @@ export function parsePlacement(placement: Placement, direction: 'ltr' | 'rtl'): 
       return direction === 'rtl' ? 'left' : 'right';
     }
     return value;
-  };
+  }
   const side = logical(first) as Side;
   let align: Align = 'center';
   if (second) {
@@ -76,8 +76,9 @@ export function parsePlacement(placement: Placement, direction: 'ltr' | 'rtl'): 
   return [side, align];
 }
 
-const clamp = (value: number, min: number, max: number): number =>
-  Math.min(Math.max(value, min), Math.max(min, max));
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), Math.max(min, max));
+}
 
 /** Where the overlay goes for the rectangles of its trigger and of itself. */
 export function computePosition(
@@ -94,8 +95,9 @@ export function computePosition(
     left: trigger.left - pad - options.offset,
     right: viewport.width - trigger.right - pad - options.offset,
   };
-  const size = (side: Side): number =>
-    side === 'top' || side === 'bottom' ? overlay.height : overlay.width;
+  function size(side: Side): number {
+    return side === 'top' || side === 'bottom' ? overlay.height : overlay.width;
+  }
   let side = wanted;
   // Flip when the other side has room and this one does not.
   if (options.shouldFlip && room[side] < size(side) && room[OPPOSITE[side]] > room[side]) {
@@ -152,7 +154,7 @@ export function followTrigger(
 ): () => void {
   let frame = 0;
   const { put, stop } = keepStyle(overlay);
-  const update = (): void => {
+  function update(): void {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
       const position = computePosition(
@@ -170,7 +172,7 @@ export function followTrigger(
       put('--available-height', `${position.maxHeight}px`);
       placed(position);
     });
-  };
+  }
   update();
   // Scrolls of any container move the trigger, so the listener is on the document, at capture.
   document.addEventListener('scroll', update, { capture: true, passive: true });

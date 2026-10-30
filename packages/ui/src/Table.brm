@@ -141,21 +141,38 @@
 
   function rows(): HTMLElement[] {
     const element = root;
-    return element ? itemsOf(element, 'row').filter((row) => row.closest('tbody')) : [];
+    const found: HTMLElement[] = [];
+    if (element) {
+      for (const row of itemsOf(element, 'row')) {
+        if (row.closest('tbody')) {
+          found.push(row);
+        }
+      }
+    }
+    return found;
   }
 
   /** The keys of the items, in order. */
   function order(): Key[] {
-    return (items ?? []).map((one) => one.id);
+    const keys: Key[] = [];
+    for (const one of items ?? []) {
+      keys.push(one.id);
+    }
+    return keys;
   }
 
   /** The keys of the rows that can take focus. A windowed table reads its data, not the page. */
   function enabledKeys(element: HTMLElement): Key[] {
-    return windowHeight
-      ? enabledKeysOf(element, 'row', order(), disabledKeys)
-      : rows()
-          .filter((row) => row.getAttribute('aria-disabled') !== 'true')
-          .map((row) => keyOf(row)!);
+    if (windowHeight) {
+      return enabledKeysOf(element, 'row', order(), disabledKeys);
+    }
+    const keys: Key[] = [];
+    for (const row of rows()) {
+      if (row.getAttribute('aria-disabled') !== 'true') {
+        keys.push(keyOf(row)!);
+      }
+    }
+    return keys;
   }
 
   function setSelection(next: Key[]) {
@@ -222,7 +239,14 @@
       return;
     }
     const all = selectableKeys();
-    if (all.every((key) => selectedKeys.includes(key))) {
+    let everySelected = true;
+    for (const key of all) {
+      if (!selectedKeys.includes(key)) {
+        everySelected = false;
+        break;
+      }
+    }
+    if (everySelected) {
       // A table that needs a selection keeps it.
       if (!disallowEmptySelection) {
         setSelection([]);
@@ -264,7 +288,7 @@
   });
 
   /** The row, cell or column header of the table that holds an element. */
-  function itemOf(target: EventTarget | null) {
+  function findItem(target: EventTarget | null) {
     const element = root;
     const item = (target as Element | null)?.closest?.(
       '[role=row][data-key], [role=gridcell], [role=rowheader], [role=columnheader]',
@@ -274,10 +298,14 @@
       : undefined;
   }
 
-  function cellsOf(row: HTMLElement): HTMLElement[] {
-    return [...row.children].filter((cell) =>
-      /^(gridcell|rowheader|columnheader)$/.test(cell.getAttribute('role') ?? ''),
-    ) as HTMLElement[];
+  function getCells(row: HTMLElement): HTMLElement[] {
+    const cells: HTMLElement[] = [];
+    for (const cell of row.children) {
+      if (/^(gridcell|rowheader|columnheader)$/.test(cell.getAttribute('role') ?? '')) {
+        cells.push(cell as HTMLElement);
+      }
+    }
+    return cells;
   }
 
   function headers(): HTMLElement[] {
@@ -288,7 +316,7 @@
   }
 
   /** The elements in a cell or a column header that take focus, such as a ColumnResizer. */
-  function controlsOf(item: HTMLElement): HTMLElement[] {
+  function getControls(item: HTMLElement): HTMLElement[] {
     return [
       ...item.querySelectorAll<HTMLElement>(
         'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]',
@@ -300,8 +328,8 @@
    * The places in a cell or a column header that take focus, in order. A column header that sorts
    * or resizes is the first, so Enter and Space reach it before its controls.
    */
-  function stopsOf(item: HTMLElement): HTMLElement[] {
-    const controls = controlsOf(item);
+  function getStops(item: HTMLElement): HTMLElement[] {
+    const controls = getControls(item);
     const own =
       item.getAttribute('role') === 'columnheader' &&
       (item.hasAttribute('data-allows-sorting') || item.querySelector('[data-resizable-direction]'));
@@ -320,7 +348,7 @@
       focusItem(item);
       return;
     }
-    const stops = stopsOf(item);
+    const stops = getStops(item);
     focusItem((fromAfter ? stops.at(-1) : stops[0]) ?? item);
   }
 
@@ -328,13 +356,28 @@
     const element = root;
     // The table passes its focus on to the row or cell that had it last, or to a row.
     if (element && event.target === element && document.activeElement === element) {
-      const rendered = enabledItems(element, 'row').filter((row) => row.closest('tbody'));
+      const rendered: HTMLElement[] = [];
+      for (const row of enabledItems(element, 'row')) {
+        if (row.closest('tbody')) {
+          rendered.push(row);
+        }
+      }
       const last = lastFocusedOf(element);
       const lastCell = element.querySelector<HTMLElement>('[data-last-focused]');
+      let lastRow: HTMLElement | undefined;
+      let selectedRow: HTMLElement | undefined;
+      for (const row of rendered) {
+        if (lastRow === undefined && last !== undefined && keyOf(row) === last) {
+          lastRow = row;
+        }
+        if (selectedRow === undefined && row.getAttribute('aria-selected') === 'true') {
+          selectedRow = row;
+        }
+      }
       focusOn(
         lastCell ??
-          rendered.find((row) => last !== undefined && keyOf(row) === last) ??
-          rendered.find((row) => row.getAttribute('aria-selected') === 'true') ??
+          lastRow ??
+          selectedRow ??
           rendered[0] ??
           headers()[0],
       );
@@ -343,7 +386,7 @@
 
   function focusIn(event: FocusEvent) {
     const element = root;
-    const item = itemOf(event.target);
+    const item = findItem(event.target);
     if (!element || !item) {
       return;
     }
@@ -369,7 +412,7 @@
   function keyDown(event: KeyboardEvent) {
     const element = root;
     const target = event.target as HTMLElement;
-    const item = itemOf(target);
+    const item = findItem(target);
     // A ColumnResizer that resizes keeps the keys.
     if (!element || !item || target.closest('[data-resizing]')) {
       return;
@@ -395,9 +438,14 @@
     const isHeader = role === 'columnheader';
     const isRow = role === 'row';
     const row = isHeader ? undefined : item.closest<HTMLElement>('[role=row][data-key]')!;
-    const bodyRows = enabledItems(element, 'row').filter((one) => one.closest('tbody'));
+    const bodyRows: HTMLElement[] = [];
+    for (const one of enabledItems(element, 'row')) {
+      if (one.closest('tbody')) {
+        bodyRows.push(one);
+      }
+    }
     const rowAt = row ? bodyRows.indexOf(row) : -1;
-    const column = isRow ? -1 : isHeader ? headers().indexOf(item) : cellsOf(row!).indexOf(item);
+    const column = isRow ? -1 : isHeader ? headers().indexOf(item) : getCells(row!).indexOf(item);
     const rtl = locale.direction === 'rtl';
     const key = row ? keyOf(row) : undefined;
     const replace = selectionBehavior === 'replace';
@@ -409,7 +457,7 @@
     // key of the row, and `pick` the element of it to focus: the row, or its cell of the column.
     let reach: Key | undefined;
     let pick: (target: HTMLElement) => HTMLElement | undefined = (target) =>
-      isRow ? target : cellsOf(target)[column];
+      isRow ? target : getCells(target)[column];
     const enabled = windowHeight ? enabledKeys(element) : [];
     const keyFrom = (movement: Movement) =>
       keyAfter(element, 'row', order(), enabled, key ?? enabled[0]!, movement, windowHeight!);
@@ -418,10 +466,10 @@
       if (windowHeight) {
         reach = isHeader ? enabled[0] : keyFrom('next');
       } else if (isHeader) {
-        next = bodyRows[0] && cellsOf(bodyRows[0])[column];
+        next = bodyRows[0] && getCells(bodyRows[0])[column];
       } else {
         const below = bodyRows[rowAt + 1];
-        next = below && (isRow ? below : cellsOf(below)[column]);
+        next = below && (isRow ? below : getCells(below)[column]);
       }
     } else if (event.key === 'ArrowUp') {
       moved = true;
@@ -437,7 +485,7 @@
         next = above
           ? isRow
             ? above
-            : cellsOf(above)[column]
+            : getCells(above)[column]
           : headers()[isRow ? 0 : column];
       }
     } else if (!typing && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
@@ -445,7 +493,7 @@
       const forward = (event.key === 'ArrowRight') !== rtl;
       // From a stop in a cell or a header: to the next stop in it, then on.
       if (!isRow) {
-        const stops = stopsOf(item);
+        const stops = getStops(item);
         const at = stops.indexOf(target);
         const stop = at === -1 ? undefined : stops[at + (forward ? 1 : -1)];
         if (stop) {
@@ -457,10 +505,10 @@
         const all = headers();
         next = all[(column + (forward ? 1 : -1) + all.length) % all.length];
       } else if (isRow) {
-        const cells = cellsOf(row!);
+        const cells = getCells(row!);
         next = forward ? cells[0] : cells.at(-1);
       } else {
-        next = cellsOf(row!)[column + (forward ? 1 : -1)] ?? row;
+        next = getCells(row!)[column + (forward ? 1 : -1)] ?? row;
       }
     } else if (event.key === 'PageDown' || event.key === 'PageUp') {
       moved = true;
@@ -471,7 +519,7 @@
             : undefined
           : keyFrom(event.key === 'PageDown' ? 'pageDown' : 'pageUp');
       } else if (isHeader) {
-        next = event.key === 'PageDown' && bodyRows[0] ? cellsOf(bodyRows[0])[column] : undefined;
+        next = event.key === 'PageDown' && bodyRows[0] ? getCells(bodyRows[0])[column] : undefined;
       } else {
         const page = moveFrom(
           element,
@@ -480,7 +528,7 @@
           event.key === 'PageDown' ? 'pageDown' : 'pageUp',
           false,
         );
-        next = page && (isRow ? page : cellsOf(page)[column]);
+        next = page && (isRow ? page : getCells(page)[column]);
       }
     } else if (!typing && (event.key === 'Home' || event.key === 'End')) {
       moved = true;
@@ -491,12 +539,12 @@
       } else if (windowHeight && (isRow || global)) {
         reach = keyFrom(first ? 'first' : 'last');
         pick = (target) =>
-          isRow ? target : first ? cellsOf(target)[0] : cellsOf(target).at(-1);
+          isRow ? target : first ? getCells(target)[0] : getCells(target).at(-1);
       } else if (isRow || global) {
         const edge = first ? bodyRows[0] : bodyRows.at(-1);
-        next = edge && (isRow ? edge : first ? cellsOf(edge)[0] : cellsOf(edge).at(-1));
+        next = edge && (isRow ? edge : first ? getCells(edge)[0] : getCells(edge).at(-1));
       } else {
-        const cells = cellsOf(row!);
+        const cells = getCells(row!);
         next = first ? cells[0] : cells.at(-1);
       }
     }
@@ -582,10 +630,14 @@
     }
     if (isRow) {
       if (windowHeight) {
+        const entries: { key: Key; item: V }[] = [];
+        for (const one of items ?? []) {
+          entries.push({ key: one.id, item: one });
+        }
         const found = typeaheadWindowed(
           element,
           'row',
-          (items ?? []).map((one) => ({ key: one.id, item: one })),
+          entries,
           enabledKeys(element),
           key,
           event,

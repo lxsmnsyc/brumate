@@ -75,9 +75,20 @@
     const list = row?.closest('[data-collection]');
     const items = list ? enabledItems(list, 'row') : [];
     const at = row ? items.indexOf(row) : -1;
-    const next = [...items.slice(at + 1), ...items.slice(0, Math.max(at, 0)).reverse()].find(
-      (item) => !keys.some((key) => keyAttribute(key) === item.dataset.key),
-    );
+    let next: HTMLElement | undefined;
+    for (const item of [...items.slice(at + 1), ...items.slice(0, Math.max(at, 0)).reverse()]) {
+      let removing = false;
+      for (const key of keys) {
+        if (keyAttribute(key) === item.dataset.key) {
+          removing = true;
+          break;
+        }
+      }
+      if (!removing) {
+        next = item;
+        break;
+      }
+    }
     group.remove(keys);
     // The tag leaves once the caller's list updates, so focus moves after that. With no tag
     // left, the list takes focus.

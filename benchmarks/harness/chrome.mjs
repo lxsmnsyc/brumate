@@ -30,7 +30,13 @@ export function findChrome({ install = false } = {}) {
     console.warn(`CHROME_PATH is set but ${process.env.CHROME_PATH} does not exist.`);
     return null;
   }
-  const found = (CANDIDATES[process.platform] ?? []).find((file) => existsSync(file));
+  let found;
+  for (const file of CANDIDATES[process.platform] ?? []) {
+    if (existsSync(file)) {
+      found = file;
+      break;
+    }
+  }
   if (found) return { executablePath: found };
   if (install) {
     // Downloads Playwright's own Chromium build, only when --install-browser is passed.

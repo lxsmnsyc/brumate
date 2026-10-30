@@ -13,14 +13,17 @@
   }>();
   const route = $route();
   const base = import.meta.env.BASE_URL;
-  const link = (target: string): string => `${base}${section}${target ? `/${target}` : ''}`;
+  function link(target: string): string {
+    return `${base}${section}${target ? `/${target}` : ''}`;
+  }
   let menu = $signal<HTMLDetailsElement>();
 
   /** The page of the section at a path, such as `routing` for `/docs/routing`. */
-  const slugOf = (pathname: string): string =>
-    pathname
+  function getSlug(pathname: string): string {
+    return pathname
       .slice(`${base}${section}`.length)
       .replace(/^\/|\/$/g, '');
+  }
 
   // On a narrow screen the menu closes when a link loads another page.
   $effect(() => {
@@ -42,8 +45,8 @@
       #for (item of section.pages by item.slug) {
         <a
           href=(link(item.slug))
-          class={ active: item.slug === slugOf(route.url.pathname) }
-          aria-current=(item.slug === slugOf(route.url.pathname) ? 'page' : undefined)
+          class={ active: item.slug === getSlug(route.url.pathname) }
+          aria-current=(item.slug === getSlug(route.url.pathname) ? 'page' : undefined)
         >{item.title}</a>
       }
     }

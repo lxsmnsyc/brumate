@@ -28,12 +28,17 @@ const FOCUSABLE =
 
 /** The elements inside `root` that Tab reaches, in order. */
 export function tabbables(root: Element): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-    (element) =>
+  const found: HTMLElement[] = [];
+  for (const element of root.querySelectorAll<HTMLElement>(FOCUSABLE)) {
+    if (
       element.tabIndex >= 0 &&
       !element.closest('[inert], [hidden]') &&
-      (typeof element.checkVisibility !== 'function' || element.checkVisibility()),
-  );
+      (typeof element.checkVisibility !== 'function' || element.checkVisibility())
+    ) {
+      found.push(element);
+    }
+  }
+  return found;
 }
 
 /**
@@ -166,7 +171,7 @@ export function pressOutside(
 ): () => void {
   dismissable.push(layer);
   let started = false;
-  const outside = (event: PointerEvent): boolean => {
+  function outside(event: PointerEvent): boolean {
     const target = event.target as Node | null;
     return (
       event.button === 0 &&
@@ -175,20 +180,20 @@ export function pressOutside(
       !layer.contains(target) &&
       !trigger?.contains(target)
     );
-  };
-  const down = (event: PointerEvent): void => {
+  }
+  function down(event: PointerEvent): void {
     started = outside(event);
-  };
-  const up = (event: PointerEvent): void => {
+  }
+  function up(event: PointerEvent): void {
     if (started && outside(event)) {
       close();
     }
     started = false;
-  };
+  }
   // A pointer that the browser takes over, such as a touch that scrolls the page, is no press.
-  const cancel = (): void => {
+  function cancel(): void {
     started = false;
-  };
+  }
   document.addEventListener('pointerdown', down, true);
   document.addEventListener('pointerup', up, true);
   document.addEventListener('pointercancel', cancel, true);
@@ -209,12 +214,12 @@ export function blurOutside(
   trigger: Element | null,
   close: () => void,
 ): () => void {
-  const listener = (event: FocusEvent): void => {
+  function listener(event: FocusEvent): void {
     const target = event.target as Node | null;
     if (target && !layer.contains(target) && !trigger?.contains(target)) {
       close();
     }
-  };
+  }
   document.addEventListener('focusin', listener, true);
   return () => document.removeEventListener('focusin', listener, true);
 }
@@ -234,7 +239,7 @@ export function escapeOutside(
   close: () => void,
 ): () => void {
   escapable.push(layer);
-  const listener = (event: KeyboardEvent): void => {
+  function listener(event: KeyboardEvent): void {
     if (event.key !== 'Escape' || event.defaultPrevented || escapable.at(-1) !== layer) {
       return;
     }
@@ -258,7 +263,7 @@ export function escapeOutside(
       event.preventDefault();
       close();
     }
-  };
+  }
   document.addEventListener('keydown', listener, true);
   return () => {
     document.removeEventListener('keydown', listener, true);
@@ -445,10 +450,10 @@ function release_(overlay: Element, layer: Element | undefined): void {
  */
 export function keepFocus(layer: Element, overlay: HTMLElement): () => void {
   let last: HTMLElement = overlay;
-  const back = (): void => {
+  function back(): void {
     (last.isConnected && !last.closest('[inert]') ? last : overlay).focus({ preventScroll: true });
-  };
-  const focusIn = (event: FocusEvent): void => {
+  }
+  function focusIn(event: FocusEvent): void {
     const target = event.target as HTMLElement;
     if (layer.contains(target)) {
       last = target;
@@ -457,10 +462,10 @@ export function keepFocus(layer: Element, overlay: HTMLElement): () => void {
     } else if (!target.closest?.('[data-toast-region]')) {
       back();
     }
-  };
+  }
   // Focus that leaves for nothing fires no focusin, so the next frame checks where it went.
   let frame = 0;
-  const focusOut = (event: FocusEvent): void => {
+  function focusOut(event: FocusEvent): void {
     if (event.relatedTarget === null) {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
@@ -470,7 +475,7 @@ export function keepFocus(layer: Element, overlay: HTMLElement): () => void {
         }
       });
     }
-  };
+  }
   document.addEventListener('focusin', focusIn);
   layer.addEventListener('focusout', focusOut as EventListener);
   return () => {
@@ -525,12 +530,12 @@ export function lockScroll(): () => void {
 export function followViewport(element: HTMLElement): () => void {
   const viewport = window.visualViewport;
   const { put, stop } = keepStyle(element);
-  const update = (): void => {
+  function update(): void {
     put(
       '--visual-viewport-height',
       `${viewport?.height ?? document.documentElement.clientHeight}px`,
     );
-  };
+  }
   update();
   viewport?.addEventListener('resize', update);
   window.addEventListener('resize', update);

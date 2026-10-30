@@ -8,20 +8,21 @@ export const repoDir = path.dirname(benchDir);
 
 // Every folder in benchmarks/ with an adapter.js is a framework. brumate comes first.
 export function discover() {
-  return readdirSync(benchDir, { withFileTypes: true })
-    .filter(
-      (entry) => entry.isDirectory() && existsSync(path.join(benchDir, entry.name, 'adapter.js')),
-    )
-    .map((entry) => entry.name)
-    .toSorted((a, b) => {
-      if (a === 'brumate') {
-        return -1;
-      }
-      if (b === 'brumate') {
-        return 1;
-      }
-      return a.localeCompare(b);
-    });
+  const names = [];
+  for (const entry of readdirSync(benchDir, { withFileTypes: true })) {
+    if (entry.isDirectory() && existsSync(path.join(benchDir, entry.name, 'adapter.js'))) {
+      names.push(entry.name);
+    }
+  }
+  return names.toSorted((a, b) => {
+    if (a === 'brumate') {
+      return -1;
+    }
+    if (b === 'brumate') {
+      return 1;
+    }
+    return a.localeCompare(b);
+  });
 }
 
 export function appDir(name) {

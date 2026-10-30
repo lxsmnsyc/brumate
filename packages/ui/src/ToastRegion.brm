@@ -71,26 +71,54 @@
   async function sync() {
     listenForF6();
     const next = toastQueue(queue).visibleToasts;
-    const keys = new Set(next.map((item) => item.key));
+    const keys = new Set<string>();
+    for (const item of next) {
+      keys.add(item.key);
+    }
     const old = shown;
-    const added = next.filter((item) => !old.some((previous) => previous.key === item.key));
-    const removed = old.filter((item) => !keys.has(item.key) && !leavingToasts.has(item.key));
+    const added: typeof next = [];
+    for (const item of next) {
+      let known = false;
+      for (const previous of old) {
+        if (previous.key === item.key) {
+          known = true;
+          break;
+        }
+      }
+      if (!known) {
+        added.push(item);
+      }
+    }
+    const removed: typeof old = [];
+    for (const item of old) {
+      if (!keys.has(item.key) && !leavingToasts.has(item.key)) {
+        removed.push(item);
+      }
+    }
     // The toast with focus, when it closes.
     const focused = document.activeElement?.closest<HTMLElement>('[data-toast-key]');
     // Its place among the toasts that stay, which `next` holds, without those that leave.
-    const closing = focused && ref?.contains(focused) && !keys.has(focused.dataset.toastKey!)
-      ? old
-          .filter((item) => keys.has(item.key) || item.key === focused.dataset.toastKey)
-          .findIndex((item) => item.key === focused.dataset.toastKey)
-      : -1;
+    let closing = -1;
+    if (focused && ref?.contains(focused) && !keys.has(focused.dataset.toastKey!)) {
+      let place = 0;
+      for (const item of old) {
+        if (keys.has(item.key) || item.key === focused.dataset.toastKey) {
+          if (item.key === focused.dataset.toastKey) {
+            closing = place;
+            break;
+          }
+          place++;
+        }
+      }
+    }
     if (transition) {
       // A toast that leaves keeps its place until its leave ends.
       const kept = [...next];
-      old.forEach((item, index) => {
+      for (const [index, item] of old.entries()) {
         if (!keys.has(item.key)) {
           kept.splice(Math.min(index, kept.length), 0, item);
         }
-      });
+      }
       shown = kept;
     } else {
       shown = next;
@@ -121,7 +149,13 @@
         await leaveSteps(element, stepClasses(), { current: () => true });
       }
       leavingToasts.delete(item.key);
-      shown = shown.filter((other) => other.key !== item.key);
+      const remaining: typeof shown = [];
+      for (const other of shown) {
+        if (other.key !== item.key) {
+          remaining.push(other);
+        }
+      }
+      shown = remaining;
     }
   }
 
