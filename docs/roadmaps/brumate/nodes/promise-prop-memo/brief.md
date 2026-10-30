@@ -1,7 +1,7 @@
 ---
 id: promise-prop-memo
 title: A promise prop is read through $memo in the child
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

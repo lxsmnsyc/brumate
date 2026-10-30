@@ -1,7 +1,7 @@
 ---
 id: late-state-record
 title: A late state record does not overwrite a memo that loaded again
-status: active
+status: done
 priority: should
 type: fix
 outline: false
