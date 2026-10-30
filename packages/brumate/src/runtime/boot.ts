@@ -274,6 +274,25 @@ export function boot(
    * of its target. `stop` ends the event where it is.
    */
   const onEvent = (event: Event): void => {
+    // The checks of `cancelWhen`, from the target up, run before any handler.
+    for (let node = event.target as Node | null; node; node = node.parentNode) {
+      for (const [type, check] of cancels.get(node as Element) ?? []) {
+        if (type !== event.type) {
+          continue;
+        }
+        let cancel = false;
+        try {
+          cancel = check(event);
+        } catch (error) {
+          // A check that throws cancels nothing, and the other checks and the handlers still run.
+          console.error(error);
+        }
+        if (cancel) {
+          event.preventDefault();
+          return;
+        }
+      }
+    }
     const path: Element[] = [];
     for (
       let node = event.target as Node | null;
@@ -308,15 +327,34 @@ export function boot(
     }
   };
 
+  // The checks of `cancelWhen`, by element. `events.ts` reaches them through a symbol of the registry.
+  const cancels = new WeakMap<Node, Set<[string, (event: Event) => boolean]>>();
+  (globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.cancel')] = (
+    element: Element,
+    type: string,
+    check: (event: Event) => boolean,
+  ): (() => void) => {
+    const entry: [string, typeof check] = [type, check];
+    let set = cancels.get(element);
+    if (!set) {
+      cancels.set(element, (set = new Set()));
+    }
+    set.add(entry);
+    delegate(type, false);
+    return () => void set.delete(entry);
+  };
+
   /** True for an entry that prevents the default action, which a passive listener cannot do. */
   const prevents = (entry: Entry): boolean =>
     entry.modifiers.some((modifier) => modifier.startsWith('prevent'));
 
   /**
    * Listens to an event type on the document. The listener is passive, so
-   * scrolling does not wait for it, until an entry of the type prevents.
+   * scrolling does not wait for it, until an entry of the type prevents. `click` and `submit` never
+   * scroll, so they are never passive: a `prevent` that is written after load cancels them.
    */
-  const delegate = (type: string, prevent: boolean): void => {
+  const delegate = (type: string, cancel: boolean): void => {
+    const prevent = cancel || type === 'click' || type === 'submit';
     const passive = types.get(type);
     if (passive === false || (passive === true && !prevent)) {
       return;

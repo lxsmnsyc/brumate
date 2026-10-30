@@ -1093,8 +1093,8 @@ describe('resume', () => {
     });
     await resume('delegation', {});
     vi.mocked(document.addEventListener).mockRestore();
-    // Only the type with prevent needs a listener that is not passive.
-    expect(flags.get('click')).toEqual({ capture: true, passive: true });
+    // Only the types with prevent, and click and submit, need a listener that is not passive.
+    expect(flags.get('click')).toEqual({ capture: true, passive: false });
     expect(flags.get('focus')).toEqual({ capture: true, passive: true });
     expect(flags.get('wheel')).toEqual({ capture: true, passive: false });
 
@@ -1107,6 +1107,117 @@ describe('resume', () => {
     document.querySelector('.wheel')!.dispatchEvent(wheel);
     expect(wheel.defaultPrevented).toBe(true);
     await waitFor(() => expect(text('.log')).toBe('outer capture, inner, outer focus, wheel'));
+  });
+
+  it('prevents a click or a submit by a modifier written after load', async () => {
+    await resume('cancelEvents', {});
+    const button = document.querySelector('.go')!;
+    const form = document.querySelector('.form')!;
+    // The page is scanned already, and no entry prevented then.
+    for (const [element, type] of [
+      [button, 'click'],
+      [form, 'submit'],
+    ] as const) {
+      element.setAttribute(
+        'b-on',
+        element.getAttribute('b-on')!.replace(`${type}=`, `${type}:prevent=`),
+      );
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      element.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    }
+  });
+
+  it('cancels a click or a submit inside an element with cancelWhen, before its handler runs', async () => {
+    await resume('cancelEvents', {});
+    const { cancelWhen } = await import('../src/runtime/events.ts');
+    const form = document.querySelector('.form') as HTMLFormElement;
+    const button = document.querySelector('.go')!;
+    let cancel = true;
+    // A type that scrolls cannot be cancelled.
+    // @ts-expect-error scroll is not a cancelable type
+    const never = () => cancelWhen(form, 'scroll', () => true);
+    expect(never).toBeTypeOf('function');
+    const remove = cancelWhen(form, 'submit', () => cancel);
+    const removeClick = cancelWhen(form, 'click', () => cancel);
+    // A listener that the page adds still runs, and reads that the event is cancelled.
+    const seen: boolean[] = [];
+    const read = (event: Event) => seen.push(event.defaultPrevented);
+    window.addEventListener('click', read);
+    const cancelled = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(cancelled);
+    // A click on a child of the element is cancelled.
+    const clicked = new Event('click', { bubbles: true, cancelable: true });
+    button.dispatchEvent(clicked);
+    await pause();
+    window.removeEventListener('click', read);
+    expect(cancelled.defaultPrevented).toBe(true);
+    expect(clicked.defaultPrevented).toBe(true);
+    expect(seen).toEqual([true]);
+    expect(text('.log')).toBe('');
+    // Without a true, the handlers run.
+    cancel = false;
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => expect(text('.log')).toBe('submit'));
+    // The cleanup removes the check.
+    cancel = true;
+    remove();
+    removeClick();
+    const free = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(free);
+    expect(free.defaultPrevented).toBe(false);
+    await waitFor(() => expect(text('.log')).toBe('submit, submit'));
+  });
+
+  it('runs every check on the path, survives a check that throws, and sees changes during dispatch', async () => {
+    await resume('cancelEvents', {});
+    const { cancelWhen } = await import('../src/runtime/events.ts');
+    const form = document.querySelector('.form') as HTMLFormElement;
+    const button = document.querySelector('.go')!;
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // An element of SVG inside the form, and a nested element inside the button.
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const inner = document.createElement('span');
+    button.append(icon, inner);
+    const calls: string[] = [];
+    const removeInner = cancelWhen(button, 'click', () => {
+      calls.push('inner');
+      return false;
+    });
+    // A check that throws does not stop the checks around it.
+    const removeThrow = cancelWhen(button, 'click', () => {
+      calls.push('throws');
+      throw new Error('check');
+    });
+    const removeOuter = cancelWhen(form, 'click', () => {
+      calls.push('outer');
+      removeLate();
+      return true;
+    });
+    const removeLate = cancelWhen(form, 'click', () => {
+      calls.push('late');
+      return false;
+    });
+    const clicked = new Event('click', { bubbles: true, cancelable: true });
+    icon.dispatchEvent(clicked);
+    expect(clicked.defaultPrevented).toBe(true);
+    expect(calls).toEqual(['inner', 'throws', 'outer']);
+    expect(error).toHaveBeenCalledTimes(1);
+    // A nested element of a submit form is cancelled by a check on the form.
+    const removeSubmit = cancelWhen(form, 'submit', () => true);
+    const submitted = new Event('submit', { bubbles: true, cancelable: true });
+    inner.dispatchEvent(submitted);
+    expect(submitted.defaultPrevented).toBe(true);
+    // A check that throws alone cancels nothing, and the handler runs.
+    removeOuter();
+    removeSubmit();
+    const free = new Event('click', { bubbles: true, cancelable: true });
+    inner.dispatchEvent(free);
+    expect(free.defaultPrevented).toBe(false);
+    await waitFor(() => expect(text('.log')).toBe('click'));
+    removeInner();
+    removeThrow();
+    error.mockRestore();
   });
 
   it('prevents only the keys that :prevent names, before the handler loads', async () => {

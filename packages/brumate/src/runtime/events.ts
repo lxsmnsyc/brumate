@@ -170,3 +170,30 @@ export function transition<H extends Handler>(handler: H, ...types: string[]): H
 export function capture<H extends Handler>(handler: H): H {
   return tagged(handler, 'capture');
 }
+
+/** A symbol of the registry, under which the loader registers `cancelWhen`. */
+const CANCEL = Symbol.for('brumate.cancel');
+
+/** The events that `cancelWhen` can cancel. Scroll-type events cannot be, for their listeners are passive. */
+export type CancelableEvent = 'click' | 'submit';
+
+/**
+ * Cancels an event of the element, or of an element inside it, before any handler of brumate
+ * runs, while `check` returns true. The document listener of brumate calls `preventDefault()` and
+ * runs no brumate handler for the event. It does not stop the event, so listeners that were added
+ * with `addEventListener` still run, and they can read `event.defaultPrevented`.
+ *
+ * Returns a function that removes the check.
+ *
+ * ```ts
+ * const stop = cancelWhen(form, 'submit', () => form.hasAttribute('data-pending'));
+ * ```
+ */
+export function cancelWhen<T extends CancelableEvent>(
+  element: Element,
+  type: T,
+  check: (event: HTMLElementEventMap[T]) => boolean,
+): () => void {
+  const register = (globalThis as { [CANCEL]?: typeof cancelWhen })[CANCEL];
+  return register ? register(element, type, check) : () => {};
+}

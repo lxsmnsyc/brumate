@@ -183,6 +183,23 @@ Handlers run as if each element had its own listener. Those wrapped by `capture`
 
 A modifier after the event name, as in `onSubmit:prevent=send`, does the same, with a warning that points to the wrapper. It goes in a later version. A modifier on a component is a compile error: the component puts the wrapper on the element that it renders, such as a listbox that prevents the keys it handles.
 
+### Cancel an event from a part
+
+`cancelWhen(element, type, check)` from `brumate/events` cancels a `click` or a `submit` of the element, or of an element inside it, while `check(event)` returns true. It returns a function that removes the check. Other types, such as `scroll` or `wheel`, are a type error, for their listeners are passive.
+
+```ts
+import { cancelWhen } from 'brumate/events';
+
+// In a `$client` callback: no submit of the form while it is pending.
+const stop = cancelWhen(form, 'submit', () => form.hasAttribute('data-pending'));
+```
+
+- The document listener of brumate walks from the target up and runs the checks of the type before any handler. When one returns true, it calls `event.preventDefault()` and runs no brumate handler for the event.
+- It does not stop the event. Listeners that were added with `addEventListener` still run, and they can read `event.defaultPrevented`.
+- A listener that a part adds on the form cannot do this: the document listener runs first, in the capture phase. `cancelWhen` is the hook for a part that must cancel before the delegated handlers.
+- An element inside a shadow root is not reached, for the listener sees the host as the target.
+- The checks exist after the code of the part has loaded.
+
 ### Animating a change
 
 `transition(handler)` from `brumate/events` runs the handler inside a [view transition](https://developer.mozilla.org/docs/Web/API/View_Transition_API). The browser animates from the page before the handler to the page after it, including elements that `#if` or `#for` removes and items that change order. CSS styles the animation.

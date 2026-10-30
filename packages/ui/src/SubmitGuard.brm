@@ -1,5 +1,6 @@
 <script>
   import type { Bindable } from 'brumate/signals';
+  import { cancelWhen } from 'brumate/events';
   import { $client, $props } from 'brumate/signals';
 
   let { ref } = $props<{ ref?: Bindable<Element | undefined> }>();
@@ -11,10 +12,10 @@
   // pending one is blocked. When the button is not pending, the listener does nothing, and the
   // other submit listeners of the page run.
   //
-  // The listener is on the window, in the capture phase, so it runs before the listeners that
-  // brumate adds on the document and before those on the form. It runs on load, so it exists
-  // before a press can make the button pending. It reads data-pending, because a signal read in
-  // a $client callback is the value of the load.
+  // `cancelWhen` makes the document listener of brumate cancel the submit before any handler, so a
+  // delegated `onSubmit` does not run either. The check is added on load, so it exists before a
+  // press can make the button pending. It reads data-pending, because a signal read in a $client
+  // callback is the value of the load.
   $client(() => {
     const button = ref as HTMLButtonElement | undefined;
     const form = button?.form;
@@ -30,17 +31,12 @@
       }
       return false;
     };
-    const onSubmit = (event: SubmitEvent) => {
-      if (
+    return cancelWhen(form, 'submit', (event) => {
+      const { submitter } = event;
+      return (
         button.hasAttribute('data-pending') &&
-        event.target === form &&
-        (event.submitter === button || (!event.submitter && isDefault()))
-      ) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
-    };
-    window.addEventListener('submit', onSubmit, true);
-    return () => window.removeEventListener('submit', onSubmit, true);
+        (submitter === button || (!submitter && isDefault()))
+      );
+    });
   }, 'load');
 </script>

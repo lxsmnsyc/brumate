@@ -75,6 +75,14 @@ A handler runs after the event has finished dispatching, so the browser has acte
 <ul onKeyDown=(prevent(move, 'NotAKey'))></ul>
 ```
 
+## Cancel from a part
+
+`cancelWhen(element, 'click' | 'submit', check)` from `brumate/events` cancels the event of the element or of an element inside it while `check(event)` returns true, before any brumate handler runs. It returns a function that removes the check. It calls `preventDefault()` and does not stop the event, so plain `addEventListener` listeners still run and can read `event.defaultPrevented`. An element inside a shadow root is not reached.
+
+```ts
+const stop = cancelWhen(form, 'submit', () => form.hasAttribute('data-pending'));
+```
+
 ## Handlers that a script makes
 
 A function in a script is a handler only when markup uses it, so a spread leaves it out. `$handler(fn, ...args)` marks one. The arguments are JSON values, and the handler runs as `fn(...args, event)`. A value of the function around the call must be an argument.

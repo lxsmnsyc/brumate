@@ -22,22 +22,33 @@ async function buttons() {
 }
 
 /**
- * Counts the submit listeners that the page adds on the window, which are those of the pending
- * guards of submit Buttons. Call it before `mount`, and call `ready` for the count to wait for.
+ * Counts the checks that submit Buttons add with `cancelWhen`, and those removed. Call it before
+ * `mount`, and call `ready` for the count to wait for.
  */
 function watchGuards() {
-  const add = window.addEventListener.bind(window);
-  let added = 0;
-  window.addEventListener = ((type: string, ...rest: unknown[]) => {
-    if (type === 'submit') {
-      added++;
-    }
-    return (add as Function)(type, ...rest);
-  }) as typeof window.addEventListener;
+  const key = Symbol.for('brumate.cancel');
+  const target = globalThis as { [key: symbol]: unknown };
+  const counts = { added: 0, removed: 0 };
+  let current: unknown;
+  Object.defineProperty(target, key, {
+    configurable: true,
+    get: () => current,
+    set(register: (...args: unknown[]) => () => void) {
+      current = (...args: unknown[]) => {
+        counts.added++;
+        const remove = register(...args);
+        return () => {
+          counts.removed++;
+          remove();
+        };
+      };
+    },
+  });
   return {
-    ready: (count: number) => vi.waitFor(() => expect(added).toBeGreaterThanOrEqual(count)),
+    counts,
+    ready: (count: number) => vi.waitFor(() => expect(counts.added).toBeGreaterThanOrEqual(count)),
     stop: () => {
-      window.addEventListener = add;
+      delete target[key];
     },
   };
 }
@@ -428,38 +439,19 @@ it('sends a form with two submit buttons by the button that is not pending', asy
 });
 
 it('leaves the submit listeners of the page alone while not pending, and removes its own', async () => {
-  const added: unknown[] = [];
-  const removed: unknown[] = [];
-  const add = window.addEventListener.bind(window);
-  const remove = window.removeEventListener.bind(window);
-  window.addEventListener = ((type: string, listener: unknown, ...rest: unknown[]) => {
-    if (type === 'submit') {
-      added.push(listener);
-    }
-    return (add as Function)(type, listener, ...rest);
-  }) as typeof window.addEventListener;
-  window.removeEventListener = ((type: string, listener: unknown, ...rest: unknown[]) => {
-    if (type === 'submit') {
-      removed.push(listener);
-    }
-    return (remove as Function)(type, listener, ...rest);
-  }) as typeof window.removeEventListener;
-  try {
-    const page = await mount(PendingSubmit, {});
-    await vi.waitFor(() => expect(added.length).toBe(3));
-    let others = 0;
-    const count = () => others++;
-    add('submit', count);
-    page.get('.save').click();
-    await page.waitFor(() => expect(page.text('.sent')).toBe('1'));
-    // The button is not pending, so the listener of the page ran.
-    expect(others).toBe(1);
-    expect(added.length).toBeGreaterThan(0);
-    page.unmount();
-    remove('submit', count);
-    await page.waitFor(() => expect(removed).toEqual(expect.arrayContaining(added)));
-  } finally {
-    window.addEventListener = add;
-    window.removeEventListener = remove;
-  }
+  const guards = watchGuards();
+  const page = await mount(PendingSubmit, {});
+  await guards.ready(3);
+  let others = 0;
+  const count = () => others++;
+  document.addEventListener('submit', count);
+  page.get('.save').click();
+  await page.waitFor(() => expect(page.text('.sent')).toBe('1'));
+  // The button is not pending, so the listener of the page ran.
+  expect(others).toBe(1);
+  expect(guards.counts.removed).toBe(0);
+  page.unmount();
+  document.removeEventListener('submit', count);
+  await page.waitFor(() => expect(guards.counts.removed).toBe(guards.counts.added));
+  guards.stop();
 });
