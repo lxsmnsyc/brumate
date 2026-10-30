@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { CompileError, compile } from './compile.ts';
@@ -7,8 +7,10 @@ import type { Diagnostic } from './model.ts';
 import { findError } from './error-catalog.ts';
 import { BrumateError, getLocation } from './error.ts';
 import { collectSources } from './files.ts';
+import { resolveFromDisk } from './modules.ts';
+import { findPackages, resolvePackageImport, splitSpecifier } from './packages.ts';
 import { analyzeProjectProps } from './project.ts';
-import { findServerImport } from './server-files.ts';
+import { findServerImport, hasUseServer, isScriptFile } from './server-files.ts';
 
 /** A place in a file. Lines and columns start at 1. */
 export interface CheckPosition {
@@ -80,19 +82,46 @@ function fromDiagnostic(source: string, file: string, diagnostic: Diagnostic): C
   };
 }
 
+/** Resolves a specifier the way the vite plugin does: next to the importer, or from a package of components. */
+function packageResolver(
+  root: string,
+): (specifier: string, importer: string) => string | undefined {
+  const packages = findPackages(root);
+  return (specifier, importer) => {
+    const name = splitSpecifier(specifier)?.name;
+    return name !== undefined && packages.some((item) => item.name === name)
+      ? resolvePackageImport(specifier, importer)
+      : undefined;
+  };
+}
+
 /** Compiles one file and gives its errors and warnings. */
 function checkFile(
   source: string,
   file: string,
   absolute: string,
   liveProps: Set<string> | undefined,
+  resolvePackage: (specifier: string, importer: string) => string | undefined,
 ): CheckRecord[] {
   try {
     const result = compile(source, {
       filename: file,
       path: absolute,
       liveProps,
-      serverImport: (specifier) => findServerImport(absolute, specifier),
+      serverImport: (specifier) => {
+        if (specifier.startsWith('.')) {
+          return findServerImport(absolute, specifier);
+        }
+        const found = resolvePackage(specifier, absolute);
+        return found && isScriptFile(found) && hasUseServer(readFileSync(found, 'utf8'))
+          ? found
+          : undefined;
+      },
+      resolveModule: (specifier, importer) => {
+        const local = resolveFromDisk(specifier, importer);
+        const found = local === undefined ? resolvePackage(specifier, importer) : undefined;
+        return found ? { path: found, source: readFileSync(found, 'utf8') } : local;
+      },
     });
     const records: CheckRecord[] = [];
     for (const warning of result.warnings) {
@@ -261,6 +290,7 @@ export async function check(root: string, options: CheckOptions = {}): Promise<C
     : await collectSources(root, paths);
   const props = analyzeProjectProps(sources);
 
+  const resolvePackage = packageResolver(root);
   for (const file of targets) {
     const parents = props.get(file);
     records.push(
@@ -269,6 +299,7 @@ export async function check(root: string, options: CheckOptions = {}): Promise<C
         toPosix(path.relative(root, file)),
         file,
         parents && new Set(parents.keys()),
+        resolvePackage,
       ),
     );
   }

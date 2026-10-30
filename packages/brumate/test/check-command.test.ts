@@ -369,3 +369,46 @@ describe('server imports', () => {
     expect(codes).toContain('BRM182');
   });
 });
+
+describe('package imports', () => {
+  const MODULE = `import { $signal } from 'brumate/signals';\n\nexport function counter(start: number) {\n  let count = $signal(start);\n  return { count };\n}\n`;
+  const USER = (specifier: string): string =>
+    `<script>\n  import { counter } from '${specifier}';\n  const { count } = counter(1);\n</script>\n<p>{count}</p>\n`;
+  const PACKAGE = {
+    'package.json': '{"name":"app","dependencies":{"@acme/ui":"1.0.0"}}',
+    'node_modules/@acme/ui/package.json':
+      '{"name":"@acme/ui","version":"1.0.0","brumate":true,"exports":{"./counter.brm.ts":"./counter.brm.ts"}}',
+    'node_modules/@acme/ui/counter.brm.ts': MODULE,
+  };
+
+  async function codes(sources: Record<string, string>): Promise<(string | null)[]> {
+    const { records } = await check(project(sources), { types: false });
+    const result: (string | null)[] = [];
+    for (const record of records) {
+      result.push(record.message.startsWith('Cannot read') ? 'BRM167' : record.code);
+    }
+    return result;
+  }
+
+  it('reads a module of reactive logic from a package of components', async () => {
+    expect(await codes({ ...PACKAGE, 'A.brm': USER('@acme/ui/counter.brm.ts') })).toEqual([]);
+  });
+
+  it('still reports a module that no package has', async () => {
+    expect(await codes({ ...PACKAGE, 'A.brm': USER('@acme/ui/missing.brm.ts') })).toEqual([
+      'BRM167',
+    ]);
+  });
+
+  it('finds a use server file of a package', async () => {
+    const found = await codes({
+      ...PACKAGE,
+      'node_modules/@acme/ui/package.json':
+        '{"name":"@acme/ui","version":"1.0.0","brumate":true,"exports":{"./issues.ts":"./issues.ts"}}',
+      'node_modules/@acme/ui/issues.ts':
+        "'use server';\nexport async function listIssues() {\n  return [];\n}\n",
+      'src/Issues.brm': `<script>\n  import { $memo } from 'brumate/signals';\n  import { listIssues } from '@acme/ui/issues.ts';\n  const issues = $memo(listIssues());\n  function count() {\n    console.log(issues.length);\n  }\n</script>\n<button onClick=count>Count</button>\n`,
+    });
+    expect(found).toContain('BRM182');
+  });
+});
