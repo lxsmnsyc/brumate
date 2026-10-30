@@ -178,6 +178,11 @@ it('ties the description and the error of a standalone Checkbox and Switch to th
 // The name of the input by the rules of a native label: the text of the label without the
 // input and the aria-hidden elements. The description joins the text of the elements it names.
 function accessibleName(box: HTMLInputElement): string {
+  const named = box.getAttribute('aria-labelledby');
+  const target = named ? document.getElementById(named) : null;
+  if (target) {
+    return (target.textContent ?? '').trim();
+  }
   const read = (node: Node): string => {
     if (node === box) {
       return '';
@@ -207,6 +212,7 @@ it('keeps the description and the error out of the name of a standalone Checkbox
   for (const [selector, name, description] of cases) {
     const box = input(page, selector);
     await page.waitFor(() => expect(accessibleDescription(box)).toBe(description));
+    await page.waitFor(() => expect(box.hasAttribute('aria-labelledby')).toBe(false));
     expect(accessibleName(box)).toBe(name);
   }
   (page.get('.flag') as HTMLElement).click();
@@ -214,5 +220,42 @@ it('keeps the description and the error out of the name of a standalone Checkbox
     const box = input(page, selector);
     await page.waitFor(() => expect(accessibleDescription(box)).toBe(both));
     expect(accessibleName(box)).toBe(name);
+  }
+});
+
+it('names a standalone Checkbox and Switch by their Label, and leaves the slots visible', async () => {
+  const page = await boxes();
+  const cases = [
+    ['.named', 'Agree', '.named-text', '.named-error', 'Needed.', 'Needed. Please agree.'],
+    [
+      '.named-switch',
+      'Notify',
+      '.named-switch-text',
+      '.named-switch-error',
+      'Mails.',
+      'Mails. Cannot be off.',
+    ],
+  ];
+  const check = async (
+    box: HTMLInputElement,
+    name: string,
+    text: string,
+    error: string,
+    want: string,
+  ) => {
+    await page.waitFor(() => expect(accessibleDescription(box)).toBe(want));
+    expect(accessibleName(box)).toBe(name);
+    expect(box.getAttribute('aria-labelledby')).toBe(
+      page.get(`${name === 'Agree' ? '.named-label' : '.named-switch-label'}`).id,
+    );
+    expect(page.get(text).hasAttribute('aria-hidden')).toBe(false);
+    expect(document.querySelector(error)?.hasAttribute('aria-hidden') ?? false).toBe(false);
+  };
+  for (const [selector, name, text, error, before] of cases) {
+    await check(input(page, selector), name, text, error, before);
+  }
+  (page.get('.flag') as HTMLElement).click();
+  for (const [selector, name, text, error, , after] of cases) {
+    await check(input(page, selector), name, text, error, after);
   }
 });

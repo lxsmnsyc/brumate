@@ -51,6 +51,16 @@
     <Text slot="description" class="switch-text">Mails.</Text>
     <FieldError class="switch-error">Cannot be off.</FieldError>
   </Switch>
+  <Checkbox class="named" isInvalid=bad>
+    <Label as="span" class="named-label">Agree</Label>
+    <Text slot="description" class="named-text">Needed.</Text>
+    <FieldError class="named-error">Please agree.</FieldError>
+  </Checkbox>
+  <Switch class="named-switch" isInvalid=bad>
+    <Label as="span" class="named-switch-label">Notify</Label>
+    <Text slot="description" class="named-switch-text">Mails.</Text>
+    <FieldError class="named-switch-error">Cannot be off.</FieldError>
+  </Switch>
   <button type="button" class="flag" onClick=(() => (bad = true))>Flag</button>
 </form>
 <p class="values">{String(terms)}|{toppings.join(',')}|{size ?? 'none'}|{String(dark)}</p>

@@ -5,6 +5,7 @@
   import Checkbox from '@brumate/ui/Checkbox.brm';
   import FieldError from '@brumate/ui/FieldError.brm';
   import Form from '@brumate/ui/Form.brm';
+  import Label from '@brumate/ui/Label.brm';
   import Icon from '../../src/components/Icon.brm';
   import Text from '@brumate/ui/Text.brm';
 
@@ -30,7 +31,7 @@
   </Checkbox>
   <Checkbox class="ui-box" isSelected=$bind(accepted) isInvalid=blocked>
     <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /></span>
-    I accept the terms
+    <Label as="span">I accept the terms</Label>
     <Text slot="description" class="ui-help">Required.</Text>
     <FieldError class="ui-error">Accept the terms to continue.</FieldError>
   </Checkbox>

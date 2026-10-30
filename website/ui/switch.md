@@ -52,7 +52,7 @@ The label shows the state:
 - A reset of the form gives back the state that the switch started with, as a write: with `$bind(signal, request)`, your request can refuse it.
 - The server renders the state it starts with. See [State](./state.md).
 
-A `Text` with `slot="description"` in the children is named in the `aria-describedby` of the input. `isInvalid` marks the switch with `aria-invalid` and `data-invalid`, and a `FieldError` in the children shows then and is named too. They sit inside the label, so the part marks them `aria-hidden`: the name of the input stays the label text, and the description is read once, from `aria-describedby`.
+To add a description or an error, wrap the label text in a `Label` with `as="span"`, and put a `Text` with `slot="description"` and a `FieldError` next to it, in the children. The input is named by the Label alone, and `aria-describedby` names the description, and the error while the switch is invalid. `isInvalid` marks the switch with `aria-invalid` and `data-invalid`. Without a Label, the description and the error sit in the text of the label, so the part marks them `aria-hidden` to keep them out of the name.
 
 ## Styling
 

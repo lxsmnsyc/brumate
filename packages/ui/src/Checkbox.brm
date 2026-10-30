@@ -31,7 +31,7 @@
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { CheckboxGroupContext, FieldErrorContext, TextContext } from './contexts.ts';
+  import { CheckboxGroupContext, FieldErrorContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, isFirstInvalid, onFormReset } from './fields.ts';
 
@@ -84,19 +84,25 @@
   const describing = $memo(
     group ? describedBy(group.describedBy) : describedBy(hasDescription && descriptionId, invalid && errorId),
   );
+  const labelId = $id();
+  const { present: hasLabel } = described(labelId);
+  const groupLabel = $getContext(LabelContext);
   const groupText = $getContext(TextContext);
   const groupError = $getContext(FieldErrorContext);
-  // The slots sit inside the label, so aria-hidden keeps them out of the name of the input. The
-  // input still names them in aria-describedby, which reads hidden elements.
+  // A Label in the children (`as="span"`) names the input, so the description and the error stay
+  // out of its name. Without one, they sit in the text of the label, and aria-hidden keeps them
+  // out of the name. The input still names them in aria-describedby, which reads hidden elements.
+  const hidden = $memo(hasLabel ? undefined : 'true');
+  $setContext(LabelContext, group ? groupLabel : { id: labelId });
   $setContext(
     TextContext,
-    group ? groupText : { slots: { description: { id: descriptionId, 'aria-hidden': 'true' } } },
+    group ? groupText : { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } },
   );
   $setContext(
     FieldErrorContext,
     group
       ? groupError
-      : { id: errorId, isInvalid: invalid, errors, attributes: { 'aria-hidden': 'true' } },
+      : { id: errorId, isInvalid: invalid, errors, attributes: { 'aria-hidden': hidden } },
   );
 
   const {
@@ -210,6 +216,7 @@
       aria-readonly=(readOnly ? 'true' : undefined)
       aria-invalid=(invalid ? 'true' : undefined)
       aria-describedby=describing
+      aria-labelledby=(group || !hasLabel ? undefined : labelId)
       onChange=change
       onClick=(prevent(keep))
       onInvalid=(prevent(invalidated))
@@ -227,6 +234,7 @@
       aria-readonly=(readOnly ? 'true' : undefined)
       aria-invalid=(invalid ? 'true' : undefined)
       aria-describedby=describing
+      aria-labelledby=(group || !hasLabel ? undefined : labelId)
       onChange=change
       onInvalid=(prevent(invalidated))
     />

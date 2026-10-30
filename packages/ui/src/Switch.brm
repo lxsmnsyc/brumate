@@ -27,7 +27,7 @@
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { FieldErrorContext, TextContext } from './contexts.ts';
+  import { FieldErrorContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, onFormReset } from './fields.ts';
 
@@ -63,16 +63,19 @@
   const { present: hasDescription } = described(descriptionId);
   const errorId = $id();
   const describing = $memo(describedBy(hasDescription && descriptionId, isInvalid && errorId));
-  // The slots sit inside the label, so aria-hidden keeps them out of the name of the input. The
-  // input still names them in aria-describedby, which reads hidden elements.
-  $setContext(TextContext, {
-    slots: { description: { id: descriptionId, 'aria-hidden': 'true' } },
-  });
+  // A Label in the children (`as="span"`) names the input, so the description and the error stay
+  // out of its name. Without one, they sit in the text of the label, and aria-hidden keeps them
+  // out of the name. The input still names them in aria-describedby, which reads hidden elements.
+  const labelId = $id();
+  const { present: hasLabel } = described(labelId);
+  const hidden = $memo(hasLabel ? undefined : 'true');
+  $setContext(LabelContext, { id: labelId });
+  $setContext(TextContext, { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } });
   $setContext(FieldErrorContext, {
     id: errorId,
     isInvalid,
     errors: [],
-    attributes: { 'aria-hidden': 'true' },
+    attributes: { 'aria-hidden': hidden },
   });
 
   const {
@@ -160,6 +163,7 @@
       aria-readonly=(isReadOnly ? 'true' : undefined)
       aria-invalid=(isInvalid ? 'true' : undefined)
       aria-describedby=describing
+      aria-labelledby=(hasLabel ? labelId : undefined)
       onChange=change
       onClick=(prevent(keep))
     />
@@ -176,6 +180,7 @@
       aria-readonly=(isReadOnly ? 'true' : undefined)
       aria-invalid=(isInvalid ? 'true' : undefined)
       aria-describedby=describing
+      aria-labelledby=(hasLabel ? labelId : undefined)
       onChange=change
     />
   }
