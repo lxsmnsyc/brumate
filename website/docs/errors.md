@@ -257,6 +257,20 @@ An event of more than one word is written in camel case. The lower-case form is 
 <input onKeyDown=(handle) onFocusOut=(handle) />
 ```
 
+## BRM181
+
+`#loading does not take a header yet. Write #loading { … }, since the header would be dropped`
+
+A `#loading` block has a header in parentheses. The compiler reads no meaning from it.
+
+```brm
+#loading (data) {
+  <p>{data.name}</p>
+} #else {
+  <p>Loading</p>
+}
+```
+
 ## BRM023
 
 `Modifiers apply to elements. Put ":{modifier}" on the element that the component renders`

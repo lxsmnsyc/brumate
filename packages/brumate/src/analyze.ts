@@ -1437,6 +1437,11 @@ class Analyzer {
         break;
       case 'loading':
         if (block.on) {
+          this.report(
+            'error',
+            '#loading does not take a header yet. Write #loading { … }, since the header would be dropped',
+            block.on,
+          );
           this.header(block, scope, block.on, 'loading');
         }
         this.visitBody(block.body, scope, block);

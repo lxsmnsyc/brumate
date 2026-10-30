@@ -411,3 +411,18 @@ describe('ref', () => {
     ).toThrow('ref takes a $signal, or a prop that the component destructures with let');
   });
 });
+
+describe('#loading header', () => {
+  const page = (header: string) =>
+    `<script>\nimport { $signal } from 'brumate/signals';\nlet data = $signal(1);\n</script>\n\n#loading${header} {\n  <p>{data}</p>\n} #else {\n  <p>Loading</p>\n}`;
+
+  it('fails to compile with a header', () => {
+    expect(() => compile(page(' (data)'), { filename: 'Test.brm' })).toThrow(
+      '#loading does not take a header yet',
+    );
+  });
+
+  it('compiles without a header', () => {
+    expect(() => compile(page(''), { filename: 'Test.brm' })).not.toThrow();
+  });
+});
