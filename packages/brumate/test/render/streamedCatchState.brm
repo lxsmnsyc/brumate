@@ -1,0 +1,22 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+
+  const { wait } = $props<{ wait: Promise<string> }>();
+  const data = $memo(wait);
+</script>
+
+#try {
+  #loading {
+    <p class="data">{data}</p>
+  } #else {
+    <p class="fallback">Loading</p>
+  }
+} #catch (error) {
+  <script>
+    import { $signal } from 'brumate/signals';
+    let n = $signal(0);
+  </script>
+  <p class="caught">{String(error)}</p>
+  <button class="bump" onClick=(() => n++)>Bump</button>
+  <p class="n">{n}</p>
+}

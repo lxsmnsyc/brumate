@@ -74,8 +74,15 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   }
   $$ctx.leave();
   $$ctx.enter();
+  $$html += "<!--b" + $$s1 + ":5-->";
   const $$before10 = $$html;
   const $$mark12 = $$ctx.mark();
+  const $$end13 = $$ctx.catcher($$s1 + ":5", async ($$ctx, $$raised14) => {
+    let $$html = '';
+    const error = $$b.caught($$raised14, $$ctx);
+    $$html += "<p>" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
+    return $$html;
+  });
   try {
     $$html += await $$b.component(Broken, {  }, $$ctx, $$s1);
   } catch ($$error11) {
@@ -83,17 +90,20 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
     $$ctx.restore($$mark12);
     const error = $$b.caught($$error11, $$ctx);
     $$html += "<p>" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
+  } finally {
+    $$end13();
   }
+  $$html += "<!--/b-->";
   $$ctx.leave();
-  $$html += "<template b-b=\"" + $$s1 + ":5\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
+  $$html += "<template b-b=\"" + $$s1 + ":6\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":6--><!--/b-->";
   {
     const $$s12 = $$ctx.scope(12, $$s1);
-    const $$children13 = $$b.children($$s12, async ($$ctx) => {
+    const $$children15 = $$b.children($$s12, async ($$ctx) => {
       let $$html = '';
       $$html += "Dynamic";
       return $$html;
     }, "Blocks_jlmev2#n0");
-    $$html += (typeof ($$t = $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": $$b.internal(`${$$s12}:0`), "b-on": $$b.internal("click=Blocks_jlmev2#h20@" + $$s12) }, $$children13, $$ctx, $$s12)) === 'string' ? $$t : await $$t);
+    $$html += (typeof ($$t = $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": $$b.internal(`${$$s12}:0`), "b-on": $$b.internal("click=Blocks_jlmev2#h20@" + $$s12) }, $$children15, $$ctx, $$s12)) === 'string' ? $$t : await $$t);
   }
   $$html += "<p>&lt;escaped&gt;   " + (typeof ($$t = $$b.insert(([1, 2]), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   $$ctx.slots($$s1, [tab, list, input], ["tab","list","input"]);
@@ -187,13 +197,24 @@ export function r6($$p) {
   const $$e = $$b.clone($$k5), $$f = $$e[0];
   return $$f;
 }
+export function r9($$p) {
+  let $$html = '';
+  $$html += $$b.component(Broken, {  }, undefined, $$p);
+  return $$html;
+}
+export function r10($$p, $$error) {
+  let $$html = '';
+  const error = $$error;
+  $$html += "<p>" + $$b.insert((String(error))) + "</p>";
+  return $$html;
+}
 export function r11($$p) {
   let $$html = '';
   $$html += "<p>Client only</p>";
   return $$html;
 }
 export function k11($$s) {
-  $$b.fill($$s, 5, r11);
+  $$b.fill($$s, 6, r11);
 }
 const $$k6 = $$b.template("Dynamic", 0);
 export function n0($$p) {
@@ -276,7 +297,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     $$b.putText($$e[0], (row(n)));
     return $$f;
   };
-  $$html += $$b.nodes($$b.listNodes(undefined, undefined, Array.from({ length: ( 2) }, (_, index) => index), $$body11, undefined));
+  $$html += $$b.nodes($$b.listNodes(undefined, undefined, Array.from({ length: ( 2) }, (_, index) => index), $$body11, undefined)) + "<!--b" + $$s1 + ":5-->";
   const $$before12 = $$html;
   try {
     $$html += $$b.component(Broken, {  }, undefined, $$s1);
@@ -285,7 +306,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     const error = $$error13;
     $$html += "<p>" + $$b.insert((String(error))) + "</p>";
   }
-  $$html += "<template b-b=\"" + $$s1 + ":5\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":5--><!--/b-->";
+  $$html += "<!--/b--><template b-b=\"" + $$s1 + ":6\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":6--><!--/b-->";
   {
     const $$s12 = $$b.createScope(12, $$s1);
     const $$children14 = $$b.children($$s12, () => {
@@ -324,10 +345,12 @@ Blocks.brumateId = "Blocks_jlmev2";
 <span>y</span>
 <b>0</b>
 <b>10</b>
-<p>Error: The page could not render this part</p>
-<template b-b="0:5" b-client="idle=Blocks_jlmev2#k11">
-</template>
 <!--b0:5-->
+<p>Error: The page could not render this part</p>
+<!--/b-->
+<template b-b="0:6" b-client="idle=Blocks_jlmev2#k11">
+</template>
+<!--b0:6-->
 <!--/b-->
 <section style="font-size:12px" b-b="1:0" b-on="click=Blocks_jlmev2#h20@1">Dynamic</section>
 <p>&lt;escaped&gt;   12</p>

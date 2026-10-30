@@ -76,6 +76,18 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 - When the values that the body reads are ready as the block renders, such as a value the page waited for with [`await`](#await), the body renders in place: no fallback, no swap. A body that renders a component, a dynamic tag, a template or a prop always streams, because those can wait on their own.
 - On the client, a `#loading` body keeps its content while a new value loads. Use `$isPending` to show that it is loading again.
 
+### When a value fails
+
+A memo that fails inside a `#loading` body renders the nearest [`#catch`](./control-flow.md#try-and-catch), as it does when the page waits for the value. The `#try` can be in the body, around the block, or in a parent component. When the body fails after the page is sent, the server renders the `#catch` body and streams it in place of the `#try` body. In development the `#catch` gets the real error. In production it gets a generic one, and the server logs the real one. A `#try` that holds a `#loading` block or a component has markers in the page for this.
+
+Without a `#try` around the block, the fallback stays, the server logs the error, and the page gets a `brumate:error` event on `window`.
+
+### When the stream ends early
+
+The browser can lose the connection before a `#loading` body arrives. After a client navigation, the page notices when the stream ends with a fallback still in place. The fallback stays, and the page gets a `brumate:error` event on `window` for each lost body, with the message `The page stopped loading before this part arrived`. No `#catch` renders, because the server is not asked again. A `#defer` block is not affected, since it waits for its trigger.
+
+When the browser loads the page itself, it gives the page no event for a connection that dropped: Chromium leaves the document loading and fires neither `DOMContentLoaded` nor `load`. The fallbacks stay, and the browser shows that the page did not finish. A reload gets the whole page.
+
 ### Reveal order
 
 `#loading` bodies show as their data arrives, in any order, so a page with several of them can jump around while it streams. `#reveal` shows them in an order:
@@ -380,6 +392,7 @@ A `#loading` body streams in a `<template>` that a script swaps in. A reader tha
 
 - `inOrder` in the options of `handle`, `render` or `renderToStream` decides. `'bots'`, the default, does it for requests whose `User-Agent` is a known crawler or link preview. `true` does it for every request, `false` for none, and a function of the request decides for each.
 - A `#defer` body renders with the page, since a crawler does not fire its trigger.
+- A body that fails renders the nearest `#catch` in place of the `#try` body, as a page that does not stream does.
 - A `#client` body has no server markup, so a crawler sees its `#else` body.
 
 ## `#defer`

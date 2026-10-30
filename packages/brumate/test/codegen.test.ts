@@ -593,8 +593,9 @@ describe('await', () => {
     expect(server).toContain('$$ctx.enter($$boundary0);');
     expect(server).toContain('const tags = $$b.read($$p_tags);');
     expect(server).toContain('$$ctx.defer($$boundary0, async ($$ctx) => {');
+    // The body holds the error of a memo until the markup reads it, for a `#try` inside it.
     expect(server).toContain(
-      'const tags = (($$t = $$b.ready($$p_tags)) instanceof Promise ? await $$t : $$t);',
+      'let tags;\n      try { tags = (($$t = $$b.ready($$p_tags)) instanceof Promise ? await $$t : $$t); } catch {}',
     );
   });
 
@@ -604,12 +605,12 @@ describe('await', () => {
       { filename: 'T.brm' },
     );
     // The page does not wait: the outer body does, before it reaches the inner block.
-    expect(server.indexOf('const user = (($$t = $$b.ready($$p_user))')).toBeGreaterThan(
+    expect(server.indexOf('try { user = (($$t = $$b.ready($$p_user))')).toBeGreaterThan(
       server.indexOf('$$ctx.defer($$boundary0'),
     );
     expect(server).toContain('if ($$b.settled([$$p_tags, $$p_user]) && $$ctx.mayShow()) {');
     expect(server).toMatch(
-      /defer\(\$\$boundary0, async \(\$\$ctx\) => \{\n\s+let \$\$html = '';\n\s+const tags = .*\n\s+const user = /,
+      /defer\(\$\$boundary0, async \(\$\$ctx\) => \{\n\s+let \$\$html = '';\n\s+let tags;\n\s+try \{ tags = .*\n\s+let user;\n\s+try \{ user = /,
     );
     // The inner body waits for nothing of its own, so it always renders in place.
     expect(server).toContain('$$ctx.enter();');

@@ -1,0 +1,14 @@
+<script>
+  import { $props } from 'brumate/signals';
+  import StreamedCatchChild from './StreamedCatchChild.brm';
+
+  const { wait } = $props<{ wait: Promise<string> }>();
+</script>
+
+<p class="before">before</p>
+#try {
+  <StreamedCatchChild {wait} />
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}
+<p class="after">after</p>

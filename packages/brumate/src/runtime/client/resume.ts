@@ -28,6 +28,7 @@ import {
 } from './blocks.ts';
 import { loadComponent, pageComponents } from './code.ts';
 import { leaveGuesses, settled } from './guesses.ts';
+import { failBoundary, replaceTry } from './errors.ts';
 import { callable, handle, isBox, resetHandler } from './handlers.ts';
 import { refresh } from './insert.ts';
 import { removeScope, resetIds, treeChanged } from './scopes.ts';
@@ -100,6 +101,18 @@ function readRecord([script, code]: StateRecord): void {
     refs.set(root, []);
   }
   const decoded = code(refs.get(root)!, stateValues);
+  // The `#catch` body of a `#try` around a `#loading` body that failed on the server.
+  const catches = script.getAttribute('b-catch');
+  if (catches !== null) {
+    replaceTry(catches);
+    return;
+  }
+  // The error of a `#loading` body that failed on the server, with no `#try` around it.
+  const failed = script.getAttribute('b-fail');
+  if (failed !== null) {
+    failBoundary(decoded);
+    return;
+  }
   // Records with scopes: the page state, and the state of each `#loading` body.
   if (script.hasAttribute('b-scopes')) {
     const unpacked = unpackState(decoded as PackedState);

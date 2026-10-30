@@ -1674,6 +1674,126 @@ describe('resume', () => {
     });
   });
 
+  describe('an error inside a streamed #loading body', () => {
+    /** Shows a page with a memo that rejects after the page, and streams the rest. */
+    async function streamed(name: string, dev: boolean): Promise<{ events: unknown[] }> {
+      const server = await import(file(`${name}.brm.ts`));
+      let reject!: (error: unknown) => void;
+      const wait = new Promise<string>((_, fail) => (reject = fail));
+      wait.catch(() => {});
+      const page = await renderParts(server.default, { wait }, { dev });
+      show(page.html + page.state);
+      await startLoader();
+      const events: unknown[] = [];
+      window.addEventListener('brumate:error', (event) => {
+        events.push((event as CustomEvent<{ error: unknown }>).detail.error);
+      });
+      expect(text('.fallback')).toBe('Loading');
+      reject(new Error('The service is down'));
+      for await (const chunk of page.pending) {
+        appendChunk(chunk);
+      }
+      return { events };
+    }
+
+    const messages = [
+      [true, 'Error: The service is down'],
+      [false, 'Error: The page could not render this part'],
+    ] as const;
+
+    it.each(messages)('renders the #catch inside the body (dev %s)', async (dev, message) => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await streamed('streamedCatchInside', dev);
+      await waitFor(() => expect(text('.caught')).toBe(message));
+      expect(document.querySelector('.fallback')).toBeNull();
+      expect(document.querySelector('.data')).toBeNull();
+      // Production logs the real error once, and the browser never sees it.
+      expect(log).toHaveBeenCalledTimes(dev ? 0 : 1);
+      expect(document.body.innerHTML.includes('The service is down')).toBe(dev);
+      log.mockRestore();
+    });
+
+    it.each(messages)('renders the #catch around the boundary (dev %s)', async (dev, message) => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await streamed('streamedCatchAround', dev);
+      await waitFor(() => expect(text('.caught')).toBe(message));
+      expect(document.querySelector('.fallback')).toBeNull();
+      expect(text('.before')).toBe('before');
+      expect(document.body.innerHTML.includes('The service is down')).toBe(dev);
+      log.mockRestore();
+    });
+
+    it.each(messages)(
+      'renders the #catch of a parent #try around a child (dev %s)',
+      async (dev, message) => {
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        await streamed('streamedCatchParent', dev);
+        await waitFor(() => expect(text('.caught')).toBe(message));
+        expect(document.querySelector('.fallback')).toBeNull();
+        expect(text('.before')).toBe('before');
+        expect(text('.after')).toBe('after');
+        log.mockRestore();
+      },
+    );
+
+    it.each(['streamedCatchInside', 'streamedCatchAround', 'streamedCatchParent'])(
+      'renders the #catch in place for a reader without scripts: %s',
+      async (name) => {
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const server = await import(file(`${name}.brm.ts`));
+        const wait = Promise.reject(new Error('The service is down'));
+        wait.catch(() => {});
+        const page = await renderParts(server.default, { wait }, { inOrder: true });
+        expect(page.html).toMatch(
+          /class="caught"[^>]*>Error: The page could not render this part</,
+        );
+        expect(page.html).not.toContain('class="fallback"');
+        expect(page.html).toContain('<p class="before">before</p>');
+        expect(page.html.includes('<!--l')).toBe(false);
+        log.mockRestore();
+      },
+    );
+
+    it('resumes a #catch body that has state, after the swap', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await streamed('streamedCatchState', true);
+      await waitFor(() => expect(text('.caught')).toBe('Error: The service is down'));
+      expect(document.querySelector('template[b-c]')).toBeNull();
+      click(document.querySelector('.bump')!);
+      await waitFor(() => expect(text('.n')).toBe('1'));
+      log.mockRestore();
+    });
+
+    it('renders one #catch when two bodies of a #try fail', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await streamed('streamedCatchTwo', true);
+      await waitFor(() => expect(text('.caught')).toBe('Error: The service is down'));
+      expect(document.querySelectorAll('.caught')).toHaveLength(1);
+      expect(document.querySelector('.fallback')).toBeNull();
+      expect(document.querySelector('template[b-c]')).toBeNull();
+      log.mockRestore();
+    });
+
+    it('renders the #catch of the inner #try when #try blocks are nested', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await streamed('streamedCatchNested', true);
+      await waitFor(() => expect(text('.inner')).toBe('Inner Error: The service is down'));
+      expect(document.querySelector('.outer')).toBeNull();
+      expect(document.querySelector('.fallback')).toBeNull();
+      log.mockRestore();
+    });
+
+    it('reports the error to the page when no #try is around', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { events } = await streamed('streamedCatchNo', true);
+      await waitFor(() => expect(events).toHaveLength(1));
+      expect(String(events[0])).toBe('Error: The service is down');
+      // The fallback stays, as there is nothing to show instead.
+      expect(text('.fallback')).toBe('Loading');
+      log.mockRestore();
+    });
+  });
+
   it('renders a #try body again with reset', async () => {
     await resume('retry', {}, {}, undefined, { dev: true });
     expect(text('.error')).toBe('Error: Not ready');

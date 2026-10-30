@@ -7,7 +7,7 @@ import type { Plan } from '../plan.ts';
 import { minifyCSS } from '../css.ts';
 import { Emitter, TYPE_DECLARATIONS } from './markup.ts';
 import { Patch, addEventEdits, addValueEdits } from './patch.ts';
-import { blockingMemos, lazyMemos, plainValues } from './scopes.ts';
+import { blockingMemos, bodyMemos, lazyMemos, plainValues } from './scopes.ts';
 
 export function propsType(file: SFCFile): string {
   for (const statement of file.instanceScript?.program.body ?? []) {
@@ -57,15 +57,11 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   const patch = new Patch(file.source);
   const blocking = blockingMemos(plan);
   const inline = plainValues(plan, blocking);
-  addValueEdits(
-    patch,
-    file,
-    model.sites,
-    'server',
-    inline,
-    lazyMemos(blocking, inline),
-    model.component.id,
-  );
+  const lazy = lazyMemos(blocking, inline);
+  for (const declaration of bodyMemos(plan, blocking, inline)) {
+    lazy.add(declaration);
+  }
+  addValueEdits(patch, file, model.sites, 'server', inline, lazy, model.component.id);
   addEventEdits(patch, model);
   const source = (node: { start: number; end: number }): string =>
     patch.slice(node.start, node.end);

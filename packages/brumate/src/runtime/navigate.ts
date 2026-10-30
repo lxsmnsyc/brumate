@@ -842,8 +842,15 @@ export async function navigate(visit: Visit): Promise<void> {
       sink.write(rest);
       append([...sink.body.childNodes].slice(0, -1), shift);
     }
-    // oxlint-disable-next-line no-await-in-loop -- Chunks arrive in order.
-    const chunk = await read();
+    let chunk: ReadableStreamReadResult<string> | undefined;
+    try {
+      // oxlint-disable-next-line no-await-in-loop -- Chunks arrive in order.
+      chunk = await read();
+    } catch (error) {
+      // The connection failed, so the bodies that are still missing will not come.
+      failPending();
+      throw error;
+    }
     if (!chunk) {
       return;
     }
@@ -854,4 +861,28 @@ export async function navigate(visit: Visit): Promise<void> {
   }
   sink.close();
   append([...sink.body.childNodes], shift);
+  failPending();
+}
+
+/**
+ * Called when the stream of a page ends. A `#loading` boundary that still shows its fallback
+ * lost its body, such as when the connection dropped. The page gets a `brumate:error` event for
+ * each, and the fallback stays.
+ */
+function failPending(): void {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_COMMENT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const id = /^l([\d.]+)$/.exec((node as Comment).data)?.[1];
+    // The body of a `#defer` block waits for its trigger. A body that failed on the server was
+    // reported by its `b-fail` record.
+    if (
+      id !== undefined &&
+      !(node.previousSibling as Element | null)?.hasAttribute?.('b-defer') &&
+      !document.querySelector(`script[b-fail="${id}"]`)
+    ) {
+      const error = new Error('The page stopped loading before this part arrived');
+      window.dispatchEvent(new CustomEvent('brumate:error', { detail: { error } }));
+      console.error(error);
+    }
+  }
 }

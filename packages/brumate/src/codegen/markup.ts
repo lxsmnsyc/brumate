@@ -17,7 +17,7 @@ import type {
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
-import { serverFunctionId } from '../plan.ts';
+import { holdsStream, serverFunctionId } from '../plan.ts';
 import { cloneLines } from './template.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
@@ -615,7 +615,8 @@ export class Emitter {
 
   /**
    * Waits for a memo that the markup reads, and keeps its error for the read: the markup reads
-   * the memo in place, so the `#try` around the read gets the error.
+   * the memo in place, so the `#try` around the read gets the error. A `#loading` or `#defer`
+   * body waits for the memos that only it reads the same way.
    */
   private awaitHeld(declaration: Declaration): void {
     this.line(`let ${declaration.name};`);
@@ -1893,7 +1894,7 @@ export class Emitter {
     this.line(`$$ctx.defer(${boundary}, async ($$ctx) => {`);
     this.line(`let $$html = '';`);
     for (const declaration of memos) {
-      this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
+      this.awaitHeld(declaration);
     }
     this.emitBody(block.body);
     this.flush();
@@ -1902,6 +1903,36 @@ export class Emitter {
     if (inPlace) {
       this.close();
     }
+  }
+
+  /**
+   * Registers the `#catch` body of a `#try` on the server, and returns the name of the function
+   * that ends the registration. The body renders again here for an error that comes after the
+   * page is sent, in a context of its own.
+   */
+  private emitCatcher(block: Block & { kind: 'try' }, scope: Scope): string | undefined {
+    // A `#try` that holds no `#loading` body and no component has nothing to catch later.
+    const anchor = holdsStream(block) ? this.anchor(scope, block) : undefined;
+    if (!anchor) {
+      return undefined;
+    }
+    const end = this.unique('end');
+    const raised = this.unique('raised');
+    this.line(
+      `const ${end} = $$ctx.catcher(${anchor.scope} + ${JSON.stringify(`:${anchor.index}`)}, async ($$ctx, ${raised}) => {`,
+    );
+    this.line(`let $$html = '';`);
+    if (block.error) {
+      this.line(`const ${block.error.name} = $$b.caught(${raised}, $$ctx);`);
+    }
+    if (block.reset) {
+      this.line(`const ${block.reset.name} = undefined;`);
+    }
+    this.emitBody(block.fallback);
+    this.flush();
+    this.line('return $$html;');
+    this.close('});');
+    return end;
   }
 
   /**
@@ -1938,7 +1969,7 @@ export class Emitter {
       if (this.inline.has(declaration)) {
         continue;
       }
-      this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
+      this.awaitHeld(declaration);
     }
     this.emitBody(block.body);
     this.flush();
@@ -2186,6 +2217,8 @@ export class Emitter {
         if (mark) {
           this.line(`const ${mark} = $$ctx.mark();`);
         }
+        // A `#loading` body inside that fails after the page is sent renders the `#catch` body then.
+        const end = server ? this.emitCatcher(block, scope) : undefined;
         this.line('try {');
         this.emitBody(block.body);
         this.close(`} catch (${error}) {`);
@@ -2205,6 +2238,10 @@ export class Emitter {
           this.line(`const ${block.reset.name} = undefined;`);
         }
         this.emitBody(block.fallback);
+        if (end) {
+          this.close('} finally {');
+          this.line(`${end}();`);
+        }
         this.close();
         this.end(block);
         return;

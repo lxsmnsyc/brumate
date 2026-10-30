@@ -213,6 +213,106 @@ describe('navigate', () => {
     expect(script?.ownerDocument).toBe(document);
   });
 
+  it('fires brumate:error for a #loading boundary whose body never arrives', async () => {
+    document.head.innerHTML = '';
+    document.body.innerHTML = '<p>old page</p>';
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errors: unknown[] = [];
+    const listen = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', listen);
+    // A boundary that loses its body, and a #defer block, which waits for its trigger.
+    const { response, next } = respond([
+      '<!doctype html><html><head></head><body><!--l0--><p>Loading</p><!--/l-->' +
+        '<template b-b="0:0" b-defer="visible:1:0"></template><!--l1--><p>Later</p><!--/l--></body></html>',
+    ]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response),
+    );
+    const done = navigate({ url: '/next', push: true, leave: async () => {}, enter: () => {} });
+    next();
+    await tick();
+    // The stream ends before the body arrives.
+    next();
+    await done;
+    window.removeEventListener('brumate:error', listen);
+    log.mockRestore();
+    expect(errors.map(String)).toEqual([
+      'Error: The page stopped loading before this part arrived',
+    ]);
+    // The fallback stays.
+    expect(document.body.textContent).toContain('Loading');
+  });
+
+  it('reports a body that failed once, and not again when the stream ends', async () => {
+    document.head.innerHTML = '';
+    document.body.innerHTML = '<p>old page</p>';
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errors: unknown[] = [];
+    const listen = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', listen);
+    const { response, next } = respond([
+      '<!doctype html><html><head></head><body><!--l0--><p>Loading</p><!--/l--></body></html>',
+      '<script b-state b-fail="0">$bR(($R,$b)=>($R[0]=new Error("Nope")))</script>',
+    ]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response),
+    );
+    const done = navigate({ url: '/next', push: true, leave: async () => {}, enter: () => {} });
+    next();
+    await tick();
+    next();
+    next();
+    await done;
+    window.removeEventListener('brumate:error', listen);
+    log.mockRestore();
+    // The record fires the event in the core, which does not run in this test.
+    expect(errors).toEqual([]);
+  });
+
+  it('fires brumate:error for the missing bodies when the connection fails', async () => {
+    document.head.innerHTML = '';
+    document.body.innerHTML = '<p>old page</p>';
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errors: unknown[] = [];
+    const listen = (event: Event): void => {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', listen);
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({
+      start(value) {
+        controller = value;
+      },
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () => new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } }),
+      ),
+    );
+    const done = navigate({ url: '/next', push: true, leave: async () => {}, enter: () => {} });
+    const settled = done.catch((error: unknown) => error);
+    controller.enqueue(
+      new TextEncoder().encode(
+        '<!doctype html><html><head></head><body><!--l0--><p>Loading</p><!--/l--></body></html>',
+      ),
+    );
+    await tick();
+    controller.error(new Error('network down'));
+    expect(String(await settled)).toBe('Error: network down');
+    window.removeEventListener('brumate:error', listen);
+    log.mockRestore();
+    expect(errors.map(String)).toEqual([
+      'Error: The page stopped loading before this part arrived',
+    ]);
+  });
+
   it('gives the swap scripts of a later page the nonce of the loaded page', async () => {
     vi.resetModules();
     const fresh = await import('../src/runtime/navigate.ts');
