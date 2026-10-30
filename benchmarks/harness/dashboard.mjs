@@ -540,6 +540,9 @@ ${layout(list, (w) => `<${w.component} />`, '')}
   qwik2: qwik('@qwik.dev/core'),
 };
 
+// benchmarks/brumate-0.3 builds the same widgets with brumate 0.3.0.
+WRITERS['brumate-0.3'] = WRITERS.brumate;
+
 /** Writes the generated components of a framework into `<framework>/dashboard/src/<dir>`. */
 export async function write(framework) {
   const writer = WRITERS[framework];

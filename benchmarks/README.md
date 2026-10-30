@@ -1,6 +1,6 @@
 # Benchmarks
 
-This folder compares brumate with Qwik 1, Qwik 2 and Marko 6. Each framework builds the same three pages, and one script builds, serves and measures all of them.
+This folder compares brumate with Qwik 1, Qwik 2, Marko 6 and brumate 0.3.0. Each framework builds the same three pages, and one script builds, serves and measures all of them.
 
 ```bash
 pnpm install
@@ -11,9 +11,56 @@ The command prints a markdown table for each scenario and writes `results/<times
 
 ## Results
 
-A run of `pnpm bench` on `main` at `38cecc9`, on 2026-10-22. The machine was an Apple M2 with 8 GB and Node 26.4.0. It was busy at the start (load average 4.15 on 8 cores), so the timings may be noisy. Sizes are raw / gzip -9. The renders per second are the median of 5 rounds. The run predates the rows scenario, so it has no rows table.
+A run of `pnpm bench --only brumate,brumate-0.3,marko` on `main` at `3bba0c09` (the 0.4.0 cut), on 2026-10-30. The machine was an Apple M2 with 8 GB, Node 26.12.1 and Chrome 156. It was busy (load average 3.09 at the start, 2.79 at the end, near 4 for the 5 minutes before), so read timings that differ by less than about 10% as equal. Sizes are raw / gzip -9. Renders per second are the median of 5 rounds, the rows timings the median of 10 runs. The report is in [`docs/roadmaps/brumate/nodes/perf-pass-0.4/outcome.md`](../docs/roadmaps/brumate/nodes/perf-pass-0.4/outcome.md), with the profiles and the options.
+
+`brumate` is the local package. `brumate 0.3.0` is `brumate-0.3/`, installed from npm. brumate 0.3.0 loads code lazily and 0.4.0 loads the code of the page at start, so compare the "total after" rows as well as "before `load`".
 
 ### Todos
+
+| Metric                                             |           brumate |     brumate 0.3.0 |         Marko 6 |
+| -------------------------------------------------- | ----------------: | ----------------: | --------------: |
+| JS before `load`                                   | 36.5 kB / 15.2 kB | 26.4 kB / 11.2 kB | 9.1 kB / 4.4 kB |
+| Total JS after counter, toggle and add             | 36.5 kB / 15.2 kB | 28.2 kB / 12.3 kB | 9.1 kB / 4.4 kB |
+| SSR HTML, 3 todos                                  |    1.5 kB / 712 B |    1.4 kB / 674 B |  1.2 kB / 693 B |
+| SSR renders/s, 3 todos                             |           123,473 |           122,223 |         142,812 |
+| SSR renders/s, 100 todos                           |            12,166 |            12,365 |           8,794 |
+| First counter click right after `load`, 150 ms RTT |            117 ms |            199 ms |          100 ms |
+
+### Dashboard
+
+| Metric                                     |            brumate |     brumate 0.3.0 |           Marko 6 |
+| ------------------------------------------ | -----------------: | ----------------: | ----------------: |
+| JS before `load`                           | 115.0 kB / 25.0 kB | 30.1 kB / 11.9 kB | 66.7 kB / 10.5 kB |
+| Total JS after 3 widgets                   | 115.0 kB / 25.0 kB | 48.7 kB / 21.5 kB | 66.7 kB / 10.5 kB |
+| SSR HTML                                   |   33.5 kB / 6.0 kB |  33.5 kB / 6.0 kB |  27.5 kB / 5.4 kB |
+| SSR renders/s                              |              4,271 |             4,105 |             5,295 |
+| First click right after `load`, 150 ms RTT |             456 ms |            229 ms |            106 ms |
+
+### Rows
+
+Main thread from click to paint, in ms.
+
+| Metric                          | brumate | brumate 0.3.0 | Marko 6 |
+| ------------------------------- | ------: | ------------: | ------: |
+| Create 1,000 rows               |    34.6 |          40.3 |    35.3 |
+| Replace 1,000 rows              |    31.2 |          37.0 |    30.5 |
+| Update every 10th of 1,000 rows |    15.1 |          16.2 |    14.2 |
+| Select a row of 1,000           |     2.0 |           2.1 |     1.7 |
+| Swap 2 of 1,000 rows            |    10.9 |           9.9 |    10.9 |
+| Remove a row of 1,000           |     9.5 |          10.6 |     7.2 |
+| Create 10,000 rows              |   233.9 |         255.6 |   239.5 |
+| Append 1,000 rows to 1,000      |    41.5 |          44.9 |    40.6 |
+| Clear 1,000 rows                |     4.9 |           6.0 |     3.6 |
+| First update from a server page |    32.4 |          36.8 |    26.0 |
+| SSR renders/s, 1,000 rows       |   1,100 |         1,232 |     803 |
+
+A run writes the full tables to `results/`.
+
+### Earlier run, with Qwik
+
+A run of `pnpm bench` on `main` at `38cecc9`, on 2026-10-22. The machine was an Apple M2 with 8 GB and Node 26.4.0. It was busy at the start (load average 4.15 on 8 cores), so the timings may be noisy. Sizes are raw / gzip -9. The renders per second are the median of 5 rounds. The run predates the rows scenario, so it has no rows table.
+
+#### Todos
 
 | Metric                                             |          brumate |         Marko 6 |            Qwik 1 |            Qwik 2 |
 | -------------------------------------------------- | ---------------: | --------------: | ----------------: | ----------------: |
@@ -24,7 +71,7 @@ A run of `pnpm bench` on `main` at `38cecc9`, on 2026-10-22. The machine was an 
 | SSR renders/s, 100 todos                           |           10,334 |           8,195 |             2,394 |             2,333 |
 | First counter click right after `load`, 150 ms RTT |           243 ms |           55 ms |            247 ms |            496 ms |
 
-### Dashboard
+#### Dashboard
 
 | Metric                                     |           brumate |           Marko 6 |             Qwik 1 |              Qwik 2 |
 | ------------------------------------------ | ----------------: | ----------------: | -----------------: | ------------------: |
@@ -84,15 +131,18 @@ Every app renders the page of js-framework-benchmark, without its stylesheet:
 
 ### Folders
 
-| Folder     | Framework                                      |
-| ---------- | ---------------------------------------------- |
-| `brumate/` | The local `packages/brumate` (`workspace:*`)   |
-| `qwik1/`   | `@builder.io/qwik` 1.20.2 with Vite 7.3.7      |
-| `qwik2/`   | `@qwik.dev/core` 2.0.0-rc.3 with Vite 8.3.4    |
-| `marko/`   | `marko` 6.4.6 and `@marko/vite` 6.1.13, Vite 8 |
-| `harness/` | The scripts, with `playwright-core` 1.64.1     |
+| Folder         | Framework                                                          |
+| -------------- | ------------------------------------------------------------------ |
+| `brumate/`     | The local `packages/brumate` (`workspace:*`)                       |
+| `brumate-0.3/` | `brumate` 0.3.0 from npm, the same pages as `brumate/` (see below) |
+| `qwik1/`       | `@builder.io/qwik` 1.20.2 with Vite 7.3.7                          |
+| `qwik2/`       | `@qwik.dev/core` 2.0.0-rc.3 with Vite 8.3.4                        |
+| `marko/`       | `marko` 6.4.6 and `@marko/vite` 6.1.13, Vite 8                     |
+| `harness/`     | The scripts, with `playwright-core` 1.64.1                         |
 
 The brumate app uses the workspace package, so a run measures the current code. `pnpm bench` builds `packages/brumate` first.
+
+`brumate-0.3/` is a copy of `brumate/` that installs `brumate@0.3.0`, to show what a release added. Its pages are the same. Only the adapter differs (0.3.0 writes `hints.json` as a list of URLs), and `harness/dashboard.mjs` writes the same widgets for it. Keep its sources in step with `brumate/` when the pages change, and leave its version alone.
 
 ## What it measures
 

@@ -189,6 +189,16 @@ importers:
         specifier: 8.3.4
         version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
 
+  benchmarks/brumate-0.3:
+    dependencies:
+      brumate:
+        specifier: 0.3.0
+        version: 0.3.0(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1))
+    devDependencies:
+      vite:
+        specifier: 8.3.4
+        version: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
+
   benchmarks/harness:
     devDependencies:
       playwright-core:
@@ -2839,6 +2849,22 @@ packages:
   braces@3.0.3:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
     engines: {node: '>=8'}
+
+  brumate@0.3.0:
+    resolution: {integrity: sha512-wsv/cv/472fhzCl9rRTa62KcgTes5H9xdssMKp6SJjHA6lGYtfwBMNmfImhNTIuMr3OqAPJDnKQJjvUPoLdoXw==}
+    engines: {node: '>=22'}
+    hasBin: true
+    peerDependencies:
+      less: '>=4'
+      sass: '>=1.70'
+      vite: ^8.0.0
+    peerDependenciesMeta:
+      less:
+        optional: true
+      sass:
+        optional: true
+      vite:
+        optional: true
 
   buffer-crc32@0.2.13:
     resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==}
@@ -6188,6 +6214,22 @@ snapshots:
   braces@3.0.3:
     dependencies:
       fill-range: 7.1.1
+
+  brumate@0.3.0(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)):
+    dependencies:
+      '@twinkleplop/core': 0.3.1
+      '@twinkleplop/css': 0.1.7
+      '@twinkleplop/theme-github': 0.2.4
+      '@twinkleplop/tsx': 0.1.7
+      oxc-parser: 0.154.0
+      postcss: 8.5.31
+      postcss-selector-parser: 7.1.6
+      seroval: 1.7.0
+      seroval-plugins: 1.7.0(seroval@1.7.0)
+    optionalDependencies:
+      less: 4.9.1(supports-color@7.2.0)
+      sass: 1.105.2
+      vite: 8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(less@4.9.1(supports-color@7.2.0))(sass@1.105.2)(yaml@2.9.1)
 
   buffer-crc32@0.2.13: {}
 

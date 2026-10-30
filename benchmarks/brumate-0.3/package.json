@@ -1,0 +1,16 @@
+{
+  "name": "bench-brumate-0.3",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build --outDir dist/client && vite build --ssr src/server.ts --outDir dist/server",
+    "build:dashboard": "node ../harness/dashboard.mjs brumate-0.3 && vite build dashboard --outDir dist/client && vite build dashboard --ssr src/server.ts --outDir dist/server",
+    "build:rows": "vite build rows --outDir dist/client && vite build rows --ssr src/server.ts --outDir dist/server"
+  },
+  "dependencies": {
+    "brumate": "0.3.0"
+  },
+  "devDependencies": {
+    "vite": "8.3.4"
+  }
+}
