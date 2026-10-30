@@ -21,6 +21,21 @@ shared: []
 reserves: []
 provides: []
 depends_on:
+  - on: html-attributes-navigation
+    kind: hard
+    why: its changeset is part of the release
+  - on: promise-prop-memo
+    kind: hard
+    why: its changeset is part of the release
+  - on: memo-prop-browser-child
+    kind: hard
+    why: its changeset is part of the release
+  - on: parser-closed-nesting
+    kind: hard
+    why: its changeset is part of the release
+  - on: color-area-page-keys
+    kind: hard
+    why: its changeset is part of the release
   - on: loading-header-error
     kind: hard
     why: the review runs after every node of the 0.4.0 cut
