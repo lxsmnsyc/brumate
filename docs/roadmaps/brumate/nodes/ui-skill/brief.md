@@ -1,7 +1,7 @@
 ---
 id: ui-skill
 title: A skill for @brumate/ui, shipped in its package
-status: active
+status: done
 priority: should
 type: feature
 outline: false
