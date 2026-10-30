@@ -1,7 +1,7 @@
 ---
 id: client-arrived-cleanups
 title: $client cleanups run when a page that arrived by client navigation is left
-status: active
+status: dropped
 priority: should
 type: fix
 outline: false
@@ -27,6 +27,10 @@ depends_on: []
 ---
 
 # $client cleanups run when a page that arrived by client navigation is left
+
+## Dropped (2026-10-30)
+
+Not a core bug. The repro was a race in the check: `page.goBack()` changes the pathname at once, and on a partial route replace the old route's cleanups run when the new page's state record is read (routeRecord, dropScopes, removeScope in client-routes.ts), about 1.5 s later in a probe. A check that waits for the new page sees no layer. PR #359 keeps a regression test for cleanups of a page that arrived by client navigation; overlay-navigation-cleanup (#355) uses the Back path with a wait.
 
 ## Goal
 
