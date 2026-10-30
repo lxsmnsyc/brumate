@@ -271,20 +271,44 @@ https://brumate-docs.vercel.app/docs/errors#brm181
 }
 ```
 
-## BRM182: The handler reads "{name}", a memo that can lack a value. Check $isPending({name}) first, or declare it with await $memo(…)
+## BRM182: The handler reads "{name}", a memo that can lack a value. Wait for it with await $resolve({name}), or check $isPending({name}) first
 
-A handler, a handler prop or a `$client` callback reads an async memo that may still be loading, with no `$isPending` check before the read.
+A handler, a handler prop or a `$client` callback reads an async memo that may still be loading, with no `$isPending` check or `await $resolve` before the read.
 
 https://brumate-docs.vercel.app/docs/errors#brm182
 
 ```brm fragment
 <script>
   const user = $memo(getUser(id));
-  function save() {
-    if ($isPending(user)) return;
+  async function save() {
+    await $resolve(user);
     send(user.name);
   }
 </script>
+```
+
+## BRM183: $resolve needs a $memo and, as an option, a timeout or a signal
+
+`$resolve` takes the name of a memo, and one object of options at most.
+
+https://brumate-docs.vercel.app/docs/errors#brm183
+
+```brm fragment
+async function save() {
+  const profile = await $resolve(user, { timeout: 5000 });
+}
+```
+
+## BRM184: $resolve cannot run where a memo computes or markup renders. Call it in a handler, an effect or a $client callback
+
+`$resolve` waits, so it is called where an event starts the code, not where a memo computes or markup renders.
+
+https://brumate-docs.vercel.app/docs/errors#brm184
+
+```brm fragment
+async function save() {
+  await $resolve(user);
+}
 ```
 
 ## BRM023: Modifiers apply to elements. Put ":{modifier}" on the element that the component renders

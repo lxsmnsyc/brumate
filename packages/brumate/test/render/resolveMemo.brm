@@ -1,0 +1,67 @@
+<script>
+  import { $memo, $resolve, $signal } from 'brumate/signals';
+
+  async function slow(query: string, ms: number) {
+    'use server';
+    await new Promise((done) => setTimeout(done, ms));
+    if (query === 'bad') {
+      throw new Error('Bad query');
+    }
+    return query.toUpperCase();
+  }
+
+  let query = $signal('a');
+  let wait = $signal(40);
+  const result = $memo(slow(query, wait));
+
+  function note(name: string, value: unknown): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, value]);
+  }
+
+  async function ask() {
+    note('ask', await $resolve(result));
+  }
+
+  async function writeAndAsk() {
+    query = 'b';
+    note('writeAndAsk', await $resolve(result));
+  }
+
+  async function guarded() {
+    try {
+      note('guarded', await $resolve(result));
+    } catch (error) {
+      note('guarded error', (error as Error).message);
+    }
+  }
+
+  async function timeout() {
+    try {
+      await $resolve(result, { timeout: 5 });
+    } catch (error) {
+      note('timeout', (error as Error).message);
+    }
+  }
+
+  async function abort() {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new Error('Stopped')), 5);
+    try {
+      await $resolve(result, { signal: controller.signal });
+    } catch (error) {
+      note('abort', (error as Error).message);
+    }
+  }
+</script>
+
+<p class="result">{result}</p>
+<button class="a" onClick=(() => (query = 'a'))>A</button>
+<button class="b" onClick=(() => (query = 'b'))>B</button>
+<button class="c" onClick=(() => (query = 'c'))>C</button>
+<button class="bad" onClick=(() => (query = 'bad'))>Bad</button>
+<button class="slow" onClick=(() => (wait = 300))>Slow</button>
+<button class="ask" onClick=ask>Ask</button>
+<button class="write" onClick=writeAndAsk>Write</button>
+<button class="guarded" onClick=guarded>Guarded</button>
+<button class="timeout" onClick=timeout>Timeout</button>
+<button class="abort" onClick=abort>Abort</button>

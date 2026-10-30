@@ -29,10 +29,12 @@ import {
   loads,
   memoControllers,
   modules,
+  exempt,
   loadingValues,
   renderedLoads,
   scopes,
   timers,
+  updating,
 } from './state.ts';
 import type { Scope } from './state.ts';
 
@@ -49,16 +51,15 @@ export function get(scope: Scope, slot: number): any {
     if (computing > 0) {
       throw new NotReady(value);
     }
-    // A value that the page knows is still loading, such as one that the server streams.
     if (loadingValues.has(value)) {
       // An effect skips the run, and runs again when the value arrives.
       if (runningEffects > 0) {
         throw new NotReady(value);
       }
-      // A handler or a `$client` callback has no value to read.
-      if (handling > 0) {
+      // Code that updates the page reads the promise. Anything else has no value to read.
+      if (exempt === 0) {
         throw new Error(
-          'A handler read a memo that has no value yet. Check $isPending(memo) first, or declare the memo with await $memo(…)',
+          'This value is still loading. Wait for it with await $resolve(memo), or check $isPending(memo) first',
         );
       }
     }
@@ -347,17 +348,63 @@ let computing = 0;
 // More than 0 while an effect runs, so reading a value that is still loading skips the run.
 let runningEffects = 0;
 
-// More than 0 while a handler or a `$client` callback runs.
-let handling = 0;
+// What waits in `resolve`, checked when a slot changes.
+const waiters: Set<() => void> = new Set();
 
-/** Runs a handler, which throws when it reads a memo that has no value yet. */
-export function handler<T>(run: () => T): T {
-  handling++;
-  try {
-    return run();
-  } finally {
-    handling--;
-  }
+/**
+ * `$resolve(memo, { timeout, signal })`: resolves with the value of the memo once it is no longer
+ * pending, also after a load that its inputs started. `isLoading` tells whether the memo or a
+ * memo that it reads loads, and `read` gives the value or throws the error of the memo.
+ */
+export function resolve(
+  isLoading: () => boolean,
+  read: () => unknown,
+  options?: { timeout?: number; signal?: AbortSignal },
+): Promise<unknown> {
+  return new Promise((done, fail) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const end = (finish: () => void): void => {
+      clearTimeout(timer);
+      waiters.delete(check);
+      options?.signal?.removeEventListener('abort', abort);
+      finish();
+    };
+    const abort = (): void => end(() => fail(options!.signal!.reason));
+    const check = (): void => {
+      // Writes that wait for the code of an update can start a load of the memo.
+      if (loadingUpdates.size > 0) {
+        void Promise.allSettled(loadingUpdates).then(check);
+        return;
+      }
+      if (!draining) {
+        for (const scope of dirty) {
+          settle(scope);
+        }
+      }
+      if (isLoading()) {
+        return;
+      }
+      try {
+        const value = read();
+        end(() => done(value));
+      } catch (error) {
+        end(() => fail(error));
+      }
+    };
+    if (options?.signal?.aborted) {
+      abort();
+      return;
+    }
+    options?.signal?.addEventListener('abort', abort);
+    if (options?.timeout !== undefined) {
+      timer = setTimeout(
+        () => end(() => fail(new Error(`The value did not load in ${options.timeout} ms`))),
+        options.timeout,
+      );
+    }
+    waiters.add(check);
+    check();
+  });
 }
 
 // The effects that skipped their run, by scope and name, so one run follows the value.
@@ -456,6 +503,9 @@ export function update(scope: Scope, slot: number, delta: number, prefix: boolea
 }
 
 function trigger(scope: Scope, slot: number): void {
+  for (const check of waiters) {
+    check();
+  }
   const id = rootOf(scope).m!;
   const children = childrenReady(scope);
   if (modules.has(id) && loadedParts.has(`${id}:update`) && loadingCode.size === 0 && !children) {
@@ -704,7 +754,7 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
               : 'Update loop',
           );
         }
-        fn(target);
+        updating(() => fn(target));
       } catch (error) {
         fail(target, error);
       }
@@ -848,9 +898,7 @@ export function effect(
   scope.cleanups.get(name)?.();
   let cleanup: unknown;
   const start = DEV ? performance.now() : 0;
-  if (client) {
-    handling++;
-  } else {
+  if (!client) {
     runningEffects++;
   }
   try {
@@ -867,15 +915,22 @@ export function effect(
         }
       };
       // After the writes that the value starts, which can run the effect themselves.
-      void error.source.then(() => Promise.allSettled(loadingUpdates)).then(again, noop);
+      void error.source.then(
+        () => Promise.allSettled(loadingUpdates).then(again),
+        // The error reaches the nearest `#try`.
+        (reason: unknown) => {
+          if (skipped.get(key) === token) {
+            skipped.delete(key);
+            fail(scope, reason);
+          }
+        },
+      );
       return;
     }
     // The error goes to the nearest `#try` around the effect. The effect runs again on the next change.
     fail(scope, error);
   } finally {
-    if (client) {
-      handling--;
-    } else {
+    if (!client) {
       runningEffects--;
     }
   }

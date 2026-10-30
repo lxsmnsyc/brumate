@@ -12,6 +12,7 @@ The compiler replaces each call and removes the import, so none of them ship. Im
 | `$debounced(value, ms)`       | the value, as a memo       | `const` at the top level of a script                  |
 | `$throttled(value, ms)`       | the value, as a memo       | `const` at the top level of a script                  |
 | `$isPending(memo)`            | `boolean`                  | Any expression                                        |
+| `$resolve(memo, options?)`    | `Promise<T>`               | A handler, an effect or a `$client` callback          |
 | `$isPassed(prop)`             | `boolean`                  | `const` in the component script                       |
 | `$isBound(prop)`              | `boolean`                  | Any expression                                        |
 | `$effect(callback)`           | `void`                     | Statement at the top level of a script                |
@@ -37,6 +38,7 @@ The compiler replaces each call and removes the import, so none of them ship. Im
 - `$debounced(value, ms)`: a memo that takes the value once it stops changing for `ms` milliseconds. `ms` is a number literal.
 - `$throttled(value, ms)`: a memo that takes the value at most once every `ms` milliseconds.
 - `$isPending(memo)`: true while a new value of the memo loads in the browser. Always false on the server.
+- `$resolve(memo, { timeout, signal })`: waits until the memo is no longer pending, and gives its value. A handler that reads a memo that can lack a value uses `await $resolve(memo)` or checks `$isPending(memo)` first (BRM182).
 - `$isPassed(prop)`: true when the caller passed the prop, also as `undefined` or `null`. A default value does not count. The argument is a prop that the component destructures.
 - `$isBound(prop)`: true when the caller passed the prop with `$bind`, so a write changes the caller's value. The argument is a prop destructured with `let`.
 - `$effect(callback)`: runs the callback in the browser when a value that it reads changes. Never on mount, never on the server. The callback takes no parameters and is not `async`. It can return a cleanup function.

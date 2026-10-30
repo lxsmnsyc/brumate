@@ -444,7 +444,7 @@ export class Rewriter {
           }
           if (
             node.callee.type === 'Identifier' &&
-            node.callee.name === '$isPending' &&
+            (node.callee.name === '$isPending' || node.callee.name === '$resolve') &&
             !references.has(node.callee.start)
           ) {
             const memo = node.arguments[0];
@@ -463,6 +463,15 @@ export class Rewriter {
               value = checks[0]!;
             } else {
               value = `(${checks.join(' || ')})`;
+            }
+            if (node.callee.name === '$resolve' && memo) {
+              // `$resolve(memo, options)` waits until the memo is not pending, then reads it.
+              patch.replace(node.start, memo.start, `$$b.resolve(() => ${value}, () => `);
+              visit(memo);
+              for (const rest of node.arguments.slice(1)) {
+                visit(rest);
+              }
+              return;
             }
             patch.replace(node.start, node.end, value);
             return;

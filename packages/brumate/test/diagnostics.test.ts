@@ -431,7 +431,7 @@ describe('reads of a memo that can lack a value', () => {
   /** A component with an async memo, `user`, and a memo that reads it, `name`. */
   function page(body: string, markup = '<button onClick=run>Run</button>'): string {
     return `<script>
-import { $client, $effect, $isPending, $memo, $signal } from 'brumate/signals';
+import { $client, $effect, $isPending, $memo, $resolve, $signal } from 'brumate/signals';
 import Child from './Child.brm';
 async function getUser(id: number) {
   'use server';
@@ -449,11 +449,11 @@ ${markup}`;
   }
   const build = (body: string, markup?: string) =>
     compile(page(body, markup), { filename: 'Test.brm' });
-  const message = 'a memo that can lack a value. Check $isPending(';
+  const message = 'a memo that can lack a value. Wait for it with await $resolve(';
 
   it('fails when a handler reads an async memo', () => {
     expect(() => build('function run() { log(user); }')).toThrow(
-      `The handler reads "user", ${message}user) first, or declare it with await $memo(…)`,
+      `The handler reads "user", ${message}user), or check $isPending(user) first`,
     );
   });
 
@@ -491,6 +491,9 @@ ${markup}`;
 
   it('accepts a read that $isPending guards', () => {
     const guarded = [
+      'function run() { const waiting = $isPending(user); if (waiting) return; log(user); }',
+      'function run() { if ($isPending(user)) { return; } else { log(user); } }',
+      'function run() { for (const n of [1]) { if ($isPending(user)) continue; log(user); } }',
       'function run() { if ($isPending(user)) return; log(user); }',
       'function run() { if ($isPending(user)) { throw new Error("wait"); } log(user); }',
       'function run() { if (!$isPending(user)) { log(user); } }',
@@ -525,5 +528,62 @@ ${markup}`;
         '<p>{user.name}</p><button onClick=run>Run</button>',
       ),
     ).not.toThrow();
+  });
+
+  it('accepts a read after await $resolve, and fails a read before it', () => {
+    expect(() => build('async function run() { await $resolve(user); log(user); }')).not.toThrow();
+    expect(() =>
+      build('async function run() { const loaded = await $resolve(name); log(loaded, user); }'),
+    ).not.toThrow();
+    expect(() => build('async function run() { log(user); await $resolve(user); }')).toThrow(
+      'The handler reads "user"',
+    );
+  });
+
+  it('counts a memo that markup reads outside #loading as having a value', () => {
+    expect(() =>
+      build('function run() { log(user); }', '<p>{user.name}</p><button onClick=run>Run</button>'),
+    ).not.toThrow();
+    expect(() =>
+      build('function run() { log(user); }', '<p>{name}</p><button onClick=run>Run</button>'),
+    ).not.toThrow();
+    // A `#loading` body does not make the server wait.
+    expect(() =>
+      build(
+        'function run() { log(user); }',
+        '#loading {\n<p>{user.name}</p>\n} #else {\n<p>Wait</p>\n}\n<button onClick=run>Run</button>',
+      ),
+    ).toThrow('The handler reads "user"');
+  });
+
+  it('counts a memo of an imported server function as async', () => {
+    const source = `<script>
+import { $memo } from 'brumate/signals';
+import { getIssue } from './issues.ts';
+function log(value: unknown) {}
+const issue = $memo(getIssue(1));
+function run() { log(issue); }
+</script>
+
+<button onClick=run>Run</button>`;
+    const options = { filename: 'Test.brm', serverImport: () => 'issues#getIssue' };
+    expect(() => compile(source, options)).toThrow('The handler reads "issue"');
+    expect(() => compile(source, { filename: 'Test.brm' })).not.toThrow();
+  });
+
+  it('accepts $resolve in code that an event starts, and rejects it where a memo computes or markup renders', () => {
+    expect(() =>
+      build('async function run() { await $resolve(user, { timeout: 1 }); }'),
+    ).not.toThrow();
+    expect(() => build('$effect(() => { void $resolve(user); });')).not.toThrow();
+    expect(() => build('const again = $memo($resolve(user));')).toThrow(
+      '$resolve cannot run where a memo computes or markup renders',
+    );
+    expect(() => build('', '<p>{$resolve(user)}</p>')).toThrow(
+      '$resolve cannot run where a memo computes or markup renders',
+    );
+    expect(() => build('async function run() { await $resolve(1); }')).toThrow(
+      '$resolve needs a $memo',
+    );
   });
 });

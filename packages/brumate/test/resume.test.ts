@@ -325,14 +325,13 @@ describe('resume', () => {
       load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
       listen: () => {},
     });
-    const value = client.get(client.scopeOf(0)!, 0);
-    expect(value).toBeInstanceOf(Promise);
+    // A read outside an update throws while the value is loading.
+    expect(() => client.get(client.scopeOf(0)!, 0)).toThrow('still loading');
 
     settle(42);
     await done;
     expect(records).toHaveLength(2);
     appendChunk(records[1]!);
-    await expect(value).resolves.toBe(42);
     // The slot holds the value once it arrives.
     await waitFor(() => expect(client.get(client.scopeOf(0)!, 0)).toBe(42));
     client.dispose();
@@ -388,6 +387,15 @@ describe('resume', () => {
       );
     });
 
+    it('lets a handler wait for the first value with $resolve', async () => {
+      const { finish } = await streaming('streamedMemoReads');
+      click(document.querySelector('.wait')!);
+      await new Promise((done) => setTimeout(done, 50));
+      expect(reads('waited')).toEqual([]);
+      await finish();
+      await waitFor(() => expect(reads('waited')).toEqual([['waited', 'Ada']]));
+    });
+
     it('runs a handler passed as a prop with its check in the parent', async () => {
       const { finish } = await streaming('streamedMemoParent');
       click(document.querySelector('.pick')!);
@@ -400,6 +408,16 @@ describe('resume', () => {
           ['pick', 'Ada'],
         ]),
       );
+    });
+
+    it('throws into a handler that reads a promise prop before it settles', async () => {
+      const { finish } = await streaming('promiseProp');
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(reads('prop error')).toHaveLength(1));
+      expect(String(reads('prop error')[0]![1])).toContain('await $resolve(memo)');
+      await finish();
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(reads('prop')).toEqual([['prop', 'Ada']]));
     });
 
     it('passes a promise that is not a loading memo to a handler as a value', async () => {
@@ -458,7 +476,7 @@ describe('resume', () => {
       document.body.append(button);
       await client.handle(button, 'Test#c1');
       await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
-      expect(String(errors.mock.calls[0]![0])).toContain('Check $isPending(memo) first');
+      expect(String(errors.mock.calls[0]![0])).toContain('await $resolve(memo)');
       await settle(42);
       await waitFor(() => expect(client.get(client.scopeOf(0)!, 0)).toBe(42));
       await client.handle(button, 'Test#c1');
@@ -473,7 +491,7 @@ describe('resume', () => {
       const scope = client.scopeOf(0)!;
       client.effect(scope, 'c', () => client.get(scope, 0), true);
       await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
-      expect(String(errors.mock.calls[0]![0])).toContain('Check $isPending(memo) first');
+      expect(String(errors.mock.calls[0]![0])).toContain('await $resolve(memo)');
     });
 
     it('skips an effect that reads it, and runs it once when the value lands', async () => {
@@ -488,6 +506,31 @@ describe('resume', () => {
       await waitFor(() => expect(seen).toEqual([42]));
       await new Promise((done) => setTimeout(done, 50));
       expect(seen).toEqual([42]);
+    });
+
+    it('throws into code that reads after an await', async () => {
+      const { client } = await streamed();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      const scope = client.scopeOf(0)!;
+      const late = async (): Promise<unknown> => {
+        await Promise.resolve();
+        return client.get(scope, 0);
+      };
+      await expect(late()).rejects.toThrow('await $resolve(memo)');
+    });
+
+    it('runs an effect again when the promise it skipped rejects, so the error reaches #try', async () => {
+      const { client } = await streamed();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      const reason = new Error('Rejected');
+      const failing = Promise.reject(reason);
+      const id = client.createScope(1, undefined, undefined);
+      client.setSlots(id, [failing]);
+      const scope = client.scopeOf(id)!;
+      client.effect(scope, 'e', () => client.get(scope, 0));
+      await waitFor(() => expect(errors).toHaveBeenCalledWith(reason));
     });
 
     it('passes a promise that is not a loading memo to a handler as a value', async () => {
@@ -505,6 +548,72 @@ describe('resume', () => {
       await client.handle(button, 'Test#c1');
       await new Promise((done) => setTimeout(done, 50));
       expect(errors).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('$resolve', () => {
+    type Reads = unknown[][];
+    const reads = (name: string): Reads =>
+      ((globalThis as { reads?: Reads }).reads ?? []).filter((read) => read[0] === name);
+
+    async function page(): Promise<void> {
+      (globalThis as { reads?: Reads }).reads = [];
+      onTestFinished(() => {
+        delete (globalThis as { reads?: Reads }).reads;
+      });
+      vi.resetModules();
+      const server = await import(file('resolveMemo.brm.ts'));
+      const runtime = await import('../src/runtime/server.ts');
+      vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+        runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+      );
+      const { html, state } = await runtime.render(server.default, {}, { dev: true });
+      show(html + state);
+      await startLoader();
+    }
+    const press = (name: string): void => click(document.querySelector(`.${name}`)!);
+
+    it('resolves at once with the value of a settled memo', async () => {
+      await page();
+      press('ask');
+      await waitFor(() => expect(reads('ask')).toEqual([['ask', 'A']]));
+    });
+
+    it('waits for the load that the new inputs start', async () => {
+      await page();
+      press('write');
+      await waitFor(() => expect(reads('writeAndAsk')).toEqual([['writeAndAsk', 'B']]));
+      expect(text('.result')).toBe('B');
+    });
+
+    it('waits for the load of the current inputs when they change while it waits', async () => {
+      await page();
+      press('slow');
+      press('b');
+      press('ask');
+      // The load of "b" is in flight when the inputs change again.
+      await new Promise((done) => setTimeout(done, 20));
+      press('c');
+      await waitFor(() => expect(reads('ask')).toEqual([['ask', 'C']]));
+    });
+
+    it('rejects with the error of the memo', async () => {
+      await page();
+      press('bad');
+      await new Promise((done) => setTimeout(done, 10));
+      press('guarded');
+      await waitFor(() => expect(reads('guarded error')).toHaveLength(1));
+      expect(String(reads('guarded error')[0]![1])).toContain('The server function failed');
+    });
+
+    it('rejects on a timeout, and on an abort', async () => {
+      await page();
+      press('slow');
+      press('b');
+      press('timeout');
+      await waitFor(() => expect(reads('timeout')).toHaveLength(1));
+      press('abort');
+      await waitFor(() => expect(reads('abort')).toEqual([['abort', 'Stopped']]));
     });
   });
 
@@ -564,7 +673,7 @@ describe('resume', () => {
       listen: () => {},
     });
     expect(client.scopeOf(0)).toBeUndefined();
-    expect(client.get(client.scopeOf(5)!, 0)).toBeInstanceOf(Promise);
+    expect(() => client.get(client.scopeOf(5)!, 0)).toThrow('still loading');
 
     settle(42);
     await done;
@@ -5082,7 +5191,7 @@ describe('scopes in groups', () => {
     expect(client.scopeOf(2)!.i).toBe(7);
     expect(client.scopeOf(3)!.x).toEqual({ theme: 0 });
     expect(client.scopeOf(3)!.p).toBe(client.scopeOf(0));
-    expect(client.get(client.scopeOf(1)!, 0)).toBeInstanceOf(Promise);
+    expect(() => client.get(client.scopeOf(1)!, 0)).toThrow('still loading');
     settle(42);
     await done;
     appendChunk(records[1]!);

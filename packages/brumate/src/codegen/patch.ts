@@ -258,6 +258,13 @@ export function addValueEdits(
         patch.replace(node.start, node.end, 'false');
         return;
       }
+      if (name === '$resolve' && argument) {
+        // The server has the value, or waits for it where it reads it.
+        patch.replace(node.start, argument.start, 'Promise.resolve(');
+        patch.replace(argument.end, node.end, ')');
+        visit(argument);
+        return;
+      }
       if (name === '$isPending') {
         // Nothing loads again on the server.
         patch.replace(node.start, node.end, 'false');

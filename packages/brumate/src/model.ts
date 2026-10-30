@@ -208,6 +208,8 @@ export interface SemanticModel {
   /** The `$bind` calls, with the declaration of their name and the site of their setter. */
   bindings: { call: oxc.CallExpression; declaration: Declaration; setter?: Site }[];
   diagnostics: Diagnostic[];
+  /** The `$isPending(memo)` and `$resolve(memo)` calls, with the read of their memo. */
+  pendingCalls: { reference: Reference; at: Range }[];
 }
 
 /** Returns true if `scope` is `ancestor` or inside it. */

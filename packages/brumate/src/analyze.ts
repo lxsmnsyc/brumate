@@ -20,7 +20,6 @@ import type {
   TemplateDecl,
 } from './ast.ts';
 import { lookup, upstreamMemos } from './model.ts';
-import { checkPendingReads } from './pending-reads.ts';
 import { KEY_NAMES } from './runtime/events.ts';
 import type {
   Declaration,
@@ -114,6 +113,9 @@ const CLIENT_TRIGGERS = new Set(['visible', 'idle', 'load']);
 const WRITABLE = new Set<DeclarationKind>(['signal', 'let']);
 
 // Sites that run in response to an event, so they can write signals.
+/** The sites whose code can wait for a memo with `$resolve`. */
+const RESOLVING_SITES = new Set<SiteKind>(['function', 'event', 'effect', 'client']);
+
 const WRITING_SITES = new Set<SiteKind>(['function', 'event', 'effect', 'client']);
 
 // Declarations that a server function can capture.
@@ -272,13 +274,6 @@ class Analyzer {
     this.addPendingReads();
     this.resolveRefs();
     this.check();
-    checkPendingReads(this.sites, this.pendingCalls, (name, at) =>
-      this.report(
-        'error',
-        `The handler reads "${name}", a memo that can lack a value. Check $isPending(${name}) first, or declare it with await $memo(…)`,
-        at,
-      ),
-    );
 
     return {
       module: this.module,
@@ -288,6 +283,7 @@ class Analyzer {
       sites: this.sites,
       bindings: this.bindings,
       diagnostics: this.diagnostics,
+      pendingCalls: this.pendingCalls,
     };
   }
 
@@ -1585,7 +1581,11 @@ class Analyzer {
         const callsServer = [...site.calls].some(
           (declaration) => declaration.kind === 'server-function',
         );
-        if (callsServer || site.awaits) {
+        // A function imported from a `'use server'` module is a server function too.
+        const importsServer = site.reads.some(
+          (read) => read.declaration.serverImport !== undefined,
+        );
+        if (callsServer || importsServer || site.awaits) {
           site.declaration.kind = 'async-memo';
         }
       }
@@ -2014,6 +2014,36 @@ class Resolver {
               );
             }
             this.visitChildren(node);
+            return;
+          }
+          if (name === '$resolve') {
+            const [target] = node.arguments;
+            if (target?.type !== 'Identifier' || node.arguments.length > 2) {
+              this.analyzer.report(
+                'error',
+                '$resolve needs a $memo and, as an option, a timeout or a signal',
+                node,
+              );
+            }
+            // It waits, so it runs in code that an event starts, not where a memo computes or
+            // markup renders.
+            if (
+              !RESOLVING_SITES.has(this.site.kind) &&
+              !(this.site.kind === 'prop' && isFunction(this.site.node))
+            ) {
+              this.analyzer.report(
+                'error',
+                '$resolve cannot run where a memo computes or markup renders. Call it in a handler, an effect or a $client callback',
+                node,
+              );
+            }
+            this.visitChildren(node);
+            const reference = this.site.reads.find(
+              (read) => target?.type === 'Identifier' && read.range.start === target.start,
+            );
+            if (target?.type === 'Identifier' && reference) {
+              this.analyzer.pendingCalls.push({ reference, at: range(node) });
+            }
             return;
           }
           if (name === '$isPending') {

@@ -15,7 +15,7 @@ import {
 } from './blocks.ts';
 import { codeReady, loadModule, loadPart } from './code.ts';
 import { afterInsert, rootOf } from './scopes.ts';
-import { hiding, options, scopes } from './state.ts';
+import { hiding, options, scopes, updating } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
 import { watchTitles } from './titles.ts';
 
@@ -66,13 +66,15 @@ export function refresh(added: Scope[], memosOnly = false): void {
       await codeReady();
       refreshing = true;
       try {
-        for (const scope of list) {
-          for (const name of byKind.get(scope.k)!) {
-            if (scopes.has(scope.id)) {
-              (updates[name] as (scope: Scope) => void)(scope);
+        updating(() => {
+          for (const scope of list) {
+            for (const name of byKind.get(scope.k)!) {
+              if (scopes.has(scope.id)) {
+                (updates[name] as (scope: Scope) => void)(scope);
+              }
             }
           }
-        }
+        });
       } finally {
         refreshing = false;
       }

@@ -26,7 +26,7 @@ import { call, resolve } from './references.ts';
 import { resolveScope } from './scopes.ts';
 import { DEV, build, devtools, hiding, rpcPrefix, scopes } from './state.ts';
 import type { Scope } from './state.ts';
-import { handler as run, memoSignal, pass, set, updateReady } from './updates.ts';
+import { memoSignal, pass, set, updateReady } from './updates.ts';
 
 /**
  * The handlers that the core makes from references, with their references,
@@ -234,10 +234,10 @@ export function handle(
     .then(() => loaded)
     .then((handler) => {
       if (!DEV) {
-        return { value: pass(() => run(() => handler(scope, ...args))) };
+        return { value: pass(() => handler(scope, ...args)) };
       }
       const ready = performance.now();
-      const value = pass(() => run(() => handler(scope, ...args)));
+      const value = pass(() => handler(scope, ...args));
       devtools()?.handled?.({
         ref,
         element,

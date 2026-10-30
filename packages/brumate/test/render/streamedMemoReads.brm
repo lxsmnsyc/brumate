@@ -17,10 +17,11 @@
   export function release(value: string): void {
     open(value);
   }
+
 </script>
 
 <script>
-  import { $effect, $isPending, $memo, $signal } from 'brumate/signals';
+  import { $effect, $isPending, $memo, $resolve, $signal } from 'brumate/signals';
 
   let n = $signal(0);
   // No markup reads it, so the page does not wait for it.
@@ -44,7 +45,12 @@
     }
     note('handler', data);
   }
+
+  async function wait() {
+    note('waited', await $resolve(data));
+  }
 </script>
 
 <button class="bump" onClick=(() => n++)>{n}</button>
 <button class="read" onClick=read>Read</button>
+<button class="wait" onClick=wait>Wait</button>

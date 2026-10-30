@@ -170,9 +170,21 @@ const SYNTAX: ErrorEntry[] = [
   ),
   entry(
     'BRM182',
-    'The handler reads "{name}", a memo that can lack a value. Check $isPending({name}) first, or declare it with await $memo(…)',
-    'A handler, a handler prop or a `$client` callback reads an async memo that may still be loading, with no `$isPending` check before the read.',
-    '<script>\n  const user = $memo(getUser(id));\n  function save() {\n    if ($isPending(user)) return;\n    send(user.name);\n  }\n</script>',
+    'The handler reads "{name}", a memo that can lack a value. Wait for it with await $resolve({name}), or check $isPending({name}) first',
+    'A handler, a handler prop or a `$client` callback reads an async memo that may still be loading, with no `$isPending` check or `await $resolve` before the read.',
+    '<script>\n  const user = $memo(getUser(id));\n  async function save() {\n    await $resolve(user);\n    send(user.name);\n  }\n</script>',
+  ),
+  entry(
+    'BRM183',
+    '$resolve needs a $memo and, as an option, a timeout or a signal',
+    '`$resolve` takes the name of a memo, and one object of options at most.',
+    'async function save() {\n  const profile = await $resolve(user, { timeout: 5000 });\n}',
+  ),
+  entry(
+    'BRM184',
+    '$resolve cannot run where a memo computes or markup renders. Call it in a handler, an effect or a $client callback',
+    '`$resolve` waits, so it is called where an event starts the code, not where a memo computes or markup renders.',
+    'async function save() {\n  await $resolve(user);\n}',
   ),
   entry(
     'BRM023',

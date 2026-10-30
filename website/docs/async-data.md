@@ -114,21 +114,31 @@ const busy = $isPending(count);
 
 ### Reads while a memo is pending
 
-A memo that loads has no value until it arrives. A handler cannot read it before then, so it checks `$isPending` first:
+A memo that loads has no value until it arrives. A read never gives a promise or `undefined`. Code that needs the value waits for it with `$resolve`:
 
 ```brm
-function save() {
-  if ($isPending(profile)) return;
+async function save() {
+  const profile = await $resolve(user);
   send(profile.name);
 }
 ```
 
-- A handler, a handler prop of a component and a `$client` callback that read a memo that can lack a value are a compile error, [BRM182](./errors.md#brm182). A memo can lack a value when it is async, or reads an async memo, and is not declared with `await $memo(…)`. The compiler follows the functions of the same script that the handler calls, and reports the read in the file that holds it.
-- These guards count: an earlier `if ($isPending(memo)) return;` (or `throw`), a read inside `if (!$isPending(memo)) { … }` or in the `else` of `if ($isPending(memo))`, `$isPending(memo) ? … : read`, and `!$isPending(memo) && read`. A check of a memo that reads the memo counts too.
-- A read that the compiler cannot follow, such as a function that a parent passes as a prop, throws an error at run time when the memo has no value yet. It goes to the nearest [`#try`](./control-flow.md#try-and-catch) like other handler errors.
-- An [effect](./effects.md#effect) that reads the memo skips that run, and runs again when the value arrives.
-- Once the memo has a value, a handler reads the last one while a new value loads.
-- A promise in a signal or a prop is an ordinary value. Only a memo that the page is still loading has no value to read.
+`$resolve(memo, { timeout, signal })` returns a promise of the value:
+
+- It resolves at once when the memo has its value, and after the load when the memo loads its first value or loads again.
+- When the inputs of the memo change while it waits, it waits for the load of the current inputs. A load that the change replaced never resolves it, so writing an input and then awaiting `$resolve` gives the result for the new input.
+- It rejects with the error of the memo, when `timeout` milliseconds pass, or when `signal` aborts.
+- Call it in a handler, an effect or a `$client` callback. It is a compile error where a memo computes or markup renders.
+- When `$resolve` returns, another handler can already have changed the inputs again. Read what you need from the result, and expect that a later handler may run before your code after the `await`.
+
+Without it, a plain read in a handler gives the last value, which can be stale while the memo loads again. `$isPending(memo)` is true then:
+
+- A handler, a handler prop of a component and a `$client` callback that read a memo that has no value yet are a compile error, [BRM182](./errors.md#brm182), unless `$isPending` guards the read or the code waits with `await $resolve(memo)`. The compiler follows the functions of the same script that they call.
+- A memo has no value yet when it is async (it awaits, or calls a server function) or reads such a memo, and the server did not wait for it. The server waits for a memo that markup reads outside `#loading`, and for one declared with `await $memo(…)`, so a read of those compiles. In a component that the browser renders, `await $memo(…)` does not wait yet, and the read throws at run time.
+- These guards count: an earlier `if ($isPending(memo)) return;` (or `throw`, `continue`, `break`), also through `const waiting = $isPending(memo)`, a read inside `if (!$isPending(memo)) { … }` or in the `else` of `if ($isPending(memo))`, `$isPending(memo) ? … : read`, and `!$isPending(memo) && read`. A check of a memo that reads the memo counts too, and so does an earlier `await $resolve(memo)` in the same block.
+- A read that the compiler cannot follow, such as a function that a parent passes as a prop, an imported helper or code after an `await`, throws an error at run time when the value is still loading. It goes to the nearest [`#try`](./control-flow.md#try-and-catch) like other handler errors, and the message points to `$resolve`.
+- A prop that the parent passes as a promise, and a promise that the server streams in a signal, have no value until they settle, so they follow the same rule. A promise that code in the browser writes into a signal is an ordinary value.
+- An [effect](./effects.md#effect) that reads such a value skips that run, and runs again when the value arrives.
 
 ## On the client
 

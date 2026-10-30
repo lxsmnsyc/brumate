@@ -306,3 +306,17 @@ export const renderedLoads: Set<string> = new Set();
  * a memo that the browser rendered. Any other promise in a slot is a plain value.
  */
 export const loadingValues: WeakSet<object> = new WeakSet();
+
+// More than 0 while code runs that updates the page. It reads a promise that is still loading as it
+// is, and does not throw.
+export let exempt: number = 0;
+
+/** Runs code that updates the page: an update of a write, a refresh, or children that render late. */
+export function updating<T>(run: () => T): T {
+  exempt++;
+  try {
+    return run();
+  } finally {
+    exempt--;
+  }
+}
