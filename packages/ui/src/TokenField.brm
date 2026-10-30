@@ -62,6 +62,8 @@
   let { ref } = $props<{ ref?: Bindable<HTMLDivElement | undefined> }>();
   // The segments that a reset of the form gives back.
   let initial = $signal(value);
+  // Counts the times the box must show the value again, though the value did not change.
+  let revision = $signal(0);
 
   const labelId = $id();
   const descriptionId = $id();
@@ -76,7 +78,15 @@
   }
 
   // A reset of the form gives back the first segments. The box follows the value.
-  $client(() => onFormReset(ref, () => setValue(initial)), 'load');
+  $client(
+    () =>
+      onFormReset(ref, () => {
+        setValue(initial);
+        // A contenteditable has no native reset, so the box is written again.
+        revision++;
+      }),
+    'load',
+  );
 
   // The box of the field is no element that a label can point at, so the label names it by ID.
   $setContext(LabelContext, { id: labelId });
@@ -84,6 +94,7 @@
   $setContext(TokenFieldContext, {
     value,
     setValue,
+    revision,
     pattern,
     placeholder,
     allowsNewlines,

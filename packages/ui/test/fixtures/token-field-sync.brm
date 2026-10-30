@@ -1,0 +1,43 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Label from '../../src/Label.brm';
+  import Token from '../../src/Token.brm';
+  import TokenField from '../../src/TokenField.brm';
+  import TokenInput from '../../src/TokenInput.brm';
+  import type { TokenSegment } from '../../src/token-field.ts';
+
+  // The setter refuses once `held` is on.
+  let held = $signal(false);
+  let kept = $signal<TokenSegment[]>([{ type: 'token', text: '@ada' }]);
+  // The setter keeps everything.
+  let own = $signal<TokenSegment[]>([{ type: 'token', text: '@ada' }]);
+  // The same token twice.
+  let twice = $signal<TokenSegment[]>([
+    { type: 'token', text: '@ada' },
+    { type: 'text', text: ' ' },
+    { type: 'token', text: '@ada' },
+  ]);
+</script>
+
+<form class="form">
+  <TokenField class="guarded" pattern="[#@]\S+" value=$bind(kept, (next) => { if (!held) kept = next; })>
+    <Label>Guarded</Label>
+    <TokenInput class="guarded-input" token=mention />
+  </TokenField>
+  <TokenField class="own" pattern="[#@]\S+" value=$bind(own)>
+    <Label>Own</Label>
+    <TokenInput class="own-input" token=mention />
+  </TokenField>
+  <TokenField class="twice" pattern="[#@]\S+" value=$bind(twice)>
+    <Label>Twice</Label>
+    <TokenInput class="twice-input" token=mention />
+  </TokenField>
+  <button class="reset" type="reset">Reset</button>
+</form>
+<button class="hold" type="button" onClick=(() => (held = true))>Hold</button>
+<p class="kept">{JSON.stringify(kept)}</p>
+<p class="own-state">{JSON.stringify(own)}</p>
+
+#template mention(segment: TokenSegment) {
+  <Token class="mention">{segment.text}</Token>
+}

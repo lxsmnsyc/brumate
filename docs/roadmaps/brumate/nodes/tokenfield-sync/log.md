@@ -1,0 +1,1 @@
+- 2026-10-30: reproduced all three cases; fix: revision signal (reset, refused edit via timeout), stamps keyed by text+occurrence and checked by data-stamp before copy. Tests in test/token-field-sync.test.ts.

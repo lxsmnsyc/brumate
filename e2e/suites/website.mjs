@@ -786,6 +786,21 @@ export async function run({ browser, url, runner }) {
           document.querySelector('[aria-label=Issues]')?.textContent ===
           'Slider thumb jumps (ada, bug)',
       );
+      // TokenField: quick edits, then a reset, put the first segments back in the box.
+      await visit('token-field');
+      const asked = state().getByRole('textbox', { name: 'Asks you first' });
+      // Quick edits, then a reset: the box shows the first segments with their own content.
+      await asked.click();
+      await page.keyboard.press('End');
+      await page.keyboard.type(' @zed ');
+      await state().getByRole('button', { name: 'Reset the form' }).click();
+      await page.waitForFunction(
+        (box) => {
+          const token = box.querySelector('[data-token]');
+          return token?.getAttribute('data-token') === '@ada' && token.textContent.includes('@ada');
+        },
+        await asked.elementHandle(),
+      );
       // NumberField: a refused step keeps the number, the end of the range stops the field.
       await visit('number-field');
       const number = state().getByRole('textbox', { name: 'Asks you first' });

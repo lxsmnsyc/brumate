@@ -114,9 +114,9 @@ The browser edits the text of the box, so its usual keys work. These are the key
 
 - `value` alone, or nothing, makes the field keep its own segments. `value=([...])` is where they start, and a new value from you replaces them.
 - `value=$bind(signal)` writes your signal. Change the signal and the box follows. The first button writes a new list to the third field.
-- `value=$bind(signal, (next) => ...)` asks you first. `onChange` gets the segments that the user asked for, and the setter decides what is kept. Press Lock and type in the last field: the signal keeps the old segments, but the box keeps what was typed. Unlock and press Reset, and the box still shows the typed text, since the first segments are the ones that the signal holds and nothing writes the box. The next edit that you accept writes the box again. This is a bug of the field, and the node `tokenfield-sync` fixes it.
+- `value=$bind(signal, (next) => ...)` asks you first. `onChange` gets the segments that the user asked for, and the setter decides what is kept. Press Lock and type in the last field: the signal keeps the old segments, but the box keeps what was typed until the next edit that you accept or a reset. The node `bind-read-your-writes` fixes that in the runtime.
 - `onChange` runs only when the segments differ from the ones that the field has.
-- A reset of the form gives back the segments that the field started with, as a write, and the signal gets them. The box follows, except after a refused edit (above). See [State](./state.md).
+- A reset of the form gives back the segments that the field started with, as a write, and the signal gets them. The box follows, also when the signal already holds those segments. See [State](./state.md).
 - The server renders the segments it starts with.
 
 ## Styling
