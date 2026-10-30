@@ -250,7 +250,11 @@ export function rangeEnd(start: Comment): Comment {
       }
     }
   }
-  throw new Error(`Missing end marker for <!--${start.data}-->`);
+  // The markers sit in different parents when the browser's parser closes an element early, such
+  // as a <p> that holds a <div>.
+  throw new Error(
+    `Missing end marker for <!--${start.data}-->. A <p> or another element that closes early around a block, such as a <div>, splits its markers.`,
+  );
 }
 
 export function clear(start: Node, end: Node): void {
