@@ -13,6 +13,14 @@ When a link leads to another page of the same site:
 
 The back and forward buttons load pages the same way.
 
+## The attributes of `<html>`
+
+A navigation changes only the attributes of `<html>` that the pages sent, such as `lang`. It sets the values of the new page, and removes those that the last page sent and the new page does not.
+
+- An attribute that a script added in the browser stays, such as a `data-theme` that a script sets from a saved choice.
+- When a script changed an attribute that a page sends, the value of the new page wins.
+- The first navigation does not remove the attributes of the page that the browser loaded, because it cannot tell them from those of a script. Later navigations remove the attributes of the pages they leave.
+
 The code for this loads on the first navigation, so pages that never navigate do not load it. Client code that a page already loaded is not loaded again.
 
 ## Layouts keep their state

@@ -413,6 +413,30 @@ export async function run({ browser, url, runner }) {
       await checkPanel();
       await backToDocs();
     });
+    await flow('/docs: the theme survives client navigation', async () => {
+      const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
+      await page.emulateMedia({ colorScheme: 'light' });
+      await page.locator('.theme-toggle').click();
+      assert((await theme()) === 'dark', `the toggle set the theme to ${await theme()}`);
+      await page.locator('.sidebar a[href="/docs/routing"]').click();
+      await page.waitForURL(`${url}/docs/routing`, { timeout: 5000 });
+      await page.locator('article h1').waitFor({ timeout: 5000 });
+      assert(
+        await page.evaluate(() => window.__e2eSamePage === true),
+        'the link loaded a new page',
+      );
+      assert((await theme()) === 'dark', `the theme is ${await theme()} after a link`);
+      // Going back is a client navigation too.
+      await page.goBack();
+      await page.waitForURL(`${url}/docs`, { timeout: 5000 });
+      await page.locator('.docs .sidebar').waitFor({ timeout: 5000 });
+      assert((await theme()) === 'dark', `the theme is ${await theme()} after going back`);
+      await page.evaluate(() => {
+        localStorage.removeItem('theme');
+        delete document.documentElement.dataset.theme;
+      });
+      await page.emulateMedia({ colorScheme: null });
+    });
     await flow('/docs: a sidebar link navigates on the client', async () => {
       await page.locator('.sidebar a[href="/docs/state"]').click();
       await page.waitForURL(`${url}/docs/state`, { timeout: 5000 });
