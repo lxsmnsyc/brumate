@@ -1,0 +1,59 @@
+<script>
+  import SelectionIndicator from '@brumate/ui/SelectionIndicator.brm';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+
+  const ranges = ['Day', 'Week', 'Month'];
+</script>
+
+<ToggleButtonGroup class="selection-indicator-group" aria-label="Range" selectedKeys=(['Week']) disallowEmptySelection>
+  #for (item of ranges by item) {
+    <ToggleButton id=item class="selection-indicator-item">
+      <SelectionIndicator class="selection-indicator-pill" />
+      <span class="selection-indicator-text">{item}</span>
+    </ToggleButton>
+  }
+</ToggleButtonGroup>
+
+<style>
+  :global(.selection-indicator-group) {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid color-mix(in srgb, CanvasText 50%, Canvas);
+    border-radius: 999px;
+  }
+
+  :global(.selection-indicator-item) {
+    position: relative;
+    padding: 0.35rem 1rem;
+    border: 0;
+    background: none;
+    color: CanvasText;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :global(.selection-indicator-item[data-selected]) {
+    color: HighlightText;
+  }
+
+  :global(.selection-indicator-item[data-focus-visible]) {
+    outline: 2px solid Canvas;
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px Highlight;
+    border-radius: 999px;
+  }
+
+  :global(.selection-indicator-pill) {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: Highlight;
+    transition-duration: 0.25s;
+    transition-timing-function: ease-out;
+  }
+
+  :global(.selection-indicator-text) {
+    position: relative;
+  }
+</style>

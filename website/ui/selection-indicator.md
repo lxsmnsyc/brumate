@@ -26,6 +26,16 @@ A mark of the selected item, such as a bar under the selected tab, which moves t
 - It renders only in the selected item, with `data-selection-indicator` and `data-selected`, and is hidden from screen readers, since the item says that it is selected.
 - `as` sets its element, a `<span>` by default.
 
+## Use cases
+
+### A pill behind a group of buttons
+
+In a [ToggleButtonGroup](./toggle-button-group.md), the indicator is a pill under the text of the selected button. It slides to the next one when you press it, and it stays still with reduced motion.
+
+```brm demo SelectionIndicatorToggleDemo
+
+```
+
 ## Anatomy
 
 ```html

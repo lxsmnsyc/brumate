@@ -9,6 +9,16 @@ Hides its content from sight, and keeps it for screen readers, such as the name 
 - `as` renders another element, such as `as="a"` for a link that skips to the content.
 - With `focusable`, the content shows while it has focus.
 
+## Use cases
+
+### A link that skips the menu
+
+`as="a"` with `focusable` makes a link that sits out of sight until focus reaches it, so a keyboard user can jump over the menu. Click into the sample and press Tab: the link shows.
+
+```brm demo VisuallyHiddenSkipDemo
+
+```
+
 ## Props
 
 ```props VisuallyHidden

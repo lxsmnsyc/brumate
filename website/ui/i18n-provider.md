@@ -41,6 +41,16 @@ The server looks up the table once and writes only that language into the page, 
 | `firstAvailable` | The label of the first date that can be picked, such as `{date}, First available date`. |
 | `lastAvailable`  | The label of the last date that can be picked, such as `{date}, Last available date`.   |
 
+## Use cases
+
+### A locale switch
+
+The Meter formats its value in the locale, and the direction comes from the element that you put `dir` on. Each locale has its own `I18nProvider` inside an `#if`, so a switch builds the parts again with the new locale.
+
+```brm demo I18nProviderLocaleDemo
+
+```
+
 ## Props
 
 ```props I18nProvider

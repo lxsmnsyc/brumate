@@ -1,0 +1,94 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Transition from '@brumate/ui/Transition.brm';
+
+  let shown = $signal(true);
+  let mounted = $signal(false);
+</script>
+
+<div class="transition-styled-stage">
+  <div class="transition-styled-bar">
+    <Button class="transition-styled-button" onPress=(() => (shown = !shown))>{shown ? 'Hide' : 'Show'} both</Button>
+    <Button class="transition-styled-button" onPress=(() => (mounted = !mounted))>{mounted ? 'Remove' : 'Add'} an appear note</Button>
+  </div>
+  <div class="transition-styled-slots">
+    <div class="transition-styled-slot">
+      <span>unmount (default): removed</span>
+      <Transition show=shown class="transition-styled">Gone from the page after the leave.</Transition>
+    </div>
+    <div class="transition-styled-slot">
+      <span>unmount=false: kept hidden</span>
+      <Transition show=shown unmount=(false) class="transition-styled">Still in the page with hidden.</Transition>
+    </div>
+  </div>
+  #if (mounted) {
+    <Transition show=(true) appear class="transition-styled">This one enters as the browser renders it.</Transition>
+  }
+</div>
+
+<style>
+  /* The tokens. Change these and the rest follows. */
+  :global(.transition-styled-stage) {
+    --transition-styled-bg: light-dark(#e3efff, #1d3350);
+    --transition-styled-fg: light-dark(#0b3a78, #cfe3ff);
+    display: grid;
+    gap: 0.8rem;
+    width: 100%;
+    max-width: 24rem;
+    color: CanvasText;
+  }
+
+  :global(.transition-styled-bar) {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  :global(.transition-styled-button) {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid color-mix(in srgb, CanvasText 50%, Canvas);
+    border-radius: 8px;
+    background: Canvas;
+    color: CanvasText;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  :global(.transition-styled-button:focus-visible) {
+    outline: 2px solid Canvas;
+    outline-offset: 0;
+    box-shadow: 0 0 0 4px Highlight;
+  }
+
+  :global(.transition-styled-slots) {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  :global(.transition-styled-slot) {
+    display: grid;
+    gap: 0.3rem;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  :global(.transition-styled) {
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    background: var(--transition-styled-bg);
+    color: var(--transition-styled-fg);
+    transition: opacity 0.3s, translate 0.3s;
+  }
+
+  /* The closed state is also where an enter starts from. */
+  :global(.transition-styled[data-closed]) {
+    opacity: 0;
+    translate: 0 -0.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.transition-styled) {
+      transition: none;
+    }
+  }
+</style>
