@@ -1,5 +1,6 @@
 // The tests of Checkbox, CheckboxGroup, RadioGroup and Switch.
 import { afterEach, expect, it } from 'vitest';
+import { render } from 'brumate/server';
 import { mount } from 'virtual:brumate/testing';
 import Boxes from './fixtures/boxes.brm?brumate-server';
 import RequiredGroup from './fixtures/requiredGroup.brm?brumate-server';
@@ -149,4 +150,130 @@ it('renders a Switch as a checkbox with the role of a switch', async () => {
   toggle.click();
   await page.waitFor(() => expect(page.text('.values')).toMatch(/\|true$/));
   expect(page.get('.dark').hasAttribute('data-selected')).toBe(true);
+});
+
+it('ties the description and the error of a standalone Checkbox and Switch to the input', async () => {
+  const page = await boxes();
+  for (const [selector, text, error] of [
+    ['.described', '.described-text', '.described-error'],
+    ['.described-switch', '.switch-text', '.switch-error'],
+  ]) {
+    const box = input(page, selector);
+    await page.waitFor(() => expect(page.get(text).id).not.toBe(''));
+    expect(box.getAttribute('aria-describedby')).toBe(page.get(text).id);
+    expect(box.hasAttribute('aria-invalid')).toBe(false);
+    expect(document.querySelector(error)).toBeNull();
+  }
+  (page.get('.flag') as HTMLElement).click();
+  for (const [selector, text, error] of [
+    ['.described', '.described-text', '.described-error'],
+    ['.described-switch', '.switch-text', '.switch-error'],
+  ]) {
+    const box = input(page, selector);
+    await page.waitFor(() => expect(document.querySelector(error)).not.toBeNull());
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(box.getAttribute('aria-describedby')).toBe(`${page.get(text).id} ${page.get(error).id}`);
+  }
+});
+
+// The name of the input by the rules of a native label: the text of the label without the
+// input and the aria-hidden elements. The description joins the text of the elements it names.
+function accessibleName(box: HTMLInputElement): string {
+  const named = box.getAttribute('aria-labelledby');
+  const target = named ? document.getElementById(named) : null;
+  if (target) {
+    return (target.textContent ?? '').trim();
+  }
+  const read = (node: Node): string => {
+    if (node === box) {
+      return '';
+    }
+    if (node instanceof Element && node.getAttribute('aria-hidden') === 'true') {
+      return '';
+    }
+    if (node.nodeType === 3) {
+      return node.textContent ?? '';
+    }
+    return [...node.childNodes].map(read).join(' ');
+  };
+  return read(box.closest('label')!).replace(/\s+/g, ' ').trim();
+}
+
+function accessibleDescription(box: HTMLInputElement): string {
+  const ids = (box.getAttribute('aria-describedby') ?? '').split(' ').filter(Boolean);
+  return ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' ');
+}
+
+it('keeps the description and the error out of the name of a standalone Checkbox and Switch', async () => {
+  const page = await boxes();
+  const cases = [
+    ['.described', 'Agree', 'Needed.', 'Needed. Please agree.'],
+    ['.described-switch', 'Notify', 'Mails.', 'Mails. Cannot be off.'],
+  ];
+  for (const [selector, name, description] of cases) {
+    const box = input(page, selector);
+    await page.waitFor(() => expect(accessibleDescription(box)).toBe(description));
+    expect(box.hasAttribute('aria-labelledby')).toBe(false);
+    expect(accessibleName(box)).toBe(name);
+  }
+  (page.get('.flag') as HTMLElement).click();
+  for (const [selector, name, , both] of cases) {
+    const box = input(page, selector);
+    await page.waitFor(() => expect(accessibleDescription(box)).toBe(both));
+    expect(accessibleName(box)).toBe(name);
+  }
+});
+
+it('names a standalone Checkbox and Switch by their Label, and leaves the slots visible', async () => {
+  const page = await boxes();
+  const cases = [
+    ['.named', 'Agree', '.named-text', '.named-error', 'Needed.', 'Needed. Please agree.'],
+    [
+      '.named-switch',
+      'Notify',
+      '.named-switch-text',
+      '.named-switch-error',
+      'Mails.',
+      'Mails. Cannot be off.',
+    ],
+  ];
+  const check = async (
+    box: HTMLInputElement,
+    name: string,
+    text: string,
+    error: string,
+    want: string,
+  ) => {
+    await page.waitFor(() => expect(accessibleDescription(box)).toBe(want));
+    await page.waitFor(() => expect(box.hasAttribute('aria-labelledby')).toBe(true));
+    expect(accessibleName(box)).toBe(name);
+    expect(box.getAttribute('aria-labelledby')).toBe(
+      page.get(`${name === 'Agree' ? '.named-label' : '.named-switch-label'}`).id,
+    );
+    expect(page.get(text).hasAttribute('aria-hidden')).toBe(false);
+    expect(document.querySelector(error)?.hasAttribute('aria-hidden') ?? false).toBe(false);
+  };
+  for (const [selector, name, text, error, before] of cases) {
+    await check(input(page, selector), name, text, error, before);
+  }
+  (page.get('.flag') as HTMLElement).click();
+  for (const [selector, name, text, error, , after] of cases) {
+    await check(input(page, selector), name, text, error, after);
+  }
+});
+
+it('names the input from the first byte of the server HTML, before any script runs', async () => {
+  const { html } = await render(Boxes, {});
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  for (const [selector, text, error] of [
+    ['.described', '.described-text', '.described-error'],
+    ['.named', '.named-text', '.named-error'],
+    ['.described-switch', '.switch-text', '.switch-error'],
+    ['.named-switch', '.named-switch-text', '.named-switch-error'],
+  ]) {
+    // No Label is known yet, so the name is the text of the label and the slots are hidden.
+    expect(doc.querySelector(`${selector} input`)!.hasAttribute('aria-labelledby')).toBe(false);
+    expect(doc.querySelector(text)!.getAttribute('aria-hidden')).toBe('true');
+    expect(doc.querySelector(error)?.getAttribute('aria-hidden') ?? 'true').toBe('true');
+  }
 });
