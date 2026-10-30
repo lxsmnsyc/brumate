@@ -46,7 +46,13 @@ export function insertValue(value: unknown): string {
   if (isRaw(value)) {
     return value[RAW];
   }
-  if (value === null || value === undefined || typeof value === 'boolean') {
+  // A memo of a promise that is still loading: empty until its value lands.
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === 'boolean' ||
+    value instanceof Promise
+  ) {
     return '';
   }
   if (Array.isArray(value)) {
@@ -173,7 +179,13 @@ export function attributeText(name: string, value: unknown): string | undefined 
     }
     value = (value as unknown as { value: unknown }).value;
   }
-  if (value === null || value === undefined || typeof value === 'function') {
+  // A promise is a memo that is still loading: the attribute is absent until its value lands.
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === 'function' ||
+    value instanceof Promise
+  ) {
     return undefined;
   }
   if (typeof value === 'boolean') {

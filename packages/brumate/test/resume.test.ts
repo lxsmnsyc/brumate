@@ -588,6 +588,22 @@ describe('resume', () => {
       },
     );
 
+    it('shows a pending memo of a promise prop as empty text and no attribute in a browser-rendered child', async () => {
+      const server = await import(file('promiseMemoAttr.brm.ts'));
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await startLoader();
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.shown')).not.toBeNull());
+      expect(text('.shown')).toBe('');
+      expect(document.querySelector('.shown')!.hasAttribute('data-name')).toBe(false);
+      await waitFor(() => expect(text('.shown')).toBe('Ada'));
+      expect(document.querySelector('.shown')!.getAttribute('data-name')).toBe('Ada');
+    });
+
     it('passes a promise that is not a loading memo to a handler as a value', async () => {
       await streaming('streamedMemoParent');
       click(document.querySelector('.hold')!);
