@@ -159,6 +159,16 @@ interface Boundary {
   around?: boolean;
   /** The `#reveal` group that orders it, when it is in one. */
   group?: RevealGroup;
+  /** The `#try` blocks around it, from the outside in. */
+  catchers: Catcher[];
+}
+
+/** A `#try` that is rendering its body, and how to render its `#catch` body later. */
+interface Catcher {
+  /** The marker of the block, `<scope>:<anchor>`. */
+  key: string;
+  /** Renders the `#catch` body for an error, in a context of its own. */
+  render: (ctx: Context, error: unknown) => Promise<string>;
 }
 
 /** The order of a `#reveal` block. */
@@ -380,6 +390,10 @@ export class Context {
   /** The titles that this render set, and whether they all came from a `<title>` in `#head`. */
   private titles = { count: 0, markup: true };
   private onBoundary: ((boundary: Boundary) => void) | undefined;
+  /** The `#try` blocks of the parents of this context, from the outside in. */
+  outer: Catcher[] = [];
+  /** The `#try` blocks of this context that are rendering their bodies now. */
+  private readonly catchers: Catcher[] = [];
   /** The scope that renders the next component, which becomes its owner. */
   private owner: ScopeId | undefined;
   /**
@@ -1055,6 +1069,16 @@ export class Context {
     return this.reveal?.hidden.has(id) ? '</template>' : '';
   }
 
+  /**
+   * Starts a `#try` body. A `#loading` body inside it that fails renders the `#catch` body with
+   * `draw`, after the page is sent. The returned function ends the `#try` body.
+   */
+  catcher(key: string, draw: Catcher['render']): () => void {
+    const entry = { key, render: draw };
+    this.catchers.push(entry);
+    return () => removeLast(this.catchers, entry);
+  }
+
   /** Returns the ID of a new `#loading` boundary. */
   boundary(): ScopeId {
     return spaceId(this.space, this.space.boundary++);
@@ -1110,6 +1134,8 @@ export class Context {
   ): void {
     const child = new Context(this.root, undefined, 0, `${id}.`);
     child.inTarget = inTarget;
+    const catchers = [...this.outer, ...this.catchers];
+    child.outer = catchers;
     const group = this.reveal;
     group?.add(id);
     const end = around ? undefined : this.traced('body', `#loading ${id}`);
@@ -1127,6 +1153,7 @@ export class Context {
       ),
       around,
       group,
+      catchers,
     };
     // The page does not wait for it, so a failure must not be unhandled.
     boundary.render.catch(() => {});
@@ -2051,6 +2078,8 @@ export interface StateAttributes {
   build?: string;
   /** The ID of a `#loading` boundary whose body failed. The record is the error. */
   fail?: ScopeId;
+  /** The marker of a `#try` whose `#catch` body replaces its body, from the template `b-c`. */
+  catches?: string;
 }
 
 /**
@@ -2092,6 +2121,9 @@ export function stateScript(
   }
   if (attributes.fail !== undefined) {
     extra += ` b-fail="${attributes.fail}"`;
+  }
+  if (attributes.catches !== undefined) {
+    extra += ` b-catch="${attributes.catches}"`;
   }
   return `<script${extra}>${attributes.define ? RECORD : ''}$bR(($R,$b)=>(${code}))</script>`;
 }
@@ -2406,6 +2438,25 @@ export async function render<P>(
     );
   };
 
+  // Renders the `#catch` body of the nearest `#try` around a boundary whose body failed.
+  const renderCatch = async (
+    boundary: Boundary,
+    error: unknown,
+  ): Promise<{ html: string; ctx: Context; key: string } | undefined> => {
+    const entry = boundary.catchers.at(-1);
+    if (!entry) {
+      return undefined;
+    }
+    const child = new Context(ctx, undefined, 0, `${boundary.id}c.`);
+    child.outer = boundary.catchers.slice(0, -1);
+    try {
+      return { html: await entry.render(child, error), ctx: child, key: entry.key };
+    } catch (failure) {
+      console.error(failure);
+      return undefined;
+    }
+  };
+
   // In order: the bodies render where they are, so the page waits for every one of them.
   const inOrder: Boundary[] | undefined = ctx.inOrder ? [] : undefined;
   // When the reader of the response leaves, the bodies that are not sent yet are not sent.
@@ -2472,13 +2523,26 @@ export async function render<P>(
           turn(skip);
           return;
         }
-        // The body never arrives, so the browser gets the error, for the `#try` around the boundary.
+        // The body never arrives. The `#try` around the boundary renders its `#catch` body in its
+        // place, or the browser gets the error when there is no `#try`.
         turn((after) => {
           if (ctx.isDev()) {
             console.error(error);
           }
-          pending().push(failScript(caught(error, ctx), refs, boundary.id, root, nonce));
-          skip(after);
+          void renderCatch(boundary, error).then((result) => {
+            if (!result) {
+              pending().push(failScript(caught(error, ctx), refs, boundary.id, root, nonce));
+              skip(after);
+              return;
+            }
+            serialize(result.ctx, (script) => {
+              pending().push(
+                `<template b-c="${result.key}">${result.html}</template>${result.ctx.portals.join('')}` +
+                  `${stateScript('0', false, { root, nonce, catches: result.key })}${script}`,
+              );
+            });
+            skip(after);
+          });
         });
       },
     );
@@ -2521,6 +2585,8 @@ export async function render<P>(
     // Each body that renders can add more, so the list grows while it is read.
     const bodies = new Map<string, string>();
     const portals: string[] = [];
+    // The `#catch` bodies of the `#try` blocks around a body that failed.
+    const catches: [key: string, html: string][] = [];
     for (let index = 0; index < inOrder.length; index++) {
       const boundary = inOrder[index]!;
       let result: { html: string; ctx: Context };
@@ -2528,8 +2594,34 @@ export async function render<P>(
         // oxlint-disable-next-line no-await-in-loop -- The bodies settle in the order of the page.
         result = await boundary.render;
       } catch (error) {
-        // The fallback stays in the page.
-        console.error(error);
+        if (boundary.cancelled || boundary.around) {
+          continue;
+        }
+        if (ctx.isDev()) {
+          console.error(error);
+        }
+        // oxlint-disable-next-line no-await-in-loop -- The bodies settle in the order of the page.
+        const replacement = await renderCatch(boundary, error);
+        if (!replacement) {
+          // The fallback stays in the page.
+          console.error(error);
+          continue;
+        }
+        catches.push([replacement.key, replacement.html]);
+        portals.push(...replacement.ctx.portals);
+        serialize(
+          replacement.ctx,
+          (script) => {
+            state += script;
+          },
+          undefined,
+          (failed) => {
+            failure = failed;
+          },
+        );
+        if (failure !== undefined) {
+          throw unsendable(failure, replacement.ctx);
+        }
         continue;
       }
       if (boundary.cancelled || boundary.around) {
@@ -2554,7 +2646,11 @@ export async function render<P>(
         throw unsendable(failure, result.ctx);
       }
     }
-    page = beforeBodyEnd(inlineBodies(rendered, bodies), [...ctx.portals, ...portals].join(''));
+    let shell = rendered;
+    for (const [key, catchHTML] of catches) {
+      shell = replaceBlock(shell, key, catchHTML);
+    }
+    page = beforeBodyEnd(inlineBodies(shell, bodies), [...ctx.portals, ...portals].join(''));
   }
   return {
     html: page,
@@ -2588,6 +2684,33 @@ function rendersInOrder(
     return option(request);
   }
   return BOTS.test(request.headers.get('user-agent') ?? '');
+}
+
+/**
+ * Replaces what a block holds, between its markers, with other markup. `key` is the scope and
+ * the anchor in the start marker. A page without the block stays as it is.
+ */
+function replaceBlock(html: string, key: string, inner: string): string {
+  const open = `<!--b${key}-->`;
+  const start = html.indexOf(open);
+  if (start === -1) {
+    return html;
+  }
+  const comments = /<!--([^>]*?)-->/g;
+  comments.lastIndex = start + open.length;
+  let depth = 0;
+  for (let found = comments.exec(html); found; found = comments.exec(html)) {
+    const data = found[1]!;
+    if (data[0] === '/') {
+      if (depth === 0) {
+        return html.slice(0, start + open.length) + inner + html.slice(found.index);
+      }
+      depth--;
+    } else if (/^[btilP]-?\d/.test(data)) {
+      depth++;
+    }
+  }
+  return html;
 }
 
 // The markers of a `#loading` or `#defer` boundary, and the end of one.

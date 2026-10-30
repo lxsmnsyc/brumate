@@ -17,7 +17,7 @@ import type {
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
-import { serverFunctionId } from '../plan.ts';
+import { holdsStream, serverFunctionId } from '../plan.ts';
 import { cloneLines } from './template.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
@@ -1906,6 +1906,36 @@ export class Emitter {
   }
 
   /**
+   * Registers the `#catch` body of a `#try` on the server, and returns the name of the function
+   * that ends the registration. The body renders again here for an error that comes after the
+   * page is sent, in a context of its own.
+   */
+  private emitCatcher(block: Block & { kind: 'try' }, scope: Scope): string | undefined {
+    // A `#try` that holds no `#loading` body and no component has nothing to catch later.
+    const anchor = holdsStream(block) ? this.anchor(scope, block) : undefined;
+    if (!anchor) {
+      return undefined;
+    }
+    const end = this.unique('end');
+    const raised = this.unique('raised');
+    this.line(
+      `const ${end} = $$ctx.catcher(${anchor.scope} + ${JSON.stringify(`:${anchor.index}`)}, async ($$ctx, ${raised}) => {`,
+    );
+    this.line(`let $$html = '';`);
+    if (block.error) {
+      this.line(`const ${block.error.name} = $$b.caught(${raised}, $$ctx);`);
+    }
+    if (block.reset) {
+      this.line(`const ${block.reset.name} = undefined;`);
+    }
+    this.emitBody(block.fallback);
+    this.flush();
+    this.line('return $$html;');
+    this.close('});');
+    return end;
+  }
+
+  /**
    * Renders the fallback of a `#defer` block between the markers of a
    * boundary, and a template that the loader starts when the trigger fires.
    * The body renders only in the request for it, and replaces the fallback
@@ -2187,6 +2217,8 @@ export class Emitter {
         if (mark) {
           this.line(`const ${mark} = $$ctx.mark();`);
         }
+        // A `#loading` body inside that fails after the page is sent renders the `#catch` body then.
+        const end = server ? this.emitCatcher(block, scope) : undefined;
         this.line('try {');
         this.emitBody(block.body);
         this.close(`} catch (${error}) {`);
@@ -2206,6 +2238,10 @@ export class Emitter {
           this.line(`const ${block.reset.name} = undefined;`);
         }
         this.emitBody(block.fallback);
+        if (end) {
+          this.close('} finally {');
+          this.line(`${end}();`);
+        }
         this.close();
         this.end(block);
         return;

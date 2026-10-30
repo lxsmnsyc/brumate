@@ -78,13 +78,13 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 
 ### When a value fails
 
-A memo that fails inside a `#loading` body renders the nearest [`#catch`](./control-flow.md#try-and-catch), as it does when the page waits for the value. The `#try` can be in the body or around the `#loading` block. The server sends the error to the browser, which renders the `#catch` body in place of the `#try` body. In development the `#catch` gets the real error. In production it gets a generic one, and the server logs the real one.
+A memo that fails inside a `#loading` body renders the nearest [`#catch`](./control-flow.md#try-and-catch), as it does when the page waits for the value. The `#try` can be in the body, around the block, or in a parent component. When the body fails after the page is sent, the server renders the `#catch` body and streams it in place of the `#try` body. In development the `#catch` gets the real error. In production it gets a generic one, and the server logs the real one. A `#try` that holds a `#loading` block or a component has markers in the page for this.
 
 Without a `#try` around the block, the fallback stays, the server logs the error, and the page gets a `brumate:error` event on `window`.
 
 ### When the stream ends early
 
-The browser can lose the connection before a `#loading` body arrives. After a client navigation, the page notices when the stream ends with a fallback still in place. It treats that body as a failure with the message `The page stopped loading before this part arrived`, so the nearest `#catch` renders it, or `brumate:error` fires when there is none. A `#defer` block is not affected, since it waits for its trigger.
+The browser can lose the connection before a `#loading` body arrives. After a client navigation, the page notices when the stream ends with a fallback still in place. It treats that body as a failure with the message `The page stopped loading before this part arrived`, so the nearest `#catch` renders it, or `brumate:error` fires when there is none. The server is not asked again, so this works for a `#try` that has browser code or reads a memo, whose `#catch` body ships to the page. A `#defer` block is not affected, since it waits for its trigger.
 
 When the browser loads the page itself, it gives the page no event for a connection that dropped: Chromium leaves the document loading and fires neither `DOMContentLoaded` nor `load`. The fallbacks stay, and the browser shows that the page did not finish. A reload gets the whole page.
 
@@ -392,6 +392,7 @@ A `#loading` body streams in a `<template>` that a script swaps in. A reader tha
 
 - `inOrder` in the options of `handle`, `render` or `renderToStream` decides. `'bots'`, the default, does it for requests whose `User-Agent` is a known crawler or link preview. `true` does it for every request, `false` for none, and a function of the request decides for each.
 - A `#defer` body renders with the page, since a crawler does not fire its trigger.
+- A body that fails renders the nearest `#catch` in place of the `#try` body, as a page that does not stream does.
 - A `#client` body has no server markup, so a crawler sees its `#else` body.
 
 ## `#defer`

@@ -53,6 +53,24 @@ function unhandled(error: unknown, scope?: Scope): void {
   console.error(error);
 }
 
+/**
+ * Shows the `#catch` body that the server rendered, in the template `b-c`, in place of the body
+ * of a `#try`. The server sends it when a `#loading` body inside the `#try` failed. `key` is the
+ * scope and the anchor of the block.
+ */
+export function replaceTry(key: string): void {
+  const template = document.querySelector(`template[b-c="${key}"]`);
+  const [id, anchor] = key.split(':') as [string, string];
+  const owner = scopes.get(parseId(id));
+  const start = owner && blockStart(owner, Number(anchor));
+  if (template && start) {
+    const end = rangeEnd(start);
+    removeBlock(owner, [], start, end);
+    insertHTML(end, (template as HTMLTemplateElement).innerHTML);
+  }
+  template?.remove();
+}
+
 /** The start markers of the blocks around a node, from the inside out. */
 function blocksAround(place: Node): Comment[] {
   const result: Comment[] = [];

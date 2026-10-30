@@ -4,10 +4,11 @@
 
 - An error inside a streamed `#loading` or `#defer` body reaches the nearest `#catch`, in the body or around the block.
   - Inside: the deferred body waits for its memos with `awaitHeld` (`markup.ts`), and `bodyMemos` (`scopes.ts`, used in `server.ts`) makes the markup read them in place, so the `#try` inside the body gets the error. Before, the wait threw outside the `#try` and the whole body failed.
-  - Around: when a body fails, `render()` in `runtime/server.ts` sends a state record with `b-fail="<boundary>"` whose code is the error (`caught()`: real in development, generic and logged in production). `readRecord` (`client/resume.ts`) hands it to `failBoundary` (`client/errors.ts`). It walks the block markers around the boundary, finds the first `#try` with a `#catch` in the browser (`t` table) and renders it with `catchInto`. Without one, `brumate:error` fires.
-- A stream that ends early: after client navigation, `failPending` (`navigate.ts`) fails every `<!--lN-->` boundary that still shows its fallback (not a `#defer`), through the same record. Message: `The page stopped loading before this part arrived`.
+  - Around, in the same component or a parent: each `#try` that holds a `#loading` block or a component registers its `#catch` body on the server (`$$ctx.catcher`, `emitCatcher` in `markup.ts`) and gets markers (`holdsStream` in `plan.ts`). A boundary keeps the `#try` blocks around it. When its body fails, `render()` in `runtime/server.ts` renders the nearest `#catch` body in a context of its own and streams it as a `<template b-c>` with a `b-catch` record and the state of the `#catch` body. `replaceTry` (`client/errors.ts`) replaces the `#try` body with it and destroys the scopes in the range. No `#catch` code ships to the browser for this. Without a `#try`, a `b-fail` record makes the core fire `brumate:error`.
+  - Readers without scripts (`inOrder`): a failed body renders the same `#catch` in place (`replaceBlock` in `server.ts`).
+- A stream that ends early: after client navigation, `failPending` (`navigate.ts`) fails every `<!--lN-->` boundary that still shows its fallback (not a `#defer`). The server cannot be asked, so `failBoundary` (`client/errors.ts`) walks the markers and renders a `#catch` that the page has (`t` table), or fires `brumate:error`. Message: `The page stopped loading before this part arrived`.
 - Docs: `website/docs/async-data.md` ("When a value fails", "When the stream ends early"). Changeset: brumate patch.
-- Tests: `resume.test.ts` "an error inside a streamed #loading body" (6, five fail on main), `navigate.test.ts` (stream ends before the body), `codegen.test.ts` and two render snapshots updated for the held wait.
+- Tests: `resume.test.ts` "an error inside a streamed #loading body" (11, nine fail on main), `navigate.test.ts` (stream ends before the body), `codegen.test.ts` and two render snapshots updated for the held wait.
 
 ## Deviations
 
@@ -19,8 +20,8 @@
 
 ## Gotchas
 
-- A `#try` ships its `#catch` body to the browser only when its body has client code or a memo read (`tryCatchesClient`). A `#try` in a parent that wraps only a child component with the failing `#loading` has neither, so that error ends as `brumate:error` and the fallback stays. Fixing it ships every `#catch` that wraps a component.
-- The bots path (`inOrder`) still keeps the fallback of a body that fails, as before.
+- A `#try` that holds a component now has markers in its HTML, for the server catch (a few bytes each). A cut stream after navigation renders a `#catch` only when the page has it (browser code or a memo read in the `#try` body).
+- With `inOrder`, the state of the page is serialized before the bodies. A failed body leaves the scopes of the replaced `#try` body in that state, so a browser that gets an in-order page and a failed body resumes with scopes that have no markup.
 - A reader that errors during navigation (`read()` rejects) is not handled here.
 - The in-place branch of a `#loading` still declares `const x = $$b.read(...)`, now unused since reads are in place.
 
@@ -31,9 +32,9 @@
 ## Verification
 
 - `pnpm lint`: 187 warnings, same as main, no errors. `pnpm format:check`, `pnpm typecheck`: pass.
-- `pnpm --filter brumate test`: 1258 passed. The new resume tests fail on main (5 of 6 by timeout of the wait for the `#catch`).
+- `pnpm --filter brumate test`: 1276 passed. The new resume tests fail on main (5 of 6 by timeout of the wait for the `#catch`).
 - `pnpm --filter website check:samples`: 65 samples, 0 problems. `pnpm --filter website build`: pass.
-- Todos client JS in dist: 80.2 kB raw / 28.6 kB gzip on main, 80.7 kB / 28.8 kB here (about +0.5 kB raw, +0.2 kB gzip, in the core).
+- Todos client JS in dist: 80.8 kB raw / 28.8 kB gzip on main, 81.6 kB / 29.1 kB here (about +0.8 kB raw, +0.3 kB gzip, in the core).
 
 ## Size
 

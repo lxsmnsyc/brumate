@@ -595,7 +595,9 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       block.kind === 'defer' ||
       portalTarget ||
       (block.kind === 'try' &&
-        (resetUsed(model, block, graph.reached) || tryCatchesClient(model, block))) ||
+        (resetUsed(model, block, graph.reached) ||
+          tryCatchesClient(model, block) ||
+          holdsStream(block))) ||
       (headerSites.get(block) ?? []).some((site) => isLiveSite(site));
     if (live) {
       anchor(scope, block);
@@ -757,6 +759,19 @@ function childNodes(node: Markup): Markup[] {
     default:
       return blockBodies(node).flatMap((body) => body.children);
   }
+}
+
+/**
+ * True if the body of a `#try` holds a `#loading` block or a component, which can hold one. A
+ * body of it that fails after the page is sent renders the `#catch` body in place of the `#try`
+ * body, so the block needs its markers.
+ */
+export function holdsStream(block: Block & { kind: 'try' }): boolean {
+  let found = false;
+  forEachNode(block.body.children, (node) => {
+    found ||= node.kind === 'component' || node.kind === 'dynamic' || node.kind === 'loading';
+  });
+  return found;
 }
 
 /** Returns the bodies of a block, in source order. */

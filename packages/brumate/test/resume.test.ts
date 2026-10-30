@@ -1723,6 +1723,37 @@ describe('resume', () => {
       log.mockRestore();
     });
 
+    it.each(messages)(
+      'renders the #catch of a parent #try around a child (dev %s)',
+      async (dev, message) => {
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        await streamed('streamedCatchParent', dev);
+        await waitFor(() => expect(text('.caught')).toBe(message));
+        expect(document.querySelector('.fallback')).toBeNull();
+        expect(text('.before')).toBe('before');
+        expect(text('.after')).toBe('after');
+        log.mockRestore();
+      },
+    );
+
+    it.each(['streamedCatchInside', 'streamedCatchAround', 'streamedCatchParent'])(
+      'renders the #catch in place for a reader without scripts: %s',
+      async (name) => {
+        const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const server = await import(file(`${name}.brm.ts`));
+        const wait = Promise.reject(new Error('The service is down'));
+        wait.catch(() => {});
+        const page = await renderParts(server.default, { wait }, { inOrder: true });
+        expect(page.html).toMatch(
+          /class="caught"[^>]*>Error: The page could not render this part</,
+        );
+        expect(page.html).not.toContain('class="fallback"');
+        expect(page.html).toContain('<p class="before">before</p>');
+        expect(page.html.includes('<!--l')).toBe(false);
+        log.mockRestore();
+      },
+    );
+
     it('renders the #catch around a boundary whose stream ended, as navigation reports it', async () => {
       const server = await import(file('streamedCatchAround.brm.ts'));
       const wait = new Promise<string>(() => {});
