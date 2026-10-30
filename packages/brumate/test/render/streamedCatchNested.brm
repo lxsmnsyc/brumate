@@ -1,0 +1,20 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+
+  const { wait } = $props<{ wait: Promise<string> }>();
+  const data = $memo(wait);
+</script>
+
+#try {
+  #try {
+    #loading {
+      <p class="data">{data}</p>
+    } #else {
+      <p class="fallback">Loading</p>
+    }
+  } #catch (error) {
+    <p class="caught inner">Inner {String(error)}</p>
+  }
+} #catch (error) {
+  <p class="caught outer">Outer {String(error)}</p>
+}

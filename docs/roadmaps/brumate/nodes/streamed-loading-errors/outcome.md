@@ -8,7 +8,7 @@
   - Readers without scripts (`inOrder`): a failed body renders the same `#catch` in place (`replaceBlock` in `server.ts`).
 - A stream that ends early: after client navigation, `failPending` (`navigate.ts`) dispatches `brumate:error` for every `<!--lN-->` boundary that still shows its fallback (not a `#defer`). The fallback stays.
 - Docs: `website/docs/async-data.md` ("When a value fails", "When the stream ends early"). Changeset: brumate patch.
-- Tests: `resume.test.ts` "an error inside a streamed #loading body" (11, nine fail on main), `navigate.test.ts` (stream ends before the body), `codegen.test.ts` and two render snapshots updated for the held wait.
+- Tests: `resume.test.ts` "an error inside a streamed #loading body" (11, nine fail on main), `navigate.test.ts` (stream ends before the body, no double report, connection failure), `codegen.test.ts` and two render snapshots updated for the held wait.
 
 ## Deviations
 
@@ -21,6 +21,7 @@
 ## Gotchas
 
 - A `#try` that holds a component now has markers in its HTML, for the server catch (a few bytes each).
+- Every `#try` that holds a component or a `#loading` block gets `<!--bS:A-->` and `<!--/b-->` markers in its HTML (`holdsStream` in `plan.ts`), about 25 bytes each, and a closure that registers its `#catch` body on the server. A page with many such `#try` blocks pays for each.
 - With `inOrder`, the state of the page is serialized before the bodies. A failed body leaves the scopes of the replaced `#try` body in that state, so a browser that gets an in-order page and a failed body resumes with scopes that have no markup.
 - A reader that errors during navigation (`read()` rejects) is not handled here.
 - The in-place branch of a `#loading` still declares `const x = $$b.read(...)`, now unused since reads are in place.

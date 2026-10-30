@@ -1754,6 +1754,35 @@ describe('resume', () => {
       },
     );
 
+    it('resumes a #catch body that has state, after the swap', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await streamed('streamedCatchState', true);
+      await waitFor(() => expect(text('.caught')).toBe('Error: The service is down'));
+      expect(document.querySelector('template[b-c]')).toBeNull();
+      click(document.querySelector('.bump')!);
+      await waitFor(() => expect(text('.n')).toBe('1'));
+      log.mockRestore();
+    });
+
+    it('renders one #catch when two bodies of a #try fail', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await streamed('streamedCatchTwo', true);
+      await waitFor(() => expect(text('.caught')).toBe('Error: The service is down'));
+      expect(document.querySelectorAll('.caught')).toHaveLength(1);
+      expect(document.querySelector('.fallback')).toBeNull();
+      expect(document.querySelector('template[b-c]')).toBeNull();
+      log.mockRestore();
+    });
+
+    it('renders the #catch of the inner #try when #try blocks are nested', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await streamed('streamedCatchNested', true);
+      await waitFor(() => expect(text('.inner')).toBe('Inner Error: The service is down'));
+      expect(document.querySelector('.outer')).toBeNull();
+      expect(document.querySelector('.fallback')).toBeNull();
+      log.mockRestore();
+    });
+
     it('reports the error to the page when no #try is around', async () => {
       const log = vi.spyOn(console, 'error').mockImplementation(() => {});
       const { events } = await streamed('streamedCatchNo', true);
