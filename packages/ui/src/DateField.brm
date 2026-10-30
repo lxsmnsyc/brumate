@@ -98,21 +98,32 @@
     constrain(toDate(placeholderValue ?? todayString(locale.timeZone)), minValue, maxValue).toString(),
   );
   const inputId = $id();
+  // The locale and the placeholders can change at run time, so the segments get them as memos.
+  const language = $memo(locale.locale);
+  const placeholders = $memo(strings?.placeholders);
   // The date that a reset of the form gives back.
   let initialValue = $signal(value);
-  const { segments, date, step, jump, type, erase, settle } = dateSegments(
+  const { segments, date, step, jump, type, erase, settle, reset } = dateSegments(
     value,
     placeholder,
-    locale.locale,
-    strings?.placeholders,
+    language,
+    placeholders,
     isDisabled,
     isReadOnly,
   );
   let edited = $signal(false);
+  // A date out of range blocks a submit.
+  const rangeMessage = $memo(
+    value !== null && outOfRange(toDate(value), minValue, maxValue)
+      ? 'The date is outside the allowed range.'
+      : '',
+  );
   const { committed, nativeErrors, invalidated, changed } = formField(inputId, () => {
     value = initialValue;
+    // A setter that refuses leaves the old date, and the segments show that one.
+    reset(value);
     edited = false;
-  });
+  }, rangeMessage);
   const errors = $memo([
     ...(edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
     ...(committed ? nativeErrors : []),
@@ -129,6 +140,10 @@
     const next = date;
     if (next !== $untrack(value)) {
       $untrack((value = next));
+      // A setter that refuses leaves the old date, and the segments show that one.
+      if ($untrack(value) !== next) {
+        reset($untrack(value));
+      }
       edited = true;
       changed();
       onChange?.(next);

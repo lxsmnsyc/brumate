@@ -146,7 +146,7 @@ See [State](./state.md) for the other parts.
 
 Style the dates with the data attributes above. The grid is a table, so style its `th` and `td`. The CalendarHeading is an `h2`, and the Buttons with `slot="previous"` and `slot="next"` are those of [Button](./button.md). See [Styling](./styling.md).
 
-A cell has no `data-hovered`, so use `:hover` for the pointer. This stylesheet styles the month Buttons and a date in rest, hover, press, today, selected, keyboard focus, unavailable and out of range. The weekends cannot be picked, and the dates before the 5th of October and after the 20th of November are out of range.
+A cell shows `data-hovered` under a mouse or a pen. This stylesheet styles the month Buttons and a date in rest, hover, press, today, selected, keyboard focus, unavailable and out of range. The weekends cannot be picked, and the dates before the 5th of October and after the 20th of November are out of range.
 
 ```brm styled CalendarStyled
 

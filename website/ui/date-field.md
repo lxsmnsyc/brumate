@@ -125,7 +125,7 @@ The keys act on the segment that has focus. A segment takes none of them while t
 - `value=$bind(signal)` writes your signal. Change the signal and the field follows.
 - `value=$bind(signal, (next) => ...)` asks you first. Press Lock above, then change the last field: the signal keeps its date.
 - `onChange` gets the date, or `null` when a segment is emptied, in every shape, each time the date changes. With a request that refuses, it still gets the date that was asked for.
-- With a request that refuses, the segments of a DateField keep the date that was typed, and the signal keeps the date you hold. Press Lock above, press ArrowUp in the last field and see the two differ. The segments follow the signal again at its next change.
+- With a request that refuses, the segments show the date you keep, as the other fields do. Press Lock above and press ArrowUp in the last field: the segments stay.
 - A reset of the form gives back the first date, as a write: with `$bind(signal, request)`, your request can refuse it. The server renders the date it starts with.
 
 See [State](./state.md) for the other parts.
@@ -134,7 +134,7 @@ See [State](./state.md) for the other parts.
 
 Style the segments with `data-type`, `data-placeholder` and `data-focused`, and the field with the other data attributes above. The hidden input that posts the date is out of sight. See [Styling](./styling.md).
 
-A segment has no `data-hovered` or `data-focus-visible`, so use `:hover` and `data-focused`. This stylesheet draws the input as a box with its segments in rest, placeholder, focus, invalid and disabled, and the description and the error. Press Save with no date to see the error.
+A segment shows `data-hovered` and `data-focus-visible`. This stylesheet draws the input as a box with its segments in rest, placeholder, focus, invalid and disabled, and the description and the error. Press Save with no date to see the error.
 
 ```brm styled DateFieldStyled
 
@@ -163,7 +163,7 @@ A segment has no `data-hovered` or `data-focus-visible`, so use `:hover` and `da
 - The values are Gregorian dates with no time zone. A day is limited by the month and year that are set, and the year goes from 1 to 9999 and does not wrap. A date that does not fit its month, such as the 31st of a month with 30 days, gives the last day of the month.
 - Today, the start of a segment that is not set, is the date in the `timeZone` of the I18nProvider, or else the date of the server that rendered the page.
 - A screen reader hears the name of each segment (`Tag`, `Monat`, `Jahr` in German) from `Intl.DisplayNames`, with the English names where the browser has none, and `Empty` in the language for a segment that is not set. These words come from the table of languages, which [I18nProvider](./i18n-provider.md) describes.
-- Each segment shows `data-type`, such as `month`, and `data-focused`, `data-readonly`, `data-disabled` and `data-invalid`.
+- Each segment shows `data-type`, such as `month`, and `data-hovered`, `data-focused`, `data-focus-visible`, `data-readonly`, `data-disabled` and `data-invalid`.
 
 ## Input
 
@@ -179,7 +179,7 @@ A segment has no `data-hovered` or `data-focus-visible`, so use `:hover` and `da
 
 ### A date in a form
 
-`isRequired` makes the browser check the field on a submit, and the FieldError shows the message. `minValue` and `maxValue` make a date outside them invalid, but they do not stop a submit: the form here looks for `data-invalid` before it sends. `name` posts the date as `YYYY-MM-DD`, and Reset gives back the first date.
+`isRequired` makes the browser check the field on a submit, and the FieldError shows the message. `minValue` and `maxValue` make a date outside them invalid, and the browser does not submit the form with one: the FieldError shows its message. `name` posts the date as `YYYY-MM-DD`, and Reset gives back the first date.
 
 ```brm demo DateFieldFormDemo
 
