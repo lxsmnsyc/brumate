@@ -23,6 +23,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: shared-part-imports
+    kind: hard
+    why: in the 0.4.0 cut (a main bug that breaks parts in the browser)
   - on: streamed-loading-errors
     kind: hard
     why: in the 0.4.0 cut (found by #373; the maintainer, 2026-10-30)
