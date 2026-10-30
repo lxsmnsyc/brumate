@@ -23,6 +23,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: parser-closed-nesting
+    kind: hard
+    why: in the 0.4.0 cut (found by transition-sibling-text, #364; the maintainer, 2026-10-30)
   - on: transition-sibling-text
     kind: hard
     why: in the 0.4.0 cut (found by ui-docs-pages-utilities, #362; the maintainer, 2026-10-30)
