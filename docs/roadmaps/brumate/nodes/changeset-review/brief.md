@@ -21,6 +21,9 @@ shared: []
 reserves: []
 provides: []
 depends_on:
+  - on: perf-pass-0.4
+    kind: hard
+    why: the maintainer wants the perf pass before the changesets are reviewed (2026-10-30)
   - on: shared-part-imports
     kind: hard
     why: its changeset is part of the release
