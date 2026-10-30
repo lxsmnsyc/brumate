@@ -21,8 +21,7 @@ for (const [file, demo] of Object.entries(
   demos[/(\w+)\.brm$/.exec(file)![1]!] = demo;
 }
 
-/** The sections of the sidebar, in reading order. Each part has a page of its own. */
-export const sections: { title: string; pages: { slug: string; title: string }[] }[] = [
+const groups = [
   {
     title: 'Start',
     pages: ['introduction', 'styling', 'state', 'resuming', 'layers', 'influences'],
@@ -86,12 +85,22 @@ export const sections: { title: string; pages: { slug: string; title: string }[]
   { title: 'Layout', pages: ['group', 'separator', 'heading'] },
   { title: 'Animation', pages: ['transition'] },
   { title: 'Utilities', pages: ['visually-hidden', 'keyboard', 'i18n-provider'] },
-].map((section) => ({
-  title: section.title,
-  pages: section.pages
-    .filter((slug) => slug in pages)
-    .map((slug) => ({ slug, title: pages[slug]!.title })),
-}));
+];
+
+/** The sections of the sidebar, in reading order. Each part has a page of its own. */
+export const sections: { title: string; pages: { slug: string; title: string }[] }[] = [];
+for (const group of groups) {
+  const entries: { slug: string; title: string }[] = [];
+  for (const slug of group.pages) {
+    if (slug in pages) {
+      entries.push({
+        slug,
+        title: pages[slug]!.title,
+      });
+    }
+  }
+  sections.push({ title: group.title, pages: entries });
+}
 
 /** The cards of the home of the section: a demo of each part, and the section about it. */
 export const gallery: { title: string; summary: string; href: string; demo: string }[] = [

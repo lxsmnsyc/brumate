@@ -122,6 +122,47 @@ const UNSTABLE = new Set([
   'template',
 ]);
 
+/** True if the range lies inside one of the ranges. */
+function isInRanges(ranges: { start: number; end: number }[], start: number, end: number): boolean {
+  for (const range of ranges) {
+    if (range.start <= start && end <= range.end) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** True if one of the items is at a site of the set. */
+function hasSiteIn(items: { site: Site }[], sites: Set<Site>): boolean {
+  for (const item of items) {
+    if (sites.has(item.site)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** True if the declaration is a prop, or is referenced from a dynamic tag. */
+function hasDynamicRef(declaration: Declaration): boolean {
+  for (const ref of declaration.refs) {
+    if (declaration.kind === 'prop' || ref.element.kind === 'dynamic') {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** The children without the text that is only whitespace. */
+function withoutBlankText(children: Markup[]): Markup[] {
+  const kept: Markup[] = [];
+  for (const child of children) {
+    if (child.kind !== 'text' || cleanText(child.value) !== '') {
+      kept.push(child);
+    }
+  }
+  return kept;
+}
+
 /**
  * True if the browser keeps the element's content inside it, whatever that
  * content renders. Then an element inside it can find it with `closest`, and
@@ -130,11 +171,16 @@ const UNSTABLE = new Set([
 function isStable(node: ElementNode): boolean {
   const tag = node.tag.toLowerCase();
   if (tag === 'tr') {
-    return node.children.every((child) =>
-      child.kind === 'text'
-        ? cleanText(child.value).trim() === ''
-        : child.kind === 'element' && ['td', 'th'].includes(child.tag.toLowerCase()),
-    );
+    for (const child of node.children) {
+      const allowed =
+        child.kind === 'text'
+          ? cleanText(child.value).trim() === ''
+          : child.kind === 'element' && ['td', 'th'].includes(child.tag.toLowerCase());
+      if (!allowed) {
+        return false;
+      }
+    }
+    return true;
   }
   return !UNSTABLE.has(tag);
 }
@@ -161,11 +207,12 @@ export function getComponentName(filename: string): string {
     .split(/[\\/]/)
     .pop()!
     .replace(/\.[^.]*$/, '');
-  const name = base
-    .split(/[^A-Za-z0-9]+/)
-    .filter(Boolean)
-    .map((part) => part[0]!.toUpperCase() + part.slice(1))
-    .join('');
+  let name = '';
+  for (const part of base.split(/[^A-Za-z0-9]+/)) {
+    if (part) {
+      name += part[0]!.toUpperCase() + part.slice(1);
+    }
+  }
   return /^\d/.test(name) ? `Component${name}` : name || 'Component';
 }
 
@@ -237,11 +284,11 @@ export function hash(value: string): string {
  */
 export function childrenHolders(file: SFCFile): (ComponentNode | DynamicTagNode)[] {
   const found: (ComponentNode | DynamicTagNode)[] = [];
-  const visit = (node: Markup): void => {
+  function visit(node: Markup): void {
     if ((node.kind === 'component' || node.kind === 'dynamic') && node.children.length > 0) {
       found.push(node);
     }
-  };
+  }
   forEachNode(file.children, visit);
   for (const template of file.templates) {
     forEachNode(template.body.children, visit);
@@ -264,11 +311,13 @@ export function clientState(
       siteNodes.set(node.site, graph.live.has(node));
     }
   }
-  const isLiveSite = (site: Site): boolean => siteNodes.get(site) === true;
+  function isLiveSite(site: Site): boolean {
+    return siteNodes.get(site) === true;
+  }
 
   // Code on the client: reached sites, live nodes, and the functions they call.
   const clientSites = new Set<Site>();
-  const addClientSite = (site: Site): void => {
+  function addClientSite(site: Site): void {
     if (clientSites.has(site)) {
       return;
     }
@@ -278,24 +327,24 @@ export function clientState(
         addClientSite(callee.site);
       }
     }
-  };
+  }
   for (const site of model.sites) {
     if (graph.reached.has(site) || isLiveSite(site)) {
       addClientSite(site);
     }
   }
   // Children render in the browser each time a component inserts them, so their code is there.
-  const ranges = (file ? childrenHolders(file) : []).map((node) => ({
-    start: node.children[0]!.start,
-    end: node.children.at(-1)!.end,
-  }));
+  const ranges: { start: number; end: number }[] = [];
+  for (const node of file ? childrenHolders(file) : []) {
+    ranges.push({ start: node.children[0]!.start, end: node.children.at(-1)!.end });
+  }
   if (ranges.length > 0) {
     for (const site of model.sites) {
       const node = site.node as { start?: number; end?: number };
       if (
         node.start !== undefined &&
         node.end !== undefined &&
-        ranges.some((range) => range.start <= node.start! && node.end! <= range.end)
+        isInRanges(ranges, node.start, node.end)
       ) {
         addClientSite(site);
       }
@@ -336,25 +385,25 @@ export function clientState(
     if (scope.kind === 'module') {
       continue;
     }
-    slots.set(
-      scope,
-      [...scope.declarations.values()].filter(
-        (declaration) =>
-          !NO_SLOT.has(declaration.kind) &&
-          (declaration.reads.some((read) => clientSites.has(read.site)) ||
-            // A binding writes the slot of its name, and a bound prop writes the parent's
-            // through its own, so they need slots without a read in the browser.
-            declaration.bound === true ||
-            // A prop forwards its element to the parent through its slot, and a dynamic tag
-            // passes the slot of its signal to a component.
-            declaration.refs.some(
-              (ref) => declaration.kind === 'prop' || ref.element.kind === 'dynamic',
-            ) ||
-            (declaration.kind === 'prop' &&
-              declaration.writable === true &&
-              declaration.writes.some((write) => clientSites.has(write.site)))),
-      ),
-    );
+    const needed: Declaration[] = [];
+    for (const declaration of scope.declarations.values()) {
+      if (
+        !NO_SLOT.has(declaration.kind) &&
+        (hasSiteIn(declaration.reads, clientSites) ||
+          // A binding writes the slot of its name, and a bound prop writes the parent's
+          // through its own, so they need slots without a read in the browser.
+          declaration.bound === true ||
+          // A prop forwards its element to the parent through its slot, and a dynamic tag
+          // passes the slot of its signal to a component.
+          hasDynamicRef(declaration) ||
+          (declaration.kind === 'prop' &&
+            declaration.writable === true &&
+            hasSiteIn(declaration.writes, clientSites)))
+      ) {
+        needed.push(declaration);
+      }
+    }
+    slots.set(scope, needed);
   }
   return { isLiveSite, clientSites, slots };
 }
@@ -384,15 +433,18 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
   }
 
   // The `$bind` calls of the file, which make an element bind a value.
-  const boundCalls = new Set<oxc.Node>(model.bindings.map((binding) => binding.call));
+  const boundCalls = new Set<oxc.Node>();
+  for (const binding of model.bindings) {
+    boundCalls.add(binding.call);
+  }
   const anchors = new Map<AnchorTarget, number>();
   const anchorScopes = new Map<AnchorTarget, Scope>();
-  const anchor = (scope: Scope, target: AnchorTarget): void => {
+  function anchor(scope: Scope, target: AnchorTarget): void {
     const plan = scopes.get(scope)!;
     anchors.set(target, plan.anchors++);
     anchorScopes.set(target, scope);
     plan.needsId = true;
-  };
+  }
 
   const symbols = new Map<Site, string>();
   for (const site of model.sites) {
@@ -451,21 +503,21 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
 
   // `outer` is the scope of the nearest element around the nodes that has an anchor, in the same
   // markup. An element inside it in the same scope finds its handlers' scope from that anchor.
-  const visitBody = (body: Body, outer?: Scope): void => {
+  function visitBody(body: Body, outer?: Scope): void {
     const scope = bodyScopes.get(body)!;
     for (const template of body.templates) {
       visitBody(template.body);
     }
     visitNodes(body.children, scope, outer);
-  };
+  }
 
-  const visitNodes = (nodes: Markup[], scope: Scope, outer?: Scope): void => {
+  function visitNodes(nodes: Markup[], scope: Scope, outer?: Scope): void {
     for (const node of nodes) {
       visitNode(node, scope, outer);
     }
-  };
+  }
 
-  const visitNode = (node: Markup, scope: Scope, outer?: Scope): void => {
+  function visitNode(node: Markup, scope: Scope, outer?: Scope): void {
     switch (node.kind) {
       case 'text':
         return;
@@ -479,19 +531,32 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       case 'element':
       case 'dynamic': {
         const sites = sitesByNode.get(node) ?? [];
-        const hasRef = node.attributes.some((attribute) => {
+        let hasRef = false;
+        for (const attribute of node.attributes) {
           const target = attribute.kind === 'ref' ? refTargets.get(attribute) : undefined;
-          return target !== undefined && slotted.has(target);
-        });
+          if (target !== undefined && slotted.has(target)) {
+            hasRef = true;
+            break;
+          }
+        }
         const content = node.kind === 'element' ? liveContent(node) : undefined;
-        const events = sites.some((site) => site.kind === 'event');
+        let events = false;
+        for (const site of sites) {
+          if (site.kind === 'event') {
+            events = true;
+            break;
+          }
+        }
         // `value=$bind(name)`: the core finds the scope of the name from the anchor of the element.
-        const bound =
-          node.kind === 'element' &&
-          node.attributes.some(
-            (attribute) =>
-              attribute.kind === 'value' && boundCalls.has(unparen(attribute.value.ast)),
-          );
+        let bound = false;
+        if (node.kind === 'element') {
+          for (const attribute of node.attributes) {
+            if (attribute.kind === 'value' && boundCalls.has(unparen(attribute.value.ast))) {
+              bound = true;
+              break;
+            }
+          }
+        }
         // An element whose only anchor would be for its handlers finds their scope from
         // the anchor of an element around it, with `closest`.
         const implied = node.kind === 'element' && outer === scope;
@@ -500,7 +565,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
           bound ||
           content ||
           itemRoots.has(node) ||
-          sites.some((site) => isLiveSite(site)) ||
+          hasLiveSite(sites) ||
           (events && !implied)
         ) {
           anchor(scope, node);
@@ -533,7 +598,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       }
       case 'component': {
         const sites = sitesByNode.get(node) ?? [];
-        if (sites.some((site) => isLiveSite(site))) {
+        if (hasLiveSite(sites)) {
           anchor(scope, node);
         }
         if (node.children.length > 0) {
@@ -555,13 +620,13 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       default:
         visitBlock(node, scope, outer);
     }
-  };
+  }
 
   /**
    * Reports live markup inside an element whose content is text. Its markers
    * would be text, so the client can only update a value that is the whole content.
    */
-  const checkText = (element: ElementNode): void => {
+  function checkText(element: ElementNode): void {
     const found = firstAnchored(element.children, anchors);
     if (found) {
       const tag = element.tag.toLowerCase();
@@ -571,21 +636,39 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         range: { start: found.start, end: found.end },
       });
     }
-  };
+  }
+
+  /** True if one of the sites is live. */
+  function hasLiveSite(sites: Site[]): boolean {
+    for (const site of sites) {
+      if (isLiveSite(site)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** True if the scope has a `$client` callback. */
+  function hasClientSite(scope: Scope): boolean {
+    for (const site of model.sites) {
+      if (site.kind === 'client' && site.scope === scope) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /** The live insert that is the whole content of an element, if any. */
-  const liveContent = (node: ElementNode): InsertNode | undefined => {
-    const [only, ...rest] = node.children.filter(
-      (child) => child.kind !== 'text' || cleanText(child.value) !== '',
-    );
+  function liveContent(node: ElementNode): InsertNode | undefined {
+    const [only, ...rest] = withoutBlankText(node.children);
     if (rest.length > 0 || only?.kind !== 'insert') {
       return undefined;
     }
     const site = insertSites.get(only.expression.ast);
     return site && isLiveSite(site) ? only : undefined;
-  };
+  }
 
-  const visitBlock = (block: Block, scope: Scope, outer?: Scope): void => {
+  function visitBlock(block: Block, scope: Scope, outer?: Scope): void {
     const portalTarget = block.kind === 'portal' && block.target !== undefined;
     const live =
       block.kind === 'client' ||
@@ -598,7 +681,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         (resetUsed(model, block, graph.reached) ||
           tryCatchesClient(model, block) ||
           holdsStream(block))) ||
-      (headerSites.get(block) ?? []).some((site) => isLiveSite(site));
+      hasLiveSite(headerSites.get(block) ?? []);
     if (live) {
       anchor(scope, block);
       // The component around it finds its scope by its anchor, for the contexts of its bodies.
@@ -633,23 +716,18 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       }
       visitBody(body, inner);
     }
-  };
+  }
 
   /** The element that is the whole markup of a body, when nothing else renders next to it. */
-  const singleRoot = (body: Body): Markup | undefined => {
+  function singleRoot(body: Body): Markup | undefined {
     const scope = bodyScopes.get(body)!;
     // `$client` callbacks render `<template>` markers next to the markup.
-    if (
-      body.templates.length > 0 ||
-      model.sites.some((site) => site.kind === 'client' && site.scope === scope)
-    ) {
+    if (body.templates.length > 0 || hasClientSite(scope)) {
       return undefined;
     }
-    const [only, ...rest] = body.children.filter(
-      (child) => child.kind !== 'text' || cleanText(child.value) !== '',
-    );
+    const [only, ...rest] = withoutBlankText(body.children);
     return rest.length === 0 && only?.kind === 'element' && isStable(only) ? only : undefined;
-  };
+  }
 
   for (const template of file.templates) {
     visitBody(template.body);
@@ -658,7 +736,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
 
   // A `<title>` sets the title of the page from `#head`, as the tags of the head do. One in a
   // `<head>` element is the head's own, and one in an `<svg>` names a shape.
-  const checkTitles = (nodes: Markup[], inHead: boolean): void => {
+  function checkTitles(nodes: Markup[], inHead: boolean): void {
     for (const node of nodes) {
       switch (node.kind) {
         case 'element': {
@@ -690,7 +768,7 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
           }
       }
     }
-  };
+  }
   for (const template of file.templates) {
     checkTitles(template.body.children, false);
   }
@@ -701,15 +779,22 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       plan.needsId = true;
     }
     // IDs from `$id()` are made from the scope's ID, so each instance needs its own.
-    if (
-      [...plan.scope.declarations.values()].some((declaration) => declaration.idIndex !== undefined)
-    ) {
-      plan.needsId = true;
+    for (const declaration of plan.scope.declarations.values()) {
+      if (declaration.idIndex !== undefined) {
+        plan.needsId = true;
+        break;
+      }
     }
   }
 
   const styles = compileStyles(file, hash(file.filename), path);
-  const liveStyles = model.sites.some((site) => site.kind === 'style' && isLiveSite(site));
+  let liveStyles = false;
+  for (const site of model.sites) {
+    if (site.kind === 'style' && isLiveSite(site)) {
+      liveStyles = true;
+      break;
+    }
+  }
 
   return {
     graph,
@@ -757,7 +842,11 @@ function childNodes(node: Markup): Markup[] {
     case 'fragment':
       return node.children;
     default:
-      return blockBodies(node).flatMap((body) => body.children);
+      const children: Markup[] = [];
+      for (const body of blockBodies(node)) {
+        children.push(...body.children);
+      }
+      return children;
   }
 }
 
@@ -777,16 +866,26 @@ export function holdsStream(block: Block & { kind: 'try' }): boolean {
 /** Returns the bodies of a block, in source order. */
 export function blockBodies(block: Block): Body[] {
   switch (block.kind) {
-    case 'if':
-      return [
-        ...block.branches.map((branch) => branch.body),
-        ...(block.fallback ? [block.fallback] : []),
-      ];
-    case 'switch':
-      return [
-        ...block.cases.map((branch) => branch.body),
-        ...(block.fallback ? [block.fallback] : []),
-      ];
+    case 'if': {
+      const bodies: Body[] = [];
+      for (const branch of block.branches) {
+        bodies.push(branch.body);
+      }
+      if (block.fallback) {
+        bodies.push(block.fallback);
+      }
+      return bodies;
+    }
+    case 'switch': {
+      const bodies: Body[] = [];
+      for (const branch of block.cases) {
+        bodies.push(branch.body);
+      }
+      if (block.fallback) {
+        bodies.push(block.fallback);
+      }
+      return bodies;
+    }
     case 'for':
     case 'repeat':
     case 'loading':

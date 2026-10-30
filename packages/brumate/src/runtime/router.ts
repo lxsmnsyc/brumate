@@ -100,7 +100,7 @@ function wrap(view: RouteView, wrapper: Wrapper | undefined): RouteView {
 }
 
 /** The layout of a folder, or undefined when it has none. */
-function wrapperOf(
+function findWrapper(
   node: RouteNode,
   segments: string[],
   index: number,
@@ -206,8 +206,14 @@ function matchNode(
   }
   // The route of the folder streams in after its layout, with the loading file until then.
   const content: RouteView = node.loading ? { ...inner.view, loading: node.loading } : inner.view;
-  const wrapper = wrapperOf(node, segments, index, params, path);
-  const errors = wrapper ? inner.errors.map((view) => wrap(view, wrapper)) : inner.errors;
+  const wrapper = findWrapper(node, segments, index, params, path);
+  let errors = inner.errors;
+  if (wrapper) {
+    errors = [];
+    for (const view of inner.errors) {
+      errors.push(wrap(view, wrapper));
+    }
+  }
   if (node.error) {
     errors.push(errorIn(node.error, wrapper, params, path));
   }
@@ -230,10 +236,12 @@ export const missingPage: Loader = () => {
 export function matchRoute(tree: RouteNode, pathname: string): RouteMatch | undefined {
   let segments: string[];
   try {
-    segments = pathname
-      .split('/')
-      .filter(Boolean)
-      .map((segment) => decodeURIComponent(segment));
+    segments = [];
+    for (const segment of pathname.split('/')) {
+      if (segment) {
+        segments.push(decodeURIComponent(segment));
+      }
+    }
   } catch {
     return undefined;
   }
@@ -246,7 +254,7 @@ export function matchRoute(tree: RouteNode, pathname: string): RouteMatch | unde
  */
 export function notFound(tree: RouteNode): Pick<RouteMatch, 'errors' | 'middleware'> {
   return {
-    errors: tree.error ? [errorIn(tree.error, wrapperOf(tree, [], 0, {}, ''), {}, '')] : [],
+    errors: tree.error ? [errorIn(tree.error, findWrapper(tree, [], 0, {}, ''), {}, '')] : [],
     middleware: tree.middleware ? [tree.middleware] : [],
   };
 }

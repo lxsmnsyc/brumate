@@ -47,11 +47,25 @@ export function needsScope(
   classes: string[] | undefined,
 ): boolean {
   const lower = tag?.toLowerCase();
-  return targets.some(
-    (target) =>
-      (target.tag === undefined || lower === undefined || target.tag === lower) &&
-      (classes === undefined || target.classes.every((name) => classes.includes(name))),
-  );
+  for (const target of targets) {
+    if (target.tag !== undefined && lower !== undefined && target.tag !== lower) {
+      continue;
+    }
+    if (classes === undefined) {
+      return true;
+    }
+    let hasClasses = true;
+    for (const name of target.classes) {
+      if (!classes.includes(name)) {
+        hasClasses = false;
+        break;
+      }
+    }
+    if (hasClasses) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** What an element needs to match a compound. Selectors inside pseudo-classes are not read. */
@@ -73,8 +87,8 @@ type SelectorPart = Parameters<Parameters<selectorParser.Selector['each']>[0]>[0
  * Adds the scope attribute to every compound selector, except inside
  * `:global(…)`. Each scoped compound goes into `targets`.
  */
-const scopeSelector = (attribute: string, targets: ScopeTarget[]) =>
-  selectorParser((selectors) => {
+function scopeSelector(attribute: string, targets: ScopeTarget[]) {
+  return selectorParser((selectors) => {
     // `:global(h1, h2)` is a list: the selector around it becomes one selector for each item.
     for (let index = 0; index < selectors.nodes.length; index++) {
       const selector = selectors.nodes[index]!;
@@ -88,7 +102,8 @@ const scopeSelector = (attribute: string, targets: ScopeTarget[]) =>
         continue;
       }
       const items = list.nodes;
-      const copies = items.map((_, item) => {
+      const copies: selectorParser.Selector[] = [];
+      for (let item = 0; item < items.length; item++) {
         const copy = selector.clone() as selectorParser.Selector;
         let found: selectorParser.Pseudo | undefined;
         copy.walkPseudos((pseudo) => {
@@ -102,8 +117,8 @@ const scopeSelector = (attribute: string, targets: ScopeTarget[]) =>
           only.first.spaces.before = '';
         }
         found!.nodes = [only];
-        return copy;
-      });
+        copies.push(copy);
+      }
       selector.replaceWith(...copies);
       // The copies can hold another list, so they are looked at again.
       index--;
@@ -119,14 +134,21 @@ const scopeSelector = (attribute: string, targets: ScopeTarget[]) =>
         }
       });
       for (const compound of compounds) {
-        const global = compound.find(
-          (node): node is selectorParser.Pseudo =>
-            node.type === 'pseudo' && node.value === ':global',
-        );
+        let global: selectorParser.Pseudo | undefined;
+        for (const node of compound) {
+          if (node.type === 'pseudo' && node.value === ':global') {
+            global = node;
+            break;
+          }
+        }
         if (global) {
           // `:global(.a)` becomes `.a`, without the scope.
           const inner = global.nodes[0]?.nodes ?? [];
-          global.replaceWith(...inner.map((node) => node.clone()));
+          const clones: selectorParser.Node[] = [];
+          for (const node of inner) {
+            clones.push(node.clone());
+          }
+          global.replaceWith(...clones);
           continue;
         }
         if (compound.length === 0) {
@@ -134,9 +156,14 @@ const scopeSelector = (attribute: string, targets: ScopeTarget[]) =>
         }
         targets.push(scopeTarget(compound));
         // The attribute goes before pseudo-elements such as `::before`.
-        const last = compound.findLast(
-          (node) => !(node.type === 'pseudo' && node.value.startsWith('::')),
-        );
+        let last: SelectorPart | undefined;
+        for (let at = compound.length - 1; at >= 0; at--) {
+          const node = compound[at]!;
+          if (!(node.type === 'pseudo' && node.value.startsWith('::'))) {
+            last = node;
+            break;
+          }
+        }
         const scope = selectorParser.attribute({ attribute, value: undefined, raws: {} } as never);
         if (last) {
           selector.insertAfter(last, scope);
@@ -146,6 +173,7 @@ const scopeSelector = (attribute: string, targets: ScopeTarget[]) =>
       }
     });
   });
+}
 
 function scopeRules(root: Root, attribute: string, targets: ScopeTarget[]): void {
   const processor = scopeSelector(attribute, targets);

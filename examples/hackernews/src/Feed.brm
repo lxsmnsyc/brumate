@@ -15,7 +15,9 @@
     return story.url.startsWith('item?id=') ? `/item/${story.id}` : story.url;
   }
 
-  const pageLink = (to: number): string => (to === 1 ? path : `${path}?page=${to}`);
+  function pageLink(to: number): string {
+    return to === 1 ? path : `${path}?page=${to}`;
+  }
 </script>
 
 #head {

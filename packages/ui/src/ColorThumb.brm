@@ -87,11 +87,16 @@
 
   function focusIn(event: FocusEvent) {
     const target = event.target as Element;
-    thumb?.onFocusChange(
-      true,
-      target.matches?.(':focus-visible') ?? false,
-      (thumb.inputs ?? []).findIndex((item) => item.id === target.id),
-    );
+    let index = -1;
+    if (thumb) {
+      for (const [position, item] of (thumb.inputs ?? []).entries()) {
+        if (item.id === target.id) {
+          index = position;
+          break;
+        }
+      }
+    }
+    thumb?.onFocusChange(true, target.matches?.(':focus-visible') ?? false, index);
   }
 
   // The focus that moves from one input of the thumb to the other is not leaving it.

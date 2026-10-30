@@ -22,7 +22,18 @@ export const KEY_NAMES: readonly string[] = [
   'PageUp',
   'PageDown',
   'ContextMenu',
-  ...Array.from({ length: 12 }, (_, index) => `F${index + 1}`),
+  'F1',
+  'F2',
+  'F3',
+  'F4',
+  'F5',
+  'F6',
+  'F7',
+  'F8',
+  'F9',
+  'F10',
+  'F11',
+  'F12',
 ];
 
 type Letter =
@@ -145,11 +156,11 @@ export function transition<H extends Handler>(handler: H, ...types: string[]): H
       return handler(...args);
     }
     let result: unknown;
-    const update = (): unknown => {
+    function update(): unknown {
       result = handler(...args);
       // The page shows the new state once the updates of the writes have run.
       return (globalThis as { [UPDATED]?: () => Promise<void> })[UPDATED]?.();
-    };
+    }
     // Browsers that have transitions without types take only a callback.
     const started =
       types.length > 0 &&

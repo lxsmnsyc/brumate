@@ -45,7 +45,7 @@
   import { constrain, outOfRange, toDate, todayString } from './calendar.ts';
   import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf } from './fields.ts';
+  import { describedBy, parseMessages } from './fields.ts';
   import { DateStringsContext } from './date-strings.ts';
   import { LocaleContext } from './locale.ts';
   import { dateSegments, formField } from './date-field.brm.ts';
@@ -125,7 +125,7 @@
     edited = false;
   }, rangeMessage);
   const errors = $memo([
-    ...(edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
+    ...(edited ? [] : parseMessages(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
     ...(committed ? nativeErrors : []),
   ]);
   const invalid = $memo(

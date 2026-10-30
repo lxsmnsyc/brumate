@@ -22,8 +22,12 @@ function schema<T>(check: (input: unknown, issues: Issues) => T) {
   return result;
 }
 
-const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
-const fields = (input: unknown) => (input ?? {}) as Record<string, unknown>;
+function text(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+function fields(input: unknown) {
+  return (input ?? {}) as Record<string, unknown>;
+}
 
 /** The fields of the new issue form. `labels[]` checkboxes arrive as `labels`. */
 export const NewIssue = schema((form, issues) => {
@@ -35,7 +39,14 @@ export const NewIssue = schema((form, issues) => {
     issues.push({ message: 'Keep the title under 80 characters', path: ['title'] });
   }
   const labels = Array.isArray(input.labels) ? (input.labels as string[]) : [];
-  if (labels.some((label) => !LABELS.includes(label))) {
+  let unknown = false;
+  for (const label of labels) {
+    if (!LABELS.includes(label)) {
+      unknown = true;
+      break;
+    }
+  }
+  if (unknown) {
     issues.push({ message: 'Pick labels from the list', path: ['labels'] });
   }
   return { title, body: text(input.body), labels };

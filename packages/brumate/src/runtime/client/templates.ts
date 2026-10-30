@@ -8,7 +8,7 @@ import { trustedHTML } from '../trusted.ts';
 import type { Render } from './branches.ts';
 import { Children, TemplateCall, insert } from './children.ts';
 import { spread } from './handlers.ts';
-import { foreignOf, holdPlace, markCloned, parseHTML } from './insert.ts';
+import { findForeign, holdPlace, markCloned, parseHTML } from './insert.ts';
 import { resolveScope } from './scopes.ts';
 import { options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
@@ -21,7 +21,7 @@ interface Template {
   /** `svg` or `math`, for markup whose elements are of SVG or MathML, which parses inside one. */
   foreign?: string;
   t?: HTMLTemplateElement;
-  /** The moves that reach the marked nodes of a clone. See `walkOf`. */
+  /** The moves that reach the marked nodes of a clone. See `encodeWalk`. */
   walk?: number[];
 }
 
@@ -44,7 +44,7 @@ function parseTemplate(source: Template): number[][] {
     root.replaceChildren(...root.firstChild!.childNodes);
   }
   const paths: number[][] = Array.from({ length: source.count });
-  const pathOf = (marked: Node): number[] => {
+  function findPath(marked: Node): number[] {
     const path: number[] = [];
     for (let node: Node = marked; node !== root; node = node.parentNode!) {
       let index = 0;
@@ -54,9 +54,9 @@ function parseTemplate(source: Template): number[][] {
       path.unshift(index);
     }
     return path;
-  };
+  }
   for (const marked of root.querySelectorAll('[b-x]')) {
-    paths[Number(marked.getAttribute('b-x'))] = pathOf(marked);
+    paths[Number(marked.getAttribute('b-x'))] = findPath(marked);
     marked.removeAttribute('b-x');
   }
   // The start comments of text inserts, `<!--x` and an index, which each clone names.
@@ -64,7 +64,7 @@ function parseTemplate(source: Template): number[][] {
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const mark = /^x(\d+)$/.exec((node as Comment).data);
     if (mark) {
-      paths[Number(mark[1])] = pathOf(node);
+      paths[Number(mark[1])] = findPath(node);
     }
   }
   // The loader listens to the events of the handlers of the template once, not of each clone.
@@ -89,23 +89,25 @@ const NEXT = -2;
  * them once for its template, as Marko encodes a walk, so the clones of a render do not walk
  * from the top for each node or make an array of paths.
  */
-function walkOf(paths: number[][]): number[] {
-  const order = paths
-    .map((path, mark) => ({ path, mark }))
-    .sort((a, b) => {
-      for (let depth = 0; depth < Math.min(a.path.length, b.path.length); depth++) {
-        if (a.path[depth] !== b.path[depth]) {
-          return a.path[depth]! - b.path[depth]!;
-        }
+function encodeWalk(paths: number[][]): number[] {
+  const marked: { path: number[]; mark: number }[] = [];
+  for (const [mark, path] of paths.entries()) {
+    marked.push({ path, mark });
+  }
+  const order = marked.sort((a, b) => {
+    for (let depth = 0; depth < Math.min(a.path.length, b.path.length); depth++) {
+      if (a.path[depth] !== b.path[depth]) {
+        return a.path[depth]! - b.path[depth]!;
       }
-      return a.path.length - b.path.length;
-    });
+    }
+    return a.path.length - b.path.length;
+  });
   const moves: number[] = [];
-  const along = (count: number): void => {
+  function along(count: number): void {
     if (count > 0) {
       moves.push(NEXT - count);
     }
-  };
+  }
   let current: number[] = [];
   for (const { path, mark } of order) {
     let shared = 0;
@@ -143,7 +145,7 @@ type ClonedNode = Element & Comment & DocumentFragment;
  * after them, in one array.
  */
 export function clone(source: Template): ClonedNode[] {
-  const walk = (source.walk ??= walkOf(parseTemplate(source)));
+  const walk = (source.walk ??= encodeWalk(parseTemplate(source)));
   const fragment = source.t!.content.cloneNode(true);
   // oxlint-disable-next-line unicorn/no-new-array -- A length, with no values written in yet.
   const cloned: Node[] = new Array(source.count + 1);
@@ -403,7 +405,7 @@ export function setAttrText(element: Element, text: string): void {
   if (text) {
     // On an element of SVG or MathML, the parser gives the names their case, such as `viewBox`,
     // and their namespace, such as of `xlink:href`.
-    const foreign = foreignOf(element);
+    const foreign = findForeign(element);
     const tag = foreign === 'math' ? 'mi' : 'g';
     const parsed = parseHTML(foreign ? `<${tag}${text}/>` : `<b${text}>`, undefined, foreign)
       .firstChild as Element;

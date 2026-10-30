@@ -128,10 +128,16 @@ function watchView(offscreen: string | undefined): () => void {
         };
         const entry = { element, report };
         this.#entries.add(entry);
-        if (
-          !current.revealed.has(element) &&
-          [...current.hidden].some(({ selector }) => element.matches(selector))
-        ) {
+        let isHidden = false;
+        if (!current.revealed.has(element)) {
+          for (const { selector } of current.hidden) {
+            if (element.matches(selector)) {
+              isHidden = true;
+              break;
+            }
+          }
+        }
+        if (isHidden) {
           current.waiting.add(entry);
         } else {
           queueMicrotask(() => {
@@ -190,13 +196,13 @@ function watchView(offscreen: string | undefined): () => void {
 
 /** The actions on the elements inside `root`. */
 function actions(root: ParentNode): Actions {
-  const get = (selector: string): HTMLElement => {
+  function get(selector: string): HTMLElement {
     const element = root.querySelector<HTMLElement>(selector);
     if (!element) {
       throw new Error(`No element matches ${selector}`);
     }
     return element;
-  };
+  }
   return {
     get,
     text: (selector) => get(selector).textContent ?? '',
@@ -305,7 +311,9 @@ export function createMount(options: TestingOptions): Mount {
     container.innerHTML = html + state;
     document.body.append(container);
     // The page state, which waits for the core.
-    container.querySelectorAll('script[b-state]').forEach(run);
+    for (const script of container.querySelectorAll('script[b-state]')) {
+      run(script);
+    }
     // One loader for the document, as a page has, however many mounts are in it.
     loader ??= {
       stop: start({ load: options.load, rpc: options.rpc, navigate: false }),
@@ -313,7 +321,7 @@ export function createMount(options: TestingOptions): Mount {
     };
     loader.users++;
     let mounted = true;
-    const stop = (): void => {
+    function stop(): void {
       if (!mounted || !loader) {
         return;
       }
@@ -323,7 +331,7 @@ export function createMount(options: TestingOptions): Mount {
         loader.stop();
         loader = undefined;
       }
-    };
+    }
     void (async () => {
       for await (const chunk of pending) {
         append(container, chunk);
@@ -400,7 +408,7 @@ export function answerCalls(
   let loaded: Promise<ServerFunctions> | undefined;
   /** The error of a call that a server function made through `fetch`. */
   let failure: Error | undefined;
-  const answer = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  async function answer(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const base = globalThis.location?.href ?? 'http://localhost/';
     const url = new URL(input instanceof Request ? input.url : String(input), base);
     if (!url.pathname.startsWith(`${prefix}/`)) {
@@ -422,8 +430,12 @@ export function answerCalls(
     const request = input instanceof Request ? new Request(input, init) : new Request(url, init);
     const guards = options.fileMiddleware;
     const fileMiddleware = typeof guards === 'function' ? await guards() : guards;
-    const handle = (): Promise<Response | undefined> =>
-      handleRequest(registry, request, prefix, { middleware: options.middleware, fileMiddleware });
+    function handle(): Promise<Response | undefined> {
+      return handleRequest(registry, request, prefix, {
+        middleware: options.middleware,
+        fileMiddleware,
+      });
+    }
     const response = await (calls ? calls.run(id, handle) : handle());
     if (failure) {
       const error = failure;
@@ -431,7 +443,7 @@ export function answerCalls(
       throw error;
     }
     return response ?? original(input, init);
-  };
+  }
   globalThis.fetch = answer as typeof fetch;
   return () => {
     // A later `answerCalls` or stub keeps its own `fetch`.
@@ -485,14 +497,18 @@ function storeCookies(jar: Map<string, string>, response: Response): void {
     if (equals < 1) {
       continue;
     }
-    const gone = attributes.some((attribute) => {
+    let gone = false;
+    for (const attribute of attributes) {
       const [key = '', value = ''] = attribute.trim().split('=');
       const lower = key.toLowerCase();
-      return (
+      if (
         (lower === 'max-age' && Number(value) <= 0) ||
         (lower === 'expires' && Date.parse(value) <= Date.now())
-      );
-    });
+      ) {
+        gone = true;
+        break;
+      }
+    }
     if (gone) {
       jar.delete(name);
     } else {
@@ -521,7 +537,7 @@ export function createVisit(options: VisitorOptions): Visit {
     history.replaceState(null, '', new URL(path, origin));
 
     // A browser follows redirects, sends its cookies, and keeps the ones that the answers set.
-    const answer = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    async function answer(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
       let url = new URL(input instanceof Request ? input.url : String(input), location.href);
       if (url.origin !== origin) {
         return original(input, init);
@@ -531,19 +547,24 @@ export function createVisit(options: VisitorOptions): Visit {
       ).toUpperCase();
       let body = init?.body ?? undefined;
       const extra = new Headers(input instanceof Request ? input.headers : undefined);
-      new Headers(init?.headers).forEach((value, name) => extra.set(name, value));
+      for (const [name, value] of new Headers(init?.headers)) {
+        extra.set(name, value);
+      }
       for (let hops = 0; ; hops++) {
         const request = new Request(url, { method, body, signal: init?.signal ?? null });
         // Set after the request is made, since a DOM environment drops these from its init.
-        new Headers(visitOptions.headers).forEach((value, name) =>
-          request.headers.set(name, value),
-        );
-        extra.forEach((value, name) => request.headers.set(name, value));
+        for (const [name, value] of new Headers(visitOptions.headers)) {
+          request.headers.set(name, value);
+        }
+        for (const [name, value] of extra) {
+          request.headers.set(name, value);
+        }
         if (jar.size > 0) {
-          request.headers.set(
-            'cookie',
-            [...jar].map(([name, value]) => `${name}=${value}`).join('; '),
-          );
+          const cookies: string[] = [];
+          for (const [name, value] of jar) {
+            cookies.push(`${name}=${value}`);
+          }
+          request.headers.set('cookie', cookies.join('; '));
         }
         if (method !== 'GET' && method !== 'HEAD') {
           request.headers.set('origin', origin);
@@ -573,24 +594,26 @@ export function createVisit(options: VisitorOptions): Visit {
           extra.delete('content-type');
         }
       }
-    };
+    }
     globalThis.fetch = answer as typeof fetch;
 
     // The DOM of a test does not run scripts, so the ones that the page adds run here, once each.
     const ran = new WeakSet<Element>();
-    const runOnce = (script: Element): void => {
+    function runOnce(script: Element): void {
       if (!ran.has(script) && !script.hasAttribute('src') && !script.hasAttribute('type')) {
         ran.add(script);
         run(script);
       }
-    };
+    }
     const scripts = new MutationObserver((records) => {
       for (const record of records) {
         for (const node of record.addedNodes) {
           if (node.nodeName === 'SCRIPT') {
             runOnce(node as Element);
           } else if (node instanceof Element) {
-            node.querySelectorAll('script').forEach(runOnce);
+            for (const script of node.querySelectorAll('script')) {
+              runOnce(script);
+            }
           }
         }
       }
@@ -618,13 +641,19 @@ export function createVisit(options: VisitorOptions): Visit {
     for (const attribute of page.documentElement.attributes) {
       document.documentElement.setAttribute(attribute.name, attribute.value);
     }
-    document.head.replaceChildren(
-      ...[...page.head.childNodes].map((node) => document.importNode(node, true)),
-    );
-    document.body.replaceChildren(
-      ...[...page.body.childNodes].map((node) => document.importNode(node, true)),
-    );
-    document.querySelectorAll('script').forEach(runOnce);
+    const headNodes: Node[] = [];
+    for (const node of page.head.childNodes) {
+      headNodes.push(document.importNode(node, true));
+    }
+    document.head.replaceChildren(...headNodes);
+    const bodyNodes: Node[] = [];
+    for (const node of page.body.childNodes) {
+      bodyNodes.push(document.importNode(node, true));
+    }
+    document.body.replaceChildren(...bodyNodes);
+    for (const script of document.querySelectorAll('script')) {
+      runOnce(script);
+    }
     scripts.observe(document, { childList: true, subtree: true });
 
     const unwatch = watchView(visitOptions.offscreen);

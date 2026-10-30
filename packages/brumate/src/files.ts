@@ -13,7 +13,7 @@ export async function findFiles(
   exclude: (directory: string) => boolean,
 ): Promise<string[]> {
   const result: string[] = [];
-  const visit = async (directory: string): Promise<void> => {
+  async function visit(directory: string): Promise<void> {
     const directories: Promise<void>[] = [];
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const file = path.join(directory, entry.name);
@@ -26,7 +26,7 @@ export async function findFiles(
       }
     }
     await Promise.all(directories);
-  };
+  }
   await visit(root);
   return result.toSorted();
 }
@@ -40,7 +40,7 @@ export async function findServerFiles(
   exclude: (directory: string) => boolean,
 ): Promise<string[]> {
   const result: string[] = [];
-  const visit = async (directory: string): Promise<void> => {
+  async function visit(directory: string): Promise<void> {
     const pending: Promise<void>[] = [];
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const file = path.join(directory, entry.name);
@@ -59,7 +59,7 @@ export async function findServerFiles(
       }
     }
     await Promise.all(pending);
-  };
+  }
   await visit(root);
   return result.toSorted();
 }
@@ -73,7 +73,7 @@ export async function findScripts(
   exclude: (directory: string) => boolean,
 ): Promise<string[]> {
   const result: string[] = [];
-  const visit = async (directory: string): Promise<void> => {
+  async function visit(directory: string): Promise<void> {
     const directories: Promise<void>[] = [];
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const file = path.join(directory, entry.name);
@@ -86,7 +86,7 @@ export async function findScripts(
       }
     }
     await Promise.all(directories);
-  };
+  }
   await visit(root);
   return result.toSorted();
 }

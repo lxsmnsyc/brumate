@@ -34,9 +34,14 @@ export function href<P extends RoutePath>(path: P, ...[params]: ParamsArgument<P
     if (value === undefined || value === '') {
       throw new Error(`The param ${name} of ${path} is missing`);
     }
-    return rest
-      ? String(value).split('/').map(encodeURIComponent).join('/')
-      : encodeURIComponent(String(value));
+    if (!rest) {
+      return encodeURIComponent(String(value));
+    }
+    const parts: string[] = [];
+    for (const part of String(value).split('/')) {
+      parts.push(encodeURIComponent(part));
+    }
+    return parts.join('/');
   });
 }
 

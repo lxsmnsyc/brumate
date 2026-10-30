@@ -66,7 +66,12 @@ function shim(name: string): string {
   let url = shims.get(name);
   if (!url) {
     (globalThis as Record<string, unknown>)[RUNTIME_KEY] ??= RUNTIME;
-    const names = Object.keys(RUNTIME[name]!).filter((key) => /^[A-Za-z_$][\w$]*$/.test(key));
+    const names: string[] = [];
+    for (const key of Object.keys(RUNTIME[name]!)) {
+      if (/^[A-Za-z_$][\w$]*$/.test(key)) {
+        names.push(key);
+      }
+    }
     url = blob(
       [
         `const m = globalThis.${RUNTIME_KEY}[${JSON.stringify(name)}];`,
@@ -168,13 +173,26 @@ export async function runSample(
   }
   const run = ++runs;
   const folder = `live${run}`;
-  const path = (name: string): string => `${folder}/${name}`;
-  const sources = new Map(files.map((file) => [path(file.name), file.source]));
-  const clean = (message: string): string => message.replaceAll(`${folder}/`, '');
+  function path(name: string): string {
+    return `${folder}/${name}`;
+  }
+  const sources = new Map<string, string>();
+  for (const file of files) {
+    sources.set(path(file.name), file.source);
+  }
+  function clean(message: string): string {
+    return message.replaceAll(`${folder}/`, '');
+  }
 
   const compiled = new Map<string, CompileResult>();
   const warnings: string[] = [];
-  const liveProps = analyzeProject(new Map([...sources].filter(([name]) => name.endsWith('.brm'))));
+  const brmSources = new Map<string, string>();
+  for (const [name, source] of sources) {
+    if (name.endsWith('.brm')) {
+      brmSources.set(name, source);
+    }
+  }
+  const liveProps = analyzeProject(brmSources);
   try {
     for (const [name, source] of sources) {
       if (name.endsWith('.brm')) {
@@ -191,7 +209,9 @@ export async function runSample(
           },
         });
         compiled.set(name, result);
-        warnings.push(...result.warnings.map((warning) => clean(warning.message)));
+        for (const warning of result.warnings) {
+          warnings.push(clean(warning.message));
+        }
       }
     }
   } catch (error) {
@@ -201,30 +221,35 @@ export async function runSample(
   }
 
   const urls = new Map<string, string>();
-  const once = (key: string, make: () => string): string => {
+  function once(key: string, make: () => string): string {
     let url = urls.get(key);
     if (!url) {
       url = make();
       urls.set(key, url);
     }
     return url;
-  };
+  }
 
   /** The file of the sample that a specifier names, relative to `from`. */
-  const target = (specifier: string, from: string): { file: string; query: URLSearchParams } => {
+  function target(specifier: string, from: string): { file: string; query: URLSearchParams } {
     const [bare, query = ''] = specifier.split('?') as [string, string?];
     const directory = from.slice(0, from.lastIndexOf('/'));
     const file = `${directory}/${bare.replace(/^\.\//, '')}`;
-    const found = [file, `${file}.ts`].find((name) => sources.has(name));
+    let found: string | undefined;
+    for (const name of [file, `${file}.ts`]) {
+      if (sources.has(name)) {
+        found = name;
+        break;
+      }
+    }
     if (!found) {
       throw new Error(`A sample can import brumate and its own files. "${specifier}" is not one.`);
     }
     return { file: found, query: new URLSearchParams(query) };
-  };
+  }
 
-  const resolver =
-    (from: string, kind: 'server' | 'client') =>
-    (specifier: string): string => {
+  function resolver(from: string, kind: 'server' | 'client') {
+    return (specifier: string): string => {
       if (specifier in RUNTIME) {
         return shim(specifier);
       }
@@ -244,14 +269,16 @@ export async function runSample(
       }
       return kind === 'server' ? serverModule(file) : clientEntry(file);
     };
+  }
 
-  const script = (file: string): string =>
-    once(`ts:${file}`, () =>
+  function script(file: string): string {
+    return once(`ts:${file}`, () =>
       blob(rewrite(strip(file, sources.get(file)!), resolver(file, 'server'))),
     );
+  }
   // The browser code of the functions of a module of reactive logic, shared by every call.
-  const shared = (file: string): string =>
-    once(`shared:${file}`, () =>
+  function shared(file: string): string {
+    return once(`shared:${file}`, () =>
       blob(
         rewrite(
           strip(file, generateShared({ path: file, source: sources.get(file)! }).code),
@@ -259,22 +286,27 @@ export async function runSample(
         ),
       ),
     );
-  const serverModule = (file: string): string =>
-    once(`server:${file}`, () =>
+  }
+  function serverModule(file: string): string {
+    return once(`server:${file}`, () =>
       blob(rewrite(strip(file, compiled.get(file)!.server), resolver(file, 'server'))),
     );
-  const clientEntry = (file: string): string =>
-    once(`client:${file}`, () =>
+  }
+  function clientEntry(file: string): string {
+    return once(`client:${file}`, () =>
       blob(rewrite(strip(file, compiled.get(file)!.client), resolver(file, 'client'))),
     );
-  const clientPart = (file: string, part: string): string =>
-    once(`part:${file}:${part}`, () =>
+  }
+  function clientPart(file: string, part: string): string {
+    return once(`part:${file}:${part}`, () =>
       blob(rewrite(strip(file, compiled.get(file)!.parts[part]!), resolver(file, 'client'))),
     );
-  const render = (file: string): string =>
-    once(`render:${file}`, () =>
+  }
+  function render(file: string): string {
+    return once(`render:${file}`, () =>
       blob(rewrite(strip(file, compiled.get(file)!.render), resolver(file, 'client'))),
     );
+  }
 
   // The loader of the site asks for the client modules of the sample by component ID.
   for (const [file, result] of compiled) {
@@ -282,9 +314,14 @@ export async function runSample(
   }
 
   const entry = path(files[0]!.name);
-  const modules = await Promise.all(
-    [...compiled.keys()].map(async (file) => import(/* @vite-ignore */ serverModule(file))),
-  );
+  async function loadServer(file: string) {
+    return import(/* @vite-ignore */ serverModule(file));
+  }
+  const loading = [];
+  for (const file of compiled.keys()) {
+    loading.push(loadServer(file));
+  }
+  const modules = await Promise.all(loading);
   for (const module of modules) {
     Object.assign(functions, module.rpc ?? {});
   }
@@ -324,14 +361,18 @@ export async function runSample(
     const name = path(file.name);
     const result = compiled.get(name);
     if (result) {
-      outputs.push(
-        { name: `${file.name}: client entry`, code: result.client, language: 'ts', client: true },
-        ...Object.entries(result.parts).map(([part, code]) => ({
+      const partOutputs: LiveOutput['modules'] = [];
+      for (const [part, code] of Object.entries(result.parts)) {
+        partOutputs.push({
           name: `${file.name}: part ${part}`,
           code,
-          language: 'ts' as const,
+          language: 'ts',
           client: true,
-        })),
+        });
+      }
+      outputs.push(
+        { name: `${file.name}: client entry`, code: result.client, language: 'ts', client: true },
+        ...partOutputs,
         { name: `${file.name}: server`, code: result.server, language: 'ts', client: false },
         { name: `${file.name}: render`, code: result.render, language: 'ts', client: true },
       );

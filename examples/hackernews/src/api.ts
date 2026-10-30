@@ -18,11 +18,15 @@ export const feed = cached(
 
 /** Makes the HTML of a comment and of the comments under it safe. */
 function cleanComments(comments: Comment[]): Comment[] {
-  return comments.map((comment) => ({
-    ...comment,
-    content: clean(comment.content ?? ''),
-    comments: cleanComments(comment.comments ?? []),
-  }));
+  const cleaned: Comment[] = [];
+  for (const comment of comments) {
+    cleaned.push({
+      ...comment,
+      content: clean(comment.content ?? ''),
+      comments: cleanComments(comment.comments ?? []),
+    });
+  }
+  return cleaned;
 }
 
 /** A story with its comments, or undefined for an ID that is not one. */

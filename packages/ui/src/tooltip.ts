@@ -60,7 +60,7 @@ export function timing(): Timing {
     { warm?: ReturnType<typeof setTimeout>; close?: ReturnType<typeof setTimeout> }
   >();
 
-  function timersOf(id: string) {
+  function getTimers(id: string) {
     let found = timers.get(id);
     if (!found) {
       found = {};
@@ -82,7 +82,7 @@ export function timing(): Timing {
 
   return {
     show(id, delay, immediate, show, hide) {
-      const own = timersOf(id);
+      const own = getTimers(id);
       clearTimeout(own.close);
       own.close = undefined;
       if (current?.id === id) {
@@ -103,10 +103,10 @@ export function timing(): Timing {
       }
     },
     hide(id, closeDelay, immediate, hide) {
-      const own = timersOf(id);
+      const own = getTimers(id);
       clearTimeout(own.warm);
       own.warm = undefined;
-      const conceal = (): void => {
+      function conceal(): void {
         own.close = undefined;
         if (current?.id === id) {
           current = undefined;
@@ -116,7 +116,7 @@ export function timing(): Timing {
           }, COOLDOWN);
         }
         hide();
-      };
+      }
       clearTimeout(own.close);
       if (immediate || closeDelay <= 0) {
         conceal();
@@ -125,7 +125,7 @@ export function timing(): Timing {
       }
     },
     keep(id) {
-      const own = timersOf(id);
+      const own = getTimers(id);
       clearTimeout(own.close);
       own.close = undefined;
     },

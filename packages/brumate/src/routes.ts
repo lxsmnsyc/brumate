@@ -113,15 +113,15 @@ export function routeModule(
   // file anyway. In development, a route loads when a request needs it, so a file that does not
   // compile breaks only its own pages.
   const imports: string[] = [];
-  const load = (file: string): string => {
+  function load(file: string): string {
     if (dev) {
       return `() => import(${JSON.stringify(resolve(file))})`;
     }
     const name = `m${imports.length}`;
     imports.push(`import * as ${name} from ${JSON.stringify(resolve(file))};`);
     return `() => Promise.resolve(${name})`;
-  };
-  const write = (node: RouteFiles): string => {
+  }
+  function write(node: RouteFiles): string {
     const fields: string[] = [];
     for (const key of [
       'layout',
@@ -140,9 +140,10 @@ export function routeModule(
     for (const key of ['static', 'slots'] as const) {
       const children = node[key];
       if (children) {
-        const entries = Object.entries(children).map(
-          ([name, value]) => `${JSON.stringify(name)}: ${write(value)}`,
-        );
+        const entries: string[] = [];
+        for (const [name, value] of Object.entries(children)) {
+          entries.push(`${JSON.stringify(name)}: ${write(value)}`);
+        }
         fields.push(`${key}: { ${entries.join(', ')} }`);
       }
     }
@@ -153,7 +154,7 @@ export function routeModule(
       }
     }
     return `{ ${fields.join(', ')} }`;
-  };
+  }
   const routes = write(tree);
   return [
     "import { handleRoute } from 'brumate/server';",
@@ -178,7 +179,7 @@ export interface RoutePathInfo {
 /** The paths of the pages and endpoints of a tree. Slots render at the paths of their layout. */
 export function routePaths(tree: RouteFiles): RoutePathInfo[] {
   const result: RoutePathInfo[] = [];
-  const visit = (node: RouteFiles, path: string, params: string[]): void => {
+  function visit(node: RouteFiles, path: string, params: string[]): void {
     if (node.page || node.endpoint) {
       result.push({ path: path || '/', params });
     }
@@ -191,19 +192,24 @@ export function routePaths(tree: RouteFiles): RoutePathInfo[] {
     if (node.rest) {
       visit(node.rest.node, `${path}/[...${node.rest.name}]`, [...params, node.rest.name]);
     }
-  };
+  }
   visit(tree, '', []);
   return result.toSorted((a, b) => a.path.localeCompare(b.path));
 }
 
 /** A declaration file that adds the paths of a tree to `Routes` of `brumate/routes`. */
 export function routeTypes(tree: RouteFiles): string {
-  const lines = routePaths(tree).map(({ path, params }) => {
-    const fields = params.map((name) => `${name}: string`).join('; ');
+  const lines: string[] = [];
+  for (const { path, params } of routePaths(tree)) {
+    const names: string[] = [];
+    for (const name of params) {
+      names.push(`${name}: string`);
+    }
+    const fields = names.join('; ');
     // Single quotes, as formatters write them, so a formatted project leaves the file as it is.
     const key = `'${path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
-    return `    ${key}: {${fields ? ` ${fields} ` : ''}};`;
-  });
+    lines.push(`    ${key}: {${fields ? ` ${fields} ` : ''}};`);
+  }
   return [
     '// Written by the brumate Vite plugin from the route files. Do not edit.',
     // An export makes this a module, so the block below adds to brumate/routes instead of replacing it.

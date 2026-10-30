@@ -37,6 +37,15 @@ function syncTitle(): void {
   }
 }
 
+function hasTitle(nodes: NodeList): boolean {
+  for (const node of nodes) {
+    if (holdsTitle(node)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Starts to follow the `<title>` elements of markup, when `root` has one. A
  * block that adds or removes one, or a change of its text, sets the title.
@@ -50,8 +59,8 @@ export function watchTitles(root: ParentNode): void {
       const target = record.target instanceof Element ? record.target : record.target.parentElement;
       if (
         target?.closest(PAGE_TITLE) ||
-        [...record.addedNodes].some(holdsTitle) ||
-        [...record.removedNodes].some(holdsTitle)
+        hasTitle(record.addedNodes) ||
+        hasTitle(record.removedNodes)
       ) {
         syncTitle();
         return;

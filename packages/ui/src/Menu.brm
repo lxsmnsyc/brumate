@@ -57,7 +57,7 @@
     focusItem,
     focusedItem,
     isTyping,
-    movementOf,
+    getKeyMovement,
     moveFrom,
     nextSelection,
     sameKeys,
@@ -210,7 +210,7 @@
     }
     const items = enabledItems(element, MENU_ITEMS);
     const current = focusedItem(element, MENU_ITEMS);
-    const movement = movementOf(event.key, 'vertical', locale.direction);
+    const movement = getKeyMovement(event.key, 'vertical', locale.direction);
     const forward = locale.direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
     const back = locale.direction === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
     if (movement && movement !== 'pageDown' && movement !== 'pageUp') {

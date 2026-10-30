@@ -23,12 +23,12 @@ interface Item {
 
 const ITEM_MARKER = /^i(-?[\d.]+)$/;
 
-/** Updates the items of `#for` or `#repeat`, keeping the elements of items whose keys stay. */
 /** The items of a `#for` list: an array as it is, since `list` only reads it, or any iterable as an array. */
-export function listOf(value: Iterable<unknown> | ArrayLike<unknown>): unknown[] {
+export function toList(value: Iterable<unknown> | ArrayLike<unknown>): unknown[] {
   return Array.isArray(value) ? value : Array.from(value);
 }
 
+/** Updates the items of `#for` or `#repeat`, keeping the elements of items whose keys stay. */
 export function list(
   scope: Scope,
   anchor: number,
@@ -87,7 +87,7 @@ export function list(
 
   const count = items.length;
   // An item that leaves a windowed list, but stays in its list, keeps its scope and nodes.
-  const leave = (id: unknown, item: Item): void => {
+  function leave(id: unknown, item: Item): void {
     if (park?.stays(id)) {
       const nodes = document.createDocumentFragment();
       for (let node: Node | null = item.first; node;) {
@@ -104,7 +104,7 @@ export function list(
       node.parentNode?.removeChild(node);
       node = next;
     }
-  };
+  }
   // A windowed list with no item in view is not empty, so it does not show its fallback.
   if (count === 0 && !(park && park.total > 0)) {
     if (previous.size === 0 && others) {
@@ -156,7 +156,7 @@ export function list(
   // fragments that they cloned.
   let added = '';
   let addedNodes: DocumentFragment[] | undefined;
-  const flushAdded = (): void => {
+  function flushAdded(): void {
     if (added) {
       insertHTML(cursor, added);
       added = '';
@@ -164,7 +164,7 @@ export function list(
       insertHTML(cursor, addedNodes);
     }
     addedNodes = undefined;
-  };
+  }
   for (let index = 0; index < count; index++) {
     const id = keys[index];
     const item = previous.get(id);
@@ -252,7 +252,7 @@ const windows = new WeakMap<Scope, Map<number, WindowState>>();
  * nothing to scroll, so the list looks further up. The server renders enough items to fill
  * the box, so its content is taller from the first draw on.
  */
-function scrollerOf(node: Node): HTMLElement | undefined {
+function findScroller(node: Node): HTMLElement | undefined {
   for (let element = node.parentElement; element; element = element.parentElement) {
     const style = getComputedStyle(element);
     if (
@@ -304,7 +304,7 @@ export function windowList(
     }
     const size = window.measured ?? height;
     const top = before.getBoundingClientRect().top;
-    const scroller = scrollerOf(start);
+    const scroller = findScroller(start);
     const view = scroller
       ? scroller.getBoundingClientRect()
       : { top: 0, bottom: document.documentElement.clientHeight };
@@ -313,7 +313,10 @@ export function windowList(
     const count = items.length;
     const from = Math.min(count, Math.max(0, Math.floor((view.top - top) / size) - extra));
     const to = Math.min(count, Math.max(from, Math.ceil((view.bottom - top) / size) + extra));
-    const keys = new Set(items.map((item, index) => key(item, index)));
+    const keys = new Set<unknown>();
+    for (const [index, item] of items.entries()) {
+      keys.add(key(item, index));
+    }
     const was = window.from;
     window.from = from;
     list(
@@ -360,9 +363,10 @@ export function windowStart(scope: Scope, anchor: number, draw: () => void): voi
   if (!window || !start) {
     return;
   }
-  const scroller = scrollerOf(start);
+  const scroller = findScroller(start);
   const target: EventTarget = scroller ?? globalThis;
   let observer: ResizeObserver | undefined;
+  // An arrow, to keep the narrowing of `start` and `window`.
   const schedule = (): void => {
     // A scope that is gone stops listening for good.
     if (!scopes.has(scope.id)) {

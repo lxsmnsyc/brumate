@@ -29,7 +29,7 @@ const places = new WeakMap<
   { element: Element; place: Place; anchor: Element | null; anchorPlace: Place }
 >();
 
-function placeOf(element: Element, container: Element): Place {
+function getPlace(element: Element, container: Element): Place {
   const box = element.getBoundingClientRect();
   const frame = container.getBoundingClientRect();
   return { x: box.left - frame.left, y: box.top - frame.top, width: box.width, height: box.height };
@@ -49,12 +49,12 @@ function lastPlace(container: Element): Place | undefined {
   if (!anchor?.isConnected || !container.contains(anchor)) {
     return place;
   }
-  const now = placeOf(anchor, container);
+  const now = getPlace(anchor, container);
   return { ...place, x: place.x + now.x - anchorPlace.x, y: place.y + now.y - anchorPlace.y };
 }
 
 /** The element around an indicator that has a box, past those with `display: contents`. */
-function anchorOf(element: HTMLElement, container: Element): Element | null {
+function findAnchor(element: HTMLElement, container: Element): Element | null {
   for (let node = element.parentElement; node && node !== container; node = node.parentElement) {
     const box = node.getBoundingClientRect();
     if (box.width > 0 || box.height > 0) {
@@ -92,13 +92,13 @@ function easing(value: string): string {
 
 /** Keeps where an indicator is, and returns it. */
 function record(element: HTMLElement, container: Element): Place {
-  const place = placeOf(element, container);
-  const anchor = anchorOf(element, container);
+  const place = getPlace(element, container);
+  const anchor = findAnchor(element, container);
   places.set(container, {
     element,
     place,
     anchor,
-    anchorPlace: anchor ? placeOf(anchor, container) : place,
+    anchorPlace: anchor ? getPlace(anchor, container) : place,
   });
   return place;
 }

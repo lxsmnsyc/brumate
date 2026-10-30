@@ -222,9 +222,12 @@ export function decode(hash: string): ReplFile[] | undefined {
   }
   try {
     const base64 = hash.replaceAll('-', '+').replaceAll('_', '/');
-    const text = new TextDecoder().decode(
-      Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)),
-    );
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let at = 0; at < binary.length; at++) {
+      bytes[at] = binary.charCodeAt(at);
+    }
+    const text = new TextDecoder().decode(bytes);
     if (!text.startsWith('[')) {
       return [{ name: 'App.brm', source: text }];
     }
@@ -233,20 +236,27 @@ export function decode(hash: string): ReplFile[] | undefined {
     const valid =
       Array.isArray(files) &&
       files.length > 0 &&
-      files.every(
-        (file, index) =>
-          typeof file?.name === 'string' &&
-          typeof file.source === 'string' &&
-          validName(
-            file.name,
-            files.slice(0, index).map((item) => item.name),
-          ) === undefined,
-      ) &&
+      allValid(files) &&
       files[0]!.name.endsWith('.brm');
     return valid ? files : undefined;
   } catch {
     return undefined;
   }
+}
+
+/** Whether every file has a string name that the REPL accepts after the files before it, and a string source. */
+function allValid(files: ReplFile[]): boolean {
+  const names: string[] = [];
+  for (const file of files) {
+    if (
+      !(typeof file?.name === 'string' && typeof file.source === 'string') ||
+      validName(file.name, names) !== undefined
+    ) {
+      return false;
+    }
+    names.push(file.name);
+  }
+  return true;
 }
 
 /** A file name that the REPL can run: a component or a module of reactive logic. */

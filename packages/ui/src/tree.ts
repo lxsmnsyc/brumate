@@ -36,8 +36,8 @@ export function visibleRows<T extends TreeNode>(
   expandedKeys: readonly Key[],
 ): TreeRow<T>[] {
   const rows: TreeRow<T>[] = [];
-  const add = (list: readonly T[], level: number, parent: Key | undefined): void => {
-    list.forEach((item, index) => {
+  function add(list: readonly T[], level: number, parent: Key | undefined): void {
+    for (const [index, item] of list.entries()) {
       const children = item.children as readonly T[] | null | undefined;
       const hasChildItems = Array.isArray(children);
       const isExpanded = hasChildItems && expandedKeys.includes(item.id);
@@ -55,8 +55,8 @@ export function visibleRows<T extends TreeNode>(
       if (isExpanded) {
         add(children!, level + 1, item.id);
       }
-    });
-  };
+    }
+  }
   add(items, 1, undefined);
   return rows;
 }

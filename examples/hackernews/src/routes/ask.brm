@@ -6,9 +6,9 @@
 <script>
   import { getEvent } from 'brumate/server';
   import Feed from '../Feed.brm';
-  import { pageOf } from '../feeds.ts';
+  import { getPage } from '../feeds.ts';
 
-  const page = pageOf(getEvent().request.url);
+  const page = getPage(getEvent().request.url);
 </script>
 
 <Feed path="/ask" {page} />

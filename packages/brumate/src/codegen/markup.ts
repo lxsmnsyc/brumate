@@ -64,6 +64,41 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
 
 export type Part = { static: string } | { code: string };
 
+/** The static or value attribute named `style`. */
+function findStyleAttribute(attributes: Attribute[]): Attribute | undefined {
+  for (const attribute of attributes) {
+    if ((attribute.kind === 'static' || attribute.kind === 'value') && attribute.name === 'style') {
+      return attribute;
+    }
+  }
+  return undefined;
+}
+
+/** Whether a value holds other values, so functions can sit inside it. */
+function nested(node: oxc.Node): boolean {
+  return node.type === 'ObjectExpression' || node.type === 'ArrayExpression';
+}
+
+/** Whether any attribute is a spread. */
+function hasSpread(attributes: readonly { kind: string }[]): boolean {
+  for (const attribute of attributes) {
+    if (attribute.kind === 'spread') {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Whether a site reads a prop or the rest of the props. */
+function readsProps(site: Site | undefined): boolean {
+  for (const read of site?.reads ?? []) {
+    if (read.declaration.kind === 'prop' || read.declaration.kind === 'props-rest') {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
 function specialCall(
   declarator: oxc.VariableDeclarator,
@@ -408,22 +443,46 @@ export class Emitter {
     if (cloned) {
       return 'return $$f;';
     }
-    const markup = this.flushes.some((flush) => this.levels[flush.line]!.fn === fn);
+    let markup = false;
+    for (const flush of this.flushes) {
+      if (this.levels[flush.line]!.fn === fn) {
+        markup = true;
+        break;
+      }
+    }
     return markup ? 'return $$html;' : "return '';";
   }
 
   /** The number of the function that the next line is in, or -1. */
   get currentFn(): number {
-    return this.braces.findLast((brace) => brace.kind === 'fn')?.fn ?? -1;
+    for (let i = this.braces.length - 1; i >= 0; i--) {
+      const brace = this.braces[i]!;
+      if (brace.kind === 'fn') {
+        return brace.fn ?? -1;
+      }
+    }
+    return -1;
   }
 
   /** Adds a line, with where it is. */
   private push(line: string): void {
     this.lines.push(line);
-    const at = this.braces.findLastIndex((brace) => brace.kind === 'fn');
+    // The innermost function brace, and whether a control brace sits inside it.
+    let at = -1;
+    let control = false;
+    for (let i = this.braces.length - 1; i >= 0; i--) {
+      const kind = this.braces[i]!.kind;
+      if (kind === 'fn') {
+        at = i;
+        break;
+      }
+      if (kind === 'control') {
+        control = true;
+      }
+    }
     this.levels.push({
       fn: at === -1 ? -1 : this.braces[at]!.fn!,
-      control: this.braces.slice(at + 1).some((brace) => brace.kind === 'control'),
+      control,
     });
   }
 
@@ -433,10 +492,10 @@ export class Emitter {
     const lineStart = this.file.source.lastIndexOf('\n', offset - 1) + 1;
     const column = offset - lineStart;
     const indent = '  '.repeat(this.depth);
-    code.split('\n').forEach((line, index) => {
+    for (const [index, line] of code.split('\n').entries()) {
       const text = index === 0 ? line : line.replace(new RegExp(`^ {0,${column}}`), '');
       this.push(unmarked(text).trim() === '' ? '' : `${indent}${text}`);
-    });
+    }
   }
 
   private html(text: string): void {
@@ -459,9 +518,11 @@ export class Emitter {
     const parts = this.parts;
     this.parts = [];
     this.flushes.push({ line: this.lines.length, parts });
-    const value = parts
-      .map((part) => ('static' in part ? JSON.stringify(part.static) : part.code))
-      .join(' + ');
+    const pieces: string[] = [];
+    for (const part of parts) {
+      pieces.push('static' in part ? JSON.stringify(part.static) : part.code);
+    }
+    const value = pieces.join(' + ');
     this.push(`${'  '.repeat(this.depth)}$$html += ${value};`);
   }
 
@@ -504,7 +565,15 @@ export class Emitter {
   /** True if a client render function renders the scope, so its variables are local. */
   private isInside(scope: Scope): boolean {
     const outer = this.options.outer;
-    return !outer || outer.inside.some((item) => isWithin(scope, item));
+    if (!outer) {
+      return true;
+    }
+    for (const item of outer.inside) {
+      if (isWithin(scope, item)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private anchor(scope: Scope, target: object): { scope: string; index: number } | undefined {
@@ -531,23 +600,26 @@ export class Emitter {
     if (slots.length > 0) {
       // A memo that the render did not wait for is in the state as its value when it is ready,
       // such as one that a `#loading` body rendered in place, and as a promise while it loads.
-      const values = slots.map((slot) =>
-        this.isPromise(slot) ? `$$b.stateValue(${promiseName(slot.name)})` : slot.name,
-      );
+      const values: string[] = [];
+      const slotNames: string[] = [];
+      for (const slot of slots) {
+        values.push(this.isPromise(slot) ? `$$b.stateValue(${promiseName(slot.name)})` : slot.name);
+        slotNames.push(slot.name);
+      }
       // The server also passes the names, so an error can say which value cannot be sent.
-      const names =
-        this.options.mode === 'server' ? `, ${JSON.stringify(slots.map((slot) => slot.name))}` : '';
+      const names = this.options.mode === 'server' ? `, ${JSON.stringify(slotNames)}` : '';
       this.line(
         `${this.helper('slots')}(${this.scopeVar(scope)}, [${values.join(', ')}]${names});`,
       );
     }
     // The props that the component writes, which a parent can bind with `$bind`.
     if (scope.kind === 'component') {
-      const bindable = slots.flatMap((slot, index) =>
-        slot.kind === 'prop' && slot.writable && slot.propKey !== undefined
-          ? [`${JSON.stringify(slot.propKey)}: ${index}`]
-          : [],
-      );
+      const bindable: string[] = [];
+      for (const [index, slot] of slots.entries()) {
+        if (slot.kind === 'prop' && slot.writable && slot.propKey !== undefined) {
+          bindable.push(`${JSON.stringify(slot.propKey)}: ${index}`);
+        }
+      }
       if (bindable.length > 0) {
         this.line(
           `${this.helper('bindings')}(${this.scopeVar(scope)}, $$props, { ${bindable.join(', ')} });`,
@@ -630,7 +702,10 @@ export class Emitter {
       this.line(`const ${declaration.name} = ${this.memoValue(declaration.name)};`);
       return;
     }
-    const names = run.map((declaration) => promiseName(declaration.name));
+    const names: string[] = [];
+    for (const declaration of run) {
+      names.push(promiseName(declaration.name));
+    }
     this.line(`if (($$t = $$b.waitAll([${names.join(', ')}])) !== undefined) await $$t;`);
     for (const declaration of run) {
       this.line(`const ${declaration.name} = $$b.read(${promiseName(declaration.name)});`);
@@ -714,7 +789,14 @@ export class Emitter {
    * IDs, one per line. Returns false if the statement does neither.
    */
   private emitContexts(statement: oxc.VariableDeclaration, scope: Scope): boolean {
-    if (!statement.declarations.some((declarator) => specialCall(declarator))) {
+    let special = false;
+    for (const declarator of statement.declarations) {
+      if (specialCall(declarator)) {
+        special = true;
+        break;
+      }
+    }
+    if (!special) {
       return false;
     }
     const target = this.scopeVar(instanceScope(this.plan, scope));
@@ -759,11 +841,20 @@ export class Emitter {
   }
 
   private isServerStatement(statement: oxc.Node): boolean {
-    const nodes =
-      statement.type === 'VariableDeclaration'
-        ? statement.declarations.map((declarator) => declarator.init)
-        : [statement];
-    return nodes.every((node) => node && this.sitesByNode.get(node)?.kind === 'server-function');
+    const nodes: (oxc.Node | null | undefined)[] = [];
+    if (statement.type === 'VariableDeclaration') {
+      for (const declarator of statement.declarations) {
+        nodes.push(declarator.init);
+      }
+    } else {
+      nodes.push(statement);
+    }
+    for (const node of nodes) {
+      if (!node || this.sitesByNode.get(node)?.kind !== 'server-function') {
+        return false;
+      }
+    }
+    return true;
   }
 
   private isFunctionStatement(statement: oxc.Node): boolean {
@@ -773,10 +864,13 @@ export class Emitter {
     if (statement.type !== 'VariableDeclaration') {
       return false;
     }
-    return statement.declarations.every((declarator) => {
+    for (const declarator of statement.declarations) {
       const init = declarator.init;
-      return init?.type === 'ArrowFunctionExpression' || init?.type === 'FunctionExpression';
-    });
+      if (init?.type !== 'ArrowFunctionExpression' && init?.type !== 'FunctionExpression') {
+        return false;
+      }
+    }
+    return true;
   }
 
   /** Emits `<template>` markers for the `$client` callbacks of a scope. */
@@ -966,11 +1060,7 @@ export class Emitter {
         // In the browser, only a prop can hold children, which render where they are inserted.
         // A value that reads a prop can be children, or a template that a prop holds, such as
         // `{item(label)}`, which render where they are inserted too.
-        const readsProp = this.sitesByNode
-          .get(node.expression.ast)
-          ?.reads.some(
-            (read) => read.declaration.kind === 'prop' || read.declaration.kind === 'props-rest',
-          );
+        const readsProp = readsProps(this.sitesByNode.get(node.expression.ast));
         // Children in a table body or a list get the tag of the spacers of a windowed list in them.
         const spacer = this.parentSpacer();
         // On the server, children also get the anchor of the insert, so the browser knows that
@@ -1027,7 +1117,10 @@ export class Emitter {
         return;
       case 'listener': {
         const anchor = this.anchor(scope, node)!;
-        const events = node.attributes.map((attribute) => this.eventEntry(attribute));
+        const events: string[] = [];
+        for (const attribute of node.attributes) {
+          events.push(this.eventEntry(attribute));
+        }
         this.html('<template b-b="');
         this.code(anchor.scope);
         this.html(
@@ -1062,7 +1155,13 @@ export class Emitter {
     while (value.type === 'ParenthesizedExpression') {
       value = value.expression;
     }
-    const binding = this.plan.graph.model.bindings.find((item) => item.call === value);
+    let binding: (typeof this.plan.graph.model.bindings)[number] | undefined;
+    for (const item of this.plan.graph.model.bindings) {
+      if (item.call === value) {
+        binding = item;
+        break;
+      }
+    }
     if (!binding) {
       return undefined;
     }
@@ -1074,9 +1173,13 @@ export class Emitter {
       instanceScope(this.plan, binding.declaration.scope),
     );
     const hops = path.split('.p').length - 1;
-    const type = node.attributes.find((item) => item.kind === 'static' && item.name === 'type') as
-      | { value: string | true }
-      | undefined;
+    let type: { value: string | true } | undefined;
+    for (const item of node.attributes) {
+      if (item.kind === 'static' && item.name === 'type') {
+        type = item;
+        break;
+      }
+    }
     const box = type && typeof type.value === 'string' && /^(checkbox|radio)$/i.test(type.value);
     // A box and a select change at once. A text field writes as the user types.
     const event =
@@ -1122,7 +1225,7 @@ export class Emitter {
    * What `ref` passes a component, as `$bind(name)` does: the value of the name with its slot, so
    * the writes of the component reach it.
    */
-  private bindingOf(declaration: Declaration): string {
+  private getBinding(declaration: Declaration): string {
     const outer = this.options.outer;
     const slot = slotIndex(this.plan, declaration);
     if (outer && !this.isInside(declaration.scope)) {
@@ -1145,14 +1248,11 @@ export class Emitter {
       return undefined;
     }
     const values = this.variableValues();
-    if (node.attributes.some((attribute) => attribute.kind === 'spread')) {
+    if (hasSpread(node.attributes)) {
       this.emitLiveStyles();
       return values;
     }
-    const own = node.attributes.find(
-      (attribute) =>
-        (attribute.kind === 'static' || attribute.kind === 'value') && attribute.name === 'style',
-    );
+    const own = findStyleAttribute(node.attributes);
     let existing = 'undefined';
     if (own?.kind === 'static') {
       existing = own.value === true ? 'undefined' : JSON.stringify(own.value);
@@ -1166,10 +1266,12 @@ export class Emitter {
 
   /** The style variables of the component and their values, as an object in code. */
   private variableValues(): string {
-    const values = this.plan.styles.variables.map(
-      (variable) =>
+    const values: string[] = [];
+    for (const variable of this.plan.styles.variables) {
+      values.push(
         `${JSON.stringify(variable.name)}: ${variableValue(variable, this.expression(variable.expression))}`,
-    );
+      );
+    }
     return `{ ${values.join(', ')} }`;
   }
 
@@ -1206,9 +1308,13 @@ export class Emitter {
       declaration.serverImport ?? serverFunctionId(this.plan, declaration.name),
     );
     // The form posts, unless the element sets its own method.
-    const hasMethod = node.attributes.some(
-      (attribute) => 'name' in attribute && attribute.name === method,
-    );
+    let hasMethod = false;
+    for (const attribute of node.attributes) {
+      if ('name' in attribute && attribute.name === method) {
+        hasMethod = true;
+        break;
+      }
+    }
     const methodArgument = hasMethod ? '' : `, ${JSON.stringify(method)}`;
     // A form whose result a `$action` reads posts to its page, and the result is written into that slot.
     const result = name === 'action' ? this.actionSlot(declaration) : undefined;
@@ -1220,9 +1326,13 @@ export class Emitter {
 
   /** The `scope:slot` of the `$action` that reads the result of a server function, as code. */
   private actionSlot(fn: Declaration): string | undefined {
-    const declaration = this.plan.graph.model.declarations.find(
-      (item) => item.kind === 'action' && item.action === fn.name,
-    );
+    let declaration: Declaration | undefined;
+    for (const item of this.plan.graph.model.declarations) {
+      if (item.kind === 'action' && item.action === fn.name) {
+        declaration = item;
+        break;
+      }
+    }
     const slot = declaration ? slotIndex(this.plan, declaration) : -1;
     if (!declaration || slot === -1) {
       return undefined;
@@ -1240,7 +1350,7 @@ export class Emitter {
     // A spread can pass on handlers, such as the `onClick` of `...rest`, on the server and in
     // markup that the browser renders.
     let spreadHandlers: string | undefined;
-    if (node.attributes.some((attribute) => attribute.kind === 'spread')) {
+    if (hasSpread(node.attributes)) {
       spreadHandlers = this.unique('on');
       this.line(`const ${spreadHandlers}: string[] = [];`);
     }
@@ -1261,22 +1371,24 @@ export class Emitter {
     const events: string[] = [];
     // With spreads, the attributes are one object in their order, so a name is written once:
     // a later value wins, and classes add up.
-    const merged = node.attributes.some((attribute) => attribute.kind === 'spread')
-      ? ([] as string[])
-      : undefined;
+    const merged = hasSpread(node.attributes) ? ([] as string[]) : undefined;
     // A spread that changes in the browser names the attributes that it wrote, so its first
     // update there removes only those, and keeps attributes that other code set.
-    const liveSpread = node.attributes.some((attribute) => {
+    let liveSpread = false;
+    for (const attribute of node.attributes) {
       const site =
         attribute.kind === 'spread' ? this.sitesByNode.get(attribute.value.ast) : undefined;
-      return site !== undefined && this.plan.clientSites.has(site);
-    });
-    const spreadArguments = (handlers: string | undefined): string => {
+      if (site !== undefined && this.plan.clientSites.has(site)) {
+        liveSpread = true;
+        break;
+      }
+    }
+    function spreadArguments(handlers: string | undefined): string {
       if (liveSpread) {
         return `, ${handlers ?? 'undefined'}, true`;
       }
       return handlers ? `, ${handlers}` : '';
-    };
+    }
     for (const attribute of node.attributes) {
       if (
         variables &&
@@ -1379,19 +1491,16 @@ export class Emitter {
 
   /** True when no `ref` is written, and a spread reads the props of the component. */
   private spreadsRest(attributes: Attribute[]): boolean {
-    return (
-      !attributes.some((attribute) => attribute.kind === 'ref') &&
-      attributes.some((attribute) =>
-        attribute.kind === 'spread'
-          ? this.sitesByNode
-              .get(attribute.value.ast)
-              ?.reads.some(
-                (read) =>
-                  read.declaration.kind === 'prop' || read.declaration.kind === 'props-rest',
-              )
-          : false,
-      )
-    );
+    let spreadsProps = false;
+    for (const attribute of attributes) {
+      if (attribute.kind === 'ref') {
+        return false;
+      }
+      if (attribute.kind === 'spread' && readsProps(this.sitesByNode.get(attribute.value.ast))) {
+        spreadsProps = true;
+      }
+    }
+    return spreadsProps;
   }
 
   /**
@@ -1440,12 +1549,14 @@ export class Emitter {
     if (only?.kind === 'insert' && node.children.length === 1) {
       return this.expression(only.expression);
     }
-    const parts = node.children.flatMap((child) => {
+    const parts: string[] = [];
+    for (const child of node.children) {
       if (child.kind === 'insert') {
-        return [`(${this.expression(child.expression)} ?? '')`];
+        parts.push(`(${this.expression(child.expression)} ?? '')`);
+      } else if (child.kind === 'text') {
+        parts.push(JSON.stringify(decodeText(cleanText(child.value))));
       }
-      return child.kind === 'text' ? [JSON.stringify(decodeText(cleanText(child.value)))] : [];
-    });
+    }
     return parts.length === 0 ? '""' : parts.join(' + ');
   }
 
@@ -1459,10 +1570,10 @@ export class Emitter {
     if (!first) {
       return;
     }
-    const piece = (part: ClassPart): string => {
+    function piece(part: ClassPart): string {
       const text = JSON.stringify(` ${escapeClass(part.name)}`);
       return part.condition === undefined ? text : `((${part.condition}) ? ${text} : "")`;
-    };
+    }
     if (first.condition === undefined) {
       this.html(` class="${escapeClass(first.name)}`);
       for (const part of rest) {
@@ -1477,7 +1588,11 @@ export class Emitter {
       const text = JSON.stringify(` class="${escapeClass(first.name)}"`);
       this.code(`((${first.condition}) ? ${text} : "")`);
     } else {
-      this.code(`$$b.classAttribute(${classes.map(piece).join(' + ')})`);
+      const pieces: string[] = [];
+      for (const part of classes) {
+        pieces.push(piece(part));
+      }
+      this.code(`$$b.classAttribute(${pieces.join(' + ')})`);
     }
   }
 
@@ -1553,7 +1668,7 @@ export class Emitter {
    * own class and the caller's.
    */
   private dynamicProps(attributes: Attribute[], scope: Scope, extra: string[]): string {
-    if (!attributes.some((attribute) => attribute.kind === 'spread')) {
+    if (!hasSpread(attributes)) {
       return this.props(attributes, scope, extra);
     }
     const parts: string[] = [];
@@ -1629,8 +1744,6 @@ export class Emitter {
         : undefined;
     };
     // The functions can be the values of keys of objects, or items of lists, inside the value too.
-    const nested = (node: oxc.Node): boolean =>
-      node.type === 'ObjectExpression' || node.type === 'ArrayExpression';
     const visit = (node: oxc.Node): string => {
       if (node.type === 'ArrayExpression') {
         let code = '';
@@ -1717,17 +1830,28 @@ export class Emitter {
     if (anchor) {
       extra.push(`"b-b": $$b.internal(\`\${${anchor.scope}}:${anchor.index}\`)`);
     }
-    const events = node.attributes.flatMap((attribute) =>
-      attribute.kind === 'event' ? [this.eventEntry(attribute)] : [],
-    );
+    const events: string[] = [];
+    for (const attribute of node.attributes) {
+      if (attribute.kind === 'event') {
+        events.push(this.eventEntry(attribute));
+      }
+    }
     if (events.length > 0) {
       // The entries name the scope of the handlers, for a component that renders the element.
       const owner = instanceScope(this.plan, scope);
       const id = this.isInside(owner) ? this.scopeVar(owner) : `${this.scopeVar(owner)}.id`;
-      const entries = events.map((event) => `${JSON.stringify(`${event}@`)} + ${id}`);
+      const entries: string[] = [];
+      for (const event of events) {
+        entries.push(`${JSON.stringify(`${event}@`)} + ${id}`);
+      }
       extra.push(`"b-on": $$b.internal(${entries.join(' + " " + ')})`);
     }
-    let attributes = node.attributes.filter((attribute) => attribute.kind !== 'event');
+    let attributes: Attribute[] = [];
+    for (const attribute of node.attributes) {
+      if (attribute.kind !== 'event') {
+        attributes.push(attribute);
+      }
+    }
     const { variables } = this.plan.styles;
     // With a spread, the style variables go on after the attributes merge, so the style of the
     // spread does not take their place.
@@ -1737,32 +1861,34 @@ export class Emitter {
         extra.push(`"b-v": $$b.internal(${this.scopeVar(this.plan.graph.model.component)})`);
       }
     }
-    if (
-      variables.length > 0 &&
-      this.nesting === 0 &&
-      attributes.some((attribute) => attribute.kind === 'spread')
-    ) {
+    if (variables.length > 0 && this.nesting === 0 && hasSpread(attributes)) {
       spreadVariables = this.variableValues();
     } else if (variables.length > 0 && this.nesting === 0) {
       // A top-level dynamic tag sets the style variables, as a top-level element does.
-      const own = attributes.find(
-        (attribute) =>
-          (attribute.kind === 'static' || attribute.kind === 'value') && attribute.name === 'style',
-      );
+      const own = findStyleAttribute(attributes);
       let existing = 'undefined';
       if (own?.kind === 'static') {
         existing = own.value === true ? 'undefined' : JSON.stringify(own.value);
       } else if (own?.kind === 'value') {
         existing = this.expression(own.value);
       }
-      attributes = attributes.filter((attribute) => attribute !== own);
+      const rest: Attribute[] = [];
+      for (const attribute of attributes) {
+        if (attribute !== own) {
+          rest.push(attribute);
+        }
+      }
+      attributes = rest;
       extra.push(`"style": $$b.vars(${this.variableValues()}, ${existing})`);
     }
     // A tag that names a component gets the binding of `ref` as its `ref` prop, and writes the
     // element itself. A tag that names an element writes the element here.
-    const refs = node.attributes.flatMap((attribute) =>
-      attribute.kind === 'ref' ? [attribute] : [],
-    );
+    const refs: (Attribute & { kind: 'ref' })[] = [];
+    for (const attribute of node.attributes) {
+      if (attribute.kind === 'ref') {
+        refs.push(attribute);
+      }
+    }
     const tag = this.expression(node.tag);
     let tagName = tag;
     let binding = '';
@@ -1776,7 +1902,7 @@ export class Emitter {
       }
       const declaration = this.refTargets.get(refs.at(-1)!);
       if (declaration) {
-        binding = `, ${this.bindingOf(declaration)}`;
+        binding = `, ${this.getBinding(declaration)}`;
       }
     }
     let props = spreadVariables
@@ -1852,10 +1978,14 @@ export class Emitter {
   private emitLoading(block: Block & { kind: 'loading' }, scope: Scope): void {
     const boundary = this.unique('boundary');
     const body = this.plan.bodyScopes.get(block.body)!;
-    const memos = awaitedMemos(this.plan, body, this.blocking).filter(
-      (declaration) => !this.inline.has(declaration),
-    );
-    const names = memos.map((declaration) => promiseName(declaration.name));
+    const memos: Declaration[] = [];
+    const names: string[] = [];
+    for (const declaration of awaitedMemos(this.plan, body, this.blocking)) {
+      if (!this.inline.has(declaration)) {
+        memos.push(declaration);
+        names.push(promiseName(declaration.name));
+      }
+    }
     const inPlace = !mayWait(this.plan, block.body.children);
     if (inPlace && memos.length === 0) {
       // Nothing can hold the body up, so it always renders in place.
@@ -1999,7 +2129,7 @@ export class Emitter {
       }
       call = `$$b.fillBranch($$m, ${anchor.scope}, ${anchor.index}, ${index}, [${fill.renders.join(', ')}])`;
     } else if (fill.kind === 'for' && block.kind === 'for') {
-      call = `$$b.fillList($$m, ${anchor.scope}, ${anchor.index}, $$b.listOf(${this.expression(block.list)}), ${fill.render})`;
+      call = `$$b.fillList($$m, ${anchor.scope}, ${anchor.index}, $$b.toList(${this.expression(block.list)}), ${fill.render})`;
     } else {
       return false;
     }
@@ -2043,9 +2173,10 @@ export class Emitter {
     const marks = anchor ? `${anchor.scope}, ${anchor.index}` : 'undefined, undefined';
     if (block.kind === 'if' || block.kind === 'switch') {
       const branches = block.kind === 'if' ? block.branches : block.cases;
-      const bodies = branches.map((branch) =>
-        this.bodyFunction('', () => this.emitBody(branch.body)),
-      );
+      const bodies: string[] = [];
+      for (const branch of branches) {
+        bodies.push(this.bodyFunction('', () => this.emitBody(branch.body)));
+      }
       const fallback = block.fallback;
       const other = fallback && this.bodyFunction('', () => this.emitBody(fallback));
       // The index of the branch that shows, then its function.
@@ -2065,7 +2196,7 @@ export class Emitter {
       const other = fallback && this.bodyFunction('', () => this.emitBody(fallback));
       const items =
         block.kind === 'for'
-          ? `$$b.listOf(${this.expression(block.list)})`
+          ? `$$b.toList(${this.expression(block.list)})`
           : `Array.from({ length: ${this.expression(block.count)} }, (_, index) => index)`;
       this.code(`$$b.nodes($$b.listNodes(${marks}, ${items}, ${body}, ${other ?? 'undefined'}))`);
       return true;
@@ -2121,7 +2252,7 @@ export class Emitter {
       case 'switch': {
         const branches = block.kind === 'if' ? block.branches : block.cases;
         const fallback = block.fallback;
-        branches.forEach((branch, index) => {
+        for (const [index, branch] of branches.entries()) {
           if (index === 0) {
             this.line(`if ${this.expression(branch.condition)} {`);
           } else {
@@ -2130,7 +2261,7 @@ export class Emitter {
           this.open(scope, block, String(index));
           this.emitBody(branch.body);
           this.end(block);
-        });
+        }
         this.close('} else {');
         this.open(scope, block, fallback ? String(branches.length) : '-1');
         if (fallback) {
@@ -2339,7 +2470,11 @@ function staticClasses(attributes: Attribute[]): string[] | undefined {
         return undefined;
       }
       if (attribute.value !== true) {
-        classes.push(...attribute.value.split(/\s+/).filter(Boolean));
+        for (const name of attribute.value.split(/\s+/)) {
+          if (name) {
+            classes.push(name);
+          }
+        }
       }
     }
   }
@@ -2375,7 +2510,7 @@ export function literalClasses(
     return undefined;
   }
   const parts: ClassPart[] = [];
-  const visit = (node: oxc.Node | null): boolean => {
+  function visit(node: oxc.Node | null): boolean {
     // A hole in an array renders nothing.
     if (node === null) {
       return true;
@@ -2387,7 +2522,12 @@ export function literalClasses(
       return true;
     }
     if (node.type === 'ArrayExpression') {
-      return node.elements.every(visit);
+      for (const element of node.elements) {
+        if (!visit(element)) {
+          return false;
+        }
+      }
+      return true;
     }
     if (node.type !== 'ObjectExpression') {
       return false;
@@ -2439,7 +2579,7 @@ export function literalClasses(
       parts.push({ name, condition });
     }
     return true;
-  };
+  }
   return visit(value) ? parts : undefined;
 }
 
@@ -2448,17 +2588,26 @@ export function literalClasses(
  * for the client to set. An empty text removes the attribute.
  */
 export function classText(classes: ClassPart[]): string {
-  if (classes.every((part) => part.condition === undefined)) {
-    return JSON.stringify(classes.map((part) => part.name).join(' '));
+  let plain = true;
+  const names: string[] = [];
+  for (const part of classes) {
+    if (part.condition !== undefined) {
+      plain = false;
+    }
+    names.push(part.name);
+  }
+  if (plain) {
+    return JSON.stringify(names.join(' '));
   }
   const [first] = classes;
   if (classes.length === 1 && first) {
     return `((${first.condition}) ? ${JSON.stringify(first.name)} : "")`;
   }
-  const pieces = classes.map((part) => {
+  const pieces: string[] = [];
+  for (const part of classes) {
     const text = JSON.stringify(` ${part.name}`);
-    return part.condition === undefined ? text : `((${part.condition}) ? ${text} : "")`;
-  });
+    pieces.push(part.condition === undefined ? text : `((${part.condition}) ? ${text} : "")`);
+  }
   return `(${pieces.join(' + ')}).slice(1)`;
 }
 

@@ -54,9 +54,9 @@
   const ownId = $id();
   const tooltipId = $id();
   // A DialogTrigger around it names the button already, and finds its popover by that ID.
-  const triggerId = $memo(idOf(parent) ?? ownId);
+  const triggerId = $memo(getId(parent) ?? ownId);
 
-  function idOf(value: ContextValue<ButtonContextProps> | null) {
+  function getId(value: ContextValue<ButtonContextProps> | null) {
     return value && !('slots' in value) && typeof value.id === 'string' ? value.id : undefined;
   }
 

@@ -89,7 +89,7 @@ import * as $$b from 'brumate/client';
 const $$k0 = ($$item, $$index) => { const todo = $$item; return todo.id; };
 const $$k1 = [];
 export function b4($$s) {
-  $$b.list($$s, 1, $$b.listOf($$b.get($$s, 0)), $$k0, r2, a2, undefined, $$k1);
+  $$b.list($$s, 1, $$b.toList($$b.get($$s, 0)), $$k0, r2, a2, undefined, $$k1);
 }
 export function a2($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -153,7 +153,7 @@ export default function Produce($$props: Record<string, never>): string | Docume
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keepText($$s1, 2, $$e[2], (todos.filter((todo) => todo.done).length));
   $$b.setSlots($$s1, [todos]);
-  $$b.fillList($$e[1], $$s1, 1, $$b.listOf(( todos )), $$r2);
+  $$b.fillList($$e[1], $$s1, 1, $$b.toList(( todos )), $$r2);
   return $$f;
 }
 Produce.brumateId = "Produce_9t90yy";

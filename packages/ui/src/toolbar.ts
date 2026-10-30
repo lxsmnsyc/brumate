@@ -17,12 +17,17 @@ export function isNested(toolbar: Element): boolean {
 
 /** The items of a toolbar that can take focus, in order, also those of a nested group. */
 export function toolbarItems(toolbar: Element): HTMLElement[] {
-  return [...toolbar.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-    (item) =>
+  const found: HTMLElement[] = [];
+  for (const item of toolbar.querySelectorAll<HTMLElement>(FOCUSABLE)) {
+    if (
       !item.closest('[hidden], [inert]') &&
       !item.matches(':disabled') &&
-      item.getAttribute('aria-disabled') !== 'true',
-  );
+      item.getAttribute('aria-disabled') !== 'true'
+    ) {
+      found.push(item);
+    }
+  }
+  return found;
 }
 
 /** True for the keys that move the caret of a field, which a toolbar leaves to it. */
@@ -98,7 +103,7 @@ export function moveFocus(
  * cannot be a fixed key list of the handler. Returns a function that stops.
  */
 export function preventEdges(toolbar: Element): () => void {
-  const listener = (event: Event): void => {
+  function listener(event: Event): void {
     const { key, ctrlKey, metaKey, altKey } = event as KeyboardEvent;
     const vertical = toolbar.getAttribute('data-orientation') === 'vertical';
     const arrow = vertical && (key === 'ArrowUp' || key === 'ArrowDown');
@@ -116,7 +121,7 @@ export function preventEdges(toolbar: Element): () => void {
     ) {
       event.preventDefault();
     }
-  };
+  }
   toolbar.addEventListener('keydown', listener);
   return () => toolbar.removeEventListener('keydown', listener);
 }
@@ -127,20 +132,33 @@ export function preventEdges(toolbar: Element): () => void {
  * the toolbar. Returns a function that stops.
  */
 export function keepTabStop(toolbar: Element): () => void {
-  const check = (): void => {
+  function check(): void {
     if (isNested(toolbar)) {
       return;
     }
     const items = toolbarItems(toolbar);
     // Before the first focus, every item is in the order of Tab.
-    if (!items.some((item) => item.hasAttribute('tabindex'))) {
+    let started = false;
+    for (const item of items) {
+      if (item.hasAttribute('tabindex')) {
+        started = true;
+        break;
+      }
+    }
+    if (!started) {
       return;
     }
-    const stop = items.find((item) => item.tabIndex === 0) ?? items[0];
+    let stop = items[0];
+    for (const item of items) {
+      if (item.tabIndex === 0) {
+        stop = item;
+        break;
+      }
+    }
     if (stop) {
       rove(toolbar, stop);
     }
-  };
+  }
   const observer = new MutationObserver(check);
   observer.observe(toolbar, {
     subtree: true,

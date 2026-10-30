@@ -2,11 +2,11 @@
 // rows are not all in the page, so the keys read the data of the items: their order, which are
 // disabled, and the text of each. A collection whose items are written in markup has no data, and
 // reads the page as `collection.ts` does.
-import { itemsOf, keyOf, textOf, typeaheadKey } from './collection.ts';
+import { findItems, readItemKey, getItemText, typeaheadKey } from './collection.ts';
 import type { Key, Movement } from './collection.ts';
 
 /** The element that scrolls a collection, or none for the page. */
-export function scrollerOf(element: HTMLElement): HTMLElement | undefined {
+export function findScroller(element: HTMLElement): HTMLElement | undefined {
   for (let parent = element.parentElement; parent; parent = parent.parentElement) {
     const style = getComputedStyle(parent);
     if (/^(auto|scroll|overlay)$/.test(style.overflowY || style.overflow)) {
@@ -20,7 +20,7 @@ export function scrollerOf(element: HTMLElement): HTMLElement | undefined {
 export function measuredHeight(element: HTMLElement, role: string, fallback: number): number {
   const before = element.querySelector('[data-window=before]');
   const after = element.querySelector('[data-window=after]');
-  const count = itemsOf(element, role).length;
+  const count = findItems(element, role).length;
   const height =
     before && after && count > 0
       ? (after.getBoundingClientRect().top - before.getBoundingClientRect().bottom) / count
@@ -32,19 +32,25 @@ export function measuredHeight(element: HTMLElement, role: string, fallback: num
  * The keys of the rows that can take focus, in order: those of `order` that are not in
  * `disabledKeys`, and not disabled in the page, such as by an `isDisabled` of the row.
  */
-export function enabledKeysOf(
+export function findEnabledKeys(
   element: HTMLElement,
   role: string,
   order: readonly Key[],
   disabledKeys: readonly Key[],
 ): Key[] {
   const disabled = new Set(disabledKeys);
-  for (const item of itemsOf(element, role)) {
+  for (const item of findItems(element, role)) {
     if (item.getAttribute('aria-disabled') === 'true') {
-      disabled.add(keyOf(item)!);
+      disabled.add(readItemKey(item)!);
     }
   }
-  return order.filter((key) => !disabled.has(key));
+  const enabled: Key[] = [];
+  for (const key of order) {
+    if (!disabled.has(key)) {
+      enabled.push(key);
+    }
+  }
+  return enabled;
 }
 
 /**
@@ -61,15 +67,28 @@ export function keyAfter(
   rowHeight: number,
   wrap = false,
 ): Key {
-  const places = new Map(order.map((key, index) => [key, index]));
-  const place = (key: Key) => places.get(key) ?? -1;
+  const places = new Map<Key, number>();
+  for (const [index, key] of order.entries()) {
+    places.set(key, index);
+  }
+  function place(key: Key) {
+    return places.get(key) ?? -1;
+  }
   const at = place(from);
-  const before = enabled.filter((key) => place(key) < at);
-  const after = enabled.filter((key) => place(key) > at);
+  const before: Key[] = [];
+  const after: Key[] = [];
+  for (const key of enabled) {
+    if (place(key) < at) {
+      before.push(key);
+    }
+    if (place(key) > at) {
+      after.push(key);
+    }
+  }
   const page = Math.max(
     1,
     Math.floor(
-      (scrollerOf(element)?.clientHeight ?? window.innerHeight) /
+      (findScroller(element)?.clientHeight ?? window.innerHeight) /
         measuredHeight(element, role, rowHeight),
     ),
   );
@@ -83,9 +102,19 @@ export function keyAfter(
     case 'previous':
       return before.at(-1) ?? (wrap ? enabled.at(-1) : undefined) ?? from;
     case 'pageDown':
-      return after.findLast((key) => place(key) <= at + page) ?? after[0] ?? from;
+      for (let index = after.length - 1; index >= 0; index--) {
+        if (place(after[index]!) <= at + page) {
+          return after[index]!;
+        }
+      }
+      return after[0] ?? from;
     case 'pageUp':
-      return before.find((key) => place(key) >= at - page) ?? before.at(-1) ?? from;
+      for (const key of before) {
+        if (place(key) >= at - page) {
+          return key;
+        }
+      }
+      return before.at(-1) ?? from;
   }
 }
 
@@ -105,7 +134,14 @@ export function focusKeyIn(
   rowHeight: number | undefined,
   focus: (item: HTMLElement | undefined) => void,
 ): void {
-  const find = () => itemsOf(element, role).find((item) => keyOf(item) === key);
+  function find() {
+    for (const item of findItems(element, role)) {
+      if (readItemKey(item) === key) {
+        return item;
+      }
+    }
+    return undefined;
+  }
   const found = find();
   const turn = (reveals.get(element) ?? 0) + 1;
   reveals.set(element, turn);
@@ -115,7 +151,7 @@ export function focusKeyIn(
     return;
   }
   const size = measuredHeight(element, role, rowHeight);
-  const scroller = scrollerOf(element);
+  const scroller = findScroller(element);
   const box = scroller?.getBoundingClientRect();
   const height = scroller?.clientHeight ?? window.innerHeight;
   // The rows start where the spacer before them does, below any header of the collection.
@@ -130,7 +166,7 @@ export function focusKeyIn(
     window.scrollTo({ top: Math.max(0, window.scrollY + top + offset) });
   }
   // The window draws on the next frame after the scroll.
-  const wait = (frames: number) => {
+  function wait(frames: number) {
     const item = find();
     if (turn !== reveals.get(element)) {
       return;
@@ -140,7 +176,7 @@ export function focusKeyIn(
     } else if (frames > 0) {
       requestAnimationFrame(() => wait(frames - 1));
     }
-  };
+  }
   wait(30);
 }
 
@@ -159,18 +195,23 @@ export function typeaheadWindowed(
   event: KeyboardEvent,
   getTextValue: ((item: never) => string) | undefined,
 ): Key | undefined {
-  const shown = new Map(itemsOf(element, role).map((item) => [keyOf(item), item]));
+  const shown = new Map<Key | undefined, HTMLElement>();
+  for (const item of findItems(element, role)) {
+    shown.set(readItemKey(item), item);
+  }
   const allowed = new Set(enabled);
-  const entries = rows
-    .filter((row) => allowed.has(row.key))
-    .map((row) => {
-      const item = shown.get(row.key);
-      return {
-        key: row.key,
-        text: item
-          ? textOf(item)
-          : (getTextValue?.(row.item as never) ?? '').trim().toLocaleLowerCase(),
-      };
+  const entries: { key: Key; text: string }[] = [];
+  for (const row of rows) {
+    if (!allowed.has(row.key)) {
+      continue;
+    }
+    const item = shown.get(row.key);
+    entries.push({
+      key: row.key,
+      text: item
+        ? getItemText(item)
+        : (getTextValue?.(row.item as never) ?? '').trim().toLocaleLowerCase(),
     });
+  }
   return typeaheadKey(element, entries, from, event);
 }

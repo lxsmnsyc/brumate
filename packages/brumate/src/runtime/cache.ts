@@ -159,7 +159,16 @@ export function cached<A extends unknown[], R>(
     const kept = await store.get(key);
     if (kept) {
       const entry = JSON.parse(kept) as Entry;
-      if (entry.expires > Date.now() && tags.every((tag) => entry.tags[tag] === versions[tag])) {
+      let fresh = entry.expires > Date.now();
+      if (fresh) {
+        for (const tag of tags) {
+          if (entry.tags[tag] !== versions[tag]) {
+            fresh = false;
+            break;
+          }
+        }
+      }
+      if (fresh) {
         return fromJSON(entry.value as never, { plugins: syncPlugins }) as Awaited<R>;
       }
     }
@@ -195,11 +204,15 @@ export function cacheStore(): CacheStore {
 /** The versions of tags. A tag that was never revalidated has version `0`. */
 export async function tagVersions(tags: Iterable<string>): Promise<Record<string, string>> {
   const versions: Record<string, string> = {};
-  await Promise.all(
-    [...tags].map(async (tag) => {
-      versions[tag] = (await store.get(`brumate:tag:${tag}`)) ?? '0';
-    }),
-  );
+  const reads: Promise<void>[] = [];
+  for (const tag of tags) {
+    reads.push(
+      (async () => {
+        versions[tag] = (await store.get(`brumate:tag:${tag}`)) ?? '0';
+      })(),
+    );
+  }
+  await Promise.all(reads);
   return versions;
 }
 
@@ -212,5 +225,9 @@ let revalidations = 0;
  */
 export async function revalidate(...tags: string[]): Promise<void> {
   const version = `${Date.now()}.${revalidations++}`;
-  await Promise.all(tags.map((tag) => store.set(`brumate:tag:${tag}`, version, TAG_AGE)));
+  const writes: (Promise<void> | void)[] = [];
+  for (const tag of tags) {
+    writes.push(store.set(`brumate:tag:${tag}`, version, TAG_AGE));
+  }
+  await Promise.all(writes);
 }

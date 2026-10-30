@@ -17,7 +17,7 @@ export interface ProgressBarState {
 }
 
 /** The share of the range that the value fills, and its text in the locale. */
-export function progressOf(
+export function getProgress(
   value: number,
   minValue: number,
   maxValue: number,

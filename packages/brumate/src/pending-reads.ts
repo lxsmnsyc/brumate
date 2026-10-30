@@ -14,10 +14,15 @@ export function pendingReadMessage(name: string): string {
 
 /** True for a memo that loads: it calls a server function, or awaits. */
 function isAsync(declaration: Declaration): boolean {
-  return (
-    declaration.kind === 'async-memo' ||
-    (declaration.site?.reads ?? []).some((read) => read.declaration.serverImport !== undefined)
-  );
+  if (declaration.kind === 'async-memo') {
+    return true;
+  }
+  for (const read of declaration.site?.reads ?? []) {
+    if (read.declaration.serverImport !== undefined) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** The starts of the memo names in `$isPending(…)` and `$resolve(…)` calls of the file. */
@@ -75,6 +80,11 @@ function waitedFor(declaration: Declaration, seen = new Set<Declaration>()): boo
   return false;
 }
 
+/** True for a memo that loads and that nothing waits for. */
+function loads(memo: Declaration): boolean {
+  return !memo.awaited && isAsync(memo) && !waitedFor(memo);
+}
+
 /**
  * True for a memo that can lack a value in the browser: it is async, or it reads an async memo, and
  * neither the server waited for it nor `await $memo(…)` declares it.
@@ -83,9 +93,15 @@ function lacksValue(declaration: Declaration): boolean {
   if (declaration.awaited || declaration.kind === 'prop') {
     return false;
   }
-  const loads = (memo: Declaration): boolean => !memo.awaited && isAsync(memo) && !waitedFor(memo);
   if (declaration.kind === 'async-memo' || declaration.kind === 'memo') {
-    return loads(declaration) || upstreamMemos(declaration).some(loads);
+    if (loads(declaration)) {
+      return true;
+    }
+    for (const memo of upstreamMemos(declaration)) {
+      if (loads(memo)) {
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -113,7 +129,7 @@ export function checkPendingReads(
   checkedStarts = new Set(pending.keys());
   const done = new Set<Site>();
   const reported = new Set<number>();
-  const visit = (site: Site): void => {
+  function visit(site: Site): void {
     if (done.has(site)) {
       return;
     }
@@ -141,7 +157,7 @@ export function checkPendingReads(
         visit(called.site);
       }
     }
-  };
+  }
   for (const site of sites) {
     if (isRoot(site)) {
       visit(site);
@@ -255,9 +271,12 @@ function alwaysAwaits(
     case 'ExpressionStatement':
       return alwaysAwaits(node.expression, memo, pending);
     case 'VariableDeclaration':
-      return node.declarations.some(
-        (declarator) => declarator.init && alwaysAwaits(declarator.init, memo, pending),
-      );
+      for (const declarator of node.declarations) {
+        if (declarator.init && alwaysAwaits(declarator.init, memo, pending)) {
+          return true;
+        }
+      }
+      return false;
     case 'AssignmentExpression':
       return alwaysAwaits(node.right, memo, pending);
     case 'MemberExpression':

@@ -1,8 +1,12 @@
 import { gzipSync } from 'node:zlib';
 import { CLICKS, expected, widgets } from './dashboard.mjs';
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const isScript = (entry) => entry.type === 'script' || /\.m?js(\?|$)/.test(entry.url);
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function isScript(entry) {
+  return entry.type === 'script' || /\.m?js(\?|$)/.test(entry.url);
+}
 
 // The interactions. Each one has an action and a check that runs in the page.
 const INTERACTIONS = {
@@ -30,13 +34,18 @@ const INTERACTIONS = {
 };
 
 function total(entries) {
-  const js = entries.filter(isScript);
-  return {
-    requests: entries.length,
-    jsFiles: js.length,
-    jsRaw: js.reduce((sum, entry) => sum + entry.raw, 0),
-    jsGzip: js.reduce((sum, entry) => sum + entry.gzip, 0),
-  };
+  let jsFiles = 0;
+  let jsRaw = 0;
+  let jsGzip = 0;
+  for (const entry of entries) {
+    if (!isScript(entry)) {
+      continue;
+    }
+    jsFiles++;
+    jsRaw += entry.raw;
+    jsGzip += entry.gzip;
+  }
+  return { requests: entries.length, jsFiles, jsRaw, jsGzip };
 }
 
 // Loads the page, waits while idle, then runs the steps in order. Records every request with
@@ -52,7 +61,9 @@ async function run(browser, base, pageUrl, steps, { idleMs, prepare }) {
   page.on('request', (request) => phaseOf.set(request, phase));
   page.on('response', (response) => {
     const url = response.url();
-    if (!url.startsWith(base) || url === pageUrl) return;
+    if (!url.startsWith(base) || url === pageUrl) {
+      return;
+    }
     pending.push(
       response.body().then(
         (body) =>
@@ -74,7 +85,9 @@ async function run(browser, base, pageUrl, steps, { idleMs, prepare }) {
   phase = 'idle';
   await page.waitForLoadState('networkidle');
   await sleep(idleMs);
-  if (prepare) await page.evaluate(prepare);
+  if (prepare) {
+    await page.evaluate(prepare);
+  }
 
   const checks = {};
   for (const step of steps) {
@@ -92,34 +105,47 @@ async function run(browser, base, pageUrl, steps, { idleMs, prepare }) {
   await Promise.all(pending);
   await context.close();
 
-  const order = steps.map((step) => step.name);
+  const order = [];
+  for (const step of steps) {
+    order.push(step.name);
+  }
   const phases = {};
-  for (const name of ['boot', 'idle', ...order])
-    phases[name] = total(log.filter((entry) => entry.phase === name));
+  for (const name of ['boot', 'idle', ...order]) {
+    const inPhase = [];
+    for (const entry of log) {
+      if (entry.phase === name) {
+        inPhase.push(entry);
+      }
+    }
+    phases[name] = total(inPhase);
+  }
   return { order, checks, errors, phases, all: total(log), log };
 }
 
 function session(browser, base, order, { idleMs, n }) {
-  return run(
-    browser,
-    base,
-    `${base}/?n=${n}`,
-    order.map((name) => ({ name, ...INTERACTIONS[name] })),
-    {
-      idleMs,
-      prepare: () => {
-        window.__left = Number(/(\d+) left/.exec(document.body.textContent)[1]);
-      },
+  const steps = [];
+  for (const name of order) {
+    steps.push({ name, ...INTERACTIONS[name] });
+  }
+  return run(browser, base, `${base}/?n=${n}`, steps, {
+    idleMs,
+    prepare: () => {
+      window.__left = Number(/(\d+) left/.exec(document.body.textContent)[1]);
     },
-  );
+  });
 }
 
-const failures = (sessions) =>
-  sessions.flatMap((s) =>
-    Object.entries(s.checks)
-      .filter(([, value]) => value === 'FAILED')
-      .map(([name]) => `${name} (${s.order[0]} first)`),
-  );
+function failures(sessions) {
+  const failed = [];
+  for (const s of sessions) {
+    for (const [name, value] of Object.entries(s.checks)) {
+      if (value === 'FAILED') {
+        failed.push(`${name} (${s.order[0]} first)`);
+      }
+    }
+  }
+  return failed;
+}
 
 export async function measureBrowser(browser, base, options) {
   const counterFirst = await session(browser, base, ['counter', 'toggle', 'add'], options);
@@ -144,10 +170,13 @@ function roundTrips(requests) {
   const sorted = requests.toSorted((a, b) => a.start - b.start);
   let max = 0;
   for (const request of sorted) {
-    const before = sorted.filter(
-      (other) => other !== request && other.end !== undefined && other.end <= request.start,
-    );
-    request.depth = 1 + Math.max(0, ...before.map((other) => other.depth ?? 1));
+    const depths = [];
+    for (const other of sorted) {
+      if (other !== request && other.end !== undefined && other.end <= request.start) {
+        depths.push(other.depth ?? 1);
+      }
+    }
+    request.depth = 1 + Math.max(0, ...depths);
     max = Math.max(max, request.depth);
   }
   return max;
@@ -160,14 +189,17 @@ async function waterfallRun(browser, base, { latency, idleMs, cold, url, step })
   const context = await browser.newContext();
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
-  const throttle = () =>
-    cdp.send('Network.emulateNetworkConditions', {
+  function throttle() {
+    return cdp.send('Network.emulateNetworkConditions', {
       offline: false,
       latency,
       downloadThroughput: (1.6 * 1024 * 1024) / 8,
       uploadThroughput: (750 * 1024) / 8,
     });
-  if (cold) await throttle();
+  }
+  if (cold) {
+    await throttle();
+  }
   await page.goto(url, { waitUntil: 'load' });
   if (!cold) {
     await page.waitForLoadState('networkidle');
@@ -182,10 +214,12 @@ async function waterfallRun(browser, base, { latency, idleMs, cold, url, step })
       start: performance.now() - start,
     }),
   );
-  const finish = (request) => {
+  function finish(request) {
     const entry = requests.get(request);
-    if (entry) entry.end = performance.now() - start;
-  };
+    if (entry) {
+      entry.end = performance.now() - start;
+    }
+  }
   page.on('requestfinished', finish);
   page.on('requestfailed', finish);
   start = performance.now();
@@ -197,7 +231,12 @@ async function waterfallRun(browser, base, { latency, idleMs, cold, url, step })
   } catch {
     ms = 'FAILED';
   }
-  const list = [...requests.values()].filter((entry) => ms === 'FAILED' || entry.start <= ms);
+  const list = [];
+  for (const entry of requests.values()) {
+    if (ms === 'FAILED' || entry.start <= ms) {
+      list.push(entry);
+    }
+  }
   await context.close();
   return { ms, requests: list.length, roundTrips: roundTrips(list), log: list };
 }
@@ -250,26 +289,39 @@ function scroll(key) {
   };
 }
 
-const MAIN = () => [
-  click('above', 'run'),
-  scroll('below'),
-  click('below', 'run'),
-  scroll('third'),
-  click('third', 'cycle'),
-];
+function MAIN() {
+  return [
+    click('above', 'run'),
+    scroll('below'),
+    click('below', 'run'),
+    scroll('third'),
+    click('third', 'cycle'),
+  ];
+}
 
-const summary = (s) =>
-  s && {
-    boot: s.phases.boot,
-    idle: s.phases.idle,
-    above: s.phases.above,
-    scrollBelow: s.phases['scroll-below'],
-    below: s.phases.below,
-    scrollThird: s.phases['scroll-third'],
-    third: s.phases.third,
-    total: s.all,
-    checks: s.checks,
-  };
+function summary(s) {
+  return (
+    s && {
+      boot: s.phases.boot,
+      idle: s.phases.idle,
+      above: s.phases.above,
+      scrollBelow: s.phases['scroll-below'],
+      below: s.phases.below,
+      scrollThird: s.phases['scroll-third'],
+      third: s.phases.third,
+      total: s.all,
+      checks: s.checks,
+    }
+  );
+}
+
+function sessionErrors(sessions) {
+  const errors = [];
+  for (const s of sessions) {
+    errors.push(...s.errors);
+  }
+  return errors;
+}
 
 export async function measureDashboard(browser, base, { idleMs, preloadOption }) {
   const options = { idleMs };
@@ -280,7 +332,10 @@ export async function measureDashboard(browser, base, { idleMs, preloadOption })
   const off = preloadOption
     ? await run(browser, base, `${base}/?preload=off`, MAIN(), options)
     : undefined;
-  const sessions = [main, below, off].filter(Boolean);
+  const sessions = [main, below];
+  if (off) {
+    sessions.push(off);
+  }
   return {
     ...summary(main),
     belowFirst: {
@@ -290,7 +345,7 @@ export async function measureDashboard(browser, base, { idleMs, preloadOption })
     },
     preloadOff: summary(off),
     failed: failures(sessions),
-    errors: [...new Set(sessions.flatMap((s) => s.errors))],
+    errors: [...new Set(sessionErrors(sessions))],
     sessions: { main, belowFirst: below, preloadOff: off },
   };
 }

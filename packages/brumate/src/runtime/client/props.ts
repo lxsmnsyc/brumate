@@ -26,9 +26,12 @@ export function spreadProps(
   spreadKeys.set(scope, byAnchor);
   const before = byAnchor.get(anchor) ?? new Set();
   // The `b-` names are brumate's own, such as the handlers of a dynamic tag.
-  const keys = new Set(
-    Object.keys(value ?? {}).filter((key) => !after.includes(key) && !key.startsWith('b-')),
-  );
+  const keys = new Set<string>();
+  for (const key of Object.keys(value ?? {})) {
+    if (!after.includes(key) && !key.startsWith('b-')) {
+      keys.add(key);
+    }
+  }
   byAnchor.set(anchor, keys);
   for (const key of keys) {
     prop(scope, anchor, key, value![key]);
@@ -52,6 +55,7 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
   if (!child?.m) {
     return;
   }
+  // An arrow, to keep the narrowing of `module` and `value`.
   const apply = (module: ClientModule): void => {
     const slot = module.props[name];
     if (slot !== undefined) {

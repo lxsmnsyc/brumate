@@ -2,7 +2,7 @@
 // snap to a step between a minimum and a maximum, and the repeat of a Button that is held.
 
 /** The number of digits after the point in a number, also for one such as `1e-7`. */
-function precisionOf(step: number): number {
+function getPrecision(step: number): number {
   const text = String(step).toLowerCase();
   const exponent = text.indexOf('e-');
   if (exponent > 0) {
@@ -14,7 +14,7 @@ function precisionOf(step: number): number {
 
 /** Rounds a value to the precision of a step, so `0.1 + 0.2` is `0.3`. */
 export function roundToStep(value: number, step: number): number {
-  const precision = precisionOf(step);
+  const precision = getPrecision(step);
   if (precision === 0) {
     return value;
   }
@@ -24,7 +24,7 @@ export function roundToStep(value: number, step: number): number {
 
 /** Adds or takes a step, with the precision of both numbers. */
 export function addStep(value: number, step: number, sign: 1 | -1): number {
-  const digits = Math.max(precisionOf(value), precisionOf(step));
+  const digits = Math.max(getPrecision(value), getPrecision(step));
   const power = 10 ** digits;
   return digits === 0
     ? value + sign * step
@@ -97,7 +97,7 @@ export function startRepeat(id: string, step: () => boolean, delay: number): voi
   if (!step()) {
     return;
   }
-  const again = (wait: number): void => {
+  function again(wait: number): void {
     repeats.set(
       id,
       setTimeout(() => {
@@ -108,7 +108,7 @@ export function startRepeat(id: string, step: () => boolean, delay: number): voi
         }
       }, wait),
     );
-  };
+  }
   again(delay);
 }
 

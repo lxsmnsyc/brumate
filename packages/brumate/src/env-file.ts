@@ -24,28 +24,33 @@ export interface EnvFile {
 }
 
 /** The names of the properties of an object literal. Other keys throw. */
-function keysOf(node: oxc.Node, group: string, filename: string): string[] {
+function readKeys(node: oxc.Node, group: string, filename: string): string[] {
   if (node.type !== 'ObjectExpression') {
     throw new Error(
       `The ${group} variables of ${filename} must be an object literal, so the compiler can read their names`,
     );
   }
-  return node.properties.map((property) => {
+  const keys: string[] = [];
+  for (const property of node.properties) {
     if (property.type === 'Property' && !property.computed) {
-      return property.key.type === 'Identifier'
-        ? property.key.name
-        : String((property.key as { value?: unknown }).value);
+      keys.push(
+        property.key.type === 'Identifier'
+          ? property.key.name
+          : String((property.key as { value?: unknown }).value),
+      );
+      continue;
     }
     throw new Error(
       `The ${group} variables of ${filename} must be plain properties, so the compiler can read their names`,
     );
-  });
+  }
+  return keys;
 }
 
 /** Finds the `defineEnv` call of the file. */
 function findCall(program: oxc.Program): oxc.CallExpression | undefined {
   let found: oxc.CallExpression | undefined;
-  const visit = (node: unknown): void => {
+  function visit(node: unknown): void {
     if (found || typeof node !== 'object' || node === null) {
       return;
     }
@@ -56,12 +61,14 @@ function findCall(program: oxc.Program): oxc.CallExpression | undefined {
     }
     for (const child of Object.values(value)) {
       if (Array.isArray(child)) {
-        child.forEach(visit);
+        for (const item of child) {
+          visit(item);
+        }
       } else if (typeof child === 'object') {
         visit(child);
       }
     }
-  };
+  }
   visit(program);
   return found;
 }
@@ -89,7 +96,7 @@ export function parseEnvFile(source: string, filename: string): EnvFile {
     schemaEnd: schema.end,
     hasOptions: call.arguments.length > 1,
   };
-  schema.properties.forEach((property, index) => {
+  for (const [index, property] of schema.properties.entries()) {
     if (property.type !== 'Property' || property.computed || property.key.type !== 'Identifier') {
       throw new Error(`${DEFINE} in ${filename} takes server and public variables only`);
     }
@@ -97,7 +104,7 @@ export function parseEnvFile(source: string, filename: string): EnvFile {
     if (group !== 'server' && group !== 'public') {
       throw new Error(`${DEFINE} in ${filename} takes server and public variables, not ${group}`);
     }
-    result[group] = keysOf(property.value, group, filename);
+    result[group] = readKeys(property.value, group, filename);
     if (group === 'server') {
       // The property with its comma, so the browser's copy stays valid code.
       const next = schema.properties[index + 1];
@@ -110,7 +117,7 @@ export function parseEnvFile(source: string, filename: string): EnvFile {
       }
       result.serverRange = { start: property.start, end };
     }
-  });
+  }
   return result;
 }
 

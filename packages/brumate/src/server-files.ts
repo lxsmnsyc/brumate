@@ -150,24 +150,21 @@ export function hasServerMiddleware(source: string, filename: string): boolean {
     if (declaration?.type === 'FunctionDeclaration' && declaration.id?.name === MIDDLEWARE) {
       return true;
     }
-    if (
-      declaration?.type === 'VariableDeclaration' &&
-      declaration.declarations.some(
-        (declarator) => declarator.id.type === 'Identifier' && declarator.id.name === MIDDLEWARE,
-      )
-    ) {
-      return true;
+    if (declaration?.type === 'VariableDeclaration') {
+      for (const declarator of declaration.declarations) {
+        if (declarator.id.type === 'Identifier' && declarator.id.name === MIDDLEWARE) {
+          return true;
+        }
+      }
     }
-    if (
-      statement.specifiers.some(
-        (specifier) =>
-          specifier.exportKind !== 'type' &&
-          (specifier.exported.type === 'Identifier'
-            ? specifier.exported.name
-            : specifier.exported.value) === MIDDLEWARE,
-      )
-    ) {
-      return true;
+    for (const specifier of statement.specifiers) {
+      const name =
+        specifier.exported.type === 'Identifier'
+          ? specifier.exported.name
+          : specifier.exported.value;
+      if (specifier.exportKind !== 'type' && name === MIDDLEWARE) {
+        return true;
+      }
     }
   }
   return false;
@@ -213,12 +210,12 @@ export function serverModule(source: string, filename: string, id: string): stri
       }
     }
   }
-  const letOf = (declaration: { start: number; kind: string }): void => {
+  function makeLet(declaration: { start: number; kind: string }): void {
     // `const` becomes `let  `, so the function can be wrapped and offsets stay the same.
     if (declaration.kind === 'const') {
       code = `${code.slice(0, declaration.start)}let  ${code.slice(declaration.start + 5)}`;
     }
-  };
+  }
   for (const statement of program.body) {
     if (
       statement.type !== 'ExportNamedDeclaration' ||
@@ -234,7 +231,7 @@ export function serverModule(source: string, filename: string, id: string): stri
       for (const declarator of declaration.declarations) {
         if (declarator.id.type === 'Identifier' && isFunction(declarator.init)) {
           wrapped.set(declarator.id.name, declarator.id.name);
-          letOf(declaration);
+          makeLet(declaration);
         }
       }
     }
@@ -254,7 +251,7 @@ export function serverModule(source: string, filename: string, id: string): stri
     if (statement.type === 'VariableDeclaration') {
       for (const declarator of statement.declarations) {
         if (declarator.id.type === 'Identifier' && wrapped.has(declarator.id.name)) {
-          letOf(statement);
+          makeLet(statement);
         }
       }
     }
@@ -278,12 +275,20 @@ export function findServerImport(importer: string, specifier: string): string | 
     return undefined;
   }
   const stem = path.resolve(path.dirname(importer), specifier);
-  return [stem, ...['.ts', '.tsx', '.js', '.mjs'].map((extension) => stem + extension)].find(
-    (candidate) =>
+  const candidates = [stem];
+  for (const extension of ['.ts', '.tsx', '.js', '.mjs']) {
+    candidates.push(stem + extension);
+  }
+  for (const candidate of candidates) {
+    if (
       isScriptFile(candidate) &&
       existsSync(candidate) &&
-      hasUseServer(readFileSync(candidate, 'utf8')),
-  );
+      hasUseServer(readFileSync(candidate, 'utf8'))
+    ) {
+      return candidate;
+    }
+  }
+  return undefined;
 }
 
 /**

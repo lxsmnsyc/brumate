@@ -86,7 +86,7 @@ export default function Deferred($$props: Record<string, never>): string | Docum
   const $$e = $$b.clone($$t1), $$f = $$e[2];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setContent($$e[0], (count), $$s1);
-  $$b.place($$e[1], $$b.listNodes(undefined, undefined, $$b.listOf(( [1, 2])), $$body2, undefined));
+  $$b.place($$e[1], $$b.listNodes(undefined, undefined, $$b.toList(( [1, 2])), $$body2, undefined));
   $$b.setSlots($$s1, [count]);
   return $$f;
 }

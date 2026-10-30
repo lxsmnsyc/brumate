@@ -131,12 +131,12 @@ function write(
         ? renderedTemplate(value, at, loadedFunction(`${value.ref}k`) as unknown as number)
         : undefined);
     // The template's `a` export gives the slots of its arguments, also of destructured ones.
-    const slotsOf = loadedFunction(`${value.ref}a`) as
+    const getSlots = loadedFunction(`${value.ref}a`) as
       | ((...args: unknown[]) => [number, unknown][])
       | undefined;
-    if (known && slotsOf && known.ref === value.ref && scopes.has(known.scope.id)) {
+    if (known && getSlots && known.ref === value.ref && scopes.has(known.scope.id)) {
       templateInserts.set(key, known);
-      for (const [slot, next] of slotsOf(...value.args)) {
+      for (const [slot, next] of getSlots(...value.args)) {
         set(known.scope, slot, next);
       }
       return;
@@ -355,14 +355,13 @@ export function attrs(
     // that are not the element's own, nor those of brumate.
     if (!spreadNames.has(element)) {
       const written = element.getAttribute('b-s');
-      spreadNames.set(
-        element,
-        new Set(
-          (written === null ? element.getAttributeNames() : written.split(' ')).filter(
-            (name) => name !== '' && !own.includes(name) && !name.startsWith('b-'),
-          ),
-        ),
-      );
+      const known = new Set<string>();
+      for (const name of written === null ? element.getAttributeNames() : written.split(' ')) {
+        if (name !== '' && !own.includes(name) && !name.startsWith('b-')) {
+          known.add(name);
+        }
+      }
+      spreadNames.set(element, known);
     }
     const names = new Set<string>();
     for (const [name, value] of Object.entries(values)) {
@@ -394,10 +393,13 @@ export function attrs(
  */
 function updateSpreadEntries(element: Element, values: Record<string, unknown>): void {
   const before = element.getAttribute('b-on') ?? '';
-  const own = before
-    .split(' ')
-    .filter((entry) => entry && !entry.includes('@'))
-    .join(' ');
+  const kept: string[] = [];
+  for (const entry of before.split(' ')) {
+    if (entry && !entry.includes('@')) {
+      kept.push(entry);
+    }
+  }
+  const own = kept.join(' ');
   const after = onValue(spreadEntries(values), own);
   if (after === before) {
     return;

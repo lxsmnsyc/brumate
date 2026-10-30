@@ -5,10 +5,11 @@ import { start } from 'brumate/loader';
 import { load } from 'virtual:brumate/manifest';
 
 // The live samples of the docs register their components here, by component ID. See live/run.ts.
-const samples = (): Map<string, () => Promise<ClientModule>> | undefined =>
-  (globalThis as Record<symbol, Map<string, () => Promise<ClientModule>> | undefined>)[
+function samples(): Map<string, () => Promise<ClientModule>> | undefined {
+  return (globalThis as Record<symbol, Map<string, () => Promise<ClientModule>> | undefined>)[
     Symbol.for('brumate.live')
   ];
+}
 
 start({
   // On the dev server, an edit of a component can update the page without a reload.

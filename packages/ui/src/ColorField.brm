@@ -78,7 +78,7 @@
     withChannelValue,
   } from './color.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, messagesOf, onFormReset } from './fields.ts';
+  import { describedBy, parseMessages, onFormReset } from './fields.ts';
   import { LocaleContext } from './locale.ts';
   import { addStep, clamp, listenToWheel, snapToStep, stopWheel } from './numbers.ts';
 
@@ -161,7 +161,7 @@
   let committed = $signal(false);
   let nativeErrors = $signal<string[]>([]);
   const errors = $memo([
-    ...(edited ? [] : messagesOf(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
+    ...(edited ? [] : parseMessages(name ? (form?.validationErrors[name] as string | string[]) : undefined)),
     ...(committed ? nativeErrors : []),
   ]);
   const invalid = $memo(Boolean(isInvalid) || errors.length > 0);
@@ -204,16 +204,20 @@
   }
 
   /** The hex of text such as `#abc`, `abcdef`, or undefined. */
-  function hexOf(source: string): string | undefined {
+  function parseHex(source: string): string | undefined {
     const digits = source.trim().replace(/^#/, '');
     if (/^[0-9a-f]{3}$/i.test(digits)) {
-      return `#${[...digits].map((digit) => digit + digit).join('')}`.toUpperCase();
+      let long = '';
+      for (const digit of digits) {
+        long += digit + digit;
+      }
+      return `#${long}`.toUpperCase();
     }
     return /^[0-9a-f]{6}$/i.test(digits) ? `#${digits}`.toUpperCase() : undefined;
   }
 
   /** The number of the channel in text, which the parser reads. */
-  function numberOf(source: string): number {
+  function parseNumber(source: string): number {
     if (source.trim() === '') {
       return Number.NaN;
     }
@@ -224,10 +228,10 @@
 
   function read(source: string): string | number | undefined {
     if (channel) {
-      const number = numberOf(source);
+      const number = parseNumber(source);
       return Number.isNaN(number) ? undefined : number;
     }
-    return hexOf(source);
+    return parseHex(source);
   }
 
   function input() {

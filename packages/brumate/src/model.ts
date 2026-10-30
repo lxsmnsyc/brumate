@@ -231,7 +231,7 @@ export function isWithin(scope: Scope, ancestor: Scope): boolean {
  */
 export function upstreamMemos(declaration: Declaration): Declaration[] {
   const result = new Set<Declaration>();
-  const visit = (current: Declaration): void => {
+  function visit(current: Declaration): void {
     for (const read of current.site?.reads ?? []) {
       const next = read.declaration;
       if (next === declaration || result.has(next)) {
@@ -244,7 +244,7 @@ export function upstreamMemos(declaration: Declaration): Declaration[] {
         result.add(next);
       }
     }
-  };
+  }
   visit(declaration);
   return [...result];
 }

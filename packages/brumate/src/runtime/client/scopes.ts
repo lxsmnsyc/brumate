@@ -30,11 +30,11 @@ export function resetIds(): void {
 }
 
 /** Returns the instance of a scope by its ID. */
-export function scopeOf(id: ScopeId): Scope | undefined {
+export function getScope(id: ScopeId): Scope | undefined {
   return scopes.get(id);
 }
 
-export function rootOf(scope: Scope): Scope {
+export function findRoot(scope: Scope): Scope {
   let current = scope;
   while (current.p) {
     current = current.p;
@@ -151,12 +151,12 @@ function destroyRange(scope: Scope, start: Node, end: Node): void {
       above.add(current);
     }
     const inside = new Set<Scope>();
-    const add = (id: string): void => {
+    function add(id: string): void {
       const found = scopes.get(parseId(id));
       if (found && !above.has(found)) {
         inside.add(found);
       }
-    };
+    }
     for (let node = start.nextSibling; node && node !== end; node = node.nextSibling) {
       const walker = document.createTreeWalker(
         node,
@@ -191,7 +191,7 @@ export function disposeKinds(scope: Scope, kinds: number[]): void {
  * The component that holds a block of `scope` in its children, from the kind of the scope that
  * renders the component and the anchor of the component there, which the compiler gives.
  */
-function holderOf(scope: Scope, kind?: number, anchor?: number): Scope | undefined {
+function findHolder(scope: Scope, kind?: number, anchor?: number): Scope | undefined {
   if (kind === undefined || anchor === undefined) {
     return undefined;
   }
@@ -217,7 +217,7 @@ export function inPlace(
   kind?: number,
   anchor?: number,
 ): Render | undefined {
-  const holder = render && holderOf(scope, kind, anchor);
+  const holder = render && findHolder(scope, kind, anchor);
   if (!holder) {
     return render;
   }

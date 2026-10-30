@@ -14,19 +14,19 @@
   $client(() => {
     const target = location.hash && document.getElementById(location.hash.slice(1));
     let frames = 0;
-    const align = () => {
+    function align() {
       // The sidebar is gone when the shell has the class `bare`.
       if (target && (document.querySelector('.docs.bare') || ++frames > 30)) {
         target.scrollIntoView();
       } else if (target) {
         requestAnimationFrame(align);
       }
-    };
+    }
     align();
 
     // Each preview of the card grid is its demo at natural size. Scale it down to fit the box,
     // never up, when the page loads and when the box or the demo changes size.
-    const fit = (stage: Element) => {
+    function fit(stage: Element) {
       const demo = stage.firstElementChild as HTMLElement | null;
       if (!demo || !demo.offsetWidth || !demo.offsetHeight) {
         return;
@@ -38,7 +38,7 @@
         stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
       const scale = Math.min(1, width / demo.offsetWidth, height / demo.offsetHeight);
       demo.style.setProperty('--fit', String(Math.floor(scale * 1000) / 1000));
-    };
+    }
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         fit(entry.target.closest('.ui-demo-stage')!);

@@ -36,14 +36,23 @@ function relativeParents(
 ): Map<string, Set<string>> {
   const result = new Map<string, Set<string>>();
   for (const [prop, files] of parents) {
-    result.set(prop, new Set([...files].map((file) => toPosix(path.relative(root, file)))));
+    const relative = new Set<string>();
+    for (const file of files) {
+      relative.add(toPosix(path.relative(root, file)));
+    }
+    result.set(prop, relative);
   }
   return result;
 }
 
 async function inspectCommand(args: string[]): Promise<number> {
   const json = args.includes('--json');
-  const paths = args.filter((arg) => arg !== '--json');
+  const paths: string[] = [];
+  for (const arg of args) {
+    if (arg !== '--json') {
+      paths.push(arg);
+    }
+  }
   const root = process.cwd();
 
   // Props are analyzed across every file under the current directory.

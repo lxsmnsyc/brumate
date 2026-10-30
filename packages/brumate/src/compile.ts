@@ -132,10 +132,11 @@ export class CompileError extends Error {
   readonly frame: string;
 
   constructor(source: string, filename: string, diagnostics: Diagnostic[]) {
-    const lines = diagnostics.map((diagnostic) => {
+    const lines: string[] = [];
+    for (const diagnostic of diagnostics) {
       const { line, column } = getLocation(source, diagnostic.range.start);
-      return `${withCode(diagnostic.message)} (${filename}:${line}:${column})`;
-    });
+      lines.push(`${withCode(diagnostic.message)} (${filename}:${line}:${column})`);
+    }
     super(lines.join('\n'));
     this.name = 'CompileError';
     this.diagnostics = diagnostics;
@@ -146,8 +147,34 @@ export class CompileError extends Error {
   }
 }
 
+/** Keeps the diagnostics of one severity. */
+function filterBySeverity(
+  diagnostics: Diagnostic[],
+  severity: Diagnostic['severity'],
+): Diagnostic[] {
+  const kept: Diagnostic[] = [];
+  for (const diagnostic of diagnostics) {
+    if (diagnostic.severity === severity) {
+      kept.push(diagnostic);
+    }
+  }
+  return kept;
+}
+
+/** Finds the index of the module with this path, or -1. */
+function findModuleIndex(modules: ReactiveModule[], modulePath: string): number {
+  for (const [index, module] of modules.entries()) {
+    if (module.path === modulePath) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 /** The origin of an offset of a component that calls no module function. */
-const identity = (offset: number): Origin => ({ offset });
+function identity(offset: number): Origin {
+  return { offset };
+}
 
 /** How deep module functions can call module functions, so a function that calls itself stops. */
 const MAX_EXPANSIONS = 16;
@@ -271,12 +298,18 @@ function sharedContext(
   if (calls.length === 0) {
     return undefined;
   }
-  const byStart = new Map(calls.map((call) => [call.start, call]));
+  const byStart = new Map<number, ModuleCall>();
+  for (const call of calls) {
+    byStart.set(call.start, call);
+  }
+  const specifiers: string[] = [];
+  for (const module of modules) {
+    specifiers.push(
+      `${relocate(`./${module.path.split('/').pop()}`, module.path, path)}${SHARED_QUERY}`,
+    );
+  }
   return {
-    specifiers: modules.map(
-      (module) =>
-        `${relocate(`./${module.path.split('/').pop()}`, module.path, path)}${SHARED_QUERY}`,
-    ),
+    specifiers,
     find(node) {
       const at = origin(node.start);
       if (!at.module || at.nested || !at.call) {
@@ -291,7 +324,7 @@ function sharedContext(
         return undefined;
       }
       return {
-        module: modules.findIndex((module) => module.path === at.module!.path),
+        module: findModuleIndex(modules, at.module.path),
         site,
         names: call.names,
       };
@@ -308,7 +341,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     options.resolveModule ?? resolveFromDisk,
   );
   // A diagnostic about code of a module points at its call, and names its place in the module.
-  const translate = (diagnostic: Diagnostic): Diagnostic => {
+  function translate(diagnostic: Diagnostic): Diagnostic {
     const start = origin(diagnostic.range.start);
     if (!start.module) {
       const end = origin(diagnostic.range.end);
@@ -322,10 +355,14 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
       message: `${diagnostic.message} (in ${locationIn(start.module, start.offset)})`,
       range: start.call ?? { start: 0, end: 1 },
     };
-  };
-  const fail = (errors: Diagnostic[]): never => {
-    throw new CompileError(source, filename, errors.map(translate));
-  };
+  }
+  function fail(errors: Diagnostic[]): never {
+    const translated: Diagnostic[] = [];
+    for (const error of errors) {
+      translated.push(translate(error));
+    }
+    throw new CompileError(source, filename, translated);
+  }
   const model = analyze(file);
   for (const declaration of model.declarations) {
     if (declaration.imported && options.serverImport) {
@@ -354,14 +391,12 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     ...graph.diagnostics,
     ...(options.a11y === false ? [] : checkAccessibility(file)),
   ];
-  const errors = diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
+  const errors = filterBySeverity(diagnostics, 'error');
   if (errors.length > 0) {
     fail(errors);
   }
   const plan = createPlan(file, graph, options.path, options.hideNames);
-  const styleErrors = [...plan.styles.diagnostics, ...plan.diagnostics].filter(
-    (diagnostic) => diagnostic.severity === 'error',
-  );
+  const styleErrors = filterBySeverity([...plan.styles.diagnostics, ...plan.diagnostics], 'error');
   if (styleErrors.length > 0) {
     fail(styleErrors);
   }
@@ -374,34 +409,48 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   }
   const shared = sharedContext(origin, modules, calls, options.path ?? filename);
   const client = generateClient(file, plan, options.merge, shared);
-  const clientErrors = client.diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
+  const clientErrors = filterBySeverity(client.diagnostics, 'error');
   if (clientErrors.length > 0) {
     fail(clientErrors);
   }
   // The generated code marks what it copied from the file. `finish` turns the marks into
   // source maps, which point code that a module function gave back to the module.
-  const files = [
-    { name: filename, content: source },
-    ...modules.map((module) => ({ name: module.path, content: module.source })),
-  ];
-  const place = (offset: number): { index: number; offset: number } => {
+  const files = [{ name: filename, content: source }];
+  for (const module of modules) {
+    files.push({ name: module.path, content: module.source });
+  }
+  function place(offset: number): { index: number; offset: number } {
     const at = origin(offset);
     return {
-      index: at.module ? modules.findIndex((module) => module.path === at.module!.path) + 1 : 0,
+      index: at.module ? findModuleIndex(modules, at.module.path) + 1 : 0,
       offset: at.offset,
     };
-  };
-  const done = (code: string) => finish(code, files, place);
+  }
+  function done(code: string) {
+    return finish(code, files, place);
+  }
   const server = done(generateServer(file, plan));
   const entry = done(client.code);
-  const parts = Object.fromEntries(
-    Object.entries(client.parts).map(([name, code]) => [name, done(code)]),
-  );
+  const partCodes: Record<string, string> = {};
+  const partMaps: Record<string, SourceMap> = {};
+  for (const [name, code] of Object.entries(client.parts)) {
+    const part = done(code);
+    partCodes[name] = part.code;
+    partMaps[name] = part.map;
+  }
+  const warnings: Diagnostic[] = [];
+  for (const warning of filterBySeverity(diagnostics, 'warning')) {
+    warnings.push(translate(warning));
+  }
+  const modulePaths: string[] = [];
+  for (const module of modules) {
+    modulePaths.push(module.path);
+  }
   const render = done(generateRender(file, plan, client.fillOf));
   return {
     server: server.code,
     client: entry.code,
-    parts: Object.fromEntries(Object.entries(parts).map(([name, part]) => [name, part.code])),
+    parts: partCodes,
     loaders: client.loaders,
     table: client.table,
     clientCode: client.clientCode,
@@ -409,14 +458,14 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     maps: {
       server: server.map,
       client: entry.map,
-      parts: Object.fromEntries(Object.entries(parts).map(([name, part]) => [name, part.map])),
+      parts: partMaps,
       render: render.map,
     },
     css: plan.styles.css,
     file,
     plan,
-    warnings: diagnostics.filter((diagnostic) => diagnostic.severity === 'warning').map(translate),
-    modules: modules.map((module) => module.path),
+    warnings,
+    modules: modulePaths,
     locate: (offset) => {
       const at = origin(offset);
       return at.module

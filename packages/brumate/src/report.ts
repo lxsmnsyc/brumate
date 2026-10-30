@@ -131,15 +131,19 @@ export function buildReport({
   budget,
   relative = (file) => file,
 }: ReportInput): BuildReport {
-  const chunks = new Map(list.map((chunk) => [chunk.fileName, chunk]));
-  const sizes = new Map(list.map((chunk) => [chunk.fileName, gzipSize(chunk.code)]));
-  const sum = (names: Iterable<string>): number => {
+  const chunks = new Map<string, (typeof list)[number]>();
+  const sizes = new Map<string, number>();
+  for (const chunk of list) {
+    chunks.set(chunk.fileName, chunk);
+    sizes.set(chunk.fileName, gzipSize(chunk.code));
+  }
+  function sum(names: Iterable<string>): number {
     let total = 0;
     for (const name of names) {
       total += sizes.get(name) ?? 0;
     }
     return total;
-  };
+  }
 
   const loaderChunks = new Set<string>();
   for (const chunk of list) {
@@ -147,9 +151,20 @@ export function buildReport({
       withImports(chunk.fileName, chunks, loaderChunks);
     }
   }
-  const coreChunk = list.find((chunk) =>
-    chunk.moduleIds.some((id) => /[\\/]runtime[\\/]client\.[jt]s$/.test(id)),
-  );
+  let coreChunk: (typeof list)[number] | undefined;
+  for (const chunk of list) {
+    let isCore = false;
+    for (const id of chunk.moduleIds) {
+      if (/[\\/]runtime[\\/]client\.[jt]s$/.test(id)) {
+        isCore = true;
+        break;
+      }
+    }
+    if (isCore) {
+      coreChunk = chunk;
+      break;
+    }
+  }
   const coreChunks = coreChunk ? withImports(coreChunk.fileName, chunks) : new Set<string>();
   for (const name of loaderChunks) {
     coreChunks.delete(name);
@@ -171,9 +186,13 @@ export function buildReport({
         owned.set(file, (owned.get(file) ?? 0) + (chunk.modules?.[id] ?? 1));
       }
     }
-    const total = chunk.modules
-      ? Object.values(chunk.modules).reduce((sum, bytes) => sum + bytes, 0)
-      : chunk.moduleIds.length;
+    let total = chunk.moduleIds.length;
+    if (chunk.modules) {
+      total = 0;
+      for (const bytes of Object.values(chunk.modules)) {
+        total += bytes;
+      }
+    }
     for (const [file, bytes] of owned) {
       const share = total > 0 ? ((sizes.get(chunk.fileName) ?? 0) * bytes) / total : 0;
       shares.set(file, (shares.get(file) ?? 0) + share);
@@ -184,36 +203,40 @@ export function buildReport({
       set.delete(name);
     }
   }
-  const components = [...shares]
-    .map(([file, bytes]) => ({ file, bytes: Math.round(bytes) }))
-    .toSorted((a, b) => b.bytes - a.bytes);
+  const components: { file: string; bytes: number }[] = [];
+  for (const [file, bytes] of shares) {
+    components.push({ file, bytes: Math.round(bytes) });
+  }
+  components.sort((a, b) => b.bytes - a.bytes);
 
   // A route can load the code of its page, its layouts, and the components that they render.
-  const reachable = (files: string[]): Set<string> => {
+  function reachable(files: string[]): Set<string> {
     const seen = new Set<string>();
-    const visit = (file: string): void => {
+    function visit(file: string): void {
       if (!seen.has(file)) {
         seen.add(file);
         for (const imported of componentImports(file, sources.get(file) ?? '')) {
           visit(imported);
         }
       }
-    };
-    files.forEach(visit);
+    }
+    for (const file of files) {
+      visit(file);
+    }
     return seen;
-  };
-  const routeSizes = (routes ? routeEntries(routes.tree, routes.resolve) : [])
-    .map(({ path, files }) => {
-      const reached = reachable(files);
-      const names = new Set(coreChunks);
-      for (const file of reached) {
-        for (const name of byFile.get(file) ?? []) {
-          names.add(name);
-        }
+  }
+  const routeSizes: { path: string; bytes: number; components: number }[] = [];
+  for (const { path, files } of routes ? routeEntries(routes.tree, routes.resolve) : []) {
+    const reached = reachable(files);
+    const names = new Set(coreChunks);
+    for (const file of reached) {
+      for (const name of byFile.get(file) ?? []) {
+        names.add(name);
       }
-      return { path, bytes: sum(names), components: reached.size };
-    })
-    .toSorted((a, b) => b.bytes - a.bytes);
+    }
+    routeSizes.push({ path, bytes: sum(names), components: reached.size });
+  }
+  routeSizes.sort((a, b) => b.bytes - a.bytes);
 
   const loader = sum(loaderChunks);
   const overBudget: string[] = [];

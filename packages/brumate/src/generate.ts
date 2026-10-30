@@ -26,11 +26,13 @@ export function generateClient(
   merge?: number,
 ): ReturnType<typeof client> {
   const result = client(file, plan, merge);
+  const parts: Record<string, string> = {};
+  for (const [name, code] of Object.entries(result.parts)) {
+    parts[name] = unmarked(code);
+  }
   return {
     ...result,
     code: unmarked(result.code),
-    parts: Object.fromEntries(
-      Object.entries(result.parts).map(([name, code]) => [name, unmarked(code)]),
-    ),
+    parts,
   };
 }

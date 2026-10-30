@@ -184,7 +184,7 @@ import { LOGO } from './logo.ts';
 export { LOGO };
 
 /** The root scope of a scope, whose `m` names its component. */
-export function rootOf(scope: Scope): Scope {
+export function findRootScope(scope: Scope): Scope {
   let root = scope;
   while (root.p) {
     root = root.p;
@@ -238,7 +238,7 @@ export function scanBlocks(state: DevtoolsState): boolean {
     }
   }
   const seen = new Set<string>();
-  const update = (key: string, make: () => BlockEntry, next: BlockEntry['state']): void => {
+  function update(key: string, make: () => BlockEntry, next: BlockEntry['state']): void {
     seen.add(key);
     let block = state.blocks.get(key);
     if (!block) {
@@ -258,7 +258,7 @@ export function scanBlocks(state: DevtoolsState): boolean {
       block.rendered = now;
     }
     changed = true;
-  };
+  }
   const deferBoundaries = new Set<string>();
   for (const template of document.querySelectorAll('template[b-defer]')) {
     const [trigger, boundary] = template.getAttribute('b-defer')!.split(':') as [string, string];
@@ -363,7 +363,9 @@ export function reportError(
 }
 
 /** The code of the panel, which loads when it opens. */
-const panelModule = (): Promise<typeof Panel> => import('./devtools-panel.ts');
+function panelModule(): Promise<typeof Panel> {
+  return import('./devtools-panel.ts');
+}
 
 /** Where the choice to outline changed elements is kept. */
 const FLASH_KEY = 'brumate:devtools:flash';
@@ -395,7 +397,7 @@ function installFlash(state: DevtoolsState, root: ShadowRoot, host: Element): vo
   const heat = new WeakMap<Element, { count: number; time: number }>();
   const pending = new Set<Element>();
   let frame = 0;
-  const draw = (): void => {
+  function draw(): void {
     frame = 0;
     let drawn = 0;
     for (const target of pending) {
@@ -418,17 +420,20 @@ function installFlash(state: DevtoolsState, root: ShadowRoot, host: Element): vo
       drawn++;
     }
     pending.clear();
-  };
+  }
   const observer = new MutationObserver((records) => {
     for (const record of records) {
       let target: Node | null = record.target;
       if (record.type === 'childList') {
         // The elements that came in, or else the element that lost some.
-        const added = [...record.addedNodes].filter((node) => node.nodeType === 1);
-        for (const node of added) {
-          pending.add(node as Element);
+        let added = 0;
+        for (const node of record.addedNodes) {
+          if (node.nodeType === 1) {
+            pending.add(node as Element);
+            added++;
+          }
         }
-        if (added.length > 0) {
+        if (added > 0) {
           continue;
         }
       }
@@ -487,9 +492,14 @@ function installFlash(state: DevtoolsState, root: ShadowRoot, host: Element): vo
 }
 
 /** True for an error of code that is not of the page, such as of a browser extension. */
-const foreign = (stack: string | undefined, file = ''): boolean =>
-  /^[a-z-]+-extension:/.test(file) ||
-  (stack !== undefined && /[a-z-]+-extension:\/\//.test(stack) && !stack.includes(location.origin));
+function foreign(stack: string | undefined, file = ''): boolean {
+  return (
+    /^[a-z-]+-extension:/.test(file) ||
+    (stack !== undefined &&
+      /[a-z-]+-extension:\/\//.test(stack) &&
+      !stack.includes(location.origin))
+  );
+}
 
 /** Listens to the core, and adds the button that opens the panel. */
 export function installDevtools(
@@ -511,7 +521,7 @@ export function installDevtools(
     flash: false,
   };
   /** The handler that a server call or an update that starts now belongs to. */
-  const owner = (time: number): Interaction | undefined => {
+  function owner(time: number): Interaction | undefined {
     for (let index = state.timeline.length - 1; index >= 0; index--) {
       const run = state.timeline[index]!;
       // An update of the answer of a call comes a moment after the handler settled.
@@ -520,14 +530,14 @@ export function installDevtools(
       }
     }
     return undefined;
-  };
-  const add = (entry: Omit<DevtoolsEntry, 'time'>): void => {
+  }
+  function add(entry: Omit<DevtoolsEntry, 'time'>): void {
     state.log.push({ ...entry, time: performance.now() });
     if (state.log.length > MAX_LOG) {
       state.log.splice(0, state.log.length - MAX_LOG);
     }
     state.changed?.();
-  };
+  }
   const hooks: DevtoolsHooks = {
     attach(core) {
       state.scopes = core.scopes;
@@ -576,7 +586,13 @@ export function installDevtools(
     },
     handler(ref, element, event) {
       if (element.tagName === 'TEMPLATE') {
-        const block = [...state.blocks.values()].find((item) => item.template === element);
+        let block: BlockEntry | undefined;
+        for (const item of state.blocks.values()) {
+          if (item.template === element) {
+            block = item;
+            break;
+          }
+        }
         if (block && block.fired === undefined) {
           block.fired = performance.now();
           if (block.kind === '$client') {
@@ -596,7 +612,7 @@ export function installDevtools(
       if (!entry) {
         entry = {
           scope: scope.id,
-          component: rootOf(scope).m ?? '',
+          component: findRootScope(scope).m ?? '',
           k: scope.k,
           name,
           runs: 0,
@@ -632,7 +648,7 @@ export function installDevtools(
     },
     write(scope, slot, value) {
       state.written.add(scope.id);
-      const root = rootOf(scope);
+      const root = findRootScope(scope);
       add({
         kind: 'write',
         text: `scope ${scope.id} slot ${slot} = ${preview(value)}`,
@@ -651,7 +667,13 @@ export function installDevtools(
       return false;
     }
     const [shown, hidden] = on ? [kept.b, kept.f] : [kept.f, kept.b];
-    const anchor = shown.find((node) => node.parentNode);
+    let anchor: Node | undefined;
+    for (const node of shown) {
+      if (node.parentNode) {
+        anchor = node;
+        break;
+      }
+    }
     if (!anchor) {
       return false;
     }
@@ -705,8 +727,14 @@ export function installDevtools(
   };
 
   // Blocks: the markers of the page tell their state, so the panel follows the changes of the DOM.
-  const deferred = (template: Element, done: Promise<unknown>): void => {
-    const block = [...state.blocks.values()].find((item) => item.template === template);
+  function deferred(template: Element, done: Promise<unknown>): void {
+    let block: BlockEntry | undefined;
+    for (const item of state.blocks.values()) {
+      if (item.template === template) {
+        block = item;
+        break;
+      }
+    }
     if (block) {
       block.fired ??= performance.now();
       block.state = 'loading';
@@ -715,7 +743,7 @@ export function installDevtools(
       scanBlocks(state);
       state.changed?.();
     });
-  };
+  }
   state.fire = (block) => {
     if (block.kind === 'defer' && block.template) {
       deferred(
@@ -776,13 +804,13 @@ export function installDevtools(
   button.innerHTML = `<span class="grip"></span><span class="content"><span class="mark">${LOGO}</span><span class="version"></span><span class="count"></span><svg class="chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 7.5 6 4.5 9 7.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`;
   // The version of brumate, next to its mark.
   button.querySelector('.version')!.textContent = meta.version ? `v${meta.version}` : 'brumate';
-  const label = (): void => {
+  function label(): void {
     const errors = state.errors.length;
     button.setAttribute(
       'aria-label',
       `Open the brumate devtools${meta.version ? `, version ${meta.version}` : ''}${errors > 0 ? `, ${errors} errors` : ''}`,
     );
-  };
+  }
   label();
   // The number of errors, in red on the tab, and a red grip, so an error shows while it is closed.
   const count = button.querySelector<HTMLElement>('.count')!;
@@ -801,7 +829,7 @@ export function installDevtools(
     const start = event.clientY;
     let opened = false;
     dragged = false;
-    const move = (next: PointerEvent): void => {
+    function move(next: PointerEvent): void {
       if (!opened) {
         if (start - next.clientY < 4) {
           return;
@@ -815,16 +843,16 @@ export function installDevtools(
         return;
       }
       state.resize?.(next.clientY);
-    };
+    }
     // The tab hides as the panel opens, so the pointer is followed on the window.
-    const end = (): void => {
+    function end(): void {
       removeEventListener('pointermove', move);
       removeEventListener('pointerup', end);
       removeEventListener('pointercancel', end);
       if (opened) {
         state.resized?.();
       }
-    };
+    }
     addEventListener('pointermove', move);
     addEventListener('pointerup', end);
     addEventListener('pointercancel', end);
@@ -891,16 +919,22 @@ export function installDevtools(
   });
   hot?.on('vite:afterUpdate', () => {
     const before = state.errors.length;
-    state.errors = state.errors.filter((error) => error.source !== 'compile');
+    const remaining: ErrorEntry[] = [];
+    for (const error of state.errors) {
+      if (error.source !== 'compile') {
+        remaining.push(error);
+      }
+    }
+    state.errors = remaining;
     if (state.errors.length !== before) {
       state.errorCount?.();
       state.changed?.();
     }
   });
-  const append = (): void => {
+  function append(): void {
     // Navigation replaces the body, so the button goes on the document element.
     document.documentElement.append(host);
-  };
+  }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', append);
   } else {

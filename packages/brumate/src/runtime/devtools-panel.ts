@@ -21,7 +21,7 @@ import type { TraceEntry } from './request.ts';
 import type * as Highlight from '../highlight.ts';
 import type { Scope } from './client.ts';
 import type { ScopeId } from './shared.ts';
-import { LOGO, preview, rootOf } from './devtools.ts';
+import { LOGO, preview, findRootScope } from './devtools.ts';
 import type {
   BlockEntry,
   DevtoolsEntry,
@@ -294,6 +294,37 @@ function componentInfo(state: DevtoolsState, id: string): Promise<ComponentInfo 
   return info;
 }
 
+/** The IDs of the components that instances in a list belong to. */
+function collectModules(instances: Scope[]): Set<string> {
+  const ids = new Set<string>();
+  for (const scope of instances) {
+    ids.add(scope.m!);
+  }
+  return ids;
+}
+/** How many blocks of the page are in a state. */
+function countBlocks(blocks: Iterable<BlockEntry>, blockState: BlockEntry['state']): number {
+  let count = 0;
+  for (const block of blocks) {
+    if (block.state === blockState) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/** The infos of many components, in the order of their IDs. */
+function loadComponents(
+  state: DevtoolsState,
+  ids: Iterable<string>,
+): Promise<(ComponentInfo | undefined)[]> {
+  const pending: Promise<ComponentInfo | undefined>[] = [];
+  for (const id of ids) {
+    pending.push(componentInfo(state, id));
+  }
+  return Promise.all(pending);
+}
+
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   attributes: Record<string, string> = {},
@@ -427,7 +458,7 @@ function parseValue(text: string): unknown {
 }
 
 /** The type of a value, for the column next to it. */
-function typeOf(value: unknown): string {
+function readType(value: unknown): string {
   if (value === null) {
     return 'null';
   }
@@ -454,12 +485,18 @@ function describe(entry: DevtoolsEntry): string {
     : entry.text;
 }
 
-const ms = (time: number): string => `${Math.round(time)} ms`;
-const seconds = (time: number): string => `${(time / 1000).toFixed(2)} s`;
-const kilobytes = (bytes: number): string => `${(bytes / 1024).toFixed(1)} kB`;
+function ms(time: number): string {
+  return `${Math.round(time)} ms`;
+}
+function seconds(time: number): string {
+  return `${(time / 1000).toFixed(2)} s`;
+}
+function kilobytes(bytes: number): string {
+  return `${(bytes / 1024).toFixed(1)} kB`;
+}
 
 /** The keys and values of an object, a map or a set, or the items of an array, in a row. */
-function entriesOf(value: object): unknown[] {
+function listEntries(value: object): unknown[] {
   if (value instanceof Map) {
     return [...value].flat();
   }
@@ -473,7 +510,7 @@ function entriesOf(value: object): unknown[] {
  * About how many bytes a value takes in the page state. The state is code
  * that seroval writes, which this follows closely enough to compare values.
  */
-function sizeOf(value: unknown, seen = new Set<object>()): number {
+function measureSize(value: unknown, seen = new Set<object>()): number {
   if (value === null || value === undefined) {
     return 6;
   }
@@ -496,10 +533,10 @@ function sizeOf(value: unknown, seen = new Set<object>()): number {
       if (value instanceof Date) {
         return 30;
       }
-      const entries = entriesOf(value);
+      const entries = listEntries(value);
       let bytes = 2;
       for (const entry of entries) {
-        bytes += sizeOf(entry, seen) + 1;
+        bytes += measureSize(entry, seen) + 1;
       }
       return bytes;
     }
@@ -518,9 +555,9 @@ function stateBytes(): number {
 }
 
 /** The value of a name that a scope or one of the scopes around it holds. */
-function valueOf(scope: Scope, name: string): string | undefined {
+function readValue(scope: Scope, name: string): string | undefined {
   for (let current: Scope | undefined = scope; current; current = current.p) {
-    const slots = known.get(rootOf(current).m ?? '')?.scopes[current.k]?.slots;
+    const slots = known.get(findRootScope(current).m ?? '')?.scopes[current.k]?.slots;
     const slot = slots?.indexOf(name) ?? -1;
     if (slot !== -1) {
       return preview(current.s[slot]);
@@ -559,29 +596,38 @@ function speedColor(total: number): string {
   return total < 300 ? 'yellow' : 'red';
 }
 
-const blockLabel = (block: BlockEntry): string =>
-  block.kind === '$client' ? '$client' : `#${block.kind}`;
+function blockLabel(block: BlockEntry): string {
+  return block.kind === '$client' ? '$client' : `#${block.kind}`;
+}
 
-const pill = (text: string, color = ''): HTMLElement =>
-  element('span', { class: `pill ${color}` }, text);
+function pill(text: string, color = ''): HTMLElement {
+  return element('span', { class: `pill ${color}` }, text);
+}
 
 /** A row of cells, as a table row. */
-const row = (cells: (Node | string)[], tag: 'td' | 'th' = 'td'): HTMLElement =>
-  element('tr', {}, ...cells.map((cell) => element(tag, {}, cell)));
+function row(cells: (Node | string)[], tag: 'td' | 'th' = 'td'): HTMLElement {
+  const items: HTMLElement[] = [];
+  for (const cell of cells) {
+    items.push(element(tag, {}, cell));
+  }
+  return element('tr', {}, ...items);
+}
 
 /** A card of a number, with a label above and a note below. */
-const card = (label: string, value: string, note: string): HTMLElement =>
-  element(
+function card(label: string, value: string, note: string): HTMLElement {
+  return element(
     'div',
     { class: 'card' },
     element('div', { class: 'label' }, label),
     element('div', { class: 'value' }, value),
     element('div', { class: 'note' }, note),
   );
+}
 
 /** A square of colour and its meaning, for a legend. */
-const key = (color: string, text: string): HTMLElement =>
-  element('span', {}, element('i', { style: `background: ${color}` }), text);
+function key(color: string, text: string): HTMLElement {
+  return element('span', {}, element('i', { style: `background: ${color}` }), text);
+}
 
 /** A button that opens a place of a file in the editor, through the dev server. */
 function source(info: ComponentInfo | undefined, at = '1:1'): Node | string {
@@ -613,9 +659,13 @@ function source(info: ComponentInfo | undefined, at = '1:1'): Node | string {
 export function layoutGraph(
   nodes: unknown[],
   edges: [number, number][],
-  widthOf: (index: number) => number,
+  getWidth: (index: number) => number,
 ): { x: number; y: number; width: number }[] {
-  const depth = nodes.map(() => 0);
+  // Depth of each node: the longest path from a value that nothing feeds.
+  const depth: number[] = [];
+  for (let index = 0; index < nodes.length; index++) {
+    depth.push(0);
+  }
   for (let round = 0, changed = true; changed && round < nodes.length; round++) {
     changed = false;
     for (const [from, to] of edges) {
@@ -625,51 +675,76 @@ export function layoutGraph(
       }
     }
   }
+  // Group the nodes in columns by depth, and keep the columns that hold a node.
   const columns: number[][] = [];
-  nodes.forEach((_, index) => {
+  for (let index = 0; index < nodes.length; index++) {
     (columns[depth[index]!] ??= []).push(index);
-  });
-  const filled = columns.filter(Boolean);
+  }
+  const filled: number[][] = [];
+  for (const column of columns) {
+    if (column) {
+      filled.push(column);
+    }
+  }
   const order = new Map<number, number>();
   for (const column of filled) {
-    column.forEach((node, index) => order.set(node, index));
+    for (const [index, node] of column.entries()) {
+      order.set(node, index);
+    }
   }
-  const before = nodes.map(() => [] as number[]);
-  const after = nodes.map(() => [] as number[]);
+  const before: number[][] = [];
+  const after: number[][] = [];
+  for (let index = 0; index < nodes.length; index++) {
+    before.push([]);
+    after.push([]);
+  }
   for (const [from, to] of edges) {
     after[from]!.push(to);
     before[to]!.push(from);
   }
-  const average = (list: number[], fallback: number): number =>
-    list.length === 0
-      ? fallback
-      : list.reduce((sum, node) => sum + order.get(node)!, 0) / list.length;
+  function average(list: number[], fallback: number): number {
+    if (list.length === 0) {
+      return fallback;
+    }
+    let sum = 0;
+    for (const node of list) {
+      sum += order.get(node)!;
+    }
+    return sum / list.length;
+  }
+  // Sweep back and forth, ordering each column by the average place of its neighbours.
   for (let sweep = 0; sweep < 8; sweep++) {
     const forward = sweep % 2 === 0;
     const sequence = forward ? filled.slice(1) : filled.slice(0, -1).toReversed();
     for (const column of sequence) {
-      const weight = new Map(
-        column.map((node) => [
-          node,
-          average(forward ? before[node]! : after[node]!, order.get(node)!),
-        ]),
-      );
+      const weight = new Map<number, number>();
+      for (const node of column) {
+        weight.set(node, average(forward ? before[node]! : after[node]!, order.get(node)!));
+      }
       column.sort((a, b) => weight.get(a)! - weight.get(b)!);
-      column.forEach((node, index) => order.set(node, index));
+      for (const [index, node] of column.entries()) {
+        order.set(node, index);
+      }
     }
   }
   const ROW = 50;
   const GAP = 72;
-  const tallest = Math.max(1, ...filled.map((column) => column.length));
+  let tallest = 1;
+  for (const column of filled) {
+    tallest = Math.max(tallest, column.length);
+  }
   const result: { x: number; y: number; width: number }[] = [];
   let x = 16;
   for (const column of filled) {
-    const width = Math.max(...column.map(widthOf));
+    let width = -Infinity;
+    for (const node of column) {
+      width = Math.max(width, getWidth(node));
+    }
     // Each column is centred against the tallest one.
     const top = 16 + ((tallest - column.length) * ROW) / 2;
-    column.forEach((node, index) => {
+    for (const [index, node] of column.entries()) {
       result[node] = { x, y: top + index * ROW, width };
-    });
+    }
     x += width + GAP;
   }
   return result;
@@ -687,11 +762,14 @@ function countScopes(scope: Scope): number {
 }
 
 /** A label cut to the width of a node of the graph. */
-const clip = (text: string): string => (text.length > 34 ? `${text.slice(0, 33)}…` : text);
+function clip(text: string): string {
+  return text.length > 34 ? `${text.slice(0, 33)}…` : text;
+}
 
 /** The text of an entry of the log. */
-const textOf = (entry: DevtoolsEntry): string =>
-  entry.kind === 'write' ? describe(entry) : entry.text;
+function readText(entry: DevtoolsEntry): string {
+  return entry.kind === 'write' ? describe(entry) : entry.text;
+}
 
 /** A place in a file that a stack names. */
 interface Frame {
@@ -708,7 +786,7 @@ interface Frame {
 }
 
 /** The places of a stack, with their files as the dev server can read them. */
-function framesOf(stack: string | undefined): Frame[] {
+function parseFrames(stack: string | undefined): Frame[] {
   const frames: Frame[] = [];
   for (const line of (stack ?? '').split('\n')) {
     const match = /^\s*at (?:(.*?) \()?(.+?):(\d+):(\d+)\)?\s*$/.exec(line);
@@ -756,33 +834,34 @@ const mapped = new Map<string, Promise<Frame>>();
  * its own file and line. A frame that the dev server cannot map stays as it is.
  */
 function mapFrames(frames: Frame[], urls: string[]): Promise<Frame[]> {
-  return Promise.all(
-    frames.map((frame, index) => {
-      const url = urls[index];
-      if (!frame.compiled || frame.library || !url) {
-        return frame;
-      }
-      // A frame that the source map does not map shows the code that the browser ran.
-      const unmapped = { ...frame, url };
-      const key = `${url}:${frame.line}:${frame.column}`;
-      let result = mapped.get(key);
-      if (!result) {
-        const query = new URLSearchParams({
-          url,
-          line: String(frame.line),
-          column: String(frame.column),
-        });
-        result = fetch(`/__brumate/position?${query}`)
-          .then((response) => (response.ok ? response.json() : null))
-          .then((place: { file: string; line: number; column: number } | null) =>
-            place ? { ...frame, ...place, compiled: false } : unmapped,
-          )
-          .catch(() => unmapped);
-        mapped.set(key, result);
-      }
-      return result;
-    }),
-  );
+  const results: (Frame | Promise<Frame>)[] = [];
+  for (const [index, frame] of frames.entries()) {
+    const url = urls[index];
+    if (!frame.compiled || frame.library || !url) {
+      results.push(frame);
+      continue;
+    }
+    // A frame that the source map does not map shows the code that the browser ran.
+    const unmapped = { ...frame, url };
+    const key = `${url}:${frame.line}:${frame.column}`;
+    let result = mapped.get(key);
+    if (!result) {
+      const query = new URLSearchParams({
+        url,
+        line: String(frame.line),
+        column: String(frame.column),
+      });
+      result = fetch(`/__brumate/position?${query}`)
+        .then((response) => (response.ok ? response.json() : null))
+        .then((place: { file: string; line: number; column: number } | null) =>
+          place ? { ...frame, ...place, compiled: false } : unmapped,
+        )
+        .catch(() => unmapped);
+      mapped.set(key, result);
+    }
+    results.push(result);
+  }
+  return Promise.all(results);
 }
 
 /** The URLs that the frames of a stack name, as the dev server knows the modules. */
@@ -813,7 +892,7 @@ let highlighter: Promise<typeof Highlight> | undefined;
 const sources = new Map<string, Promise<string | undefined>>();
 
 /** The code of a module as the dev server sent it to the browser. */
-function compiledOf(url: string): Promise<string | undefined> {
+function fetchCompiled(url: string): Promise<string | undefined> {
   let text = sources.get(url);
   if (!text) {
     text = fetch(url)
@@ -824,7 +903,7 @@ function compiledOf(url: string): Promise<string | undefined> {
   return text;
 }
 
-function sourceOf(file: string): Promise<string | undefined> {
+function fetchSource(file: string): Promise<string | undefined> {
   let text = sources.get(file);
   if (!text) {
     text = fetch(`/__brumate/source?file=${encodeURIComponent(file)}`)
@@ -846,7 +925,7 @@ async function codeView(
 ): Promise<HTMLElement> {
   const box = element('div', { class: 'code' });
   const [text, module] = await Promise.all([
-    place.url ? compiledOf(place.url) : sourceOf(place.file),
+    place.url ? fetchCompiled(place.url) : fetchSource(place.file),
     (highlighter ??= import('../highlight.ts')),
   ]);
   if (text === undefined) {
@@ -882,7 +961,7 @@ async function codeView(
     }),
   );
   const shown = [...box.querySelectorAll('code > .l')];
-  shown.forEach((line, index) => {
+  for (const [index, line] of shown.entries()) {
     if (index + 1 < start || index + 1 > end) {
       // The line break after a line goes with it.
       if (line.nextSibling?.nodeType === Node.TEXT_NODE) {
@@ -890,15 +969,15 @@ async function codeView(
       }
       line.remove();
     }
-  });
+  }
   return box;
 }
 
 /** The name of a handler, such as `Index h16`, once the dev server said the component. */
-const handlerName = (ref: string): string => {
+function handlerName(ref: string): string {
   const [component, name = ''] = ref.split('#') as [string, string];
   return `${known.get(component)?.name ?? component} ${name}`;
-};
+}
 
 /** A round step for the ticks of a ruler: 1, 2 or 5 times a power of ten, at least `rough`. */
 function tickStep(rough: number): number {
@@ -1051,14 +1130,14 @@ export function togglePanel(
     ),
     element('div', { class: 'main' }, nav, body),
   );
-  const applyHeight = (): void => {
+  function applyHeight(): void {
     panel!.style.height = `${height}px`;
     if (errorPage) {
       panel!.style.maxHeight = 'none';
     }
     // The page can scroll past the panel.
     document.documentElement.style.paddingBottom = `${height}px`;
-  };
+  }
   applyHeight();
   root.append(panel);
   // The tab hides while the panel is open. Close, or Alt+Shift+D, closes it.
@@ -1080,12 +1159,14 @@ export function togglePanel(
   resize.addEventListener('pointerdown', (event) => {
     event.preventDefault();
     // oxlint-disable-next-line unicorn/consistent-function-scoping -- It writes the height of this panel.
-    const move = (next: PointerEvent): void => state.resize?.(next.clientY);
-    const up = (): void => {
+    function move(next: PointerEvent): void {
+      state.resize?.(next.clientY);
+    }
+    function up(): void {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       state.resized?.();
-    };
+    }
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   });
@@ -1096,7 +1177,7 @@ export function togglePanel(
 
   // Outlines the elements of a scope on the page.
   const outlines: HTMLElement[] = [];
-  const outline = (scope?: ScopeId): void => {
+  function outline(scope?: ScopeId): void {
     for (const box of outlines.splice(0)) {
       box.remove();
     }
@@ -1112,10 +1193,10 @@ export function togglePanel(
       root.append(box);
       outlines.push(box);
     }
-  };
+  }
 
   // Pick: the next click on the page shows its element in the Elements tab.
-  const onPick = (event: MouseEvent): void => {
+  function onPick(event: MouseEvent): void {
     const clicked = event.target as Element | null;
     if (!clicked?.closest || event.composedPath().includes(panel!)) {
       return;
@@ -1128,35 +1209,35 @@ export function togglePanel(
     if (id !== undefined) {
       selectedScope = /^-?\d+$/.test(id) ? Number(id) : id;
       const scope = state.scopes?.get(selectedScope);
-      selected = scope ? rootOf(scope).m : selected;
+      selected = scope ? findRootScope(scope).m : selected;
     }
     tab = 'elements';
     draw();
-  };
+  }
   // While picking, the element under the pointer is outlined, with a card of what brumate knows
   // about it: its component, its place in the file, its scope, its handlers and what it reads.
   const inspectCard = element('div', { class: 'inspect-card', role: 'tooltip' });
   const hoverBox = element('div', { class: 'outline' });
   let hovered: Element | undefined;
   let hoverToken = 0;
-  const onHover = (event: PointerEvent): void => {
+  function onHover(event: PointerEvent): void {
     const target = event.target as Element | null;
     if (!target?.closest || event.composedPath().includes(panel!) || target === hovered) {
       return;
     }
     hovered = target;
     void inspect(target);
-  };
-  const inspect = async (target: Element): Promise<void> => {
+  }
+  async function inspect(target: Element): Promise<void> {
     const token = ++hoverToken;
     const rect = target.getBoundingClientRect();
     hoverBox.style.cssText = `left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px`;
     root.append(hoverBox, inspectCard);
     const tag = target.tagName.toLowerCase();
-    const classes = [...target.classList]
-      .slice(0, 2)
-      .map((name) => `.${name}`)
-      .join('');
+    let classes = '';
+    for (const name of [...target.classList].slice(0, 2)) {
+      classes += `.${name}`;
+    }
     const rows: (Node | string)[] = [
       element(
         'div',
@@ -1167,9 +1248,9 @@ export function togglePanel(
     ];
     const anchored = target.closest('[b-b]');
     const [id = '', anchorText = '0'] = anchored?.getAttribute('b-b')!.split(':') ?? [];
-    const scope = anchored ? scopeOf(id) : undefined;
+    const scope = anchored ? findScope(id) : undefined;
     if (scope) {
-      const { info, component: owner, place } = await anchorOf(scope, Number(anchorText));
+      const { info, component: owner, place } = await findAnchor(scope, Number(anchorText));
       if (token !== hoverToken) {
         return;
       }
@@ -1193,7 +1274,10 @@ export function togglePanel(
       const handled = target.closest('[b-on]');
       if (handled && anchored!.contains(handled)) {
         const handlers = element('div', { class: 'card-pills' });
-        for (const raw of (handled.getAttribute('b-on') ?? '').split(/\s+/).filter(Boolean)) {
+        for (const raw of (handled.getAttribute('b-on') ?? '').split(/\s+/)) {
+          if (!raw) {
+            continue;
+          }
           const [head] = raw.split('=') as [string];
           handlers.append(pill(head));
         }
@@ -1217,14 +1301,14 @@ export function togglePanel(
         : Math.max(8, rect.top - 8 - cardHeight);
     const left = Math.min(Math.max(8, rect.left), window.innerWidth - inspectCard.offsetWidth - 8);
     inspectCard.style.cssText = `top:${top}px;left:${left}px`;
-  };
-  const onEscape = (event: KeyboardEvent): void => {
+  }
+  function onEscape(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       stopPicking();
     }
-  };
+  }
   endPick = (): void => stopPicking();
-  const stopPicking = (): void => {
+  function stopPicking(): void {
     pick.setAttribute('aria-pressed', 'false');
     window.removeEventListener('click', onPick, true);
     window.removeEventListener('pointermove', onHover, true);
@@ -1234,7 +1318,7 @@ export function togglePanel(
     hoverToken++;
     hoverBox.remove();
     inspectCard.remove();
-  };
+  }
   pick.addEventListener('click', () => {
     if (pick.getAttribute('aria-pressed') === 'true') {
       stopPicking();
@@ -1248,27 +1332,35 @@ export function togglePanel(
     window.addEventListener('keydown', onEscape, true);
   });
 
-  const roots = (): Scope[] =>
-    [...(state.scopes?.values() ?? [])].filter((scope) => scope.m !== undefined);
-  const scopeOf = (id: string): Scope | undefined =>
-    state.scopes?.get(/^-?\d+$/.test(id) ? Number(id) : id);
-
+  /** The scopes of component instances. */
+  function roots(): Scope[] {
+    const result: Scope[] = [];
+    for (const scope of state.scopes?.values() ?? []) {
+      if (scope.m !== undefined) {
+        result.push(scope);
+      }
+    }
+    return result;
+  }
+  function findScope(id: string): Scope | undefined {
+    return state.scopes?.get(/^-?\d+$/.test(id) ? Number(id) : id);
+  }
   /** The header and the counts of the tabs. */
-  const drawChrome = (): void => {
+  function drawChrome(): void {
     for (const button of nav.querySelectorAll('.tab')) {
       button.setAttribute('aria-selected', String((button as HTMLElement).dataset.tab === tab));
     }
     const list = roots();
     routeText.textContent = location.pathname + location.search;
     stats.textContent = [
-      `${new Set(list.map((scope) => scope.m)).size} components`,
+      `${collectModules(list).size} components`,
       `${state.scopes?.size ?? 0} scopes`,
       `state ${kilobytes(stateBytes())}`,
     ].join(' · ');
-    const waiting = [...state.blocks.values()].filter((block) => block.state === 'waiting').length;
+    const waiting = countBlocks(state.blocks.values(), 'waiting');
     const counts: Partial<Record<Tab, [number, string?]>> = {
       errors: [state.errors.length, 'Errors'],
-      scopes: [new Set(list.map((scope) => scope.m)).size],
+      scopes: [collectModules(list).size],
       log: [state.log.length],
       blocks: waiting > 0 ? [waiting, 'Blocks that wait for their trigger'] : [state.blocks.size],
     };
@@ -1282,12 +1374,12 @@ export function togglePanel(
       badge.className = `badge${kind}`;
       badge.title = warning ?? '';
     }
-  };
+  }
 
   /** A select of the components on the page, for Graph and Report. */
-  const chooser = (current: string | undefined): HTMLElement => {
+  function chooser(current: string | undefined): HTMLElement {
     const select = element('select', { 'aria-label': 'Component' });
-    for (const id of new Set(roots().map((scope) => scope.m!))) {
+    for (const id of collectModules(roots())) {
       const info = known.get(id);
       const option = element('option', { value: id }, info ? `${info.name} · ${info.file}` : id);
       option.selected = id === current;
@@ -1299,9 +1391,9 @@ export function togglePanel(
       draw();
     });
     return select;
-  };
+  }
 
-  const drawErrors = async (): Promise<void> => {
+  async function drawErrors(): Promise<void> {
     if (state.errors.length === 0) {
       body.replaceChildren(
         element('h2', {}, 'Errors'),
@@ -1343,11 +1435,19 @@ export function togglePanel(
 
     // The place to show: a frame that was clicked, the place of a compile error, or the first
     // frame of the app's code.
-    const frames = await mapFrames(framesOf(error.stack), frameUrls(error.stack));
+    const frames = await mapFrames(parseFrames(error.stack), frameUrls(error.stack));
     if (selectedFrame === -1) {
-      selectedFrame = error.loc
-        ? -2
-        : frames.findIndex((frame) => !frame.library && !frame.compiled);
+      selectedFrame = -2;
+      if (!error.loc) {
+        // The first frame of the app's code, or -1 when there is none.
+        selectedFrame = -1;
+        for (const [index, item] of frames.entries()) {
+          if (!item.library && !item.compiled) {
+            selectedFrame = index;
+            break;
+          }
+        }
+      }
     }
     const frame = selectedFrame >= 0 ? frames[selectedFrame] : undefined;
     const place = selectedFrame === -2 ? error.loc : frame;
@@ -1371,7 +1471,7 @@ export function togglePanel(
     }
     if (frames.length > 0) {
       const stack = element('div', { class: 'frames' });
-      frames.forEach((item, index) => {
+      for (const [index, item] of frames.entries()) {
         const button = element(
           'button',
           {
@@ -1387,14 +1487,14 @@ export function togglePanel(
           draw();
         });
         stack.append(button);
-      });
+      }
       detail.append(element('h3', {}, 'Stack'), stack);
     }
     body.replaceChildren(element('div', { class: 'split' }, list, detail));
-  };
+  }
 
   /** A button that opens a place of a file in the editor. */
-  const open = (place: { file: string; line: number; column: number }): HTMLElement => {
+  function open(place: { file: string; line: number; column: number }): HTMLElement {
     const button = element(
       'button',
       { class: 'link', title: 'Open in the editor' },
@@ -1407,23 +1507,37 @@ export function togglePanel(
       );
     });
     return button;
-  };
+  }
 
-  const drawOverview = async (): Promise<void> => {
+  async function drawOverview(): Promise<void> {
     const list = roots();
-    const ids = [...new Set(list.map((scope) => scope.m!))];
-    const infos = await Promise.all(ids.map((id) => componentInfo(state, id)));
+    const ids = [...collectModules(list)];
+    const infos = await loadComponents(state, ids);
     const blocks = [...state.blocks.values()];
-    const handlers = state.log.filter((entry) => entry.kind === 'handler').length;
-    const calls = state.log.filter((entry) => entry.kind === 'call').length;
+    let handlers = 0;
+    let calls = 0;
+    for (const entry of state.log) {
+      if (entry.kind === 'handler') {
+        handlers++;
+      } else if (entry.kind === 'call') {
+        calls++;
+      }
+    }
     const table = element(
       'table',
       { class: 'rows' },
       row(['component', 'file', 'instances', 'scopes'], 'th'),
     );
-    ids.forEach((id, index) => {
+    for (const [index, id] of ids.entries()) {
       const info = infos[index];
-      const instances = list.filter((scope) => scope.m === id);
+      const instances: Scope[] = [];
+      let scopeCount = 0;
+      for (const scope of list) {
+        if (scope.m === id) {
+          instances.push(scope);
+          scopeCount += countScopes(scope);
+        }
+      }
       const name = element('button', { class: 'link', title: 'Show its scopes' }, info?.name ?? id);
       name.addEventListener('click', () => {
         selected = id;
@@ -1431,15 +1545,8 @@ export function togglePanel(
         tab = 'scopes';
         draw();
       });
-      table.append(
-        row([
-          name,
-          source(info),
-          String(instances.length),
-          String(instances.reduce((sum, scope) => sum + countScopes(scope), 0)),
-        ]),
-      );
-    });
+      table.append(row([name, source(info), String(instances.length), String(scopeCount)]));
+    }
     body.replaceChildren(
       element(
         'div',
@@ -1461,7 +1568,7 @@ export function togglePanel(
         card(
           'Blocks',
           String(blocks.length),
-          `${blocks.filter((block) => block.state === 'waiting').length} waiting, ${blocks.filter((block) => block.state === 'rendered').length} rendered`,
+          `${countBlocks(blocks, 'waiting')} waiting, ${countBlocks(blocks, 'rendered')} rendered`,
         ),
         card('Handlers run', String(handlers), `${calls} server function calls`),
       ),
@@ -1470,17 +1577,17 @@ export function togglePanel(
         ? table
         : element('div', { class: 'empty' }, 'No components with client state yet.'),
     );
-  };
+  }
 
   /** A slot with its name, type and value. A value that JSON can hold can be edited. */
-  const drawSlot = (scope: Scope, slot: number, name: string): HTMLElement => {
+  function drawSlot(scope: Scope, slot: number, name: string): HTMLElement {
     const value = scope.s[slot];
     const cell = element('td');
     const line = element(
       'tr',
       { class: 'slot' },
       element('td', { class: 'name' }, name),
-      element('td', { class: 'type' }, typeOf(value)),
+      element('td', { class: 'type' }, readType(value)),
       cell,
     );
     if (editing?.scope === scope.id && editing.slot === slot) {
@@ -1511,11 +1618,15 @@ export function togglePanel(
     }
     cell.append(text);
     return line;
-  };
+  }
 
-  const drawScopes = async (): Promise<void> => {
+  async function drawScopes(): Promise<void> {
     const list = roots();
-    const infos = await Promise.all(list.map((scope) => componentInfo(state, scope.m!)));
+    const listed: string[] = [];
+    for (const scope of list) {
+      listed.push(scope.m!);
+    }
+    const infos = await loadComponents(state, listed);
     if (list.length === 0) {
       body.replaceChildren(
         element('div', { class: 'empty' }, 'No scopes yet. The first event loads them.'),
@@ -1538,7 +1649,7 @@ export function togglePanel(
       });
     });
     const tree = element('div', { class: 'list' }, search);
-    const visit = (scope: Scope, info: ComponentInfo | undefined, depth: number): void => {
+    function visit(scope: Scope, info: ComponentInfo | undefined, depth: number): void {
       const label =
         scope.m === undefined
           ? `${info?.scopes[scope.k]?.label ?? 'scope'}${scope.h ? ' · hidden' : ''}`
@@ -1566,7 +1677,7 @@ export function togglePanel(
       );
       button.addEventListener('click', () => {
         selectedScope = scope.id;
-        selected = rootOf(scope).m;
+        selected = findRootScope(scope).m;
         draw();
       });
       button.addEventListener('mouseenter', () => outline(scope.id));
@@ -1577,28 +1688,37 @@ export function togglePanel(
           visit(child, info, depth + 1);
         }
       }
-    };
+    }
     const needle = filter.trim().toLowerCase();
-    list.forEach((scope, index) => {
+    for (const [index, scope] of list.entries()) {
       const info = infos[index];
       if (
         needle &&
-        !`${info?.name ?? scope.m} ${info?.file ?? ''}`.toLowerCase().includes(needle) &&
-        !scope.s.some((value) => preview(value).toLowerCase().includes(needle))
+        !`${info?.name ?? scope.m} ${info?.file ?? ''}`.toLowerCase().includes(needle)
       ) {
-        return;
+        // The name does not match, so look for a value that does.
+        let matched = false;
+        for (const value of scope.s) {
+          if (preview(value).toLowerCase().includes(needle)) {
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          continue;
+        }
       }
       visit(scope, info, 0);
-    });
+    }
 
     // The scope that is selected, with its slots.
-    const component = rootOf(current);
+    const component = findRootScope(current);
     const info = known.get(component.m ?? '');
     const plan = info?.scopes[current.k];
     const slots = element('table', { class: 'rows slots' }, row(['name', 'type', 'value'], 'th'));
-    current.s.forEach((_, slot) =>
-      slots.append(drawSlot(current, slot, plan?.slots[slot] ?? `slot ${slot}`)),
-    );
+    for (let slot = 0; slot < current.s.length; slot++) {
+      slots.append(drawSlot(current, slot, plan?.slots[slot] ?? `slot ${slot}`));
+    }
     const graph = iconButton('graph', 'Show the graph');
     graph.addEventListener('click', () => {
       selected = component.m;
@@ -1629,31 +1749,39 @@ export function togglePanel(
     );
     body.replaceChildren(element('div', { class: 'split' }, tree, detail));
     body.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
-  };
+  }
 
   /** What the dev server says about an anchor of a scope, with the component that has it. */
-  const anchorOf = async (scope: Scope, anchor: number) => {
-    const component = rootOf(scope);
+  async function findAnchor(scope: Scope, anchor: number) {
+    const component = findRootScope(scope);
     const info = component.m ? await componentInfo(state, component.m) : undefined;
     return { info, component, place: info?.anchors?.[scope.k]?.[anchor] };
-  };
+  }
 
   /** The names that an anchor reads, with their values in the scope. */
-  const drawReads = (scope: Scope, reads: string[]): Node[] =>
-    reads.map((name) => {
-      const value = valueOf(scope, name);
-      return element(
-        'span',
-        { class: 'pill', style: 'margin: 0 4px 2px 0' },
-        element('span', { class: 'name' }, name),
-        value === undefined ? '' : ` = ${value}`,
+  function drawReads(scope: Scope, reads: string[]): Node[] {
+    const pills: Node[] = [];
+    for (const name of reads) {
+      const value = readValue(scope, name);
+      pills.push(
+        element(
+          'span',
+          { class: 'pill', style: 'margin: 0 4px 2px 0' },
+          element('span', { class: 'name' }, name),
+          value === undefined ? '' : ` = ${value}`,
+        ),
       );
-    });
+    }
+    return pills;
+  }
 
   /** The handlers of an element, from its `b-on`. */
-  const drawHandlers = (target: Element): HTMLElement => {
+  function drawHandlers(target: Element): HTMLElement {
     const table = element('table', { class: 'rows' }, row(['event', 'handler'], 'th'));
-    for (const raw of (target.getAttribute('b-on') ?? '').split(/\s+/).filter(Boolean)) {
+    for (const raw of (target.getAttribute('b-on') ?? '').split(/\s+/)) {
+      if (!raw) {
+        continue;
+      }
       const [head, ref = ''] = raw.split('=') as [string, string];
       const [type, ...modifiers] = head.split(':');
       const [component, name = ''] = ref.split('@')[0]!.split('#') as [string, string];
@@ -1666,9 +1794,9 @@ export function togglePanel(
       );
     }
     return table;
-  };
+  }
 
-  const drawElements = async (): Promise<void> => {
+  async function drawElements(): Promise<void> {
     if (!picked?.isConnected) {
       const start = iconButton('pick', 'Pick an element');
       start.addEventListener('click', () => pick.click());
@@ -1687,10 +1815,10 @@ export function togglePanel(
     const content = element('div');
     const anchored = picked.closest('[b-b]');
     const [id = '', anchorText = '0'] = anchored?.getAttribute('b-b')!.split(':') ?? [];
-    const scope = anchored ? scopeOf(id) : undefined;
+    const scope = anchored ? findScope(id) : undefined;
     if (scope) {
       const anchor = Number(anchorText);
-      const { info, component, place } = await anchorOf(scope, anchor);
+      const { info, component, place } = await findAnchor(scope, anchor);
       const scopeButton = element(
         'button',
         { class: 'link', title: 'Show the scope' },
@@ -1747,16 +1875,18 @@ export function togglePanel(
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const data = (node as Comment).data;
       const match = /^[tb](-?[\d.]+):(\d+)/.exec(data);
-      const markerScope = match && scopeOf(match[1]!);
+      const markerScope = match && findScope(match[1]!);
       if (markerScope) {
         markers.push({ data, scope: markerScope, anchor: Number(match![2]) });
       }
     }
-    const places = await Promise.all(
-      markers.map((marker) => anchorOf(marker.scope, marker.anchor)),
-    );
+    const pending: ReturnType<typeof findAnchor>[] = [];
+    for (const marker of markers) {
+      pending.push(findAnchor(marker.scope, marker.anchor));
+    }
+    const places = await Promise.all(pending);
     const inside = element('table', { class: 'rows' }, row(['marker', 'source', 'reads'], 'th'));
-    markers.forEach((marker, index) => {
+    for (const [index, marker] of markers.entries()) {
       const { info, place } = places[index]!;
       inside.append(
         row([
@@ -1765,16 +1895,16 @@ export function togglePanel(
           element('span', {}, ...drawReads(marker.scope, place?.reads ?? [])),
         ]),
       );
-    });
+    }
     if (markers.length > 0) {
       content.append(element('h3', {}, 'Inside it'), inside);
     }
     body.replaceChildren(content);
-  };
+  }
 
   let cooling: ReturnType<typeof setTimeout> | undefined;
 
-  const drawGraph = async (): Promise<void> => {
+  async function drawGraph(): Promise<void> {
     const id = selected ?? roots()[0]?.m;
     const info = id ? await componentInfo(state, id) : undefined;
     if (!id || !info) {
@@ -1794,9 +1924,15 @@ export function togglePanel(
     }
     const { nodes, edges } = info.graph;
     // The current value of each value node, from the first instance of the component.
-    const instance = roots().find((scope) => scope.m === id);
+    let instance: Scope | undefined;
+    for (const scope of roots()) {
+      if (scope.m === id) {
+        instance = scope;
+        break;
+      }
+    }
     const scopeOfNode = new Map<number, Scope>();
-    const visit = (scope: Scope): void => {
+    function visit(scope: Scope): void {
       if (!scopeOfNode.has(scope.k)) {
         scopeOfNode.set(scope.k, scope);
       }
@@ -1805,7 +1941,7 @@ export function togglePanel(
           visit(child);
         }
       }
-    };
+    }
     if (instance) {
       visit(instance);
     }
@@ -1814,11 +1950,11 @@ export function togglePanel(
     const hot = new Set<number>();
     for (const entry of state.log) {
       if (entry.write?.component === id && now - entry.time < HOT_MS) {
-        nodes.forEach((node, index) => {
+        for (const [index, node] of nodes.entries()) {
           if (node.scope === entry.write!.k && node.slot === entry.write!.slot) {
             hot.add(index);
           }
-        });
+        }
       }
     }
     for (let grew = true; grew;) {
@@ -1831,7 +1967,13 @@ export function togglePanel(
       }
     }
     // A markup node is named by what it is and its place in the file, such as `insert 9:42`.
-    const parts = nodes.map((node) => {
+    const parts: {
+      name: string;
+      meta: string;
+      value: string | undefined;
+      at: string | undefined;
+    }[] = [];
+    for (const node of nodes) {
       const at = /^(.*) (\d+:\d+)$/.exec(node.label);
       const owner = node.slot === undefined ? undefined : scopeOfNode.get(node.scope);
       const value = owner && node.slot !== undefined ? preview(owner.s[node.slot]) : undefined;
@@ -1839,22 +1981,23 @@ export function togglePanel(
       if (value !== undefined) {
         meta = `= ${value}`;
       }
-      return {
+      parts.push({
         name: at ? at[1]! : node.label,
         meta,
         value,
         at: at?.[2],
-      };
-    });
-    const widthOf = (index: number): number =>
-      Math.min(
+      });
+    }
+    function getNodeWidth(index: number): number {
+      return Math.min(
         262,
         Math.max(
           112,
           36 + 7 * Math.max(clip(parts[index]!.name).length, clip(parts[index]!.meta).length),
         ),
       );
-    const position = layoutGraph(nodes, edges, widthOf);
+    }
+    const position = layoutGraph(nodes, edges, getNodeWidth);
     // What the clicked node reads, and what reads it, all the way.
     const related = new Set<number>();
     if (graphNode !== undefined && graphNode < nodes.length) {
@@ -1875,8 +2018,14 @@ export function togglePanel(
         }
       }
     }
-    const graphWidth = Math.max(0, ...position.map((place) => place.x + place.width)) + 16;
-    const graphHeight = Math.max(0, ...position.map((place) => place.y)) + 56;
+    let graphWidth = 0;
+    let graphHeight = 0;
+    for (const place of position) {
+      graphWidth = Math.max(graphWidth, place.x + place.width);
+      graphHeight = Math.max(graphHeight, place.y);
+    }
+    graphWidth += 16;
+    graphHeight += 56;
     const layer = svg('g', { class: 'layer' });
     for (const [from, to] of edges) {
       const a = position[from]!;
@@ -1900,7 +2049,7 @@ export function togglePanel(
         }),
       );
     }
-    nodes.forEach((node, index) => {
+    for (const [index, node] of nodes.entries()) {
       const { x, y, width: nodeWidth } = position[index]!;
       const part = parts[index]!;
       const classes = ['node', `k-${node.kind}`];
@@ -1934,7 +2083,7 @@ export function togglePanel(
         draw();
       });
       layer.append(group);
-    });
+    }
     const canvas = svg(
       'svg',
       { role: 'img', 'aria-label': `Graph of ${info.name}` },
@@ -1958,10 +2107,10 @@ export function togglePanel(
       layer,
     );
     const frame = element('div', { class: 'graph-view' }, canvas);
-    const apply = (): void => {
+    function apply(): void {
       layer.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.scale})`);
-    };
-    const fit = (): void => {
+    }
+    function fit(): void {
       const box = frame.getBoundingClientRect();
       if (box.width === 0) {
         return;
@@ -1973,14 +2122,14 @@ export function togglePanel(
       view.x = (box.width - graphWidth * view.scale) / 2;
       view.y = Math.max(0, (box.height - graphHeight * view.scale) / 2);
       apply();
-    };
-    const zoomAt = (factor: number, px: number, py: number): void => {
+    }
+    function zoomAt(factor: number, px: number, py: number): void {
       const next = Math.min(3, Math.max(0.2, view.scale * factor));
       view.x = px - ((px - view.x) * next) / view.scale;
       view.y = py - ((py - view.y) * next) / view.scale;
       view.scale = next;
       apply();
-    };
+    }
     // Drag to pan, and scroll to zoom around the pointer.
     frame.addEventListener(
       'wheel',
@@ -1997,16 +2146,16 @@ export function togglePanel(
       }
       const start = { x: event.clientX - view.x, y: event.clientY - view.y };
       frame.classList.add('dragging');
-      const move = (next: PointerEvent): void => {
+      function move(next: PointerEvent): void {
         view.x = next.clientX - start.x;
         view.y = next.clientY - start.y;
         apply();
-      };
-      const up = (): void => {
+      }
+      function up(): void {
         frame.classList.remove('dragging');
         window.removeEventListener('pointermove', move);
         window.removeEventListener('pointerup', up);
-      };
+      }
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
     });
@@ -2016,14 +2165,14 @@ export function togglePanel(
         draw();
       }
     });
-    const zoomButton = (name: 'plus' | 'minus', title: string, factor: number): HTMLElement => {
+    function zoomButton(name: 'plus' | 'minus', title: string, factor: number): HTMLElement {
       const button = iconButton(name, title, {}, true);
       button.addEventListener('click', () => {
         const box = frame.getBoundingClientRect();
         zoomAt(factor, box.width / 2, box.height / 2);
       });
       return button;
-    };
+    }
     const fitButton = iconButton('fit', 'Fit the graph in view', {}, true);
     fitButton.addEventListener('click', fit);
     frame.append(
@@ -2041,14 +2190,27 @@ export function togglePanel(
     if (graphNode !== undefined && graphNode < nodes.length) {
       const node = nodes[graphNode]!;
       const part = parts[graphNode]!;
-      const list = (indexes: number[]): Node =>
-        indexes.length > 0
-          ? element(
-              'div',
-              {},
-              ...indexes.map((index) => element('div', { class: 'mono' }, nodes[index]!.label)),
-            )
-          : element('div', { class: 'sub' }, 'nothing');
+      function list(indexes: number[]): Node {
+        if (indexes.length === 0) {
+          return element('div', { class: 'sub' }, 'nothing');
+        }
+        const labels: HTMLElement[] = [];
+        for (const index of indexes) {
+          labels.push(element('div', { class: 'mono' }, nodes[index]!.label));
+        }
+        return element('div', {}, ...labels);
+      }
+      // The nodes that this node reads, and the nodes that read it.
+      const reads: number[] = [];
+      const readBy: number[] = [];
+      for (const [from, to] of edges) {
+        if (to === graphNode) {
+          reads.push(from);
+        }
+        if (from === graphNode) {
+          readBy.push(to);
+        }
+      }
       const color = nodeColor(node.kind, node.slot);
       side.append(
         element('h2', {}, part.name),
@@ -2062,9 +2224,9 @@ export function togglePanel(
           ? []
           : [element('h3', {}, 'Value'), element('div', { class: 'mono' }, part.value)]),
         element('h3', {}, 'Reads'),
-        list(edges.filter(([, to]) => to === graphNode).map(([from]) => from)),
+        list(reads),
         element('h3', {}, 'Read by'),
-        list(edges.filter(([from]) => from === graphNode).map(([, to]) => to)),
+        list(readBy),
       );
     } else {
       side.append(
@@ -2109,9 +2271,9 @@ export function togglePanel(
       clearTimeout(cooling);
       cooling = setTimeout(() => state.changed?.(), HOT_MS);
     }
-  };
+  }
 
-  const drawLog = (): void => {
+  function drawLog(): void {
     const filters = element('div', { class: 'toolbar filters' });
     for (const kind of KINDS) {
       const box = element('input', { type: 'checkbox' });
@@ -2155,9 +2317,12 @@ export function togglePanel(
     });
     filters.append(search, pause, clear);
     const needle = logSearch.trim().toLowerCase();
-    const entries = (frozen ?? state.log).filter(
-      (entry) => shown.has(entry.kind) && (!needle || textOf(entry).toLowerCase().includes(needle)),
-    );
+    const entries: DevtoolsEntry[] = [];
+    for (const entry of frozen ?? state.log) {
+      if (shown.has(entry.kind) && (!needle || readText(entry).toLowerCase().includes(needle))) {
+        entries.push(entry);
+      }
+    }
     const list = element('table', { class: 'rows' });
     for (const entry of entries.toReversed()) {
       list.append(
@@ -2166,7 +2331,7 @@ export function togglePanel(
           { class: `entry ${entry.kind}` },
           element('td', { class: 'time' }, seconds(entry.time)),
           element('td', { class: `kind-${entry.kind}`, style: 'width: 1%' }, entry.kind),
-          element('td', {}, textOf(entry)),
+          element('td', {}, readText(entry)),
         ),
       );
     }
@@ -2174,29 +2339,36 @@ export function togglePanel(
       filters,
       entries.length > 0 ? list : element('div', { class: 'empty' }, 'Nothing to show.'),
     );
-  };
+  }
 
-  const drawState = async (): Promise<void> => {
-    const scopes = [...(state.scopes?.values() ?? [])].filter(
+  async function drawState(): Promise<void> {
+    const scopes: Scope[] = [];
+    const ids = new Set<string>();
+    for (const scope of state.scopes?.values() ?? []) {
       // The scopes that the browser made are not in the state that the server sent.
-      (scope) => typeof scope.id !== 'number' || scope.id >= 0,
-    );
-    const ids = [...new Set(scopes.map((scope) => rootOf(scope).m ?? ''))].filter(Boolean);
-    await Promise.all(ids.map((id) => componentInfo(state, id)));
+      if (typeof scope.id !== 'number' || scope.id >= 0) {
+        scopes.push(scope);
+        const id = findRootScope(scope).m ?? '';
+        if (id) {
+          ids.add(id);
+        }
+      }
+    }
+    await loadComponents(state, ids);
     // The slots of every instance of a scope add up, such as the items of a list.
     const slots = new Map<
       string,
       { component: string; k: number; slot: number; bytes: number; count: number }
     >();
     for (const scope of scopes) {
-      const component = rootOf(scope).m ?? '';
-      scope.s.forEach((value, slot) => {
+      const component = findRootScope(scope).m ?? '';
+      for (const [slot, value] of scope.s.entries()) {
         const key = `${component}:${scope.k}:${slot}`;
         const entry = slots.get(key) ?? { component, k: scope.k, slot, bytes: 0, count: 0 };
-        entry.bytes += sizeOf(value);
+        entry.bytes += measureSize(value);
         entry.count++;
         slots.set(key, entry);
-      });
+      }
     }
     const sorted = [...slots.values()].toSorted((a, b) => b.bytes - a.bytes);
     const first = document.querySelector('script[b-state][b-scopes]')?.textContent?.length ?? 0;
@@ -2245,17 +2417,27 @@ export function togglePanel(
       ),
       slots.size > 0 ? table : element('div', { class: 'empty' }, 'The page sent no state.'),
     );
-  };
+  }
 
   /** The effects and `$client` callbacks, with how often each ran and when its cleanup ran. */
-  const drawEffects = async (): Promise<void> => {
+  async function drawEffects(): Promise<void> {
     const effects = [...state.effects.values()];
-    await Promise.all(
-      [...new Set(effects.map((effect) => effect.component))].map((id) => componentInfo(state, id)),
-    );
+    const ids = new Set<string>();
+    for (const effect of effects) {
+      ids.add(effect.component);
+    }
+    await loadComponents(state, ids);
     const now = performance.now();
     // Runs in the last second, which is how an effect that runs too often shows.
-    const lastSecond = (recent: number[]): number => recent.filter((at) => now - at < 1000).length;
+    function lastSecond(recent: number[]): number {
+      let count = 0;
+      for (const at of recent) {
+        if (now - at < 1000) {
+          count++;
+        }
+      }
+      return count;
+    }
     const sorted = effects.toSorted(
       (a, b) => lastSecond(b.recent) - lastSecond(a.recent) || b.runs - a.runs,
     );
@@ -2301,37 +2483,41 @@ export function togglePanel(
       }
       table.append(tr);
     }
-    const active = effects.filter((effect) => effect.active).length;
+    let active = 0;
+    let runs = 0;
+    let busy = 0;
+    for (const effect of effects) {
+      if (effect.active) {
+        active++;
+      }
+      runs += effect.runs;
+      if (lastSecond(effect.recent) >= 10) {
+        busy++;
+      }
+    }
     body.replaceChildren(
       element(
         'div',
         { class: 'cards' },
         card('Active', String(active), `of ${effects.length} that ran`),
-        card(
-          'Runs',
-          String(effects.reduce((sum, effect) => sum + effect.runs, 0)),
-          'since the page loaded',
-        ),
-        card(
-          'Busy',
-          String(effects.filter((effect) => lastSecond(effect.recent) >= 10).length),
-          'ran 10 times or more in the last second',
-        ),
+        card('Runs', String(runs), 'since the page loaded'),
+        card('Busy', String(busy), 'ran 10 times or more in the last second'),
       ),
       effects.length > 0
         ? table
         : element('div', { class: 'empty' }, 'No effect or $client callback has run yet.'),
     );
-  };
+  }
 
   /**
    * The client navigations of the page, newest first: the routes that
    * stayed, those that were replaced, or the whole page, and how far the
    * IDs of the new page moved.
    */
-  const drawNavigation = async (): Promise<void> => {
+  async function drawNavigation(): Promise<void> {
     const list = state.navigations.toReversed();
-    const items = list.map((navigation) => {
+    const items: HTMLElement[] = [];
+    for (const navigation of list) {
       const path = new URL(navigation.url).pathname + new URL(navigation.url).search;
       const routes = element('div', { class: 'routes' });
       if (navigation.full) {
@@ -2359,22 +2545,24 @@ export function togglePanel(
           );
         }
       }
-      return element(
-        'div',
-        { class: 'navigation' },
+      items.push(
         element(
           'div',
-          { class: 'toolbar' },
-          element('span', { class: 'mono' }, path),
-          pill(navigation.kind, navigation.kind === 'form' ? 'purple' : 'blue'),
-          element('span', { class: 'sub' }, `${ms(navigation.time)} until the page changed`),
-          navigation.shift === undefined
-            ? ''
-            : element('span', { class: 'sub' }, `IDs moved by ${navigation.shift}`),
+          { class: 'navigation' },
+          element(
+            'div',
+            { class: 'toolbar' },
+            element('span', { class: 'mono' }, path),
+            pill(navigation.kind, navigation.kind === 'form' ? 'purple' : 'blue'),
+            element('span', { class: 'sub' }, `${ms(navigation.time)} until the page changed`),
+            navigation.shift === undefined
+              ? ''
+              : element('span', { class: 'sub' }, `IDs moved by ${navigation.shift}`),
+          ),
+          routes,
         ),
-        routes,
       );
-    });
+    }
     body.replaceChildren(
       ...(items.length > 0
         ? items
@@ -2386,7 +2574,7 @@ export function togglePanel(
             ),
           ]),
     );
-  };
+  }
 
   /**
    * What the server did for the last page that loaded: the render until the
@@ -2394,7 +2582,7 @@ export function togglePanel(
    * each `#loading` body, and the rest of the stream, on one scale. The
    * server writes it at the end of the page, in development.
    */
-  const drawServer = async (): Promise<void> => {
+  async function drawServer(): Promise<void> {
     const script = [...document.querySelectorAll('script[b-trace]')].at(-1);
     let trace: { route: string; entries: TraceEntry[] } | undefined;
     try {
@@ -2413,7 +2601,10 @@ export function togglePanel(
       return;
     }
     const entries = trace.entries.toSorted((a, b) => a.start - b.start);
-    const total = Math.max(1, ...entries.map((entry) => entry.end ?? entry.start));
+    let total = 1;
+    for (const entry of entries) {
+      total = Math.max(total, entry.end ?? entry.start);
+    }
     const table = element(
       'table',
       { class: 'rows' },
@@ -2446,9 +2637,17 @@ export function togglePanel(
       }
       table.append(tr);
     }
-    const render = entries.find((entry) => entry.kind === 'render');
-    const count = (kind: TraceEntry['kind']): number =>
-      entries.filter((entry) => entry.kind === kind).length;
+    let render: TraceEntry | undefined;
+    const counts = new Map<TraceEntry['kind'], number>();
+    for (const entry of entries) {
+      if (entry.kind === 'render' && !render) {
+        render = entry;
+      }
+      counts.set(entry.kind, (counts.get(entry.kind) ?? 0) + 1);
+    }
+    function count(kind: TraceEntry['kind']): number {
+      return counts.get(kind) ?? 0;
+    }
     body.replaceChildren(
       element(
         'div',
@@ -2474,13 +2673,15 @@ export function togglePanel(
       ),
       table,
     );
-  };
+  }
 
-  const drawTimeline = async (): Promise<void> => {
+  async function drawTimeline(): Promise<void> {
     const runs = state.timeline.toReversed().slice(0, 40);
-    await Promise.all(
-      [...new Set(runs.map((run) => run.ref.split('#')[0]!))].map((id) => componentInfo(state, id)),
-    );
+    const ids = new Set<string>();
+    for (const run of runs) {
+      ids.add(run.ref.split('#')[0]!);
+    }
+    await loadComponents(state, ids);
     if (runs.length === 0) {
       body.replaceChildren(
         element('h2', {}, 'Timeline'),
@@ -2493,15 +2694,18 @@ export function togglePanel(
       return;
     }
     const now = performance.now();
-    const totals = runs.map((run) => (run.settled ?? now) - run.begun);
-    const segment = (
+    const totals: number[] = [];
+    for (const run of runs) {
+      totals.push((run.settled ?? now) - run.begun);
+    }
+    function segment(
       run: Interaction,
       scale: number,
       start: number,
       end: number,
       kind: string,
       title: string,
-    ): HTMLElement => {
+    ): HTMLElement {
       // Inside the track: a bar that starts before the run, or ends after the scale, is cut.
       const left = Math.min(Math.max(((start - run.begun) / scale) * 100, 0), 100);
       const width = Math.min(Math.max(((end - start) / scale) * 100, 0), 100 - left);
@@ -2510,15 +2714,17 @@ export function togglePanel(
         style: `left:${left}%;width:${width}%`,
         title,
       });
-    };
+    }
     const list = element('div');
-    runs.forEach((run, index) => {
+    for (const [index, run] of runs.entries()) {
       const total = totals[index]!;
-      const last = Math.max(
-        run.settled ?? now,
-        ...run.calls.map((call) => call.end ?? now),
-        ...run.updates.map((update) => update.end),
-      );
+      let last = run.settled ?? now;
+      for (const call of run.calls) {
+        last = Math.max(last, call.end ?? now);
+      }
+      for (const update of run.updates) {
+        last = Math.max(last, update.end);
+      }
       // The scale ends at a round tick past the last bar, so the ruler reads in round numbers.
       const step = tickStep(Math.max(last - run.begun, 1) / 4);
       const scale = Math.ceil(Math.max(last - run.begun, 1) / step) * step;
@@ -2621,8 +2827,23 @@ export function togglePanel(
       }
       // The batches of updates share a row, each on its own bar.
       if (run.updates.length > 0) {
-        const count = run.updates.reduce((sum, update) => sum + update.count, 0);
-        const took = run.updates.reduce((sum, update) => sum + update.end - update.start, 0);
+        let count = 0;
+        let took = 0;
+        const updateSegments: HTMLElement[] = [];
+        for (const update of run.updates) {
+          count += update.count;
+          took += update.end - update.start;
+          updateSegments.push(
+            segment(
+              run,
+              scale,
+              update.start,
+              update.end,
+              'update',
+              `${update.count} ${update.count === 1 ? 'update' : 'updates'} and their effects: ${ms(update.end - update.start)}`,
+            ),
+          );
+        }
         const batches = run.updates.length;
         rows.push(
           element(
@@ -2633,20 +2854,7 @@ export function togglePanel(
               { class: 'name' },
               `${count} ${count === 1 ? 'update' : 'updates'}${batches > 1 ? `, ${batches} batches` : ''}`,
             ),
-            element(
-              'div',
-              { class: 'track', style: grid },
-              ...run.updates.map((update) =>
-                segment(
-                  run,
-                  scale,
-                  update.start,
-                  update.end,
-                  'update',
-                  `${update.count} ${update.count === 1 ? 'update' : 'updates'} and their effects: ${ms(update.end - update.start)}`,
-                ),
-              ),
-            ),
+            element('div', { class: 'track', style: grid }, ...updateSegments),
             element('span', { class: 'took' }, ms(took)),
           ),
         );
@@ -2672,8 +2880,15 @@ export function togglePanel(
           ...rows,
         ),
       );
-    });
-    const settled = totals.filter((_, index) => runs[index]!.settled !== undefined);
+    }
+    const settled: number[] = [];
+    let callCount = 0;
+    for (const [index, run] of runs.entries()) {
+      if (run.settled !== undefined) {
+        settled.push(totals[index]!);
+      }
+      callCount += run.calls.length;
+    }
     const clear = iconButton('trash', 'Clear');
     clear.addEventListener('click', () => {
       state.timeline.length = 0;
@@ -2689,11 +2904,7 @@ export function togglePanel(
           settled.length > 0 ? ms(Math.max(...settled)) : '—',
           'from the event to the end of its promise',
         ),
-        card(
-          'Server calls',
-          String(runs.reduce((sum, run) => sum + run.calls.length, 0)),
-          'made by these handlers',
-        ),
+        card('Server calls', String(callCount), 'made by these handlers'),
       ),
       element(
         'div',
@@ -2721,9 +2932,9 @@ export function togglePanel(
       ),
       list,
     );
-  };
+  }
 
-  const drawBlocks = (): void => {
+  function drawBlocks(): void {
     const blocks = [...state.blocks.values()];
     const table = element(
       'table',
@@ -2793,9 +3004,9 @@ export function togglePanel(
         ? table
         : element('div', { class: 'empty' }, 'No blocks that render later on this page.'),
     );
-  };
+  }
 
-  const drawReport = async (): Promise<void> => {
+  async function drawReport(): Promise<void> {
     const id = selected ?? roots()[0]?.m;
     const info = id ? await componentInfo(state, id) : undefined;
     body.replaceChildren(
@@ -2806,7 +3017,7 @@ export function togglePanel(
           ]
         : [element('div', { class: 'empty' }, 'No component yet.')]),
     );
-  };
+  }
 
   /** The draw of each tab that loads what it shows. Log and Blocks draw at once. */
   const drawTab: Record<Exclude<Tab, 'log' | 'blocks'>, () => Promise<void>> = {
@@ -2824,7 +3035,7 @@ export function togglePanel(
   };
 
   let queued = false;
-  const draw = (): void => {
+  function draw(): void {
     drawChrome();
     if (tab === 'log') {
       drawLog();
@@ -2849,7 +3060,7 @@ export function togglePanel(
         state.written.clear();
       }
     });
-  };
+  }
   // Changes come in bursts, so the panel draws once per frame. It waits while a value is edited
   // or a search is typed.
   state.changed = () => {

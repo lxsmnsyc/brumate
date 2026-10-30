@@ -2,7 +2,7 @@
 import { setLocalTimeZone } from '@internationalized/date';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
-import { stringsOf } from '../src/date-strings.ts';
+import { getDateStrings } from '../src/date-strings.ts';
 import { press } from './interact.ts';
 import DateI18n from './fixtures/date-i18n.brm?brumate-server';
 
@@ -77,25 +77,25 @@ it('has a table for each of the first six languages', () => {
     zh: '年 月 日',
   };
   for (const [language, expected] of Object.entries(placeholders)) {
-    const { year, month, day } = stringsOf(language).placeholders;
+    const { year, month, day } = getDateStrings(language).placeholders;
     expect(`${year} ${month} ${day}`).toBe(expected);
   }
   for (const language of ['de', 'fr', 'es', 'ja', 'zh']) {
-    expect(stringsOf(language).previous).not.toBe('Previous');
+    expect(getDateStrings(language).previous).not.toBe('Previous');
   }
   // A region or a script does not change the language.
-  expect(stringsOf('zh-CN').next).toBe(stringsOf('zh').next);
+  expect(getDateStrings('zh-CN').next).toBe(getDateStrings('zh').next);
   // Traditional Chinese has its own table, chosen by script or by region.
   for (const locale of ['zh-Hant', 'zh-TW', 'zh-HK', 'zh-MO', 'zh-Hant-TW']) {
-    expect(stringsOf(locale).next).toBe('下一個');
-    expect(stringsOf(locale).empty).toBe('空白');
+    expect(getDateStrings(locale).next).toBe('下一個');
+    expect(getDateStrings(locale).empty).toBe('空白');
   }
-  expect(stringsOf('zh-Hans-SG').next).toBe('下一个');
-  expect(stringsOf('not a locale').next).toBe('Next');
+  expect(getDateStrings('zh-Hans-SG').next).toBe('下一个');
+  expect(getDateStrings('not a locale').next).toBe('Next');
 });
 
 it('takes the segment names from the browser, and English where it has none', () => {
-  expect(stringsOf('ja').segmentNames.year).toBe('年');
+  expect(getDateStrings('ja').segmentNames.year).toBe('年');
   const display = Intl.DisplayNames;
   vi.stubGlobal(
     'Intl',
@@ -106,7 +106,7 @@ it('takes the segment names from the browser, and English where it has none', ()
     }),
   );
   try {
-    expect(stringsOf('de-DE').segmentNames).toEqual({
+    expect(getDateStrings('de-DE').segmentNames).toEqual({
       year: 'year',
       month: 'month',
       day: 'day',
@@ -116,7 +116,7 @@ it('takes the segment names from the browser, and English where it has none', ()
       dayPeriod: 'AM/PM',
     });
     // The labels stay German.
-    expect(stringsOf('de-DE').previous).toBe('Zurück');
+    expect(getDateStrings('de-DE').previous).toBe('Zurück');
   } finally {
     vi.unstubAllGlobals();
   }
@@ -125,7 +125,7 @@ it('takes the segment names from the browser, and English where it has none', ()
 
 it('replaces the whole set with the strings of an I18nProvider', async () => {
   const strings = {
-    ...stringsOf('en-US'),
+    ...getDateStrings('en-US'),
     placeholders: { year: 'YYYY', month: 'MM', day: 'DD' },
     previous: 'Earlier',
     next: 'Later',
@@ -148,7 +148,7 @@ it('sends only the strings of the language of the page to the browser', async ()
   // No other language does.
   const others = ['en', 'fr', 'es', 'ja', 'zh'];
   for (const language of others) {
-    const strings = stringsOf(language);
+    const strings = getDateStrings(language);
     // English words such as `Calendar` and `selected` are also in the markup and the names of
     // attributes, so English is checked by its longer phrases.
     const words =
@@ -163,7 +163,7 @@ it('sends only the strings of the language of the page to the browser', async ()
             strings.firstAvailable,
             strings.lastAvailable,
           ];
-    const german = Object.values(stringsOf('de'));
+    const german = Object.values(getDateStrings('de'));
     const leaked = words.filter((word) => !german.includes(word) && html.includes(word));
     expect(leaked).toEqual([]);
   }

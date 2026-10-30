@@ -26,9 +26,11 @@
 
   async function star(id: number) {
     $produce(shown, (draft) => {
-      const issue = draft.find((item) => item.id === id);
-      if (issue) {
-        issue.starred = !issue.starred;
+      for (const issue of draft) {
+        if (issue.id === id) {
+          issue.starred = !issue.starred;
+          break;
+        }
       }
     });
     await toggleStar(id);

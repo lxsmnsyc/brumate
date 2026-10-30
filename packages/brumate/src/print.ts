@@ -12,6 +12,22 @@ function quote(text: string): string {
   return JSON.stringify(text);
 }
 
+function printAttributes(items: Attribute[]): string {
+  let text = '';
+  for (const item of items) {
+    text += ` ${printAttribute(item)}`;
+  }
+  return text;
+}
+
+function printModifiers(modifiers: string[]): string {
+  let text = '';
+  for (const modifier of modifiers) {
+    text += `:${modifier}`;
+  }
+  return text;
+}
+
 function printAttribute(item: Attribute): string {
   switch (item.kind) {
     case 'static':
@@ -19,7 +35,7 @@ function printAttribute(item: Attribute): string {
     case 'value':
       return `${item.name}=(${item.value.code})`;
     case 'event':
-      return `${item.name}${item.modifiers.map((modifier) => `:${modifier}`).join('')}=(${item.handler.code})`;
+      return `${item.name}${printModifiers(item.modifiers)}=(${item.handler.code})`;
     case 'ref':
       return `ref=$bind(${item.target})`;
     case 'spread':
@@ -32,11 +48,11 @@ function printAttribute(item: Attribute): string {
 /** Prints the syntax tree, one node per line. */
 export function printAST(file: SFCFile): string {
   const lines: string[] = [];
-  const write = (depth: number, text: string): void => {
+  function write(depth: number, text: string): void {
     lines.push(`${'  '.repeat(depth)}${text}`);
-  };
+  }
 
-  const body = (item: Body, depth: number, label: string): void => {
+  function body(item: Body, depth: number, label: string): void {
     write(depth, label);
     if (item.script) {
       write(depth + 1, 'script');
@@ -46,9 +62,9 @@ export function printAST(file: SFCFile): string {
       body(template.body, depth + 2, 'body');
     }
     nodes(item.children, depth + 1);
-  };
+  }
 
-  const block = (item: Block, depth: number): void => {
+  function block(item: Block, depth: number): void {
     switch (item.kind) {
       case 'if':
         write(depth, 'if');
@@ -101,7 +117,14 @@ export function printAST(file: SFCFile): string {
       case 'try': {
         write(depth, 'try');
         body(item.body, depth + 1, 'body');
-        const names = [item.error?.name, item.reset?.name].filter(Boolean).join(', ');
+        const found: string[] = [];
+        if (item.error?.name) {
+          found.push(item.error.name);
+        }
+        if (item.reset?.name) {
+          found.push(item.reset.name);
+        }
+        const names = found.join(', ');
         body(item.fallback, depth + 1, names ? `catch (${names})` : 'catch');
         break;
       }
@@ -129,23 +152,20 @@ export function printAST(file: SFCFile): string {
         }
         break;
     }
-  };
+  }
 
-  const node = (item: Markup, depth: number): void => {
+  function node(item: Markup, depth: number): void {
     switch (item.kind) {
       case 'element':
       case 'component': {
         const name = item.kind === 'element' ? item.tag : item.name;
-        const attributes = item.attributes.map((value) => ` ${printAttribute(value)}`).join('');
+        const attributes = printAttributes(item.attributes);
         write(depth, `${item.kind} <${name}${attributes}>`);
         nodes(item.children, depth + 1);
         break;
       }
       case 'dynamic':
-        write(
-          depth,
-          `dynamic <{${item.tag.code}}${item.attributes.map((value) => ` ${printAttribute(value)}`).join('')}>`,
-        );
+        write(depth, `dynamic <{${item.tag.code}}${printAttributes(item.attributes)}>`);
         nodes(item.children, depth + 1);
         break;
       case 'fragment':
@@ -158,10 +178,7 @@ export function printAST(file: SFCFile): string {
         nodes(item.children, depth + 1);
         break;
       case 'listener':
-        write(
-          depth,
-          `listener <${item.target}${item.attributes.map((value) => ` ${printAttribute(value)}`).join('')}>`,
-        );
+        write(depth, `listener <${item.target}${printAttributes(item.attributes)}>`);
         break;
       case 'text':
         write(depth, `text ${quote(item.value)}`);
@@ -172,13 +189,13 @@ export function printAST(file: SFCFile): string {
       default:
         block(item, depth);
     }
-  };
+  }
 
-  const nodes = (items: Markup[], depth: number): void => {
+  function nodes(items: Markup[], depth: number): void {
     for (const item of items) {
       node(item, depth);
     }
-  };
+  }
 
   if (file.moduleScript) {
     write(0, 'script module');
@@ -236,11 +253,20 @@ export function printModel(source: string, model: SemanticModel): string {
   lines.push('sites');
   for (const site of model.sites) {
     const parts = [siteLabel(source, site)];
-    const reads = [
-      ...new Set(site.reads.map((read) => (read.tracked ? '' : '~') + read.declaration.name)),
-    ];
-    const writes = [...new Set(site.writes.map((write) => write.declaration.name))];
-    const calls = [...site.calls].map((declaration) => declaration.name);
+    const readSet = new Set<string>();
+    for (const read of site.reads) {
+      readSet.add((read.tracked ? '' : '~') + read.declaration.name);
+    }
+    const reads = [...readSet];
+    const writeSet = new Set<string>();
+    for (const write of site.writes) {
+      writeSet.add(write.declaration.name);
+    }
+    const writes = [...writeSet];
+    const calls: string[] = [];
+    for (const declaration of site.calls) {
+      calls.push(declaration.name);
+    }
     if (reads.length > 0) {
       parts.push(`reads ${reads.join(', ')}`);
     }
@@ -271,9 +297,12 @@ function nodeLabel(source: string, node: GraphNode): string {
 export function printGraph(source: string, graph: Graph): string {
   const lines: string[] = ['nodes'];
   for (const node of graph.nodes) {
-    const from = graph.edges
-      .filter((edge) => edge.to === node)
-      .map((edge) => nodeLabel(source, edge.from));
+    const from: string[] = [];
+    for (const edge of graph.edges) {
+      if (edge.to === node) {
+        from.push(nodeLabel(source, edge.from));
+      }
+    }
     const state = graph.live.has(node) ? 'live' : 'static';
     lines.push(
       `  ${nodeLabel(source, node)} ${state}${from.length > 0 ? ` <- ${from.join(', ')}` : ''}`,
@@ -285,7 +314,12 @@ export function printGraph(source: string, graph: Graph): string {
       lines.push(`  ${siteLabel(source, site)}${site.kind === 'server-function' ? ' (stub)' : ''}`);
     }
   }
-  const created = graph.model.scopes.filter((scope) => graph.created.has(scope));
+  const created: Scope[] = [];
+  for (const scope of graph.model.scopes) {
+    if (graph.created.has(scope)) {
+      created.push(scope);
+    }
+  }
   if (created.length > 0) {
     lines.push('created');
     for (const scope of created) {

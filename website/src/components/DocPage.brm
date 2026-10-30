@@ -1,6 +1,7 @@
 <script>
   import { $props } from 'brumate/signals';
   import * as docs from '../docs.ts';
+  import type { Page } from '../docs.ts';
   import * as ui from '../ui.ts';
   import AnatomyFigure from './AnatomyFigure.brm';
   import LiveSample from './LiveSample.brm';
@@ -13,12 +14,30 @@
   const { pages, sections } = section === 'ui' ? ui : docs;
   const brand = section === 'ui' ? 'brumate/ui' : 'brumate';
   const page = pages[slug];
-  const order = sections.flatMap((group) => group.pages);
-  const index = order.findIndex((item) => item.slug === slug);
+  const order: { slug: string; title: string }[] = [];
+  for (const group of sections) {
+    order.push(...group.pages);
+  }
+  function findIndex(): number {
+    for (const [at, item] of order.entries()) {
+      if (item.slug === slug) {
+        return at;
+      }
+    }
+    return -1;
+  }
+  const index = findIndex();
   const previous = index > 0 ? order[index - 1] : undefined;
   const next = index !== -1 ? order[index + 1] : undefined;
-  const link = (target: string): string => `${base}${section}${target ? `/${target}` : ''}`;
-  const contents = (page?.headings ?? []).filter((heading) => heading.level === 2 || heading.level === 3);
+  function link(target: string): string {
+    return `${base}${section}${target ? `/${target}` : ''}`;
+  }
+  const contents: Page['headings'] = [];
+  for (const heading of page?.headings ?? []) {
+    if (heading.level === 2 || heading.level === 3) {
+      contents.push(heading);
+    }
+  }
 </script>
 
 #head {

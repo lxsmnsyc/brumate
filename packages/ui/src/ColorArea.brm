@@ -208,15 +208,19 @@
   function channelText(channel: ColorChannel) {
     return `${channelName(channel)} ${formatChannelValue(color, channel, locale.locale)}`;
   }
-  function valueTextOf(axis: ColorChannel, other: ColorChannel) {
+  function createValueText(axis: ColorChannel, other: ColorChannel) {
     const names =
       changedByKey || changedByInput
         ? [axis]
         : [axis, other, third];
-    return `${names.map(channelText).join(', ')}, ${colorText}`;
+    const texts: string[] = [];
+    for (const name of names) {
+      texts.push(channelText(name));
+    }
+    return `${texts.join(', ')}, ${colorText}`;
   }
-  const xText = $memo(valueTextOf(axes.x, axes.y));
-  const yText = $memo(valueTextOf(axes.y, axes.x));
+  const xText = $memo(createValueText(axes.x, axes.y));
+  const yText = $memo(createValueText(axes.y, axes.x));
 
   // The names: the group says the label of the caller and what it is, and so do
   // the inputs, which are the color picker without a label. A `aria-labelledby` has the element
@@ -225,7 +229,12 @@
   const inputLabel = $memo(labelText ?? 'Color picker');
   const areaId = $memo(typeof rest.id === 'string' ? rest.id : groupId);
   function labelledBy(own: string, withOwn: boolean) {
-    const ids = (ariaLabelledby ?? '').trim().split(/\s+/).filter(Boolean);
+    const ids: string[] = [];
+    for (const part of (ariaLabelledby ?? '').trim().split(/\s+/)) {
+      if (part) {
+        ids.push(part);
+      }
+    }
     if (ids.length === 0) {
       return undefined;
     }

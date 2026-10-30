@@ -170,7 +170,7 @@
           anchor,
           element,
           {
-            placement: placementOf(),
+            placement: getPlacement(),
             offset,
             crossOffset,
             shouldFlip,
@@ -293,7 +293,7 @@
   }
 
   /** The placement: the popover's own, or else the one that its trigger asks for. */
-  function placementOf(): Placement {
+  function getPlacement(): Placement {
     return placementPassed ? placement : (trigger?.placement ?? placement);
   }
 

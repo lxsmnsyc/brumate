@@ -61,10 +61,11 @@ function summary(issues: ValidationIssue[]): string {
 function plainIssue(issue: StandardSchemaV1.Issue): ValidationIssue {
   const plain: ValidationIssue = { message: String(issue.message) };
   if (issue.path && issue.path.length > 0) {
-    plain.path = issue.path.map((segment) => {
+    plain.path = [];
+    for (const segment of issue.path) {
       const key = typeof segment === 'object' && segment !== null ? segment.key : segment;
-      return typeof key === 'number' ? key : String(key);
-    });
+      plain.path.push(typeof key === 'number' ? key : String(key));
+    }
   }
   return plain;
 }
@@ -84,7 +85,11 @@ export async function safeParse<S extends StandardSchemaV1>(
   }
   const result = await props.validate(value);
   if (result.issues) {
-    return { issues: result.issues.map(plainIssue) };
+    const issues: ValidationIssue[] = [];
+    for (const issue of result.issues) {
+      issues.push(plainIssue(issue));
+    }
+    return { issues };
   }
   return { value: result.value as StandardSchemaV1.InferOutput<S> };
 }

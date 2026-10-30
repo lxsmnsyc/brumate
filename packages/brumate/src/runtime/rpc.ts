@@ -27,16 +27,18 @@ export async function call(
     const form = new FormData();
     form.set('args', json);
     // A blob of another DOM is copied, because form data takes only its own.
-    const blobs = await Promise.all(
-      files.map((file: Blob) =>
-        // Typed as a Blob, so the check narrows a blob of another DOM to never.
+    const copies: (Blob | Promise<Blob>)[] = [];
+    for (const file of files) {
+      // Typed as a Blob, so the check narrows a blob of another DOM to never.
+      copies.push(
         file instanceof Blob
           ? file
           : (file as Blob)
               .arrayBuffer()
               .then((data) => new Blob([data], { type: (file as Blob).type })),
-      ),
-    );
+      );
+    }
+    const blobs = await Promise.all(copies);
     for (const [index, blob] of blobs.entries()) {
       form.set(`file${index}`, blob, (files[index] as Partial<File>).name ?? 'blob');
     }
@@ -145,7 +147,10 @@ export function refreshMemos(ids: string[]): Promise<void> {
         continue;
       }
       void loadModule(root.m).then(async (module) => {
-        const entries = ids.flatMap((id) => module.refresh?.[id] ?? []);
+        const entries: NonNullable<typeof module.refresh>[string] = [];
+        for (const id of ids) {
+          entries.push(...(module.refresh?.[id] ?? []));
+        }
         if (entries.length === 0) {
           return;
         }
@@ -174,7 +179,9 @@ function renewKey(form: HTMLFormElement, url: URL): void {
  * `submitAction` in the core.
  */
 export function sendAction(form: HTMLFormElement, submitter: HTMLElement | null): Promise<void> {
-  const [scopeId, slot] = form.getAttribute('b-result')!.split(':').map(Number) as [number, number];
+  const [scopeText, slotText] = form.getAttribute('b-result')!.split(':') as [string, string];
+  const scopeId = Number(scopeText);
+  const slot = Number(slotText);
   const data = new FormData(form, submitter);
   const action = form.getAttribute('b-action')!;
   return import('./client.ts').then(({ asyncMemo, rpcPrefix, scopes, track }) => {

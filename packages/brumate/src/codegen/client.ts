@@ -73,7 +73,7 @@ export function minifiedSize(code: string): number {
 export const DEFAULT_MERGE = 4096;
 
 /** The part that holds an export of a client module. */
-export function partOf(name: string): string {
+export function getPartName(name: string): string {
   return /^[hct]\d/.test(name) ? name : 'update';
 }
 
@@ -94,6 +94,26 @@ const OUTER = new Set([
   'reset',
 ]);
 const DEFERRED_SITES = new Set(['function', 'server-function', 'event', 'effect', 'client']);
+
+/** Whether a scope is within any scope of the list. */
+function isWithinAny(scope: Scope, list: Scope[]): boolean {
+  for (const item of list) {
+    if (isWithin(scope, item)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Whether a site that runs while a body renders reads the declaration. */
+function readsOutsideBrowser(declaration: Declaration): boolean {
+  for (const read of declaration.reads) {
+    if (!BROWSER_ONLY_SITES.has(read.site.kind)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /**
  * Generates the client entry and its parts. When the parts are smaller than
@@ -214,9 +234,15 @@ class ClientGenerator {
     if (this.out.has('shared') || this.usesModuleScript()) {
       parts.shared = this.assembleShared();
     }
-    const names = Object.keys(parts).filter((name) => name !== 'shared');
+    const names: string[] = [];
     // The minified size decides, because that is what the browser loads.
-    const size = Object.values(parts).reduce((total, code) => total + minifiedSize(code), 0);
+    let size = 0;
+    for (const [name, code] of Object.entries(parts)) {
+      if (name !== 'shared') {
+        names.push(name);
+      }
+      size += minifiedSize(code);
+    }
     const merged = !parts.shared && names.length > 0 && size < this.merge;
     if (merged) {
       for (const name of names) {
@@ -226,12 +252,17 @@ class ClientGenerator {
     }
     // A part that calls shared code of module functions imports their shared modules.
     for (const [name, code] of Object.entries(parts)) {
-      const used = new Set([...code.matchAll(/\$\$m(\d+)\./g)].map((match) => Number(match[1])));
+      const used = new Set<number>();
+      for (const match of code.matchAll(/\$\$m(\d+)\./g)) {
+        used.add(Number(match[1]));
+      }
       if (used.size > 0) {
-        const imports = [...used].map(
-          (index) =>
+        const imports: string[] = [];
+        for (const index of used) {
+          imports.push(
             `import * as $$m${index} from ${JSON.stringify(this.shared!.specifiers[index])};`,
-        );
+          );
+        }
         parts[name] = `${imports.join('\n')}\n${code}`;
       }
     }
@@ -248,27 +279,31 @@ class ClientGenerator {
     // The state holds a component that a prop gets as its ID, so the core finds its render
     // function in the entry of the component that sent it.
     const values = this.valueComponents();
-    const sent = values.map((_, index) => `$$v${index}`);
+    const sent: string[] = [];
+    const renamed: string[] = [];
+    for (const [index, code] of values.entries()) {
+      sent.push(`$$v${index}`);
+      renamed.push(code.replace('$$v', () => sent[index]!));
+    }
     const registered =
-      values.length > 0
-        ? [
-            ...values.map((code, index) => code.replace('$$v', () => sent[index]!)),
-            `export const components = [${sent.join(', ')}];`,
-          ]
-        : [];
+      values.length > 0 ? [...renamed, `export const components = [${sent.join(', ')}];`] : [];
     const clientCode = names.length > 0 || values.length > 0;
     if (merged || names.length === 0) {
       // The entry holds the code itself, so the first event loads one module. An entry
       // without `load` is its own only part.
       const code = parts.all ?? '';
       delete parts.all;
+      const empty: Record<string, string[]> = {};
+      for (const name of names) {
+        empty[name] = [];
+      }
       return {
         code: [code, ...registered, ...table, ''].join('\n'),
         table: table.join('\n'),
         parts,
-        loaders: Object.fromEntries(names.map((name) => [name, []])),
+        loaders: empty,
         clientCode,
-        fillOf: (block) => this.fillOf(block),
+        fillOf: (block) => this.createFill(block),
         diagnostics: this.diagnostics,
       };
     }
@@ -278,19 +313,18 @@ class ClientGenerator {
     for (const name of names) {
       loaders[name] = [name];
     }
-    const entry = [
-      ...names.map((name) => `export * from ${JSON.stringify(this.partPath(name))};`),
-      ...registered,
-      ...table,
-      '',
-    ];
+    const reexports: string[] = [];
+    for (const name of names) {
+      reexports.push(`export * from ${JSON.stringify(this.partPath(name))};`);
+    }
+    const entry = [...reexports, ...registered, ...table, ''];
     return {
       code: entry.join('\n'),
       table: table.join('\n'),
       parts,
       loaders,
       clientCode,
-      fillOf: (block) => this.fillOf(block),
+      fillOf: (block) => this.createFill(block),
       diagnostics: this.diagnostics,
     };
   }
@@ -306,7 +340,7 @@ class ClientGenerator {
       if (
         declaration.kind !== 'import' ||
         !imported?.source.endsWith('.brm') ||
-        !declaration.reads.some((read) => !BROWSER_ONLY_SITES.has(read.site.kind))
+        !readsOutsideBrowser(declaration)
       ) {
         continue;
       }
@@ -325,7 +359,7 @@ class ClientGenerator {
   /** Follows the client functions that sites call. */
   private closure(seed: Iterable<Site>): Set<Site> {
     const result = new Set<Site>();
-    const visit = (site: Site): void => {
+    function visit(site: Site): void {
       if (result.has(site)) {
         return;
       }
@@ -335,7 +369,7 @@ class ClientGenerator {
           visit(callee.site);
         }
       }
-    };
+    }
     for (const site of seed) {
       visit(site);
     }
@@ -379,10 +413,16 @@ class ClientGenerator {
       }
       this.reach.set(symbol, this.closure(seed));
     }
-    const updates = [...this.plan.clientSites].filter(
-      (site) =>
-        !this.plan.symbols.has(site) && site.kind !== 'function' && site.kind !== 'server-function',
-    );
+    const updates: Site[] = [];
+    for (const site of this.plan.clientSites) {
+      if (
+        !this.plan.symbols.has(site) &&
+        site.kind !== 'function' &&
+        site.kind !== 'server-function'
+      ) {
+        updates.push(site);
+      }
+    }
     for (const scope of this.renderedScopes()) {
       for (const site of this.model.sites) {
         if (isWithin(site.scope, scope) && !DEFERRED_SITES.has(site.kind)) {
@@ -400,7 +440,12 @@ class ClientGenerator {
       if (declaration.kind !== 'function' || !site || !this.plan.clientSites.has(site)) {
         continue;
       }
-      const users = [...this.reach].filter(([, sites]) => sites.has(site)).map(([name]) => name);
+      const users: string[] = [];
+      for (const [name, sites] of this.reach) {
+        if (sites.has(site)) {
+          users.push(name);
+        }
+      }
       this.placement.set(declaration, users.length === 1 ? users[0]! : 'shared');
     }
   }
@@ -457,17 +502,14 @@ class ClientGenerator {
     // The templates that the children call or pass on, such as `cell=day`, render in the update part.
     if (withChildren) {
       for (const site of this.childrenSites()) {
-        const used = [
-          ...site.calls,
-          ...site.reads.map((read) => read.declaration).filter((item) => item.kind === 'template'),
-        ];
+        const used: Declaration[] = [...site.calls];
+        for (const read of site.reads) {
+          if (read.declaration.kind === 'template') {
+            used.push(read.declaration);
+          }
+        }
         for (const callee of used) {
-          const template = this.model.scopes.find(
-            (item) =>
-              callee.kind === 'template' &&
-              item.template?.name === callee.name &&
-              item.parent === callee.scope,
-          );
+          const template = callee.kind === 'template' ? this.findTemplateScope(callee) : undefined;
           for (const item of template ? this.inside(template) : []) {
             if (!rendered.includes(item)) {
               rendered.push(item);
@@ -540,16 +582,19 @@ class ClientGenerator {
 
   private assemble(name: string): string {
     const reads = this.reads(this.partSites(name));
-    const names = new Set(
-      [...reads].filter((item) => item.kind === 'import').map((item) => item.name),
-    );
-    const shared = [...reads]
-      .filter(
-        (item) =>
-          (item.kind === 'function' && this.placement.get(item) === 'shared') ||
-          (item.kind === 'module' && item.scope === this.model.module),
-      )
-      .map((item) => (item.kind === 'function' ? `${item.name}$` : item.name));
+    const names = new Set<string>();
+    const shared: string[] = [];
+    for (const item of reads) {
+      if (item.kind === 'import') {
+        names.add(item.name);
+      }
+      if (
+        (item.kind === 'function' && this.placement.get(item) === 'shared') ||
+        (item.kind === 'module' && item.scope === this.model.module)
+      ) {
+        shared.push(item.kind === 'function' ? `${item.name}$` : item.name);
+      }
+    }
     const lines = [
       "import * as $$b from 'brumate/client';",
       ...this.importsFor(names, name === 'update' || this.templateScopes(name)),
@@ -573,13 +618,13 @@ class ClientGenerator {
         }
       }
     }
+    const scopes = [...this.renderedScopes()];
+    for (const name of names) {
+      scopes.push(...this.templateScopes(name));
+    }
     const lines = [
       "import * as $$b from 'brumate/client';",
-      ...this.importsFor(
-        imports,
-        [...this.renderedScopes(), ...names.flatMap((name) => this.templateScopes(name))],
-        names.includes('update'),
-      ),
+      ...this.importsFor(imports, scopes, names.includes('update')),
       '',
       ...this.serverStubs(names),
     ];
@@ -592,9 +637,12 @@ class ClientGenerator {
 
   private assembleShared(): string {
     const reads = this.reads(this.partSites('shared'));
-    const names = new Set(
-      [...reads].filter((item) => item.kind === 'import').map((item) => item.name),
-    );
+    const names = new Set<string>();
+    for (const item of reads) {
+      if (item.kind === 'import') {
+        names.add(item.name);
+      }
+    }
     const lines = [
       "import * as $$b from 'brumate/client';",
       ...this.importsFor(names, false, false, this.usesModuleScript()),
@@ -619,9 +667,12 @@ class ClientGenerator {
           }
         }
       }
-      const rest = [...this.model.module.declarations.values()]
-        .filter((declaration) => declaration.kind === 'module' && !exported.has(declaration.name))
-        .map((declaration) => declaration.name);
+      const rest: string[] = [];
+      for (const declaration of this.model.module.declarations.values()) {
+        if (declaration.kind === 'module' && !exported.has(declaration.name)) {
+          rest.push(declaration.name);
+        }
+      }
       if (rest.length > 0) {
         lines.push(`export { ${rest.join(', ')} };`);
       }
@@ -636,6 +687,14 @@ class ClientGenerator {
     const rendered = this.renderedScopes();
     for (const site of this.model.sites) {
       const live = this.live.has(site);
+      // Whether the site sits in a scope that a render function renders.
+      let inRendered = false;
+      for (const scope of rendered) {
+        if (isWithin(site.scope, scope)) {
+          inRendered = true;
+          break;
+        }
+      }
       if (live && site.kind === 'tag' && !(site.owner as DynamicTagNode | undefined)?.keyed) {
         this.error('A dynamic tag that changes on the client is not supported yet', site.range);
       }
@@ -645,7 +704,7 @@ class ClientGenerator {
         site.awaits &&
         site.kind !== 'memo' &&
         !DEFERRED_SITES.has(site.kind) &&
-        (live || rendered.some((scope) => isWithin(site.scope, scope)))
+        (live || inRendered)
       ) {
         this.error(
           live
@@ -679,7 +738,12 @@ class ClientGenerator {
   }
 
   private usesModuleScript(): boolean {
-    return [...this.clientReads()].some((declaration) => declaration.kind === 'module');
+    for (const declaration of this.clientReads()) {
+      if (declaration.kind === 'module') {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -693,12 +757,7 @@ class ClientGenerator {
         continue;
       }
       for (const callee of site.calls) {
-        const template =
-          callee.kind === 'template'
-            ? this.model.scopes.find(
-                (item) => item.template?.name === callee.name && item.parent === callee.scope,
-              )
-            : undefined;
+        const template = callee.kind === 'template' ? this.findTemplateScope(callee) : undefined;
         if (template) {
           result.push(...this.inside(template));
         }
@@ -718,6 +777,16 @@ class ClientGenerator {
     return [...result];
   }
 
+  /** The scope of the template that a callee declares. */
+  private findTemplateScope(callee: Declaration): Scope | undefined {
+    for (const item of this.model.scopes) {
+      if (item.template?.name === callee.name && item.parent === callee.scope) {
+        return item;
+      }
+    }
+    return undefined;
+  }
+
   /** A body scope and the template scopes that it calls, directly or through other templates. */
   private inside(scope: Scope): Scope[] {
     const result: Scope[] = [scope];
@@ -731,9 +800,7 @@ class ClientGenerator {
           if (callee.kind !== 'template') {
             continue;
           }
-          const template = this.model.scopes.find(
-            (item) => item.template?.name === callee.name && item.parent === callee.scope,
-          );
+          const template = this.findTemplateScope(callee);
           if (template && !result.includes(template)) {
             result.push(template);
           }
@@ -748,9 +815,20 @@ class ClientGenerator {
    * scope of the list is emitted where its `#template` is, so a render emits only the others.
    */
   private declared(list: Scope[]): Scope[] {
-    return list.filter(
-      (item, index) => !list.slice(0, index).some((other) => isWithin(item, other)),
-    );
+    const result: Scope[] = [];
+    for (const [index, item] of list.entries()) {
+      let nested = false;
+      for (const other of list.slice(0, index)) {
+        if (isWithin(item, other)) {
+          nested = true;
+          break;
+        }
+      }
+      if (!nested) {
+        result.push(item);
+      }
+    }
+    return result;
   }
 
   private propsMap(): string {
@@ -944,10 +1022,15 @@ class ClientGenerator {
    */
   private handlerExport(site: Site, symbol: string, code: string, base: Scope): string {
     const node = site.node;
-    const fn =
-      node.type === 'Identifier'
-        ? site.reads.find((read) => read.range.start === node.start)?.declaration
-        : undefined;
+    let fn: Declaration | undefined;
+    if (node.type === 'Identifier') {
+      for (const read of site.reads) {
+        if (read.range.start === node.start) {
+          fn = read.declaration;
+          break;
+        }
+      }
+    }
     if (fn?.kind === 'function' && slotIndex(this.plan, fn) === -1) {
       const owner = scopePath(this.plan, '$$s', base, instanceScope(this.plan, fn.scope));
       if (owner === '$$s') {
@@ -990,8 +1073,10 @@ class ClientGenerator {
         this.withTemplates(site, this.rewriter.rewrite(site, '$$s', base));
       // A literal class value, as the code of its text. A template call needs the code around it.
       const classes = (value: oxc.Node): string | undefined => {
-        if ([...site.calls].some((callee) => callee.kind === 'template')) {
-          return undefined;
+        for (const callee of site.calls) {
+          if (callee.kind === 'template') {
+            return undefined;
+          }
         }
         const parts = this.rewriter.rewriteRanges(site, '$$s', base, (slice) =>
           literalClasses(value, slice),
@@ -1082,7 +1167,13 @@ class ClientGenerator {
       return;
     }
     if (site.kind === 'style') {
-      const variable = this.plan.styles.variables.find((item) => item.expression.ast === site.node);
+      let variable: (typeof this.plan.styles.variables)[number] | undefined;
+      for (const item of this.plan.styles.variables) {
+        if (item.expression.ast === site.node) {
+          variable = item;
+          break;
+        }
+      }
       if (variable) {
         this.emit(
           `export function ${name('u')}($$s) {\n  $$b.setVar($$s, ${JSON.stringify(variable.name)}, ${variableValue(variable, expression())});\n}`,
@@ -1098,14 +1189,19 @@ class ClientGenerator {
     if (anchor === undefined) {
       return;
     }
-    const attribute = owner.attributes.find(
-      (item) =>
+    let attribute: Attribute | undefined;
+    for (const item of owner.attributes) {
+      if (
         (item.kind === 'value' && item.value.ast === site.node) ||
         (item.kind === 'event' && item.handler.ast === site.node) ||
         (item.kind === 'spread' && item.value.ast === site.node) ||
         (item.kind === 'computed' &&
-          (item.name.ast === site.node || (item.value !== true && item.value.ast === site.node))),
-    );
+          (item.name.ast === site.node || (item.value !== true && item.value.ast === site.node)))
+      ) {
+        attribute = item;
+        break;
+      }
+    }
     if (
       !attribute ||
       attribute.kind === 'static' ||
@@ -1118,13 +1214,12 @@ class ClientGenerator {
     if (owner.kind === 'component') {
       if (attribute.kind === 'spread') {
         // The props after the spread win over it, as on the server.
-        const after = owner.attributes
-          .slice(owner.attributes.indexOf(attribute) + 1)
-          .flatMap((item) =>
-            item.kind === 'static' || item.kind === 'value' || item.kind === 'event'
-              ? [item.name]
-              : [],
-          );
+        const after: string[] = [];
+        for (const item of owner.attributes.slice(owner.attributes.indexOf(attribute) + 1)) {
+          if (item.kind === 'static' || item.kind === 'value' || item.kind === 'event') {
+            after.push(item.name);
+          }
+        }
         this.emit(
           `export function ${name('u')}($$s) {\n  $$b.spreadProps($$s, ${anchor}, ${expression()}, ${JSON.stringify(after)});\n}`,
         );
@@ -1137,9 +1232,12 @@ class ClientGenerator {
     }
     if (attribute.kind === 'spread' || attribute.kind === 'computed') {
       // The attributes that are the element's own, which the spread does not remove.
-      const own = owner.attributes.flatMap((item) =>
-        item.kind === 'static' || item.kind === 'value' ? [item.name] : [],
-      );
+      const own: string[] = [];
+      for (const item of owner.attributes) {
+        if (item.kind === 'static' || item.kind === 'value') {
+          own.push(item.name);
+        }
+      }
       // The scope attribute is the element's own. Its style is not: a spread can write one, and
       // an update writes the style variables again with whatever style the spread passes on.
       if (this.plan.styles.css) {
@@ -1165,21 +1263,24 @@ class ClientGenerator {
         }
       }
       // The element's static attributes merge with the spreads in their order, as on the server.
-      const parts = owner.attributes.flatMap((item) => {
+      const parts: string[] = [];
+      for (const item of owner.attributes) {
         if (item === attribute) {
           const code = item.kind === 'computed' ? this.computedCode(item, site) : expression();
-          return code ? [code] : [];
-        }
-        if (item.kind === 'spread' || item.kind === 'computed') {
+          if (code) {
+            parts.push(code);
+          }
+        } else if (item.kind === 'spread' || item.kind === 'computed') {
           const code = spreads.get(item.kind === 'spread' ? item.value.ast : item.name.ast);
-          return code ? [code] : [];
+          if (code) {
+            parts.push(code);
+          }
+        } else if (item.kind === 'static') {
+          parts.push(
+            `{ ${JSON.stringify(item.name)}: ${item.value === true ? "''" : JSON.stringify(decodeAttribute(item.value))} }`,
+          );
         }
-        return item.kind === 'static'
-          ? [
-              `{ ${JSON.stringify(item.name)}: ${item.value === true ? "''" : JSON.stringify(decodeAttribute(item.value))} }`,
-            ]
-          : [];
-      });
+      }
       // The handlers of a dynamic tag name their scope, as in its first render, so the update
       // knows them from the entries of the spreads.
       const events = owner.kind === 'dynamic' ? this.ownEvents(owner) : [];
@@ -1199,7 +1300,11 @@ class ClientGenerator {
       if (attribute.name === 'class') {
         const spreads = [...this.spreadCode(owner).values()];
         if (spreads.length > 0) {
-          value = `[${[value, ...spreads.map((code) => `(${code})?.class`)].join(', ')}]`;
+          const classed: string[] = [value];
+          for (const code of spreads) {
+            classed.push(`(${code})?.class`);
+          }
+          value = `[${classed.join(', ')}]`;
         }
       }
       this.emit(
@@ -1213,10 +1318,15 @@ class ClientGenerator {
   private ownEvents(node: DynamicTagNode): string[] {
     const entries: string[] = [];
     for (const attribute of node.attributes) {
-      const site =
-        attribute.kind === 'event'
-          ? this.model.sites.find((item) => item.node === attribute.handler.ast)
-          : undefined;
+      let site: Site | undefined;
+      if (attribute.kind === 'event') {
+        for (const item of this.model.sites) {
+          if (item.node === attribute.handler.ast) {
+            site = item;
+            break;
+          }
+        }
+      }
       if (attribute.kind === 'event' && site) {
         const all = [...new Set([...attribute.modifiers, ...(site.modifiers ?? [])])];
         const entry = `${[attribute.event, ...all].join(':')}=${this.plan.id}#${this.plan.symbols.get(site)}@`;
@@ -1266,14 +1376,23 @@ class ClientGenerator {
 
   /** The code of an expression of the browser, or undefined when it has no code there. */
   private valueCode(ast: oxc.Node): string | undefined {
-    const other = this.plan.graph.nodes.find(
-      (candidate) =>
-        candidate.kind !== 'source' &&
-        candidate.site.node === ast &&
-        (this.plan.graph.live.has(candidate) ||
-          candidate.site.reads.every((read) => slotIndex(this.plan, read.declaration) !== -1)),
-    );
-    return other && other.kind !== 'source' ? this.rewrittenCode(other.site) : undefined;
+    for (const candidate of this.plan.graph.nodes) {
+      if (candidate.kind === 'source' || candidate.site.node !== ast) {
+        continue;
+      }
+      // A node that does not change needs a slot for each value that it reads.
+      let slotted = true;
+      for (const read of candidate.site.reads) {
+        if (slotIndex(this.plan, read.declaration) === -1) {
+          slotted = false;
+          break;
+        }
+      }
+      if (this.plan.graph.live.has(candidate) || slotted) {
+        return this.rewrittenCode(candidate.site);
+      }
+    }
+    return undefined;
   }
 
   private rewrittenCode(site: Site): string {
@@ -1297,9 +1416,13 @@ class ClientGenerator {
   }
 
   private headerSites(block: Block): Site[] {
-    return this.model.sites.filter(
-      (site) => site.kind === 'block' && site.block === block && site.label !== 'for key',
-    );
+    const result: Site[] = [];
+    for (const site of this.model.sites) {
+      if (site.kind === 'block' && site.block === block && site.label !== 'for key') {
+        result.push(site);
+      }
+    }
+    return result;
   }
 
   /** The scope IDs inside the bodies of a block, for disposing their instances. */
@@ -1344,7 +1467,7 @@ class ClientGenerator {
 
   private windowedBlocks(): Block[] {
     const found: Block[] = [];
-    const visit = (nodes: readonly unknown[]): void => {
+    function visit(nodes: readonly unknown[]): void {
       for (const node of nodes as { kind?: string }[]) {
         if (!node || typeof node !== 'object') {
           continue;
@@ -1361,7 +1484,7 @@ class ClientGenerator {
           }
         }
       }
-    };
+    }
     visit(this.file.children);
     for (const template of this.file.templates) {
       visit(template.body.children);
@@ -1385,14 +1508,17 @@ class ClientGenerator {
       case 'if':
       case 'switch': {
         const branches = block.kind === 'if' ? block.branches : block.cases;
-        const bodies = branches.map((branch) => branch.body);
         let index = block.fallback ? String(branches.length) : '-1';
         for (let i = branches.length - 1; i >= 0; i--) {
           index = `(${header(i)}) ? ${i} : ${index}`;
         }
-        const renders = [...bodies, ...(block.fallback ? [block.fallback] : [])].map((body) =>
-          this.renderName(body),
-        );
+        const renders: string[] = [];
+        for (const branch of branches) {
+          renders.push(this.renderName(branch.body));
+        }
+        if (block.fallback) {
+          renders.push(this.renderName(block.fallback));
+        }
         this.emit(
           `export function ${fn}($$s) {\n  $$b.branch($$s, ${anchor}, ${index}, ${this.hoist(`[${renders.join(', ')}]`)}, ${this.hoist(`[${this.kinds(blockBodies(block)).join(', ')}]`)}${held});\n}`,
         );
@@ -1402,7 +1528,7 @@ class ClientGenerator {
       case 'repeat': {
         const items =
           block.kind === 'for'
-            ? `$$b.listOf(${header(0)})`
+            ? `$$b.toList(${header(0)})`
             : `Array.from({ length: ${header(0)} }, (_, index) => index)`;
         const key = this.keyFunction(block, base);
         // A key that reads only the item is the same function for every update.
@@ -1458,11 +1584,16 @@ class ClientGenerator {
   }
 
   private itemDeclarations(block: ForBlock | RepeatBlock): Declaration[] {
-    return this.model.declarations.filter(
-      (declaration) =>
+    const result: Declaration[] = [];
+    for (const declaration of this.model.declarations) {
+      if (
         declaration.block === block &&
-        (declaration.kind === 'item' || declaration.kind === 'index'),
-    );
+        (declaration.kind === 'item' || declaration.kind === 'index')
+      ) {
+        result.push(declaration);
+      }
+    }
+    return result;
   }
 
   private keyFunction(block: ForBlock | RepeatBlock, base: Scope): string {
@@ -1472,7 +1603,13 @@ class ClientGenerator {
     if (!block.key) {
       return '($$item) => $$item';
     }
-    const site = this.model.sites.find((item) => item.label === 'for key' && item.block === block)!;
+    let site!: Site;
+    for (const item of this.model.sites) {
+      if (item.label === 'for key' && item.block === block) {
+        site = item;
+        break;
+      }
+    }
     const locals = new Set(this.itemDeclarations(block));
     const key = this.rewriter.rewrite(site, '$$s', base, { locals });
     const pattern = copy(this.file.source, block.item.start, block.item.end);
@@ -1548,7 +1685,7 @@ class ClientGenerator {
     const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
       mode: 'client',
       outer: { inside, base, baseVar: '$$p' },
-      fills: fill ? (nested) => this.fillOf(nested) : undefined,
+      fills: fill ? (nested) => this.createFill(nested) : undefined,
       hoist: (code) => this.hoist(code),
     });
     const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
@@ -1592,7 +1729,7 @@ class ClientGenerator {
   }
 
   /** The name of the render function of a body, when the module has one. */
-  private renderOf(body: object | undefined): string | undefined {
+  private findRenderName(body: object | undefined): string | undefined {
     const scope = body && this.plan.bodyScopes.get(body as never);
     return scope && this.renders.has(scope) ? `r${scope.id}` : undefined;
   }
@@ -1601,18 +1738,28 @@ class ClientGenerator {
    * The render functions that fill a nested `#if` or `#for` of a clone, when the module has
    * them all. A `#for` with an `#else` renders inline.
    */
-  private fillOf(block: Block): Fill | undefined {
+  private createFill(block: Block): Fill | undefined {
     if (block.kind === 'if') {
-      const bodies = [...block.branches.map((branch) => branch.body), block.fallback].filter(
-        (body) => body !== undefined,
-      );
-      const renders = bodies.map((body) => this.renderOf(body));
-      return renders.every((name) => name !== undefined)
-        ? { kind: 'if', renders: renders as string[] }
-        : undefined;
+      const bodies: (Body | undefined)[] = [];
+      for (const branch of block.branches) {
+        bodies.push(branch.body);
+      }
+      bodies.push(block.fallback);
+      const renders: string[] = [];
+      for (const body of bodies) {
+        if (body === undefined) {
+          continue;
+        }
+        const name = this.findRenderName(body);
+        if (name === undefined) {
+          return undefined;
+        }
+        renders.push(name);
+      }
+      return { kind: 'if', renders };
     }
     if (block.kind === 'for' && !block.fallback) {
-      const render = this.renderOf(block.body);
+      const render = this.findRenderName(block.body);
       return render ? { kind: 'for', render } : undefined;
     }
     return undefined;
@@ -1629,9 +1776,13 @@ class ClientGenerator {
       const base = scope.parent!;
 
       if (block.kind === 'portal' && block.target) {
-        const header = this.model.sites.find(
-          (site) => site.kind === 'block' && site.block === block,
-        )!;
+        let header!: Site;
+        for (const site of this.model.sites) {
+          if (site.kind === 'block' && site.block === block) {
+            header = site;
+            break;
+          }
+        }
         const target = this.rewriter.rewrite(header, '$$s', instanceScope(this.plan, base));
         const held = holderArguments(this.plan, block);
         this.emit(
@@ -1660,32 +1811,40 @@ class ClientGenerator {
   private emitChildrenRenders(): void {
     for (const [node, { symbol, scope }] of this.plan.childrenRenders) {
       const range = { start: node.children[0]!.start, end: node.children.at(-1)!.end };
-      const within = (item: { start: number; end: number } | undefined): boolean =>
-        item !== undefined && range.start <= item.start && item.end <= range.end;
+      function within(item: { start: number; end: number } | undefined): boolean {
+        return item !== undefined && range.start <= item.start && item.end <= range.end;
+      }
       // The scopes of the blocks in the children, and of the templates that the children call.
-      const nested = this.model.scopes.filter(
-        (item) => item.parent === scope && item.kind === 'body' && within(item.block),
-      );
+      const nested: Scope[] = [];
+      for (const item of this.model.scopes) {
+        if (item.parent === scope && item.kind === 'body' && within(item.block)) {
+          nested.push(item);
+        }
+      }
       for (const site of this.model.sites) {
         if (site.scope !== scope || !within(site.node as { start: number; end: number })) {
           continue;
         }
         // The templates that the children call, and those that they pass on, such as a prop
         // `render=label`.
-        const used = [...site.calls, ...site.reads.map((read) => read.declaration)];
+        const used: Declaration[] = [...site.calls];
+        for (const read of site.reads) {
+          used.push(read.declaration);
+        }
         for (const callee of used) {
-          const template =
-            callee.kind === 'template'
-              ? this.model.scopes.find(
-                  (item) => item.template?.name === callee.name && item.parent === callee.scope,
-                )
-              : undefined;
+          const template = callee.kind === 'template' ? this.findTemplateScope(callee) : undefined;
           if (template && !nested.includes(template)) {
             nested.push(template);
           }
         }
       }
-      const inside = [...new Set(nested.flatMap((item) => this.inside(item)))];
+      const insideSet = new Set<Scope>();
+      for (const item of nested) {
+        for (const scoped of this.inside(item)) {
+          insideSet.add(scoped);
+        }
+      }
+      const inside = [...insideSet];
       const base = instanceScope(this.plan, scope);
       const emitter = new Emitter(this.file, this.plan, this.valuePatch, {
         mode: 'client',
@@ -1707,7 +1866,7 @@ class ClientGenerator {
             if (read.declaration.kind === 'function' && DEFERRED_SITES.has(site.kind)) {
               continue;
             }
-            if (!inside.some((item) => isWithin(read.declaration.scope, item))) {
+            if (!isWithinAny(read.declaration.scope, inside)) {
               declarations.add(read.declaration);
             }
           }
@@ -1718,15 +1877,24 @@ class ClientGenerator {
           continue;
         }
         const value = this.rewriter.value(declaration, '$$p', base);
-        if (
-          value &&
-          !emitter.lines.some((line) => line.trim().startsWith(`let ${declaration.name} =`))
-        ) {
+        if (!value) {
+          continue;
+        }
+        let declared = false;
+        for (const line of emitter.lines) {
+          if (line.trim().startsWith(`let ${declaration.name} =`)) {
+            declared = true;
+            break;
+          }
+        }
+        if (!declared) {
           emitter.line(`let ${declaration.name} = ${value};`);
         }
       }
-      for (const template of this.declared(inside).filter((item) => item.kind === 'template')) {
-        emitter.emitTemplate(template.template!);
+      for (const template of this.declared(inside)) {
+        if (template.kind === 'template') {
+          emitter.emitTemplate(template.template!);
+        }
       }
       emitter.emitChildrenBody(node, scope);
       emitter.flush();
@@ -1747,14 +1915,14 @@ class ClientGenerator {
    * insert that calls it again writes its new arguments into the scope that it rendered.
    */
   private emitTemplateArgs(site: Site, symbol: string): void {
-    const callee = site.reads
-      .map((read) => read.declaration)
-      .find((item) => item.kind === 'template');
-    const scope =
-      callee &&
-      this.model.scopes.find(
-        (item) => item.template?.name === callee.name && item.parent === callee.scope,
-      );
+    let callee: Declaration | undefined;
+    for (const read of site.reads) {
+      if (read.declaration.kind === 'template') {
+        callee = read.declaration;
+        break;
+      }
+    }
+    const scope = callee && this.findTemplateScope(callee);
     const template = scope?.template;
     if (!scope || !template) {
       return;
@@ -1762,14 +1930,18 @@ class ClientGenerator {
     const first = template.params[0];
     const last = template.params.at(-1);
     const params = first && last ? copy(this.file.source, first.start, last.end) : '';
-    const slots = [...scope.declarations.values()]
-      .filter((declaration) => declaration.kind === 'template-param')
-      .map((declaration) => [slotIndex(this.plan, declaration), declaration.name] as const);
-    // An argument without a slot is not in the scope, so the template renders again instead.
-    if (slots.some(([slot]) => slot === -1)) {
-      return;
+    const pairs: string[] = [];
+    for (const declaration of scope.declarations.values()) {
+      if (declaration.kind !== 'template-param') {
+        continue;
+      }
+      const slot = slotIndex(this.plan, declaration);
+      // An argument without a slot is not in the scope, so the template renders again instead.
+      if (slot === -1) {
+        return;
+      }
+      pairs.push(`[${slot}, ${declaration.name}]`);
     }
-    const pairs = slots.map(([slot, name]) => `[${slot}, ${name}]`);
     this.emit(`export const ${symbol}a = (${params}) => [${pairs.join(', ')}];`);
     // The ID of the template's scope, so an insert updates in place only a scope of this template.
     this.emit(`export const ${symbol}k = ${scope.id};`);
@@ -1778,17 +1950,17 @@ class ClientGenerator {
   private withTemplates(site: Site, code: string): string {
     const templates: Scope[] = [];
     // The templates that the code calls, and those that it passes on, such as a prop `item=option`.
-    const used = [
-      ...site.calls,
-      ...site.reads.map((read) => read.declaration).filter((item) => item.kind === 'template'),
-    ];
+    const used: Declaration[] = [...site.calls];
+    for (const read of site.reads) {
+      if (read.declaration.kind === 'template') {
+        used.push(read.declaration);
+      }
+    }
     for (const callee of used) {
       if (callee.kind !== 'template') {
         continue;
       }
-      const template = this.model.scopes.find(
-        (item) => item.template?.name === callee.name && item.parent === callee.scope,
-      );
+      const template = this.findTemplateScope(callee);
       for (const item of template ? this.inside(template) : []) {
         if (!templates.includes(item)) {
           templates.push(item);
@@ -1816,7 +1988,9 @@ class ClientGenerator {
 
   /** Declares the outer values that a render function reads, as local variables. */
   private prologue(inside: Scope[], base: Scope): string[] {
-    const isInside = (scope: Scope): boolean => inside.some((item) => isWithin(scope, item));
+    function isInside(scope: Scope): boolean {
+      return isWithinAny(scope, inside);
+    }
     const declarations = new Set<Declaration>();
     for (const site of this.model.sites) {
       // Top-level elements of a body render the style variables of the component.
@@ -1907,10 +2081,14 @@ class ClientGenerator {
     if (table.size === 0) {
       return undefined;
     }
-    const items = [...table].map(
-      ([id, entries]) =>
-        `${JSON.stringify(id)}: [${entries.map(([kind, fn]) => `[${kind}, ${JSON.stringify(fn)}]`).join(', ')}]`,
-    );
+    const items: string[] = [];
+    for (const [id, entries] of table) {
+      const pairs: string[] = [];
+      for (const [kind, fn] of entries) {
+        pairs.push(`[${kind}, ${JSON.stringify(fn)}]`);
+      }
+      items.push(`${JSON.stringify(id)}: [${pairs.join(', ')}]`);
+    }
     return `{ ${items.join(', ')} }`;
   }
 
@@ -1935,7 +2113,14 @@ class ClientGenerator {
       table.set(scope, slots);
       const entries = slots.get(slot) ?? [];
       slots.set(slot, entries);
-      if (!entries.some(([, name]) => name === fn)) {
+      let known = false;
+      for (const [, name] of entries) {
+        if (name === fn) {
+          known = true;
+          break;
+        }
+      }
+      if (!known) {
         entries.push([kind, fn, edge.to.kind === 'memo']);
       }
     }
@@ -1945,9 +2130,11 @@ class ClientGenerator {
       for (const [slot, entries] of slots) {
         // Memos update first, so bindings read their new values.
         const sorted = entries.toSorted((a, b) => Number(b[2]) - Number(a[2]));
-        items.push(
-          `${slot}: [${sorted.map(([kind, name]) => `[${kind}, ${JSON.stringify(name)}]`).join(', ')}]`,
-        );
+        const pairs: string[] = [];
+        for (const [kind, name] of sorted) {
+          pairs.push(`[${kind}, ${JSON.stringify(name)}]`);
+        }
+        items.push(`${slot}: [${pairs.join(', ')}]`);
       }
       scopes.push(`${scope}: { ${items.join(', ')} }`);
     }

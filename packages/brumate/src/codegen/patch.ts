@@ -28,9 +28,14 @@ export class Patch {
   }
 
   slice(start: number, end: number): string {
-    const edits = this.edits
-      .filter((edit) => edit.start >= start && edit.end <= end)
-      .toSorted((a, b) => a.start - b.start || a.end - b.end);
+    // Take the edits inside the range, in source order.
+    const inside: Edit[] = [];
+    for (const edit of this.edits) {
+      if (edit.start >= start && edit.end <= end) {
+        inside.push(edit);
+      }
+    }
+    const edits = inside.toSorted((a, b) => a.start - b.start || a.end - b.end);
     let result = '';
     let position = start;
     for (const edit of edits) {
@@ -87,17 +92,21 @@ export function addValueEdits(
   // The `$props()` calls whose pattern has a rest element.
   const restCalls = new Set<oxc.Node>();
   // The names that the other `$props()` calls destructure.
-  const otherNames = (call: oxc.Node): string[] => {
+  function otherNames(call: oxc.Node): string[] {
     const own = new Set(propNames.get(call));
-    return [
-      ...new Set(
-        [...propNames]
-          .filter(([other]) => other !== call)
-          .flatMap(([, names]) => names)
-          .filter((name) => !own.has(name)),
-      ),
-    ];
-  };
+    const result = new Set<string>();
+    for (const [other, names] of propNames) {
+      if (other === call) {
+        continue;
+      }
+      for (const name of names) {
+        if (!own.has(name)) {
+          result.add(name);
+        }
+      }
+    }
+    return [...result];
+  }
   for (const statement of file.instanceScript?.program.body ?? []) {
     if (statement.type !== 'VariableDeclaration') {
       continue;
@@ -109,14 +118,19 @@ export function addValueEdits(
         calleeName(init) === '$props' &&
         declarator.id.type === 'ObjectPattern'
       ) {
-        propNames.set(
-          init,
-          declarator.id.properties.flatMap((property) => {
-            const name = property.type === 'Property' ? keyName(property) : undefined;
-            return name === undefined ? [] : [name];
-          }),
-        );
-        if (declarator.id.properties.some((property) => property.type === 'RestElement')) {
+        const names: string[] = [];
+        let hasRest = false;
+        for (const property of declarator.id.properties) {
+          const name = property.type === 'Property' ? keyName(property) : undefined;
+          if (name !== undefined) {
+            names.push(name);
+          }
+          if (property.type === 'RestElement') {
+            hasRest = true;
+          }
+        }
+        propNames.set(init, names);
+        if (hasRest) {
           restCalls.add(init);
         }
       }
@@ -137,17 +151,12 @@ export function addValueEdits(
     }
   }
   // Reads of other memos become reads of the memos, so a value that is still loading throws.
-  const readMemos = (
-    site: Site,
-    node: oxc.Node,
-    own?: Declaration,
-    only?: Set<Declaration>,
-  ): void => {
+  function readMemos(site: Site, node: oxc.Node, own?: Declaration, only?: Set<Declaration>): void {
     // A memo in a shorthand property, such as `{ id }`, keeps its key.
     const shorthands = new Set<number>();
     // `$isPending(memo)` and `$isBound(x)` become `false`, so their arguments are not reads.
     const folded: [number, number][] = [];
-    const findShorthands = (current: oxc.Node): void => {
+    function findShorthands(current: oxc.Node): void {
       if (
         current.type === 'CallExpression' &&
         (calleeName(current) === '$isPending' || calleeName(current) === '$isBound')
@@ -160,17 +169,29 @@ export function addValueEdits(
       for (const [, child] of children(current)) {
         findShorthands(child);
       }
-    };
+    }
     findShorthands(node);
+    // Whether a read sits inside one of the folded calls.
+    function isFolded(read: Reference): boolean {
+      for (const [start, end] of folded) {
+        if (read.range.start >= start && read.range.end <= end) {
+          return true;
+        }
+      }
+      return false;
+    }
     // The target of a write, such as `shown` in `shown = [...shown, name]`, stays a name.
-    const targets = new Set(site.writes.map((write) => write.range.start));
+    const targets = new Set<number>();
+    for (const write of site.writes) {
+      targets.add(write.range.start);
+    }
     for (const read of site.reads) {
       if (
         read.range.start !== read.range.end &&
         read.range.start >= node.start &&
         read.range.end <= node.end &&
         !targets.has(read.range.start) &&
-        folded.every(([start, end]) => read.range.start < start || read.range.end > end) &&
+        !isFolded(read) &&
         read.declaration !== own &&
         !inline.has(read.declaration) &&
         (!only || only.has(read.declaration)) &&
@@ -190,7 +211,7 @@ export function addValueEdits(
         replacedAt.add(range.start);
       }
     }
-  };
+  }
   if (mode === 'server') {
     // A function can run while the server renders, such as one that the markup calls. The render
     // waits only for the memos that the markup reads, so the function reads its memos itself.
@@ -209,7 +230,7 @@ export function addValueEdits(
       }
     }
   }
-  const visit = (node: oxc.Node): void => {
+  function visit(node: oxc.Node): void {
     if (node.type === 'AwaitExpression') {
       const argument = node.argument;
       if (argument.type === 'CallExpression' && calleeName(argument) === '$memo') {
@@ -331,7 +352,7 @@ export function addValueEdits(
     for (const [, child] of children(node)) {
       visit(child);
     }
-  };
+  }
   const programs: oxc.Program[] = [];
   if (file.instanceScript) {
     programs.push(file.instanceScript.program);
@@ -346,9 +367,13 @@ export function addValueEdits(
     visit(program);
   }
   for (const site of sites) {
-    const inScript = programs.some(
-      (program) => site.node.start >= program.start && site.node.end <= program.end,
-    );
+    let inScript = false;
+    for (const program of programs) {
+      if (site.node.start >= program.start && site.node.end <= program.end) {
+        inScript = true;
+        break;
+      }
+    }
     if (!inScript) {
       visit(site.node);
     }

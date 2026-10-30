@@ -67,7 +67,7 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, firstErrors, messagesOf, onFormReset } from './fields.ts';
+  import { describedBy, firstErrors, parseMessages, onFormReset } from './fields.ts';
 
   /**
    * A text field. It holds a Label, an Input or a
@@ -140,11 +140,11 @@
   const serverErrors = $memo(
     form && edited === form.validationErrors
       ? []
-      : messagesOf(
+      : parseMessages(
           (fieldName ? form?.validationErrors[fieldName] : undefined) as string | string[] | undefined,
         ),
   );
-  const ariaErrors = $memo(behavior === 'aria' && validate ? messagesOf(validate(value)) : []);
+  const ariaErrors = $memo(behavior === 'aria' && validate ? parseMessages(validate(value)) : []);
   const errors = $memo(
     firstErrors(
       field?.errors ?? [],
@@ -168,7 +168,7 @@
   // The message that blocks the form in the native behavior: the errors
   // of the server and of `validate`, or a message of its own for `isInvalid`.
   function customMessage(text: string): string {
-    const messages = [...serverErrors, ...(validate ? messagesOf(validate(text)) : [])];
+    const messages = [...serverErrors, ...(validate ? parseMessages(validate(text)) : [])];
     if (messages.length > 0) {
       return messages.join(' ');
     }
