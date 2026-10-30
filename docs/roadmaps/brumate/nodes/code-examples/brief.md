@@ -1,7 +1,7 @@
 ---
 id: code-examples
 title: Rewrite the code examples of the docs with the markup features
-status: active
+status: done
 priority: should
 type: docs
 outline: false
