@@ -74,6 +74,22 @@ function milliseconds(value: string): number {
   return first.endsWith('ms') ? amount : amount * 1000;
 }
 
+/** The first timing function of a list such as `cubic-bezier(0.2, 0, 0, 1), steps(4, end)`. */
+function easing(value: string): string {
+  let depth = 0;
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i];
+    if (char === '(') {
+      depth++;
+    } else if (char === ')') {
+      depth--;
+    } else if (char === ',' && depth === 0) {
+      return value.slice(0, i).trim() || 'ease';
+    }
+  }
+  return value.trim() || 'ease';
+}
+
 /** Keeps where an indicator is, and returns it. */
 function record(element: HTMLElement, container: Element): Place {
   const place = placeOf(element, container);
@@ -138,6 +154,6 @@ export function moveIndicator(element: HTMLElement): void {
       },
       { transformOrigin: 'top left', transform: 'none' },
     ],
-    { duration, easing: style.transitionTimingFunction.split(',')[0] || 'ease' },
+    { duration, easing: easing(style.transitionTimingFunction) },
   );
 }

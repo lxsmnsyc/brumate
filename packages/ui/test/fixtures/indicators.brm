@@ -15,8 +15,8 @@
 <main class="page">
   <Tabs>
     <TabList aria-label="Views">
-      <Tab id="list" class="tab-list">List<SelectionIndicator class="bar" style="transition-duration: 200ms" /></Tab>
-      <Tab id="grid" class="tab-grid">Grid<SelectionIndicator class="bar" style="transition-duration: 200ms" /></Tab>
+      <Tab id="list" class="tab-list">List<SelectionIndicator class="bar" style="transition-duration: 200ms; transition-timing-function: steps(4, end), linear" /></Tab>
+      <Tab id="grid" class="tab-grid">Grid<SelectionIndicator class="bar" style="transition-duration: 200ms; transition-timing-function: cubic-bezier(0.2, 0, 0, 1), linear" /></Tab>
     </TabList>
     <TabPanel id="list">The list.</TabPanel>
     <TabPanel id="grid">The grid.</TabPanel>
