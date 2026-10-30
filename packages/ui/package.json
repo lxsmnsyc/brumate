@@ -26,6 +26,7 @@
     "@brumate/tsc": "workspace:*",
     "brumate": "workspace:*",
     "happy-dom": "^20.14.6",
+    "oxc-parser": "^0.154.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
