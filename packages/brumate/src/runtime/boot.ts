@@ -277,7 +277,17 @@ export function boot(
     // The checks of `cancelWhen`, from the target up, run before any handler.
     for (let node = event.target as Node | null; node; node = node.parentNode) {
       for (const [type, check] of cancels.get(node as Element) ?? []) {
-        if (type === event.type && check(event)) {
+        if (type !== event.type) {
+          continue;
+        }
+        let cancel = false;
+        try {
+          cancel = check(event);
+        } catch (error) {
+          // A check that throws cancels nothing, and the other checks and the handlers still run.
+          console.error(error);
+        }
+        if (cancel) {
           event.preventDefault();
           return;
         }

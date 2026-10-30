@@ -13,9 +13,9 @@
   // other submit listeners of the page run.
   //
   // `cancelWhen` makes the document listener of brumate cancel the submit before any handler, so a
-  // delegated `onSubmit` does not run either. It is added on
-  // load, so it exists before a press can make the button pending. It reads data-pending, because
-  // a signal read in a $client callback is the value of the load.
+  // delegated `onSubmit` does not run either. The check is added on load, so it exists before a
+  // press can make the button pending. It reads data-pending, because a signal read in a $client
+  // callback is the value of the load.
   $client(() => {
     const button = ref as HTMLButtonElement | undefined;
     const form = button?.form;

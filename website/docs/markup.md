@@ -196,7 +196,8 @@ const stop = cancelWhen(form, 'submit', () => form.hasAttribute('data-pending'))
 
 - The document listener of brumate walks from the target up and runs the checks of the type before any handler. When one returns true, it calls `event.preventDefault()` and runs no brumate handler for the event.
 - It does not stop the event. Listeners that were added with `addEventListener` still run, and they can read `event.defaultPrevented`.
-- A listener that a part adds on the form cannot do this: the document listener runs first, in the capture phase, as it does in Marko 5 and 6. `cancelWhen` is the hook for a part that must cancel before the delegated handlers.
+- A listener that a part adds on the form cannot do this: the document listener runs first, in the capture phase. `cancelWhen` is the hook for a part that must cancel before the delegated handlers.
+- An element inside a shadow root is not reached, for the listener sees the host as the target.
 - The checks exist after the code of the part has loaded.
 
 ### Animating a change

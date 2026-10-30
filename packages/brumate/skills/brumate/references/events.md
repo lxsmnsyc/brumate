@@ -77,7 +77,7 @@ A handler runs after the event has finished dispatching, so the browser has acte
 
 ## Cancel from a part
 
-`cancelWhen(element, 'click' | 'submit', check)` from `brumate/events` cancels the event of the element or of an element inside it while `check(event)` returns true, before any brumate handler runs. It returns a function that removes the check. It calls `preventDefault()` and does not stop the event, so plain `addEventListener` listeners still run and can read `event.defaultPrevented`.
+`cancelWhen(element, 'click' | 'submit', check)` from `brumate/events` cancels the event of the element or of an element inside it while `check(event)` returns true, before any brumate handler runs. It returns a function that removes the check. It calls `preventDefault()` and does not stop the event, so plain `addEventListener` listeners still run and can read `event.defaultPrevented`. An element inside a shadow root is not reached.
 
 ```ts
 const stop = cancelWhen(form, 'submit', () => form.hasAttribute('data-pending'));

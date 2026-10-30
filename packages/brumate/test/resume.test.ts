@@ -1140,6 +1140,57 @@ describe('resume', () => {
     await waitFor(() => expect(text('.log')).toBe('submit, submit'));
   });
 
+  it('runs every check on the path, survives a check that throws, and sees changes during dispatch', async () => {
+    await resume('cancelEvents', {});
+    const { cancelWhen } = await import('../src/runtime/events.ts');
+    const form = document.querySelector('.form') as HTMLFormElement;
+    const button = document.querySelector('.go')!;
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // An element of SVG inside the form, and a nested element inside the button.
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const inner = document.createElement('span');
+    button.append(icon, inner);
+    const calls: string[] = [];
+    const removeInner = cancelWhen(button, 'click', () => {
+      calls.push('inner');
+      return false;
+    });
+    // A check that throws does not stop the checks around it.
+    const removeThrow = cancelWhen(button, 'click', () => {
+      calls.push('throws');
+      throw new Error('check');
+    });
+    const removeOuter = cancelWhen(form, 'click', () => {
+      calls.push('outer');
+      removeLate();
+      return true;
+    });
+    const removeLate = cancelWhen(form, 'click', () => {
+      calls.push('late');
+      return false;
+    });
+    const clicked = new Event('click', { bubbles: true, cancelable: true });
+    icon.dispatchEvent(clicked);
+    expect(clicked.defaultPrevented).toBe(true);
+    expect(calls).toEqual(['inner', 'throws', 'outer']);
+    expect(error).toHaveBeenCalledTimes(1);
+    // A nested element of a submit form is cancelled by a check on the form.
+    const removeSubmit = cancelWhen(form, 'submit', () => true);
+    const submitted = new Event('submit', { bubbles: true, cancelable: true });
+    inner.dispatchEvent(submitted);
+    expect(submitted.defaultPrevented).toBe(true);
+    // A check that throws alone cancels nothing, and the handler runs.
+    removeOuter();
+    removeSubmit();
+    const free = new Event('click', { bubbles: true, cancelable: true });
+    inner.dispatchEvent(free);
+    expect(free.defaultPrevented).toBe(false);
+    await waitFor(() => expect(text('.log')).toBe('click'));
+    removeInner();
+    removeThrow();
+    error.mockRestore();
+  });
+
   it('prevents only the keys that :prevent names, before the handler loads', async () => {
     const server = await import(file('preventKeys.brm.ts'));
     const { html } = await renderParts(server.default, {});
