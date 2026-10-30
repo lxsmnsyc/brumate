@@ -195,15 +195,19 @@
 
   function setValue(next: number) {
     const before = value;
-    if (!Object.is(next, before)) {
-      value = next;
-      edited = true;
-      // The setter of a bound value may round the number, or keep the old one.
-      if (!Object.is(value, before)) {
-        onChange?.(value);
+    try {
+      if (!Object.is(next, before)) {
+        value = next;
+        edited = true;
+        // The setter of a bound value may round the number, or keep the old one.
+        if (!Object.is(value, before)) {
+          onChange?.(value);
+        }
       }
+    } finally {
+      // A setter that refuses or throws leaves the old number, and the input shows that one.
+      text = format(value);
     }
-    text = format(value);
   }
 
   // A value that the caller sets shows in the input.

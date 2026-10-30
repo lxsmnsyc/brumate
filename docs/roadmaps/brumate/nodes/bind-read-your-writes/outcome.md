@@ -9,6 +9,8 @@
 - `change-handlers.test.ts`: rounding gives the rounded value, refusing gives no call, and an accepting setter reports like an own state. `combobox-fixes.test.ts` (c) expects no handler call on a refused pick.
 - Docs: `docs/decisions.md` (the handler rule), `website/ui/state.md`, `website/ui/token-field.md`. Changeset `.changeset/bind-read-your-writes.md` (patch).
 
+- Review fixes: `waiting--` in `call` runs in a `finally`, so a failed load does not turn off `callNow` (`packages/brumate/test/call-now.test.ts`). A part that restores the DOM or its display after a write does it in a `finally`, so a throwing setter leaves the screen with the state: Switch, Checkbox, Radio, SliderThumb, ColorThumb, NumberField, ColorField, ColorPicker, ColorSlider, ColorArea, ColorWheel, DateField, TimeField, DateRangePicker, ComboBox, TokenField. The selection parts, CheckboxGroup and ToggleButtonGroup compare with `sameKeys`, and Slider compares its numbers, so a copy with the same items gives no call. Test: `packages/ui/test/bind-kept-writes.test.ts`.
+
 ## Deviations
 
 - The brief says `afterWrite` in `fields.ts` keeps its synchronous branch. `afterWrite` no longer exists on main (it was dropped in ui-refused-write-sync), so `fields.ts` is unchanged.
@@ -32,7 +34,7 @@
 ## Verification
 
 - `pnpm lint` (no new warnings; the ones in updates.ts and resume.test.ts are on main), `pnpm format:check`, `pnpm typecheck`: pass.
-- `pnpm --filter brumate test`: 61 files, 1247 tests pass. `packages/ui` all 71 files pass (1 expected fail in as-controls, unrelated).
+- `pnpm --filter brumate test`: 61 files, 1247 tests pass (before the review fixes; the touched files pass after). `packages/ui` all 72 files pass (1 expected fail in as-controls, unrelated).
 - Todos scenario, client JS in dist: 79.8 kB / 28.5 kB gzip, main 79.6 kB / 28.4 kB gzip (+0.1 kB gzip).
 
 ## Size

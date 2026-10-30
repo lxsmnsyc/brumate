@@ -92,10 +92,11 @@ export function call(ref: string, scope: Scope | undefined, args: unknown[]): Pr
   waiting++;
   const started = lastCall
     .then(() => loaded)
-    .then((fn) => {
+    // A call whose code fails to load stops waiting too, so the next setter can run at once.
+    .finally(() => {
       waiting--;
-      return { value: inPass(() => fn(scope, ...args)) };
-    });
+    })
+    .then((fn) => ({ value: inPass(() => fn(scope, ...args)) }));
   lastCall = started.catch(() => {});
   return started.then((result) => result.value);
 }

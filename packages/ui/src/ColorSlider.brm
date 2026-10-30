@@ -122,10 +122,13 @@
       const before = value;
       const prev = working;
       working = next;
-      value = text;
-      // A setter that refuses leaves the old value, and the part shows that one.
-      if (value !== text) {
-        working = Object.is(value, before) ? prev : fresh(value);
+      try {
+        value = text;
+      } finally {
+        // A setter that refuses or throws leaves the old value, and the part shows that one.
+        if (value !== text) {
+          working = Object.is(value, before) ? prev : fresh(value);
+        }
       }
       return value;
     }

@@ -123,9 +123,12 @@
       return;
     }
     const before = isSelected;
-    isSelected = input.checked;
-    // A setter that refuses leaves the old state, so the input goes back to it.
-    input.checked = isSelected;
+    try {
+      isSelected = input.checked;
+    } finally {
+      // A setter that refuses or throws leaves the old state, so the input goes back to it.
+      input.checked = isSelected;
+    }
     if (isSelected !== before) {
       onChange?.(isSelected);
     }

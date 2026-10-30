@@ -1,4 +1,5 @@
 <script module>
+  import { sameKeys } from './collection.ts';
   import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
 
@@ -84,7 +85,7 @@
     const before = value;
     value = next;
     // The setter of a bound value may keep other items, or none.
-    if (value !== before) {
+    if (!sameKeys(value, before)) {
       onChange?.(value);
     }
   }

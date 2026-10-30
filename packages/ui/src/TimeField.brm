@@ -144,10 +144,13 @@
     const time = timeOf(next, granularity, twelve);
     const before = value;
     if (time !== before) {
-      value = time;
-      // A setter that refuses leaves the old time, and the segments show that one.
-      if (value !== time) {
-        parts = timePartsOf(value);
+      try {
+        value = time;
+      } finally {
+        // A setter that refuses or throws leaves the old time, and the segments show that one.
+        if (value !== time) {
+          parts = timePartsOf(value);
+        }
       }
       edited = true;
       changed();

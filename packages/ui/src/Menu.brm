@@ -123,7 +123,7 @@
         const before = selectedKeys;
         selectedKeys = next;
         // The setter of a bound value may keep other keys, or none.
-        if (selectedKeys !== before) {
+        if (!sameKeys(selectedKeys, before)) {
           onSelectionChange?.(selectedKeys);
         }
       }

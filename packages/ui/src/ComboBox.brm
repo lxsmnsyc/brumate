@@ -226,26 +226,29 @@
   function select(key: Key) {
     const before = inputValue;
     const beforeText = selectedText;
-    if (key !== selectedKey) {
-      const previous = selectedKey;
-      selectedKey = key;
-      edited = form?.validationErrors ?? null;
-      // The setter of a bound key may keep another key, or none.
-      if (selectedKey !== previous) {
-        onSelectionChange?.(selectedKey);
+    try {
+      if (key !== selectedKey) {
+        const previous = selectedKey;
+        selectedKey = key;
+        edited = form?.validationErrors ?? null;
+        // The setter of a bound key may keep another key, or none.
+        if (selectedKey !== previous) {
+          onSelectionChange?.(selectedKey);
+        }
       }
+    } finally {
+      // A setter that refuses or throws leaves the old key, and the input shows the text of that one.
+      const kept = selectedKey;
+      const item = kept === null ? undefined : findItem(kept);
+      selectedText = item ? textOfItem(item) : kept === key ? undefined : beforeText;
+      inputValue = kept === null && kept !== key ? before : (selectedText ?? inputValue);
+      if (inputValue !== before) {
+        onInputChange?.(inputValue);
+      }
+      recheck();
+      setOpen(false);
+      input()?.focus();
     }
-    // A setter that refuses leaves the old key, and the input shows the text of that one.
-    const kept = selectedKey;
-    const item = kept === null ? undefined : findItem(kept);
-    selectedText = item ? textOfItem(item) : kept === key ? undefined : beforeText;
-    inputValue = kept === null && kept !== key ? before : (selectedText ?? inputValue);
-    if (inputValue !== before) {
-      onInputChange?.(inputValue);
-    }
-    recheck();
-    setOpen(false);
-    input()?.focus();
   }
 
   // The browser shows no message of its own. The field shows it in its FieldError.

@@ -157,13 +157,16 @@
     // A click clears the indeterminate state of the input. It stays while the prop says so.
     input.indeterminate = mixed;
     const before = selected;
-    if (group) {
-      group.toggle(value ?? '', input.checked);
-    } else {
-      isSelected = input.checked;
+    try {
+      if (group) {
+        group.toggle(value ?? '', input.checked);
+      } else {
+        isSelected = input.checked;
+      }
+    } finally {
+      // A setter that refuses or throws leaves the old state, so the input goes back to it.
+      input.checked = selected;
     }
-    // A setter that refuses leaves the old state, so the input goes back to it.
-    input.checked = selected;
     if (selected !== before) {
       onChange?.(selected);
     }

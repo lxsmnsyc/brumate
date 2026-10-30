@@ -112,6 +112,13 @@
     return Array.isArray(value) ? list : list[0]!;
   }
 
+  /** True for two values with the same numbers. */
+  function sameNumbers(a: number | number[], b: number | number[]): boolean {
+    return Array.isArray(a) && Array.isArray(b)
+      ? a.length === b.length && a.every((item, at) => item === b[at])
+      : a === b;
+  }
+
   function setThumb(index: number, next: number) {
     if (isDisabled) {
       return;
@@ -127,7 +134,7 @@
     const before = value;
     value = written;
     // The setter of a bound value may keep other numbers, or none.
-    if (value !== before) {
+    if (!sameNumbers(value, before)) {
       onChange?.(value);
     }
   }

@@ -140,10 +140,13 @@
     const next = date;
     if (next !== $untrack(value)) {
       const before = $untrack(value);
-      $untrack((value = next));
-      // A setter that refuses leaves the old date, and the segments show that one.
-      if ($untrack(value) !== next) {
-        reset($untrack(value));
+      try {
+        $untrack((value = next));
+      } finally {
+        // A setter that refuses or throws leaves the old date, and the segments show that one.
+        if ($untrack(value) !== next) {
+          reset($untrack(value));
+        }
       }
       edited = true;
       changed();

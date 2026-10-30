@@ -59,9 +59,12 @@
     if (disabled) {
       return;
     }
-    slider?.setThumb(index, Number(event.currentTarget.value));
-    // A setter that refuses leaves the old value, so the input goes back to it.
-    event.currentTarget.value = String(value);
+    try {
+      slider?.setThumb(index, Number(event.currentTarget.value));
+    } finally {
+      // A setter that refuses or throws leaves the old value, so the input goes back to it.
+      event.currentTarget.value = String(value);
+    }
   }
 
   function changed() {

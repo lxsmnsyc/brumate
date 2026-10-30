@@ -177,11 +177,14 @@
     const next = rangeOf(from, to);
     if (!same(next, $untrack(value))) {
       const before = $untrack(value);
-      $untrack((value = next));
-      // A setter that refuses leaves the old range, and the fields show that one.
-      if (!same($untrack(value), next)) {
-        $untrack((startValue = $untrack(value)?.start ?? null));
-        $untrack((endValue = $untrack(value)?.end ?? null));
+      try {
+        $untrack((value = next));
+      } finally {
+        // A setter that refuses or throws leaves the old range, and the fields show that one.
+        if (!same($untrack(value), next)) {
+          $untrack((startValue = $untrack(value)?.start ?? null));
+          $untrack((endValue = $untrack(value)?.end ?? null));
+        }
       }
       edited = true;
       changed();

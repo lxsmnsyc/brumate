@@ -1,0 +1,44 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '../../src/Checkbox.brm';
+  import CheckboxGroup from '../../src/CheckboxGroup.brm';
+  import Label from '../../src/Label.brm';
+  import ListBox from '../../src/ListBox.brm';
+  import ListBoxItem from '../../src/ListBoxItem.brm';
+  import Slider from '../../src/Slider.brm';
+  import SliderThumb from '../../src/SliderThumb.brm';
+  import SliderTrack from '../../src/SliderTrack.brm';
+  import Switch from '../../src/Switch.brm';
+
+  let power = $signal(false);
+  let toppings = $signal(['ham']);
+  let keys = $signal<string[]>(['a']);
+  let range = $signal([20, 80]);
+  let heard = $signal<string[]>([]);
+
+  function hear(name: string) {
+    heard = [...heard, name];
+  }
+</script>
+
+<main>
+  <!-- This setter throws. -->
+  <Switch class="power" isSelected=$bind(power, () => { throw new Error('no power'); }) onChange=(() => hear('power'))>Power</Switch>
+  <!-- These setters keep a copy of the old value, with the same items. -->
+  <CheckboxGroup class="toppings" value=$bind(toppings, () => (toppings = [...toppings])) onChange=(() => hear('toppings'))>
+    <Label>Toppings</Label>
+    <Checkbox class="egg" value="egg">Egg</Checkbox>
+  </CheckboxGroup>
+  <ListBox class="list" selectionMode="multiple" selectedKeys=$bind(keys, () => (keys = [...keys])) onSelectionChange=(() => hear('list'))>
+    <ListBoxItem id="a">A</ListBoxItem>
+    <ListBoxItem id="b" class="item-b">B</ListBoxItem>
+  </ListBox>
+  <Slider class="range" value=$bind(range, () => (range = [...range])) onChange=(() => hear('range'))>
+    <Label>Range</Label>
+    <SliderTrack style="width: 100px; height: 10px">
+      <SliderThumb class="low" index=0 />
+      <SliderThumb class="high" index=1 />
+    </SliderTrack>
+  </Slider>
+  <p class="heard">{JSON.stringify(heard)}</p>
+</main>
