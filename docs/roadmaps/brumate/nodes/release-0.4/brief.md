@@ -23,6 +23,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: utility-demo-workarounds
+    kind: hard
+    why: in the 0.4.0 cut (follow-up of #362, #363, #365)
   - on: parser-closed-nesting
     kind: hard
     why: in the 0.4.0 cut (found by transition-sibling-text, #364; the maintainer, 2026-10-30)
