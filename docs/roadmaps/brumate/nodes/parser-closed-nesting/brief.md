@@ -1,7 +1,7 @@
 ---
 id: parser-closed-nesting
 title: Markup that the HTML parser closes early is an error, not a broken render
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

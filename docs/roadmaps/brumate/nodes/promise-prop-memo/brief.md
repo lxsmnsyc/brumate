@@ -24,7 +24,7 @@ shared:
   - packages/brumate/skills/brumate/references/errors.md
   - website/docs/errors.md
   - website/docs/async-data.md
-reserves: []
+reserves: [BRM186]
 provides: []
 depends_on:
   - on: streamed-memo-reads
@@ -45,7 +45,7 @@ A prop typed `Promise<T>` is loaded as an async value at runtime: props.ts:57-60
 
 ## Acceptance
 
-- [ ] A read of a prop typed as a promise anywhere except as the argument of `$memo(...)` (or passing it on as a prop) is a compile error with the next free BRMnnn code, whose message names the prop and the fix.
+- [ ] A read of a prop typed as a promise anywhere except as the argument of `$memo(...)` (or passing it on as a prop) is a compile error with BRM186 (BRM185 goes to parser-closed-nesting), whose message names the prop and the fix.
 - [ ] The docs samples, @brumate/ui, the examples and the website compile.
 - [ ] Tests for the error and for `$memo(prop)` in markup, a handler and an effect.
 - [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`

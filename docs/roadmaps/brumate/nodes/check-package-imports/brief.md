@@ -1,7 +1,7 @@
 ---
 id: check-package-imports
 title: brumate check resolves imports from packages as the vite plugin does
-status: todo
+status: active
 priority: should
 type: fix
 outline: false
