@@ -35,7 +35,7 @@
 ## Added nodes
 
 - In the 0.4.0 cut: promise-prop-memo (after #352).
-- 0.4.0, not yet in the cut (ask): transition-sibling-text, indicator-timing-function, i18n-locale-change, all found by #362. indicator-timing-function breaks the live site's `.ui-indicator` rule.
+- In the 0.4.0 cut since 2026-10-30 (the maintainer): transition-sibling-text, indicator-timing-function, i18n-locale-change, all found by #362. indicator-timing-function breaks the live site's `.ui-indicator` rule.
 - 0.5.0: function-prop-reads, browser-await-spike.
 - Dropped: client-arrived-cleanups (the repro was a race in the check; see its brief).
 
@@ -65,4 +65,4 @@
 
 1. Mark streamed-memo-reads and overlay-focus-fixes done once #352 and #361 merge; clean their worktrees and branches.
 2. Review #362 with a fresh reviewer.
-3. Ask the maintainer about the three new 0.4.0 nodes, then `plan.py ready` and start the runtime nodes that waited for #352.
+3. `plan.py ready`, start the three ui fixes found by #362 (indicator-timing-function first: it breaks the live site) and start the runtime nodes that waited for #352.

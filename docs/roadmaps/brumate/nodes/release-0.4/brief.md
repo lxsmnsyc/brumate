@@ -23,6 +23,15 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: transition-sibling-text
+    kind: hard
+    why: in the 0.4.0 cut (found by ui-docs-pages-utilities, #362; the maintainer, 2026-10-30)
+  - on: indicator-timing-function
+    kind: hard
+    why: in the 0.4.0 cut (found by ui-docs-pages-utilities, #362; the maintainer, 2026-10-30)
+  - on: i18n-locale-change
+    kind: hard
+    why: in the 0.4.0 cut (found by ui-docs-pages-utilities, #362; the maintainer, 2026-10-30)
   - on: promise-prop-memo
     kind: hard
     why: in the 0.4.0 cut (debate pending-handler-reads, 2026-10-30)
