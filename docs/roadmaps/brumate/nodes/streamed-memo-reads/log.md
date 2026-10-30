@@ -1,0 +1,4 @@
+- Rule: `get()` outside a memo returns undefined for a slot that holds a promise; inside an effect it throws NotReady and `effect()` skips the run. The settle of the slot reruns the effect.
+- Tests: streamedMemoReads.brm (server stream, effect and handler), streamedMemoBrowser.brm + StreamedMemoChild.brm (browser-created memo). All three failed on base without the fix.
+- A browser-created scope's effect did not run when its first load landed (same on base); left as is.
+- Changed the old assertion that `get()` returns a Promise (resume.test.ts, two places) to undefined plus `pending` true.

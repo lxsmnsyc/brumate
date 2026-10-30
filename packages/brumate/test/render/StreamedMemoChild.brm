@@ -1,0 +1,30 @@
+<script>
+  import { $effect, $memo, $signal } from 'brumate/signals';
+
+  async function slow(value: string, delay: number) {
+    'use server';
+    await new Promise((done) => setTimeout(done, delay));
+    return value;
+  }
+
+  // Created in the browser, so its first load starts there.
+  let name = $signal('Ada');
+  const data = $memo(slow(name, 100));
+
+  // What the effect and the handler read, for the test.
+  function note(name: string, value: unknown): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, value]);
+  }
+
+  $effect(() => {
+    note('effect', data);
+    return undefined;
+  });
+
+  function read() {
+    note('handler', data);
+  }
+</script>
+
+<button class="read" onClick=read>Read</button>
+<button class="rename" onClick=(() => (name = 'Grace'))>Rename</button>

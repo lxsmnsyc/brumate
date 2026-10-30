@@ -33,6 +33,7 @@ The effect does work that markup cannot do: it calls `showModal()` and `close()`
 
 - An effect never runs when the page loads. Its first run is after the first change of a value it reads. The server already rendered the page with the current values, so there is nothing to catch up on.
 - It never runs on the server.
+- It does not read a promise. When it reads a memo whose value is still loading, such as one the server still streams, the run is skipped. It runs once the value arrives. See [`$isPending`](./async-data.md#ispending).
 - It can write signals. After a change, effects run after the page has updated, once each.
 - In a hidden [`#offscreen`](./control-flow.md#offscreen) body, it does not run. Its cleanup runs when the body hides, and it runs again when the body shows.
 

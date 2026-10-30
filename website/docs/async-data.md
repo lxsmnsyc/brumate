@@ -112,6 +112,13 @@ const busy = $isPending(count);
 - On the server it is always false, because the server waits for the value before it renders.
 - Pass the memo itself, not an expression.
 
+### Reads while a memo is pending
+
+Outside a memo, a read never returns the promise of a value that is still loading. This holds for a memo that only an effect reads, which the page does not wait for, and for a memo that a component creates in the browser.
+
+- An [effect](./effects.md#effect) that reads the memo skips that run, and runs again when the value arrives.
+- A handler or a `$client` callback gets `undefined` until the first value arrives. Once there is a value, it gets the last one.
+
 ## On the client
 
 When a value that the memo reads changes in the browser, the memo runs again:

@@ -324,18 +324,102 @@ describe('resume', () => {
       load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
       listen: () => {},
     });
-    const value = client.get(client.scopeOf(0)!, 0);
-    expect(value).toBeInstanceOf(Promise);
+    // A read outside a memo gets no promise: the value has not arrived.
+    expect(client.get(client.scopeOf(0)!, 0)).toBeUndefined();
+    expect(client.pending(client.scopeOf(0)!, 0)).toBe(true);
 
     settle(42);
     await done;
     expect(records).toHaveLength(2);
     appendChunk(records[1]!);
-    await expect(value).resolves.toBe(42);
     // The slot holds the value once it arrives.
     await waitFor(() => expect(client.get(client.scopeOf(0)!, 0)).toBe(42));
     client.dispose();
   });
+
+  describe('reads of a memo that is still streaming', () => {
+    type Reads = unknown[][];
+    const reads = (name?: string): Reads =>
+      ((globalThis as { reads?: Reads }).reads ?? []).filter((read) => !name || read[0] === name);
+
+    async function streaming(): Promise<{ server: any; finish: () => Promise<void> }> {
+      (globalThis as { reads?: Reads }).reads = [];
+      onTestFinished(() => {
+        delete (globalThis as { reads?: Reads }).reads;
+      });
+      const server = await import(file('streamedMemoReads.brm.ts'));
+      server.reset();
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      await startLoader();
+      return {
+        server,
+        async finish() {
+          server.release('Ada');
+          for await (const chunk of pending) {
+            appendChunk(chunk);
+          }
+        },
+      };
+    }
+
+    it('skips an effect that reads it, and runs the effect with the value once it lands', async () => {
+      const { finish } = await streaming();
+      click(document.querySelector('.bump')!);
+      await waitFor(() => expect(text('.bump')).toBe('1'));
+      // The effect ran, read the promise and skipped.
+      expect(reads()).toEqual([]);
+      await finish();
+      await waitFor(() => expect(reads()).toEqual([['effect', 1, 'Ada']]));
+    });
+
+    it('gives a handler undefined, and the value once it lands', async () => {
+      const { finish } = await streaming();
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(reads('handler')).toEqual([['handler', undefined]]));
+      await finish();
+      click(document.querySelector('.read')!);
+      await waitFor(() =>
+        expect(reads('handler')).toEqual([
+          ['handler', undefined],
+          ['handler', 'Ada'],
+        ]),
+      );
+    });
+  });
+
+  it('reads a memo created in the browser as pending until its first load lands', async () => {
+    (globalThis as { reads?: unknown[][] }).reads = [];
+    onTestFinished(() => {
+      delete (globalThis as { reads?: unknown[][] }).reads;
+    });
+    vi.resetModules();
+    const server = await import(file('streamedMemoBrowser.brm.ts'));
+    const child = await import(file('StreamedMemoChild.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      return runtime.handleRequest(child.rpc, new Request(`http://localhost${url}`, init));
+    });
+    const { html, state } = await runtime.render(server.default, {});
+    show(html + state);
+    await startLoader();
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.read')).not.toBeNull());
+    click(document.querySelector('.read')!);
+    const reads = (): unknown[][] => (globalThis as { reads?: unknown[][] }).reads!;
+    await waitFor(() => expect(reads()).toContainEqual(['handler', undefined]));
+    // The first load lands, without a change that computes the memo.
+    await new Promise((done) => setTimeout(done, 300));
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(reads()).toContainEqual(['handler', 'Ada']));
+    // A change loads again. The effect skips the read of the promise and runs with the value.
+    click(document.querySelector('.rename')!);
+    await waitFor(() => expect(reads()).toContainEqual(['effect', 'Grace']));
+    // No read got the promise.
+    for (const [, value] of reads()) {
+      expect(value).not.toBeInstanceOf(Promise);
+    }
+  }, 15000);
 
   it('moves the IDs of a page whose records start elsewhere, and settles its promises', async () => {
     const { streamState } = await import('../src/runtime/server.ts');
@@ -360,7 +444,7 @@ describe('resume', () => {
       listen: () => {},
     });
     expect(client.scopeOf(0)).toBeUndefined();
-    expect(client.get(client.scopeOf(5)!, 0)).toBeInstanceOf(Promise);
+    expect(client.get(client.scopeOf(5)!, 0)).toBeUndefined();
 
     settle(42);
     await done;
@@ -4878,7 +4962,7 @@ describe('scopes in groups', () => {
     expect(client.scopeOf(2)!.i).toBe(7);
     expect(client.scopeOf(3)!.x).toEqual({ theme: 0 });
     expect(client.scopeOf(3)!.p).toBe(client.scopeOf(0));
-    expect(client.get(client.scopeOf(1)!, 0)).toBeInstanceOf(Promise);
+    expect(client.get(client.scopeOf(1)!, 0)).toBeUndefined();
     settle(42);
     await done;
     appendChunk(records[1]!);

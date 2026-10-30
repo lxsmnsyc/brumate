@@ -43,9 +43,13 @@ export function get(scope: Scope, slot: number): any {
     settle(scope);
   }
   const value = scope.s[slot];
-  // A value that the server still streams. A memo that reads it waits for it.
-  if (computing > 0 && value instanceof Promise) {
-    throw new NotReady(value);
+  // A value that the server still streams. A memo or an effect that reads it waits for it.
+  if (value instanceof Promise) {
+    if (computing > 0 || runningEffects > 0) {
+      throw new NotReady(value);
+    }
+    // A handler reads no promise: the value has not arrived, and no earlier one exists.
+    return undefined;
   }
   // A memo that threw holds its error, and each read of it throws.
   if (value instanceof MemoError) {
@@ -327,6 +331,9 @@ class NotReady extends Error {
 
 // More than 0 while a memo computes, so reading a value that is still loading stops it.
 let computing = 0;
+
+// More than 0 while an effect runs, so reading a value that is still loading skips the run.
+let runningEffects = 0;
 
 /** The key of the memo that computes, if any. */
 let memoKey: string | undefined;
@@ -802,11 +809,19 @@ export function effect(scope: Scope, name: string, callback: () => unknown): voi
   scope.cleanups.get(name)?.();
   let cleanup: unknown;
   const start = DEV ? performance.now() : 0;
+  runningEffects++;
   try {
     cleanup = callback();
   } catch (error) {
+    // The value it reads is still loading. The run is skipped, and the next change runs it.
+    if (error instanceof NotReady) {
+      scope.cleanups.set(name, noop);
+      return;
+    }
     // The error goes to the nearest `#try` around the effect. The effect runs again on the next change.
     fail(scope, error);
+  } finally {
+    runningEffects--;
   }
   // An entry without a cleanup too, so a hidden `#offscreen` body knows what to run again.
   let stored = typeof cleanup === 'function' ? (cleanup as () => void) : noop;
