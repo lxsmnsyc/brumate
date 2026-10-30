@@ -95,6 +95,9 @@ pnpm test
 pnpm typecheck
 pnpm lint
 pnpm format
+pnpm e2e                          # browser tests of the website and examples
+pnpm bench                        # benchmarks, against other frameworks
+pnpm --filter website check:samples   # the live samples of the docs compile
 ```
 
 Build first: the examples and the website use the built `brumate` package.

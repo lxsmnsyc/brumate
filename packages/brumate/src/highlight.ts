@@ -1,5 +1,5 @@
 /**
- * A twinkleplop language for `.brm` files, for the devtools and the website: HTML-like markup with `{…}`
+ * A language of the twinkleplop highlighter (`@twinkleplop/core`) for `.brm` files, for the devtools and the website: HTML-like markup with `{…}`
  * expressions, attribute values without quotes, control flow blocks such as
  * `#if (a) { … }`, dynamic tags `<{tag}>`, and `<script>` and `<style>`
  * blocks. Scripts and expressions are highlighted as TSX, styles as CSS.
