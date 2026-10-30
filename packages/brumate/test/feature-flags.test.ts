@@ -91,7 +91,7 @@ it('finds markup that comes later, blocks, listeners and forms of an $action', (
   let el = $signal<HTMLElement>();
   $client(() => { el; }, 'visible');
 </script>
-#loading (value) {
+#loading {
   <p>{value}</p>
 } #else {
   <p>Loading</p>

@@ -257,6 +257,20 @@ https://brumate-docs.vercel.app/docs/errors#brm180
 <input onKeyDown=(handle) onFocusOut=(handle) />
 ```
 
+## BRM181: #loading does not take a header yet. Write #loading { … }, since the header would be dropped
+
+A `#loading` block has a header in parentheses. The compiler reads no meaning from it.
+
+https://brumate-docs.vercel.app/docs/errors#brm181
+
+```brm fragment
+#loading (data) {
+  <p>{data.name}</p>
+} #else {
+  <p>Loading</p>
+}
+```
+
 ## BRM023: Modifiers apply to elements. Put ":{modifier}" on the element that the component renders
 
 An event modifier is on a component, which only passes the handler on.

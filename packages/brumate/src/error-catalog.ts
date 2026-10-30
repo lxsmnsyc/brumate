@@ -163,6 +163,12 @@ const SYNTAX: ErrorEntry[] = [
     '<input onKeyDown=(handle) onFocusOut=(handle) />',
   ),
   entry(
+    'BRM181',
+    '#loading does not take a header yet. Write #loading { … }, since the header would be dropped',
+    'A `#loading` block has a header in parentheses. The compiler reads no meaning from it.',
+    '#loading (data) {\n  <p>{data.name}</p>\n} #else {\n  <p>Loading</p>\n}',
+  ),
+  entry(
     'BRM023',
     'Modifiers apply to elements. Put ":{modifier}" on the element that the component renders',
     'An event modifier is on a component, which only passes the handler on.',
