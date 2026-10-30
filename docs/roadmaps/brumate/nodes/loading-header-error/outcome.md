@@ -18,7 +18,7 @@
 
 ## Gotchas
 
-- BRM181 sits after BRM180 in the catalog text order is not required; it was placed in the SYNTAX list after BRM022.
+- BRM181 is the next free number after BRM180, but it sits in the SYNTAX list of the catalog, after BRM022. The catalog does not need numeric order.
 - Typecheck needs `pnpm -r --filter "./packages/*" build` first in a fresh worktree.
 
 ## Proposed learnings
