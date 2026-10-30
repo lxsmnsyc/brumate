@@ -1,7 +1,7 @@
 ---
 id: field-error-clears
 title: A field's native error clears once its value is valid again
-status: active
+status: done
 priority: should
 type: fix
 outline: false
