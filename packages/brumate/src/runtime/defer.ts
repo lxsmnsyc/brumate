@@ -9,14 +9,14 @@
 import { build, skew } from './client.ts';
 import { trustedHTML, trustedScript } from './trusted.ts';
 /** The nonce of a script. Browsers hide the attribute once the page loads, and keep the property. */
-function nonceOf(script: HTMLScriptElement): string | null {
+function readNonce(script: HTMLScriptElement): string | null {
   return script.nonce || script.getAttribute('nonce');
 }
 
 /** The Content Security Policy nonce of the page, which the scripts of the answer need to run. */
 function pageNonce(): string | undefined {
   for (const script of document.querySelectorAll('script')) {
-    const nonce = nonceOf(script);
+    const nonce = readNonce(script);
     if (nonce) {
       return nonce;
     }

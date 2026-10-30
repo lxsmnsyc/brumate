@@ -129,7 +129,7 @@ class ChunkReader {
   }
 }
 
-const ignore = (): void => {};
+function ignore(): void {}
 
 /**
  * The refs of a stream. A promise in the answer can fail with nothing that
@@ -176,8 +176,9 @@ function failPending(refs: Refs, error: unknown): void {
 export async function fromChunkStream(stream: ReadableStream<Uint8Array>): Promise<unknown> {
   const reader = new ChunkReader(stream);
   const refs = new Refs();
-  const read = (data: string): unknown =>
-    fromCrossJSON(JSON.parse(data) as SerovalNode, { refs, plugins, ...serialOptions() });
+  function read(data: string): unknown {
+    return fromCrossJSON(JSON.parse(data) as SerovalNode, { refs, plugins, ...serialOptions() });
+  }
   const first = await reader.next();
   if (first === undefined) {
     throw new Error('The answer of a server function is empty');

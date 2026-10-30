@@ -76,7 +76,7 @@ export function defineEnv<const S extends EnvSchema>(schema: S, options: EnvOpti
         problems.push(
           input === undefined
             ? `${name} is missing`
-            : `${name} is invalid${isServer ? issuePaths(result.issues) : `: ${result.issues.map((issue) => issue.message).join('; ')}`}`,
+            : `${name} is invalid${isServer ? issuePaths(result.issues) : `: ${issueMessages(result.issues)}`}`,
         );
         continue;
       }
@@ -93,19 +93,32 @@ export function defineEnv<const S extends EnvSchema>(schema: S, options: EnvOpti
   return Object.freeze(values) as Env<S>;
 }
 
+/** The messages of the issues of a variable, joined. */
+function issueMessages(issues: readonly StandardSchemaV1.Issue[]): string {
+  const messages: string[] = [];
+  for (const issue of issues) {
+    messages.push(issue.message);
+  }
+  return messages.join('; ');
+}
+
 /**
  * Where the issues of a server variable are, such as ` at port`. The
  * messages of some schema libraries hold the value, which is a secret, so
  * the error leaves them out.
  */
 function issuePaths(issues: readonly StandardSchemaV1.Issue[]): string {
-  const paths = issues
-    .map((issue) =>
-      (issue.path ?? [])
-        .map((segment) => String(typeof segment === 'object' ? segment.key : segment))
-        .join('.'),
-    )
-    .filter((path) => path !== '');
+  const paths: string[] = [];
+  for (const issue of issues) {
+    const keys: string[] = [];
+    for (const segment of issue.path ?? []) {
+      keys.push(String(typeof segment === 'object' ? segment.key : segment));
+    }
+    const path = keys.join('.');
+    if (path !== '') {
+      paths.push(path);
+    }
+  }
   return paths.length > 0 ? ` at ${paths.join(', ')}` : '';
 }
 

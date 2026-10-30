@@ -47,6 +47,20 @@ import type { ComponentValue } from './shared.ts';
 
 type ReferenceNode = { a: SerovalNode; b: SerovalNode; c?: SerovalNode; d?: SerovalNode };
 
+/** Serializes the parts of a node that are set, joined as call arguments. */
+function serializeParts(
+  parts: (SerovalNode | undefined)[],
+  ctx: { serialize(node: SerovalNode): string },
+): string {
+  const written: string[] = [];
+  for (const part of parts) {
+    if (part !== undefined) {
+      written.push(ctx.serialize(part));
+    }
+  }
+  return written.join(',');
+}
+
 /**
  * Returns the parse functions of a plugin. `read` returns the values of the
  * node by key, and each mode parses them in that order, so the nodes match.
@@ -55,13 +69,13 @@ function parsers<T, K extends string>(
   read: (value: T) => Record<K, unknown>,
 ): Plugin<T, Record<K, SerovalNode>>['parse'] {
   type N = Record<K, SerovalNode>;
-  const parse = (value: T, ctx: SyncParsePluginContext | StreamParsePluginContext): N => {
+  function parse(value: T, ctx: SyncParsePluginContext | StreamParsePluginContext): N {
     const node = read(value) as Record<string, unknown>;
     for (const key in node) {
       node[key] = ctx.parse(node[key]);
     }
     return node as N;
-  };
+  }
   return {
     sync: parse,
     stream: parse,
@@ -113,11 +127,7 @@ const BindingPlugin = createPlugin<Binding, ReferenceNode>({
     }
     return node as Record<'a' | 'b' | 'c' | 'd', unknown>;
   }),
-  serialize: (node, ctx) =>
-    `$b.b(${[node.a, node.b, node.c, node.d]
-      .filter((part) => part !== undefined)
-      .map((part) => ctx.serialize(part!))
-      .join(',')})`,
+  serialize: (node, ctx) => `$b.b(${serializeParts([node.a, node.b, node.c, node.d], ctx)})`,
   deserialize: (node, ctx) =>
     stateValues.b(
       ctx.deserialize(node.a),
@@ -145,11 +155,7 @@ const FunctionPlugin = createPlugin<object, ReferenceNode>({
     }
     return node as Record<'a' | 'b' | 'c' | 'd', unknown>;
   }),
-  serialize: (node, ctx) =>
-    `$b.f(${[node.a, node.b, node.c, node.d]
-      .filter((part) => part !== undefined)
-      .map((part) => ctx.serialize(part!))
-      .join(',')})`,
+  serialize: (node, ctx) => `$b.f(${serializeParts([node.a, node.b, node.c, node.d], ctx)})`,
   deserialize: (node, ctx) =>
     stateValues.f(
       ctx.deserialize<string>(node.a),
@@ -206,11 +212,7 @@ const ChildrenPlugin = createPlugin<object, ReferenceNode>({
     }
     return node as Record<'a' | 'b' | 'c' | 'd', unknown>;
   }),
-  serialize: (node, ctx) =>
-    `$b.n(${[node.a, node.b, node.c, node.d]
-      .filter((part) => part !== undefined)
-      .map((part) => ctx.serialize(part!))
-      .join(',')})`,
+  serialize: (node, ctx) => `$b.n(${serializeParts([node.a, node.b, node.c, node.d], ctx)})`,
   deserialize: (node, ctx) =>
     stateValues.n(
       ctx.deserialize<string>(node.a),

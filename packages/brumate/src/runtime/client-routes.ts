@@ -21,6 +21,18 @@ function readId(text: string): ScopeId {
   return /^-?\d+$/.test(text) ? Number(text) : text;
 }
 
+/** Reads a list of scope IDs from text. An empty item is left out when `skipEmpty` is set. */
+function readIds(text: string, separator: string, skipEmpty: boolean): ScopeId[] {
+  const ids: ScopeId[] = [];
+  for (const part of text.split(separator)) {
+    if (skipEmpty && !part) {
+      continue;
+    }
+    ids.push(readId(part));
+  }
+  return ids;
+}
+
 /** Adds a number to an ID, as `shiftId` in `shared.ts` does. */
 function shiftId(id: ScopeId, by: number): ScopeId {
   if (typeof id === 'number') {
@@ -32,14 +44,18 @@ function shiftId(id: ScopeId, by: number): ScopeId {
 
 /** Makes an object with the same keys and the values that `map` returns. */
 function mapValues(object: object, map: (value: unknown) => unknown): object {
-  return Object.fromEntries(Object.entries(object).map(([key, value]) => [key, map(value)]));
+  const entries: [string, unknown][] = [];
+  for (const [key, value] of Object.entries(object)) {
+    entries.push([key, map(value)]);
+  }
+  return Object.fromEntries(entries);
 }
 
 /** Adds a number to the scope IDs of a state record, in the places that the table names. */
 export function shiftState(ids: Core['scopeIds'], state: PageState, by: number): PageState {
   const { fields, references, holders } = ids;
   const seen = new Set<object>();
-  const shiftValue = (value: unknown): unknown => {
+  function shiftValue(value: unknown): unknown {
     // A reference is copied with its own fields, and its scope moved.
     for (const type of references) {
       if (value instanceof type) {
@@ -69,9 +85,9 @@ export function shiftState(ids: Core['scopeIds'], state: PageState, by: number):
     if (typeof value === 'object' && value !== null && !seen.has(value)) {
       seen.add(value);
       if (Array.isArray(value)) {
-        value.forEach((item, index) => {
+        for (const [index, item] of value.entries()) {
           value[index] = shiftValue(item);
-        });
+        }
       } else if (Object.getPrototypeOf(value) === Object.prototype) {
         for (const [key, item] of Object.entries(value)) {
           (value as Record<string, unknown>)[key] = shiftValue(item);
@@ -79,8 +95,8 @@ export function shiftState(ids: Core['scopeIds'], state: PageState, by: number):
       }
     }
     return value;
-  };
-  const shiftField = (field: unknown, kind: FieldKind): unknown => {
+  }
+  function shiftField(field: unknown, kind: FieldKind): unknown {
     if (kind === 'id') {
       return shiftId(field as ScopeId, by);
     }
@@ -88,10 +104,14 @@ export function shiftState(ids: Core['scopeIds'], state: PageState, by: number):
       return mapValues(field as object, (id) => shiftId(id as ScopeId, by));
     }
     if (kind === 'values') {
-      return (field as unknown[]).map(shiftValue);
+      const moved: unknown[] = [];
+      for (const item of field as unknown[]) {
+        moved.push(shiftValue(item));
+      }
+      return moved;
     }
     return kind === 'map' ? mapValues(field as object, shiftValue) : shiftValue(field);
-  };
+  }
   const result: PageState = {};
   for (const [key, record] of Object.entries(state)) {
     const moved: Record<string, unknown> = { ...record };
@@ -107,14 +127,14 @@ export function shiftState(ids: Core['scopeIds'], state: PageState, by: number):
 
 /** Removes scopes and the scopes inside them, and runs their cleanups. */
 function dropScopes(core: Core, roots: Set<ScopeId>): void {
-  const inside = (scope: Scope): boolean => {
+  function inside(scope: Scope): boolean {
     for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
       if (roots.has(current.id)) {
         return true;
       }
     }
     return false;
-  };
+  }
   // Deleting from a map while iterating it is safe.
   for (const scope of core.scopes.values()) {
     if (inside(scope)) {
@@ -137,19 +157,22 @@ function routeRecord(core: Core, script: Element, state: PageState): PageState {
   const value = offset ? shiftState(core.scopeIds, state, offset) : state;
   const drop = script.getAttribute('b-drop');
   if (drop) {
-    dropScopes(core, new Set(drop.split(',').map(readId)));
+    dropScopes(core, new Set(readIds(drop, ',', false)));
   }
   const list = script.getAttribute('b-roots');
   if (list === null) {
     return value;
   }
-  const roots = new Set(list.split(',').filter(Boolean).map(readId));
+  const roots = new Set(readIds(list, ',', true));
   const alias = new Map<ScopeId, ScopeId>();
-  for (const pair of (script.getAttribute('b-alias') ?? '').split(',').filter(Boolean)) {
-    const [from, to] = pair.split(':').map(readId) as [ScopeId, ScopeId];
+  for (const pair of (script.getAttribute('b-alias') ?? '').split(',')) {
+    if (!pair) {
+      continue;
+    }
+    const [from, to] = readIds(pair, ':', false) as [ScopeId, ScopeId];
     alias.set(from, to);
   }
-  const kept = (id: ScopeId): boolean => {
+  function kept(id: ScopeId): boolean {
     for (let current: ScopeId | undefined = id; current !== undefined;) {
       if (roots.has(current)) {
         return true;
@@ -158,9 +181,10 @@ function routeRecord(core: Core, script: Element, state: PageState): PageState {
       current = record?.p ?? record?.o;
     }
     return false;
-  };
-  const resolve = (id: ScopeId | undefined): ScopeId | undefined =>
-    id === undefined ? undefined : (alias.get(id) ?? id);
+  }
+  function resolve(id: ScopeId | undefined): ScopeId | undefined {
+    return id === undefined ? undefined : (alias.get(id) ?? id);
+  }
   const result: PageState = {};
   for (const [key, record] of Object.entries(value)) {
     // The new page renders the kept layouts again. Their scopes are not added.

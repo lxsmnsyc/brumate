@@ -117,7 +117,10 @@ export function finish(
   files: SourceFile[],
   place: (offset: number) => { index: number; offset: number } = (offset) => ({ index: 0, offset }),
 ): { code: string; map: SourceMap } {
-  const indexes = files.map((file) => lineIndex(file.content));
+  const indexes: ReturnType<typeof lineIndex>[] = [];
+  for (const file of files) {
+    indexes.push(lineIndex(file.content));
+  }
   let previousSource = 0;
 
   let output = '';
@@ -162,13 +165,19 @@ export function finish(
     previousSourceColumn = sourceColumn;
   }
   output += code.slice(position);
+  const sources: string[] = [];
+  const sourcesContent: string[] = [];
+  for (const file of files) {
+    sources.push(file.name);
+    sourcesContent.push(file.content);
+  }
   return {
     code: output,
     map: {
       version: 3,
       file: files[0]!.name,
-      sources: files.map((file) => file.name),
-      sourcesContent: files.map((file) => file.content),
+      sources,
+      sourcesContent,
       names: [],
       mappings: lines.join(';'),
     },

@@ -113,16 +113,16 @@ function analyze(module: ReactiveModule): Analysis {
       }
     }
     const candidates: oxc.Node[] = [];
-    const macroArgument = (
+    function macroArgument(
       node: oxc.Node | null | undefined,
       names: string[],
-    ): oxc.Node | undefined => {
+    ): oxc.Node | undefined {
       if (node?.type !== 'CallExpression' || node.callee.type !== 'Identifier') {
         return undefined;
       }
       const macro = macros.get(node.callee.name);
       return macro && names.includes(macro) ? node.arguments[0] : undefined;
-    };
+    }
     for (const statement of body.body) {
       if (statement.type === 'FunctionDeclaration') {
         candidates.push(statement);
@@ -155,7 +155,7 @@ function analyze(module: ReactiveModule): Analysis {
     }
     for (const node of candidates) {
       let shareable = true;
-      const check = (current: oxc.Node): void => {
+      function check(current: oxc.Node): void {
         if (
           current.type === 'CallExpression' &&
           current.callee.type === 'Identifier' &&
@@ -173,7 +173,7 @@ function analyze(module: ReactiveModule): Analysis {
         for (const [, child] of children(current)) {
           check(child);
         }
-      };
+      }
       check(node);
       if (!shareable) {
         continue;
@@ -185,7 +185,7 @@ function analyze(module: ReactiveModule): Analysis {
           reads.add(identifier.name);
         }
       });
-      const findWrites = (current: oxc.Node): void => {
+      function findWrites(current: oxc.Node): void {
         let target: oxc.Node | undefined;
         if (current.type === 'AssignmentExpression') {
           target = current.left;
@@ -204,7 +204,7 @@ function analyze(module: ReactiveModule): Analysis {
         for (const [, child] of children(current)) {
           findWrites(child);
         }
-      };
+      }
       findWrites(node);
       sites.set(node.start, {
         node,
@@ -225,7 +225,11 @@ function analyze(module: ReactiveModule): Analysis {
 
 /** The pieces of the functions of a module that its shared module holds, by their offset in the module. */
 export function sharedSites(module: ReactiveModule): Map<number, SharedSite> {
-  return new Map([...analyze(module).sites].map(([offset, { site }]) => [offset, site]));
+  const shared = new Map<number, SharedSite>();
+  for (const [offset, { site }] of analyze(module).sites) {
+    shared.set(offset, site);
+  }
+  return shared;
 }
 
 /** The shared module of a module of reactive logic, as TypeScript, with its source map. */
@@ -257,7 +261,7 @@ export function generateShared(module: ReactiveModule): { code: string; map: Sou
       }
     });
     // Compile-time functions become what they do at run time.
-    const rewriteMacros = (current: oxc.Node): void => {
+    function rewriteMacros(current: oxc.Node): void {
       if (current.type === 'CallExpression' && current.callee.type === 'Identifier') {
         const macro = macros.get(current.callee.name);
         const [first] = current.arguments;
@@ -278,7 +282,7 @@ export function generateShared(module: ReactiveModule): { code: string; map: Sou
       for (const [, child] of children(current)) {
         rewriteMacros(child);
       }
-    };
+    }
     rewriteMacros(node);
     // The names of the call, built once from the refs that the component passes.
     const cells = `const $$c: any = $$b.cells($$s, $$k, ${JSON.stringify(site.names)});`;
@@ -324,16 +328,22 @@ export function generateShared(module: ReactiveModule): { code: string; map: Sou
     }
   }
   // Exported declarations of the module itself. The component already needs them exported.
-  const own = [...usedDeclarations].filter((local) => info.declarations.get(local));
+  const own: string[] = [];
+  for (const local of usedDeclarations) {
+    if (info.declarations.get(local)) {
+      own.push(local);
+    }
+  }
   if (own.length > 0) {
-    bySpecifier.set(self, [
-      ...(bySpecifier.get(self) ?? []),
-      ...own.map((local) =>
+    const exported = [...(bySpecifier.get(self) ?? [])];
+    for (const local of own) {
+      exported.push(
         info.declarations.get(local) === local
           ? local
           : `${info.declarations.get(local)} as ${local}`,
-      ),
-    ]);
+      );
+    }
+    bySpecifier.set(self, exported);
   }
   for (const [specifier, names] of bySpecifier) {
     header.push(`import { ${names.join(', ')} } from ${JSON.stringify(specifier)};`);

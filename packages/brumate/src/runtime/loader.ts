@@ -28,8 +28,9 @@ function prefetch(link: HTMLAnchorElement | undefined): void {
  * later loads it with the core, when the page has records that navigation
  * marked.
  */
-const routes = (): (typeof Routes)['ready'] =>
-  import('./client-routes.ts').then((module) => module.ready);
+function routes(): (typeof Routes)['ready'] {
+  return import('./client-routes.ts').then((module) => module.ready);
+}
 
 /**
  * Loads pages without a full page load: links to the same origin, the back
@@ -54,23 +55,28 @@ function navigation({
     skewed = true;
   });
   // The core when the page reads a context of navigation, which it starts for them, or when it runs.
-  const reader = (key: string): Promise<Core> | undefined =>
-    core() ??
-    ([...document.querySelectorAll('script[b-state]')].some((script) =>
-      script.textContent?.includes(key),
-    )
-      ? startCore()
-      : undefined);
-  const state = (value: { pending: boolean; from?: string; to?: string }): void => {
+  function reader(key: string): Promise<Core> | undefined {
+    const running = core();
+    if (running) {
+      return running;
+    }
+    for (const script of document.querySelectorAll('script[b-state]')) {
+      if (script.textContent?.includes(key)) {
+        return startCore();
+      }
+    }
+    return undefined;
+  }
+  function state(value: { pending: boolean; from?: string; to?: string }): void {
     void reader(NAVIGATION_KEY)?.then((client) => client.setGlobal(NAVIGATION_KEY, value));
-  };
-  const go = (
+  }
+  function go(
     url: string,
     init?: RequestInit,
     push = true,
     reload = false,
     scroll = true,
-  ): Promise<void> => {
+  ): Promise<void> {
     const from = location.href;
     if (skewed) {
       // A form post cannot be a full page load: the page loads again, and the form is lost with
@@ -89,10 +95,10 @@ function navigation({
     // CSS can show a progress bar while a page loads, with no client code in the page.
     document.documentElement.setAttribute('data-navigating', '');
     state({ pending: true, from, to: new URL(url, from).href });
-    const done = (): void => {
+    function done(): void {
       document.documentElement.removeAttribute('data-navigating');
       state({ pending: false });
-    };
+    }
     return import('./navigate.ts')
       .then((module) =>
         module.navigate({
@@ -122,7 +128,7 @@ function navigation({
         }),
       )
       .finally(done);
-  };
+  }
   // `navigate(href, options)` from `brumate/routes`.
   listen(document, 'brumate:navigate', (event) => {
     const detail = (
@@ -132,7 +138,7 @@ function navigation({
     void go(detail.url, undefined, !detail.replace, false, detail.scroll).then(detail.done);
   });
   // A link to another page of this site, which the loader loads itself.
-  const pageLink = (target: EventTarget | null): HTMLAnchorElement | undefined => {
+  function pageLink(target: EventTarget | null): HTMLAnchorElement | undefined {
     const link = (target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
     return link &&
       !link.target &&
@@ -142,7 +148,7 @@ function navigation({
       !(link.hash && link.href.split('#')[0] === page)
       ? link
       : undefined;
-  };
+  }
   listen(document, 'click', (event) => {
     const mouse = event as MouseEvent;
     const link = pageLink(event.target);

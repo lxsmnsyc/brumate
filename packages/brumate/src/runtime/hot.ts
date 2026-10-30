@@ -52,7 +52,11 @@ export function hotLoad(
   const fresh = new Map<string, string>();
   hot.on('brumate:update', ({ updates, timestamp }) => {
     const changed: string[] = [];
+    const remounts: HotUpdate[] = [];
     for (const update of updates) {
+      if (update.remount) {
+        remounts.push(update);
+      }
       if (update.css !== undefined) {
         const style = document.querySelector(`style[b-style="${CSS.escape(update.id)}"]`);
         if (style) {
@@ -67,7 +71,6 @@ export function hotLoad(
     if (changed.length > 0) {
       document.dispatchEvent(new CustomEvent('brumate:hot', { detail: changed }));
     }
-    const remounts = updates.filter((update) => update.remount);
     if (changed.length === 0 && remounts.length === 0) {
       return;
     }
@@ -77,7 +80,11 @@ export function hotLoad(
       forget(changed);
       if (remounts.length > 0) {
         // The core keeps the values of the signals, and the loader loads the page again.
-        remount(remounts.map((update) => Object.assign({ id: update.id }, update.remount!)));
+        const moved: Parameters<typeof remount>[0] = [];
+        for (const update of remounts) {
+          moved.push(Object.assign({ id: update.id }, update.remount!));
+        }
+        remount(moved);
         document.dispatchEvent(new CustomEvent('brumate:reload'));
       }
     });

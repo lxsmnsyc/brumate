@@ -99,7 +99,7 @@ export function windowMs(window: Window): number {
 export function createMemoryStore(now: () => number = Date.now): RateLimitStore {
   const counts = new Map<string, { count: number; expires: number }>();
   let sweeps = 0;
-  const sweep = (): void => {
+  function sweep(): void {
     if (++sweeps % 1000 !== 0) {
       return;
     }
@@ -109,7 +109,7 @@ export function createMemoryStore(now: () => number = Date.now): RateLimitStore 
         counts.delete(key);
       }
     }
-  };
+  }
   return {
     increment(key, ttl) {
       sweep();
@@ -165,7 +165,7 @@ function isDevelopment(): boolean {
  * What a limit counts per: the server function, the pattern of the route,
  * such as `/api/[id]`, or one count for every path that no route matches.
  */
-function targetOf(event: RequestEvent): string {
+function getTarget(event: RequestEvent): string {
   return event.call?.id ?? event.route ?? '(no route)';
 }
 
@@ -175,12 +175,15 @@ function targetOf(event: RequestEvent): string {
  * up the limit of all. So it throws in production. In development it warns
  * once and returns undefined, and the limit does not count.
  */
-async function keyOf(event: RequestEvent, options: RateLimitOptions): Promise<string | undefined> {
+async function readKey(
+  event: RequestEvent,
+  options: RateLimitOptions,
+): Promise<string | undefined> {
   const key = (await options.key?.(event, event.call?.args ?? [])) ?? clientAddress(event);
   if (key !== undefined) {
     return key;
   }
-  const message = `rateLimit: the request to "${targetOf(event)}" has no key, because the server did not pass the address of the client. Pass \`address\` to the handler of the server, or set \`key\` on the limit.`;
+  const message = `rateLimit: the request to "${getTarget(event)}" has no key, because the server did not pass the address of the client. Pass \`address\` to the handler of the server, or set \`key\` on the limit.`;
   if (!isDevelopment()) {
     throw new Error(message);
   }
@@ -199,11 +202,11 @@ async function check(event: RequestEvent, options: RateLimitOptions): Promise<vo
   if (event.prerender || !(options.enabled ?? config.enabled ?? true)) {
     return;
   }
-  const key = await keyOf(event, options);
+  const key = await readKey(event, options);
   if (key === undefined) {
     return;
   }
-  const name = `${key} ${targetOf(event)}`;
+  const name = `${key} ${getTarget(event)}`;
   const store = options.store ?? config.store ?? (memory ??= createMemoryStore(clock));
   const window = windowMs(options.window);
   const now = clock();
@@ -309,15 +312,20 @@ function parseAddress(text: string): Uint8Array | undefined {
     return parseIPv6(value);
   }
   const parts = value.split('.');
-  if (parts.length !== 4 || !parts.every((part) => /^\d{1,3}$/.test(part) && Number(part) < 256)) {
+  if (parts.length !== 4) {
     return undefined;
+  }
+  for (const part of parts) {
+    if (!/^\d{1,3}$/.test(part) || Number(part) >= 256) {
+      return undefined;
+    }
   }
   const bytes = new Uint8Array(16);
   bytes[10] = 0xff;
   bytes[11] = 0xff;
-  parts.forEach((part, index) => {
+  for (const [index, part] of parts.entries()) {
     bytes[12 + index] = Number(part);
-  });
+  }
   return bytes;
 }
 
@@ -356,7 +364,12 @@ function parseIPv6(value: string): Uint8Array | undefined {
 }
 
 function isIPv4(bytes: Uint8Array): boolean {
-  return bytes.slice(0, 10).every((byte) => byte === 0) && bytes[10] === 0xff && bytes[11] === 0xff;
+  for (const byte of bytes.slice(0, 10)) {
+    if (byte !== 0) {
+      return false;
+    }
+  }
+  return bytes[10] === 0xff && bytes[11] === 0xff;
 }
 
 /** A range of addresses, as its first address and the number of bits that must match. */
@@ -440,15 +453,27 @@ export function clientAddress(
   if (!seen) {
     return undefined;
   }
-  const ranges = proxies.map(parseRange);
-  const trusted = (address: Uint8Array): boolean =>
-    ranges.some((range) => inParsedRange(address, range));
+  const ranges: ReturnType<typeof parseRange>[] = [];
+  for (const proxy of proxies) {
+    ranges.push(parseRange(proxy));
+  }
+  function trusted(address: Uint8Array): boolean {
+    for (const range of ranges) {
+      if (inParsedRange(address, range)) {
+        return true;
+      }
+    }
+    return false;
+  }
   if (!trusted(seen)) {
     return formatAddress(seen);
   }
-  const hops = (event.request.headers.get('x-forwarded-for') ?? '')
-    .split(',')
-    .filter((hop) => hop.trim() !== '');
+  const hops: string[] = [];
+  for (const hop of (event.request.headers.get('x-forwarded-for') ?? '').split(',')) {
+    if (hop.trim() !== '') {
+      hops.push(hop);
+    }
+  }
   let client = seen;
   for (let index = hops.length - 1; index >= 0; index--) {
     const address = parseAddress(hops[index]!);

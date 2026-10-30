@@ -193,13 +193,20 @@ function fromBase64Url(text: string): Uint8Array<ArrayBuffer> {
  */
 export function createSession<T>(options: SessionOptions): Session<T> {
   const secrets = Array.isArray(options.secret) ? options.secret : [options.secret];
-  if (secrets.length === 0 || secrets.some((secret) => secret.length < 32)) {
+  let tooShort = secrets.length === 0;
+  for (const secret of secrets) {
+    if (secret.length < 32) {
+      tooShort = true;
+      break;
+    }
+  }
+  if (tooShort) {
     throw new Error('A session secret needs at least 32 characters');
   }
   const name = options.name ?? 'session';
   const maxAge = options.maxAge ?? 7 * 24 * 60 * 60;
 
-  const read = async (event: RequestEvent): Promise<T | undefined> => {
+  async function read(event: RequestEvent): Promise<T | undefined> {
     const value = getCookies(event)[name];
     const dot = value?.lastIndexOf('.') ?? -1;
     if (!value || dot === -1) {
@@ -213,11 +220,14 @@ export function createSession<T>(options: SessionOptions): Session<T> {
       return undefined;
     }
     // Any of the secrets can have signed it, such as an older one while a secret changes.
-    const checks = await Promise.all(
-      secrets.map(async (secret) =>
-        crypto.subtle.verify('HMAC', await key(secret), signature, encoder.encode(payload)),
-      ),
-    );
+    const pending: Promise<boolean>[] = [];
+    for (const secret of secrets) {
+      pending.push(
+        (async () =>
+          crypto.subtle.verify('HMAC', await key(secret), signature, encoder.encode(payload)))(),
+      );
+    }
+    const checks = await Promise.all(pending);
     if (!checks.includes(true)) {
       return undefined;
     }
@@ -230,9 +240,9 @@ export function createSession<T>(options: SessionOptions): Session<T> {
     } catch {
       return undefined;
     }
-  };
+  }
 
-  const write = async (event: RequestEvent, data: T): Promise<void> => {
+  async function write(event: RequestEvent, data: T): Promise<void> {
     const payload = toBase64Url(
       encoder.encode(JSON.stringify({ d: data, e: Date.now() + maxAge * 1000 })),
     );
@@ -247,7 +257,7 @@ export function createSession<T>(options: SessionOptions): Session<T> {
       );
     }
     setCookie(event, name, value, { ...options.cookie, maxAge });
-  };
+  }
 
   return {
     get: read,

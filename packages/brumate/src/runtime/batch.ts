@@ -46,15 +46,19 @@ export function batched<K, R, V>(
   lookup: (found: R, key: K) => V,
   options: BatchOptions<K> = {},
 ): (key: K) => Promise<Awaited<V>> {
-  const keyOf = options.key ?? identity;
+  const getKey = options.key ?? identity;
   const limit = Math.max(1, options.limit ?? Infinity);
   let pending = new Map<unknown, { key: K; waiters: Waiter<Awaited<V>>[] }>();
   let timer: ReturnType<typeof setTimeout> | undefined;
 
-  const read = async (entries: { key: K; waiters: Waiter<Awaited<V>>[] }[]): Promise<void> => {
+  async function read(entries: { key: K; waiters: Waiter<Awaited<V>>[] }[]): Promise<void> {
+    const keys: K[] = [];
+    for (const entry of entries) {
+      keys.push(entry.key);
+    }
     let found: R;
     try {
-      found = await readMany(entries.map((entry) => entry.key));
+      found = await readMany(keys);
     } catch (error) {
       for (const entry of entries) {
         for (const waiter of entry.waiters) {
@@ -76,16 +80,16 @@ export function batched<K, R, V>(
         }
       }
     }
-  };
+  }
 
-  const flush = (): void => {
+  function flush(): void {
     timer = undefined;
     const entries = [...pending.values()];
     pending = new Map();
     for (let start = 0; start < entries.length; start += limit) {
       void read(entries.slice(start, start + limit));
     }
-  };
+  }
 
   return (key) => {
     if (onServer()) {
@@ -94,7 +98,7 @@ export function batched<K, R, V>(
       return (async () => lookup(await readMany([key]), key))() as Promise<Awaited<V>>;
     }
     return new Promise<Awaited<V>>((resolve, reject) => {
-      const id = keyOf(key);
+      const id = getKey(key);
       let entry = pending.get(id);
       if (!entry) {
         entry = { key, waiters: [] };

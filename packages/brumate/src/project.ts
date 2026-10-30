@@ -84,8 +84,10 @@ export function importSource(file: SFCFile, name: string): string | undefined {
       if (statement.type !== 'ImportDeclaration') {
         continue;
       }
-      if (statement.specifiers.some((specifier) => specifier.local.name === name)) {
-        return statement.source.value;
+      for (const specifier of statement.specifiers) {
+        if (specifier.local.name === name) {
+          return statement.source.value;
+        }
       }
     }
   }
@@ -113,16 +115,22 @@ export function childrenOf(node: Markup): Markup[] {
     case 'dynamic':
     case 'fragment':
       return node.children;
-    case 'if':
-      return [
-        ...node.branches.flatMap((branch) => branch.body.children),
-        ...(node.fallback?.children ?? []),
-      ];
-    case 'switch':
-      return [
-        ...node.cases.flatMap((branch) => branch.body.children),
-        ...(node.fallback?.children ?? []),
-      ];
+    case 'if': {
+      const children: Markup[] = [];
+      for (const branch of node.branches) {
+        children.push(...branch.body.children);
+      }
+      children.push(...(node.fallback?.children ?? []));
+      return children;
+    }
+    case 'switch': {
+      const children: Markup[] = [];
+      for (const branch of node.cases) {
+        children.push(...branch.body.children);
+      }
+      children.push(...(node.fallback?.children ?? []));
+      return children;
+    }
     case 'for':
     case 'repeat':
     case 'loading':
@@ -169,10 +177,10 @@ function liveChecker(graph: Graph): (attribute: Attribute) => string | undefined
   for (const site of graph.model.sites) {
     sites.set(site.node, site);
   }
-  const isLive = (expression: { ast: object }): boolean => {
+  function isLive(expression: { ast: object }): boolean {
     const site = sites.get(expression.ast);
     return site !== undefined && live.has(site);
-  };
+  }
   return (attribute) => {
     switch (attribute.kind) {
       case 'value':
@@ -195,7 +203,7 @@ function liveChecker(graph: Graph): (attribute: Attribute) => string | undefined
 export function dynamicTags(file: SFCFile, graph: Graph): DynamicTagUsage[] {
   const liveProp = liveChecker(graph);
   const tags: DynamicTagUsage[] = [];
-  const visit = (node: Markup): void => {
+  function visit(node: Markup): void {
     if (node.kind !== 'dynamic') {
       return;
     }
@@ -226,7 +234,7 @@ export function dynamicTags(file: SFCFile, graph: Graph): DynamicTagUsage[] {
     if (tagProps.size > 0) {
       tags.push({ tagProps, liveProps });
     }
-  };
+  }
   forEachNode(file.children, visit);
   for (const template of file.templates) {
     forEachNode(template.body.children, visit);
@@ -260,7 +268,7 @@ export function summarize(file: SFCFile, graph: Graph): ComponentUsage[] {
       valueSources.push(declaration.imported.source);
     }
   }
-  const visit = (node: Markup): void => {
+  function visit(node: Markup): void {
     if (node.kind === 'dynamic') {
       // The props of a dynamic tag reach the component that it names, so each component that the
       // file reads as a value gets the props that can change.
@@ -310,7 +318,7 @@ export function summarize(file: SFCFile, graph: Graph): ComponentUsage[] {
       }
     }
     usages.push({ source, liveProps, components, passed });
-  };
+  }
   forEachNode(file.children, visit);
   for (const template of file.templates) {
     forEachNode(template.body.children, visit);
@@ -364,7 +372,7 @@ export function analyzeProjectProps(
     changed = false;
     // The dynamic tags of a file, with the props that can change in this round.
     const tagsOf = new Map<string, DynamicTagUsage[]>();
-    const tagsFor = (filename: string): DynamicTagUsage[] => {
+    function tagsFor(filename: string): DynamicTagUsage[] {
       let tags = tagsOf.get(filename);
       if (!tags) {
         const liveProps = new Set(result.get(filename)!.keys());
@@ -373,8 +381,8 @@ export function analyzeProjectProps(
         tagsOf.set(filename, tags);
       }
       return tags;
-    };
-    const add = (target: string, name: string, parent: string): void => {
+    }
+    function add(target: string, name: string, parent: string): void {
       const props = result.get(target)!;
       const parents = props.get(name) ?? new Set<string>();
       if (!props.has(name)) {
@@ -382,8 +390,8 @@ export function analyzeProjectProps(
         changed = true;
       }
       parents.add(parent);
-    };
-    const give = (target: string, prop: string, components: Iterable<string>): void => {
+    }
+    function give(target: string, prop: string, components: Iterable<string>): void {
       let props = given.get(target);
       if (!props) {
         props = new Map();
@@ -400,7 +408,7 @@ export function analyzeProjectProps(
           changed = true;
         }
       }
-    };
+    }
     for (const [filename, file] of parsed) {
       const liveProps = new Set(result.get(filename)!.keys());
       const graph = buildGraph(models.get(filename)!, { liveProps });
