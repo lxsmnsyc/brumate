@@ -154,3 +154,11 @@ The gap to Marko is bytes, and it is a long tail, not one thing. Options B and C
 ## Gate
 
 The maintainer picks which options to build. Each chosen option becomes its own PR (or a node), not part of this report PR. Suggested order if any: C (docs only), B (one line), D (spike).
+
+## Decision (2026-10-30)
+
+No option is built for 0.4.0. The gains are 1 to 4% of the todos client, and the gap to Marko 6 is the design of the core, not a pass. The follow-ups are roadmap nodes instead:
+
+- usage-pruning-spike (0.5.0, gated): ship only the client runtime functions a page uses. Chrome coverage on todos: brumate runs 19.6 kB of 37.6 kB raw, Marko 6.0 kB of 9.3 kB.
+- loader-preload-spike (0.5.0, gated): option D, fold the loader into the core and drop Vite's preload helper.
+- direct-update-calls (backlog outline, needs a goal debate): run the compiled update table as direct calls, with a smaller update runtime.
