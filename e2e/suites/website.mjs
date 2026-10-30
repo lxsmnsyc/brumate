@@ -558,6 +558,38 @@ export async function run({ browser, url, runner }) {
       },
     );
     await flow(
+      '/ui/modal: a client navigation away from an open modal leaves no layer',
+      async () => {
+        await page.goto(`${url}/ui/modal`, { waitUntil: 'load' });
+        await page.locator('article button[aria-expanded]').first().click();
+        // The picture of the anatomy draws overlays too, so only the one in a layer counts.
+        await page.locator('[data-layer] [data-modal-overlay]').first().waitFor({ timeout: 5000 });
+        // The modal locks the scroll a frame after it opens.
+        await page.waitForFunction(
+          () => document.documentElement.style.overflow === 'hidden',
+          null,
+          {
+            timeout: 5000,
+          },
+        );
+        await page.evaluate(() => {
+          const link = document.querySelector('.sidebar a[href="/ui/switch"]');
+          link?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        });
+        await page.waitForFunction(() => location.pathname === '/ui/switch', null, {
+          timeout: 5000,
+        });
+        const left = await page.evaluate(() => ({
+          layers: document.querySelectorAll('[data-layer]').length,
+          inert: document.querySelectorAll('[inert]').length,
+          overflow: document.documentElement.style.overflow,
+        }));
+        assert(left.layers === 0, `${left.layers} layers stay after the navigation`);
+        assert(left.inert === 0, `${left.inert} inert nodes stay after the navigation`);
+        assert(left.overflow === '', `the root keeps overflow ${left.overflow}`);
+      },
+    );
+    await flow(
       '/ui/select: the anatomy picture and the styled example, with no accessibility violations',
       async () => {
         for (const scheme of ['light', 'dark']) {

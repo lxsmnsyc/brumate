@@ -152,6 +152,10 @@
       // A route that leaves keeps the markup of a portal, so the layer goes here.
       element.closest('[data-layer]')?.remove();
     }
+    // An #offscreen body that hides runs this too, and runs the client callback again when it
+    // shows, which shows the tooltip again if it is still wanted.
+    shown = false;
+    mounted = false;
   }
 
   $effect(() => {

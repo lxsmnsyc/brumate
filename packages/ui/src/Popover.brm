@@ -252,6 +252,12 @@
     }
     // A route that leaves keeps the markup of a portal, so the layer goes here.
     layer?.remove();
+    // An #offscreen body that hides runs this too, and runs the client callback again when it shows,
+    // which opens the overlay again if it is still wanted.
+    shown = false;
+    mounted = false;
+    rested = false;
+    leaving = false;
   }
 
   $effect(() => {
