@@ -9,7 +9,7 @@ import {
   applyLocalIntent,
   checkField,
   checkedSince,
-  formErrorsOf,
+  getFormErrors,
   formFields,
   validateValues,
 } from 'brumate/forms/core';
@@ -105,7 +105,7 @@ export function createForm<S extends StandardSchemaV1, D = StandardSchemaV1.Infe
       press,
     }),
   );
-  const errors = $memo(formErrorsOf(result, checked));
+  const errors = $memo(getFormErrors(result, checked));
 
   // Validates with the schema when the user leaves a field, and as the user types in a field
   // that shows its errors. The code of the schema loads with the first of these events.

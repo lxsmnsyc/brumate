@@ -115,7 +115,7 @@ import * as $$b from 'brumate/client';
 const $$k0 = ($$item, $$index) => { const row = $$item; return row.id; };
 const $$k1 = [3];
 export function b7($$s) {
-  $$b.list($$s, 5, $$b.listOf($$b.get($$s, 0)), $$k0, r2, a2, r3, $$k1);
+  $$b.list($$s, 5, $$b.toList($$b.get($$s, 0)), $$k0, r2, a2, r3, $$k1);
 }
 export function a2($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -137,7 +137,7 @@ export function u14($$s) {
 const $$k2 = ($$item, $$index) => { const row = $$item; return row.id; };
 const $$k3 = [];
 export function b15($$s) {
-  $$b.list($$s, 6, $$b.listOf($$b.get($$s, 0)), $$k2, r4, a4, undefined, $$k3);
+  $$b.list($$s, 6, $$b.toList($$b.get($$s, 0)), $$k2, r4, a4, undefined, $$k3);
 }
 export function a4($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -240,9 +240,9 @@ export default function Compact($$props: { initial: Row[] }): string | DocumentF
   $$b.keep($$s1, 2, $$e[2]);
   $$b.keep($$s1, 3, $$e[3]);
   $$b.keep($$s1, 4, $$e[4]);
-  $$b.place($$e[5], $$b.listNodes($$s1, 5, $$b.listOf(( rows )), $$body2, $$body3));
+  $$b.place($$e[5], $$b.listNodes($$s1, 5, $$b.toList(( rows )), $$body2, $$body3));
   $$b.setSlots($$s1, [rows, picks]);
-  $$b.fillList($$e[6], $$s1, 6, $$b.listOf(( rows )), $$r4);
+  $$b.fillList($$e[6], $$s1, 6, $$b.toList(( rows )), $$r4);
   return $$f;
 }
 Compact.brumateId = "Compact_omhyaj";

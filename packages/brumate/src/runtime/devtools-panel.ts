@@ -21,7 +21,7 @@ import type { TraceEntry } from './request.ts';
 import type * as Highlight from '../highlight.ts';
 import type { Scope } from './client.ts';
 import type { ScopeId } from './shared.ts';
-import { LOGO, preview, rootOf } from './devtools.ts';
+import { LOGO, preview, findRootScope } from './devtools.ts';
 import type {
   BlockEntry,
   DevtoolsEntry,
@@ -557,7 +557,7 @@ function stateBytes(): number {
 /** The value of a name that a scope or one of the scopes around it holds. */
 function readValue(scope: Scope, name: string): string | undefined {
   for (let current: Scope | undefined = scope; current; current = current.p) {
-    const slots = known.get(rootOf(current).m ?? '')?.scopes[current.k]?.slots;
+    const slots = known.get(findRootScope(current).m ?? '')?.scopes[current.k]?.slots;
     const slot = slots?.indexOf(name) ?? -1;
     if (slot !== -1) {
       return preview(current.s[slot]);
@@ -1209,7 +1209,7 @@ export function togglePanel(
     if (id !== undefined) {
       selectedScope = /^-?\d+$/.test(id) ? Number(id) : id;
       const scope = state.scopes?.get(selectedScope);
-      selected = scope ? rootOf(scope).m : selected;
+      selected = scope ? findRootScope(scope).m : selected;
     }
     tab = 'elements';
     draw();
@@ -1677,7 +1677,7 @@ export function togglePanel(
       );
       button.addEventListener('click', () => {
         selectedScope = scope.id;
-        selected = rootOf(scope).m;
+        selected = findRootScope(scope).m;
         draw();
       });
       button.addEventListener('mouseenter', () => outline(scope.id));
@@ -1712,7 +1712,7 @@ export function togglePanel(
     }
 
     // The scope that is selected, with its slots.
-    const component = rootOf(current);
+    const component = findRootScope(current);
     const info = known.get(component.m ?? '');
     const plan = info?.scopes[current.k];
     const slots = element('table', { class: 'rows slots' }, row(['name', 'type', 'value'], 'th'));
@@ -1753,7 +1753,7 @@ export function togglePanel(
 
   /** What the dev server says about an anchor of a scope, with the component that has it. */
   async function findAnchor(scope: Scope, anchor: number) {
-    const component = rootOf(scope);
+    const component = findRootScope(scope);
     const info = component.m ? await componentInfo(state, component.m) : undefined;
     return { info, component, place: info?.anchors?.[scope.k]?.[anchor] };
   }
@@ -2348,7 +2348,7 @@ export function togglePanel(
       // The scopes that the browser made are not in the state that the server sent.
       if (typeof scope.id !== 'number' || scope.id >= 0) {
         scopes.push(scope);
-        const id = rootOf(scope).m ?? '';
+        const id = findRootScope(scope).m ?? '';
         if (id) {
           ids.add(id);
         }
@@ -2361,7 +2361,7 @@ export function togglePanel(
       { component: string; k: number; slot: number; bytes: number; count: number }
     >();
     for (const scope of scopes) {
-      const component = rootOf(scope).m ?? '';
+      const component = findRootScope(scope).m ?? '';
       for (const [slot, value] of scope.s.entries()) {
         const key = `${component}:${scope.k}:${slot}`;
         const entry = slots.get(key) ?? { component, k: scope.k, slot, bytes: 0, count: 0 };

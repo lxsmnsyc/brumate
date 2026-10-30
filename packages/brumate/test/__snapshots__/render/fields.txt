@@ -54,7 +54,7 @@ import * as $$b from 'brumate/client';
 const $$k0 = ($$item) => $$item;
 const $$k1 = [];
 export function b5($$s) {
-  $$b.list($$s, 0, $$b.listOf($$b.get($$s, 0)), $$k0, r2, a2, undefined, $$k1);
+  $$b.list($$s, 0, $$b.toList($$b.get($$s, 0)), $$k0, r2, a2, undefined, $$k1);
 }
 export function a2($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -95,7 +95,7 @@ export default function Fields($$props: Record<string, never>): string | Documen
   $$b.setAttr($$e[2], "id", (hint));
   $$b.keep($$s1, 1, $$e[4]);
   $$b.setSlots($$s1, [names]);
-  $$b.fillList($$e[3], $$s1, 0, $$b.listOf(( names)), $$r2);
+  $$b.fillList($$e[3], $$s1, 0, $$b.toList(( names)), $$r2);
   return $$f;
 }
 Fields.brumateId = "Fields_1cs3w3p";

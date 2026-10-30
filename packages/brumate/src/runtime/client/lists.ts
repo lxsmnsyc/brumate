@@ -23,12 +23,12 @@ interface Item {
 
 const ITEM_MARKER = /^i(-?[\d.]+)$/;
 
-/** Updates the items of `#for` or `#repeat`, keeping the elements of items whose keys stay. */
 /** The items of a `#for` list: an array as it is, since `list` only reads it, or any iterable as an array. */
-export function listOf(value: Iterable<unknown> | ArrayLike<unknown>): unknown[] {
+export function toList(value: Iterable<unknown> | ArrayLike<unknown>): unknown[] {
   return Array.isArray(value) ? value : Array.from(value);
 }
 
+/** Updates the items of `#for` or `#repeat`, keeping the elements of items whose keys stay. */
 export function list(
   scope: Scope,
   anchor: number,

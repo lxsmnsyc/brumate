@@ -103,7 +103,7 @@ export function u5($$s) {
 const $$k0 = ($$item, $$index) => $$index;
 const $$k1 = [];
 export function b8($$s) {
-  $$b.list($$s, 2, $$b.listOf($$b.get($$s, 0)), $$k0, r3, a3, undefined, $$k1);
+  $$b.list($$s, 2, $$b.toList($$b.get($$s, 0)), $$k0, r3, a3, undefined, $$k1);
 }
 export function a3($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -209,7 +209,7 @@ export default function List($$props: Record<string, never>): string | DocumentF
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keep($$s1, 1, $$e[1]);
   $$b.setSlots($$s1, [counts, show, label]);
-  $$b.fillList($$e[2], $$s1, 2, $$b.listOf(( counts )), $$r3);
+  $$b.fillList($$e[2], $$s1, 2, $$b.toList(( counts )), $$r3);
   $$b.fillBranch($$e[3], $$s1, 3, (show) ? 0 : -1, [$$r4]);
   return $$f;
 }

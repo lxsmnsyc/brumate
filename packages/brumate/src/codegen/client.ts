@@ -1528,7 +1528,7 @@ class ClientGenerator {
       case 'repeat': {
         const items =
           block.kind === 'for'
-            ? `$$b.listOf(${header(0)})`
+            ? `$$b.toList(${header(0)})`
             : `Array.from({ length: ${header(0)} }, (_, index) => index)`;
         const key = this.keyFunction(block, base);
         // A key that reads only the item is the same function for every update.

@@ -702,7 +702,7 @@ export function checkedSince(
  * The errors of the whole form: those that the browser found, when it
  * checked every field since the last reply, or else those of the reply.
  */
-export function formErrorsOf(
+export function getFormErrors(
   result: SubmissionResult | undefined,
   checked: CheckedErrors | undefined,
 ): string[] | undefined {

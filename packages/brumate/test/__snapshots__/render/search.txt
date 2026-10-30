@@ -79,7 +79,7 @@ export function b5($$s) {
 const $$k2 = ($$item) => $$item;
 const $$k3 = [];
 export function b6($$s) {
-  $$b.list($$s, 2, $$b.listOf($$b.get($$s, 1)), $$k2, r3, a3, undefined, $$k3);
+  $$b.list($$s, 2, $$b.toList($$b.get($$s, 1)), $$k2, r3, a3, undefined, $$k3);
 }
 export function a3($$s, $$item, $$index) {
   $$s.i = $$item;
@@ -124,7 +124,7 @@ export default function Search($$props: Record<string, never>): string | Documen
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setSlots($$s1, [query, results]);
   $$b.fillBranch($$e[1], $$s1, 1, (false) ? 0 : -1, [$$r2]);
-  $$b.fillList($$e[2], $$s1, 2, $$b.listOf(( results)), $$r3);
+  $$b.fillList($$e[2], $$s1, 2, $$b.toList(( results)), $$r3);
   return $$f;
 }
 Search.brumateId = "Search_s4k9u0";
