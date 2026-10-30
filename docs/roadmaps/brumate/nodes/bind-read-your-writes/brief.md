@@ -43,6 +43,7 @@ After a component writes a prop bound with `$bind(signal, fn)`, a read of that p
 - Found in the review of ui-refused-write-sync (#332): a child reads the old value until the caller draws. A per-part `setTimeout` worked around it and was dropped, because it reordered handlers (Menu, Tabs), lost `window.event`, mixed values on fast typing and never fired for a setter that accepts later. The maintainer chose this runtime fix (option C) on 2026-10-28, and added it to the 0.4.0 cut on 2026-10-29.
 - With it, `afterWrite` in packages/ui/src/fields.ts keeps only its synchronous branch. State in website/ui/state.md that a setter that accepts later reports through the signal, not `onChange`.
 - Size first: report the todos size; within 0.3 kB.
+- The TokenField refused-edit case waits on this node (tokenfield-sync, PR #358, 2026-10-30): `packages/ui/test/token-field-sync.test.ts` marks it `it.fails`. Turn it into `it`, and drop the refused-edit note from website/ui/token-field.md and website/ui/state.md.
 
 ## Acceptance
 
