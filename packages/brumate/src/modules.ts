@@ -192,7 +192,7 @@ export function parseModule(module: ReactiveModule): ModuleInfo {
   const imports = new Map<string, { specifier: string; imported: string }>();
   const declarations = new Map<string, string | undefined>();
   const functions = new Map<string, oxc.Function | oxc.ArrowFunctionExpression>();
-  const declare = (node: oxc.Node, exported: boolean): void => {
+  function declare(node: oxc.Node, exported: boolean): void {
     switch (node.type) {
       case 'VariableDeclaration':
         for (const declarator of node.declarations) {
@@ -228,7 +228,7 @@ export function parseModule(module: ReactiveModule): ModuleInfo {
       default:
         break;
     }
-  };
+  }
   for (const statement of program.body) {
     if (statement.type === 'ImportDeclaration') {
       for (const specifier of statement.specifiers) {
@@ -298,13 +298,21 @@ export function relocate(specifier: string, module: string, component: string): 
     return specifier;
   }
   const target = normalize(`${directory(module)}${specifier}`).split('/');
-  const from = normalize(directory(component)).split('/').filter(Boolean);
+  const from = splitPath(normalize(directory(component)));
   let common = 0;
-  const to = target.filter(Boolean);
+  const to: string[] = [];
+  for (const part of target) {
+    if (part) {
+      to.push(part);
+    }
+  }
   while (common < from.length && common < to.length - 1 && from[common] === to[common]) {
     common++;
   }
-  const up = from.slice(common).map(() => '..');
+  const up: string[] = [];
+  for (let index = common; index < from.length; index++) {
+    up.push('..');
+  }
   const rest = to.slice(common);
   const result = [...up, ...rest].join('/');
   return result.startsWith('.') ? result : `./${result}`;
@@ -320,7 +328,7 @@ export function forEachReference(
   visit: (identifier: oxc.IdentifierReference, shorthand: boolean) => void,
   shadowed: Set<string> = new Set(),
 ): void {
-  const declaredIn = (statements: oxc.Node[]): Set<string> => {
+  function declaredIn(statements: oxc.Node[]): Set<string> {
     const names = new Set(shadowed);
     for (const statement of statements) {
       if (statement.type === 'VariableDeclaration') {
@@ -337,8 +345,8 @@ export function forEachReference(
       }
     }
     return names;
-  };
-  const walk = (current: oxc.Node, scope: Set<string>): void => {
+  }
+  function walk(current: oxc.Node, scope: Set<string>): void {
     switch (current.type) {
       case 'Identifier': {
         const identifier = current as oxc.IdentifierReference;
@@ -451,9 +459,9 @@ export function forEachReference(
           }
         }
     }
-  };
+  }
   // A pattern declares names, and its default values read names.
-  const walkPattern = (pattern: oxc.Node, scope: Set<string>): void => {
+  function walkPattern(pattern: oxc.Node, scope: Set<string>): void {
     switch (pattern.type) {
       case 'Identifier':
         if (pattern.typeAnnotation) {
@@ -489,7 +497,7 @@ export function forEachReference(
       default:
         walk(pattern, scope);
     }
-  };
+  }
   walk(node, shadowed);
 }
 
@@ -502,19 +510,30 @@ interface Call {
   local: string;
 }
 
+/** Splits a path at its slashes and drops the empty parts. */
+function splitPath(value: string): string[] {
+  const parts: string[] = [];
+  for (const part of value.split('/')) {
+    if (part) {
+      parts.push(part);
+    }
+  }
+  return parts;
+}
+
 /** The scripts of a component: its instance script, and the scripts of its blocks. */
 function scripts(file: SFCFile): oxc.Program[] {
   const result: oxc.Program[] = [];
   if (file.instanceScript) {
     result.push(file.instanceScript.program);
   }
-  const visit = (nodes: SFCFile['children']): void => {
+  function visit(nodes: SFCFile['children']): void {
     forEachNode(nodes, (node) => {
       if ('body' in node && node.body && 'script' in node.body && node.body.script) {
         result.push(node.body.script.program);
       }
     });
-  };
+  }
   visit(file.children);
   for (const template of file.templates) {
     if (template.body.script) {
@@ -541,11 +560,14 @@ export function expandModules(
     return undefined;
   }
   // A specifier of a package, such as `brumate/forms`, names a module when its export is one.
-  const reactive = (specifier: string): boolean =>
-    isReactiveModule(specifier) ||
-    (!specifier.startsWith('.') &&
-      specifier !== SIGNALS_MODULE &&
-      isReactiveModule(resolve(specifier, path)?.path ?? ''));
+  function reactive(specifier: string): boolean {
+    return (
+      isReactiveModule(specifier) ||
+      (!specifier.startsWith('.') &&
+        specifier !== SIGNALS_MODULE &&
+        isReactiveModule(resolve(specifier, path)?.path ?? ''))
+    );
+  }
   // The module functions that the component imports, by local name.
   const imported = new Map<string, { specifier: string; name: string }>();
   // The local names of compile-time functions in the component.
@@ -619,7 +641,7 @@ export function expandModules(
     }
   }
   for (const script of scripts(file)) {
-    const find = (node: oxc.Node): void => {
+    function find(node: oxc.Node): void {
       if (
         node.type === 'CallExpression' &&
         node.callee.type === 'Identifier' &&
@@ -634,7 +656,7 @@ export function expandModules(
       for (const [, child] of children(node)) {
         find(child);
       }
-    };
+    }
     find(script);
   }
   if (calls.length === 0) {
@@ -643,14 +665,14 @@ export function expandModules(
 
   const modules = new Map<string, ModuleInfo>();
   const used = new Set(topNames);
-  const unique = (name: string): string => {
+  function unique(name: string): string {
     let candidate = name;
     for (let index = 2; used.has(candidate); index++) {
       candidate = `${name}${index}`;
     }
     used.add(candidate);
     return candidate;
-  };
+  }
   // Imports that the copied code needs, by local name in the component.
   const imports = new Map<string, { specifier: string; imported: string }>();
   const macrosToImport = new Set<string>();
@@ -663,8 +685,9 @@ export function expandModules(
 
   function inline(call: Call, builder: Builder): void {
     const site = { start: call.statement.start, end: call.statement.end };
-    const generated = (text: string): void =>
+    function generated(text: string): void {
       builder.add(text, { offset: call.statement.start }, false);
+    }
     const { specifier, name } = imported.get(call.local)!;
     const module = resolve(specifier, path);
     if (!module) {
@@ -694,7 +717,7 @@ export function expandModules(
         call.call.start,
       );
     }
-    const checkReturns = (node: oxc.Node): void => {
+    function checkReturns(node: oxc.Node): void {
       if (node === last) {
         return;
       }
@@ -711,12 +734,14 @@ export function expandModules(
       for (const [, child] of children(node)) {
         checkReturns(child);
       }
-    };
+    }
     for (const statement of body.body) {
       checkReturns(statement);
     }
 
-    const origin = (offset: number): Origin => ({ module, offset, call: site });
+    function origin(offset: number): Origin {
+      return { module: module!, offset, call: site };
+    }
     const renames = new Map<string, string>();
     // What each name of the function is in the component: a name, or a literal argument.
     const names = new Map<string, CallName>();
@@ -819,7 +844,7 @@ export function expandModules(
     // reactive, or a literal, so the value is in the code instead of in the state of the page.
     // A parameter that the function assigns to keeps a local of its own.
     const assigned = assignedNames(body);
-    fn.params.forEach((param, index) => {
+    for (const [index, param] of fn.params.entries()) {
       const argument = call.call.arguments[index];
       const pattern = param.type === 'AssignmentPattern' ? param.left : param;
       if (pattern.type !== 'Identifier') {
@@ -828,13 +853,13 @@ export function expandModules(
       if (!assigned.has(pattern.name) && argument?.type === 'Identifier') {
         renames.set(pattern.name, argument.name);
         names.set(pattern.name, { name: argument.name });
-        return;
+        continue;
       }
       if (!assigned.has(pattern.name) && argument && isLiteral(argument)) {
         const text = source.slice(argument.start, argument.end);
         renames.set(pattern.name, text);
         names.set(pattern.name, { literal: text });
-        return;
+        continue;
       }
       const local = unique(`${name}_${pattern.name}`);
       renames.set(pattern.name, local);
@@ -851,7 +876,7 @@ export function expandModules(
       } else {
         generated(`${declare} ${local} = undefined;\n`);
       }
-    });
+    }
 
     for (const [local, renamed] of renames) {
       if (!names.has(local)) {
@@ -861,7 +886,7 @@ export function expandModules(
     expanded.push({ start: call.statement.start, module: module.path, fn: name, names });
 
     // A name of the module that the body reads: imported into the component.
-    const moduleName = (local: string): string | undefined => {
+    function moduleName(local: string): string | undefined {
       const from = info!.imports.get(local);
       if (from?.specifier === SIGNALS_MODULE && MACROS.has(from.imported)) {
         const existing = macroNames.get(from.imported);
@@ -904,13 +929,13 @@ export function expandModules(
       used.add(alias);
       imports.set(alias, target);
       return alias;
-    };
+    }
 
     /** Copies code of the module, with its names renamed. */
     function copy(node: oxc.Node): void {
       const edits: { start: number; end: number; text: string }[] = [];
       // The names that a statement at the top of the body declares get their new names too.
-      const renameBinding = (id: oxc.Node, shorthand: boolean): void => {
+      function renameBinding(id: oxc.Node, shorthand: boolean): void {
         if (id.type !== 'Identifier') {
           return;
         }
@@ -922,8 +947,8 @@ export function expandModules(
             text: shorthand ? `${id.name}: ${renamed}` : renamed,
           });
         }
-      };
-      const renamePattern = (pattern: oxc.Node): void => {
+      }
+      function renamePattern(pattern: oxc.Node): void {
         switch (pattern.type) {
           case 'Identifier':
             renameBinding(pattern, false);
@@ -957,7 +982,7 @@ export function expandModules(
           default:
             break;
         }
-      };
+      }
       if (node.type === 'VariableDeclaration') {
         for (const declarator of node.declarations) {
           renamePattern(declarator.id);
@@ -1042,10 +1067,15 @@ export function expandModules(
   }
   builder.text += after.text;
 
+  const reactiveModules: ReactiveModule[] = [];
+  for (const value of modules.values()) {
+    reactiveModules.push(value.module);
+  }
+
   return {
     source: builder.text,
     origin: (at) => builder.origin(at),
-    modules: [...modules.values()].map((value) => value.module),
+    modules: reactiveModules,
     calls: expanded,
   };
 }

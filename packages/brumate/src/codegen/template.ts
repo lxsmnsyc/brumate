@@ -60,10 +60,10 @@ function classTokens(parts: Part[], prefix: string): { text: string; calls: stri
     if (!token) {
       return undefined;
     }
-    const names = token[2]!
-      .trim()
-      .split(/\s+/)
-      .map((name) => JSON.stringify(name));
+    const names: string[] = [];
+    for (const name of token[2]!.trim().split(/\s+/)) {
+      names.push(JSON.stringify(name));
+    }
     calls.push(`(${token[1]}) && $$m.classList.add(${names.join(', ')})`);
   }
   return /[&<>"]/.test(text) ? undefined : { text: text.trim().replace(/\s+/g, ' '), calls };
@@ -299,7 +299,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
   const writes: Write[][] = [];
   /** The index of each marked element, by its number in the order of the markup. */
   const marks = new Map<number, number>();
-  const add = (write: Write, element = reader.element): void => {
+  function add(write: Write, element = reader.element): void {
     let index = marks.get(element);
     if (index === undefined) {
       index = writes.length;
@@ -308,7 +308,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       reader.insertIntoTag(` b-x="${index}"`, element);
     }
     writes[index]!.push(write);
-  };
+  }
   const list = [...parts];
   for (let index = 0; index < list.length; index++) {
     const part = list[index]!;
@@ -539,14 +539,20 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
   }
   // An element with handlers and no anchor finds its scope with `closest`, from the anchor of an
   // element around it. The clone writes `b-b` only where it is asked to.
-  const anchorOf = (element: number) =>
-    writes[marks.get(element) ?? -1]?.find((write) => write.kind === 'anchor');
+  function getAnchor(element: number): Write | undefined {
+    for (const write of writes[marks.get(element) ?? -1] ?? []) {
+      if (write.kind === 'anchor') {
+        return write;
+      }
+    }
+    return undefined;
+  }
   for (const element of reader.handled) {
-    if (anchorOf(element)) {
+    if (getAnchor(element)) {
       continue;
     }
     for (let around = reader.parents.get(element); around !== undefined;) {
-      const anchor = anchorOf(around);
+      const anchor = getAnchor(around);
       if (anchor?.kind === 'anchor') {
         // An element at the top of the clone gets its `b-b` anyway.
         anchor.named = reader.parents.get(around) !== undefined || undefined;
@@ -569,15 +575,32 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
 export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn = 0): boolean {
   const { lines: source, levels } = emitter;
   // Lines of the function, and lines in its branches and loops. Others are in functions inside.
-  const isTop = (at: number): boolean => levels[at]!.fn === fn && !levels[at]!.control;
-  const isControl = (at: number): boolean => levels[at]!.fn === fn && levels[at]!.control;
-  const tops = emitter.flushes.filter((flush) => isTop(flush.line));
-  if (tops.length === 0 || emitter.flushes.some((flush) => isControl(flush.line))) {
+  function isTop(at: number): boolean {
+    return levels[at]!.fn === fn && !levels[at]!.control;
+  }
+  function isControl(at: number): boolean {
+    return levels[at]!.fn === fn && levels[at]!.control;
+  }
+  // Find the flushes at the top of the function, and stop at one inside a branch or loop.
+  const tops: typeof emitter.flushes = [];
+  let controlled = false;
+  for (const flush of emitter.flushes) {
+    if (isTop(flush.line)) {
+      tops.push(flush);
+    }
+    if (isControl(flush.line)) {
+      controlled = true;
+    }
+  }
+  if (tops.length === 0 || controlled) {
     return false;
   }
   const first = tops[0]!.line;
   const last = tops.at(-1)!.line;
-  const flushLines = new Set(tops.map((flush) => flush.line));
+  const flushLines = new Set<number>();
+  for (const flush of tops) {
+    flushLines.add(flush.line);
+  }
   const dropped = new Set<number>();
   const declared = new Set<string>();
   for (let at = 0; at < source.length; at++) {
@@ -614,12 +637,14 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
   }
   // One list of parts, with the static parts next to each other as one.
   const parts: Part[] = [];
-  for (const part of tops.flatMap((flush) => flush.parts)) {
-    const previous = parts.at(-1);
-    if (previous && 'static' in previous && 'static' in part) {
-      parts[parts.length - 1] = { static: previous.static + part.static };
-    } else {
-      parts.push({ ...part });
+  for (const flush of tops) {
+    for (const part of flush.parts) {
+      const previous = parts.at(-1);
+      if (previous && 'static' in previous && 'static' in part) {
+        parts[parts.length - 1] = { static: previous.static + part.static };
+      } else {
+        parts.push({ ...part });
+      }
     }
   }
   const found = clonedTemplate(parts);
@@ -638,16 +663,29 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
   // renders of the blocks read.
   const fills: string[] = [];
   let missing = false;
-  found.writes.forEach((writes, index) => {
+  for (const [index, writes] of found.writes.entries()) {
     // The scope of the anchor of the element, where its content finds its contexts.
-    const anchored = writes.find((write) => write.kind === 'anchor');
+    let anchored: Write | undefined;
+    for (const write of writes) {
+      if (write.kind === 'anchor') {
+        anchored = write;
+        break;
+      }
+    }
     const at = anchored?.kind === 'anchor' ? `, ${anchored.scope}` : '';
     // The calls of an element, such as its spreads and their `b-on`, come first, so `keep` sees
     // a `b-on` and writes the `b-b` that its handlers read.
-    const ordered = [
-      ...writes.filter((write) => write.kind === 'call'),
-      ...writes.filter((write) => write.kind !== 'call'),
-    ];
+    const ordered: Write[] = [];
+    for (const write of writes) {
+      if (write.kind === 'call') {
+        ordered.push(write);
+      }
+    }
+    for (const write of writes) {
+      if (write.kind !== 'call') {
+        ordered.push(write);
+      }
+    }
     for (const write of ordered) {
       if (write.kind === 'anchor') {
         lines.push(
@@ -690,7 +728,7 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
         );
       }
     }
-  });
+  }
   if (missing) {
     return false;
   }
@@ -702,9 +740,13 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
     }
   }
   for (const [scope, size] of sizes) {
-    const at = source.findIndex((line) =>
-      line.trim().startsWith(`const ${scope} = $$b.createScope(`),
-    );
+    let at = -1;
+    for (const [position, line] of source.entries()) {
+      if (line.trim().startsWith(`const ${scope} = $$b.createScope(`)) {
+        at = position;
+        break;
+      }
+    }
     const made =
       at === -1 ? undefined : /^(.*\$\$b\.createScope\()(\d+), ([^,)]+)\);$/.exec(source[at]!);
     if (made) {
@@ -716,26 +758,38 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
   const resultLevels: Level[] = [];
   const moved = new Map<number, number>();
   const level: Level = { fn, control: false };
-  source.forEach((line, at) => {
+  for (const [at, line] of source.entries()) {
     if (at === last) {
       result.push(...lines);
-      resultLevels.push(...lines.map(() => level));
+      for (const _ of lines) {
+        resultLevels.push(level);
+      }
     } else if (!flushLines.has(at) && !dropped.has(at)) {
       moved.set(at, result.length);
       result.push(line);
       resultLevels.push(levels[at]!);
     }
-  });
+  }
   result.push(...fills);
-  resultLevels.push(...fills.map(() => level));
+  for (const _ of fills) {
+    resultLevels.push(level);
+  }
   source.splice(0, source.length, ...result);
   levels.splice(0, levels.length, ...resultLevels);
   // The lines of the other `$$html +=` and plain blocks, such as of a function inside, moved.
-  const others = emitter.flushes
-    .filter((flush) => !flushLines.has(flush.line))
-    .map((flush) => ({ ...flush, line: moved.get(flush.line)! }));
+  const others: typeof emitter.flushes = [];
+  for (const other of emitter.flushes) {
+    if (!flushLines.has(other.line)) {
+      others.push({ ...other, line: moved.get(other.line)! });
+    }
+  }
   emitter.flushes.splice(0, emitter.flushes.length, ...others);
-  const braces = [...emitter.plainBraces].filter((at) => !dropped.has(at));
+  const braces: number[] = [];
+  for (const at of emitter.plainBraces) {
+    if (!dropped.has(at)) {
+      braces.push(at);
+    }
+  }
   emitter.plainBraces.clear();
   for (const at of braces) {
     emitter.plainBraces.add(moved.get(at)!);

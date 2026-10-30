@@ -89,10 +89,14 @@ export function checkEnv(file: SFCFile, plan: Plan, envImport: EnvImport): Diagn
         continue;
       }
       // A value made from it that client code reads would go to the browser with the page.
-      const holder = [...slots].find((slot) => {
+      let holder: Declaration | undefined;
+      for (const slot of slots) {
         const init = values.get(slot.range.start);
-        return init && read.range.start >= init.start && read.range.end <= init.end;
-      });
+        if (init && read.range.start >= init.start && read.range.end <= init.end) {
+          holder = slot;
+          break;
+        }
+      }
       if (holder) {
         diagnostics.push({
           severity: 'error',

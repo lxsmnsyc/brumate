@@ -221,7 +221,7 @@ function typeCheck(root: string, tscBin?: string): { records: CheckRecord[]; not
     maxBuffer: 64 * 1024 * 1024,
   });
   const records = parseTypeOutput(`${result.stdout}\n${result.stderr}`, root);
-  const fail = (message: string): void => {
+  function fail(message: string): void {
     records.push({
       file: null,
       range: null,
@@ -231,7 +231,7 @@ function typeCheck(root: string, tscBin?: string): { records: CheckRecord[]; not
       link: null,
       source: 'typescript',
     });
-  };
+  }
   if (result.error) {
     // The process did not start, ran too long for a timeout, or printed more than maxBuffer.
     fail(`The type check did not finish: ${result.error.message}`);

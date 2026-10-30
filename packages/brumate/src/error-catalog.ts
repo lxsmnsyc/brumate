@@ -1147,10 +1147,11 @@ export const ERRORS: readonly ErrorEntry[] = [...SYNTAX, ...SCRIPT, ...OUTPUT, .
 
 /** True when a message that the compiler reported has the form of an entry. */
 export function matchesError(error: ErrorEntry, message: string): boolean {
-  const pattern = error.message
-    .split(/\{\w+\}/)
-    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('[\\s\\S]*?');
+  const escaped: string[] = [];
+  for (const part of error.message.split(/\{\w+\}/)) {
+    escaped.push(part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  }
+  const pattern = escaped.join('[\\s\\S]*?');
   return new RegExp(`^${pattern}$`).test(message);
 }
 
@@ -1161,7 +1162,9 @@ export function matchesError(error: ErrorEntry, message: string): boolean {
 export function findError(message: string): ErrorEntry | undefined {
   const bare = message.replace(/(?:\s\([^()]*:\d+:\d+\))+$/, '').replace(/\s\[BRM\d+\]$/, '');
   // Of the entries that match, the one with the most fixed text is the most specific.
-  const fixed = (error: ErrorEntry): number => error.message.replace(/\{\w+\}/g, '').length;
+  function fixed(error: ErrorEntry): number {
+    return error.message.replace(/\{\w+\}/g, '').length;
+  }
   let found: ErrorEntry | undefined;
   for (const error of ERRORS) {
     if (matchesError(error, bare) && (!found || fixed(error) > fixed(found))) {

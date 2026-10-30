@@ -34,7 +34,9 @@ interface PackageJson {
   peerDependencies?: Record<string, string>;
 }
 
-const toPosix = (file: string): string => file.split(path.sep).join('/');
+function toPosix(file: string): string {
+  return file.split(path.sep).join('/');
+}
 
 function readJson(file: string): PackageJson | undefined {
   try {
@@ -73,7 +75,7 @@ function packageRoot(directory: string): string | undefined {
 export const PACKAGE_FORMAT = 1;
 
 /** The directories that the `brumate` field names, or undefined when the package does not opt in. */
-function directoriesOf(root: string, field: unknown, name: string): string[] | undefined {
+function readDirectories(root: string, field: unknown, name: string): string[] | undefined {
   if (field === true) {
     return [root];
   }
@@ -90,7 +92,11 @@ function directoriesOf(root: string, field: unknown, name: string): string[] | u
     if (dir === undefined) {
       return [root];
     }
-    return (Array.isArray(dir) ? dir : [dir]).map((item) => toPosix(path.resolve(root, item)));
+    const directories: string[] = [];
+    for (const item of Array.isArray(dir) ? dir : [dir]) {
+      directories.push(toPosix(path.resolve(root, item)));
+    }
+    return directories;
   }
   return undefined;
 }
@@ -109,7 +115,7 @@ export function findPackages(root: string): BrumatePackage[] {
     return [];
   }
   const found = new Map<string, Omit<BrumatePackage, 'prefix'>>();
-  const visit = (directory: string, json: PackageJson, own: boolean): void => {
+  function visit(directory: string, json: PackageJson, own: boolean): void {
     const names = new Set([
       ...Object.keys(json.dependencies ?? {}),
       ...Object.keys(json.optionalDependencies ?? {}),
@@ -123,7 +129,7 @@ export function findPackages(root: string): BrumatePackage[] {
         continue;
       }
       const dependency = readJson(`${real}/package.json`);
-      const directories = dependency && directoriesOf(real, dependency.brumate, name);
+      const directories = dependency && readDirectories(real, dependency.brumate, name);
       if (!dependency || !directories) {
         continue;
       }
@@ -136,7 +142,7 @@ export function findPackages(root: string): BrumatePackage[] {
       });
       visit(real, dependency, false);
     }
-  };
+  }
   visit(app, readJson(path.join(app, 'package.json')) ?? {}, true);
   const list = [...found.values()];
   // Two versions of one package get IDs apart. Copies of one version share theirs, as their files are the same.
@@ -144,16 +150,25 @@ export function findPackages(root: string): BrumatePackage[] {
   for (const item of list) {
     versions.set(item.name, (versions.get(item.name) ?? new Set()).add(item.version));
   }
-  return list.map((item): BrumatePackage =>
-    Object.assign(item, {
-      prefix: versions.get(item.name)!.size > 1 ? `${item.name}@${item.version}` : item.name,
-    }),
-  );
+  const result: BrumatePackage[] = [];
+  for (const item of list) {
+    result.push(
+      Object.assign(item, {
+        prefix: versions.get(item.name)!.size > 1 ? `${item.name}@${item.version}` : item.name,
+      }),
+    );
+  }
+  return result;
 }
 
 /** The package that a file belongs to, or undefined for a file of the app. */
 export function packageOf(packages: BrumatePackage[], file: string): BrumatePackage | undefined {
-  return packages.find((item) => file.startsWith(`${item.root}/`));
+  for (const item of packages) {
+    if (file.startsWith(`${item.root}/`)) {
+      return item;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -172,8 +187,13 @@ export function splitSpecifier(specifier: string): { name: string; subpath: stri
   }
   const parts = specifier.split('/');
   const count = specifier.startsWith('@') ? 2 : 1;
-  if (parts.length < count || parts.slice(0, count).some((part) => part === '')) {
+  if (parts.length < count) {
     return undefined;
+  }
+  for (const part of parts.slice(0, count)) {
+    if (part === '') {
+      return undefined;
+    }
   }
   const rest = parts.slice(count).join('/');
   return { name: parts.slice(0, count).join('/'), subpath: rest ? `./${rest}` : '.' };
@@ -210,13 +230,16 @@ function resolveTarget(target: unknown, star: string): string | undefined {
 
 /** Resolves a subpath through the `exports` of a package.json, or undefined if it does not export it. */
 export function resolveExports(exports: unknown, subpath: string): string | undefined {
-  const map =
-    typeof exports === 'object' &&
-    exports !== null &&
-    !Array.isArray(exports) &&
-    Object.keys(exports).some((key) => key.startsWith('.'))
-      ? (exports as Record<string, unknown>)
-      : { '.': exports };
+  let hasSubpaths = false;
+  if (typeof exports === 'object' && exports !== null && !Array.isArray(exports)) {
+    for (const key of Object.keys(exports)) {
+      if (key.startsWith('.')) {
+        hasSubpaths = true;
+        break;
+      }
+    }
+  }
+  const map = hasSubpaths ? (exports as Record<string, unknown>) : { '.': exports };
   if (subpath in map) {
     return resolveTarget(map[subpath], '');
   }
@@ -306,28 +329,34 @@ export function reachableFiles(
   read: (file: string) => string | undefined,
 ): Set<string> {
   const reached = new Set<string>();
-  const names = new Set(packages.map((item) => item.name));
+  const names = new Set<string>();
+  for (const item of packages) {
+    names.add(item.name);
+  }
   const pending: string[] = [];
-  const add = (file: string | undefined): void => {
+  function add(file: string | undefined): void {
     if (file && !reached.has(file) && packageOf(packages, file)) {
       reached.add(file);
       pending.push(file);
     }
-  };
-  const resolve = (specifier: string, importer: string): string | undefined => {
+  }
+  function resolve(specifier: string, importer: string): string | undefined {
     if (specifier.startsWith('.')) {
       const stem = path.resolve(path.dirname(importer), specifier.split('?')[0]!);
-      const found = EXTENSIONS.map((extension) => stem + extension).find((candidate) =>
-        statSync(candidate, { throwIfNoEntry: false })?.isFile(),
-      );
-      return found && toPosix(realpathSync(found));
+      for (const extension of EXTENSIONS) {
+        const candidate = stem + extension;
+        if (statSync(candidate, { throwIfNoEntry: false })?.isFile()) {
+          return toPosix(realpathSync(candidate));
+        }
+      }
+      return undefined;
     }
     const name = splitSpecifier(specifier)?.name;
     return name && names.has(name)
       ? resolvePackageImport(specifier.split('?')[0]!, importer)
       : undefined;
-  };
-  const visit = (file: string, own: boolean): void => {
+  }
+  function visit(file: string, own: boolean): void {
     const source = read(file);
     if (source === undefined) {
       return;
@@ -343,7 +372,7 @@ export function reachableFiles(
         // A path that is not a file, such as a directory, reaches nothing.
       }
     }
-  };
+  }
   for (const file of appFiles) {
     visit(file, true);
   }

@@ -155,7 +155,14 @@ export function resolveMacros(file: SFCFile): {
       }
     }
   });
-  if ([...aliases].some(([local, imported]) => local !== imported)) {
+  let renamedAny = false;
+  for (const [local, imported] of aliases) {
+    if (local !== imported) {
+      renamedAny = true;
+      break;
+    }
+  }
+  if (renamedAny) {
     walk(file, (node) => {
       if (node.type === 'CallExpression' && node.callee.type === 'Identifier') {
         const imported = aliases.get(node.callee.name);
@@ -182,14 +189,16 @@ export function checkMacroImports(file: SFCFile, imported: Set<string>): Diagnos
       missing.set(node.callee.name, { start: node.start, end: node.end });
     }
   });
-  return [...missing].map(([name, range]) => {
+  const diagnostics: Diagnostic[] = [];
+  for (const [name, range] of missing) {
     const renamed = RENAMED_MACROS.get(name);
-    return {
+    diagnostics.push({
       severity: 'error',
       message: renamed
         ? `${name} was renamed to ${renamed}. Import ${renamed} from '${SIGNALS_MODULE}'`
         : `Import ${name} from '${SIGNALS_MODULE}'`,
       range,
-    };
-  });
+    });
+  }
+  return diagnostics;
 }

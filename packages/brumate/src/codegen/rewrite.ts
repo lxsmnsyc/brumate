@@ -135,9 +135,12 @@ export class Rewriter {
         const owner = declaration.scope.parent!;
         const body = this.plan.bodyScopes.get(block.body)!;
         const fallback = this.plan.bodyScopes.get(block.fallback)!;
-        const kinds = this.plan.graph.model.scopes
-          .filter((scope) => isWithin(scope, body) || isWithin(scope, fallback))
-          .map((scope) => scope.id);
+        const kinds: number[] = [];
+        for (const scope of this.plan.graph.model.scopes) {
+          if (isWithin(scope, body) || isWithin(scope, fallback)) {
+            kinds.push(scope.id);
+          }
+        }
         const args = [
           scopePath(this.plan, scopeVar, base, owner),
           this.plan.anchors.get(block),
@@ -232,13 +235,13 @@ export class Rewriter {
     for (const reference of [...site.reads, ...site.writes]) {
       references.set(reference.range.start, reference);
     }
-    const target = (node: oxc.Node): Reference | undefined => {
+    function target(node: oxc.Node): Reference | undefined {
       if (node.type !== 'Identifier') {
         return undefined;
       }
       const reference = references.get(node.start);
       return reference && !locals.has(reference.declaration) ? reference : undefined;
-    };
+    }
     const path = (declaration: Declaration): string =>
       scopePath(this.plan, scopeVar, base, declaration.scope);
 
@@ -316,9 +319,13 @@ export class Rewriter {
             return;
           }
           if (node.left.type === 'ObjectPattern' || node.left.type === 'ArrayPattern') {
-            const writes = site.writes.some(
-              (write) => write.range.start >= node.left.start && write.range.end <= node.left.end,
-            );
+            let writes = false;
+            for (const write of site.writes) {
+              if (write.range.start >= node.left.start && write.range.end <= node.left.end) {
+                writes = true;
+                break;
+              }
+            }
             if (writes) {
               this.diagnostics.push({
                 severity: 'error',
@@ -450,12 +457,13 @@ export class Rewriter {
             const memo = node.arguments[0];
             const declaration = memo && references.get(memo.start)?.declaration;
             // A memo is pending while it or a memo that it reads loads.
-            const checks = (
-              declaration ? [declaration, ...upstreamMemos(declaration)] : []
-            ).flatMap((item) => {
+            const checks: string[] = [];
+            for (const item of declaration ? [declaration, ...upstreamMemos(declaration)] : []) {
               const slot = slotIndex(this.plan, item);
-              return slot === -1 ? [] : [`$$b.pending(${path(item)}, ${slot})`];
-            });
+              if (slot !== -1) {
+                checks.push(`$$b.pending(${path(item)}, ${slot})`);
+              }
+            }
             let value: string;
             if (checks.length === 0) {
               value = 'false';

@@ -4,7 +4,7 @@
 // when the component compiles, and names the code that reads them.
 
 import type { SFCFile } from './ast.ts';
-import type { Declaration, Diagnostic } from './model.ts';
+import type { Declaration, Diagnostic, Site } from './model.ts';
 import { children } from './oxc.ts';
 import type { oxc } from './oxc.ts';
 import type { Plan } from './plan.ts';
@@ -62,7 +62,7 @@ const WRAPPERS = new Set(['$signal', '$memo', '$debounced', '$throttled']);
 /** The value that a declaration holds, by the offset of its name. */
 export function initializers(file: SFCFile): Map<number, oxc.Node> {
   const result = new Map<number, oxc.Node>();
-  const visit = (node: oxc.Node): void => {
+  function visit(node: oxc.Node): void {
     if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier' && node.init) {
       let init: oxc.Node = node.init;
       if (
@@ -78,7 +78,7 @@ export function initializers(file: SFCFile): Map<number, oxc.Node> {
     for (const [, child] of children(node)) {
       visit(child);
     }
-  };
+  }
   if (file.instanceScript) {
     visit(file.instanceScript.program);
   }
@@ -107,7 +107,7 @@ function unsendableClass(node: oxc.Node, sendable: readonly string[]): string | 
  */
 export function entryClasses(program: oxc.Node): string[] {
   const names = new Set<string>();
-  const visit = (node: oxc.Node): void => {
+  function visit(node: oxc.Node): void {
     if (node.type === 'BinaryExpression' && node.operator === 'instanceof') {
       const right = node.right;
       if (right.type === 'Identifier') {
@@ -119,7 +119,7 @@ export function entryClasses(program: oxc.Node): string[] {
     for (const [, child] of children(node)) {
       visit(child);
     }
-  };
+  }
   visit(program);
   return [...names];
 }
@@ -142,7 +142,13 @@ export function checkCaptures(
       }
       reported.add(declaration);
       // The code in the browser that reads the value, to name it in the error.
-      const reader = declaration.reads.find((read) => plan.graph.reached.has(read.site))?.site;
+      let reader: Site | undefined;
+      for (const read of declaration.reads) {
+        if (plan.graph.reached.has(read.site)) {
+          reader = read.site;
+          break;
+        }
+      }
       diagnostics.push({
         severity: 'error',
         message: `"${declaration.name}" holds a new ${kind}, which cannot be sent to the browser, and code that runs in the browser reads it${reader ? ` (${reader.label})` : ''}. Use it in a server function, or create it in the browser, such as in $client`,

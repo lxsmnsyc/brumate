@@ -196,7 +196,7 @@ function isTopLevel(statement: oxc.Node): boolean {
  */
 function propsTypes(program: oxc.Program | undefined): Range[] {
   const found: Range[] = [];
-  const visit = (node: unknown): void => {
+  function visit(node: unknown): void {
     if (typeof node !== 'object' || node === null) {
       return;
     }
@@ -215,12 +215,14 @@ function propsTypes(program: oxc.Program | undefined): Range[] {
     }
     for (const child of Object.values(value)) {
       if (Array.isArray(child)) {
-        child.forEach(visit);
+        for (const item of child) {
+          visit(item);
+        }
       } else if (typeof child === 'object') {
         visit(child);
       }
     }
-  };
+  }
   visit(program);
   return found;
 }
@@ -295,15 +297,18 @@ function restOmits(program: oxc.Program | undefined): Map<Range, string[]> {
 function sentDeclarations(file: SFCFile): Declaration[] {
   try {
     const { slots } = clientState(buildGraph(analyze(file)), file);
-    return [...slots.values()]
-      .flat()
-      .filter(
-        (declaration) =>
-          (declaration.kind === 'signal' ||
-            declaration.kind === 'memo' ||
-            declaration.kind === 'async-memo') &&
-          declaration.refs.length === 0,
-      );
+    const sent: Declaration[] = [];
+    for (const declaration of [...slots.values()].flat()) {
+      if (
+        (declaration.kind === 'signal' ||
+          declaration.kind === 'memo' ||
+          declaration.kind === 'async-memo') &&
+        declaration.refs.length === 0
+      ) {
+        sent.push(declaration);
+      }
+    }
+    return sent;
   } catch {
     // A file that the analyzer cannot read is still checked as TypeScript.
     return [];
@@ -397,7 +402,7 @@ function passedIdentifier(value: Expression): (Range & { name: string }) | undef
  */
 function inlineTemplates(file: SFCFile): Set<TemplateDecl> {
   const found = new Set<TemplateDecl>();
-  const scope = (root: unknown, templates: TemplateDecl[]): void => {
+  function scope(root: unknown, templates: TemplateDecl[]): void {
     for (const template of templates) {
       if (template.params.length === 0 || !untyped(template)) {
         continue;
@@ -438,7 +443,7 @@ function inlineTemplates(file: SFCFile): Set<TemplateDecl> {
         found.add(template);
       }
     }
-  };
+  }
   scope(file, file.templates);
   walk(file.children, (value) => {
     if (Array.isArray(value.templates) && Array.isArray(value.children)) {
@@ -464,6 +469,12 @@ class Hoist {
   constructor(template: TemplateDecl) {
     this.template = template;
   }
+}
+
+function namespaced(attribute: Attribute): boolean {
+  return (
+    (attribute.kind === 'static' || attribute.kind === 'value') && attribute.name.includes(':')
+  );
 }
 
 class Generator {
@@ -498,7 +509,11 @@ class Generator {
         out.copy({ start, end: type.start });
         out.text('$$Omit<');
         out.copy(type);
-        out.text(`, ${names.map((name) => JSON.stringify(name)).join(' | ')}>`);
+        const quoted: string[] = [];
+        for (const name of names) {
+          quoted.push(JSON.stringify(name));
+        }
+        out.text(`, ${quoted.join(' | ')}>`);
         start = type.end;
       }
     }
@@ -564,11 +579,11 @@ class Generator {
     out.text('($$props: ');
     if (types.length > 0) {
       // The props of the calls together.
-      types.forEach((type, index) => {
+      for (const [index, type] of types.entries()) {
         out.text(index > 0 ? ' & (' : '(');
         out.copy(type);
         out.text(')');
-      });
+      }
     } else {
       out.text('Record<string, any>');
     }
@@ -821,8 +836,6 @@ class Generator {
     }
     // A namespaced name, such as `xlink:href` or `xmlns:xlink`, is not in the element types, so
     // only its value is checked.
-    const namespaced = (attribute: Attribute): boolean =>
-      (attribute.kind === 'static' || attribute.kind === 'value') && attribute.name.includes(':');
     for (const attribute of node.attributes) {
       if (namespaced(attribute) && attribute.kind === 'value') {
         out.text('$$use(');
@@ -830,12 +843,14 @@ class Generator {
         out.text(');\n');
       }
     }
-    if (
-      !node.attributes.some(
-        (attribute) =>
-          attribute.kind !== 'event' && attribute.kind !== 'spread' && !namespaced(attribute),
-      )
-    ) {
+    let checked = false;
+    for (const attribute of node.attributes) {
+      if (attribute.kind !== 'event' && attribute.kind !== 'spread' && !namespaced(attribute)) {
+        checked = true;
+        break;
+      }
+    }
+    if (!checked) {
       return;
     }
     out.text(`$$element(${JSON.stringify(node.tag)})(`);
@@ -1102,13 +1117,13 @@ class Generator {
       case 'if':
       case 'switch': {
         const branches = block.kind === 'if' ? block.branches : block.cases;
-        branches.forEach((branch, index) => {
+        for (const [index, branch] of branches.entries()) {
           out.text(index === 0 ? 'if ' : ' else if ');
           out.expression(branch.condition);
           out.text(' {\n');
           this.body(branch.body);
           out.text('}');
-        });
+        }
         if (block.fallback) {
           out.text(' else {\n');
           this.body(block.fallback);

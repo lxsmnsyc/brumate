@@ -191,6 +191,16 @@ export function awaitedMemos(plan: Plan, body: Scope, blocking: Set<Declaration>
   return [...result];
 }
 
+/** Returns the site that holds a node. */
+function findSite(plan: Plan, node: oxc.Node): Site | undefined {
+  for (const item of plan.graph.model.sites) {
+    if (item.node === node) {
+      return item;
+    }
+  }
+  return undefined;
+}
+
 /**
  * True if the markup of a `#loading` body may wait for something other than
  * the memos it reads, so the body cannot render in place when those memos
@@ -200,8 +210,8 @@ export function awaitedMemos(plan: Plan, body: Scope, blocking: Set<Declaration>
  * on their own.
  */
 export function mayWait(plan: Plan, nodes: Markup[]): boolean {
-  const insertWaits = (node: InsertNode): boolean => {
-    const site = plan.graph.model.sites.find((item) => item.node === node.expression.ast);
+  function insertWaits(node: InsertNode): boolean {
+    const site = findSite(plan, node.expression.ast);
     if (!site) {
       return false;
     }
@@ -212,7 +222,7 @@ export function mayWait(plan: Plan, nodes: Markup[]): boolean {
       }
     }
     return false;
-  };
+  }
   for (const node of nodes) {
     switch (node.kind) {
       case 'component':
@@ -318,12 +328,12 @@ export function readsPlain(
   name: oxc.Node,
   plain: (declaration: Declaration) => boolean,
 ): boolean {
-  return (
-    site?.reads.some(
-      (read) =>
-        read.range.start === name.start && read.range.end === name.end && plain(read.declaration),
-    ) ?? false
-  );
+  for (const read of site?.reads ?? []) {
+    if (read.range.start === name.start && read.range.end === name.end && plain(read.declaration)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // Compound assignments that give a primitive whatever the value that they assign.
@@ -377,7 +387,7 @@ function writeAt(node: oxc.Node, at: number): oxc.Node | undefined {
 export function plainValues(plan: Plan, blocking: Set<Declaration>): Set<Declaration> {
   const result = new Set<Declaration>();
   const visiting = new Set<Declaration>();
-  const check = (declaration: Declaration): boolean => {
+  function check(declaration: Declaration): boolean {
     if (result.has(declaration)) {
       return true;
     }
@@ -392,44 +402,54 @@ export function plainValues(plan: Plan, blocking: Set<Declaration>): Set<Declara
       result.add(declaration);
     }
     return plain;
-  };
-  const isPlainMemo = (declaration: Declaration): boolean => {
+  }
+  function isPlainMemo(declaration: Declaration): boolean {
     const site = declaration.site;
-    return (
-      declaration.kind === 'memo' &&
-      !declaration.writable &&
-      !declaration.optimistic &&
-      site !== undefined &&
-      isPrimitive(site.node, (name) => readsPlain(site, name, check)) &&
-      isSafe(site.node, blocking.has(declaration)) &&
-      site.reads.every((read) => !isMemo(read.declaration) || check(read.declaration))
-    );
-  };
-  const isPlainSignal = (declaration: Declaration): boolean => {
+    if (
+      declaration.kind !== 'memo' ||
+      declaration.writable ||
+      declaration.optimistic ||
+      site === undefined ||
+      !isPrimitive(site.node, (name) => readsPlain(site, name, check)) ||
+      !isSafe(site.node, blocking.has(declaration))
+    ) {
+      return false;
+    }
+    for (const read of site.reads) {
+      if (isMemo(read.declaration) && !check(read.declaration)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  function isPlainSignal(declaration: Declaration): boolean {
     if (declaration.refs.length > 0) {
       return false;
     }
     const init = declaration.init;
     if (init) {
-      const site = plan.graph.model.sites.find((item) => item.node === init);
+      const site = findSite(plan, init);
       if (!isPrimitive(init, (name) => readsPlain(site, name, check))) {
         return false;
       }
     }
-    return declaration.writes.every((write) => {
+    for (const write of declaration.writes) {
       const node = writeAt(write.site.node, write.range.start);
       if (node?.type === 'UpdateExpression') {
-        return true;
+        continue;
       }
       if (node?.type !== 'AssignmentExpression') {
         return false;
       }
-      return (
-        ARITHMETIC_ASSIGNMENTS.has(node.operator) ||
-        isPrimitive(node.right, (name) => readsPlain(write.site, name, check))
-      );
-    });
-  };
+      if (
+        !ARITHMETIC_ASSIGNMENTS.has(node.operator) &&
+        !isPrimitive(node.right, (name) => readsPlain(write.site, name, check))
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
   for (const declaration of plan.graph.model.declarations) {
     check(declaration);
   }

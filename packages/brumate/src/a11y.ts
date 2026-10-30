@@ -36,19 +36,32 @@ function attribute(element: ElementNode, name: string): string | true | undefine
 
 /** True when the element spreads or computes attributes, so any attribute can be there. */
 function hasUnknownAttributes(attributes: Attribute[]): boolean {
-  return attributes.some((item) => item.kind === 'spread' || item.kind === 'computed');
+  for (const item of attributes) {
+    if (item.kind === 'spread' || item.kind === 'computed') {
+      return true;
+    }
+  }
+  return false;
 }
 
 function hasEvent(element: ElementNode, events: string[]): boolean {
-  return element.attributes.some((item) => item.kind === 'event' && events.includes(item.event));
+  for (const item of element.attributes) {
+    if (item.kind === 'event' && events.includes(item.event)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** True when an element names itself with ARIA or a title. */
 function hasAccessibleName(element: ElementNode): boolean {
-  return ['aria-label', 'aria-labelledby', 'title'].some((name) => {
+  for (const name of ['aria-label', 'aria-labelledby', 'title']) {
     const value = attribute(element, name);
-    return value === true || (typeof value === 'string' && value.trim() !== '');
-  });
+    if (value === true || (typeof value === 'string' && value.trim() !== '')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -56,28 +69,35 @@ function hasAccessibleName(element: ElementNode): boolean {
  * a component or a block may render text, so they count.
  */
 function hasText(nodes: Markup[]): boolean {
-  return nodes.some((node) => {
-    switch (node.kind) {
-      case 'text':
-        return node.value.trim() !== '';
-      case 'element': {
-        if (hasUnknownAttributes(node.attributes) || hasAccessibleName(node)) {
-          return true;
-        }
-        if (node.tag === 'img') {
-          const alt = attribute(node, 'alt');
-          return alt === true || (typeof alt === 'string' && alt.trim() !== '');
-        }
-        return attribute(node, 'aria-hidden') !== 'true' && hasText(node.children);
-      }
-      case 'fragment':
-        return hasText(node.children);
-      case 'listener':
-        return false;
-      default:
-        return true;
+  for (const node of nodes) {
+    if (hasNodeText(node)) {
+      return true;
     }
-  });
+  }
+  return false;
+}
+
+function hasNodeText(node: Markup): boolean {
+  switch (node.kind) {
+    case 'text':
+      return node.value.trim() !== '';
+    case 'element': {
+      if (hasUnknownAttributes(node.attributes) || hasAccessibleName(node)) {
+        return true;
+      }
+      if (node.tag === 'img') {
+        const alt = attribute(node, 'alt');
+        return alt === true || (typeof alt === 'string' && alt.trim() !== '');
+      }
+      return attribute(node, 'aria-hidden') !== 'true' && hasText(node.children);
+    }
+    case 'fragment':
+      return hasText(node.children);
+    case 'listener':
+      return false;
+    default:
+      return true;
+  }
 }
 
 /** The range of the start of an opening tag, such as `<img`. */
@@ -88,15 +108,18 @@ function tagRange(element: ElementNode): { start: number; end: number } {
 /** Finds common accessibility mistakes in the markup of a file. */
 export function checkAccessibility(file: SFCFile): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
-  const warn = (element: ElementNode, message: string): void => {
+  function warn(element: ElementNode, message: string): void {
     diagnostics.push({ severity: 'warning', message, range: tagRange(element) });
-  };
+  }
 
   // The IDs that a `<label for>` names, so the field with that ID has a label.
   const labelled = new Set<string>();
   let dynamicLabel = false;
-  const roots = [file.children, ...file.templates.map((template) => template.body.children)];
-  const collect = (nodes: Markup[]): void => {
+  const roots: Markup[][] = [file.children];
+  for (const template of file.templates) {
+    roots.push(template.body.children);
+  }
+  function collect(nodes: Markup[]): void {
     for (const node of nodes) {
       if (node.kind === 'element' && node.tag === 'label') {
         const target = attribute(node, 'for');
@@ -108,10 +131,12 @@ export function checkAccessibility(file: SFCFile): Diagnostic[] {
       }
       collect(childrenOf(node));
     }
-  };
-  roots.forEach(collect);
+  }
+  for (const nodes of roots) {
+    collect(nodes);
+  }
 
-  const visit = (nodes: Markup[], inLabel: boolean): void => {
+  function visit(nodes: Markup[], inLabel: boolean): void {
     for (const node of nodes) {
       if (node.kind !== 'element') {
         visit(childrenOf(node), inLabel);
@@ -122,9 +147,9 @@ export function checkAccessibility(file: SFCFile): Diagnostic[] {
       }
       visit(node.children, inLabel || node.tag === 'label');
     }
-  };
+  }
 
-  const check = (element: ElementNode, inLabel: boolean): void => {
+  function check(element: ElementNode, inLabel: boolean): void {
     const { tag } = element;
     if (tag === 'img' && attribute(element, 'alt') === undefined) {
       warn(element, 'An <img> needs alt text. Use alt="" for an image that only decorates.');
@@ -167,7 +192,9 @@ export function checkAccessibility(file: SFCFile): Diagnostic[] {
           : 'A button needs text that says what it does, or aria-label.',
       );
     }
-  };
-  roots.forEach((nodes) => visit(nodes, false));
+  }
+  for (const nodes of roots) {
+    visit(nodes, false);
+  }
   return diagnostics;
 }

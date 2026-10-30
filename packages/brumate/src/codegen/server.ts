@@ -37,19 +37,26 @@ function isServerStatement(statement: oxc.Node, nodes: Set<oxc.Node>): boolean {
   if (nodes.has(statement)) {
     return true;
   }
-  return (
-    statement.type === 'VariableDeclaration' &&
-    statement.declarations.every(
-      (declarator) => declarator.init !== null && nodes.has(declarator.init),
-    )
-  );
+  if (statement.type !== 'VariableDeclaration') {
+    return false;
+  }
+  for (const declarator of statement.declarations) {
+    if (declarator.init === null || !nodes.has(declarator.init)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** Returns the server functions of a file, which the server module exports for RPC. */
 export function serverFunctions(plan: Plan): Declaration[] {
-  return plan.graph.model.declarations.filter(
-    (declaration) => declaration.kind === 'server-function',
-  );
+  const result: Declaration[] = [];
+  for (const declaration of plan.graph.model.declarations) {
+    if (declaration.kind === 'server-function') {
+      result.push(declaration);
+    }
+  }
+  return result;
 }
 
 export function generateServer(file: SFCFile, plan: Plan): string {
@@ -63,8 +70,9 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   }
   addValueEdits(patch, file, model.sites, 'server', inline, lazy, model.component.id);
   addEventEdits(patch, model);
-  const source = (node: { start: number; end: number }): string =>
-    patch.slice(node.start, node.end);
+  function source(node: { start: number; end: number }): string {
+    return patch.slice(node.start, node.end);
+  }
 
   const header: string[] = ["import * as $$b from 'brumate/server';"];
   const moduleBody: string[] = [];
@@ -84,8 +92,14 @@ export function generateServer(file: SFCFile, plan: Plan): string {
   }
 
   // Server functions only capture module bindings, so they move to the module and are exported for RPC.
-  const servers = serverFunctions(plan).filter((declaration) => declaration.scope !== model.module);
-  const serverNodes = new Set(servers.map((declaration) => declaration.site!.node));
+  const servers: Declaration[] = [];
+  const serverNodes = new Set<oxc.Node>();
+  for (const declaration of serverFunctions(plan)) {
+    if (declaration.scope !== model.module) {
+      servers.push(declaration);
+      serverNodes.add(declaration.site!.node);
+    }
+  }
 
   const setup: oxc.Node[] = [];
   for (const statement of file.instanceScript?.program.body ?? []) {
@@ -115,10 +129,12 @@ export function generateServer(file: SFCFile, plan: Plan): string {
       moduleBody.push(`let ${declaration.name} = ${source(node)};`);
     }
   }
-  const exported = serverFunctions(plan).map(
-    (declaration) =>
+  const exported: string[] = [];
+  for (const declaration of serverFunctions(plan)) {
+    exported.push(
       `${JSON.stringify(serverFunctionId(plan, declaration.name))}: ${declaration.name}`,
-  );
+    );
+  }
   // Every server module has it, so the server function registry can read it from any file.
   moduleBody.push(`export const rpc = { ${exported.join(', ')} };`);
   // Calls while a page renders share a result when their arguments are the same. Calls from
