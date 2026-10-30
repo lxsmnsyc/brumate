@@ -1,7 +1,7 @@
 ---
 id: perf-pass-0.4
 title: Perf pass on 0.4.0, benchmarked against Marko 6 and brumate 0.3.0
-status: active
+status: done
 priority: should
 type: chore
 outline: false
