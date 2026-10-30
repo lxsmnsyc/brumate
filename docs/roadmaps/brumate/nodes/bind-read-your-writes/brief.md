@@ -1,7 +1,7 @@
 ---
 id: bind-read-your-writes
 title: A bound prop reads its new value right after its setter runs
-status: active
+status: done
 priority: should
 type: fix
 outline: false

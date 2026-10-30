@@ -1,7 +1,7 @@
 ---
 id: try-sample-console
 title: The #try sample of /docs/control-flow passes the website e2e suite
-status: active
+status: done
 priority: should
 type: fix
 outline: false
