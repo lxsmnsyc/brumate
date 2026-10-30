@@ -37,6 +37,7 @@ import {
 import { needsScope } from '../css.ts';
 import { copy, unmarked } from '../sourcemap.ts';
 import { insertValue } from '../runtime/html.ts';
+import { paragraphComponents } from '../nesting.ts';
 
 const VOID_ELEMENTS = new Set([
   'area',
@@ -251,6 +252,8 @@ export class Emitter {
   private readonly options: EmitterOptions;
   private readonly sitesByNode = new Map<object, Site>();
   private readonly refTargets = new Map<object, Declaration>();
+  /** The components inside a `<p>`, which the server checks in development. */
+  private readonly inParagraph: Set<object>;
   private readonly wait: string;
   private readonly async: string;
   /** The render context as an argument, which the client's helpers do not take. */
@@ -277,6 +280,9 @@ export class Emitter {
     this.wait = options.mode === 'server' ? 'await ' : '';
     this.async = options.mode === 'server' ? 'async ' : '';
     this.ctxArgument = options.mode === 'server' ? '$$ctx' : 'undefined';
+    // Only the dev server checks, so a build carries no hint.
+    this.inParagraph =
+      options.mode === 'server' && !plan.hideNames ? paragraphComponents(file) : new Set();
     this.blocking = blockingMemos(plan);
     this.inline = options.mode === 'server' ? plainValues(plan, this.blocking) : new Set();
     for (const site of plan.graph.model.sites) {
@@ -1688,7 +1694,13 @@ export class Emitter {
     const anchor = this.anchor(scope, node);
     // The rendering scope becomes the owner of the child, so the child finds the contexts above it.
     const owner = this.scopeVar(instanceScope(this.plan, scope));
-    const link = anchor ? `, ${anchor.index}` : '';
+    let link = anchor ? `, ${anchor.index}` : '';
+    if (this.inParagraph.has(node)) {
+      // Where the component is, so the server can name it when its element closes the `<p>`.
+      const before = this.file.source.slice(0, node.start).split('\n');
+      const at = `${this.file.filename}:${before.length}:${before.at(-1)!.length + 1}`;
+      link = `${link || ', undefined'}, ${JSON.stringify(`<${node.name}> in ${at}`)}`;
+    }
     this.code(
       `${this.wait}$$b.component(${node.name}, ${props}, ${this.ctxArgument}, ${owner}${link})`,
     );

@@ -311,6 +311,19 @@ async function save() {
 }
 ```
 
+## BRM185: <{tag}> cannot be inside <{parent}>: the HTML parser closes or moves it before the page runs. Move it out of the <{parent}>, or use a <span> or as="span"
+
+The HTML parser does not keep this nesting. A `<p>` ends at a block element such as `<div>`, an `<a>` or a `<form>` inside the same tag starts again, and a table keeps only table parts. The browser builds a page that differs from the markup, and the start and end markers of a block can land in different parents.
+
+https://brumate-docs.vercel.app/docs/errors#brm185
+
+```brm fragment
+<p>Total: <span>{total}</span></p>
+<div>
+  <p>Total</p>
+</div>
+```
+
 ## BRM023: Modifiers apply to elements. Put ":{modifier}" on the element that the component renders
 
 An event modifier is on a component, which only passes the handler on.

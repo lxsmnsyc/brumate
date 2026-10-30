@@ -1,3 +1,4 @@
+import { checkNesting } from './nesting.ts';
 import {
   MACROS,
   SIGNALS_MODULE,
@@ -265,6 +266,7 @@ class Analyzer {
       }
     }
     this.visitNodes(this.file.children, this.component);
+    checkNesting(this.file, (message, at) => this.report('error', message, at));
     this.addProvidedFunctions();
     this.checkBindableProps();
 

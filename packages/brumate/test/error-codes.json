@@ -182,5 +182,6 @@
   "BRM181": "#loading does not take a header yet. Write #loading { … }, since the header would be dropped",
   "BRM182": "The handler reads \"{name}\", a memo that can lack a value. Wait for it with await $resolve({name}), or check $isPending({name}) first",
   "BRM183": "$resolve needs a $memo and, as an option, a timeout or a signal",
-  "BRM184": "$resolve cannot run where a memo computes or markup renders. Call it in a handler, an effect or a $client callback"
+  "BRM184": "$resolve cannot run where a memo computes or markup renders. Call it in a handler, an effect or a $client callback",
+  "BRM185": "<{tag}> cannot be inside <{parent}>: the HTML parser closes or moves it before the page runs. Move it out of the <{parent}>, or use a <span> or as=\"span\""
 }
