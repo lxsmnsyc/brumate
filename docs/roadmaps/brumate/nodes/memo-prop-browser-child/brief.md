@@ -1,7 +1,7 @@
 ---
 id: memo-prop-browser-child
 title: $memo of a promise prop loads in a child that the browser renders
-status: active
+status: done
 priority: should
 type: fix
 outline: false
