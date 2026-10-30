@@ -44,12 +44,18 @@
 - website e2e overlays "Escape left the tooltip" (still flaky on a loaded machine).
 - brumate resume/devtools and @brumate/ui tests time out under load; they pass alone or with `--maxWorkers 2 --testTimeout 30000`.
 
+## After the restart of 2026-10-30
+
+- Merged: #379 (memo-prop-browser-child done), #381 (perf-pass-0.4 done; no option built for 0.4.0, follow-ups usage-pruning-spike, loader-preload-spike, direct-update-calls), #382 to #386 (ts-style across the repo, helper renames, a 30 s limit for the ui client-part-imports test), #388 (docs/architecture.md, the contributor guide).
+- Open: #387 (root typecheck with `--no-sort`: CI step 53 s to 28 s on Node 24), #389 (stale notes in decisions.md, the roadmap README, example client entries, README, highlight.ts), and a draft from chore/ui-part-sizes (restores the pre-ts-style form where it grew the gzip size of ui client parts).
+- The maintainer: `.ts` on relative import paths is a personal dislike, removal skipped for now. Exported `<noun>Of` helpers that only the compiler or the parts call are not public API.
+- Left for changeset-review: `.changeset/config.json` ignores only `example-todos` and `example-ui-kit` of the private examples; `examples/ui`, `language-core` and `typescript-plugin` have no tests of their own.
+
 ## Worktrees left
 
-- .claude/worktrees/memo-prop-browser-child (#379). Remove after it merges.
+- .claude/worktrees/typecheck-no-sort (#387), .claude/worktrees/stale-notes (#389), .claude/worktrees/ui-part-sizes (draft). Remove each after its PR merges.
 
 ## Resume
 
-1. If #379 merged: mark memo-prop-browser-child done, remove its worktree and branch. If not: read its PR state and nodes/memo-prop-browser-child/log.md, finish the fix for the two #376 tests, push, CI, hand to the maintainer.
-2. Start perf-pass-0.4 (gated; read its brief; run benchmarks one at a time on a quiet machine; add benchmarks/brumate-0.3 with brumate@0.3.0 from npm; compare with Marko 6). The maintainer picks which options to build.
-3. Then changeset-review, then release-0.4 (the maintainer merges #98).
+1. Check #387, #389 and the ui-part-sizes PR; remove merged worktrees and branches.
+2. changeset-review (read its brief), then release-0.4 (the maintainer merges #98).
