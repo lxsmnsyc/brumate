@@ -266,6 +266,12 @@ When the parent passes a new promise, the child keeps the old value until it set
 
 The prop itself stays a promise, as its type says. The child can `await user`, call `user.then(…)` or pass it on to another component, in markup, a handler, an effect or a `$client` callback, before and after it settles. Read it with `$memo(user)` when you want its value in markup, pending until it settles.
 
+Because the prop does not change when the promise settles:
+
+- An effect that reads the prop does not run again then. It runs when its other dependencies change, or it awaits the promise itself.
+- `$isPending(user)` is false. Use `$isPending(profile)` of the memo `profile = $memo(user)`.
+- If the promise rejects, `await user` rejects in the child, and a read of `$memo(user)` throws into the nearest `#try`. A rejection that nothing reads is not reported.
+
 ## Streams
 
 A server function can be an async generator. A memo of it takes each value as it arrives:

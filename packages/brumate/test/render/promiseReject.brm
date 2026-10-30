@@ -1,0 +1,25 @@
+<script module>
+  let fail: (error: Error) => void = () => {};
+
+  function arm(): Promise<string> {
+    return new Promise<string>((_resolve, reject) => {
+      fail = reject;
+    });
+  }
+
+  export let later = arm();
+
+  export function reset(): void {
+    later = arm();
+  }
+
+  export function reject(message: string): void {
+    fail(new Error(message));
+  }
+</script>
+
+<script>
+  import PromiseRejectChild from './PromiseRejectChild.brm';
+</script>
+
+<PromiseRejectChild value=(later) />

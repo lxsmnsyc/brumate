@@ -438,6 +438,63 @@ describe('resume', () => {
       });
     });
 
+    it('rejects a streamed promise prop in a handler, with no unhandled rejection', async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (error: unknown): void => {
+        unhandled.push(error);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      (globalThis as { reads?: Reads }).reads = [];
+      onTestFinished(() => {
+        delete (globalThis as { reads?: Reads }).reads;
+      });
+      const server = await import(file('promiseReject.brm.ts'));
+      server.reset();
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      await startLoader();
+      click(document.querySelector('.await')!);
+      server.reject('Nope');
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await waitFor(() => expect(reads('await')).toEqual([['await', 'Nope']]));
+      await new Promise((done) => setTimeout(done, 50));
+      expect(unhandled).toEqual([]);
+    });
+
+    it('reports no unhandled rejection when nobody reads a rejected promise prop', async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (error: unknown): void => {
+        unhandled.push(error);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      const server = await import(file('promiseReject.brm.ts'));
+      server.reset();
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      await startLoader();
+      server.reject('Nope');
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await new Promise((done) => setTimeout(done, 50));
+      expect(unhandled).toEqual([]);
+    });
+
+    it('shows the #catch body when the memo of a promise prop rejects', async () => {
+      await resume('promiseCatchParent', {});
+      expect(text('.name')).toBe('User 1');
+      click(document.querySelector('.next')!);
+      await waitFor(() => expect(text('.caught')).toBe('Caught Error: No user 2'));
+    });
+
     it('lets a child that the browser renders await and chain a promise prop', async () => {
       (globalThis as { reads?: Reads }).reads = [];
       onTestFinished(() => {

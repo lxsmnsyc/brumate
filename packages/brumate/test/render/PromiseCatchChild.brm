@@ -1,0 +1,12 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+
+  const { value } = $props<{ value: Promise<string> }>();
+  const name = $memo(value);
+</script>
+
+#try {
+  <p class="name">{name}</p>
+} #catch (error) {
+  <p class="caught">Caught {String(error)}</p>
+}

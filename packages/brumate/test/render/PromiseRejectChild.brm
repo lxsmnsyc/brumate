@@ -1,0 +1,20 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { value } = $props<{ value: Promise<string> }>();
+
+  function note(name: string, ...values: unknown[]): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, ...values]);
+  }
+
+  async function wait() {
+    try {
+      await value;
+      note('await', 'resolved');
+    } catch (error) {
+      note('await', (error as Error).message);
+    }
+  }
+</script>
+
+<button class="await" onClick=wait>Await</button>
