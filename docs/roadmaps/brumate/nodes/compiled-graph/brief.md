@@ -21,7 +21,7 @@ reserves: []
 provides: []
 depends_on:
   - on: usage-pruning-spike
-    kind: soft
+    kind: hard
     why: it shows how much of the size gap pruning closes before a redesign
 ---
 

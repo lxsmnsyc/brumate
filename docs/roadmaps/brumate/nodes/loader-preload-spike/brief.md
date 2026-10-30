@@ -21,7 +21,7 @@ reserves: []
 provides: []
 depends_on:
   - on: perf-pass-0.4
-    kind: soft
+    kind: hard
     why: option D of its report is the starting point
 ---
 

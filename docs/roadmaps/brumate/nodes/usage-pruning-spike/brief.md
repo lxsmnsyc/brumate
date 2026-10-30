@@ -21,7 +21,7 @@ reserves: []
 provides: []
 depends_on:
   - on: perf-pass-0.4
-    kind: soft
+    kind: hard
     why: its report and benchmarks/brumate-0.3 give the baseline to measure against
 ---
 
