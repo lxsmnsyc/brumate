@@ -2619,8 +2619,12 @@ function nameHtmlAttributes(page: string): string {
     names.push(name);
     return text;
   });
+  if (attributes === tag[1] && names.length === 0) {
+    // Nothing to name, so the tag stays as written.
+    return page;
+  }
   const list = names.length > 0 ? ` b-html="${escapeAttribute(names.join(' '))}"` : '';
-  return `<html${attributes.trimEnd()}${list}>${page.slice(tag[0].length)}`;
+  return `${page.slice(0, 5)}${attributes.trimEnd()}${list}>${page.slice(tag[0].length)}`;
 }
 
 /**

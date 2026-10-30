@@ -193,6 +193,8 @@ async function readAll(
 const handWritten = async (): Promise<string> =>
   '<html lang="en" b-html="x"><head></head><body><p>Page</p></body></html>';
 
+const upperCase = async (): Promise<string> => '<HTML lang="en"><head></head><body></body></HTML>';
+
 describe('documents', () => {
   const scripts = '<script type="module" async src="/client.js"></script>';
 
@@ -228,6 +230,11 @@ describe('documents', () => {
     // The author's value is dropped, and the list never names `b-html`.
     expect(page.match(/b-html=/g)).toHaveLength(1);
     expect(page).toContain('<html lang="en" b-html="lang">');
+  });
+
+  it('keeps the case of an <HTML> tag and names its attributes', async () => {
+    const page = (await readAll(renderToStream(upperCase, {}))).join('');
+    expect(page).toContain('<HTML lang="en" b-html="lang">');
   });
 
   it('streams a complete document with renderToStream', async () => {
