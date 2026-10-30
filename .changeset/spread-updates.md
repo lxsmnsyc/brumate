@@ -10,4 +10,5 @@
 - A prop of `let` that the component writes updates its markup when every parent passes a constant, such as `<Menu open=(true) />`.
 - A component with a `<style>` that uses `${}` values removes the `style` that a spread drops, also on the first update in the browser.
 - A dynamic tag keeps the element that the server rendered when its scope updates after the page resumed.
+- A computed attribute (`[name]=(value)`) whose name or value can change on a plain element or a dynamic tag no longer fails to compile with "This attribute cannot change on the client yet".
 - A memo of an object literal, such as `$memo({ title })`, compiles in the browser.
