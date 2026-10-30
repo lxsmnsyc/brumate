@@ -1,7 +1,7 @@
 ---
 id: loading-header-error
 title: "`#loading (expr)` is a compile error instead of dropping its boundary"
-status: active
+status: done
 priority: should
 type: fix
 outline: false
