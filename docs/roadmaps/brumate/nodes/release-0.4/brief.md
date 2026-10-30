@@ -23,6 +23,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: streamed-loading-errors
+    kind: hard
+    why: in the 0.4.0 cut (found by #373; the maintainer, 2026-10-30)
   - on: memo-prop-browser-child
     kind: hard
     why: in the 0.4.0 cut (found by #373; $memo(prop) is the documented read of a promise prop)

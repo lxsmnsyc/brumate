@@ -21,6 +21,9 @@ shared: []
 reserves: []
 provides: []
 depends_on:
+  - on: streamed-loading-errors
+    kind: hard
+    why: its changeset is part of the release
   - on: html-attributes-navigation
     kind: hard
     why: its changeset is part of the release
