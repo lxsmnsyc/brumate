@@ -40,6 +40,8 @@ The maintainer wants `await` to wait in the browser too, as React's `use` does: 
 2. An async render function. Every browser render becomes a promise: size, microtask hops, and the order of `pass` and the effect flush.
 3. Split the render at each `await $memo` into continuations that the compiler emits (Marko cuts at awaits too). Code before and after the `await` runs once; components without `await` do not change.
 
+Also check whether Compostate's `toResult` helps (github.com/lxsmnsyc/compostate, `packages/compostate/src/extra/concurrency.ts`, docs in `website/src/content/docs/concurrency.md`). `toResult(signal)` reads a signal without throwing and returns `{ type: 'pending', request }`, `{ type: 'success', value }` or `{ type: 'failure', value }`, where `request` is the promise in flight. Questions: can the render of a continuation (option 3) or a rerun (option 1) use such a read to decide between going on and waiting on `request`, and is a `toResult`-like macro worth exposing as a third way, beside `await` and `$isPending`, for a handler to read a memo that BRM182 accepts?
+
 For each: the change to codegen and the client runtime, the cost in gzip JS before `load` (`pnpm bench`, exclusive), what `await` inside a block or a `#for` row means, how `#loading`, `#reveal` and `#try` see the wait, and how the page state and IDs stay in step with the server for components that the server rendered.
 
 ## Context
