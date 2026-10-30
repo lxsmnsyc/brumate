@@ -533,6 +533,35 @@ describe('resume', () => {
       await waitFor(() => expect(errors).toHaveBeenCalledWith(reason));
     });
 
+    it('keeps the value of a newer load when the state record arrives before it settles', async () => {
+      const { client, settle } = await streamed();
+      const scope = client.scopeOf(0)!;
+      let load!: (value: number) => void;
+      client.asyncMemo(
+        scope,
+        0,
+        new Promise<number>((done) => {
+          load = done;
+        }),
+      );
+      await settle(1);
+      await new Promise((done) => setTimeout(done, 50));
+      // The record of the old load does not land after the source changed.
+      expect(() => client.get(scope, 0)).toThrow('await $resolve(memo)');
+      load(2);
+      await waitFor(() => expect(client.get(scope, 0)).toBe(2));
+    });
+
+    it('keeps the value of a newer load that settled before the state record arrives', async () => {
+      const { client, settle } = await streamed();
+      const scope = client.scopeOf(0)!;
+      client.asyncMemo(scope, 0, Promise.resolve(2));
+      await waitFor(() => expect(client.get(scope, 0)).toBe(2));
+      await settle(1);
+      await new Promise((done) => setTimeout(done, 50));
+      expect(client.get(scope, 0)).toBe(2);
+    });
+
     it('passes a promise that is not a loading memo to a handler as a value', async () => {
       const { client } = await streamed();
       const scope = client.scopeOf(0)!;

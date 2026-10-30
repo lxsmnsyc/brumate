@@ -230,7 +230,8 @@ function addScopes(state: PageState, root: string): Scope[] {
         loadingValues.add(value);
         void value.then((result) => {
           settled.set(value, result);
-          if (scope.s[i] === value) {
+          // A memo that loads again in the browser has a newer load, and the record is old.
+          if (scope.s[i] === value && !loads.has(`${scope.id}:${i}`)) {
             set(scope, i, result);
           }
         });
