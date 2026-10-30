@@ -76,27 +76,12 @@
     return list;
   }
 
-  /** Writes the box from the value, with each token copied from its stamp. */
-  function write(value: TokenSegment[], again = true) {
+  /** Writes the box from the value, with each token copied from its stamp. A token whose stamp is not the one of its text shows its text. */
+  function write(value: TokenSegment[]) {
     const element = box;
     const nodesOfStamps = stamps?.querySelectorAll<HTMLElement>(':scope > [data-stamp]') ?? [];
     if (!element) {
       return;
-    }
-    // The stamps render after the value changes. Stamps of other tokens are old, so wait for
-    // them to render, then write again.
-    const tokens = value.filter((segment) => segment.type === 'token');
-    if (again && tokens.some((segment, at) => nodesOfStamps[at]?.getAttribute('data-stamp') !== segment.text)) {
-      setTimeout(() => {
-        const element = box;
-        const current = field!.value;
-        // The user may have typed since, or the box may be right already.
-        if (!element || composing || sameSegments(readSegments(element), current)) {
-          return;
-        }
-        write(current, false);
-        showCaret(element);
-      }, 0);
     }
     const nodes: Node[] = [];
     let index = 0;

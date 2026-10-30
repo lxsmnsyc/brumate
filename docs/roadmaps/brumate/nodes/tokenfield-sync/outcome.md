@@ -4,8 +4,8 @@
 
 - The box of a TokenField shows the first value after a form reset (also when the kept segments are the first ones, and after a composition), and after quick edits followed by a reset. The refused-edit case is NOT fixed: its test is `it.fails` and waits for the node bind-read-your-writes (a per-edit timer was dropped because it flickers and loses typing with a setter that accepts later).
 - `TokenField.brm`: a `revision` counter in the context. A reset bumps it. `TokenInput.brm` reads it in its write effect, and writes it after a composition that a reset interrupted.
-- `TokenInput.brm`: the stamps are keyed by text and by place among equal text, and carry `data-stamp=(text)`. `write()` copies a stamp only when its `data-stamp` matches the token, and writes again after a task when a stamp was not rendered yet.
-- Tests: `packages/ui/test/token-field-sync.test.ts` with `fixtures/token-field-sync.brm` (6 tests, one `it.fails`). Changeset `.changeset/tokenfield-sync.md` (patch).
+- `TokenInput.brm`: the stamps are keyed by text and by place among equal text, and carry `data-stamp=(text)`. `write()` copies a stamp only when its `data-stamp` matches the token, and shows the text otherwise. A retry a task later was tried and removed: no test or Chrome run needed it, and no test could reach it.
+- Tests: `packages/ui/test/token-field-sync.test.ts` with `fixtures/token-field-sync.brm` (5 tests, one `it.fails`). Changeset `.changeset/tokenfield-sync.md` (patch).
 - Docs: dropped the TokenField exception in `website/ui/state.md` and `website/ui/token-field.md`.
 
 ## Deviations
@@ -28,7 +28,7 @@
 
 ## Verification
 
-- Before the fix the new case tests failed on main code; after, `npx vitest run test/token-field-sync.test.ts test/token-field.test.ts --maxWorkers=2` passes (21 tests with 1 expected fail, happy-dom).
+- Before the fix the new case tests failed on main code; after, `npx vitest run test/token-field-sync.test.ts test/token-field.test.ts --maxWorkers=2` passes (20 tests with 1 expected fail, happy-dom).
 - `pnpm lint` has no errors, `pnpm format:check` and `pnpm typecheck` pass.
 - Chrome: see the e2e line in the PR description.
 

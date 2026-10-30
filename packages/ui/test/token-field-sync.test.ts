@@ -97,21 +97,3 @@ it('writes the box after a composition that a reset interrupted', async () => {
   await page.waitFor(() => expect(shown(box)).toEqual({ text: '@ada', tokens: ['@ada'] }));
   expect(JSON.parse(page.text('.own-state'))).toEqual([{ type: 'token', text: '@ada' }]);
 });
-
-it('keeps the caret where it is when the stamps catch up', async () => {
-  const page = await sync();
-  const box = page.get('.own-input') as HTMLElement;
-  box.focus();
-  type(box, ' #new ');
-  const end = document.createRange();
-  end.selectNodeContents(box);
-  end.collapse(false);
-  getSelection()!.removeAllRanges();
-  getSelection()!.addRange(end);
-  await wait(200);
-  expect(box.querySelector('[data-token="#new"]')!.textContent).toBe('#new');
-  // The caret is still in the box, after the last token.
-  const at = getSelection()!;
-  expect(box.contains(at.anchorNode)).toBe(true);
-  expect(shown(box).text.endsWith('#new ')).toBe(true);
-});
