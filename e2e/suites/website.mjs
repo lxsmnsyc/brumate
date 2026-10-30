@@ -1758,6 +1758,35 @@ export async function run({ browser, url, runner }) {
         assert(found.length === 0, `found:\n${found.join('\n')}`);
       },
     );
+    await flow(
+      '/ui: a ColorField and a NumberField clear their native error once the value is valid',
+      async () => {
+        const cases = [
+          ['color-field', 'Background', 'Save', 'f0f'],
+          ['number-field', 'Discount', 'Send', '10'],
+        ];
+        for (const [slug, label, button, fix] of cases) {
+          await page.goto(`${url}/ui/${slug}`, { waitUntil: 'load' });
+          const form = page.locator('form.ui-form, form.ui-stack', { hasText: label }).first();
+          const field = form.locator(`[data-required]`).first();
+          const input = field.locator('input:not([type="hidden"])').first();
+          await input.fill('');
+          await form.getByRole('button', { name: button }).click();
+          await page.waitForFunction(
+            (element) => element.hasAttribute('data-invalid'),
+            await field.elementHandle(),
+          );
+          assert((await field.locator('.ui-error').count()) === 1, `/ui/${slug}: no error shown`);
+          await input.fill(fix);
+          await input.blur();
+          await page.waitForFunction(
+            (element) => !element.hasAttribute('data-invalid'),
+            await field.elementHandle(),
+          );
+          assert((await field.locator('.ui-error').count()) === 0, `/ui/${slug}: the error stays`);
+        }
+      },
+    );
     await page.close();
   }
 }

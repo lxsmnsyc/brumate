@@ -210,7 +210,22 @@
     }
   });
 
+  // After a submit, the message follows what is in the field. The input shows the new text after
+  // the update, so the check waits for it.
+  function recheck() {
+    if (!committed) {
+      return;
+    }
+    setTimeout(() => {
+      const element = input();
+      if (element) {
+        nativeErrors = element.validity.valid ? [] : [element.validationMessage];
+      }
+    }, 0);
+  }
+
   function typed(next: string) {
+    recheck();
     // Only text that can become a number stays, such as `-` or `1.`.
     if (next === '' || parser().isValidPartialNumber(next, minValue, maxValue)) {
       text = next;
@@ -255,6 +270,11 @@
   }
 
   function keyDown(event: KeyboardEvent) {
+    pressed(event);
+    recheck();
+  }
+
+  function pressed(event: KeyboardEvent) {
     if ((event.target as Element).id !== inputId || locked) {
       return;
     }
@@ -290,6 +310,11 @@
   }
 
   function wheel(event: WheelEvent) {
+    scrolled(event);
+    recheck();
+  }
+
+  function scrolled(event: WheelEvent) {
     // A scroll that is mostly sideways, as on a trackpad, is not a step.
     if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
       return;
@@ -312,6 +337,7 @@
       stopWheel(element);
     }
     commit();
+    recheck();
   }
 
   // The loader prevents the keys before the code loads, so the wrapper names them. A field that
@@ -355,7 +381,15 @@
   /** A press of a Button steps at once, and again while it is held. Focus stays in the input. */
   function held(sign: 1 | -1, event: PressEvent) {
     input()?.focus({ preventScroll: true });
-    startRepeat(inputId, () => stepBy(sign), event.pointerType === 'touch' ? 600 : 400);
+    startRepeat(
+      inputId,
+      () => {
+        const moved = stepBy(sign);
+        recheck();
+        return moved;
+      },
+      event.pointerType === 'touch' ? 600 : 400,
+    );
   }
 
   function released() {
