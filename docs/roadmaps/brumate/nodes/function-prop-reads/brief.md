@@ -1,7 +1,7 @@
 ---
 id: function-prop-reads
 title: A memo that reads state through a function prop updates when that state changes
-status: todo
+status: active
 priority: should
 type: fix
 outline: false
