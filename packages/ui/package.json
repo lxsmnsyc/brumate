@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "description": "Accessible, unstyled components for brumate",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lxsmnsyc/brumate.git",
+    "directory": "packages/ui"
+  },
   "files": [
     "src",
     "skills",
