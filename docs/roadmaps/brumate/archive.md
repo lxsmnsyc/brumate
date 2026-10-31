@@ -44,6 +44,7 @@ Done nodes whose folders were removed. Their full text is in git history.
 ## Dropped
 
 client-arrived-cleanups: $client cleanups run when a page that arrived by client navigation is left. The repro was a race in the check (wave-14.md).
+
 - changeset-review: Review and trim the pending changesets before the release (done, #390, milestone 0.4.0)
 - check-package-imports: brumate check resolves imports from packages as the vite plugin does (done, milestone 0.4.0)
 - checkbox-description: A standalone Checkbox or Switch ties a description and an error to its input (done, milestone 0.4.0)
