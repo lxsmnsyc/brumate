@@ -24,8 +24,10 @@ permissions:
   contents: read
 
 jobs:
+  # The three jobs run side by side. Only the tests run on each Node version; lint, types and
+  # the website do not depend on it.
   test:
-    name: Node ${{ matrix.node }}
+    name: Test on Node ${{ matrix.node }}
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     strategy:
@@ -42,10 +44,42 @@ jobs:
           package-manager-cache: false
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - run: pnpm test
+
+  check:
+    name: Lint and typecheck
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck
-      - run: pnpm test
+
+  website:
+    name: Website
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       # Every live sample of the docs compiles without warnings.
       - run: pnpm --filter website check:samples
       # The plugins of the website, such as the props tables.
