@@ -46,6 +46,11 @@ export default function showcase(): Plugin {
       }
       const scope = /\[(b-c-\w+)\]/.exec(compiled.css)?.[1] ?? null;
       const rendered = await renderOnServer(compiled.server);
+      if (!rendered) {
+        this.warn(
+          `${path.relative(root, file)} imports a file of its own, so its server HTML and state are not shown.`,
+        );
+      }
       const empty = '<div class="code"></div>';
       const summary = {
         name: report.name,
