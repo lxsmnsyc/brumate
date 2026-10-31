@@ -1,5 +1,159 @@
 # brumate
 
+## 0.4.0
+
+### Minor Changes
+
+- fdc0e73: `brumate check [--json] [--no-types] [paths]` compiles every `.brm` file and runs the type checker, and prints each problem with its file, range, message, code and a link to the docs. It exits with 1 on an error. It reads `.brm.ts` modules and `'use server'` files from packages of components, such as `@brumate/ui/data.brm.ts`, the way the vite plugin does.
+
+  Each compile error has a stable code such as `BRM012`, shown at the end of its message. `ERRORS` of the error catalog holds the code and the link of each one. The docs list every code at /docs/errors.
+
+- 2f62fba: `brumate skill [folder]` copies a skill for coding agents into `folder/brumate`, by default `.claude/skills/brumate`. It teaches the syntax of `.brm` files, state and events, and lists every compile error with its cause and fix. It tells agents to reach for a handler or `$memo` before `$effect`.
+- c519c4a: Breaking: a handler of an event with more than one word is written in camel case only. `onKeydown` and `onFocusout` on an element, `<window>` or `<document>` are a compile error, and the message names the camel form (`onKeyDown`, `onFocusOut`). Events of one word, such as `onClick`, are unchanged.
+
+  - The `attrs` object of `createForm` has `onFocusOut` in place of `onFocusout`. A form that spreads `attrs` needs no change.
+  - An app that merges its own event of several words into `ElementEvents` also adds an entry to `ElementEventNames`: `interface ElementEventNames { itemaction: 'ItemAction' }` makes `onItemAction` its attribute.
+
+- 296a8ce: `$isPassed(prop)` tells whether the caller passed a prop, also as `undefined`. `$isBound(prop)` tells whether the caller bound it with `$bind`. A component uses them to keep its own state, or to show the caller's.
+- f80f134: A dynamic tag checks its attributes, `ref`, spreads and children against its tag: the attributes of an element name, or the props of a component. Its handlers are typed from the tag, so `<{tag} onClick=((event) => ...)>` types `event.currentTarget`. A component with any props is accepted as the tag, such as `<{as}>` where `as` is a `.brm` component type.
+
+  Breaking: an unknown attribute, a wrong value, a wrong `ref` or a wrong value in a spread is now an error. A tag that can name any element or component checks the global attributes and leaves its spreads unchecked.
+
+- c251b27: Add the types `Elements`, `ElementProps`, `Markup`, `Component` and `PropsOf` in `brumate/elements`, with the attributes of each HTML and SVG element by tag. They accept every value that the runtime accepts, such as `class` as an array or an object, `style` as an object, a binding for `value` and `checked`, and a server function for `action`.
+
+  Breaking: the type check reads the attributes of a plain element against `ElementProps` of its tag.
+
+  - An unknown attribute, a wrong value, a wrong value or name in a spread and a computed attribute are errors at the attribute.
+  - A handler takes its event type from `ElementEvents`, so a custom event that an app merges in reaches the handler. An event name that no element fires, such as `onDoubleClick`, is a type error.
+  - The children of a component are `Markup`, so a component that takes no children reports them.
+  - The rest of a `$props` call leaves out the props that another call names, as it does at runtime.
+
+- d939be1: `cancelWhen(element, type, check)` in `brumate/events` cancels a `click` or `submit` of an element before any handler runs. A `prevent` that is written after load also cancels a delegated `click` or `submit`, which the document no longer listens to passively.
+- 54d4852: The browser loads the code of the components on the page when the page starts, instead of on the first event. A function of another component, such as a function prop, a function in a context or a template, then runs at once and returns its result, as on the server. Before, it returned a promise, so a child that used its result, such as a `filter`, got a promise. A build groups the client code into one bundle for each root component, and a page of `handleRoute` preloads the bundles of its views.
+
+  Breaking: the features that loaded code early are removed.
+
+  - The `prefetch` attribute is a compile error.
+  - The loader no longer preloads handlers on hover, near the viewport or when the browser is idle, and the `preload` option of the plugin and the loader is gone.
+  - `brumate report` no longer lists what each handler loads, and `budget.event` is gone.
+  - The devtools have no Loading tab. `data-prefetch="none"` on a link still turns off the prefetch of its page for navigation.
+
+- b4faafb: Breaking: `#loading (expr) { ... }` is a compile error (BRM181). The header had no effect: the server output had no boundary and no fallback.
+- 54d4852: Breaking: a memo that throws, or whose promise rejects, holds its error, and each read of it throws into the nearest `#try` around the reader. Before, the error went to the `#try` around the memo, and a rejected memo kept its old value.
+
+  - A memo that failed on the server holds its error in the browser after resume. A handler, an effect or a binding that reads it throws to the nearest `#try`, and no longer reads `undefined`.
+  - A memo that throws on the server renders the `#catch` of the nearest `#try` that reads it, also when the memo is declared outside the `#try`. An awaited memo still throws at its declaration.
+  - In development the browser gets the error with its name, message, own properties and `cause`. In production it gets the message of a `ServerError`, or "The page could not compute a value". A stack is never sent.
+
+- 043532f: Breaking: new compile error BRM185 for markup that the HTML parser closes or moves before the page runs: a block element such as `<div>` inside a `<p>`, a heading in a heading, an `<li>` in an `<li>`, an `<a>` in an `<a>`, a `<form>` in a `<form>`, a `<button>` in a `<button>`, and an element that a table does not keep. In development, the server render also throws when a component inside a `<p>` renders an element that closes the `<p>`, and names the component and the file. Production renders are unchanged.
+
+  The "Missing end marker" error of the browser render names this cause.
+
+- 54d4852: - `prevent(handler, ...keys)` prevents a key alone only while Ctrl, Meta and Alt are up, so the shortcuts of the browser, such as Cmd+Left, keep working on an element that prevents the arrows. A key can name a modifier that must be held, such as `'Mod+ArrowDown'` for Ctrl or Meta.
+  - `prevent(handler, ...keys)` leaves alone a key that an input method gets while it composes text, such as the Enter that ends a word in Japanese.
+- 54d4852: Breaking: a promise prop is a plain promise in the child. The browser no longer unwraps it into its value, and after the page resumes a streamed promise prop is a promise that settles with the streamed value or rejects with its error.
+
+  - `await user`, `user.then(...)` and passing it on work in a handler, an effect and a `$client` callback, before and after it settles.
+  - Code that read the value of a promise prop directly, such as `user.name`, reads it through `$memo(user)`.
+  - An effect that reads a promise prop no longer runs again when the promise settles. `$isPending(prop)` of a promise prop is false. Use `$isPending` of a `$memo(prop)`.
+  - `$memo` of a promise prop, and a memo that loads, now load in a component that the browser renders, such as a child inside `#if`. Before, its markup stayed on `[object Promise]`.
+
+- 9b476e6: `ref` takes `$bind`: `<input ref=$bind(input)>`, also on a dynamic tag, `<{as} ref=$bind(panel)>`.
+
+  Breaking: the bare form `ref=input` is a compile error. A `ref=$bind(x)` whose signal holds another element than the tag is a type error.
+
+  - A component forwards a ref by declaring `ref` as a `Bindable` prop and writing `ref=$bind(ref)` on an element, so `<MyButton ref=$bind(el) />` and `<{as} ref=$bind(root)>` give the caller the element, also when `as` names a component.
+  - A component that leaves `ref` in its rest props and spreads them onto an element or a dynamic tag gives the element to the parent's signal, on the server, in markup that the browser renders, and when the rest or `as` changes.
+  - A `ref` bound with a setter, `ref=$bind(root, fn)`, calls `fn` with the element in the browser.
+  - A signal that only the `ref` of a component binds may hold an element.
+
+- 6405647: Children of a component behave as the body of a block, as in Svelte and Solid. Each time a component shows its children again, such as after an `#if` or a `#portal` opens again, they render with new state, and closing them runs their cleanups. Before, a click in children that a block showed a second time threw an error, and a `ref` among them could point at an element that had left the page.
+
+  - Bodies that the browser adds to a `#for`, `#if` or `#key` in children read the contexts of the component where the children are finally inserted, also when other components pass them on, and in `#offscreen`, `#client`, `#try` and `#portal` bodies.
+  - Children that a component passes on to another, as `<Select>{children}</Select>`, read the contexts of the component that inserts them.
+  - Children that the browser renders again render on a page that client navigation loaded.
+  - A spread onto a component keeps the children and the `as` component that the server rendered when markup updates after a change.
+
+- 54d4852: Add `$resolve(memo, { timeout, signal })`, which waits until a memo is no longer pending and gives its value.
+
+  Breaking: a handler, a handler prop or a `$client` callback that reads an async memo with no value yet is a compile error (BRM182) unless `$isPending` guards the read or it is written as `await $resolve(memo)`. A read the compiler cannot follow throws into the nearest `#try` with a message that points to `$resolve`, and never gives a promise or `undefined`. An effect that reads a value that is still loading skips that run, and runs again when the value arrives or fails.
+
+- 54d4852: Breaking: the props object and the rest of `$props()` can only be destructured, read one key at a time, or spread in markup. A spread in script code, and passing them to a function, `$memo`, `$setContext`, a signal or a variable, are now a compile error, since such a copy loses the `ref` and the live props. Spread them in markup instead: `<button {...rest} class="box">`.
+- 95504b2: Breaking: the attribute that scopes the styles of a component is `b-c-<hash>`, in place of `s-<hash>`. It is under the reserved `b-` prefix, so markup and data from outside the app cannot write it. CSS that names the old attribute, such as `[s-1abc]`, needs the new name.
+- 67a64f7: `mount` and `visit` of `brumate/testing` install an IntersectionObserver that reports each observed element as visible, so `$client`, `#client` and `#defer` with `'visible'` run in a test. The `offscreen` option keeps elements out of view until `reveal(selector)` brings them in. `'idle'` fires on a timer after the page starts.
+- 54d4852: Breaking: a handler is one update pass. Bindings run when the handler returns, and memo and binding errors go to the nearest `#try` in place of the handler that wrote.
+
+  - Its writes compute a memo when the handler reads it. The bindings, such as the DOM text or an effect that reads two signals, run once when the handler returns. A state between two writes no longer shows or throws.
+  - `flush()` from `brumate/signals` runs the waiting bindings at once, for a handler that must focus or measure what it rendered.
+  - A write runs each memo it reaches once, after the memos it reads, and then each binding once. The updates of a component run before those of the components inside it, so a child gets every new prop and context value before its memos compute.
+  - An error of a memo or a binding no longer stops the handler that wrote. It goes to the nearest `#try` around the code that threw. A write that has not settled after 10000 rounds, such as a loop through `ref=$bind`, stops with an error.
+  - A handler waits for the update code of its own component only, not for the code of the components above it, and a failed chunk goes to the nearest `#try`.
+  - Calls of the functions of other components, such as function props and provided functions, start in the order that they were made. The code of each still loads in parallel.
+
+- 39f4baf: A `#for` takes `window(height, count)`, which renders only the items in view. The server renders the first items, with spacers for the height of the rest, and the browser renders the items that come into view as the user scrolls. Items that leave the view keep their state while they are in the list. A windowed list keeps its `#else` body for an empty list only, and takes the element that can scroll vertically as its scroller.
+- 3b451bb: The dev server has a workbench at `/__brumate/workbench`. It lists the components that depend only on their props and their own state, renders each one on the server with controls for its props, and resumes it in the browser. A component that calls the server, or reads the request or the route, is listed apart, with the reason.
+
+### Patch Changes
+
+- 859f9b9: A prop bound with `$bind(signal, fn)` reads the value that the caller keeps right after a component writes it, in the same turn. Before, the read gave the old value until the caller drew. The setter runs at once when its code has loaded.
+- 14ced48: The type check reports a prop that a component does not take, such as `<Badge tone="red" />` when Badge has no `tone`. It reads the props of every `$props<T>()` call of a component, so a bindable prop from a second call is known to its callers.
+- 54d4852: The browser no longer throws `ReferenceError` for names that client code did not import.
+
+  - A helper that a component imports in `<script module>` and that its functions call, such as `sameKeys` in ToggleButtonGroup.
+  - A component named only in a template, as `as=Link`, `icon=Star` or `as=(open ? A : B)`, or used in a `#template` declared inside a block.
+  - A function that a page uses in its own markup and again in children or a `#template`, also as a prop of a component there, and a wrapper such as `prevent` in a handler prop of such a component.
+  - Components that only import each other, such as a Tree and a Leaf that render each other, get client code. Before, their handlers did nothing.
+  - An `#else if` whose condition never changes, such as a `$isPassed` const, works after a condition before it changes.
+
+- 54d4852: - A page that client navigation loads keeps its bindings and the handlers of its spreads. Before, a `$bind` or a handler passed through a spread wrote to the wrong scope.
+  - Client navigation no longer removes the attributes that a script set on `<html>`, such as a saved `data-theme`.
+- 54d4852: A component that a page gives to a dynamic tag or to the `as` of a part, such as `<Tab as=Target>` or `<{as} label=(label) />`, behaves as a component written by name.
+
+  - The props that change reach it, also when a part passes `as` on to another part (`<Button {as}>`), when the page writes `as=(flag ? A : B)`, with a live spread or a computed attribute, and when the component names the prop in place of spreading the rest. Before, it kept the props of the server render.
+  - It keeps the handlers of its caller and of its spreads when the browser renders it. Several handlers of one event all run, in that order.
+  - A `class` of a spread adds to the class of the tag, such as `<{as ?? 'button'} class="part" {...rest}>`.
+  - A live style variable of a part updates on it.
+  - A component that a prop gets as a value, such as `as=Link`, renders in a block or a new `#for` item that the browser renders. The sender must import the component from a `.brm` file.
+
+- 54d4852: - A provided value can hold functions in objects and lists inside it, such as `$setContext(Ctx, { slots: { increment: { onPress } } })` or `{ items: [{ run }] }`.
+  - A component can import a name that is its own name, such as `ButtonContext` in `button-context.brm`.
+  - A component that reads a context and provides the same context again updates when the value above it changes, and so do the components that read its value. `$getContext` always reads from the scopes above the reader.
+  - A module function that returns one local under two keys, such as `{ up, cancel: up }`, is a compile error that says so.
+- 393688f: An effect no longer runs again when a value that only its cleanup reads changes, as in Svelte and Solid.
+- 54d4852: - An error inside a streamed `#loading` body renders the nearest `#catch`, in the body, around the block or in a parent component. The real error shows in development and a generic one in production. A reader without scripts gets the `#catch` in place. After a client navigation, a `#loading` body that never arrives because the stream ended fires `brumate:error`, and its fallback stays.
+  - In production, a `#catch` no longer sends server error details to every visitor. It gets a plain `Error` with the message of a `ServerError`, or a generic message. The real error is logged on the server.
+  - An error of code that fails to load no longer leaves an unhandled promise rejection.
+- 54d4852: The browser renders most markup by cloning a `<template>`, not by parsing HTML. This holds for bodies of `#if`, `#for`, `#switch`, `#repeat`, `#head` and `#portal`, children of a component, dynamic tags, spreads, attributes with text and code, and child components. In the rows benchmark, creating 1,000 rows takes 5.3 ms of script, down from 8.0 ms, and replacing them 11.4 ms, down from 15.1 ms. New items of a list go in the page with less work and less garbage.
+- 54d4852: A field that the user changed before the code loaded keeps its value. When the core starts, it writes the signal of each text field, textarea, select and box with a `value` or `checked` binding whose value differs from the one the server rendered, as an `input` event would. Markup that resumes after a write, or a spread that changes first, no longer puts back the value of the server.
+- 54d4852: - A function that the markup calls on the server can read a memo that nothing else reads. It threw `ReferenceError` when that memo read another memo.
+  - A state record of a streamed memo that arrives after the memo loaded again in the browser no longer replaces the value of the newer load.
+  - A memo of an object with a shorthand property that reads another memo, such as `$memo({ id, value })`, compiles on the server.
+- 54d4852: - A block that removes a component removes the component's scopes too. Its effects run their cleanups, and the content of its `#portal` blocks leaves the page.
+  - A `$client` callback no longer runs after the block or the page that held it was removed.
+  - A loader that stopped no longer starts handlers or `$client` callbacks from markup that the core inserts later.
+  - A `$client(fn, 'visible')` without `ref` waits for the first element after it, even when another `$client` comes first.
+- 3cd7155: A spread no longer writes `b-` attributes from data, such as an object from a CMS with a `b-on` or `b-b` key. Those named handlers and scopes of the page. Brumate's own `b-` attributes of a dynamic tag still pass on.
+- 88b9ac7: A shorthand of a handler, such as `<button {onClick}>`, is a handler, the same as `onClick=onClick`, as in Svelte. Before, it was a plain attribute, and the element got no handler. The type check also reads a shorthand prop of a component, such as `<Feed {page} />`.
+- 54d4852: The client build leaves out the code of the core that no component uses: children that the browser renders, `#template` values that it calls, `<title>` in markup, `$bind` passed to other components, markup that comes after the page (`#loading`, `#defer`, streaming lists and client navigation), `$client` callbacks, handlers of the window or the document, and forms of an `$action`. The core of the todos benchmark goes from 9.2 kB to 8.3 kB gzip. An app that compiles components in the browser sets `features: 'all'` in the plugin options.
+- 54d4852: - An element with several spreads keeps the attributes of each when one of them changes in the browser, such as the `class` of a rest prop, and the attributes that other code set on it, such as an `aria-controls` that a `$client` callback added.
+  - An element with a `class` that changes and a spread with a `class` keeps the class of the spread when its own class changes.
+  - A spread whose handlers change gives the element its new handlers and their wrappers.
+  - A rest prop updates in the browser when the parent passes a new value of a prop that it holds.
+  - A rest prop leaves out the props that another `$props()` call of the component names, such as `open` in `const { label, ...rest } = $props(); let { open } = $props();`.
+  - A prop of `let` that the component writes updates its markup when every parent passes a constant, such as `<Menu open=(true) />`.
+  - A component with a `<style>` that uses `${}` values removes the `style` that a spread drops, also on the first update in the browser.
+  - A dynamic tag keeps the element that the server rendered when its scope updates after the page resumed.
+  - A computed attribute (`[name]=(value)`) whose name or value can change on a plain element or a dynamic tag no longer fails to compile with "This attribute cannot change on the client yet".
+  - A memo of an object literal, such as `$memo({ title })`, compiles in the browser.
+- 54d4852: An untyped `#template` parameter takes its type from the prop it is passed to. With `<ListBox items=(animals) item=row>` and `#template row(a)`, `a` is an `Animal`, so `a.nope` is an error at its place in the file. Hover, go to definition, references and rename on the template name still work. The TypeScript server plugin drops a diagnostic that repeats another at the same place, as the error of a template used twice does.
+- 54d4852: - A `#template` that a component calls again at the same place with new arguments, such as for an item of a list whose object changes, updates its markup in place, as a snippet of Svelte does, and keeps focus.
+  - A template at an insert updates in place only when it is the same template that the server rendered there. A template shown again after other content, and a switch between two templates of one component, render the right one.
+  - A `#template` that a component gets as a prop works with components inside it. The components read the contexts that the component provides, on the server and in the browser.
+  - Markup that streams in after a write, such as a `#loading` body, keeps the templates that it renders.
+- 54d4852: - The Vite plugin reads and compiles the components 32 at a time. A project with hundreds of components no longer fails a build with `EMFILE: too many open files`.
+  - Vitest no longer keeps `.brm` files in its file cache, so a cached component no longer calls a function of an old version of a module.
+  - The highlighter marks `#reveal` and `#defer` as blocks.
+
 ## 0.3.0
 
 ### Minor Changes
