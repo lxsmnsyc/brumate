@@ -240,7 +240,7 @@ A component cannot write the signals of its parent. To let a child change a valu
 
 - The function runs in the browser, and writes the parent's signal. The parent then passes the new value down.
 - A function passed as a prop must be code that can run in the browser, such as an arrow function or a function of the parent's script.
-- The call runs at once and returns the result, as on the server, so the child can call a function prop in markup or a memo, such as a `filter`. When the function only reads state, the memo or markup runs again when that state changes. A function that writes state is a handler, and does not trigger this. The same holds for a function in a [context](./context.md).
+- The call runs at once and returns the result, as on the server, so the child can call a function prop in markup or a memo, such as a `filter`. When the function only reads state, the memo, markup or effect that reads the prop runs again when that state changes. A function that writes state is a handler, and does not trigger this. The same holds for a function in a [context](./context.md).
 
 ### Handlers in a spread
 

@@ -214,13 +214,11 @@ function isDerivation(site: Site, writes: (site: Site) => boolean): boolean {
   if (owner?.kind !== 'component' || writes(site)) {
     return false;
   }
+  // The parser gives `onClick=…` and the like the kind `event`: those are handlers, which call
+  // code that the compiler cannot see.
   for (const attribute of owner.attributes) {
-    if (
-      (attribute.kind === 'value' && attribute.value.ast === site.node) ||
-      (attribute.kind === 'event' && attribute.handler.ast === site.node)
-    ) {
-      // `onChange` and the like name a handler, which calls code that the compiler cannot see.
-      return !/^on[A-Z]/.test(attribute.name);
+    if (attribute.kind === 'value' && attribute.value.ast === site.node) {
+      return true;
     }
   }
   return false;

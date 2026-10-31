@@ -423,7 +423,7 @@ class ClientGenerator {
         updates.push(site);
       }
     }
-    // A function prop that reads values is updated when they change, so its update calls the function.
+    // A function prop that reads values is updated when they change, so its update writes the prop again with a new bound function.
     for (const node of this.plan.graph.nodes) {
       if (
         node.kind === 'binding' &&
