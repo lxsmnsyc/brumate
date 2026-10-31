@@ -1,7 +1,7 @@
 ---
 id: setter-ref-resume-rest
 title: A setter ref in the rest props runs on resume
-status: todo
+status: active
 priority: should
 type: fix
 outline: false
