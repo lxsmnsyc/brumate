@@ -595,6 +595,29 @@ export class Emitter {
     );
   }
 
+  /** On the server, records the bound props before the markup, for `refKey`. */
+  private emitBound(scope: Scope): void {
+    if (this.options.mode !== 'server') {
+      return;
+    }
+    const bindable = this.bindableProps(scope);
+    if (bindable.length > 0) {
+      this.line(`$$ctx.bound(${this.scopeVar(scope)}, $$props, { ${bindable.join(', ')} });`);
+    }
+  }
+
+  /** The props that the component writes, as `"key": slot` entries. */
+  private bindableProps(scope: Scope): string[] {
+    const bindable: string[] = [];
+    const slots = this.plan.scopes.get(scope)?.slots ?? [];
+    for (const [index, slot] of slots.entries()) {
+      if (slot.kind === 'prop' && slot.writable && slot.propKey !== undefined) {
+        bindable.push(`${JSON.stringify(slot.propKey)}: ${index}`);
+      }
+    }
+    return bindable;
+  }
+
   emitSlots(scope: Scope): void {
     const slots = this.plan.scopes.get(scope)?.slots ?? [];
     if (slots.length > 0) {
@@ -614,12 +637,7 @@ export class Emitter {
     }
     // The props that the component writes, which a parent can bind with `$bind`.
     if (scope.kind === 'component') {
-      const bindable: string[] = [];
-      for (const [index, slot] of slots.entries()) {
-        if (slot.kind === 'prop' && slot.writable && slot.propKey !== undefined) {
-          bindable.push(`${JSON.stringify(slot.propKey)}: ${index}`);
-        }
-      }
+      const bindable = this.bindableProps(scope);
       if (bindable.length > 0) {
         this.line(
           `${this.helper('bindings')}(${this.scopeVar(scope)}, $$props, { ${bindable.join(', ')} });`,
@@ -892,9 +910,48 @@ export class Emitter {
         this.html(' b-near="');
         this.code(anchor.scope);
         this.html(`:${near}"`);
+      } else if (site.trigger === 'visible') {
+        // A signal that a component gets with `ref=$bind(name)` waits for the element it forwards.
+        const forwarded = this.forwardedSignal(site, scope);
+        if (forwarded) {
+          this.html(' b-near="');
+          this.code(anchor.scope);
+          this.html(`.${slotIndex(this.plan, forwarded)}"`);
+        }
       }
       this.html('></template>');
     }
+  }
+
+  /** The code of the `b-r` attribute of an element that has `ref=$bind(name)` with a prop. */
+  private forwardedRef(node: ElementNode): string | undefined {
+    if (this.options.mode !== 'server') {
+      return undefined;
+    }
+    for (const attribute of node.attributes) {
+      const declaration = attribute.kind === 'ref' ? this.refTargets.get(attribute) : undefined;
+      if (declaration?.kind === 'prop') {
+        const scope = this.scopeVar(instanceScope(this.plan, declaration.scope));
+        return `$$ctx.refKey(${scope}, ${slotIndex(this.plan, declaration)})`;
+      }
+    }
+    return undefined;
+  }
+
+  /** The signal of `scope` that a site reads, which a component may forward its element to. */
+  private forwardedSignal(site: Site, scope: Scope): Declaration | undefined {
+    for (const read of site.reads) {
+      const declaration = read.declaration;
+      if (declaration.scope !== scope || declaration.kind !== 'signal') {
+        continue;
+      }
+      for (const binding of this.plan.graph.model.bindings) {
+        if (binding.declaration === declaration && !binding.setter) {
+          return declaration;
+        }
+      }
+    }
+    return undefined;
   }
 
   /** The anchor of the first element of `scope` that a site reads through `ref`. */
@@ -923,6 +980,7 @@ export class Emitter {
       }
     }
     this.emitStatements(setup, component);
+    this.emitBound(component);
     for (const template of this.file.templates) {
       this.emitTemplate(template);
     }
@@ -1467,6 +1525,12 @@ export class Emitter {
       this.html(' b-b="');
       this.code(anchor.scope);
       this.html(`:${anchor.index}"`);
+    }
+    // An element that forwards a `ref` prop tells the loader which signal of the caller it is, so a
+    // `$client` of the caller can wait for it.
+    const forwarded = this.forwardedRef(node);
+    if (forwarded) {
+      this.code(forwarded);
     }
     if (pageTitle) {
       this.html(' b-t');

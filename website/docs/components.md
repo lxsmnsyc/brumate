@@ -208,7 +208,7 @@ A component that renders an element for its caller can pass the element on. It d
 - A component can pass the binding on: `<Inner ref=$bind(ref) />`.
 - A dynamic tag that names a component passes `ref` as a prop too: `<{as} ref=$bind(root)>`.
 - The server does not send the element. Handlers and `$client` callbacks of the caller read the element in the browser, as they read the element of a `ref` in their own file.
-- A `$client(…, 'visible')` of the caller does not wait for a forwarded element. It runs when the element that follows it comes into view.
+- A `$client(…, 'visible')` of the caller waits for the forwarded element to come into view, as it does for the element of a `ref` in its own file. It does not wait when the component leaves `ref` in its rest props: the callback then runs when the element that follows it comes into view.
 
 ### Functions as props
 

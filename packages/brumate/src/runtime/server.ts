@@ -909,16 +909,31 @@ export class Context {
    * writes in the browser go to the parent's slots.
    */
   bindings(scope: ScopeId, props: Record<string, unknown>, slots: Record<string, number>): void {
+    this.bound(scope, props, slots);
+    for (const [name, slot] of Object.entries(slots)) {
+      const value = props[name];
+      const record = this.entry(scope).record;
+      // An element that the component wrote into its prop goes to the signal that it is bound to.
+      const written = record.s?.[slot];
+      if (
+        isBinding(value) &&
+        written instanceof ElementReference &&
+        isSlotReference(value.target)
+      ) {
+        this.forward(value.target, written);
+      }
+    }
+  }
+
+  /**
+   * Records where the bound props write, before the component renders its markup, so an element
+   * that it forwards can name the signal at the end of the bindings. See `refKey`.
+   */
+  bound(scope: ScopeId, props: Record<string, unknown>, slots: Record<string, number>): void {
     for (const [name, slot] of Object.entries(slots)) {
       const value = props[name];
       if (isBinding(value)) {
-        const record = this.entry(scope).record;
-        (record.b ??= {})[slot] = value.target;
-        // An element that the component wrote into its prop goes to the signal that it is bound to.
-        const written = record.s?.[slot];
-        if (written instanceof ElementReference && isSlotReference(value.target)) {
-          this.forward(value.target, written);
-        }
+        (this.entry(scope).record.b ??= {})[slot] = value.target;
       }
     }
   }
@@ -963,6 +978,21 @@ export class Context {
       this.forward(value.target, new ElementReference(scope, anchor));
     }
     return attributes;
+  }
+
+  /**
+   * The `b-r` attribute of an element that a component forwards for its caller: the scope and slot
+   * of the signal at the end of the bindings, `S.slot`. The loader finds the element by it, for a
+   * `$client` of the caller that waits until it is in view. Empty when no signal is bound.
+   */
+  refKey(scope: ScopeId, slot: number): string {
+    let target = this.ownRecord(scope)?.b?.[slot];
+    let key = '';
+    while (isSlotReference(target)) {
+      key = ` b-r="${target.scope}.${target.slot}"`;
+      target = this.ownRecord(target.scope)?.b?.[target.slot];
+    }
+    return key;
   }
 
   /** Returns the reference that a `ref` signal holds on the server. */
