@@ -1,0 +1,10 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import FnReadChild from './FnReadChild.brm';
+
+  let first = $signal('ada');
+  let last = $signal('lovelace');
+</script>
+
+<button class="next" onClick=(() => (first = 'grace'))>Next</button>
+<FnReadChild label=(() => `${first} ${last}`) />

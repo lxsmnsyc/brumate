@@ -4299,6 +4299,47 @@ describe('function props in markup that the browser renders', () => {
   });
 });
 
+describe('memos that read state through a function prop', () => {
+  it('runs again when the state that the function reads changes', async () => {
+    await resume('fnReadSync', {});
+    expect(text('.title')).toBe('ADA');
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.live')).toBe('grace'));
+    await waitFor(() => expect(text('.title')).toBe('GRACE'));
+  });
+
+  it('runs again when the function prop is an arrow in the markup', async () => {
+    await resume('fnReadArrow', {});
+    expect(text('.title')).toBe('ADA LOVELACE');
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.title')).toBe('GRACE LOVELACE'));
+    expect(text('.live')).toBe('grace lovelace');
+  });
+
+  it('runs again when the child is rendered in the browser', async () => {
+    await resume('fnReadLater', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.title')).toBe('ADA'));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.live')).toBe('grace'));
+    await waitFor(() => expect(text('.title')).toBe('GRACE'));
+  });
+
+  it('runs again when a memo that the function reads loads a new value', async () => {
+    const server = await import(file('fnReadAsync.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    await startLoader();
+    await waitFor(() => expect(text('.title')).toBe('USER1'));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.live')).toBe('user2'));
+    await waitFor(() => expect(text('.title')).toBe('USER2'));
+  });
+});
+
 describe('shorthand handlers', () => {
   it('runs a handler that a shorthand gives an element', async () => {
     await resume('shorthandHandler', {});

@@ -423,6 +423,17 @@ class ClientGenerator {
         updates.push(site);
       }
     }
+    // A function prop that reads values is updated when they change, so its update calls the function.
+    for (const node of this.plan.graph.nodes) {
+      if (
+        node.kind === 'binding' &&
+        node.site.kind === 'prop' &&
+        this.plan.symbols.has(node.site) &&
+        this.plan.graph.live.has(node)
+      ) {
+        updates.push(node.site);
+      }
+    }
     for (const scope of this.renderedScopes()) {
       for (const site of this.model.sites) {
         if (isWithin(site.scope, scope) && !DEFERRED_SITES.has(site.kind)) {
