@@ -10,3 +10,9 @@
   <p>Double: {double}</p>
   <p class="note">This paragraph never changes, so it ships as HTML only.</p>
 </div>
+
+<style>
+  .note {
+    color: var(--muted);
+  }
+</style>

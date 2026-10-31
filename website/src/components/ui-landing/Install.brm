@@ -1,0 +1,102 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  const managers = ['pnpm', 'npm', 'bun'];
+  const verbs: Record<string, string> = { pnpm: 'pnpm add', npm: 'npm i', bun: 'bun add' };
+
+  let manager = $signal('pnpm');
+  let copied = $signal(false);
+  const command = $memo(`${verbs[manager]} @brumate/ui`);
+
+  function copy() {
+    navigator.clipboard?.writeText(command);
+    copied = true;
+    setTimeout(() => (copied = false), 1400);
+  }
+</script>
+
+<div class="install">
+  <div class="tabs" role="group" aria-label="Package manager">
+    #for (name of managers by name) {
+      <button type="button" aria-pressed=(manager === name) onClick=(() => (manager = name))>{name}</button>
+    }
+  </div>
+  <code>{command}</code>
+  <button type="button" class="copy" onClick=(copy)>
+    <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
+  </button>
+</div>
+
+<style>
+  .install {
+    display: inline-flex;
+    align-items: stretch;
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-elevated);
+    font: 500 var(--text-sm) var(--mono);
+    overflow: hidden;
+  }
+
+  .tabs {
+    display: flex;
+    border-right: 1px solid var(--border);
+  }
+
+  button {
+    padding: 0.6rem 0.75rem;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+    transition:
+      color var(--duration-fast) var(--ease),
+      background-color var(--duration-fast) var(--ease);
+  }
+
+  button:hover {
+    color: var(--text);
+  }
+
+  .tabs button[aria-pressed='true'] {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  code {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding: 0 0.9rem;
+    white-space: nowrap;
+  }
+
+  .copy {
+    min-width: 4.75rem;
+    border-left: 1px solid var(--border);
+  }
+
+  button:focus-visible {
+    outline-offset: -2px;
+  }
+
+  /* A narrow screen puts the tabs on a row of their own, so the command fits without scrolling. */
+  @media (max-width: 30rem) {
+    .install {
+      flex-wrap: wrap;
+    }
+
+    .tabs {
+      width: 100%;
+      border-right: 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    code {
+      flex: 1;
+      padding: 0.6rem 0.9rem;
+    }
+  }
+</style>

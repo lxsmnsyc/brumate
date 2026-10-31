@@ -9,6 +9,13 @@ declare module '*.brm?inspect' {
   import type { Raw } from 'brumate/html';
 
   export const source: Raw;
+  export const client: Raw;
+  export const css: Raw;
+  /** The markup that the server renders for the component, one tag on a line. */
+  export const html: Raw;
+  /** The script of the page state that the server sends with the markup. */
+  export const state: Raw;
+  export const text: Raw;
   export const report: {
     name: string;
     roots: { label: string; reason: string }[];
@@ -16,6 +23,7 @@ declare module '*.brm?inspect' {
     state: { scope: string; slots: string[] }[];
     staticMarkup: { elements: number; inserts: number };
     sizes: { module: string; bytes: number; gzip: number }[];
+    scope: string | null;
   };
 }
 

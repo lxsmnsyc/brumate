@@ -28,8 +28,8 @@ export interface LiveFile {
 }
 
 export interface LiveOutput {
-  /** The compiled modules of the files, by name, for the output tab. */
-  modules: { name: string; code: string; language: 'ts' | 'css'; client: boolean }[];
+  /** The compiled modules of the files, by name, for the output tab. `file` is the file each comes from. */
+  modules: { name: string; file: string; code: string; language: 'ts' | 'css'; client: boolean }[];
   warnings: string[];
 }
 
@@ -365,20 +365,40 @@ export async function runSample(
       for (const [part, code] of Object.entries(result.parts)) {
         partOutputs.push({
           name: `${file.name}: part ${part}`,
+          file: file.name,
           code,
           language: 'ts',
           client: true,
         });
       }
       outputs.push(
-        { name: `${file.name}: client entry`, code: result.client, language: 'ts', client: true },
+        {
+          name: `${file.name}: client entry`,
+          file: file.name,
+          code: result.client,
+          language: 'ts',
+          client: true,
+        },
         ...partOutputs,
-        { name: `${file.name}: server`, code: result.server, language: 'ts', client: false },
-        { name: `${file.name}: render`, code: result.render, language: 'ts', client: true },
+        {
+          name: `${file.name}: server`,
+          file: file.name,
+          code: result.server,
+          language: 'ts',
+          client: false,
+        },
+        {
+          name: `${file.name}: render`,
+          file: file.name,
+          code: result.render,
+          language: 'ts',
+          client: true,
+        },
       );
       if (result.css) {
         outputs.push({
           name: `${file.name}: css`,
+          file: file.name,
           code: result.css,
           language: 'css',
           client: false,
@@ -388,6 +408,7 @@ export async function runSample(
       // A module of reactive logic: components copy its functions, and the browser shares this code.
       outputs.push({
         name: `${file.name}: shared browser code`,
+        file: file.name,
         code: generateShared({ path: name, source: file.source }).code,
         language: 'ts',
         client: true,

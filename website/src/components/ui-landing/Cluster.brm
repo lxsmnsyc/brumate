@@ -1,0 +1,125 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import Select from '@brumate/ui/Select.brm';
+  import SelectValue from '@brumate/ui/SelectValue.brm';
+  import Tab from '@brumate/ui/Tab.brm';
+  import TabList from '@brumate/ui/TabList.brm';
+  import TabPanel from '@brumate/ui/TabPanel.brm';
+  import Tabs from '@brumate/ui/Tabs.brm';
+  import Icon from '../Icon.brm';
+  import { sizeLabel } from '../../ui-landing.ts';
+
+  let presses = $signal(0);
+  let subscribed = $signal(true);
+  let letter = $signal<string | null>('b');
+  const letters = ['Alpha', 'Beta', 'Gamma'];
+</script>
+
+<div class="cluster card">
+  <div class="row">
+    <Button class="ui-button" onPress=(() => presses++)>Pressed {presses} {presses === 1 ? 'time' : 'times'}</Button>
+    <span class="badge">Button {sizeLabel('Button')}</span>
+  </div>
+  <div class="row">
+    <Checkbox class="ui-box" isSelected=$bind(subscribed)>
+      <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+      Send the newsletter
+    </Checkbox>
+    <span class="badge">Checkbox {sizeLabel('Checkbox')}</span>
+  </div>
+  <div class="row">
+    <Select class="ui-select" aria-label="Letter" selectedKey=$bind(letter)>
+      <Button class="ui-button ui-select-button"><SelectValue class="ui-select-value" /></Button>
+      <Popover class="ui-popover ui-select-popover">
+        <ListBox class="ui-listbox">
+          #for (name of letters by name) {
+            <ListBoxItem id=(name.toLowerCase().slice(0, 1)) class="ui-option">{name}</ListBoxItem>
+          }
+        </ListBox>
+      </Popover>
+    </Select>
+    <span class="badge">Select {sizeLabel('Select')}</span>
+  </div>
+  <div class="row">
+    <DialogTrigger>
+      <Button class="ui-button">Open a dialog</Button>
+      <Popover class="ui-popover" transition>
+        <Dialog class="ui-dialog">
+          <Heading slot="title" level=(4)>A dialog</Heading>
+          <p>It takes focus, its title names it, and Escape closes it.</p>
+          <Button slot="close" class="ui-button">Close</Button>
+        </Dialog>
+      </Popover>
+    </DialogTrigger>
+    <span class="badge">Dialog {sizeLabel('Dialog')}</span>
+  </div>
+  <div class="row tabs">
+    <Tabs>
+      <TabList class="ui-tablist" aria-label="Parts">
+        <Tab id="a" class="ui-tab">Arrow keys</Tab>
+        <Tab id="b" class="ui-tab">Roles</Tab>
+      </TabList>
+      <TabPanel id="a" class="ui-tabpanel">Arrow keys move between tabs.</TabPanel>
+      <TabPanel id="b" class="ui-tabpanel">Each part has the roles that its pattern needs.</TabPanel>
+    </Tabs>
+    <span class="badge">Tabs {sizeLabel('Tabs')}</span>
+  </div>
+</div>
+
+<style>
+  .cluster {
+    display: grid;
+    min-width: 0;
+    padding: 0.5rem 1.25rem;
+    box-shadow: var(--shadow);
+    animation: rise var(--duration-slow) var(--ease) both;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    padding: 0.9rem 0;
+  }
+
+  .row + .row {
+    border-top: 1px solid var(--border);
+  }
+
+  .tabs {
+    align-items: flex-start;
+  }
+
+  .tabs :global(.ui-tabpanel) {
+    font-size: var(--text-sm);
+  }
+
+  .badge {
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-full);
+    background: var(--accent-tint);
+    color: var(--accent-strong);
+    font: 500 var(--text-xs) var(--mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+</style>

@@ -1,24 +1,34 @@
 <script>
   import Meta from '../components/Meta.brm';
-  import Network from '../components/Network.brm';
-  import Shipped from '../components/Shipped.brm';
-  import ShipsMap from '../components/ShipsMap.brm';
-  import BusyStrips from '../components/BusyStrips.brm';
-  import { serverFunctions, streaming, typed } from '../home/snippets.ts';
-  import * as counter from '../demos/Counter.brm?inspect';
-  import * as todos from '../demos/Todos.brm?inspect';
-  import Shop from '../demos/Shop.brm';
+  import Install from '../components/home/Install.brm';
+  import NetworkStrip from '../components/home/NetworkStrip.brm';
+  import ResumeStage from '../components/home/ResumeStage.brm';
+  import Scrolly from '../components/home/Scrolly.brm';
+  import Cart from '../demos/Cart.brm';
+  import Stepper from '../demos/Stepper.brm';
   import * as shop from '../demos/Shop.brm?inspect';
 
   const base = import.meta.env.BASE_URL;
-  function sumGzip(): number {
+
+  /** The gzip size of the client code of the shop demo, in KB, as `brumate inspect` measures it. */
+  function measureShop(): string {
     let sum = 0;
     for (const size of shop.report.sizes) {
       sum += size.gzip;
     }
-    return sum;
+    return (sum / 1024).toFixed(1);
   }
-  const shopKb = (sumGzip() / 1024).toFixed(2);
+  const shopKb = measureShop();
+
+  // Each feature links to the page of the docs that explains it.
+  const features = [
+    { label: '#loading', title: 'Stream the data later', page: 'async-data', text: 'Send the page now, and each part when its data is ready. The browser needs no code for it.' },
+    { label: "'use server'", title: 'Call the server like a function', page: 'server-functions', text: 'Its body and its imports stay on the server. The browser gets a small function that sends the call.' },
+    { label: 'routes/[id].brm', title: 'Files are routes', page: 'routing', text: 'Layouts, params and links that load pages in place, with the state of the layouts kept.' },
+    { label: '<form action>', title: 'Forms without scripts', page: 'forms', text: 'A form posts to a server function before any script loads, and better after.' },
+    { label: 'brumate inspect', title: 'See what ships', page: 'inspect', text: 'Ask the compiler what each component sends to the browser, and why.' },
+    { label: '@brumate/ui', title: 'Accessible parts', page: '../ui', text: 'Unstyled parts with the right roles, keys and focus. A part you do not render ships nothing.' },
+  ];
 </script>
 
 #head {
@@ -30,614 +40,256 @@
   description="A component language and compiler. Components render on the server, and the browser picks up where the server left off. No hydration, and code only for what responds to the user."
   path=""
 />
-<main class="home">
+<main class="landing">
   <section class="hero">
-    <div class="hero-glow" aria-hidden="true"></div>
-    <p class="eyebrow">A component language and compiler</p>
-    <h1>Web apps that <span class="gradient-text">resume</span>, not hydrate.</h1>
-    <p class="lead">
-      Components render on the server. The browser keeps their state and gets code only for
-      what responds to the user, in one bundle per page. Nothing renders twice.
-    </p>
-    <div class="actions">
-      <a class="button primary" href=(`${base}docs/getting-started`)>Get started</a>
-      <a class="button" href=(`${base}repl`)>Open the REPL</a>
-    </div>
-    <pre class="install"><span class="prompt">$</span> pnpm add brumate</pre>
-  </section>
-
-  <section class="section ships-section">
-    <div class="ships-text">
-      <h2>What ships to the browser</h2>
-      <p class="section-lead">
-        The server renders the whole page as HTML. The browser gets code only for the parts that respond to the user,
-        and it comes with the page, so the first click needs no request.
+    <div class="hero-text">
+      <p class="eyebrow">A component language and compiler</p>
+      <h1 class="display">Web apps that <em>resume</em>, not hydrate.</h1>
+      <p class="lead">
+        The server renders the page. The browser keeps its state and runs code only for what
+        responds to the user. Nothing renders twice.
       </p>
-      <p class="section-lead">Switch to hydration to compare.</p>
+      <div class="actions">
+        <a class="button primary" href=(`${base}docs/getting-started`)><span class="arrow">Get started</span></a>
+        <a class="button" href=(`${base}repl`)>Open the REPL</a>
+      </div>
+      <Install />
     </div>
-    <ShipsMap />
+    <ResumeStage kb=shopKb />
   </section>
 
-  <section class="section">
-    <h2>After the HTML arrives</h2>
-    <p class="section-lead">
-      A page that hydrates runs every component again in the browser before the first click works.
-      A brumate page picks up where the server left off.
-    </p>
-    <BusyStrips />
-  </section>
-
-  <section class="section">
-    <h2>Try it on this page</h2>
-    <p class="section-lead">
-      This shop page is a brumate component, rendered when this page was built. The list on the right shows the scripts that the shop needs. After a client navigation to this page, it lists only the scripts that the navigation loaded.
-      The code of the page came with it, so a color or a cart update runs at once, with no request.
-      Turn on X-ray to see which parts ship code and which ship as HTML only.
-    </p>
-    <div class="playground">
-      <div class="xray">
-        <label class="xray-toggle">
-          <input type="checkbox">
-          <span>X-ray: what ships</span>
-        </label>
-        <div class="browser">
-          <div class="browser-bar"><span></span><span></span><span></span><em>kettle.example/pour-over</em></div>
-          <Shop />
-        </div>
-        <ul class="xray-legend">
-          <li class="html">HTML only. No code ships for it.</li>
-          <li class="handler">A handler. Its code comes with the page.</li>
-          <li class="update">Updates when a value it reads changes.</li>
-        </ul>
-        <p class="xray-sum">
-          The whole component is <strong>{shopKb} KB</strong> gzip, in the bundle of this page.{' '}
-          {shop.report.staticMarkup.elements} of its elements ship as HTML only. The X-ray switch is CSS, with no script.
+  <section class="act">
+    <div class="section-head">
+      <span class="numeral" aria-hidden="true">01</span>
+      <div>
+        <h2>Ship <em>less</em>.</h2>
+        <p>
+          Follow one component through the compiler. Every snippet and size on the right is output of the
+          build of this site, run on <code>Counter.brm</code>.
         </p>
       </div>
-      <Network title="Scripts of the shop" only="core Index Shop" />
     </div>
+    <Scrolly />
   </section>
 
-  <section class="section">
-    <h2>What the compiler ships</h2>
-    <p class="section-lead">
-      The compiler builds the graph of what reads what once, when it compiles. Only what can change in the browser
-      ships code. Markup that cannot change ships as HTML only. These tables come from <code>brumate inspect</code>, run when this site was built.
-    </p>
-    <div class="showcase">
-      <article class="showcase-item">
+  <section class="act">
+    <div class="section-head">
+      <span class="numeral" aria-hidden="true">02</span>
+      <div>
+        <h2>Pick up <em>where</em> the server left off.</h2>
+        <p>
+          These demos are brumate components. Their code came with the page. Use one and watch the strip at
+          the bottom: the handler runs at once, with no request and no render.
+        </p>
+      </div>
+    </div>
+    <div class="demos">
+      <article class="card demo" data-demo="Stepper">
         <h3>Counter</h3>
-        {counter.source}
-        <Shipped report=(counter.report) />
+        <p>The server rendered 3. The browser keeps it.</p>
+        <Stepper />
       </article>
-      <article class="showcase-item">
-        <h3>Todos</h3>
-        {todos.source}
-        <Shipped report=(todos.report) />
-      </article>
-    </div>
-  </section>
-
-  <section class="section rows">
-    <article class="row">
-      <div class="row-text">
-        <p class="eyebrow">Streaming</p>
-        <h2>Send the page now, and the data when it is ready</h2>
-        <p>
-          A <code>#loading</code> block shows its <code>#else</code> body in the first response.
-          The server keeps the connection open and streams the real body in place once its data loads.
-          The browser needs no code for it.
-        </p>
-        <a href=(`${base}docs/async-data`)>Loading data</a>
-      </div>
-      <div class="row-media">
-        <div class="code" role="group" aria-label="Streaming example" tabindex="0">{streaming}</div>
-        <div class="browser" aria-hidden="true">
-          <div class="browser-bar"><span></span><span></span><span></span></div>
-          <div class="browser-page stream-demo">
-            <div class="stream-skeleton"><i></i><i></i></div>
-            <div class="stream-loaded"><b>Ada Lovelace</b><span>Wrote the first program.</span></div>
-          </div>
-        </div>
-      </div>
-    </article>
-
-    <article class="row">
-      <div class="row-text">
-        <p class="eyebrow">Server functions</p>
-        <h2>Call the server like a function</h2>
-        <p>
-          Mark an async function with <code>'use server'</code>. Its body and its imports, such as a database client,
-          stay on the server. The browser gets a small function that sends the call. A form can post to one with no script at all.
-        </p>
-        <a href=(`${base}docs/server-functions`)>Server functions</a>
-      </div>
-      <div class="row-media">
-        <div class="code" role="group" aria-label="Server functions example" tabindex="0">{serverFunctions}</div>
-        <div class="wire" role="img" aria-label="The browser calls like(1). The server runs the body of like with the database and sends back the result, 13 likes.">
-          <span class="wire-end">Browser<small>on click</small></span>
-          <span class="wire-lines">
-            <span class="wire-line out"><code>like(1)</code></span>
-            <span class="wire-line back"><code>13</code></span>
-          </span>
-          <span class="wire-end server">Server<small>runs the body, with <code>db</code></small></span>
-        </div>
-      </div>
-    </article>
-
-    <article class="row">
-      <div class="row-text">
-        <p class="eyebrow">Typed</p>
-        <h2>Errors before the page breaks</h2>
-        <p>
-          <code>brumate-tsc</code> checks scripts, markup, props and events. It also checks that every value the browser reads can be sent to it.
-        </p>
-        <a href=(`${base}docs/typescript`)>TypeScript</a>
-      </div>
-      <div class="row-media">
-        <div class="code" role="group" aria-label="Typed example" tabindex="0">{typed}</div>
-        <p class="type-error"><span>error</span> A function cannot be sent to the client. Keep it out of the signal or memo</p>
-      </div>
-    </article>
-
-    <article class="row">
-      <div class="row-text">
-        <p class="eyebrow">Routes</p>
-        <h2>Files are routes</h2>
-        <p>
-          A <code>.brm</code> file under <code>src/routes</code> renders its URL. Layouts wrap the routes of their folder.
-          Links load pages in place and keep the layouts, with their state.
-        </p>
-        <a href=(`${base}docs/routing`)>Routing</a>
-      </div>
-      <div class="row-media">
-        <ul class="tree">
-          <li><code>src/routes/</code></li>
-          <li class="nest"><code>_layout.brm</code><span>wraps every page</span></li>
-          <li class="nest"><code>index.brm</code><span>/</span></li>
-          <li class="nest"><code>docs/</code></li>
-          <li class="nest2"><code>[page].brm</code><span>/docs/routing</span></li>
-          <li class="nest"><code>[...rest].brm</code><span>every other path</span></li>
-        </ul>
-      </div>
-    </article>
-  </section>
-
-  <section class="section">
-    <h2>And the rest of an app</h2>
-    <div class="features">
-      <article class="feature">
-        <h3>Forms without scripts</h3>
-        <p>A form posts to a server function before any script loads, and with scripts off. Once the loader runs, it posts without a page load.</p>
-      </article>
-      <article class="feature">
-        <h3>Scoped styles</h3>
-        <p>A <code>&lt;style&gt;</code> block matches only its component. Values from the script go into the CSS and update with the state.</p>
-      </article>
-      <article class="feature">
-        <h3>Shared logic</h3>
-        <p>A <code>.brm.ts</code> module holds signals and memos that several components use, compiled like the script of a component.</p>
-      </article>
-      <article class="feature">
-        <h3>Tests that resume</h3>
-        <p><code>brumate/testing</code> renders on the server and resumes in the DOM of a test, with the code that ships.</p>
-      </article>
-      <article class="feature">
-        <h3>Deploy anywhere</h3>
-        <p>Serve pages from your own server, build for Node, Bun, Deno, Cloudflare or Vercel with Nitro, or prerender a site that has no server functions.</p>
-      </article>
-      <article class="feature">
-        <h3>An editor that knows .brm</h3>
-        <p>The VS Code extension gives <code>.brm</code> files highlighting, types and the compiler's errors. Other editors use the same language server.</p>
+      <article class="card demo" data-demo="Cart">
+        <h3>Cart</h3>
+        <p>Each button runs its handler with the state the server sent.</p>
+        <Cart />
       </article>
     </div>
   </section>
 
-  <section class="section cta">
-    <h2>Start with one component</h2>
-    <p>A <code>.brm</code> file, the Vite plugin and a server that streams pages.</p>
-    <div class="actions">
-      <a class="button primary" href=(`${base}docs/getting-started`)>Get started</a>
-      <a class="button" href=(`${base}repl`)>Open the REPL</a>
+  <section class="act">
+    <div class="section-head">
+      <span class="numeral" aria-hidden="true">03</span>
+      <div>
+        <h2>The rest of an <em>app</em>.</h2>
+        <p>Server functions, streaming, routes, forms and tests, in the same language.</p>
+      </div>
+    </div>
+    <div class="grid">
+      #for (feature of features by feature.title) {
+        <a class="cell" href=(feature.page.startsWith('../') ? `${base}${feature.page.slice(3)}` : `${base}docs/${feature.page}`)>
+          <code>{feature.label}</code>
+          <h3>{feature.title} <span class="corner" aria-hidden="true">↗</span></h3>
+          <p>{feature.text}</p>
+        </a>
+      }
     </div>
   </section>
 </main>
+<NetworkStrip />
 
 <style>
-  /* Home */
-
-  .playground {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 18rem;
-    gap: 1.25rem;
-    align-items: start;
+  .landing {
+    max-width: var(--page-width);
+    margin: 0 auto;
+    /* Room for the network strip, so it covers nothing. */
+    padding: 0 1.5rem 3rem;
   }
 
-  .showcase {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr));
-    gap: 1.25rem;
+  .landing code {
+    font-size: 0.88em;
   }
 
-  .showcase-item {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-    overflow: hidden;
-  }
+  /* Hero */
 
-  .showcase-item h3 {
-    margin: 0;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--border);
-    font-size: 1rem;
-  }
-
-  .showcase-item :global(.code) {
-    margin: 0;
-    border-radius: 0;
-    border-width: 0 0 1px;
-    max-height: 22rem;
-  }
-
-  /* A wireframe of an app, and what of it ships code. Radio buttons and :has switch the view. */
-
-  /* The shop demo, and its X-ray view: a checkbox and :has, with no script. */
-
-  .xray {
-    display: grid;
-    gap: 0.75rem;
-    min-width: 0;
-  }
-
-  .xray-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    justify-self: start;
-    padding: 0.4rem 0.8rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: var(--surface);
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .xray-toggle input {
-    accent-color: var(--accent);
-  }
-
-  .xray-legend,
-  .xray-sum {
-    display: none;
-    margin: 0;
-    font-size: 0.85rem;
-  }
-
-  .xray-legend {
-    flex-wrap: wrap;
-    gap: 0.5rem 1.25rem;
-    padding: 0;
-    list-style: none;
-  }
-
-  .xray-legend li::before {
-    content: '';
-    display: inline-block;
-    width: 0.8rem;
-    height: 0.8rem;
-    margin-right: 0.4rem;
-    border-radius: 3px;
-    vertical-align: -0.1rem;
-  }
-
-  .xray-legend .html::before {
-    background: repeating-linear-gradient(45deg, var(--surface-strong) 0 3px, transparent 3px 6px);
-    border: 1px dashed var(--muted);
-  }
-
-  .xray-legend .handler::before {
-    border: 2px solid var(--accent);
-  }
-
-  .xray-legend .update::before {
-    border: 2px solid var(--cool);
-  }
-
-  .xray:has(.xray-toggle input:checked) .xray-legend {
-    display: flex;
-  }
-
-  .xray:has(.xray-toggle input:checked) .xray-sum {
-    display: block;
-    color: var(--muted);
-  }
-
-  .xray:has(.xray-toggle input:checked) :global([data-xray]) {
+  .hero {
     position: relative;
-    border-radius: 6px;
-    outline-offset: 3px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 3rem;
+    align-items: center;
+    padding: 5.5rem 0 4.5rem;
   }
 
-  .xray:has(.xray-toggle input:checked) :global([data-xray='html']) {
-    outline: 1px dashed var(--muted);
-    background-image: repeating-linear-gradient(
-      45deg,
-      color-mix(in srgb, var(--surface-strong) 70%, transparent) 0 4px,
-      transparent 4px 10px
-    );
-  }
-
-  .xray:has(.xray-toggle input:checked) :global([data-xray='handler']) {
-    outline: 2px solid var(--accent);
-  }
-
-  .xray:has(.xray-toggle input:checked) :global([data-xray='update']) {
-    outline: 2px solid var(--cool);
-  }
-
-  .xray:has(.xray-toggle input:checked) :global([data-xray])::after {
+  .hero::before {
+    content: '';
     position: absolute;
-    top: -0.6rem;
-    right: 0.25rem;
-    z-index: 1;
-    padding: 0 0.4rem;
-    border-radius: 999px;
-    font: 600 0.65rem/1.4rem var(--mono);
-    white-space: nowrap;
+    /* Inside the hero, so the glow never widens the page. */
+    inset: -10% 0 auto 30%;
+    z-index: -1;
+    height: 32rem;
+    background: radial-gradient(closest-side, var(--accent-tint), transparent);
+    filter: blur(20px);
     pointer-events: none;
   }
 
-  .xray:has(.xray-toggle input:checked) :global(.shop-nav) :global([data-xray])::after {
-    top: 50%;
-    transform: translateY(-50%);
+  .hero .display {
+    margin: 1.1rem 0 1.4rem;
   }
 
-  .xray:has(.xray-toggle input:checked) :global(.shop-logo)::after {
-    right: auto;
-    left: calc(100% + 0.5rem);
-  }
-
-  .xray:has(.xray-toggle input:checked) :global(.shop-cart)::after {
-    right: calc(100% + 0.5rem);
-  }
-
-  .xray:has(.xray-toggle input:checked) :global([data-xray='html'])::after {
-    content: 'HTML · 0 KB';
-    background: var(--surface-strong);
-    color: var(--muted);
-  }
-
-  .xray:has(.xray-toggle input:checked) :global([data-xray='handler'])::after {
-    content: 'ships code';
-    background: var(--accent-fill);
-    color: var(--on-accent);
-  }
-
-  .xray:has(.xray-toggle input:checked) :global([data-xray='update'])::after {
-    content: 'updates';
-    background: var(--cool);
-    color: var(--on-cool);
-  }
-
-  .stream-demo {
-    display: grid;
-    padding: 1rem;
-    min-height: 5.5rem;
-  }
-
-  .stream-demo > * {
-    grid-area: 1 / 1;
-  }
-
-  .stream-skeleton {
-    display: grid;
-    gap: 0.5rem;
-    animation: skeleton 5s infinite;
-  }
-
-  .stream-skeleton i {
-    height: 0.9rem;
-    border-radius: 4px;
-    background: linear-gradient(
-      90deg,
-      var(--surface) 25%,
-      var(--surface-strong) 50%,
-      var(--surface) 75%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.2s infinite linear;
-  }
-
-  .stream-skeleton i:first-child {
-    width: 45%;
-    height: 1.2rem;
-  }
-
-  .stream-loaded {
-    display: grid;
-    gap: 0.25rem;
-    animation: loaded 5s infinite;
-  }
-
-  .stream-loaded span {
-    color: var(--muted);
-  }
-
-  @keyframes skeleton {
-    0%,
-    45% {
-      opacity: 1;
-    }
-    50%,
-    95% {
-      opacity: 0;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
-
-  @keyframes loaded {
-    0%,
-    45% {
-      opacity: 0;
-    }
-    50%,
-    95% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0;
-    }
-  }
-
-  @keyframes shimmer {
-    to {
-      background-position: -200% 0;
-    }
-  }
-
-  /* A call of a server function: the arguments go to the server, and the result comes back. */
-
-  .wire {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 0.75rem;
-    align-items: center;
-    font-size: 0.85rem;
-  }
-
-  .wire-end {
-    display: grid;
-    gap: 0.15rem;
-    padding: 0.5rem 0.8rem;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    font-weight: 600;
-    text-align: center;
-  }
-
-  .wire-end.server {
-    border-color: var(--accent);
-  }
-
-  .wire-end small {
-    color: var(--muted);
-    font-size: 0.75rem;
-    font-weight: 400;
-  }
-
-  .wire-lines {
-    display: grid;
-    gap: 1.1rem;
-  }
-
-  /* Each line is an arrow, with its value on it. */
-
-  .wire-line {
+  .hero .display em {
     position: relative;
-    height: 2px;
-    background: var(--muted);
-    text-align: center;
   }
 
-  .wire-line code {
-    position: relative;
-    top: -0.7rem;
-    padding: 0.05rem 0.45rem;
-    border-radius: 999px;
-    background: var(--accent-fill);
-    color: var(--on-accent);
-    font-size: 0.75rem;
-  }
-
-  .wire-line.back code {
-    background: var(--cool);
-  }
-
-  .wire-line::after {
+  .hero .display em::after {
     content: '';
     position: absolute;
-    top: -4px;
-    border: 5px solid transparent;
+    right: 2%;
+    bottom: 0.02em;
+    left: 2%;
+    height: 0.07em;
+    border-radius: 2px;
+    background: var(--accent);
+    transform-origin: left;
+    animation: draw 900ms 400ms var(--ease) both;
   }
 
-  .wire-line.out::after {
-    right: -2px;
-    border-left: 8px solid var(--muted);
-    border-right: 0;
+  @keyframes draw {
+    from {
+      transform: scaleX(0);
+    }
   }
 
-  .wire-line.back::after {
-    left: -2px;
-    border-right: 8px solid var(--muted);
-    border-left: 0;
+  .lead {
+    max-width: 34rem;
+    margin: 0 0 2rem;
+    color: var(--muted);
+    font-size: 1.15rem;
   }
 
-  .type-error {
-    margin: 0;
-    padding: 0.6rem 0.8rem;
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--danger) 10%, transparent);
-    font-family: var(--mono);
-    font-size: 0.8rem;
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
   }
 
-  .type-error span {
-    color: var(--danger);
-    font-weight: 700;
+  /* Sections */
+
+  .act {
+    padding: 5rem 0;
+    border-top: 1px solid var(--border);
   }
 
-  .tree {
-    margin: 0;
-    padding: 1rem 1.25rem;
+  /* ii. The demos */
+
+  .demos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  .demo {
+    padding: 1.6rem;
+  }
+
+  .demo h3 {
+    margin: 0 0 0.3rem;
+    font-size: 1.1rem;
+  }
+
+  .demo > p {
+    margin: 0 0 1.2rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  /* iii. The features, a hairline grid of links */
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--code-bg);
-    font-size: 0.9rem;
-    list-style: none;
+    border-radius: var(--radius-lg);
+    background: var(--border);
+    overflow: hidden;
   }
 
-  .tree li {
+  .cell {
+    padding: 1.6rem;
+    background: var(--bg-elevated);
+    color: var(--text);
+    text-decoration: none;
+    transition: background var(--duration);
+  }
+
+  .cell:hover {
+    background: var(--surface);
+  }
+
+  .cell code {
+    display: block;
+    margin-bottom: 0.9rem;
+    color: var(--accent-strong);
+    font: var(--text-xs) var(--mono);
+  }
+
+  .cell h3 {
     display: flex;
     justify-content: space-between;
     gap: 1rem;
-    padding: 0.2rem 0;
+    margin: 0 0 0.4rem;
+    font-size: 1.05rem;
   }
 
-  .tree li span {
+  .corner {
+    color: var(--subtle);
+    transition:
+      transform var(--duration) var(--ease),
+      color var(--duration);
+  }
+
+  .cell:hover .corner {
+    color: var(--accent);
+    transform: translate(3px, -3px);
+  }
+
+  .cell p {
+    margin: 0;
     color: var(--muted);
-    font-family: var(--mono);
-    font-size: 0.8rem;
+    font-size: 0.93rem;
   }
 
-  .tree .nest {
-    padding-left: 1.25rem;
-  }
+  @media (max-width: 56rem) {
+    .hero,
+    .demos,
+    .grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
 
-  .tree .nest2 {
-    padding-left: 2.5rem;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .stream-loaded {
-        animation: none;
-      }
-
-    .stream-skeleton {
-        display: none;
-      }
-  }
-
-  @media (max-width: 800px) {
-    .playground {
-        grid-template-columns: minmax(0, 1fr);
-      }
+    .hero {
+      padding-top: 3rem;
+    }
   }
 </style>

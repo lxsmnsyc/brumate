@@ -1,5 +1,5 @@
 <script>
-  import { $props } from 'brumate/signals';
+  import { $client, $props, $signal } from 'brumate/signals';
   import * as docs from '../docs.ts';
   import type { Page } from '../docs.ts';
   import * as ui from '../ui.ts';
@@ -32,11 +32,75 @@
   function link(target: string): string {
     return `${base}${section}${target ? `/${target}` : ''}`;
   }
+  // The group of the sidebar that holds the page, as the eyebrow above the title.
+  function findGroup(): string {
+    for (const group of sections) {
+      for (const item of group.pages) {
+        if (item.slug === slug) {
+          return group.title;
+        }
+      }
+    }
+    return section === 'ui' ? 'Parts' : 'Documentation';
+  }
+  const group = findGroup();
+  const source = `https://github.com/lxsmnsyc/brumate/edit/main/website/${section}/${slug || 'index'}.md`;
   const contents: Page['headings'] = [];
   for (const heading of page?.headings ?? []) {
     if (heading.level === 2 || heading.level === 3) {
       contents.push(heading);
     }
+  }
+
+  let current = $signal(contents[0]?.id ?? '');
+
+  // The section in view: the first heading, in page order, that is inside the band under the
+  // header. When none is, the last heading above the band stays.
+  $client(() => {
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            visible.add(entry.target.id);
+          } else {
+            visible.delete(entry.target.id);
+          }
+        }
+        for (const heading of contents) {
+          if (visible.has(heading.id)) {
+            current = heading.id;
+            return;
+          }
+        }
+      },
+      { rootMargin: '-72px 0px -70% 0px' },
+    );
+    for (const heading of contents) {
+      const element = document.getElementById(heading.id);
+      if (element) {
+        observer.observe(element);
+      }
+    }
+    return () => observer.disconnect();
+  });
+
+  // The copy button of a code block. The blocks are plain HTML, so one handler on the page
+  // finds the button of the click.
+  function copyCode(event: MouseEvent) {
+    const button = (event.target as Element).closest<HTMLButtonElement>('.code-copy');
+    const text = button?.parentElement?.querySelector('pre')?.textContent;
+    if (!button || text === undefined || text === null) {
+      return;
+    }
+    void navigator.clipboard.writeText(text).then(() => {
+      button.dataset.copied = '';
+      button.textContent = 'Copied';
+      setTimeout(() => {
+        delete button.dataset.copied;
+        button.textContent = 'Copy';
+      }, 1600);
+    });
   }
 </script>
 
@@ -52,8 +116,9 @@
     type="article"
   />
 }
-<article class="prose">
+<article class="prose" onClick=(copyCode)>
   #if (page) {
+    <p class="eyebrow">{group}</p>
     #for (part, index of page.parts by index) {
       #if ('files' in part) {
         <LiveSample files=part.files />
@@ -87,12 +152,13 @@
     }
     <nav class="pager" aria-label="Pages">
       #if (previous) {
-        <a class="previous" href=(link(previous.slug))><small>Previous</small>{previous.title}</a>
+        <a class="previous" href=(link(previous.slug))><small>← Previous</small>{previous.title}</a>
       }
       #if (next) {
-        <a class="next" href=(link(next.slug))><small>Next</small>{next.title}</a>
+        <a class="next" href=(link(next.slug))><small>Next →</small>{next.title}</a>
       }
     </nav>
+    <p class="edit"><a href=(source) target="_blank" rel="noreferrer">Edit this page on GitHub</a></p>
   } #else {
     <h1>Not found</h1>
     <p>No page at this address. <a href=(link(''))>Back to the {section === 'ui' ? 'parts' : 'documentation'}</a>.</p>
@@ -102,7 +168,11 @@
   #if (contents.length > 0) {
     <p>On this page</p>
     #for (heading of contents by heading.id) {
-      <a href=(`#${heading.id}`) class=(`level-${heading.level}`)>{heading.text}</a>
+      <a
+        href=(`#${heading.id}`)
+        class={ 'level-3': heading.level === 3, active: heading.id === current }
+        aria-current=(heading.id === current ? 'location' : undefined)
+      >{heading.text}</a>
     }
   }
 </nav>
@@ -113,43 +183,62 @@
     top: var(--header-height);
     align-self: start;
     max-height: calc(100vh - var(--header-height));
-    padding: 1.5rem 0;
+    padding: 1.75rem 0 2rem;
     overflow-y: auto;
   }
 
   .toc p {
-    margin: 1rem 0 0.3rem;
+    margin: 0 0 0.5rem;
     padding: 0 0.75rem;
     color: var(--muted);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.07em;
+    font: 500 var(--text-xs) var(--mono);
+    letter-spacing: 0.05em;
     text-transform: uppercase;
   }
 
-  .toc p {
-    margin-top: 0;
-  }
-
   .toc a {
+    position: relative;
     display: block;
     padding: 0.25rem 0.75rem;
-    border-radius: 6px;
     color: var(--muted);
-    font-size: 0.925rem;
+    font-size: var(--text-sm);
     text-decoration: none;
+    transition: color var(--duration-fast) var(--ease);
   }
 
   .toc a:hover {
     color: var(--text);
   }
 
-  .toc a {
-    font-size: 0.85rem;
-  }
-
   .toc a.level-3 {
     padding-left: 1.5rem;
+  }
+
+  /* The accent marker of the section in view: it grows in from the left edge. */
+  .toc a::before {
+    content: '';
+    position: absolute;
+    top: 0.2rem;
+    bottom: 0.2rem;
+    left: 0;
+    width: 2px;
+    border-radius: var(--radius-full);
+    background: var(--accent);
+    opacity: 0;
+    transform: scaleY(0.3);
+    transition:
+      opacity var(--duration) var(--ease),
+      transform var(--duration) var(--ease);
+  }
+
+  .toc a.active {
+    color: var(--accent-strong);
+    font-weight: 600;
+  }
+
+  .toc a.active::before {
+    opacity: 1;
+    transform: scaleY(1);
   }
 
   .pager {
@@ -162,21 +251,42 @@
   .pager a {
     display: flex;
     flex-direction: column;
-    padding: 0.85rem 1rem;
+    gap: 0.25rem;
+    padding: 1rem 1.15rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-sm);
     color: var(--text);
     font-weight: 600;
     text-decoration: none;
+    transition:
+      border-color var(--duration-fast) var(--ease),
+      box-shadow var(--duration) var(--ease),
+      transform var(--duration) var(--ease);
   }
 
   .pager a:hover {
     border-color: var(--accent);
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
   }
 
   .pager small {
+    display: inline-block;
     color: var(--muted);
-    font-weight: 400;
+    font: 500 var(--text-xs) var(--mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: transform var(--duration) var(--ease);
+  }
+
+  .pager .previous:hover small {
+    transform: translateX(-4px);
+  }
+
+  .pager .next:hover small {
+    transform: translateX(4px);
   }
 
   .pager .next {
@@ -184,9 +294,32 @@
     text-align: right;
   }
 
+  .pager .next small {
+    align-self: flex-end;
+  }
+
+  .edit {
+    margin: 1.5rem 0 0;
+    font-size: var(--text-sm);
+  }
+
+  .edit a {
+    color: var(--muted);
+  }
+
   @media (max-width: 1100px) {
     .toc {
-        display: none;
-      }
+      display: none;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .pager {
+      grid-template-columns: 1fr;
+    }
+
+    .pager .next {
+      grid-column: 1;
+    }
   }
 </style>
