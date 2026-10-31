@@ -1,7 +1,7 @@
 ---
 id: release-0.4
 title: Release brumate 0.4.0 and @brumate/ui 0.1.0
-status: todo
+status: done
 priority: should
 type: release
 outline: false
@@ -187,9 +187,9 @@ Publish brumate 0.4.0 and @brumate/ui 0.1.0 (the first public ui release), with 
 
 ## Acceptance
 
-- [ ] The Version Packages pull request shows brumate 0.4.0 and @brumate/ui 0.1.0, and its changelogs read well.
-- [ ] Build, tests, e2e and the pack check pass on main; the results are in the outcome.
-- [ ] The maintainer merges the pull request and the packages are on npm.
+- [x] The Version Packages pull request shows brumate 0.4.0 and @brumate/ui 0.1.0, and its changelogs read well.
+- [x] Build, tests, e2e and the pack check pass on main; the results are in the outcome.
+- [x] The maintainer merges the pull request and the packages are on npm.
 
 ## Sizing
 

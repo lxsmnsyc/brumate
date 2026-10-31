@@ -1,3 +1,0 @@
-- 2026-10-30: probed with a provider whose locale is a signal. Meter, ProgressBar, Slider (output and thumb), Calendar heading already follow it (memos read the context). NumberField and ColorField keep their text in a signal set once, so they kept the old format. Fixed each with an effect on a locale memo that rewrites the text.
-- Test: packages/ui/test/i18n-locale-change.test.ts fails on main (NumberField), passes now.
-- Demo: I18nProviderDemo switches one provider between ar-EG, de-DE and en-US.
