@@ -1,0 +1,74 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  // Three products. Each button adds or removes its product, with the state the server sent.
+  const products = ['Pour-over kettle', 'Ceramic dripper', 'Paper filters ×100'];
+  let added = $signal<string[]>([]);
+
+  function toggle(product: string) {
+    added = added.includes(product)
+      ? added.filter((name) => name !== product)
+      : [...added, product];
+  }
+</script>
+
+<ul class="cart">
+  #for (product of products by product) {
+    <li>
+      <span>{product}</span>
+      <button
+        type="button"
+        class={ added: added.includes(product) }
+        aria-pressed=(added.includes(product))
+        onClick=(() => toggle(product))
+      >{added.includes(product) ? 'Added ✓' : 'Add'}</button>
+    </li>
+  }
+</ul>
+<p class="total">{added.length} in the cart</p>
+
+<style>
+  .cart {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  button {
+    min-width: 5.5rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font: 500 0.82rem var(--font);
+    cursor: pointer;
+    transition:
+      background var(--duration-fast),
+      transform var(--duration-fast) var(--ease);
+  }
+
+  button:active {
+    transform: scale(0.96);
+  }
+
+  button.added {
+    border-color: transparent;
+    background: var(--accent-fill);
+    color: var(--on-accent);
+  }
+
+  .total {
+    margin: 0.8rem 0 0;
+    color: var(--muted);
+    font: var(--text-xs) var(--mono);
+  }
+</style>

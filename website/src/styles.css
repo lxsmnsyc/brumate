@@ -1,79 +1,130 @@
-/* The global styles of the site: the colors of the themes, the base elements, buttons, and
-   the prose and code of the docs, which come from Markdown. Each component keeps its own
-   styles in its <style> block. */
+/* The global styles of the site: the design tokens, the base elements, the shared pieces
+   (buttons, keys, eyebrows, section heads, cards) and the prose and code of the docs. Each
+   component keeps its own styles in its <style> block. DESIGN.md describes the tokens and when to
+   use each one. */
 
 :root {
-  /* --accent is for lines, outlines and large marks. Text or an icon on an orange fill uses
+  /* Color. --accent is for lines, outlines and large marks. Text or an icon on an orange fill uses
      --accent-fill with --on-accent, and on a blue fill --cool with --on-cool, so both themes
-     reach 4.5:1. */
+     reach 4.5:1. --accent-tint and --cool-tint are washes behind text, never text. */
   --bg: #fbfaf8;
-  --surface: #f2efea;
+  --bg-elevated: #ffffff;
+  --surface: #f3f0eb;
   --surface-strong: #e9e4dc;
   --text: #1c1917;
   --muted: #6b635b;
-  --border: #e3ddd4;
+  --subtle: #8c8379;
+  --border: #e6e0d7;
+  --border-strong: #d4ccc0;
   --accent: #d4612a;
   --accent-strong: #9f4116;
   --accent-fill: #bb4f1b;
   --on-accent: #fff;
+  --accent-soft: #fbe7dc;
+  --accent-tint: rgb(212 97 42 / 10%);
+  --cool: #2a76b2;
+  --on-cool: #fff;
+  --cool-tint: rgb(42 118 178 / 10%);
   --danger: #b3261e;
   --warn: #8a5a00;
   --success: #2da44e;
-  --accent-soft: #fbe7dc;
-  --cool: #2a76b2;
-  --on-cool: #fff;
-  --code-bg: #f6f3ee;
-  --header-height: 3.5rem;
+  --code-bg: #f7f4ef;
+  --shadow-sm: 0 1px 2px rgb(28 25 23 / 6%);
+  --shadow: 0 1px 2px rgb(28 25 23 / 5%), 0 10px 30px rgb(28 25 23 / 7%);
+  --shadow-lg: 0 30px 80px rgb(28 25 23 / 22%);
+  --backdrop: rgb(28 25 23 / 36%);
+
+  /* Type. Inter Tight for text, JetBrains Mono for code, labels and numbers. */
+  --font: 'Inter Tight', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: clamp(1.9rem, 3.4vw, 2.75rem);
+  --text-display: clamp(2.6rem, 5.4vw, 4.5rem);
+
+  /* Shape. */
+  --radius-sm: 6px;
   --radius: 10px;
-  --shadow: 0 1px 2px rgb(28 25 23 / 6%), 0 8px 24px rgb(28 25 23 / 6%);
-  --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --radius-lg: 18px;
+  --radius-full: 999px;
+
+  /* Motion. Fast for hover and press, base for state changes, slow for things that enter. */
+  --duration-fast: 120ms;
+  --duration: 200ms;
+  --duration-slow: 320ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Layout. */
+  --page-width: 76rem;
+  --header-height: 3.75rem;
+  --z-header: 20;
+  --z-strip: 30;
+  --z-overlay: 50;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #141210;
-    --surface: #1d1a17;
-    --surface-strong: #27231f;
-    --text: #efe9e2;
+    --bg: #12100e;
+    --bg-elevated: #1a1714;
+    --surface: #1e1a17;
+    --surface-strong: #29241f;
+    --text: #f1ebe4;
     --muted: #a39a90;
-    --border: #2f2a25;
+    --subtle: #7d746b;
+    --border: #2b2622;
+    --border-strong: #3b352f;
     --accent: #f08a52;
     --accent-strong: #f6a679;
     --accent-fill: #f08a52;
     --on-accent: #141210;
+    --accent-soft: #3a2116;
+    --accent-tint: rgb(240 138 82 / 13%);
+    --cool: #6fb2e6;
+    --on-cool: #141210;
+    --cool-tint: rgb(111 178 230 / 13%);
     --danger: #f28b82;
     --warn: #e3b341;
     --success: #3fb950;
-    --accent-soft: #3a2116;
-    --cool: #6fb2e6;
-    --on-cool: #141210;
-    --code-bg: #1a1714;
-    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
+    --code-bg: #171411;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 10px 30px rgb(0 0 0 / 35%);
+    --shadow-lg: 0 30px 80px rgb(0 0 0 / 65%);
+    --backdrop: rgb(0 0 0 / 55%);
     color-scheme: dark;
   }
 }
 
 :root[data-theme='dark'] {
-  --bg: #141210;
-  --surface: #1d1a17;
-  --surface-strong: #27231f;
-  --text: #efe9e2;
+  --bg: #12100e;
+  --bg-elevated: #1a1714;
+  --surface: #1e1a17;
+  --surface-strong: #29241f;
+  --text: #f1ebe4;
   --muted: #a39a90;
-  --border: #2f2a25;
+  --subtle: #7d746b;
+  --border: #2b2622;
+  --border-strong: #3b352f;
   --accent: #f08a52;
   --accent-strong: #f6a679;
   --accent-fill: #f08a52;
   --on-accent: #141210;
+  --accent-soft: #3a2116;
+  --accent-tint: rgb(240 138 82 / 13%);
+  --cool: #6fb2e6;
+  --on-cool: #141210;
+  --cool-tint: rgb(111 178 230 / 13%);
   --danger: #f28b82;
   --warn: #e3b341;
   --success: #3fb950;
-  --accent-soft: #3a2116;
-  --cool: #6fb2e6;
-  --on-cool: #141210;
-  --code-bg: #1a1714;
-  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
+  --code-bg: #171411;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 10px 30px rgb(0 0 0 / 35%);
+  --shadow-lg: 0 30px 80px rgb(0 0 0 / 65%);
+  --backdrop: rgb(0 0 0 / 55%);
   color-scheme: dark;
 }
 
@@ -93,6 +144,8 @@ body {
   color: var(--text);
   font: 16px/1.65 var(--font);
   -webkit-font-smoothing: antialiased;
+  /* Glows and other decoration may reach past the edge. They never make the page scroll sideways. */
+  overflow-x: clip;
 }
 
 a {
@@ -100,84 +153,334 @@ a {
 }
 
 code,
-pre {
+pre,
+kbd {
   font-family: var(--mono);
+  /* Code shows the characters as typed: no ligature turns <!-- or => into one glyph. */
+  font-variant-ligatures: none;
 }
 
-/* Buttons */
+/* Focus: one ring for every control the site styles. */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-tint);
+}
+
+/* Buttons. A primary button is the one next step of a page, in the color of the text. */
 
 .button {
   display: inline-flex;
   align-items: center;
-  padding: 0.6rem 1.1rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  gap: 0.5rem;
+  padding: 0.65rem 1.15rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
   color: var(--text);
   font-weight: 600;
+  font-size: 0.95rem;
   text-decoration: none;
+  transition:
+    transform var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease),
+    border-color var(--duration-fast);
 }
 
 .button:hover {
-  border-color: var(--muted);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.button:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .button.primary {
   border-color: transparent;
-  background: var(--accent-fill);
-  color: var(--on-accent);
+  background: var(--text);
+  color: var(--bg);
 }
 
-.button.primary:hover {
-  background: var(--accent-strong);
+/* An arrow after the text of a link or button, which moves on hover. */
+
+.arrow::after {
+  content: '→';
+  display: inline-block;
+  margin-inline-start: 0.35em;
+  transition: transform var(--duration) var(--ease);
+}
+
+a:hover > .arrow::after,
+.arrow:hover::after {
+  transform: translateX(3px);
+}
+
+/* A key of the keyboard. */
+
+kbd,
+.kbd {
+  display: inline-block;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  font: 500 0.7rem/1 var(--mono);
+}
+
+/* A small label above a heading: mono, upper case, after a short rule. */
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--accent-strong);
+  font: 500 var(--text-xs) var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  content: '';
+  width: 1.1rem;
+  height: 1px;
+  background: currentColor;
+}
+
+/* A display heading. One word in <em> takes the accent color, in the same face. */
+
+.display {
+  margin: 0;
+  font-size: var(--text-display);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.display em,
+.section-head h2 em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+/* The head of a section of a marketing page: a mono number after a short rule, then the heading
+   and its lead. */
+
+.section-head {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.section-head .numeral {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  height: 1.4rem;
+  margin-top: 0.6rem;
+  color: var(--accent-strong);
+  font: 500 var(--text-sm) var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.section-head .numeral::after {
+  content: '';
+  flex: 1;
+  max-width: 2.5rem;
+  height: 1px;
+  background: currentColor;
+}
+
+.section-head h2 {
+  margin: 0 0 0.7rem;
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.section-head p {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.08rem;
+}
+
+@media (max-width: 52rem) {
+  .section-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .section-head .numeral {
+    margin-top: 0;
+  }
+}
+
+/* Text for screen readers only. */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A card: a raised surface for a demo or a group of facts. */
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-sm);
 }
 
 .prose {
   min-width: 0;
-  padding: 1.75rem 0 4rem;
+  padding: 2rem 0 4rem;
+  animation: prose-in var(--duration-slow) var(--ease);
+}
+
+/* A page rises into place. It does not fade: text at half opacity would read with too little
+   contrast while it enters. */
+@keyframes prose-in {
+  from {
+    transform: translateY(8px);
+  }
+}
+
+/* The head of a page: the group as an eyebrow, the title, then a larger lead. */
+
+.prose > .eyebrow {
+  margin-bottom: 0.75rem;
 }
 
 .prose h1 {
   margin: 0 0 1rem;
-  font-size: 2.4rem;
-  line-height: 1.15;
-  letter-spacing: -0.025em;
+  font-size: var(--text-2xl);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.prose h1 + p {
+  color: var(--muted);
+  font-size: var(--text-lg);
+  line-height: 1.6;
 }
 
 .prose h2 {
-  margin: 2.75rem 0 0.75rem;
-  padding-top: 1.25rem;
+  margin: 3rem 0 0.75rem;
+  padding-top: 1.5rem;
   border-top: 1px solid var(--border);
-  font-size: 1.5rem;
-  letter-spacing: -0.015em;
+  font-size: var(--text-xl);
+  letter-spacing: -0.02em;
 }
 
 .prose h3 {
   margin: 2rem 0 0.5rem;
-  font-size: 1.15rem;
+  font-size: var(--text-lg);
+  letter-spacing: -0.02em;
+}
+
+.prose h2,
+.prose h3 {
+  scroll-margin-top: calc(var(--header-height) + 1rem);
+}
+
+/* The # link of a heading, before its text: in the margin on a wide screen, in the line on a
+   narrow one. It shows on hover and on focus. */
+
+.prose :is(h2, h3) {
+  position: relative;
+}
+
+.prose .anchor {
+  position: absolute;
+  right: 100%;
+  padding-inline-end: 0.35em;
+  /* The same size, weight and line as the heading, so the mark lines up with its text. */
+  color: var(--accent-strong);
+  font: inherit;
+  opacity: 0;
+  text-decoration: none;
+  transition: opacity var(--duration) var(--ease);
+}
+
+@media (max-width: 64rem) {
+  .prose .anchor {
+    position: static;
+  }
+}
+
+.prose :is(h2, h3):hover .anchor,
+.prose .anchor:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .prose .anchor {
+    opacity: 0.45;
+  }
 }
 
 .prose p,
 .prose li {
   color: color-mix(in srgb, var(--text) 88%, var(--muted));
+  line-height: 1.7;
+}
+
+/* Links: an underline that thickens on hover. */
+
+.prose a:not(.anchor, .button, .edit-link) {
+  color: var(--accent-strong);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition:
+    text-decoration-color var(--duration-fast) var(--ease),
+    text-decoration-thickness var(--duration-fast) var(--ease);
+}
+
+.prose a:not(.anchor, .button):hover {
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 2px;
 }
 
 .prose :not(pre) > code {
   overflow-wrap: anywhere;
   padding: 0.1rem 0.35rem;
-  border-radius: 5px;
-  background: var(--surface-strong);
-  font-size: 0.875em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 0.85em;
 }
+
+/* Tables: a bordered panel, a head in mono, and lines between the rows. */
 
 .prose table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.925rem;
+  font-size: var(--text-sm);
 }
 
 .prose .props-scroll,
 .prose .table-scroll {
+  margin: 1.25rem 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   overflow-x: auto;
 }
 
@@ -190,15 +493,41 @@ pre {
 
 .prose th,
 .prose td {
-  padding: 0.45rem 0.7rem;
-  border: 1px solid var(--border);
+  padding: 0.55rem 0.8rem;
+  border: 0;
+  border-top: 1px solid var(--border);
   text-align: left;
   vertical-align: top;
 }
 
+.prose thead th {
+  border-top: 0;
+}
+
+/* Code in a cell breaks only at spaces, so a column is as wide as its longest word and never
+   splits a name in the middle. The table scrolls when the columns do not fit. */
+.prose :is(td, th) :not(pre) > code,
+.prose :is(td, th) > code {
+  overflow-wrap: normal;
+}
+
 .prose th {
   background: var(--surface);
+  color: var(--muted);
+  font: 500 var(--text-xs) var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
+
+.prose tbody tr {
+  transition: background-color var(--duration-fast) var(--ease);
+}
+
+.prose tbody tr:hover {
+  background: var(--surface);
+}
+
+/* Code: a panel with the language as a label and a button that copies. */
 
 .prose pre,
 .code {
@@ -211,24 +540,127 @@ pre {
   overflow: auto;
 }
 
+.code-block {
+  position: relative;
+  margin: 1.25rem 0;
+}
+
+.code-block pre {
+  margin: 0;
+}
+
+.code-lang,
+.code-copy {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  font: 500 var(--text-xs) var(--mono);
+  letter-spacing: 0.03em;
+}
+
+.code-lang {
+  color: var(--muted);
+  pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease);
+}
+
+.code-copy {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) var(--ease),
+    transform var(--duration-fast) var(--ease);
+}
+
+.code-copy:hover {
+  color: var(--text);
+}
+
+.code-copy:active {
+  transform: scale(0.96);
+}
+
+.code-copy[data-copied] {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.code-block:hover .code-copy,
+.code-block:focus-within .code-copy,
+.code-copy[data-copied] {
+  opacity: 1;
+}
+
+.code-block:hover .code-lang,
+.code-block:focus-within .code-lang,
+.code-block:has(.code-copy[data-copied]) .code-lang {
+  opacity: 0;
+}
+
+@media (hover: none) {
+  .code-copy {
+    opacity: 1;
+  }
+
+  .code-lang {
+    display: none;
+  }
+}
+
+/* Callouts: a tint per kind. A quote with no kind takes the accent. */
+
 .prose blockquote,
 .alert {
+  --callout: var(--accent);
   margin: 1.25rem 0;
-  padding: 0.6rem 1rem;
-  border-left: 3px solid var(--accent);
-  border-radius: 0 8px 8px 0;
-  background: var(--surface);
+  padding: 0.75rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--callout) 28%, transparent);
+  border-left: 3px solid var(--callout);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--callout) 8%, var(--bg));
+}
+
+.prose blockquote > :first-child,
+.alert > :first-child {
+  margin-top: 0;
+}
+
+.prose blockquote > :last-child,
+.alert > :last-child {
+  margin-bottom: 0;
+}
+
+.alert.note {
+  --callout: var(--cool);
+}
+
+.alert.tip {
+  --callout: var(--success);
+}
+
+.alert.important {
+  --callout: var(--accent);
+}
+
+.alert.warning {
+  --callout: var(--warn);
+}
+
+.alert.caution {
+  --callout: var(--danger);
 }
 
 .alert-title {
   margin: 0 0 0.25rem;
-  font-weight: 700;
-}
-
-@media (max-width: 640px) {
-  :root {
-    --header-height: 6.5rem;
-  }
+  color: var(--text);
+  font: 500 var(--text-xs) var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 /* Highlighted code from twinkleplop is a <pre> of its own. */
@@ -247,7 +679,27 @@ pre {
   animation-duration: 0.15s;
 }
 
+/* A theme switch reveals the new theme in a circle (src/theme-switch.ts). The header joins the
+   page picture, and the old picture stays still under the circle. */
+:root.theme-switching .header {
+  view-transition-name: none;
+}
+
+:root.theme-switching::view-transition-old(root),
+:root.theme-switching::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+
   ::view-transition-group(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {
@@ -265,247 +717,7 @@ input[type='radio'] {
   vertical-align: -0.15em;
 }
 
-/* The marketing pages: the home page and the landing page of @brumate/ui. */
-
-.home {
-  max-width: 72rem;
-  margin: 0 auto;
-  padding: 0 1rem 4rem;
-}
-
-.hero {
-  position: relative;
-  padding: 5rem 0 3.5rem;
-  text-align: center;
-}
-
-.hero-glow {
-  position: absolute;
-  inset: 0 10% auto;
-  z-index: -1;
-  height: 22rem;
-  background:
-    radial-gradient(
-      closest-side at 35% 50%,
-      color-mix(in srgb, var(--cool) 22%, transparent),
-      transparent
-    ),
-    radial-gradient(
-      closest-side at 65% 50%,
-      color-mix(in srgb, var(--accent) 24%, transparent),
-      transparent
-    );
-  filter: blur(20px);
-}
-
-.home .eyebrow {
-  margin: 0 0 1rem;
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.hero h1 {
-  max-width: 44rem;
-  margin: 0 auto;
-  font-size: clamp(2.3rem, 6vw, 3.8rem);
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-}
-
-.gradient-text {
-  background: linear-gradient(90deg, var(--cool), var(--accent));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.lead {
-  max-width: 38rem;
-  margin: 1.4rem auto 0;
-  color: var(--muted);
-  font-size: 1.125rem;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-top: 2rem;
-}
-
-.install {
-  display: inline-block;
-  margin: 1.75rem 0 0;
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--code-bg);
-  font-size: 0.9rem;
-}
-
-.prompt {
-  margin-right: 0.6rem;
-  color: var(--muted);
-  user-select: none;
-}
-
-.section {
-  padding: 3rem 0 0;
-}
-
-.section h2 {
-  margin: 0;
-  font-size: 1.75rem;
-  letter-spacing: -0.02em;
-}
-
-.section-lead {
-  max-width: 46rem;
-  margin: 0.6rem 0 1.5rem;
-  color: var(--muted);
-}
-
-.ships-section {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 2.5rem;
-  align-items: center;
-}
-
-@media (max-width: 52rem) {
-  .ships-section {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
-  }
-}
-
-.browser-bar em {
-  margin-left: 0.75rem;
-  color: var(--muted);
-  font: normal 0.75rem var(--mono);
-}
-
-/* The features with code, text on one side and the code on the other. */
-
-.rows {
-  display: grid;
-  gap: 4.5rem;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  gap: 2.5rem;
-  align-items: center;
-}
-
-.row:nth-child(even) .row-text {
-  order: 2;
-}
-
-.row h2 {
-  margin: 0.25rem 0 0.75rem;
-  font-size: 1.6rem;
-  line-height: 1.2;
-}
-
-.row-text p:not(.eyebrow) {
-  color: var(--muted);
-}
-
-.row-text > a {
-  font-weight: 600;
-}
-
-.row-text > a::after {
-  /* An arrow icon, in the color of the link. */
-  content: '';
-  display: inline-block;
-  width: 0.9em;
-  height: 0.9em;
-  margin-inline-start: 0.3em;
-  vertical-align: -0.1em;
-  background: currentColor;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E")
-    center / contain no-repeat;
-}
-
-.row-media {
-  display: grid;
-  gap: 0.75rem;
-  min-width: 0;
-}
-
-.row-media .code {
-  margin: 0;
-}
-
-.browser {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
-
-.browser-bar {
-  display: flex;
-  gap: 0.35rem;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-
-.browser-bar span {
-  width: 0.6rem;
-  height: 0.6rem;
-  border-radius: 50%;
-  background: var(--surface-strong);
-}
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
-  gap: 1rem;
-}
-
-.feature {
-  padding: 1.25rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-
-.feature h3 {
-  margin: 0 0 0.4rem;
-  font-size: 1.05rem;
-}
-
-.feature p {
-  margin: 0;
-  color: var(--muted);
-}
-
-.cta {
-  text-align: center;
-  padding-top: 4rem;
-}
-
-.cta p {
-  color: var(--muted);
-}
-
-@media (max-width: 52rem) {
-  .row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
-  }
-
-  .row:nth-child(even) .row-text {
-    order: 0;
-  }
+/* A page with the network strip keeps room for it at the bottom. */
+body:has(.strip[data-network]) {
+  padding-bottom: 3rem;
 }

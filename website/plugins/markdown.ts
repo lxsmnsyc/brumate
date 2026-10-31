@@ -226,12 +226,21 @@ function createRenderer(base: string, section: 'docs' | 'ui'): MarkdownIt {
     const heading = env?.headings?.at(-1)?.text;
     return heading ? `${kind}: ${heading}` : kind;
   };
+  // A code block has a small label with its language, and a button that copies its text. The
+  // page script finds the button by its class.
   const fence = parser.renderer.rules.fence!;
-  parser.renderer.rules.fence = (tokens, index, options, env, self) =>
-    fence(tokens, index, options, env, self).replace(
+  parser.renderer.rules.fence = (tokens, index, options, env, self) => {
+    const language = tokens[index]!.info.trim().split(/\s+/)[0] ?? '';
+    const pre = fence(tokens, index, options, env, self).replace(
       /<pre(?=[\s>])/,
       `<pre tabindex="0" role="group" aria-label="${parser.utils.escapeHtml(label('Code', env))}"`,
     );
+    const tag =
+      language && language !== 'plain'
+        ? `<span class="code-lang">${parser.utils.escapeHtml(language)}</span>`
+        : '';
+    return `<div class="code-block">${tag}<button class="code-copy" type="button" aria-label="Copy the code">Copy</button>${pre}</div>\n`;
+  };
   parser.renderer.rules.table_open = (_tokens, _index, _options, env) =>
     `<div class="table-scroll" role="group" aria-label="${parser.utils.escapeHtml(label('Table', env))}" tabindex="0">\n<table>\n`;
   parser.renderer.rules.table_close = () => '</table>\n</div>\n';
@@ -260,7 +269,13 @@ function createRenderer(base: string, section: 'docs' | 'ui'): MarkdownIt {
     const id = slug(text);
     token.attrSet('id', id);
     env.headings.push({ level: Number(token.tag.slice(1)), text: text.replaceAll('`', ''), id });
-    return self.renderToken(tokens, index, options);
+    // A link to the heading, before its text, which shows on hover and focus. The page title
+    // has none.
+    const anchor =
+      token.tag === 'h1'
+        ? ''
+        : `<a class="anchor" href="#${parser.utils.escapeHtml(id)}" aria-label="Link to this section">#</a>`;
+    return `${self.renderToken(tokens, index, options)}${anchor}`;
   };
   return parser;
 }

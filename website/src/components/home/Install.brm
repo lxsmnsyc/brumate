@@ -1,0 +1,109 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  // The command to add brumate with each package manager, and a button that copies it.
+  const managers = [
+    { name: 'pnpm', command: 'pnpm add brumate' },
+    { name: 'npm', command: 'npm i brumate' },
+    { name: 'bun', command: 'bun add brumate' },
+    { name: 'yarn', command: 'yarn add brumate' },
+  ];
+
+  let active = $signal(0);
+  let copied = $signal(false);
+  const command = $memo(managers[active]!.command);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(managers[active]!.command);
+      copied = true;
+      setTimeout(() => (copied = false), 1600);
+    } catch {
+      // Clipboard access can be blocked. The command stays selectable.
+    }
+  }
+</script>
+
+<div class="install">
+  <div class="tabs" role="tablist" aria-label="Package manager">
+    #for (manager, index of managers by manager.name) {
+      <button type="button" role="tab" aria-selected=(active === index) onClick=(() => (active = index))>{manager.name}</button>
+    }
+  </div>
+  <code><b>$</b> {command}</code>
+  <button type="button" class="copy" aria-live="polite" onClick=copy>{copied ? 'Copied' : 'Copy'}</button>
+</div>
+
+<style>
+  .install {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    margin-top: 1.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-elevated);
+    font: var(--text-sm) var(--mono);
+    overflow: hidden;
+  }
+
+  .tabs {
+    display: flex;
+    border-right: 1px solid var(--border);
+  }
+
+  .tabs button,
+  .copy {
+    padding: 0.6rem 0.7rem;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+    transition: color var(--duration-fast) var(--ease);
+  }
+
+  .tabs button:hover,
+  .copy:hover {
+    color: var(--text);
+  }
+
+  .tabs button[aria-selected='true'] {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  code {
+    min-width: 0;
+    padding: 0 0.9rem;
+    white-space: nowrap;
+  }
+
+  code b {
+    color: var(--accent);
+    font-weight: 400;
+  }
+
+  .copy {
+    min-width: 4.8rem;
+    border-left: 1px solid var(--border);
+    margin-left: auto;
+  }
+
+  @media (max-width: 30rem) {
+    .install {
+      flex-wrap: wrap;
+    }
+
+    .tabs {
+      width: 100%;
+      border-right: 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    code {
+      flex: 1;
+      padding: 0.6rem 0.9rem;
+    }
+  }
+</style>
