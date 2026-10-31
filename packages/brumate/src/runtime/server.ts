@@ -410,6 +410,8 @@ export class Context {
   /** The scope that the render used last, since it uses one a few times in a row. */
   private last: ScopeEntry | undefined;
   private readonly root: Context;
+  /** The keys of the signals that a visible `$client` waits for. See `near`. */
+  private waited?: Set<string>;
   /** The ID spaces of the blocks that the render is in, from the outside in. */
   private readonly spaces: IdSpace[];
   private readonly baseId: number;
@@ -981,18 +983,29 @@ export class Context {
   }
 
   /**
+   * The `b-near` attribute of a visible `$client` that reads the signal at `slot` of `scope`,
+   * which a component may get with `ref=$bind(...)`. It records the key, so `refKey` marks only
+   * the elements that a callback waits for.
+   */
+  near(scope: ScopeId, slot: number): string {
+    const key = `${scope}.${slot}`;
+    (this.root.waited ??= new Set()).add(key);
+    return ` b-near="${key}"`;
+  }
+
+  /**
    * The `b-r` attribute of an element that a component forwards for its caller: the scope and slot
-   * of the signal at the end of the bindings, `S.slot`. The loader finds the element by it, for a
-   * `$client` of the caller that waits until it is in view. Empty when no signal is bound.
+   * of the signal at the end of the bindings, `S.slot`, when a visible `$client` waits for it.
+   * The loader finds the element by it. Empty otherwise.
    */
   refKey(scope: ScopeId, slot: number): string {
     let target = this.ownRecord(scope)?.b?.[slot];
     let key = '';
     while (isSlotReference(target)) {
-      key = ` b-r="${target.scope}.${target.slot}"`;
+      key = `${target.scope}.${target.slot}`;
       target = this.ownRecord(target.scope)?.b?.[target.slot];
     }
-    return key;
+    return this.root.waited?.has(key) ? ` b-r="${key}"` : '';
   }
 
   /** Returns the reference that a `ref` signal holds on the server. */

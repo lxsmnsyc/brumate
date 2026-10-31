@@ -8,3 +8,4 @@
 - Not covered: `ref` left in rest props (`restRef`), which has no marker.
 - Size, todos client JS gzip (all files, gzip -9): main 29801 B, branch 29805 to 29807 B (+4 to +6 B).
 - `pnpm format:check` fails on docs/roadmaps/brumate/archive.md, which this node does not touch (main has the same failure).
+- Review fixes: `b-r` is written only for keys that a visible `$client` recorded through `$$ctx.near`; docs and outcome narrowed to the server render; origin/main merged (archive.md formatting fixed there). Test: no `b-r` without a visible `$client`.

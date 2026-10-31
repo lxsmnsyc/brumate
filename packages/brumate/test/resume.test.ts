@@ -1285,6 +1285,7 @@ describe('resume', () => {
     const server = await import(file('refVisibleForward.brm.ts'));
     const { html } = await renderParts(server.default, {});
     expect(html).toMatch(/<template b-b="[\d:]+" b-client="visible=[^"]+" b-near="[\d]+\.\d+">/);
+    expect(html.match(/ b-r="/g)?.length).toBe(2);
     await resume('refVisibleForward', {});
     // Each callback watches the button that is forwarded to it, not the heading.
     const buttons = [...document.querySelectorAll('.inner')];
@@ -1297,6 +1298,13 @@ describe('resume', () => {
     expect(text('.passed')).toBe('Waiting');
     reports[1]!();
     await waitFor(() => expect(text('.passed')).toBe('Relayed'));
+  });
+
+  it('marks a forwarded element for the caller only when a visible $client waits for it', async () => {
+    const server = await import(file('refForward.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('class="inner"');
+    expect(html).not.toContain(' b-r=');
   });
 
   it('watches the first element after the markers of visible $client callbacks, not another marker', async () => {

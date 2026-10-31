@@ -910,13 +910,11 @@ export class Emitter {
         this.html(' b-near="');
         this.code(anchor.scope);
         this.html(`:${near}"`);
-      } else if (site.trigger === 'visible') {
+      } else if (site.trigger === 'visible' && this.options.mode === 'server') {
         // A signal that a component gets with `ref=$bind(name)` waits for the element it forwards.
         const forwarded = this.forwardedSignal(site, scope);
         if (forwarded) {
-          this.html(' b-near="');
-          this.code(anchor.scope);
-          this.html(`.${slotIndex(this.plan, forwarded)}"`);
+          this.code(`$$ctx.near(${anchor.scope}, ${slotIndex(this.plan, forwarded)})`);
         }
       }
       this.html('></template>');
