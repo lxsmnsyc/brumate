@@ -1,7 +1,7 @@
 ---
 id: context-block
 title: Weigh a `#context (key, value)` block in place of $setContext
-status: todo
+status: dropped
 priority: later
 type: spike
 outline: true
@@ -46,3 +46,7 @@ Decide whether a markup block `#context (key, value) { ... }` should replace `$s
 ## Sizing
 
 M: a debate and a small probe.
+
+## Dropped
+
+The maintainer dropped it on 2026-10-31: `$setContext` is already limited to the top level of a script (BRM123), and a block script provides only to its block.
