@@ -1,7 +1,7 @@
 ---
 id: next-branch
 title: Set up the next branch for minor work after 0.4.0
-status: active
+status: done
 priority: should
 type: chore
 outline: false
