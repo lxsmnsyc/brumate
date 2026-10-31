@@ -1,0 +1,8 @@
+<script>
+  import { $signal, $untrack } from 'brumate/signals';
+  import Child from './Child.brm';
+  let name = $signal('Ada');
+  function nameOf() { return name; }
+</script>
+<button onClick=(() => (name = 'Grace'))>Rename</button>
+<Child label=$untrack(nameOf) />

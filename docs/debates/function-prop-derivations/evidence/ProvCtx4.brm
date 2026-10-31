@@ -1,0 +1,11 @@
+<script>
+  import { $signal, $setContext } from 'brumate/signals';
+  import { LabelCtx } from './ctx';
+  import Child from './Child.brm';
+  let name = $signal('Ada');
+  function nameOf() { open = false; }
+  let open = $signal(true);
+  $setContext(LabelCtx, { label: nameOf });
+</script>
+<button onClick=(() => (name = 'Grace'))>Rename</button>
+<Child />

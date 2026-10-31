@@ -1,0 +1,12 @@
+--- src/graph.orig.ts	2026-10-31 12:36:43
++++ src/graph.ts	2026-10-31 12:36:43
+@@ -335,6 +335,9 @@
+       return false;
+     }
+     seen.add(site);
++    if (site.opaqueCalls) {
++      return true;
++    }
+     for (const write of site.writes) {
+       if (write.tracked) {
+         return true;

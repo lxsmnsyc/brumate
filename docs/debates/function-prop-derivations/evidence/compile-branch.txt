@@ -1,0 +1,36 @@
+--- client
+export * from "./Parent.brm?brumate-client&part=h2";
+export * from "./Parent.brm?brumate-client&part=h3";
+export * from "./Parent.brm?brumate-client&part=update";
+export const id = "Parent_1i7w56i";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u3"]] } };
+
+--- part h2
+import * as $$b from 'brumate/client';
+
+export const h2 = ($$s) => ($$b.set($$s, 0, 'Grace'));
+
+--- part h3
+import * as $$b from 'brumate/client';
+import { nameOf$ } from "./Parent.brm?brumate-client&part=shared";
+
+export { nameOf$ as h3 };
+
+--- part update
+import * as $$b from 'brumate/client';
+import { nameOf$ } from "./Parent.brm?brumate-client&part=shared";
+
+export function u3($$s) {
+  $$b.prop($$s, 1, "label", nameOf$.bind(null, $$s));
+}
+
+--- part shared
+import * as $$b from 'brumate/client';
+
+export function nameOf$($$s) { return $$b.get($$s, 0); }
+
+--- table
+export const id = "Parent_1i7w56i";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u3"]] } };

@@ -1,0 +1,22 @@
+--- pkg/graph.C.ts	2026-10-31 12:18:59
++++ pc/src/graph.ts	2026-10-31 12:28:08
+@@ -356,6 +356,9 @@
+       continue;
+     }
+     for (const declaration of dependencies(site)) {
++      if (declaration.fixedFunction) {
++        continue;
++      }
+       addEdge(declarationNodes.get(declaration)!, node);
+     }
+   }
+@@ -457,7 +460,8 @@
+       }
+       const isLive =
+         ((declaration.kind === 'prop' || declaration.kind === 'props-rest') &&
+-          isLiveProp(declaration, options.liveProps)) ||
++          isLiveProp(declaration, options.liveProps) &&
++          !declaration.fixedFunction) ||
+         // A prop of `let` that client code writes, also when every parent passes a constant.
+         (declaration.kind === 'prop' &&
+           declaration.writable === true &&

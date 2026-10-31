@@ -1,0 +1,12 @@
+--- pkg/graph.C.ts	2026-10-31 12:18:59
++++ pe/src/graph.ts	2026-10-31 12:31:20
+@@ -356,6 +356,9 @@
+       continue;
+     }
+     for (const declaration of dependencies(site)) {
++      if (declaration.fixedFunction && node.kind === 'effect') {
++        continue;
++      }
+       addEdge(declarationNodes.get(declaration)!, node);
+     }
+   }
