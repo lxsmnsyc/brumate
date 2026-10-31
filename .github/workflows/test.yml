@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
+      - next
     # Roadmaps, debates, proposals and decisions are not build inputs.
     paths-ignore:
       - 'docs/**'
   pull_request:
+    # No branch filter: pull requests to `main`, `next` and stacked branches all run.
     # A draft runs nothing. Pull requests stay drafts until their review is clean, after the
     # local checks, so CI runs once as the last gate before the merge.
     types: [opened, synchronize, reopened, ready_for_review]
