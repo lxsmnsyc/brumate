@@ -1,0 +1,12 @@
+<script>
+  import { $effect, $props } from 'brumate/signals';
+
+  const { label } = $props<{ label: () => string }>();
+
+  $effect(() => {
+    const log = ((globalThis as { fnReadLog?: string[] }).fnReadLog ??= []);
+    log.push(label());
+  });
+</script>
+
+<p class="live">{label()}</p>

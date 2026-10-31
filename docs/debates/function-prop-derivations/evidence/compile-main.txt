@@ -1,0 +1,22 @@
+--- client
+export * from "./Parent.brm?brumate-client&part=h3";
+export * from "./Parent.brm?brumate-client&part=h2";
+export const id = "Parent_1i7w56i";
+export const props = {  };
+export const g = {  };
+
+--- part h3
+import * as $$b from 'brumate/client';
+
+function nameOf$($$s) { return $$b.get($$s, 0); }
+export { nameOf$ as h3 };
+
+--- part h2
+import * as $$b from 'brumate/client';
+
+export const h2 = ($$s) => ($$b.set($$s, 0, 'Grace'));
+
+--- table
+export const id = "Parent_1i7w56i";
+export const props = {  };
+export const g = {  };

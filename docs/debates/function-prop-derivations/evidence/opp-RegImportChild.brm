@@ -1,0 +1,17 @@
+<script>
+  import { $effect, $props } from 'brumate/signals';
+  import type { RegProps } from './regTypes.ts';
+
+  const { value, add } = $props<RegProps>();
+
+  $effect(() => {
+    const g = globalThis as { regRuns?: number };
+    g.regRuns = (g.regRuns ?? 0) + 1;
+    if (g.regRuns > 50) {
+      return;
+    }
+    add(value);
+  });
+</script>
+
+<p class="value">{value}</p>

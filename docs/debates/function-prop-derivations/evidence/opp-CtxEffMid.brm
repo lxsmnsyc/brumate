@@ -1,0 +1,17 @@
+<script>
+  import { $effect, $getContext, $signal } from 'brumate/signals';
+  import { PcTotal } from './pcCtx.ts';
+  const ctx = $getContext(PcTotal);
+  let count = $signal(0);
+  $effect(() => {
+    const g = globalThis as { regRuns?: number };
+    g.regRuns = (g.regRuns ?? 0) + 1;
+    if (g.regRuns > 50) {
+      return;
+    }
+    if (count > 0) {
+      ctx!.add(1);
+    }
+  });
+</script>
+<button class="inc" onClick=(() => (count += 1))>Inc</button>

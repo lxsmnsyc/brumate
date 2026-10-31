@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import FnReadEffectChild from './FnReadEffectChild.brm';
+
+  let first = $signal('ada');
+
+  function nameOf() {
+    return first;
+  }
+</script>
+
+<button class="next" onClick=(() => (first = 'grace'))>Next</button>
+<FnReadEffectChild label=nameOf />

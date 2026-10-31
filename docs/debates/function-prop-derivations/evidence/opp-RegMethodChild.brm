@@ -1,0 +1,16 @@
+<script>
+  import { $effect, $props } from 'brumate/signals';
+
+  const { value, add } = $props<{ value: number; add(n: number): void }>();
+
+  $effect(() => {
+    const g = globalThis as { regRuns?: number };
+    g.regRuns = (g.regRuns ?? 0) + 1;
+    if (g.regRuns > 50) {
+      return;
+    }
+    add(value);
+  });
+</script>
+
+<p class="value">{value}</p>

@@ -87,3 +87,4 @@ client-arrived-cleanups: $client cleanups run when a page that arrived by client
 - ui-scroll-focus: Scrollable regions of the ui docs pages take focus (done, milestone 0.4.0)
 - utility-demo-workarounds: The utility part demos drop the workarounds for bugs fixed since (done, milestone 0.4.0)
 - website-fixes: Fix the home link, the shop demo, highlighting and the error section (done, #320, milestone 0.4.0)
+- release-0.4: Release brumate 0.4.0 and @brumate/ui 0.1.0 (done, #98, milestone 0.4.0)

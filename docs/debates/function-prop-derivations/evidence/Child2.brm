@@ -1,0 +1,5 @@
+<script>
+  import { $props } from 'brumate/signals';
+  const { label } = $props<{ label: () => string }>();
+</script>
+<button onClick=(() => console.log(label()))>Log</button>

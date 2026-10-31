@@ -1,0 +1,22 @@
+## ParentU.brm: <Child label=$untrack(nameOf) /> (nameOf reads name)
+## branch fix/function-prop-reads dist:
+--- client
+export * from "./ParentU.brm?brumate-client&part=h2";
+export const id = "ParentU_1pc45sx";
+export const props = {  };
+export const g = {  };
+
+--- part h2
+import * as $$b from 'brumate/client';
+
+export const h2 = ($$s) => (('Grace'));
+
+--- table
+export const id = "ParentU_1pc45sx";
+export const props = {  };
+export const g = {  };
+## Conclusion: $untrack(fn) on a prop value compiles with no update (g = {}), but it is NOT a working
+## 'keep fixed' marker today: nameOf is not shipped to the client (no h3 part, compare compile-main.txt),
+## and the handler's write `name = 'Grace'` compiles to `('Grace')`, since `name` no longer looks live.
+## A reverse marker through $untrack would need compiler work; as is it drops client code.
+## Same output on main dist (0.4.0): h2 = ($$s) => (('Grace')), no nameOf part. The drop exists on main, not only on the branch.

@@ -1,0 +1,11 @@
+<script>
+  import { $setContext, $signal } from 'brumate/signals';
+  import { PcTotal } from './pcCtx.ts';
+  import CtxLoopMid from './CtxLoopMid.brm';
+  let total = $signal(0);
+  function addTotal(n: number) { total += n; }
+  function readTotal() { return total; }
+  $setContext(PcTotal, { add: addTotal, read: readTotal });
+</script>
+<p class="total">{total}</p>
+<CtxLoopMid />

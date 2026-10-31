@@ -1,0 +1,10 @@
+--- pc/model.orig.ts	2026-10-31 12:26:03
++++ pc/src/model.ts	2026-10-31 12:26:03
+@@ -67,6 +67,7 @@
+   propKey?: string;
+   /** True for a prop whose `$props<T>` type is written as `Promise<...>`, or a union with one. */
+   promise?: boolean;
++  fixedFunction?: boolean;
+   /** True for the props object (`const props = $props()`) and the rest of `$props()`. */
+   whole?: boolean;
+   /** For `const result = $action(fn)`, the name of the server function. */

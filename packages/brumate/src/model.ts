@@ -163,6 +163,8 @@ export interface Site {
    * values that the site depends on.
    */
   trackedCalls: Set<Declaration>;
+  /** True when the site calls through a context value or a prop, outside `$untrack`. */
+  opaqueCalls?: boolean;
   /** The declaration that a function or memo site belongs to. */
   declaration?: Declaration;
   /** The element, component or listener of an attribute or event site. */

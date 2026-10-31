@@ -1,0 +1,14 @@
+<script>
+  import { $getContext, $signal } from 'brumate/signals';
+  import { FnReadTotal } from './fnReadContext.ts';
+  import FnReadCallbackChild from './FnReadCallbackChild.brm';
+  const ctx = $getContext(FnReadTotal);
+  let count = $signal(0);
+  function add(n: number) {
+    if (ctx!.read() < 1000) {
+      ctx!.add(n);
+    }
+  }
+</script>
+<button class="inc" onClick=(() => (count += 1))>Inc</button>
+<FnReadCallbackChild value=count add=add />

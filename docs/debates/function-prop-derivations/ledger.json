@@ -1,0 +1,734 @@
+{
+  "goal": "Decide how brumate tells a function prop that derives a value (so the child updates when the state it reads changes) from a handler prop: a new primitive that marks derivations, or compiler inference",
+  "research": false,
+  "max_rounds": 2,
+  "max_tokens": 300000,
+  "roadmap": null,
+  "supersedes": null,
+  "extra_axes": [
+    {
+      "name": "client-size",
+      "by": "judge",
+      "why": "GOAL.md: size comes first; every core change reports todos gzip within 0.3 kB",
+      "status": "accepted",
+      "ruling_why": "a GOAL constraint every core change is held to"
+    },
+    {
+      "name": "soundness",
+      "by": "proponent",
+      "why": "the choice trades a silent stale value (a missed derivation) against a wasted re-send (a handler treated as a derivation); bytes and time do not show which error each rule makes",
+      "status": "accepted",
+      "ruling_why": "the options trade a silently stale value against a wasted re-send or a loop, which can decide the choice"
+    },
+    {
+      "name": "learnability",
+      "by": "proponent",
+      "why": "a new brumate/signals export is one more rule every author must learn, against an inferred rule that matches effects and contexts; GOAL keeps the API small",
+      "status": "accepted",
+      "ruling_why": "a new export against a rule shared with effects and contexts is the core of the primitive-or-inference choice"
+    }
+  ],
+  "claims": [
+    {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "On main (0.4.0) a function prop is sent once and never again: a child memo or markup that calls it stays at the first value. PR #395 (branch fix/function-prop-reads) reproduces this in 4 tests that fail on main and pass on the branch.",
+      "evidence": {
+        "type": "measured",
+        "source": "PR #395 fresh review; packages/brumate/test/resume.test.ts on the branch",
+        "detail": "https://github.com/lxsmnsyc/brumate/pull/395#pullrequestreview-5721029654"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "client-size",
+      "text": "PR #395 compiles a live function prop to one update function per prop, which writes a new bound function: `export function u3($$s) { $$b.prop($$s, 1, \"label\", nameOf$.bind(null, $$s)); }` plus a table entry `g = { 1: { 0: [[1, \"u3\"]] } }`. Main's table is empty. Todos client JS: within +/-8 B gzip.",
+      "evidence": {
+        "type": "measured",
+        "source": "node run.mjs on Parent.brm/Child.brm with main and branch dist",
+        "detail": "evidence/compile-main.txt, evidence/compile-branch.txt"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "PR #395's rule: a function prop is live when the function reads state (through its callees, reads inside $untrack excluded), unless the function or a callee writes state (any write, including writes inside $untrack), or the attribute is parsed as kind `event` (on + capital letter).",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/graph.ts:212-226 and :311-355 on fix/function-prop-reads"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "A write inside $untrack still freezes the prop: `function nameOf() { $untrack(reads++); return name; }` compiles with no prop update.",
+      "evidence": {
+        "type": "measured",
+        "source": "compile of Parent2.brm on the branch",
+        "detail": "evidence/Parent2.brm"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Forms the compiler sees: `label=nameOf`, `label=(() => nameOf())` (compiles to a closure) and `label=(flag ? nameOf : other)` update; `opts={{ label: nameOf }}` gets no update and stays stale as on 0.4.0.",
+      "evidence": {
+        "type": "measured",
+        "source": "compile of variants on the branch"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "client-size",
+      "text": "A child that uses a function prop only in a handler (`onClick=(() => console.log(label()))`) has an empty update table (`g = {}`), so re-sending the prop runs no child code.",
+      "evidence": {
+        "type": "measured",
+        "source": "compile of Child2.brm on the branch",
+        "detail": "evidence/Child2.brm"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Across 957 .brm files (ui, examples, website, benchmarks, test/render), #395's rules change the output of one file: TextField's `validate` prop, which FormSignupDemo passes as `validate=matches`.",
+      "evidence": {
+        "type": "measured",
+        "source": "PR #395 fresh review comment",
+        "detail": "https://github.com/lxsmnsyc/brumate/pull/395#pullrequestreview-5721029654"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The worker's first rule without the event-kind check broke 5 ui tests: Radio passes `onChange=change`, whose write goes through a context function the compiler cannot see, so the scan saw no write.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/function-prop-reads/outcome.md on the branch; packages/ui/src/Radio.brm:70"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Effects follow every function they call; the docs tell authors to wrap a write in $untrack to cut a loop (an effect that calls a function that reads and writes `saves` reruns on each save).",
+      "evidence": {
+        "type": "source",
+        "source": "website/docs/effects.md:111-150"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J10",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "brumate already has an explicit marker on the handler side: `$handler(fn, ...args)` marks a function that a script makes as an event handler so a spread can pass it on.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/signals.ts:214-230",
+        "detail": "evidence/handler-primitive.txt"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J11",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Language rules from the maintainer: the compile-time functions are the exports of brumate/signals; a `#` block only for markup, state and logic stay functions usable from .brm.ts modules; no deprecation periods (0.x breaks are minor); `$memo` keeps one argument; a callback form of `$memo` was skipped on 2026-10-29.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:7 and the maintainer's recorded syntax rules"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J12",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "0.4.1 is a patch milestone: fixes of 0.4.0 behavior that add no API. A new primitive is new API, so it ships in 0.5.0 (minor) at the earliest.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/GOAL.md, Milestones"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J13",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Prior lab debate pending-handler-reads (2026-10-30) chose explicit over implicit: `$resolve` instead of an implicit wait, because the implicit form held later clicks and needed a bound. Function props are listed there as reads the compiler cannot see.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs/debates/pending-handler-reads/debate.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Add `$track(fn)` to brumate/signals: `$track<F extends (...args: never[]) => unknown>(fn: F): F`, compile-time only (the compiler removes the call, as for `$handler`). It marks fn as a derivation wherever the value flows: the compiler adds edges from fn's tracked reads (through callees, `$untrack` cuts them) to the prop, spread, object member or context site that carries it, and re-sends a fresh bound function as #395 does. A write in fn outside `$untrack` is a compile error; a write inside `$untrack` is allowed, so the J4 case works.",
+      "evidence": {
+        "type": "measured",
+        "source": "J2 compile of Parent.brm on the branch; packages/brumate/src/runtime/signals.ts:214-230",
+        "detail": "evidence/compile-branch.txt: the update a marked prop needs is the same u3 function, 82 B raw, plus one table entry; no runtime code"
+      },
+      "estimate": {
+        "value": 0,
+        "unit": "B gzip runtime; about 82 B raw per marked prop"
+      },
+      "ruling": "rejected",
+      "ruling_why": "Q1: object-member functions are rare, so no marker for them; O5 found 0 instances."
+    },
+    {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "`$track` is allowed in any expression of a .brm script or markup and in .brm.ts module functions, as `$handler` is (components.md:301). Nesting it with `$handler` either way is a compile error. Its real target is what inference cannot see: function members of object or array literals passed as props, such as `opts={{ label: $track(nameOf) }}` (J5), and objects that module functions build. In `$setContext` it is allowed and changes nothing, because main already follows the reads of a function in a context object.",
+      "evidence": {
+        "type": "measured",
+        "source": "node run.mjs <main dist> ProvCtx.brm, ProvCtx3.brm, ProvCtx4.brm",
+        "detail": "evidence/context-function.txt: on 0.4.0 a context function that reads state re-sends the context (g has u2), even when it also writes; a write-only function gets no update"
+      },
+      "ruling": "rejected",
+      "ruling_why": "Q1: object-member functions are rare, so no marker for them; O5 found 0 instances."
+    },
+    {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "An unmarked function prop is inferred by option B, the rule contexts already follow on main: live when it reads state, `$untrack` cuts reads, `onX` event-kind props stay fixed, no write scan. No error and no warning for unmarked props. A non-`on` handler prop that reads state, such as `validate=matches`, is re-sent, which runs no child code when the child calls it only in a handler (J6). I do not propose the fully explicit form (P7): React Compiler retired the useMemo/useCallback markers, and only 1 of 957 .brm files changes (J7).",
+      "evidence": {
+        "type": "prior-art",
+        "source": "evidence/prior-art.md; evidence/context-function.txt",
+        "detail": "Solid and Svelte 5 track a function at its call site with no marker on the function; React moved from manual markers to compiler inference; brumate contexts already infer this way on 0.4.0"
+      },
+      "ruling": "rejected",
+      "ruling_why": "O1 measured an effect loop of 51+ runs with no depth guard, and O2 shows it changes no real code beyond #395."
+    },
+    {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Ship in two steps per J12. 0.4.1: the function-prop-reads node switches #395 from the write scan to option B, an edit of the 37-line graph.ts change, and adds a test for J4; no API. 0.5.0: a `$track` node, compiler and docs only (no runtime or serialization work, unlike `$handler`), and only if Q1 shows object-literal or module-built function props that a child calls in markup or a memo.",
+      "evidence": {
+        "type": "calibration",
+        "source": "git show --stat de590c95 ($handler: 610 insertions, 22 files incl. runtime); git diff --stat main...fix/function-prop-reads (229 insertions, 15 files)",
+        "detail": "evidence/prior-art.md, Lab entries"
+      },
+      "estimate": {
+        "value": 1.5,
+        "unit": "days total: about 0.5 for the 0.4.1 switch, about 1 for $track at roughly half of $handler's 610 lines; about 250k tokens for both"
+      },
+      "ruling": "rejected",
+      "ruling_why": "Its 0.4.1 step is option B, rejected by O1; O4 fixes J4 without the loop."
+    },
+    {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Option B alone, with no primitive: unmarked function props follow their reads as in P3, and function members of object-literal props stay fixed as on 0.4.0. The docs tell authors to pass such a function as its own prop, or to pass a `$memo` value. Cheapest: no new API, no 0.5.0 node, the same rule as contexts and effects (J9).",
+      "evidence": {
+        "type": "source",
+        "source": "J5; website/docs/components.md:243; website/docs/effects.md:111-150",
+        "detail": "the only case it leaves stale is the object-literal prop of J5"
+      },
+      "estimate": {
+        "value": 0.5,
+        "unit": "days"
+      },
+      "ruling": "rejected",
+      "ruling_why": "Option B alone brings in the O1 loop."
+    },
+    {
+      "id": "P6",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Keep #395's write-scan rule for 0.4.1 as built. Cheapest on time: it is written, reviewed, and its 4 tests pass. It costs the J4 surprise (a write inside `$untrack` freezes the prop, against effects.md's advice to wrap writes in `$untrack`) and depends on the event-kind check to cover writes it cannot see (J8).",
+      "evidence": {
+        "type": "source",
+        "source": "J1, J3, J4, J8; packages/brumate/src/graph.ts:212-226 and :311-355 on the branch"
+      },
+      "estimate": {
+        "value": 0,
+        "unit": "days of new work"
+      },
+      "ruling": "rejected",
+      "ruling_why": "O4 keeps it and fixes J4 for a 5-line change, so it dominates."
+    },
+    {
+      "id": "P7",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Fully explicit form: an unmarked function prop stays fixed as on 0.4.0, and only `$track(fn)` makes one live. It sends no update the child does not need, and the intent is written in the code (the reason J13's debate chose `$resolve`). It costs leaving the J1 bug in 0.4.1, since the fix would be new API (J12), one migrated file (J7), and a rule that differs from contexts, which already infer on main.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "J13 docs/debates/pending-handler-reads; evidence/prior-art.md (React useEffectEvent kept an explicit marker where the deps lint could not tell intent); evidence/context-function.txt"
+      },
+      "estimate": {
+        "value": 0,
+        "unit": "B of false-positive updates"
+      },
+      "axis": "client-size",
+      "ruling": "rejected",
+      "ruling_why": "Conceded in P10 for P11, which O9 then beat."
+    },
+    {
+      "id": "P8",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "A reverse marker (\"keep this function prop fixed\") is not needed for P3, and `$untrack(fn)` must not be advertised as one today: `<Child label=$untrack(nameOf) />` compiles without an update, but it also drops nameOf from the client and turns the handler `name = 'Grace'` into `('Grace')`, on main and on the branch. That is a separate bug on main to fix from main.",
+      "evidence": {
+        "type": "measured",
+        "source": "node run.mjs <main and branch dist> ParentU.brm",
+        "detail": "evidence/untrack-prop.txt, evidence/ParentU.brm"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J14",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "soundness",
+      "text": "Confirmed by the judge on main's dist: `<Child label=$untrack(nameOf) />` ships no client function for nameOf, and the handler `name = 'Grace'` compiles to `('Grace')`. $untrack is not a usable 'keep fixed' marker for a prop today.",
+      "evidence": {
+        "type": "measured",
+        "source": "compile of evidence/ParentU.brm with packages/brumate/dist on main",
+        "detail": "evidence/untrack-prop.txt"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O1",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "soundness",
+      "severity": "high",
+      "answers": ["P3", "P5"],
+      "text": "Option B loops on a common callback shape: a child `$effect(() => add(value))` with a parent `function add(n) { total += n }` passed as `add=add` reruns without end under B, because each write to `total` re-sends `add` and the effect calls it again; #395's write scan runs it once. brumate's client has no update-depth guard, so the tab hangs, where Svelte 5 and React stop such loops with a runtime error.",
+      "evidence": {
+        "type": "measured",
+        "source": "vitest probe regLoop.brm/RegLoopChild.brm on a scratch copy of the branch package with graph.ts patched to option B; grep depth|infinite|loop in packages/brumate/src/runtime/client, batch.ts, shared.ts",
+        "detail": "evidence/opponent-option-b.md section 3: 51 effect runs after one click (probe cap 50) under B, under 5 under #395. Prior art: Svelte 5 runtime error effect_update_depth_exceeded (svelte.dev/docs/svelte/runtime-errors), React 'Maximum update depth exceeded'; both exist because read-tracking without a write check loops"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O2",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "time",
+      "answers": ["P3", "P4"],
+      "text": "Switching #395 to option B changes no real component: over ui, examples, website and benchmarks, B's output equals #395's, and both differ from main only in FormSignupDemo (J7). The only files B changes are 4 brumate test fixtures that pass a writing callback under a non-`on` name (`cb=bump`, `first=(() => (log += 'a'))`), where B adds updates no child needs. So the 0.4.1 switch buys only the J4 case and costs O1.",
+      "evidence": {
+        "type": "measured",
+        "source": "node evidence/opponent-cmp.mjs <branch dist> <option-B dist copy> packages/ui examples website benchmarks packages/brumate/test/render; same with main dist",
+        "detail": "evidence/opponent-option-b.md section 1: 1137 files, 4 differ (handlerRefsProp, handlerRefsPropOnce, handlerRefsTemplateProp, orderedCalls); main vs B on 718 non-test files: 1 differs (FormSignupDemo). 6 to 8 files fail import resolution on both dists and are not covered"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O3",
+      "round": 1,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "client-size",
+      "severity": "low",
+      "answers": ["P3", "P5"],
+      "text": "Under option B every callback prop that reads and writes state and is not named `on\u2026` ships an update function and a table entry and re-sends a bound function on each write: +26 B gzip for `cb=bump`, +47 B gzip for orderedCalls' two callback props, over #395.",
+      "estimate": {
+        "value": 24,
+        "unit": "B gzip per non-on callback prop"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "size.mjs: gzip of all client parts + table, branch dist vs option-B dist",
+        "detail": "evidence/opponent-option-b.md section 2: handlerRefsPropOnce 435 -> 461, handlerRefsProp 441 -> 464, orderedCalls 212 -> 259"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O4",
+      "round": 1,
+      "by": "opponent",
+      "kind": "alternative",
+      "axis": "soundness",
+      "answers": ["P3", "P4", "P6"],
+      "text": "Option C for 0.4.1: keep #395's write scan but count only tracked writes and follow only tracked calls (references already carry `tracked`, sites `trackedCalls`). It fixes J4, keeps O1's loop out, adds no API, and gives the same author action as effects: wrap the write in `$untrack` (J9) and the function becomes a live derivation. A 5-line edit of graph.ts on PR #395's branch plus a J4 test.",
+      "estimate": {
+        "value": 0.25,
+        "unit": "days, no API, 0 B client change on real code"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "scratch copy of the branch package, graph.ts patched (diff in evidence), npx vitest run test/resume.test.ts; packages/brumate/src/analyze.ts:1807 (tracked flag) and :1824 (trackedCalls)",
+        "detail": "evidence/opponent-option-b.md: 409/409 pass including the O1 loop probe (no loop) and untrackWrite.brm (J4 shape, child shows GRACE after the click). C's live set lies between #395's and B's, and those two are equal on real code (O2), so C equals #395 there"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O5",
+      "round": 1,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "time",
+      "severity": "medium",
+      "answers": ["P1", "P2", "P4"],
+      "text": "`$track`'s stated target, function members of object or array literals passed as props, has no instance in the repo: no attribute in ui/src, examples or website passes an object literal with a function or arrow member (the 39 object-literal attributes are class maps and plain data). A 0.5.0 node of about 1 day and 125k tokens (P4) would serve a case nobody here writes yet.",
+      "evidence": {
+        "type": "measured",
+        "source": "grep -rnE '=\\(?\\{ *[a-zA-Z]+:' --include='*.brm' packages/ui/src examples website, then filtered for => / function / identifier members",
+        "detail": "39 object-literal attributes, 0 with function members; grep misses multiline literals and objects built in a script, so Q1 still decides it"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O6",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "soundness",
+      "severity": "medium",
+      "answers": ["P1", "P2"],
+      "text": "A compile-time marker that has to follow a function into object members, spreads, contexts and objects returned by .brm.ts functions is the indirection that compile-time tracking handled worst before: Svelte 4's `$:` missed reads moved behind a function or object, which is why Svelte 5 moved to runes with runtime tracking. A `$track` that the flow analysis loses (an object built in one function and passed through another) stays stale with no error, the same failure as an unmarked prop.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "svelte.dev/blog/runes (Introducing runes, 2023-09-20); J5; J8",
+        "detail": "Svelte's runes post: `$:` dependencies are found at compile time, so refactoring the code into a function breaks reactivity. In brumate J8 shows the compiler already loses writes through a context function, and J5 shows it loses an object member today"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P9",
+      "round": 2,
+      "by": "proponent",
+      "kind": "rebuttal",
+      "text": "Option C does not meet Q4: when a non-`on` callback reads state and writes through a context function (the J8 shape), C sees no write and re-sends it. One click ran a child `$effect(() => add(value))` 51 times (the probe's cap), and #395's write scan did the same. With function props fixed, as on main, the effect ran fewer than 5 times.",
+      "evidence": {
+        "type": "measured",
+        "source": "npx vitest run test/resume.test.ts -t 'proponent probe' in scratch copies with graph.C.ts, the branch graph.ts and the main rule",
+        "detail": "evidence/proponent-round2.md section 1; evidence/ctxLoop.brm, evidence/CtxLoopMid.brm, evidence/pcCtx.ts"
+      },
+      "answers": ["O4"],
+      "estimate": {
+        "value": 51,
+        "unit": "effect runs per click (capped)"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P10",
+      "round": 2,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "Drop the `$track` marker (P1, P2) and option B (P3, P4, P5). Replace P7's parent-side marker with a type that the child declares (P11).",
+      "evidence": {
+        "type": "source",
+        "source": "ledger Q1, Q4, O1, O5"
+      },
+      "answers": ["P1", "P2", "P3", "P4", "P5", "P7"],
+      "why": "Q1: object-member function props are rare. O1 and Q4: B loops on callbacks under names without `on`. O6: a marker that must follow a value through objects and modules is the flow that compile-time tracking misses. A child declaration needs no such flow.",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P11",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Path (b) in its strongest form: `brumate/signals` exports the type `Derived<F extends (...args: never[]) => unknown> = F`, and the child writes it in `$props<T>`, e.g. `validate?: Derived<(value: string) => string | null>`. The child compiler reads that type in the same way it already reads `Bindable` and `Promise`. A prop typed as a plain function type is fixed in the child: no memo, markup or effect depends on it, so a re-send runs nothing and no callback loops. A `Derived` prop is a source, also for effects. Callers pass a plain function, with no wrapper and no new compile-time function.",
+      "evidence": {
+        "type": "measured",
+        "source": "prototype in a scratch copy (proto-b-*.diff, 66 diff lines in analyze.ts, model.ts and graph.ts); npx vitest run test/resume.test.ts",
+        "detail": "evidence/proponent-round2.md section 2: 410/410 after retyping 2 fixture children as Derived; regLoop, ctxLoop and the J4 test pass"
+      },
+      "estimate": {
+        "value": 1,
+        "unit": "day for compiler + docs, about 150k tokens; 0 B runtime"
+      },
+      "ruling": "rejected",
+      "ruling_why": "O9 measured five common ways to type the same callback (alias, union with undefined, method, untyped $props, imported type) that still loop, and O10 shows a forgotten Derived brings the stale value back silently."
+    },
+    {
+      "id": "P12",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "On the parent side, a parent compiled alone keeps option C's rule for whether to emit a prop update. That is safe, because the child ignores re-sends of props it does not declare `Derived`. In a Vite build, the project analysis (vite.ts analyze -> analyzeProjectProps, which already parses every child to compute liveProps) also gives each parent the `Derived` props of its children, and the parent emits updates only for those. Callbacks then ship no update or table entry, which answers O3's +26 to +47 B per callback prop.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/vite.ts:616-626, :680-686; packages/brumate/src/project.ts:350-480",
+        "detail": "the reverse channel (child -> parent) is new; not prototyped"
+      },
+      "estimate": {
+        "value": 0.5,
+        "unit": "day, about 80k tokens"
+      },
+      "ruling": "rejected",
+      "ruling_why": "Rests on P11's claim that the child ignores undeclared re-sends, which O9 disproved; not prototyped."
+    },
+    {
+      "id": "P13",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Scope and migration of (b). Rest props (`{...rest}`) and untyped `$props()` stay as they are under C. A prop type imported from a .ts module is not seen, the same limit `Bindable` has today (memberNames reads only the file's scripts). Migration: TextField retypes `validate` as `Derived` (1 line), so FormSignupDemo keeps working unchanged; other ui props called with child arguments (isDateUnavailable, getTextValue, filter, formatRange) opt in when needed. Compiled alone, fixing typed function props cuts 894 B gzip over 43 files; todos has no function props.",
+      "evidence": {
+        "type": "measured",
+        "source": "node sz.mjs <C src> <prototype src> packages/ui examples website benchmarks",
+        "detail": "evidence/proto-b-size.txt; evidence/proponent-round2.md sections 2 and 4"
+      },
+      "estimate": {
+        "value": -894,
+        "unit": "B gzip, compile-alone, 43 files"
+      },
+      "ruling": "rejected",
+      "ruling_why": "O9: rest props, untyped and imported prop types keep the looping rule."
+    },
+    {
+      "id": "P14",
+      "round": 2,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Path (a) in its strongest form: every function prop stays fixed, as on 0.4.0, so no callback ever re-sends or loops (Q4). A warning, using C's read/no-tracked-write detection, says `pass a value: label=(nameOf())`. The docs give the pattern. No API, so it fits 0.4.1. Its cost: a child that supplies the arguments cannot get a value. ui has 63 function-typed props or members under names without `on`, including validate, isDateUnavailable, getTextValue and filter. FormSignupDemo must change to `value=$bind(confirm) isInvalid=(confirm !== password)`, and J1 stays unfixed for such props.",
+      "evidence": {
+        "type": "measured",
+        "source": "grep of `name?: (...) =>` without `on` in packages/ui/src/*.brm; website/ui/demos/FormSignupDemo.brm:19-21,56",
+        "detail": "evidence/proponent-round2.md section 4"
+      },
+      "estimate": {
+        "value": 0.5,
+        "unit": "day for the warning and docs"
+      },
+      "ruling": "rejected",
+      "ruling_why": "63 ui function props take arguments from the child and cannot be passed as values, and J1 stays unfixed for them."
+    },
+    {
+      "id": "P15",
+      "round": 2,
+      "by": "proponent",
+      "kind": "rebuttal",
+      "text": "The cheaper inference fix, C' (C, but effects ignore function-typed props), breaks the one real derivation. TextField calls `validate` in an `$effect` (setCustomValidity, TextField.brm:171, :179-185). C' changes only TextField's output, and with it FormSignupDemo's native validity would go stale. An effect that calls a derivation and an effect that calls a Q4 callback have the same shape in the child; only a declaration tells them apart.",
+      "evidence": {
+        "type": "measured",
+        "source": "scratch copy pe (proto-ce-graph.diff): resume.test.ts 409/410; node sz.mjs over ui/examples/website/benchmarks",
+        "detail": "evidence/proponent-round2.md section 3; evidence/proto-ce-size.txt"
+      },
+      "answers": ["O4"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "P16",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Ship it this way. 0.4.1 keeps function props fixed (0.4.0 behavior, no loop) and adds P14's warning, because Q4 rules out shipping C (P9) in a patch. 0.5.0 adds `Derived<F>` (P11-P13), and TextField's `validate` becomes `Derived`, which fixes J1 for it. #395's update codegen and tests carry over, and its write scan is only used for parents compiled alone.",
+      "evidence": {
+        "type": "source",
+        "source": "J12; Q4; PR #395 diff (229 lines, 15 files)",
+        "detail": "evidence/proponent-round2.md"
+      },
+      "estimate": {
+        "value": 2,
+        "unit": "days total: 0.5 for 0.4.1, 1.5 for 0.5.0; about 250k tokens"
+      },
+      "ruling": "rejected",
+      "ruling_why": "O11: ships no fix in 0.4.1 and changes behavior twice, while O8 meets Q4 in 0.4.1 with no API."
+    },
+    {
+      "id": "O7",
+      "round": 2,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "soundness",
+      "answers": ["P9", "P16"],
+      "text": "P9's loop is not new with C: on main (0.4.0), with no function prop at all, an effect that calls a context's writer (`$effect(() => ctx.add(1))` under the same provider as ctxLoop) runs 51 times per click (the cap). The context is re-sent when `total` changes, and the effect depends on it. C only lets that context loop reach a prop. Keeping props fixed (P16) or adding `Derived` (P11) does not fix it.",
+      "evidence": {
+        "type": "measured",
+        "source": "vitest probe opp-ctxEff.brm / opp-CtxEffMid.brm in a scratch copy of main's packages/brumate",
+        "detail": "evidence/opponent-round2.md section 1"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O8",
+      "round": 2,
+      "by": "opponent",
+      "kind": "alternative",
+      "axis": "soundness",
+      "answers": ["P9", "P14", "P16", "O4"],
+      "text": "Option C2 for 0.4.1: option C, plus a call through a context value or a prop outside `$untrack` counts as a write, so the function stays fixed. It stops P9's ctxLoop. Writes through .brm.ts module functions are already seen (no loop either). On real code it emits the same as C, so FormSignupDemo is fixed. No API, 22 diff lines. Cost: a derivation that reads through a context or prop function stays fixed as on 0.4.0; the repo has none.",
+      "estimate": {
+        "value": 0.5,
+        "unit": "days on PR #395's branch, 0 B client change on real code"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "scratch copy pq (option C + opp-c2-*.diff): npx vitest run test/resume.test.ts; node sz.mjs <C> <C2> packages/ui examples website benchmarks",
+        "detail": "evidence/opponent-round2.md section 3: 410/410 incl. ctxLoop, regLoop, untrackWrite; opp-modLoop.brm passes; 0 files differ from C on real code"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O9",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "soundness",
+      "severity": "high",
+      "answers": ["P11", "P12", "P13"],
+      "text": "The prototype's child fixes a prop only when its type is written as a literal function type. Five other ways to type the same callback all loop 51 times in P9's ctxLoop: an alias, a union with `undefined`, a method signature, untyped `$props()`, and a props type imported from a .ts file. So P12's 'safe because the child ignores re-sends' does not hold, and Q4 fails for them. Making 'fixed' the default instead needs the child to know a prop is a function, which it cannot when the type is untyped or imported.",
+      "evidence": {
+        "type": "measured",
+        "source": "vitest probes in scratch copy po (proponent's pc) with opp-Reg{Alias,Union,Method,Untyped,Import}Child.brm; markFixedFunctionProps tests t?.type === 'TSFunctionType'",
+        "detail": "evidence/opponent-round2.md section 2"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O10",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "learnability",
+      "severity": "medium",
+      "answers": ["P11", "P13", "P16"],
+      "text": "Under (b), a child author who forgets `Derived` gets the J1 bug back: a silent stale value, with no error. The proponent's own run shows it: 6 of #395's derivation tests fail until their children are retyped. ui has 63 function-typed props under names without `on`, and each needs a choice. The docs (components.md:243) promise today, with no type, that a child can call a function prop in markup or a memo, 'such as a `filter`'.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/proponent-round2.md section 2 (404/410 before retyping) and section 4 (63 props); website/docs/components.md:243 on main",
+        "detail": "the same sentence says it also holds for a function in a context, which infers on main with no type"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O11",
+      "round": 2,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "time",
+      "severity": "high",
+      "answers": ["P16"],
+      "text": "P16 ships no fix in 0.4.1. The website's FormSignupDemo (J7) stays stale through 0.4.x, and components.md:243 must either be rewritten to say function props are read once or keep promising what does not work. 0.5.0 then changes the behavior and the docs a second time, and ui must migrate. C2 (O8) fixes J1 in 0.4.1 with no API and meets Q4, for about 0.5 day against P16's 2 days.",
+      "estimate": {
+        "value": 1.5,
+        "unit": "days more than C2"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "J1, J7, J12; website/docs/components.md:243; P16 estimate; O8",
+        "detail": "evidence/opponent-round2.md section 3"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O12",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "soundness",
+      "severity": "low",
+      "answers": ["P11", "P14", "P16"],
+      "text": "Whatever is chosen, main has a separate loop to fix from main: an effect that calls a context writer reruns on every write the context's reader sees (O7). None of P11, P14 or P16 closes it, and Q4's 'never loop' already fails on 0.4.0 through contexts. Per the lab's rule, a main bug gets its own fix branched from main, not this debate's node.",
+      "evidence": {
+        "type": "measured",
+        "source": "vitest probe opp-ctxEff.brm on main's packages/brumate (51 runs per click)",
+        "detail": "evidence/opponent-round2.md section 1"
+      },
+      "ruling": "upheld"
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q1",
+      "by": "proponent",
+      "blocks": ["P2", "P4", "P5"],
+      "ask": "Do brumate apps you know of (yours or users') pass functions inside an object or array prop, such as a column list `{ label, render }`, and call them in the child's markup or a memo? If this is rare, the 0.5.0 `$track` primitive is not worth adding.",
+      "answer": "Rare: skip a marker. Object-member functions stay fixed, as on 0.4.0, and the docs give a workaround."
+    },
+    {
+      "id": "Q2",
+      "by": "proponent",
+      "blocks": ["P3", "P7"],
+      "ask": "Should a function prop whose name does not start with `on` and that reads state (such as `validate=matches`) be re-sent when that state changes, or should it stay fixed unless the code marks it? The first fixes the 0.4.0 bug in 0.4.1; the second waits for a new export in 0.5.0.",
+      "answer": "Approved with the debate on 2026-10-31: a function prop that only reads state is live by default (option C2), with no marker."
+    },
+    {
+      "id": "Q3",
+      "by": "judge",
+      "blocks": ["P1", "P3", "P5", "P6", "P7"],
+      "ask": "Are there other paths the debate should weigh?",
+      "answer": "The maintainer (2026-10-31) asked to weigh two more paths after round 1: (a) force callers to call a derived function at the prop site, so a derivation is passed as a value (label=(nameOf())) and a function prop is always a handler; (b) rely on a special prop type, like Bindable, that the child declares for a derived function prop (for example a Derived<T> or Accessor<T> type in $props), so the child's type says which function props are live."
+    },
+    {
+      "id": "Q4",
+      "by": "opponent",
+      "blocks": ["O1", "O3"],
+      "ask": "Do you or brumate users pass callbacks under names that do not start with `on` (such as `cb`, `add`, `report`, `register`, `select`), and call them from a child's $effect? Under a rule that re-sends any function prop that reads state, such a callback that also reads and writes the parent's state makes the child effect run in a loop.",
+      "answer": "Yes, common: callbacks under names without `on` that a child calls from an `$effect` must never re-send or loop; any rule must keep them fixed."
+    }
+  ],
+  "proofs": [],
+  "hypothesis": null,
+  "spend": [
+    {
+      "round": 1,
+      "tokens": 160000
+    },
+    {
+      "round": 2,
+      "tokens": 130000
+    }
+  ]
+}
