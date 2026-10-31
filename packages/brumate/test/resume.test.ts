@@ -4308,6 +4308,14 @@ describe('memos that read state through a function prop', () => {
     await waitFor(() => expect(text('.title')).toBe('GRACE'));
   });
 
+  it('runs an effect of the child again when the state that the function reads changes', async () => {
+    const log: string[] = [];
+    (globalThis as { fnReadLog?: string[] }).fnReadLog = log;
+    await resume('fnReadEffect', {});
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(log.at(-1)).toBe('grace'));
+  });
+
   it('runs again when the function prop is an arrow in the markup', async () => {
     await resume('fnReadArrow', {});
     expect(text('.title')).toBe('ADA LOVELACE');
