@@ -80,8 +80,15 @@ export default function search(
       if (id !== `\0${ID}`) {
         return null;
       }
+      // Watch each page, not the folder: Vite turns a watched path into an import of the
+      // module, and a folder cannot be imported, so the browser could not load the index.
       for (const directory of directories) {
-        this.addWatchFile(directory);
+        // oxlint-disable-next-line no-await-in-loop -- Two directories, read in order.
+        for (const file of await readdir(directory)) {
+          if (file.endsWith('.md')) {
+            this.addWatchFile(path.join(directory, file));
+          }
+        }
       }
       return `export const index = ${JSON.stringify(await entries(directories, pages))};`;
     },
