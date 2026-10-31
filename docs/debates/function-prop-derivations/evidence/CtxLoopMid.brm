@@ -1,0 +1,14 @@
+<script>
+  import { $getContext, $signal } from 'brumate/signals';
+  import { PcTotal } from './pcCtx.ts';
+  import RegLoopChild from './RegLoopChild.brm';
+  const ctx = $getContext(PcTotal);
+  let count = $signal(0);
+  function add(n: number) {
+    if (ctx!.read() < 1000) {
+      ctx!.add(n);
+    }
+  }
+</script>
+<button class="inc" onClick=(() => (count += 1))>Inc</button>
+<RegLoopChild value=count add=add />

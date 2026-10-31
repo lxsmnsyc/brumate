@@ -104,6 +104,10 @@ Build first: the examples and the website use the built `brumate` package.
 
 The tests in [`packages/brumate/test/fixtures`](./packages/brumate/test/fixtures) parse and analyze each `.brm` file. The output of every stage is compared with a snapshot in `test/__snapshots__`. The tests in [`packages/brumate/test/render`](./packages/brumate/test/render) compile each component, render it on the server, and compare the modules, the HTML and the state with a snapshot. The tests in `test/resume.test.ts` load that HTML into a DOM, start the loader, and check that events update the page.
 
+## Branches
+
+Minor work (features, minor fixes, docs of unreleased work) goes to pull requests against `next`. Hotfixes go to pull requests against `main`. Releases are published from `main` only, and `next` publishes nothing. After each release from `main`, merge `main` into `next`. A minor release promotes `next` into `main` in one pull request. See [Decisions](./docs/decisions.md).
+
 ## Benchmarks
 
 [`benchmarks`](./benchmarks) builds the same three pages with brumate, Qwik 1, Qwik 2 and Marko 6: a small counter and todo app, a dashboard with 50 rarely used widgets, and a table of rows from js-framework-benchmark. It compares the client code each page loads, the size of the server-rendered HTML, how fast the server renders, and the work of the browser after a click. It needs a local Chrome for the browser metrics.

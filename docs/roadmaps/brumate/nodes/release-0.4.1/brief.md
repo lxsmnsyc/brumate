@@ -23,6 +23,12 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: untrack-prop-value
+    kind: hard
+    why: a handler write is lost when a prop value is wrapped in $untrack (debate function-prop-derivations)
+  - on: context-writer-loop
+    kind: hard
+    why: an effect that calls a context writer loops on 0.4.0 (debate function-prop-derivations)
   - on: next-branch
     kind: hard
     why: minor work must go to next, so no 0.5.0 change lands on main before this release

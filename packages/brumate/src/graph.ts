@@ -208,7 +208,7 @@ export function isTemplateValue(site: Site): boolean {
   return site.node.type === 'Identifier' && lookup(site.scope, site.node.name)?.kind === 'template';
 }
 
-/** True for a function prop of a component that only reads values and is not named like a handler. */
+/** True for a function prop of a component that only reads values and is not an event. */
 function isDerivation(site: Site, writes: (site: Site) => boolean): boolean {
   const owner = site.owner;
   if (owner?.kind !== 'component' || writes(site)) {
@@ -329,16 +329,22 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
     return result;
   }
 
-  // True if the site, or a function it calls, writes a value: a handler, not a derivation.
+  // True if the site, or a function it calls outside `$untrack`, writes a value or calls code
+  // that the compiler cannot see: a handler, not a derivation.
   function writes(site: Site, seen = new Set<Site>()): boolean {
     if (seen.has(site)) {
       return false;
     }
     seen.add(site);
-    if (site.writes.length > 0) {
+    if (site.opaqueCalls) {
       return true;
     }
-    for (const callee of site.calls) {
+    for (const write of site.writes) {
+      if (write.tracked) {
+        return true;
+      }
+    }
+    for (const callee of site.trackedCalls) {
       if (callee.site && writes(callee.site, seen)) {
         return true;
       }
@@ -348,8 +354,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
 
   for (const [site, node] of siteNodes) {
     // A function prop is a fixed reference to a handler, which reads current values when it runs.
-    // One that only reads, and is not named like a handler, is a derivation: the child can call
-    // it in a memo or in markup, so the prop counts as changed when the values it reads change.
+    // One that only reads is a derivation: the child can call it in a memo, in markup or in an
+    // effect, so the prop counts as changed when the values it reads change.
     if (site.kind === 'prop' && isFunctionValue(site) && !isDerivation(site, writes)) {
       continue;
     }

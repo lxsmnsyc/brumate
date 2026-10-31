@@ -1,0 +1,34 @@
+--- pc/analyze.orig.ts	2026-10-31 12:26:03
++++ pc/src/analyze.ts	2026-10-31 12:26:03
+@@ -336,6 +336,7 @@
+     this.addProvidedFunctions();
+     this.checkBindableProps();
+     this.markPromiseProps();
++    this.markFixedFunctionProps();
+ 
+     for (const site of this.sites) {
+       new Resolver(this, site).run();
+@@ -374,8 +375,23 @@
+         };
+         declaration.reads.push(read);
+         reference.site.reads.push(read);
++      }
++    }
++  }
++
++  /** Prototype (b): a prop typed as a plain function type is fixed; `Derived<F>` stays live. */
++  private markFixedFunctionProps(): void {
++    const names = new Set<string>();
++    for (const type of this.propsTypes) {
++      for (const name of memberNames(type, this.file, (t) => t?.type === 'TSFunctionType')) {
++        names.add(name);
+       }
+     }
++    for (const declaration of this.declarations) {
++      if (declaration.kind === 'prop' && declaration.scope === this.component && declaration.propKey !== undefined && names.has(declaration.propKey)) {
++        declaration.fixedFunction = true;
++      }
++    }
+   }
+ 
+   /** Marks the props that the type of `$props<T>()` writes as `Promise<...>`. */

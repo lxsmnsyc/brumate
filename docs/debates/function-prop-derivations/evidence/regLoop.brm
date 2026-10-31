@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import RegLoopChild from './RegLoopChild.brm';
+
+  let count = $signal(0);
+  let total = $signal(0);
+
+  function add(n: number) {
+    total += n;
+  }
+</script>
+
+<button class="inc" onClick=(() => (count += 1))>Inc</button>
+<RegLoopChild value=count add=add />
+<p class="total">{total}</p>

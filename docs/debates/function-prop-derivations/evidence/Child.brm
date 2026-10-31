@@ -1,0 +1,6 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  const { label } = $props<{ label: () => string }>();
+  const title = $memo(label().toUpperCase());
+</script>
+<h1>{title}</h1>

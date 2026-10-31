@@ -6,3 +6,4 @@
 - First try without the name rule made 5 tests of packages/ui fail (Radio `onChange=change`): a handler that calls a context function writes nothing the compiler sees, so the name rule keeps `onX` props and `provide` sites fixed.
 - Limit: a function that reads one state and writes another is a handler for this rule, and does not update the child.
 - Size: sum of the gzip -9 size of the 7 client JS files of benchmarks/brumate (todos) is 29,805 B on main and 29,797 B on the branch. todos has no function prop that only reads.
+- 2026-10-31: reworked to rule C2 after the debate. Writes count only outside `$untrack`; a call through a context value or a prop makes the prop fixed. Size 29,797 B on main, 29,803 B on the branch.

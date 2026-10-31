@@ -1,0 +1,11 @@
+--- src/model.orig.ts	2026-10-31 12:36:43
++++ src/model.ts	2026-10-31 12:36:43
+@@ -163,6 +163,8 @@
+    * values that the site depends on.
+    */
+   trackedCalls: Set<Declaration>;
++  /** True when the site calls through a context value or a prop. */
++  opaqueCalls?: boolean;
+   /** The declaration that a function or memo site belongs to. */
+   declaration?: Declaration;
+   /** The element, component or listener of an attribute or event site. */

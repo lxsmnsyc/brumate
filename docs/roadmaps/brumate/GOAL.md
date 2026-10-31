@@ -13,8 +13,18 @@ merge:
   # Children of a story merge into its branch feat/<story id> under auto; the story PR goes to the user.
   stories: auto
 branches:
-  # After the 0.4.0 release (node next-branch): minor work targets `next`, hotfixes target `main`,
-  # and `next` is synced with `main` after every release from `main`. Empty until then.
+  # From the 0.4.0 release (node next-branch): minor work targets `next`, hotfixes target `main`, and
+  # `main` is merged into `next` after every release from `main`. `next -> main` is the promotion of a
+  # minor release. No prereleases come from `next`; it only runs CI. Nodes of the 0.4.x patch
+  # milestone set `target: main` in their brief.
+  feature: next
+  fix: next
+  docs: next
+  chore: next
+  refactor: next
+  spike: next
+  hotfix: main
+  promote: next -> main
 ---
 
 # brumate
@@ -42,7 +52,7 @@ The core is correct and safe to change, agents write good .brm files with a skil
 Milestones are releases (the maintainer, 2026-10-29).
 
 - 0.4.0: brumate 0.4.0 and @brumate/ui 0.1.0. The cut is the `depends_on` list of release-0.4. changeset-review waits for every open node of the cut, and release-0.4 waits for changeset-review. Every node done before 2026-10-29 ships here.
-- 0.4.1: patch fixes of 0.4.0 behavior that add no API (the maintainer, 2026-10-31). The nodes target `main`, and release-0.4.1 waits for them and for next-branch. Run next-branch before any 0.5.0 node, so minor work never lands on `main`.
+- 0.4.1: patch fixes of 0.4.0 behavior that add no API (the maintainer, 2026-10-31). The nodes keep `target: main` in their briefs, since the policy sends minor work to `next`, and release-0.4.1 waits for them and for next-branch. Run next-branch before any 0.5.0 node, so minor work never lands on `main`.
 - 0.5.0: the open should nodes: core fixes left out of the cut and 0.4.1, the type audit, the agent tools, the smaller client, `$searchParam` and `<style global>`.
 - 0.6.0: the could nodes, the new ui parts and the spikes.
 - backlog: outlines, refined when a release takes them. Large features are outline stories (`type: story`); refining one means writing its children, which merge into `feat/<story id>`, and the story is one PR to its target.

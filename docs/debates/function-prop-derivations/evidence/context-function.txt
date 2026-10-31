@@ -1,0 +1,37 @@
+## /Users/alexis/Documents/GitHub/brumate/.claude/worktrees/function-prop-reads/packages/brumate/dist
+--- part update
+import * as $$b from 'brumate/client';
+import { LabelCtx } from "./ctx";
+import { nameOf$ } from "./ProvCtx.brm?brumate-client&part=shared";
+
+export function u2($$s) {
+  $$b.updateContext($$s, LabelCtx, { label: nameOf$.bind(null, $$s) });
+}
+
+--- part shared
+--- table
+export const id = "ProvCtx_13vzewa";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u2"]] } };
+## /Users/alexis/Documents/GitHub/brumate/packages/brumate/dist
+--- part update
+import * as $$b from 'brumate/client';
+import { LabelCtx } from "./ctx";
+import { nameOf$ } from "./ProvCtx.brm?brumate-client&part=shared";
+
+export function u2($$s) {
+  $$b.updateContext($$s, LabelCtx, { label: nameOf$.bind(null, $$s) });
+}
+
+--- part shared
+--- table
+export const id = "ProvCtx_13vzewa";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u2"]] } };
+
+## Same compile on main dist, variants (export const g of the table)
+ProvCtx3.brm (nameOf reads and writes `name`): g = { 1: { 0: [[1, "u2"]] } }  -> context re-sent, no write scan
+ProvCtx4.brm (nameOf only writes `open`):       g = {  }                       -> no reads, no update
+Conclusion: on main (0.4.0) a function inside a $setContext object already follows its reads,
+like an effect: live when it reads state, no write scan, no event-kind rule. Only props are frozen.
+Command: node run.mjs <dist> <file>  (run.mjs imports compile from <dist>/index.js)

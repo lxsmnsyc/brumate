@@ -1,0 +1,31 @@
+ * - Only a prop of type `Bindable<T>` takes it.
+ * - With `set`, a write calls `set(next)` in place of writing the signal.
+ */
+export function $bind<T>(signal: T, set?: (next: T) => unknown): BoundSignal<T>;
+export function $bind(): never {
+  return compileTimeOnly('$bind');
+}
+
+/**
+ * Marks a function that a script makes as an event handler, so a spread can
+ * pass it on, as it passes on a handler that a caller writes in markup.
+ * `args` are JSON values that go with the handler, and it runs as
+ * `fn(...args, event)`.
+ */
+export function $handler<A extends unknown[], E = Event>(
+  fn: (...args: [...A, E]) => unknown,
+  ...args: A
+): (event: E) => unknown;
+/** A function that does not read the event. */
+export function $handler<A extends unknown[]>(
+  fn: (...args: A) => unknown,
+  ...args: A
+): (event: Event) => unknown;
+export function $handler(): never {
+  return compileTimeOnly('$handler');
+}
+
+/**
+ * Writes what the writes of the handler so far changed to the page, so the code after it can read
+ * the DOM, such as to focus or measure what a write rendered. A handler is one pass, and the page
+ * changes when it returns. Does nothing outside a handler, and on the server.
