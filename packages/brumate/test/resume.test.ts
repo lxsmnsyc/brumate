@@ -1261,6 +1261,64 @@ describe('resume', () => {
     expect(document.querySelector<HTMLElement>('.chart')!.dataset.drawn).toBe('yes');
   });
 
+  it('runs a visible $client callback when the element that a component forwards comes into view', async () => {
+    const observed: Element[] = [];
+    const reports: (() => void)[] = [];
+    class InView {
+      readonly callback: IntersectionObserverCallback;
+      constructor(callback: IntersectionObserverCallback) {
+        this.callback = callback;
+      }
+      observe(target: Element): void {
+        observed.push(target);
+        reports.push(() =>
+          this.callback(
+            [{ target, isIntersecting: true } as IntersectionObserverEntry],
+            this as unknown as IntersectionObserver,
+          ),
+        );
+      }
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('IntersectionObserver', InView);
+    const server = await import(file('refVisibleForward.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toMatch(/<template b-b="[\d:]+" b-client="visible=[^"]+" b-near="[\d]+\.\d+">/);
+    expect(html.match(/ b-r="/g)?.length).toBe(2);
+    await resume('refVisibleForward', {});
+    // Each callback watches the button that is forwarded to it, not the heading.
+    const buttons = [...document.querySelectorAll('.inner')];
+    expect(buttons.length).toBe(2);
+    expect(observed).toEqual(buttons);
+    expect(text('.seen')).toBe('Waiting');
+    expect(text('.passed')).toBe('Waiting');
+    reports[0]!();
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
+    expect(text('.passed')).toBe('Waiting');
+    reports[1]!();
+    await waitFor(() => expect(text('.passed')).toBe('Relayed'));
+  });
+
+  it('marks a forwarded element that a relay renders inside a #loading body', async () => {
+    const server = await import(file('refVisibleLoading.brm.ts'));
+    const answer = (await handleRoute(
+      { page: async () => server },
+      new Request('http://localhost/'),
+    ))!;
+    const html = await answer.text();
+    const near = /b-near="(\d+\.\d+)"/.exec(html)![1];
+    expect(html).toContain('class="inner"');
+    expect(html).toContain(` b-r="${near}"`);
+  });
+
+  it('marks a forwarded element for the caller only when a visible $client waits for it', async () => {
+    const server = await import(file('refForward.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('class="inner"');
+    expect(html).not.toContain(' b-r=');
+  });
+
   it('watches the first element after the markers of visible $client callbacks, not another marker', async () => {
     const observed: Element[] = [];
     class InView {
