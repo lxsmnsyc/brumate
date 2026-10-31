@@ -1003,7 +1003,8 @@ export class Context {
     let key = '';
     while (isSlotReference(target)) {
       key = `${target.scope}.${target.slot}`;
-      target = this.ownRecord(target.scope)?.b?.[target.slot];
+      // A render inside a `#loading` body is another context, which finds the scopes above it.
+      target = this.find(target.scope)?.record.b?.[target.slot];
     }
     return this.root.waited?.has(key) ? ` b-r="${key}"` : '';
   }

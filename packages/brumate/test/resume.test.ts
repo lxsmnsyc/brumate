@@ -1300,6 +1300,18 @@ describe('resume', () => {
     await waitFor(() => expect(text('.passed')).toBe('Relayed'));
   });
 
+  it('marks a forwarded element that a relay renders inside a #loading body', async () => {
+    const server = await import(file('refVisibleLoading.brm.ts'));
+    const answer = (await handleRoute(
+      { page: async () => server },
+      new Request('http://localhost/'),
+    ))!;
+    const html = await answer.text();
+    const near = /b-near="(\d+\.\d+)"/.exec(html)![1];
+    expect(html).toContain('class="inner"');
+    expect(html).toContain(` b-r="${near}"`);
+  });
+
   it('marks a forwarded element for the caller only when a visible $client waits for it', async () => {
     const server = await import(file('refForward.brm.ts'));
     const { html } = await renderParts(server.default, {});
