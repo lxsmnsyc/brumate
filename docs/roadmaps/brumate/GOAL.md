@@ -1,5 +1,5 @@
 ---
-milestones: ["0.4.0", "0.5.0", "0.6.0", backlog]
+milestones: ["0.4.0", "0.4.1", "0.5.0", "0.6.0", backlog]
 # S, docs and chore nodes self-review; the rest, and gates, contracts, releases and hotfixes, get a fresh
 # reviewer (the maintainer, 2026-10-30; this is what ran since 2026-10-27, when an inline comment hid `fresh`).
 review: auto
@@ -25,6 +25,7 @@ The core is correct and safe to change, agents write good .brm files with a skil
 
 ## Acceptance
 
+- 0.4.1: brumate 0.4.1 is published with the patch fixes, after the same checks as 0.4.0.
 - 0.4.0: brumate 0.4.0 and @brumate/ui 0.1.0 are published, after `pnpm build && pnpm test && node e2e/run.mjs` passes and `pnpm --filter website check:samples && pnpm --filter website build` passes with every page of /ui complete.
 - `npx brumate skill` installs the skill, and its code blocks compile in a test (done in 0.4.0).
 - `pnpm bench` shows the gzip JS before `load` for todos below the baseline (0.5.0 and later).
@@ -41,7 +42,8 @@ The core is correct and safe to change, agents write good .brm files with a skil
 Milestones are releases (the maintainer, 2026-10-29).
 
 - 0.4.0: brumate 0.4.0 and @brumate/ui 0.1.0. The cut is the `depends_on` list of release-0.4. changeset-review waits for every open node of the cut, and release-0.4 waits for changeset-review. Every node done before 2026-10-29 ships here.
-- 0.5.0: the open should nodes: core fixes left out of the cut, the type audit, the agent tools, the smaller client, `$searchParam` and `<style global>`, and the next branch.
+- 0.4.1: patch fixes of 0.4.0 behavior that add no API (the maintainer, 2026-10-31). The nodes target `main`, and release-0.4.1 waits for them and for next-branch. Run next-branch before any 0.5.0 node, so minor work never lands on `main`.
+- 0.5.0: the open should nodes: core fixes left out of the cut and 0.4.1, the type audit, the agent tools, the smaller client, `$searchParam` and `<style global>`.
 - 0.6.0: the could nodes, the new ui parts and the spikes.
 - backlog: outlines, refined when a release takes them. Large features are outline stories (`type: story`); refining one means writing its children, which merge into `feat/<story id>`, and the story is one PR to its target.
 
