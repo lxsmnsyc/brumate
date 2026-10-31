@@ -2,10 +2,10 @@
   import { $client } from 'brumate/signals';
   import Meta from '../../components/Meta.brm';
   import UiLandingSizes from '../../components/UiLandingSizes.brm';
-  import ControlsDemo from '../../../ui/demos/LandingControlsDemo.brm';
-  import TabsDemo from '../../../ui/demos/LandingTabsDemo.brm';
-  import { unstyled, usage } from '../../ui-landing.ts';
-  import { demos, gallery } from '../../ui.ts';
+  import Cluster from '../../components/ui-landing/Cluster.brm';
+  import Compare from '../../components/ui-landing/Compare.brm';
+  import Install from '../../components/ui-landing/Install.brm';
+  import { kinds } from '../../ui-landing.ts';
 
   const base = import.meta.env.BASE_URL;
 
@@ -23,32 +23,6 @@
       }
     }
     align();
-
-    // Each preview of the card grid is its demo at natural size. Scale it down to fit the box,
-    // never up, when the page loads and when the box or the demo changes size.
-    function fit(stage: Element) {
-      const demo = stage.firstElementChild as HTMLElement | null;
-      if (!demo || !demo.offsetWidth || !demo.offsetHeight) {
-        return;
-      }
-      const style = getComputedStyle(stage);
-      const width =
-        stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-      const height =
-        stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
-      const scale = Math.min(1, width / demo.offsetWidth, height / demo.offsetHeight);
-      demo.style.setProperty('--fit', String(Math.floor(scale * 1000) / 1000));
-    }
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        fit(entry.target.closest('.ui-demo-stage')!);
-      }
-    });
-    for (const stage of document.querySelectorAll('.ui-card .ui-demo-stage')) {
-      fit(stage);
-      observer.observe(stage);
-      observer.observe(stage.firstElementChild!);
-    }
   }, 'load');
 </script>
 
@@ -61,140 +35,256 @@
   description="Unstyled, accessible parts for brumate pages. The server renders them, the browser keeps their state, and a part you do not render ships nothing."
   path="ui"
 />
-<main class="home">
+<main class="landing">
   <section class="hero">
-    <div class="hero-glow" aria-hidden="true"></div>
-    <p class="eyebrow">Parts for brumate pages</p>
-    <h1>Accessible parts that <span class="gradient-text">ship</span> only what you use.</h1>
-    <p class="lead">
-      Buttons, forms, tabs, dialogs, dates and colors, with the right roles, keys and focus.
-      They have no styles, so they look like your site. The server renders them, and a part you do not render ships nothing.
-    </p>
-    <div class="actions">
-      <a class="button primary" href=(`${base}ui/introduction`)>Get started</a>
-      <a class="button" href=(`${base}ui#parts`)>All parts</a>
-    </div>
-    <pre class="install"><span class="prompt">$</span> pnpm add @brumate/ui</pre>
-  </section>
-
-  <section class="section stage-section">
-    <div class="browser">
-      <div class="browser-bar"><span></span><span></span><span></span><em>Live parts, styled like this site</em></div>
-      <div class="ui-demo-stage"><ControlsDemo /></div>
-    </div>
-    <p class="stage-note">Press, switch and check them. Use the keyboard, a touch or a screen reader: it is the same part.</p>
-  </section>
-
-  <section class="section ships-section">
-    <div class="ships-text">
-      <h2>You pay for the parts you render</h2>
-      <p class="section-lead">
-        The code of a part comes with the page that renders it, so the first press needs no request.
-        A page that renders no part adds nothing.
+    <div class="copy">
+      <p class="eyebrow">@brumate/ui</p>
+      <h1 class="display">Accessible parts that ship <em>only</em> what you use.</h1>
+      <p class="lead">
+        Buttons, forms, tabs, dialogs, dates and colors, with the right roles, keys and focus.
+        They have no styles, so they look like your site. A part you do not render ships nothing.
       </p>
-      <p class="section-lead">
-        Sizes are the gzip JavaScript that the first server render loads. CSS is not counted.
-        Run <code>node scripts/measure-ui-sizes.mjs</code> in the <code>website</code> folder for the current numbers.
-      </p>
+      <div class="actions">
+        <a class="button primary" href=(`${base}ui/introduction`)>Get started</a>
+        <a class="button" href=(`${base}ui#parts`)>All parts</a>
+      </div>
+      <div class="install-row"><Install /></div>
     </div>
-    <div>
-      <UiLandingSizes />
-    </div>
+    <Cluster />
   </section>
 
-  <section class="section rows">
-    <article class="row">
-      <div class="row-text">
-        <p class="eyebrow">Unstyled</p>
-        <h2>Style the state, not a class name</h2>
+  <section class="section">
+    <header class="section-head">
+      <span class="numeral" aria-hidden="true">01</span>
+      <div>
+        <h2>Unstyled, <em>then</em> yours</h2>
         <p>
-          A part renders the right element and sets its state as <code>data-*</code> attributes.
-          Your CSS decides the rest, with no class names to override.
+          A part renders the right element and sets its state as <code>data-*</code> attributes. Your CSS
+          decides the rest, with no class names to override. Both sides below are the same part.
         </p>
-        <a href=(`${base}ui/styling`)>Styling</a>
       </div>
-      <div class="row-media">
-        <div class="code" role="group" aria-label="Unstyled example" tabindex="0">{unstyled}</div>
-      </div>
-    </article>
+    </header>
+    <Compare />
+  </section>
 
-    <article class="row">
-      <div class="row-text">
-        <p class="eyebrow">Accessible</p>
-        <h2>One behavior for every way to press</h2>
+  <section class="section">
+    <header class="section-head">
+      <span class="numeral" aria-hidden="true">02</span>
+      <div>
+        <h2>Pay <em>per</em> part</h2>
         <p>
-          Roles and ARIA attributes, native elements where the browser has them, and the keyboard patterns
-          of WAI-ARIA. A mouse, a touch, a pen, a key and a screen reader all end in the same <code>onPress</code>.
+          The code of a part comes with the page that renders it, so the first press needs no request.
+          These sizes are measured, not estimated. Run <code>node scripts/measure-ui-sizes.mjs</code>
+          in the <code>website</code> folder for the current numbers.
         </p>
-        <a href=(`${base}ui/influences`)>Design influences</a>
       </div>
-      <div class="row-media">
-        <div class="browser">
-          <div class="browser-bar"><span></span><span></span><span></span><em>Try the arrow keys</em></div>
-          <div class="tabs-stage"><TabsDemo /></div>
-        </div>
-      </div>
-    </article>
-
-    <article class="row">
-      <div class="row-text">
-        <p class="eyebrow">Resumable</p>
-        <h2>Rendered on the server, picked up in the browser</h2>
-        <p>
-          A part is HTML with its state. The browser picks up where the server left off and runs no component twice.
-          A native element still works when no script runs.
-        </p>
-        <a href=(`${base}ui/resuming`)>How the parts resume</a>
-      </div>
-      <div class="row-media">
-        <div class="code" role="group" aria-label="Usage example" tabindex="0">{usage}</div>
-      </div>
-    </article>
+    </header>
+    <UiLandingSizes />
   </section>
 
   <section class="section" id="parts">
-    <h2>Every part</h2>
-    <p class="section-lead">A card for each part. The preview is a picture, so open the page of the part to use it.</p>
-    <ul class="ui-gallery">
-      #for (card of gallery by card.title) {
-        <li class="ui-card">
-          <div class="ui-demo-stage" inert><div class="ui-fit"><{demos[card.demo]} /></div></div>
-          <a class="ui-card-title" href=(`${base}ui/${card.href}`)>{card.title}</a>
-          <p>{card.summary}</p>
-        </li>
-      }
-    </ul>
+    <header class="section-head">
+      <span class="numeral" aria-hidden="true">03</span>
+      <div>
+        <h2>Every <em>part</em></h2>
+        <p>Grouped by kind. Each part has a page with a live demo, its anatomy and its styles. A size shows where it is measured.</p>
+      </div>
+    </header>
+    #for (kind of kinds by kind.title) {
+      <div class="kind">
+        <h3>{kind.title}</h3>
+        <ul class="grid">
+          #for (card of kind.cards by card.title) {
+            <li>
+              <a href=(`${base}ui/${card.href}`)>
+                <span class="top">
+                  <span class="name">{card.title}</span>
+                  #if (card.size) {
+                    <span class="size">{card.size}</span>
+                  }
+                </span>
+                <span class="summary">{card.summary}</span>
+                <span class="go arrow" aria-hidden="true">Open</span>
+              </a>
+            </li>
+          }
+        </ul>
+      </div>
+    }
   </section>
 
   <section class="section cta">
-    <h2>Add the first part</h2>
-    <p>Install the package, import a part and style its data attributes.</p>
+    <h2 class="display">Add the <em>first</em> part.</h2>
+    <p class="lead">Install the package, import a part and style its data attributes.</p>
     <div class="actions">
       <a class="button primary" href=(`${base}ui/introduction`)>Get started</a>
-      <a class="button" href=(`${base}ui#parts`)>All parts</a>
+      <a class="button" href=(`${base}ui/styling`)>Styling</a>
     </div>
   </section>
 </main>
 
 <style>
-  .stage-section {
-    max-width: 44rem;
+  .landing {
+    max-width: var(--page-width);
     margin: 0 auto;
+    padding: 0 1.5rem 5rem;
   }
 
-  .stage-section .ui-demo-stage {
-    justify-content: center;
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 3rem;
+    align-items: center;
+    padding: 4.5rem 0 5rem;
+    /* The shared .hero of styles.css centers its text; this one reads from the left. */
+    text-align: left;
   }
 
-  .stage-note {
-    margin: 0.75rem 0 0;
+  .copy {
+    min-width: 0;
+  }
+
+  .copy .display {
+    margin-top: 1.25rem;
+  }
+
+  .lead {
+    max-width: 36rem;
+    margin: 1.5rem 0 0;
     color: var(--muted);
-    font-size: 0.9rem;
+    font-size: var(--text-lg);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .install-row {
+    max-width: 100%;
+    margin-top: 1.5rem;
+  }
+
+  .section {
+    padding: 5rem 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .kind + .kind {
+    margin-top: 2.5rem;
+  }
+
+  .kind h3 {
+    margin: 0 0 0.75rem;
+    color: var(--muted);
+    font: 500 var(--text-xs) var(--mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 1px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--border);
+    list-style: none;
+    overflow: hidden;
+  }
+
+  .grid li {
+    display: flex;
+    background: var(--bg);
+  }
+
+  .grid a {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 1.1rem 1.25rem;
+    color: inherit;
+    text-decoration: none;
+    transition: background-color var(--duration-fast) var(--ease);
+  }
+
+  .grid a:hover {
+    background: var(--bg-elevated);
+  }
+
+  .grid a:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .top {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  .name {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .size {
+    color: var(--accent-strong);
+    font: 500 var(--text-xs) var(--mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .summary {
+    flex: 1;
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+
+  .go {
+    margin-top: 0.4rem;
+    color: var(--accent-strong);
+    font: 500 var(--text-xs) var(--mono);
+  }
+
+  .grid a:hover .go::after {
+    transform: translateX(3px);
+  }
+
+  .cta {
     text-align: center;
   }
 
-  .tabs-stage {
-    padding: 1.5rem;
-    background: var(--surface);
+  .cta .lead {
+    margin-inline: auto;
+  }
+
+  .cta .actions {
+    justify-content: center;
+  }
+
+  @media (max-width: 60rem) {
+    .hero {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2.5rem;
+      padding-top: 3rem;
+    }
+
+    .section {
+      padding: 3.5rem 0;
+    }
+  }
+
+  @media (max-width: 30rem) {
+    .landing {
+      padding-inline: 1rem;
+    }
   }
 </style>

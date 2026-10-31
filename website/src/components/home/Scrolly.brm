@@ -1,0 +1,393 @@
+<script>
+  import { $client, $signal } from 'brumate/signals';
+  import * as counter from '../../demos/Counter.brm?inspect';
+
+  // Five steps of one component through the compiler. The code on the right and every number
+  // come from the build of src/demos/Counter.brm, not from this file.
+  const base = import.meta.env.BASE_URL;
+  const report = counter.report;
+
+  let active = $signal('source');
+
+  // The step that crosses the middle of the viewport is the active one.
+  $client(() => {
+    const steps = document.querySelectorAll<HTMLElement>('[data-step]');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            active = (entry.target as HTMLElement).dataset.step!;
+          }
+        }
+      },
+      { rootMargin: '-45% 0px -50% 0px' },
+    );
+    for (const step of steps) {
+      observer.observe(step);
+    }
+    return () => observer.disconnect();
+  });
+
+  function sumGzip(): number {
+    let sum = 0;
+    for (const size of report.sizes) {
+      sum += size.gzip;
+    }
+    return sum;
+  }
+  function countInserts(): number {
+    let sum = 0;
+    for (const change of report.changes) {
+      if (change.label === 'insert') {
+        sum++;
+      }
+    }
+    return sum;
+  }
+  function listSlots(): string {
+    const names: string[] = [];
+    for (const scope of report.state) {
+      names.push(...scope.slots);
+    }
+    return names.join(', ');
+  }
+
+  const total = sumGzip();
+  const inserts = countInserts();
+  const slots = listSlots();
+  const tabs = [
+    { id: 'source', label: 'Counter.brm' },
+    { id: 'server', label: 'server' },
+    { id: 'client', label: 'client code' },
+    { id: 'css', label: 'CSS' },
+    { id: 'inspect', label: 'inspect' },
+  ];
+</script>
+
+<div class="scrolly">
+  <ol class="steps">
+    <li class=(['step', active === 'source' && 'on']) data-step="source">
+      <span class="eyebrow">01 · Source</span>
+      <h3>One file for both sides</h3>
+      <p>
+        A <code>.brm</code> component holds its script, its markup and its styles. The compiler reads the whole
+        file and decides what runs on the server and what the browser needs.
+      </p>
+      <ul class="facts">
+        <li><span>Handlers</span><b>{report.roots.length}</b></li>
+        <li><span>Values that can change</span><b>{report.changes.length}</b></li>
+        <li><span>Elements with no code</span><b>{report.staticMarkup.elements}</b></li>
+      </ul>
+      <a class="more" href=(`${base}docs/components`)><span class="arrow">Components</span></a>
+    </li>
+    <li class=(['step', active === 'server' && 'on']) data-step="server">
+      <span class="eyebrow">02 · Server</span>
+      <h3>The server sends HTML and state</h3>
+      <p>
+        The server renders the page as HTML and sends the state with it, so the browser starts from the same
+        values and never runs the script again.
+      </p>
+      <p>
+        The comments around each value mark the places that can change. <code>b-on</code> names the code that a
+        click needs. The state script holds the values of each scope.
+      </p>
+      <ul class="facts">
+        <li><span>State sent</span><b><code>{slots}</code></b></li>
+        <li><span>Places in the markup that can change</span><b>{inserts}</b></li>
+        <li><span>Rendered twice</span><b>never</b></li>
+      </ul>
+      <a class="more" href=(`${base}docs/what-runs-where`)><span class="arrow">What runs where</span></a>
+    </li>
+    <li class=(['step', active === 'client' && 'on']) data-step="client">
+      <span class="eyebrow">03 · Browser</span>
+      <h3>Only what responds ships</h3>
+      <p>
+        The click handler, the memo and the updates of the text that reads them are the client code. No
+        template, no render function and no copy of the markup reach the browser.
+      </p>
+      <p>This code comes with the page, so the first click needs no request.</p>
+      <ul class="facts">
+        #for (size of report.sizes by size.module) {
+          <li><span>{size.module}</span><b>{size.gzip} B gzip</b></li>
+        }
+      </ul>
+      <a class="more" href=(`${base}docs/state`)><span class="arrow">State</span></a>
+    </li>
+    <li class=(['step', active === 'css' && 'on']) data-step="css">
+      <span class="eyebrow">04 · Styles</span>
+      <h3>Styles stay scoped, with no runtime</h3>
+      <p>
+        The <code>&lt;style&gt;</code> block compiles to plain CSS at build time. Each selector gets the
+        attribute of its component, so a rule here never reaches an element of another file.
+      </p>
+      <ul class="facts">
+        <li><span>Client code for styles</span><b>none</b></li>
+        <li><span>Scope attribute</span><b><code>{report.scope}</code></b></li>
+      </ul>
+      <a class="more" href=(`${base}docs/styles`)><span class="arrow">Styles</span></a>
+    </li>
+    <li class=(['step', active === 'inspect' && 'on']) data-step="inspect">
+      <span class="eyebrow">05 · Check</span>
+      <h3>Ask the compiler why</h3>
+      <p>
+        <code>brumate inspect</code> prints this report for any file. It names each handler, each value that
+        can change and the write that changes it, and what ships as HTML only.
+      </p>
+      <ul class="facts">
+        <li><span>HTML only</span><b>{report.staticMarkup.elements} elements</b></li>
+        <li><span>Client total</span><b>{total} B gzip, before minifying</b></li>
+      </ul>
+      <a class="more" href=(`${base}docs/inspect`)><span class="arrow">Inspect and devtools</span></a>
+    </li>
+  </ol>
+
+  <div class="sticky">
+    <div class="panel-box">
+      <div class="tabs" role="tablist" aria-label="Output of the compiler">
+        #for (tab of tabs by tab.id) {
+          <button role="tab" type="button" class={ on: active === tab.id } aria-selected=(active === tab.id) onClick=(() => (active = tab.id))>{tab.label}</button>
+        }
+      </div>
+      <div class="panels">
+        <div class=(['panel', active === 'source' && 'on'])>{counter.source}</div>
+        <div class=(['panel', 'server', active === 'server' && 'on'])>
+          <p class="panel-label">HTML</p>
+          {counter.html}
+          <p class="panel-label">State</p>
+          {counter.state}
+        </div>
+        <div class=(['panel', active === 'client' && 'on'])>{counter.client}</div>
+        <div class=(['panel', active === 'css' && 'on'])>{counter.css}</div>
+        <div class=(['panel', active === 'inspect' && 'on'])>{counter.text}</div>
+      </div>
+      <div class="foot">
+        <span>{report.name}.brm</span>
+        <b>{total} B gzip of client code</b>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .scrolly {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 3.5rem;
+  }
+
+  .steps {
+    margin: 0;
+    padding: 0 0 12vh;
+    list-style: none;
+  }
+
+  .step {
+    min-height: 62vh;
+    padding: 2.2rem 0 2.2rem 1.5rem;
+    border-left: 2px solid var(--border);
+    opacity: 0.45;
+    transition:
+      opacity var(--duration-slow) var(--ease),
+      border-color var(--duration-slow) var(--ease);
+  }
+
+  .step.on {
+    border-left-color: var(--accent);
+    opacity: 1;
+  }
+
+  .step h3 {
+    margin: 0.5rem 0 0.8rem;
+    font-size: var(--text-xl);
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+  }
+
+  .step p {
+    max-width: 34rem;
+    margin: 0 0 0.9rem;
+    color: var(--muted);
+  }
+
+  .step code {
+    font-size: 0.88em;
+  }
+
+  .facts {
+    max-width: 34rem;
+    margin: 1.3rem 0;
+    padding: 0;
+    border-top: 1px solid var(--border);
+    list-style: none;
+  }
+
+  .facts li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-sm);
+  }
+
+  .facts span {
+    color: var(--muted);
+  }
+
+  .facts b {
+    font: 500 var(--text-sm) var(--mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .more {
+    color: var(--accent-strong);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .more:hover {
+    text-decoration: underline;
+  }
+
+  .sticky {
+    position: sticky;
+    top: calc(var(--header-height) + 1.5rem);
+    align-self: start;
+    min-width: 0;
+  }
+
+  .panel-box {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0.2rem;
+    padding: 0.45rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    overflow-x: auto;
+  }
+
+  .tabs button {
+    padding: 0.35rem 0.7rem;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--muted);
+    font: 500 var(--text-xs) var(--mono);
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      color var(--duration) var(--ease),
+      background-color var(--duration) var(--ease);
+  }
+
+  .tabs button.on {
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
+  }
+
+  .panels {
+    display: grid;
+  }
+
+  .panel {
+    grid-area: 1 / 1;
+    min-width: 0;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition:
+      opacity var(--duration-fast) var(--ease),
+      transform var(--duration-fast) var(--ease);
+  }
+
+  .panel.on {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition-duration: var(--duration-slow);
+  }
+
+  .panel :global(.code) {
+    font-family: var(--mono);
+    height: 22rem;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: auto;
+  }
+
+  /* The server tab holds two blocks, the markup and the state, in the height of one. */
+  .server {
+    height: 22rem;
+    overflow: auto;
+  }
+
+  .server :global(.code) {
+    height: auto;
+    overflow: visible;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .server :global(.twinkleplop) {
+    white-space: pre-wrap;
+  }
+
+  .panel-label {
+    margin: 0;
+    padding: 0.8rem 1.1rem 0;
+    color: var(--subtle);
+    font: 500 var(--text-xs) var(--mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 1.1rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font: var(--text-xs) var(--mono);
+  }
+
+  .foot b {
+    color: var(--accent-strong);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 56rem) {
+    .scrolly {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.5rem;
+    }
+
+    .sticky {
+      position: static;
+      order: -1;
+    }
+
+    .step {
+      min-height: 0;
+      opacity: 1;
+    }
+
+    .steps {
+      padding-bottom: 0;
+    }
+  }
+</style>

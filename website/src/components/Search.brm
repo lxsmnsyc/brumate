@@ -1,25 +1,133 @@
 <script>
-  import { $props, $signal } from 'brumate/signals';
+  import { $bind, $client, $effect, $props, $signal } from 'brumate/signals';
+  import { navigate } from 'brumate/routes';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Header from '@brumate/ui/Header.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuSection from '@brumate/ui/MenuSection.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+  import Icon from './Icon.brm';
+  import { getIndex, loadIndexes } from '../search-indexes.ts';
+  import { switchTheme } from '../theme-switch.ts';
 
-  // The docs of brumate, or the section of @brumate/ui, which has a search of its own.
+  // The command bar of the site: it searches the docs of brumate and the parts of @brumate/ui, and
+  // runs a few actions. ⌘K or Ctrl+K opens it from anywhere, and so does `/` outside a field.
+  // The section of the page decides which results come first.
   const { section = 'docs' } = $props<{ section?: 'docs' | 'ui' }>();
 
   interface Result {
-    href: string;
+    /** A path to open, or `action:` and the name of an action. */
+    key: string;
     title: string;
-    page: string;
-    text: string;
+    /** Where it is: the page of a section, or what an action does. */
+    detail: string;
+    kind: 'page' | 'section' | 'part' | 'action';
+  }
+
+  interface Group {
+    title: string;
+    items: Result[];
   }
 
   const base = import.meta.env.BASE_URL;
-  let query = $signal('');
-  let results = $signal<Result[]>([]);
-  let open = $signal(false);
+  const GITHUB = 'https://github.com/lxsmnsyc/brumate';
 
-  // The index loads the first time someone types, so pages do not load it before.
-  async function find(value: string) {
-    query = value;
-    open = true;
+  const ACTIONS: Result[] = [
+    { key: 'action:theme', title: 'Switch theme', detail: 'Light or dark', kind: 'action' },
+    { key: 'action:repl', title: 'Open the REPL', detail: 'Write a component in the browser', kind: 'action' },
+    { key: 'action:install', title: 'Copy the install command', detail: 'pnpm add brumate', kind: 'action' },
+    { key: 'action:github', title: 'Open brumate on GitHub', detail: 'lxsmnsyc/brumate', kind: 'action' },
+  ];
+
+  const START: Result[] = [
+    { key: `${base}docs/getting-started`, title: 'Getting started', detail: 'Docs', kind: 'page' },
+    { key: `${base}docs/tutorial`, title: 'Tutorial', detail: 'Docs', kind: 'page' },
+    { key: `${base}ui`, title: '@brumate/ui', detail: 'Accessible parts', kind: 'page' },
+  ];
+
+  let open = $signal(false);
+  let query = $signal('');
+  let groups = $signal<Group[]>([{ title: 'Start here', items: START }, { title: 'Actions', items: ACTIONS }]);
+
+  /** The score of a text for the terms: higher for a match at the start of the text or a word. */
+  function scoreText(text: string, terms: string[]): number {
+    const lower = text.toLowerCase();
+    let score = 0;
+    for (const term of terms) {
+      const at = lower.indexOf(term);
+      if (at === -1) {
+        return 0;
+      }
+      if (at === 0) {
+        score += 6;
+      } else if (/[\s#$.(/-]/.test(lower[at - 1]!)) {
+        score += 4;
+      } else {
+        score += 2;
+      }
+    }
+    return score;
+  }
+
+  /** The entries of one index that match the terms, best first. */
+  function findIn(which: 'docs' | 'ui', terms: string[]): Result[] {
+    const scored: { score: number; result: Result }[] = [];
+    for (const entry of getIndex(which)) {
+      const title = entry.heading || entry.pageTitle;
+      // The heading counts the most, then the title of its page, then its text.
+      const score =
+        scoreText(title, terms) * 3 || scoreText(entry.pageTitle, terms) * 2 || scoreText(entry.text, terms);
+      if (score === 0) {
+        continue;
+      }
+      const isPage = !entry.id;
+      scored.push({
+        // A page scores a little higher than one of its sections with the same words.
+        score: score + (isPage ? 1 : 0),
+        result: {
+          key: `${base}${which}${entry.page ? `/${entry.page}` : ''}${entry.id ? `#${entry.id}` : ''}`,
+          title,
+          detail: isPage ? (which === 'ui' ? 'Part' : 'Docs page') : entry.pageTitle,
+          kind: isPage ? (which === 'ui' ? 'part' : 'page') : 'section',
+        },
+      });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    // At most two results of one page, so one page does not fill the list.
+    const results: Result[] = [];
+    const perPage = new Map<string, number>();
+    for (const item of scored) {
+      const page = item.result.key.split('#')[0]!;
+      const count = perPage.get(page) ?? 0;
+      if (count === 2) {
+        continue;
+      }
+      perPage.set(page, count + 1);
+      results.push(item.result);
+      if (results.length === 6) {
+        break;
+      }
+    }
+    return results;
+  }
+
+  // The indexes load when the bar first opens. Typing before they arrive finds again once they do.
+  $effect(() => {
+    if (open) {
+      void loadIndexes().then(() => find(query));
+    }
+  });
+
+  function find(value: string) {
     const terms: string[] = [];
     for (const term of value.toLowerCase().split(/\s+/)) {
       if (term) {
@@ -27,156 +135,360 @@
       }
     }
     if (terms.length === 0) {
-      results = [];
+      groups = [{ title: 'Start here', items: START }, { title: 'Actions', items: ACTIONS }];
       return;
     }
-    const { index } =
-      section === 'ui' ? await import('virtual:ui-search-index') : await import('virtual:search-index');
-    const scored: (Result & { score: number })[] = [];
-    for (const entry of index) {
-      const heading = entry.heading.toLowerCase();
-      const text = entry.text.toLowerCase();
-      let matches = true;
-      for (const term of terms) {
-        if (!(heading.includes(term) || text.includes(term))) {
-          matches = false;
-          break;
-        }
+    const docs = findIn('docs', terms);
+    const ui = findIn('ui', terms);
+    const actions: Result[] = [];
+    for (const action of ACTIONS) {
+      if (scoreText(action.title, terms) > 0) {
+        actions.push(action);
       }
-      if (!matches) {
-        continue;
-      }
-      let score = 0;
-      for (const term of terms) {
-        score += heading.includes(term) ? 3 : 1;
-      }
-      const at = Math.max(0, text.indexOf(terms[0]!) - 40);
-      scored.push({
-        score,
-        href: `${base}${section}${entry.page ? `/${entry.page}` : ''}${entry.id ? `#${entry.id}` : ''}`,
-        title: entry.heading,
-        page: entry.pageTitle,
-        text: `${at > 0 ? '…' : ''}${entry.text.slice(at, at + 120)}…`,
-      });
     }
-    // Only the answer to the latest query is shown.
-    if (query === value) {
-      results = scored.toSorted((a, b) => b.score - a.score).slice(0, 8);
+    const docsGroup = { title: 'Docs', items: docs };
+    const uiGroup = { title: '@brumate/ui', items: ui };
+    const next: Group[] = [];
+    for (const group of section === 'ui' ? [uiGroup, docsGroup] : [docsGroup, uiGroup]) {
+      if (group.items.length > 0) {
+        next.push(group);
+      }
+    }
+    if (actions.length > 0) {
+      next.push({ title: 'Actions', items: actions });
+    }
+    groups = next;
+  }
+
+  async function run(key: Key) {
+    const target = String(key);
+    open = false;
+    if (target === 'action:theme') {
+      switchTheme();
+    } else if (target === 'action:repl') {
+      await navigate(`${base}repl`);
+    } else if (target === 'action:install') {
+      await navigator.clipboard?.writeText('pnpm add brumate');
+    } else if (target === 'action:github') {
+      window.open(GITHUB, '_blank', 'noreferrer');
+    } else {
+      await navigate(target);
     }
   }
+
+  // Results can arrive after the text, before an item is active. Enter then opens the first one.
+  function openFirst(event: KeyboardEvent) {
+    const input = event.target as HTMLElement;
+    if (event.key !== 'Enter' || input.getAttribute('aria-activedescendant')) {
+      return;
+    }
+    const first = groups[0]?.items[0];
+    if (first) {
+      event.preventDefault();
+      void run(first.key);
+    }
+  }
+
+  // ⌘K or Ctrl+K toggles the bar from anywhere. `/` opens it when no field has focus.
+  $client(() => {
+    document.addEventListener('keydown', (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        open = !open;
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      const typing =
+        target?.isContentEditable || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA';
+      if (event.key === '/' && !typing && !open) {
+        event.preventDefault();
+        open = true;
+      }
+    });
+  }, 'idle');
 </script>
 
-<div class="search" onFocusOut=((event) => {
-  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-    open = false;
-  }
-})>
-  <input
-    type="search"
-    placeholder=(section === 'ui' ? 'Search the parts' : 'Search the docs')
-    aria-label=(section === 'ui' ? 'Search the parts' : 'Search the docs')
-    value=query
-    onInput=((event) => find(event.currentTarget.value))
-    onFocus=(() => (open = true))
-  >
-  #if (open && query) {
-    <div class="search-results" role="listbox">
-      #for (result of results by result.href) {
-        <a href=(result.href) onClick=(() => (open = false))>
-          <strong>{result.title}</strong>
-          <small>{result.page}</small>
-          <span>{result.text}</span>
-        </a>
-      } #else {
-        <p class="search-empty">No results</p>
-      }
-    </div>
-  }
-</div>
+<DialogTrigger isOpen=$bind(open)>
+  <Button class="search-trigger">
+    <Icon name="search" size=(16) />
+    <span class="search-trigger-text">{section === 'ui' ? 'Search the parts…' : 'Search docs, parts, actions…'}</span>
+    <kbd class="search-trigger-key">⌘K</kbd>
+  </Button>
+  <ModalOverlay class="command-overlay" isDismissable transition>
+    <Modal class="command-modal">
+      <Dialog class="command-dialog" aria-label="Search">
+        <Autocomplete filter=(() => true) inputValue=$bind(query) onInputChange=find>
+          <div class="command-search" onKeyDown=openFirst>
+          <SearchField class="command-field">
+            <Label class="visually-hidden">Search the docs, the parts and the actions</Label>
+            <Icon name="search" size=(18) />
+            <Input class="command-input" placeholder="Search docs, parts, or run an action" autofocus />
+            <kbd>esc</kbd>
+          </SearchField>
+          </div>
+          <Menu class="command-list" aria-label="Results" onAction=run>
+            #for (group of groups by group.title) {
+              <MenuSection class="command-group">
+                <Header class="command-group-title">{group.title}</Header>
+                #for (item of group.items by item.key) {
+                  <MenuItem id=(item.key) textValue=(item.title) class="command-item">
+                    <span class="command-icon" data-kind=(item.kind)>
+                      <Icon name=(item.kind === 'action' ? 'bolt' : item.kind === 'section' ? 'hash' : item.kind === 'part' ? 'grid' : 'file') size=(15) />
+                    </span>
+                    <span class="command-text">
+                      <span class="command-title">{item.title}</span>
+                      <span class="command-detail">{item.detail}</span>
+                    </span>
+                    <span class="command-enter" aria-hidden="true">↵</span>
+                  </MenuItem>
+                }
+              </MenuSection>
+            }
+          </Menu>
+          #if (groups.length === 0) {
+            <p class="command-empty">No results for “{query}”. Try a part such as “combo”, or a block such as “#for”.</p>
+          }
+        </Autocomplete>
+        <footer class="command-keys" aria-hidden="true">
+          <span><kbd>↑</kbd><kbd>↓</kbd> move</span>
+          <span><kbd>↵</kbd> open</span>
+          <span><kbd>esc</kbd> close</span>
+        </footer>
+      </Dialog>
+    </Modal>
+  </ModalOverlay>
+</DialogTrigger>
 
 <style>
-  /* Search */
+  /* The button in the header that opens the bar. */
 
-  .search {
-    position: relative;
-    flex: 0 1 18rem;
-    margin: 0 1rem;
-  }
-
-  .search input {
-    width: 100%;
-    padding: 0.4rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
-    font-size: 0.9rem;
-  }
-
-  .search input:focus {
-    outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
-    outline-offset: 1px;
-  }
-
-  .search-results {
-    position: absolute;
-    top: calc(100% + 0.4rem);
-    right: 0;
-    left: 0;
-    min-width: 20rem;
-    max-height: 70vh;
-    padding: 0.35rem;
+  :global(.search-trigger) {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: min(22rem, 100%);
+    padding: 0.42rem 0.5rem 0.42rem 0.8rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    background: var(--bg);
-    box-shadow: var(--shadow);
-    overflow-y: auto;
-  }
-
-  .search-results a {
-    display: grid;
-    gap: 0.1rem;
-    padding: 0.5rem 0.65rem;
-    border-radius: 8px;
-    color: var(--text);
-    text-decoration: none;
-  }
-
-  .search-results a:hover,
-  .search-results a:focus {
     background: var(--surface);
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition:
+      border-color var(--duration-fast),
+      box-shadow var(--duration-fast),
+      color var(--duration-fast);
   }
 
-  .search-results small {
-    color: var(--accent-strong);
+  :global(.search-trigger[data-hovered]) {
+    border-color: var(--border-strong);
+    color: var(--muted);
+    box-shadow: var(--shadow-sm);
+  }
+
+  :global(.search-trigger) .search-trigger-text {
+    flex: 1;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 52rem) {
+    :global(.search-trigger) {
+      width: auto;
+      padding: 0.5rem;
+      border-color: transparent;
+      background: transparent;
+    }
+
+    /* The text stays for screen readers: it names the button. */
+    :global(.search-trigger) .search-trigger-text {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    :global(.search-trigger) .search-trigger-key {
+      display: none;
+    }
+  }
+
+  /* The bar. */
+
+  :global(.command-overlay) {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    background: var(--backdrop);
+    backdrop-filter: blur(3px);
+    transition: opacity var(--duration) var(--ease);
+  }
+
+  :global(.command-overlay[data-closed]) {
+    opacity: 0;
+  }
+
+  :global(.command-modal) {
+    position: fixed;
+    top: 12vh;
+    left: 50%;
+    width: min(40rem, calc(100vw - 2rem));
+    translate: -50% 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    transition:
+      opacity var(--duration-slow) var(--ease),
+      transform var(--duration-slow) var(--ease);
+  }
+
+  :global(.command-overlay[data-closed]) :global(.command-modal) {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+
+  :global(.command-dialog) {
+    outline: none;
+  }
+
+  :global(.command-field) {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.95rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--subtle);
+  }
+
+  :global(.command-input) {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 1.05rem;
+  }
+
+  :global(.command-input)::-webkit-search-cancel-button {
+    display: none;
+  }
+
+  :global(.command-list) {
+    max-height: min(56vh, 28rem);
+    padding: 0.25rem 0.5rem 0.6rem;
+    overflow-y: auto;
+    outline: none;
+    scroll-padding: 0.5rem;
+  }
+
+  :global(.command-group-title) {
+    padding: 0.8rem 0.7rem 0.35rem;
+    color: var(--subtle);
+    font: 500 0.7rem var(--mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  :global(.command-item) {
+    display: grid;
+    grid-template-columns: 1.9rem minmax(0, 1fr) auto;
+    gap: 0.7rem;
+    align-items: center;
+    padding: 0.5rem 0.7rem;
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    outline: none;
+  }
+
+  :global(.command-item[data-focused]) {
+    background: var(--accent-tint);
+  }
+
+  :global(.command-item[hidden]) {
+    display: none;
+  }
+
+  .command-icon {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--muted);
+    transition:
+      background var(--duration-fast),
+      color var(--duration-fast);
+  }
+
+  :global(.command-item[data-focused]) .command-icon {
+    border-color: transparent;
+    background: var(--accent-fill);
+    color: var(--on-accent);
+  }
+
+  .command-text {
+    display: grid;
+    min-width: 0;
+  }
+
+  .command-title,
+  .command-detail {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .command-title {
+    font-size: 0.94rem;
+  }
+
+  .command-detail {
+    color: var(--muted);
+    font-size: 0.78rem;
+  }
+
+  .command-enter {
+    color: var(--muted);
+    font: 0.8rem var(--mono);
+    opacity: 0;
+    transition: opacity var(--duration-fast);
+  }
+
+  :global(.command-item[data-focused]) .command-enter {
+    opacity: 1;
+  }
+
+  .command-empty {
+    margin: 0;
+    padding: 2.5rem 1.5rem;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .command-keys {
+    display: flex;
+    gap: 1rem;
+    padding: 0.6rem 1.1rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
     font-size: 0.75rem;
   }
 
-  .search-results span {
-    color: var(--muted);
-    font-size: 0.8rem;
-  }
-
-  .search-empty {
-    margin: 0;
-    padding: 0.6rem;
-    color: var(--muted);
-    font-size: 0.875rem;
-  }
-
-  @media (max-width: 800px) {
-    .search {
-        flex-basis: 9rem;
-        margin: 0 0.5rem;
-      }
-  }
-
-  @media (max-width: 640px) {
-    .search {
-        order: 1;
-        flex: 1 1 100%;
-        margin: 0;
-      }
+  .command-keys span {
+    display: inline-flex;
+    gap: 0.3rem;
+    align-items: center;
   }
 </style>

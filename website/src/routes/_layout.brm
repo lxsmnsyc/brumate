@@ -1,6 +1,7 @@
 <script>
   import { $memo, $props, $route } from 'brumate/signals';
   import { raw } from 'brumate/html';
+  import BrandMark from '../components/BrandMark.brm';
   import Header from '../components/Header.brm';
   import { NETWORK_SCRIPT, THEME_SCRIPT } from '../scripts.ts';
   import { STYLES } from '../theme.ts';
@@ -12,6 +13,50 @@
     route.url.pathname.startsWith(`${import.meta.env.BASE_URL}ui`) ? 'ui' : 'docs',
   );
   const base = import.meta.env.BASE_URL;
+
+  // The links of the footer. A path is under the base of the site; a full URL opens in a new tab.
+  const COLUMNS = [
+    {
+      title: 'Learn',
+      links: [
+        { label: 'Getting started', href: 'docs/getting-started' },
+        { label: 'Tutorial', href: 'docs/tutorial' },
+        { label: 'Components', href: 'docs/components' },
+        { label: 'Server functions', href: 'docs/server-functions' },
+        { label: 'Routing', href: 'docs/routing' },
+      ],
+    },
+    {
+      title: '@brumate/ui',
+      links: [
+        { label: 'Overview', href: 'ui' },
+        { label: 'Introduction', href: 'ui/introduction' },
+        { label: 'Dialog', href: 'ui/dialog' },
+        { label: 'ComboBox', href: 'ui/combo-box' },
+        { label: 'Button', href: 'ui/button' },
+      ],
+    },
+    {
+      title: 'Tools',
+      links: [
+        { label: 'REPL', href: 'repl' },
+        { label: 'Inspect and devtools', href: 'docs/inspect' },
+        { label: 'Editor', href: 'docs/editor' },
+        { label: 'TypeScript', href: 'docs/typescript' },
+        { label: 'Compile errors', href: 'docs/errors' },
+      ],
+    },
+    {
+      title: 'Project',
+      links: [
+        { label: 'GitHub', href: 'https://github.com/lxsmnsyc/brumate' },
+        { label: 'Issues', href: 'https://github.com/lxsmnsyc/brumate/issues' },
+        { label: 'Releases', href: 'https://github.com/lxsmnsyc/brumate/releases' },
+        { label: 'npm', href: 'https://www.npmjs.com/package/brumate' },
+        { label: 'License', href: 'https://github.com/lxsmnsyc/brumate/blob/main/LICENSE' },
+      ],
+    },
+  ];
 </script>
 
 <html lang="en">
@@ -28,17 +73,134 @@
     <Header {section} />
     {children}
     <footer class="footer">
-      <p>MIT licensed. Built with brumate: the server rendered this page, and the browser picked up where it left off.</p>
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <a class="footer-logo" href=base><BrandMark /> brumate</a>
+          <p>A component language and compiler. Web apps that resume, not hydrate.</p>
+          <div class="footer-meter" data-network>
+            This page loaded <strong data-total>0 KB</strong> of scripts.
+            <ol hidden></ol>
+          </div>
+        </div>
+        #for (column of COLUMNS by column.title) {
+          <nav class="footer-column" aria-label=(column.title)>
+            <p class="footer-title">{column.title}</p>
+            <ul>
+              #for (link of column.links by link.href) {
+                <li>
+                  #if (link.href.startsWith('http')) {
+                    <a href=(link.href) target="_blank" rel="noreferrer">{link.label}</a>
+                  } #else {
+                    <a href=(`${base}${link.href}`)>{link.label}</a>
+                  }
+                </li>
+              }
+            </ul>
+          </nav>
+        }
+      </div>
+      <div class="footer-bottom">
+        <p>MIT licensed. Built with brumate: the server rendered this page, and the browser picked up where it left off.</p>
+        <p>Press <kbd>⌘K</kbd> or <kbd>/</kbd> to search.</p>
+      </div>
     </footer>
   </body>
 </html>
 
 <style>
   .footer {
-    padding: 2rem 1rem;
+    margin-top: 4rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    font-size: var(--text-sm);
+  }
+
+  .footer-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr));
+    gap: 2rem;
+    max-width: var(--page-width);
+    margin: 0 auto;
+    padding: 3.5rem 1.5rem 2.5rem;
+  }
+
+  .footer-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text);
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-decoration: none;
+  }
+
+  .footer-brand p,
+  .footer-meter {
+    max-width: 20rem;
+    margin: 0.75rem 0 0;
+    color: var(--muted);
+  }
+
+  .footer-meter {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+  }
+
+  .footer-meter strong {
+    color: var(--accent-strong);
+    font-weight: 500;
+  }
+
+  .footer-title {
+    margin: 0 0 0.75rem;
+    color: var(--text);
+    font: 500 var(--text-xs) var(--mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .footer-column ul {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .footer a {
+    color: var(--muted);
+    text-decoration: none;
+    transition: color var(--duration-fast);
+  }
+
+  .footer a:hover {
+    color: var(--text);
+  }
+
+  .footer-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem 2rem;
+    max-width: var(--page-width);
+    margin: 0 auto;
+    padding: 1.25rem 1.5rem 2rem;
     border-top: 1px solid var(--border);
     color: var(--muted);
-    font-size: 0.875rem;
-    text-align: center;
+    font-size: var(--text-xs);
+  }
+
+  .footer-bottom p {
+    margin: 0;
+  }
+
+  @media (max-width: 52rem) {
+    .footer-inner {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .footer-brand {
+      grid-column: 1 / -1;
+    }
   }
 </style>
