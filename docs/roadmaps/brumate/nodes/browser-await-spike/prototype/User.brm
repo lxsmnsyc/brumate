@@ -1,0 +1,10 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+  import { load } from './data.ts';
+  const { id } = $props();
+  let n = $signal(0);
+  const user = await $memo(load(id));
+  const upper = $memo(user.name.toUpperCase());
+</script>
+<p class=("user u" + id)>{user.name} {upper} {n}</p>
+<button class=("inc i" + id) onClick=(() => n++)>+</button>

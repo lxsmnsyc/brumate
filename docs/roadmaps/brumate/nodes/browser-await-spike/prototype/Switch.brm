@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import User from './User.brm';
+  let open = $signal(false);
+</script>
+<button class="toggle" onClick=(() => (open = !open))>t</button>
+#if (open) {
+  <p class="sib">sib</p>
+  <User id=(7) />
+} #else {
+  <p class="old">old</p>
+}
