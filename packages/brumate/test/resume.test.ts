@@ -7231,6 +7231,15 @@ describe('a handler waits for the module of', () => {
     delete (globalThis as { __handlerWait?: string[] }).__handlerWait;
   });
 
+  it('a rejected load reaches the #try and the effects run', async () => {
+    await resumeParts('handlerWaitFail', { [idOf('HandlerWaitKid')]: 'fail' });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: The chunk is gone'));
+    await waitFor(() => expect(log()).toContain('effect 1'));
+  });
+
   it('a #try in the module of the failed chunk cannot render its #catch', async () => {
     // The #catch body is in the update code that failed, so the error is logged.
     await resumeParts('handlerWaitFail', { [idOf('HandlerWaitFail')]: 'fail' });
@@ -7247,6 +7256,15 @@ describe('a handler waits for the module of', () => {
     await resumeParts('handlerWaitBlock', { [idOf('HandlerWaitBlock')]: 400 });
     click(document.querySelector('.b')!);
     await waitFor(() => expect(log()).toEqual(['dom 1']));
+  });
+
+  it('a rejected load of a write that joins a pass reaches onError', async () => {
+    await resumeParts('handlerWaitJoin', { [idOf('HandlerWaitKid_')]: 'fail' });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(log()).toContain('effect 1'));
   });
 });
 
