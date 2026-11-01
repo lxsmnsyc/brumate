@@ -375,3 +375,21 @@ describe('what the server writes against the flags of the build', () => {
     expect(found.lateMarkup).toBeGreaterThan(0);
   });
 });
+
+it('counts a #try that only the browser renders, which has no caught() on the server', () => {
+  const source = `<script>
+  import { $signal } from 'brumate/signals';
+  let n = $signal(0);
+</script>
+#client {
+  #try {
+    <button onClick=(() => { throw new Error('x'); })>{n}</button>
+  } #catch (error) {
+    <p>Failed</p>
+  }
+}
+`;
+  const result = compile(source, { filename: 'App.brm' });
+  expect(result.server).not.toContain('$$b.caught(');
+  expect(getFeatures(result).tries).toBe(true);
+});

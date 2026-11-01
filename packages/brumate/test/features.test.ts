@@ -286,6 +286,22 @@ describe('the five flags of paths that apps rarely use', () => {
     expect(code).toContain('b-params');
   });
 
+  it('keeps the route code when a script passes a route context on under another name', async () => {
+    const source = `<script>
+  import { $getContext } from 'brumate/signals';
+  import { pageRoute } from './route.ts';
+  const route = $getContext(pageRoute);
+</script>
+
+<p>{route.url.pathname}</p>
+`;
+    const more = {
+      'src/route.ts': "export { routeContext as pageRoute } from 'brumate/context';\n",
+    };
+    const { core: chunk } = await buildApp('route-alias', source, { navigate: false }, more);
+    expect(chunk.code).toContain('b-params');
+  });
+
   it('keeps the fields of a page that uses an @brumate/ui Input with a $bind', async () => {
     const source = `<script>
   import { $bind, $signal } from 'brumate/signals';

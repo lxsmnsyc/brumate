@@ -196,6 +196,11 @@ const MANIFEST = 'virtual:brumate/manifest';
 const BUNDLE = 'virtual:brumate/bundle/';
 /** Exports `functions` and `handle(request)` for server function calls. */
 const SERVER = 'virtual:brumate/server';
+
+/** A script that names a route context, or exports all of `brumate/context`. */
+const ROUTE_CONTEXTS =
+  /\b(?:routeContext|navigationContext)\b|export\s*\*\s*from\s*['"]brumate\/context['"]/;
+
 /** Exports `routes` and `handle(request, options)` for the files in the routes directory. */
 const ROUTES = 'virtual:brumate/routes';
 /** The entry of the server build that prerendering renders with. */
@@ -717,6 +722,18 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       features.lateMarkup ||= options.navigate !== false || loading;
       // Client navigation writes the route and its own state into the page.
       features.routes ||= options.navigate !== false;
+      // A script can pass a route context on under another name, which the compiled output of
+      // a component never shows, so any script of the app or of a package it reaches counts.
+      if (!features.routes) {
+        const scripts = [...new Set([...(await findScripts(root, exclude)), ...reachable()])];
+        const texts = await inBatches(scripts, (file) => readFile(file, 'utf8').catch(() => ''));
+        for (const text of texts) {
+          if (ROUTE_CONTEXTS.test(text)) {
+            features.routes = true;
+            break;
+          }
+        }
+      }
       counted = seen;
       knownFeatures = features;
       return features;
