@@ -115,6 +115,7 @@ export {
   set,
   timed,
   update,
+  unreadMemo,
   updated,
 } from './client/updates.ts';
 

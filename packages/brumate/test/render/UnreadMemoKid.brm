@@ -1,0 +1,8 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { fail } from './unreadMemoData.ts';
+
+  const side = $memo(fail());
+</script>
+
+<p class="kid">kid</p>

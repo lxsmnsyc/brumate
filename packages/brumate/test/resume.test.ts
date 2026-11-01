@@ -7407,3 +7407,32 @@ describe('functions used in children that render later', () => {
     });
   }
 });
+
+describe('an unread async memo in a browser render', () => {
+  it('reports its rejection to the page when no #try catches it, with no unhandled rejection', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await resume('unreadMemoHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: side failed');
+    expect(unhandled.map(String)).toEqual([]);
+  });
+
+  it('sends its rejection to the nearest #catch', async () => {
+    await resume('unreadMemoTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: side failed'));
+    expect(document.querySelector('.kid')).toBeNull();
+  });
+});
