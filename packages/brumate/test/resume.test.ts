@@ -273,7 +273,7 @@ describe('resume', () => {
     vi.resetModules();
     const client = await import('../src/runtime/client.ts');
     client.init({
-      load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
+      load: async () => ({ id: 'Test', props: {}, g: {} }),
       listen: () => {},
     });
     const holder = document.createElement('div');
@@ -294,7 +294,7 @@ describe('resume', () => {
         id: 'Test',
         props: {},
         g: {},
-        load: async () => ({ c1: (scope: unknown) => ran.push(scope) }),
+        c1: (scope: unknown) => ran.push(scope),
       }),
       listen: () => {},
     });
@@ -322,7 +322,7 @@ describe('resume', () => {
     vi.resetModules();
     const client = await import('../src/runtime/client.ts');
     client.init({
-      load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
+      load: async () => ({ id: 'Test', props: {}, g: {} }),
       listen: () => {},
     });
     // A read outside an update throws while the value is loading.
@@ -657,7 +657,7 @@ describe('resume', () => {
           id: 'Test',
           props: {},
           g: {},
-          load: async () => ({ c1: (scope: never) => client.get(scope, 0) }),
+          c1: (scope: never) => client.get(scope, 0),
         }),
         listen: () => {},
       });
@@ -928,7 +928,7 @@ describe('resume', () => {
       await import('../src/runtime/client-routes.ts')
     ).ready;
     client.init({
-      load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
+      load: async () => ({ id: 'Test', props: {}, g: {} }),
       listen: () => {},
     });
     expect(client.getScope(0)).toBeUndefined();
@@ -5767,7 +5767,7 @@ describe('scopes in groups', () => {
     vi.resetModules();
     const client = await import('../src/runtime/client.ts');
     client.init({
-      load: async () => ({ id: 'Test', props: {}, g: {}, load: async () => ({}) }),
+      load: async () => ({ id: 'Test', props: {}, g: {} }),
       listen: () => {},
     });
     expect(client.getScope(2)!.i).toBe(7);
@@ -7028,15 +7028,15 @@ describe('batching', () => {
   });
 });
 
-describe('a handler waits only for', () => {
+describe('a handler waits for the module of', () => {
   type Waits = Record<string, number | 'fail'>;
 
   /** The id of the component of a fixture, to name its module. */
   const idOf = (prefix: string): string => [...modules.keys()].find((id) => id.startsWith(prefix))!;
 
   /**
-   * Resumes a page whose modules load their parts one by one. `update` holds the milliseconds that
-   * the update code of a component takes to load, by component ID prefix, or `fail` to reject it.
+   * Resumes a page whose modules load slowly. `update` holds the milliseconds that the module of a
+   * component takes to load, by component ID prefix, or `fail` to reject it.
    */
   async function resumeParts(name: string, update: Waits): Promise<void> {
     const server = await import(file(`${name}.brm.ts`));
@@ -7047,20 +7047,14 @@ describe('a handler waits only for', () => {
     const { start } = await import('../src/runtime/loader.ts');
     stop = start({
       load: async (id) => {
-        const loaded = await import(modules.get(id)!);
         const wait = Object.entries(update).find(([prefix]) => id.startsWith(prefix))?.[1];
-        return {
-          ...loaded,
-          load: async (part: string) => {
-            if (part === 'update' && wait === 'fail') {
-              throw new Error('The chunk is gone');
-            }
-            if (part === 'update' && typeof wait === 'number') {
-              await new Promise((done) => setTimeout(done, wait));
-            }
-            return loaded;
-          },
-        };
+        if (wait === 'fail') {
+          throw new Error('The chunk is gone');
+        }
+        if (typeof wait === 'number') {
+          await new Promise((done) => setTimeout(done, wait));
+        }
+        return import(modules.get(id)!);
       },
     });
   }
@@ -7071,30 +7065,7 @@ describe('a handler waits only for', () => {
     delete (globalThis as { __handlerWait?: string[] }).__handlerWait;
   });
 
-  it('waits only for the update code that it can need: a handler that writes nothing runs', async () => {
-    await resumeParts('handlerWaitIdle', { [idOf('HandlerWaitIdle')]: 600 });
-    click(document.querySelector('.idle')!);
-    await vi.waitFor(() => expect(log()).toEqual(['idle']), { timeout: 300 });
-    expect(text('.total')).toBe('0');
-  });
-
-  it('waits only for the update code that it can need: a handler of its own slot runs', async () => {
-    await resumeParts('handlerWaitIdle', { [idOf('HandlerWaitIdle')]: 600 });
-    click(document.querySelector('.local')!);
-    await vi.waitFor(() => expect(text('.own')).toBe('1'), { timeout: 300 });
-    expect(log()).toEqual(['local']);
-  });
-
-  it('waits only for the update code that it can need: a handler that writes a slot of the parent waits', async () => {
-    await resumeParts('handlerWaitIdle', { [idOf('HandlerWaitIdle')]: 300 });
-    click(document.querySelector('.add')!);
-    await new Promise((done) => setTimeout(done, 120));
-    expect(log()).toEqual([]);
-    await waitFor(() => expect(text('.total')).toBe('1'));
-    expect(log()).toEqual(['add']);
-  });
-
-  it('waits only for the update code that it can need: a rejected load reaches the #try and the effects run', async () => {
+  it('a rejected load reaches the #try and the effects run', async () => {
     await resumeParts('handlerWaitFail', { [idOf('HandlerWaitKid')]: 'fail' });
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     onTestFinished(() => errors.mockRestore());
@@ -7103,7 +7074,7 @@ describe('a handler waits only for', () => {
     await waitFor(() => expect(log()).toContain('effect 1'));
   });
 
-  it('waits only for the update code that it can need: a #try in the module of the failed chunk cannot render its #catch', async () => {
+  it('a #try in the module of the failed chunk cannot render its #catch', async () => {
     // The #catch body is in the update code that failed, so the error is logged.
     await resumeParts('handlerWaitFail', { [idOf('HandlerWaitFail')]: 'fail' });
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -7115,13 +7086,13 @@ describe('a handler waits only for', () => {
     expect(String(errors.mock.calls[0]![0])).toBe('Error: The chunk is gone');
   });
 
-  it('waits only for the update code that it can need: a signal of a block scope is written before the handler returns', async () => {
+  it('a signal of a block scope is written before the handler returns', async () => {
     await resumeParts('handlerWaitBlock', { [idOf('HandlerWaitBlock')]: 400 });
     click(document.querySelector('.b')!);
     await waitFor(() => expect(log()).toEqual(['dom 1']));
   });
 
-  it('waits only for the update code that it can need: a rejected load of a write that joins a pass reaches onError', async () => {
+  it('a rejected load of a write that joins a pass reaches onError', async () => {
     await resumeParts('handlerWaitJoin', { [idOf('HandlerWaitKid_')]: 'fail' });
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
     onTestFinished(() => errors.mockRestore());

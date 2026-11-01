@@ -28,7 +28,7 @@ import { instanceScope, scopePath, slotIndex } from './scopes.ts';
 import { copy, unmarked } from '../sourcemap.ts';
 
 export interface ClientOutput {
-  /** The entry module: the component ID, its props, its update table and its part loaders. */
+  /** The entry module: the component ID, its props, and its update table. */
   code: string;
   /**
    * The parts, by name. `h<n>` and `c<n>` parts hold one client root each,
@@ -38,11 +38,6 @@ export interface ClientOutput {
   parts: Record<string, string>;
   /** The ID, the props map, the update table and the refresh table: what the page depends on. */
   table: string;
-  /**
-   * The parts that each export part loads, by name: its own first, then the
-   * ones it starts loading with it. Empty when the entry holds the code.
-   */
-  loaders: Record<string, string[]>;
   /** False when nothing of the component runs in the browser. */
   clientCode: boolean;
   /**
@@ -72,27 +67,9 @@ export function minifiedSize(code: string): number {
  */
 export const DEFAULT_MERGE = 4096;
 
-/** The part that holds an export of a client module. */
-export function getPartName(name: string): string {
-  return /^[hct]\d/.test(name) ? name : 'update';
-}
-
 // Sites whose code does not run while a body renders.
 // Sites that run only in the browser, where a component is its render function and not a stub.
 const BROWSER_ONLY_SITES = new Set(['server-function', 'event', 'effect', 'client']);
-/** Declarations that a handler reads or writes that can reach other components. */
-const OUTER = new Set([
-  'import',
-  'module',
-  'prop',
-  'props-rest',
-  'context',
-  'template',
-  'template-param',
-  'action',
-  'error',
-  'reset',
-]);
 const DEFERRED_SITES = new Set(['function', 'server-function', 'event', 'effect', 'client']);
 
 /** Whether a scope is within any scope of the list. */
@@ -146,8 +123,6 @@ class ClientGenerator {
   private readonly live = new Map<Site, GraphNode>();
   /** The export that updates each live node. */
   private readonly updates = new Map<GraphNode, string>();
-  /** The handlers that can write a slot of another component. */
-  private readonly wide: string[] = [];
   /** Bodies that the client renders, by scope. */
   private readonly renders = new Map<Scope, { body: Body; block: Block }>();
 
@@ -272,7 +247,6 @@ class ClientGenerator {
       `export const id = ${JSON.stringify(this.plan.id)};`,
       `export const props = ${this.propsMap()};`,
       `export const g = ${this.table()};`,
-      ...(this.wide.length > 0 ? [`export const w = ${JSON.stringify(this.wide)};`] : []),
       ...(refresh ? [`export const refresh = ${refresh};`] : []),
       ...(tries ? [`export const t = ${tries};`] : []),
     ];
@@ -289,19 +263,13 @@ class ClientGenerator {
       values.length > 0 ? [...renamed, `export const components = [${sent.join(', ')}];`] : [];
     const clientCode = names.length > 0 || values.length > 0;
     if (merged || names.length === 0) {
-      // The entry holds the code itself, so the first event loads one module. An entry
-      // without `load` is its own only part.
+      // The entry holds the code itself, so the first event loads one module.
       const code = parts.all ?? '';
       delete parts.all;
-      const empty: Record<string, string[]> = {};
-      for (const name of names) {
-        empty[name] = [];
-      }
       return {
         code: [code, ...registered, ...table, ''].join('\n'),
         table: table.join('\n'),
         parts,
-        loaders: empty,
         clientCode,
         fillOf: (block) => this.createFill(block),
         diagnostics: this.diagnostics,
@@ -309,10 +277,6 @@ class ClientGenerator {
     }
     // The page loads every part of a component with it, so the entry exports them, and a bundle
     // of the page holds them with the entry. The names of the parts' exports are their own.
-    const loaders: Record<string, string[]> = {};
-    for (const name of names) {
-      loaders[name] = [name];
-    }
     const reexports: string[] = [];
     for (const name of names) {
       reexports.push(`export * from ${JSON.stringify(this.partPath(name))};`);
@@ -322,7 +286,6 @@ class ClientGenerator {
       code: entry.join('\n'),
       table: table.join('\n'),
       parts,
-      loaders,
       clientCode,
       fillOf: (block) => this.createFill(block),
       diagnostics: this.diagnostics,
@@ -970,9 +933,6 @@ class ClientGenerator {
         code = `function ${code}`;
       }
       this.part = symbol;
-      if (site.kind !== 'client' && !symbol.startsWith('t') && !this.writesOwn(site)) {
-        this.wide.push(symbol);
-      }
       if (symbol.startsWith('t')) {
         this.emitTemplateArgs(site, symbol);
       }
@@ -984,35 +944,6 @@ class ClientGenerator {
         this.emit(this.handlerExport(site, symbol, code, base));
       }
     }
-  }
-
-  /**
-   * True when a handler can write only the slots of its own component, so it waits for the
-   * update code of that component and not for the code of the components above it. The others
-   * are listed in `w`. A prop, a context, an import or a template can reach another component.
-   */
-  private writesOwn(site: Site, seen = new Set<Site>()): boolean {
-    if (seen.has(site)) {
-      return true;
-    }
-    seen.add(site);
-    for (let scope: Scope | undefined = site.scope; scope; scope = scope.parent) {
-      if (scope.kind === 'template') {
-        return false;
-      }
-    }
-    for (const { declaration } of [...site.reads, ...site.writes]) {
-      // The wrappers of `brumate/events` run the handler that they get, which is checked as a call.
-      if (OUTER.has(declaration.kind) && declaration.imported?.source !== 'brumate/events') {
-        return false;
-      }
-    }
-    for (const callee of site.calls) {
-      if (!callee.site || !this.writesOwn(callee.site, seen)) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /**

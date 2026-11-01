@@ -13,7 +13,7 @@ import {
   rendered,
   unindexed,
 } from './blocks.ts';
-import { codeReady, loadModule, loadPart } from './code.ts';
+import { codeReady, loadModule } from './code.ts';
 import { afterInsert, findRoot } from './scopes.ts';
 import { hiding, options, scopes, updating } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
@@ -61,7 +61,7 @@ export function refresh(added: Scope[], memosOnly = false): void {
       if (!any) {
         return;
       }
-      const updates = await loadPart(module, 'update');
+      const updates = module as unknown as Record<string, unknown>;
       // The updates can render templates and call functions of other components.
       await codeReady();
       refreshing = true;

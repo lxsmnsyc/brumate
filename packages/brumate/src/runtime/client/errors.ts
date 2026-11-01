@@ -2,7 +2,7 @@
 
 import { blockStart, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
-import { loadModule, loadPart } from './code.ts';
+import { loadModule } from './code.ts';
 import { insertHTML } from './insert.ts';
 import { inPlace, removeBlock, findRoot } from './scopes.ts';
 import { options, scopes } from './state.ts';
@@ -84,7 +84,7 @@ async function catchInto(
   [, anchor, , fallback, kinds, holderKind, holderAnchor]: NonNullable<ClientModule['t']>[number],
   error: unknown,
 ): Promise<void> {
-  const updates = await loadPart(module, 'update');
+  const updates = module as unknown as Record<string, unknown>;
   const start = blockStart(owner, anchor);
   if (!start) {
     return;

@@ -282,7 +282,6 @@ describe('client entries and handlers', () => {
     const small = compile(widgetSource(2), { filename: 'T.brm', merge: DEFAULT_MERGE });
     expect(small.parts).toEqual({});
     expect(small.client).not.toContain('export function load');
-    expect(Object.keys(small.loaders)).toHaveLength(3);
     // Eight handlers keep one module per part, which the entry exports.
     expect(partsSize(widgetSource(8))).toBeGreaterThan(DEFAULT_MERGE);
     const large = compile(widgetSource(8), { filename: 'T.brm', merge: DEFAULT_MERGE });

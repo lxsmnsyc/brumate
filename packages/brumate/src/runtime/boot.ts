@@ -8,7 +8,7 @@
 
 import { HAS_ACTIONS, HAS_BLOCKS, HAS_LATE_MARKUP, HAS_LISTENERS } from './features.ts';
 import type * as Client from './client.ts';
-import type { ClientModule, DevtoolsHooks, Part } from './client.ts';
+import type { ClientModule, DevtoolsHooks } from './client.ts';
 import type { SerialEntry } from './values.ts';
 
 /** True on the dev server. A Vite build replaces it with `false`, so the devtools calls go. */
@@ -167,7 +167,7 @@ export function boot(
 
   // Client navigation imports the core with the code that reads the pages it adds.
   let load = importCore;
-  // The modules and parts that the loader asked for, which the core takes, so a handler whose
+  // The modules that the loader asked for, which the core takes, so a handler whose
   // code loaded runs without another `import()`. In Chrome, an `import()` of a module that is
   // loaded already still resolves in a task of its own, which can wait for the next frame.
   const modules = new Map<string, Promise<ClientModule> | undefined>();
@@ -181,17 +181,6 @@ export function boot(
     promise?.catch(() => modules.delete(id));
     return promise;
   };
-  const partLoads = new Map<string, Promise<Part>>();
-  const loadPart = (module: ClientModule, part: string): Promise<Part> => {
-    const key = `${module.id}#${part}`;
-    let promise = partLoads.get(key);
-    if (!promise) {
-      promise = module.load!(part);
-      partLoads.set(key, promise);
-      promise.catch(() => partLoads.delete(key));
-    }
-    return promise;
-  };
   // The serial entry loads with the core, so the core can make the values of the app.
   let serialLoad: Promise<SerialEntry> | undefined;
   const loadSerial = (): Promise<SerialEntry> | undefined => {
@@ -201,7 +190,7 @@ export function boot(
   };
   const loadCore = (): Promise<Core> =>
     (core ??= Promise.all([load(), loadSerial()]).then(([client, serial]) => {
-      client.init({ ...options, load: loadModule, loadPart, listen: scanInsert, inserted, serial });
+      client.init({ ...options, load: loadModule, listen: scanInsert, inserted, serial });
       return client;
     }));
 
