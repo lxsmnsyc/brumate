@@ -481,7 +481,8 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   if (guesses?.same(key)) {
     return;
   }
-  // The render computed the memo: a promise loads, and a value that `wait` settled stays.
+  // The render computed the memo: a promise loads, and a value stays. A key with a value here
+  // comes only from `wait`, which settled it.
   const rendered = scope.s[slot];
   if (renderedLoads.delete(key)) {
     if (isThenable(rendered)) {

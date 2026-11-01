@@ -11,3 +11,11 @@
 - Size: `resolve` for the second wait pulled +200 B gzip. A waiter in `waiters` does the same: `wait` is +388 B gzip on the spike's esbuild entry.
 - The bench lock was held by the other worker for a while after the build; waited for it with one monitor.
 - After bench: raw 35,467 B, gzip 14,820 B (before 35,467 / 14,822).
+
+## 2026-11-02, review of #413
+
+- Turned the four probes into tests and added three contract tests; all seven fail on 161b1fdc (the open, close, open probe passes on both and stays as a regression test).
+- Reworked `wait` around a check in `waiters` set at the start, so the latest load wins and a removed scope counts down. Added `Boundary.f`, `join` (also through held scopes), `leave`, `fault`, `fillRange`. `wait` runs `setSlots` on the slots before the `await`.
+- Codegen: the awaited name is a `let` before the split; variable declarations before the last `await` become `let`, and the rest assigns them from `$$v`.
+- The rejected static async memo (no slot) is unhandled without `await` too: a bug of main, reported, not fixed here.
+- Todos raw 35,467 B, gzip 14,823 B. `wait` is +520 B gzip on the spike's entry.

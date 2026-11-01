@@ -17,6 +17,7 @@ import type { PageState } from '../src/runtime/server.ts';
 import type { SerialEntry } from '../src/runtime/values.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 import type * as ClientApi from '../src/runtime/client.ts';
+import type { Boundary } from '../src/runtime/client/waits.ts';
 import type { UserLoad } from './render/waitData.ts';
 
 // The DOM environment replaces URL, so paths are plain strings.
@@ -7540,6 +7541,66 @@ describe('await $memo in a component that the browser renders', () => {
     expect(document.querySelector('.broken')).toBeNull();
   });
 
+  it('shows a newer load that settles while the first one hangs', async () => {
+    await resume('waitHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    await settleUser(2);
+    await waitFor(() => expect(users()).toEqual(['ada2 ADA2 0']));
+    // The first load settles late, and changes nothing.
+    await settleUser(1);
+    expect(users()).toEqual(['ada2 ADA2 0']);
+  });
+
+  it('handles the rejection of an async memo declared before the await', async () => {
+    const unhandled: unknown[] = [];
+    function onUnhandled(reason: unknown): void {
+      unhandled.push(reason);
+    }
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await resume('waitSideHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([101, 1]));
+    await settleUser(101, new Error('side failed'));
+    await new Promise((done) => setTimeout(done, 50));
+    expect(unhandled).toEqual([]);
+  });
+
+  it('opens, closes and opens again during the wait, and shows one user', async () => {
+    await resume('waitHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    click(document.querySelector('.toggle')!);
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 1]));
+    await settleUser(1);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ADA1 0']));
+    expect(document.querySelectorAll('.sib')).toHaveLength(1);
+  });
+
+  it('runs a function declared before the await that reads the awaited memo', async () => {
+    const errors: unknown[] = [];
+    function onError(event: Event): void {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await resume('waitLabelHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1!']));
+    expect(errors).toEqual([]);
+  });
+
   // Contract tests of client-pending-boundary.
   describe('a boundary', () => {
     it('counts the waits of its body, holds its work, and runs done at 0', async () => {
@@ -7584,6 +7645,86 @@ describe('await $memo in a component that the browser renders', () => {
       // The scopes of the rests went in with the body, so their handlers work.
       click(document.querySelectorAll('.inc')[1]!);
       await waitFor(() => expect(users()).toEqual(['ada7 ADA7 0', 'ada8 ADA8 1']));
+    });
+
+    /** Renders two waiting users in a boundary, and returns it with the body. */
+    async function boundUsers(): Promise<{
+      own: Boundary;
+      body: DocumentFragment;
+    }> {
+      const { bound } = await import('../src/runtime/client/waits.ts');
+      const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+      const body = document.createDocumentFragment();
+      const [, own] = bound(() => {
+        body.append(WaitUser({ id: 7 }), WaitUser({ id: 8 }));
+        return body;
+      });
+      return { own: own!, body };
+    }
+
+    it('counts down a wait whose scope goes while the body is held', async () => {
+      await resume('waitHost', {});
+      const { destroy } = await import('../src/runtime/client/scopes.ts');
+      const { scopes } = await import('../src/runtime/client/state.ts');
+      const { own, body } = await boundUsers();
+      let done = 0;
+      own.done = () => {
+        done++;
+      };
+      // The first wait's scope goes, as when an update closes the block around it.
+      let id = 0;
+      for (const node of body.childNodes) {
+        const match = node.nodeType === 8 ? /^l(-?\d+):w$/.exec((node as Comment).data) : null;
+        if (match) {
+          id = Number(match[1]);
+          break;
+        }
+      }
+      destroy(scopes.get(id)!);
+      expect(own.n).toBe(1);
+      await settleUser(7);
+      await settleUser(8);
+      expect(own.n).toBe(0);
+      expect(done).toBe(1);
+    });
+
+    it('counts a wait that starts under a held scope', async () => {
+      await resume('waitHost', {});
+      const { createScope, setOwner } = await import('../src/runtime/client/scopes.ts');
+      const { scopes } = await import('../src/runtime/client/state.ts');
+      const { bound } = await import('../src/runtime/client/waits.ts');
+      const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+      let host = 0;
+      const [, own] = bound(() => {
+        host = createScope(5);
+        return WaitUser({ id: 7 });
+      });
+      expect(own!.n).toBe(1);
+      // A wait outside the render of the body, as an update inside the held body starts.
+      setOwner(scopes.get(host)!);
+      WaitUser({ id: 8 });
+      expect(own!.n).toBe(2);
+    });
+
+    it('calls f for a wait that fails, or counts it down without f', async () => {
+      await resume('waitHost', {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const failed: unknown[] = [];
+      const first = await boundUsers();
+      first.own.f = (error) => failed.push(error);
+      await settleUser(7, new Error('No user 7'));
+      expect(String(failed[0])).toBe('Error: No user 7');
+      expect(first.own.n).toBe(2);
+      userLoads().length = 0;
+      // Without f, the failed wait counts down, so the body shows with an empty range.
+      const second = await boundUsers();
+      let done = 0;
+      second.own.done = () => {
+        done++;
+      };
+      await settleUser(7, new Error('No user 7'));
+      await settleUser(8);
+      expect(done).toBe(1);
     });
 
     it('returns no boundary for a body that does not wait', async () => {
