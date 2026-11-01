@@ -1,0 +1,9 @@
+<script>
+  import { $signal, $props } from 'brumate/signals';
+
+  const { label } = $props<{ label: () => string }>();
+  let shown = $signal('');
+</script>
+
+<button class="read" onClick=(() => (shown = label()))>Read</button>
+<p class="shown">{shown}</p>

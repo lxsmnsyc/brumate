@@ -255,6 +255,17 @@ export function isFunctionValue(site: Site): boolean {
       node = node.expression;
     }
     if (
+      node.type === 'CallExpression' &&
+      node.callee.type === 'Identifier' &&
+      node.callee.name === '$untrack' &&
+      !lookup(site.scope, node.callee.name) &&
+      node.arguments[0]
+    ) {
+      // `$untrack(fn)` marks the prop as fixed and still passes the function.
+      node = node.arguments[0];
+      continue;
+    }
+    if (
       node.type !== 'CallExpression' ||
       node.callee.type !== 'Identifier' ||
       lookup(site.scope, node.callee.name)?.imported?.source !== 'brumate/events' ||

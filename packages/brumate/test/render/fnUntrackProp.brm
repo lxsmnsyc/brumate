@@ -1,0 +1,8 @@
+<script>
+  import { $signal, $untrack } from 'brumate/signals';
+  import FnUntrackChild from './FnUntrackChild.brm';
+  let first = $signal('ada');
+  function nameOf() { return first; }
+</script>
+<button class="next" onClick=(() => (first = 'grace'))>Next</button>
+<FnUntrackChild label=$untrack(nameOf) />

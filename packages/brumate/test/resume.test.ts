@@ -4381,6 +4381,17 @@ describe('memos that read state through a function prop', () => {
     await waitFor(() => expect(text('.title')).toBe('GRACE'));
   });
 
+  it('keeps the function and the writes when $untrack wraps a prop value', async () => {
+    await resume('fnUntrackProp', {});
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.shown')).toBe('ada'));
+    // The handler writes the state that the function reads.
+    click(document.querySelector('.next')!);
+    // The prop is fixed, so the child reads the current value when it runs.
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.shown')).toBe('grace'));
+  });
+
   it('does not loop when a callback that writes state is called from a child effect', async () => {
     const counter = globalThis as { fnReadRuns?: number };
     counter.fnReadRuns = 0;
