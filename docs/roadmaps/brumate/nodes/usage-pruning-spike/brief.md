@@ -1,7 +1,7 @@
 ---
 id: usage-pruning-spike
 title: "Spike: ship only the client runtime functions a page uses"
-status: active
+status: done
 priority: must
 type: spike
 outline: false
@@ -14,6 +14,7 @@ verify:
 exclusive: [bench]
 fulfilled_by:
 gate: true
+spent: 341000
 added: 2026-10-30
 owns: []
 shared: []

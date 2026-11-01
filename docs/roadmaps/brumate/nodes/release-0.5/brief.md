@@ -28,9 +28,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
-  - on: usage-pruning-spike
+  - on: usage-pruning-flags
     kind: hard
-    why: the go or no-go on pruning the runtime by use; a go adds its build nodes to 0.5.0 or 0.6.0
+    why: the five flags take todos below the 0.4.1 figure (the maintainer said go on 2026-11-01)
   - on: bundle-urls-from-server
     kind: hard
     why: the client entry drops its bundle tables, a size goal of 0.5.0

@@ -1,7 +1,7 @@
 ---
 id: browser-await-spike
 title: "Spike: await in a component that the browser renders waits, like React's use"
-status: active
+status: done
 priority: must
 type: spike
 story: browser-async
