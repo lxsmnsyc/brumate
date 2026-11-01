@@ -2,8 +2,9 @@
 id: loading-on
 title: "`#loading (memo)` shows its fallback again when the memo loads again in the browser"
 status: todo
-priority: should
+priority: must
 type: feature
+story: browser-async
 outline: true
 milestone: 0.5.0
 target:

@@ -2,7 +2,7 @@
 id: usage-pruning-spike
 title: "Spike: ship only the client runtime functions a page uses"
 status: todo
-priority: should
+priority: must
 type: spike
 outline: false
 milestone: 0.5.0

@@ -2,7 +2,7 @@
 id: bundle-urls-from-server
 title: The server sends the bundle URLs of a page, and the client entry drops its bundle tables
 status: todo
-priority: should
+priority: must
 type: refactor
 outline: false
 milestone: 0.5.0

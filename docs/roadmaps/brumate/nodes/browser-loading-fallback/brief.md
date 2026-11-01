@@ -2,8 +2,9 @@
 id: browser-loading-fallback
 title: "#loading shows its fallback in markup that the browser renders"
 status: todo
-priority: should
+priority: must
 type: feature
+story: browser-async
 outline: true
 milestone: 0.5.0
 target:

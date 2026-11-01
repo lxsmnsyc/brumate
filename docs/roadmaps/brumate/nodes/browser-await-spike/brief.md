@@ -2,8 +2,9 @@
 id: browser-await-spike
 title: "Spike: await in a component that the browser renders waits, like React's use"
 status: todo
-priority: should
+priority: must
 type: spike
+story: browser-async
 outline: false
 milestone: 0.5.0
 target:

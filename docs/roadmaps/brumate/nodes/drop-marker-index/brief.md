@@ -2,7 +2,7 @@
 id: drop-marker-index
 title: Remove the marker index and the HTML string path
 status: todo
-priority: should
+priority: must
 type: refactor
 outline: false
 milestone: 0.5.0

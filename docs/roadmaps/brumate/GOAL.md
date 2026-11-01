@@ -38,11 +38,12 @@ The core is correct and safe to change, agents write good .brm files with a skil
 - 0.4.1: brumate 0.4.1 is published with the patch fixes, after the same checks as 0.4.0.
 - 0.4.0: brumate 0.4.0 and @brumate/ui 0.1.0 are published, after `pnpm build && pnpm test && node e2e/run.mjs` passes and `pnpm --filter website check:samples && pnpm --filter website build` passes with every page of /ui complete.
 - `npx brumate skill` installs the skill, and its code blocks compile in a test (done in 0.4.0).
+- 0.5.0: brumate 0.5.0 is published from a `next` -> `main` promotion, after the checks of 0.4.0, with todos gzip JS before `load` (`pnpm bench`) below the 0.4.1 figure, and `await`, `#loading` and promises waiting in markup that the browser renders.
 - `pnpm bench` shows the gzip JS before `load` for todos below the baseline (0.5.0 and later).
 
 ## Priorities
 
-- must: core correctness (the scope ID table, tests against the current compiler, the client.ts split, ordered updates, batching, fields typed early) and the .brm skill. Needed soon.
+- must: what a release cannot ship without. 0.4.0: core correctness (the scope ID table, tests against the current compiler, the client.ts split, ordered updates, batching, fields typed early) and the .brm skill. 0.5.0 (the maintainer, 2026-11-01): the smaller client (usage-pruning-spike, bundle-urls-from-server, drop-marker-index) and the browser-async story.
 - should: what makes them useful, the ui release, and the website fixes. They can wait.
 - could: the takeaways of lower value, and the spikes.
 - later: the outline nodes of the backlog. Parked, never scheduled.
@@ -53,7 +54,9 @@ Milestones are releases (the maintainer, 2026-10-29).
 
 - 0.4.0: brumate 0.4.0 and @brumate/ui 0.1.0. The cut is the `depends_on` list of release-0.4. changeset-review waits for every open node of the cut, and release-0.4 waits for changeset-review. Every node done before 2026-10-29 ships here.
 - 0.4.1: patch fixes of 0.4.0 behavior that add no API (the maintainer, 2026-10-31). The nodes keep `target: main` in their briefs, since the policy sends minor work to `next`, and release-0.4.1 waits for them and for next-branch. Run next-branch before any 0.5.0 node, so minor work never lands on `main`.
-- 0.5.0: the open should nodes: core fixes left out of the cut and 0.4.1, the type audit, the agent tools, the smaller client, `$searchParam` and `<style global>`.
+- 0.5.0 (laid down 2026-11-01): the must nodes above, and the should nodes: the type audit, the agent tools, `$searchParam`, `<style global>`, the docs and ui page work. release-0.5 waits only for the must nodes. Should nodes merged into `next` by then ship; the ones still open move to 0.6.0 when release-0.5 starts. The could nodes moved to 0.6.0 on 2026-11-01.
+  - browser-async is a story on `feat/browser-async`: browser-await-spike first (gate: the maintainer picks the approach), then browser-loading-fallback, promise-in-markup and loading-on, refined from the spike's outcome. One PR to `next`.
+  - A promotion carries all of `next`. A 0.6.0 node that merges into `next` before release-0.5 ships in 0.5.0, and its milestone moves to 0.5.0.
 - 0.6.0: the could nodes, the new ui parts and the spikes.
 - backlog: outlines, refined when a release takes them. Large features are outline stories (`type: story`); refining one means writing its children, which merge into `feat/<story id>`, and the story is one PR to its target.
 
@@ -104,7 +107,7 @@ Each item of the proposals maps to one node, or to built work:
 
 ## Open questions
 
-- Are the must line and the milestones right?
+- loading-on waits on docs/debates/loading-on-update/debate.md, still `status: proposed`. Approve it before loading-on is refined.
 - Gate: split-ui-examples (the ui example page and its e2e suite by part). Approve or decline it.
 - Should the Order section of the proposals become a link to this roadmap?
 
@@ -114,4 +117,6 @@ Each item of the proposals maps to one node, or to built work:
 - split-ui-examples: the user approves the layout change.
 - props-table, once docs-generator freezes it: the user reviews the page format before the docs nodes start.
 - values-spike and inlining-spike: the user decides go or no-go.
+- browser-await-spike: the user picks one of the three approaches before the other children of browser-async are refined.
+- release-0.5: the user merges the promotion and the Version Packages pull requests.
 - usage-pruning-spike and loader-preload-spike: the user decides go or no-go. direct-update-calls needs a goal debate before its refine.
