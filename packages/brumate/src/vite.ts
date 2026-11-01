@@ -715,6 +715,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       }
       features.lateMarkup ||= options.navigate !== false || loading;
+      // Client navigation writes the route and its own state into the page.
+      features.routes ||= options.navigate !== false;
+      // Spike only: BRUMATE_SPIKE_ON=a,b turns features on, to measure each alone.
+      for (const name of (process.env.BRUMATE_SPIKE_ON ?? '').split(',')) {
+        if (name in features) {
+          features[name as keyof Features] = true;
+        }
+      }
       counted = seen;
       knownFeatures = features;
       return features;

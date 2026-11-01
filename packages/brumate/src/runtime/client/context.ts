@@ -1,6 +1,7 @@
 // Contexts that components provide and read, and the values that the runtime provides to the
 // whole page.
 
+import { HAS_ROUTES } from '../features.ts';
 import { ROUTE_KEY } from '../context.ts';
 import type { Context as ContextValue, Route } from '../context.ts';
 import type { ScopeId } from '../shared.ts';
@@ -65,7 +66,7 @@ export function consumeContext<T>(
   if (provider) {
     return provider.v![context.key] as T;
   }
-  if (context.key === ROUTE_KEY && !globals.has(ROUTE_KEY)) {
+  if (HAS_ROUTES && context.key === ROUTE_KEY && !globals.has(ROUTE_KEY)) {
     globals.set(ROUTE_KEY, currentRoute());
   }
   return (globals.has(context.key) ? globals.get(context.key) : context.defaultValue) as T;

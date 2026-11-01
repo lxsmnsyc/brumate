@@ -22,6 +22,16 @@ export interface Features {
   actions: boolean;
   /** Markup that the browser renders as HTML, not as a clone of a template. */
   clientHTML: boolean;
+  /** `#try` blocks, whose `#catch` the browser renders. */
+  tries: boolean;
+  /** Fields of an element `$bind`, which the core reads when the user typed before it loaded. */
+  fields: boolean;
+  /** `#for` lists with `window`. */
+  windows: boolean;
+  /** Dynamic tags, which can name a component and pass it props. */
+  dynamic: boolean;
+  /** `$route` and `$navigation`, which the runtime provides. */
+  routes: boolean;
 }
 
 /** No feature at all, which a build that has no component uses. */
@@ -36,6 +46,11 @@ export function noFeatures(): Features {
     listeners: false,
     actions: false,
     clientHTML: false,
+    tries: false,
+    fields: false,
+    windows: false,
+    dynamic: false,
+    routes: false,
   };
 }
 
@@ -67,6 +82,11 @@ export function getFeatures(result: CompileResult): Features {
     actions: /\$\$b\.action\(/.test(all),
     // A render function that gives HTML. One with no markup gives an empty string.
     clientHTML: /\breturn \$\$html;/.test(client),
+    tries: /\$\$b\.caught\(/.test(result.server) || /\bexport const t = /.test(client),
+    fields: /=\$bind#|=\$set:/.test(all),
+    windows: /\$\$b\.windowList\(/.test(client),
+    dynamic: /\$\$b\.dynamic(?:Nodes)?\(/.test(client),
+    routes: /\$\$b\.(?:routeContext|navigationContext)\b/.test(all),
   };
 }
 
@@ -83,6 +103,11 @@ export function joinFeatures(all: Features[]): Features {
     joined.listeners ||= features.listeners;
     joined.actions ||= features.actions;
     joined.clientHTML ||= features.clientHTML;
+    joined.tries ||= features.tries;
+    joined.fields ||= features.fields;
+    joined.windows ||= features.windows;
+    joined.dynamic ||= features.dynamic;
+    joined.routes ||= features.routes;
   }
   return joined;
 }
@@ -98,6 +123,11 @@ const GLOBALS: Record<keyof Features, string> = {
   listeners: '__BRUMATE_HAS_LISTENERS__',
   actions: '__BRUMATE_HAS_ACTIONS__',
   clientHTML: '__BRUMATE_HAS_CLIENT_HTML__',
+  tries: '__BRUMATE_HAS_TRIES__',
+  fields: '__BRUMATE_HAS_FIELDS__',
+  windows: '__BRUMATE_HAS_WINDOWS__',
+  dynamic: '__BRUMATE_HAS_DYNAMIC__',
+  routes: '__BRUMATE_HAS_ROUTES__',
 };
 
 /** True for code that reads a feature, such as the core. */
