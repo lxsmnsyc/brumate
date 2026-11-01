@@ -6953,13 +6953,7 @@ describe('a component that a page gives to a part in as', () => {
 describe('a live style variable of a part with a component in as', () => {
   for (const name of ['gapStyleVarElement', 'gapStyleVarComponent']) {
     it(`updates the variable: ${name}`, async () => {
-      // The page renders with the server module of its own load: a run of the loader before this
-      // one resets the modules, and the Internal that the page sends must be of the same class.
-      const server = await import(file(`${name}.brm.ts`));
-      const { render } = await import('../src/runtime/server.ts');
-      const { html, state } = await render(server.default, {});
-      show(html + state);
-      await startLoader();
+      await resume(name, {});
       const item = document.querySelector<HTMLElement>('.item')!;
       const variable = item.getAttribute('style')!.split(':')[0]!;
       expect(item.style.getPropertyValue(variable)).toBe('12px');

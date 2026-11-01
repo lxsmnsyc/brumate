@@ -25,7 +25,7 @@ import type {
   StreamParsePluginContext,
   SyncParsePluginContext,
 } from 'seroval';
-import { Internal, isRaw, rawHTML } from './html.ts';
+import { type Internal, isInternal, isRaw, rawHTML } from './html.ts';
 import type { Raw } from './html.ts';
 import { functionReferences, isBlob } from './calls.ts';
 import { MODIFIERS } from './events.ts';
@@ -191,7 +191,7 @@ const MergedPlugin = createPlugin<object, { a: SerovalNode }>({
 const InternalPlugin = createPlugin<Internal, { a: SerovalNode }>({
   tag: 'brumate/internal',
   skipPlainObjects: true,
-  test: (value) => value instanceof Internal,
+  test: (value) => isInternal(value),
   parse: parsers((value) => ({ a: value.value })),
   serialize: (node, ctx) => `$b.i(${ctx.serialize(node.a)})`,
   deserialize: (node, ctx) => stateValues.i(ctx.deserialize(node.a)),
