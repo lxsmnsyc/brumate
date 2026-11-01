@@ -1,0 +1,308 @@
+diff --git a/packages/brumate/src/runtime/client.ts b/packages/brumate/src/runtime/client.ts
+index 752a77e6..83e05477 100644
+--- a/packages/brumate/src/runtime/client.ts
++++ b/packages/brumate/src/runtime/client.ts
+@@ -54,6 +54,7 @@ export {
+   updateRoute,
+ } from './client/context.ts';
+ export { fail } from './client/errors.ts';
++export { loading, wait } from './client/waits.ts';
+ export { guess, track } from './client/guesses.ts';
+ export { action, handle, handlerProp, rpc, spread, submitAction } from './client/handlers.ts';
+ export { attr, attrs, content, portalTo, restRef, text, writeText } from './client/inserts.ts';
+diff --git a/packages/brumate/src/runtime/client/waits.ts b/packages/brumate/src/runtime/client/waits.ts
+new file mode 100644
+index 00000000..d828f080
+--- /dev/null
++++ b/packages/brumate/src/runtime/client/waits.ts
+@@ -0,0 +1,111 @@
++// SPIKE (browser-await-spike, option 3): a render that the compiler splits at `await $memo`, and
++// the `#loading` boundary that the browser shows while such a render waits. Throwaway code.
++
++import { rendered } from './blocks.ts';
++import { fail } from './errors.ts';
++import { insertHTML, parseHTML } from './insert.ts';
++import type { ScopeId } from '../shared.ts';
++import { resolveScope } from './scopes.ts';
++import { scopes } from './state.ts';
++import { isThenable } from './updates.ts';
++
++/** A `#loading` body that the browser renders: the waits in it that have not settled. */
++interface Boundary {
++  n: number;
++  done?: () => void;
++}
++
++/** The `#loading` boundary of the render that runs, if any. */
++let boundary: Boundary | undefined;
++
++function toFragment(out: string | DocumentFragment, near?: Node): DocumentFragment {
++  return typeof out === 'string' ? parseHTML(out, near) : out;
++}
++
++/**
++ * The rest of a render after `await $memo`. A settled value goes on now, in the same render.
++ * A promise leaves a range of two comments, which the rest fills when the promise settles.
++ */
++export function wait(
++  id: ScopeId,
++  value: unknown,
++  then: (value: unknown) => string | DocumentFragment,
++): string | DocumentFragment {
++  if (!isThenable(value)) {
++    return then(value);
++  }
++  const scope = resolveScope(id)!;
++  const start = document.createComment('w');
++  const end = document.createComment('/w');
++  const range = document.createDocumentFragment();
++  range.append(start, end);
++  // The scope has no slots until the rest runs, so no insert runs its memos. The rest sets the
++  // settled value, so its memo has nothing to load.
++  const index = rendered.indexOf(scope);
++  if (index !== -1) {
++    rendered.splice(index, 1);
++  }
++  const own = boundary;
++  if (own) {
++    own.n++;
++  }
++  Promise.resolve(value).then(
++    (result) => {
++      // The block around the component removed it while it waited, or the page went.
++      if (scopes.get(scope.id) !== scope || !end.parentNode) {
++        return;
++      }
++      const outer = boundary;
++      boundary = own;
++      let out: string | DocumentFragment;
++      try {
++        out = then(result);
++      } finally {
++        boundary = outer;
++      }
++      insertHTML(end, out);
++      if (own && --own.n === 0) {
++        own.done?.();
++      }
++    },
++    (error) => fail(scope, error),
++  );
++  return range;
++}
++
++/**
++ * A `#loading` block in markup that the browser renders. The body renders first. When nothing
++ * in it waits, it shows at once. Otherwise the fallback shows until every wait in the body
++ * settles, and the body, which filled its ranges meanwhile, takes its place.
++ */
++export function loading(
++  body: () => string | DocumentFragment,
++  fallback: () => string | DocumentFragment,
++): string | DocumentFragment {
++  const outer = boundary;
++  const own: Boundary = { n: 0 };
++  boundary = own;
++  let out: string | DocumentFragment;
++  try {
++    out = body();
++  } finally {
++    boundary = outer;
++  }
++  if (own.n === 0) {
++    return out;
++  }
++  const start = document.createComment('l');
++  const end = document.createComment('/l');
++  const shown = document.createDocumentFragment();
++  shown.append(start, toFragment(fallback(), start), end);
++  const held = toFragment(out);
++  own.done = () => {
++    for (let node = start.nextSibling; node && node !== end; ) {
++      const next = node.nextSibling;
++      node.remove();
++      node = next;
++    }
++    end.before(held);
++  };
++  return shown;
++}
+diff --git a/packages/brumate/test/_spike/await.test.ts b/packages/brumate/test/_spike/await.test.ts
+new file mode 100644
+index 00000000..c2261959
+--- /dev/null
++++ b/packages/brumate/test/_spike/await.test.ts
+@@ -0,0 +1,173 @@
++// @vitest-environment happy-dom
++// SPIKE (browser-await-spike, option 3). Compiles the fixtures of the spike, applies by hand what
++// the compiler would emit for a render split at `await $memo` and for a `#loading` block in a
++// browser render, and runs them on the real client runtime. Throwaway code.
++import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
++import { join, resolve } from 'node:path';
++import { pathToFileURL } from 'node:url';
++import { afterEach, beforeAll, expect, it, vi } from 'vitest';
++import { analyzeProject, compile } from '../../src/index.ts';
++import { render as renderParts } from '../../src/runtime/server.ts';
++
++const input = resolve(
++  import.meta.dirname,
++  '../../../../docs/roadmaps/brumate/nodes/browser-await-spike/prototype',
++);
++const output = resolve(import.meta.dirname, '../.output/spike-await');
++const file = (name: string): string => pathToFileURL(join(output, name)).href;
++const modules = new Map<string, string>();
++
++function toRender(code: string): string {
++  return code
++    .replace(/\.brm\?brumate-render"/g, '.brm.render.ts"')
++    .replace(/\.brm\?brumate-client&part=(\w+)"/g, '.brm.client.$1.ts"')
++    .replace(/\.brm\?brumate-client"/g, '.brm.client.ts"');
++}
++
++/**
++ * Option 3 in the render module: each `const x = (...)` of an awaited memo becomes
++ * `return $$b.wait($$s1, $$wN = (...), (x) => {`, and the rest of the render goes in the arrow.
++ * The rest sets the settled value in the slot of the memo.
++ */
++function splitAtAwaits(code: string, names: string[]): string {
++  let closes = 0;
++  for (const [index, name] of names.entries()) {
++    const declaration = new RegExp(`\\n(\\s*)const ${name} = \\((.*)\\);\\n`);
++    code = code.replace(
++      declaration,
++      `\n$1let $$$$w${index};\n$1return $$$$b.wait($$$$s1, $$$$w${index} = ($2), (${name}) => {\n`,
++    );
++    closes++;
++  }
++  return code.replace(/\n {2}return \$\$f;\n\}/, () => `\n  return $$f;\n${'  });\n'.repeat(closes)}}`);
++}
++
++/** A `#loading` block in a browser render: the body of `r2`, with the fallback of the block. */
++function wrapLoading(code: string, fallback: string): string {
++  return code.replace(
++    /export function r2\(\$\$p\) \{\n([\s\S]*?)\n {2}return \$\$f;\n\}/,
++    (_, body: string) =>
++      // A function, so `$$` stays as it is.
++      `export function r2($$p) {\n  return $$b.loading(() => {\n${body}\n  return $$f;\n  }, () => ${JSON.stringify(fallback)});\n}`,
++  );
++}
++
++beforeAll(() => {
++  rmSync(output, { recursive: true, force: true });
++  mkdirSync(output, { recursive: true });
++  const sources = new Map<string, string>();
++  for (const name of readdirSync(input)) {
++    if (name.endsWith('.brm')) {
++      sources.set(name, readFileSync(join(input, name), 'utf8'));
++    } else {
++      copyFileSync(join(input, name), join(output, name));
++    }
++  }
++  const liveProps = analyzeProject(sources);
++  for (const [name, source] of sources) {
++    const { server, client, parts, render, plan } = compile(source, {
++      filename: name,
++      liveProps: liveProps.get(name),
++      path: join(input, name),
++    });
++    for (const [part, code] of Object.entries(parts)) {
++      const patched = name === 'WithLoading.brm' ? wrapLoading(code, '<p class="wait">wait</p>') : code;
++      writeFileSync(join(output, `${name}.client.${part}.ts`), toRender(patched));
++    }
++    writeFileSync(join(output, `${name}.ts`), server.replace(/\.brm'/g, ".brm.ts'"));
++    writeFileSync(join(output, `${name}.client.ts`), toRender(client));
++    const split = name === 'User.brm' ? splitAtAwaits(render, ['user']) : render;
++    writeFileSync(join(output, `${name}.render.ts`), toRender(split));
++    modules.set(plan.id, file(`${name}.client.ts`));
++  }
++});
++
++let stop: (() => void) | undefined;
++
++afterEach(() => {
++  stop?.();
++  document.body.innerHTML = '';
++  (globalThis as { loads?: number[] }).loads = [];
++});
++
++async function resume(name: string): Promise<void> {
++  const server = await import(file(`${name}.brm.ts`));
++  const { html, state } = await renderParts(server.default, {});
++  document.body.innerHTML = html + state;
++  for (const script of document.body.querySelectorAll('script[b-state]')) {
++    Object.defineProperty(document, 'currentScript', { configurable: true, value: script });
++    // oxlint-disable-next-line no-eval -- The state record of the page.
++    (0, eval)(script.textContent!);
++    delete (document as { currentScript?: unknown }).currentScript;
++  }
++  vi.resetModules();
++  const { start } = await import('../../src/runtime/loader.ts');
++  stop = start({ load: async (id) => import(modules.get(id)!) });
++}
++
++function click(selector: string): void {
++  document.querySelector(selector)!.dispatchEvent(new Event('click', { bubbles: true }));
++}
++
++function waitFor(assertion: () => void): Promise<void> {
++  return vi.waitFor(assertion, { timeout: 5000, interval: 10 });
++}
++
++function text(selector: string): string | undefined {
++  return document.querySelector(selector)?.textContent ?? undefined;
++}
++
++function loads(): number[] {
++  return ((globalThis as { loads?: number[] }).loads ??= []);
++}
++
++it('shows the #loading fallback, then the body with the value, and loads once', async () => {
++  await resume('WithLoading');
++  click('.toggle');
++  await waitFor(() => expect(text('.wait')).toBe('wait'));
++  expect(document.querySelector('.sib')).toBeNull();
++  await waitFor(() => expect(text('.u1')).toBe('ada1 ADA1 0'));
++  expect(document.querySelector('.wait')).toBeNull();
++  expect(text('.sib')).toBe('sib');
++  // The script before the await ran once, and the memo took the load of the render.
++  expect(loads()).toEqual([1]);
++  // Handlers and updates of the split component work.
++  click('.i1');
++  await waitFor(() => expect(text('.u1')).toBe('ada1 ADA1 1'));
++  expect(loads()).toEqual([1]);
++});
++
++it('without #loading, fills the place of the component when its memo settles', async () => {
++  await resume('NoLoading');
++  click('.toggle');
++  await waitFor(() => expect(text('.sib')).toBe('sib'));
++  expect(document.querySelector('.u2')).toBeNull();
++  await waitFor(() => expect(text('.u2')).toBe('ada2 ADA2 0'));
++  click('.i2');
++  await waitFor(() => expect(text('.u2')).toBe('ada2 ADA2 1'));
++  expect(loads()).toEqual([2]);
++});
++
++it('drops the rest of the render when the branch closes while it waits', async () => {
++  await resume('NoLoading');
++  click('.toggle');
++  await waitFor(() => expect(text('.sib')).toBe('sib'));
++  click('.toggle');
++  await new Promise((done) => setTimeout(done, 100));
++  expect(document.querySelector('.u2')).toBeNull();
++  expect(document.querySelector('.sib')).toBeNull();
++});
++
++it('renders a #for row that awaits, and keeps the rows in order', async () => {
++  await resume('Rows');
++  click('.add');
++  click('.add');
++  await waitFor(() => expect(document.querySelectorAll('.user').length).toBe(2));
++  expect([...document.querySelectorAll('.user')].map((p) => p.textContent)).toEqual([
++    'ada3 ADA3 0',
++    'ada4 ADA4 0',
++  ]);
++  click('.i4');
++  await waitFor(() => expect(text('.u4')).toBe('ada4 ADA4 1'));
++  expect(loads()).toEqual([3, 4]);
++});
