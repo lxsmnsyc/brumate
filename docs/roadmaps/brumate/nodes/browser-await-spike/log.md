@@ -8,3 +8,10 @@
 - Bench (lock taken and released): todos JS before `load` 14,829 B gzip with `wait` and `loading` exported, 14,824 B without, on 6adea8fb.
 - Sizes with esbuild + gzip -9 over a base entry of 10,254 B: option 3 +301 B, option 1 helpers +225 B, option 2 on 4 of 15 insert sites +53 B. Async calls cost 0.05 ms per 1,000 (node).
 - Saved the prototypes as `prototype/option3.patch` and `prototype/options-1-2.patch`, then removed them from `packages/`. Wrote outcome.md.
+- Review round 1 (PR #411): a closed `#if` kept the markup of a waiting child after the load. `<!--w-->` does not match `MARKER`, so `rangeEnd` stopped at the first `<!--/w-->`. Renamed the starts to `l<id>w` and `l0b`, and the tests now check closed blocks at 300 ms, past the 150 ms load.
+- A browser-rendered `#try` has no `t` entry, so `fail` cannot reach it. Not fixed in the prototype. Owner: browser-try.
+- Root boundary prototype: `hold` in `branch`, `loading` with an empty fallback for new rows, flag `__BRUMATE_HAS_ROOT_WAIT__`. A held row needs an item marker, or the list renders it again (load ran twice). 13 spike tests pass in both modes. The resume, order and batch suites pass with the flag on (426).
+- Bench (lock taken and released): todos flag off raw 35,467/35,468 B, gzip 14,819/14,820 B. Forced on raw 36,000/36,001 B, gzip 15,010/15,014 B.
+- esbuild does not fold the feature constant across modules, so the flag was measured with the bench only.
+- Topological awaits: the server's `waitAll` run is topological inside a run already (`read` throws `NotReady` and computes again). Wrote the design for starts across statements.
+- Recorded the maintainer's decision: no `$result` macro, is-pending-many is a separate backlog node.
