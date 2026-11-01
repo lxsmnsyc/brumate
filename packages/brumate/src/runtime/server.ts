@@ -976,8 +976,13 @@ export class Context {
     tag?: unknown,
   ): T {
     const value = attributes.ref;
-    if (typeof tag !== 'function' && isBinding(value) && isSlotReference(value.target)) {
-      this.forward(value.target, new ElementReference(scope, anchor));
+    if (typeof tag !== 'function' && isBinding(value)) {
+      if (isSlotReference(value.target)) {
+        this.forward(value.target, new ElementReference(scope, anchor));
+      } else {
+        // A setter has no slot to write, so the client calls it on resume from this record.
+        (this.record(scope).r ??= {})[anchor] = value.target;
+      }
     }
     return attributes;
   }

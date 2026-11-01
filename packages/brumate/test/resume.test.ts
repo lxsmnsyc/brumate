@@ -5288,10 +5288,12 @@ describe('refs forwarded through components', () => {
 
     it('a ref bound with a setter calls it through rest props spread on an element', async () => {
       await resume('setterRefRestPage', {});
-      // Not called on resume yet: the follow-up node setter-ref-resume-rest. A block calls it.
-      expect(text('.calls')).toBe('');
-      click(document.querySelector('.show')!);
+      // Called once on resume with the button that the server rendered, and once for a block.
       await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;BUTTON;'));
+      await new Promise((done) => setTimeout(done, 100));
+      expect(text('.calls')).toBe('BUTTON;BUTTON;');
       expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
     });
 

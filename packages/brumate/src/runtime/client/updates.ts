@@ -152,6 +152,20 @@ export function send(bound: unknown, value: unknown): void {
   }
 }
 
+/** The setters that were given each element, so an update of a spread does not call them again. */
+const given = new WeakMap<Element, Set<unknown>>();
+
+/** Calls the setter of a binding with an element, once for each element and setter. */
+export function give(bound: unknown, element: Element): void {
+  // A reference is new at each update, so its text is the key.
+  const key = bound instanceof FunctionReference ? `${bound.scope}#${bound.ref}` : bound;
+  const seen = given.get(element) ?? new Set();
+  if (!seen.has(key)) {
+    given.set(element, seen.add(key));
+    send(bound, element);
+  }
+}
+
 /** Writes a slot, and updates what reads it. */
 export function writeSlot(scope: Scope, slot: number, value: unknown): void {
   if (!Object.is(scope.s[slot], value)) {

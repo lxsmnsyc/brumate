@@ -428,6 +428,11 @@ export interface ScopeState {
    * slot of a parent, or the function of `$bind(name, fn)`.
    */
   b?: Record<number, unknown>;
+  /**
+   * The setters of `ref=$bind(x, fn)` that reached an element through rest props, by the anchor
+   * of the element. The client calls each once on resume.
+   */
+  r?: Record<number, unknown>;
 }
 
 /** The state of a page, by scope ID. */
@@ -507,6 +512,7 @@ export const SCOPE_IDS: {
     s: 'values',
     c: 'ids',
     b: 'map',
+    r: 'map',
   },
   references: [ElementReference, FunctionReference, ChildrenReference, SlotReference],
   holders: [Binding],
