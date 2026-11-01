@@ -128,7 +128,7 @@ const busy = $isPending(count);
 
 A memo that loads has no value until it arrives. A read never gives a promise or `undefined`. Code that needs the value waits for it with `$resolve`:
 
-```brm
+```ts
 async function save() {
   const profile = await $resolve(user);
   send(profile.name);
@@ -143,7 +143,7 @@ async function save() {
 - Call it in a handler, an effect or a `$client` callback. It is a compile error where a memo computes or markup renders. It takes a memo only, not a signal.
 - An effect callback cannot be `async`, so an effect uses `.then`:
 
-  ```brm
+  ```ts
   $effect(() => {
     $resolve(user).then((profile) => send(profile.name));
   });

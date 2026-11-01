@@ -23,7 +23,7 @@ A comment starts and never ends.
 
 A string in code starts and never ends.
 
-```brm
+```ts
 const name = 'Ada';
 ```
 
@@ -33,7 +33,7 @@ const name = 'Ada';
 
 A template string starts and never ends.
 
-```brm
+```ts
 const label = `Hello ${name}`;
 ```
 
@@ -43,7 +43,7 @@ const label = `Hello ${name}`;
 
 A regular expression starts and never ends.
 
-```brm
+```ts
 const digits = /\d+/;
 ```
 
@@ -53,7 +53,7 @@ const digits = /\d+/;
 
 Code has a bracket that closes nothing.
 
-```brm
+```ts
 const list = [1, 2];
 ```
 
@@ -63,7 +63,7 @@ const list = [1, 2];
 
 Code opens a bracket and never closes it. The message names the closing one.
 
-```brm
+```ts
 const list = [1, 2];
 ```
 
@@ -293,7 +293,7 @@ A handler, a handler prop or a `$client` callback reads an async memo that may s
 
 `$resolve` takes the name of a memo, and one object of options at most.
 
-```brm
+```ts
 async function save() {
   const profile = await $resolve(user, { timeout: 5000 });
 }
@@ -305,7 +305,7 @@ async function save() {
 
 `$resolve` waits, so it is called where an event starts the code, not where a memo computes or markup renders.
 
-```brm
+```ts
 async function save() {
   await $resolve(user);
 }
@@ -780,7 +780,7 @@ The parameters of a `#template` are not a parameter list.
 
 Two declarations of one scope have the same name.
 
-```brm
+```ts
 let count = $signal(0);
 let total = $signal(0);
 ```
@@ -831,7 +831,7 @@ A key of `prevent` is not a string literal.
 
 A function with `'use server'` is not `async`.
 
-```brm
+```ts
 async function save(list: string[]) {
   'use server';
   await db.save(list);
@@ -868,7 +868,7 @@ The instance script has an `export`.
 
 `$title` has no argument or more than one.
 
-```brm
+```ts
 $title('Todos');
 ```
 
@@ -878,7 +878,7 @@ $title('Todos');
 
 A declaration awaits a compile-time function other than `$memo`.
 
-```brm
+```ts
 const user = $memo(await load(id));
 ```
 
@@ -888,7 +888,7 @@ const user = $memo(await load(id));
 
 `$props()` is in a module script or a function.
 
-```brm
+```ts
 const { name } = $props<{ name: string }>();
 ```
 
@@ -898,7 +898,7 @@ const { name } = $props<{ name: string }>();
 
 The result of `$props()` is not assigned with `const` or `let`.
 
-```brm
+```ts
 const { name } = $props<{ name: string }>();
 ```
 
@@ -908,7 +908,7 @@ const { name } = $props<{ name: string }>();
 
 `$props()` has an argument.
 
-```brm
+```ts
 const { name } = $props<{ name: string }>();
 ```
 
@@ -918,7 +918,7 @@ const { name } = $props<{ name: string }>();
 
 `$props()` is assigned to an array pattern.
 
-```brm
+```ts
 const { name } = $props<{ name: string }>();
 ```
 
@@ -928,7 +928,7 @@ const { name } = $props<{ name: string }>();
 
 `$id()` is not the value of a `const`.
 
-```brm
+```ts
 const field = $id();
 ```
 
@@ -938,7 +938,7 @@ const field = $id();
 
 `$id` has an argument.
 
-```brm
+```ts
 const field = $id();
 ```
 
@@ -948,7 +948,7 @@ const field = $id();
 
 The argument of `$isPassed` is not a prop of the component.
 
-```brm
+```ts
 let { value } = $props<{ value?: Bindable<string> }>();
 const passed = $isPassed(value);
 ```
@@ -959,7 +959,7 @@ const passed = $isPassed(value);
 
 `$navigation` has an argument.
 
-```brm
+```ts
 const navigation = $navigation();
 ```
 
@@ -969,7 +969,7 @@ const navigation = $navigation();
 
 `$route` has more than one argument.
 
-```brm
+```ts
 const route = $route('/posts/[id]');
 ```
 
@@ -979,7 +979,7 @@ const route = $route('/posts/[id]');
 
 `$getContext` is not the value of a `const`.
 
-```brm
+```ts
 const theme = $getContext(ThemeContext);
 ```
 
@@ -989,7 +989,7 @@ const theme = $getContext(ThemeContext);
 
 `$getContext` has no argument or more than one.
 
-```brm
+```ts
 const theme = $getContext(ThemeContext);
 ```
 
@@ -999,7 +999,7 @@ const theme = $getContext(ThemeContext);
 
 `$setContext` has fewer or more than two arguments.
 
-```brm
+```ts
 $setContext(ThemeContext, theme);
 ```
 
@@ -1009,7 +1009,7 @@ $setContext(ThemeContext, theme);
 
 `$action` is not the value of a `const`.
 
-```brm
+```ts
 const result = $action(save);
 ```
 
@@ -1019,7 +1019,7 @@ const result = $action(save);
 
 `$action` has no argument, or more than one.
 
-```brm
+```ts
 const result = $action(save);
 ```
 
@@ -1029,7 +1029,7 @@ const result = $action(save);
 
 The argument of `$action` is not a function with `'use server'` in this file.
 
-```brm
+```ts
 async function save(data: FormData) {
   'use server';
 }
@@ -1042,7 +1042,7 @@ const result = $action(save);
 
 `$debounced` or `$throttled` is declared with `let`.
 
-```brm
+```ts
 const query = $debounced(text, 300);
 ```
 
@@ -1052,7 +1052,7 @@ const query = $debounced(text, 300);
 
 A signal, a memo or another value of a compile-time function is declared with a pattern.
 
-```brm
+```ts
 let count = $signal(0);
 ```
 
@@ -1062,7 +1062,7 @@ let count = $signal(0);
 
 `$debounced` or `$throttled` does not have both arguments.
 
-```brm
+```ts
 const query = $debounced(text, 300);
 ```
 
@@ -1072,7 +1072,7 @@ const query = $debounced(text, 300);
 
 The wait of `$debounced` or `$throttled` is not a number literal.
 
-```brm
+```ts
 const query = $debounced(text, 300);
 ```
 
@@ -1082,7 +1082,7 @@ const query = $debounced(text, 300);
 
 `$signal` and `$optimistic` need `let`, and `$memo` needs `const`.
 
-```brm
+```ts
 let count = $signal(0);
 const double = $memo(count * 2);
 ```
@@ -1093,7 +1093,7 @@ const double = $memo(count * 2);
 
 `$signal`, `$memo` or `$optimistic` has more than one argument.
 
-```brm
+```ts
 let count = $signal(0);
 ```
 
@@ -1103,7 +1103,7 @@ let count = $signal(0);
 
 `$memo` or `$optimistic` has no argument.
 
-```brm
+```ts
 const double = $memo(count * 2);
 ```
 
@@ -1113,7 +1113,7 @@ const double = $memo(count * 2);
 
 The argument of `$optimistic` is not a name.
 
-```brm
+```ts
 let shown = $optimistic(items);
 ```
 
@@ -1123,7 +1123,7 @@ let shown = $optimistic(items);
 
 `$effect` or `$client` is assigned to a name.
 
-```brm
+```ts
 $effect(() => {
   document.title = title;
 });
@@ -1135,7 +1135,7 @@ $effect(() => {
 
 `$effect` or `$client` has no function as its callback.
 
-```brm
+```ts
 $effect(() => {
   document.title = title;
 });
@@ -1147,7 +1147,7 @@ $effect(() => {
 
 The callback of `$effect` or `$client` has parameters.
 
-```brm
+```ts
 $effect(() => {
   document.title = title;
 });
@@ -1159,7 +1159,7 @@ $effect(() => {
 
 The callback of `$effect` or `$client` is `async`.
 
-```brm
+```ts
 $effect(() => {
   load(id).then((value) => (data = value));
 });
@@ -1171,7 +1171,7 @@ $effect(() => {
 
 `$effect` has more than one argument.
 
-```brm
+```ts
 $effect(() => {
   document.title = title;
 });
@@ -1183,7 +1183,7 @@ $effect(() => {
 
 The second argument of `$client` is another string.
 
-```brm
+```ts
 $client(() => {
   measure();
 }, 'idle');
@@ -1195,7 +1195,7 @@ $client(() => {
 
 The first argument of `$handler` is not a function.
 
-```brm
+```ts
 onClick: $handler(prevent(removeAt), index),
 ```
 
@@ -1205,7 +1205,7 @@ onClick: $handler(prevent(removeAt), index),
 
 A handler reads a local value of the function that calls `$handler`.
 
-```brm
+```ts
 onClick: $handler(removeAt, index),
 ```
 
@@ -1215,7 +1215,7 @@ onClick: $handler(removeAt, index),
 
 `$handler` has a spread argument.
 
-```brm
+```ts
 onClick: $handler(removeAt, index, kind),
 ```
 
@@ -1276,7 +1276,7 @@ let open = $signal(false);
 
 The argument of `$isBound` is not a `let` prop.
 
-```brm
+```ts
 let { open } = $props<{ open?: Bindable<boolean> }>();
 const bound = () => $isBound(open);
 ```
@@ -1300,7 +1300,7 @@ const results = $memo(search(query));
 
 The first argument of `$produce` is not a signal.
 
-```brm
+```ts
 $produce(todos, (draft) => {
   draft.push(todo);
 });
@@ -1312,7 +1312,7 @@ $produce(todos, (draft) => {
 
 The second argument of `$produce` is not a function.
 
-```brm
+```ts
 $produce(todos, (draft) => {
   draft.push(todo);
 });
@@ -1356,7 +1356,7 @@ let input = $signal<HTMLInputElement>();
 
 A `let` prop is used as a `ref` and its type is not `Bindable`.
 
-```brm
+```ts
 let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();
 ```
 
@@ -1377,7 +1377,7 @@ const { class: className, ...rest } = $props();
 
 Code assigns to, updates or deletes a key of the props object or of the rest of `$props()`.
 
-```brm
+```ts
 let title = $signal('');
 title = 'New';
 ```
@@ -1388,7 +1388,7 @@ title = 'New';
 
 Code writes a memo, a const prop or another value that cannot change.
 
-```brm
+```ts
 let count = $signal(0);
 count = 5;
 ```
@@ -1399,7 +1399,7 @@ count = 5;
 
 Setup code, which runs on the server, writes a signal.
 
-```brm
+```ts
 let count = $signal(5);
 ```
 
@@ -1409,7 +1409,7 @@ let count = $signal(5);
 
 A server function reads a variable of the instance script.
 
-```brm
+```ts
 async function save(user: string) {
   'use server';
 }
@@ -1421,7 +1421,7 @@ async function save(user: string) {
 
 The source of `$optimistic` is a signal.
 
-```brm
+```ts
 let shown = $optimistic(items);
 ```
 
@@ -1431,7 +1431,7 @@ let shown = $optimistic(items);
 
 A function with `'use server'` is inside another function or a block.
 
-```brm
+```ts
 async function save() {
   'use server';
 }
@@ -1443,7 +1443,7 @@ async function save() {
 
 A compile-time function is used where it is not allowed.
 
-```brm
+```ts
 let count = $signal(0);
 ```
 
@@ -1453,7 +1453,7 @@ let count = $signal(0);
 
 `$setContext` is inside a function or a block of code.
 
-```brm
+```ts
 $setContext(ThemeContext, theme);
 ```
 
@@ -1463,7 +1463,7 @@ $setContext(ThemeContext, theme);
 
 `$title` is inside a function or a block of code.
 
-```brm
+```ts
 $title('Todos');
 ```
 
@@ -1473,7 +1473,7 @@ $title('Todos');
 
 `$id` is inside a function or a block of code.
 
-```brm
+```ts
 const field = $id();
 ```
 
@@ -1483,7 +1483,7 @@ const field = $id();
 
 `$isPassed` is inside a function or a block of code.
 
-```brm
+```ts
 const passed = $isPassed(value);
 ```
 
@@ -1493,7 +1493,7 @@ const passed = $isPassed(value);
 
 `$getContext` is inside a function or a block of code.
 
-```brm
+```ts
 const theme = $getContext(ThemeContext);
 ```
 
@@ -1503,7 +1503,7 @@ const theme = $getContext(ThemeContext);
 
 `$route` is inside a function or a block of code.
 
-```brm
+```ts
 const route = $route();
 ```
 
@@ -1513,7 +1513,7 @@ const route = $route();
 
 `$navigation` is inside a function or a block of code.
 
-```brm
+```ts
 const navigation = $navigation();
 ```
 
@@ -1523,7 +1523,7 @@ const navigation = $navigation();
 
 `$props` is used in another place than `const { … } = $props()`.
 
-```brm
+```ts
 const { name } = $props<{ name: string }>();
 ```
 
@@ -1533,7 +1533,7 @@ const { name } = $props<{ name: string }>();
 
 `$signal` is inside a function or a block of code.
 
-```brm
+```ts
 let count = $signal(0);
 ```
 
@@ -1543,7 +1543,7 @@ let count = $signal(0);
 
 `$memo` is inside a function or a block of code.
 
-```brm
+```ts
 const double = $memo(count * 2);
 ```
 
@@ -1553,7 +1553,7 @@ const double = $memo(count * 2);
 
 `$debounced` is inside a function or a block of code.
 
-```brm
+```ts
 const query = $debounced(text, 300);
 ```
 
@@ -1563,7 +1563,7 @@ const query = $debounced(text, 300);
 
 `$throttled` is inside a function or a block of code.
 
-```brm
+```ts
 const position = $throttled(pointer, 100);
 ```
 
@@ -1573,7 +1573,7 @@ const position = $throttled(pointer, 100);
 
 `$optimistic` is inside a function or a block of code.
 
-```brm
+```ts
 let shown = $optimistic(items);
 ```
 
@@ -1583,7 +1583,7 @@ let shown = $optimistic(items);
 
 `$action` is inside a function or a block of code.
 
-```brm
+```ts
 const result = $action(save);
 ```
 
@@ -1593,7 +1593,7 @@ const result = $action(save);
 
 `$effect` is inside a function or a block of code.
 
-```brm
+```ts
 $effect(() => {
   document.title = title;
 });
@@ -1605,7 +1605,7 @@ $effect(() => {
 
 `$client` is inside a function or a block of code.
 
-```brm
+```ts
 $client(() => {
   measure();
 }, 'idle');
@@ -1628,7 +1628,7 @@ let input = $signal<HTMLInputElement>();
 
 `$watch` was removed.
 
-```brm
+```ts
 $effect(() => {
   save(value);
 });
@@ -1640,7 +1640,7 @@ $effect(() => {
 
 `$settled` was removed.
 
-```brm
+```ts
 $client(() => {
   measure();
 });
@@ -1652,7 +1652,7 @@ $client(() => {
 
 `$cleanup` was removed.
 
-```brm
+```ts
 $effect(() => {
   const timer = setInterval(tick, 1000);
   return () => clearInterval(timer);
@@ -1665,7 +1665,7 @@ $effect(() => {
 
 `$store` does not exist.
 
-```brm
+```ts
 let todos = $signal([]);
 ```
 
@@ -1675,7 +1675,7 @@ let todos = $signal([]);
 
 `$get` was removed. A signal never leaves its file.
 
-```brm
+```ts
 // Pass the value, or a function that writes it.
 onChange=((next) => (count = next))
 ```
@@ -1686,7 +1686,7 @@ onChange=((next) => (count = next))
 
 `$set` was removed. A signal never leaves its file.
 
-```brm
+```ts
 // Pass the value, or a function that writes it.
 onChange=((next) => (count = next))
 ```
@@ -1697,7 +1697,7 @@ onChange=((next) => (count = next))
 
 The file imports a name that the compiler knew before it was renamed.
 
-```brm
+```ts
 import { $signal } from 'brumate/signals';
 ```
 
@@ -1707,7 +1707,7 @@ import { $signal } from 'brumate/signals';
 
 The file calls a compile-time function that it does not import.
 
-```brm
+```ts
 import { $signal } from 'brumate/signals';
 ```
 
@@ -1717,7 +1717,7 @@ import { $signal } from 'brumate/signals';
 
 A value that cannot be sent to the browser, such as a database client, is read by code that runs there.
 
-```brm
+```ts
 async function list() {
   'use server';
   return db.all();
@@ -1730,7 +1730,7 @@ async function list() {
 
 Code that runs in the browser reads an environment variable of the server.
 
-```brm
+```ts
 async function key() {
   'use server';
   return env.API_KEY;
@@ -1743,7 +1743,7 @@ async function key() {
 
 A value holds an environment variable of the server, and the browser reads the value.
 
-```brm
+```ts
 async function key() {
   'use server';
   return env.API_KEY;
@@ -1802,7 +1802,7 @@ A `<title>` is outside `#head`.
 
 No `.brm` file reaches it today: the parser keys every dynamic tag, and a `<{tag}>` whose tag a handler changes compiles. It is kept for a tag that the compiler could not update.
 
-```brm
+```ts
 <{tag} class="title">Title</>
 ```
 
@@ -1812,7 +1812,7 @@ No `.brm` file reaches it today: the parser keys every dynamic tag, and a `<{tag
 
 Code that runs again in the browser awaits something other than a memo.
 
-```brm
+```ts
 const user = $memo(await load(id));
 ```
 
@@ -1822,7 +1822,7 @@ const user = $memo(await load(id));
 
 Markup that the browser renders awaits something other than a memo.
 
-```brm
+```ts
 const user = $memo(await load(id));
 ```
 
@@ -1857,7 +1857,7 @@ let value = $signal('on');
 
 Code that runs in the browser writes a signal in a destructuring assignment.
 
-```brm
+```ts
 [first, second] = pair;
 // Write each signal on its own:
 first = pair[0];
@@ -1870,7 +1870,7 @@ second = pair[1];
 
 An optimistic value is changed with `++` or `--`.
 
-```brm
+```ts
 shown = shown + 1;
 ```
 
@@ -1894,7 +1894,7 @@ A `<style>` has CSS that does not parse.
 
 A function of a module of reactive logic calls itself, or a loop of functions call each other.
 
-```brm
+```ts
 function counter(start: number) {
   let count = $signal(start);
   return { count };
@@ -1907,7 +1907,7 @@ function counter(start: number) {
 
 The result of a module function is kept as one object.
 
-```brm
+```ts
 const { count, increment } = counter(0);
 ```
 
@@ -1917,7 +1917,7 @@ const { count, increment } = counter(0);
 
 The result of a module function is declared with `let`.
 
-```brm
+```ts
 const { count, increment } = counter(0);
 ```
 
@@ -1927,7 +1927,7 @@ const { count, increment } = counter(0);
 
 A module function is called inside a function, a condition or a loop.
 
-```brm
+```ts
 const { count, increment } = counter(0);
 ```
 
@@ -1937,7 +1937,7 @@ const { count, increment } = counter(0);
 
 The module that the component imports is not on disk.
 
-```brm
+```ts
 import { counter } from './counter.brm.ts';
 ```
 
@@ -1947,7 +1947,7 @@ import { counter } from './counter.brm.ts';
 
 The import names a function that the module does not export.
 
-```brm
+```ts
 export function counter(start: number) {
   let count = $signal(start);
   return { count };
@@ -1960,7 +1960,7 @@ export function counter(start: number) {
 
 A module function is an arrow function with an expression body.
 
-```brm
+```ts
 export function counter(start: number) {
   let count = $signal(start);
   return { count };
@@ -1973,7 +1973,7 @@ export function counter(start: number) {
 
 A module function does not end with `return { … }`.
 
-```brm
+```ts
 export function counter(start: number) {
   let count = $signal(start);
   return { count };
@@ -1986,7 +1986,7 @@ export function counter(start: number) {
 
 A module function returns in the middle of its body.
 
-```brm
+```ts
 export function counter(start: number) {
   let count = $signal(start);
   return { count };
@@ -1999,7 +1999,7 @@ export function counter(start: number) {
 
 The result of a module function is destructured with a default, a nested pattern or a rest.
 
-```brm
+```ts
 const { count, increment: add } = counter(0);
 ```
 
@@ -2009,7 +2009,7 @@ const { count, increment: add } = counter(0);
 
 The returned object has a computed key, a spread or a method.
 
-```brm
+```ts
 return { count, increment };
 ```
 
@@ -2019,7 +2019,7 @@ return { count, increment };
 
 The returned object has a getter or a setter.
 
-```brm
+```ts
 return { count, increment };
 ```
 
@@ -2029,7 +2029,7 @@ return { count, increment };
 
 The component destructures a name that the module function does not return.
 
-```brm
+```ts
 const { count } = counter(0);
 ```
 
@@ -2039,7 +2039,7 @@ const { count } = counter(0);
 
 A module function returns one local under two keys.
 
-```brm
+```ts
 return { count, increment };
 ```
 
@@ -2049,7 +2049,7 @@ return { count, increment };
 
 A name of the module function is also a name of the component.
 
-```brm
+```ts
 const { count: first } = counter(0);
 const { count: second } = counter(10);
 ```
@@ -2060,7 +2060,7 @@ const { count: second } = counter(10);
 
 A module function has a destructured or default parameter.
 
-```brm
+```ts
 export function counter(start: number) {
   let count = $signal(start);
   return { count };
@@ -2073,6 +2073,6 @@ export function counter(start: number) {
 
 A module function reads a value of its module that is not exported.
 
-```brm
+```ts
 export const STEP = 1;
 ```
