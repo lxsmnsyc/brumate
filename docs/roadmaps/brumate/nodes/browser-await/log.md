@@ -28,3 +28,9 @@
 - `until` holds the check that ends a wait when its scope goes.
 - Found while turning the destructuring probe into a test: with two awaits, the first slot's `renderedLoads` key stayed, since the nested wait took the scope out of the insert, so a later prop change did not load the first memo again. Settled slots now wait for the insert that shows the scope.
 - TDZ: documented, not matched (a sentinel costs a read check).
+
+## 2026-11-02, third review of #413
+
+- `setSlots` keeps the `renderedLoads` key when a render's promise settles first (the delete came with bdc5c20a, streamed-memo-reads; its tests pass without it). Fixes the second load of a side memo.
+- `Boundary.o`: `give` moves a nested body's work into a held outer body.
+- Todos raw 35,452 B, gzip 14,821 B. `wait` +555 B gzip. 1329 tests pass.

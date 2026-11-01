@@ -7639,6 +7639,18 @@ describe('await $memo in a component that the browser renders', () => {
     expect(errors).toEqual([]);
   });
 
+  it('loads an async memo before the await once when it settles first', async () => {
+    await resume('waitSideHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([101, 1]));
+    await settleUser(101);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ada101']));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(loadedIds()).toEqual([101, 1]);
+    expect(users()).toEqual(['ada1 ada101']);
+  });
+
   // Contract tests of client-pending-boundary.
   describe('a boundary', () => {
     it('counts the waits of its body, holds its work, and runs done at 0', async () => {
@@ -7837,6 +7849,87 @@ describe('await $memo in a component that the browser renders', () => {
       await settleUser(8);
       expect(done).toBe(1);
     });
+
+    /** Holds two components in a boundary that inserts its body into the page when it is done. */
+    async function heldBody(parts: () => Node[]): Promise<Boundary> {
+      const { bound, give } = await import('../src/runtime/client/waits.ts');
+      const { insertHTML } = await import('../src/runtime/client/insert.ts');
+      const body = document.createDocumentFragment();
+      const [, own] = bound(() => {
+        body.append(...parts());
+        return body;
+      });
+      own!.done = () => {
+        give(own!);
+        insertHTML({ parent: document.body }, body);
+      };
+      return own!;
+    }
+
+    it('loads an async memo of a held body once when it settles during the hold', async () => {
+      await resume('waitSideHeldHost', {});
+      const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+      const { default: WaitSide } = await import(file('WaitSide.brm.render.ts'));
+      await heldBody(() => [WaitUser({ id: 7 }), WaitSide({ id: 1 })]);
+      await new Promise((done) => setTimeout(done, 20));
+      await settleUser(101);
+      await settleUser(1);
+      await settleUser(7);
+      await waitFor(() => expect(users()).toEqual(['ada7 ADA7 0', 'ada1 ada101']));
+      await new Promise((done) => setTimeout(done, 20));
+      expect(loadedIds()).toEqual([7, 101, 1]);
+    });
+
+    for (const order of ['after', 'before'] as const) {
+      it(`gives a nested body's work to the held outer body, with a write ${order} it settles`, async () => {
+        await resume('waitHeldHost', {});
+        const { bound, give } = await import('../src/runtime/client/waits.ts');
+        const { insertHTML } = await import('../src/runtime/client/insert.ts');
+        const { scopes } = await import('../src/runtime/client/state.ts');
+        const { set } = await import('../src/runtime/client/updates.ts');
+        const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+        const { default: WaitHeldInner } = await import(file('WaitHeldInner.brm.render.ts'));
+        const before = new Set(scopes.keys());
+        const body = document.createDocumentFragment();
+        const end = document.createComment('end');
+        const innerBody = document.createDocumentFragment();
+        let inner: Boundary | undefined;
+        const [, outer] = bound(() => {
+          body.append(WaitUser({ id: 7 }), end);
+          [, inner] = bound(() => {
+            innerBody.append(WaitUser({ id: 8 }), WaitHeldInner({}));
+            return innerBody;
+          });
+          return body;
+        });
+        inner!.done = () => {
+          give(inner!);
+          insertHTML(end, innerBody);
+        };
+        outer!.done = () => {
+          give(outer!);
+          insertHTML({ parent: document.body }, body);
+        };
+        await new Promise((done) => setTimeout(done, 20));
+        let held: Scope | undefined;
+        for (const [id, scope] of scopes) {
+          if (!before.has(id) && scope.s.length === 1 && scope.s[0] === false) {
+            held = scope;
+          }
+        }
+        if (order === 'before') {
+          set(held!, 0, true);
+        }
+        await settleUser(8);
+        if (order === 'after') {
+          set(held!, 0, true);
+        }
+        await settleUser(7);
+        await waitFor(() => expect(loadedIds()).toEqual([7, 8, 9]));
+        await settleUser(9);
+        await waitFor(() => expect(users()).toEqual(['ada7 ADA7 0', 'ada8 ADA8 0', 'ada9 ADA9 0']));
+      });
+    }
 
     it('returns no boundary for a body that does not wait', async () => {
       await resume('waitHost', {});

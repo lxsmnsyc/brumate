@@ -29,6 +29,8 @@ export interface Boundary {
   w?: Work;
   /** The count of writes when the body rendered, so `give` knows whether updates missed it. */
   c: number;
+  /** The boundary of the render around the body, which takes its work while it holds its own. */
+  o?: Boundary;
 }
 
 /** The slots of a scope whose awaits settled, until the insert that shows the scope. */
@@ -55,7 +57,7 @@ function within(own: Boundary | undefined, render: () => Out): Out {
  * in, and the caller sets `done`, and `f` if it handles failures, before any wait settles.
  */
 export function bound(body: () => Out): [Out, Boundary?] {
-  const own: Boundary = { n: 0, c: writes };
+  const own: Boundary = { n: 0, c: writes, o: boundary };
   // The work of the render around it stays there.
   const made = rendered.length;
   const queued = afterInsert.length;
@@ -75,6 +77,14 @@ export function bound(body: () => Out): [Out, Boundary?] {
 export function give(own: Boundary): void {
   const [made, queued] = own.w ?? [[], []];
   own.w = undefined;
+  // A body that goes into an outer body that is not in the page yet: the outer one holds the
+  // work, and its own `give` runs the updates that either missed.
+  const outer = own.o?.w;
+  if (outer) {
+    outer[0].push(...made);
+    outer[1].push(...queued);
+    return;
+  }
   if (own.c === writes) {
     rendered.push(...made);
   } else {
