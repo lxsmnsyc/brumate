@@ -15,11 +15,10 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-01
-owns: []
+owns:
+  - packages/brumate/test/preload-helper.test.ts
 shared:
   - packages/brumate/src/vite.ts
-  - packages/brumate/src/runtime/client/**
-  - packages/brumate/test/**
 reserves: []
 provides: []
 depends_on: []
