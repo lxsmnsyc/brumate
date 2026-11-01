@@ -1,7 +1,7 @@
 ---
 id: browser-await
 title: await $memo waits in a component that the browser renders
-status: active
+status: done
 priority: must
 type: feature
 story: browser-async
@@ -19,7 +19,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-01
-spent:
+spent: 834000
 owns:
   - packages/brumate/src/runtime/client/**
   - packages/brumate/src/codegen/**

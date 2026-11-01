@@ -1,7 +1,7 @@
 ---
 id: usage-pruning-flags
 title: Five feature flags drop the runtime paths a build never uses
-status: active
+status: done
 priority: must
 type: feature
 story:
@@ -19,7 +19,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-01
-spent:
+spent: 309000
 owns:
   - packages/brumate/src/features.ts
   - packages/brumate/src/runtime/features.ts
