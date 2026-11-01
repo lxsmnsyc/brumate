@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import PropLoadKid from './PropLoadKid.brm';
+
+  let n = $signal(0);
+</script>
+
+<button class="inc" onClick=(() => (n += 1))>Inc</button>
+#try {
+  <button class="inner" onClick=(() => (n = 0))>Reset</button>
+  <PropLoadKid value=n />
+} #catch (error, reset) {
+  <p class="caught">{String(error)}</p>
+  <button class="again" onClick=reset>Again</button>
+}
