@@ -2,13 +2,13 @@
 
 ## Built
 
-- packages/brumate/src/graph.ts: a `$setContext` value that holds a function which writes outside `$untrack` (or calls code the compiler cannot see) is sent again only when a value it holds itself changes. Functions in it that read state no longer send it again.
-- Test "does not run an effect again on its own write through a context writer" in packages/brumate/test/resume.test.ts, with fixtures test/render/ctxWriterLoop.brm, CtxWriterLoopMid.brm, ctxWriterLoop.ts. It times out on main.
-- Patch changeset .changeset/calm-writers-rest.md, and a note in website/docs/context.md.
+- packages/brumate/src/runtime/client/updates.ts and context.ts: an effect does not run again on a context send that its own run caused. The effect that runs is the origin of its writes, queued updates inherit it, and `queue` skips the origin effect when the update comes from `updateContext`. The context stays live for everything else.
+- Tests in resume.test.ts: the loop (fixtures ctxWriterLoop*) times out on main and passes; the probe of the review (fixtures ctxReader*, markup, `$memo` and `$effect` on `ctx.read()`) passes on main and on the branch.
+- Patch changeset .changeset/calm-writers-rest.md.
 
 ## Deviations
 
-- Added test fixtures under packages/brumate/test/render/, which the brief lists as shared. Nothing in analyze.ts, codegen or the client runtime changed.
+- Added test fixtures under packages/brumate/test/render/, and the fix is in runtime/client (listed as shared); graph.ts is unchanged.
 
 ## Stubs left
 
@@ -16,7 +16,7 @@
 
 ## Gotchas
 
-- Markup in a child that calls a reading function of a context that also holds a writer (`{ctx.read()}`) does not update any more. Reading a value held by the object still does. No ui test depends on it.
+- An effect that reads a context and also writes through it does not run again on its own write, but still runs for any other change of the context.
 - The ui suite is flaky under load; compare against main on the same files.
 
 ## Proposed learnings
@@ -25,9 +25,9 @@
 
 ## Verification
 
-- `pnpm --filter brumate exec vitest run test/resume.test.ts -t "context writer"`: fails on main (timeout), passes.
-- brumate: 1299 passed, 1 skipped.
-- ui: the failures match main on the same files (bind-kept-writes, generics-markup, skill, token-field-sync); other failures were load flakes that pass on rerun. No part output changed.
+- `pnpm --filter brumate exec vitest run test/resume.test.ts -t "context"`: the loop test fails on main (timeout) and passes; the probe passes on both.
+- The compiler is identical to main (only runtime/client changed), so the compiled output of the ui parts is unchanged.
+- brumate: 1301 passed. ui (2 workers): 773 passed, 74 files. oxlint, oxfmt --check and typecheck pass.
 
 ## Size
 

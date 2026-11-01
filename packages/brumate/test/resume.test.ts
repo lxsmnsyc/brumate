@@ -4417,6 +4417,15 @@ describe('memos that read state through a function prop', () => {
     expect(text('.total')).toBe('1');
   });
 
+  it('keeps markup, a memo and an effect on a reading function of a context live', async () => {
+    await resume('ctxReader', {});
+    await waitFor(() => expect(text('.markup')).toBe('0'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.markup')).toBe('1'));
+    await waitFor(() => expect(text('.memo')).toBe('2'));
+    await waitFor(() => expect(text('.effect')).toBe('1'));
+  });
+
   it('runs again when the function prop is an arrow in the markup', async () => {
     await resume('fnReadArrow', {});
     expect(text('.title')).toBe('ADA LOVELACE');

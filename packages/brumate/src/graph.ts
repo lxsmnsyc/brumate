@@ -332,7 +332,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
   }
 
   // The values that a site depends on, through the functions it calls.
-  function dependencies(site: Site, seen = new Set<Site>(), direct = false): Declaration[] {
+  function dependencies(site: Site, seen = new Set<Site>()): Declaration[] {
     if (seen.has(site)) {
       return [];
     }
@@ -344,7 +344,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
       }
     }
     // A call inside `$untrack` reads its values without depending on them.
-    for (const callee of direct ? [] : site.trackedCalls) {
+    for (const callee of site.trackedCalls) {
       if (callee.kind === 'function' && callee.site) {
         result.push(...dependencies(callee.site, seen));
       }
@@ -359,11 +359,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
     if (site.kind === 'prop' && isFunctionValue(site) && !isDerivation(site)) {
       continue;
     }
-    // A context that holds a function which writes stays fixed, like a function prop that writes:
-    // a child can call the writer in an effect, and a context sent again on each write would run
-    // that effect again, without end. Only the values that the context holds itself are live.
-    const direct = site.kind === 'provide' && writes(site);
-    for (const declaration of dependencies(site, new Set(), direct)) {
+    for (const declaration of dependencies(site)) {
       addEdge(declarationNodes.get(declaration)!, node);
     }
   }
