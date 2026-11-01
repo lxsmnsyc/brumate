@@ -4404,6 +4404,19 @@ describe('memos that read state through a function prop', () => {
     expect(counter.fnReadRuns).toBeLessThanOrEqual(2);
   });
 
+  it('does not run an effect again on its own write through a context writer', async () => {
+    const counter = globalThis as { writerRuns?: number };
+    counter.writerRuns = 0;
+    await resume('ctxWriterLoop', {});
+    await waitFor(() => expect(text('.total')).toBe('0'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.total')).toBe('1'));
+    await new Promise((done) => setTimeout(done, 100));
+    // Once on load, once for the click.
+    expect(counter.writerRuns).toBeLessThanOrEqual(3);
+    expect(text('.total')).toBe('1');
+  });
+
   it('runs again when the function prop is an arrow in the markup', async () => {
     await resume('fnReadArrow', {});
     expect(text('.title')).toBe('ADA LOVELACE');
