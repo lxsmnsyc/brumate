@@ -1,5 +1,6 @@
 // `#for` and `#repeat` lists, and the windowed lists that draw only the items in view.
 
+import { HAS_WINDOWS } from '../features.ts';
 import { parseId } from '../shared.ts';
 import { blockStart, clear, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
@@ -40,8 +41,9 @@ export function list(
   fallbackKinds: number[],
   holderKind?: number,
   holderAnchor?: number,
-  park?: Parking,
+  givenPark?: Parking,
 ): void {
+  const park = HAS_WINDOWS ? givenPark : undefined;
   const start = blockStart(scope, anchor);
   if (!start) {
     return;

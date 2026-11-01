@@ -1,7 +1,7 @@
 // Reads the state of the page and starts the core: the state records, the scopes they hold, and
 // what leaving a page or some routes drops.
 
-import { HAS_BINDINGS, HAS_LATE_MARKUP } from '../features.ts';
+import { HAS_BINDINGS, HAS_FIELDS, HAS_LATE_MARKUP, HAS_TRIES } from '../features.ts';
 import {
   CHILDREN,
   ElementReference,
@@ -100,13 +100,13 @@ function readRecord([script, code]: StateRecord): void {
   }
   const decoded = code(refs.get(root)!, stateValues);
   // The `#catch` body of a `#try` around a `#loading` body that failed on the server.
-  const catches = script.getAttribute('b-catch');
+  const catches = HAS_TRIES ? script.getAttribute('b-catch') : null;
   if (catches !== null) {
     replaceTry(catches);
     return;
   }
   // The error of a `#loading` body that failed on the server, with no `#try` around it.
-  const failed = script.getAttribute('b-fail');
+  const failed = HAS_LATE_MARKUP ? script.getAttribute('b-fail') : null;
   if (failed !== null) {
     failBoundary(decoded);
     return;
@@ -528,7 +528,9 @@ export function init(value: CoreOptions): void {
   }
   // The whole document, because `#head` content is in the head.
   indexMarkers(document.documentElement);
-  readFields();
+  if (HAS_FIELDS) {
+    readFields();
+  }
   watchTitles(document);
   if (DEV) {
     devtools()?.attach?.({ scopes, set, handle });
