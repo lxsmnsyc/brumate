@@ -37,14 +37,17 @@ The loader chunk of a page no longer carries Vite's preload helper (`__vitePrelo
 - Look first for a supported switch (Vite or Rolldown option, `build.modulePreload.resolveDependencies`, a way to mark imports so Vite skips the wrapper). Fall back to a `renderChunk` rewrite of `__vitePreload(() => import(x), deps)` only if nothing else works, and keep it to the helper's known shapes with a test that fails when Vite changes them.
 - If CSS of lazy bundles was preloaded only by the helper, brumate must preload it itself (from `hints.json`, or by its own small loader step), so no flash of unstyled content.
 - Patch release: no new API, no new option the app must set. Behavior of apps stays the same apart from the smaller loader.
-- Folding the loader into the core and dropping the core re-export stay in loader-preload-spike (0.5.0).
+- Website, measured 2026-11-01: the client entry (loaded by every page) is 112.8 kB raw / 28.2 kB gzip, of which Vite's `__vite__mapDeps` list is 21.5 kB raw and the preload wrappers with their dependency arrays in the bundle table about 32 kB raw. Without them the entry is 15.2 kB gzip (simulated on the built file), so the gain on a large app is about 13 kB gzip, not the 0.68 kB of todos.
+- Also drop the identity entries of the `owners` table in vite.ts `manifest()`: 342 of the website's 468 entries map a root to itself. The lookup becomes `owners[id] ?? (bundles[id] && id)`. About 17.6 kB raw / 3.8 kB gzip on the website (audit 2026-11-01).
+- Folding the loader into the core and dropping the core re-export stay in loader-preload-spike (0.5.0). Sending bundle URLs from the server, so both tables leave the entry, is bundle-urls-from-server (0.5.0).
 
 ## Acceptance
 
 - [ ] The built todos, dashboard and rows pages contain no `__vitePreload` (or Vite's preload helper under any name) in their client chunks.
 - [ ] A `defer` block and a bundle import with their own CSS show styled on first paint, in a browser test (e2e or brumate/testing), on dev and on build.
 - [ ] Dev mode works as before.
-- [ ] `pnpm bench` todos client JS gzip is recorded against main; the gain is reported (expected about 0.6 kB).
+- [ ] `owners` holds no entry that maps a root to itself.
+- [ ] `pnpm bench` todos client JS gzip and the website entry chunk gzip are recorded against main (expected about -0.6 kB on todos, about -16 kB on the website entry).
 - [ ] Patch changeset.
 
 ## Sizing
