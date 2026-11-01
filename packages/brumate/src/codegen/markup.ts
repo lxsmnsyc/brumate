@@ -153,6 +153,11 @@ export interface EmitterOptions {
    * functions of children render HTML without it.
    */
   hoist?: (code: string) => string;
+  /**
+   * For the render module: an `await $memo` of the instance script splits the render there, and
+   * the rest of it runs in `$$b.wait` when the memo settles.
+   */
+  waits?: boolean;
 }
 
 /**
@@ -276,6 +281,8 @@ export class Emitter {
   /** The kinds of the `{` that are open: of a function, a branch or loop, or a plain block. */
   private braces: { kind: 'fn' | 'control' | 'plain'; fn?: number }[] = [];
   private fnCount = 0;
+  /** The number of `$$b.wait` calls that the render opened, which its end closes. */
+  waits = 0;
   /**
    * The calls that fill the nested blocks of a clone, by the scope and the anchor of each block.
    * `$$m` in a call is the start comment of the block.
@@ -420,6 +427,16 @@ export class Emitter {
         this.braces.push({ kind: 'control' });
       }
     }
+  }
+
+  /** Opens the rest of a render after `await`, which stays in the function that holds it. */
+  private openRest(code: string): void {
+    this.flush();
+    const fn = this.currentFn;
+    this.push(`${'  '.repeat(this.depth)}${code}`);
+    this.depth++;
+    this.braces.push({ kind: 'fn', fn });
+    this.waits++;
   }
 
   close(code = '}'): void {
@@ -739,6 +756,13 @@ export class Emitter {
       }
     };
     for (const statement of statements) {
+      if (
+        this.options.waits &&
+        scope === this.plan.graph.model.component &&
+        this.splitAtAwait(statement, scope)
+      ) {
+        continue;
+      }
       const blocking = this.blockingDeclarations(statement);
       if (blocking?.awaited) {
         this.raw(this.patch.slice(statement.start, statement.end), statement.start);
@@ -796,6 +820,66 @@ export class Emitter {
       this.raw(this.patch.slice(statement.start, statement.end), statement.start);
     }
     endRun();
+  }
+
+  /**
+   * In the render module, a declaration of `await $memo(...)` ends the code that runs now: the
+   * rest of the render goes in `$$b.wait`, which gets the slots that the code so far set, with
+   * the load at the slot of the memo. The rest takes them back by name, so a prop that changes
+   * during the wait reaches it. Returns false for any other statement.
+   */
+  private splitAtAwait(statement: oxc.Node, scope: Scope): boolean {
+    if (statement.type !== 'VariableDeclaration') {
+      return false;
+    }
+    const awaited: (Declaration | undefined)[] = [];
+    let any = false;
+    for (const declarator of statement.declarations) {
+      const init = declarator.init;
+      const declaration =
+        init?.type === 'AwaitExpression' && declarator.id.type === 'Identifier'
+          ? scope.declarations.get(declarator.id.name)
+          : undefined;
+      const found =
+        declaration && isMemo(declaration) && declaration.awaited ? declaration : undefined;
+      awaited.push(found);
+      any ||= found !== undefined;
+    }
+    if (!any) {
+      return false;
+    }
+    const slots = this.plan.scopes.get(scope)?.slots ?? [];
+    for (const [index, declarator] of statement.declarations.entries()) {
+      const declaration = awaited[index];
+      if (!declaration) {
+        this.line(`${statement.kind} ${this.source(declarator)};`);
+        continue;
+      }
+      // A memo that no update reads has no slot, so it waits past the last one.
+      let at = slots.indexOf(declaration);
+      if (at === -1) {
+        at = slots.length;
+      }
+      // The slots that the code before the `await` declared. The others are holes until the
+      // rest sets them.
+      const values: string[] = [];
+      const names: string[] = [];
+      for (const [slot, declared] of slots.entries()) {
+        const before = declared.range.start < declarator.start;
+        values[slot] = before ? declared.name : '';
+        names[slot] = values[slot]!;
+      }
+      values[at] = this.source(declarator.init!);
+      names[at] = declaration.name;
+      while (values.at(-1) === '') {
+        values.pop();
+        names.pop();
+      }
+      this.openRest(
+        `return $$b.wait(${this.scopeVar(scope)}, [${values.join(', ')}], ${at}, ([${names.join(', ')}]) => {`,
+      );
+    }
+    return true;
   }
 
   private source(node: { start: number; end: number }): string {

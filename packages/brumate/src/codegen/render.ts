@@ -286,6 +286,7 @@ export function generateRender(
       functions: true,
       fills: fill ? fills : undefined,
       hoist,
+      waits: true,
     });
     emitter.line(signature);
     emitter.line(`let $$html = '';`);
@@ -296,6 +297,10 @@ export function generateRender(
     emitter.flush();
     const cloned = cloneLines(emitter, hoist);
     emitter.line(emitter.returnLine(0, cloned));
+    // The rests of the render that wait at `await`, innermost first.
+    for (let wait = 0; wait < emitter.waits; wait++) {
+      emitter.close('});');
+    }
     emitter.close();
     return { emitter, cloned };
   }
