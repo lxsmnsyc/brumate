@@ -16,6 +16,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: true
 added: 2026-10-30
+spent: 491000
 owns:
   - docs/roadmaps/brumate/nodes/browser-await-spike/**
 shared: []
