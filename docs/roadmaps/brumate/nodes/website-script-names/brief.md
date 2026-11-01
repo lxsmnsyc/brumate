@@ -1,7 +1,7 @@
 ---
 id: website-script-names
 title: The website sends the script names map only where a network panel needs it
-status: active
+status: done
 priority: should
 type: fix
 outline: false

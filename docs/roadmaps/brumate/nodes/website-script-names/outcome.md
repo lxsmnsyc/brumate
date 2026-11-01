@@ -34,9 +34,9 @@ None.
 
 Home page HTML (website/dist/client/index.html):
 
-| | raw | gzip -9 |
-| --- | --- | --- |
+|        | raw      | gzip -9 |
+| ------ | -------- | ------- |
 | before | 126862 B | 30640 B |
-| after | 95207 B | 20035 B |
+| after  | 95207 B  | 20035 B |
 
 The JSON file is fetched only where a list is shown.
