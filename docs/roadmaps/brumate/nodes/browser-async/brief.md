@@ -43,7 +43,7 @@ On the branch `feat/browser-async`, cut from `next`:
 ## Decisions (the maintainer, 2026-11-01, at the gate of browser-await-spike)
 
 - Option 3 (continuations at `await`), the root boundary outside every `#loading`, topological starts on both sides, and no `$result` macro.
-- Children: browser-await, then browser-await-blocks, browser-try, browser-loading-fallback and promise-in-markup, then loading-on and browser-async-e2e. topological-awaits-server ships on its own to `next`.
+- Children: browser-await, then browser-root-boundary, browser-try, browser-loading-fallback and promise-in-markup, then topological-awaits-server (the server side), browser-await-blocks, loading-on and browser-async-e2e.
 
 ## Context
 

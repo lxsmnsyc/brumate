@@ -31,6 +31,9 @@ depends_on:
   - on: browser-await
     kind: hard
     why: it extends the split and the runtime wait of browser-await to more places
+  - on: topological-awaits-server
+    kind: hard
+    why: it reuses the analysis of which names a memo reads
 ---
 
 # await in block scripts, #for rows and markup, with topological starts
@@ -42,7 +45,7 @@ The split of browser-await also covers `await $memo` in a `<script>` of a block 
 ## Context
 
 - Topological starts (the maintainer, 2026-11-01): each awaited memo's load starts right after the last plain statement it reads: `$$w_x = load()` for a memo that reads no other awaited memo, `$$b.after([...], fn)` for one that does. Each `await` still waits where it is written, code between awaits runs once and in order, and `waitAll` stays as is. About +40 B gzip over `wait`. A parent-to-child chain through a plain value stays a chain.
-- The analysis of which names each memo reads is shared with topological-awaits-server; keep it in one function both use.
+- Reuse the read analysis of topological-awaits-server, with the same rule: a load starts after the last statement that declares or writes anything it reads. A moved load catches its rejection where it starts, so no unhandled rejection fires before the first continuation runs.
 - See [browser-await-spike outcome](../browser-await-spike/outcome.md), "Topological awaits".
 
 ## Acceptance
