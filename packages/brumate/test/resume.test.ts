@@ -4415,6 +4415,28 @@ describe('memos that read state through a function prop', () => {
     expect(counter.fnReadRuns).toBeLessThanOrEqual(2);
   });
 
+  it('does not run an effect again on its own write through a context writer', async () => {
+    const counter = globalThis as { writerRuns?: number };
+    counter.writerRuns = 0;
+    await resume('ctxWriterLoop', {});
+    await waitFor(() => expect(text('.total')).toBe('0'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.total')).toBe('1'));
+    await new Promise((done) => setTimeout(done, 100));
+    // The effect ran on the server, so the browser runs it once, for the click.
+    expect(counter.writerRuns).toBe(1);
+    expect(text('.total')).toBe('1');
+  });
+
+  it('keeps markup, a memo and an effect on a reading function of a context live', async () => {
+    await resume('ctxReader', {});
+    await waitFor(() => expect(text('.markup')).toBe('0'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.markup')).toBe('1'));
+    await waitFor(() => expect(text('.memo')).toBe('2'));
+    await waitFor(() => expect(text('.effect')).toBe('1'));
+  });
+
   it('runs again when the function prop is an arrow in the markup', async () => {
     await resume('fnReadArrow', {});
     expect(text('.title')).toBe('ADA LOVELACE');
