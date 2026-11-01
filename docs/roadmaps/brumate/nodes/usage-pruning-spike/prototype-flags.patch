@@ -1,5 +1,5 @@
 diff --git a/packages/brumate/src/features.ts b/packages/brumate/src/features.ts
-index acd6f3fd..fe101786 100644
+index acd6f3fd..193459e9 100644
 --- a/packages/brumate/src/features.ts
 +++ b/packages/brumate/src/features.ts
 @@ -22,6 +22,16 @@ export interface Features {
@@ -31,19 +31,22 @@ index acd6f3fd..fe101786 100644
    };
  }
  
-@@ -67,6 +82,11 @@ export function getFeatures(result: CompileResult): Features {
+@@ -67,6 +82,14 @@ export function getFeatures(result: CompileResult): Features {
      actions: /\$\$b\.action\(/.test(all),
      // A render function that gives HTML. One with no markup gives an empty string.
      clientHTML: /\breturn \$\$html;/.test(client),
 +    tries: /\$\$b\.caught\(/.test(result.server) || /\bexport const t = /.test(client),
-+    fields: /=\$bind#|=\$set:/.test(all),
++    // A `$bind` that a component passes on can reach an element through a spread, whose `b-on`
++    // entry the server writes at run time, so a passed binding counts too.
++    fields: /=\$bind#|=\$set:|\$\$b\.binding\(/.test(all),
 +    windows: /\$\$b\.windowList\(/.test(client),
 +    dynamic: /\$\$b\.dynamic(?:Nodes)?\(/.test(client),
-+    routes: /\$\$b\.(?:routeContext|navigationContext)\b/.test(all),
++    // `$route` compiles to `$$b.routeContext`; `brumate/context` exports the contexts too.
++    routes: /\b(?:routeContext|navigationContext)\b/.test(all),
    };
  }
  
-@@ -83,6 +103,11 @@ export function joinFeatures(all: Features[]): Features {
+@@ -83,6 +106,11 @@ export function joinFeatures(all: Features[]): Features {
      joined.listeners ||= features.listeners;
      joined.actions ||= features.actions;
      joined.clientHTML ||= features.clientHTML;
@@ -55,7 +58,7 @@ index acd6f3fd..fe101786 100644
    }
    return joined;
  }
-@@ -98,6 +123,11 @@ const GLOBALS: Record<keyof Features, string> = {
+@@ -98,6 +126,11 @@ const GLOBALS: Record<keyof Features, string> = {
    listeners: '__BRUMATE_HAS_LISTENERS__',
    actions: '__BRUMATE_HAS_ACTIONS__',
    clientHTML: '__BRUMATE_HAS_CLIENT_HTML__',
@@ -264,21 +267,85 @@ index 72419fa4..959c573a 100644
 +export const HAS_ROUTES: boolean =
 +  typeof __BRUMATE_HAS_ROUTES__ === 'undefined' || __BRUMATE_HAS_ROUTES__;
 diff --git a/packages/brumate/src/vite.ts b/packages/brumate/src/vite.ts
-index 61a54d4f..c6f40aae 100644
+index 61a54d4f..860dfca3 100644
 --- a/packages/brumate/src/vite.ts
 +++ b/packages/brumate/src/vite.ts
-@@ -715,6 +715,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
+@@ -715,6 +715,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
          }
        }
        features.lateMarkup ||= options.navigate !== false || loading;
 +      // Client navigation writes the route and its own state into the page.
 +      features.routes ||= options.navigate !== false;
-+      // Spike only: BRUMATE_SPIKE_ON=a,b turns features on, to measure each alone.
-+      for (const name of (process.env.BRUMATE_SPIKE_ON ?? '').split(',')) {
-+        if (name in features) {
-+          features[name as keyof Features] = true;
-+        }
-+      }
        counted = seen;
        knownFeatures = features;
        return features;
+diff --git a/packages/brumate/test/feature-flags.test.ts b/packages/brumate/test/feature-flags.test.ts
+index 09f29c68..9b294619 100644
+--- a/packages/brumate/test/feature-flags.test.ts
++++ b/packages/brumate/test/feature-flags.test.ts
+@@ -1,3 +1,4 @@
++import { readFileSync } from 'node:fs';
+ import { expect, it } from 'vitest';
+ import { compile } from '../src/index.ts';
+ import { getFeatures, joinFeatures, noFeatures, writeFeatures } from '../src/features.ts';
+@@ -121,3 +122,60 @@ it('finds the titles, listeners and forms of a #client body, which has no markup
+ `);
+   expect(inClient).toMatchObject({ titles: true, listeners: true, actions: true, blocks: true });
+ });
++
++const fixture = (name: string) =>
++  getFeatures(
++    compile(readFileSync(new URL(`render/${name}.brm`, import.meta.url), 'utf8'), {
++      filename: `${name}.brm`,
++    }),
++  );
++
++it('counts the fields of a $bind that reaches an element through a spread', () => {
++  // The server writes `input=$bind#…` for the spread at run time, so it is not in the output.
++  const joined = joinFeatures([fixture('bindSpread'), fixture('BindField')]);
++  expect(joined.fields).toBe(true);
++  expect(
++    use(`<script>
++  import { $bind, $signal } from 'brumate/signals';
++  let name = $signal('');
++</script>
++<input value=$bind(name)>
++`).fields,
++  ).toBe(true);
++  expect(
++    use(`<script>
++  import { $signal } from 'brumate/signals';
++  let name = $signal('');
++</script>
++<input value=name onInput=((event) => (name = event.currentTarget.value))>
++`).fields,
++  ).toBe(false);
++});
++
++it('counts the route contexts, from $route and from brumate/context', () => {
++  expect(
++    use(`<script>
++  import { $route } from 'brumate/signals';
++  const route = $route('/issues/[id]');
++</script>
++<p>{route.params.id}</p>
++`).routes,
++  ).toBe(true);
++  expect(
++    use(`<script>
++  import { $getContext } from 'brumate/signals';
++  import { routeContext } from 'brumate/context';
++  const route = $getContext(routeContext);
++</script>
++<p>{route.url.pathname}</p>
++`).routes,
++  ).toBe(true);
++  expect(
++    use(`<script>
++  import { $signal } from 'brumate/signals';
++  let count = $signal(0);
++</script>
++<button onClick=(() => count++)>{count}</button>
++`).routes,
++  ).toBe(false);
++});

@@ -5,7 +5,6 @@ import type { Render } from './branches.ts';
 import { loadModule } from './code.ts';
 import { insertHTML } from './insert.ts';
 import { inPlace, removeBlock, findRoot } from './scopes.ts';
-import { HAS_TRIES } from '../features.ts';
 import { options, scopes } from './state.ts';
 import { parseId } from '../shared.ts';
 import type { ClientModule, Scope } from './state.ts';
@@ -19,10 +18,6 @@ import type { ClientModule, Scope } from './state.ts';
  */
 export function fail(scope: Scope | undefined, error: unknown): void {
   options.onError?.(error, { scope: scope?.id });
-  if (!HAS_TRIES) {
-    unhandled(error, scope);
-    return;
-  }
   void (async () => {
     for (let current = scope; current; current = current.p ?? current.o) {
       const id = findRoot(current).m;

@@ -9,7 +9,6 @@
 // branches, lists, inserts, components, page, resume. This module exports what compiled code and
 // the other modules of the package use.
 import { setGlobal, updateRoute } from './client/context.ts';
-import { HAS_ROUTES } from './features.ts';
 import { handle, submitAction } from './client/handlers.ts';
 import { dispose, init } from './client/resume.ts';
 
@@ -130,14 +129,4 @@ export const loader: {
   submitAction: typeof submitAction;
   setGlobal: typeof setGlobal;
   updateRoute: typeof updateRoute;
-} = {
-  init,
-  handle,
-  dispose,
-  submitAction,
-  // Only `$route`, `$navigation` and client navigation read what these write.
-  setGlobal: HAS_ROUTES ? setGlobal : noop,
-  updateRoute: HAS_ROUTES ? updateRoute : noop,
-};
-
-function noop(): void {}
+} = { init, handle, dispose, submitAction, setGlobal, updateRoute };

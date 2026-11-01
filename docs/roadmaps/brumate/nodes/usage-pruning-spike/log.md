@@ -22,3 +22,10 @@
 - Feature use by app (components with the path): hackernews none; tracker none; examples/todos none; website routes 3, dynamic 3; packages/ui dynamic 44 of 107, windows 4. An app with @brumate/ui keeps `dynamic` on.
 - Saved prototype-flags.patch (F) and prototype-imports.patch (T, with the snapshot update), both against `next`. The branch keeps F.
 - Wrote outcome.md. Recommendation: go, build F (usage-pruning-flags).
+
+## 2026-11-01, review round (PR #412)
+
+- `fields` missed `$bind` through rest props (bindSpread.brm + BindField.brm gave fields: false). The fact now also matches `$$b.binding(`. `routes` missed `routeContext` from `brumate/context`; it now matches the bare names. Added cases to test/feature-flags.test.ts. Removed the `BRUMATE_SPIKE_ON` switch from the F patch.
+- Re-measured F: todos 13,801, dashboard 23,886, rows 13,552 (same as before, within the 2 to 10 B that chunk hashes move). Website with `'used'`: 35,402 (-182, was -406), since the site uses `$bind`.
+- Tests on F with the fixes: 1,308 passed. Smoke passes.
+- Dropped every change under packages/ from the branch: the PR now holds only this folder, and the prototypes live in the patches.
