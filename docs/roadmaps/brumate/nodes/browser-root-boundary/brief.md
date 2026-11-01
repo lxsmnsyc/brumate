@@ -44,7 +44,7 @@ The app counts as wrapped in one `#loading` (the maintainer, 2026-11-01): an `#i
 
 - Start from the spike's root boundary prototype: `hold` in `branch`, a new `#for` row rendered through `loading` with an empty fallback and an item marker.
 - `__BRUMATE_HAS_ROOT_WAIT__` turns it on when a compiled part calls `$$b.wait(`. The flag is per build (`buildFeatures`, vite.ts:684), not per page, and follows imports into packages.
-- `hold` at every insert site: the outcome of browser-await-spike lists all 15 and prices them. Spike figures: +191 B gzip on todos with the flag forced on, about +365 B plus the rest of the sites on an app that uses it.
+- `hold` at every insert site: the outcome of browser-await-spike lists all 15 and prices them. Spike figures: +191 B gzip on todos with the flag forced on, and an estimated +455 to +505 B gzip on every page of an app that uses it, with `hold` at 11 insert sites.
 - Open from the re-review of #411 (https://github.com/lxsmnsyc/brumate/pull/411#pullrequestreview-5728815499): with the flag on, `hold` renders the new body before it destroys the old one even when nothing waits, so old cleanups run after the new script. Keep the old order when nothing waits, or document and test the new one. Rapid B, A, B switching ends right but loads twice; avoid the second load if it is cheap.
 
 ## Acceptance
