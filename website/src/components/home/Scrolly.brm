@@ -9,24 +9,71 @@
 
   let active = $signal('source');
 
-  // The step that crosses the middle of the viewport is the active one.
+  // On a wide screen the panel sits beside the steps, and the step that crosses the middle of the
+  // viewport is the active one. On a narrow screen the panel sticks above the steps, and the
+  // active step is the one that crosses the line just below the panel.
+  const NARROW = '(max-width: 56rem)';
+
+  /** The distance from the top of the viewport to the line that picks the active step, in pixels. */
+  function measureLine(): number {
+    const sticky = document.querySelector<HTMLElement>('.scrolly .sticky')!;
+    const top = Number.parseFloat(getComputedStyle(sticky).top);
+    return matchMedia(NARROW).matches ? top + sticky.offsetHeight + 24 : innerHeight * 0.45;
+  }
+
   $client(() => {
     const steps = document.querySelectorAll<HTMLElement>('[data-step]');
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            active = (entry.target as HTMLElement).dataset.step!;
+    let observer: IntersectionObserver | undefined;
+    function observe(): void {
+      observer?.disconnect();
+      const line = Math.round(measureLine());
+      observer = new IntersectionObserver(
+        () => {
+          // After a long jump the entries can come in any order, so read where the steps are.
+          for (const step of steps) {
+            const box = step.getBoundingClientRect();
+            if (box.top <= line + 1 && box.bottom > line) {
+              active = step.dataset.step!;
+              revealTab(active);
+            }
           }
-        }
-      },
-      { rootMargin: '-45% 0px -50% 0px' },
-    );
-    for (const step of steps) {
-      observer.observe(step);
+        },
+        // A band of 5% of the viewport, or at least one pixel, starting at the line.
+        { rootMargin: `-${line}px 0px -${Math.max(0, innerHeight - line - Math.max(1, innerHeight * 0.05))}px 0px` },
+      );
+      for (const step of steps) {
+        observer.observe(step);
+      }
     }
-    return () => observer.disconnect();
+    observe();
+    addEventListener('resize', observe);
+    return () => {
+      removeEventListener('resize', observe);
+      observer?.disconnect();
+    };
   });
+
+  /** Scrolls the row of tabs sideways, without moving the page, so the tab of a step shows. */
+  function revealTab(id: string): void {
+    const tab = document.querySelector<HTMLElement>(`.scrolly [data-tab="${id}"]`)!;
+    const row = tab.parentElement!;
+    const left = tab.offsetLeft - row.offsetLeft;
+    if (left < row.scrollLeft || left + tab.offsetWidth > row.scrollLeft + row.clientWidth) {
+      row.scrollTo({ left: left - (row.clientWidth - tab.offsetWidth) / 2 });
+    }
+  }
+
+  /** Shows the panel of a tab and scrolls its step to the line that picks the active step. */
+  function showStep(id: string): void {
+    active = id;
+    const step = document.querySelector<HTMLElement>(`[data-step="${id}"]`)!;
+    const sticky = document.querySelector<HTMLElement>('.scrolly .sticky')!;
+    // The top of the step goes below the stuck panel on a narrow screen, and below the header otherwise.
+    const top = Number.parseFloat(getComputedStyle(sticky).top);
+    const offset = matchMedia(NARROW).matches ? top + sticky.offsetHeight + 16 : top;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    scrollTo({ top: step.getBoundingClientRect().top + scrollY - offset, behavior: reduce ? 'auto' : 'smooth' });
+  }
 
   function sumGzip(): number {
     let sum = 0;
@@ -145,7 +192,7 @@
     <div class="panel-box">
       <div class="tabs" role="tablist" aria-label="Output of the compiler">
         #for (tab of tabs by tab.id) {
-          <button role="tab" type="button" class={ on: active === tab.id } aria-selected=(active === tab.id) onClick=(() => (active = tab.id))>{tab.label}</button>
+          <button role="tab" type="button" data-tab=tab.id class={ on: active === tab.id } aria-selected=(active === tab.id) onClick=(() => showStep(tab.id))>{tab.label}</button>
         }
       </div>
       <div class="panels">
@@ -373,21 +420,35 @@
   @media (max-width: 56rem) {
     .scrolly {
       grid-template-columns: minmax(0, 1fr);
-      gap: 1.5rem;
+      gap: 1.25rem;
     }
 
+    /* The panel sticks below the header and the steps scroll under it. */
     .sticky {
-      position: static;
+      top: var(--header-height);
+      z-index: 2;
       order: -1;
+      padding: 0.75rem 0;
+      background: var(--bg);
+    }
+
+    .panel :global(.code),
+    .server {
+      height: min(14rem, 32vh);
+    }
+
+    .foot {
+      display: none;
     }
 
     .step {
       min-height: 0;
-      opacity: 1;
+      padding: 1.5rem 0 1.5rem 1.1rem;
     }
 
+    /* Room after the last step, so it can reach the line below the panel. */
     .steps {
-      padding-bottom: 0;
+      padding-bottom: 40vh;
     }
   }
 </style>
