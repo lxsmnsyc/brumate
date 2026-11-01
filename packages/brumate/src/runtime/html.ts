@@ -1,6 +1,7 @@
 // HTML string helpers that the server and the client both use.
 
 const RAW: unique symbol = Symbol.for('brumate.raw');
+const INTERNAL: unique symbol = Symbol.for('brumate.internal');
 
 /** HTML that is inserted as it is, such as the output of a template. */
 export interface Raw {
@@ -278,6 +279,14 @@ export class Internal {
   }
 }
 
+// The brand sits on the prototype, so an instance does not carry a field for it.
+(Internal.prototype as unknown as Record<symbol, boolean>)[INTERNAL] = true;
+
+/** True for an `Internal`, also one that another copy of the runtime made. */
+export function isInternal(value: unknown): value is Internal {
+  return typeof value === 'object' && value !== null && INTERNAL in value;
+}
+
 /** Wraps the value of an attribute that brumate writes. See `Internal`. */
 export function internal(value: unknown): Internal {
   return new Internal(value);
@@ -285,7 +294,7 @@ export function internal(value: unknown): Internal {
 
 /** The value of an attribute of an object, or undefined for a `b-` attribute from outside. */
 export function ownValue(name: string, value: unknown): unknown {
-  if (value instanceof Internal) {
+  if (isInternal(value)) {
     return value.value;
   }
   return name.startsWith('b-') ? undefined : value;
@@ -299,7 +308,7 @@ export function mergeAttributes(
   for (const part of parts) {
     for (const [name, value] of Object.entries(part ?? {})) {
       // A `b-` attribute from outside the app does not take the place of brumate's own.
-      if (name.startsWith('b-') && !(value instanceof Internal)) {
+      if (name.startsWith('b-') && !isInternal(value)) {
         continue;
       }
       result[name] =
