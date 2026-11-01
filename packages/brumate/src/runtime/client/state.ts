@@ -16,13 +16,6 @@ export interface ClientModule {
   props: Record<string, number>;
   /** Scope kind, then slot, to the updates that read it. */
   g: Record<number, Record<number, Update[]>>;
-  /** The handlers that can write a slot of another component. The others write only their own. */
-  w?: string[];
-  /**
-   * Imports a part of the module. A module without it holds every part
-   * itself, as a small component's module does.
-   */
-  load?: (part: string) => Promise<Part>;
   /**
    * The render functions of components that this component sends as values, such as in a
    * prop. The state holds only their IDs, so `dynamic` finds them here.
@@ -48,14 +41,6 @@ export interface ClientModule {
       holderAnchor?: number,
     ]
   >;
-}
-
-/** A part of a client module: one client root, or the updates. */
-export type Part = Record<string, unknown>;
-
-/** The part that holds an export: `h<n>` and `c<n>` have their own, the rest are in `update`. */
-export function getPart(name: string): string {
-  return /^[hct]\d/.test(name) ? name : 'update';
 }
 
 /** The instance of a scope in the page. */
@@ -122,8 +107,6 @@ export interface CoreOptions {
   load: (id: string) => Promise<ClientModule> | undefined;
   /** Loads the bundle of a root component of the page, before the modules in it. */
   loadBundle?: (id: string) => Promise<unknown> | undefined;
-  /** Imports a part of a module, once for each part, as the loader preloads it. */
-  loadPart?: (module: ClientModule, part: string) => Promise<Part>;
   /** Adds event listeners for the `b-on` attributes in new markup. */
   listen: (root: ParentNode) => void;
   /** Tells the loader that the markup that `listen` scanned is in the page now. */
@@ -240,10 +223,6 @@ export const modules: Map<string, ClientModule> = new Map();
 export const loading: Map<string, Promise<ClientModule>> = new Map();
 
 export const valueRenders: Record<string, Component> = {};
-
-export const parts: Map<string, Promise<Part>> = new Map();
-
-export const loadedParts: Map<string, Part> = new Map();
 
 export const comments: Map<string, Comment> = new Map();
 

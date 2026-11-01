@@ -4,7 +4,7 @@
 import { parseId } from '../shared.ts';
 import type { ComponentValue } from '../shared.ts';
 import { blockStart, rangeEnd } from './blocks.ts';
-import { loadModule, loadPart } from './code.ts';
+import { loadModule } from './code.ts';
 import { insertHTML } from './insert.ts';
 import { call } from './references.ts';
 import { afterInsert, disposeKinds, inPlace, removeBlock, findRoot } from './scopes.ts';
@@ -119,7 +119,7 @@ export async function reset(
   holderKind?: number,
   holderAnchor?: number,
 ): Promise<void> {
-  const updates = await loadPart(await loadModule(id), 'update');
+  const updates = (await loadModule(id)) as unknown as Record<string, unknown>;
   const start = blockStart(scope, anchor);
   if (!start) {
     return;

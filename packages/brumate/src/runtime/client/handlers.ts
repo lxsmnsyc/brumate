@@ -26,7 +26,7 @@ import { call, resolve } from './references.ts';
 import { resolveScope } from './scopes.ts';
 import { DEV, build, devtools, hiding, rpcPrefix, scopes } from './state.ts';
 import type { Scope } from './state.ts';
-import { memoSignal, pass, set, updateReady } from './updates.ts';
+import { memoSignal, pass, set } from './updates.ts';
 
 /**
  * The handlers that the core makes from references, with their references,
@@ -223,16 +223,13 @@ export function handle(
   if (DEV) {
     devtools()?.handler?.(ref, element, event);
   }
-  // Parts load in parallel, but handlers start in the order of their events,
+  // Modules load in parallel, but handlers start in the order of their events,
   // so an input handler runs before the submit handler of a later event.
   // The code of the children that the handler can insert loads with it.
   // So does the code of the page, which the handler can call.
-  // So does the update code of the scopes that it can write, so its writes run before it returns.
   const children = childrenReady(scope);
   const code = codeReady();
-  const loaded = Promise.all([resolve(ref), children, code, updateReady(scope, ref)]).then(
-    ([handler]) => handler,
-  );
+  const loaded = Promise.all([resolve(ref), children, code]).then(([handler]) => handler);
   const started = lastHandler
     .then(() => loaded)
     .then((handler) => {

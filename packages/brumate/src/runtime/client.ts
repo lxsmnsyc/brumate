@@ -33,7 +33,7 @@ export { nameComment } from './client/blocks.ts';
 export { branch, fill, offscreen, rekey, reset, retag } from './client/branches.ts';
 export type { HiddenBody } from './client/branches.ts';
 export { children, insert } from './client/children.ts';
-export { loadModule, loadPart } from './client/code.ts';
+export { loadModule } from './client/code.ts';
 export {
   component,
   componentNodes,
@@ -80,7 +80,7 @@ export {
   sink,
 } from './client/scopes.ts';
 export { DEVTOOLS, build, hooks, rpcPrefix, scopes, skew } from './client/state.ts';
-export type { ClientModule, CoreOptions, DevtoolsHooks, Part, Scope } from './client/state.ts';
+export type { ClientModule, CoreOptions, DevtoolsHooks, Scope } from './client/state.ts';
 export {
   appendText,
   branchNodes,

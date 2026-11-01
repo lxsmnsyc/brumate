@@ -1,8 +1,8 @@
 // Calls the function that a reference names, such as `Page#h3`, once its code has loaded.
 
 import { loadOnce } from '../skew.ts';
-import { codeReady, loadModule, loadPart, loadedFunction } from './code.ts';
-import { build, getPart, rpcPrefix, skew } from './state.ts';
+import { codeReady, loadModule, loadedFunction } from './code.ts';
+import { build, rpcPrefix, skew } from './state.ts';
 import type { Scope } from './state.ts';
 
 export type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
@@ -14,8 +14,7 @@ export async function resolve(ref: string): Promise<Handler> {
   const [id, name] = ref.split('#') as [string, string];
   try {
     const module = await loadModule(id);
-    const part = await loadPart(module, getPart(name));
-    return part[name] as Handler;
+    return (module as unknown as Record<string, Handler>)[name]!;
   } catch (error) {
     // After a deploy, the files of a build can be gone. The page loads again, with the new code,
     // once for each build. Any other error, such as a module that throws, goes to `#try`.

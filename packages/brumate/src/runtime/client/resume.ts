@@ -40,14 +40,12 @@ import {
   elements,
   guesses,
   hooks,
-  loadedParts,
   loading,
   loadingSlots,
   loads,
   memoControllers,
   modules,
   options,
-  parts,
   refs,
   loadingValues,
   renderedLoads,
@@ -338,13 +336,6 @@ export function forget(ids: string[]): void {
     loading.delete(id);
     // The new code loads when a scope of the component is read or rendered again.
     pageComponents.delete(id);
-    // Deleting the entry that a loop is at is safe for a Map.
-    for (const key of parts.keys()) {
-      if (key.startsWith(`${id}:`)) {
-        parts.delete(key);
-        loadedParts.delete(key);
-      }
-    }
   }
 }
 
