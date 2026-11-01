@@ -44,6 +44,9 @@ depends_on:
   - on: runtime-brand-checks
     kind: hard
     why: two copies of the runtime must not drop attributes; done with no change if it can't be reproduced
+  - on: prop-write-load-error
+    kind: hard
+    why: a prop write to a child whose code fails to load must reach the nearest #catch
   - on: drop-preload-helper
     kind: hard
     why: the loader drops Vite's preload helper, about 0.68 kB gzip on todos (the maintainer, 2026-11-01)
