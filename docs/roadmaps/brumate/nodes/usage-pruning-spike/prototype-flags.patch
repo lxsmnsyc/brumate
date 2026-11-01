@@ -1,0 +1,351 @@
+diff --git a/packages/brumate/src/features.ts b/packages/brumate/src/features.ts
+index acd6f3fd..193459e9 100644
+--- a/packages/brumate/src/features.ts
++++ b/packages/brumate/src/features.ts
+@@ -22,6 +22,16 @@ export interface Features {
+   actions: boolean;
+   /** Markup that the browser renders as HTML, not as a clone of a template. */
+   clientHTML: boolean;
++  /** `#try` blocks, whose `#catch` the browser renders. */
++  tries: boolean;
++  /** Fields of an element `$bind`, which the core reads when the user typed before it loaded. */
++  fields: boolean;
++  /** `#for` lists with `window`. */
++  windows: boolean;
++  /** Dynamic tags, which can name a component and pass it props. */
++  dynamic: boolean;
++  /** `$route` and `$navigation`, which the runtime provides. */
++  routes: boolean;
+ }
+ 
+ /** No feature at all, which a build that has no component uses. */
+@@ -36,6 +46,11 @@ export function noFeatures(): Features {
+     listeners: false,
+     actions: false,
+     clientHTML: false,
++    tries: false,
++    fields: false,
++    windows: false,
++    dynamic: false,
++    routes: false,
+   };
+ }
+ 
+@@ -67,6 +82,14 @@ export function getFeatures(result: CompileResult): Features {
+     actions: /\$\$b\.action\(/.test(all),
+     // A render function that gives HTML. One with no markup gives an empty string.
+     clientHTML: /\breturn \$\$html;/.test(client),
++    tries: /\$\$b\.caught\(/.test(result.server) || /\bexport const t = /.test(client),
++    // A `$bind` that a component passes on can reach an element through a spread, whose `b-on`
++    // entry the server writes at run time, so a passed binding counts too.
++    fields: /=\$bind#|=\$set:|\$\$b\.binding\(/.test(all),
++    windows: /\$\$b\.windowList\(/.test(client),
++    dynamic: /\$\$b\.dynamic(?:Nodes)?\(/.test(client),
++    // `$route` compiles to `$$b.routeContext`; `brumate/context` exports the contexts too.
++    routes: /\b(?:routeContext|navigationContext)\b/.test(all),
+   };
+ }
+ 
+@@ -83,6 +106,11 @@ export function joinFeatures(all: Features[]): Features {
+     joined.listeners ||= features.listeners;
+     joined.actions ||= features.actions;
+     joined.clientHTML ||= features.clientHTML;
++    joined.tries ||= features.tries;
++    joined.fields ||= features.fields;
++    joined.windows ||= features.windows;
++    joined.dynamic ||= features.dynamic;
++    joined.routes ||= features.routes;
+   }
+   return joined;
+ }
+@@ -98,6 +126,11 @@ const GLOBALS: Record<keyof Features, string> = {
+   listeners: '__BRUMATE_HAS_LISTENERS__',
+   actions: '__BRUMATE_HAS_ACTIONS__',
+   clientHTML: '__BRUMATE_HAS_CLIENT_HTML__',
++  tries: '__BRUMATE_HAS_TRIES__',
++  fields: '__BRUMATE_HAS_FIELDS__',
++  windows: '__BRUMATE_HAS_WINDOWS__',
++  dynamic: '__BRUMATE_HAS_DYNAMIC__',
++  routes: '__BRUMATE_HAS_ROUTES__',
+ };
+ 
+ /** True for code that reads a feature, such as the core. */
+diff --git a/packages/brumate/src/runtime/client.ts b/packages/brumate/src/runtime/client.ts
+index 752a77e6..2021a839 100644
+--- a/packages/brumate/src/runtime/client.ts
++++ b/packages/brumate/src/runtime/client.ts
+@@ -9,6 +9,7 @@
+ // branches, lists, inserts, components, page, resume. This module exports what compiled code and
+ // the other modules of the package use.
+ import { setGlobal, updateRoute } from './client/context.ts';
++import { HAS_ROUTES } from './features.ts';
+ import { handle, submitAction } from './client/handlers.ts';
+ import { dispose, init } from './client/resume.ts';
+ 
+@@ -129,4 +130,14 @@ export const loader: {
+   submitAction: typeof submitAction;
+   setGlobal: typeof setGlobal;
+   updateRoute: typeof updateRoute;
+-} = { init, handle, dispose, submitAction, setGlobal, updateRoute };
++} = {
++  init,
++  handle,
++  dispose,
++  submitAction,
++  // Only `$route`, `$navigation` and client navigation read what these write.
++  setGlobal: HAS_ROUTES ? setGlobal : noop,
++  updateRoute: HAS_ROUTES ? updateRoute : noop,
++};
++
++function noop(): void {}
+diff --git a/packages/brumate/src/runtime/client/context.ts b/packages/brumate/src/runtime/client/context.ts
+index f9329d05..5059d9c9 100644
+--- a/packages/brumate/src/runtime/client/context.ts
++++ b/packages/brumate/src/runtime/client/context.ts
+@@ -1,6 +1,7 @@
+ // Contexts that components provide and read, and the values that the runtime provides to the
+ // whole page.
+ 
++import { HAS_ROUTES } from '../features.ts';
+ import { ROUTE_KEY } from '../context.ts';
+ import type { Context as ContextValue, Route } from '../context.ts';
+ import type { ScopeId } from '../shared.ts';
+@@ -65,7 +66,7 @@ export function consumeContext<T>(
+   if (provider) {
+     return provider.v![context.key] as T;
+   }
+-  if (context.key === ROUTE_KEY && !globals.has(ROUTE_KEY)) {
++  if (HAS_ROUTES && context.key === ROUTE_KEY && !globals.has(ROUTE_KEY)) {
+     globals.set(ROUTE_KEY, currentRoute());
+   }
+   return (globals.has(context.key) ? globals.get(context.key) : context.defaultValue) as T;
+diff --git a/packages/brumate/src/runtime/client/errors.ts b/packages/brumate/src/runtime/client/errors.ts
+index 42f8a26c..7b92a3f0 100644
+--- a/packages/brumate/src/runtime/client/errors.ts
++++ b/packages/brumate/src/runtime/client/errors.ts
+@@ -5,6 +5,7 @@ import type { Render } from './branches.ts';
+ import { loadModule } from './code.ts';
+ import { insertHTML } from './insert.ts';
+ import { inPlace, removeBlock, findRoot } from './scopes.ts';
++import { HAS_TRIES } from '../features.ts';
+ import { options, scopes } from './state.ts';
+ import { parseId } from '../shared.ts';
+ import type { ClientModule, Scope } from './state.ts';
+@@ -18,6 +19,10 @@ import type { ClientModule, Scope } from './state.ts';
+  */
+ export function fail(scope: Scope | undefined, error: unknown): void {
+   options.onError?.(error, { scope: scope?.id });
++  if (!HAS_TRIES) {
++    unhandled(error, scope);
++    return;
++  }
+   void (async () => {
+     for (let current = scope; current; current = current.p ?? current.o) {
+       const id = findRoot(current).m;
+diff --git a/packages/brumate/src/runtime/client/inserts.ts b/packages/brumate/src/runtime/client/inserts.ts
+index cf2b8905..b5cafa5c 100644
+--- a/packages/brumate/src/runtime/client/inserts.ts
++++ b/packages/brumate/src/runtime/client/inserts.ts
+@@ -1,7 +1,7 @@
+ // Writes of the values that markup inserts: text, content, attributes and spreads of elements, and
+ // `#portal` bodies.
+ 
+-import { HAS_BINDINGS, HAS_CHILDREN, HAS_TEMPLATES } from '../features.ts';
++import { HAS_BINDINGS, HAS_CHILDREN, HAS_DYNAMIC, HAS_TEMPLATES } from '../features.ts';
+ import { attributeText, insertValue, onValue, textValue } from '../html.ts';
+ import { isBinding, isSlotReference } from '../shared.ts';
+ import type { ScopeId } from '../shared.ts';
+@@ -281,7 +281,7 @@ function withVariables(element: HTMLElement, style: string | undefined): string
+ 
+ export function attr(scope: Scope, anchor: number, name: string, value: unknown): void {
+   // A dynamic tag that names a component passes the value on as a prop.
+-  if (scope.c?.[anchor] !== undefined) {
++  if (HAS_DYNAMIC && scope.c?.[anchor] !== undefined) {
+     prop(scope, anchor, name, value);
+     return;
+   }
+diff --git a/packages/brumate/src/runtime/client/lists.ts b/packages/brumate/src/runtime/client/lists.ts
+index 6b83e67d..92bbf6b5 100644
+--- a/packages/brumate/src/runtime/client/lists.ts
++++ b/packages/brumate/src/runtime/client/lists.ts
+@@ -1,5 +1,6 @@
+ // `#for` and `#repeat` lists, and the windowed lists that draw only the items in view.
+ 
++import { HAS_WINDOWS } from '../features.ts';
+ import { parseId } from '../shared.ts';
+ import { blockStart, clear, rangeEnd } from './blocks.ts';
+ import type { Render } from './branches.ts';
+@@ -40,8 +41,9 @@ export function list(
+   fallbackKinds: number[],
+   holderKind?: number,
+   holderAnchor?: number,
+-  park?: Parking,
++  givenPark?: Parking,
+ ): void {
++  const park = HAS_WINDOWS ? givenPark : undefined;
+   const start = blockStart(scope, anchor);
+   if (!start) {
+     return;
+diff --git a/packages/brumate/src/runtime/client/resume.ts b/packages/brumate/src/runtime/client/resume.ts
+index 992c18fc..0dbe5898 100644
+--- a/packages/brumate/src/runtime/client/resume.ts
++++ b/packages/brumate/src/runtime/client/resume.ts
+@@ -1,7 +1,7 @@
+ // Reads the state of the page and starts the core: the state records, the scopes they hold, and
+ // what leaving a page or some routes drops.
+ 
+-import { HAS_BINDINGS, HAS_LATE_MARKUP } from '../features.ts';
++import { HAS_BINDINGS, HAS_FIELDS, HAS_LATE_MARKUP, HAS_TRIES } from '../features.ts';
+ import {
+   CHILDREN,
+   ElementReference,
+@@ -100,13 +100,13 @@ function readRecord([script, code]: StateRecord): void {
+   }
+   const decoded = code(refs.get(root)!, stateValues);
+   // The `#catch` body of a `#try` around a `#loading` body that failed on the server.
+-  const catches = script.getAttribute('b-catch');
++  const catches = HAS_TRIES ? script.getAttribute('b-catch') : null;
+   if (catches !== null) {
+     replaceTry(catches);
+     return;
+   }
+   // The error of a `#loading` body that failed on the server, with no `#try` around it.
+-  const failed = script.getAttribute('b-fail');
++  const failed = HAS_LATE_MARKUP ? script.getAttribute('b-fail') : null;
+   if (failed !== null) {
+     failBoundary(decoded);
+     return;
+@@ -528,7 +528,9 @@ export function init(value: CoreOptions): void {
+   }
+   // The whole document, because `#head` content is in the head.
+   indexMarkers(document.documentElement);
+-  readFields();
++  if (HAS_FIELDS) {
++    readFields();
++  }
+   watchTitles(document);
+   if (DEV) {
+     devtools()?.attach?.({ scopes, set, handle });
+diff --git a/packages/brumate/src/runtime/features.ts b/packages/brumate/src/runtime/features.ts
+index 72419fa4..959c573a 100644
+--- a/packages/brumate/src/runtime/features.ts
++++ b/packages/brumate/src/runtime/features.ts
+@@ -12,6 +12,11 @@ declare const __BRUMATE_HAS_BLOCKS__: boolean | undefined;
+ declare const __BRUMATE_HAS_LISTENERS__: boolean | undefined;
+ declare const __BRUMATE_HAS_ACTIONS__: boolean | undefined;
+ declare const __BRUMATE_HAS_CLIENT_HTML__: boolean | undefined;
++declare const __BRUMATE_HAS_TRIES__: boolean | undefined;
++declare const __BRUMATE_HAS_FIELDS__: boolean | undefined;
++declare const __BRUMATE_HAS_WINDOWS__: boolean | undefined;
++declare const __BRUMATE_HAS_DYNAMIC__: boolean | undefined;
++declare const __BRUMATE_HAS_ROUTES__: boolean | undefined;
+ 
+ /** Children that the browser renders with an export of their own, each time they are inserted. */
+ export const HAS_CHILDREN: boolean =
+@@ -55,3 +60,23 @@ export const HAS_ACTIONS: boolean =
+  */
+ export const HAS_CLIENT_HTML: boolean =
+   typeof __BRUMATE_HAS_CLIENT_HTML__ === 'undefined' || __BRUMATE_HAS_CLIENT_HTML__;
++
++/** `#try` blocks, whose `#catch` the browser renders. */
++export const HAS_TRIES: boolean =
++  typeof __BRUMATE_HAS_TRIES__ === 'undefined' || __BRUMATE_HAS_TRIES__;
++
++/** Fields of an element `$bind`, which the core reads when the user typed before it loaded. */
++export const HAS_FIELDS: boolean =
++  typeof __BRUMATE_HAS_FIELDS__ === 'undefined' || __BRUMATE_HAS_FIELDS__;
++
++/** `#for` lists with `window`. */
++export const HAS_WINDOWS: boolean =
++  typeof __BRUMATE_HAS_WINDOWS__ === 'undefined' || __BRUMATE_HAS_WINDOWS__;
++
++/** Dynamic tags, which can name a component and pass it props. */
++export const HAS_DYNAMIC: boolean =
++  typeof __BRUMATE_HAS_DYNAMIC__ === 'undefined' || __BRUMATE_HAS_DYNAMIC__;
++
++/** `$route` and `$navigation`, which the runtime provides. */
++export const HAS_ROUTES: boolean =
++  typeof __BRUMATE_HAS_ROUTES__ === 'undefined' || __BRUMATE_HAS_ROUTES__;
+diff --git a/packages/brumate/src/vite.ts b/packages/brumate/src/vite.ts
+index 61a54d4f..860dfca3 100644
+--- a/packages/brumate/src/vite.ts
++++ b/packages/brumate/src/vite.ts
+@@ -715,6 +715,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
+         }
+       }
+       features.lateMarkup ||= options.navigate !== false || loading;
++      // Client navigation writes the route and its own state into the page.
++      features.routes ||= options.navigate !== false;
+       counted = seen;
+       knownFeatures = features;
+       return features;
+diff --git a/packages/brumate/test/feature-flags.test.ts b/packages/brumate/test/feature-flags.test.ts
+index 09f29c68..9b294619 100644
+--- a/packages/brumate/test/feature-flags.test.ts
++++ b/packages/brumate/test/feature-flags.test.ts
+@@ -1,3 +1,4 @@
++import { readFileSync } from 'node:fs';
+ import { expect, it } from 'vitest';
+ import { compile } from '../src/index.ts';
+ import { getFeatures, joinFeatures, noFeatures, writeFeatures } from '../src/features.ts';
+@@ -121,3 +122,60 @@ it('finds the titles, listeners and forms of a #client body, which has no markup
+ `);
+   expect(inClient).toMatchObject({ titles: true, listeners: true, actions: true, blocks: true });
+ });
++
++const fixture = (name: string) =>
++  getFeatures(
++    compile(readFileSync(new URL(`render/${name}.brm`, import.meta.url), 'utf8'), {
++      filename: `${name}.brm`,
++    }),
++  );
++
++it('counts the fields of a $bind that reaches an element through a spread', () => {
++  // The server writes `input=$bind#…` for the spread at run time, so it is not in the output.
++  const joined = joinFeatures([fixture('bindSpread'), fixture('BindField')]);
++  expect(joined.fields).toBe(true);
++  expect(
++    use(`<script>
++  import { $bind, $signal } from 'brumate/signals';
++  let name = $signal('');
++</script>
++<input value=$bind(name)>
++`).fields,
++  ).toBe(true);
++  expect(
++    use(`<script>
++  import { $signal } from 'brumate/signals';
++  let name = $signal('');
++</script>
++<input value=name onInput=((event) => (name = event.currentTarget.value))>
++`).fields,
++  ).toBe(false);
++});
++
++it('counts the route contexts, from $route and from brumate/context', () => {
++  expect(
++    use(`<script>
++  import { $route } from 'brumate/signals';
++  const route = $route('/issues/[id]');
++</script>
++<p>{route.params.id}</p>
++`).routes,
++  ).toBe(true);
++  expect(
++    use(`<script>
++  import { $getContext } from 'brumate/signals';
++  import { routeContext } from 'brumate/context';
++  const route = $getContext(routeContext);
++</script>
++<p>{route.url.pathname}</p>
++`).routes,
++  ).toBe(true);
++  expect(
++    use(`<script>
++  import { $signal } from 'brumate/signals';
++  let count = $signal(0);
++</script>
++<button onClick=(() => count++)>{count}</button>
++`).routes,
++  ).toBe(false);
++});
