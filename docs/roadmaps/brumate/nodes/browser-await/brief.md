@@ -1,7 +1,7 @@
 ---
 id: browser-await
 title: await $memo waits in a component that the browser renders
-status: todo
+status: active
 priority: must
 type: feature
 story: browser-async

@@ -1,7 +1,7 @@
 ---
 id: usage-pruning-flags
 title: Five feature flags drop the runtime paths a build never uses
-status: todo
+status: active
 priority: must
 type: feature
 story:
