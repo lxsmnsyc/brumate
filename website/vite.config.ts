@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +10,9 @@ import search from './plugins/search.ts';
 import showcase from './plugins/showcase.ts';
 
 const require = createRequire(import.meta.url);
+
+// `BASE` is the path the site is served from, such as `/brumate/`.
+const base = process.env.BASE ?? '/';
 
 /** A readable name for a built script, such as `Counter: handler h4`, from its source. */
 function label(source: string): string {
@@ -39,12 +44,22 @@ function label(source: string): string {
   return source.split('/').pop()!;
 }
 
-/** Names for the scripts of the build, so the network panels of the demos show them. */
+/**
+ * Names for the scripts of the build, so the network panels of the demos show them. The map is a
+ * file of its own, named by its content, and the head of each page only links it: the panels fetch
+ * it when one shows the list. Inlined, it was 10 kB of gzip on every page.
+ */
 function scriptNames(manifest: Record<string, { file: string }>): string {
-  const names = Object.fromEntries(
-    Object.entries(manifest).map(([source, chunk]) => [chunk.file.split('/').pop(), label(source)]),
-  );
-  return `<script>window.__scriptNames=${JSON.stringify(names).replace(/</g, '\\u003c')}</script>`;
+  const names: Record<string, string> = {};
+  for (const [source, chunk] of Object.entries(manifest)) {
+    names[chunk.file.split('/').pop()!] = label(source);
+  }
+  const json = JSON.stringify(names);
+  const file = `script-names-${createHash('sha256').update(json).digest('hex').slice(0, 8)}.json`;
+  // The prerender step reads the client build from here.
+  const client = fileURLToPath(new URL('dist/client', import.meta.url));
+  writeFileSync(path.join(client, file), json);
+  return `<link rel="script-names" href="${base}${file}">`;
 }
 
 /**
@@ -59,8 +74,7 @@ const siteUrl = (
 ).replace(/\/$/, '');
 
 export default defineConfig({
-  // `BASE` is the path the site is served from, such as `/brumate/`.
-  base: process.env.BASE ?? '/',
+  base,
   define: {
     'import.meta.env.SITE_URL': JSON.stringify(siteUrl),
   },
