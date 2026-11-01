@@ -6,8 +6,8 @@
 // The code is in `client/`, one module for each feature. A module imports only the modules that
 // come before it in this order, so there are no cycles: state, code, blocks, references, scopes,
 // titles, insert, children, errors, updates, guesses, props, handlers, context, templates,
-// branches, lists, inserts, components, page, resume. This module exports what compiled code and
-// the other modules of the package use.
+// branches, lists, inserts, components, page, waits, resume. This module exports what compiled
+// code and the other modules of the package use.
 import { setGlobal, updateRoute } from './client/context.ts';
 import { handle, submitAction } from './client/handlers.ts';
 import { dispose, init } from './client/resume.ts';
@@ -54,6 +54,7 @@ export {
   updateRoute,
 } from './client/context.ts';
 export { fail } from './client/errors.ts';
+export { wait } from './client/waits.ts';
 export { guess, track } from './client/guesses.ts';
 export { action, handle, handlerProp, rpc, spread, submitAction } from './client/handlers.ts';
 export { attr, attrs, content, portalTo, restRef, text, writeText } from './client/inserts.ts';

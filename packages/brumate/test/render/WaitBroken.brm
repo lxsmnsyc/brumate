@@ -1,0 +1,9 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  const { id } = $props<{ id: number }>();
+  const user = await $memo(loadUser(id));
+</script>
+
+<p class="broken">{(user as unknown as { missing: { name: string } }).missing.name}</p>

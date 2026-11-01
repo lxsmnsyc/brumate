@@ -191,10 +191,10 @@ export function setSlots(id: ScopeId, values: unknown[]): void {
       renderedLoads.add(key);
       loadingValues.add(value);
       // A memo that no markup reads, and no change has computed yet, takes its value from the render.
+      // The key stays, so the first refresh of the memo keeps that value and does not load again.
       Promise.resolve(value).then((result) => {
         const scope = scopes.get(id);
         if (scope?.s[slot] === value && !loads.has(key)) {
-          renderedLoads.delete(key);
           set(scope, slot, result);
         }
       }, noop);

@@ -153,6 +153,11 @@ export interface EmitterOptions {
    * functions of children render HTML without it.
    */
   hoist?: (code: string) => string;
+  /**
+   * For the render module: an `await $memo` of the instance script splits the render there, and
+   * the rest of it runs in `$$b.wait` when the memo settles.
+   */
+  waits?: boolean;
 }
 
 /**
@@ -276,6 +281,10 @@ export class Emitter {
   /** The kinds of the `{` that are open: of a function, a branch or loop, or a plain block. */
   private braces: { kind: 'fn' | 'control' | 'plain'; fn?: number }[] = [];
   private fnCount = 0;
+  /** The number of `$$b.wait` calls that the render opened, which its end closes. */
+  waits = 0;
+  /** Declarations that the rest of a render after `await` can assign: `let` before the split. */
+  private reassignable: Set<Declaration> = new Set();
   /**
    * The calls that fill the nested blocks of a clone, by the scope and the anchor of each block.
    * `$$m` in a call is the start comment of the block.
@@ -420,6 +429,16 @@ export class Emitter {
         this.braces.push({ kind: 'control' });
       }
     }
+  }
+
+  /** Opens the rest of a render after `await`, which stays in the function that holds it. */
+  private openRest(code: string): void {
+    this.flush();
+    const fn = this.currentFn;
+    this.push(`${'  '.repeat(this.depth)}${code}`);
+    this.depth++;
+    this.braces.push({ kind: 'fn', fn });
+    this.waits++;
   }
 
   close(code = '}'): void {
@@ -738,7 +757,21 @@ export class Emitter {
         run = [];
       }
     };
-    for (const statement of statements) {
+    // In the render module, the statements of the component before its last `await $memo`
+    // declare with `let`, so the rest of the render can assign what changed during a wait.
+    const splits = this.options.waits && scope === this.plan.graph.model.component;
+    let lastAwait = -1;
+    for (const [index, statement] of statements.entries()) {
+      if (splits && this.awaitedMemos(statement, scope)) {
+        lastAwait = index;
+      }
+    }
+    for (const [index, statement] of statements.entries()) {
+      const awaited = splits ? this.awaitedMemos(statement, scope) : undefined;
+      if (awaited) {
+        this.splitAtAwait(statement as oxc.VariableDeclaration, awaited, scope);
+        continue;
+      }
       const blocking = this.blockingDeclarations(statement);
       if (blocking?.awaited) {
         this.raw(this.patch.slice(statement.start, statement.end), statement.start);
@@ -793,9 +826,93 @@ export class Emitter {
           continue;
         }
       }
-      this.raw(this.patch.slice(statement.start, statement.end), statement.start);
+      let code = this.patch.slice(statement.start, statement.end);
+      if (index < lastAwait && statement.type === 'VariableDeclaration') {
+        if (statement.kind === 'const') {
+          code = `let${this.patch.slice(statement.start + 'const'.length, statement.end)}`;
+        }
+        for (const declaration of scope.declarations.values()) {
+          if (
+            declaration.range.start >= statement.start &&
+            declaration.range.end <= statement.end
+          ) {
+            this.reassignable.add(declaration);
+          }
+        }
+      }
+      this.raw(code, statement.start);
     }
     endRun();
+  }
+
+  /** The awaited memos that the declarators of a statement declare, by declarator. */
+  private awaitedMemos(statement: oxc.Node, scope: Scope): (Declaration | undefined)[] | undefined {
+    if (statement.type !== 'VariableDeclaration') {
+      return undefined;
+    }
+    const awaited: (Declaration | undefined)[] = [];
+    let any = false;
+    for (const declarator of statement.declarations) {
+      const declaration =
+        declarator.init?.type === 'AwaitExpression' && declarator.id.type === 'Identifier'
+          ? scope.declarations.get(declarator.id.name)
+          : undefined;
+      const found =
+        declaration && isMemo(declaration) && declaration.awaited ? declaration : undefined;
+      awaited.push(found);
+      any ||= found !== undefined;
+    }
+    return any ? awaited : undefined;
+  }
+
+  /**
+   * In the render module, a declaration of `await $memo(...)` ends the code that runs now: the
+   * rest of the render goes in `$$b.wait`, which gets the slots that the code so far set, with
+   * the load at the slot of the memo. The memo is a `let` before the call, so a function
+   * declared before the `await` reads it, and the rest assigns it and the slots that can change
+   * during the wait, such as props.
+   */
+  private splitAtAwait(
+    statement: oxc.VariableDeclaration,
+    awaited: (Declaration | undefined)[],
+    scope: Scope,
+  ): void {
+    const slots = this.plan.scopes.get(scope)?.slots ?? [];
+    for (const [index, declarator] of statement.declarations.entries()) {
+      const declaration = awaited[index];
+      if (!declaration) {
+        this.line(`${statement.kind} ${this.source(declarator)};`);
+        continue;
+      }
+      // A memo that no update reads has no slot, so it waits past the last one.
+      let at = slots.indexOf(declaration);
+      if (at === -1) {
+        at = slots.length;
+      }
+      // The slots that the code before the `await` declared. The others are holes until the
+      // rest sets them. The rest assigns those that the code declared with `let`.
+      const values: string[] = [];
+      const names: string[] = [];
+      for (const [slot, declared] of slots.entries()) {
+        const before = declared.range.start < declarator.start;
+        values[slot] = before ? declared.name : '';
+        names[slot] = before && this.reassignable.has(declared) ? declared.name : '';
+      }
+      values[at] = this.source(declarator.init!);
+      names[at] = declaration.name;
+      while (values.at(-1) === '') {
+        values.pop();
+      }
+      while (names.at(-1) === '') {
+        names.pop();
+      }
+      this.line(`let ${declaration.name};`);
+      this.openRest(
+        `return $$b.wait(${this.scopeVar(scope)}, [${values.join(', ')}], ${at}, ($$v) => {`,
+      );
+      this.line(`[${names.join(', ')}] = $$v;`);
+      this.reassignable.add(declaration);
+    }
   }
 
   private source(node: { start: number; end: number }): string {

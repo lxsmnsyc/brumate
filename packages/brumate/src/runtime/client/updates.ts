@@ -481,9 +481,13 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   if (guesses?.same(key)) {
     return;
   }
+  // The render computed the memo: a promise loads, and a value stays. A key with a value here
+  // comes from `wait`, or from a promise of the render that settled before this first compute.
   const rendered = scope.s[slot];
-  if (renderedLoads.delete(key) && isThenable(rendered)) {
-    asyncMemo(scope, slot, Promise.resolve(rendered));
+  if (renderedLoads.delete(key)) {
+    if (isThenable(rendered)) {
+      asyncMemo(scope, slot, Promise.resolve(rendered));
+    }
     return;
   }
   let value: unknown;

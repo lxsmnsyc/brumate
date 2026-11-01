@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import WaitUser from './WaitUser.brm';
+
+  let ids = $signal<number[]>([]);
+</script>
+
+<button class="add" onClick=(() => (ids = [...ids, ids.length + 3]))>Add</button>
+<ul>
+  #for (id of ids by id) {
+    <li><WaitUser {id} /></li>
+  }
+</ul>

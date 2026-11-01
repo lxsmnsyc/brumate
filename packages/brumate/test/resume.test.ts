@@ -17,6 +17,9 @@ import type { PageState } from '../src/runtime/server.ts';
 import type { SerialEntry } from '../src/runtime/values.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 import type * as ClientApi from '../src/runtime/client.ts';
+import type { Scope } from '../src/runtime/client/state.ts';
+import type { Boundary } from '../src/runtime/client/waits.ts';
+import type { UserLoad } from './render/waitData.ts';
 
 // The DOM environment replaces URL, so paths are plain strings.
 const input = resolve(import.meta.dirname, 'render');
@@ -7377,4 +7380,563 @@ describe('functions used in children that render later', () => {
       await waitFor(() => expect(text('.n')).toBe(String(selectors.length)));
     });
   }
+});
+
+describe('await $memo in a component that the browser renders', () => {
+  function userLoads(): UserLoad[] {
+    return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);
+  }
+
+  /** The IDs of the user loads so far. */
+  function loadedIds(): number[] {
+    const ids: number[] = [];
+    for (const load of userLoads()) {
+      ids.push(load.id);
+    }
+    return ids;
+  }
+
+  /** The loads that settled. */
+  const settled = new Set<UserLoad>();
+
+  /** Settles the first load of a user that has not settled yet. */
+  async function settleUser(id: number, error?: Error): Promise<void> {
+    let found: UserLoad | undefined;
+    for (const load of userLoads()) {
+      if (load.id === id && !settled.has(load)) {
+        found = load;
+        break;
+      }
+    }
+    settled.add(found!);
+    if (error) {
+      found!.fail(error);
+    } else {
+      found!.done({ name: `ada${id}` });
+    }
+    await new Promise((done) => setTimeout(done, 0));
+  }
+
+  function users(): string[] {
+    const shown: string[] = [];
+    for (const user of document.querySelectorAll('.user')) {
+      shown.push(user.textContent!);
+    }
+    return shown;
+  }
+
+  /** The page without its state records, to compare the markup before and after a wait. */
+  function markup(): string {
+    return document.body.innerHTML.replace(/<script[\s\S]*?<\/script>/g, '');
+  }
+
+  afterEach(() => {
+    userLoads().length = 0;
+    settled.clear();
+    clearRuns();
+  });
+
+  it('waits for the memo, runs the code before it once and loads once', async () => {
+    await resume('waitHost', {});
+    clearRuns();
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    // Fill in place: the rest of the block shows, and the old branch goes at once.
+    expect(document.querySelector('.sib')).not.toBeNull();
+    expect(document.querySelector('.old')).toBeNull();
+    expect(users()).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ADA1 0']));
+    expect(runsOf('before')).toEqual(['before 1']);
+    // The refresh after the insert takes the settled value, so the memo does not load again.
+    await new Promise((done) => setTimeout(done, 20));
+    expect(loadedIds()).toEqual([1]);
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(users()).toEqual(['ada1 ADA1 1']));
+    expect(loadedIds()).toEqual([1]);
+  });
+
+  it('renders with a prop that changed during the wait', async () => {
+    await resume('waitHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    // The first load is out of date, so the rest waits for the newer one.
+    await settleUser(1);
+    expect(users()).toEqual([]);
+    await settleUser(2);
+    await waitFor(() => expect(users()).toEqual(['ada2 ADA2 0']));
+    expect(loadedIds()).toEqual([1, 2]);
+    // An update after the wait reaches the memo.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2, 3]));
+    await settleUser(3);
+    await waitFor(() => expect(users()).toEqual(['ada3 ADA3 0']));
+  });
+
+  it('leaves no markup when the block switches back during the wait', async () => {
+    await resume('waitHost', {});
+    const before = markup();
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.old')).not.toBeNull());
+    expect(markup()).toBe(before);
+    await settleUser(1);
+    expect(markup()).toBe(before);
+    expect(users()).toEqual([]);
+    // Opened again, it renders one user.
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ADA1 0']));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(users()).toEqual(['ada1 ADA1 0']);
+  });
+
+  it('closes a block that the rest filled, with all its markup', async () => {
+    await resume('waitHost', {});
+    const before = markup();
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ADA1 0']));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.old')).not.toBeNull());
+    expect(markup()).toBe(before);
+  });
+
+  it('keeps the rows of a list in order while each waits', async () => {
+    await resume('waitRows', {});
+    click(document.querySelector('.add')!);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(loadedIds()).toEqual([3, 4]));
+    await settleUser(4);
+    await waitFor(() => expect(users()).toEqual(['ada4 ADA4 0']));
+    await settleUser(3);
+    await waitFor(() => expect(users()).toEqual(['ada3 ADA3 0', 'ada4 ADA4 0']));
+    click(document.querySelectorAll('.inc')[1]!);
+    await waitFor(() => expect(users()).toEqual(['ada3 ADA3 0', 'ada4 ADA4 1']));
+    expect(loadedIds()).toEqual([3, 4]);
+  });
+
+  it('reports a rejected load and a throw of the rest to fail', async () => {
+    const errors: unknown[] = [];
+    function onError(event: Event): void {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await resume('waitErrors', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    await settleUser(1, new Error('No user 1'));
+    await waitFor(() => expect(errors).toHaveLength(1));
+    expect(String(errors[0])).toBe('Error: No user 1');
+    await settleUser(2);
+    await waitFor(() => expect(errors).toHaveLength(2));
+    expect(errors[1]).toBeInstanceOf(TypeError);
+    expect(document.querySelector('.user')).toBeNull();
+    expect(document.querySelector('.broken')).toBeNull();
+  });
+
+  it('shows a newer load that settles while the first one hangs', async () => {
+    await resume('waitHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    await settleUser(2);
+    await waitFor(() => expect(users()).toEqual(['ada2 ADA2 0']));
+    // The first load settles late, and changes nothing.
+    await settleUser(1);
+    expect(users()).toEqual(['ada2 ADA2 0']);
+  });
+
+  it('handles the rejection of an async memo declared before the await', async () => {
+    const unhandled: unknown[] = [];
+    function onUnhandled(reason: unknown): void {
+      unhandled.push(reason);
+    }
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await resume('waitSideHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([101, 1]));
+    await settleUser(101, new Error('side failed'));
+    await new Promise((done) => setTimeout(done, 50));
+    expect(unhandled).toEqual([]);
+  });
+
+  it('opens, closes and opens again during the wait, and shows one user', async () => {
+    await resume('waitHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    click(document.querySelector('.toggle')!);
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 1]));
+    await settleUser(1);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ADA1 0']));
+    expect(document.querySelectorAll('.sib')).toHaveLength(1);
+  });
+
+  it('runs a function declared before the await that reads the awaited memo', async () => {
+    const errors: unknown[] = [];
+    function onError(event: Event): void {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await resume('waitLabelHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1!']));
+    expect(errors).toEqual([]);
+  });
+
+  it('keeps a promise prop a plain promise after the wait', async () => {
+    const reads = ((globalThis as { reads?: unknown[][] }).reads = []);
+    await resume('waitPromiseHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1']));
+    // The promise of the prop settles after 10 ms.
+    await new Promise((done) => setTimeout(done, 40));
+    click(document.querySelector('.then')!);
+    await waitFor(() => expect(reads).toEqual([['then', 'Ada']]));
+  });
+
+  it('assigns destructured names and closures across two awaits', async () => {
+    const errors: unknown[] = [];
+    function onError(event: Event): void {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('waitDestrHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    // The prop changes during the second wait, so both memos load again.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2, 2, 3]));
+    await settleUser(2);
+    await settleUser(2);
+    await settleUser(3);
+    await waitFor(() => expect(users()).toEqual(['ada2 ada3 AC2 0']));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(loadedIds()).toEqual([1, 2, 2, 3]);
+    expect(errors).toEqual([]);
+  });
+
+  it('loads an async memo before the await once when it settles first', async () => {
+    await resume('waitSideHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([101, 1]));
+    await settleUser(101);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ada101']));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(loadedIds()).toEqual([101, 1]);
+    expect(users()).toEqual(['ada1 ada101']);
+  });
+
+  // Contract tests of client-pending-boundary.
+  describe('a boundary', () => {
+    it('counts the waits of its body, holds its work, and runs done at 0', async () => {
+      await resume('waitHost', {});
+      // The modules that the loader of the page uses.
+      const { bound, give } = await import('../src/runtime/client/waits.ts');
+      const { createScope, afterInsert } = await import('../src/runtime/client/scopes.ts');
+      const { rendered } = await import('../src/runtime/client/blocks.ts');
+      const { insertHTML } = await import('../src/runtime/client/insert.ts');
+      const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+      const calls: string[] = [];
+      const [out, own] = bound(() => {
+        createScope(5);
+        afterInsert.push(() => calls.push('after'));
+        const body = document.createDocumentFragment();
+        body.append(WaitUser({ id: 7 }), WaitUser({ id: 8 }));
+        return body;
+      });
+      expect(own?.n).toBe(2);
+      // The work of the body waits with it.
+      expect(rendered).toEqual([]);
+      expect(afterInsert).toEqual([]);
+      expect(own!.w![0]).toHaveLength(1);
+      expect(own!.w![1]).toHaveLength(1);
+      let done = 0;
+      own!.done = () => {
+        done++;
+        give(own!);
+        insertHTML({ parent: document.body }, out);
+      };
+      // Another insert does not take the held work.
+      insertHTML({ parent: document.body }, '<p class="other"></p>');
+      expect(calls).toEqual([]);
+      await settleUser(7);
+      expect(own!.n).toBe(1);
+      expect(done).toBe(0);
+      expect(calls).toEqual([]);
+      await settleUser(8);
+      expect(done).toBe(1);
+      expect(calls).toEqual(['after']);
+      expect(users()).toEqual(['ada7 ADA7 0', 'ada8 ADA8 0']);
+      // The scopes of the rests went in with the body, so their handlers work.
+      click(document.querySelectorAll('.inc')[1]!);
+      await waitFor(() => expect(users()).toEqual(['ada7 ADA7 0', 'ada8 ADA8 1']));
+    });
+
+    /** Renders two waiting users in a boundary, and returns it with the body. */
+    async function boundUsers(): Promise<{
+      own: Boundary;
+      body: DocumentFragment;
+    }> {
+      const { bound } = await import('../src/runtime/client/waits.ts');
+      const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+      const body = document.createDocumentFragment();
+      const [, own] = bound(() => {
+        body.append(WaitUser({ id: 7 }), WaitUser({ id: 8 }));
+        return body;
+      });
+      return { own: own!, body };
+    }
+
+    it('counts down a wait whose scope goes while the body is held', async () => {
+      await resume('waitHost', {});
+      const { destroy } = await import('../src/runtime/client/scopes.ts');
+      const { scopes } = await import('../src/runtime/client/state.ts');
+      const { own, body } = await boundUsers();
+      let done = 0;
+      own.done = () => {
+        done++;
+      };
+      // The first wait's scope goes, as when an update closes the block around it.
+      let id = 0;
+      for (const node of body.childNodes) {
+        const match = node.nodeType === 8 ? /^l(-?\d+):w$/.exec((node as Comment).data) : null;
+        if (match) {
+          id = Number(match[1]);
+          break;
+        }
+      }
+      destroy(scopes.get(id)!);
+      expect(own.n).toBe(1);
+      await settleUser(7);
+      await settleUser(8);
+      expect(own.n).toBe(0);
+      expect(done).toBe(1);
+    });
+
+    it('runs the updates that a held body missed when it enters the page', async () => {
+      await resume('waitHeldHost', {});
+      const { bound, give } = await import('../src/runtime/client/waits.ts');
+      const { scopes } = await import('../src/runtime/client/state.ts');
+      const { set } = await import('../src/runtime/client/updates.ts');
+      const { insertHTML } = await import('../src/runtime/client/insert.ts');
+      const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+      const { default: WaitHeldInner } = await import(file('WaitHeldInner.brm.render.ts'));
+      const before = new Set(scopes.keys());
+      const body = document.createDocumentFragment();
+      const [, own] = bound(() => {
+        body.append(WaitUser({ id: 7 }), WaitHeldInner({}));
+        return body;
+      });
+      expect(own!.n).toBe(1);
+      own!.done = () => {
+        give(own!);
+        insertHTML({ parent: document.body }, body);
+      };
+      // The code of the components loads, so the write below updates at once, while the body is
+      // not in the page.
+      await new Promise((done) => setTimeout(done, 20));
+      // The `#if` of the inner component opens while the body is held.
+      let inner: Scope | undefined;
+      for (const [id, scope] of scopes) {
+        if (!before.has(id) && scope.s.length === 1 && scope.s[0] === false) {
+          inner = scope;
+        }
+      }
+      set(inner!, 0, true);
+      await settleUser(7);
+      await waitFor(() => expect(loadedIds()).toEqual([7, 9]));
+      await settleUser(9);
+      await waitFor(() => expect(users()).toEqual(['ada7 ADA7 0', 'ada9 ADA9 0']));
+    });
+
+    it('holds only the work that a nested body adds', async () => {
+      await resume('waitHost', {});
+      const { bound } = await import('../src/runtime/client/waits.ts');
+      const { createScope } = await import('../src/runtime/client/scopes.ts');
+      const { scopes } = await import('../src/runtime/client/state.ts');
+      const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+      let early = 0;
+      let inner: Boundary | undefined;
+      const [, outer] = bound(() => {
+        const body = document.createDocumentFragment();
+        early = createScope(5);
+        body.append(WaitUser({ id: 7 }));
+        const [nested, own] = bound(() => WaitUser({ id: 8 }));
+        inner = own;
+        body.append(nested);
+        return body;
+      });
+      expect(outer!.n).toBe(1);
+      expect(inner!.n).toBe(1);
+      expect(inner!.w![0]).not.toContain(scopes.get(early));
+      expect(outer!.w![0]).toContain(scopes.get(early));
+    });
+
+    it('counts each wait down once when it settles, fails and goes', async () => {
+      await resume('waitHost', {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { destroy } = await import('../src/runtime/client/scopes.ts');
+      const { scopes, waiters } = await import('../src/runtime/client/state.ts');
+      const { bound } = await import('../src/runtime/client/waits.ts');
+      const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+      const before = new Set(scopes.keys());
+      const checks = waiters.size;
+      const [, own] = bound(() => {
+        const body = document.createDocumentFragment();
+        body.append(WaitUser({ id: 7 }), WaitUser({ id: 8 }), WaitUser({ id: 6 }));
+        return body;
+      });
+      let done = 0;
+      own!.done = () => {
+        done++;
+      };
+      await settleUser(7);
+      await settleUser(8, new Error('No user 8'));
+      expect(own!.n).toBe(1);
+      for (const [id, scope] of scopes) {
+        if (!before.has(id)) {
+          destroy(scope);
+        }
+      }
+      expect(own!.n).toBe(0);
+      await settleUser(6);
+      expect(done).toBe(1);
+      expect(waiters.size).toBe(checks);
+    });
+
+    it('calls f for a wait that fails, or counts it down without f', async () => {
+      await resume('waitHost', {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const failed: unknown[] = [];
+      const first = await boundUsers();
+      first.own.f = (error) => failed.push(error);
+      await settleUser(7, new Error('No user 7'));
+      expect(String(failed[0])).toBe('Error: No user 7');
+      expect(first.own.n).toBe(2);
+      userLoads().length = 0;
+      // Without f, the failed wait counts down, so the body shows with an empty range.
+      const second = await boundUsers();
+      let done = 0;
+      second.own.done = () => {
+        done++;
+      };
+      await settleUser(7, new Error('No user 7'));
+      await settleUser(8);
+      expect(done).toBe(1);
+    });
+
+    /** Holds two components in a boundary that inserts its body into the page when it is done. */
+    async function heldBody(parts: () => Node[]): Promise<Boundary> {
+      const { bound, give } = await import('../src/runtime/client/waits.ts');
+      const { insertHTML } = await import('../src/runtime/client/insert.ts');
+      const body = document.createDocumentFragment();
+      const [, own] = bound(() => {
+        body.append(...parts());
+        return body;
+      });
+      own!.done = () => {
+        give(own!);
+        insertHTML({ parent: document.body }, body);
+      };
+      return own!;
+    }
+
+    it('loads an async memo of a held body once when it settles during the hold', async () => {
+      await resume('waitSideHeldHost', {});
+      const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+      const { default: WaitSide } = await import(file('WaitSide.brm.render.ts'));
+      await heldBody(() => [WaitUser({ id: 7 }), WaitSide({ id: 1 })]);
+      await new Promise((done) => setTimeout(done, 20));
+      await settleUser(101);
+      await settleUser(1);
+      await settleUser(7);
+      await waitFor(() => expect(users()).toEqual(['ada7 ADA7 0', 'ada1 ada101']));
+      await new Promise((done) => setTimeout(done, 20));
+      expect(loadedIds()).toEqual([7, 101, 1]);
+    });
+
+    for (const order of ['after', 'before'] as const) {
+      it(`gives a nested body's work to the held outer body, with a write ${order} it settles`, async () => {
+        await resume('waitHeldHost', {});
+        const { bound, give } = await import('../src/runtime/client/waits.ts');
+        const { insertHTML } = await import('../src/runtime/client/insert.ts');
+        const { scopes } = await import('../src/runtime/client/state.ts');
+        const { set } = await import('../src/runtime/client/updates.ts');
+        const { default: WaitUser } = await import(file('WaitUser.brm.render.ts'));
+        const { default: WaitHeldInner } = await import(file('WaitHeldInner.brm.render.ts'));
+        const before = new Set(scopes.keys());
+        const body = document.createDocumentFragment();
+        const end = document.createComment('end');
+        const innerBody = document.createDocumentFragment();
+        let inner: Boundary | undefined;
+        const [, outer] = bound(() => {
+          body.append(WaitUser({ id: 7 }), end);
+          [, inner] = bound(() => {
+            innerBody.append(WaitUser({ id: 8 }), WaitHeldInner({}));
+            return innerBody;
+          });
+          return body;
+        });
+        inner!.done = () => {
+          give(inner!);
+          insertHTML(end, innerBody);
+        };
+        outer!.done = () => {
+          give(outer!);
+          insertHTML({ parent: document.body }, body);
+        };
+        await new Promise((done) => setTimeout(done, 20));
+        let held: Scope | undefined;
+        for (const [id, scope] of scopes) {
+          if (!before.has(id) && scope.s.length === 1 && scope.s[0] === false) {
+            held = scope;
+          }
+        }
+        if (order === 'before') {
+          set(held!, 0, true);
+        }
+        await settleUser(8);
+        if (order === 'after') {
+          set(held!, 0, true);
+        }
+        await settleUser(7);
+        await waitFor(() => expect(loadedIds()).toEqual([7, 8, 9]));
+        await settleUser(9);
+        await waitFor(() => expect(users()).toEqual(['ada7 ADA7 0', 'ada8 ADA8 0', 'ada9 ADA9 0']));
+      });
+    }
+
+    it('returns no boundary for a body that does not wait', async () => {
+      await resume('waitHost', {});
+      const { bound } = await import('../src/runtime/client/waits.ts');
+      const [out, own] = bound(() => '<p>now</p>');
+      expect(out).toBe('<p>now</p>');
+      expect(own).toBeUndefined();
+    });
+  });
 });
