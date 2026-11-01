@@ -38,6 +38,11 @@ The client core is one prebuilt chunk that drops code by a few feature flags (`c
 - Largest files not run on todos (raw): boot.ts 2.0 kB, client/updates.ts 2.0 kB, client/scopes.ts 1.6 kB, shared.ts 1.4 kB, lists.ts, resume.ts and html.ts about 1.1 kB each.
 - Scripts used: coverage with playwright-core over benchmarks/harness/serve.mjs, attribution through the Vite and tsdown source maps. Rebuild them in the spike; they were kept in a session scratchpad only.
 - Marko 6 does this with compiled output that imports single runtime helpers.
+- Known candidates from the runtime audit of 2026-11-01 (measured on trimmed copies of the todos core):
+  - `refresh` runs on every insert (client/insert.ts, about 30-100, and `refreshNames`) but only server children and async memos of new scopes need it. A feature flag like `lateMarkup` saves 730 B min / 251 B gzip on todos.
+  - `list` carries the windowed list's `park` code (client/lists.ts `leave`, `parked`, `back`, `redraw`) on every page: 550 B min / 176 B gzip if absent; a split where `windowList` passes callbacks saves about 300-400 B min (guess).
+  - String branches not gated by `HAS_CLIENT_HTML` (lists.ts `added`, templates.ts `fillRange`, `bodyNodes`, `fillList`): 101 B min / 34 B gzip.
+  - templates.ts repeats `keepText`/`appendText` and `scopes.get` + `found.n ??= []` six times: 181 B min / 21 B gzip.
 
 ## Questions
 

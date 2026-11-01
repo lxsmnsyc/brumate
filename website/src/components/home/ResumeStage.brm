@@ -1,0 +1,360 @@
+<script>
+  import { $bind, $client, $props, $signal } from 'brumate/signals';
+
+  // The picture of the hero: a page streams in from the server, then only its two parts that
+  // respond to the user get code. Hydrate replays it the other way: every part renders again.
+  // `kb` is the measured gzip size of the client code of the shop demo, from `brumate inspect`.
+  const { kb } = $props<{ kb: string }>();
+
+  let mode = $signal<'resume' | 'hydrate'>('resume');
+  let root = $signal<HTMLElement>();
+  // The timers of the running play, so a new play stops the old one.
+  const timers: number[] = [];
+
+  /** Plays the picture for a mode. With reduced motion it shows the end at once. */
+  function play(next: 'resume' | 'hydrate') {
+    if (!root) {
+      return;
+    }
+    const page = root.querySelector<HTMLElement>('.page')!;
+    const fill = root.querySelector<HTMLElement>('.fill')!;
+    const reading = root.querySelector<HTMLElement>('.reading')!;
+    const legend = root.querySelector<HTMLElement>('.legend')!;
+    const islands = page.querySelectorAll<HTMLElement>('.island');
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    for (const timer of timers.splice(0)) {
+      clearTimeout(timer);
+    }
+    page.classList.remove('streamed', 'rerender');
+    for (const island of islands) {
+      island.classList.remove('live');
+    }
+    fill.style.transform = 'scaleX(0)';
+    fill.classList.toggle('hydrate', next === 'hydrate');
+    reading.textContent = '';
+    // Restart the stream animation.
+    void page.offsetWidth;
+    page.classList.add('streamed');
+    legend.textContent = 'HTML streams in from the server…';
+    const after = reduce ? 0 : 11 * 70 + 450;
+    function later(callback: () => void, delay: number) {
+      timers.push(window.setTimeout(callback, reduce ? 0 : delay));
+    }
+    if (next === 'resume') {
+      let index = 0;
+      for (const island of islands) {
+        later(() => {
+          packet(page, island, reduce);
+          later(() => island.classList.add('live'), 650);
+        }, after + index * 380);
+        index++;
+      }
+      later(() => {
+        fill.style.transform = 'scaleX(0.06)';
+        reading.textContent = `${kb} KB`;
+        legend.textContent =
+          'Resume: only the button and the search get code. The rest is done, as HTML.';
+      }, after + 600);
+    } else {
+      later(() => {
+        page.classList.add('rerender');
+        fill.style.transform = 'scaleX(1)';
+        reading.textContent = 'all of it';
+        legend.textContent =
+          'Hydrate: the browser downloads every component and renders the whole page again.';
+      }, after);
+    }
+  }
+
+  /** A dot that flies from the server, at the top right, into a part of the page. */
+  function packet(page: HTMLElement, target: HTMLElement, reduce: boolean) {
+    if (reduce) {
+      return;
+    }
+    const dot = document.createElement('span');
+    dot.className = 'packet';
+    page.append(dot);
+    const box = page.getBoundingClientRect();
+    const end = target.getBoundingClientRect();
+    const x = end.left - box.left + end.width / 2 - (box.width - 24);
+    const y = end.top - box.top + end.height / 2 + 6;
+    const flight = dot.animate(
+      [
+        { transform: 'translate(0, 0) scale(0.4)', opacity: 0 },
+        { opacity: 1, offset: 0.2 },
+        { transform: `translate(${x}px, ${y}px) scale(1)`, opacity: 1 },
+        { transform: `translate(${x}px, ${y}px) scale(2.4)`, opacity: 0 },
+      ],
+      { duration: 900, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' },
+    );
+    flight.onfinish = () => dot.remove();
+  }
+
+  function choose(next: 'resume' | 'hydrate') {
+    mode = next;
+    play(next);
+  }
+
+  $client(() => play('resume'));
+</script>
+
+<figure class="stage card" ref=$bind(root)>
+  <div class="bar">
+    <span>shop.brm · first load</span>
+    <div class="mode" data-mode=mode role="group" aria-label="How the page starts">
+      <span class="pill" aria-hidden="true"></span>
+      <button type="button" aria-pressed=(mode === 'resume') onClick=(() => choose('resume'))>Resume</button>
+      <button type="button" aria-pressed=(mode === 'hydrate') onClick=(() => choose('hydrate'))>Hydrate</button>
+    </div>
+  </div>
+  <div class="page" aria-hidden="true">
+    <div class="block nav-block" style="--i: 0"></div>
+    <div class="block title-block" style="--i: 1"></div>
+    <div class="row">
+      <div class="block image-block" style="--i: 2"></div>
+      <div class="side">
+        <div class="block line" style="--i: 3"></div>
+        <div class="block line" style="--i: 4; width: 80%"></div>
+        <div class="block line" style="--i: 5; width: 60%"></div>
+        <div class="block button-block island" style="--i: 6"></div>
+      </div>
+    </div>
+    <div class="block line" style="--i: 7"></div>
+    <div class="block line" style="--i: 8; width: 90%"></div>
+    <div class="block input-block island" style="--i: 9"></div>
+    <div class="block line" style="--i: 10; width: 70%"></div>
+  </div>
+  <div class="meter">
+    <span>JS</span>
+    <div class="track"><div class="fill"></div></div>
+    <span class="reading"></span>
+  </div>
+  <figcaption class="legend" aria-live="polite">
+    The server sends the page as HTML. Only the parts that respond to the user get code.
+  </figcaption>
+</figure>
+
+<style>
+  .stage {
+    position: relative;
+    margin: 0;
+    padding: 1rem;
+    box-shadow: var(--shadow);
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.8rem;
+    color: var(--muted);
+    font: var(--text-xs) var(--mono);
+  }
+
+  .mode {
+    position: relative;
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+  }
+
+  .mode button {
+    position: relative;
+    z-index: 1;
+    padding: 0.3rem 0.8rem;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: none;
+    color: var(--muted);
+    font: 500 var(--text-xs) var(--font);
+    cursor: pointer;
+    transition: color var(--duration);
+  }
+
+  .mode button[aria-pressed='true'] {
+    color: var(--text);
+  }
+
+  .pill {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+    border-radius: var(--radius-full);
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--duration-slow) var(--ease);
+  }
+
+  .mode[data-mode='hydrate'] .pill {
+    transform: translateX(100%);
+  }
+
+  .page {
+    position: relative;
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  .block {
+    position: relative;
+    border-radius: 6px;
+    background: var(--surface-strong);
+  }
+
+  /* Before the script runs, the page shows as it ends. The stream plays once it runs. */
+  .page:global(.streamed) .block {
+    animation: stream 420ms var(--ease) both;
+    animation-delay: calc(var(--i) * 70ms);
+  }
+
+  @keyframes stream {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
+  .row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .nav-block {
+    width: 40%;
+    height: 14px;
+  }
+
+  .title-block {
+    width: 70%;
+    height: 22px;
+  }
+
+  .line {
+    height: 8px;
+  }
+
+  .image-block {
+    flex: 1.2;
+    height: 86px;
+  }
+
+  .side {
+    display: grid;
+    flex: 1;
+    gap: 8px;
+    align-content: start;
+  }
+
+  .button-block {
+    width: 55%;
+    height: 26px;
+  }
+
+  .input-block {
+    height: 26px;
+  }
+
+  .island {
+    outline: 1.5px dashed transparent;
+    outline-offset: 3px;
+    transition:
+      outline-color var(--duration),
+      background var(--duration-slow);
+  }
+
+  .island:global(.live) {
+    background: var(--accent-tint);
+    outline-color: var(--accent);
+  }
+
+  .island:global(.live)::after {
+    content: 'ships code';
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    translate: 0 -50%;
+    color: var(--accent-strong);
+    font: 500 10px var(--mono);
+  }
+
+  .page :global(.packet) {
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-tint);
+    pointer-events: none;
+  }
+
+  .page:global(.rerender) .block {
+    animation: rerender 700ms var(--ease) both;
+    animation-delay: calc(var(--i) * 30ms);
+  }
+
+  @keyframes rerender {
+    30% {
+      background: var(--cool-tint);
+      outline: 1.5px solid var(--cool);
+      outline-offset: 2px;
+    }
+  }
+
+  .meter {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.8rem;
+    align-items: center;
+    margin-top: 0.9rem;
+    color: var(--muted);
+    font: var(--text-xs) var(--mono);
+  }
+
+  .track {
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition:
+      transform 900ms var(--ease),
+      background var(--duration);
+  }
+
+  .fill:global(.hydrate) {
+    background: var(--cool);
+  }
+
+  .reading {
+    min-width: 6ch;
+    color: var(--text);
+    font: 600 0.95rem var(--mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .legend {
+    min-height: 2.6em;
+    margin-top: 0.6rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+</style>

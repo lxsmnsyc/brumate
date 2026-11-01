@@ -1,7 +1,7 @@
 ---
 id: untrack-prop-value
 title: $untrack around a prop value keeps the function and the writes
-status: todo
+status: done
 priority: should
 type: fix
 outline: false

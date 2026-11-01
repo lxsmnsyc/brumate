@@ -1,5 +1,18 @@
 # brumate
 
+## 0.4.1
+
+### Patch Changes
+
+- fd9041e: A `b-` attribute value that one copy of brumate made is now kept by another copy. Before, the runtime checked it with `instanceof`, so with two installed copies (a component library with its own brumate, or a hot update that evaluates the runtime again) a `b-` attribute was dropped from a spread and the value was left out of the page state.
+- bf3ff87: An effect in a child that calls a writer of a context no longer runs again on its own write. The context stays live: markup, memos and other effects that call a reading function of it still update. Before, the effect ran without end and the tab hung.
+- bca63b3: The client build no longer ships Vite's preload helper and its tables of chunk files. A lazy chunk is still held back until its stylesheets have loaded, the scripts of a page come with the `Link` headers of the server, as before, and the imports of a lazy chunk that no header covers (such as the stream chunk of the first server function call) load along with it. The entry chunk of a large app (the website) is 13 kB smaller gzipped, the todos page 0.6 kB. The table of the bundles of the client also leaves out the components that are their own bundle.
+- 26a22e5: A prop write to a child whose code fails to load now reaches the nearest `#catch`. Before, the rejection was unhandled, no `#try` caught it and the `#catch` never rendered.
+- e62bfda: A memo, markup or effect in a child that reads a function prop now runs again when the state the function reads changes. The function stays fixed, as before, when it writes state or calls through a context value or a prop outside `$untrack`, and a prop named `onX` is always fixed. See [the debate](https://github.com/lxsmnsyc/brumate/blob/main/docs/debates/function-prop-derivations/debate.md).
+- 6f739a4: A `ref=$bind(x, fn)` that reaches an element through the rest props of a component now calls `fn` once on resume, for markup the server rendered.
+- af5c562: `<Child label=$untrack(fn) />` now ships `fn` to the browser and keeps the writes of handlers to the state it reads. Before, the page had no client code for `fn` and a handler such as `name = 'Grace'` compiled to a bare value, so the write was lost. The prop stays fixed, and the child gets the current value when it calls `fn`.
+- 3ce1113: A `$client(fn, 'visible')` that reads an element through a forwarded `ref` now waits for that element to come into view.
+
 ## 0.4.0
 
 ### Minor Changes

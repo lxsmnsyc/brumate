@@ -234,18 +234,18 @@ export async function run({ browser, url, runner }) {
     await page.close();
   }
 
-  // The shop list of the home page names chunks, so a rename would empty it.
+  // The network strip of the home page names chunks, so a rename would empty it.
   {
     const page = await browser.newPage();
     const errors = watch(page);
-    await step('/: the shop list shows the bundle of the shop', { page, errors }, async () => {
+    await step('/: the network strip shows the bundle of the page', { page, errors }, async () => {
       await page.goto(`${url}/`, { waitUntil: 'load' });
-      const rows = page.locator('[data-network] ol li:not(.empty)');
+      const rows = page.locator('.strip[data-network] ol li:not(.empty)');
       await rows.first().waitFor({ timeout: TIMEOUT });
       const names = await rows.locator('.file').allTextContents();
       assert(
         names.some((name) => name.startsWith('Index')),
-        `the shop list shows ${JSON.stringify(names)}, without the bundle of the page`,
+        `the strip shows ${JSON.stringify(names)}, without the bundle of the page`,
       );
     });
     await page.close();
@@ -343,12 +343,19 @@ export async function run({ browser, url, runner }) {
     const page = await browser.newPage();
     const errors = watch(page);
     const flow = runner.flow('website', { page, errors });
-    await flow('/: the home page loads and its shop demo adds to the cart', async () => {
+    await flow('/: the home page loads and its demos run', async () => {
       await page.goto(url, { waitUntil: 'load' });
-      const button = page.locator('.shop-add');
+      const button = page.locator('[data-demo="Cart"] button').first();
       await button.scrollIntoViewIfNeeded();
       await button.click();
-      await page.locator('.shop-cart b', { hasText: '1' }).waitFor({ timeout: 5000 });
+      await page
+        .locator('[data-demo="Cart"]', { hasText: '1 in the cart' })
+        .waitFor({ timeout: 5000 });
+      await page.locator('[data-demo="Stepper"] button[aria-label="More"]').click();
+      await page
+        .locator('[data-demo="Stepper"] output', { hasText: '4' })
+        .waitFor({ timeout: 5000 });
+      await page.locator('.strip .ran').waitFor({ timeout: 5000 });
     });
     await flow('/: a link to the docs navigates on the client', async () => {
       await page.evaluate(() => (window.__e2eSamePage = true));
@@ -362,18 +369,15 @@ export async function run({ browser, url, runner }) {
     });
     // The panel counts the scripts that the navigation loaded, however it started.
     const checkPanel = async () => {
-      const panel = page.locator('[data-network]');
+      // The strip of the home page. The footer counts too.
+      const panel = page.locator('.strip[data-network]');
       await panel.waitFor({ timeout: 5000 });
-      await page
-        .locator('[data-network] [data-total]', { hasText: /KB$/ })
-        .waitFor({ timeout: 5000 });
+      await panel.locator('[data-total]', { hasText: /KB$/ }).waitFor({ timeout: 5000 });
       const text = await panel.textContent();
-      // The home page loaded its code before the visit to /docs, so a return loads nothing new.
-      assert(
-        text.includes('Nothing new') && !text.includes('Index'),
-        `the panel lists the scripts of the first load: ${text}`,
-      );
-      assert(text.includes('0 KB'), `the panel does not read 0 KB: ${text}`);
+      // The home page loaded its code before the visit to /docs, so a return loads none of it
+      // again. The strip lists every script, so a script of the docs page that was still on its
+      // way, such as the runner of its live samples, may show; the bundle of the home page may not.
+      assert(!text.includes('Index'), `the strip lists the scripts of the first load: ${text}`);
     };
     const backToDocs = async () => {
       // The next flows start from /docs.
@@ -417,7 +421,14 @@ export async function run({ browser, url, runner }) {
       const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
       await page.emulateMedia({ colorScheme: 'light' });
       await page.locator('.theme-toggle').click();
-      assert((await theme()) === 'dark', `the toggle set the theme to ${await theme()}`);
+      // The theme changes inside a view transition, once the old page is captured.
+      await page
+        .waitForFunction(() => document.documentElement.dataset.theme === 'dark', null, {
+          timeout: 5000,
+        })
+        .catch(async () => {
+          throw new Error(`the toggle set the theme to ${await theme()}`);
+        });
       await page.locator('.sidebar a[href="/docs/routing"]').click();
       await page.waitForURL(`${url}/docs/routing`, { timeout: 5000 });
       await page.locator('article h1').waitFor({ timeout: 5000 });
@@ -503,67 +514,71 @@ export async function run({ browser, url, runner }) {
         );
         // The landing page has no sidebar, like the home page, and its parts work.
         assert(await page.locator('.sidebar').isHidden(), 'the landing page shows a sidebar');
-        const stage = page.locator('.stage-section');
-        await stage.locator('.ui-box', { hasText: 'Wi-Fi is off' }).click();
-        await stage.locator('.ui-box', { hasText: 'Wi-Fi is on' }).waitFor({ timeout: 5000 });
+        const compare = page.locator('.compare');
+        await compare.locator('.ui-box', { hasText: 'Wi-Fi is off' }).click();
+        await compare.locator('.ui-box', { hasText: 'Wi-Fi is on' }).waitFor({ timeout: 5000 });
         await page.addScriptTag({ path: axe });
         const violations = await page.evaluate(async () => {
           const result = await window.axe.run();
           return result.violations.map((violation) => violation.id);
         });
         assert(violations.length === 0, `axe found on /ui: ${violations.join(', ')}`);
-        // The grid of cards is on the landing page, and every card has the same size.
-        const sizes = await page.locator('.ui-card').evaluateAll((cards) => [
-          ...new Set(
-            cards.map((card) => {
-              const stage = card.querySelector('.ui-demo-stage').getBoundingClientRect();
-              const box = card.getBoundingClientRect();
-              return `${Math.round(box.width)}x${Math.round(box.height)} ${Math.round(stage.width)}x${Math.round(stage.height)}`;
-            }),
-          ),
-        ]);
-        assert(sizes.length === 1, `the cards have different sizes: ${sizes.join(', ')}`);
-        const cards = await page.locator('.ui-card').count();
-        assert(cards >= 10, `the gallery has ${cards} cards`);
+        // The grid of parts is on the landing page.
+        const cards = await page.locator('.kind .grid a').count();
+        assert(cards >= 10, `the grid has ${cards} parts`);
       },
     );
-    await flow('/ui: a card opens its page, and its preview takes no input', async () => {
-      const card = page.locator('.ui-card', { hasText: 'Switch' });
-      assert(
-        await card.locator('.ui-demo-stage').evaluate((stage) => stage.inert),
-        'the preview is not inert',
+    await flow('/ui: a part of the grid opens its page', async () => {
+      // The view transition of the navigation takes the clicks until it ends. Finished animations
+      // that keep their end state stay in the list, so the step waits for none to be running.
+      await page.waitForFunction(
+        () => document.getAnimations().every((animation) => animation.playState !== 'running'),
+        null,
+        { timeout: 5000 },
       );
-      // The link covers the card, so a click on the preview opens the page. The site scrolls
-      // smoothly, so the step scrolls at once and reads the place of the preview after it.
-      const stage = card.locator('.ui-demo-stage');
-      // The view transition of the navigation takes the clicks until it ends.
-      await page.waitForFunction(() => document.getAnimations().length === 0, null, {
-        timeout: 5000,
+      const card = page.locator('.kind .grid a', {
+        has: page.locator('.name', { hasText: /^Switch$/ }),
       });
-      await stage.evaluate((element) =>
+      await card.evaluate((element) =>
         element.scrollIntoView({ block: 'center', behavior: 'instant' }),
       );
-      const box = await stage.boundingBox();
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      await card.click();
       // Client navigation fires no load event, so the step waits for the address.
       await page.waitForFunction(() => location.pathname === '/ui/switch', null, { timeout: 5000 });
-      await page.waitForFunction(() => document.getAnimations().length === 0, null, {
-        timeout: 5000,
-      });
+      await page.waitForFunction(
+        () => document.getAnimations().every((animation) => animation.playState !== 'running'),
+        null,
+        { timeout: 5000 },
+      );
       await page.locator('.ui-demo .ui-box', { hasText: 'Wi-Fi is on' }).click();
       await page
         .locator('.ui-demo .ui-box', { hasText: 'Wi-Fi is off' })
         .waitFor({ timeout: 5000 });
     });
-    await flow('/ui: the search finds only the pages of the section', async () => {
-      await page.locator('.search input').fill('toolbar');
-      await page.locator('.search-results a').first().waitFor({ timeout: 5000 });
-      const links = await page
-        .locator('.search-results a')
-        .evaluateAll((items) => items.map((item) => item.getAttribute('href')));
+    await flow('/ui: the command bar lists the parts of the section first', async () => {
+      await page.locator('.search-trigger').click();
+      await page.locator('.command-input').fill('toolbar');
+      const group = page.locator('.command-group').first();
+      await group.locator('.command-item').first().waitFor({ timeout: 5000 });
+      const title = (await group.locator('.command-group-title').textContent()).trim();
+      assert(title === '@brumate/ui', `the first group is ${title}`);
+      const keys = await group
+        .locator('.command-item')
+        // The key of an item is written as JSON.
+        .evaluateAll((items) => items.map((item) => JSON.parse(item.dataset.key)));
       assert(
-        links.length > 0 && links.every((href) => href.startsWith('/ui')),
-        `the results link to ${links.join(', ')}`,
+        keys.length > 0 && keys.every((key) => key.startsWith('/ui')),
+        `the first group links to ${keys.join(', ')}`,
+      );
+      // Enter opens the active result on the client.
+      await page.evaluate(() => (window.__e2eSamePage = true));
+      await page.keyboard.press('Enter');
+      await page.waitForFunction((first) => location.pathname + location.hash === first, keys[0], {
+        timeout: 5000,
+      });
+      assert(
+        await page.evaluate(() => window.__e2eSamePage === true),
+        'the result loaded a new page',
       );
     });
     await flow(

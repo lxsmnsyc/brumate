@@ -48,6 +48,7 @@ Finish step 3: every body that the browser renders is a cloned template, so the 
 ## Context
 
 - Clones are in (#149-#166). `markerObserver` still runs when `HAS_LATE_MARKUP`, in client.ts and boot.ts. Streaming and `#defer` rely on the markers.
+- Size, audit of 2026-11-01: this node removes almost nothing from todos. Feature flags already prune the string path and the MutationObserver there (`CLIENT_HTML` adds 535 B min / 181 B gzip, `LATE_MARKUP` about 190 B min). Pages that use the HTML path gain about 0.5-0.8 kB min (0.2-0.3 kB gzip). `parseHTML` and `insertHTML` stay for `raw()` values, arrays and spreads; `indexMarkers` and `findComment` stay for server markup. The value is a simpler runtime, not a smaller todos.
 - Source: [A smaller and faster client, step 3](../../../../proposals.md#steps)
 
 ## Acceptance

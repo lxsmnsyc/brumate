@@ -1,7 +1,7 @@
 ---
 id: visible-forwarded-ref
 title: A visible $client waits for a forwarded element
-status: active
+status: done
 priority: should
 type: fix
 outline: false

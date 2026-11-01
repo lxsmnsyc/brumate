@@ -1,5 +1,5 @@
 <script>
-  import { $effect, $props, $route, $signal } from 'brumate/signals';
+  import { $client, $effect, $props, $route, $signal } from 'brumate/signals';
 
   // The sidebar of a section of the docs, the docs of brumate or the parts of @brumate/ui. It is
   // in a layout, so it stays when a link loads another page, with its scroll position.
@@ -17,6 +17,8 @@
     return `${base}${section}${target ? `/${target}` : ''}`;
   }
   let menu = $signal<HTMLDetailsElement>();
+  let sidebar = $signal<HTMLElement>();
+  let marker = $signal<HTMLElement>();
 
   /** The page of the section at a path, such as `routing` for `/docs/routing`. */
   function getSlug(pathname: string): string {
@@ -25,12 +27,36 @@
       .replace(/^\/|\/$/g, '');
   }
 
+  // The bar beside the active page: one element that slides to the active link, so a change of
+  // page moves it with transform. The first placement has no transition.
+  function placeMarker() {
+    requestAnimationFrame(() => {
+      if (!sidebar || !marker) {
+        return;
+      }
+      const active = sidebar.querySelector<HTMLElement>('a.active');
+      if (!active || active.offsetHeight === 0) {
+        marker.style.opacity = '0';
+        return;
+      }
+      marker.style.height = `${active.offsetHeight}px`;
+      marker.style.transform = `translateY(${active.offsetTop}px)`;
+      marker.style.opacity = '1';
+      requestAnimationFrame(() => marker!.classList.add('ready'));
+    });
+  }
+
+  $client(() => {
+    placeMarker();
+  });
+
   // On a narrow screen the menu closes when a link loads another page.
   $effect(() => {
     void route.url.pathname;
     if (menu) {
       menu.open = false;
     }
+    placeMarker();
   });
 </script>
 
@@ -39,7 +65,8 @@
   <details class="sidebar-toggle" hidden=bare ref=$bind(menu)>
     <summary>Menu</summary>
   </details>
-  <nav class="sidebar" hidden=bare aria-label=label>
+  <nav class="sidebar" hidden=bare aria-label=label ref=$bind(sidebar)>
+    <span class="sidebar-marker" aria-hidden="true" ref=$bind(marker)></span>
     #for (section of sections by section.title) {
       <p class="sidebar-title">{section.title}</p>
       #for (item of section.pages by item.slug) {
@@ -64,7 +91,7 @@
     justify-content: center;
     max-width: 82rem;
     margin: 0 auto;
-    padding: 0 1rem;
+    padding: 0 1.5rem;
   }
 
   .docs.bare {
@@ -86,76 +113,143 @@
     top: var(--header-height);
     align-self: start;
     max-height: calc(100vh - var(--header-height));
-    padding: 1.5rem 0;
+    padding: 1.75rem 0.5rem 2rem 0;
     overflow-y: auto;
   }
 
   .sidebar-title {
-    margin: 1rem 0 0.3rem;
+    margin: 1.5rem 0 0.35rem;
     padding: 0 0.75rem;
     color: var(--muted);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.07em;
+    font: 500 var(--text-xs) var(--mono);
+    letter-spacing: 0.05em;
     text-transform: uppercase;
   }
 
-  .sidebar-title:first-child {
+  .sidebar-title:first-of-type {
     margin-top: 0;
   }
 
   .sidebar a {
     display: block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 6px;
+    padding: 0.3rem 0.75rem;
+    border-radius: var(--radius-sm);
     color: var(--muted);
-    font-size: 0.925rem;
+    font-size: var(--text-sm);
     text-decoration: none;
+    transition:
+      background-color var(--duration-fast) var(--ease),
+      color var(--duration-fast) var(--ease);
   }
 
   .sidebar a:hover {
+    background: var(--surface);
     color: var(--text);
   }
 
   .sidebar a.active {
-    background: var(--accent-soft);
+    background: var(--accent-tint);
     color: var(--accent-strong);
     font-weight: 600;
   }
 
-  @media (max-width: 1100px) {
-    .docs {
-        grid-template-columns: 14rem minmax(0, 1fr);
-      }
+  .sidebar-marker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    border-radius: var(--radius-full);
+    background: var(--accent);
+    opacity: 0;
+    pointer-events: none;
   }
 
+  .sidebar-marker:global(.ready) {
+    transition:
+      transform var(--duration-slow) var(--ease),
+      opacity var(--duration) var(--ease);
+  }
+
+  @media (max-width: 1100px) {
+    .docs {
+      grid-template-columns: 14rem minmax(0, 1fr);
+    }
+  }
+
+  /* A disclosure under the header: it opens a panel in the flow, and does not touch the header. */
   @media (max-width: 800px) {
     .docs {
-        display: block;
-      }
+      display: block;
+      padding: 0 1rem;
+    }
 
     .sidebar-toggle {
-        display: block;
-        margin: 1rem 0 0;
-      }
+      display: block;
+      margin: 1rem 0 0;
+    }
 
     .sidebar-toggle summary {
-        padding: 0.5rem 0.75rem;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 600;
-      }
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.55rem 0.85rem;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      background: var(--bg-elevated);
+      cursor: pointer;
+      font: 500 var(--text-xs) var(--mono);
+      letter-spacing: 0.05em;
+      list-style: none;
+      text-transform: uppercase;
+    }
+
+    .sidebar-toggle summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .sidebar-toggle summary:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .sidebar-toggle summary::after {
+      content: '+';
+      display: inline-block;
+      color: var(--muted);
+      font-size: var(--text-base);
+      transition: transform var(--duration) var(--ease);
+    }
+
+    .sidebar-toggle[open] summary::after {
+      transform: rotate(45deg);
+    }
 
     .sidebar {
-        display: none;
-        position: static;
-        max-height: none;
-        padding: 0.5rem 0;
-      }
+      display: none;
+      position: static;
+      max-height: 60vh;
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-elevated);
+      box-shadow: var(--shadow);
+    }
 
     .sidebar-toggle[open] + .sidebar {
-        display: block;
-      }
+      display: block;
+      animation: drawer-in var(--duration-slow) var(--ease);
+    }
+
+    .sidebar-marker {
+      display: none;
+    }
+  }
+
+  @keyframes drawer-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
   }
 </style>

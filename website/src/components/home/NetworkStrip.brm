@@ -1,0 +1,180 @@
+<script>
+  import { $client, $signal } from 'brumate/signals';
+
+  // The scripts that this page loaded, as chips in a strip at the bottom of the home page. The
+  // script NETWORK_SCRIPT fills the list and the total. A press in a demo (an element with
+  // `data-demo`) shows a tag that its handler ran, with the number of requests it started, and lights the chip of its code if it has one.
+  let ran = $signal('');
+  let runs = $signal(0);
+
+  $client(() => {
+    document.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement | null;
+      const demo = target?.closest<HTMLElement>('[data-demo]');
+      if (!demo || !target?.closest('button')) {
+        return;
+      }
+      const name = demo.dataset.demo!;
+      // Count the requests that the press started, so the tag says what happened.
+      const before = performance.getEntriesByType('resource').length;
+      setTimeout(() => {
+        const requests = performance.getEntriesByType('resource').length - before;
+        ran = `${name}: a handler ran, ${requests === 0 ? 'with no request' : `with ${requests} ${requests === 1 ? 'request' : 'requests'}`}`;
+        runs++;
+      }, 300);
+      for (const file of document.querySelectorAll<HTMLElement>('.strip .file')) {
+        const chip = file.closest('li');
+        if (chip && file.textContent?.startsWith(name)) {
+          chip.classList.remove('lit');
+          void chip.offsetWidth;
+          chip.classList.add('lit');
+        }
+      }
+    });
+  }, 'idle');
+</script>
+
+<aside class="strip" data-network aria-label="Scripts this page loaded">
+  <span class="label"><span class="dot"></span>Loaded on this page</span>
+  #if (ran) {
+    #for (run of [runs] by run) {
+      <span class="ran" role="status">{ran}</span>
+    }
+  }
+  <ol>
+    <li class="empty">Nothing yet</li>
+  </ol>
+  <span class="total">total <b data-total>0 KB</b></span>
+</aside>
+
+<style>
+  .strip {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-strip);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    height: 3rem;
+    padding: 0 1rem;
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+    backdrop-filter: blur(14px);
+    color: var(--muted);
+    font: var(--text-xs) var(--mono);
+  }
+
+  .label {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 20%, transparent);
+  }
+
+  ol {
+    display: flex;
+    flex: 1;
+    gap: 0.4rem;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .strip :global(li) {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--bg);
+    white-space: nowrap;
+    animation: chip-in var(--duration-slow) var(--ease) both;
+  }
+
+  .strip :global(li .file) {
+    color: var(--text);
+  }
+
+  .strip :global(li.empty) {
+    border-color: transparent;
+    background: none;
+    animation: none;
+  }
+
+  .total {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .total b {
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @keyframes chip-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .label {
+      display: none;
+    }
+  }
+
+  .ran {
+    flex: none;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-full);
+    background: var(--text);
+    color: var(--bg);
+    white-space: nowrap;
+    animation: ran 1.8s var(--ease) forwards;
+  }
+
+  @keyframes ran {
+    0% {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    12%,
+    80% {
+      opacity: 1;
+      transform: none;
+    }
+    100% {
+      opacity: 0.55;
+    }
+  }
+
+  .strip :global(li.lit) {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-tint);
+  }
+
+  @media (max-width: 40rem) {
+    .ran {
+      display: none;
+    }
+  }
+</style>

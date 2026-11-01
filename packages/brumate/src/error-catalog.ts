@@ -1204,7 +1204,15 @@ export function renderErrorsPage(): string {
   ];
   for (const error of ERRORS) {
     lines.push('', `## ${error.code}`, '', `\`${error.message}\``, '', error.cause);
-    lines.push('', '```brm', error.fix, '```');
+    lines.push('', `\`\`\`${fenceLanguage(error.fix)}`, error.fix, '```');
   }
   return `${lines.join('\n')}\n`;
+}
+
+/**
+ * The language of the code block of a fix on the site: `brm` when it has markup, and `ts` when it
+ * is only script code, which the `.brm` highlighter would color as text.
+ */
+function fenceLanguage(fix: string): 'brm' | 'ts' {
+  return /^\s*(?:<[A-Za-z/!]|#[a-z]+\b|\{)/m.test(fix) ? 'brm' : 'ts';
 }

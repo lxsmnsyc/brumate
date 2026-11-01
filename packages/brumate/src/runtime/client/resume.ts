@@ -55,7 +55,7 @@ import {
 } from './state.ts';
 import type { CoreOptions, Scope } from './state.ts';
 import { watchTitles } from './titles.ts';
-import { pendingEffects, resetWrites, send, set, writes } from './updates.ts';
+import { give, pendingEffects, resetWrites, send, set, writes } from './updates.ts';
 
 /**
  * A state record: its script, and its code, which seroval wrote. The code
@@ -268,6 +268,15 @@ function addScopes(state: PageState, root: string): Scope[] {
           value instanceof ElementReference ? findElement(value.scope, value.anchor) : null;
         if (element && !isSlotReference(bound)) {
           send(bound, element);
+        }
+      }
+    }
+    // A setter ref in the rest props of a component, by the anchor of the element that spreads them.
+    for (const scope of added) {
+      for (const [anchor, bound] of Object.entries(state[scope.id]!.r ?? {})) {
+        const element = findElement(scope.id, +anchor);
+        if (element) {
+          give(bound, element);
         }
       }
     }

@@ -1,0 +1,26 @@
+<script>
+  import { $bind, $client, $signal } from 'brumate/signals';
+  import RefButton from './RefButton.brm';
+  import RefRelay from './RefRelay.brm';
+
+  let button = $signal<HTMLElement>();
+  let relayed = $signal<HTMLElement>();
+  let seen = $signal('Waiting');
+  let passed = $signal('Waiting');
+
+  // Waits for the button that the component forwards, not the heading at the top.
+  $client(() => {
+    seen = button!.tagName;
+  }, 'visible');
+
+  // The same through a component that passes the binding on.
+  $client(() => {
+    passed = relayed!.textContent!;
+  }, 'visible');
+</script>
+
+<h1 class="top">Report</h1>
+<p class="seen">{seen}</p>
+<p class="passed">{passed}</p>
+<RefButton ref=$bind(button) label="Forwarded" />
+<RefRelay ref=$bind(relayed) />

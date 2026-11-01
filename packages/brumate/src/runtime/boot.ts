@@ -425,17 +425,17 @@ export function boot(
         devtools()?.defer?.(template, done);
       }
     };
-    // The element that a `$client` callback reads through `ref`, or the one after the marker.
+    // The element that a `$client` callback reads through `ref` (`b-b`), or that a component
+    // forwards to its signal (`b-r`), or the one after the marker.
     // Other markers can follow it, and a template has no box, so it is never in view.
     const near = template.getAttribute('b-near');
     let after = template.nextElementSibling;
     while (after?.tagName === 'TEMPLATE') {
       after = after.nextElementSibling;
     }
+    const selector = `[b-b="${near}"],[b-r="${near}"]`;
     const next =
-      (near &&
-        (root.querySelector(`[b-b="${near}"]`) ?? document.querySelector(`[b-b="${near}"]`))) ||
-      after;
+      (near && (root.querySelector(selector) ?? document.querySelector(selector))) || after;
     if (trigger === 'idle') {
       idle(go);
     } else if (trigger === 'visible' && next && typeof IntersectionObserver !== 'undefined') {

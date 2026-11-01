@@ -1,7 +1,7 @@
 ---
 id: release-0.4.1
 title: Release brumate 0.4.1
-status: todo
+status: active
 priority: should
 type: release
 outline: false
@@ -44,6 +44,12 @@ depends_on:
   - on: runtime-brand-checks
     kind: hard
     why: two copies of the runtime must not drop attributes; done with no change if it can't be reproduced
+  - on: prop-write-load-error
+    kind: hard
+    why: a prop write to a child whose code fails to load must reach the nearest #catch
+  - on: drop-preload-helper
+    kind: hard
+    why: the loader drops Vite's preload helper, about 0.68 kB gzip on todos (the maintainer, 2026-11-01)
 ---
 
 # Release brumate 0.4.1
@@ -57,7 +63,7 @@ Publish brumate 0.4.1 with the patch fixes of the 0.4.1 milestone, and the other
 - The maintainer chose the patch cut on 2026-10-31. The nodes fix 0.4.0 behavior and add no API, so every changeset is a patch. A minor or major changeset in the version pull request means a node of 0.5.0 landed on `main` by mistake: move it to `next` before the release.
 - Releases run through changesets: a push to `main` opens or updates the "Version Packages" pull request, and merging it publishes. This node checks that pull request and hands it to the maintainer. The orchestrator never merges it (`gate: true`).
 - Before handing it over: `pnpm build && pnpm test && node e2e/run.mjs` pass on `main`, `pnpm bench` todos size is recorded against release-0.4 (15.2 kB gzip JS before `load`), and `pnpm pack --dry-run` shows no test fixtures.
-- After the release, `next` is synced with `main` (GOAL.md, branches).
+- After the release, `next` is synced with `main` (GOAL.md, branches). That merge conflicts in packages/brumate/src/runtime/client/updates.ts (`trigger`, `queueWrite`, `pass`) between #402 (context writer loop) and #407 (prune-lazy-parts) if #407 lands first. After it, restore the two tests that #407 deleted because they need #408's props.ts fix: `a rejected load reaches the #try and the effects run` and `a rejected load of a write that joins a pass reaches onError` (from #407's history).
 
 ## Acceptance
 

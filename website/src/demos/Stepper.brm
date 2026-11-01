@@ -1,0 +1,43 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  // The server renders 3. The browser starts from it and runs only the two handlers.
+  let count = $signal(3);
+</script>
+
+<div class="stepper">
+  <button type="button" aria-label="Less" onClick=(() => count--)>−</button>
+  <output aria-live="polite">{count}</output>
+  <button type="button" aria-label="More" onClick=(() => count++)>+</button>
+</div>
+
+<style>
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  button {
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--bg);
+    color: var(--text);
+    font: 600 1.25rem var(--font);
+    cursor: pointer;
+    transition: transform var(--duration-fast) var(--ease);
+  }
+
+  button:active {
+    transform: scale(0.92);
+  }
+
+  output {
+    min-width: 3ch;
+    font: 600 2.4rem var(--mono);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+</style>
