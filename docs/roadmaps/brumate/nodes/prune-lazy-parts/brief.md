@@ -1,7 +1,7 @@
 ---
 id: prune-lazy-parts
 title: Remove the code-part loading left from lazy loading
-status: active
+status: done
 priority: should
 type: refactor
 outline: false

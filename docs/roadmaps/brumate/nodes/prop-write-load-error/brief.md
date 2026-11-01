@@ -1,7 +1,7 @@
 ---
 id: prop-write-load-error
 title: A prop write to a child whose code fails to load reaches the nearest #catch
-status: active
+status: done
 priority: should
 type: fix
 outline: false
