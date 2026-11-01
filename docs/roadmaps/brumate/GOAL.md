@@ -1,5 +1,5 @@
 ---
-milestones: ["0.4.0", "0.4.1", "0.5.0", "0.6.0", backlog]
+milestones: ["0.4.0", "0.4.1", "0.4.2", "0.5.0", "0.6.0", backlog]
 # S, docs and chore nodes self-review; the rest, and gates, contracts, releases and hotfixes, get a fresh
 # reviewer (the maintainer, 2026-10-30; this is what ran since 2026-10-27, when an inline comment hid `fresh`).
 review: auto
@@ -36,6 +36,7 @@ The core is correct and safe to change, agents write good .brm files with a skil
 ## Acceptance
 
 - 0.4.1: brumate 0.4.1 is published with the patch fixes, after the same checks as 0.4.0.
+- 0.4.2: brumate 0.4.2 is published with the hotfixes of bugs found on `main`, after the same checks.
 - 0.4.0: brumate 0.4.0 and @brumate/ui 0.1.0 are published, after `pnpm build && pnpm test && node e2e/run.mjs` passes and `pnpm --filter website check:samples && pnpm --filter website build` passes with every page of /ui complete.
 - `npx brumate skill` installs the skill, and its code blocks compile in a test (done in 0.4.0).
 - 0.5.0: brumate 0.5.0 is published from a `next` -> `main` promotion, after the checks of 0.4.0, with todos gzip JS before `load` (`pnpm bench`) below the 0.4.1 figure, and `await`, `#loading` and promises waiting in markup that the browser renders.
@@ -54,6 +55,7 @@ Milestones are releases (the maintainer, 2026-10-29).
 
 - 0.4.0: brumate 0.4.0 and @brumate/ui 0.1.0. The cut is the `depends_on` list of release-0.4. changeset-review waits for every open node of the cut, and release-0.4 waits for changeset-review. Every node done before 2026-10-29 ships here.
 - 0.4.1: patch fixes of 0.4.0 behavior that add no API (the maintainer, 2026-10-31). The nodes keep `target: main` in their briefs, since the policy sends minor work to `next`, and release-0.4.1 waits for them and for next-branch. Run next-branch before any 0.5.0 node, so minor work never lands on `main`.
+- 0.4.2: hotfixes of bugs found on `main` during 0.5.0 work (2026-11-02). Each branches from `main`; release-0.4.2 waits for them and syncs `next`.
 - 0.5.0 (laid down 2026-11-01): the must nodes above, and the should nodes: the type audit, the agent tools, `$searchParam`, `<style global>`, the docs and ui page work. release-0.5 waits only for the must nodes. Should nodes merged into `next` by then ship; the ones still open move to 0.6.0 when release-0.5 starts. The could nodes moved to 0.6.0 on 2026-11-01.
   - browser-async is a story on `feat/browser-async`: browser-await-spike first (gate: the maintainer picks the approach), then browser-loading-fallback, promise-in-markup and loading-on, refined from the spike's outcome. One PR to `next`.
   - A promotion carries all of `next`. A 0.6.0 node that merges into `next` before release-0.5 ships in 0.5.0, and its milestone moves to 0.5.0.
