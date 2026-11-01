@@ -568,7 +568,13 @@ function trigger(scope: Scope, slot: number): void {
       flushEffects();
     });
   loadingUpdates.add(loading);
-  void loading.finally(() => loadingUpdates.delete(loading));
+  void loading.finally(() => {
+    loadingUpdates.delete(loading);
+    // The effects that the pass of another handler held back, until the writes landed.
+    if (loadingUpdates.size === 0 && running === 0) {
+      flushEffects();
+    }
+  });
 }
 
 /** The writes of the pass that runs that wait for code, to run as one pass of their own. */
@@ -663,7 +669,8 @@ export function pass<T>(write: () => T): T {
     }
   }
   if (running === 0) {
-    if (!held) {
+    // Effects wait for the writes that wait for code, so they never see the page half updated.
+    if (!held && loadingUpdates.size === 0) {
       flushEffects();
     }
     if (DEV) {

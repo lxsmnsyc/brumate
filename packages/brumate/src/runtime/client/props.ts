@@ -3,7 +3,6 @@
 import { HAS_BINDINGS } from '../features.ts';
 import { isBinding } from '../shared.ts';
 import { loadModule } from './code.ts';
-import { fail } from './errors.ts';
 import { modules, scopes } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
 import { get, set, writeSlot } from './updates.ts';
@@ -90,9 +89,6 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
   if (module) {
     apply(module);
   } else {
-    // A child whose code does not load cannot take the prop, which the nearest `#try` catches.
-    void loadModule(child.m)
-      .then(apply)
-      .catch((error: unknown) => fail(child, error));
+    void loadModule(child.m).then(apply);
   }
 }
