@@ -32,6 +32,7 @@ function fullRecord(): Required<ScopeState> {
     s: [new SlotReference(6, 1), [new ElementReference('7.0', 1)], Promise.resolve(1)],
     c: { 0: 8, 1: '9.1' },
     b: { 0: new SlotReference(10, 2), 1: new FunctionReference('Card_x1#h1', '11.0') },
+    r: { 0: new FunctionReference('Card_x1#h2', '12.0') },
   };
 }
 
@@ -122,7 +123,7 @@ describe('the table of scope IDs', () => {
     expect(record.c).toEqual({ 0: 108, 1: '109.1' });
     // Every reference moved. None keeps its old ID.
     const after = await idsOf(moved);
-    expect(before).toHaveLength(7);
+    expect(before).toHaveLength(8);
     expect(after).toEqual(before.map((id) => shiftId(id, by)));
     // The fields without IDs stay.
     expect([record.k, record.m, record.x]).toEqual([1, 'Card_x1', { key: 0 }]);

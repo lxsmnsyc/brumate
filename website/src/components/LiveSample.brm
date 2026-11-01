@@ -31,6 +31,17 @@
   // A line break at the end keeps the last line of the editor and the highlight the same height.
   const code = $memo(highlight(`${sources[active]}\n`, language(files[active]!.name)));
 
+  /** The compiled modules of the file that the editor shows. */
+  function modulesOf(all: LiveOutput, file: string): LiveOutput['modules'] {
+    const list: LiveOutput['modules'] = [];
+    for (const module of all.modules) {
+      if (module.file === file) {
+        list.push(module);
+      }
+    }
+    return list;
+  }
+
   async function run() {
     if (sources === ranWith) {
       return;
@@ -121,7 +132,7 @@
   </div>
   #if (view === 'output' && output) {
     <div class="live-output">
-      #for (module of output.modules by module.name) {
+      #for (module of modulesOf(output, files[active]!.name) by module.name) {
         <p class="live-module">{module.name}</p>
         <div class="code">{highlight(module.code, module.language)}</div>
       }

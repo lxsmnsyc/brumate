@@ -3,7 +3,7 @@
 
 import { HAS_BINDINGS, HAS_CHILDREN, HAS_TEMPLATES } from '../features.ts';
 import { attributeText, insertValue, onValue, textValue } from '../html.ts';
-import { FunctionReference, isBinding, isSlotReference } from '../shared.ts';
+import { isBinding, isSlotReference } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
 import { findComment, findElement, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
@@ -15,7 +15,7 @@ import { prop, spreadProps } from './props.ts';
 import { afterInsert, disposeKinds, inPlace, nextId } from './scopes.ts';
 import { hiding, options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
-import { send, set } from './updates.ts';
+import { give, set } from './updates.ts';
 
 /**
  * Renders a `#portal` body into its target, between markers with its scope
@@ -294,9 +294,6 @@ export function attr(scope: Scope, anchor: number, name: string, value: unknown)
 /** The attributes that the last update of a spread wrote, so the next one removes those it drops. */
 const spreadNames = new WeakMap<Element, Set<string>>();
 
-/** The setters that were given each element, so an update of a spread does not call them again. */
-const given = new WeakMap<Element, Set<unknown>>();
-
 /**
  * Gives the element of a spread to the signal that a `ref` in its attributes is bound to, or to
  * the setter of the binding.
@@ -311,13 +308,7 @@ function forwardRef(element: Element | null, values: Record<string, unknown>): v
         set(owner, target.slot, element);
       }
     } else {
-      // A reference is new at each update, so its text is the key.
-      const key = target instanceof FunctionReference ? `${target.scope}#${target.ref}` : target;
-      const seen = given.get(element) ?? new Set();
-      if (!seen.has(key)) {
-        given.set(element, seen.add(key));
-        send(target, element);
-      }
+      give(target, element);
     }
   }
 }

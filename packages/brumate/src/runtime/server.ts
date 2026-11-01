@@ -410,6 +410,8 @@ export class Context {
   /** The scope that the render used last, since it uses one a few times in a row. */
   private last: ScopeEntry | undefined;
   private readonly root: Context;
+  /** The keys of the signals that a visible `$client` waits for. See `near`. */
+  private waited?: Set<string>;
   /** The ID spaces of the blocks that the render is in, from the outside in. */
   private readonly spaces: IdSpace[];
   private readonly baseId: number;
@@ -909,16 +911,31 @@ export class Context {
    * writes in the browser go to the parent's slots.
    */
   bindings(scope: ScopeId, props: Record<string, unknown>, slots: Record<string, number>): void {
+    this.bound(scope, props, slots);
+    for (const [name, slot] of Object.entries(slots)) {
+      const value = props[name];
+      const record = this.entry(scope).record;
+      // An element that the component wrote into its prop goes to the signal that it is bound to.
+      const written = record.s?.[slot];
+      if (
+        isBinding(value) &&
+        written instanceof ElementReference &&
+        isSlotReference(value.target)
+      ) {
+        this.forward(value.target, written);
+      }
+    }
+  }
+
+  /**
+   * Records where the bound props write, before the component renders its markup, so an element
+   * that it forwards can name the signal at the end of the bindings. See `refKey`.
+   */
+  bound(scope: ScopeId, props: Record<string, unknown>, slots: Record<string, number>): void {
     for (const [name, slot] of Object.entries(slots)) {
       const value = props[name];
       if (isBinding(value)) {
-        const record = this.entry(scope).record;
-        (record.b ??= {})[slot] = value.target;
-        // An element that the component wrote into its prop goes to the signal that it is bound to.
-        const written = record.s?.[slot];
-        if (written instanceof ElementReference && isSlotReference(value.target)) {
-          this.forward(value.target, written);
-        }
+        (this.entry(scope).record.b ??= {})[slot] = value.target;
       }
     }
   }
@@ -959,10 +976,42 @@ export class Context {
     tag?: unknown,
   ): T {
     const value = attributes.ref;
-    if (typeof tag !== 'function' && isBinding(value) && isSlotReference(value.target)) {
-      this.forward(value.target, new ElementReference(scope, anchor));
+    if (typeof tag !== 'function' && isBinding(value)) {
+      if (isSlotReference(value.target)) {
+        this.forward(value.target, new ElementReference(scope, anchor));
+      } else {
+        // A setter has no slot to write, so the client calls it on resume from this record.
+        (this.record(scope).r ??= {})[anchor] = value.target;
+      }
     }
     return attributes;
+  }
+
+  /**
+   * The `b-near` attribute of a visible `$client` that reads the signal at `slot` of `scope`,
+   * which a component may get with `ref=$bind(...)`. It records the key, so `refKey` marks only
+   * the elements that a callback waits for.
+   */
+  near(scope: ScopeId, slot: number): string {
+    const key = `${scope}.${slot}`;
+    (this.root.waited ??= new Set()).add(key);
+    return ` b-near="${key}"`;
+  }
+
+  /**
+   * The `b-r` attribute of an element that a component forwards for its caller: the scope and slot
+   * of the signal at the end of the bindings, `S.slot`, when a visible `$client` waits for it.
+   * The loader finds the element by it. Empty otherwise.
+   */
+  refKey(scope: ScopeId, slot: number): string {
+    let target = this.ownRecord(scope)?.b?.[slot];
+    let key = '';
+    while (isSlotReference(target)) {
+      key = `${target.scope}.${target.slot}`;
+      // A render inside a `#loading` body is another context, which finds the scopes above it.
+      target = this.find(target.scope)?.record.b?.[target.slot];
+    }
+    return this.root.waited?.has(key) ? ` b-r="${key}"` : '';
   }
 
   /** Returns the reference that a `ref` signal holds on the server. */

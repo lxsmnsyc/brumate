@@ -208,12 +208,62 @@ export function isTemplateValue(site: Site): boolean {
   return site.node.type === 'Identifier' && lookup(site.scope, site.node.name)?.kind === 'template';
 }
 
+// True if the site, or a function it calls outside `$untrack`, writes a value or calls code
+// that the compiler cannot see: a handler, not a derivation.
+function writes(site: Site, seen = new Set<Site>()): boolean {
+  if (seen.has(site)) {
+    return false;
+  }
+  seen.add(site);
+  if (site.opaqueCalls) {
+    return true;
+  }
+  for (const write of site.writes) {
+    if (write.tracked) {
+      return true;
+    }
+  }
+  for (const callee of site.trackedCalls) {
+    if (callee.site && writes(callee.site, seen)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** True for a function prop of a component that only reads values and is not an event. */
+function isDerivation(site: Site): boolean {
+  const owner = site.owner;
+  if (owner?.kind !== 'component' || writes(site)) {
+    return false;
+  }
+  // The parser gives `onClick=…` and the like the kind `event`: those are handlers, which call
+  // code that the compiler cannot see.
+  for (const attribute of owner.attributes) {
+    if (attribute.kind === 'value' && attribute.value.ast === site.node) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function isFunctionValue(site: Site): boolean {
   let node: oxc.Node = site.node;
   // A wrapper of `brumate/events`, such as `prevent(save)`, returns the handler that it wraps.
   for (;;) {
     while (node.type === 'ParenthesizedExpression') {
       node = node.expression;
+    }
+    if (
+      node.type === 'CallExpression' &&
+      node.callee.type === 'Identifier' &&
+      node.callee.name === '$untrack' &&
+      !lookup(site.scope, node.callee.name) &&
+      node.arguments[0]
+    ) {
+      // `$untrack(fn)` marks the prop as fixed and still passes the function.
+      node = node.arguments[0];
+      continue;
     }
     if (
       node.type !== 'CallExpression' ||
@@ -315,7 +365,9 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
 
   for (const [site, node] of siteNodes) {
     // A function prop is a fixed reference to a handler, which reads current values when it runs.
-    if (site.kind === 'prop' && isFunctionValue(site)) {
+    // One that only reads is a derivation: the child can call it in a memo, in markup or in an
+    // effect, so the prop counts as changed when the values it reads change.
+    if (site.kind === 'prop' && isFunctionValue(site) && !isDerivation(site)) {
       continue;
     }
     for (const declaration of dependencies(site)) {

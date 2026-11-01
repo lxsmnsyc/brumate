@@ -1,6 +1,6 @@
 ---
 id: loader-preload-spike
-title: "Spike: fold the loader into the core and drop Vite's preload helper"
+title: "Spike: fold the loader into the core"
 status: todo
 priority: could
 type: spike
@@ -23,13 +23,16 @@ depends_on:
   - on: perf-pass-0.4
     kind: hard
     why: option D of its report is the starting point
+  - on: drop-preload-helper
+    kind: hard
+    why: the helper is removed there (0.4.1); this spike measures the loader without it
 ---
 
-# Spike: fold the loader into the core and drop Vite's preload helper
+# Spike: fold the loader into the core
 
 ## Goal
 
-A todos page loads five files: the loader (boot.ts plus Vite's preload helper), the core, a re-export of the core, `events`, and the app. Find out whether brumate can load fewer files and drop the preload helper, without breaking the CSS preload of lazy bundles.
+A todos page loads five files: the loader (boot.ts plus Vite's preload helper), the core, a re-export of the core, `events`, and the app. Find out whether brumate can load fewer files. Dropping the preload helper moved to drop-preload-helper (0.4.1, the maintainer, 2026-11-01).
 
 ## Context
 
@@ -40,9 +43,8 @@ A todos page loads five files: the loader (boot.ts plus Vite's preload helper), 
 
 ## Questions
 
-1. Does Vite or Rolldown have a switch to skip the helper for given imports, or does it need a `renderChunk` rewrite?
-2. Can the loader be part of the core chunk, and what does a page that needs no code pay then?
-3. How are the CSS files of lazy bundles preloaded without the helper?
+1. Can the loader be part of the core chunk, and what does a page that needs no code pay then?
+2. Can the core re-export and the `events` chunk be folded in, and what does that save in requests and bytes?
 
 ## Acceptance
 

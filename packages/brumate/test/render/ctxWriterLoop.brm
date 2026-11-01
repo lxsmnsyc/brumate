@@ -1,0 +1,11 @@
+<script>
+  import { $setContext, $signal } from 'brumate/signals';
+  import { WriterTotal } from './ctxWriterLoop.ts';
+  import CtxWriterLoopMid from './CtxWriterLoopMid.brm';
+  let total = $signal(0);
+  function addTotal(n: number) { total += n; }
+  function readTotal() { return total; }
+  $setContext(WriterTotal, { add: addTotal, read: readTotal });
+</script>
+<p class="total">{total}</p>
+<CtxWriterLoopMid />

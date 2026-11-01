@@ -3,24 +3,12 @@
   import BrandMark from './BrandMark.brm';
   import Icon from './Icon.brm';
   import Search from './Search.brm';
+  import { switchTheme } from '../theme-switch.ts';
+  import { BRUMATE_VERSION, UI_VERSION } from '../versions.ts';
 
   // The section of @brumate/ui has a header of its own, which shows only its parts.
   const { section = 'docs' } = $props<{ section?: 'docs' | 'ui' }>();
   const base = import.meta.env.BASE_URL;
-
-  // The theme is on the root element, where the inline script put the saved one.
-  function toggleTheme() {
-    const root = document.documentElement;
-    const dark =
-      root.dataset.theme === 'dark' ||
-      (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
-    root.dataset.theme = dark ? 'light' : 'dark';
-    try {
-      localStorage.setItem('theme', root.dataset.theme);
-    } catch {
-      // Storage can be blocked. The theme still changes for this page.
-    }
-  }
 </script>
 
 <header class="header">
@@ -29,24 +17,35 @@
       <a class="brand" href=(`${base}ui`)>
         <BrandMark />
         <span>brumate<span class="brand-section">/ui</span></span>
+        <span class="version">v{UI_VERSION}</span>
       </a>
     } #else {
       <a class="brand" href=base>
         <BrandMark />
         brumate
+        <span class="version">v{BRUMATE_VERSION}</span>
       </a>
     }
-    <Search {section} />
+    <div class="header-search">
+      <Search {section} />
+    </div>
     <nav class="header-nav" aria-label="Main">
       #if (section === 'ui') {
-        <a href=(`${base}docs`)>brumate</a>
+        <a class="nav-link" href=(`${base}docs`)>brumate</a>
       } #else {
-        <a href=(`${base}docs`)>Docs</a>
-        <a href=(`${base}ui`)>UI</a>
-        <a href=(`${base}repl`)>REPL</a>
+        <a class="nav-link" href=(`${base}docs`)>Docs</a>
+        <a class="nav-link" href=(`${base}ui`)>UI</a>
+        <a class="nav-link" href=(`${base}repl`)>REPL</a>
       }
-      <a href="https://github.com/lxsmnsyc/brumate" target="_blank" rel="noreferrer">GitHub</a>
-      <button class="theme-toggle" type="button" aria-label="Switch theme" onClick=toggleTheme>
+      <a class="icon-button" href="https://github.com/lxsmnsyc/brumate" target="_blank" rel="noreferrer" aria-label="brumate on GitHub">
+        <Icon name="github" size=(18) />
+      </a>
+      <button
+        class="icon-button theme-toggle"
+        type="button"
+        aria-label="Switch theme"
+        onClick=((event) => switchTheme({ x: event.clientX, y: event.clientY }))
+      >
         <span class="sun"><Icon name="sun" size=(17) /></span>
         <span class="moon"><Icon name="moon" size=(17) /></span>
       </button>
@@ -57,73 +56,101 @@
 <style>
   /* Header */
 
-  .brand-section {
-    color: var(--accent-strong);
-  }
-
   .header {
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: var(--z-header);
     /* The header stays in place while the page fades between pages. */
     view-transition-name: header;
     height: var(--header-height);
-    background: color-mix(in srgb, var(--bg) 82%, transparent);
-    backdrop-filter: blur(10px);
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    backdrop-filter: blur(14px) saturate(1.4);
     border-bottom: 1px solid var(--border);
   }
 
   .header-inner {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 1rem;
     align-items: center;
-    justify-content: space-between;
     max-width: 82rem;
     height: 100%;
     margin: 0 auto;
-    padding: 0 1rem;
+    padding: 0 1.5rem;
   }
 
   .brand {
     display: flex;
     align-items: center;
     gap: 0.55rem;
+    justify-self: start;
     color: var(--text);
     font-weight: 700;
     font-size: 1.1rem;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
     text-decoration: none;
+  }
+
+  .brand-section {
+    color: var(--accent-strong);
+  }
+
+  .version {
+    padding: 0.1rem 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    color: var(--muted);
+    font: 500 0.7rem var(--mono);
+    letter-spacing: 0;
+  }
+
+  .header-search {
+    display: flex;
+    justify-content: center;
+    width: 22rem;
   }
 
   .header-nav {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    justify-content: flex-end;
+    gap: 0.15rem;
   }
 
-  .header-nav a {
-    padding: 0.35rem 0.6rem;
-    border-radius: 6px;
+  .nav-link {
+    padding: 0.35rem 0.65rem;
+    border-radius: 8px;
     color: var(--muted);
-    font-size: 0.925rem;
+    font-size: 0.92rem;
     text-decoration: none;
+    transition:
+      color var(--duration-fast),
+      background var(--duration-fast);
   }
 
-  .header-nav a:hover {
+  .nav-link:hover {
     color: var(--text);
     background: var(--surface);
   }
 
-  .theme-toggle {
+  .icon-button {
     display: grid;
     place-items: center;
     width: 2.1rem;
     height: 2.1rem;
-    margin-left: 0.25rem;
-    border: 1px solid var(--border);
+    border: 0;
     border-radius: 8px;
     background: transparent;
-    color: var(--text);
+    color: var(--muted);
     cursor: pointer;
+    transition:
+      color var(--duration-fast),
+      background var(--duration-fast);
+  }
+
+  .icon-button:hover {
+    color: var(--text);
+    background: var(--surface);
   }
 
   .theme-toggle .moon,
@@ -137,51 +164,53 @@
 
   @media (prefers-color-scheme: dark) {
     :global(:root:not([data-theme='light'])) .theme-toggle .sun {
-        display: none;
-      }
+      display: none;
+    }
 
     :global(:root:not([data-theme='light'])) .theme-toggle .moon {
-        display: inline;
-      }
+      display: inline;
+    }
   }
 
-  @media (max-width: 640px) {
+  /* A narrow screen keeps one row: the search shrinks to an icon, next to the links. */
+
+  @media (max-width: 52rem) {
     .header-inner {
-        flex-wrap: wrap;
-        align-content: center;
-        row-gap: 0.4rem;
-      }
-
-    .header-nav a {
-        padding: 0.35rem 0.45rem;
-      }
-  }
-
-  /* A narrow phone keeps the brand and the links on one row. */
-
-  @media (max-width: 420px) {
-    .header-inner {
-        padding: 0 0.75rem;
-      }
+      display: flex;
+      gap: 0.25rem;
+      padding: 0 0.75rem;
+    }
 
     .brand {
-        gap: 0.4rem;
-        font-size: 1rem;
-      }
+      margin-right: auto;
+    }
+
+    .header-search {
+      width: auto;
+    }
 
     .header-nav {
-        gap: 0;
-      }
+      gap: 0;
+    }
 
-    .header-nav a {
-        padding: 0.35rem 0.25rem;
-        font-size: 0.85rem;
-      }
+    .version {
+      display: none;
+    }
+  }
 
-    .theme-toggle {
-        width: 1.9rem;
-        height: 1.9rem;
-        margin-left: 0.15rem;
-      }
+  @media (max-width: 420px) {
+    .brand {
+      gap: 0.4rem;
+      font-size: 1rem;
+    }
+
+    .nav-link {
+      padding: 0.35rem 0.35rem;
+      font-size: 0.85rem;
+    }
+
+    .icon-button {
+      width: 1.9rem;
+    }
   }
 </style>

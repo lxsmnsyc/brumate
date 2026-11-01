@@ -1,0 +1,20 @@
+<script module>
+  export function getUser(id: number): Promise<{ name: string }> {
+    return new Promise((done) => setTimeout(() => done({ name: `user${id}` }), 50));
+  }
+</script>
+
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import FnReadChild from './FnReadChild.brm';
+
+  let id = $signal(1);
+  const user = $memo(getUser(id));
+
+  function nameOf() {
+    return user.name;
+  }
+</script>
+
+<button class="next" onClick=(() => id++)>Next</button>
+<FnReadChild label=nameOf />

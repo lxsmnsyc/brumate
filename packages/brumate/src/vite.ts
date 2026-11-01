@@ -206,6 +206,46 @@ const RENDER_QUERY = '?brumate-render';
 const SERVER_QUERY = '?brumate-server';
 /** Exports `mount` from `brumate/testing`, with the loader of this project's client modules. */
 const TESTING = 'virtual:brumate/testing';
+/** The ID of the module of Vite's preload helper, which a client build gets from `preloadHelper`. */
+const PRELOAD_HELPER = '\0vite/preload-helper.js';
+
+/**
+ * Vite's preload helper wraps every `import()` of a client build and preloads the scripts and
+ * the stylesheets of the chunk. This one waits for the stylesheets only, so a lazy chunk shows
+ * styled, and preloads the imports of the chunk. The scripts of a page come with the `Link`
+ * headers of the server (see `hints`).
+ */
+function preloadHelper(base: string, relative: boolean): string {
+  return [
+    `export const __vitePreload = (load, deps, from) => {`,
+    `  const links = [];`,
+    `  for (const dep of deps || []) {`,
+    `    const href = ${relative ? 'new URL(dep, from)' : `new URL(${JSON.stringify(base)} + dep, location.href)`}.href;`,
+    `    const rel = dep.endsWith('.css') ? 'stylesheet' : 'modulepreload';`,
+    `    let found = false;`,
+    `    for (const link of document.getElementsByTagName('link')) {`,
+    `      found ||= link.rel === rel && link.href === href;`,
+    `    }`,
+    `    if (!found) {`,
+    `      const link = document.createElement('link');`,
+    `      link.rel = rel;`,
+    `      link.crossOrigin = '';`,
+    `      link.href = href;`,
+    `      document.head.appendChild(link);`,
+    `      // A script loads along with the chunk, so only a stylesheet is waited for.`,
+    `      if (rel === 'stylesheet') {`,
+    `        links.push(new Promise((resolve, reject) => {`,
+    `          link.onload = resolve;`,
+    `          link.onerror = reject;`,
+    `        }));`,
+    `      }`,
+    `    }`,
+    `  }`,
+    `  return Promise.all(links).then(load);`,
+    `};`,
+  ].join('\n');
+}
+
 /** The modules that every page loads early, in the client build. See `hints` of `handleRoute`. */
 const HINTS_FILE = '.brumate/hints.json';
 /** The dev server answers the devtools panel about a component at this path. */
@@ -446,6 +486,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   /** The ID of the build, for skew protection. Undefined on the dev server. */
   let buildId: string | undefined;
   let base = '/';
+  /** Whether a build writes URLs that need the URL of the importing chunk to resolve. */
+  let relativeUrls = false;
   let isSsrBuild = false;
   let isServe = false;
   /** Component IDs to absolute file paths. */
@@ -915,9 +957,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       for (const [root, members] of groups) {
         for (const member of members) {
           const id = findComponentId(member);
+          // A root that no earlier bundle holds is its own owner, which the table leaves out.
           if (id !== undefined && !owners.has(id)) {
             owners.set(id, root);
           }
+        }
+      }
+      for (const [id, root] of owners) {
+        if (id === root) {
+          owners.delete(id);
         }
       }
       const bundleLines: string[] = [];
@@ -953,8 +1001,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         '    return Promise.resolve(loaded.get(id));',
         '  }',
         '  const waiting = [...pending.values()];',
-        '  const owner = () => (loaded.has(id) || !owners[id] ? loaded.get(id) : loadBundle(owners[id]).then(() => loaded.get(id)));',
-        '  return waiting.length > 0 ? Promise.allSettled(waiting).then(owner) : owners[id] ? owner() : undefined;',
+        '  const root = owners[id] ?? (bundles[id] && id);',
+        '  const owner = () => (loaded.has(id) || !root ? loaded.get(id) : loadBundle(root).then(() => loaded.get(id)));',
+        '  return waiting.length > 0 ? Promise.allSettled(waiting).then(owner) : root ? owner() : undefined;',
         '}',
       ].join('\n');
     }
@@ -1695,6 +1744,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   let coreModule: string | undefined;
   let loaderChunk: string | undefined;
   let coreChunk: string | undefined;
+  /** The chunks that the loader and the core import, which the server hints at, and the chunks of the bundles. */
+  let startChunks = new Set<string>();
+  let bundleChunks = new Set<string>();
 
   const plugin: Plugin & { configureVitest(context: VitestContext): void } = {
     name: 'brumate',
@@ -1720,26 +1772,27 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         if (preload === false) {
           return { ...shared, ...keep };
         }
-        const resolve = typeof preload === 'object' ? preload.resolveDependencies : undefined;
         return {
           ...shared,
           build: {
             ...keep.build,
             modulePreload: {
-              // The loader imports the core itself when it imports a component's module, so
-              // it needs no list of the chunks to preload with it, which it would ship.
-              resolveDependencies(filename, deps, context) {
-                const list = resolve ? resolve(filename, deps, context) : deps;
-                if (context.hostId !== loaderChunk || !coreChunk) {
-                  return list;
+              ...(typeof preload === 'object' ? preload : {}),
+              // The replacement of Vite's preload helper (`PRELOAD_HELPER`) waits for stylesheets
+              // only. The server sends the hints for the scripts of the page and of the bundles,
+              // so the build lists the imports of the other lazy chunks only, which the helper
+              // preloads without waiting, so a chunk and its imports load together.
+              resolveDependencies(filename, deps) {
+                if (bundleChunks.has(filename)) {
+                  return [];
                 }
                 const rest: string[] = [];
-                for (const dep of list) {
-                  if (dep !== coreChunk) {
+                for (const dep of deps) {
+                  if (dep !== filename && !startChunks.has(dep)) {
                     rest.push(dep);
                   }
                 }
-                return rest.length === 1 && rest[0] === filename ? [] : rest;
+                return rest;
               },
             },
           },
@@ -1782,6 +1835,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       isServe = config.command === 'serve';
       outDir = path.resolve(config.root, config.build.outDir);
       base = config.base;
+      relativeUrls =
+        config.base === './' || config.base === '' || !!config.experimental.renderBuiltUrl;
       isSsrBuild = Boolean(config.build.ssr);
     },
 
@@ -1820,6 +1875,24 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
         if (coreModule && item.moduleIds.includes(coreModule)) {
           coreChunk = item.fileName;
+        }
+      }
+      startChunks = new Set();
+      bundleChunks = new Set();
+      function addStart(name: string | undefined): void {
+        const found = name === undefined ? undefined : bundle[name];
+        if (found?.type === 'chunk' && !startChunks.has(name!)) {
+          startChunks.add(name!);
+          for (const imported of found.imports) {
+            addStart(imported);
+          }
+        }
+      }
+      addStart(loaderChunk);
+      addStart(coreChunk);
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'chunk' && item.facadeModuleId?.startsWith(`\0${BUNDLE}`)) {
+          bundleChunks.add(item.fileName);
         }
       }
       if (!options.report && !options.budget) {
@@ -2038,6 +2111,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     },
 
     async load(id, loadOptions) {
+      if (id === PRELOAD_HELPER && !isServe) {
+        return preloadHelper(base, relativeUrls);
+      }
       // The browser code of the functions of a module of reactive logic, shared by every call.
       if (id.endsWith(SHARED_QUERY)) {
         const module = id.slice(0, -SHARED_QUERY.length);

@@ -17,4 +17,20 @@ const darkColors = colors(dark);
 // the background of a code block of this site.
 const lightTheme = light.replace(/--twp-comment:\s*#6e7781/, '--twp-comment: #59636e');
 
-export const STYLES = `<style>${lightTheme}:root[data-theme='dark']${darkColors}@media (prefers-color-scheme: dark){:root:not([data-theme='light'])${darkColors}}${site}</style>`;
+const base = import.meta.env.BASE_URL;
+
+/**
+ * The fonts of the site, latin only, from `public/fonts`. They are SIL Open Font License fonts,
+ * taken from Fontsource; each license is next to its file. Each face swaps in when it loads, so
+ * text shows at once in the fallback.
+ */
+function face(family: string, file: string, weight: string): string {
+  return `@font-face{font-family:'${family}';font-style:normal;font-weight:${weight};font-display:swap;src:url('${base}fonts/${file}') format('woff2')}`;
+}
+
+const fonts = [
+  face('Inter Tight', 'inter-tight-latin-wght-normal.woff2', '100 900'),
+  face('JetBrains Mono', 'jetbrains-mono-latin-wght-normal.woff2', '100 800'),
+].join('');
+
+export const STYLES = `<style>${lightTheme}:root[data-theme='dark']${darkColors}@media (prefers-color-scheme: dark){:root:not([data-theme='light'])${darkColors}}${fonts}${site}</style>`;

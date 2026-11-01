@@ -1,0 +1,15 @@
+<script>
+  import { $bind, $client, $signal } from 'brumate/signals';
+  import RelayLoading from './RelayLoading.brm';
+
+  let button = $signal<HTMLElement>();
+  let seen = $signal('Waiting');
+
+  $client(() => {
+    seen = button!.tagName;
+  }, 'visible');
+</script>
+
+<h1 class="top">Report</h1>
+<p class="seen">{seen}</p>
+<RelayLoading ref=$bind(button) />

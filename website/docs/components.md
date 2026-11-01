@@ -208,7 +208,7 @@ A component that renders an element for its caller can pass the element on. It d
 - A component can pass the binding on: `<Inner ref=$bind(ref) />`.
 - A dynamic tag that names a component passes `ref` as a prop too: `<{as} ref=$bind(root)>`.
 - The server does not send the element. Handlers and `$client` callbacks of the caller read the element in the browser, as they read the element of a `ref` in their own file.
-- A `$client(…, 'visible')` of the caller does not wait for a forwarded element. It runs when the element that follows it comes into view.
+- A `$client(…, 'visible')` of the caller waits for the forwarded element to come into view, when the server renders the element. It does not wait for an element that the browser renders later, such as in an `#if` that opens after the page resumes, or when the component leaves `ref` in its rest props: the callback then runs when the element that follows it comes into view.
 
 ### Functions as props
 
@@ -240,7 +240,7 @@ A component cannot write the signals of its parent. To let a child change a valu
 
 - The function runs in the browser, and writes the parent's signal. The parent then passes the new value down.
 - A function passed as a prop must be code that can run in the browser, such as an arrow function or a function of the parent's script.
-- The call runs at once and returns the result, as on the server, so the child can call a function prop in markup or a memo, such as a `filter`. The same holds for a function in a [context](./context.md).
+- The call runs at once and returns the result, as on the server, so the child can call a function prop in markup or a memo, such as a `filter`. The same holds for a function in a [context](./context.md). When the function only reads state, the memo, markup or effect that reads the prop runs again when that state changes. A function that writes state, or calls through a context value or a prop, stays a fixed handler, and so does a prop named `onX`. A write or a call inside `$untrack` does not count, so wrap an incidental one there to keep the function a derivation. A prop named `onX` stays fixed regardless.
 
 ### Handlers in a spread
 

@@ -151,6 +151,20 @@ export function send(bound: unknown, value: unknown): void {
   }
 }
 
+/** The setters that were given each element, so an update of a spread does not call them again. */
+const given = new WeakMap<Element, Set<unknown>>();
+
+/** Calls the setter of a binding with an element, once for each element and setter. */
+export function give(bound: unknown, element: Element): void {
+  // A reference is new at each update, so its text is the key.
+  const key = bound instanceof FunctionReference ? `${bound.scope}#${bound.ref}` : bound;
+  const seen = given.get(element) ?? new Set();
+  if (!seen.has(key)) {
+    given.set(element, seen.add(key));
+    send(bound, element);
+  }
+}
+
 /** Writes a slot, and updates what reads it. */
 export function writeSlot(scope: Scope, slot: number, value: unknown): void {
   if (!Object.is(scope.s[slot], value)) {
@@ -353,6 +367,20 @@ class NotReady extends Error {
 // More than 0 while a memo computes, so reading a value that is still loading stops it.
 let computing = 0;
 
+// The effect whose run causes the writes in progress, so a context that the effect writes through
+// does not run it again. `viaContext` is true while a context sends a value.
+let origin: string | undefined;
+let viaContext = false;
+export function sendContext(send: () => void): void {
+  const before = viaContext;
+  viaContext = true;
+  try {
+    send();
+  } finally {
+    viaContext = before;
+  }
+}
+
 // More than 0 while an effect runs, so reading a value that is still loading skips the run.
 let runningEffects = 0;
 
@@ -545,6 +573,8 @@ function trigger(scope: Scope, slot: number): void {
     ]);
     return;
   }
+  const from = origin;
+  const via = viaContext;
   const list: [Scope, number, Promise<unknown>?][] = [[scope, slot]];
   if (running > 0) {
     waiting = list;
@@ -556,11 +586,20 @@ function trigger(scope: Scope, slot: number): void {
         waits.push(load);
       }
       await Promise.allSettled(waits);
-      pass(() => {
-        for (const [target, at] of list) {
-          queueWrite(target, at);
-        }
-      });
+      const before = origin;
+      const viaBefore = viaContext;
+      origin = from;
+      viaContext = via;
+      try {
+        pass(() => {
+          for (const [target, at] of list) {
+            queueWrite(target, at);
+          }
+        });
+      } finally {
+        origin = before;
+        viaContext = viaBefore;
+      }
     })
     .catch((error: unknown) => {
       // The write cannot run. Its effects do not wait for it any longer.
@@ -736,6 +775,11 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
     updateCount++;
   }
   const key = `${target.id}:${name}`;
+  // An effect does not run again on a change of a context that its own run caused.
+  const from = origin;
+  if (name[0] === 'e' && viaContext && from === key) {
+    return;
+  }
   // An update of a scope that left the page in the pass does not run. An error goes to the
   // nearest `#try` around the update, whether its write ran at once or waited for code.
   function later(): void {
@@ -751,7 +795,13 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
               : 'Update loop',
           );
         }
-        updating(() => fn(target));
+        const before = origin;
+        origin = from;
+        try {
+          updating(() => fn(target));
+        } finally {
+          origin = before;
+        }
       } catch (error) {
         fail(target, error);
       }
@@ -895,6 +945,8 @@ export function effect(
   scope.cleanups.get(name)?.();
   let cleanup: unknown;
   const start = DEV ? performance.now() : 0;
+  const outer = origin;
+  origin = key;
   if (!client) {
     runningEffects++;
   }
@@ -927,6 +979,7 @@ export function effect(
     // The error goes to the nearest `#try` around the effect. The effect runs again on the next change.
     fail(scope, error);
   } finally {
+    origin = outer;
     if (!client) {
       runningEffects--;
     }

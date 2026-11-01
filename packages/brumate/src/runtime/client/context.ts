@@ -7,7 +7,7 @@ import type { ScopeId } from '../shared.ts';
 import { resolveScope } from './scopes.ts';
 import { scopes } from './state.ts';
 import type { Scope } from './state.ts';
-import { set } from './updates.ts';
+import { sendContext, set } from './updates.ts';
 
 /** The scope that provides a context to `scope`: itself or the nearest one above it. */
 function findProvider(scope: Scope, key: string): Scope | undefined {
@@ -33,12 +33,14 @@ function findProvider(scope: Scope, key: string): Scope | undefined {
 export function updateContext(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
   scope.v ??= {};
   scope.v[context.key] = value;
-  for (const target of scopes.values()) {
-    const slot = target.x?.[context.key];
-    if (slot !== undefined && findProvider(target, context.key) === scope) {
-      set(target, slot, value);
+  sendContext(() => {
+    for (const target of scopes.values()) {
+      const slot = target.x?.[context.key];
+      if (slot !== undefined && findProvider(target, context.key) === scope) {
+        set(target, slot, value);
+      }
     }
-  }
+  });
 }
 
 /** Provides a value of a context to the scopes inside `scope`. */

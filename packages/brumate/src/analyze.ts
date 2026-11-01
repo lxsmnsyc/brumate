@@ -2123,6 +2123,27 @@ class Resolver {
         ) {
           this.checkMutation(node.callee.object, node);
         }
+        // A call through a context value or a prop runs code that the compiler cannot see.
+        if (this.untracked === 0) {
+          let root: oxc.Node = node.callee;
+          while (
+            root.type === 'MemberExpression' ||
+            root.type === 'TSNonNullExpression' ||
+            root.type === 'ChainExpression'
+          ) {
+            root = root.type === 'MemberExpression' ? root.object : root.expression;
+          }
+          if (root.type === 'Identifier' && !this.isLocal(root.name)) {
+            const target = lookup(this.site.scope, root.name);
+            if (
+              target?.kind === 'context' ||
+              target?.kind === 'prop' ||
+              target?.kind === 'props-rest'
+            ) {
+              this.site.opaqueCalls = true;
+            }
+          }
+        }
         const name = node.callee.type === 'Identifier' ? node.callee.name : undefined;
         if (name && !this.isLocal(name) && !lookup(this.site.scope, name)) {
           if (name === '$untrack') {

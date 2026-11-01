@@ -1261,6 +1261,64 @@ describe('resume', () => {
     expect(document.querySelector<HTMLElement>('.chart')!.dataset.drawn).toBe('yes');
   });
 
+  it('runs a visible $client callback when the element that a component forwards comes into view', async () => {
+    const observed: Element[] = [];
+    const reports: (() => void)[] = [];
+    class InView {
+      readonly callback: IntersectionObserverCallback;
+      constructor(callback: IntersectionObserverCallback) {
+        this.callback = callback;
+      }
+      observe(target: Element): void {
+        observed.push(target);
+        reports.push(() =>
+          this.callback(
+            [{ target, isIntersecting: true } as IntersectionObserverEntry],
+            this as unknown as IntersectionObserver,
+          ),
+        );
+      }
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+    vi.stubGlobal('IntersectionObserver', InView);
+    const server = await import(file('refVisibleForward.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toMatch(/<template b-b="[\d:]+" b-client="visible=[^"]+" b-near="[\d]+\.\d+">/);
+    expect(html.match(/ b-r="/g)?.length).toBe(2);
+    await resume('refVisibleForward', {});
+    // Each callback watches the button that is forwarded to it, not the heading.
+    const buttons = [...document.querySelectorAll('.inner')];
+    expect(buttons.length).toBe(2);
+    expect(observed).toEqual(buttons);
+    expect(text('.seen')).toBe('Waiting');
+    expect(text('.passed')).toBe('Waiting');
+    reports[0]!();
+    await waitFor(() => expect(text('.seen')).toBe('BUTTON'));
+    expect(text('.passed')).toBe('Waiting');
+    reports[1]!();
+    await waitFor(() => expect(text('.passed')).toBe('Relayed'));
+  });
+
+  it('marks a forwarded element that a relay renders inside a #loading body', async () => {
+    const server = await import(file('refVisibleLoading.brm.ts'));
+    const answer = (await handleRoute(
+      { page: async () => server },
+      new Request('http://localhost/'),
+    ))!;
+    const html = await answer.text();
+    const near = /b-near="(\d+\.\d+)"/.exec(html)![1];
+    expect(html).toContain('class="inner"');
+    expect(html).toContain(` b-r="${near}"`);
+  });
+
+  it('marks a forwarded element for the caller only when a visible $client waits for it', async () => {
+    const server = await import(file('refForward.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    expect(html).toContain('class="inner"');
+    expect(html).not.toContain(' b-r=');
+  });
+
   it('watches the first element after the markers of visible $client callbacks, not another marker', async () => {
     const observed: Element[] = [];
     class InView {
@@ -4299,6 +4357,118 @@ describe('function props in markup that the browser renders', () => {
   });
 });
 
+describe('memos that read state through a function prop', () => {
+  it('runs again when the state that the function reads changes', async () => {
+    await resume('fnReadSync', {});
+    expect(text('.title')).toBe('ADA');
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.live')).toBe('grace'));
+    await waitFor(() => expect(text('.title')).toBe('GRACE'));
+  });
+
+  it('runs an effect of the child again when the state that the function reads changes', async () => {
+    const log: string[] = [];
+    (globalThis as { fnReadLog?: string[] }).fnReadLog = log;
+    await resume('fnReadEffect', {});
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(log.at(-1)).toBe('grace'));
+  });
+
+  it('keeps the prop live when the function writes inside $untrack', async () => {
+    await resume('fnReadUntrack', {});
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.live')).toBe('grace'));
+    await waitFor(() => expect(text('.title')).toBe('GRACE'));
+  });
+
+  it('keeps the function and the writes when $untrack wraps a prop value', async () => {
+    await resume('fnUntrackProp', {});
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.shown')).toBe('ada'));
+    // The handler writes the state that the function reads.
+    click(document.querySelector('.next')!);
+    // The prop is fixed, so the child reads the current value when it runs.
+    click(document.querySelector('.read')!);
+    await waitFor(() => expect(text('.shown')).toBe('grace'));
+  });
+
+  it('does not loop when a callback that writes state is called from a child effect', async () => {
+    const counter = globalThis as { fnReadRuns?: number };
+    counter.fnReadRuns = 0;
+    await resume('fnReadCallback', {});
+    await waitFor(() => expect(text('.total')).toBe('0'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.total')).toBe('1'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.total')).toBe('3'));
+    await new Promise((done) => setTimeout(done, 100));
+    expect(counter.fnReadRuns).toBeLessThanOrEqual(3);
+  });
+
+  it('does not loop when a callback writes through a context function', async () => {
+    const counter = globalThis as { fnReadRuns?: number };
+    counter.fnReadRuns = 0;
+    await resume('fnReadContext', {});
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.total')).toBe('1'));
+    await new Promise((done) => setTimeout(done, 100));
+    expect(counter.fnReadRuns).toBeLessThanOrEqual(2);
+  });
+
+  it('does not run an effect again on its own write through a context writer', async () => {
+    const counter = globalThis as { writerRuns?: number };
+    counter.writerRuns = 0;
+    await resume('ctxWriterLoop', {});
+    await waitFor(() => expect(text('.total')).toBe('0'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.total')).toBe('1'));
+    await new Promise((done) => setTimeout(done, 100));
+    // The effect ran on the server, so the browser runs it once, for the click.
+    expect(counter.writerRuns).toBe(1);
+    expect(text('.total')).toBe('1');
+  });
+
+  it('keeps markup, a memo and an effect on a reading function of a context live', async () => {
+    await resume('ctxReader', {});
+    await waitFor(() => expect(text('.markup')).toBe('0'));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.markup')).toBe('1'));
+    await waitFor(() => expect(text('.memo')).toBe('2'));
+    await waitFor(() => expect(text('.effect')).toBe('1'));
+  });
+
+  it('runs again when the function prop is an arrow in the markup', async () => {
+    await resume('fnReadArrow', {});
+    expect(text('.title')).toBe('ADA LOVELACE');
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.title')).toBe('GRACE LOVELACE'));
+    expect(text('.live')).toBe('grace lovelace');
+  });
+
+  it('runs again when the child is rendered in the browser', async () => {
+    await resume('fnReadLater', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.title')).toBe('ADA'));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.live')).toBe('grace'));
+    await waitFor(() => expect(text('.title')).toBe('GRACE'));
+  });
+
+  it('runs again when a memo that the function reads loads a new value', async () => {
+    const server = await import(file('fnReadAsync.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    await startLoader();
+    await waitFor(() => expect(text('.title')).toBe('USER1'));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.live')).toBe('user2'));
+    await waitFor(() => expect(text('.title')).toBe('USER2'));
+  });
+});
+
 describe('shorthand handlers', () => {
   it('runs a handler that a shorthand gives an element', async () => {
     await resume('shorthandHandler', {});
@@ -5151,10 +5321,12 @@ describe('refs forwarded through components', () => {
 
     it('a ref bound with a setter calls it through rest props spread on an element', async () => {
       await resume('setterRefRestPage', {});
-      // Not called on resume yet: the follow-up node setter-ref-resume-rest. A block calls it.
-      expect(text('.calls')).toBe('');
-      click(document.querySelector('.show')!);
+      // Called once on resume with the button that the server rendered, and once for a block.
       await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;BUTTON;'));
+      await new Promise((done) => setTimeout(done, 100));
+      expect(text('.calls')).toBe('BUTTON;BUTTON;');
       expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
     });
 
@@ -6816,13 +6988,7 @@ describe('a component that a page gives to a part in as', () => {
 describe('a live style variable of a part with a component in as', () => {
   for (const name of ['gapStyleVarElement', 'gapStyleVarComponent']) {
     it(`updates the variable: ${name}`, async () => {
-      // The page renders with the server module of its own load: a run of the loader before this
-      // one resets the modules, and the Internal that the page sends must be of the same class.
-      const server = await import(file(`${name}.brm.ts`));
-      const { render } = await import('../src/runtime/server.ts');
-      const { html, state } = await render(server.default, {});
-      show(html + state);
-      await startLoader();
+      await resume(name, {});
       const item = document.querySelector<HTMLElement>('.item')!;
       const variable = item.getAttribute('style')!.split(':')[0]!;
       expect(item.style.getPropertyValue(variable)).toBe('12px');
@@ -7065,6 +7231,15 @@ describe('a handler waits for the module of', () => {
     delete (globalThis as { __handlerWait?: string[] }).__handlerWait;
   });
 
+  it('a rejected load reaches the #try and the effects run', async () => {
+    await resumeParts('handlerWaitFail', { [idOf('HandlerWaitKid')]: 'fail' });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: The chunk is gone'));
+    await waitFor(() => expect(log()).toContain('effect 1'));
+  });
+
   it('a #try in the module of the failed chunk cannot render its #catch', async () => {
     // The #catch body is in the update code that failed, so the error is logged.
     await resumeParts('handlerWaitFail', { [idOf('HandlerWaitFail')]: 'fail' });
@@ -7081,6 +7256,53 @@ describe('a handler waits for the module of', () => {
     await resumeParts('handlerWaitBlock', { [idOf('HandlerWaitBlock')]: 400 });
     click(document.querySelector('.b')!);
     await waitFor(() => expect(log()).toEqual(['dom 1']));
+  });
+
+  it('a rejected load of a write that joins a pass reaches onError', async () => {
+    await resumeParts('handlerWaitJoin', { [idOf('HandlerWaitKid_')]: 'fail' });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(log()).toContain('effect 1'));
+  });
+});
+
+describe('a prop write to a child whose code fails to load', () => {
+  it('reaches the #catch of the #try and reports no unhandled rejection', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (error: unknown): void => {
+      unhandled.push(error);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    const server = await import(file('propLoadFail.brm.ts'));
+    const { html, state } = await renderParts(server.default, {}, {});
+    show(html + state);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    // The code of the child is still loading when the parent writes its prop.
+    let release!: () => void;
+    const gate = new Promise<void>((done) => (release = done));
+    stop = start({
+      load: async (id) => {
+        if (id.startsWith('PropLoadKid')) {
+          await gate;
+          throw new Error('The chunk is gone');
+        }
+        return import(modules.get(id)!);
+      },
+    });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await new Promise((done) => setTimeout(done, 50));
+    release();
+    await waitFor(() => expect(text('.caught')).toBe('Error: The chunk is gone'));
+    await new Promise((done) => setTimeout(done, 50));
+    expect(unhandled).toEqual([]);
   });
 });
 

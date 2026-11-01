@@ -1,0 +1,17 @@
+<script>
+  import { $effect, $getContext, $signal } from 'brumate/signals';
+  import { WriterTotal } from './ctxWriterLoop.ts';
+  const ctx = $getContext(WriterTotal);
+  let count = $signal(0);
+  $effect(() => {
+    const g = globalThis as { writerRuns?: number };
+    g.writerRuns = (g.writerRuns ?? 0) + 1;
+    if (g.writerRuns > 50) {
+      return;
+    }
+    if (count > 0) {
+      ctx!.add(1);
+    }
+  });
+</script>
+<button class="inc" onClick=(() => (count += 1))>Inc</button>

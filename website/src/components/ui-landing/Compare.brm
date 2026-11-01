@@ -1,0 +1,138 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Switch from '@brumate/ui/Switch.brm';
+  import Icon from '../Icon.brm';
+  import { unstyled, usage } from '../../ui-landing.ts';
+
+  let presses = $signal(0);
+  let subscribed = $signal(true);
+  let wifi = $signal(false);
+  let showStyled = $signal(true);
+</script>
+
+<div class="compare">
+  <div class="toggle" role="group" aria-label="Look">
+    <button type="button" aria-pressed=(!showStyled) onClick=(() => (showStyled = false))>Unstyled</button>
+    <button type="button" aria-pressed=(showStyled) onClick=(() => (showStyled = true))>Styled</button>
+  </div>
+  <div class="panes">
+    <div class="pane card" data-active=(!showStyled)>
+      <p class="caption">No styles</p>
+      <div class="stage">
+        <Button onPress=(() => presses++)>Pressed {presses} {presses === 1 ? 'time' : 'times'}</Button>
+        <Switch isSelected=$bind(wifi)>
+          <span aria-hidden="true"></span>
+          Wi-Fi is {wifi ? 'on' : 'off'}
+        </Switch>
+        <Checkbox isSelected=$bind(subscribed)>Send the newsletter</Checkbox>
+      </div>
+    </div>
+    <div class="pane card" data-active=(showStyled)>
+      <p class="caption">Styled like this site</p>
+      <div class="stage">
+        <Button class="ui-button" onPress=(() => presses++)>Pressed {presses} {presses === 1 ? 'time' : 'times'}</Button>
+        <Switch class="ui-box" isSelected=$bind(wifi)>
+          <span class="ui-track" aria-hidden="true"></span>
+          Wi-Fi is {wifi ? 'on' : 'off'}
+        </Switch>
+        <Checkbox class="ui-box" isSelected=$bind(subscribed)>
+          <span class="ui-mark" aria-hidden="true"><Icon name="check" size=(12) /><Icon name="minus" size=(12) /></span>
+          Send the newsletter
+        </Checkbox>
+      </div>
+    </div>
+  </div>
+  <div class="codes">
+    <div class="code" role="group" aria-label="The component" tabindex="0">{usage}</div>
+    <div class="code" role="group" aria-label="The styles" tabindex="0">{unstyled}</div>
+  </div>
+</div>
+
+<style>
+  .compare {
+    display: grid;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+
+  .toggle {
+    display: none;
+    justify-self: start;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--bg-elevated);
+    overflow: hidden;
+  }
+
+  .toggle button {
+    padding: 0.4rem 0.9rem;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: 500 var(--text-sm) var(--font);
+    cursor: pointer;
+    transition:
+      color var(--duration-fast) var(--ease),
+      background-color var(--duration-fast) var(--ease);
+  }
+
+  .toggle button[aria-pressed='true'] {
+    background: var(--text);
+    color: var(--bg);
+  }
+
+  .panes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .pane {
+    min-width: 0;
+    padding: 1.25rem;
+  }
+
+  .caption {
+    margin: 0 0 1rem;
+    color: var(--muted);
+    font: 500 var(--text-xs) var(--mono);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .stage {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .codes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    min-width: 0;
+  }
+
+  .codes :global(.code) {
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  @media (max-width: 52rem) {
+    .toggle {
+      display: inline-flex;
+    }
+
+    .panes,
+    .codes {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pane[data-active='false'] {
+      display: none;
+    }
+  }
+</style>
