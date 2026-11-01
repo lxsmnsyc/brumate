@@ -17,10 +17,19 @@ async function buildApp(name: string, extra: InlineConfig['build'] = {}) {
   mkdirSync(`${app}src`, { recursive: true });
   writeFileSync(`${app}src/client.ts`, "import 'virtual:brumate/start';\n");
   writeFileSync(`${app}src/lazy.ts`, "import './lazy.css';\nexport const shade = 'red';\n");
+  writeFileSync(`${app}src/shared.ts`, 'export const shared = Math.random();\n');
+  writeFileSync(
+    `${app}src/a.ts`,
+    "import { shared } from './shared.ts';\nexport const a = shared + 1;\n",
+  );
+  writeFileSync(
+    `${app}src/b.ts`,
+    "import { shared } from './shared.ts';\nexport const b = shared + 2;\n",
+  );
   writeFileSync(`${app}src/lazy.css`, '.lazy { color: red; }\n');
   writeFileSync(
     `${app}src/Page.brm`,
-    "<style>\n  p { color: teal; }\n</style>\n\n<script>\n  import { shade } from './lazy.ts';\n  import { $state } from 'brumate/signals';\n  let count = $state(0);\n</script>\n\n<p onClick=(() => (count += shade.length))>{count}</p>\n",
+    "<style>\n  p { color: teal; }\n</style>\n\n<script>\n  import { shade } from './lazy.ts';\n  import { $state } from 'brumate/signals';\n  let count = $state(0);\n</script>\n\n<p onClick=(async () => { count += shade.length + (await import('./a.ts')).a + (await import('./b.ts')).b; })>{count}</p>\n",
   );
   const config: InlineConfig = {
     root: app,
@@ -52,8 +61,11 @@ async function buildApp(name: string, extra: InlineConfig['build'] = {}) {
 
 /** The files in the table of dependencies that Vite writes at the top of a chunk. */
 function mapDeps(code: string): string[] {
-  const list = /m\.f=(\[[^\]]*\])/.exec(code)?.[1];
-  return list ? (JSON.parse(list) as string[]) : [];
+  const files: string[] = [];
+  for (const match of code.matchAll(/m\.f=(\[[^\]]*\])/g)) {
+    files.push(...(JSON.parse(match[1]) as string[]));
+  }
+  return files;
 }
 
 /** Runs the helper of a build against a page with the given stylesheets and returns the links that it added. */
@@ -91,16 +103,27 @@ describe('the preload helper of the client build', () => {
         code += item.code;
       }
     }
-    // The scripts of a page come from the `Link` headers, so no table lists one. The table
-    // of Vite holds the stylesheet of the bundle and nothing else.
-    expect(code).toContain('__vite__mapDeps');
-    expect(mapDeps(code)).toEqual([expect.stringMatching(/^assets\/Page_\w+-[\w-]+\.css$/)]);
-    expect(code).not.toContain('modulepreload');
+    // The scripts of a page and of its bundles come from the `Link` headers, so the table
+    // holds the stylesheet of the bundle and the imports of the other lazy chunks. A lazy
+    // chunk and the chunk that it shares with another load together.
+    const deps = mapDeps(code);
+    expect(deps).toContainEqual(expect.stringMatching(/^assets\/Page_\w+-[\w-]+\.css$/));
+    const lazy = output.find(
+      (item): item is Rolldown.OutputChunk =>
+        item.type === 'chunk' && item.fileName.startsWith('assets/a-'),
+    )!;
+    expect(lazy.imports).toHaveLength(1);
+    expect(deps).toContain(lazy.imports[0]);
+    const start = output.filter(
+      (item): item is Rolldown.OutputChunk =>
+        item.type === 'chunk' && item.moduleIds.some((id) => id.endsWith('virtual:brumate/start')),
+    );
+    for (const item of start) {
+      expect(deps).not.toContain(item.fileName);
+    }
+    expect(deps).not.toContainEqual(expect.stringMatching(/^assets\/Page_[\w-]+\.js$/));
     expect(code).not.toContain('detectScriptRel');
     expect(code).not.toContain('isCssPreloadUrl');
-    expect(code).toMatch(
-      /__vitePreload\(\(\) => import\("\.\/Page[\w-]*\.js"\), __vite__mapDeps\(\[0\]\)\)/,
-    );
   });
 
   it('adds a stylesheet that is not on the page, and waits for it before it loads the chunk', async () => {
@@ -111,9 +134,10 @@ describe('the preload helper of the client build', () => {
     )!;
     const css = output.find((item) => item.fileName.endsWith('.css'))!;
     const { links, done } = runHelper(chunk.code, [css.fileName, 'assets/other.js'], []);
-    expect(links).toHaveLength(1);
-    expect(links[0].rel).toBe('stylesheet');
+    // The script gets a hint that is not waited for, the stylesheet is.
+    expect(links.map((link) => link.rel)).toEqual(['stylesheet', 'modulepreload']);
     expect(links[0].href).toBe(`http://localhost/${css.fileName}`);
+    expect(links[1].href).toBe('http://localhost/assets/other.js');
     let settled = false;
     void done.then(() => (settled = true));
     await Promise.resolve();
@@ -146,8 +170,9 @@ describe('the preload helper of the client build', () => {
         code += item.code;
       }
     }
-    expect(mapDeps(code)).toEqual([expect.stringMatching(/\.css$/)]);
-    expect(code).not.toContain('modulepreload');
+    for (const file of mapDeps(code)) {
+      expect(file).not.toMatch(/^assets\/(?:client|skew|Page_[\w-]+)-[\w-]+\.js$/);
+    }
     expect(code).not.toContain('isCssPreloadUrl');
   });
 });

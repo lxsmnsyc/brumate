@@ -212,7 +212,8 @@ const PRELOAD_HELPER = '\0vite/preload-helper.js';
 /**
  * Vite's preload helper wraps every `import()` of a client build and preloads the scripts and
  * the stylesheets of the chunk. This one waits for the stylesheets only, so a lazy chunk shows
- * styled. The scripts of a page come with the `Link` headers of the server (see `hints`).
+ * styled, and preloads the imports of the chunk. The scripts of a page come with the `Link`
+ * headers of the server (see `hints`).
  */
 function preloadHelper(base: string, relative: boolean): string {
   return [
@@ -220,23 +221,24 @@ function preloadHelper(base: string, relative: boolean): string {
     `  const links = [];`,
     `  for (const dep of deps || []) {`,
     `    const href = ${relative ? 'new URL(dep, from)' : `new URL(${JSON.stringify(base)} + dep, location.href)`}.href;`,
-    `    if (!dep.endsWith('.css')) {`,
-    `      continue;`,
-    `    }`,
+    `    const rel = dep.endsWith('.css') ? 'stylesheet' : 'modulepreload';`,
     `    let found = false;`,
     `    for (const link of document.getElementsByTagName('link')) {`,
-    `      found ||= link.rel === 'stylesheet' && link.href === href;`,
+    `      found ||= link.rel === rel && link.href === href;`,
     `    }`,
     `    if (!found) {`,
-    `      links.push(new Promise((resolve, reject) => {`,
-    `        const link = document.createElement('link');`,
-    `        link.rel = 'stylesheet';`,
-    `        link.crossOrigin = '';`,
-    `        link.href = href;`,
-    `        link.onload = resolve;`,
-    `        link.onerror = reject;`,
-    `        document.head.appendChild(link);`,
-    `      }));`,
+    `      const link = document.createElement('link');`,
+    `      link.rel = rel;`,
+    `      link.crossOrigin = '';`,
+    `      link.href = href;`,
+    `      document.head.appendChild(link);`,
+    `      // A script loads along with the chunk, so only a stylesheet is waited for.`,
+    `      if (rel === 'stylesheet') {`,
+    `        links.push(new Promise((resolve, reject) => {`,
+    `          link.onload = resolve;`,
+    `          link.onerror = reject;`,
+    `        }));`,
+    `      }`,
     `    }`,
     `  }`,
     `  return Promise.all(links).then(load);`,
@@ -1742,6 +1744,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   let coreModule: string | undefined;
   let loaderChunk: string | undefined;
   let coreChunk: string | undefined;
+  /** The chunks that the loader and the core import, which the server hints at, and the chunks of the bundles. */
+  let startChunks = new Set<string>();
+  let bundleChunks = new Set<string>();
 
   const plugin: Plugin & { configureVitest(context: VitestContext): void } = {
     name: 'brumate',
@@ -1774,9 +1779,21 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             modulePreload: {
               ...(typeof preload === 'object' ? preload : {}),
               // The replacement of Vite's preload helper (`PRELOAD_HELPER`) waits for stylesheets
-              // only. The server sends the hints for scripts, so the build lists none, which
-              // also leaves them out of the dependency tables of the chunks.
-              resolveDependencies: () => [],
+              // only. The server sends the hints for the scripts of the page and of the bundles,
+              // so the build lists the imports of the other lazy chunks only, which the helper
+              // preloads without waiting, so a chunk and its imports load together.
+              resolveDependencies(filename, deps) {
+                if (bundleChunks.has(filename)) {
+                  return [];
+                }
+                const rest: string[] = [];
+                for (const dep of deps) {
+                  if (dep !== filename && !startChunks.has(dep)) {
+                    rest.push(dep);
+                  }
+                }
+                return rest;
+              },
             },
           },
         };
@@ -1858,6 +1875,24 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
         if (coreModule && item.moduleIds.includes(coreModule)) {
           coreChunk = item.fileName;
+        }
+      }
+      startChunks = new Set();
+      bundleChunks = new Set();
+      function addStart(name: string | undefined): void {
+        const found = name === undefined ? undefined : bundle[name];
+        if (found?.type === 'chunk' && !startChunks.has(name!)) {
+          startChunks.add(name!);
+          for (const imported of found.imports) {
+            addStart(imported);
+          }
+        }
+      }
+      addStart(loaderChunk);
+      addStart(coreChunk);
+      for (const item of Object.values(bundle)) {
+        if (item.type === 'chunk' && item.facadeModuleId?.startsWith(`\0${BUNDLE}`)) {
+          bundleChunks.add(item.fileName);
         }
       }
       if (!options.report && !options.budget) {
