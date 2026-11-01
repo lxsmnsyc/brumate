@@ -3,6 +3,7 @@
 import { HAS_BINDINGS } from '../features.ts';
 import { isBinding } from '../shared.ts';
 import { loadModule } from './code.ts';
+import { fail } from './errors.ts';
 import { modules, scopes } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
 import { get, set, writeSlot } from './updates.ts';
@@ -89,6 +90,6 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
   if (module) {
     apply(module);
   } else {
-    void loadModule(child.m).then(apply);
+    loadModule(child.m).then(apply, (error: unknown) => fail(child, error));
   }
 }

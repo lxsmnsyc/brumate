@@ -7297,6 +7297,44 @@ describe('a handler waits only for', () => {
   });
 });
 
+describe('a prop write to a child whose code fails to load', () => {
+  it('reaches the #catch of the #try and reports no unhandled rejection', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (error: unknown): void => {
+      unhandled.push(error);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    const server = await import(file('propLoadFail.brm.ts'));
+    const { html, state } = await renderParts(server.default, {}, {});
+    show(html + state);
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    // The code of the child is still loading when the parent writes its prop.
+    let release!: () => void;
+    const gate = new Promise<void>((done) => (release = done));
+    stop = start({
+      load: async (id) => {
+        if (id.startsWith('PropLoadKid')) {
+          await gate;
+          throw new Error('The chunk is gone');
+        }
+        return import(modules.get(id)!);
+      },
+    });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    click(document.querySelector('.inc')!);
+    await new Promise((done) => setTimeout(done, 50));
+    release();
+    await waitFor(() => expect(text('.caught')).toBe('Error: The chunk is gone'));
+    await new Promise((done) => setTimeout(done, 50));
+    expect(unhandled).toEqual([]);
+  });
+});
+
 describe('functions used in children that render later', () => {
   it('defines a function used at the top and in children', async () => {
     await resume('handlerRefs', {});
