@@ -19,3 +19,12 @@
 - Codegen: the awaited name is a `let` before the split; variable declarations before the last `await` become `let`, and the rest assigns them from `$$v`.
 - The rejected static async memo (no slot) is unhandled without `await` too: a bug of main, reported, not fixed here.
 - Todos raw 35,467 B, gzip 14,823 B. `wait` is +520 B gzip on the spike's entry.
+
+## 2026-11-02, re-review of #413
+
+- Promise props: `wait` keeps `scope.props` across its `setSlots`.
+- Updates in a held, detached body: `give` replays all updates of the body's scopes when the write count changed during the hold. Dropped the `held` map and `join(scope)`.
+- Nested `bound` splices from the lengths at entry.
+- `until` holds the check that ends a wait when its scope goes.
+- Found while turning the destructuring probe into a test: with two awaits, the first slot's `renderedLoads` key stayed, since the nested wait took the scope out of the insert, so a later prop change did not load the first memo again. Settled slots now wait for the insert that shows the scope.
+- TDZ: documented, not matched (a sentinel costs a read check).

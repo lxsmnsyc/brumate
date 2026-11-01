@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import WaitUser from './WaitUser.brm';
+
+  let inner = $signal(false);
+</script>
+
+<button class="inner" onClick=(() => (inner = !inner))>Inner</button>
+#if (inner) {
+  <WaitUser id=(9) />
+}

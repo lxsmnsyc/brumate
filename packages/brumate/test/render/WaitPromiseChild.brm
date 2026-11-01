@@ -1,0 +1,18 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  const { value } = $props<{ value: Promise<string> }>();
+
+  function note(name: string, ...values: unknown[]): void {
+    ((globalThis as { reads?: unknown[][] }).reads ??= []).push([name, ...values]);
+  }
+
+  function chain() {
+    value.then((result) => note('then', result));
+  }
+  const user = await $memo(loadUser(1));
+</script>
+
+<p class="user">{user.name}</p>
+<button class="then" onClick=chain>Then</button>

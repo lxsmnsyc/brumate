@@ -5,11 +5,11 @@ import type { ScopeId } from '../shared.ts';
 import { rendered } from './blocks.ts';
 import { setSlots } from './components.ts';
 import { fail } from './errors.ts';
-import { insertHTML } from './insert.ts';
+import { insertHTML, refresh } from './insert.ts';
 import { afterInsert, resolveScope } from './scopes.ts';
 import { loadingValues, renderedLoads, scopes, waiters } from './state.ts';
 import type { Scope } from './state.ts';
-import { isThenable, pending } from './updates.ts';
+import { isThenable, pending, writes } from './updates.ts';
 
 /** What a render function of the browser returns. */
 export type Out = string | DocumentFragment;
@@ -27,13 +27,15 @@ export interface Boundary {
   done?: () => void;
   f?: (error: unknown) => void;
   w?: Work;
+  /** The count of writes when the body rendered, so `give` knows whether updates missed it. */
+  c: number;
 }
+
+/** The slots of a scope whose awaits settled, until the insert that shows the scope. */
+const settledSlots: WeakMap<Scope, number[]> = new WeakMap();
 
 /** The boundary of the render that runs, if any. */
 let boundary: Boundary | undefined;
-
-/** The boundaries that hold the scopes of their bodies, so a wait under such a scope joins it. */
-const held: WeakMap<Scope, Boundary> = new WeakMap();
 
 /** Runs a render with `own` as the boundary that its waits count in. */
 function within(own: Boundary | undefined, render: () => Out): Out {
@@ -46,13 +48,6 @@ function within(own: Boundary | undefined, render: () => Out): Out {
   }
 }
 
-/** Notes that the scopes of a held body are in its boundary. */
-function hold(own: Boundary, made: Scope[]): void {
-  for (const scope of made) {
-    held.set(scope, own);
-  }
-}
-
 /**
  * Renders `body` in a boundary of its own. Returns what it rendered, and the boundary when a wait
  * in it has not settled. That boundary holds the scopes and the `afterInsert` work of the body,
@@ -60,39 +55,77 @@ function hold(own: Boundary, made: Scope[]): void {
  * in, and the caller sets `done`, and `f` if it handles failures, before any wait settles.
  */
 export function bound(body: () => Out): [Out, Boundary?] {
-  const own: Boundary = { n: 0 };
+  const own: Boundary = { n: 0, c: writes };
+  // The work of the render around it stays there.
+  const made = rendered.length;
+  const queued = afterInsert.length;
   const out = within(own, body);
   if (own.n === 0) {
     return [out];
   }
-  own.w = [rendered.splice(0), afterInsert.splice(0)];
-  hold(own, own.w[0]);
+  own.w = [rendered.splice(made), afterInsert.splice(queued)];
   return [out, own];
 }
 
-/** Puts back the work that a boundary held, for the insert of its body. */
+/**
+ * Puts back the work that a boundary held, for the insert of its body. Updates do not reach a
+ * body that is not in the page, since blocks find their markers in the page. So when anything
+ * was written during the hold, the updates of the body's scopes all run once it is in.
+ */
 export function give(own: Boundary): void {
   const [made, queued] = own.w ?? [[], []];
   own.w = undefined;
-  rendered.push(...made);
+  if (own.c === writes) {
+    rendered.push(...made);
+  } else {
+    queued.push(() => refresh(made));
+  }
   afterInsert.push(...queued);
 }
 
-/**
- * Counts a new wait in its boundary, and returns that boundary: the boundary of the render that
- * runs, or else the held boundary of a scope above `scope`, such as for a wait that an update
- * starts inside a body that is not in the page yet.
- */
-export function join(scope?: Scope): Boundary | undefined {
-  let own = boundary;
-  for (let at = scope; !own && at; at = at.p ?? at.o) {
-    const found = held.get(at);
-    own = found?.w ? found : undefined;
-  }
+/** Counts a new wait in the boundary of the render that runs, and returns that boundary. */
+export function join(): Boundary | undefined {
+  const own = boundary;
   if (own) {
     own.n++;
   }
   return own;
+}
+
+/** True when the wait of `scope` in the range that `end` closes is gone with its block. */
+function gone(scope: Scope, end: Node): boolean {
+  return scopes.get(scope.id) !== scope || !end.parentNode;
+}
+
+/**
+ * Waits until `ready()`, then runs `run` a microtask later, outside the write that made it ready.
+ * Each write of a slot, and the removal of `scope`, checks again. A scope or range that goes ends
+ * the wait with `leave`. `run` gets the check, to wait again with `waiters.set(check, scope)`.
+ */
+export function until(
+  own: Boundary | undefined,
+  scope: Scope,
+  end: Node,
+  ready: () => boolean,
+  run: (check: () => void) => void,
+): () => void {
+  function check(): void {
+    if (gone(scope, end)) {
+      waiters.delete(check);
+      leave(own);
+    } else if (ready()) {
+      waiters.delete(check);
+      queueMicrotask(() => {
+        if (gone(scope, end)) {
+          leave(own);
+        } else {
+          run(check);
+        }
+      });
+    }
+  }
+  waiters.set(check, scope);
+  return check;
 }
 
 /** Ends a wait that `join` counted. At 0, the boundary runs `done`. */
@@ -127,9 +160,7 @@ export function fillRange(own: Boundary | undefined, end: Node, rest: () => Out)
     throw error;
   }
   if (own?.w) {
-    const scopesMade = rendered.splice(made);
-    hold(own, scopesMade);
-    own.w[0].push(...scopesMade);
+    own.w[0].push(...rendered.splice(made));
     own.w[1].push(...afterInsert.splice(queued));
   }
   insertHTML(end, out);
@@ -160,8 +191,11 @@ export function wait(
   const promise = Promise.resolve(first);
   // The setup of the slots that the code before the `await` set, such as a promise prop or an
   // async memo, whose rejection the memo reports. The slot of the memo is this wait's.
+  // The props stay for the rest's own `setSlots`, which keeps a promise prop a plain promise.
   slots[slot] = undefined;
+  const props = scope.props;
   setSlots(id, slots);
+  scope.props = props;
   scope.s[slot] = promise;
   // Update code that runs during the wait reads the promise, as it reads a memo that loads.
   loadingValues.add(promise);
@@ -177,26 +211,8 @@ export function wait(
   const end = document.createComment('/w');
   const range = document.createDocumentFragment();
   range.append(start, end);
-  const own = join(scope);
-  function gone(): boolean {
-    return scopes.get(scope.id) !== scope || !end.parentNode;
-  }
-  // Each write of a slot, and the removal of the scope, checks again. The rest runs a microtask
-  // later, outside the write.
-  function check(): void {
-    if (gone()) {
-      waiters.delete(check);
-      leave(own);
-    } else if (!pending(scope, slot)) {
-      waiters.delete(check);
-      queueMicrotask(settle);
-    }
-  }
-  function settle(): void {
-    if (gone()) {
-      leave(own);
-      return;
-    }
+  const own = join();
+  function settle(check: () => void): void {
     if (pending(scope, slot)) {
       waiters.set(check, scope);
       return;
@@ -207,23 +223,37 @@ export function wait(
       fault(own, value.error);
       return;
     }
+    // A rest that waits again at a later `await` takes the scope out of the insert.
+    let shown = false;
     try {
       fillRange(own, end, () => {
         // The scope goes with the markup of the rest.
         rendered.push(scope);
-        return rest(scope.s);
+        const out = rest(scope.s);
+        shown = rendered.includes(scope);
+        return out;
       });
     } catch (error) {
       fail(scope, error);
       fault(own, error);
       return;
     }
-    // The memo has its value, so the refresh after the insert does not load it again.
-    if (slot < scope.s.length) {
-      renderedLoads.add(`${scope.id}:${slot}`);
+    // The memos have their values, so the refresh after the insert that shows the scope does
+    // not load them again.
+    const done = settledSlots.get(scope) ?? [];
+    done.push(slot);
+    settledSlots.set(scope, done);
+    if (shown) {
+      settledSlots.delete(scope);
+      for (const settled of done) {
+        if (settled < scope.s.length) {
+          renderedLoads.add(`${scope.id}:${settled}`);
+        }
+      }
     }
     leave(own);
   }
+  const check = until(own, scope, end, () => !pending(scope, slot), settle);
   function write(value: unknown): void {
     // A newer load wrote the slot already.
     if (scope.s[slot] === promise) {
@@ -233,7 +263,6 @@ export function wait(
       check();
     }
   }
-  waiters.set(check, scope);
   promise.then(write, (error: unknown) => write(new MemoError(error)));
   return range;
 }
