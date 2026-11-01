@@ -1,7 +1,7 @@
 ---
 id: unread-memo-rejection
 title: A browser render handles the rejection of an async memo that nothing reads
-status: in-progress
+status: active
 priority: must
 type: hotfix
 outline: false
