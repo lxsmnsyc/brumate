@@ -725,7 +725,14 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // A script can pass a route context on under another name, which the compiled output of
       // a component never shows, so any script of the app or of a package it reaches counts.
       if (!features.routes) {
-        const scripts = [...new Set([...(await findScripts(root, exclude)), ...reachable()])];
+        const own = path
+          .resolve(import.meta.dirname, '..')
+          .split(path.sep)
+          .join('/');
+        // The runtime of brumate names the contexts itself.
+        const scripts = [
+          ...new Set([...(await findScripts(root, exclude)), ...reachable()]),
+        ].filter((file) => !file.startsWith(`${own}/dist/`) && !file.startsWith(`${own}/src/`));
         const texts = await inBatches(scripts, (file) => readFile(file, 'utf8').catch(() => ''));
         for (const text of texts) {
           if (ROUTE_CONTEXTS.test(text)) {
