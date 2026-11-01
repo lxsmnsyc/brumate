@@ -1,7 +1,7 @@
 ---
 id: drop-preload-helper
 title: The client loader ships without Vite's preload helper
-status: todo
+status: active
 priority: should
 type: fix
 outline: false

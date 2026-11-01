@@ -1,7 +1,7 @@
 ---
 id: context-writer-loop
 title: An effect that calls a context's writer does not run again on its own write
-status: active
+status: done
 priority: should
 type: fix
 outline: false
