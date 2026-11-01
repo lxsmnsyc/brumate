@@ -34,7 +34,7 @@ None.
 
 - `pnpm lint` 0 errors, `pnpm format:check` clean, `pnpm typecheck` clean.
 - `cd packages/brumate && npx vitest run`: 1285 passed.
-- `pnpm build` passes; e2e: see the PR.
+- `pnpm build` passes. `node e2e/run.mjs --only ui` ran 3 times alone: 55 passed, 0 failed each time. The first full e2e (before the effect fix) failed the Tabs step and one more; the full suite was not run again after the fix, only the ui suite 3 times.
 - No `loadPart`, `parts`, `loadedParts`, `getPart`, `ClientModule.load`, `updateReady` or `w` remain in packages/brumate/src.
 
 ## Size
