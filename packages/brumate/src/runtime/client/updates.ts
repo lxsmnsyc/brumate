@@ -357,7 +357,7 @@ let computing = 0;
 // The effect whose run causes the writes in progress, so a context that the effect writes through
 // does not run it again. `viaContext` is true while a context sends a value.
 let origin: string | undefined;
-export let viaContext = false;
+let viaContext = false;
 export function sendContext(send: () => void): void {
   const before = viaContext;
   viaContext = true;

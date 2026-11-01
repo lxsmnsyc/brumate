@@ -4412,8 +4412,8 @@ describe('memos that read state through a function prop', () => {
     click(document.querySelector('.inc')!);
     await waitFor(() => expect(text('.total')).toBe('1'));
     await new Promise((done) => setTimeout(done, 100));
-    // Once on load, once for the click.
-    expect(counter.writerRuns).toBeLessThanOrEqual(3);
+    // The effect ran on the server, so the browser runs it once, for the click.
+    expect(counter.writerRuns).toBe(1);
     expect(text('.total')).toBe('1');
   });
 
