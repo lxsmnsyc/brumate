@@ -4,9 +4,9 @@ Recommendation: option 3, with the root boundary. The compiler splits a browser 
 
 - **Prototype:** runs on the real client runtime, 13 tests pass, in both modes (fill in place and root boundary).
 - **Todos (uses none of it):** 0 B. Raw JS is 35,467 B with and without the prototype (`pnpm bench`).
-- **A page that uses it:** about +365 B gzip. Fill in place costs +169 B (`wait`) or +305 B (with `loading`).
+- **An app that uses it:** about +365 B gzip with the 2 insert sites the prototype changes, and an estimated +455 to +505 B with all 11. Fill in place costs +169 B (`wait`) or +305 B (with `loading`). The flag is per build, so one component that waits turns it on for every page of the app.
 
-Gate: the maintainer picks the option. The open questions are under "Decisions for the maintainer". Answer them before the other children of browser-async are refined.
+Gate: decided. The maintainer chose option 3, the root boundary, topological awaits on the server and in the browser, and the node list under "Proposed nodes". See "Decided".
 
 ## Built
 
@@ -14,7 +14,7 @@ Gate: the maintainer picks the option. The open questions are under "Decisions f
   - `src/runtime/client/waits.ts`: `wait(scope, value, then)`, `loading(body, fallback, row?)` and `hold(render, show, stale)`. `wait` and `loading` are exported from `brumate/client`.
   - `src/runtime/client/branches.ts`: `branch` renders the new body through `hold` when `HAS_ROOT_WAIT` is on.
   - `src/runtime/client/lists.ts`: a new row renders through `loading` with an empty fallback when `HAS_ROOT_WAIT` is on.
-  - `src/runtime/features.ts` and `src/features.ts`: the flag `__BRUMATE_HAS_ROOT_WAIT__`. The plugin turns it on when a compiled part calls `$$b.wait(`. `SPIKE_ROOT_WAIT=1` forces it on for the bench.
+  - `src/runtime/features.ts` and `src/features.ts`: the flag `__BRUMATE_HAS_ROOT_WAIT__`. The plugin turns it on when a compiled part of any component of the build calls `$$b.wait(`. `SPIKE_ROOT_WAIT=1` forces it on for the bench.
   - `test/_spike/await.test.ts`: compiles the fixtures in `prototype/`, edits the compiled code as the compiler would (`splitAtAwaits`, `wrapLoading`), and runs the pages in happy-dom with the loader. The test sets the flag before the core loads.
 - `prototype/*.brm` and `prototype/data.ts`: the fixtures. `User.brm` declares a signal, then `const user = await $memo(load(id))`, then a memo of `user`. The load takes 150 ms. `User.brm` is rendered by:
   - `WithLoading.brm`: in an `#if`, inside `#loading`.
@@ -99,12 +99,36 @@ export default function User($$props) {
 
 The server holds the whole page outside every `#loading`. The root boundary does the same in the browser. A block outside every `#loading` that renders a new body on an update keeps what it shows until every wait in the new body settles.
 
-- **`branch`:** renders the new body through `hold` first, and sets the start comment to the new index. With no waits, the old body goes and the new one goes in, as today. With waits, the old body stays. When they settle, the scopes of the old body are destroyed and the new body goes in. A switch back meanwhile changes the start comment, so `hold` drops the stale body.
+- **`branch`:** renders the new body through `hold` first, and sets the start comment to the new index. With no waits, the old body goes and the new one goes in. With waits, the old body stays. When they settle, the scopes of the old body are destroyed and the new body goes in. A switch back meanwhile changes the start comment, so `hold` drops the stale body.
+- **Order of a swap (open for the build):** with the flag on, `hold` renders the new body before the old scopes are destroyed, also when nothing waits. Today `removeBlock` runs before the render. So on an app with the flag on, the cleanups of the old body run after the script of the new body. The suites pass, but no test covers this order. The build either keeps the old order when nothing waits (destroy first, render, and hold only when a wait shows up) or tests the new order.
+- **B, A, B while B waits (open for the build):** `hold` compares only the start comment. The first B is dropped when A shows, and the second B renders again, so B loads twice (the review measured `[7, 7]`). The page ends right, with one user. The build can keep the held render of B and reuse it.
 - **New `#for` rows:** render through `loading` with an empty fallback. A row that waits holds an item marker, `<!--i<row scope id>-->` and `<!--/i-->`, with nothing in it. The next update of the list finds the row by that marker and does not render it again. The row shows when its waits settle.
 - **First render with nothing to keep:** an `#if` that opens from nothing, a new `#for` row, or a page that only the browser renders shows nothing until its waits settle. The server sends no markup in the same case, since it waits. A `#loading` is the way to show a fallback sooner.
-- **Insert sites:** the prototype changes 2 of the 15, `branch` (+20 lines) and the row render of `list` (+3 lines). `rekey`, `fill`, `offscreen`, `reset`, the list fallback, `catchInto` and the inserts of `children.ts` and `templates.ts` need the same `hold` wrapper.
-- **Cost:** `HAS_ROOT_WAIT` strips all of it from a page whose parts call no `$$b.wait(`. Todos with the flag off: raw 35,467 and 35,468 B, gzip 14,819 and 14,820 B, the same as without the prototype. Todos with the flag forced on: raw 36,000 and 36,001 B (+533 B), gzip 15,010 and 15,014 B (+190 to +195 B). That covers `hold`, `loading` and the 2 changed sites. `wait` adds 169 B on a page that calls it, so about +365 B in all. The other 7 sites add an estimated 60 to 100 B more.
-- **Compared to fill in place:** fill in place changes no insert site and costs +169 B (`wait`), or +305 B with `#loading`. Its siblings show before the component, and the old branch goes at once (test "fill in place: the old branch goes at once"). The root boundary costs about 60 B more than fill in place with `loading`, plus the 7 sites left. It matches the server, and no half-rendered block shows.
+- **Insert sites:** the 15 places that insert what a render returns, and which need `hold`:
+
+  | Site                                                                 | File            | Needs `hold`                                                          | Prototype |
+  | -------------------------------------------------------------------- | --------------- | --------------------------------------------------------------------- | --------- |
+  | `branch` (`#if`, `#switch`)                                          | `branches.ts`   | yes                                                                   | changed   |
+  | New rows of `list` (also `windowList`, which calls it)               | `lists.ts`      | yes                                                                   | changed   |
+  | `rekey` (`#key`, and `retag` for a dynamic tag, which calls it)      | `branches.ts`   | yes                                                                   | no        |
+  | `reset` (the `reset` of `#try`)                                      | `branches.ts`   | yes                                                                   | no        |
+  | `fill` (`#client`, which keeps its fallback until the body is ready) | `branches.ts`   | yes                                                                   | no        |
+  | `offscreen`, the first show                                          | `branches.ts`   | yes                                                                   | no        |
+  | The fallback of `list`                                               | `lists.ts`      | yes                                                                   | no        |
+  | `catchInto` (the `#catch` body)                                      | `errors.ts`     | yes                                                                   | no        |
+  | Late `children`                                                      | `children.ts`   | yes                                                                   | no        |
+  | `content` (a value that renders)                                     | `inserts.ts`    | yes                                                                   | no        |
+  | The portal insert                                                    | `inserts.ts`    | yes                                                                   | no        |
+  | `place` and `componentNodes`                                         | `components.ts` | no: they run inside another render, whose boundary counts their waits | no        |
+  | Template calls                                                       | `templates.ts`  | no: same, inside another render                                       | no        |
+  | `replaceTry`                                                         | `errors.ts`     | no: it inserts HTML that the server rendered                          | no        |
+  | `addHead` and `addPortal` HTML                                       | `page.ts`       | no: HTML, no render                                                   | no        |
+
+- **Cost:** `HAS_ROOT_WAIT` is a flag per build, not per page. `buildFeatures` (`src/vite.ts:684`) joins the features of every component of the build into one core. The count follows the imports of the scanned files, packages included (`visit`, `src/vite.ts:690`), and `generateBundle` (`src/vite.ts:1853`) fails the build when a loaded component uses a feature that the count left out. So an app with no `await $memo` in a browser render pays nothing, and an app with one pays on every page.
+  - Todos with the flag off: raw 35,467 and 35,468 B, gzip 14,819 and 14,820 B, the same as without the prototype.
+  - Todos with the flag forced on: raw 36,000 and 36,001 B (+533 B), gzip 15,010 and 15,014 B (+190 to +195 B). That covers `hold`, `loading` and the 2 changed sites. With `wait` (+169 B), about +365 B.
+  - The 9 sites left: an estimated 10 to 15 B gzip each, from the size of the `branch` change, so +90 to +140 B. About +455 to +505 B in all.
+- **Compared to fill in place:** fill in place changes no insert site and costs +169 B (`wait`), or +305 B with `#loading`. Its siblings show before the component, and the old branch goes at once (test "fill in place: the old branch goes at once"). The root boundary costs about 150 to 200 B more than fill in place with `loading`, once all 11 sites have `hold`. It matches the server, and no half-rendered block shows.
 
 ### What the tests show
 
@@ -142,56 +166,68 @@ What the server does today (`emitStatements` and `awaitRun` in `src/codegen/mark
 
 The change, the same on the server and in the browser:
 
-- **Analysis:** for each awaited memo, the compiler takes the declarations that its expression reads (`site.reads`). It splits them into awaited memos and the rest.
-- **Start point:** the memo starts right after the last statement that defines one of its non-memo reads, or at the top of the script when there is none. A read of another awaited memo does not hold the start. The memo reads that memo as a memo, so the load chains.
-- **Server output:** the `$$b.memo(...)` line of the memo moves to its start point, followed by `$$b.start($$p_x);`. `start` calls `ready` and catches its rejection, about 30 B on the server. At the original `await`, `awaitRun` emits the same `waitAll` or `ready` as today. `waitAll` stays as it is.
-- **Browser output:** at the start point, `const $$w_x = load(id);` for a memo with no memo reads. A memo that reads awaited memos gets `const $$w_x = $$b.after([$$w_a], (a) => loadTags(a));`, which is `Promise.all` and `then`. At the original `await`, `return $$b.wait($$s1, $$w_x, (x) => { ... })`, or `waitAll($$s1, [$$w_x, $$w_y], (x, y) => { ... })` for a run. `after` and `waitAll` are about 40 B gzip together over `wait`. Each moved declaration adds about 20 B raw to the compiled part.
-- **Limits:** a memo that reads a value computed from an earlier awaited memo still waits for it. In `const user = await $memo(a()); const q = user.id; const tags = await $memo(b(q));`, `b(q)` cannot start before `user` settles, because `q` reads `user`. Parent to child chains stay. A memo whose expression calls a function declared later in the script keeps its place.
+- **Analysis:** for each awaited memo, the compiler takes the names that its expression reads (`site.reads`), and follows calls of script-local functions to the names those functions read. It splits the names into awaited memos and the rest.
+- **Start point:** the load starts right after the last statement that mentions one of its non-memo names: a declaration, a write without a declaration (`q = props.x;`), a call that can change it (`params.set('a', 1);`), or a call of a local function that reads it. With none, it starts at the top of the script. A read of another awaited memo does not hold the start. The memo reads that memo as a memo, so the load chains.
+- **Local functions:** a function declaration is hoisted, but the names it reads are not. `function f() { return n; }` with a memo of `f()` must not start before `let n = $signal(0)`, or the server throws a TDZ `ReferenceError`. Following the call to the names of `f` places the start after `n`.
+- **Server output:** the `$$b.memo(...)` line of the memo moves to its start point, followed by `$$b.start($$p_x);`. At the original `await`, `awaitRun` emits the same `waitAll` or `ready` as today. `waitAll` stays as it is.
+- **Server errors at the start point:** `start` must hold both kinds of error for the `await`. `ready` (`src/runtime/server.ts:1416`) rethrows a synchronous throw of the compute, which would fail the render at the start point, before the statements in between. `start` catches that throw and the rejection, and leaves the memo failed, so the `await` throws where the source has it. About 30 B on the server.
+- **Browser output:** at the start point, `const $$w_x = $$b.started(load(id));` for a memo with no memo reads. A memo that reads awaited memos gets `const $$w_x = $$b.after([$$w_a], (a) => loadTags(a));`, which is `Promise.all` and `then`. At the original `await`, `return $$b.wait($$s1, $$w_x, (x) => { ... })`, or `waitAll($$s1, [$$w_x, $$w_y], (x, y) => { ... })` for a run.
+- **Browser errors at the start point:** the load of a second `await` starts at the top, but its `wait` attaches a handler only inside the first continuation. A rejection before that is an `unhandledrejection`. `started` and `after` attach a handler where the load starts, and `wait` still gets the rejection. A synchronous throw of the expression is caught there too and turned into a rejected promise.
+- **Browser size:** `after`, `started` and `waitAll` are about 50 B gzip together over `wait`. Each moved declaration adds about 20 B raw to the compiled part.
+- **Limits:** a memo that reads a value computed from an earlier awaited memo still waits for it. In `const user = await $memo(a()); const q = user.id; const tags = await $memo(b(q));`, `b(q)` cannot start before `user` settles, because `q` reads `user`. Parent to child chains stay.
 - **Order of side effects:** the load of a moved memo starts before the statements it moved over. Its expression runs earlier than the source shows. The docs must say so, since this is the point of the change. Statements other than awaited memo declarations do not move.
-- **decisions.md:27:** "A run of `await $memo` declarations loads at the same time" becomes "Each `await $memo` starts its load as soon as the values it reads are ready, and waits where it is declared."
-- **Owner:** browser-await-blocks (below) for the browser, and one S node for the server, so both follow the same rule.
+- **Statements that end a run today:** `endRun()` runs before the skip of `$effect`, `$client`, imports and type declarations (`src/codegen/markup.ts:748`). So those end a run, though they emit nothing on the server. The new rule fixes that. The server node tests that they no longer hold a later load.
+- **decisions.md:27:** "A run of `await $memo` declarations loads at the same time" becomes "Each `await $memo` starts its load as soon as the values it reads are ready, and waits where it is declared." browser-await rewrites the sentence about the browser. topological-awaits-server changes this one.
+- **Owner:** topological-awaits-server for the server and the shared analysis. browser-await-blocks reuses that analysis for the browser.
 
 ### What the build must fix that the prototype skips
 
-- **`MARKER` names:** the start comments of `wait` and `loading` must match `MARKER`, or `rangeEnd` pairs them wrong and a closed block keeps markup. The prototype now uses `l<scope id>w` and `l0b`. The build should pick names that no other code reads, and add a test that closes a block after the load settles.
+- **`MARKER` names:** the start comments of `wait` and `loading` must match `MARKER`, or `rangeEnd` pairs them wrong and a closed block keeps markup. The prototype now uses `l<scope id>w` and `l0b`. `l0b` also matches `/^l\d/` in the `SWAP` script of the server (`src/runtime/server.ts:2289`), which counts depth. It pairs with `/l`, so it works today, but the build should pick names that no other code reads or counts. Take the review's probe into the tests: wait for the load, close the block, compare the DOM with the DOM before the open, reopen and check one user.
 - **`rendered`:** the scope leaves `rendered` (`blocks.ts`) while it waits. Otherwise the insert of the markup around it runs its memos on a scope with no slots (`TypeError` on `user.name`, seen in the first run).
 - **The slot value:** the rest must write the settled value into the memo's slot, not the promise. With the promise, `setSlots` marks it loading and `startLoading` runs the text updates with the promise.
 - **The computed memo:** the memo of the awaited slot must count as computed, so the refresh of the new scope does not load it again. The prototype keeps the scope out of `rendered` for good, so the refresh skips its other memos too. The build needs a set of settled keys, next to `renderedLoads`.
 - **Props during the wait:** the scope has no slots yet. The prefix should set the slots it has (props, signals, the memo as a promise in `loadingValues`). The rest then reads those slots again, and waits again if the memo slot holds a newer promise.
 - **`#try` in a browser render:** a `t` entry or a runtime boundary, so `fail` finds it. Throws in the rest go to `fail`.
-- **The other insert sites:** `rekey`, `fill`, `offscreen`, `reset`, the list fallback, `catchInto`, `children.ts` and `templates.ts` go through `hold`.
+- **The other insert sites:** the 9 sites of the table above that the prototype did not change go through `hold`.
+- **The order of a swap and B, A, B:** see "The root boundary".
 - **Plain promises:** `generateRender` throws "only the server can render it" for a component that awaits a plain promise (`awaitsPromise`). `await $memo` is excluded from that check already. Option 3 could also wait on a plain promise later. Out of scope here.
 
 ## Compostate `toResult`
 
-- **Internal read:** the client runtime has the three states already. A slot that holds a promise in `loadingValues` is pending, with the promise as the request. A `MemoError` is a failure. Anything else is a value. `wait` reads the slot through one internal function that returns these three cases, about 60 B. Then a memo that already failed goes to `#try` at once, and a value goes on in the same render. For option 1, `use` would be the throwing form of the same read.
+- **Internal read:** the client runtime has the three states already. A slot that holds a promise in `loadingValues` is pending, with the promise as the request. A `MemoError` is a failure. Anything else is a value. `wait` reads the slot through one internal function that returns these three cases, about 60 B. Then a memo that already failed goes to `#try` at once, once browser-try lands, and a value goes on in the same render. For option 1, `use` would be the throwing form of the same read.
 - **No macro (the maintainer, 2026-11-01):** no `$result` macro, and no backlog outline for one. `$resolve` returns a promise, so `Promise.all`, `race`, `any` and `allSettled` cover what Compostate's `waitForAll` and `waitForNone` do. The internal three-way read in `wait` stays.
 - **Guard over several memos:** a separate backlog node, is-pending-many: `$isPending(a, b, c)`, true while any of them loads. Not part of this story.
 
 ## Proposed nodes
 
-All on `feat/browser-async`. The outlines browser-loading-fallback, promise-in-markup and loading-on stay, refined as below. browser-await, browser-await-blocks, browser-try and browser-async-e2e are new, and topological-awaits-server is new on `next`.
+Nodes 1 to 8 are on `feat/browser-async`, and topological-awaits-server is on `next`. The outlines browser-loading-fallback, promise-in-markup and loading-on stay, refined as below. The others are new.
 
-1. **browser-await (M, must):** the compiler split for one `await $memo` in the instance script. Runtime: `wait` with the three-case read, the `MARKER` names, the `rendered`, slot-value and computed-memo fixes, props set before the wait, a second wait on a newer promise. The root boundary or fill in place, as the maintainer picks, with `HAS_ROOT_WAIT` and `hold` at all 15 insert sites. Updates docs/decisions.md:27 and website/docs/async-data.md. Tests in `resume.test.ts`, gzip of todos from `pnpm bench`. Provides the contract `client-pending-boundary`: a boundary counts waits and runs `done` at 0, and keeps the `rendered` and `afterInsert` work of its body.
-2. **browser-await-blocks (M):** `await $memo` in block scripts and `#for` row scripts, `await` in markup, and the topological starts with `after` and `waitAll`. Depends on browser-await.
-3. **browser-try (S):** a `t` entry, or a runtime boundary, for a `#try` that the browser renders, so a rejected wait and a throw in the rest of a render show its `#catch`. Tests with a component that awaits a rejected memo inside `#try` in an `#if`. Depends on browser-await.
-4. **browser-loading-fallback (M):** compiles `#loading` in client mode to `$$b.loading(body, fallback)`, with `#reveal` order. Depends on browser-await (hard, for the contract). It can start once the contract is written.
-5. **promise-in-markup (S):** a promise in text or an attribute of a browser render shows its value when it settles, and counts as a wait of the boundary. Depends on browser-await.
-6. **loading-on (M):** `#loading (memo)` shows the fallback again while a named memo loads again, through the same boundary. Depends on browser-loading-fallback, and waits on the approval of docs/debates/loading-on-update/debate.md.
-7. **browser-async-e2e (S):** the e2e cases of the story acceptance: an `#if` branch and a `#for` row that the browser renders, each with an awaited memo, a `#loading` fallback and a promise in text. Depends on browser-loading-fallback and promise-in-markup.
-8. **topological-awaits-server (S):** the same start rule on the server: `start` after the last non-memo read, `waitAll` unchanged, and the docs/decisions.md:27 wording. It can run beside browser-await-blocks, and they share the analysis.
+- The root boundary splits out of browser-await as its own M node, browser-root-boundary, after browser-await.
+- docs/decisions.md:27 goes to browser-await only. topological-awaits-server changes only the sentence about runs.
+- browser-await-blocks reuses the analysis of topological-awaits-server, so it depends on that node merged forward into `feat/browser-async`.
+
+1. **browser-await (M, must):** the compiler split for one `await $memo` in the instance script. Runtime: `wait` with the three-case read, the `MARKER` names, the `rendered`, slot-value and computed-memo fixes, props set before the wait, a second wait on a newer promise. Updates docs/decisions.md:27 and website/docs/async-data.md. Tests in `resume.test.ts`, gzip of todos from `pnpm bench`. Provides the contract `client-pending-boundary`: a boundary counts waits and runs `done` at 0, and keeps the `rendered` and `afterInsert` work of its body.
+2. **browser-root-boundary (M):** `HAS_ROOT_WAIT`, `hold` at the 11 insert sites, the order of a swap, and B, A, B. Depends on browser-await.
+3. **browser-await-blocks (M):** `await $memo` in block scripts and `#for` row scripts, `await` in markup, and the topological starts with `after`, `started` and `waitAll`. Depends on browser-await, and on topological-awaits-server merged forward for the analysis.
+4. **browser-try (S):** a `t` entry, or a runtime boundary, for a `#try` that the browser renders, so a rejected wait and a throw in the rest of a render show its `#catch`. Tests with a component that awaits a rejected memo inside `#try` in an `#if`. Depends on browser-await.
+5. **browser-loading-fallback (M):** compiles `#loading` in client mode to `$$b.loading(body, fallback)`, with `#reveal` order. Depends on browser-await (hard, for the contract). It can start once the contract is written.
+6. **promise-in-markup (S):** a promise in text or an attribute of a browser render shows its value when it settles, and counts as a wait of the boundary. Depends on browser-await.
+7. **loading-on (M):** `#loading (memo)` shows the fallback again while a named memo loads again, through the same boundary. Depends on browser-loading-fallback, and waits on the approval of docs/debates/loading-on-update/debate.md.
+8. **browser-async-e2e (S):** the e2e cases of the story acceptance: an `#if` branch and a `#for` row that the browser renders, each with an awaited memo, a `#loading` fallback and a promise in text. Depends on browser-loading-fallback and promise-in-markup.
+9. **topological-awaits-server (S, on `next`):** the start rule on the server, with the analysis that browser-await-blocks reuses: `start` after the last statement that mentions a non-memo read, `start` holding synchronous throws and rejections, `waitAll` unchanged, and the sentence about runs in docs/decisions.md:27. Tests that `$effect`, `$client`, imports and type declarations no longer end a run.
 
 ## Decisions for the maintainer
 
 - **Option:** pick one of the three. The spike recommends option 3.
-- **Without `#loading`:** the root boundary or fill in place. The spike recommends the root boundary. It matches the server, and its cost stays off pages that do not use `await` in the browser.
-  - Root boundary: about +365 B gzip on a page that uses it, 0 B on other pages, `hold` at the 15 insert sites.
+- **Without `#loading`:** the root boundary or fill in place. The spike recommends the root boundary. It matches the server, and its cost stays off apps that do not use `await` in a browser render.
+  - Root boundary: about +455 to +505 B gzip on every page of an app that uses it, 0 B on other apps, `hold` at 11 insert sites.
   - Fill in place: +169 B (+305 B with `#loading`), no insert site changes, and siblings show before the waiting component.
-- **Topological awaits:** take the start rule on the server too (node 8), so the browser and the server agree.
+- **Topological awaits:** take the start rule on the server too (node 9), so the browser and the server agree.
 
 ## Decided
 
 - No `$result` macro and no outline for one (the maintainer, 2026-11-01). is-pending-many is a separate backlog node.
+- After the second review, the maintainer chose option 3, the root boundary, topological awaits on both sides, and this node list. The coordinator writes the briefs. The "Decisions for the maintainer" above are kept as the record of the choice.
 
 ## Deviations
 

@@ -15,3 +15,4 @@
 - esbuild does not fold the feature constant across modules, so the flag was measured with the bench only.
 - Topological awaits: the server's `waitAll` run is topological inside a run already (`read` throws `NotReady` and computes again). Wrote the design for starts across statements.
 - Recorded the maintainer's decision: no `$result` macro, is-pending-many is a separate backlog node.
+- Review round 2: wording only. The flag is per build (`buildFeatures`), the swap order changes with the flag on, the topological start rule now counts writes and local function calls, moved loads hold their errors where they start, all 15 insert sites are listed, and the node list splits out browser-root-boundary.
