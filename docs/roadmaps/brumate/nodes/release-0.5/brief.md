@@ -28,6 +28,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: release-0.4.2
+    kind: hard
+    why: the 0.4.2 hotfixes reach next through its sync before the promotion
   - on: usage-pruning-flags
     kind: hard
     why: the five flags take todos below the 0.4.1 figure (the maintainer said go on 2026-11-01)
