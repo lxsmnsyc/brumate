@@ -11,8 +11,10 @@
 
 ## Deviations
 
-- props.ts (not in the brief): a write of a prop to a child whose module fails to load had no `catch`, so the error was unhandled and no `#try` caught it. It now calls `fail(child, error)`. Without it the acceptance item "a failed module load reaches `fail` and the nearest `#catch`" does not hold for a failed child module (the old tests failed only the update part, never the module).
-- Also edited: compile.ts (`loaders`), client/handlers.ts (`updateReady` call), client.ts (exports), rpc.ts, and the test snapshots.
+- updates.ts (a second change, after review): effects now wait for writes that wait for code. `pass` flushes effects only when `loadingUpdates` is empty, and the end of a waiting write flushes them. Cause of the `ui` e2e failure `Tabs: Tab stops at the selected tab, and the arrow keys select`: the keydown handler of Tabs wrote `selectedKey`, which scheduled the effect that calls `check()` (it resets the key to the first tab when no tab shows `aria-selected`). The writes to the Tab scopes waited for their children. The `onFocus` handlers of the tabs ended a pass meanwhile and flushed the held effect, so `check()` saw Mercury deselected and Venus not yet selected, and wrote Mercury back. `updateReady` slowed the handlers enough to hide the race on next. The fix also covers the same race for other effects.
+- The props.ts change (`fail(child, error)` for a failed child module) is not in this PR; it is a bug of main with its own fix. The two tests that needed it (`a rejected load reaches the #try and the effects run`, `a rejected load of a write that joins a pass reaches onError`) are removed from this PR and have to come back with that fix. The remaining tests of `a handler waits for the module of` pass without it.
+- Also edited: compile.ts (`loaders`), client/handlers.ts, client.ts, rpc.ts, insert.ts, errors.ts, branches.ts, references.ts, docs/roadmaps/brumate/contracts/client-modules.md (drops `loadPart`), and the test fixtures handlerWaitIdle, handlerWaitChild, handlerWaitJoin and HandlerWaitKidOk (no test uses them any more).
+- No unit test fails before the fix: the race needs a browser. In jsdom, a write that waits for children resolves in microtasks, and four attempts (children passed to a child, a late component, two events in one task) never put a second handler pass in that window. A script that runs the Tabs step 25 times against the built example-ui failed 4 of 10 runs before the fix and passed 25 of 25 after. The ui e2e suite is the test.
 
 ## Stubs left
 
