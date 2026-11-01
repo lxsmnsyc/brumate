@@ -1,7 +1,7 @@
 ---
 id: runtime-brand-checks
 title: Runtime classes are recognized across two copies of brumate
-status: active
+status: done
 priority: should
 type: fix
 outline: false
