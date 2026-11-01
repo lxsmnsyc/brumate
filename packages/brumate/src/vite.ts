@@ -715,6 +715,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       }
       features.lateMarkup ||= options.navigate !== false || loading;
+      // Client navigation writes the route and its own state into the page.
+      features.routes ||= options.navigate !== false;
       counted = seen;
       knownFeatures = features;
       return features;

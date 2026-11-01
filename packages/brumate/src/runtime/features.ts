@@ -12,6 +12,11 @@ declare const __BRUMATE_HAS_BLOCKS__: boolean | undefined;
 declare const __BRUMATE_HAS_LISTENERS__: boolean | undefined;
 declare const __BRUMATE_HAS_ACTIONS__: boolean | undefined;
 declare const __BRUMATE_HAS_CLIENT_HTML__: boolean | undefined;
+declare const __BRUMATE_HAS_TRIES__: boolean | undefined;
+declare const __BRUMATE_HAS_FIELDS__: boolean | undefined;
+declare const __BRUMATE_HAS_WINDOWS__: boolean | undefined;
+declare const __BRUMATE_HAS_DYNAMIC__: boolean | undefined;
+declare const __BRUMATE_HAS_ROUTES__: boolean | undefined;
 
 /** Children that the browser renders with an export of their own, each time they are inserted. */
 export const HAS_CHILDREN: boolean =
@@ -55,3 +60,23 @@ export const HAS_ACTIONS: boolean =
  */
 export const HAS_CLIENT_HTML: boolean =
   typeof __BRUMATE_HAS_CLIENT_HTML__ === 'undefined' || __BRUMATE_HAS_CLIENT_HTML__;
+
+/** `#try` blocks, whose `#catch` the browser renders. */
+export const HAS_TRIES: boolean =
+  typeof __BRUMATE_HAS_TRIES__ === 'undefined' || __BRUMATE_HAS_TRIES__;
+
+/** Fields of an element `$bind`, which the core reads when the user typed before it loaded. */
+export const HAS_FIELDS: boolean =
+  typeof __BRUMATE_HAS_FIELDS__ === 'undefined' || __BRUMATE_HAS_FIELDS__;
+
+/** `#for` lists with `window`. */
+export const HAS_WINDOWS: boolean =
+  typeof __BRUMATE_HAS_WINDOWS__ === 'undefined' || __BRUMATE_HAS_WINDOWS__;
+
+/** Dynamic tags, which can name a component and pass it props. */
+export const HAS_DYNAMIC: boolean =
+  typeof __BRUMATE_HAS_DYNAMIC__ === 'undefined' || __BRUMATE_HAS_DYNAMIC__;
+
+/** `$route` and `$navigation`, which the runtime provides. */
+export const HAS_ROUTES: boolean =
+  typeof __BRUMATE_HAS_ROUTES__ === 'undefined' || __BRUMATE_HAS_ROUTES__;
