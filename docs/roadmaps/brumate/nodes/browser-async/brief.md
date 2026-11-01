@@ -40,6 +40,11 @@ On the branch `feat/browser-async`, cut from `next`:
 1. browser-await-spike: compares three ways to wait and recommends one. Gate: the maintainer picks the approach before any other child is refined.
 2. browser-loading-fallback, promise-in-markup and loading-on: outlines until the spike's choice is made. Refine them from its outcome, so all three use one client-side pending boundary.
 
+## Decisions (the maintainer, 2026-11-01, at the gate of browser-await-spike)
+
+- Option 3 (continuations at `await`), the root boundary outside every `#loading`, topological starts on both sides, and no `$result` macro.
+- Children: browser-await, then browser-await-blocks, browser-try, browser-loading-fallback and promise-in-markup, then loading-on and browser-async-e2e. topological-awaits-server ships on its own to `next`.
+
 ## Context
 
 - The maintainer made this a must story of 0.5.0 on 2026-11-01, with one pull request to `next` for the whole feature.

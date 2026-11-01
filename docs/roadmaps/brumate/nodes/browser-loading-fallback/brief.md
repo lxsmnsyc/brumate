@@ -5,25 +5,27 @@ status: todo
 priority: must
 type: feature
 story: browser-async
-outline: true
+outline: false
 milestone: 0.5.0
 target:
 from:
-size: L
+size: M
 spike: false
 verify:
 exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-30
-owns: []
+owns:
+  - packages/brumate/src/codegen/**
+  - packages/brumate/test/resume.test.ts
 shared: []
 reserves: []
 provides: []
 depends_on:
-  - on: browser-await-spike
-    kind: hard
-    why: the spike settles how the browser waits for a value; the fallback follows the same pending state
+  - on: browser-await
+    kind: contract
+    via: client-pending-boundary
   - on: memo-prop-browser-child
     kind: hard
     why: it makes a memo of a promise prop load in a browser-rendered child, with empty text while pending
@@ -42,4 +44,16 @@ In markup that the browser renders (a branch of an `#if` that changes, a `#for` 
 - Needs a compiler change: a client-side block that follows its memos' pending state, and shipping the fallback markup for blocks the browser can render. Weigh the size cost.
 - Relates to promise-in-markup (0.5.0): a promise in text or an attribute makes its boundary pending, which needs the same client-side boundary.
 
-Outline: not broken into a brief yet. Refine it when `plan.py refine` lists it.
+## Decisions (2026-11-01)
+
+- Refined from browser-await-spike: compile `#loading` in client mode to `$$b.loading(body, fallback)` on the `client-pending-boundary` contract, with `#reveal` order (one promise chain per `#reveal`) and `#try` around it. Ship the `#else` markup only for `#loading` blocks the browser can render; weigh the size.
+
+## Acceptance
+
+- [ ] In an `#if` branch and a `#for` row the browser renders, `#loading` shows `#else` while a memo its body reads is pending, then the body; on an update it keeps its content.
+- [ ] `#reveal` shows the boundaries in order.
+- [ ] Todos gzip: 0 B change.
+
+## Sizing
+
+M: one codegen path on the frozen boundary, and tests.

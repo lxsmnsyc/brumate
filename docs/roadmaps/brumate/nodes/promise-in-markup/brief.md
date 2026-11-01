@@ -5,18 +5,20 @@ status: todo
 priority: must
 type: feature
 story: browser-async
-outline: true
+outline: false
 milestone: 0.5.0
 target:
 from:
-size: M
+size: S
 spike: false
 verify:
 exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-30
-owns: []
+owns:
+  - packages/brumate/src/codegen/**
+  - packages/brumate/test/resume.test.ts
 shared: []
 reserves: []
 provides: []
@@ -24,9 +26,9 @@ depends_on:
   - on: promise-prop-memo
     kind: hard
     why: it makes a promise prop a plain promise, so markup then sees promises as ordinary values
-  - on: browser-await-spike
-    kind: hard
-    why: the spike settles how the browser waits for a value; a promise in markup should wait the same way
+  - on: browser-await
+    kind: contract
+    via: client-pending-boundary
 ---
 
 # A promise in markup renders its value, in text and in attributes
@@ -58,4 +60,13 @@ Defaults (not asked, change at refine if they prove wrong):
 - Open for the refine: how the compiler and runtime tell a promise apart (a thenable check on each text and attribute write) and its cost in the client and on the rows benchmark; whether `$memo` stays the way to share one promise between several reads; the interplay with browser-await-spike.
 - Check docs/decisions.md and proposals.md before proposing syntax; record the decisions above in docs/decisions.md when the node is built.
 
-Outline: not broken into a brief yet. Refine it when `plan.py refine` lists it.
+## Acceptance
+
+- [ ] A promise in text or an attribute of a browser render shows its value when it settles, and counts as a wait of the nearest boundary (the root boundary outside every `#loading`).
+- [ ] The server rules of the decisions above hold, with render tests.
+- [ ] The compile error for a promise where it cannot wait has a reserved BRMnnn.
+- [ ] Todos and rows gzip and the rows benchmark time: the cost of the thenable check is in the outcome.
+
+## Sizing
+
+S in the browser on the frozen boundary (browser-await-spike); the server side may push it to M.
