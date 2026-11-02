@@ -74,7 +74,71 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 - The heading shows at once. The quote streams in after a second and a half.
 - Without `#loading`, the whole page waits for the quote.
 - When the values that the body reads are ready as the block renders, such as a value the page waited for with [`await`](#await), the body renders in place: no fallback, no swap. A body that renders a component, a dynamic tag, a template or a prop always streams, because those can wait on their own.
-- On the client, a `#loading` body keeps its content while a new value loads. Use `$isPending` to show that it is loading again.
+- On the client, a `#loading` body keeps its content while a new value loads. Use `$isPending` to show that it is loading again, or name the memo in the header to show the `#else` body again (see [below](#show-the-fallback-again)).
+
+### Show the fallback again
+
+Name memos in the header of `#loading` to show its `#else` body again while one of them loads:
+
+```brm
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  async function postsOf(user: number): Promise<string[]> {
+    'use server';
+    return [`Post of ${user}`];
+  }
+
+  let user = $signal(1);
+  const posts = $memo(postsOf(user));
+</script>
+
+<button onClick=(() => user++)>Next user</button>
+#loading (posts) {
+  <ul>
+    #for (post of posts) {
+      <li>{post}</li>
+    }
+  </ul>
+} #else {
+  <p>Loading the posts…</p>
+}
+```
+
+- Once the body has shown, the `#else` body shows while `posts` loads again. The cause can be a write of a value it reads, a server function that calls `refresh` for it, or a load that it starts. When the load ends, the body comes back with the same elements. Text typed in a field and the scroll of a list stay.
+- The body stays in the page, hidden as a hidden [`#offscreen`](./control-flow.md#offscreen) body is. Its effects and `$client` callbacks stop, its `window` and `document` handlers do not run, and its `#portal` content hides. Updates still reach it.
+- Each name is a memo of the component, or of a block script around the block, that markup in the body reads. Any other name is a compile error.
+- The block also shows the fallback while a memo that the named one reads loads. With `const posts = $memo(postsOf(user.id))` and `user` a memo that loads, `#loading (posts)` holds while either loads. Name the last memo of a chain.
+- Memos that the header does not name keep the content while they load, as without a header. Readers outside the body keep the old value, and `$isPending` is true for them.
+- Put the control that changes a named memo's input outside the body. A hidden body loses the focus.
+- A memo that a child component loads for itself is not held by the header of its parent. Give the child its own `#loading (memo)`, or pass the memo to it as a prop.
+- A `$debounced` or `$throttled` memo is pending while it waits. A header that names it, or a memo that reads it, shows the fallback at each change of its value, and the compiler warns.
+
+To show a new record with fresh state, such as a form for another user, wrap the block in `#key`. The body renders again for each ID, and the fallback shows while its memos load. A reload of the same ID keeps the content:
+
+```brm
+<script>
+  import { $memo, $props } from 'brumate/signals';
+
+  async function userOf(id: number): Promise<{ name: string }> {
+    'use server';
+    return { name: `User ${id}` };
+  }
+
+  const { id } = $props<{ id: number }>();
+</script>
+
+#key (id) {
+  <script>
+    const user = $memo(userOf(id));
+  </script>
+  #loading {
+    <input value=(user.name)>
+  } #else {
+    <p>Loading…</p>
+  }
+}
+```
 
 ### When a value fails
 
