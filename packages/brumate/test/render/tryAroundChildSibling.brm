@@ -1,0 +1,10 @@
+<script>
+  import TryKid from './TryKid.brm';
+</script>
+
+#try {
+  <button class="sibling" onClick=(() => {})>Sibling</button>
+  <TryKid />
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

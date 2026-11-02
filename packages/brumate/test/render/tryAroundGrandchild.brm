@@ -1,0 +1,9 @@
+<script>
+  import TryMiddle from './TryMiddle.brm';
+</script>
+
+#try {
+  <TryMiddle />
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}
