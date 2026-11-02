@@ -19,7 +19,7 @@ export type Write =
   /** A child component or a dynamic tag, which renders in the place of a marked comment. */
   | { kind: 'component'; call: string; settled?: Settled }
   /** The attributes of spreads on the marked element, and then its `b-on`. */
-  | { kind: 'call'; call: string }
+  | { kind: 'call'; call: string; promise?: string }
   /** A comment whose data names a scope, such as the start of an item, `i` and the scope. */
   | { kind: 'comment'; data: string }
   /** A value with no markers around it, which renders in the place of a marked comment. */
@@ -334,11 +334,18 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     const spread = SPREAD.exec(code);
     if (spread && reader.inTag) {
       // The values of a spread that can be promises are written once they settle.
-      const call =
-        spread[1] === 'spread' && part.promise
-          ? `$$b.fillSpread(${part.promise}, $$m, ${spread[2]})`
-          : `$$b.${spread[1] === 'spread' ? 'setSpread' : 'setOn'}($$m, ${spread[2]})`;
-      add({ kind: 'call', call });
+      if (spread[1] === 'spread' && part.promise) {
+        add({
+          kind: 'call',
+          call: `$$b.fillSpread($$q, $$m, ${spread[2]})`,
+          promise: part.promise,
+        });
+      } else {
+        add({
+          kind: 'call',
+          call: `$$b.${spread[1] === 'spread' ? 'setSpread' : 'setOn'}($$m, ${spread[2]})`,
+        });
+      }
       reader.handled.add(reader.element);
       continue;
     }
@@ -800,7 +807,14 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
           write.settled,
         );
       } else if (write.kind === 'call') {
-        lines.push(`${indent}${write.call.replace('$$m', () => `$$e[${index}]`)};`);
+        // The places of a spread's promises are those that the update of the spread writes.
+        const place =
+          anchored?.kind === 'anchor'
+            ? `${anchored.scope}, ${anchored.anchor}`
+            : `${write.promise}, ${JSON.stringify(`x${index}`)}`;
+        lines.push(
+          `${indent}${write.call.replace('$$q', () => place).replace('$$m', () => `$$e[${index}]`)};`,
+        );
       } else if (write.kind === 'marker') {
         lines.push(
           `${indent}$$b.markBlock($$e[${index}], ${write.scope}, ${write.anchor}, ${JSON.stringify(write.suffix)});`,

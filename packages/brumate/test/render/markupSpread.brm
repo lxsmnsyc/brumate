@@ -8,4 +8,5 @@
 <button class="show" onClick=(() => (show = true))>Show</button>
 #if (show) {
   <p class="spread" {...{ title: markupLoad('spread'), lang: 'en' }}>Spread</p>
+  <p class="other" {...{ title: markupLoad('other') }}>Other</p>
 }

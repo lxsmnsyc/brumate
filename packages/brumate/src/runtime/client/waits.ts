@@ -328,10 +328,12 @@ export function fillAttrs(
 
 /**
  * The spreads of an element of cloned markup whose values can be promises, as `setSpread` writes
- * them. An attribute whose value is a promise is written once it settles.
+ * them. An attribute whose value is a promise is written once it settles. `place` names the
+ * element among the places of the scope: its anchor, which the update of the spread uses too.
  */
 export function fillSpread(
   id: ScopeId,
+  place: number | string,
   element: Element,
   attributes: Record<string, unknown>,
   on?: string[],
@@ -340,7 +342,7 @@ export function fillSpread(
   setSpread(element, attributes, on, names);
   for (const [name, value] of Object.entries(attributes)) {
     if (isThenable(value)) {
-      fillValue(id, `s ${name}`, value, (settled) => setAttr(element, name, settled));
+      fillValue(id, `${place} ${name}`, value, (settled) => setAttr(element, name, settled));
     }
   }
 }

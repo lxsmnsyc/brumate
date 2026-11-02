@@ -10187,12 +10187,15 @@ describe('a promise in markup', () => {
   it('writes a promise of a spread once it settles, in markup that the browser renders', async () => {
     await resume('markupSpread', {});
     click(document.querySelector('.show')!);
-    await waitFor(() => expect(markupLoads()).toHaveLength(1));
+    await waitFor(() => expect(markupLoads()).toHaveLength(2));
     await settle('spread', 'spread title');
+    await settle('other', 'other title');
     await waitFor(() =>
       expect(document.querySelector('.spread')?.getAttribute('title')).toBe('spread title'),
     );
     expect(document.querySelector('.spread')!.getAttribute('lang')).toBe('en');
+    // Two elements of one scope keep their own places.
+    expect(document.querySelector('.other')!.getAttribute('title')).toBe('other title');
   });
 
   it('throws in development for a #for key that gives a promise', async () => {
