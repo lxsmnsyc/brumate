@@ -7744,6 +7744,77 @@ describe('an async memo whose input never changes, in a browser render', () => {
   }
 });
 
+describe('an async memo that gives a string, with await inside, in a browser render', () => {
+  /** Collects unhandled rejections until the test ends. */
+  function watchUnhandled(): unknown[] {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    return unhandled;
+  }
+
+  it('fills its text and an attribute', async () => {
+    await resume('primitiveAwaitHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.value')).toBe('Hi Ada'));
+    expect(document.querySelector('.value')!.getAttribute('title')).toBe('Hi Ada');
+  });
+
+  it('fills text that reads an array memo with await inside', async () => {
+    await resume('primitiveAwaitHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.names')).toBe('Ada'));
+  });
+
+  it('sends its rejection to the nearest #catch', async () => {
+    const unhandled = watchUnhandled();
+    await resume('primitiveAwaitFailTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: gap failed'));
+    expect(document.querySelector('.value')).toBeNull();
+    await new Promise((done) => setTimeout(done, 30));
+    expect(unhandled.map(String)).toEqual([]);
+  });
+
+  it('reports its rejection to the page once when no #try catches it', async () => {
+    const unhandled = watchUnhandled();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await resume('primitiveAwaitFailHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: gap failed');
+    expect(unhandled.map(String)).toEqual([]);
+  });
+
+  it('reports the rejection of such a memo that nothing reads, with no unhandled rejection', async () => {
+    const unhandled = watchUnhandled();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await resume('primitiveAwaitUnreadHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: side failed');
+    expect(unhandled.map(String)).toEqual([]);
+  });
+
+  it('sends the rejection of such a memo that nothing reads to the nearest #catch', async () => {
+    await resume('primitiveAwaitUnreadTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: side failed'));
+    expect(document.querySelector('.kid')).toBeNull();
+  });
+});
+
 describe('a block, prop or function that reads a constant async memo, in a browser render', () => {
   it('renders an #if header from a memo that settles to null', async () => {
     await resume('gapBlockIfNull', {});

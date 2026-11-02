@@ -1,0 +1,10 @@
+hide min+gz:     1129
+waits min+gz:     1235
+resolve min+gz:      415
+# esbuild 0.28.2 --minify, gzip -9, on source extracts (proxy, not a bundle measurement)
+# hide    = packages/brumate/src/runtime/client/branches.ts from `export function offscreen` to end (offscreen + createHiding + hidden)
+# waits   = origin/feat/browser-async:packages/brumate/src/runtime/client/waits.ts (whole file)
+# resolve = updates.ts `export function resolve` only
+off min+gz:      280
+hiding min+gz:      935
+# round 2: off = offscreen() only; hiding = from 'function hidden' to end

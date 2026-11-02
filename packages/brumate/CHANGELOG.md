@@ -1,5 +1,12 @@
 # brumate
 
+## 0.4.3
+
+### Patch Changes
+
+- c49e393: In a browser render, a memo with `await` inside now shows its value once it settles, even when its expression gives a string or an array, as in ``$memo(`Hi ${(await load()).name}`)``. Before, the text and attributes that read it stayed empty. Its rejection now goes to the nearest `#catch`, or to the page once when no `#try` catches it, also when nothing reads the memo.
+- f2e4e84: Keep the metadata of files and blobs sent to server functions. A blob arrives as a `Blob` instead of a `File` named `blob`, an empty type stays empty instead of `application/octet-stream`, and a file keeps its exact name and its `lastModified`. The server still reads calls from pages that send only the part index.
+
 ## 0.4.2
 
 ### Patch Changes

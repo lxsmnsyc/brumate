@@ -1,0 +1,4 @@
+# esbuild 0.28.2 --minify --loader=ts | gzip -9 | wc -c, on source extracts of main (proxy, as proponent-sizes.txt)
+hiding (branches.ts from "/** A hidden" to end: HiddenBody, within, hidden, between, display, createHiding)   955
+offscreen() alone (branches.ts "export function offscreen" up to "/** A hidden")                               280
+# proponent-sizes.txt "hide 1129" counts offscreen() too; a #loading re-arm that calls hiding directly needs only the first line.
