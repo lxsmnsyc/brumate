@@ -13,7 +13,7 @@ The runtime interface between a render that waits (`wait` from browser-await) an
 
 ## Interface
 
-In `packages/brumate/src/runtime/client/waits.ts`. `wait`, `fillSettled`, `loading`, `countLoads` and `reveal` are exported from `brumate/client`. The rest is internal to the client runtime.
+In `packages/brumate/src/runtime/client/waits.ts`. `wait`, `fillSettled`, `loading`, `countLoads`, `reveal`, `started` and `after` are exported from `brumate/client`. The rest is internal to the client runtime.
 
 ```ts
 type Out = string | DocumentFragment;
@@ -110,9 +110,46 @@ Boundary internals:
 - Without a boundary, the rest fills the place of the component (fill in place). browser-root-boundary adds a boundary outside every `#loading`.
 - On an update, a boundary keeps its current content until the new waits settle. Outside every `#loading`, the root boundary does the same (browser-root-boundary).
 
-## Planned additions
+## v2 (browser-await-blocks)
 
-- v2, additive, for browser-await-blocks: `waitAll` (a run of awaits), `started` and `after` (loads that start before their `await`), from the spike outcome, "Topological awaits". They count through `join`, `leave` and `fault`.
+In `packages/brumate/src/runtime/client/waits.ts`, exported from `brumate/client`:
+
+```ts
+// The load of an awaited memo that starts before its `await`. A throw becomes a rejected
+// promise, and a rejection is handled here, so neither surfaces before the `await`.
+function started(load: () => unknown): unknown;
+
+// The load of an awaited memo that reads other awaited memos whose `await` comes later: it
+// starts when their loads settle, with their values. A rejection of theirs rejects it.
+function after(loads: unknown[], load: (...values: any[]) => unknown): unknown;
+```
+
+Compiled code, in a render module or a render function of a block:
+
+```ts
+const $$w_b = $$b.started(() => (loadUser(2)));
+const $$w_d = $$b.after([$$w_b], (b) => (loadUser(b.name.length + 20)));
+let a;
+return $$b.wait($$s2, [(loadUser(1))], 0, ($$v) => {
+  [a] = $$v;
+  ran('between', a.name);
+  let b;
+  return $$b.wait($$s2, [a, $$w_b], 1, ($$v) => { ... });
+});
+```
+
+- The start points are the server's (`findLoadStarts`, `Emitter.earlyLoads`). A run of adjacent awaits, which the server starts together with `waitAll`, starts before its first `await` in the browser.
+- A load reads the memos of `after` as parameters. A load that reads such a memo through a local function or another memo starts after that memo's `await` instead.
+
+## Changed behavior of `wait`
+
+- A value that an update wrote into the slot during an earlier wait of the scope replaces `slots[slot]`: a newer load wins over the load that started before the `await`.
+- The range of a wait of a `#for` row in its own script or markup is `<!--i<id>-->` and `<!--/i-->`, when the row is not inside an earlier range of its own. The scope has `i` (`setItem` runs before the wait), so the list finds the row while it waits and after.
+- The rest runs inside `updating`, as an update does, so a render function inside it reads a memo of an outer scope that still loads as a promise, not as an error.
+
+- `holdRow` (browser-root-boundary) names its range after the `i` range that starts the row's output when no held scope has the list as parent: a row that waits in its own script is out of `rendered` until its rest runs.
+
+`waitAll` is not added in the browser: the loads of a run start before the first `await`, so nested `wait` calls overlap the same way. The server keeps `waitAll`.
 
 ## Stub
 
@@ -130,3 +167,4 @@ In `packages/brumate/test/resume.test.ts`, `describe('a boundary')` inside `awai
 - v1 reworked again, from the re-review of #413 (2026-11-02). Added `until` and `Boundary.c`. From the third review: `Boundary.o`, and `give` into a held outer body. `join` no longer walks held scopes: `give` runs the updates that a held body missed. A nested `bound` holds only its own work.
 - v1.1 from settled-memo-merge (2026-11-02, change request accepted by the maintainer): `fillSettled` moves into `waits.ts`, is exported next to `wait`, and counts in the boundary. The two ways of waiting stay until values-build (debate client-restructure).
 - v1.2 from browser-loading-fallback (2026-11-02, additive, accepted by the orchestrator): `loading`, `countLoads` and `reveal` for the compiled `#loading` and `#reveal` of a browser render, and the `loading` feature flag. `loading` makes one `Boundary` outside `bound`, for a body that `#reveal` holds for its turn.
+- v2 from browser-await-blocks (2026-11-02, additive, accepted by the orchestrator): `started` and `after`, the newer slot value winning in `wait`, the row `i` range, the rest under `updating`, and `holdRow` naming. The planned browser `waitAll` is dropped.
