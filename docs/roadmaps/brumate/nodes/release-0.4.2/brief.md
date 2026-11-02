@@ -27,6 +27,15 @@ depends_on:
   - on: unread-memo-rejection
     kind: hard
     why: an async memo that nothing reads rejects unhandled in a browser render on 0.4.1
+  - on: await-read-memo-rejection
+    kind: hard
+    why: a memo read only by await rejects unhandled in a browser render
+  - on: try-around-child
+    kind: hard
+    why: a #try around only a child misses its client errors
+  - on: markup-read-async-memo
+    kind: hard
+    why: an async memo read only by markup stays empty in a browser render
 ---
 
 # Release brumate 0.4.2
