@@ -1982,13 +1982,21 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         const chunkUrls: Record<string, string> = {};
         const styleUrls: Record<string, string[]> = {};
         const members: Record<string, string[]> = {};
-        // The loader imports what a state record names relative to its own chunk, so a
-        // relative base works on a page at any depth.
+        // The loader imports what a state record names relative to the chunk of
+        // `brumate/bundles`, so a relative base works on a page at any depth.
+        let loadChunk = loaderChunk;
+        for (const chunk of chunks.values()) {
+          for (const id of chunk.moduleIds) {
+            if (/[\\/]runtime[\\/]bundles\.[jt]s$/.test(id)) {
+              loadChunk = chunk.fileName;
+            }
+          }
+        }
         function loadUrl(name: string): string {
-          if (!relativeUrls || loaderChunk === undefined) {
+          if (!relativeUrls || loadChunk === undefined) {
             return `${base}${name}`;
           }
-          const relative = path.posix.relative(path.posix.dirname(loaderChunk), name);
+          const relative = path.posix.relative(path.posix.dirname(loadChunk), name);
           return relative.startsWith('.') ? relative : `./${relative}`;
         }
         for (const chunk of chunks.values()) {

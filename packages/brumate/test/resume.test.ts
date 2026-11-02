@@ -7840,7 +7840,7 @@ describe('the bundles that state records name', () => {
       styles: { Page: [file('page.css')] },
       members: { Page: ['Page'], Next: ['Next'] },
     };
-    const { html, state } = await renderParts(Root, {}, { bundles, base });
+    const { html, state } = await renderParts(Root, {}, { bundles, base, nonce: 'n0nce' });
     return html + state;
   }
 
@@ -7862,8 +7862,12 @@ describe('the bundles that state records name', () => {
     show(page);
     vi.resetModules();
     const { load } = await import('../src/runtime/bundles.ts');
-    // The stylesheet of the bundle is in the head at once.
-    expect(document.head.querySelectorAll('link[rel=stylesheet]')).toHaveLength(1);
+    // The stylesheet of the bundle is in the head at once, with the nonce of the record, and a
+    // navigation keeps it.
+    const links = document.head.querySelectorAll<HTMLLinkElement>('link[rel=stylesheet]');
+    expect(links).toHaveLength(1);
+    expect(links[0]!.getAttribute('nonce')).toBe('n0nce');
+    expect(links[0]!.hasAttribute('b-bundle')).toBe(true);
     expect((await load('Page'))?.id).toBe('Page');
     // A component that no bundle holds has no client code.
     expect(await load('Other')).toBeUndefined();

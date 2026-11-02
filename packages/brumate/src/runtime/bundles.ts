@@ -16,7 +16,7 @@ const read = new WeakSet<Element>();
  * that it holds, or a stylesheet that a module of a bundle imports. A URL is relative to this
  * chunk, as the server writes it for a base of "./".
  */
-function loadBundle(url: string): Promise<void> | undefined {
+function loadBundle(url: string, nonce: string | null): Promise<void> | undefined {
   const href = new URL(url, import.meta.url).href;
   // A stylesheet goes in the head unless the page has it, such as from the head of the page.
   if (url.endsWith('.css')) {
@@ -28,6 +28,12 @@ function loadBundle(url: string): Promise<void> | undefined {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = href;
+    // The nonce of the record, for a policy on styles. A navigation keeps the link (`b-bundle`),
+    // as it keeps the code of the bundle.
+    if (nonce) {
+      link.setAttribute('nonce', nonce);
+    }
+    link.setAttribute('b-bundle', '');
     document.head.append(link);
     return undefined;
   }
@@ -53,7 +59,9 @@ function readRecords(): void {
     if (!read.has(script)) {
       read.add(script);
       for (const url of script.getAttribute('b-load')!.split(' ')) {
-        void loadBundle(url)?.catch(() => {});
+        // Browsers hide the attribute once the page loads, and keep the property.
+        const nonce = (script as HTMLScriptElement).nonce || script.getAttribute('nonce');
+        void loadBundle(url, nonce)?.catch(() => {});
       }
     }
   }
