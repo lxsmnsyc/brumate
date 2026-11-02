@@ -1,7 +1,7 @@
 ---
 id: promise-in-markup
 title: A promise in markup renders its value, in text and in attributes
-status: todo
+status: active
 priority: must
 type: feature
 story: browser-async

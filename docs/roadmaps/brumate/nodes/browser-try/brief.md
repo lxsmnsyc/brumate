@@ -1,7 +1,7 @@
 ---
 id: browser-try
 title: "A #try that the browser renders catches a rejected wait"
-status: todo
+status: active
 priority: must
 type: fix
 story: browser-async
