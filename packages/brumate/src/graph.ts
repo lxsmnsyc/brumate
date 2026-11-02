@@ -1,5 +1,5 @@
 import type { oxc } from './oxc.ts';
-import type { Block } from './ast.ts';
+import type { Block, Markup } from './ast.ts';
 import { forEachNode } from './ast.ts';
 import { isWithin, lookup } from './model.ts';
 import type {
@@ -157,12 +157,67 @@ export function resetUsed(model: SemanticModel, block: Block, reached: Set<Site>
 /** Sites whose code runs in the browser after the page renders, and can throw there. */
 const CLIENT_CODE = new Set(['event', 'effect', 'client']);
 
-/** True if the body of a `#try` holds a component or a dynamic tag, whose code this file cannot see. */
-function holdsComponent(block: Block & { kind: 'try' }): boolean {
+/** True if one of the markup nodes holds a component or a dynamic tag, whose code this file cannot see. */
+function holdsComponent(nodes: Markup[]): boolean {
   let found = false;
-  forEachNode(block.body.children, (node) => {
+  forEachNode(nodes, (node) => {
     found ||= node.kind === 'component' || node.kind === 'dynamic';
   });
+  return found;
+}
+
+/** True if `scope` is inside one of `ancestors`. */
+function isWithinAny(scope: Scope, ancestors: Scope[]): boolean {
+  for (const ancestor of ancestors) {
+    if (isWithin(scope, ancestor)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * The scopes of the templates declared outside the body of a `#try` that
+ * render only inside it: each call of the template is in the body, or in
+ * another such template. A template that is also called outside the body is
+ * left out, since the `#try` must not catch the errors of that call.
+ */
+export function calledTemplates(model: SemanticModel, block: Block & { kind: 'try' }): Scope[] {
+  const body = findBodyScope(model, block);
+  if (body === undefined) {
+    return [];
+  }
+  const inside = [body];
+  const found: Scope[] = [];
+  // A template found can call another one, so look again until nothing is added.
+  let added = true;
+  while (added) {
+    added = false;
+    for (const scope of model.scopes) {
+      if (scope.kind !== 'template' || isWithinAny(scope, inside)) {
+        continue;
+      }
+      const declaration = lookup(scope.parent!, scope.template!.name);
+      let calledInside = false;
+      let calledOutside = false;
+      for (const site of model.sites) {
+        // A template that calls itself renders where its first call is.
+        if (!declaration || !site.calls.has(declaration) || isWithin(site.scope, scope)) {
+          continue;
+        }
+        if (isWithinAny(site.scope, inside)) {
+          calledInside = true;
+        } else {
+          calledOutside = true;
+        }
+      }
+      if (calledInside && !calledOutside) {
+        inside.push(scope);
+        found.push(scope);
+        added = true;
+      }
+    }
+  }
   return found;
 }
 
@@ -178,14 +233,25 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
   if (body === undefined) {
     return false;
   }
-  if (holdsComponent(block)) {
+  // The templates that render in the body count as part of it.
+  const inside = [body, ...calledTemplates(model, block)];
+  if (holdsComponent(block.body.children)) {
     return true;
+  }
+  for (const scope of model.scopes) {
+    if (
+      scope.template &&
+      isWithinAny(scope, inside) &&
+      holdsComponent(scope.template.body.children)
+    ) {
+      return true;
+    }
   }
   for (const site of model.sites) {
     if (
       (CLIENT_CODE.has(site.kind) ||
         (site.kind === 'memo' && site.declaration?.kind === 'async-memo')) &&
-      isWithin(site.scope, body)
+      isWithinAny(site.scope, inside)
     ) {
       return true;
     }
@@ -194,7 +260,7 @@ export function tryCatchesClient(model: SemanticModel, block: Block & { kind: 't
   for (const declaration of model.declarations) {
     if (isMemoKind(declaration.kind)) {
       for (const read of declaration.reads) {
-        if (isWithin(read.site.scope, body)) {
+        if (isWithinAny(read.site.scope, inside)) {
           return true;
         }
       }

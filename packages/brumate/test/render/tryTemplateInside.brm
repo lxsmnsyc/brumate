@@ -1,0 +1,20 @@
+#try {
+  #template kid() {
+    <script>
+      import { $effect, $signal } from 'brumate/signals';
+
+      let count = $signal(0);
+      $effect(() => {
+        if (count > 0) {
+          throw new Error(`kid effect ${count}`);
+        }
+      });
+    </script>
+    <button class="boom" onClick=(() => { throw new Error('kid threw'); })>Boom</button>
+    <button class="later" onClick=(async () => { await Promise.resolve(); throw new Error('kid threw later'); })>Later</button>
+    <button class="bump" onClick=(() => count++)>Bump</button>
+  }
+  {kid()}
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

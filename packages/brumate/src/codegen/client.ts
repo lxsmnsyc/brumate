@@ -9,7 +9,7 @@ import type {
   RepeatBlock,
   SFCFile,
 } from '../ast.ts';
-import { tryCatchesClient } from '../graph.ts';
+import { calledTemplates, tryCatchesClient } from '../graph.ts';
 import type { GraphNode } from '../graph.ts';
 import { isWithin } from '../model.ts';
 import type { Declaration, Diagnostic, Scope, Site } from '../model.ts';
@@ -2061,8 +2061,16 @@ class ClientGenerator {
       const fallback = this.plan.bodyScopes.get(block.fallback)!;
       const held = holderArguments(this.plan, block);
       const entry = `[${owner.id}, ${this.plan.anchors.get(block)}, ${JSON.stringify(`r${scope.id}`)}, ${JSON.stringify(`r${fallback.id}`)}, [${this.kinds(blockBodies(block)).join(', ')}]${held}]`;
+      // A template declared outside the body renders inside it. Its scope links to where it is
+      // declared, so the entry finds the scope that holds the block only when that is the same.
+      const roots = [scope];
+      for (const template of calledTemplates(this.model, block)) {
+        if (instanceScope(this.plan, template.parent!) === owner) {
+          roots.push(template);
+        }
+      }
       for (const inside of this.model.scopes) {
-        if (isWithin(inside, scope)) {
+        if (isWithinAny(inside, roots)) {
           entries.push(`${inside.id}: ${entry}`);
         }
       }
