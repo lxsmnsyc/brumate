@@ -45,7 +45,6 @@ import {
   loads,
   memoControllers,
   modules,
-  options,
   refs,
   loadingValues,
   renderedLoads,
@@ -220,12 +219,6 @@ function addScopes(state: PageState, root: string): Scope[] {
     }
     if (record.l !== undefined) {
       scope.l = scopes.get(record.l);
-    }
-  }
-  // The bundles of the roots first, so the components that they hold load with them.
-  for (const scope of added) {
-    if (scope.m) {
-      void options.loadBundle?.(scope.m)?.catch(() => {});
     }
   }
   for (const scope of added) {

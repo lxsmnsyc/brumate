@@ -26,11 +26,10 @@ export interface LoaderOptions {
    */
   load: (id: string) => Promise<ClientModule> | undefined;
   /**
-   * Loads the bundle of a root component of the page, such as a route: the client modules of
-   * the components that it can render, in one chunk. Undefined for a component that is not a
-   * root.
+   * Loads a bundle that a state record names in `b-load`, by URL: the client modules of the
+   * components that the record holds and of those that they can render, in one chunk.
    */
-  loadBundle?: (id: string) => Promise<unknown> | undefined;
+  loadBundle?: (url: string) => Promise<unknown>;
   /** The URL prefix of server function calls. */
   rpc?: string;
   /** Imports the serial entry, which the core takes before it reads the page state. */
@@ -532,16 +531,13 @@ export function boot(
   // The core starts at once and loads the code of the components on the page, so a call of a
   // function of another component, such as a function prop, runs at once and in order.
   void loadCore().catch(() => {});
-  // The bundles of the components in the state start with it, so the code of the page comes in
-  // the same round trip as the core. The core asks for them again when it reads the state.
-  const bundled = new Set<string>();
+  // The bundles that the state names start with it, so the code of the page comes in the same
+  // round trip as the core. The core asks for them again when it reads the state, and
+  // `loadBundle` loads each one once.
   const loadBundles = (): void => {
-    for (const script of document.querySelectorAll('script[b-state]')) {
-      for (const [, id] of script.textContent?.matchAll(/\bm:"([^"]+)"/g) ?? []) {
-        if (!bundled.has(id!)) {
-          bundled.add(id!);
-          void options.loadBundle?.(id!)?.catch(() => {});
-        }
+    for (const script of document.querySelectorAll('script[b-load]')) {
+      for (const url of script.getAttribute('b-load')!.split(' ')) {
+        void options.loadBundle?.(url).catch(() => {});
       }
     }
   };

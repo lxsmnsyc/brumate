@@ -108,6 +108,8 @@ export function routeModule(
   hints: string[] = [],
   /** The chunks of the bundle of each root component, by ID, from the client build. */
   bundleHints: Record<string, string[]> = {},
+  /** The chunk and the components of each bundle, from the client build, for `b-load`. */
+  bundles?: { chunks: Record<string, string>; members: Record<string, string[]> },
 ): string {
   // Static imports in a build, because the server registry of server functions imports every
   // file anyway. In development, a route loads when a request needs it, so a file that does not
@@ -163,8 +165,10 @@ export function routeModule(
     ...(middleware ? [`import middleware from ${JSON.stringify(middleware)};`] : []),
     ...imports,
     `export const routes = ${routes};`,
+    // Made once, so each request reads the same table.
+    ...(bundles ? [`const bundles = ${JSON.stringify(bundles)};`] : []),
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}${bundles ? ', bundles' : ''}, ...options });`,
     '}',
   ].join('\n');
 }

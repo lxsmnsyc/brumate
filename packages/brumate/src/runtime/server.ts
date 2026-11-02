@@ -2238,6 +2238,8 @@ export interface StateAttributes {
   params?: Record<string, string>;
   /** The ID of the build that rendered the page, on its first record, for skew protection. */
   build?: string;
+  /** The URLs of the bundles that the components of the record need, which the browser imports. */
+  load?: string[];
   /** The ID of a `#loading` boundary whose body failed. The record is the error. */
   fail?: ScopeId;
   /** The marker of a `#try` whose `#catch` body replaces its body, from the template `b-c`. */
@@ -2267,6 +2269,9 @@ export function stateScript(
   }
   if (attributes.next !== undefined) {
     extra += ` b-next="${attributes.next}"`;
+  }
+  if (attributes.load !== undefined && attributes.load.length > 0) {
+    extra += ` b-load="${escapeAttribute(attributes.load.join(' '))}"`;
   }
   // Records of a render that starts above 0 name it, so their references stay apart from other renders.
   if (attributes.root) {
@@ -2485,6 +2490,68 @@ export interface RenderOptions {
    * `pending`, and `html` and `state` are empty.
    */
   defer?: { boundary: ScopeId; at: string };
+  /**
+   * The bundles of the client build. Each state record with scopes names, in `b-load`, the
+   * URLs of the bundles that hold the code of its components, so the browser loads only the
+   * code of the page. `virtual:brumate/routes` passes them.
+   */
+  bundles?: ClientBundles;
+}
+
+/** The bundles of a client build, by the ID of their root component, such as a route. */
+export interface ClientBundles {
+  /** The URL of the chunk of each bundle. */
+  chunks: Record<string, string>;
+  /** The IDs of the components whose code each bundle holds. */
+  members: Record<string, string[]>;
+  /** The roots whose bundles the browser has, such as those of a page that asks for a `#defer` body. */
+  loaded?: string[];
+}
+
+/** The first bundle that holds each component, for each table of members. */
+const bundleOwners = new WeakMap<ClientBundles['members'], Map<string, string>>();
+
+/**
+ * Returns the URLs of the bundles that hold the code of the components of `scopes`, other than
+ * those in `sent`. A root loads its own bundle, and another component the first bundle that
+ * holds it, unless a bundle in `sent` holds it. `sent` and `covered` keep the bundles and the
+ * components of the render so far.
+ */
+function bundleUrls(
+  bundles: ClientBundles,
+  scopes: Iterable<string | undefined>,
+  sent: Set<string>,
+  covered: Set<string>,
+): string[] {
+  let owners = bundleOwners.get(bundles.members);
+  if (!owners) {
+    owners = new Map();
+    for (const [root, ids] of Object.entries(bundles.members)) {
+      for (const id of ids) {
+        if (!owners.has(id)) {
+          owners.set(id, root);
+        }
+      }
+    }
+    bundleOwners.set(bundles.members, owners);
+  }
+  const urls: string[] = [];
+  for (const id of scopes) {
+    if (id === undefined || covered.has(id)) {
+      continue;
+    }
+    covered.add(id);
+    const root = bundles.chunks[id] === undefined ? owners.get(id) : id;
+    if (root === undefined || sent.has(root)) {
+      continue;
+    }
+    sent.add(root);
+    urls.push(bundles.chunks[root]!);
+    for (const member of bundles.members[root] ?? []) {
+      covered.add(member);
+    }
+  }
+  return urls;
 }
 
 /**
@@ -2565,6 +2632,13 @@ export async function render<P>(
     fallbackDefined = true;
     return `${SHOW_FALLBACK};`;
   }
+  // The bundles that the records of this render named, and the components that they hold.
+  const bundles = options.bundles;
+  const sentBundles = new Set<string>();
+  const coveredComponents = new Set<string>();
+  if (bundles?.loaded) {
+    bundleUrls(bundles, bundles.loaded, sentBundles, coveredComponents);
+  }
   function serialize(
     target: Context,
     onScopes: (script: string) => void,
@@ -2578,9 +2652,14 @@ export async function render<P>(
       refs,
       (code, initial) => {
         if (initial) {
+          const ids: (string | undefined)[] = [];
+          for (const entry of target.scopes) {
+            ids.push(entry.record.m);
+          }
           onScopes(
             stateScript(code, true, {
               next: ctx.next(),
+              load: bundles && bundleUrls(bundles, ids, sentBundles, coveredComponents),
               route,
               root,
               nonce,
@@ -3722,8 +3801,9 @@ export interface RouteOptions extends DocumentOptions, RequestOptions {
   hints?: string[];
   /**
    * The URLs of the bundle of each root component, such as a route or a layout, by component ID:
-   * its chunk and the chunks that it imports. A page adds those of its views to `hints`, so the
-   * code of the page loads with the HTML. `virtual:brumate/routes` passes them.
+   * its chunk, the chunks that it imports and its stylesheets. A page adds the scripts of its
+   * views to `hints`, so the code of the page loads with the HTML, and links to their
+   * stylesheets in its head. `virtual:brumate/routes` passes them.
    */
   bundleHints?: Record<string, string[]>;
   /**
@@ -3809,15 +3889,21 @@ async function renderPage(
   }
   const path = new URL(request.url).pathname;
   const endRender = event?.traced('render', path) ?? (() => {});
-  // Client navigation has the loader and the core already.
-  let hints: string[] = [];
-  if (!request.headers.has('x-brumate-base')) {
-    const wanted: string[] = [...(options.hints ?? [])];
-    for (const id of viewIds(view)) {
-      wanted.push(...(options.bundleHints?.[id] ?? []));
+  // Client navigation has the loader and the core already. The stylesheets of the bundles go
+  // in the head of every page, so a navigation keeps those of the next page.
+  const navigation = request.headers.has('x-brumate-base');
+  const wanted: string[] = navigation ? [] : [...(options.hints ?? [])];
+  const styles = new Set<string>();
+  for (const id of viewIds(view)) {
+    for (const url of options.bundleHints?.[id] ?? []) {
+      if (url.endsWith('.css')) {
+        styles.add(url);
+      } else if (!navigation) {
+        wanted.push(url);
+      }
     }
-    hints = [...new Set(wanted)];
   }
+  const hints = [...new Set(wanted)];
   // A page with a nonce, under a strict policy, loads only what carries the nonce. A `Link`
   // header cannot, so the links are in the head only.
   const nonce = options.nonce === undefined ? '' : ` nonce="${escapeAttribute(options.nonce)}"`;
@@ -3833,6 +3919,9 @@ async function renderPage(
   let preload = '';
   for (const url of hints) {
     preload += `<link rel="modulepreload"${nonce} href="${escapeAttribute(url)}">`;
+  }
+  for (const url of styles) {
+    preload += `<link rel="stylesheet"${nonce} href="${escapeAttribute(url)}">`;
   }
   const parts = await render(
     viewComponent(view, props),
@@ -3935,6 +4024,8 @@ async function renderDeferred(
       params: props.params as Record<string, string> | undefined,
       base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
       defer,
+      // The page that asks for the body has the bundles of its views.
+      bundles: options.bundles && { ...options.bundles, loaded: viewIds(view) },
     },
   );
   const headers = new Headers(parts.headers);

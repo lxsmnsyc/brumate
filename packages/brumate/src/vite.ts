@@ -194,6 +194,8 @@ const START = 'virtual:brumate/start';
 const MANIFEST = 'virtual:brumate/manifest';
 /** `virtual:brumate/bundle/<id>` imports the client modules of a root component and those it renders. */
 const BUNDLE = 'virtual:brumate/bundle/';
+/** `virtual:brumate/bundles` imports every bundle. Nothing loads it. See `manifest`. */
+const BUNDLES = 'virtual:brumate/bundles';
 /** Exports `functions` and `handle(request)` for server function calls. */
 const SERVER = 'virtual:brumate/server';
 
@@ -253,6 +255,18 @@ function preloadHelper(base: string, relative: boolean): string {
 
 /** The modules that every page loads early, in the client build. See `hints` of `handleRoute`. */
 const HINTS_FILE = '.brumate/hints.json';
+
+/** What `.brumate/hints.json` holds, from the client build, for the server build. */
+interface ClientHints {
+  /** The modules that every page loads early. */
+  all: string[];
+  /** The chunks and stylesheets of the bundle of each root component. */
+  bundles: Record<string, string[]>;
+  /** The chunk of each bundle, which the state records name. */
+  chunks?: Record<string, string>;
+  /** The components of each bundle. */
+  members?: Record<string, string[]>;
+}
 /** The dev server answers the devtools panel about a component at this path. */
 const INSPECT = '/__brumate/inspect';
 /** Maps a position of a module that the browser ran to its source, for the Errors tab. */
@@ -956,6 +970,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return [...imports, 'export const modules = {', ...objects, '};'].join('\n');
   }
 
+  /** The IDs of the components in each bundle of the client build, by root, for `hints.json`. */
+  const bundleMembers = new Map<string, string[]>();
+
   async function manifest(): Promise<string> {
     const list = [...files];
     // A build leaves out the components that have no client code. The core treats a
@@ -979,58 +996,27 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         keptFiles.add(file);
       }
       const groups = await bundles(keptFiles);
-      const owners = new Map<string, string>();
+      bundleMembers.clear();
       for (const [root, members] of groups) {
+        const ids: string[] = [];
         for (const member of members) {
           const id = findComponentId(member);
-          // A root that no earlier bundle holds is its own owner, which the table leaves out.
-          if (id !== undefined && !owners.has(id)) {
-            owners.set(id, root);
+          if (id !== undefined) {
+            ids.push(id);
           }
         }
+        bundleMembers.set(root, ids);
       }
-      for (const [id, root] of owners) {
-        if (id === root) {
-          owners.delete(id);
-        }
-      }
-      const bundleLines: string[] = [];
-      for (const root of groups.keys()) {
-        bundleLines.push(
-          `  ${JSON.stringify(root)}: () => import(${JSON.stringify(`${BUNDLE}${root}`)}),`,
-        );
-      }
+      // The server names the bundles of each page in its state records, as `b-load`, so the
+      // entry has no table of them.
       return [
-        'const bundles = {',
-        ...bundleLines,
-        '};',
-        `const owners = ${JSON.stringify(Object.fromEntries(owners))};`,
-        'const loaded = new Map();',
-        'const pending = new Map();',
-        '/** Loads the bundle of a root component of the page. Undefined for a component that is not a root. */',
-        'export function loadBundle(root) {',
-        '  let promise = pending.get(root);',
-        '  if (!promise && bundles[root]) {',
-        '    promise = bundles[root]().then((bundle) => {',
-        '      for (const [id, module] of Object.entries(bundle.modules)) {',
-        '        loaded.set(id, module);',
-        '      }',
-        '    });',
-        '    pending.set(root, promise);',
-        '    promise.catch(() => pending.delete(root));',
-        '  }',
-        '  return promise;',
-        '}',
-        '/** The client module of a component, from the bundles of the page, or else from a bundle that holds it. */',
-        'export function load(id) {',
-        '  if (loaded.has(id)) {',
-        '    return Promise.resolve(loaded.get(id));',
-        '  }',
-        '  const waiting = [...pending.values()];',
-        '  const root = owners[id] ?? (bundles[id] && id);',
-        '  const owner = () => (loaded.has(id) || !root ? loaded.get(id) : loadBundle(root).then(() => loaded.get(id)));',
-        '  return waiting.length > 0 ? Promise.allSettled(waiting).then(owner) : root ? owner() : undefined;',
-        '}',
+        "import { load, loadBundle } from 'brumate/bundles';",
+        // The `import()` of each bundle is in a chunk that nothing loads, so the build makes a
+        // chunk of each bundle, which loads after this one and shares its modules, such as the
+        // preload helper. An entry of its own would get them in another chunk. The write keeps
+        // it in the build when the entry imports `load` only.
+        `loadBundle.all = () => import(${JSON.stringify(BUNDLES)});`,
+        'export { load, loadBundle };',
       ].join('\n');
     }
     const entries: string[] = [];
@@ -1184,20 +1170,19 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
    * The modules that every page loads early, which the client build wrote,
    * or none before a client build or in development.
    */
-  function clientHints(): { all: string[]; bundles: Record<string, string[]> } {
+  function clientHints(): ClientHints {
     const file = path.join(clientBuildDirectory(root, options.prerender), HINTS_FILE);
     if (isServe || !existsSync(file)) {
       return { all: [], bundles: {} };
     }
-    const read = JSON.parse(readFileSync(file, 'utf8')) as
-      | string[]
-      | { all: string[]; bundles: Record<string, string[]> };
+    const read = JSON.parse(readFileSync(file, 'utf8')) as string[] | ClientHints;
     return Array.isArray(read) ? { all: read, bundles: {} } : read;
   }
 
   /** The route tree module. A DOM test gets the server version of each component in it. */
   function routeTree(server = false): string {
     const env = envFile();
+    const hints = clientHints();
     const code = routeModule(
       currentRoutes(),
       (file) =>
@@ -1207,8 +1192,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       isServe,
       middlewareFile(),
       buildId,
-      clientHints().all,
-      clientHints().bundles,
+      hints.all,
+      hints.bundles,
+      hints.chunks && hints.members ? { chunks: hints.chunks, members: hints.members } : undefined,
     );
     // The variables are checked when the server starts, before any route loads.
     const serial = serialImports().join('\n');
@@ -1985,8 +1971,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
         add(loaderChunk);
         add(coreChunk);
-        // The chunks of the bundle of each root, which its pages load early too.
+        // The chunks of the bundle of each root, which its pages load early too, and its
+        // stylesheets, which its pages link to.
         const bundleHints: Record<string, string[]> = {};
+        // The chunk of each bundle and its components, which the state records name.
+        const chunkUrls: Record<string, string> = {};
+        const members: Record<string, string[]> = {};
         for (const chunk of chunks.values()) {
           const facade = chunk.facadeModuleId ?? '';
           if (!facade.startsWith(`\0${BUNDLE}`)) {
@@ -2004,10 +1994,17 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           }
           walk(chunk.fileName);
           const urls: string[] = [];
+          const styles = new Set<string>();
           for (const name of files) {
             urls.push(`${base}${name}`);
+            for (const css of chunks.get(name)?.viteMetadata?.importedCss ?? []) {
+              styles.add(`${base}${css}`);
+            }
           }
-          bundleHints[facade.slice(BUNDLE.length + 1)] = urls;
+          const id = facade.slice(BUNDLE.length + 1);
+          bundleHints[id] = [...urls, ...styles];
+          chunkUrls[id] = `${base}${chunk.fileName}`;
+          members[id] = bundleMembers.get(id) ?? [];
         }
         await mkdir(path.join(outDir, '.brumate'), { recursive: true });
         const all: string[] = [];
@@ -2016,7 +2013,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
         await writeFile(
           path.join(outDir, HINTS_FILE),
-          JSON.stringify({ all, bundles: bundleHints }),
+          JSON.stringify({ all, bundles: bundleHints, chunks: chunkUrls, members }),
         );
         if (buildId !== undefined) {
           const written: string[] = [];
@@ -2082,6 +2079,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         id === SERVER ||
         id === ROUTES ||
         id === TESTING ||
+        id === BUNDLES ||
         id.startsWith(BUNDLE)
       ) {
         return `\0${id}`;
@@ -2171,6 +2169,15 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       if (id === `\0${MANIFEST}`) {
         return await manifest();
+      }
+      if (id === `\0${BUNDLES}`) {
+        const lines: string[] = [];
+        for (const root of bundleMembers.keys()) {
+          lines.push(
+            `  ${JSON.stringify(root)}: () => import(${JSON.stringify(`${BUNDLE}${root}`)}),`,
+          );
+        }
+        return ['export default {', ...lines, '};'].join('\n');
       }
       if (id.startsWith(`\0${BUNDLE}`)) {
         return await bundleModule(id.slice(BUNDLE.length + 1));
