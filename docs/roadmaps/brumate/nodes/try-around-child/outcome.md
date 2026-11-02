@@ -30,7 +30,7 @@
 
 - On main 12 of the 15 new tests and the unreadMemoTry test fail; all pass with the fix.
 - `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm --filter brumate test` (1326 passed).
-- `pnpm bench`: not run; the bench lock was held by another worker.
+- `pnpm bench --only brumate --scenario todos`: JS before `load` 14.8 kB gzip, the same as main.
 
 ## Size
 

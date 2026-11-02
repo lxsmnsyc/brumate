@@ -10,4 +10,4 @@
 - Updated the `blocks` render snapshot: its `#try` around `<Broken />` now ships the `#catch` body and scope IDs.
 - `pnpm --filter brumate test`: 1326 passed (first run hit a beforeAll hook timeout under load 17; rerun clean).
 - Draft PR #418. Review round 1 (fresh agent, pr-review): no blocking findings. Found that a `#template` inside a `#try` does not catch client errors, also on main.
-- Bench lock stayed held by another worker; bench not run before hand-back.
+- Bench (todos, brumate only): JS before `load` 14.8 kB gzip, the same as main. PR marked ready.
