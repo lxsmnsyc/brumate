@@ -9230,6 +9230,25 @@ describe('await in block scripts, #for rows and markup of a browser render', () 
     expect(errors).toEqual([]);
   });
 
+  it('waits in the script of a #loading (memo) body, and shows #else again as the memo loads', async () => {
+    const errors = watchErrors();
+    await resume('awaitLoadingOn', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([1, 70]));
+    expect(document.querySelector('.fallback')).not.toBeNull();
+    await settleUser(70);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ada70']));
+    expect(document.querySelector('.fallback')).toBeNull();
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(document.querySelector('.fallback')).not.toBeNull());
+    await settleUser(2);
+    await waitFor(() => expect(users()).toEqual(['ada2 ada70']));
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(loadedIds()).toEqual([1, 70, 2]);
+    expect(errors).toEqual([]);
+  });
+
   it('shows the #loading fallback until the await in the script of its body settles', async () => {
     await resume('awaitLoading', {});
     click(document.querySelector('.toggle')!);
