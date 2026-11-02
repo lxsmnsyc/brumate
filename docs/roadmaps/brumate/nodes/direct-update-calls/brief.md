@@ -1,7 +1,7 @@
 ---
 id: direct-update-calls
 title: Compile the update table into direct calls and a smaller update runtime
-status: todo
+status: dropped
 priority: could
 type: feature
 outline: true
@@ -26,6 +26,10 @@ depends_on:
 ---
 
 # Compile the update table into direct calls and a smaller update runtime
+
+## Dropped
+
+Merged into values-spike and values-build on 2026-11-02 (docs/debates/client-restructure/debate.md, P7): both compile the update table into direct calls.
 
 ## Goal
 
