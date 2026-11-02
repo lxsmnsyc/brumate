@@ -63,6 +63,8 @@ export interface Scope {
   t?: Scope;
   /** For a component that passes its children on, the scope where they are finally inserted. */
   f?: Scope;
+  /** For the scope of a template, the scope where it was called, which errors go to. */
+  l?: Scope;
   /** The values that the scope provides, by context key. */
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */

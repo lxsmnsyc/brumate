@@ -1,0 +1,13 @@
+#template kid() {
+  #try {
+    <button class="boom" onClick=(() => { throw new Error('kid threw'); })>Boom</button>
+  } #catch (error) {
+    <p class="inner">{String(error)}</p>
+  }
+}
+
+#try {
+  {kid()}
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

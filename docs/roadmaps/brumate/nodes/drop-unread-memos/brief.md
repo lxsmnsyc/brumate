@@ -2,7 +2,7 @@
 id: drop-unread-memos
 title: Drop memos that no browser code reads
 status: todo
-priority: could
+priority: should
 type: feature
 outline: true
 milestone: 0.6.0
@@ -22,12 +22,17 @@ provides: []
 depends_on:
   - on: batching
     kind: hard
-    why: both change how memos compute in the browser
+    why: memo reads in the batched update path
+  - on: browser-async
+    kind: hard
+    why: after the 0.5.0 must line (client-restructure debate, step 1)
 ---
 
 # Drop memos that no browser code reads
 
 ## Goal
+
+Step 1 of the client-restructure debate (docs/debates/client-restructure/debate.md): the browser follows the server, so a memo nothing reads does not run in the browser either (the maintainer, Q2), and `$$b.unreadMemo` and `watchUnreadMemos` (#415, #417) go.
 
 Browser memos stay eager: a source change computes them in the ordered pass. The compiler drops a pure memo, and its compute, from the browser code when no browser code reads it, as Marko 6 drops unread pure values (`pruneBindings` in its translator). First measure how many browser memos in the ui parts and the website are unread, so the node is sized by the waste it removes.
 

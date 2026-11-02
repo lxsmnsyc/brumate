@@ -1,0 +1,21 @@
+<script>
+  function make(name: string) {
+    return kid(name);
+  }
+</script>
+
+#template kid(name: string) {
+  <button class=(name) onClick=(() => { throw new Error(`${name} threw`); })>Boom</button>
+}
+
+<ul>
+  #for (name of ['a', 'b'] by name) {
+    <li>
+      #try {
+        {make(name)}
+      } #catch (error) {
+        <p class=(`caught caught-${name}`)>{String(error)}</p>
+      }
+    </li>
+  }
+</ul>

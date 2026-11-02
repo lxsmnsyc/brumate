@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import AwaitReadKid from './AwaitReadKid.brm';
+
+  let show = $signal(false);
+</script>
+
+#try {
+  <button class="show" onClick=(() => (show = true))>Show</button>
+  #if (show) {
+    <AwaitReadKid />
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

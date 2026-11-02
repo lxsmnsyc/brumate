@@ -24,3 +24,7 @@
 ## Size
 
 - Estimated S, actual S.
+
+## Closed
+
+- #396 merged on 2026-11-01 and brumate 0.4.1 is on npm. #410 synced `next` with `main` and restored the two rejected load tests (6718cb33).

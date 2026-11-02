@@ -1,0 +1,10 @@
+#template kid(depth: number) {
+  <button class=(`boom${depth}`) onClick=(() => { throw new Error(`kid ${depth} threw`); })>Boom</button>
+  {depth > 0 ? kid(depth - 1) : ''}
+}
+
+#try {
+  {kid(1)}
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

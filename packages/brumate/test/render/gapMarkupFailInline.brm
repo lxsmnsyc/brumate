@@ -1,0 +1,18 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { gapFail } from './gapData.ts';
+
+  let show = $signal(false);
+</script>
+
+#try {
+  <button class="show" onClick=(() => (show = true))>Show</button>
+  #if (show) {
+    <script>
+      const value = $memo(gapFail());
+    </script>
+    <p class="value">{value}</p>
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

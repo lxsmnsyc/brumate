@@ -1,14 +1,14 @@
 // Children, and the calls of `#template` values: markup that renders where it is inserted.
 
 import { HAS_CHILDREN, HAS_CLIENT_HTML, HAS_TEMPLATES } from '../features.ts';
-import { insertValue } from '../html.ts';
+import { insertValue, isRaw } from '../html.ts';
 import type { ScopeId } from '../shared.ts';
 import { loadedFunction } from './code.ts';
 import { holdPlace, insertHTML } from './insert.ts';
 import { resolve } from './references.ts';
 import type { Handler } from './references.ts';
 import { resolveScope } from './scopes.ts';
-import { insertedChildren, updating } from './state.ts';
+import { insertedChildren, scopes, updating } from './state.ts';
 import type { Scope } from './state.ts';
 
 /**
@@ -22,9 +22,10 @@ export function templateReference(
   // The markup renders where the component inserts it, so it reads the contexts there, as
   // children do.
   return (...args) =>
-    new TemplateCall(ref, scope, args, () => {
+    new TemplateCall(ref, scope, args, (at) => {
       const render = loadedFunction(ref);
-      return render ? insertValue(render(scope, ...args)) : '';
+      // The insert links the template's scope to where it is inserted.
+      return render ? insert(render(scope, ...args), undefined, at) : '';
     });
 }
 
@@ -32,11 +33,29 @@ export function templateReference(
 
 /** Renders a value inserted in markup. Children render here, at `scope`, for their contexts. */
 export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
+  linkCalls(value, scope);
   if (!((HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children)) {
     return insertValue(value);
   }
   const out = value.render(resolveScope(scope));
   return HAS_CLIENT_HTML ? holdPlace(out) : (out as string);
+}
+
+/**
+ * Links the scope of each template whose output a value holds to `at`, the scope where it is
+ * inserted, so an error in the template goes to a `#try` there.
+ */
+export function linkCalls(value: unknown, at: Scope | ScopeId | undefined): void {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      linkCalls(item, at);
+    }
+    return;
+  }
+  const scope = isRaw(value) && value.s !== undefined ? scopes.get(value.s) : undefined;
+  if (scope && at !== undefined) {
+    scope.l = resolveScope(at);
+  }
 }
 
 /**
@@ -46,9 +65,9 @@ export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId):
  */
 export class Children {
   private given: Scope | ScopeId | undefined;
-  private readonly html: () => string | DocumentFragment;
+  private readonly html: (at?: Scope) => string | DocumentFragment;
 
-  constructor(from: Scope | ScopeId | undefined, html: () => string | DocumentFragment) {
+  constructor(from: Scope | ScopeId | undefined, html: (at?: Scope) => string | DocumentFragment) {
     this.given = from;
     this.html = html;
   }
@@ -80,7 +99,7 @@ export class Children {
     const entry = { from: this.from, at: target };
     insertedChildren.push(entry);
     try {
-      return this.html();
+      return this.html(target);
     } finally {
       insertedChildren.splice(insertedChildren.indexOf(entry), 1);
     }
@@ -94,7 +113,12 @@ export class TemplateCall extends Children {
   readonly owner: Scope | undefined;
   readonly args: unknown[];
 
-  constructor(ref: string, owner: Scope | undefined, args: unknown[], html: () => string) {
+  constructor(
+    ref: string,
+    owner: Scope | undefined,
+    args: unknown[],
+    html: (at?: Scope) => string,
+  ) {
     super(owner, html);
     this.ref = ref;
     this.owner = owner;

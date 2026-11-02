@@ -2,8 +2,9 @@
 id: loading-on
 title: "`#loading (memo)` shows its fallback again when the memo loads again in the browser"
 status: todo
-priority: should
+priority: must
 type: feature
+story: browser-async
 outline: true
 milestone: 0.5.0
 target:
@@ -26,6 +27,9 @@ depends_on:
   - on: streamed-memo-reads
     kind: hard
     why: both read pending() of a streamed slot, so the first-settle rule should match
+  - on: browser-loading-fallback
+    kind: hard
+    why: it shows the fallback again through the same browser boundary
 ---
 
 # `#loading (memo)` shows its fallback again when the memo loads again in the browser

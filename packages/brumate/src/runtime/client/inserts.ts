@@ -1,13 +1,13 @@
 // Writes of the values that markup inserts: text, content, attributes and spreads of elements, and
 // `#portal` bodies.
 
-import { HAS_BINDINGS, HAS_CHILDREN, HAS_TEMPLATES } from '../features.ts';
+import { HAS_BINDINGS, HAS_CHILDREN, HAS_DYNAMIC, HAS_TEMPLATES } from '../features.ts';
 import { attributeText, insertValue, onValue, textValue } from '../html.ts';
 import { isBinding, isSlotReference } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
 import { findComment, findElement, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
-import { Children, RenderedChildren, TemplateCall } from './children.ts';
+import { Children, RenderedChildren, TemplateCall, linkCalls } from './children.ts';
 import { loadedFunction } from './code.ts';
 import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
@@ -166,6 +166,7 @@ function write(
   // Children and templates render here, at the scope of the insert, for its contexts. The first
   // scope that a template makes is its own, which holds its arguments.
   const made = nextId;
+  linkCalls(value, at);
   insertHTML(
     end ?? { parent },
     (HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children
@@ -281,7 +282,7 @@ function withVariables(element: HTMLElement, style: string | undefined): string 
 
 export function attr(scope: Scope, anchor: number, name: string, value: unknown): void {
   // A dynamic tag that names a component passes the value on as a prop.
-  if (scope.c?.[anchor] !== undefined) {
+  if (HAS_DYNAMIC && scope.c?.[anchor] !== undefined) {
     prop(scope, anchor, name, value);
     return;
   }

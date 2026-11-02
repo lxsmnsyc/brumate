@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let shown = $signal(true);
+</script>
+
+#template kid() {
+  <button class="boom" onClick=(() => { throw new Error('kid threw'); })>Boom</button>
+}
+
+<button class="toggle" onClick=(() => (shown = !shown))>Toggle</button>
+#if (shown) {
+  #try {
+    {kid()}
+  } #catch (error) {
+    <p class="caught">{String(error)}</p>
+  }
+}

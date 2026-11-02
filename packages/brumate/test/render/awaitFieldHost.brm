@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import AwaitFieldKid from './AwaitFieldKid.brm';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <AwaitFieldKid />
+}

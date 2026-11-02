@@ -7940,3 +7940,443 @@ describe('await $memo in a component that the browser renders', () => {
     });
   });
 });
+
+describe('an unread async memo in a browser render', () => {
+  it('reports its rejection to the page when no #try catches it, with no unhandled rejection', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await resume('unreadMemoHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: side failed');
+    expect(unhandled.map(String)).toEqual([]);
+  });
+
+  it('sends its rejection to the nearest #catch', async () => {
+    await resume('unreadMemoTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: side failed'));
+    expect(document.querySelector('.kid')).toBeNull();
+  });
+});
+
+describe('a #try around a child component', () => {
+  const fixtures = [
+    'tryAroundChildSibling',
+    'tryAroundChild',
+    'tryAroundGrandchild',
+    'tryAroundChildIf',
+    'tryAroundChildFor',
+  ];
+  const errors = [
+    { button: '.boom', message: 'Error: kid threw', what: 'a handler that throws' },
+    { button: '.later', message: 'Error: kid threw later', what: 'an async handler that rejects' },
+    { button: '.bump', message: 'Error: kid effect 1', what: 'an effect that throws' },
+  ];
+  for (const fixture of fixtures) {
+    for (const { button, message, what } of errors) {
+      it(`${fixture}: catches ${what} in the child`, async () => {
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+        onTestFinished(() => logged.mockRestore());
+        await resume(fixture, {});
+        click(document.querySelector(button)!);
+        await waitFor(() => expect(text('.caught')).toBe(message));
+        expect(document.querySelector('.boom')).toBeNull();
+        expect(logged).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
+describe('a #try around a #template', () => {
+  // The control holds the same markup without the template.
+  const fixtures = [
+    'tryTemplateControl',
+    'tryTemplateInside',
+    'tryTemplateOutside',
+    'tryTemplateChild',
+  ];
+  const errors = [
+    { button: '.boom', message: 'Error: kid threw', what: 'a handler that throws' },
+    { button: '.later', message: 'Error: kid threw later', what: 'an async handler that rejects' },
+    { button: '.bump', message: 'Error: kid effect 1', what: 'an effect that throws' },
+  ];
+  // The plain fixture holds only the button with the throwing handler.
+  const cases = [
+    { fixture: 'tryTemplatePlain', ...errors[0]! },
+    { fixture: 'tryTemplateInsidePlain', ...errors[0]! },
+  ];
+  for (const fixture of fixtures) {
+    for (const error of errors) {
+      cases.push({ fixture, ...error });
+    }
+  }
+  for (const { fixture, button, message, what } of cases) {
+    it(`${fixture}: catches ${what} in the template`, async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => logged.mockRestore());
+      await resume(fixture, {});
+      click(document.querySelector(button)!);
+      await waitFor(() => expect(text('.caught')).toBe(message));
+      expect(document.querySelector('.boom')).toBeNull();
+      expect(logged).not.toHaveBeenCalled();
+    });
+  }
+
+  it('does not catch the error of a call of the template outside it', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => logged.mockRestore());
+    await resume('tryTemplateTwice', {});
+    click(document.querySelector('.outside')!);
+    await waitFor(() => expect(logged).toHaveBeenCalledTimes(1));
+    expect(String(logged.mock.calls[0]![0])).toBe('Error: outside threw');
+    expect(document.querySelector('.caught')).toBeNull();
+  });
+
+  // Each case names the `#catch` that renders.
+  const nearest = [
+    {
+      fixture: 'tryTemplateInnerTry',
+      button: '.boom',
+      shows: '.inner',
+      what: 'a #try in the template',
+    },
+    {
+      fixture: 'tryTemplateRecursive',
+      button: '.boom0',
+      shows: '.caught',
+      what: 'a template that calls itself',
+    },
+    {
+      fixture: 'tryTemplateRecursive',
+      button: '.boom1',
+      shows: '.caught',
+      what: 'the first call of a template that calls itself',
+    },
+    {
+      fixture: 'tryTemplateProp',
+      button: '.boom',
+      shows: '.caught',
+      what: 'a template passed to a component as a prop',
+    },
+  ];
+  for (const { fixture, button, shows, what } of nearest) {
+    it(`${fixture}: sends the error of ${what} to the right #catch`, async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => logged.mockRestore());
+      await resume(fixture, {});
+      click(document.querySelector(button)!);
+      await waitFor(() => expect(document.querySelector(shows)).not.toBeNull());
+      expect(logged).not.toHaveBeenCalled();
+      expect(document.querySelectorAll('.inner, .caught')).toHaveLength(1);
+    });
+  }
+
+  // The template is declared above the scope that holds the inner `#try`.
+  it('tryTemplateNested: sends the error of a template in a #try inside another to the inner #catch', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => logged.mockRestore());
+    await resume('tryTemplateNested', {});
+    click(document.querySelector('.boom')!);
+    await waitFor(() => expect(text('.inner')).toBe('Error: kid threw'));
+    expect(document.querySelector('.caught')).toBeNull();
+    expect(logged).not.toHaveBeenCalled();
+  });
+
+  it('tryTemplateTwice: catches the error of the call of the template in the #try', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => logged.mockRestore());
+    await resume('tryTemplateTwice', {});
+    click(document.querySelector('.boom')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: boom threw'));
+    expect(document.querySelector('.boom')).toBeNull();
+    expect(document.querySelector('.outside')).not.toBeNull();
+    expect(logged).not.toHaveBeenCalled();
+  });
+
+  // The template is declared above the scope that holds the `#try`. In the block fixture, the
+  // button is in an `#if` of the template. In the function fixture, a function calls it.
+  for (const [fixture, name] of [
+    ['tryTemplateFor', 'a'],
+    ['tryTemplateFor', 'b'],
+    ['tryTemplateBlock', 'b'],
+    ['tryTemplateFunction', 'b'],
+  ] as const) {
+    it(`${fixture}: catches the error of item ${name} in its own #try`, async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => logged.mockRestore());
+      await resume(fixture, {});
+      click(document.querySelector(`.${name}`)!);
+      await waitFor(() => expect(text(`.caught-${name}`)).toBe(`Error: ${name} threw`));
+      expect(document.querySelectorAll('.caught')).toHaveLength(1);
+      expect(document.querySelectorAll('button')).toHaveLength(1);
+      expect(logged).not.toHaveBeenCalled();
+    });
+  }
+
+  it('tryTemplatePropToggle: catches the error of a template prop that the child renders again', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => logged.mockRestore());
+    await resume('tryTemplatePropToggle', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.boom')).toBeNull());
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.boom')).not.toBeNull());
+    click(document.querySelector('.boom')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: kid threw'));
+    expect(logged).not.toHaveBeenCalled();
+  });
+
+  for (const fixture of ['tryTemplateIf', 'tryTemplatePropIf']) {
+    it(`${fixture}: catches the error of a template in a #try that the browser rendered`, async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => logged.mockRestore());
+      await resume(fixture, {});
+      click(document.querySelector('.boom')!);
+      await waitFor(() => expect(text('.caught')).toBe('Error: kid threw'));
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(document.querySelector('.caught')).toBeNull());
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(document.querySelector('.boom')).not.toBeNull());
+      click(document.querySelector('.boom')!);
+      await waitFor(() => expect(text('.caught')).toBe('Error: kid threw'));
+      expect(logged).not.toHaveBeenCalled();
+    });
+  }
+});
+
+describe('an async memo that a browser render reads only with await', () => {
+  /** Collects the unhandled rejections of the test. */
+  function watchUnhandled(): unknown[] {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    return unhandled;
+  }
+
+  const hosts = [
+    ['awaitReadHost', 'as a statement, `await side;`'],
+    ['awaitFieldHost', 'in another memo, `$memo((await side).length)`'],
+    ['awaitSumHost', 'at the start of another memo, `$memo(await side + 1)`'],
+    // The other memo holds the same promise, so the error is reported once.
+    ['awaitMemoHost', 'as the whole value of another memo, `$memo(await side)`'],
+  ] as const;
+  for (const [host, read] of hosts) {
+    it(`reports its rejection once when the read is ${read}`, async () => {
+      const unhandled = watchUnhandled();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      await resume(host, {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
+      await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+      await new Promise((done) => setTimeout(done, 30));
+      expect(errors).toHaveBeenCalledTimes(1);
+      expect(String(errors.mock.calls[0]![0])).toBe('Error: await failed');
+      expect(unhandled.map(String)).toEqual([]);
+    });
+  }
+
+  it('sends its rejection to the nearest #catch', async () => {
+    const unhandled = watchUnhandled();
+    await resume('awaitReadTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: await failed'));
+    expect(document.querySelector('.kid')).toBeNull();
+    expect(unhandled.map(String)).toEqual([]);
+  });
+});
+
+describe('an async memo whose input never changes, in a browser render', () => {
+  /** Shows the page, then renders the part with the memo in the browser. */
+  async function showMemo(page: string): Promise<void> {
+    await resume(page, {});
+    click(document.querySelector('.show')!);
+  }
+
+  it('fills its text in a child component', async () => {
+    await showMemo('gapMarkupHost');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+  });
+
+  it('fills its text in a child component whose handler reads it', async () => {
+    await showMemo('gapMarkupReadHost');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+  });
+
+  it('fills its text when its input is a signal that nothing writes', async () => {
+    await showMemo('gapMarkupSignalHost');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+  });
+
+  it('fills its text in a block script', async () => {
+    await showMemo('gapMarkupInline');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+  });
+
+  it('fills its text in a block script when the promise settles in a microtask', async () => {
+    await showMemo('gapMarkupNow');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+  });
+
+  it('fills its text in a block inside the block script, and next to it', async () => {
+    await showMemo('gapMarkupNested');
+    await waitFor(() =>
+      expect([...document.querySelectorAll('.value')].map((p) => p.textContent)).toEqual([
+        'gap ok',
+        'gap ok',
+      ]),
+    );
+  });
+
+  it('reports a rejection that two renders read once', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await showMemo('gapMarkupNestedFail');
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: gap failed');
+  });
+
+  it('reports the rejection of a memo that the markup awaits once', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    const fails = vi.fn<() => void>();
+    await showMemo('gapMarkupAwaitFail');
+    await waitFor(() => expect(text('.caught')).toBe('Error: gap failed'));
+    window.addEventListener('brumate:error', fails);
+    onTestFinished(() => window.removeEventListener('brumate:error', fails));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(fails).not.toHaveBeenCalled();
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('fills a memo that settles while another memo of the scope still loads', async () => {
+    await showMemo('gapMarkupTwo');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+    expect(text('.never')).toBe('');
+  });
+
+  it('fills its text between other text', async () => {
+    await showMemo('gapMarkupText');
+    await waitFor(() => expect(text('.value')).toBe('Value: gap ok.'));
+  });
+
+  it('fills an attribute and an expression that read it', async () => {
+    await showMemo('gapMarkupAttribute');
+    await waitFor(() => expect(text('.value')).toBe('GAP OK'));
+    expect(document.querySelector('.value')!.getAttribute('title')).toBe('gap ok');
+  });
+
+  for (const [where, page] of [
+    ['a child component', 'gapMarkupFailHost'],
+    ['a block script', 'gapMarkupFailInline'],
+  ]) {
+    it(`sends its rejection in ${where} to the nearest #catch`, async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown): void => {
+        unhandled.push(reason);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      await showMemo(page!);
+      await waitFor(() => expect(text('.caught')).toBe('Error: gap failed'));
+      expect(document.querySelector('.value')).toBeNull();
+      await new Promise((done) => setTimeout(done, 30));
+      expect(unhandled.map(String)).toEqual([]);
+    });
+  }
+});
+
+describe('a block, prop or function that reads a constant async memo, in a browser render', () => {
+  it('renders an #if header from a memo that settles to null', async () => {
+    await resume('gapBlockIfNull', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(texts('.value')).toEqual(['none']));
+  });
+
+  it('renders a component whose function prop reads the memo without waiting', async () => {
+    await resume('gapBlockFunctionProp', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(texts('.value')).toEqual(['later']));
+  });
+
+  const cases: [string, string, string, string[]][] = [
+    ['an #if header', 'gapBlockIf', '.value', ['admin']],
+    ['a #switch case', 'gapBlockSwitch', '.value', ['admin']],
+    ['a #for list', 'gapBlockFor', '.item', ['a', 'b']],
+    ['a component prop', 'gapBlockProp', '.value', ['Ada']],
+    ['a function in markup', 'gapBlockFunction', '.value', ['Ada']],
+  ];
+  for (const [what, page, selector, expected] of cases) {
+    it(`renders ${what} from the settled value on the server`, async () => {
+      await resume(page, { open: true });
+      expect(texts(selector)).toEqual(expected);
+    });
+
+    it(`renders ${what} from the settled value in the browser`, async () => {
+      await resume(page, {});
+      // Every content that the page shows on the way, so a wrong one shown first fails too. A
+      // held-back insert leaves its element empty until the value settles.
+      const shown: string[][] = [];
+      const observer = new MutationObserver(() => {
+        const content = texts(selector);
+        if (content.join('') !== '') {
+          shown.push(content);
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      onTestFinished(() => observer.disconnect());
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(texts(selector)).toEqual(expected));
+      await new Promise((done) => setTimeout(done, 30));
+      expect(texts(selector)).toEqual(expected);
+      for (const content of shown) {
+        expect(content).toEqual(expected);
+      }
+    });
+
+    it(`sends a rejection that ${what} reads to the nearest #catch, once`, async () => {
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      const fails = vi.fn<() => void>();
+      window.addEventListener('brumate:error', fails);
+      onTestFinished(() => window.removeEventListener('brumate:error', fails));
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown): void => {
+        unhandled.push(reason);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      await resume(`${page}Fail`, {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(texts('.caught')).toEqual(['Error: gap failed']));
+      expect(document.querySelector(selector)).toBeNull();
+      await new Promise((done) => setTimeout(done, 30));
+      expect(texts('.caught')).toEqual(['Error: gap failed']);
+      expect(fails).not.toHaveBeenCalled();
+      expect(errors).not.toHaveBeenCalled();
+      expect(unhandled.map(String)).toEqual([]);
+    });
+  }
+});

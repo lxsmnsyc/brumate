@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
@@ -102,6 +102,45 @@ async function buildApp(
   return { core: chunks.find((chunk) => chunk.moduleIds.includes(core))!, chunks };
 }
 
+const TRIES = `<script>
+  import { $signal } from 'brumate/signals';
+  let count = $signal(0);
+</script>
+
+#try {
+  <button onClick=(() => count++)>{count}</button>
+} #catch (error) {
+  <p>Failed</p>
+}
+`;
+const FIELDS = `<script>
+  import { $bind, $signal } from 'brumate/signals';
+  let name = $signal('');
+</script>
+
+<input value=$bind(name)>
+<p>{name}</p>
+`;
+const WINDOWS = readFileSync(
+  fileURLToPath(new URL('render/windowed.brm', import.meta.url)),
+  'utf8',
+);
+const DYNAMIC = `<script>
+  import { $signal } from 'brumate/signals';
+  let count = $signal(0);
+  const { as } = { as: 'button' };
+</script>
+
+<{as} onClick=(() => count++)>{count}</>
+`;
+const ROUTES = `<script>
+  import { $route } from 'brumate/signals';
+  const route = $route();
+</script>
+
+<p>{route.url.pathname}</p>
+`;
+
 describe('features of the core', () => {
   // A production build, as Vite makes one when `NODE_ENV` is not `test`.
   beforeAll(() => {
@@ -196,5 +235,85 @@ describe('features of the core', () => {
     const routes = chunks.find((item) => item.moduleIds.includes(runtime('client-routes')));
     expect(routes).toBeDefined();
     expect(chunk.moduleIds).not.toContain(runtime('client-routes'));
+  });
+});
+
+const codeOf = async (name: string, source: string, options: BrumateOptions = {}) =>
+  (await buildApp(name, source, { navigate: false, ...options })).core.code;
+
+describe('the five flags of paths that apps rarely use', () => {
+  beforeAll(() => {
+    vi.stubEnv('NODE_ENV', 'production');
+  });
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  // A string of the core that only the code of the flag has.
+  it.each([
+    ['tries', TRIES, 'b-catch'],
+    ['fields', FIELDS, '=$bind#'],
+    ['routes', ROUTES, 'b-params'],
+  ])(
+    '%s: the core keeps its code for a build that uses it, and leaves it out for others',
+    async (name, source, marker) => {
+      expect(await codeOf(`${name}-on`, source)).toContain(marker);
+      expect(await codeOf(`${name}-off`, COUNTER)).not.toContain(marker);
+      // A build with every feature keeps it too.
+      expect(await codeOf(`${name}-all`, COUNTER, { features: 'all' })).toContain(marker);
+    },
+  );
+
+  // The code of these has no string of its own. A build that uses the path keeps more of the core
+  // than the features that 'all' would add to a counter.
+  it.each([
+    ['windows', WINDOWS],
+    ['dynamic', DYNAMIC],
+  ])(
+    '%s: the core keeps its code for a build that uses it, and leaves it out for others',
+    async (name, source) => {
+      const all = (await codeOf(`${name}-counter-all`, COUNTER, { features: 'all' })).length;
+      const counter = (await codeOf(`${name}-counter`, COUNTER)).length;
+      const allUsing = (await codeOf(`${name}-all`, source, { features: 'all' })).length;
+      const using = (await codeOf(`${name}-on`, source)).length;
+      // What the build drops, against what the same build drops when it uses the path.
+      expect(all - counter - (allUsing - using)).toBeGreaterThan(500);
+    },
+  );
+
+  it('turns routes on with client navigation, which writes the route into the page', async () => {
+    const code = (await buildApp('routes-navigate', COUNTER)).core.code;
+    expect(code).toContain('b-params');
+  });
+
+  it('keeps the route code when a script passes a route context on under another name', async () => {
+    const source = `<script>
+  import { $getContext } from 'brumate/signals';
+  import { pageRoute } from './route.ts';
+  const route = $getContext(pageRoute);
+</script>
+
+<p>{route.url.pathname}</p>
+`;
+    const more = {
+      'src/route.ts': "export { routeContext as pageRoute } from 'brumate/context';\n",
+    };
+    const { core: chunk } = await buildApp('route-alias', source, { navigate: false }, more);
+    expect(chunk.code).toContain('b-params');
+  });
+
+  it('keeps the fields of a page that uses an @brumate/ui Input with a $bind', async () => {
+    const source = `<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Input from '../../../../../../ui/src/Input.brm';
+  let name = $signal('');
+</script>
+
+<Input aria-label="Name" value=$bind(name) />
+<p>{name}</p>
+`;
+    // The Input spreads its rest props onto the <input>, so the page has no `=$bind#` of its own.
+    expect(await codeOf('ui-input', source)).toContain('=$bind#');
+    expect(await codeOf('ui-input-counter', COUNTER)).not.toContain('=$bind#');
   });
 });

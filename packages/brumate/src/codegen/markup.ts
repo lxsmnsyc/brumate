@@ -62,7 +62,19 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
   'TSModuleDeclaration',
 ]);
 
-export type Part = { static: string } | { code: string };
+/**
+ * A memo that a value in the browser render reads, which never changes and can be a promise, and
+ * the scope that reports its rejection.
+ */
+export interface Settled {
+  names: string[];
+  scope: string;
+}
+
+export type Part = { static: string } | { code: string; settled?: Settled };
+
+/** Expressions whose value is never a promise, as the memo of a list or a function. */
+const NEVER_PROMISE = new Set(['ArrayExpression', 'ArrowFunctionExpression', 'FunctionExpression']);
 
 /** The static or value attribute named `style`. */
 function findStyleAttribute(attributes: Attribute[]): Attribute | undefined {
@@ -93,6 +105,16 @@ function hasSpread(attributes: readonly { kind: string }[]): boolean {
 function readsProps(site: Site | undefined): boolean {
   for (const read of site?.reads ?? []) {
     if (read.declaration.kind === 'prop' || read.declaration.kind === 'props-rest') {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** True if a site calls a template, or a function, which can return the output of one. */
+function callsTemplate(site: Site | undefined): boolean {
+  for (const declaration of site?.calls ?? []) {
+    if (declaration.kind === 'template' || declaration.kind === 'function') {
       return true;
     }
   }
@@ -306,6 +328,8 @@ export class Emitter {
   private readonly blocking: Set<Declaration>;
   /** Memos and signals that hold a primitive on the server, so it awaits none of them. */
   private readonly inline: Set<Declaration>;
+  /** The sites of the markup that update in the browser. */
+  private readonly liveSites = new Set<Site>();
   private parts: Part[] = [];
   private depth = 0;
   /** How many of this component's elements contain the current node. */
@@ -331,6 +355,11 @@ export class Emitter {
     this.inline = options.mode === 'server' ? plainValues(plan, this.blocking) : new Set();
     for (const site of plan.graph.model.sites) {
       this.sitesByNode.set(site.node, site);
+    }
+    for (const node of plan.graph.nodes) {
+      if (node.kind !== 'source' && plan.graph.live.has(node)) {
+        this.liveSites.add(node.site);
+      }
     }
     this.addHandlerEdits();
     this.addBindEdits();
@@ -526,8 +555,45 @@ export class Emitter {
     }
   }
 
-  private code(code: string): void {
-    this.parts.push({ code });
+  private code(code: string, settled?: Settled): void {
+    this.parts.push(settled ? { code, settled } : { code });
+  }
+
+  /**
+   * In the browser, the memos that values of the markup read that never change and can be a
+   * promise, such as an insert, the headers of a block or the props of a component. No update
+   * writes them when the memos settle, so the clone holds back what reads them.
+   */
+  private settledMemos(expressions: Expression[], scope: Scope): Settled | undefined {
+    if (this.options.mode !== 'client') {
+      return undefined;
+    }
+    const names: string[] = [];
+    for (const expression of expressions) {
+      const site = this.sitesByNode.get(expression.ast);
+      // A site that reads a live memo is live too, as the graph spreads liveness to its readers,
+      // so the memos below never change.
+      if (!site || this.liveSites.has(site)) {
+        return undefined;
+      }
+      for (const reference of site.reads) {
+        const declaration = reference.declaration;
+        // A read inside a function counts too, such as `list.map(() => value)`, as the function
+        // gets the value that the memo settles to.
+        if (
+          (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
+          !(declaration.site && isPrimitive(declaration.site.node)) &&
+          // An array or a function is never a promise.
+          !NEVER_PROMISE.has(declaration.site?.node.type ?? '') &&
+          !names.includes(declaration.name)
+        ) {
+          names.push(declaration.name);
+        }
+      }
+    }
+    return names.length > 0
+      ? { names, scope: this.scopeVar(instanceScope(this.plan, scope)) }
+      : undefined;
   }
 
   flush(): void {
@@ -841,6 +907,9 @@ export class Emitter {
         }
       }
       this.raw(code, statement.start);
+      if (this.options.mode === 'client' && statement.type === 'VariableDeclaration') {
+        this.watchUnreadMemos(statement, scope);
+      }
     }
     endRun();
   }
@@ -912,6 +981,38 @@ export class Emitter {
       );
       this.line(`[${names.join(', ')}] = $$v;`);
       this.reassignable.add(declaration);
+    }
+  }
+
+  /**
+   * In the browser, a memo that nothing reads has no slot, so no load takes its promise. Its
+   * rejection goes to the nearest `#try`, which is where a memo that throws sends its error. A
+   * memo that always gives a primitive, such as `count * 2`, is never a promise. `await memo`
+   * compiles to a plain read of the promise, which drops it, unless the read is the whole value
+   * of another memo, as in `$memo(await memo)`, which then holds the same promise.
+   */
+  private watchUnreadMemos(statement: oxc.VariableDeclaration, scope: Scope): void {
+    for (const declarator of statement.declarations) {
+      const declaration =
+        declarator.id.type === 'Identifier'
+          ? scope.declarations.get(declarator.id.name)
+          : undefined;
+      if (
+        declaration &&
+        (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
+        declaration.reads.every(
+          (read) =>
+            read.await &&
+            (read.site.kind !== 'memo' ||
+              read.site.node.start !== read.await.start ||
+              read.site.node.end !== read.await.end),
+        ) &&
+        slotIndex(this.plan, declaration) === -1 &&
+        !(declaration.site && isPrimitive(declaration.site.node))
+      ) {
+        const target = this.scopeVar(instanceScope(this.plan, scope));
+        this.line(`$$b.unreadMemo(${target}, ${declaration.name});`);
+      }
     }
   }
 
@@ -1201,7 +1302,10 @@ export class Emitter {
     // A template can render anywhere, so its elements get the style variables.
     this.atTopLevel(() => this.emitBody(template.body));
     this.flush();
-    this.line('return $$b.raw($$html);');
+    // The output names the template's scope, which the insert links to where it is called.
+    const scope = this.plan.bodyScopes.get(template.body)!;
+    const at = this.plan.scopes.get(scope)!.needsId ? `, ${this.scopeVar(scope)}` : '';
+    this.line(`return $$b.raw($$html${at});`);
     this.close();
   }
 
@@ -1233,7 +1337,8 @@ export class Emitter {
         // In the browser, only a prop can hold children, which render where they are inserted.
         // A value that reads a prop can be children, or a template that a prop holds, such as
         // `{item(label)}`, which render where they are inserted too.
-        const readsProp = readsProps(this.sitesByNode.get(node.expression.ast));
+        const site = this.sitesByNode.get(node.expression.ast);
+        const readsProp = readsProps(site);
         // Children in a table body or a list get the tag of the spacers of a windowed list in them.
         const spacer = this.parentSpacer();
         // On the server, children also get the anchor of the insert, so the browser knows that
@@ -1244,7 +1349,9 @@ export class Emitter {
           rest = `${rest || ', undefined'}, ${anchor.index}`;
         }
         const at =
-          this.options.mode === 'server' || readsProp
+          // The output of a template links its scope to this insert, so a `#try` here catches
+          // its errors. A function can return the output of one too.
+          this.options.mode === 'server' || readsProp || callsTemplate(site)
             ? `, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}${rest}`
             : '';
         // A primitive renders as text, so it needs neither the place of the insert nor an await.
@@ -1253,7 +1360,9 @@ export class Emitter {
           : this.ready(`$$b.insert(${this.expression(node.expression)}${at})`);
         // A literal renders when the component compiles.
         const text = literalText(node.expression.ast);
-        const emitValue = (): void => (text === undefined ? this.code(value) : this.html(text));
+        const settled = this.settledMemos([node.expression], scope);
+        const emitValue = (): void =>
+          text === undefined ? this.code(value, settled) : this.html(text);
         // An insert that is the whole content of its element updates through the element's anchor.
         if (anchor && !this.plan.contents.has(node)) {
           this.html('<!--t');
@@ -1598,6 +1707,7 @@ export class Emitter {
           }
           this.code(
             `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`,
+            this.settledMemos([attribute.value], scope),
           );
           // `value=$bind(name)` writes the name back as the element changes, before the element's
           // own handlers run.
@@ -1994,8 +2104,26 @@ export class Emitter {
       const at = `${this.file.filename}:${before.length}:${before.at(-1)!.length + 1}`;
       link = `${link || ', undefined'}, ${JSON.stringify(`<${node.name}> in ${at}`)}`;
     }
+    // The values of the props, without the handlers and functions, which the child can call
+    // later, so the child does not wait for the memos that only they read.
+    const values: Expression[] = [];
+    for (const attribute of node.attributes) {
+      const type = attribute.kind === 'value' ? attribute.value.ast.type : '';
+      if (type === 'ArrowFunctionExpression' || type === 'FunctionExpression') {
+        continue;
+      }
+      if (attribute.kind === 'value' || attribute.kind === 'spread') {
+        values.push(attribute.value);
+      } else if (attribute.kind === 'computed') {
+        values.push(attribute.name);
+        if (attribute.value !== true) {
+          values.push(attribute.value);
+        }
+      }
+    }
     this.code(
       `${this.wait}$$b.component(${node.name}, ${props}, ${this.ctxArgument}, ${owner}${link})`,
+      this.settledMemos(values, scope),
     );
   }
 
@@ -2364,7 +2492,14 @@ export class Emitter {
         index = `${this.expression(branches[at]!.condition)} ? ${at} : ${index}`;
       }
       const names = `[${[...bodies, ...(other ? [other] : [])].join(', ')}]`;
-      this.code(`$$b.nodes($$b.branchNodes(${marks}, ${index}, ${names}))`);
+      const conditions: Expression[] = [];
+      for (const branch of branches) {
+        conditions.push(branch.condition);
+      }
+      this.code(
+        `$$b.nodes($$b.branchNodes(${marks}, ${index}, ${names}))`,
+        this.settledMemos(conditions, scope),
+      );
       return true;
     }
     if (block.kind === 'for' || block.kind === 'repeat') {
@@ -2377,7 +2512,10 @@ export class Emitter {
         block.kind === 'for'
           ? `$$b.toList(${this.expression(block.list)})`
           : `Array.from({ length: ${this.expression(block.count)} }, (_, index) => index)`;
-      this.code(`$$b.nodes($$b.listNodes(${marks}, ${items}, ${body}, ${other ?? 'undefined'}))`);
+      this.code(
+        `$$b.nodes($$b.listNodes(${marks}, ${items}, ${body}, ${other ?? 'undefined'}))`,
+        this.settledMemos([block.kind === 'for' ? block.list : block.count], scope),
+      );
       return true;
     }
     return false;

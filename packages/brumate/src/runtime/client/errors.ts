@@ -5,6 +5,7 @@ import type { Render } from './branches.ts';
 import { loadModule } from './code.ts';
 import { insertHTML } from './insert.ts';
 import { inPlace, removeBlock, findRoot } from './scopes.ts';
+import { HAS_TRIES } from '../features.ts';
 import { options, scopes } from './state.ts';
 import { parseId } from '../shared.ts';
 import type { ClientModule, Scope } from './state.ts';
@@ -13,13 +14,18 @@ import type { ClientModule, Scope } from './state.ts';
  * Reports an error of client code: a handler, an effect, a `$client`
  * callback or a memo that loads. It renders the `#catch` body of the nearest
  * `#try` around the scope of the code, through the parents and the owners of
- * scopes. Without one, the page gets a `brumate:error` event on `window`,
- * with the error and the scope, and the error is logged.
+ * scopes. A template's scope goes on from the scope where it was called.
+ * Without a `#try`, the page gets a `brumate:error` event on `window`, with
+ * the error and the scope, and the error is logged.
  */
 export function fail(scope: Scope | undefined, error: unknown): void {
   options.onError?.(error, { scope: scope?.id });
+  if (!HAS_TRIES) {
+    unhandled(error, scope);
+    return;
+  }
   void (async () => {
-    for (let current = scope; current; current = current.p ?? current.o) {
+    for (let current = scope; current; current = current.l ?? current.p ?? current.o) {
       const id = findRoot(current).m;
       if (!id) {
         continue;

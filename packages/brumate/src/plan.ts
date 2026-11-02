@@ -694,6 +694,11 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
         }
       }
     }
+    if (block.kind === 'try' && tryCatchesClient(model, block)) {
+      // An error in client code finds its `#try` by the scope kinds above it, and the scope of
+      // a child component has no other link to the body.
+      scopes.get(bodyScopes.get(block.body)!)!.needsId = true;
+    }
     if (live && block.kind === 'offscreen') {
       // The client hides and shows the body's instance, and pauses the effects inside it.
       scopes.get(bodyScopes.get(block.body)!)!.needsId = true;

@@ -1,0 +1,9 @@
+client-mode branches (this.client / mode === 'client' / isClient) per codegen file, main:
+markup.ts 5
+template.ts 0
+render.ts 0
+client.ts 1
+
+browser-render-only helpers in runtime (unreadMemo fillSettled settled):
+packages/brumate/src/runtime/client/updates.ts:310:export function unreadMemo(scope: Scope | ScopeId, value: unknown): void {
+packages/brumate/src/runtime/client/templates.ts:464:export function fillSettled(
