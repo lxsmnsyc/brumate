@@ -7623,6 +7623,12 @@ describe('a block, prop or function that reads a constant async memo, in a brows
     await waitFor(() => expect(texts('.value')).toEqual(['none']));
   });
 
+  it('renders a component whose function prop reads the memo without waiting', async () => {
+    await resume('gapBlockFunctionProp', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(texts('.value')).toEqual(['later']));
+  });
+
   const cases: [string, string, string, string[]][] = [
     ['an #if header', 'gapBlockIf', '.value', ['admin']],
     ['a #switch case', 'gapBlockSwitch', '.value', ['admin']],

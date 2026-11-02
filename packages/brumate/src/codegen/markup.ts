@@ -1971,9 +1971,14 @@ export class Emitter {
       const at = `${this.file.filename}:${before.length}:${before.at(-1)!.length + 1}`;
       link = `${link || ', undefined'}, ${JSON.stringify(`<${node.name}> in ${at}`)}`;
     }
-    // The values of the props, without the handlers, which run later.
+    // The values of the props, without the handlers and functions, which the child can call
+    // later, so the child does not wait for the memos that only they read.
     const values: Expression[] = [];
     for (const attribute of node.attributes) {
+      const type = attribute.kind === 'value' ? attribute.value.ast.type : '';
+      if (type === 'ArrowFunctionExpression' || type === 'FunctionExpression') {
+        continue;
+      }
       if (attribute.kind === 'value' || attribute.kind === 'spread') {
         values.push(attribute.value);
       } else if (attribute.kind === 'computed') {
