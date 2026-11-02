@@ -10,3 +10,4 @@
 - The `loading` render snapshot changed: its `$memo(`Hello ${await ready}`)` inside `#loading` now goes through `fillSettled`. The old snapshot showed the bug, a promise passed to `setContent`.
 - Checks: build, lint (oxlint exit 0, warnings only), format:check, typecheck, brumate tests 1395 passed.
 - Bench todos: JS before `load` 5 files, 35.7 kB / 14.9 kB gzip, same as main.
+- Review round 1: clean. Outcome written.
