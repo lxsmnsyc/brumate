@@ -7465,6 +7465,102 @@ describe('a #try around a child component', () => {
   }
 });
 
+describe('a #try around a #template', () => {
+  // The control holds the same markup without the template.
+  const fixtures = [
+    'tryTemplateControl',
+    'tryTemplateInside',
+    'tryTemplateOutside',
+    'tryTemplateChild',
+  ];
+  const errors = [
+    { button: '.boom', message: 'Error: kid threw', what: 'a handler that throws' },
+    { button: '.later', message: 'Error: kid threw later', what: 'an async handler that rejects' },
+    { button: '.bump', message: 'Error: kid effect 1', what: 'an effect that throws' },
+  ];
+  // The plain fixture holds only the button with the throwing handler.
+  const cases = [
+    { fixture: 'tryTemplatePlain', ...errors[0]! },
+    { fixture: 'tryTemplateInsidePlain', ...errors[0]! },
+  ];
+  for (const fixture of fixtures) {
+    for (const error of errors) {
+      cases.push({ fixture, ...error });
+    }
+  }
+  for (const { fixture, button, message, what } of cases) {
+    it(`${fixture}: catches ${what} in the template`, async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => logged.mockRestore());
+      await resume(fixture, {});
+      click(document.querySelector(button)!);
+      await waitFor(() => expect(text('.caught')).toBe(message));
+      expect(document.querySelector('.boom')).toBeNull();
+      expect(logged).not.toHaveBeenCalled();
+    });
+  }
+
+  it('does not catch the error of a call of the template outside it', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => logged.mockRestore());
+    await resume('tryTemplateTwice', {});
+    click(document.querySelector('.outside')!);
+    await waitFor(() => expect(logged).toHaveBeenCalledTimes(1));
+    expect(String(logged.mock.calls[0]![0])).toBe('Error: outside threw');
+    expect(document.querySelector('.caught')).toBeNull();
+  });
+
+  // Each case names the `#catch` that renders.
+  const nearest = [
+    {
+      fixture: 'tryTemplateInnerTry',
+      button: '.boom',
+      shows: '.inner',
+      what: 'a #try in the template',
+    },
+    {
+      fixture: 'tryTemplateRecursive',
+      button: '.boom0',
+      shows: '.caught',
+      what: 'a template that calls itself',
+    },
+    {
+      fixture: 'tryTemplateRecursive',
+      button: '.boom1',
+      shows: '.caught',
+      what: 'the first call of a template that calls itself',
+    },
+    {
+      fixture: 'tryTemplateProp',
+      button: '.boom',
+      shows: '.caught',
+      what: 'a template passed to a component as a prop',
+    },
+  ];
+  for (const { fixture, button, shows, what } of nearest) {
+    it(`${fixture}: sends the error of ${what} to the right #catch`, async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => logged.mockRestore());
+      await resume(fixture, {});
+      click(document.querySelector(button)!);
+      await waitFor(() => expect(document.querySelector(shows)).not.toBeNull());
+      expect(logged).not.toHaveBeenCalled();
+      expect(document.querySelectorAll('.inner, .caught')).toHaveLength(1);
+    });
+  }
+
+  // The inner `#try` cannot find its block from the template scope, and the outer one must not
+  // catch in its place.
+  it('tryTemplateNested: leaves the error of a template in a #try inside another uncaught', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => logged.mockRestore());
+    await resume('tryTemplateNested', {});
+    click(document.querySelector('.boom')!);
+    await waitFor(() => expect(logged).toHaveBeenCalledTimes(1));
+    expect(document.querySelectorAll('.inner, .caught')).toHaveLength(0);
+  });
+});
+
 describe('an async memo that a browser render reads only with await', () => {
   /** Collects the unhandled rejections of the test. */
   function watchUnhandled(): unknown[] {
