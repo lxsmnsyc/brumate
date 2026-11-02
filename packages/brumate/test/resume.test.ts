@@ -8941,3 +8941,200 @@ describe('the bundles that state records name', () => {
     expect(load('Page')).toBeUndefined();
   });
 });
+
+describe('#loading (memo)', () => {
+  function userLoads(): UserLoad[] {
+    return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);
+  }
+
+  const settled = new Set<UserLoad>();
+
+  /** Settles the first load of each user that has not settled yet. */
+  async function settleUser(...ids: number[]): Promise<void> {
+    for (const id of ids) {
+      let found: UserLoad | undefined;
+      for (const load of userLoads()) {
+        if (load.id === id && !settled.has(load)) {
+          found = load;
+          break;
+        }
+      }
+      settled.add(found!);
+      found!.done({ name: `ada${id}` });
+    }
+    await new Promise((done) => setTimeout(done, 0));
+  }
+
+  /** The texts of the elements that match and show. */
+  function shown(selector: string): string[] {
+    const texts: string[] = [];
+    for (const element of document.querySelectorAll<HTMLElement>(selector)) {
+      if (element.style.display !== 'none') {
+        texts.push(element.textContent!.trim());
+      }
+    }
+    return texts;
+  }
+
+  /** What `loadingOn.brm` logged. */
+  function log(): string[] {
+    return ((globalThis as { loadingOnLog?: string[] }).loadingOnLog ??= []);
+  }
+
+  /**
+   * Renders a page whose `#loading` body streams in after the users of `ids` load, and shows it
+   * with the loader started.
+   */
+  async function streamed(name: string, ids: number[]): Promise<void> {
+    const server = await import(file(`${name}.brm.ts`));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    await startLoader();
+    expect(shown('.fallback')).toEqual(['loading']);
+    await settleUser(...ids);
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+  }
+
+  afterEach(() => {
+    userLoads().length = 0;
+    settled.clear();
+    log().length = 0;
+  });
+
+  it('hides a body that the server streamed in, and shows #else over it while the memo loads', async () => {
+    await streamed('loadingOn', [1, 10]);
+    await waitFor(() => expect(shown('.user')).toEqual(['ada1']));
+    expect(shown('.fallback')).toEqual([]);
+    const name = document.querySelector('.user')!;
+    const field = document.querySelector<HTMLInputElement>('.field')!;
+    field.value = 'typed';
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(shown('.fallback')).toEqual(['loading']));
+    expect(shown('.user')).toEqual([]);
+    expect(name.isConnected).toBe(true);
+    await settleUser(2);
+    await waitFor(() => expect(shown('.user')).toEqual(['ada2']));
+    expect(shown('.fallback')).toEqual([]);
+    // The same nodes, with what the user typed.
+    expect(document.querySelector('.user')).toBe(name);
+    expect(document.querySelector('.field')).toBe(field);
+    expect(field.value).toBe('typed');
+  });
+
+  it('keeps the content while a memo that the header does not name loads', async () => {
+    await streamed('loadingOn', [1, 10]);
+    await waitFor(() => expect(shown('.note')).toEqual(['ada10']));
+    click(document.querySelector('.other')!);
+    await waitFor(() => expect(userLoads().length).toBe(3));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(shown('.fallback')).toEqual([]);
+    expect(shown('.note')).toEqual(['ada10']);
+    await settleUser(11);
+    await waitFor(() => expect(shown('.note')).toEqual(['ada11']));
+    expect(shown('.fallback')).toEqual([]);
+  });
+
+  it('pauses the effects and listeners of the hidden body, which updates still reach', async () => {
+    await streamed('loadingOn', [1, 10]);
+    await waitFor(() => expect(shown('.user')).toEqual(['ada1']));
+    // An effect runs again after a write, as the server ran it first.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(log()).toEqual(['effect 1']));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(shown('.fallback')).toEqual(['loading']));
+    expect(log()).toEqual(['effect 1', 'cleanup']);
+    click(document.querySelector('.bump')!);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }));
+    await waitFor(() => expect(document.querySelector('.count')!.textContent).toBe('2'));
+    expect(shown('.count')).toEqual([]);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(log()).toEqual(['effect 1', 'cleanup']);
+    await settleUser(2);
+    await waitFor(() => expect(log()).toEqual(['effect 1', 'cleanup', 'effect 2']));
+    expect(shown('.count')).toEqual(['2']);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', bubbles: true }));
+    await waitFor(() => expect(log()).toContain('key'));
+  });
+
+  it('holds while a memo upstream of the named one loads', async () => {
+    await streamed('loadingOnChain', [1]);
+    await waitFor(() => expect(shown('.user')).toEqual(['ADA1']));
+    const name = document.querySelector('.user')!;
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(shown('.fallback')).toEqual(['loading']));
+    expect(shown('.user')).toEqual([]);
+    await settleUser(2);
+    await waitFor(() => expect(shown('.user')).toEqual(['ADA2']));
+    expect(shown('.fallback')).toEqual([]);
+    expect(document.querySelector('.user')).toBe(name);
+  });
+
+  it('holds a body that the browser rendered', async () => {
+    const server = await import(file('loadingOnHost.brm.ts'));
+    const { html, state, pending } = await renderParts(server.default, {});
+    show(html + state);
+    await settleUser(1);
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    await startLoader();
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(shown('.user')).toEqual(['ada1']));
+    const name = document.querySelector('.user')!;
+    const field = document.querySelector<HTMLInputElement>('.field')!;
+    field.value = 'typed';
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(shown('.fallback')).toEqual(['loading']));
+    expect(shown('.user')).toEqual([]);
+    await settleUser(2);
+    await waitFor(() => expect(shown('.user')).toEqual(['ada2']));
+    expect(shown('.fallback')).toEqual([]);
+    expect(document.querySelector('.user')).toBe(name);
+    expect(field.value).toBe('typed');
+    // A block that closes while the body is held takes the fallback with it.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(shown('.fallback')).toEqual(['loading']));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.fallback')).toBe(null));
+    expect(document.querySelector('.user')).toBe(null);
+    await settleUser(3);
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(shown('.user')).toEqual(['ada3']));
+    expect(shown('.fallback')).toEqual([]);
+  });
+
+  it('shows #else while an action refreshes the memo', async () => {
+    const server = await import(file('loadingRefresh.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) =>
+      runtime.handleRequest(server.rpc, new Request(`http://localhost${url}`, init)),
+    );
+    const { html, state, pending } = await runtime.render(server.default, {});
+    show(html + state);
+    for await (const chunk of pending) {
+      appendChunk(chunk);
+    }
+    await startLoader();
+    expect(shown('li')).toEqual(['Ada']);
+    const field = document.querySelector<HTMLInputElement>('.field')!;
+    field.value = 'typed';
+    let open!: () => void;
+    const gate = new Promise<void>((done) => {
+      open = done;
+    });
+    (globalThis as { listGate?: Promise<void> }).listGate = gate;
+    onTestFinished(() => {
+      delete (globalThis as { listGate?: Promise<void> }).listGate;
+    });
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(shown('.fallback')).toEqual(['loading']));
+    expect(shown('.names')).toEqual([]);
+    open();
+    await waitFor(() => expect(shown('li')).toEqual(['Ada', 'Grace']));
+    expect(shown('.fallback')).toEqual([]);
+    expect(document.querySelector('.field')).toBe(field);
+    expect(field.value).toBe('typed');
+  });
+});

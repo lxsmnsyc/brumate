@@ -21,7 +21,7 @@ import type {
   SFCFile,
   TemplateDecl,
 } from './ast.ts';
-import { lookup, upstreamMemos } from './model.ts';
+import { isWithin, lookup, upstreamMemos } from './model.ts';
 import { KEY_NAMES } from './runtime/events.ts';
 import type {
   Declaration,
@@ -341,6 +341,7 @@ class Analyzer {
       new Resolver(this, site).run();
     }
     this.addPendingReads();
+    this.checkLoadingHeaders();
     this.resolveRefs();
     this.check();
 
@@ -376,6 +377,93 @@ class Analyzer {
         reference.site.reads.push(read);
       }
     }
+  }
+
+  /**
+   * The header of `#loading (posts) { … }` names memos that markup in the body reads. The block
+   * shows its fallback again while one of them, or a memo upstream of it, loads, so the header
+   * reads those memos too, as `$isPending(memo)` does.
+   */
+  private checkLoadingHeaders(): void {
+    for (const site of this.sites) {
+      const block = site.block;
+      if (site.kind !== 'block' || block?.kind !== 'loading' || !block.on) {
+        continue;
+      }
+      let body: Scope | undefined;
+      for (const scope of this.scopes) {
+        if (scope.block === block && scope.body === block.body) {
+          body = scope;
+        }
+      }
+      // `#loading (user, posts)` names two memos.
+      const ast = unwrapTypes(block.on.ast);
+      const names: oxc.Node[] = ast.type === 'SequenceExpression' ? ast.expressions : [ast];
+      const reads = [...site.reads];
+      for (const name of names) {
+        const node = unwrapTypes(name);
+        let read: Reference | undefined;
+        for (const item of reads) {
+          if (node.type === 'Identifier' && item.range.start === node.start) {
+            read = item;
+          }
+        }
+        const declaration = read?.declaration;
+        if (
+          !declaration ||
+          (declaration.kind !== 'memo' && declaration.kind !== 'async-memo') ||
+          !body ||
+          !this.markupReads(declaration, body)
+        ) {
+          this.report(
+            'error',
+            `"${this.file.source.slice(name.start, name.end)}" in the #loading header is not a memo that markup in the body reads. Name a $memo of the component or of a block script around the block`,
+            name,
+          );
+          continue;
+        }
+        const upstream = upstreamMemos(declaration);
+        for (const item of [declaration, ...upstream]) {
+          if (item.timing) {
+            this.report(
+              'warning',
+              `#loading (${declaration.name}) shows its fallback while the $${item.timing.kind} memo "${item.name}" waits, at each change of its value`,
+              name,
+            );
+            break;
+          }
+        }
+        for (const item of upstream) {
+          // An empty range after the name, which no identifier starts at.
+          const added: Reference = {
+            ...read!,
+            declaration: item,
+            range: { start: name.end, end: name.end },
+          };
+          item.reads.push(added);
+          site.reads.push(added);
+        }
+      }
+    }
+  }
+
+  /** True when markup or a memo inside `body` reads `declaration`, so it renders from it. */
+  private markupReads(declaration: Declaration, body: Scope): boolean {
+    for (const read of declaration.reads) {
+      const kind = read.site.kind;
+      if (
+        read.range.start !== read.range.end &&
+        kind !== 'function' &&
+        kind !== 'server-function' &&
+        kind !== 'event' &&
+        kind !== 'effect' &&
+        kind !== 'client' &&
+        isWithin(read.site.scope, body)
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Marks the props that the type of `$props<T>()` writes as `Promise<...>`. */
@@ -1557,11 +1645,6 @@ class Analyzer {
         break;
       case 'loading':
         if (block.on) {
-          this.report(
-            'error',
-            '#loading does not take a header yet. Write #loading { … }, since the header would be dropped',
-            block.on,
-          );
           this.header(block, scope, block.on, 'loading');
         }
         this.visitBody(block.body, scope, block);

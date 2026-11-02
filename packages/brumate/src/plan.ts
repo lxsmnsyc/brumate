@@ -699,8 +699,9 @@ export function createPlan(file: SFCFile, graph: Graph, path?: string, hideNames
       // a child component has no other link to the body.
       scopes.get(bodyScopes.get(block.body)!)!.needsId = true;
     }
-    if (live && block.kind === 'offscreen') {
-      // The client hides and shows the body's instance, and pauses the effects inside it.
+    if (live && (block.kind === 'offscreen' || block.kind === 'loading')) {
+      // The client hides and shows the body's instance, and pauses the effects inside it. A
+      // `#loading` block with a header hides its body while a memo of the header loads.
       scopes.get(bodyScopes.get(block.body)!)!.needsId = true;
     }
     if (block.kind === 'portal' || block.kind === 'head') {

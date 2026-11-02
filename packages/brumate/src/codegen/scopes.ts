@@ -67,6 +67,14 @@ export function isMemo(declaration: Declaration): boolean {
 }
 
 /**
+ * True for the header of `#loading (memo)`, which reads whether its memos are pending, not their
+ * values, so the render does not wait for them.
+ */
+export function isLoadingHeader(site: Site): boolean {
+  return site.kind === 'block' && site.block?.kind === 'loading';
+}
+
+/**
  * The scope whose render waits for a read. A read with `await` inside a
  * `#loading` body makes the render around the block wait, so it counts as
  * a read in the scope that holds the block. Inside a `#defer` body, the
@@ -99,7 +107,7 @@ export function blockingMemos(plan: Plan): Set<Declaration> {
       continue;
     }
     for (const read of declaration.reads) {
-      if (read.range.start === read.range.end) {
+      if (read.range.start === read.range.end || isLoadingHeader(read.site)) {
         continue;
       }
       const site = read.site;
@@ -174,7 +182,11 @@ export function awaitedMemos(plan: Plan, body: Scope, blocking: Set<Declaration>
     }
     for (const read of site.reads) {
       // Reads that `$isPending` adds for the memos a memo reads have no range, and need no value.
-      if (read.range.start === read.range.end || loadingBody(readScope(read)) !== body) {
+      if (
+        read.range.start === read.range.end ||
+        isLoadingHeader(site) ||
+        loadingBody(readScope(read)) !== body
+      ) {
         continue;
       }
       if (isMemo(read.declaration) && !blocking.has(read.declaration)) {
