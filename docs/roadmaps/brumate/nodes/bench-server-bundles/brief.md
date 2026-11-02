@@ -1,7 +1,7 @@
 ---
 id: bench-server-bundles
 title: "The benchmark servers pass the bundles that render() now needs"
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -15,7 +15,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 95000
 owns: []
 shared:
   - benchmarks/brumate/**
