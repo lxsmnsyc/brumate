@@ -177,41 +177,46 @@ function isWithinAny(scope: Scope, ancestors: Scope[]): boolean {
 }
 
 /**
- * The scopes of the templates declared outside the body of a `#try` that
- * render only inside it: each call of the template is in the body, or in
- * another such template. A template that is also called outside the body is
- * left out, since the `#try` must not catch the errors of that call.
+ * The scopes of the templates declared outside the body of a `#try` that are
+ * called in it, in another such template, or in a function that one of them
+ * calls. A template's scope links to where it is called at runtime, so the
+ * `#try` catches the errors of these calls.
  */
-export function calledTemplates(model: SemanticModel, block: Block & { kind: 'try' }): Scope[] {
+function calledTemplates(model: SemanticModel, block: Block & { kind: 'try' }): Scope[] {
   const body = findBodyScope(model, block);
   if (body === undefined) {
     return [];
   }
   const inside = [body];
   const found: Scope[] = [];
-  // A template found can call another one, so look again until nothing is added.
+  // The functions and templates that the body calls, also through each other.
+  const called = new Set<Declaration>();
   let added = true;
   while (added) {
     added = false;
+    for (const site of model.sites) {
+      if (
+        !isWithinAny(site.scope, inside) &&
+        (site.declaration === undefined || !called.has(site.declaration))
+      ) {
+        continue;
+      }
+      for (const declaration of site.calls) {
+        if (
+          (declaration.kind === 'function' || declaration.kind === 'template') &&
+          !called.has(declaration)
+        ) {
+          called.add(declaration);
+          added = true;
+        }
+      }
+    }
     for (const scope of model.scopes) {
       if (scope.kind !== 'template' || isWithinAny(scope, inside)) {
         continue;
       }
       const declaration = lookup(scope.parent!, scope.template!.name);
-      let calledInside = false;
-      let calledOutside = false;
-      for (const site of model.sites) {
-        // A template that calls itself renders where its first call is.
-        if (!declaration || !site.calls.has(declaration) || isWithin(site.scope, scope)) {
-          continue;
-        }
-        if (isWithinAny(site.scope, inside)) {
-          calledInside = true;
-        } else {
-          calledOutside = true;
-        }
-      }
-      if (calledInside && !calledOutside) {
+      if (declaration && called.has(declaration)) {
         inside.push(scope);
         found.push(scope);
         added = true;

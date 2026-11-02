@@ -7549,16 +7549,77 @@ describe('a #try around a #template', () => {
     });
   }
 
-  // The inner `#try` cannot find its block from the template scope, and the outer one must not
-  // catch in its place.
-  it('tryTemplateNested: leaves the error of a template in a #try inside another uncaught', async () => {
+  // The template is declared above the scope that holds the inner `#try`.
+  it('tryTemplateNested: sends the error of a template in a #try inside another to the inner #catch', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     onTestFinished(() => logged.mockRestore());
     await resume('tryTemplateNested', {});
     click(document.querySelector('.boom')!);
-    await waitFor(() => expect(logged).toHaveBeenCalledTimes(1));
-    expect(document.querySelectorAll('.inner, .caught')).toHaveLength(0);
+    await waitFor(() => expect(text('.inner')).toBe('Error: kid threw'));
+    expect(document.querySelector('.caught')).toBeNull();
+    expect(logged).not.toHaveBeenCalled();
   });
+
+  it('tryTemplateTwice: catches the error of the call of the template in the #try', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => logged.mockRestore());
+    await resume('tryTemplateTwice', {});
+    click(document.querySelector('.boom')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: boom threw'));
+    expect(document.querySelector('.boom')).toBeNull();
+    expect(document.querySelector('.outside')).not.toBeNull();
+    expect(logged).not.toHaveBeenCalled();
+  });
+
+  // The template is declared above the scope that holds the `#try`. In the block fixture, the
+  // button is in an `#if` of the template. In the function fixture, a function calls it.
+  for (const [fixture, name] of [
+    ['tryTemplateFor', 'a'],
+    ['tryTemplateFor', 'b'],
+    ['tryTemplateBlock', 'b'],
+    ['tryTemplateFunction', 'b'],
+  ] as const) {
+    it(`${fixture}: catches the error of item ${name} in its own #try`, async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => logged.mockRestore());
+      await resume(fixture, {});
+      click(document.querySelector(`.${name}`)!);
+      await waitFor(() => expect(text(`.caught-${name}`)).toBe(`Error: ${name} threw`));
+      expect(document.querySelectorAll('.caught')).toHaveLength(1);
+      expect(document.querySelectorAll('button')).toHaveLength(1);
+      expect(logged).not.toHaveBeenCalled();
+    });
+  }
+
+  it('tryTemplatePropToggle: catches the error of a template prop that the child renders again', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => logged.mockRestore());
+    await resume('tryTemplatePropToggle', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.boom')).toBeNull());
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.boom')).not.toBeNull());
+    click(document.querySelector('.boom')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: kid threw'));
+    expect(logged).not.toHaveBeenCalled();
+  });
+
+  for (const fixture of ['tryTemplateIf', 'tryTemplatePropIf']) {
+    it(`${fixture}: catches the error of a template in a #try that the browser rendered`, async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => logged.mockRestore());
+      await resume(fixture, {});
+      click(document.querySelector('.boom')!);
+      await waitFor(() => expect(text('.caught')).toBe('Error: kid threw'));
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(document.querySelector('.caught')).toBeNull());
+      click(document.querySelector('.toggle')!);
+      await waitFor(() => expect(document.querySelector('.boom')).not.toBeNull());
+      click(document.querySelector('.boom')!);
+      await waitFor(() => expect(text('.caught')).toBe('Error: kid threw'));
+      expect(logged).not.toHaveBeenCalled();
+    });
+  }
 });
 
 describe('an async memo that a browser render reads only with await', () => {

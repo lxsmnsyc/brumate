@@ -1,24 +1,30 @@
 // HTML string helpers that the server and the client both use.
 
+import type { ScopeId } from './shared.ts';
+
 const RAW: unique symbol = Symbol.for('brumate.raw');
 const INTERNAL: unique symbol = Symbol.for('brumate.internal');
 
 /** HTML that is inserted as it is, such as the output of a template. */
 export interface Raw {
   [RAW]: string;
+  /** For the output of a template, the ID of its scope, which the insert links to its call. */
+  s?: ScopeId;
 }
 
 // A class, not an object literal, so serializers can skip their test for raw HTML on plain objects.
 class RawHTML implements Raw {
   readonly [RAW]: string;
+  readonly s?: ScopeId;
 
-  constructor(html: string) {
+  constructor(html: string, scope?: ScopeId) {
     this[RAW] = html;
+    this.s = scope;
   }
 }
 
-export function raw(html: string): Raw {
-  return new RawHTML(html);
+export function raw(html: string, scope?: ScopeId): Raw {
+  return new RawHTML(html, scope);
 }
 
 export function isRaw(value: unknown): value is Raw {

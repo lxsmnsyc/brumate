@@ -111,6 +111,16 @@ function readsProps(site: Site | undefined): boolean {
   return false;
 }
 
+/** True if a site calls a template, or a function, which can return the output of one. */
+function callsTemplate(site: Site | undefined): boolean {
+  for (const declaration of site?.calls ?? []) {
+    if (declaration.kind === 'template' || declaration.kind === 'function') {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
 function specialCall(
   declarator: oxc.VariableDeclarator,
@@ -1175,7 +1185,10 @@ export class Emitter {
     // A template can render anywhere, so its elements get the style variables.
     this.atTopLevel(() => this.emitBody(template.body));
     this.flush();
-    this.line('return $$b.raw($$html);');
+    // The output names the template's scope, which the insert links to where it is called.
+    const scope = this.plan.bodyScopes.get(template.body)!;
+    const at = this.plan.scopes.get(scope)!.needsId ? `, ${this.scopeVar(scope)}` : '';
+    this.line(`return $$b.raw($$html${at});`);
     this.close();
   }
 
@@ -1207,7 +1220,8 @@ export class Emitter {
         // In the browser, only a prop can hold children, which render where they are inserted.
         // A value that reads a prop can be children, or a template that a prop holds, such as
         // `{item(label)}`, which render where they are inserted too.
-        const readsProp = readsProps(this.sitesByNode.get(node.expression.ast));
+        const site = this.sitesByNode.get(node.expression.ast);
+        const readsProp = readsProps(site);
         // Children in a table body or a list get the tag of the spacers of a windowed list in them.
         const spacer = this.parentSpacer();
         // On the server, children also get the anchor of the insert, so the browser knows that
@@ -1218,7 +1232,9 @@ export class Emitter {
           rest = `${rest || ', undefined'}, ${anchor.index}`;
         }
         const at =
-          this.options.mode === 'server' || readsProp
+          // The output of a template links its scope to this insert, so a `#try` here catches
+          // its errors. A function can return the output of one too.
+          this.options.mode === 'server' || readsProp || callsTemplate(site)
             ? `, ${this.ctxArgument}, ${this.scopeVar(instanceScope(this.plan, scope))}${rest}`
             : '';
         // A primitive renders as text, so it needs neither the place of the insert nor an await.

@@ -18,7 +18,7 @@ export default async function List($$props: Record<string, never>, $$ctx: $$b.Co
     const $$s2 = $$ctx.scope(2, $$s1);
     $$html += "<span>" + (typeof ($$t = $$b.insert((label), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
     $$ctx.slots($$s2, [index], ["index"]);
-    return $$b.raw($$html);
+    return $$b.raw($$html, $$s2);
   }
   $$html += "<button class=\"add\" b-b=\"" + $$s1 + ":0\" b-on=\"click=List_12rwm68#h6\">Add</button><button class=\"show\" b-b=\"" + $$s1 + ":1\" b-on=\"click=List_12rwm68#h7\">Show</button><ul>";
   $$ctx.enter();
@@ -119,7 +119,7 @@ function row(index: number) {
   const $$s2 = $$b.createScope(2, $$p);
   $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
   $$b.setSlots($$s2, [index]);
-  return $$b.raw($$html);
+  return $$b.raw($$html, $$s2);
 }
 return row($$b.get($$s, 1));
 })($$s.p));
@@ -145,14 +145,14 @@ export function r3($$p, $$item, $$index) {
     const $$s2 = $$b.createScope(2, $$p);
     $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
     $$b.setSlots($$s2, [index]);
-    return $$b.raw($$html);
+    return $$b.raw($$html, $$s2);
   }
   const count = $$item;
   const i = $$index;
   const $$s3 = $$b.createScope(3, $$p, undefined, 2);
   const $$e = $$b.clone($$k4), $$f = $$e[3];
   $$b.keep($$s3, 0, $$e[0]);
-  $$b.keepText($$s3, 1, $$e[1], (row(i)));
+  $$b.keepText($$s3, 1, $$e[1], (row(i)), $$s3);
   $$b.place($$e[2], $$b.componentNodes(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, undefined, $$s3, 2));
   $$b.setSlots($$s3, [count, i]);
   $$b.setItem($$s3, $$item);
@@ -203,7 +203,7 @@ export default function List($$props: Record<string, never>): string | DocumentF
     const $$s2 = $$b.createScope(2, $$s1);
     $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
     $$b.setSlots($$s2, [index]);
-    return $$b.raw($$html);
+    return $$b.raw($$html, $$s2);
   }
   const $$e = $$b.clone($$t0), $$f = $$e[4];
   $$b.keep($$s1, 0, $$e[0]);
@@ -244,4 +244,4 @@ List.brumateId = "List_12rwm68";
 <!--/b-->
 
 # State
-<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"List_12rwm68",s:[[1,2],!1,"Item"]},g:[[3,0,101,2,0,0,"0.",0,0,{2:"0.2"},3,1,{2:"0.5"}],[2,0,64,1,"0.",1,0,3,1],[1,2,88,2,"Child_108vasc","0.",2,1,$b.f("List_12rwm68#h11","0.0"),3,2,$b.f("List_12rwm68#h11","0.3")]]})))</script>
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"List_12rwm68",s:[[1,2],!1,"Item"]},0.1:{k:2,p:0,s:[0],l:"0.0"},0.4:{k:2,p:0,s:[1],l:"0.3"},g:[[3,0,101,2,0,0,"0.",0,0,{2:"0.2"},3,1,{2:"0.5"}],[1,2,88,2,"Child_108vasc","0.",2,1,$b.f("List_12rwm68#h11","0.0"),3,2,$b.f("List_12rwm68#h11","0.3")]]})))</script>
