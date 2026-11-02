@@ -9,7 +9,7 @@ import type {
   RepeatBlock,
   SFCFile,
 } from '../ast.ts';
-import { tryCatchesClient } from '../graph.ts';
+import { calledTemplates, tryCatchesClient } from '../graph.ts';
 import type { GraphNode } from '../graph.ts';
 import { isWithin } from '../model.ts';
 import type { Declaration, Diagnostic, Scope, Site } from '../model.ts';
@@ -2046,7 +2046,7 @@ class ClientGenerator {
    * body, and the kinds of both bodies, and the holder of a block in children.
    */
   private triesTable(): string | undefined {
-    const entries: string[] = [];
+    const tries: { scope: Scope; owner: Scope; entry: string; templates: Scope[] }[] = [];
     for (const scope of this.model.scopes) {
       const block = scope.block;
       if (
@@ -2061,10 +2061,47 @@ class ClientGenerator {
       const fallback = this.plan.bodyScopes.get(block.fallback)!;
       const held = holderArguments(this.plan, block);
       const entry = `[${owner.id}, ${this.plan.anchors.get(block)}, ${JSON.stringify(`r${scope.id}`)}, ${JSON.stringify(`r${fallback.id}`)}, [${this.kinds(blockBodies(block)).join(', ')}]${held}]`;
-      for (const inside of this.model.scopes) {
-        if (isWithin(inside, scope)) {
-          entries.push(`${inside.id}: ${entry}`);
+      tries.push({ scope, owner, entry, templates: calledTemplates(this.model, block) });
+    }
+    // Each scope takes the entry of the nearest `#try` around it.
+    const nearest = new Map<Scope, { distance: number; entry: string }>();
+    for (const { scope, owner, entry, templates } of tries) {
+      const roots = [scope];
+      for (const template of templates) {
+        // A template declared outside the body renders inside it. Its scope links to where it is
+        // declared, so the entry finds the scope that holds the block only when that is the same.
+        // A `#try` inside this one whose body holds each call takes the template, even when it
+        // cannot catch for it, so this one does not catch in its place.
+        let claimed = false;
+        for (const other of tries) {
+          claimed ||=
+            other.scope !== scope &&
+            isWithin(other.scope, scope) &&
+            other.templates.includes(template);
         }
+        if (!claimed && instanceScope(this.plan, template.parent!) === owner) {
+          roots.push(template);
+        }
+      }
+      for (const root of roots) {
+        for (const inside of this.model.scopes) {
+          let distance = 0;
+          let current: Scope | undefined = inside;
+          while (current && current !== root) {
+            current = current.parent;
+            distance++;
+          }
+          if (current && distance < (nearest.get(inside)?.distance ?? Infinity)) {
+            nearest.set(inside, { distance, entry });
+          }
+        }
+      }
+    }
+    const entries: string[] = [];
+    for (const scope of this.model.scopes) {
+      const found = nearest.get(scope);
+      if (found) {
+        entries.push(`${scope.id}: ${found.entry}`);
       }
     }
     return entries.length > 0 ? `{ ${entries.join(', ')} }` : undefined;

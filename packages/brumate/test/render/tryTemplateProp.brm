@@ -1,0 +1,13 @@
+<script>
+  import TryTemplateList from './TryTemplateList.brm';
+</script>
+
+#template kid() {
+  <button class="boom" onClick=(() => { throw new Error('kid threw'); })>Boom</button>
+}
+
+#try {
+  <TryTemplateList row=kid />
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}
