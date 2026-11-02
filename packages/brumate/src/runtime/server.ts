@@ -2502,6 +2502,8 @@ export interface RenderOptions {
 export interface ClientBundles {
   /** The URL of the chunk of each bundle. */
   chunks: Record<string, string>;
+  /** The URLs of the stylesheets that the modules of each bundle import. */
+  styles?: Record<string, string[]>;
   /** The IDs of the components whose code each bundle holds. */
   members: Record<string, string[]>;
   /** The roots whose bundles the browser has, such as those of a page that asks for a `#defer` body. */
@@ -2546,7 +2548,7 @@ function bundleUrls(
       continue;
     }
     sent.add(root);
-    urls.push(bundles.chunks[root]!);
+    urls.push(bundles.chunks[root]!, ...(bundles.styles?.[root] ?? []));
     for (const member of bundles.members[root] ?? []) {
       covered.add(member);
     }
@@ -3889,15 +3891,19 @@ async function renderPage(
   }
   const path = new URL(request.url).pathname;
   const endRender = event?.traced('render', path) ?? (() => {});
-  // Client navigation has the loader and the core already. The stylesheets of the bundles go
-  // in the head of every page, so a navigation keeps those of the next page.
+  // Client navigation has the loader and the core already. The stylesheets of the bundles of the
+  // views go in the head of every page, so a navigation keeps those of the next page.
   const navigation = request.headers.has('x-brumate-base');
   const wanted: string[] = navigation ? [] : [...(options.hints ?? [])];
   const styles = new Set<string>();
   for (const id of viewIds(view)) {
     for (const url of options.bundleHints?.[id] ?? []) {
+      // A relative URL is relative to the page, which is wrong on a page deeper than the base,
+      // so the state records name those stylesheets for the loader instead.
       if (url.endsWith('.css')) {
-        styles.add(url);
+        if (!url.startsWith('.')) {
+          styles.add(url);
+        }
       } else if (!navigation) {
         wanted.push(url);
       }

@@ -25,11 +25,6 @@ export interface LoaderOptions {
    * a component that has no client code.
    */
   load: (id: string) => Promise<ClientModule> | undefined;
-  /**
-   * Loads a bundle that a state record names in `b-load`, by URL: the client modules of the
-   * components that the record holds and of those that they can render, in one chunk.
-   */
-  loadBundle?: (url: string) => Promise<unknown>;
   /** The URL prefix of server function calls. */
   rpc?: string;
   /** Imports the serial entry, which the core takes before it reads the page state. */
@@ -531,22 +526,6 @@ export function boot(
   // The core starts at once and loads the code of the components on the page, so a call of a
   // function of another component, such as a function prop, runs at once and in order.
   void loadCore().catch(() => {});
-  // The bundles that the state names start with it, so the code of the page comes in the same
-  // round trip as the core. The core asks for them again when it reads the state, and
-  // `loadBundle` loads each one once.
-  const loadBundles = (): void => {
-    for (const script of document.querySelectorAll('script[b-load]')) {
-      for (const url of script.getAttribute('b-load')!.split(' ')) {
-        void options.loadBundle?.(url).catch(() => {});
-      }
-    }
-  };
-  if (options.loadBundle) {
-    loadBundles();
-    if (document.readyState === 'loading') {
-      listen(document, 'DOMContentLoaded', loadBundles);
-    }
-  }
   return () => {
     stopped = true;
     observer?.disconnect();

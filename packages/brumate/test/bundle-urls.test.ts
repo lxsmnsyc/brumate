@@ -194,14 +194,17 @@ describe('the bundle URLs from the server', () => {
     for (const name of ['Index', 'Other']) {
       expect(hints.members[findId(name)]).toContain(findId('Shared'));
     }
-    const other = loads(await page('/other'));
+    const other = loads(await page('/other')).filter((url) => url.endsWith('.js'));
     expect(other.toSorted()).toEqual([chunk('Layout'), chunk('Other')].toSorted());
   });
 
   it('link to the stylesheets of the bundles of the page', async () => {
     const link = /<link rel="stylesheet" href="([^"]+\.css)">/;
-    const [, href] = link.exec(await page('/other'))!;
+    const html = await page('/other');
+    const [, href] = link.exec(html)!;
     expect(readFileSync(`${app}dist/client${href}`, 'utf8')).toContain('teal');
+    // The records name it too, for the loader, which adds it when the page has no link to it.
+    expect(loads(html)).toContain(href);
     expect(await page('/')).not.toMatch(link);
     // Navigation keeps the stylesheets of the next page in its head.
     expect(await page('/other', { 'x-brumate-base': '20' })).toContain(href);
@@ -234,6 +237,38 @@ describe('the bundle URLs from the server', () => {
     expect(body).toContain('Later');
     expect(body).toContain('b-scopes');
     expect(loads(body)).toEqual([]);
+  });
+});
+
+describe('a build with a relative base', () => {
+  it('names each bundle and stylesheet relative to the loader', async () => {
+    await build({
+      ...config,
+      base: './',
+      build: { outDir: 'dist/relative', rolldownOptions: { input: 'src/client.ts' } },
+    });
+    const out = `${app}dist/relative/`;
+    const relative = JSON.parse(readFileSync(`${out}.brumate/hints.json`, 'utf8')) as Hints & {
+      styles: Record<string, string[]>;
+    };
+    let loader = '';
+    for (const name of readdirSync(`${out}assets`)) {
+      if (readFileSync(`${out}assets/${name}`, 'utf8').includes('b-load')) {
+        loader = `assets/${name}`;
+      }
+    }
+    expect(loader).not.toBe('');
+    const urls = [...Object.values(relative.chunks), ...Object.values(relative.styles).flat()];
+    expect(urls.some((url) => url.endsWith('.css'))).toBe(true);
+    for (const url of urls) {
+      expect(url).toMatch(/^\.\.?\//);
+      // A page at any depth resolves them against the chunk of the loader.
+      const resolved = new URL(url, `https://example.com/app/${loader}`).pathname;
+      expect(resolved.startsWith('/app/')).toBe(true);
+      expect(
+        readFileSync(`${out}${resolved.slice('/app/'.length)}`, 'utf8').length,
+      ).toBeGreaterThan(0);
+    }
   });
 });
 

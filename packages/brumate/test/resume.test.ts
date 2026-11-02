@@ -7835,33 +7835,48 @@ describe('the bundles that state records name', () => {
       );
       chunks[name] = file(`bundle-${name}.js`);
     }
-    const bundles = { chunks, members: { Page: ['Page'], Next: ['Next'] } };
+    const bundles = {
+      chunks,
+      styles: { Page: [file('page.css')] },
+      members: { Page: ['Page'], Next: ['Next'] },
+    };
     const { html, state } = await renderParts(Root, {}, { bundles, base });
     return html + state;
   }
 
-  it('load when the page starts', async () => {
-    const page = await renderRoot('Page');
-    expect(page).toContain(`b-load="${file('bundle-Page.js')}"`);
-    show(page);
-    const loadBundle = vi.fn<(url: string) => Promise<void>>(async () => {});
-    vi.resetModules();
-    const { start } = await import('../src/runtime/loader.ts');
-    stop = start({ load: () => undefined, loadBundle });
-    expect(loadBundle).toHaveBeenCalledWith(file('bundle-Page.js'));
+  beforeAll(() => {
+    // The stylesheets are files that the DOM environment cannot fetch.
+    const { settings } = (window as unknown as { happyDOM: { settings: Record<string, boolean> } })
+      .happyDOM;
+    settings.disableCSSFileLoading = true;
+    settings.handleDisabledFileLoadingAsSuccess = true;
   });
 
-  it('give `load` the modules of the bundles that the page names so far', async () => {
+  afterEach(() => {
+    document.head.innerHTML = '';
+  });
+
+  it('load with the entry, and give `load` the modules of what the page names so far', async () => {
+    const page = await renderRoot('Page');
+    expect(page).toContain(`b-load="${file('bundle-Page.js')} ${file('page.css')}"`);
+    show(page);
     vi.resetModules();
     const { load } = await import('../src/runtime/bundles.ts');
-    // No record names a bundle, so the component has no client code.
-    expect(load('Page')).toBeUndefined();
-    show(await renderRoot('Page'));
+    // The stylesheet of the bundle is in the head at once.
+    expect(document.head.querySelectorAll('link[rel=stylesheet]')).toHaveLength(1);
     expect((await load('Page'))?.id).toBe('Page');
     // A component that no bundle holds has no client code.
     expect(await load('Other')).toBeUndefined();
     // The state of a page that navigation adds names the bundles of that page.
     appendChunk(await renderRoot('Next', 10));
     expect((await load('Next'))?.id).toBe('Next');
+    // The record of the next page names the stylesheet again, which the page has.
+    expect(document.head.querySelectorAll('link[rel=stylesheet]')).toHaveLength(1);
+  });
+
+  it('give no module before a record names a bundle', async () => {
+    vi.resetModules();
+    const { load } = await import('../src/runtime/bundles.ts');
+    expect(load('Page')).toBeUndefined();
   });
 });

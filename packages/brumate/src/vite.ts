@@ -264,6 +264,8 @@ interface ClientHints {
   bundles: Record<string, string[]>;
   /** The chunk of each bundle, which the state records name. */
   chunks?: Record<string, string>;
+  /** The stylesheets of each bundle, which the state records name too. */
+  styles?: Record<string, string[]>;
   /** The components of each bundle. */
   members?: Record<string, string[]>;
 }
@@ -1010,13 +1012,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       // The server names the bundles of each page in its state records, as `b-load`, so the
       // entry has no table of them.
       return [
-        "import { load, loadBundle } from 'brumate/bundles';",
+        "import { load } from 'brumate/bundles';",
         // The `import()` of each bundle is in a chunk that nothing loads, so the build makes a
         // chunk of each bundle, which loads after this one and shares its modules, such as the
         // preload helper. An entry of its own would get them in another chunk. The write keeps
         // it in the build when the entry imports `load` only.
-        `loadBundle.all = () => import(${JSON.stringify(BUNDLES)});`,
-        'export { load, loadBundle };',
+        `load.all = () => import(${JSON.stringify(BUNDLES)});`,
+        'export { load };',
       ].join('\n');
     }
     const entries: string[] = [];
@@ -1194,7 +1196,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       buildId,
       hints.all,
       hints.bundles,
-      hints.chunks && hints.members ? { chunks: hints.chunks, members: hints.members } : undefined,
+      hints.chunks && hints.members
+        ? { chunks: hints.chunks, styles: hints.styles, members: hints.members }
+        : undefined,
     );
     // The variables are checked when the server starts, before any route loads.
     const serial = serialImports().join('\n');
@@ -1976,7 +1980,17 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         const bundleHints: Record<string, string[]> = {};
         // The chunk of each bundle and its components, which the state records name.
         const chunkUrls: Record<string, string> = {};
+        const styleUrls: Record<string, string[]> = {};
         const members: Record<string, string[]> = {};
+        // The loader imports what a state record names relative to its own chunk, so a
+        // relative base works on a page at any depth.
+        function loadUrl(name: string): string {
+          if (!relativeUrls || loaderChunk === undefined) {
+            return `${base}${name}`;
+          }
+          const relative = path.posix.relative(path.posix.dirname(loaderChunk), name);
+          return relative.startsWith('.') ? relative : `./${relative}`;
+        }
         for (const chunk of chunks.values()) {
           const facade = chunk.facadeModuleId ?? '';
           if (!facade.startsWith(`\0${BUNDLE}`)) {
@@ -1998,13 +2012,27 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           for (const name of files) {
             urls.push(`${base}${name}`);
             for (const css of chunks.get(name)?.viteMetadata?.importedCss ?? []) {
-              styles.add(`${base}${css}`);
+              styles.add(css);
             }
           }
           const id = facade.slice(BUNDLE.length + 1);
-          bundleHints[id] = [...urls, ...styles];
-          chunkUrls[id] = `${base}${chunk.fileName}`;
+          const styleNames = [...styles];
+          bundleHints[id] = urls;
+          for (const name of styleNames) {
+            bundleHints[id].push(`${base}${name}`);
+          }
+          chunkUrls[id] = loadUrl(chunk.fileName);
+          styleUrls[id] = [];
+          for (const name of styleNames) {
+            styleUrls[id].push(loadUrl(name));
+          }
           members[id] = bundleMembers.get(id) ?? [];
+        }
+        // A bundle without a chunk would leave its pages without client code.
+        for (const root of bundleMembers.keys()) {
+          if (chunkUrls[root] === undefined) {
+            this.error(`The client build has no chunk for the bundle of ${root}`);
+          }
         }
         await mkdir(path.join(outDir, '.brumate'), { recursive: true });
         const all: string[] = [];
@@ -2013,7 +2041,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
         await writeFile(
           path.join(outDir, HINTS_FILE),
-          JSON.stringify({ all, bundles: bundleHints, chunks: chunkUrls, members }),
+          JSON.stringify({
+            all,
+            bundles: bundleHints,
+            chunks: chunkUrls,
+            styles: styleUrls,
+            members,
+          }),
         );
         if (buildId !== undefined) {
           const written: string[] = [];
@@ -2154,10 +2188,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           options.navigate === false
             ? "import { startWithoutNavigation as start } from 'brumate/static-loader';"
             : "import { start } from 'brumate/loader';",
-          `import { load${isServe ? '' : ', loadBundle'} } from ${JSON.stringify(MANIFEST)};`,
+          `import { load } from ${JSON.stringify(MANIFEST)};`,
           // On the dev server, an edit of a component can update the page without a reload.
           ...(isServe ? ["import { hotLoad } from 'brumate/hot';"] : []),
-          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ', loadBundle'}${serialFile() ? `, serial: () => import(${JSON.stringify(serialFile())})` : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
+          `start({ load${isServe ? ': hotLoad(import.meta.hot, load)' : ''}${serialFile() ? `, serial: () => import(${JSON.stringify(serialFile())})` : ''}, rpc: ${JSON.stringify(rpc)}, navigate: ${JSON.stringify(options.navigate ?? true)}${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`} });`,
           // The devtools listen to the core before it starts. Only the dev server has them.
           ...(isServe && options.devtools !== false
             ? [
