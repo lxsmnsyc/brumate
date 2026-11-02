@@ -7436,3 +7436,49 @@ describe('an unread async memo in a browser render', () => {
     expect(document.querySelector('.kid')).toBeNull();
   });
 });
+
+describe('an async memo that a browser render reads only with await', () => {
+  /** Collects the unhandled rejections of the test. */
+  function watchUnhandled(): unknown[] {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    return unhandled;
+  }
+
+  const hosts = [
+    ['awaitReadHost', 'as a statement, `await side;`'],
+    ['awaitFieldHost', 'in another memo, `$memo((await side).length)`'],
+    // The other memo holds the same promise, so the error is reported once.
+    ['awaitMemoHost', 'as the whole value of another memo, `$memo(await side)`'],
+  ] as const;
+  for (const [host, read] of hosts) {
+    it(`reports its rejection once when the read is ${read}`, async () => {
+      const unhandled = watchUnhandled();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      await resume(host, {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
+      await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+      await new Promise((done) => setTimeout(done, 30));
+      expect(errors).toHaveBeenCalledTimes(1);
+      expect(String(errors.mock.calls[0]![0])).toBe('Error: await failed');
+      expect(unhandled.map(String)).toEqual([]);
+    });
+  }
+
+  it('sends its rejection to the nearest #catch', async () => {
+    const unhandled = watchUnhandled();
+    await resume('awaitReadTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: await failed'));
+    expect(document.querySelector('.kid')).toBeNull();
+    expect(unhandled.map(String)).toEqual([]);
+  });
+});

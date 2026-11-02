@@ -804,7 +804,9 @@ export class Emitter {
   /**
    * In the browser, a memo that nothing reads has no slot, so no load takes its promise. Its
    * rejection goes to the nearest `#try`, which is where a memo that throws sends its error. A
-   * memo that always gives a primitive, such as `count * 2`, is never a promise.
+   * memo that always gives a primitive, such as `count * 2`, is never a promise. `await memo`
+   * compiles to a plain read of the promise, which drops it, unless the read is the whole value
+   * of another memo, as in `$memo(await memo)`, which then holds the same promise.
    */
   private watchUnreadMemos(statement: oxc.VariableDeclaration, scope: Scope): void {
     for (const declarator of statement.declarations) {
@@ -815,7 +817,10 @@ export class Emitter {
       if (
         declaration &&
         (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
-        declaration.reads.length === 0 &&
+        declaration.reads.every(
+          (read) =>
+            read.await && (read.site.kind !== 'memo' || read.site.node.start !== read.await.start),
+        ) &&
         slotIndex(this.plan, declaration) === -1 &&
         !(declaration.site && isPrimitive(declaration.site.node))
       ) {
