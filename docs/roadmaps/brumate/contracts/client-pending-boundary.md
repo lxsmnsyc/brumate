@@ -13,7 +13,7 @@ The runtime interface between a render that waits (`wait` from browser-await) an
 
 ## Interface
 
-In `packages/brumate/src/runtime/client/waits.ts`. Only `wait` is exported from `brumate/client`. The rest is internal to the client runtime.
+In `packages/brumate/src/runtime/client/waits.ts`. `wait` and `fillSettled` are exported from `brumate/client`. The rest is internal to the client runtime.
 
 ```ts
 type Out = string | DocumentFragment;
@@ -84,6 +84,7 @@ return $$b.wait($$s1, [id, n, load(id)], 2, ($$v) => {
 - `bound(body)` renders `body` with a boundary of its own. With no wait, it returns `[out]`. Otherwise it moves the `rendered` scopes and `afterInsert` work that the body added into `w`, and returns `[out, boundary]`. The work of the render around it, such as an outer `bound`, stays there. The owner sets `done`, and `f` if it handles failures, before any wait can settle. An owner that drops the whole boundary clears `done` and `f`.
 - `give(boundary)` puts `w` back into `rendered` and `afterInsert`, for the insert of the body. When the boundary around it (`o`) still holds its own body, `give` moves the work into `o.w` instead, so the outer `give` runs the updates that either body missed (its `c` is never newer).
 - Updates do not reach a held body that is not in the page, since blocks find their markers in the page. So when any slot was written during the hold (the write count differs from `c`), `give` runs all the updates of the body's scopes once the body is in, in place of the memos-only refresh: an `#if` that a write opened opens then, and the waits that this starts fill in place. browser-root-boundary relies on this for a prop that a parent writes during the hold.
+- `fillSettled(id, values, write)` holds a write of cloned markup that reads memos which never change (#419, #421). With a promise among `values`, it counts in the boundary of the render with `join`, ends with `leave` after `write` or when its scope goes, and with `fail` then `fault` on a rejection. A rejection is reported to `fail` once per error and scope; `fault` runs for each wait. With no promise, it writes at once.
 - Without a boundary, the rest fills the place of the component (fill in place). browser-root-boundary adds a boundary outside every `#loading`.
 - On an update, a boundary keeps its current content until the new waits settle. Outside every `#loading`, the root boundary does the same (browser-root-boundary).
 
@@ -105,3 +106,4 @@ In `packages/brumate/test/resume.test.ts`, `describe('a boundary')` inside `awai
 - v1 frozen by browser-await (2026-11-01). `wait(id, slots, slot, rest)` replaces the spike's `wait(scope, value, rest)`, so the slots set before the wait reach the rest. `bound` and `give` replace the spike's `loading` internals.
 - v1 reworked before any consumer, from the review of #413 (2026-11-02). Added `Boundary.f`, `join`, `leave`, `fault` and `fillRange`. A scope that goes during a wait counts down, and the latest load wins.
 - v1 reworked again, from the re-review of #413 (2026-11-02). Added `until` and `Boundary.c`. From the third review: `Boundary.o`, and `give` into a held outer body. `join` no longer walks held scopes: `give` runs the updates that a held body missed. A nested `bound` holds only its own work.
+- v1.1 from settled-memo-merge (2026-11-02, change request accepted by the maintainer): `fillSettled` moves into `waits.ts`, is exported next to `wait`, and counts in the boundary. The two ways of waiting stay until values-build (debate client-restructure).

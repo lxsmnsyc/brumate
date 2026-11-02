@@ -1,7 +1,7 @@
 ---
 id: settled-memo-merge
 title: "One settled-memo mechanism on feat/browser-async"
-status: active
+status: done
 priority: must
 type: refactor
 outline: false
@@ -15,7 +15,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 149000
 story: browser-async
 owns: []
 shared:
