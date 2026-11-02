@@ -28,6 +28,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: bench-server-bundles
+    kind: hard
+    why: the release's size target is read from pnpm bench, which must render working pages
   - on: release-0.4.3
     kind: hard
     why: the 0.4.3 hotfixes reach next through its sync before the promotion

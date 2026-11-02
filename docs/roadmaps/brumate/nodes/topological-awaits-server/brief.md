@@ -1,7 +1,7 @@
 ---
 id: topological-awaits-server
 title: The server starts each awaited memo as early as its inputs allow
-status: active
+status: done
 priority: must
 type: feature
 story: browser-async
@@ -19,7 +19,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-01
-spent:
+spent: 169000
 owns:
   - packages/brumate/src/codegen/**
   - packages/brumate/test/render/**
