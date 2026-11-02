@@ -7454,6 +7454,7 @@ describe('an async memo that a browser render reads only with await', () => {
   const hosts = [
     ['awaitReadHost', 'as a statement, `await side;`'],
     ['awaitFieldHost', 'in another memo, `$memo((await side).length)`'],
+    ['awaitSumHost', 'at the start of another memo, `$memo(await side + 1)`'],
     // The other memo holds the same promise, so the error is reported once.
     ['awaitMemoHost', 'as the whole value of another memo, `$memo(await side)`'],
   ] as const;

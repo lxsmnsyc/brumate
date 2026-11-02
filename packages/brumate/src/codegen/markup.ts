@@ -819,7 +819,10 @@ export class Emitter {
         (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
         declaration.reads.every(
           (read) =>
-            read.await && (read.site.kind !== 'memo' || read.site.node.start !== read.await.start),
+            read.await &&
+            (read.site.kind !== 'memo' ||
+              read.site.node.start !== read.await.start ||
+              read.site.node.end !== read.await.end),
         ) &&
         slotIndex(this.plan, declaration) === -1 &&
         !(declaration.site && isPrimitive(declaration.site.node))
