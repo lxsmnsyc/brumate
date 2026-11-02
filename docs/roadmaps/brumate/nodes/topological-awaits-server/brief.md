@@ -1,7 +1,7 @@
 ---
 id: topological-awaits-server
 title: The server starts each awaited memo as early as its inputs allow
-status: todo
+status: active
 priority: must
 type: feature
 story: browser-async
