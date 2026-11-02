@@ -1,7 +1,7 @@
 ---
 id: browser-loading-fallback
 title: "#loading shows its fallback in markup that the browser renders"
-status: todo
+status: active
 priority: must
 type: feature
 story: browser-async
