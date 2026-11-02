@@ -36,6 +36,9 @@ depends_on:
   - on: markup-read-async-memo
     kind: hard
     why: an async memo whose input never changes stays empty in a browser render
+  - on: try-template
+    kind: hard
+    why: a #template inside a #try misses its client errors
 ---
 
 # Release brumate 0.4.2
