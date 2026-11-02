@@ -44,7 +44,7 @@ The core is correct and safe to change, agents write good .brm files with a skil
 
 ## Priorities
 
-- must: what a release cannot ship without. 0.4.0: core correctness (the scope ID table, tests against the current compiler, the client.ts split, ordered updates, batching, fields typed early) and the .brm skill. 0.5.0 (the maintainer, 2026-11-01): the smaller client (usage-pruning-spike, bundle-urls-from-server, drop-marker-index) and the browser-async story.
+- must: what a release cannot ship without. 0.4.0: core correctness (the scope ID table, tests against the current compiler, the client.ts split, ordered updates, batching, fields typed early) and the .brm skill. 0.5.0 (the maintainer, 2026-11-01): the smaller client (usage-pruning-spike, bundle-urls-from-server) and the browser-async story. drop-marker-index left the must line on 2026-11-02 (debate client-restructure).
 - should: what makes them useful, the ui release, and the website fixes. They can wait.
 - could: the takeaways of lower value, and the spikes.
 - later: the outline nodes of the backlog. Parked, never scheduled.
@@ -69,6 +69,7 @@ Milestones are releases (the maintainer, 2026-10-29).
 - client.ts is split (split-client-runtime) before the nodes that rewrite it. website/src/ui.ts is an append-only list of one line for each page, so it is shared, not split.
 - batching (the `flush()` audit) and element-checks (the caller fixes of the stricter check) sweep many parts of @brumate/ui. plan.py warns that a part is edited by four nodes or more. The edges order them: element-checks runs after the parts are rewritten.
 - Writing follows the plain-writing skill.
+- Client restructure (../../debates/client-restructure/debate.md): only settled-memo-merge runs before 0.5.0; the rest follows its must line on one worker. Until values-build lands, the browser-async children keep pending and fallback state in scope slots, not new hold-back helpers. At equal size, simpler wins (the maintainer, 2026-11-02).
 
 ## Non-goals
 
@@ -101,7 +102,8 @@ Each item of the proposals maps to one node, or to built work:
 - Tooling: content mappers -> content-mapper (#3); tests against the current build -> tests-current-build; what ships in the editor -> editor-sizes; devtools -> built except history -> devtools-history; workbench -> built steps 1 to 3, step 4 -> workbench-stories; accessibility checks in tests -> a11y-in-tests; embedding -> embedding
 - Agent support: the skill -> brm-skill; llms.txt -> llms-txt; copy in the devtools -> devtools-copy; brumate check -> brumate-check; the tasks -> skill-tasks; an MCP server -> mcp-server
 - Compiler: steps 1 and 2 -> built (#147, 4d1d0f14, 624e210b); step 3 -> partly built, the rest -> drop-marker-index; step 4 -> values-spike, values-build; fixed walks -> fixed-walks; inlining and constant folding (2026-10-26) -> inlining-spike, inlining-build
-- Client size (2026-10-30, after perf-pass-0.4): prune the runtime by use -> usage-pruning-spike; fewer files and no preload helper -> loader-preload-spike; the compiled update table as direct calls -> direct-update-calls
+- Client size (2026-10-30, after perf-pass-0.4): prune the runtime by use -> usage-pruning-spike; fewer files and no preload helper -> loader-preload-spike; the compiled update table as direct calls -> merged into values-spike, values-build (debate client-restructure)
+- Client restructure (debate client-restructure, 2026-11-02): one settled-memo mechanism -> settled-memo-merge; unread memos -> drop-unread-memos; no HTML string bodies -> no-html-string-fallback; both render paths compared -> differential-render-test; value functions -> values-spike, values-build
 - Library: Headless UI phases 0 to 7, components from packages, nested TransitionChild -> built; leave animations for `#for` -> for-leave; takeaway 1 -> docs-generator and the four docs-* nodes; 2 -> popover-sizing; 3 -> fieldset; 4 -> context-menu; 5 -> color-scheme; 6 and 9 -> popover-group-alert; 7 and 8 -> part-guides; 10 -> feed; internationalization -> i18n; images -> images; Markdown with components -> markdown-plugin
 - Types (2026-10-26): brumate has no element, markup or component type -> element-types, element-checks; as.ts is unsound and opaque -> as-sound; the parts fall back to `any` for values -> ui-generics
 - Polymorphism and ref (2026-10-26): props types -> props-types-main (#245); `as` on more parts -> as-controls, as-collections; ref forwarding -> built (#243), its visible gap -> visible-forwarded-ref
@@ -121,4 +123,4 @@ Each item of the proposals maps to one node, or to built work:
 - values-spike and inlining-spike: the user decides go or no-go.
 - browser-await-spike: the user picks one of the three approaches before the other children of browser-async are refined.
 - release-0.5: the user merges the promotion and the Version Packages pull requests.
-- usage-pruning-spike and loader-preload-spike: the user decides go or no-go. direct-update-calls needs a goal debate before its refine.
+- usage-pruning-spike and loader-preload-spike: the user decides go or no-go. values-spike is an experiment with gates fixed in ../../debates/client-restructure/debate.md (approved 2026-11-02); the user decides go or no-go. direct-update-calls is merged into values-spike and values-build.

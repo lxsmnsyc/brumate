@@ -2,10 +2,10 @@
 goal: Restructure and simplify the brumate client runtime and its browser render path, so fixes stop adding special cases, while the client keeps shrinking; weighed together with direct-update-calls and values-spike/values-build
 date: 2026-11-02
 rounds: 3 of 3
-status: proposed
+status: approved
 roadmap: docs/roadmaps/brumate
 supersedes: none
-decision: none
+decision: docs/decisions.md (the client restructure entry, 2026-11-02)
 ---
 
 # Debate: restructure and simplify the client
