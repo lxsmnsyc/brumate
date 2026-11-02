@@ -37,9 +37,6 @@ depends_on:
   - on: bundle-urls-from-server
     kind: hard
     why: the client entry drops its bundle tables, a size goal of 0.5.0
-  - on: drop-marker-index
-    kind: hard
-    why: the marker index and the HTML string path go, a size goal of 0.5.0
   - on: browser-async
     kind: hard
     why: await, #loading and promises wait in markup that the browser renders

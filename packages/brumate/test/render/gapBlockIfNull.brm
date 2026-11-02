@@ -1,0 +1,19 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+  import { gapNone } from './gapData.ts';
+
+  const { open = false } = $props();
+  let show = $signal(open);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <script>
+    const user = $memo(gapNone());
+  </script>
+  #if (user) {
+    <p class="value">user</p>
+  } #else {
+    <p class="value">none</p>
+  }
+}

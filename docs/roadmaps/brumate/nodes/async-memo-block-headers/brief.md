@@ -1,7 +1,7 @@
 ---
 id: async-memo-block-headers
 title: "Block headers, props and #for lists wait for a constant async memo in a browser render"
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 124000
 owns: []
 shared:
   - .changeset/*.md

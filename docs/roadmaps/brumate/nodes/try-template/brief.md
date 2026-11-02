@@ -1,7 +1,7 @@
 ---
 id: try-template
 title: "A #try catches the client errors of a #template inside it"
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 123000
 owns: []
 shared:
   - .changeset/*.md
