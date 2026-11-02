@@ -34,7 +34,6 @@ depends_on:
 
 On a go of values-spike (docs/debates/client-restructure/debate.md, step 5): the two-mode value functions replace `g`, `pass`/`queueWrite`/`drain` and the settled-memo mechanism. Acceptance includes the full ordered-updates set (107 cases, O9). Absorbs direct-update-calls (P7). About 1.5-2M tokens.
 
-
 Step 4 of the smaller client, if values-spike says go.
 
 ## Context
