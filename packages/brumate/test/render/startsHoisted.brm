@@ -1,0 +1,22 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { load, note } from './startsData.ts';
+
+  let n = 1;
+  const first = await $memo(load('first'));
+  let m = 2;
+  note('between');
+  // Each calls a function declared below, which reads a variable declared above.
+  const second = await $memo(load(early()));
+  const third = await $memo(load(late()));
+
+  function early(): string {
+    return `second-${n}`;
+  }
+
+  function late(): string {
+    return `third-${m}`;
+  }
+</script>
+
+<p class="names">{first} {second} {third}</p>

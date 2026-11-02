@@ -19,6 +19,7 @@ import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
 import { holdsStream, serverFunctionId } from '../plan.ts';
+import { findLoadStarts, hasAwait } from './starts.ts';
 import { cloneLines } from './template.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
@@ -876,6 +877,106 @@ export class Emitter {
     }
   }
 
+  /**
+   * True for a statement that runs nothing where it is written on the server,
+   * such as `$effect`, an import or a type. It does not end a run of awaits.
+   */
+  private isQuiet(statement: oxc.Node): boolean {
+    if (statement.type === 'ImportDeclaration' || TYPE_DECLARATIONS.has(statement.type)) {
+      return true;
+    }
+    if (statement.type !== 'ExpressionStatement') {
+      return false;
+    }
+    const expression = statement.expression;
+    return (
+      expression.type === 'CallExpression' &&
+      expression.callee.type === 'Identifier' &&
+      (expression.callee.name === '$effect' || expression.callee.name === '$client')
+    );
+  }
+
+  /**
+   * On the server, the awaited memos whose loads start before statements
+   * that do not hold them, by the index of the statement that they start
+   * after (-1 for the top). Each `await` still waits where it is written.
+   */
+  private earlyLoads(statements: oxc.Node[], scope: Scope): Map<number, oxc.Node[]> {
+    const moved = new Map<number, oxc.Node[]>();
+    if (this.options.mode !== 'server') {
+      return moved;
+    }
+    // The statements whose every declarator is an awaited memo that the server reads as a memo.
+    const loads = new Map<oxc.Node, Declaration[]>();
+    for (const statement of statements) {
+      const blocking = this.blockingDeclarations(statement);
+      if (
+        blocking?.awaited &&
+        statement.type === 'VariableDeclaration' &&
+        blocking.declarations.length === statement.declarations.length
+      ) {
+        loads.set(statement, blocking.declarations);
+      }
+    }
+    if (loads.size === 0) {
+      return moved;
+    }
+    const starts = findLoadStarts(
+      statements,
+      scope,
+      loads,
+      (statement) => !this.isQuiet(statement),
+    );
+    // The index of the statement that a load reading each memo must start after: the start
+    // point of a memo that moves, or the statement of one that stays.
+    const placed = new Map<Declaration, number>();
+    for (const [index, statement] of statements.entries()) {
+      const start = starts.get(statement);
+      if (!start) {
+        continue;
+      }
+      // A memo of another load must be declared first.
+      let after = start.after;
+      for (const memo of start.memos) {
+        after = Math.max(after, placed.get(memo) ?? index - 1);
+      }
+      // The load moves only over a statement that waits: the end of a run of awaits before it,
+      // a memo that the markup waits for, or an `await` of the script.
+      let ends = false;
+      let inRun = false;
+      for (let between = after + 1; between < index && !ends; between++) {
+        const other = statements[between]!;
+        const blocking = this.blockingDeclarations(other);
+        if (blocking?.awaited) {
+          inRun = true;
+        } else if (!this.isQuiet(other)) {
+          ends = inRun || blocking !== undefined || hasAwait(other);
+        }
+      }
+      // A memo that stays is declared in its own statement, after the loads that start before it.
+      const at = ends ? after : index;
+      for (const declaration of loads.get(statement)!) {
+        placed.set(declaration, at);
+      }
+      if (ends) {
+        const list = moved.get(after) ?? [];
+        list.push(statement);
+        moved.set(after, list);
+      }
+    }
+    return moved;
+  }
+
+  /** Declares the memos of a load that starts early, and starts them. */
+  private startLoads(statements: oxc.Node[] | undefined): void {
+    for (const statement of statements ?? []) {
+      this.raw(this.patch.slice(statement.start, statement.end), statement.start);
+      for (const declaration of this.blockingDeclarations(statement)!.declarations) {
+        this.line(`$$b.start(${promiseName(declaration.name)});`);
+      }
+    }
+  }
+
   emitStatements(statements: oxc.Node[], scope: Scope): void {
     let run: Declaration[] = [];
     const endRun = (): void => {
@@ -884,6 +985,14 @@ export class Emitter {
         run = [];
       }
     };
+    const early = this.earlyLoads(statements, scope);
+    const started = new Set<oxc.Node>();
+    for (const list of early.values()) {
+      for (const statement of list) {
+        started.add(statement);
+      }
+    }
+    this.startLoads(early.get(-1));
     // In the render module, the statements of the component before its last `await $memo`
     // declare with `let`, so the rest of the render can assign what changed during a wait.
     const splits = this.options.waits && scope === this.plan.graph.model.component;
@@ -894,6 +1003,9 @@ export class Emitter {
       }
     }
     for (const [index, statement] of statements.entries()) {
+      if (index > 0) {
+        this.startLoads(early.get(index - 1));
+      }
       const awaited = splits ? this.awaitedMemos(statement, scope) : undefined;
       if (awaited) {
         this.splitAtAwait(statement as oxc.VariableDeclaration, awaited, scope);
@@ -901,8 +1013,14 @@ export class Emitter {
       }
       const blocking = this.blockingDeclarations(statement);
       if (blocking?.awaited) {
-        this.raw(this.patch.slice(statement.start, statement.end), statement.start);
+        if (!started.has(statement)) {
+          this.raw(this.patch.slice(statement.start, statement.end), statement.start);
+        }
         run.push(...blocking.declarations);
+        continue;
+      }
+      // A statement that runs nothing on the server does not end a run.
+      if (this.options.mode === 'server' && this.isQuiet(statement)) {
         continue;
       }
       endRun();

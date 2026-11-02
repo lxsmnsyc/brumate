@@ -1463,6 +1463,21 @@ function heldError(error: unknown, ctx?: Context): MemoError {
 }
 
 /**
+ * Starts the load of an awaited memo before the statements that it does not
+ * read, where the compiler moves its declaration. It keeps a synchronous
+ * throw of the compute and a rejection in the memo, so the `await` where the
+ * source has it throws them, not the start.
+ */
+export function start(node: Memo): void {
+  try {
+    const value = ready(node);
+    if (value instanceof Promise) {
+      value.catch(() => {});
+    }
+  } catch {}
+}
+
+/**
  * Starts every memo of a run of declarations that the render waits for,
  * so they load at the same time. Returns a promise that settles when all
  * of them have, or undefined when none is loading. A memo that fails
@@ -2939,18 +2954,18 @@ function rendersInOrder(
  */
 function replaceBlock(html: string, key: string, inner: string): string {
   const open = `<!--b${key}-->`;
-  const start = html.indexOf(open);
-  if (start === -1) {
+  const at = html.indexOf(open);
+  if (at === -1) {
     return html;
   }
   const comments = /<!--([^>]*?)-->/g;
-  comments.lastIndex = start + open.length;
+  comments.lastIndex = at + open.length;
   let depth = 0;
   for (let found = comments.exec(html); found; found = comments.exec(html)) {
     const data = found[1]!;
     if (data[0] === '/') {
       if (depth === 0) {
-        return html.slice(0, start + open.length) + inner + html.slice(found.index);
+        return html.slice(0, at + open.length) + inner + html.slice(found.index);
       }
       depth--;
     } else if (/^[btilP]-?\d/.test(data)) {
@@ -3092,8 +3107,9 @@ function firstRender(
   const tail = state + (options.scripts ?? '');
   const match = HTML.exec(html);
   if (!match) {
-    const start = typeof options.start === 'function' ? options.start(head) : (options.start ?? '');
-    return start + html + tail + (options.end ?? '');
+    const before =
+      typeof options.start === 'function' ? options.start(head) : (options.start ?? '');
+    return before + html + tail + (options.end ?? '');
   }
   // Markup before <html>, such as the stylesheet of the root component, belongs in the head.
   const headContent = html.slice(0, match.index) + head;

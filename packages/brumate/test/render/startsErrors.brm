@@ -1,0 +1,12 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { explode, load, note } from './startsData.ts';
+
+  const first = await $memo(load('first'));
+  note('between');
+  // Both start before the first settles, and throw here, after the statement above.
+  const second = await $memo(load('second'));
+  const broken = await $memo(explode());
+</script>
+
+<p class="names">{first} {second} {broken}</p>

@@ -403,6 +403,90 @@ describe('await', () => {
   });
 });
 
+/** Renders a fixture of the start points, with its loads reset. */
+async function renderStarts(name: string) {
+  const data = await import(new URL('startsData.ts', output).href);
+  data.reset();
+  const module = await import(new URL(`${name}.brm.ts`, output).href);
+  return { data, render: renderParts(module.default, {}) };
+}
+
+/** Lets the loads that are ready settle and the render go on. */
+function settleLoads(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+describe('where the loads of awaited memos start', () => {
+  it('starts two independent awaits together across a plain statement, which runs in its place', async () => {
+    const { data, render } = await renderStarts('startsOverlap');
+    await settleLoads();
+    // Both load at once: the second reads nothing, so it starts at the top. The statement
+    // between them still waits for the first.
+    expect(data.calls).toEqual(['second', 'first']);
+    expect(data.flight.peak).toBe(2);
+    data.release('first', 'Ada');
+    await settleLoads();
+    expect(data.calls).toEqual(['second', 'first', 'between']);
+    data.release('second', 'Grace');
+    const { html } = await render;
+    expect(html).toContain('<p class="names">Ada Grace</p>');
+    expect(data.calls).toEqual(['second', 'first', 'between']);
+  });
+
+  it('does not start a load before a write or a call that changes what it reads', async () => {
+    const { data, render } = await renderStarts('startsLater');
+    await settleLoads();
+    expect(data.calls).toEqual(['first']);
+    data.release('first', 'Ada');
+    await settleLoads();
+    expect(data.calls).toEqual(['first', 'second-b', 'third-k=v']);
+    expect(data.flight.peak).toBe(2);
+    data.release('second-b', 'Grace');
+    data.release('third-k=v', 'Alan');
+    const { html } = await render;
+    expect(html).toContain('<p class="names">Ada Grace Alan</p>');
+  });
+
+  it('starts a load that calls a hoisted function after the variables that the function reads', async () => {
+    const { data, render } = await renderStarts('startsHoisted');
+    await settleLoads();
+    // `early` reads `n`, declared at the top. `late` reads `m`, declared after the first await:
+    // started before it, it would throw a ReferenceError.
+    expect(data.calls).toEqual(['second-1', 'first']);
+    data.release('first', 'Ada');
+    await settleLoads();
+    expect(data.calls).toEqual(['second-1', 'first', 'between', 'third-2']);
+    data.release('second-1', 'Grace');
+    data.release('third-2', 'Alan');
+    const { html } = await render;
+    expect(html).toContain('<p class="names">Ada Grace Alan</p>');
+  });
+
+  it('throws a compute that throws where its await is written, after the statements before it', async () => {
+    const { data, render } = await renderStarts('startsErrors');
+    const failed = render.catch((error: unknown) => error);
+    await settleLoads();
+    expect(data.calls).toEqual(['second', 'explode', 'first']);
+    data.release('first', 'Ada');
+    expect(await failed).toMatchObject({ message: 'boom' });
+    expect(data.calls).toEqual(['second', 'explode', 'first', 'between']);
+  });
+
+  it('throws a load that rejects early where its await is written', async () => {
+    const { data, render } = await renderStarts('startsRejects');
+    const failed = render.catch((error: unknown) => error);
+    await settleLoads();
+    expect(data.calls).toEqual(['second', 'first']);
+    // The rejection is held for the await, so it is not unhandled.
+    data.fail('second', new Error('no'));
+    await settleLoads();
+    expect(data.calls).toEqual(['second', 'first']);
+    data.release('first', 'Ada');
+    expect(await failed).toMatchObject({ message: 'no' });
+    expect(data.calls).toEqual(['second', 'first', 'between']);
+  });
+});
+
 describe('memos that read memos', () => {
   it('does not wait for a memo that only a #loading body reads, through another memo', async () => {
     const module = await import(new URL('loadingChain.brm.ts', output).href);
