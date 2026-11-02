@@ -531,28 +531,35 @@ export class Emitter {
   }
 
   /**
-   * In the browser, the memos that a value of the markup reads that never change and can be a
-   * promise. No update writes the value when they settle, so the clone writes it again.
+   * In the browser, the memos that values of the markup read that never change and can be a
+   * promise, such as an insert, the headers of a block or the props of a component. No update
+   * writes them when the memos settle, so the clone holds back what reads them.
    */
-  private settledMemos(expression: Expression, scope: Scope): Settled | undefined {
-    const site = this.options.mode === 'client' ? this.sitesByNode.get(expression.ast) : undefined;
-    // A site that reads a live memo is live too, as the graph spreads liveness to its readers, so
-    // the memos below never change.
-    if (!site || this.liveSites.has(site)) {
+  private settledMemos(expressions: Expression[], scope: Scope): Settled | undefined {
+    if (this.options.mode !== 'client') {
       return undefined;
     }
     const names: string[] = [];
-    for (const reference of site.reads) {
-      const declaration = reference.declaration;
-      if (
-        (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
-        !reference.inFunction &&
-        !(declaration.site && isPrimitive(declaration.site.node)) &&
-        // An array or a function is never a promise.
-        !NEVER_PROMISE.has(declaration.site?.node.type ?? '') &&
-        !names.includes(declaration.name)
-      ) {
-        names.push(declaration.name);
+    for (const expression of expressions) {
+      const site = this.sitesByNode.get(expression.ast);
+      // A site that reads a live memo is live too, as the graph spreads liveness to its readers,
+      // so the memos below never change.
+      if (!site || this.liveSites.has(site)) {
+        return undefined;
+      }
+      for (const reference of site.reads) {
+        const declaration = reference.declaration;
+        // A read inside a function counts too, such as `list.map(() => value)`, as the function
+        // gets the value that the memo settles to.
+        if (
+          (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
+          !(declaration.site && isPrimitive(declaration.site.node)) &&
+          // An array or a function is never a promise.
+          !NEVER_PROMISE.has(declaration.site?.node.type ?? '') &&
+          !names.includes(declaration.name)
+        ) {
+          names.push(declaration.name);
+        }
       }
     }
     return names.length > 0
@@ -1220,7 +1227,7 @@ export class Emitter {
           : this.ready(`$$b.insert(${this.expression(node.expression)}${at})`);
         // A literal renders when the component compiles.
         const text = literalText(node.expression.ast);
-        const settled = this.settledMemos(node.expression, scope);
+        const settled = this.settledMemos([node.expression], scope);
         const emitValue = (): void =>
           text === undefined ? this.code(value, settled) : this.html(text);
         // An insert that is the whole content of its element updates through the element's anchor.
@@ -1567,7 +1574,7 @@ export class Emitter {
           }
           this.code(
             `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`,
-            this.settledMemos(attribute.value, scope),
+            this.settledMemos([attribute.value], scope),
           );
           // `value=$bind(name)` writes the name back as the element changes, before the element's
           // own handlers run.
@@ -1964,8 +1971,21 @@ export class Emitter {
       const at = `${this.file.filename}:${before.length}:${before.at(-1)!.length + 1}`;
       link = `${link || ', undefined'}, ${JSON.stringify(`<${node.name}> in ${at}`)}`;
     }
+    // The values of the props, without the handlers, which run later.
+    const values: Expression[] = [];
+    for (const attribute of node.attributes) {
+      if (attribute.kind === 'value' || attribute.kind === 'spread') {
+        values.push(attribute.value);
+      } else if (attribute.kind === 'computed') {
+        values.push(attribute.name);
+        if (attribute.value !== true) {
+          values.push(attribute.value);
+        }
+      }
+    }
     this.code(
       `${this.wait}$$b.component(${node.name}, ${props}, ${this.ctxArgument}, ${owner}${link})`,
+      this.settledMemos(values, scope),
     );
   }
 
@@ -2334,7 +2354,14 @@ export class Emitter {
         index = `${this.expression(branches[at]!.condition)} ? ${at} : ${index}`;
       }
       const names = `[${[...bodies, ...(other ? [other] : [])].join(', ')}]`;
-      this.code(`$$b.nodes($$b.branchNodes(${marks}, ${index}, ${names}))`);
+      const conditions: Expression[] = [];
+      for (const branch of branches) {
+        conditions.push(branch.condition);
+      }
+      this.code(
+        `$$b.nodes($$b.branchNodes(${marks}, ${index}, ${names}))`,
+        this.settledMemos(conditions, scope),
+      );
       return true;
     }
     if (block.kind === 'for' || block.kind === 'repeat') {
@@ -2347,7 +2374,10 @@ export class Emitter {
         block.kind === 'for'
           ? `$$b.toList(${this.expression(block.list)})`
           : `Array.from({ length: ${this.expression(block.count)} }, (_, index) => index)`;
-      this.code(`$$b.nodes($$b.listNodes(${marks}, ${items}, ${body}, ${other ?? 'undefined'}))`);
+      this.code(
+        `$$b.nodes($$b.listNodes(${marks}, ${items}, ${body}, ${other ?? 'undefined'}))`,
+        this.settledMemos([block.kind === 'for' ? block.list : block.count], scope),
+      );
       return true;
     }
     return false;

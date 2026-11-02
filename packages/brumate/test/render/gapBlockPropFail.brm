@@ -1,0 +1,20 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+  import { gapUserFail } from './gapData.ts';
+  import GapBlockCard from './GapBlockCard.brm';
+
+  const { open = false } = $props();
+  let show = $signal(open);
+</script>
+
+#try {
+  <button class="show" onClick=(() => (show = true))>Show</button>
+  #if (show) {
+    <script>
+      const user = $memo(gapUserFail());
+    </script>
+    <GapBlockCard {user} />
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}
