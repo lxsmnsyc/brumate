@@ -28,6 +28,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: release-0.4.4
+    kind: hard
+    why: the 0.4.4 hotfix reaches next through its sync before the promotion
   - on: render-bundles-default
     kind: hard
     why: a server that renders on its own must not ship a page with no code (#425 regression)
