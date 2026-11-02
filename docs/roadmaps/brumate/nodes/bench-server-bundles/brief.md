@@ -1,7 +1,7 @@
 ---
 id: bench-server-bundles
 title: "The benchmark servers pass the bundles that render() now needs"
-status: todo
+status: active
 priority: must
 type: fix
 outline: false
