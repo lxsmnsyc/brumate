@@ -1,7 +1,7 @@
 ---
 id: wait-later-memo-update
 title: "A write during an await does not update a later awaited memo before its slot holds a value"
-status: active
+status: done
 priority: must
 type: fix
 story: browser-async
@@ -16,7 +16,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 120000
 owns: []
 shared:
   - packages/brumate/src/codegen/markup.ts
