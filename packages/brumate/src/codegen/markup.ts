@@ -73,6 +73,9 @@ export interface Settled {
 
 export type Part = { static: string } | { code: string; settled?: Settled };
 
+/** Expressions whose value is never a promise, as the memo of a list or a function. */
+const NEVER_PROMISE = new Set(['ArrayExpression', 'ArrowFunctionExpression', 'FunctionExpression']);
+
 /** The static or value attribute named `style`. */
 function findStyleAttribute(attributes: Attribute[]): Attribute | undefined {
   for (const attribute of attributes) {
@@ -533,6 +536,8 @@ export class Emitter {
    */
   private settledMemos(expression: Expression, scope: Scope): Settled | undefined {
     const site = this.options.mode === 'client' ? this.sitesByNode.get(expression.ast) : undefined;
+    // A site that reads a live memo is live too, as the graph spreads liveness to its readers, so
+    // the memos below never change.
     if (!site || this.liveSites.has(site)) {
       return undefined;
     }
@@ -543,6 +548,8 @@ export class Emitter {
         (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
         !reference.inFunction &&
         !(declaration.site && isPrimitive(declaration.site.node)) &&
+        // An array or a function is never a promise.
+        !NEVER_PROMISE.has(declaration.site?.node.type ?? '') &&
         !names.includes(declaration.name)
       ) {
         names.push(declaration.name);

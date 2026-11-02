@@ -662,23 +662,20 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
   // The calls that fill the nested blocks, after the slots of the body are set, which the
   // renders of the blocks read.
   const fills: string[] = [];
-  // The writes that read memos which never change, by the scope that reports their rejection.
-  // They wait for the memos to settle.
-  const settled = new Map<string, { names: string[]; writes: string[] }>();
+  // The writes that read memos which never change, by the scope that reports their rejection
+  // and the memos they read. They wait for those memos to settle, so one that loads longer
+  // holds back only the writes that read it.
+  const settled = new Map<string, { scope: string; names: string[]; writes: string[] }>();
   function addLine(line: string, memos: Settled | undefined): void {
     if (!memos) {
       lines.push(`${indent}${line}`);
       return;
     }
-    let group = settled.get(memos.scope);
+    const key = `${memos.scope} ${memos.names.join(' ')}`;
+    let group = settled.get(key);
     if (!group) {
-      group = { names: [], writes: [] };
-      settled.set(memos.scope, group);
-    }
-    for (const name of memos.names) {
-      if (!group.names.includes(name)) {
-        group.names.push(name);
-      }
+      group = { scope: memos.scope, names: memos.names, writes: [] };
+      settled.set(key, group);
     }
     group.writes.push(line);
   }
@@ -752,10 +749,10 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
     }
   }
   // The values of the memos shadow the memos, so the writes read the values.
-  for (const [scope, group] of settled) {
+  for (const group of settled.values()) {
     const names = group.names.join(', ');
     lines.push(
-      `${indent}$$b.fillSettled(${scope}, [${names}], (${names}) => { ${group.writes.join(' ')} });`,
+      `${indent}$$b.fillSettled(${group.scope}, [${names}], (${names}) => { ${group.writes.join(' ')} });`,
     );
   }
   if (missing) {

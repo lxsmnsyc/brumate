@@ -450,8 +450,11 @@ export function setOn(element: Element, on: string[], own: string): void {
   }
 }
 
-/** The rejections that `fillSettled` reported, as the renders of two blocks can read one memo. */
-const reportedRejections = new WeakSet<object>();
+/**
+ * The scope that `fillSettled` reported each rejection to, as two renders or two writes in one
+ * scope can read the same memo.
+ */
+const reportedRejections = new WeakMap<object, Scope>();
 
 /**
  * Writes cloned markup that reads memos which never change, once the ones that are promises
@@ -480,11 +483,15 @@ export function fillSettled(
       }
     },
     (error: unknown) => {
+      // A closed block shows nothing, so its error has no `#catch` to show.
+      if (scopes.get(at.id) !== at) {
+        return;
+      }
       if (typeof error === 'object' && error !== null) {
-        if (reportedRejections.has(error)) {
+        if (reportedRejections.get(error) === at) {
           return;
         }
-        reportedRejections.add(error);
+        reportedRejections.set(error, at);
       }
       fail(at, error);
     },

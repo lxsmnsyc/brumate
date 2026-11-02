@@ -7548,6 +7548,12 @@ describe('an async memo whose input never changes, in a browser render', () => {
     expect(errors).not.toHaveBeenCalled();
   });
 
+  it('fills a memo that settles while another memo of the scope still loads', async () => {
+    await showMemo('gapMarkupTwo');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+    expect(text('.never')).toBe('');
+  });
+
   it('fills its text between other text', async () => {
     await showMemo('gapMarkupText');
     await waitFor(() => expect(text('.value')).toBe('Value: gap ok.'));

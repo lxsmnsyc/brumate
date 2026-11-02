@@ -7,3 +7,6 @@ export function gapNow(): Promise<string> {
 export function gapFail(): Promise<string> {
   return new Promise((_done, reject) => setTimeout(() => reject(new Error('gap failed')), 10));
 }
+export function gapNever(): Promise<string> {
+  return new Promise(() => {});
+}
