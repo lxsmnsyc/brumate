@@ -1,7 +1,7 @@
 ---
 id: bundle-urls-from-server
 title: The server sends the bundle URLs of a page, and the client entry drops its bundle tables
-status: active
+status: done
 priority: must
 type: refactor
 outline: false
