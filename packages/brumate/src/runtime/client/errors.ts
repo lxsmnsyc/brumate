@@ -77,6 +77,23 @@ export function replaceTry(key: string): void {
   template?.remove();
 }
 
+/**
+ * The scope that each rejection was reported to, as an unread memo and the waits of a render in
+ * one scope can hold the same promise.
+ */
+const reported = new WeakMap<object, Scope | undefined>();
+
+/** `fail`, once per error and scope. */
+export function reportOnce(scope: Scope | undefined, error: unknown): void {
+  if (typeof error === 'object' && error !== null) {
+    if (reported.has(error) && reported.get(error) === scope) {
+      return;
+    }
+    reported.set(error, scope);
+  }
+  fail(scope, error);
+}
+
 /** Reports the error of a `#loading` body that failed on the server, with no `#try` around it. */
 export function failBoundary(error: unknown): void {
   options.onError?.(error, {});

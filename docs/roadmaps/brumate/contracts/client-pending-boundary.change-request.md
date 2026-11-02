@@ -39,6 +39,8 @@ return $$b.wait($$s2, [(loadUser(1))], 0, ($$v) => {
 - The range of a wait of a `#for` row in its own script or markup is `<!--i<id>-->` and `<!--/i-->`, when the row is not inside an earlier range of its own. The scope has `i` (`setItem` runs before the wait), so the list finds the row while it waits and after.
 - The rest runs inside `updating`, as an update does, so a render function inside it reads a memo of an outer scope that still loads as a promise, not as an error.
 
+- `holdRow` (browser-root-boundary) names its range after the `i` range that starts the row's output when no held scope has the list as parent: a row that waits in its own script is out of `rendered` until its rest runs.
+
 ## Not added
 
 - `waitAll`. The loads of a run start before the first `await`, so the nested `wait` calls overlap the same way. One helper less in the bundle of a page that waits.

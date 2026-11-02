@@ -4,12 +4,12 @@
 
 import { MemoError } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
-import { HAS_LOADING } from '../features.ts';
-import { clear, rendered } from './blocks.ts';
+import { HAS_LOADING, HAS_ROOT_WAIT } from '../features.ts';
+import { clear, rangeEnd, rendered } from './blocks.ts';
 import { setSlots } from './components.ts';
-import { fail } from './errors.ts';
+import { fail, reportOnce } from './errors.ts';
 import { insertHTML, markCloned, parseHTML, refresh } from './insert.ts';
-import { afterInsert, destroy, resolveScope } from './scopes.ts';
+import { afterInsert, destroy, removeBlock, resolveScope } from './scopes.ts';
 import { loadingValues, renderedLoads, scopes, updating, waiters } from './state.ts';
 import type { Scope } from './state.ts';
 import { isThenable, noop, pending, writes } from './updates.ts';
@@ -160,12 +160,6 @@ export function fault(own: Boundary | undefined, error: unknown): void {
   }
 }
 
-/**
- * The scope that `fillSettled` and `countLoads` reported each rejection to, as two renders or two
- * writes in one scope can read the same memo.
- */
-const reportedRejections = new WeakMap<object, Scope>();
-
 /** Ends a wait for a value that rejected: `fail`, once per error and scope, then `fault`. */
 function failOnce(scope: Scope, own: Boundary | undefined, error: unknown): void {
   // A closed block shows nothing, so its error has no `#catch` to show.
@@ -173,15 +167,9 @@ function failOnce(scope: Scope, own: Boundary | undefined, error: unknown): void
     leave(own);
     return;
   }
-  const object = typeof error === 'object' && error !== null;
   try {
-    if (!object || reportedRejections.get(error) !== scope) {
-      if (object) {
-        reportedRejections.set(error, scope);
-      }
-      // `onError` of the page can throw.
-      fail(scope, error);
-    }
+    // `onError` of the page can throw.
+    reportOnce(scope, error);
   } finally {
     fault(own, error);
   }
@@ -388,6 +376,161 @@ export function after(loads: unknown[], load: (...values: any[]) => unknown): un
 }
 
 /**
+ * Gives back the work of a held body for its insert, and returns true. A body that went stale,
+ * whose block left the page or whose scopes went, drops its scopes instead.
+ */
+function take(own: Boundary, at: Node, stale?: boolean): boolean {
+  let gone = stale || !at.isConnected;
+  for (const scope of own.w?.[0] ?? []) {
+    gone ||= scopes.get(scope.id) !== scope;
+  }
+  if (gone) {
+    own.done = undefined;
+    for (const scope of own.w?.[0] ?? []) {
+      destroy(scope);
+    }
+    own.w = undefined;
+    return false;
+  }
+  give(own);
+  // The body can hold HTML that the insert reads, as a clone that a render made.
+  markCloned();
+  return true;
+}
+
+/**
+ * The new body that a block holds: the key that the block renders it for, its boundary, and
+ * true once the block went back to what it shows.
+ */
+type Held = [key: unknown, own: Boundary, stale?: boolean];
+
+/** The held body of each block, by the start comment of the block. */
+const holds = new WeakMap<Node, Held>();
+
+/** Drops the body that the block at `at` holds, if any. */
+function drop(at: Node): void {
+  const held = holds.get(at);
+  if (held) {
+    holds.delete(at);
+    take(held[1], at, true);
+  }
+}
+
+/**
+ * The root boundary. The server holds the page outside every `#loading` until its waits end,
+ * so a block there keeps what it shows until the waits of its new body end. `render` renders
+ * the body for `key` in a boundary, and `show` puts it in place of the old one: at once when
+ * nothing waits, otherwise when the waits end. A block that asks again for the key that it
+ * holds keeps waiting, and another key drops the held body.
+ */
+export function hold(at: Node, key: unknown, render: () => Out, show: (out: Out) => void): void {
+  const held = holds.get(at);
+  if (held && Object.is(held[0], key)) {
+    held[2] = false;
+    return;
+  }
+  drop(at);
+  const [out, own] = bound(render);
+  if (!own) {
+    show(out);
+    return;
+  }
+  const entry: Held = [key, own];
+  holds.set(at, entry);
+  own.done = () => {
+    holds.delete(at);
+    if (take(own, at, entry[2])) {
+      show(out);
+    }
+  };
+}
+
+/**
+ * Renders a new body of a block in the root boundary, and puts it in place of the old body when
+ * its waits end. The new body renders before the old one goes, so the script of a new body runs
+ * before the cleanups of the old one, and its effects after them.
+ */
+export function swap(
+  scope: Scope,
+  kinds: number[],
+  start: Comment,
+  key: unknown,
+  render: () => Out,
+  mark?: () => void,
+): void {
+  // The scopes that the render of the new body adds. Those of the old body, also the ones that
+  // it adds during the hold, go when the new body shows. Both have the same kinds.
+  const made: Scope[] = [];
+  function renderNew(): Out {
+    const old = new Set(scope.children);
+    const out = render();
+    for (const child of scope.children ?? []) {
+      if (!old.has(child)) {
+        made.push(child);
+      }
+    }
+    return out;
+  }
+  hold(start, key, renderNew, (out) => {
+    for (const child of Array.from(scope.children ?? [])) {
+      if (kinds.includes(child.k) && !made.includes(child)) {
+        destroy(child);
+      }
+    }
+    const end = rangeEnd(start);
+    removeBlock(scope, [], start, end);
+    mark?.();
+    insertHTML(end, out);
+  });
+}
+
+/**
+ * The block at `at` went back to what it shows. Its held body goes when it settles, unless the
+ * block asks for it again before, which then does not render and load it again.
+ */
+export function release(at: Node): void {
+  const held = holds.get(at);
+  if (held) {
+    held[2] = true;
+  }
+}
+
+/**
+ * A new row of a list outside every `#loading`, which shows when its waits end. A row that waits
+ * leaves an empty item marker in its place, so the next update of the list finds it and does
+ * not render it again.
+ */
+export function holdRow(list: Scope, render: () => Out): Out {
+  const [out, own] = bound(render);
+  if (!own) {
+    return out;
+  }
+  let row: Scope | undefined;
+  for (const scope of own.w![0]) {
+    if (scope.p === list) {
+      row ??= scope;
+    }
+  }
+  // A row that waits in its own script is out of `rendered` until its rest runs, and the range of
+  // its wait, which `out` starts with, names it.
+  const first = typeof out === 'string' ? undefined : out.firstChild;
+  let mark = `i${(row ?? own.w![0][0])?.id}`;
+  if (!row && first?.nodeType === 8 && (first as Comment).data[0] === 'i') {
+    mark = (first as Comment).data;
+  }
+  const start = document.createComment(mark);
+  const end = document.createComment('/i');
+  const range = document.createDocumentFragment();
+  range.append(start, end);
+  own.done = () => {
+    if (take(own, end)) {
+      insertHTML(end, out);
+    }
+  };
+  return range;
+}
+
+/**
  * Counts the memos that markup of a browser render reads and that still load, in the boundary of
  * the render, as the server waits for them. The compiler passes the memos of a scope that markup
  * outside every `#loading` body reads, and the memos that a `#loading` body reads from outside.
@@ -395,7 +538,7 @@ export function after(loads: unknown[], load: (...values: any[]) => unknown): un
  * `fillSettled`. Outside a boundary, the markup fills in when the values arrive.
  */
 export function countLoads(id: ScopeId | Scope, values: unknown[]): void {
-  if (!HAS_LOADING || !boundary) {
+  if (!(HAS_LOADING || HAS_ROOT_WAIT) || !boundary) {
     return;
   }
   for (const value of values) {

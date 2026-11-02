@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import HoldPart from './HoldPart.brm';
+  import WaitUser from './WaitUser.brm';
+
+  let open = $signal(false);
+  let inner = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<button class="inner" onClick=(() => (inner = !inner))>Inner</button>
+#if (open) {
+  <WaitUser id=(1) />
+} #else {
+  #if (inner) {
+    <HoldPart name="n" />
+  }
+}
