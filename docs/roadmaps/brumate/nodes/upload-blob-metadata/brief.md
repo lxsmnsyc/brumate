@@ -1,7 +1,7 @@
 ---
 id: upload-blob-metadata
 title: "Server function uploads keep the metadata of files and blobs"
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 70000
 owns: []
 shared:
   - .changeset/*.md
