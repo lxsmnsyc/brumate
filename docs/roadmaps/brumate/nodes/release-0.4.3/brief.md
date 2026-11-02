@@ -27,6 +27,9 @@ depends_on:
   - on: primitive-await-memo
     kind: hard
     why: an async memo with await in a template literal stays empty in a browser render
+  - on: upload-blob-metadata
+    kind: hard
+    why: files and blobs sent to server functions lose their type, name and lastModified
 ---
 
 # Release brumate 0.4.3

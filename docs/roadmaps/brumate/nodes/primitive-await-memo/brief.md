@@ -1,7 +1,7 @@
 ---
 id: primitive-await-memo
 title: "An async memo the compiler takes for a primitive, with await inside, fills in a browser render"
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 89000
 owns: []
 shared:
   - .changeset/*.md

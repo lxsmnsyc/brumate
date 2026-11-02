@@ -1,0 +1,10 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { gapUser } from './gapData.ts';
+
+  const greeting = $memo(`Hi ${(await gapUser()).name}`);
+  const names = $memo([(await gapUser()).name]);
+</script>
+
+<p class="value" title=greeting>{greeting}</p>
+<p class="names">{names.join(', ')}</p>
