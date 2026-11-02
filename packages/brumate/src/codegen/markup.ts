@@ -62,7 +62,19 @@ export const TYPE_DECLARATIONS: Set<string> = new Set([
   'TSModuleDeclaration',
 ]);
 
-export type Part = { static: string } | { code: string };
+/**
+ * A memo that a value in the browser render reads, which never changes and can be a promise, and
+ * the scope that reports its rejection.
+ */
+export interface Settled {
+  names: string[];
+  scope: string;
+}
+
+export type Part = { static: string } | { code: string; settled?: Settled };
+
+/** Expressions whose value is never a promise, as the memo of a list or a function. */
+const NEVER_PROMISE = new Set(['ArrayExpression', 'ArrowFunctionExpression', 'FunctionExpression']);
 
 /** The static or value attribute named `style`. */
 function findStyleAttribute(attributes: Attribute[]): Attribute | undefined {
@@ -297,6 +309,8 @@ export class Emitter {
   private readonly blocking: Set<Declaration>;
   /** Memos and signals that hold a primitive on the server, so it awaits none of them. */
   private readonly inline: Set<Declaration>;
+  /** The sites of the markup that update in the browser. */
+  private readonly liveSites = new Set<Site>();
   private parts: Part[] = [];
   private depth = 0;
   /** How many of this component's elements contain the current node. */
@@ -322,6 +336,11 @@ export class Emitter {
     this.inline = options.mode === 'server' ? plainValues(plan, this.blocking) : new Set();
     for (const site of plan.graph.model.sites) {
       this.sitesByNode.set(site.node, site);
+    }
+    for (const node of plan.graph.nodes) {
+      if (node.kind !== 'source' && plan.graph.live.has(node)) {
+        this.liveSites.add(node.site);
+      }
     }
     this.addHandlerEdits();
     this.addBindEdits();
@@ -507,8 +526,38 @@ export class Emitter {
     }
   }
 
-  private code(code: string): void {
-    this.parts.push({ code });
+  private code(code: string, settled?: Settled): void {
+    this.parts.push(settled ? { code, settled } : { code });
+  }
+
+  /**
+   * In the browser, the memos that a value of the markup reads that never change and can be a
+   * promise. No update writes the value when they settle, so the clone writes it again.
+   */
+  private settledMemos(expression: Expression, scope: Scope): Settled | undefined {
+    const site = this.options.mode === 'client' ? this.sitesByNode.get(expression.ast) : undefined;
+    // A site that reads a live memo is live too, as the graph spreads liveness to its readers, so
+    // the memos below never change.
+    if (!site || this.liveSites.has(site)) {
+      return undefined;
+    }
+    const names: string[] = [];
+    for (const reference of site.reads) {
+      const declaration = reference.declaration;
+      if (
+        (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
+        !reference.inFunction &&
+        !(declaration.site && isPrimitive(declaration.site.node)) &&
+        // An array or a function is never a promise.
+        !NEVER_PROMISE.has(declaration.site?.node.type ?? '') &&
+        !names.includes(declaration.name)
+      ) {
+        names.push(declaration.name);
+      }
+    }
+    return names.length > 0
+      ? { names, scope: this.scopeVar(instanceScope(this.plan, scope)) }
+      : undefined;
   }
 
   flush(): void {
@@ -1171,7 +1220,9 @@ export class Emitter {
           : this.ready(`$$b.insert(${this.expression(node.expression)}${at})`);
         // A literal renders when the component compiles.
         const text = literalText(node.expression.ast);
-        const emitValue = (): void => (text === undefined ? this.code(value) : this.html(text));
+        const settled = this.settledMemos(node.expression, scope);
+        const emitValue = (): void =>
+          text === undefined ? this.code(value, settled) : this.html(text);
         // An insert that is the whole content of its element updates through the element's anchor.
         if (anchor && !this.plan.contents.has(node)) {
           this.html('<!--t');
@@ -1516,6 +1567,7 @@ export class Emitter {
           }
           this.code(
             `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`,
+            this.settledMemos(attribute.value, scope),
           );
           // `value=$bind(name)` writes the name back as the element changes, before the element's
           // own handlers run.

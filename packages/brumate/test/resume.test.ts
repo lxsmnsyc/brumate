@@ -7511,3 +7511,107 @@ describe('an async memo that a browser render reads only with await', () => {
     expect(unhandled.map(String)).toEqual([]);
   });
 });
+
+describe('an async memo whose input never changes, in a browser render', () => {
+  /** Shows the page, then renders the part with the memo in the browser. */
+  async function showMemo(page: string): Promise<void> {
+    await resume(page, {});
+    click(document.querySelector('.show')!);
+  }
+
+  it('fills its text in a child component', async () => {
+    await showMemo('gapMarkupHost');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+  });
+
+  it('fills its text in a child component whose handler reads it', async () => {
+    await showMemo('gapMarkupReadHost');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+  });
+
+  it('fills its text when its input is a signal that nothing writes', async () => {
+    await showMemo('gapMarkupSignalHost');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+  });
+
+  it('fills its text in a block script', async () => {
+    await showMemo('gapMarkupInline');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+  });
+
+  it('fills its text in a block script when the promise settles in a microtask', async () => {
+    await showMemo('gapMarkupNow');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+  });
+
+  it('fills its text in a block inside the block script, and next to it', async () => {
+    await showMemo('gapMarkupNested');
+    await waitFor(() =>
+      expect([...document.querySelectorAll('.value')].map((p) => p.textContent)).toEqual([
+        'gap ok',
+        'gap ok',
+      ]),
+    );
+  });
+
+  it('reports a rejection that two renders read once', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await showMemo('gapMarkupNestedFail');
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: gap failed');
+  });
+
+  it('reports the rejection of a memo that the markup awaits once', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    const fails = vi.fn<() => void>();
+    await showMemo('gapMarkupAwaitFail');
+    await waitFor(() => expect(text('.caught')).toBe('Error: gap failed'));
+    window.addEventListener('brumate:error', fails);
+    onTestFinished(() => window.removeEventListener('brumate:error', fails));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(fails).not.toHaveBeenCalled();
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('fills a memo that settles while another memo of the scope still loads', async () => {
+    await showMemo('gapMarkupTwo');
+    await waitFor(() => expect(text('.value')).toBe('gap ok'));
+    expect(text('.never')).toBe('');
+  });
+
+  it('fills its text between other text', async () => {
+    await showMemo('gapMarkupText');
+    await waitFor(() => expect(text('.value')).toBe('Value: gap ok.'));
+  });
+
+  it('fills an attribute and an expression that read it', async () => {
+    await showMemo('gapMarkupAttribute');
+    await waitFor(() => expect(text('.value')).toBe('GAP OK'));
+    expect(document.querySelector('.value')!.getAttribute('title')).toBe('gap ok');
+  });
+
+  for (const [where, page] of [
+    ['a child component', 'gapMarkupFailHost'],
+    ['a block script', 'gapMarkupFailInline'],
+  ]) {
+    it(`sends its rejection in ${where} to the nearest #catch`, async () => {
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown): void => {
+        unhandled.push(reason);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      await showMemo(page!);
+      await waitFor(() => expect(text('.caught')).toBe('Error: gap failed'));
+      expect(document.querySelector('.value')).toBeNull();
+      await new Promise((done) => setTimeout(done, 30));
+      expect(unhandled.map(String)).toEqual([]);
+    });
+  }
+});

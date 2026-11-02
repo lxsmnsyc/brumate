@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import GapMarkupFailKid from './GapMarkupFailKid.brm';
+
+  let show = $signal(false);
+</script>
+
+#try {
+  <button class="show" onClick=(() => (show = true))>Show</button>
+  #if (show) {
+    <GapMarkupFailKid />
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

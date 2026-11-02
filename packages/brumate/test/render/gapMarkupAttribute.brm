@@ -1,0 +1,14 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { gapLoad } from './gapData.ts';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <script>
+    const value = $memo(gapLoad());
+  </script>
+  <p class="value" title=value>{value.toUpperCase()}</p>
+}

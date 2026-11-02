@@ -1,14 +1,14 @@
 // Cloned templates of the markup that the browser renders. A render whose markup is one string
 // of static HTML, attributes, the content of elements, and anchors compiles to a `<template>`
 // that it clones, and writes the elements that it marks. The rest renders HTML.
-import type { Emitter, Level, Part } from './markup.ts';
+import type { Emitter, Level, Part, Settled } from './markup.ts';
 
 /** What a render writes on an element of its clone. */
 export type Write =
   /** `named`: an element inside it has handlers and no anchor, and finds the scope from it. */
   | { kind: 'anchor'; scope: string; anchor: number; named?: boolean }
-  | { kind: 'attribute'; name: string; value: string }
-  | { kind: 'content'; value: string; at?: string }
+  | { kind: 'attribute'; name: string; value: string; settled?: Settled }
+  | { kind: 'content'; value: string; at?: string; settled?: Settled }
   /** A text insert, whose place in the clone a marked comment holds. */
   | { kind: 'text'; scope: string; anchor: number; value: string; at?: string }
   /** A text insert at the end of the marked element, which needs no comment. */
@@ -22,7 +22,7 @@ export type Write =
   /** A comment whose data names a scope, such as the start of an item, `i` and the scope. */
   | { kind: 'comment'; data: string }
   /** A value with no markers around it, which renders in the place of a marked comment. */
-  | { kind: 'put'; value: string; at?: string }
+  | { kind: 'put'; value: string; at?: string; settled?: Settled }
   /** The start comment of a block whose markup is in the template, which the scope keeps. */
   | { kind: 'marker'; scope: string; anchor: number; suffix: string };
 
@@ -321,7 +321,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     const nextStatic = next && 'static' in next ? next.static : undefined;
     const attribute = ATTRIBUTE.exec(code);
     if (attribute && reader.inTag) {
-      add({ kind: 'attribute', name: attribute[1]!, value: attribute[2]! });
+      add({ kind: 'attribute', name: attribute[1]!, value: attribute[2]!, settled: part.settled });
       continue;
     }
     const spread = SPREAD.exec(code);
@@ -336,7 +336,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     // A void element, such as an `<input>`, ends with its start tag, so the insert is after it.
     const holder = reader.open.at(-1);
     if (insert && reader.justOpened && holder === reader.element && nextStatic?.startsWith('</')) {
-      add({ kind: 'content', value: insert[1]!, at: insert[2] });
+      add({ kind: 'content', value: insert[1]!, at: insert[2], settled: part.settled });
       continue;
     }
     // A text insert: `<!--t`, the scope, `:anchor-->`, the value, then `<!--/t-->`.
@@ -524,7 +524,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     // An insert with no markers, whose value renders once where it is.
     if (insert && !reader.inTag && !reader.raw) {
       const mark = writes.length;
-      writes.push([{ kind: 'put', value: insert[1]!, at: insert[2] }]);
+      writes.push([{ kind: 'put', value: insert[1]!, at: insert[2], settled: part.settled }]);
       reader.append(`<!--x${mark}-->`);
       continue;
     }
@@ -662,6 +662,23 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
   // The calls that fill the nested blocks, after the slots of the body are set, which the
   // renders of the blocks read.
   const fills: string[] = [];
+  // The writes that read memos which never change, by the scope that reports their rejection
+  // and the memos they read. They wait for those memos to settle, so one that loads longer
+  // holds back only the writes that read it.
+  const settled = new Map<string, { scope: string; names: string[]; writes: string[] }>();
+  function addLine(line: string, memos: Settled | undefined): void {
+    if (!memos) {
+      lines.push(`${indent}${line}`);
+      return;
+    }
+    const key = `${memos.scope} ${memos.names.join(' ')}`;
+    let group = settled.get(key);
+    if (!group) {
+      group = { scope: memos.scope, names: memos.names, writes: [] };
+      settled.set(key, group);
+    }
+    group.writes.push(line);
+  }
   let missing = false;
   for (const [index, writes] of found.writes.entries()) {
     // The scope of the anchor of the element, where its content finds its contexts.
@@ -700,14 +717,15 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
           `${indent}$$b.keepText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
         );
       } else if (write.kind === 'attribute') {
-        lines.push(`${indent}$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`);
+        addLine(`$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`, write.settled);
       } else if (write.kind === 'component') {
         lines.push(`${indent}$$b.place($$e[${index}], ${write.call});`);
       } else if (write.kind === 'comment') {
         lines.push(`${indent}$$b.nameComment($$e[${index}], ${write.data});`);
       } else if (write.kind === 'put') {
-        lines.push(
-          `${indent}$$b.putText($$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
+        addLine(
+          `$$b.putText($$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
+          write.settled,
         );
       } else if (write.kind === 'call') {
         lines.push(`${indent}${write.call.replace('$$m', () => `$$e[${index}]`)};`);
@@ -723,11 +741,19 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
           fills.push(`${indent}${call.replace('$$m', () => `$$e[${index}]`)};`);
         }
       } else {
-        lines.push(
-          `${indent}$$b.setContent($$e[${index}], ${write.value}${write.at ? `, ${write.at}` : at});`,
+        addLine(
+          `$$b.setContent($$e[${index}], ${write.value}${write.at ? `, ${write.at}` : at});`,
+          write.settled,
         );
       }
     }
+  }
+  // The values of the memos shadow the memos, so the writes read the values.
+  for (const group of settled.values()) {
+    const names = group.names.join(', ');
+    lines.push(
+      `${indent}$$b.fillSettled(${group.scope}, [${names}], (${names}) => { ${group.writes.join(' ')} });`,
+    );
   }
   if (missing) {
     return false;

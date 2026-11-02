@@ -87,6 +87,7 @@ export {
   clone,
   fillBranch,
   fillList,
+  fillSettled,
   keep,
   keepText,
   listNodes,

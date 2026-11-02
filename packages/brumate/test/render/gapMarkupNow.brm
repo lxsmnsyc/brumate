@@ -1,0 +1,14 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { gapNow } from './gapData.ts';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <script>
+    const value = $memo(gapNow());
+  </script>
+  <p class="value">{value}</p>
+}
