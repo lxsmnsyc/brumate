@@ -1,7 +1,7 @@
 ---
 id: render-bundles-default
 title: "A server that renders on its own gets the client bundles, or a clear error"
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 107000
 owns: []
 shared:
   - .changeset/*.md

@@ -1,7 +1,7 @@
 ---
 id: loading-on
 title: "`#loading (memo)` shows its fallback again while a named memo loads"
-status: todo
+status: active
 priority: must
 type: feature
 story: browser-async

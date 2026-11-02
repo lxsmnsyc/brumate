@@ -1,7 +1,7 @@
 ---
 id: browser-root-boundary
 title: "A block outside every #loading holds until its waits settle"
-status: todo
+status: active
 priority: must
 type: feature
 story: browser-async

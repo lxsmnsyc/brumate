@@ -1,7 +1,7 @@
 ---
 id: browser-await-blocks
 title: "await in block scripts, #for rows and markup, with topological starts"
-status: todo
+status: active
 priority: must
 type: feature
 story: browser-async
