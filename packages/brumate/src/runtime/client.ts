@@ -55,7 +55,16 @@ export {
   updateRoute,
 } from './client/context.ts';
 export { fail } from './client/errors.ts';
-export { after, countLoads, fillSettled, loading, reveal, started, wait } from './client/waits.ts';
+export {
+  after,
+  attempt,
+  countLoads,
+  fillSettled,
+  loading,
+  reveal,
+  started,
+  wait,
+} from './client/waits.ts';
 export { guess, track } from './client/guesses.ts';
 export { action, handle, handlerProp, rpc, spread, submitAction } from './client/handlers.ts';
 export { attr, attrs, content, portalTo, restRef, text, writeText } from './client/inserts.ts';

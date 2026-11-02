@@ -38,12 +38,20 @@ export function fail(scope: Scope | undefined, error: unknown): void {
       if (!entry) {
         continue;
       }
-      // The scope that holds the block, which the anchor of the block counts from.
+      // The scope that holds the block, which the anchor of the block counts from, and the
+      // scope of the body below it.
       let owner = current.p;
+      let body = current;
       while (owner && owner.k !== entry[0]) {
+        body = owner;
         owner = owner.p;
       }
       if (owner) {
+        // The `#catch` body or a `reset` replaced the body that failed, as for a second wait of
+        // the body that failed at the same time. Its error is not shown again.
+        if (scopes.get(body.id) !== body) {
+          return;
+        }
         // oxlint-disable-next-line no-await-in-loop -- The first `#try` found catches the error.
         await catchInto(owner, module!, entry, error);
         return;

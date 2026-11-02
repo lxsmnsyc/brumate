@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TryWaitSelf from './TryWaitSelf.brm';
+
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  <TryWaitSelf id=(1) />
+}

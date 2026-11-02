@@ -1,0 +1,27 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  #try {
+    <script>
+      const outer = await $memo(loadUser(1));
+    </script>
+    <p class="user">{outer.name}</p>
+    #try {
+      <script>
+        const inner = await $memo(loadUser(2));
+      </script>
+      <p class="user">{inner.name}</p>
+    } #catch (error, reset) {
+      <p class="inner">{String(error)}</p>
+      <button class="reset" onClick=reset>Reset</button>
+    }
+  } #catch (error) {
+    <p class="outer">{String(error)}</p>
+  }
+}
