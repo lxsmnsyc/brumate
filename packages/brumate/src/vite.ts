@@ -2058,7 +2058,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         for (const name of hints) {
           all.push(`${base}${name}`);
         }
-        const written: ClientHints = {
+        const clientOutput: ClientHints = {
           all,
           bundles: bundleHints,
           chunks: chunkUrls,
@@ -2068,9 +2068,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         // A build of several environments in one process, such as with Nitro, builds the
         // server after the client, with the hints of that client.
         if (hasManifest) {
-          builtHints = written;
+          builtHints = clientOutput;
         }
-        await writeFile(path.join(outDir, HINTS_FILE), JSON.stringify(written));
+        await writeFile(path.join(outDir, HINTS_FILE), JSON.stringify(clientOutput));
         if (buildId !== undefined) {
           const written: string[] = [];
           for (const item of Object.values(bundle)) {
