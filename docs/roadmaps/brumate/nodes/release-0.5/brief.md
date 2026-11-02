@@ -28,6 +28,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: render-bundles-default
+    kind: hard
+    why: a server that renders on its own must not ship a page with no code (#425 regression)
   - on: bench-server-bundles
     kind: hard
     why: the release's size target is read from pnpm bench, which must render working pages
