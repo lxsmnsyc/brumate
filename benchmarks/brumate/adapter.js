@@ -12,34 +12,38 @@ async function entry(root) {
   const hints = JSON.parse(await readFile(`${root}/dist/client/.brumate/hints.json`, 'utf8'));
   const urls = [...new Set([...hints.all, ...Object.values(hints.bundles).flat()])];
   const links = urls.map((url) => `<link rel="modulepreload" href="${url}">`).join('');
-  return `${links}<script type="module" async src="/${manifest['src/client.ts'].file}"></script>`;
+  const scripts = `${links}<script type="module" async src="/${manifest['src/client.ts'].file}"></script>`;
+  // The bundles that `render()` needs, as `handleRoute` gets them. The state records name them in
+  // `b-load`, which is how the browser loads the code of the page.
+  const { chunks, styles, members } = hints;
+  return { scripts, bundles: { chunks, styles, members } };
 }
 
 export async function load() {
   const server = await import(`${dir}dist/server/server.js`);
-  const scripts = await entry(dir);
+  const { scripts, bundles } = await entry(dir);
   return {
     staticDir: `${dir}dist/client`,
-    render: (n) => server.page(n, scripts),
+    render: (n) => server.page(n, scripts, bundles),
   };
 }
 
 export async function loadDashboard() {
   const server = await import(`${dir}dashboard/dist/server/server.js`);
-  const scripts = await entry(`${dir}dashboard`);
+  const { scripts, bundles } = await entry(`${dir}dashboard`);
   return {
     staticDir: `${dir}dashboard/dist/client`,
     // The code of the page loads when it starts. There is no preload to turn off.
     preloadOption: false,
-    render: () => server.page(scripts),
+    render: () => server.page(scripts, bundles),
   };
 }
 
 export async function loadRows() {
   const server = await import(`${dir}rows/dist/server/server.js`);
-  const scripts = await entry(`${dir}rows`);
+  const { scripts, bundles } = await entry(`${dir}rows`);
   return {
     staticDir: `${dir}rows/dist/client`,
-    render: (n) => server.page(n, scripts),
+    render: (n) => server.page(n, scripts, bundles),
   };
 }
