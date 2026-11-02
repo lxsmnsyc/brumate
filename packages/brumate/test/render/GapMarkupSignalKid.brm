@@ -1,0 +1,9 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { gapLoad } from './gapData.ts';
+
+  let step = $signal(0);
+  const value = $memo(gapLoad(step));
+</script>
+
+<p class="value">{value}</p>

@@ -88,6 +88,7 @@ export {
   clone,
   fillBranch,
   fillList,
+  fillSettled,
   keep,
   keepText,
   listNodes,
@@ -116,6 +117,7 @@ export {
   set,
   timed,
   update,
+  unreadMemo,
   updated,
 } from './client/updates.ts';
 

@@ -27,6 +27,7 @@ function fullRecord(): Required<ScopeState> {
     o: 2,
     t: 3,
     f: 4,
+    l: 13,
     v: { key: new ChildrenReference('Card_x1#n0', 5) },
     x: { key: 0 },
     s: [new SlotReference(6, 1), [new ElementReference('7.0', 1)], Promise.resolve(1)],

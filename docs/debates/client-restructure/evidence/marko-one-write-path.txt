@@ -1,0 +1,75 @@
+marko 6.4.6 dist/debug/dom-o9jQjchF.mjs (installed in repo node_modules)
+setupBranch: a client-rendered branch queues its setup signal on the same render queue updates use:
+function setupBranch(renderer, branch) {
+	if (renderer["setup"]) queueRender(branch, renderer[Setup], -1);
+	return branch;
+}
+await: a resolved promise calls the branch's params signal, the same function an update calls:
+function _await_promise(nodeAccessor, params) {
+	const promiseAccessor = Promise$1 + nodeAccessor;
+	const branchAccessor = BranchScopes$1 + nodeAccessor;
+	const tryAccessor = TryBranch$1 + nodeAccessor;
+	const resolveAwait = (scope, referenceNode, value) => {
+		const awaitBranch = scope[branchAccessor];
+		if (awaitBranch["#DetachedAwait"]) {
+			awaitBranch[PendingScopes] = awaitBranch[PendingScopes]?.forEach(syncGen);
+			setupBranch(awaitBranch[DetachedAwait], awaitBranch);
+			awaitBranch[DetachedAwait] = 0;
+			insertBranchBefore(awaitBranch, scope[nodeAccessor].parentNode, scope[nodeAccessor]);
+			referenceNode.remove();
+		}
+		params?.(awaitBranch, [value]);
+		return awaitBranch;
+	};
+_let / _const / _or (value signals, one per value; same function for first render and update):
+function _let(id, fn) {
+	const valueAccessor = id.slice(0, id.lastIndexOf("/"));
+	id = +id.slice(id.lastIndexOf("/") + 1);
+	return (scope, value) => {
+		if (rendering) {
+			if (scope["#Gen"] === runId) {
+				scope[valueAccessor] = value;
+				fn?.(scope);
+			}
+		} else if ((scope[valueAccessor] !== value || !(valueAccessor in scope)) && (scope[valueAccessor] = value, fn)) {
+			schedule();
+			queueRender(scope, fn, id);
+		}
+		return value;
+	};
+}
+function _let_change(id, fn) {
+	const valueAccessor = id.slice(0, id.lastIndexOf("/"));
+	const valueChangeAccessor = TagVariableChange$1 + valueAccessor;
+	const base = _let(id, fn);
+	return (scope, value, valueChange) => {
+		if (rendering) {
+			if ((scope[valueChangeAccessor] = valueChange) && (scope[valueAccessor] !== value || !(valueAccessor in scope))) {
+				scope[valueAccessor] = value;
+				fn?.(scope);
+			} else base(scope, value);
+		} else if (scope[valueChangeAccessor]) scope[valueChangeAccessor](value);
+		else base(scope, value);
+		return value;
+	};
+}
+function _const(valueAccessor, fn) {
+	return ((scope, value) => {
+		if (scope[valueAccessor] !== value || !(valueAccessor in scope)) {
+			scope[valueAccessor] = value;
+			fn?.(scope);
+		}
+	});
+}
+function _or(id, fn, defaultPending = 1, scopeIdAccessor = "#Id") {
+	return (scope) => {
+		if (scope["#Gen"] === runId) {
+			if (~id in scope) {
+				if (!--scope[~id]) fn(scope);
+			} else scope[~id] = defaultPending;
+		} else queueRender(scope, fn, id, 0, scope[scopeIdAccessor]);
+	};
+}
+function _for_closure(ownerLoopNodeAccessor, fn) {
+	const scopeAccessor = BranchScopes$1 + ownerLoopNodeAccessor;
+	const ownerSignal = (ownerScope) => {

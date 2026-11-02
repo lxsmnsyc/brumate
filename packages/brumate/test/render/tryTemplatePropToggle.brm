@@ -1,0 +1,13 @@
+<script>
+  import TryTemplateToggle from './TryTemplateToggle.brm';
+</script>
+
+#template kid() {
+  <button class="boom" onClick=(() => { throw new Error('kid threw'); })>Boom</button>
+}
+
+#try {
+  <TryTemplateToggle row=kid />
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}
