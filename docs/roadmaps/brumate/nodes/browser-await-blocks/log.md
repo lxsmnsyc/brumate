@@ -12,3 +12,4 @@
 - A nested render function in the rest threw "This value is still loading" for an outer memo: the rest ran outside `updating`. `settle` now runs it inside `updating`.
 - A body with no ID (a constant `#if` in a component) got no split; such a body now creates its scope when it waits.
 - Bench (todos): 13,837 B gzip before, 13,829 B after. Click checks FAIL on the base too (known from topological-awaits-server).
+- Review round 1: `#key` and `#try` bodies render inline, so their scripts did not split (a `#try` body never filled). They now render through a body function with `branchNodes` when they wait. Tests for them and for a row with a sync first await.

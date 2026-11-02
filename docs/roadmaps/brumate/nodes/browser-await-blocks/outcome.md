@@ -7,7 +7,7 @@
 - Topological starts in the browser: each awaited memo's load starts where the server starts it (`findLoadStarts`, `Emitter.earlyLoads`), as `const $$w_x = $$b.started(() => load)`, or `$$b.after([$$w_a], (a) => load)` for a load that reads awaited memos whose `await` comes later. The loads of a run of adjacent awaits start before the first one. A load that reads an awaited memo through a function or another memo starts after that memo's `await`.
 - Compiler (`packages/brumate/src/codegen/markup.ts`, `client.ts`): `Emitter.splitBody` gives the split to one render function (`emitRender`, `bodyFunction`) and closes its rests. `splitsScript`, `markupAwaits`, `awaitMarkup`. `blockingDeclarations` takes `server` so the browser can use the server's rule. A row that waits calls `setItem` before the split and writes its `i` markers in the rest. A body with no ID creates its scope when it waits. `watchUnreadMemos` skips a memo that markup awaits.
 - Runtime (`packages/brumate/src/runtime/client/waits.ts`): `started` and `after`, exported from `brumate/client`. `wait`: a row's own range is `<!--i<id>-->`/`<!--/i-->` so the list keeps finding it; a value that an update wrote into the slot during an earlier wait wins over the started load; the rest runs inside `updating`.
-- Tests: `packages/brumate/test/resume.test.ts`, `describe('await in block scripts, #for rows and markup of a browser render')`, 10 tests: an `#if` body that waits and runs the code after the `await` once; the newer load when a signal changes during the wait; close and reopen during the wait; rows that reverse and drop while they wait; a row dropped during its wait; overlap of two independent loads (`[2, 1]` in flight), a dependent load after its input settles, `after` in the output; an early rejection reported once at its `await`; markup awaits of the body's memo, the outer body's memo and a row's memo; a component's markup await and its constant `#if` that waits; the `#loading` fallback around a body that waits. Two codegen tests in `test/codegen.test.ts` (run starts, a read through a function). Fixtures `test/render/await{If,Rows,Starts,Markup,Loading,InnerHost}.brm`, `AwaitInner.brm`.
+- Tests: `packages/brumate/test/resume.test.ts`, `describe('await in block scripts, #for rows and markup of a browser render')`, 12 tests: an `#if` body that waits and runs the code after the `await` once; the newer load when a signal changes during the wait; close and reopen during the wait; rows that reverse and drop while they wait; a row dropped during its wait; overlap of two independent loads (`[2, 1]` in flight), a dependent load after its input settles, `after` in the output; an early rejection reported once at its `await`; markup awaits of the body's memo, the outer body's memo and a row's memo; a component's markup await and its constant `#if` that waits; the `#loading` fallback around a body that waits; `#key` and `#try` bodies that wait; a row whose first await has a value and whose second waits. Two codegen tests in `test/codegen.test.ts` (run starts, a read through a function). Fixtures `test/render/await{If,Rows,Starts,Markup,Loading,Inline,InnerHost}.brm`, `AwaitInner.brm`.
 - Existing test changed: the WaitDestr test of browser-await now expects both loads at once.
 - Docs: website/docs/async-data.md, docs/decisions.md:27. Changeset `.changeset/await-memo-waits-in-blocks-in-browser.md`, minor.
 - Change request: `contracts/client-pending-boundary.change-request.md` (v2: `started`, `after`, the three `wait` changes, no `waitAll`).
@@ -26,7 +26,8 @@
 ## Gotchas
 
 - `await name` in a script statement of a browser render is still a plain read of the promise. Only markup and `await $memo` declarations wait.
-- Markup awaits are found by site scope: a body that renders inline in the same function (`#key`, `#try`) does not wait for its own markup awaits.
+- A `#key` or `#try` body that waits renders through a function of its own (`emitInlineBody`, `$$b.branchNodes`), so it can split. A rejection in the rest of a `#try` body goes to `fail`, not to its `#catch` (browser-try).
+- A row with comment item markers whose first wait is a promise keeps two `i` marker pairs: the wait range and its own. Harmless, two comments per such row.
 - `wait` uses `'i' in scope` to know a row. Only `setItem` and the list's assign set `i`.
 
 ## Bugs found
@@ -40,6 +41,7 @@
 
 ## Verification
 
+- Review round 1: one should-fix (`#key` and `#try` bodies did not wait, and a `#try` body never filled), fixed with `emitInlineBody` and two tests; two non-blocking: tests for a sync-first row (added) and the double `i` markers (noted under Gotchas).
 - `pnpm install`, `pnpm build`, `pnpm lint` (no errors; one `consistent-function-scoping` warning in the new describe, as the file has), `pnpm format:check`, `pnpm typecheck`, `pnpm --filter brumate test`.
 
 ## Size

@@ -9193,6 +9193,43 @@ describe('await in block scripts, #for rows and markup of a browser render', () 
     expect(errors).toEqual([]);
   });
 
+  it('waits in the scripts of #key and #try bodies', async () => {
+    const errors = watchErrors();
+    await resume('awaitInline', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([30, 40]));
+    expect(users()).toEqual([]);
+    await settleUser(40);
+    await waitFor(() => expect(users()).toEqual(['try ada40']));
+    await settleUser(30);
+    await waitFor(() => expect(users()).toEqual(['key ada30', 'try ada40']));
+    // A new key renders the body again, which waits again.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(inFlight()).toEqual([31]));
+    await settleUser(31);
+    await waitFor(() => expect(users()).toEqual(['key ada31', 'try ada40']));
+    expect(document.querySelector('.caught')).toBeNull();
+    expect(errors).toEqual([]);
+  });
+
+  it('keeps a row whose first await has a value and whose second waits', async () => {
+    const errors = watchErrors();
+    await resume('awaitInline', {});
+    click(document.querySelector('.add')!);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(inFlight()).toEqual([3, 4]));
+    await settleUser(4);
+    await waitFor(() => expect(users()).toEqual(['1 ada4']));
+    await settleUser(3);
+    await waitFor(() => expect(users()).toEqual(['1 ada3', '1 ada4']));
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(inFlight()).toEqual([5]));
+    await settleUser(5);
+    await waitFor(() => expect(users()).toEqual(['1 ada3', '1 ada4', '1 ada5']));
+    expect(loadedIds()).toEqual([3, 4, 5]);
+    expect(errors).toEqual([]);
+  });
+
   it('shows the #loading fallback until the await in the script of its body settles', async () => {
     await resume('awaitLoading', {});
     click(document.querySelector('.toggle')!);

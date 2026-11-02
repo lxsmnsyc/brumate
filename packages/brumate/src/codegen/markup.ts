@@ -1230,9 +1230,27 @@ export class Emitter {
     endRun();
   }
 
+  /**
+   * Emits a body that renders inline, in the function of the markup around it. In the browser,
+   * a body that waits at `await` renders through a function of its own, which can split.
+   */
+  private emitInlineBody(body: Body): void {
+    const own = this.plan.bodyScopes.get(body)!;
+    if (
+      this.options.mode !== 'client' ||
+      !this.options.hoist ||
+      !this.splitsScript(body, own, own)
+    ) {
+      this.emitBody(body);
+      return;
+    }
+    const fn = this.bodyFunction('', () => this.emitBody(body), own);
+    this.code(`$$b.nodes($$b.branchNodes(undefined, undefined, 0, [${fn}]))`);
+  }
+
   /** True when the script of a body splits its render function at `await $memo`. */
-  private splitsScript(body: Body, scope: Scope): boolean {
-    if (this.options.mode !== 'client' || scope !== this.splitScope) {
+  private splitsScript(body: Body, scope: Scope, splitScope = this.splitScope): boolean {
+    if (this.options.mode !== 'client' || scope !== splitScope) {
       return false;
     }
     for (const statement of body.script?.program.body ?? []) {
@@ -3159,7 +3177,7 @@ export class Emitter {
         // A `#loading` body inside that fails after the page is sent renders the `#catch` body then.
         const end = server ? this.emitCatcher(block, scope) : undefined;
         this.line('try {');
-        this.emitBody(block.body);
+        this.emitInlineBody(block.body);
         this.close(`} catch (${error}) {`);
         this.line(`$$html = ${before};`);
         // The body's markup is not sent, so the page must not keep what it added: its
@@ -3243,7 +3261,7 @@ export class Emitter {
         // `#key` renders its body in place.
         this.open(scope, block);
         this.line('{');
-        this.emitBody(block.body);
+        this.emitInlineBody(block.body);
         this.close();
         this.end(block);
     }
