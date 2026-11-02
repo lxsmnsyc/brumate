@@ -83,6 +83,9 @@ const NEVER_PROMISE = new Set(['ArrayExpression', 'ArrowFunctionExpression', 'Fu
  * a function. A memo with `await` inside is an async function, so its value is a promise whatever
  * its expression gives, as in ``$memo(`Hi ${(await load()).name}`)`` or `$memo([await load()])`.
  */
+/** The sites of markup, whose `await` of a memo the browser waits for at the start of the markup. */
+const MARKUP_SITES = new Set(['insert', 'attribute', 'tag', 'spread', 'style', 'block', 'prop']);
+
 function isNeverPromise(declaration: Declaration): boolean {
   const node = declaration.site?.node;
   return (
@@ -351,6 +354,19 @@ export class Emitter {
   /** Declarations that the rest of a render after `await` can assign: `let` before the split. */
   private reassignable: Set<Declaration> = new Set();
   /**
+   * The scope whose script the function that is being written splits at `await $memo`: the
+   * component in the render module, or the body of a render function of a block.
+   */
+  private splitScope: Scope | undefined;
+  /** The awaited memos that a split waits for, so markup after it reads their values. */
+  private readonly splitMemos = new Set<Declaration>();
+  /** In the browser, the awaited memos whose loads start before their `await`, in `$$w_<name>`. */
+  private readonly startedMemos = new Set<Declaration>();
+  /** The memos that hold a primitive on the server, for the start points of loads in the browser. */
+  private serverInline: Set<Declaration> | undefined;
+  /** In the browser, the awaited memos of other loads that the load of a statement reads. */
+  private readonly loadMemos = new Map<oxc.Node, Declaration[]>();
+  /**
    * The calls that fill the nested blocks of a clone, by the scope and the anchor of each block.
    * `$$m` in a call is the start comment of the block.
    */
@@ -395,6 +411,7 @@ export class Emitter {
     this.inParagraph =
       options.mode === 'server' && !plan.hideNames ? paragraphComponents(file) : new Set();
     this.blocking = blockingMemos(plan);
+    this.splitScope = options.waits ? plan.graph.model.component : undefined;
     this.inline = options.mode === 'server' ? plainValues(plan, this.blocking) : new Set();
     for (const site of plan.graph.model.sites) {
       this.sitesByNode.set(site.node, site);
@@ -513,6 +530,28 @@ export class Emitter {
     this.waits++;
   }
 
+  /**
+   * Writes the body of a render function whose script `await $memo` splits: `content` writes
+   * the body of `scope`, and the rests that it opened close after `end`, the return line.
+   */
+  splitBody(scope: Scope | undefined, content: () => void, end: () => void): void {
+    const outer = this.splitScope;
+    const waits = this.waits;
+    const memos = [...this.splitMemos];
+    this.splitScope = scope;
+    content();
+    this.splitScope = outer;
+    end();
+    // The memos that the function waited for are values only inside it.
+    this.splitMemos.clear();
+    for (const memo of memos) {
+      this.splitMemos.add(memo);
+    }
+    for (; this.waits > waits; this.waits--) {
+      this.close('});');
+    }
+  }
+
   close(code = '}'): void {
     this.flush();
     this.depth--;
@@ -626,12 +665,8 @@ export class Emitter {
         if (
           isMemo(declaration) &&
           !isNeverPromise(declaration) &&
-          // `wait` gives the rest of the render the value of an awaited memo of the component.
-          !(
-            this.options.waits &&
-            declaration.awaited &&
-            this.plan.graph.model.component.declarations.get(declaration.name) === declaration
-          ) &&
+          // `wait` gives the rest of the render the value of a memo that the script awaits.
+          !this.splitMemos.has(declaration) &&
           !names.includes(declaration.name)
         ) {
           names.push(declaration.name);
@@ -825,10 +860,16 @@ export class Emitter {
    */
   private blockingDeclarations(
     statement: oxc.Node,
+    server = this.options.mode === 'server',
   ): { declarations: Declaration[]; awaited: boolean } | undefined {
-    if (this.options.mode !== 'server' || statement.type !== 'VariableDeclaration') {
+    if (!server || statement.type !== 'VariableDeclaration') {
       return undefined;
     }
+    // The browser places loads as the server does, which knows the memos that hold a primitive.
+    const inline =
+      this.options.mode === 'server'
+        ? this.inline
+        : (this.serverInline ??= plainValues(this.plan, this.blocking));
     const declarations: Declaration[] = [];
     let awaited = true;
     for (const declarator of statement.declarations) {
@@ -843,7 +884,7 @@ export class Emitter {
         continue;
       }
       awaited &&= declaration.awaited === true;
-      if (!this.inline.has(declaration)) {
+      if (!inline.has(declaration)) {
         declarations.push(declaration);
       }
     }
@@ -897,25 +938,40 @@ export class Emitter {
   }
 
   /**
-   * On the server, the awaited memos whose loads start before statements
-   * that do not hold them, by the index of the statement that they start
-   * after (-1 for the top). Each `await` still waits where it is written.
+   * The awaited memos whose loads start before statements that do not hold
+   * them, by the index of the statement that they start after (-1 for the
+   * top). Each `await` still waits where it is written. The browser, where
+   * the script splits at each `await`, places them as the server does. A
+   * load there reads the values of the memos whose loads it waits for as
+   * parameters, so one that reads such a memo through a function or another
+   * memo starts after that memo's `await`.
    */
-  private earlyLoads(statements: oxc.Node[], scope: Scope): Map<number, oxc.Node[]> {
+  private earlyLoads(
+    statements: oxc.Node[],
+    scope: Scope,
+    splits: boolean,
+  ): Map<number, oxc.Node[]> {
     const moved = new Map<number, oxc.Node[]>();
-    if (this.options.mode !== 'server') {
+    const server = this.options.mode === 'server';
+    if (!server && !splits) {
       return moved;
     }
-    // The statements whose every declarator is an awaited memo that the server reads as a memo.
+    // The statements whose every declarator is an awaited memo that the server reads as a memo,
+    // and that the browser splits at.
     const loads = new Map<oxc.Node, Declaration[]>();
-    for (const statement of statements) {
-      const blocking = this.blockingDeclarations(statement);
+    const declaredAt = new Map<Declaration, number>();
+    for (const [index, statement] of statements.entries()) {
+      const blocking = this.blockingDeclarations(statement, true);
       if (
         blocking?.awaited &&
         statement.type === 'VariableDeclaration' &&
-        blocking.declarations.length === statement.declarations.length
+        blocking.declarations.length === statement.declarations.length &&
+        (server || this.awaitedMemos(statement, scope)?.every(Boolean))
       ) {
         loads.set(statement, blocking.declarations);
+        for (const declaration of blocking.declarations) {
+          declaredAt.set(declaration, index);
+        }
       }
     }
     if (loads.size === 0) {
@@ -927,6 +983,28 @@ export class Emitter {
       loads,
       (statement) => !this.isQuiet(statement),
     );
+    // In the browser, each `await` waits on its own, so the awaits of a run, which the server
+    // starts together, start before the first of them. By index, the first of the run.
+    const runs = new Map<number, number>();
+    if (!server) {
+      let members: number[] = [];
+      const endRun = (): void => {
+        if (members.length > 1) {
+          for (const member of members) {
+            runs.set(member, members[0]!);
+          }
+        }
+        members = [];
+      };
+      for (const [index, statement] of statements.entries()) {
+        if (this.blockingDeclarations(statement, true)?.awaited) {
+          members.push(index);
+        } else if (!this.isQuiet(statement)) {
+          endRun();
+        }
+      }
+      endRun();
+    }
     // The index of the statement that a load reading each memo must start after: the start
     // point of a memo that moves, or the statement of one that stays.
     const placed = new Map<Declaration, number>();
@@ -940,18 +1018,40 @@ export class Emitter {
       for (const memo of start.memos) {
         after = Math.max(after, placed.get(memo) ?? index - 1);
       }
+      if (!server) {
+        // In the browser, a memo that the load reads other than by its name has its value after
+        // its `await`.
+        const reads = new Set<Declaration>();
+        for (const declaration of loads.get(statement)!) {
+          for (const reference of declaration.site?.reads ?? []) {
+            reads.add(reference.declaration);
+          }
+        }
+        for (const memo of start.memos) {
+          const at = declaredAt.get(memo) ?? -1;
+          if (at > after && !reads.has(memo)) {
+            after = at;
+          }
+        }
+        this.loadMemos.set(statement, start.memos);
+      }
       // The load moves only over a statement that waits: the end of a run of awaits before it,
       // a memo that the markup waits for, or an `await` of the script.
       let ends = false;
       let inRun = false;
       for (let between = after + 1; between < index && !ends; between++) {
         const other = statements[between]!;
-        const blocking = this.blockingDeclarations(other);
+        const blocking = this.blockingDeclarations(other, true);
         if (blocking?.awaited) {
           inRun = true;
         } else if (!this.isQuiet(other)) {
           ends = inRun || blocking !== undefined || hasAwait(other);
         }
+      }
+      const first = runs.get(index);
+      if (!ends && first !== undefined) {
+        after = Math.max(after, first - 1);
+        ends = true;
       }
       // A memo that stays is declared in its own statement, after the loads that start before it.
       const at = ends ? after : index;
@@ -967,9 +1067,37 @@ export class Emitter {
     return moved;
   }
 
-  /** Declares the memos of a load that starts early, and starts them. */
+  /**
+   * Declares the memos of a load that starts early, and starts them. In the browser, the load
+   * goes in `$$w_<name>`, which its `await` waits for, and it waits for the loads of the memos
+   * that it reads which have not reached their `await`.
+   */
   private startLoads(statements: oxc.Node[] | undefined): void {
     for (const statement of statements ?? []) {
+      if (this.options.mode === 'client') {
+        const declarations = statement.type === 'VariableDeclaration' ? statement.declarations : [];
+        for (const declarator of declarations) {
+          const declaration = this.awaitedMemos(statement, this.splitScope!)![
+            declarations.indexOf(declarator)
+          ]!;
+          const load = this.source(declarator.init!);
+          const waits: string[] = [];
+          const names: string[] = [];
+          for (const memo of this.loadMemos.get(statement) ?? []) {
+            if (this.startedMemos.has(memo) && !this.splitMemos.has(memo)) {
+              waits.push(`$$w_${memo.name}`);
+              names.push(memo.name);
+            }
+          }
+          const value =
+            waits.length > 0
+              ? `$$b.after([${waits.join(', ')}], (${names.join(', ')}) => ${load})`
+              : `$$b.started(() => ${load})`;
+          this.line(`const $$w_${declaration.name} = ${value};`);
+          this.startedMemos.add(declaration);
+        }
+        continue;
+      }
       this.raw(this.patch.slice(statement.start, statement.end), statement.start);
       for (const declaration of this.blockingDeclarations(statement)!.declarations) {
         this.line(`$$b.start(${promiseName(declaration.name)});`);
@@ -985,7 +1113,11 @@ export class Emitter {
         run = [];
       }
     };
-    const early = this.earlyLoads(statements, scope);
+    // In the browser, the script of a render function splits at each `await $memo`. The
+    // statements before its last one declare with `let`, so the rest of the render can assign
+    // what changed during a wait.
+    const splits = this.options.mode === 'client' && scope === this.splitScope;
+    const early = this.earlyLoads(statements, scope, splits);
     const started = new Set<oxc.Node>();
     for (const list of early.values()) {
       for (const statement of list) {
@@ -993,13 +1125,18 @@ export class Emitter {
       }
     }
     this.startLoads(early.get(-1));
-    // In the render module, the statements of the component before its last `await $memo`
-    // declare with `let`, so the rest of the render can assign what changed during a wait.
-    const splits = this.options.waits && scope === this.plan.graph.model.component;
     let lastAwait = -1;
     for (const [index, statement] of statements.entries()) {
       if (splits && this.awaitedMemos(statement, scope)) {
         lastAwait = index;
+      }
+    }
+    // Markup that awaits a memo of the script waits after all of it, and assigns the memo.
+    if (splits) {
+      for (const declaration of this.markupAwaits(scope)) {
+        if (declaration.scope === scope) {
+          lastAwait = statements.length;
+        }
       }
     }
     for (const [index, statement] of statements.entries()) {
@@ -1087,10 +1224,91 @@ export class Emitter {
       }
       this.raw(code, statement.start);
       if (this.options.mode === 'client' && statement.type === 'VariableDeclaration') {
-        this.watchUnreadMemos(statement, scope);
+        this.watchUnreadMemos(statement, scope, splits);
       }
     }
     endRun();
+  }
+
+  /** True when the script of a body splits its render function at `await $memo`. */
+  private splitsScript(body: Body, scope: Scope): boolean {
+    if (this.options.mode !== 'client' || scope !== this.splitScope) {
+      return false;
+    }
+    for (const statement of body.script?.program.body ?? []) {
+      if (this.awaitedMemos(statement, scope)) {
+        return true;
+      }
+    }
+    return this.markupAwaits(scope).length > 0;
+  }
+
+  /** The memos that the markup of a scope awaits, which no split before it waited for. */
+  private markupAwaits(scope: Scope): Declaration[] {
+    const result: Declaration[] = [];
+    for (const site of this.plan.graph.model.sites) {
+      if (site.scope !== scope || !MARKUP_SITES.has(site.kind)) {
+        continue;
+      }
+      for (const read of site.reads) {
+        const declaration = read.declaration;
+        if (
+          read.await &&
+          isMemo(declaration) &&
+          !this.splitMemos.has(declaration) &&
+          !result.includes(declaration)
+        ) {
+          result.push(declaration);
+        }
+      }
+    }
+    return result;
+  }
+
+  /**
+   * In the browser, markup that reads a memo with `await` waits for it at the start of the
+   * markup, after the script, as the server waits for the memos that a `#loading` body reads at
+   * its start. A memo of the scope is assigned its value. One of a scope around it is a constant
+   * of the rest, with the value, since the scope that waits holds it after its slots.
+   */
+  private awaitMarkup(scope: Scope, end: number): void {
+    if (this.options.mode !== 'client' || scope !== this.splitScope) {
+      return;
+    }
+    const slots = this.plan.scopes.get(scope)?.slots ?? [];
+    for (const declaration of this.markupAwaits(scope)) {
+      const own = declaration.scope === scope;
+      let at = own ? slots.indexOf(declaration) : -1;
+      if (at === -1) {
+        at = slots.length;
+      }
+      const values: string[] = [];
+      const names: string[] = [];
+      for (const [slot, declared] of slots.entries()) {
+        const before = declared.range.start < end;
+        values[slot] = before ? declared.name : '';
+        names[slot] = before && this.reassignable.has(declared) ? declared.name : '';
+      }
+      values[at] = declaration.name;
+      names[at] = own ? declaration.name : '';
+      while (values.at(-1) === '') {
+        values.pop();
+      }
+      while (names.at(-1) === '') {
+        names.pop();
+      }
+      this.openRest(
+        `return $$b.wait(${this.scopeVar(scope)}, [${values.join(', ')}], ${at}, ($$v) => {`,
+      );
+      if (names.length > 0) {
+        this.line(`[${names.join(', ')}] = $$v;`);
+      }
+      if (!own) {
+        // A pattern, as a clone of the rest reads the value, not the name of the scope around.
+        this.line(`const [${','.repeat(at)}${declaration.name}] = $$v;`);
+      }
+      this.splitMemos.add(declaration);
+    }
   }
 
   /** The awaited memos that the declarators of a statement declare, by declarator. */
@@ -1146,7 +1364,9 @@ export class Emitter {
         values[slot] = before ? declared.name : '';
         names[slot] = before && this.reassignable.has(declared) ? declared.name : '';
       }
-      values[at] = this.source(declarator.init!);
+      values[at] = this.startedMemos.has(declaration)
+        ? `$$w_${declaration.name}`
+        : this.source(declarator.init!);
       names[at] = declaration.name;
       while (values.at(-1) === '') {
         values.pop();
@@ -1160,6 +1380,7 @@ export class Emitter {
       );
       this.line(`[${names.join(', ')}] = $$v;`);
       this.reassignable.add(declaration);
+      this.splitMemos.add(declaration);
     }
   }
 
@@ -1171,7 +1392,13 @@ export class Emitter {
    * the read is the whole value of another memo, as in `$memo(await memo)`, which then holds the
    * same promise.
    */
-  private watchUnreadMemos(statement: oxc.VariableDeclaration, scope: Scope): void {
+  private watchUnreadMemos(
+    statement: oxc.VariableDeclaration,
+    scope: Scope,
+    splits: boolean,
+  ): void {
+    // Markup that awaits a memo waits for it at its start, which handles its rejection.
+    const awaited = splits ? this.markupAwaits(scope) : [];
     for (const declarator of statement.declarations) {
       const declaration =
         declarator.id.type === 'Identifier'
@@ -1179,6 +1406,7 @@ export class Emitter {
           : undefined;
       if (
         declaration &&
+        !awaited.includes(declaration) &&
         (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
         declaration.reads.every(
           (read) =>
@@ -1376,6 +1604,7 @@ export class Emitter {
       }
     }
     this.emitStatements(setup, component);
+    this.awaitMarkup(component, this.file.instanceScript?.program.end ?? 0);
     this.emitBound(component);
     for (const template of this.file.templates) {
       this.emitTemplate(template);
@@ -1386,16 +1615,22 @@ export class Emitter {
     this.flush();
   }
 
-  /** Emits a body: its scope, script, templates, markup and slots. */
-  emitBody(body: Body, createScope = true): void {
+  /**
+   * Emits a body: its scope, script, templates, markup and slots. `markup` writes what goes
+   * before the markup, after the script.
+   */
+  emitBody(body: Body, createScope = true, markup?: () => void): void {
     const scope = this.plan.bodyScopes.get(body)!;
     const plan = this.plan.scopes.get(scope)!;
-    if (plan.needsId && createScope) {
+    // A body that waits holds its slots in its scope while it waits.
+    if ((plan.needsId || this.splitsScript(body, scope)) && createScope) {
       this.createScope(scope);
     }
     if (body.script) {
       this.emitStatements(body.script.program.body, scope);
     }
+    this.awaitMarkup(scope, body.script?.program.end ?? body.start);
+    markup?.();
     for (const template of body.templates) {
       this.emitTemplate(template);
     }
@@ -1453,19 +1688,30 @@ export class Emitter {
     if (block.index) {
       this.line(`const ${block.index.name} = ${index};`);
     }
-    const needsId = this.plan.scopes.get(scope)!.needsId;
-    if (needsId) {
+    // An item that waits at `await $memo` has its value before the wait, as the range of the
+    // wait marks the item, and its start marker is in the rest of the render.
+    const splits = this.splitsScript(block.body, scope);
+    if (this.plan.scopes.get(scope)!.needsId || splits) {
       this.createScope(scope);
     }
-    if (anchored) {
-      this.html('<!--i');
-      this.code(this.scopeVar(scope));
-      this.html('-->');
+    const from = source ? `, ${source}` : '';
+    const setItem = `${this.helper('item')}(${this.scopeVar(scope)}, ${item}${from});`;
+    if (splits && this.plan.anchors.has(block)) {
+      this.line(setItem);
     }
-    this.emitBody(block.body, false);
-    if (this.plan.anchors.has(block)) {
-      const from = source ? `, ${source}` : '';
-      this.line(`${this.helper('item')}(${this.scopeVar(scope)}, ${item}${from});`);
+    const open = (): void => {
+      if (anchored) {
+        this.html('<!--i');
+        this.code(this.scopeVar(scope));
+        this.html('-->');
+      }
+    };
+    if (!splits) {
+      open();
+    }
+    this.emitBody(block.body, false, splits ? open : undefined);
+    if (this.plan.anchors.has(block) && !splits) {
+      this.line(setItem);
     }
     if (anchored) {
       this.html('<!--/i-->');
@@ -2546,18 +2792,24 @@ export class Emitter {
       }
     }
     const args = [
-      this.bodyFunction('', () => {
-        if (reads.length > 0) {
-          this.line(
-            `$$b.countLoads(${this.scopeVar(instanceScope(this.plan, scope))}, [${reads.join(', ')}]);`,
-          );
-        }
-        this.emitBody(block.body);
-      }),
+      this.bodyFunction(
+        '',
+        () => {
+          if (reads.length > 0) {
+            this.line(
+              `$$b.countLoads(${this.scopeVar(instanceScope(this.plan, scope))}, [${reads.join(', ')}]);`,
+            );
+          }
+          this.emitBody(block.body);
+        },
+        body,
+      ),
     ];
     const fallback = block.fallback;
     if (fallback) {
-      args.push(this.bodyFunction('', () => this.emitBody(fallback)));
+      args.push(
+        this.bodyFunction('', () => this.emitBody(fallback), this.plan.bodyScopes.get(fallback)),
+      );
     }
     this.open(scope, block);
     this.code(`$$b.nodes($$b.loading(${args.join(', ')}))`);
@@ -2672,16 +2924,18 @@ export class Emitter {
    * Emits a function that renders a body, as a constant, and returns its name. The function
    * clones its markup when it can, and gives its HTML otherwise.
    */
-  private bodyFunction(params: string, content: () => void): string {
+  private bodyFunction(params: string, content: () => void, scope?: Scope): string {
     const name = this.unique('body');
     this.line(`const ${name} = (${params}) => {`);
     const fn = this.currentFn;
     this.line(`let $$html = '';`);
-    content();
-    this.flush();
-    // The functions of children render HTML.
-    const cloned = this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn);
-    this.line(this.returnLine(fn, cloned));
+    // The script of the body can split the function at `await $memo`.
+    this.splitBody(scope, content, () => {
+      this.flush();
+      // The functions of children render HTML.
+      const cloned = this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn);
+      this.line(this.returnLine(fn, cloned));
+    });
     this.close('};');
     return name;
   }
@@ -2705,10 +2959,18 @@ export class Emitter {
       const branches = block.kind === 'if' ? block.branches : block.cases;
       const bodies: string[] = [];
       for (const branch of branches) {
-        bodies.push(this.bodyFunction('', () => this.emitBody(branch.body)));
+        bodies.push(
+          this.bodyFunction(
+            '',
+            () => this.emitBody(branch.body),
+            this.plan.bodyScopes.get(branch.body),
+          ),
+        );
       }
       const fallback = block.fallback;
-      const other = fallback && this.bodyFunction('', () => this.emitBody(fallback));
+      const other =
+        fallback &&
+        this.bodyFunction('', () => this.emitBody(fallback), this.plan.bodyScopes.get(fallback));
       // The index of the branch that shows, then its function.
       let index = other ? String(branches.length) : '-1';
       for (let at = branches.length - 1; at >= 0; at--) {
@@ -2728,9 +2990,15 @@ export class Emitter {
     if (block.kind === 'for' || block.kind === 'repeat') {
       const item = this.unique('item');
       const index = this.unique('index');
-      const body = this.bodyFunction(`${item}, ${index}`, () => this.emitItem(block, item, index));
+      const body = this.bodyFunction(
+        `${item}, ${index}`,
+        () => this.emitItem(block, item, index),
+        this.plan.bodyScopes.get(block.body),
+      );
       const fallback = block.fallback;
-      const other = fallback && this.bodyFunction('', () => this.emitBody(fallback));
+      const other =
+        fallback &&
+        this.bodyFunction('', () => this.emitBody(fallback), this.plan.bodyScopes.get(fallback));
       const items =
         block.kind === 'for'
           ? `$$b.toList(${this.expression(block.list)})`

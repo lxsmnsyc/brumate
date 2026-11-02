@@ -10,7 +10,7 @@ import { setSlots } from './components.ts';
 import { fail } from './errors.ts';
 import { insertHTML, markCloned, parseHTML, refresh } from './insert.ts';
 import { afterInsert, destroy, resolveScope } from './scopes.ts';
-import { loadingValues, renderedLoads, scopes, waiters } from './state.ts';
+import { loadingValues, renderedLoads, scopes, updating, waiters } from './state.ts';
 import type { Scope } from './state.ts';
 import { isThenable, noop, pending, writes } from './updates.ts';
 
@@ -41,6 +41,9 @@ const settledSlots: WeakMap<Scope, number[]> = new WeakMap();
 
 /** The boundary of the render that runs, if any. */
 let boundary: Boundary | undefined;
+
+/** The scope whose rest of a render runs after a wait, if any. */
+let resting: Scope | undefined;
 
 /** Runs a render with `own` as the boundary that its waits count in. */
 function within(own: Boundary | undefined, render: () => Out): Out {
@@ -259,11 +262,16 @@ export function wait(
   // oxlint-disable-next-line typescript/no-explicit-any -- The rest assigns the slots by name.
   rest: (slots: any[]) => Out,
 ): Out {
+  const scope = resolveScope(id)!;
+  // A load that an update started during an earlier wait of the scope is newer than one that
+  // started before the `await`.
+  if (scope.s[slot] !== undefined) {
+    slots[slot] = scope.s[slot];
+  }
   const first = slots[slot];
   if (!isThenable(first)) {
     return rest(slots);
   }
-  const scope = resolveScope(id)!;
   const promise = Promise.resolve(first);
   // The setup of the slots that the code before the `await` set, such as a promise prop or an
   // async memo, whose rejection the memo reports. The slot of the memo is this wait's.
@@ -282,9 +290,11 @@ export function wait(
     rendered.splice(at, 1);
   }
   // `l` and the scope ID match `MARKER`, so a block that closes removes the whole range. Client
-  // scope IDs are negative, so no other reader of `l` comments matches it.
-  const start = document.createComment(`l${scope.id}:w`);
-  const end = document.createComment('/w');
+  // scope IDs are negative, so no other reader of `l` comments matches it. The range of an item
+  // of a list that waits in its own script, outside an earlier range of it, marks the item.
+  const item = 'i' in scope && resting !== scope;
+  const start = document.createComment(item ? `i${scope.id}` : `l${scope.id}:w`);
+  const end = document.createComment(item ? '/i' : '/w');
   const range = document.createDocumentFragment();
   range.append(start, end);
   const own = join();
@@ -305,9 +315,16 @@ export function wait(
       fillRange(own, end, () => {
         // The scope goes with the markup of the rest.
         rendered.push(scope);
-        const out = rest(scope.s);
-        shown = rendered.includes(scope);
-        return out;
+        const outer = resting;
+        resting = scope;
+        try {
+          // The rest renders as an update does: it reads a memo that still loads as a promise.
+          const out = updating(() => rest(scope.s));
+          shown = rendered.includes(scope);
+          return out;
+        } finally {
+          resting = outer;
+        }
       });
     } catch (error) {
       fail(scope, error);
@@ -341,6 +358,33 @@ export function wait(
   }
   promise.then(write, (error: unknown) => write(new MemoError(error)));
   return range;
+}
+
+/**
+ * Starts the load of an awaited memo before its `await`, where its inputs are ready. A throw
+ * becomes a rejected promise, and a rejection is handled here, so neither surfaces before the
+ * `await` waits for the load, which gets the same rejection.
+ */
+export function started(load: () => unknown): unknown {
+  let value: unknown;
+  try {
+    value = load();
+  } catch (error) {
+    value = Promise.reject(error);
+  }
+  if (isThenable(value)) {
+    value.then(undefined, noop);
+  }
+  return value;
+}
+
+/**
+ * Starts the load of an awaited memo that reads other awaited memos once their loads settle.
+ * `load` gets their values. A rejection of theirs rejects it too.
+ */
+// oxlint-disable-next-line typescript/no-explicit-any -- The load names the values.
+export function after(loads: unknown[], load: (...values: any[]) => unknown): unknown {
+  return started(() => Promise.all(loads).then((values) => load(...values)));
 }
 
 /**

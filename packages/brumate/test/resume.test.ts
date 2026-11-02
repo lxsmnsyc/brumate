@@ -7647,7 +7647,8 @@ describe('await $memo in a component that the browser renders', () => {
     onTestFinished(() => window.removeEventListener('brumate:error', onError));
     await resume('waitDestrHost', {});
     click(document.querySelector('.toggle')!);
-    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    // The two loads start together, before the first await.
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
     await settleUser(1);
     await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
     // The prop changes during the second wait, so both memos load again.
@@ -8939,5 +8940,267 @@ describe('the bundles that state records name', () => {
     vi.resetModules();
     const { load } = await import('../src/runtime/bundles.ts');
     expect(load('Page')).toBeUndefined();
+  });
+});
+
+describe('await in block scripts, #for rows and markup of a browser render', () => {
+  function userLoads(): UserLoad[] {
+    return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);
+  }
+
+  function loadedIds(): number[] {
+    const ids: number[] = [];
+    for (const load of userLoads()) {
+      ids.push(load.id);
+    }
+    return ids;
+  }
+
+  const settled = new Set<UserLoad>();
+
+  /** The loads that have not settled. */
+  function inFlight(): number[] {
+    const ids: number[] = [];
+    for (const load of userLoads()) {
+      if (!settled.has(load)) {
+        ids.push(load.id);
+      }
+    }
+    return ids;
+  }
+
+  /** Settles the first load of a user that has not settled yet. */
+  async function settleUser(id: number, error?: Error): Promise<void> {
+    let found: UserLoad | undefined;
+    for (const load of userLoads()) {
+      if (load.id === id && !settled.has(load)) {
+        found = load;
+        break;
+      }
+    }
+    settled.add(found!);
+    if (error) {
+      found!.fail(error);
+    } else {
+      found!.done({ name: `ada${id}` });
+    }
+    await new Promise((done) => setTimeout(done, 0));
+  }
+
+  function users(): string[] {
+    const shown: string[] = [];
+    for (const user of document.querySelectorAll('.user')) {
+      shown.push(user.textContent!);
+    }
+    return shown;
+  }
+
+  function markup(): string {
+    return document.body.innerHTML.replace(/<script[\s\S]*?<\/script>/g, '');
+  }
+
+  /** The `brumate:error` events of the test. */
+  function watchErrors(): unknown[] {
+    const errors: unknown[] = [];
+    function onError(event: Event): void {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    return errors;
+  }
+
+  afterEach(() => {
+    userLoads().length = 0;
+    settled.clear();
+    clearRuns();
+  });
+
+  it('waits in the script of an #if body, and runs the code after the await once', async () => {
+    const errors = watchErrors();
+    await resume('awaitIf', {});
+    clearRuns();
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    // The body shows nothing until the memo settles, and the old branch goes at once.
+    expect(document.querySelector('.old')).toBeNull();
+    expect(users()).toEqual([]);
+    expect(runsOf('after')).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ADA1']));
+    expect(runsOf('after')).toEqual(['after ada1']);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(loadedIds()).toEqual([1]);
+    // An update after the wait reaches the memo.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    await settleUser(2);
+    await waitFor(() => expect(document.querySelector('.user')!.textContent).toMatch(/^ada2 /));
+    expect(errors).toEqual([]);
+  });
+
+  it('waits for the newer load when a value that the memo reads changes during the wait', async () => {
+    await resume('awaitIf', {});
+    clearRuns();
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    await settleUser(1);
+    expect(users()).toEqual([]);
+    await settleUser(2);
+    await waitFor(() => expect(users()).toEqual(['ada2 ADA2']));
+    expect(runsOf('after')).toEqual(['after ada2']);
+  });
+
+  it('leaves no markup when the #if closes during the wait, and opens again', async () => {
+    await resume('awaitIf', {});
+    const before = markup();
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.old')).not.toBeNull());
+    expect(markup()).toBe(before);
+    await settleUser(1);
+    expect(markup()).toBe(before);
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ADA1']));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(markup()).toBe(before));
+  });
+
+  it('keeps the rows of a #for that wait in their scripts, as they move and go', async () => {
+    const errors = watchErrors();
+    await resume('awaitRows', {});
+    click(document.querySelector('.add')!);
+    click(document.querySelector('.add')!);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(loadedIds()).toEqual([3, 4, 5]));
+    // The rows keep their places while they wait: no row renders or loads again.
+    click(document.querySelector('.reverse')!);
+    await new Promise((done) => setTimeout(done, 20));
+    await settleUser(4);
+    await waitFor(() => expect(users()).toEqual(['ada4 ADA4']));
+    await settleUser(3);
+    await settleUser(5);
+    await waitFor(() => expect(users()).toEqual(['ada5 ADA5', 'ada4 ADA4', 'ada3 ADA3']));
+    click(document.querySelector('.reverse')!);
+    await waitFor(() => expect(users()).toEqual(['ada3 ADA3', 'ada4 ADA4', 'ada5 ADA5']));
+    click(document.querySelector('.drop')!);
+    await waitFor(() => expect(users()).toEqual(['ada4 ADA4', 'ada5 ADA5']));
+    expect(loadedIds()).toEqual([3, 4, 5]);
+    expect(errors).toEqual([]);
+  });
+
+  it('drops a row that leaves its list during the wait', async () => {
+    await resume('awaitRows', {});
+    click(document.querySelector('.add')!);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(loadedIds()).toEqual([3, 4]));
+    click(document.querySelector('.drop')!);
+    await new Promise((done) => setTimeout(done, 20));
+    await settleUser(3);
+    await settleUser(4);
+    await waitFor(() => expect(users()).toEqual(['ada4 ADA4']));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(users()).toEqual(['ada4 ADA4']);
+    expect(loadedIds()).toEqual([3, 4]);
+  });
+
+  it('starts independent loads together and a dependent one when its input settles', async () => {
+    const errors = watchErrors();
+    await resume('awaitStarts', {});
+    clearRuns();
+    click(document.querySelector('.toggle')!);
+    // `b` reads nothing of `a`, so its load starts before the wait for `a`, as on the server.
+    await waitFor(() => expect(inFlight()).toEqual([2, 1]));
+    expect(runsOf('between')).toEqual([]);
+    // `c` reads `a`: it starts after `a` settles and the statement between ran, while `b` loads.
+    await settleUser(1);
+    await waitFor(() => expect(inFlight()).toEqual([2, 14]));
+    expect(runsOf('between')).toEqual(['between ada1']);
+    // `d` reads `b`: it starts when `b` settles, before the wait for `c` ends.
+    await settleUser(2);
+    await waitFor(() => expect(inFlight()).toEqual([14, 24]));
+    expect(users()).toEqual([]);
+    await settleUser(24);
+    await settleUser(14);
+    await waitFor(() => expect(users()).toEqual(['ada1 ada2 ada14 ada24']));
+    expect(runsOf('between')).toEqual(['between ada1']);
+    expect(loadedIds()).toEqual([2, 1, 14, 24]);
+    expect(errors).toEqual([]);
+    const update = readFileSync(join(output, 'awaitStarts.brm.client.update.ts'), 'utf8');
+    expect(update).toContain('const $$w_b = $$b.started(() => (loadUser(2)));');
+    expect(update).toContain(
+      'const $$w_d = $$b.after([$$w_b], (b) => (loadUser(b.name.length + 20)));',
+    );
+  });
+
+  it('reports a load that rejects before its await once, at the await', async () => {
+    const errors = watchErrors();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await resume('awaitStarts', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([2, 1]));
+    // Nothing handles `b` until its await, and no unhandled rejection fires.
+    await settleUser(2, new Error('No user 2'));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(errors).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(errors).toHaveLength(1));
+    expect(String(errors[0])).toBe('Error: No user 2');
+    expect(users()).toEqual([]);
+    // `d` reads `b`, so it never loads.
+    expect(loadedIds()).toEqual([2, 1, 14]);
+  });
+
+  it('waits at the start of markup that awaits a memo, of its body or of the scope around', async () => {
+    const errors = watchErrors();
+    await resume('awaitMarkup', {});
+    click(document.querySelector('.toggle')!);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(inFlight()).toEqual([1, 50, 3]));
+    expect(users()).toEqual([]);
+    await settleUser(3);
+    await waitFor(() => expect(users()).toEqual(['ada3']));
+    // The body shows once its memo settles, and the #if in it waits for a memo of the body.
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1', 'ada3']));
+    await settleUser(50);
+    await waitFor(() => expect(users()).toEqual(['ada1', 'ada50', 'ada3']));
+    expect(loadedIds()).toEqual([1, 50, 3]);
+    expect(errors).toEqual([]);
+    // The #if gets the value of the memo of the body around it as a constant of its rest.
+    const update = readFileSync(join(output, 'awaitMarkup.brm.client.update.ts'), 'utf8');
+    expect(update).toMatch(/const \[,*shared\] = \$\$v;/);
+  });
+
+  it('waits in the markup and in an #if of a component that the browser renders', async () => {
+    const errors = watchErrors();
+    await resume('awaitInnerHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([101]));
+    expect(document.querySelector('.label')).toBeNull();
+    await settleUser(101);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    expect(document.querySelector('.label')!.textContent).toBe('ada101');
+    expect(users()).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1']));
+    expect(loadedIds()).toEqual([101, 1]);
+    expect(errors).toEqual([]);
+  });
+
+  it('shows the #loading fallback until the await in the script of its body settles', async () => {
+    await resume('awaitLoading', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    expect(document.querySelector('.fallback')).not.toBeNull();
+    expect(users()).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1']));
+    expect(document.querySelector('.fallback')).toBeNull();
   });
 });

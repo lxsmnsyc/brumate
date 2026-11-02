@@ -1,0 +1,28 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  let open = $signal(false);
+  let ids = $signal<number[]>([]);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<button class="add" onClick=(() => (ids = [...ids, ids.length + 3]))>Add</button>
+#if (open) {
+  <script>
+    const user = $memo(loadUser(1));
+    const shared = $memo(loadUser(50));
+  </script>
+  <p class="user">{(await user).name}</p>
+  #if (open) {
+    <p class="user">{(await shared).name}</p>
+  }
+}
+<ul>
+  #for (id of ids by id) {
+    <script>
+      const row = $memo(loadUser(id));
+    </script>
+    <li class="user">{(await row).name}</li>
+  }
+</ul>

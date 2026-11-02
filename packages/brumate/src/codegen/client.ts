@@ -1654,18 +1654,27 @@ class ClientGenerator {
     for (const template of this.declared(inside).slice(1)) {
       emitter.emitTemplate(template.template!);
     }
-    if (isItem) {
-      emitter.emitItem(block, '$$item', '$$index');
-    } else {
-      emitter.emitBody(body);
-    }
-    emitter.flush();
-    // The body of an `#if` or a `#for` whose markup is one string clones a template.
-    const cloned = block.kind === 'if' || block.kind === 'for' ? this.cloneRender(emitter) : false;
+    // The script of the body can split the function at `await $memo`.
+    let cloned = false;
+    emitter.splitBody(
+      scope,
+      () => {
+        if (isItem) {
+          emitter.emitItem(block, '$$item', '$$index');
+        } else {
+          emitter.emitBody(body);
+        }
+      },
+      () => {
+        emitter.flush();
+        // The body of an `#if` or a `#for` whose markup is one string clones a template.
+        cloned = block.kind === 'if' || block.kind === 'for' ? this.cloneRender(emitter) : false;
+        emitter.line(emitter.returnLine(0, cloned));
+      },
+    );
     if (fill && !cloned) {
       return undefined;
     }
-    emitter.line(emitter.returnLine(0, cloned));
     emitter.close();
     return emitter.lines.join('\n');
   }

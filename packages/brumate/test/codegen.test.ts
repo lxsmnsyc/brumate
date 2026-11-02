@@ -733,6 +733,34 @@ describe('await', () => {
     );
     expect(modules.update).toContain('$$b.setContent($$e[0], ((user).name), $$s2)');
     expect(parseSync('update.ts', modules.update!).errors).toEqual([]);
+    // The body waits for the memo at the start of its markup.
+    expect(modules.update).toContain('return $$b.wait($$s2, [user], 0, ($$v) => {');
+    expect(modules.update).toContain('const [user] = $$v;');
+  });
+
+  it('starts the loads of a run of awaits in a body that the browser renders before the first', () => {
+    const { parts: modules } = compile(
+      `${header}</script>\n<button onClick=(() => id++)>+</button>\n#if (id > 1) {\n  <script>\n    const user = await $memo(load(id));\n    const tags = await $memo(loadTags(id));\n  </script>\n  <p>{user.name} {tags.length}</p>\n}`,
+      { filename: 'T.brm' },
+    );
+    const update = modules.update!;
+    expect(update).toContain('const $$w_user = $$b.started(() => (load(id)));');
+    expect(update).toContain('const $$w_tags = $$b.started(() => (loadTags(id)));');
+    expect(update.indexOf('$$w_tags =')).toBeLessThan(update.indexOf('let user;'));
+    expect(update).toContain('return $$b.wait($$s2, [$$w_user], 0, ($$v) => {');
+  });
+
+  it('starts a load that reads an awaited memo through a function after its await, in the browser', () => {
+    const { parts: modules } = compile(
+      `${header}</script>\n<button onClick=(() => id++)>+</button>\n#if (id > 1) {\n  <script>\n    const user = await $memo(load(id));\n    const pick = () => user.name;\n    const tags = await $memo(loadTags(pick()));\n    const more = await $memo(loadTags(user.name));\n  </script>\n  <p>{tags.length} {more.length}</p>\n}`,
+      { filename: 'T.brm' },
+    );
+    const update = modules.update!;
+    // `tags` reads `user` through `pick`, so it starts after the wait for `user`, and `more`
+    // with it, as the two form a run.
+    expect(update).not.toContain('$$b.after(');
+    expect(update.indexOf('const $$w_tags')).toBeGreaterThan(update.indexOf('[user] = $$v;'));
+    expect(update).toContain('const $$w_more = $$b.started(() => (loadTags(user.name)));');
   });
 
   it('reports await of a compile-time function other than $memo', () => {
