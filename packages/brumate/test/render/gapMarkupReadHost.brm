@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import GapMarkupReadKid from './GapMarkupReadKid.brm';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <GapMarkupReadKid />
+}

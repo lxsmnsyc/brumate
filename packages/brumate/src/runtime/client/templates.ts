@@ -7,11 +7,13 @@ import type { ScopeId } from '../shared.ts';
 import { trustedHTML } from '../trusted.ts';
 import type { Render } from './branches.ts';
 import { Children, TemplateCall, insert } from './children.ts';
+import { fail } from './errors.ts';
 import { spread } from './handlers.ts';
 import { findForeign, holdPlace, markCloned, parseHTML } from './insert.ts';
 import { resolveScope } from './scopes.ts';
 import { options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
+import { isThenable } from './updates.ts';
 
 /** Markup that the browser clones, and the paths to the elements that its render writes. */
 interface Template {
@@ -446,6 +448,47 @@ export function setOn(element: Element, on: string[], own: string): void {
     // The loader listens to the events of the handlers of the spreads.
     options?.listen(element);
   }
+}
+
+/** The rejections that `fillSettled` reported, as the renders of two blocks can read one memo. */
+const reportedRejections = new WeakSet<object>();
+
+/**
+ * Writes cloned markup that reads memos which never change, once the ones that are promises
+ * settle, as no update writes their values. A rejection goes to the nearest `#try` around the
+ * scope, or `onError`.
+ */
+export function fillSettled(
+  scope: ScopeId | Scope,
+  values: unknown[],
+  write: (...values: unknown[]) => void,
+): void {
+  let loading = false;
+  for (const value of values) {
+    loading ||= isThenable(value);
+  }
+  if (!loading) {
+    write(...values);
+    return;
+  }
+  const at = resolveScope(scope)!;
+  Promise.all(values).then(
+    (settled) => {
+      // A closed block removed the nodes.
+      if (scopes.get(at.id) === at) {
+        write(...settled);
+      }
+    },
+    (error: unknown) => {
+      if (typeof error === 'object' && error !== null) {
+        if (reportedRejections.has(error)) {
+          return;
+        }
+        reportedRejections.add(error);
+      }
+      fail(at, error);
+    },
+  );
 }
 
 /** Writes the content of an element of cloned markup, as `insert` writes it in HTML. */
