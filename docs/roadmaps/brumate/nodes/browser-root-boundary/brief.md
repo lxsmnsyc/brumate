@@ -19,7 +19,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-01
-spent: 300000
+spent: 267000
 owns:
   - packages/brumate/src/runtime/client/**
   - packages/brumate/src/runtime/features.ts
