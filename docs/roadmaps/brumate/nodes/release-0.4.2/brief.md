@@ -39,6 +39,9 @@ depends_on:
   - on: try-template
     kind: hard
     why: a #template inside a #try misses its client errors
+  - on: async-memo-block-headers
+    kind: hard
+    why: an #if, prop or #for that reads a constant async memo uses the promise in a browser render
 ---
 
 # Release brumate 0.4.2
