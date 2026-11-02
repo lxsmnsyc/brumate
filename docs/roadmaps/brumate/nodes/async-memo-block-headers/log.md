@@ -6,3 +6,4 @@
 - Probed, not changed: a handler in the held block reads the settled value on click; a header that mixes the memo with a live signal shows the right branch already.
 - Full brumate suite passes, no snapshot changes. Bench todos: 14.8 kB gzip JS before load, same as main.
 - Review round 1: no blocking findings. Fixed: a function-valued prop (`format=(() => name)`) held the component; now skipped, with a test that fails without the skip. Changeset now says a child gets the settled value. Left: the observer in the browser test ignores empty states, since a held insert leaves its element empty until the value settles.
+- Review round 2: clean. Added the nested-function prop limit to the PR.
