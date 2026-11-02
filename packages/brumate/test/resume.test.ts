@@ -9023,6 +9023,27 @@ describe('#loading (memo)', () => {
     expect(field.value).toBe('typed');
   });
 
+  it('hides a body that the server rendered in place', async () => {
+    const server = await import(file('loadingOnInPlace.brm.ts'));
+    const rendered = renderParts(server.default, {});
+    await waitFor(() => expect(userLoads().length).toBe(1));
+    await settleUser(1);
+    const { html, state } = await rendered;
+    show(html + state);
+    await startLoader();
+    expect(shown('.user')).toEqual(['ada1']);
+    const name = document.querySelector('.user')!;
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(shown('.fallback')).toEqual(['loading']));
+    expect(shown('.user')).toEqual([]);
+    // A reader outside the body keeps the old value.
+    expect(shown('.outside')).toEqual(['ada1']);
+    await settleUser(2);
+    await waitFor(() => expect(shown('.user')).toEqual(['ada2']));
+    expect(shown('.fallback')).toEqual([]);
+    expect(document.querySelector('.user')).toBe(name);
+  });
+
   it('keeps the content while a memo that the header does not name loads', async () => {
     await streamed('loadingOn', [1, 10]);
     await waitFor(() => expect(shown('.note')).toEqual(['ada10']));

@@ -12,6 +12,7 @@
 - Runtime (`runtime/client/branches.ts`, exported from `brumate/client`): `held(scope, anchor, pending, kind, render, kinds, holderKind?, holderAnchor?)`. It finds the body by its marker. While the boundary's first fallback shows there is none, and it does nothing. The marker's third field holds the state (1 shown, 0 held). It hides the body scope with `hiding.hide` and inserts the fallback between two empty comments after the body's end marker. The release removes the fallback with `removeBlock` and calls `hiding.show`.
 - BRM186 replaces BRM181 in `error-catalog.ts`, `test/error-codes.json`, `website/docs/errors.md` and the skill's `references/errors.md`.
 - Tests in `test/resume.test.ts`, `describe('#loading (memo)')`:
+  - A body that the server rendered in place hides and shows again, while a reader outside the body keeps the old value.
   - A body that the server streamed in hides and shows again with the same `<p>` and `<input>` and the typed value. This is the first test.
   - A memo that the header does not name keeps the content.
   - Effects and a `window` listener of the hidden body pause. A write still updates its text, and the effect runs again on release.
@@ -19,7 +20,7 @@
   - A body that the browser rendered in an `#if`. Closed while held and opened again.
   - A server function's `refresh` of the named memo.
 - Tests in `test/diagnostics.test.ts`, `describe('#loading header')`: the header compiles, BRM186 for an unread memo, a signal and a member expression, and the `$debounced` warning.
-- Fixtures: `loadingOn.brm`, `loadingOnChain.brm`, `loadingOnHost.brm`, `loadingRefresh.brm`.
+- Fixtures: `loadingOn.brm`, `loadingOnInPlace.brm`, `loadingOnChain.brm`, `loadingOnHost.brm`, `loadingRefresh.brm`.
 - Docs: website/docs/async-data.md ("Show the fallback again", with the `#key (id)` idiom), docs/grammar.md (`Ident` list, BRM186), docs/decisions.md (the existing entry gets the build facts). Changeset `.changeset/loading-header-shows-fallback.md`, minor.
 
 ## Deviations
@@ -36,6 +37,8 @@
 
 - Effects of a resumed body run first after a write, since the server ran them. A body hidden before any write has no cleanup to run, and its effects run when a write reaches them after the release.
 - A branch that opens under the hidden body and loads with no `#loading` of its own shows as a second loading phase after the release (debate O9, accepted).
+- A body that the browser renders shows with state 1 when its first fallback ends. If a named memo went pending again before that, the body shows the old value until the load settles, as without a header (review note, not reproduced).
+- Not tested at run time: a header block in a `#for` row, a component in the `#else`, a header block inside `#offscreen` or another header block. The reviewer compiled each and checked the `held` calls.
 - A memo of the header with no slot (one that never changes) adds no check. With no checks the block has no update and no markers.
 - The bench's click checks FAIL on the base (01017a8e) as well, as topological-awaits-server recorded (missing `bundles` in the bench server, on next and feat/browser-async, not on main).
 
@@ -47,6 +50,7 @@
 
 - `pnpm install`, `pnpm build`, `pnpm lint` (0 errors), `pnpm format:check`, `pnpm typecheck`, `pnpm --filter brumate test` (67 files, 2050 tests): pass. Under a load average above 70 the beforeAll hooks of render/resume and some CLI tests timed out. Alone, and in a later full run at load 5, they pass.
 - With `held` returning at once, the first test fails.
+- Review round 1 (fresh reviewer, pr-review): no blocking or should-fix findings. Non-blocking: test coverage (the in-place body test added), the pending-before-first-show case (noted in Gotchas), the size above the estimate in a page with no other browser render, and the missing flag (Deviations).
 - `pnpm --filter website check:samples`: 65 samples, 0 problems. The two new `brm` samples compile.
 
 ## Size
