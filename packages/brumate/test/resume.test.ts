@@ -7482,6 +7482,7 @@ describe('an async memo that a browser render reads only with await', () => {
     expect(document.querySelector('.kid')).toBeNull();
     expect(unhandled.map(String)).toEqual([]);
   });
+});
 
 describe('an async memo whose input never changes, in a browser render', () => {
   /** Shows the page, then renders the part with the memo in the browser. */
