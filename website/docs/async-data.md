@@ -108,7 +108,7 @@ When the browser loads the page itself, it gives the page no event for a connect
 - The data of every body still loads at once. Only the showing waits, on the server, so it needs no code in the browser.
 - A body that fails keeps its fallback and takes its turn, so the bodies after it still show.
 - It orders the `#loading` blocks in its markup, and those of the components that it renders, such as a list of cards that each load their own data.
-- A `#reveal` inside a `#loading` body orders the bodies of that body. In markup that the browser renders, `#reveal` orders the `#loading` blocks that the same component renders inside it, in the same orders and with `collapsed`. It does not order the blocks of the components inside it there. `#defer` blocks inside it are not ordered.
+- A `#reveal` inside a `#loading` body orders the bodies of that body. In markup that the browser renders, `#reveal` orders the `#loading` blocks that it renders, also those of the components inside it, in the same orders and with `collapsed`. A block that a later update adds inside it, such as a new row, is not ordered. `#defer` blocks inside it are not ordered.
 
 ## `$isPending`
 

@@ -8704,6 +8704,19 @@ describe('#loading in markup that the browser renders', () => {
     await waitFor(() => expect(texts('.user')).toEqual(['ada1', 'ada2', 'ada3']));
   });
 
+  it('orders the #loading blocks of the components that a #reveal renders', async () => {
+    await resume('loadingRevealParts', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    expect(texts('.fallback')).toEqual(['loading', 'loading']);
+    await settleUser(2);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(texts('.user')).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1', 'ada2']));
+    expect(texts('.fallback')).toEqual([]);
+  });
+
   it('sends a rejected load to the #catch around the block, once', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const fails = vi.fn<() => void>();

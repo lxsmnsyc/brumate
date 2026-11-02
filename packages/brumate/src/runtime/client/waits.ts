@@ -393,14 +393,27 @@ export interface Reveal {
   t: () => void;
 }
 
-/** Starts a `#reveal` block in a browser render. The render ends before any body settles. */
-export function reveal(order: RevealOrder, collapsed: boolean): Reveal {
+/** The `#reveal` block whose body renders, which the `#loading` blocks of the render join. */
+let revealing: Reveal | undefined;
+
+/**
+ * A `#reveal` block in a browser render: the `#loading` blocks that its body renders, also in
+ * the components inside it, join one group, as on the server. The group ends with the render,
+ * before any body settles, so a block that a later update adds there is not ordered.
+ */
+export function reveal(order: RevealOrder, collapsed: boolean, body: () => Out): DocumentFragment {
   const group: Reveal = { o: order, c: collapsed, m: [], t: () => showTurns(group) };
   queueMicrotask(() => {
     group.e = true;
     group.t();
   });
-  return group;
+  const outer = revealing;
+  revealing = group;
+  try {
+    return toNodes(body());
+  } finally {
+    revealing = outer;
+  }
 }
 
 /** Shows the bodies of a `#reveal` block that are ready and whose turn it is. */
@@ -458,11 +471,26 @@ function toNodes(out: Out): DocumentFragment {
  * A `#loading` block that the browser renders, as a streamed one shows: the body at once when
  * nothing that it reads loads, and otherwise the fallback, until every wait of the body ends.
  * The body renders now, in a boundary of its own, and enters the page in one insert with its
- * work. A body whose wait fails keeps the fallback, and `fail` reported the error. `group` is the
- * `#reveal` block around it, whose order can hold a body that is ready. Updates after that keep
- * the content, since they render no boundary.
+ * work. A body whose wait fails keeps the fallback, and `fail` reported the error. The `#reveal`
+ * block around it can hold a body that is ready for its turn. Updates after that keep the
+ * content, since they render no boundary.
  */
-export function loading(body: () => Out, fallback?: () => Out, group?: Reveal): DocumentFragment {
+export function loading(body: () => Out, fallback?: () => Out): DocumentFragment {
+  const group = revealing;
+  // A `#reveal` inside the body or the fallback orders only its own blocks, as on the server.
+  revealing = undefined;
+  try {
+    return renderLoading(group, body, fallback);
+  } finally {
+    revealing = group;
+  }
+}
+
+function renderLoading(
+  group: Reveal | undefined,
+  body: () => Out,
+  fallback?: () => Out,
+): DocumentFragment {
   const made = rendered.length;
   const queued = afterInsert.length;
   // A body that is ready shows at once, unless the `#reveal` around it holds it for its turn.

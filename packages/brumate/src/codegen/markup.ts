@@ -14,6 +14,7 @@ import type {
   TemplateDecl,
   ValueAttribute,
 } from '../ast.ts';
+import { forEachNode } from '../ast.ts';
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
@@ -87,6 +88,15 @@ function mayLoad(declaration: Declaration): boolean {
       !(declaration.site && isPrimitive(declaration.site.node)) &&
       !NEVER_PROMISE.has(declaration.site?.node.type ?? ''))
   );
+}
+
+/** True if markup can render a `#loading` block: one of its own, or one in a component. */
+function mayReveal(nodes: Markup[]): boolean {
+  let found = false;
+  forEachNode(nodes, (node) => {
+    found ||= node.kind === 'loading' || node.kind === 'component' || node.kind === 'dynamic';
+  });
+  return found;
 }
 
 /** The static or value attribute named `style`. */
@@ -349,8 +359,6 @@ export class Emitter {
   private nesting = 0;
   /** How many `#head` blocks contain the current node, where a `<title>` sets the title of the page. */
   private headBlocks = 0;
-  /** In the browser, the `#reveal` blocks around the node that renders, innermost last. */
-  private reveals: string[] = [];
   private counter = 0;
   /** The tags of the elements around the node that renders, innermost last. */
   private readonly elements: string[] = [];
@@ -1431,15 +1439,13 @@ export class Emitter {
           this.line('$$ctx.revealEnd();');
           return;
         }
-        // In the browser, the `#loading` blocks of the same render join a group of the block.
-        if (node.reveal && this.options.mode === 'client') {
-          const group = this.unique('reveal');
-          this.line(
-            `const ${group} = $$b.reveal(${JSON.stringify(node.reveal.order)}, ${node.reveal.collapsed});`,
+        // In the browser, the `#loading` blocks that the body renders join a group of the block,
+        // also those of the components inside it.
+        if (node.reveal && this.options.mode === 'client' && mayReveal(node.children)) {
+          const body = this.bodyFunction('', () => this.emitNodes(node.children, scope));
+          this.code(
+            `$$b.nodes($$b.reveal(${JSON.stringify(node.reveal.order)}, ${node.reveal.collapsed}, ${body}))`,
           );
-          this.reveals.push(group);
-          this.emitNodes(node.children, scope);
-          this.reveals.pop();
           return;
         }
         this.emitNodes(node.children, scope);
@@ -2393,7 +2399,7 @@ export class Emitter {
    * In the browser, a `#loading` block renders as a streamed one shows: `$$b.loading` renders the
    * body in a boundary, and the fallback while a wait of the body has not ended. The body counts
    * the memos that it reads from outside, which the server waits for in the block. The block
-   * joins the `#reveal` block of the same render around it.
+   * joins the `#reveal` block whose body renders it.
    */
   private emitClientLoading(block: Block & { kind: 'loading' }, scope: Scope): void {
     const body = this.plan.bodyScopes.get(block.body)!;
@@ -2414,10 +2420,8 @@ export class Emitter {
       }),
     ];
     const fallback = block.fallback;
-    args.push(fallback ? this.bodyFunction('', () => this.emitBody(fallback)) : 'undefined');
-    args.push(this.reveals.at(-1) ?? 'undefined');
-    while (args.at(-1) === 'undefined') {
-      args.pop();
+    if (fallback) {
+      args.push(this.bodyFunction('', () => this.emitBody(fallback)));
     }
     this.open(scope, block);
     this.code(`$$b.nodes($$b.loading(${args.join(', ')}))`);
