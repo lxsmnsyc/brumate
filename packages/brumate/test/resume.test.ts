@@ -9702,6 +9702,97 @@ describe('a block outside every #loading that the browser renders', () => {
   });
 });
 
+describe('a write during the first of two awaits in a browser render', () => {
+  function userLoads(): UserLoad[] {
+    return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);
+  }
+
+  function loadedIds(): number[] {
+    const ids: number[] = [];
+    for (const load of userLoads()) {
+      ids.push(load.id);
+    }
+    return ids;
+  }
+
+  const settledLoads = new Set<UserLoad>();
+
+  /** Settles the first load of a user that has not settled yet. */
+  async function settleUser(id: number): Promise<void> {
+    for (const load of userLoads()) {
+      if (load.id === id && !settledLoads.has(load)) {
+        settledLoads.add(load);
+        load.done({ name: `ada${id}` });
+        break;
+      }
+    }
+    await new Promise((done) => setTimeout(done, 0));
+  }
+
+  function users(): string[] {
+    const shown: string[] = [];
+    for (const user of document.querySelectorAll('.user')) {
+      shown.push(user.textContent!);
+    }
+    return shown;
+  }
+
+  afterEach(() => {
+    userLoads().length = 0;
+    settledLoads.clear();
+    clearRuns();
+  });
+
+  it('does not update the later awaited memo before its slot holds a value', async () => {
+    const errors: unknown[] = [];
+    function onError(event: Event): void {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('waitDestrHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    // The prop changes during the first wait, so both memos load again.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2, 2, 3]));
+    await settleUser(1);
+    await settleUser(2);
+    await settleUser(2);
+    await settleUser(3);
+    await waitFor(() => expect(users()).toEqual(['ada2 ada3 AC2 0']));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(loadedIds()).toEqual([1, 2, 2, 3]);
+    expect(errors).toEqual([]);
+  });
+
+  it('computes a memo after the awaits that reads the later awaited memo', async () => {
+    const errors: unknown[] = [];
+    function onError(event: Event): void {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('waitDerivedHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2, 2, 3]));
+    await settleUser(1);
+    await settleUser(2);
+    await settleUser(2);
+    await settleUser(3);
+    await waitFor(() => expect(users()).toEqual(['ada2 ADA3 ready']));
+    // A later prop write computes the memo again, and it is not left pending.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2, 2, 3, 3, 4]));
+    await settleUser(3);
+    await settleUser(4);
+    await waitFor(() => expect(users()).toEqual(['ada3 ADA4 ready']));
+    expect(errors).toEqual([]);
+  });
+});
+
 describe('a #try that the browser renders around a wait', () => {
   function userLoads(): UserLoad[] {
     return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);

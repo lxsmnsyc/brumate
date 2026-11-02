@@ -48,7 +48,8 @@ export function fail(scope: Scope | undefined, error: unknown): void {
       }
       if (owner) {
         // The `#catch` body or a `reset` replaced the body that failed, as for a second wait of
-        // the body that failed at the same time. Its error is not shown again.
+        // the body that failed at the same time. The `#try` shows the first error, as on the
+        // server, and `onError` above saw this one.
         if (scopes.get(body.id) !== body) {
           return;
         }
