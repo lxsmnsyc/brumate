@@ -78,15 +78,27 @@ export type Part = { static: string } | { code: string; settled?: Settled };
 const NEVER_PROMISE = new Set(['ArrayExpression', 'ArrowFunctionExpression', 'FunctionExpression']);
 
 /**
+ * True for a memo whose value is never a promise in the browser, such as `count * 2`, an array or
+ * a function. A memo with `await` inside is an async function, so its value is a promise whatever
+ * its expression gives, as in ``$memo(`Hi ${(await load()).name}`)`` or `$memo([await load()])`.
+ */
+function isNeverPromise(declaration: Declaration): boolean {
+  const node = declaration.site?.node;
+  return (
+    declaration.kind === 'memo' &&
+    node !== undefined &&
+    (isPrimitive(node) || NEVER_PROMISE.has(node.type))
+  );
+}
+
+/**
  * True for a memo that can hold a promise in the browser: an `await` in it makes one, and others
  * give one unless they always give a primitive, an array or a function.
  */
 function mayLoad(declaration: Declaration): boolean {
   return (
-    declaration.kind === 'async-memo' ||
-    (declaration.kind === 'memo' &&
-      !(declaration.site && isPrimitive(declaration.site.node)) &&
-      !NEVER_PROMISE.has(declaration.site?.node.type ?? ''))
+    (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
+    !isNeverPromise(declaration)
   );
 }
 
@@ -611,10 +623,8 @@ export class Emitter {
         // A read inside a function counts too, such as `list.map(() => value)`, as the function
         // gets the value that the memo settles to.
         if (
-          (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
-          !(declaration.site && isPrimitive(declaration.site.node)) &&
-          // An array or a function is never a promise.
-          !NEVER_PROMISE.has(declaration.site?.node.type ?? '') &&
+          isMemo(declaration) &&
+          !isNeverPromise(declaration) &&
           // `wait` gives the rest of the render the value of an awaited memo of the component.
           !(
             this.options.waits &&
@@ -1038,9 +1048,10 @@ export class Emitter {
   /**
    * In the browser, a memo that nothing reads has no slot, so no load takes its promise. Its
    * rejection goes to the nearest `#try`, which is where a memo that throws sends its error. A
-   * memo that always gives a primitive, such as `count * 2`, is never a promise. `await memo`
-   * compiles to a plain read of the promise, which drops it, unless the read is the whole value
-   * of another memo, as in `$memo(await memo)`, which then holds the same promise.
+   * memo that always gives a primitive, such as `count * 2`, is never a promise, unless it has
+   * `await` inside. `await memo` compiles to a plain read of the promise, which drops it, unless
+   * the read is the whole value of another memo, as in `$memo(await memo)`, which then holds the
+   * same promise.
    */
   private watchUnreadMemos(statement: oxc.VariableDeclaration, scope: Scope): void {
     for (const declarator of statement.declarations) {
@@ -1059,7 +1070,7 @@ export class Emitter {
               read.site.node.end !== read.await.end),
         ) &&
         slotIndex(this.plan, declaration) === -1 &&
-        !(declaration.site && isPrimitive(declaration.site.node))
+        !isNeverPromise(declaration)
       ) {
         const target = this.scopeVar(instanceScope(this.plan, scope));
         this.line(`$$b.unreadMemo(${target}, ${declaration.name});`);

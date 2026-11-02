@@ -94,9 +94,9 @@ export default function Loading($$props: Record<string, never>): string | Docume
     $$b.countLoads($$s1, [greeting]);
     const $$s2 = $$b.createScope(2, $$s1, undefined, 1);
     const $$e = $$b.clone($$t0), $$f = $$e[2];
-    $$b.setContent($$e[0], (greeting));
     $$b.keep($$s2, 0, $$e[1]);
     $$b.setContent($$e[1], (count), $$s2);
+    $$b.fillSettled($$s2, [greeting], (greeting) => { $$b.setContent($$e[0], (greeting)); });
     return $$f;
   };
   const $$body1 = () => {

@@ -1,6 +1,6 @@
 {
   "name": "brumate",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "A component language and compiler for resumable web apps",
   "homepage": "https://github.com/lxsmnsyc/brumate",
   "bugs": "https://github.com/lxsmnsyc/brumate/issues",
@@ -102,6 +102,10 @@
     "./hot": {
       "types": "./dist/runtime/hot.d.ts",
       "default": "./dist/runtime/hot.js"
+    },
+    "./bundles": {
+      "types": "./dist/runtime/bundles.d.ts",
+      "default": "./dist/runtime/bundles.js"
     },
     "./testing": {
       "types": "./dist/runtime/testing.d.ts",

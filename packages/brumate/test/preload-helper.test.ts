@@ -42,6 +42,7 @@ async function buildApp(name: string, extra: InlineConfig['build'] = {}) {
         'brumate/client': runtime('client'),
         'brumate/loader': runtime('loader'),
         'brumate/static-loader': runtime('static-loader'),
+        'brumate/bundles': runtime('bundles'),
         'brumate/context': runtime('context'),
         'brumate/events': runtime('events'),
         'brumate/serial': runtime('values'),
@@ -99,15 +100,16 @@ describe('the preload helper of the client build', () => {
     const output = await buildApp('preload-helper');
     let code = '';
     for (const item of output) {
-      if (item.type === 'chunk') {
+      // The chunk that imports every bundle never loads, so its table does not count.
+      if (item.type === 'chunk' && item.facadeModuleId !== '\0virtual:brumate/bundles') {
         code += item.code;
       }
     }
-    // The scripts of a page and of its bundles come from the `Link` headers, so the table
-    // holds the stylesheet of the bundle and the imports of the other lazy chunks. A lazy
-    // chunk and the chunk that it shares with another load together.
+    // The scripts of a page and of its bundles come from the `Link` headers, and the page links
+    // to the stylesheets of its bundles, so the table holds the imports of the other lazy
+    // chunks only. A lazy chunk and the chunk that it shares with another load together.
     const deps = mapDeps(code);
-    expect(deps).toContainEqual(expect.stringMatching(/^assets\/Page_\w+-[\w-]+\.css$/));
+    expect(deps).not.toContainEqual(expect.stringMatching(/\.css$/));
     const lazy = output.find(
       (item): item is Rolldown.OutputChunk =>
         item.type === 'chunk' && item.fileName.startsWith('assets/a-'),

@@ -522,8 +522,12 @@ function updateHead(next: Document): void {
     }
   }
   for (const element of keep.values()) {
-    // Module scripts stay, because removing them does not unload them.
-    if (!(element.tagName === 'SCRIPT' && (element as HTMLScriptElement).src)) {
+    // Module scripts stay, because removing them does not unload them, and so do the stylesheets
+    // of the bundles that the loader added, whose code stays too.
+    if (
+      !(element.tagName === 'SCRIPT' && (element as HTMLScriptElement).src) &&
+      !element.hasAttribute('b-bundle')
+    ) {
       element.remove();
     }
   }

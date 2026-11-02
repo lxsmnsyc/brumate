@@ -28,6 +28,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: release-0.4.3
+    kind: hard
+    why: the 0.4.3 hotfixes reach next through its sync before the promotion
   - on: release-0.4.2
     kind: hard
     why: the 0.4.2 hotfixes reach next through its sync before the promotion

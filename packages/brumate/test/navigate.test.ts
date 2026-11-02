@@ -163,6 +163,25 @@ describe('accessible navigation', () => {
 });
 
 describe('navigate', () => {
+  it('keeps the stylesheets that the loader added for bundles', async () => {
+    // The DOM environment would fetch the stylesheets.
+    const { settings } = (window as unknown as { happyDOM: { settings: Record<string, boolean> } })
+      .happyDOM;
+    settings.disableCSSFileLoading = true;
+    settings.handleDisabledFileLoadingAsSuccess = true;
+    document.head.innerHTML =
+      '<link rel="stylesheet" href="/old.css"><link rel="stylesheet" href="/bundle.css" b-bundle="">';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => html('<p>next</p>')),
+    );
+    await navigate({ url: '/styled', push: true, leave: async () => {}, enter: () => {} });
+    expect(document.head.querySelector('link[href="/old.css"]')).toBeNull();
+    expect(document.head.querySelector('link[href="/bundle.css"]')).not.toBeNull();
+    document.head.innerHTML = '';
+    history.replaceState({}, '', '/');
+  });
+
   it('swaps in the first render, then streams later markup into the body', async () => {
     document.head.innerHTML = '<title>Old</title><style b-style="Old">a{}</style>';
     document.body.innerHTML = '<p>old page</p>';

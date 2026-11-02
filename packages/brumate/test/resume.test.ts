@@ -14,7 +14,7 @@ import {
   stateScript,
   useSerialEntry,
 } from '../src/runtime/server.ts';
-import type { PageState } from '../src/runtime/server.ts';
+import type { Component, PageState } from '../src/runtime/server.ts';
 import type { SerialEntry } from '../src/runtime/values.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 import type * as ClientApi from '../src/runtime/client.ts';
@@ -8429,6 +8429,77 @@ describe('an async memo whose input never changes, in a browser render', () => {
   }
 });
 
+describe('an async memo that gives a string, with await inside, in a browser render', () => {
+  /** Collects unhandled rejections until the test ends. */
+  function watchUnhandled(): unknown[] {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    return unhandled;
+  }
+
+  it('fills its text and an attribute', async () => {
+    await resume('primitiveAwaitHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.value')).toBe('Hi Ada'));
+    expect(document.querySelector('.value')!.getAttribute('title')).toBe('Hi Ada');
+  });
+
+  it('fills text that reads an array memo with await inside', async () => {
+    await resume('primitiveAwaitHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.names')).toBe('Ada'));
+  });
+
+  it('sends its rejection to the nearest #catch', async () => {
+    const unhandled = watchUnhandled();
+    await resume('primitiveAwaitFailTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: gap failed'));
+    expect(document.querySelector('.value')).toBeNull();
+    await new Promise((done) => setTimeout(done, 30));
+    expect(unhandled.map(String)).toEqual([]);
+  });
+
+  it('reports its rejection to the page once when no #try catches it', async () => {
+    const unhandled = watchUnhandled();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await resume('primitiveAwaitFailHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: gap failed');
+    expect(unhandled.map(String)).toEqual([]);
+  });
+
+  it('reports the rejection of such a memo that nothing reads, with no unhandled rejection', async () => {
+    const unhandled = watchUnhandled();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await resume('primitiveAwaitUnreadHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
+    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(String(errors.mock.calls[0]![0])).toBe('Error: side failed');
+    expect(unhandled.map(String)).toEqual([]);
+  });
+
+  it('sends the rejection of such a memo that nothing reads to the nearest #catch', async () => {
+    await resume('primitiveAwaitUnreadTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: side failed'));
+    expect(document.querySelector('.kid')).toBeNull();
+  });
+});
+
 describe('a block, prop or function that reads a constant async memo, in a browser render', () => {
   it('renders an #if header from a memo that settles to null', async () => {
     await resume('gapBlockIfNull', {});
@@ -8802,5 +8873,71 @@ describe('#loading in markup that the browser renders', () => {
       { filename: 'counter.brm' },
     );
     expect(getFeatures(counter).loading).toBe(false);
+  });
+});
+
+describe('the bundles that state records name', () => {
+  /** A component with one slot, rendered with the bundles of a build. */
+  async function renderRoot(id: string, base?: number): Promise<string> {
+    const Root: Component = async (_props, ctx) => {
+      ctx.slots(ctx.scope(1, undefined, id), [1]);
+      return `<p>${id}</p>`;
+    };
+    // The chunk of each bundle, as a file that exports the modules of its components.
+    const chunks: Record<string, string> = {};
+    for (const name of ['Page', 'Next']) {
+      writeFileSync(
+        join(output, `bundle-${name}.js`),
+        `export const modules = { ${name}: { id: '${name}', props: {}, g: {} } };\n`,
+      );
+      chunks[name] = file(`bundle-${name}.js`);
+    }
+    const bundles = {
+      chunks,
+      styles: { Page: [file('page.css')] },
+      members: { Page: ['Page'], Next: ['Next'] },
+    };
+    const { html, state } = await renderParts(Root, {}, { bundles, base, nonce: 'n0nce' });
+    return html + state;
+  }
+
+  beforeAll(() => {
+    // The stylesheets are files that the DOM environment cannot fetch.
+    const { settings } = (window as unknown as { happyDOM: { settings: Record<string, boolean> } })
+      .happyDOM;
+    settings.disableCSSFileLoading = true;
+    settings.handleDisabledFileLoadingAsSuccess = true;
+  });
+
+  afterEach(() => {
+    document.head.innerHTML = '';
+  });
+
+  it('load with the entry, and give `load` the modules of what the page names so far', async () => {
+    const page = await renderRoot('Page');
+    expect(page).toContain(`b-load="${file('bundle-Page.js')} ${file('page.css')}"`);
+    show(page);
+    vi.resetModules();
+    const { load } = await import('../src/runtime/bundles.ts');
+    // The stylesheet of the bundle is in the head at once, with the nonce of the record, and a
+    // navigation keeps it.
+    const links = document.head.querySelectorAll<HTMLLinkElement>('link[rel=stylesheet]');
+    expect(links).toHaveLength(1);
+    expect(links[0]!.getAttribute('nonce')).toBe('n0nce');
+    expect(links[0]!.hasAttribute('b-bundle')).toBe(true);
+    expect((await load('Page'))?.id).toBe('Page');
+    // A component that no bundle holds has no client code.
+    expect(await load('Other')).toBeUndefined();
+    // The state of a page that navigation adds names the bundles of that page.
+    appendChunk(await renderRoot('Next', 10));
+    expect((await load('Next'))?.id).toBe('Next');
+    // The record of the next page names the stylesheet again, which the page has.
+    expect(document.head.querySelectorAll('link[rel=stylesheet]')).toHaveLength(1);
+  });
+
+  it('give no module before a record names a bundle', async () => {
+    vi.resetModules();
+    const { load } = await import('../src/runtime/bundles.ts');
+    expect(load('Page')).toBeUndefined();
   });
 });
