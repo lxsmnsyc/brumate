@@ -1,7 +1,7 @@
 ---
 id: render-bundles-default
 title: "A server that renders on its own gets the client bundles, or a clear error"
-status: todo
+status: active
 priority: must
 type: fix
 outline: false
