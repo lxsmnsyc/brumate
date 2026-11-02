@@ -1,4 +1,5 @@
-// A browser render that waits at `await $memo`, and the boundaries that count such waits.
+// A browser render that waits for memos: at `await $memo`, and in cloned markup that reads a
+// memo which never changes. The boundaries count such waits.
 
 import { MemoError } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
@@ -152,6 +153,66 @@ export function fault(own: Boundary | undefined, error: unknown): void {
   } else {
     leave(own);
   }
+}
+
+/**
+ * The scope that `fillSettled` reported each rejection to, as two renders or two writes in one
+ * scope can read the same memo.
+ */
+const reportedRejections = new WeakMap<object, Scope>();
+
+/**
+ * The wait of cloned markup that reads memos which never change: `write` runs once the ones
+ * that are promises settle, as no update writes their values. It counts in the boundary of the
+ * render, as `wait` does. A rejection goes to `fail`, once per error and scope, then to `fault`.
+ * A scope that goes during the wait ends it with `leave`.
+ */
+export function fillSettled(
+  id: ScopeId | Scope,
+  values: unknown[],
+  write: (...values: unknown[]) => void,
+): void {
+  let loading = false;
+  for (const value of values) {
+    loading ||= isThenable(value);
+  }
+  if (!loading) {
+    write(...values);
+    return;
+  }
+  const scope = resolveScope(id)!;
+  const own = join();
+  Promise.all(values).then(
+    (settled) => {
+      try {
+        // A closed block removed the nodes.
+        if (scopes.get(scope.id) === scope) {
+          write(...settled);
+        }
+      } finally {
+        leave(own);
+      }
+    },
+    (error: unknown) => {
+      // A closed block shows nothing, so its error has no `#catch` to show.
+      if (scopes.get(scope.id) !== scope) {
+        leave(own);
+        return;
+      }
+      const object = typeof error === 'object' && error !== null;
+      try {
+        if (!object || reportedRejections.get(error) !== scope) {
+          if (object) {
+            reportedRejections.set(error, scope);
+          }
+          // `onError` of the page can throw.
+          fail(scope, error);
+        }
+      } finally {
+        fault(own, error);
+      }
+    },
+  );
 }
 
 /**

@@ -17,7 +17,7 @@ import type { PageState } from '../src/runtime/server.ts';
 import type { SerialEntry } from '../src/runtime/values.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 import type * as ClientApi from '../src/runtime/client.ts';
-import type { Scope } from '../src/runtime/client/state.ts';
+import type { CoreOptions, Scope } from '../src/runtime/client/state.ts';
 import type { Boundary } from '../src/runtime/client/waits.ts';
 import type { UserLoad } from './render/waitData.ts';
 
@@ -7456,6 +7456,28 @@ describe('await $memo in a component that the browser renders', () => {
     expect(loadedIds()).toEqual([1]);
   });
 
+  it('writes the markup of a constant awaited memo after the wait, and holds only other memos', async () => {
+    await resume('waitConstHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([5]));
+    await settleUser(5);
+    await waitFor(() => expect(loadedIds()).toEqual([5, 6]));
+    // The rest has the value of the awaited memo, so its text and `#if` are written at once.
+    expect(document.querySelector('.named')?.textContent).toBe('ada5');
+    expect(users()[0]).toMatch(/^ada5 /);
+    expect(document.querySelector('.user')!.getAttribute('title')).toBeNull();
+    await settleUser(6);
+    await waitFor(() => expect(users()).toEqual(['ada5 ada6 0']));
+    expect(document.querySelector('.user')!.getAttribute('title')).toBe('ada6');
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(users()).toEqual(['ada5 ada6 1']));
+    expect(loadedIds()).toEqual([5, 6]);
+    // Only the memo that the rest does not wait for holds writes back.
+    const render = readFileSync(join(output, 'WaitConst.brm.render.ts'), 'utf8');
+    expect(render).toContain('$$b.fillSettled($$s1, [other], (other) =>');
+    expect(render).not.toContain('[user], (user)');
+  });
+
   it('renders with a prop that changed during the wait', async () => {
     await resume('waitHost', {});
     click(document.querySelector('.toggle')!);
@@ -7930,6 +7952,106 @@ describe('await $memo in a component that the browser renders', () => {
         await waitFor(() => expect(users()).toEqual(['ada7 ADA7 0', 'ada8 ADA8 0', 'ada9 ADA9 0']));
       });
     }
+
+    it('counts the held writes of cloned markup in the boundary', async () => {
+      await resume('waitHost', {});
+      const { bound, fillSettled } = await import('../src/runtime/client/waits.ts');
+      const { createScope, destroy } = await import('../src/runtime/client/scopes.ts');
+      const { configure, scopes } = await import('../src/runtime/client/state.ts');
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      // The rejection goes to `fail`, which reads the options of the page.
+      configure({} as CoreOptions);
+      const scope = createScope(5);
+      const closed = createScope(6);
+      const written: unknown[] = [];
+      let settle: ((value: string) => void) | undefined;
+      let reject: ((error: Error) => void) | undefined;
+      let late: ((value: string) => void) | undefined;
+      const [, own] = bound(() => {
+        fillSettled(scope, ['now'], (value) => written.push(value));
+        fillSettled(scope, [new Promise<string>((done) => (settle = done)), 'b'], (a, b) =>
+          written.push(`${String(a)}${String(b)}`),
+        );
+        fillSettled(scope, [new Promise<string>((_, fail) => (reject = fail))], () => {});
+        fillSettled(closed, [new Promise<string>((done) => (late = done))], (value) =>
+          written.push(value),
+        );
+        return '';
+      });
+      // A value that is not a promise is written at once and does not count.
+      expect(written).toEqual(['now']);
+      expect(own!.n).toBe(3);
+      const failed: unknown[] = [];
+      let ended = 0;
+      own!.f = (error) => {
+        failed.push(error);
+        own!.n--;
+      };
+      own!.done = () => {
+        ended++;
+      };
+      settle!('a');
+      await new Promise((done) => setTimeout(done, 0));
+      expect(written).toEqual(['now', 'ab']);
+      expect(own!.n).toBe(2);
+      reject!(new Error('held failed'));
+      await new Promise((done) => setTimeout(done, 0));
+      expect(failed.map(String)).toEqual(['Error: held failed']);
+      // A scope that goes during the wait counts down without a write.
+      destroy(scopes.get(closed)!);
+      late!('gone');
+      await new Promise((done) => setTimeout(done, 0));
+      expect(written).toEqual(['now', 'ab']);
+      expect(own!.n).toBe(0);
+      expect(ended).toBe(1);
+    });
+
+    it('counts down a held write that throws, and each wait of a rejection reported once', async () => {
+      await resume('waitHost', {});
+      const { bound, fillSettled } = await import('../src/runtime/client/waits.ts');
+      const { createScope } = await import('../src/runtime/client/scopes.ts');
+      const { configure } = await import('../src/runtime/client/state.ts');
+      const errors: unknown[] = [];
+      configure({
+        onError: (error: unknown) => {
+          errors.push(error);
+        },
+      } as unknown as CoreOptions);
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => logged.mockRestore());
+      const thrown: unknown[] = [];
+      function onUnhandled(reason: unknown): void {
+        thrown.push(reason);
+      }
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      const scope = createScope(5);
+      const failure = new Error('shared');
+      const rejected = Promise.reject(failure);
+      const [, own] = bound(() => {
+        fillSettled(scope, [Promise.resolve('x')], () => {
+          throw new Error('write failed');
+        });
+        fillSettled(scope, [rejected], () => {});
+        fillSettled(scope, [rejected], () => {});
+        return '';
+      });
+      expect(own!.n).toBe(3);
+      const faults: unknown[] = [];
+      own!.f = (error) => {
+        faults.push(error);
+        own!.n--;
+      };
+      await new Promise((done) => setTimeout(done, 20));
+      // The rejection reaches the page once, and both of its waits count down.
+      expect(errors).toEqual([failure]);
+      expect(faults).toEqual([failure, failure]);
+      expect(own!.n).toBe(0);
+      expect(thrown.map(String)).toEqual(['Error: write failed']);
+    });
 
     it('returns no boundary for a body that does not wait', async () => {
       await resume('waitHost', {});

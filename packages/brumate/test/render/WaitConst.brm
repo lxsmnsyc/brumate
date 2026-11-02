@@ -1,0 +1,14 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  const user = await $memo(loadUser(5));
+  const other = $memo(loadUser(6));
+  let n = $signal(0);
+</script>
+
+<p class="user" title=(other.name)>{user.name} {other.name} {n}</p>
+#if (user.name) {
+  <i class="named">{user.name}</i>
+}
+<button class="inc" onClick=(() => n++)>+</button>

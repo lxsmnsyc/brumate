@@ -55,7 +55,7 @@ export {
   updateRoute,
 } from './client/context.ts';
 export { fail } from './client/errors.ts';
-export { wait } from './client/waits.ts';
+export { fillSettled, wait } from './client/waits.ts';
 export { guess, track } from './client/guesses.ts';
 export { action, handle, handlerProp, rpc, spread, submitAction } from './client/handlers.ts';
 export { attr, attrs, content, portalTo, restRef, text, writeText } from './client/inserts.ts';
@@ -89,7 +89,6 @@ export {
   clone,
   fillBranch,
   fillList,
-  fillSettled,
   keep,
   keepText,
   listNodes,

@@ -585,6 +585,12 @@ export class Emitter {
           !(declaration.site && isPrimitive(declaration.site.node)) &&
           // An array or a function is never a promise.
           !NEVER_PROMISE.has(declaration.site?.node.type ?? '') &&
+          // `wait` gives the rest of the render the value of an awaited memo of the component.
+          !(
+            this.options.waits &&
+            declaration.awaited &&
+            this.plan.graph.model.component.declarations.get(declaration.name) === declaration
+          ) &&
           !names.includes(declaration.name)
         ) {
           names.push(declaration.name);
