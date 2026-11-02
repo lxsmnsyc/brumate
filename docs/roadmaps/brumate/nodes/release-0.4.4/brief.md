@@ -1,7 +1,7 @@
 ---
 id: release-0.4.4
 title: Release brumate 0.4.4
-status: todo
+status: active
 priority: must
 type: release
 outline: false
