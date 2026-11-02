@@ -486,6 +486,7 @@ export function loading(body: () => Out, fallback?: () => Out): DocumentFragment
   }
 }
 
+/** `loading` with the `#reveal` group of the render, and none for its own body and fallback. */
 function renderLoading(
   group: Reveal | undefined,
   body: () => Out,

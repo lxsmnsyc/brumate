@@ -90,11 +90,18 @@ function mayLoad(declaration: Declaration): boolean {
   );
 }
 
-/** True if markup can render a `#loading` block: one of its own, or one in a component. */
+/**
+ * True if markup can render a `#loading` block: one of its own, or one in a component, or in
+ * children or a template that an insert renders.
+ */
 function mayReveal(nodes: Markup[]): boolean {
   let found = false;
   forEachNode(nodes, (node) => {
-    found ||= node.kind === 'loading' || node.kind === 'component' || node.kind === 'dynamic';
+    found ||=
+      node.kind === 'loading' ||
+      node.kind === 'component' ||
+      node.kind === 'dynamic' ||
+      node.kind === 'insert';
   });
   return found;
 }
