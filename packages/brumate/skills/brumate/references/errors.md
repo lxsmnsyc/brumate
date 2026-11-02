@@ -324,6 +324,26 @@ https://brumate-docs.vercel.app/docs/errors#brm185
 </div>
 ```
 
+## BRM187: The {kind} {name} of {component} did not settle: it writes a value that it reads, and runs again without end. Wrap the read or the write in $untrack, or write only when the value changes
+
+In the browser, an effect or an update writes a value that it reads, so each run schedules the next. Past 1000 rounds of effects, or 10000 rounds of updates, in one change, the page stops the loop and sends this error to the nearest `#try` in place of hanging the tab.
+
+https://brumate-docs.vercel.app/docs/errors#brm187
+
+```brm fragment
+<script>
+  import { $effect, $signal, $untrack } from 'brumate/signals';
+
+  let query = $signal('');
+  let saves = $signal(0);
+
+  $effect(() => {
+    void query;
+    $untrack(saves++);
+  });
+</script>
+```
+
 ## BRM023: Modifiers apply to elements. Put ":{modifier}" on the element that the component renders
 
 An event modifier is on a component, which only passes the handler on.

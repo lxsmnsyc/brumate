@@ -134,7 +134,7 @@ A function that writes a signal it also reads is the common mistake:
 </script>
 ```
 
-The effect depends on `saves`, so each save runs the effect again. Call such functions inside `$untrack`, which reads without depending on anything inside:
+The effect depends on `saves`, so each save runs the effect again, without end. After 1000 runs in one change, the page stops the loop and sends the error [BRM187](./errors.md#brm187) to the nearest [`#try`](./control-flow.md#try-and-catch), so the tab does not hang. Call such functions inside `$untrack`, which reads without depending on anything inside:
 
 ```brm live
 <script>
