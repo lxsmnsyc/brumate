@@ -7437,6 +7437,34 @@ describe('an unread async memo in a browser render', () => {
   });
 });
 
+describe('a #try around a child component', () => {
+  const fixtures = [
+    'tryAroundChildSibling',
+    'tryAroundChild',
+    'tryAroundGrandchild',
+    'tryAroundChildIf',
+    'tryAroundChildFor',
+  ];
+  const errors = [
+    { button: '.boom', message: 'Error: kid threw', what: 'a handler that throws' },
+    { button: '.later', message: 'Error: kid threw later', what: 'an async handler that rejects' },
+    { button: '.bump', message: 'Error: kid effect 1', what: 'an effect that throws' },
+  ];
+  for (const fixture of fixtures) {
+    for (const { button, message, what } of errors) {
+      it(`${fixture}: catches ${what} in the child`, async () => {
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+        onTestFinished(() => logged.mockRestore());
+        await resume(fixture, {});
+        click(document.querySelector(button)!);
+        await waitFor(() => expect(text('.caught')).toBe(message));
+        expect(document.querySelector('.boom')).toBeNull();
+        expect(logged).not.toHaveBeenCalled();
+      });
+    }
+  }
+});
+
 describe('an async memo that a browser render reads only with await', () => {
   /** Collects the unhandled rejections of the test. */
   function watchUnhandled(): unknown[] {

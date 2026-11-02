@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TryKid from './TryKid.brm';
+
+  let open = $signal(true);
+</script>
+
+#try {
+  #if (open) {
+    <TryKid />
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

@@ -1,0 +1,9 @@
+<script>
+  import TryKid from './TryKid.brm';
+</script>
+
+#try {
+  <TryKid />
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

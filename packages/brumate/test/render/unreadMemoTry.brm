@@ -5,8 +5,8 @@
   let show = $signal(false);
 </script>
 
+<button class="show" onClick=(() => (show = true))>Show</button>
 #try {
-  <button class="show" onClick=(() => (show = true))>Show</button>
   #if (show) {
     <UnreadMemoKid />
   }
