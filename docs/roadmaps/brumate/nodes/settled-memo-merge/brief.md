@@ -1,7 +1,7 @@
 ---
 id: settled-memo-merge
 title: "One settled-memo mechanism on feat/browser-async"
-status: todo
+status: active
 priority: must
 type: refactor
 outline: false
