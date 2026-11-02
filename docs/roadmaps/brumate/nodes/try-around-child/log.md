@@ -7,3 +7,7 @@
 - Fix: `tryCatchesClient` returns true when the body holds a component or a dynamic tag; plan.ts gives the body scope an ID when `tryCatchesClient` holds.
 - graph.ts importing `forEachNode` from project.ts is an import cycle (oxlint import/no-cycle). Moved `getChildren` and `forEachNode` to ast.ts; project.ts re-exports them, so other importers stay.
 - unreadMemoTry.brm: moved the show button out of the `#try`. It fails on main and passes with the fix, so the workaround is gone.
+- Updated the `blocks` render snapshot: its `#try` around `<Broken />` now ships the `#catch` body and scope IDs.
+- `pnpm --filter brumate test`: 1326 passed (first run hit a beforeAll hook timeout under load 17; rerun clean).
+- Draft PR #418. Review round 1 (fresh agent, pr-review): no blocking findings. Found that a `#template` inside a `#try` does not catch client errors, also on main.
+- Bench lock stayed held by another worker; bench not run before hand-back.
