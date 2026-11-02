@@ -413,17 +413,35 @@ describe('ref', () => {
 });
 
 describe('#loading header', () => {
-  const page = (header: string) =>
-    `<script>\nimport { $signal } from 'brumate/signals';\nlet data = $signal(1);\n</script>\n\n#loading${header} {\n  <p>{data}</p>\n} #else {\n  <p>Loading</p>\n}`;
+  const page = (header: string, script = '') =>
+    `<script>\nimport { $debounced, $memo, $signal } from 'brumate/signals';\nlet id = $signal(1);\nconst user = $memo(fetch(\`/u/\${id}\`).then((r) => r.json()));\nconst other = $memo(fetch(\`/o/\${id}\`).then((r) => r.json()));\n${script}</script>\n\n<button onClick=(() => id++)>Next</button>\n#loading${header} {\n  <p>{user.name}</p>\n} #else {\n  <p>Loading</p>\n}`;
 
-  it('fails to compile with a header', () => {
-    expect(() => compile(page(' (data)'), { filename: 'Test.brm' })).toThrow(
-      '#loading does not take a header yet',
+  it('compiles with a header that names a memo that the body reads', () => {
+    expect(compile(page(' (user)'), { filename: 'Test.brm' }).warnings).toEqual([]);
+    expect(() => compile(page(''), { filename: 'Test.brm' })).not.toThrow();
+  });
+
+  it('fails for a name that the body does not read, or that is not a memo', () => {
+    expect(() => compile(page(' (other)'), { filename: 'Test.brm' })).toThrow(
+      /"other" in the #loading header is not a memo that markup in the body reads\. .* \[BRM186\]/,
+    );
+    expect(() => compile(page(' (user, id)'), { filename: 'Test.brm' })).toThrow(
+      '"id" in the #loading header is not a memo',
+    );
+    expect(() => compile(page(' (user.name)'), { filename: 'Test.brm' })).toThrow(
+      '"user.name" in the #loading header is not a memo',
     );
   });
 
-  it('compiles without a header', () => {
-    expect(() => compile(page(''), { filename: 'Test.brm' })).not.toThrow();
+  it('warns for a memo that is or reads a $debounced memo', () => {
+    const source = page(' (user)', 'const query = $debounced(id, 300);\n').replace(
+      '/u/${id}',
+      '/u/${query}',
+    );
+    const found = compile(source, { filename: 'Test.brm' }).warnings;
+    expect(found.map((warning) => warning.message)).toEqual([
+      '#loading (user) shows its fallback while the $debounced memo "query" waits, at each change of its value',
+    ]);
   });
 });
 

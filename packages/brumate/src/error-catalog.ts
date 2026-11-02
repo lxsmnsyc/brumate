@@ -163,10 +163,10 @@ const SYNTAX: ErrorEntry[] = [
     '<input onKeyDown=(handle) onFocusOut=(handle) />',
   ),
   entry(
-    'BRM181',
-    '#loading does not take a header yet. Write #loading { … }, since the header would be dropped',
-    'A `#loading` block has a header in parentheses. The compiler reads no meaning from it.',
-    '#loading (data) {\n  <p>{data.name}</p>\n} #else {\n  <p>Loading</p>\n}',
+    'BRM186',
+    '"{name}" in the #loading header is not a memo that markup in the body reads. Name a $memo of the component or of a block script around the block',
+    'The header of `#loading (…)` names something other than a memo, or a memo that no markup in the body reads, so its loads would not show the fallback for that body.',
+    'const posts = $memo(loadPosts(id));\n#loading (posts) {\n  <p>{posts.length} posts</p>\n} #else {\n  <p>Loading</p>\n}',
   ),
   entry(
     'BRM182',

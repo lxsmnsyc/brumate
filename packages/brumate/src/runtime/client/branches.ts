@@ -273,6 +273,65 @@ export function offscreen(
   }
 }
 
+/** The ranges of the fallbacks that `#loading (memo)` blocks show, by the start of the body. */
+const fallbacks: WeakMap<Comment, [Comment, Comment]> = new WeakMap();
+
+/**
+ * Hides the body of a `#loading (memo)` block that has shown, and shows its fallback after it,
+ * while a memo of the header loads, then shows the body again. The body stays in the page and
+ * follows the `#offscreen` rules. A body that has not shown yet has no markers in the page, so
+ * its boundary shows the fallback. `kind` is the body's scope ID in the compiled component, and
+ * `kinds` are the scope IDs inside the fallback, whose instances go with it.
+ */
+export function held(
+  scope: Scope,
+  anchor: number,
+  pending: boolean,
+  kind: number,
+  render: Render | undefined,
+  kinds: number[],
+  holderKind?: number,
+  holderAnchor?: number,
+): void {
+  const start = blockStart(scope, anchor);
+  // 1 for a body that shows, 0 for one that is held.
+  if (!start || (start.data.split(':')[2] === '0') === pending) {
+    return;
+  }
+  start.data = `b${scope.id}:${anchor}:${pending ? 0 : 1}`;
+  const end = rangeEnd(start);
+  let body: Scope | undefined;
+  for (const child of scope.children ?? []) {
+    if (child.k === kind) {
+      body = child;
+    }
+  }
+  const holder = hiding ?? setHiding(createHiding())!;
+  if (pending) {
+    // Comments that name no block, so the range of a block around it still ends at its marker.
+    const range: [Comment, Comment] = [document.createComment(''), document.createComment('')];
+    end.after(...range);
+    fallbacks.set(start, range);
+    if (body) {
+      holder.hide(body, start, end);
+    }
+    if (render) {
+      insertHTML(range[1], inPlace(scope, render, holderKind, holderAnchor)!(scope));
+    }
+    return;
+  }
+  const range = fallbacks.get(start);
+  if (range) {
+    fallbacks.delete(start);
+    removeBlock(scope, kinds, range[0], range[1]);
+    range[0].remove();
+    range[1].remove();
+  }
+  if (body) {
+    holder.show(body);
+  }
+}
+
 /** A hidden `#offscreen` body: its scope, and the ranges of its markup and of its portals. */
 export interface HiddenBody {
   scope: Scope;
