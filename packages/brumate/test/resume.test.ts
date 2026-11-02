@@ -9285,6 +9285,19 @@ describe('a block outside every #loading that the browser renders', () => {
     await waitFor(() => expect(users()).toEqual(['ada3 ADA3 1', 'ada4 ADA4 0']));
   });
 
+  it('removes what the old body rendered during the hold when the new body shows', async () => {
+    await resume('holdNestedHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    // The old body is live: a block in it opens during the hold.
+    click(document.querySelector('.inner')!);
+    await waitFor(() => expect(runsOf('client')).toEqual(['client n']));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1 ADA1 0']));
+    expect(document.querySelector('.part')).toBeNull();
+    expect(runsOf('cleanup')).toEqual(['cleanup n']);
+  });
+
   it('keeps the rows of a #for until its fallback settles', async () => {
     await resume('holdEmptyHost', {});
     click(document.querySelector('.clear')!);

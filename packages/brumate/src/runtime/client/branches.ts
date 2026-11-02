@@ -79,17 +79,19 @@ export function rekey(
   if (HAS_ROOT_WAIT) {
     const start = blockStart(scope, anchor);
     const keys = scope.keys;
-    const body = inPlace(scope, render, holderKind, holderAnchor)!;
-    if (start) {
-      swap(
-        scope,
-        kinds,
-        start,
-        value,
-        () => body(scope),
-        () => keys.set(anchor, value),
-      );
+    if (!start) {
+      keys.set(anchor, value);
+      return;
     }
+    const body = inPlace(scope, render, holderKind, holderAnchor)!;
+    swap(
+      scope,
+      kinds,
+      start,
+      value,
+      () => body(scope),
+      () => keys.set(anchor, value),
+    );
     return;
   }
   scope.keys.set(anchor, value);

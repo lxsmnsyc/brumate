@@ -414,11 +414,22 @@ export function swap(
   render: () => Out,
   mark?: () => void,
 ): void {
-  // The scopes of the old body. Those of the new one have the same kinds.
-  const old = Array.from(scope.children ?? []);
-  hold(start, key, render, (out) => {
-    for (const child of old) {
-      if (kinds.includes(child.k)) {
+  // The scopes that the render of the new body adds. Those of the old body, also the ones that
+  // it adds during the hold, go when the new body shows. Both have the same kinds.
+  const made: Scope[] = [];
+  function renderNew(): Out {
+    const old = new Set(scope.children);
+    const out = render();
+    for (const child of scope.children ?? []) {
+      if (!old.has(child)) {
+        made.push(child);
+      }
+    }
+    return out;
+  }
+  hold(start, key, renderNew, (out) => {
+    for (const child of Array.from(scope.children ?? [])) {
+      if (kinds.includes(child.k) && !made.includes(child)) {
         destroy(child);
       }
     }
