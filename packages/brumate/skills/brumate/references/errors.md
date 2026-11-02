@@ -326,7 +326,7 @@ https://brumate-docs.vercel.app/docs/errors#brm185
 
 ## BRM187: The {kind} {name} of {component} did not settle: it writes a value that it reads, and runs again without end. Wrap the read or the write in $untrack, or write only when the value changes
 
-In the browser, an effect or an update writes a value that it reads, so each run schedules the next. Past 1000 rounds of effects, or 10000 rounds of updates, in one change, the page stops the loop and sends this error to the nearest `#try` in place of hanging the tab.
+In the browser, an effect or an update writes a value that it reads, so each run schedules the next. Past 1000 rounds of effects, or 10000 rounds of updates, in one change, the page stops the loop and sends this error to the nearest `#try` in place of hanging the tab. A production build sends the short form `Update loop {scope}:{name} [BRM187]`.
 
 https://brumate-docs.vercel.app/docs/errors#brm187
 

@@ -2170,9 +2170,9 @@ describe('resume', () => {
     await resume('depthLoop', {}, {}, undefined, { dev: true });
     click(document.querySelector('.start')!);
     // Without the guard, the effect runs until the cap of the fixture, 100000 runs.
-    await waitFor(() =>
-      expect(document.querySelector('.caught') ?? text('.count') === '100000').toBeTruthy(),
-    );
+    const caught = (): boolean => document.querySelector('.caught') !== null;
+    await waitFor(() => expect(caught() || text('.count') === '100000').toBe(true));
+    expect(caught(), `no #catch after ${text('.count')} runs`).toBe(true);
     expect(text('.caught')).toContain('$untrack');
     expect(text('.caught')).toContain('BRM187');
     expect(Number(text('.count'))).toBeLessThan(100000);

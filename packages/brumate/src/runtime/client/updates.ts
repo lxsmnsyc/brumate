@@ -948,8 +948,11 @@ function flushEffects(): void {
     while (pendingEffects.size > 0) {
       const run = [...pendingEffects.values()];
       pendingEffects.clear();
-      // Effects that keep writing what they read stop after 1000 rounds: the next one fails.
-      stuck = ++rounds > 1000;
+      // Effects that keep writing what they read stop after 1000 rounds: the next one fails. An
+      // effect that waits after it starts with a new count.
+      if ((stuck = ++rounds > 1000)) {
+        rounds = 0;
+      }
       pass(() => {
         for (const runEffect of run) {
           runEffect();
