@@ -1,7 +1,7 @@
 ---
 id: try-template
 title: "A #try catches the client errors of a #template inside it"
-status: todo
+status: active
 priority: must
 type: hotfix
 outline: false

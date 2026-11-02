@@ -1,7 +1,7 @@
 ---
 id: async-memo-block-headers
 title: "Block headers, props and #for lists wait for a constant async memo in a browser render"
-status: todo
+status: active
 priority: must
 type: hotfix
 outline: false
