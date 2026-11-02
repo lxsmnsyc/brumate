@@ -45,9 +45,10 @@
 - Merged origin/feat/browser-async at 50a07585 (loading-on): conflicts in `client.ts` `emitRender` (kept the split and the cloned `#loading` fallback), `markup.ts` `emitClientLoading` (kept the body scope and `emitLoadingBody`), and the two new describes at the end of `resume.test.ts` (both kept, each closed).
 
 - Review round 1: one should-fix (`#key` and `#try` bodies did not wait, and a `#try` body never filled), fixed with `emitInlineBody` and two tests; two non-blocking: tests for a sync-first row (added) and the double `i` markers (noted under Gotchas).
-- `pnpm install`, `pnpm build`, `pnpm lint` (no errors; one `consistent-function-scoping` warning in the new describe, as the file has), `pnpm format:check`, `pnpm typecheck`, `pnpm --filter brumate test` (67 files, 2076 tests after the merge).
+- Review round 2: clean (two non-blocking: the double `i` markers, three more regression tests). Round 3, after the browser-root-boundary merge: clean; non-blocking: during a `#key` hold the old body loads the new key too (root boundary design, `[31, 31]`), and `holdRow` can add a third `i` pair around a waiting row.
+- `pnpm install`, `pnpm build`, `pnpm lint` (no errors; one `consistent-function-scoping` warning in the new describe, as the file has), `pnpm format:check`, `pnpm typecheck`, `pnpm --filter brumate test` (67 files, 2090 tests after both merges).
 
 ## Size
 
-- Todos, `pnpm bench --only brumate --scenario todos`, JS before `load`: 32.3 kB / 13,837 B gzip before (01017a8e), 32.3 kB / 13,829 B after. Click checks FAIL on both, the known bundles issue of the bench server on this branch.
+- Todos, `pnpm bench --only brumate --scenario todos`, JS before `load`: 32.3 kB / 13,837 B gzip before (01017a8e), 32.3 kB / 13,829 B after. After the merge of browser-root-boundary: 32.3 kB / 13.5 kB on 80a2d66e, 32.3 kB / 13,836 B with this node. Click checks FAIL on all runs, the known bundles issue of the bench server on this branch until next is synced.
 - Estimated M, actual M/L.
