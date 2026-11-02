@@ -27,6 +27,9 @@ depends_on:
   - on: update-depth-guard
     kind: hard
     why: a runaway update loop hangs the tab on 0.4.3
+  - on: try-first-error
+    kind: hard
+    why: two errors of one #try body render the #catch twice on 0.4.3
 ---
 
 # Release brumate 0.4.4
