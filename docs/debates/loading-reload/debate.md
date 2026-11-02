@@ -2,10 +2,10 @@
 goal: Decide how a #loading boundary in the browser shows its fallback when data under it loads again, on the current runtime
 date: 2026-11-02
 rounds: 3 of 3
-status: proposed
+status: approved
 roadmap: docs/roadmaps/brumate (node loading-on)
 supersedes: docs/debates/loading-on-update/debate.md
-decision: none
+decision: docs/decisions.md (the #loading header entry, 2026-11-02)
 ---
 
 # Debate: a `#loading` fallback when data loads again

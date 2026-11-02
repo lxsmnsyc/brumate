@@ -2,11 +2,13 @@
 goal: Decide how a #loading boundary in the browser treats a memo that loads again
 date: 2026-10-29
 rounds: 2 of 2
-status: proposed
+status: superseded
 roadmap: none
 supersedes: none
 decision: none
 ---
+
+> Superseded on 2026-11-02 by [loading-reload](../loading-reload/debate.md): two facts here were wrong (O6, J10).
 
 # Debate: how a `#loading` boundary treats a memo that loads again
 

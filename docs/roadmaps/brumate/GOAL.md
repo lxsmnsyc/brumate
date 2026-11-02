@@ -111,7 +111,6 @@ Each item of the proposals maps to one node, or to built work:
 
 ## Open questions
 
-- loading-on waits on docs/debates/loading-on-update/debate.md, still `status: proposed`. Approve it before loading-on is refined.
 - Gate: split-ui-examples (the ui example page and its e2e suite by part). Approve or decline it.
 - Should the Order section of the proposals become a link to this roadmap?
 
