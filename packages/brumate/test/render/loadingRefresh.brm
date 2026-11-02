@@ -1,0 +1,34 @@
+<script module>
+  const names: string[] = ['Ada'];
+</script>
+
+<script>
+  import { $memo } from 'brumate/signals';
+  import { getEvent } from 'brumate/server';
+
+  async function list() {
+    'use server';
+    await (globalThis as { listGate?: Promise<void> }).listGate;
+    return [...names];
+  }
+
+  async function add(name: string) {
+    'use server';
+    names.push(name);
+    getEvent().refresh(list);
+  }
+
+  const all = $memo(list());
+</script>
+
+<button class="add" onClick=(() => add('Grace'))>Add</button>
+#loading (all) {
+  <ul class="names">
+    #for (name of all by name) {
+      <li>{name}</li>
+    }
+  </ul>
+  <input class="field">
+} #else {
+  <p class="fallback">loading</p>
+}

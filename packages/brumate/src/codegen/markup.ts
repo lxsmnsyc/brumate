@@ -2750,7 +2750,7 @@ export class Emitter {
     if (inPlace && memos.length === 0) {
       // Nothing can hold the body up, so it always renders in place.
       this.line('$$ctx.enter();');
-      this.emitBody(block.body);
+      this.emitLoadingBody(block, scope);
       this.line('$$ctx.leave();');
       return;
     }
@@ -2763,11 +2763,10 @@ export class Emitter {
       for (const declaration of memos) {
         this.line(`const ${declaration.name} = $$b.read(${promiseName(declaration.name)});`);
       }
-      this.emitBody(block.body);
+      this.emitLoadingBody(block, scope);
       this.line('$$ctx.leave();');
       this.close('} else {');
     }
-    this.open(scope, block);
     this.html('<!--l');
     this.code(boundary);
     this.html('-->');
@@ -2780,13 +2779,12 @@ export class Emitter {
       this.code(`$$ctx.fallbackEnd(${boundary})`);
     }
     this.html('<!--/l-->');
-    this.end(block);
     this.line(`$$ctx.defer(${boundary}, async ($$ctx) => {`);
     this.line(`let $$html = '';`);
     for (const declaration of memos) {
       this.awaitHeld(declaration);
     }
-    this.emitBody(block.body);
+    this.emitLoadingBody(block, scope);
     this.flush();
     this.line('return $$html;');
     this.close('});');
@@ -2818,7 +2816,7 @@ export class Emitter {
               `$$b.countLoads(${this.scopeVar(instanceScope(this.plan, scope))}, [${reads.join(', ')}]);`,
             );
           }
-          this.emitBody(block.body);
+          this.emitLoadingBody(block, scope);
         },
         body,
       ),
@@ -2829,8 +2827,16 @@ export class Emitter {
         this.bodyFunction('', () => this.emitBody(fallback), this.plan.bodyScopes.get(fallback)),
       );
     }
-    this.open(scope, block);
     this.code(`$$b.nodes($$b.loading(${args.join(', ')}))`);
+  }
+
+  /**
+   * The body of a `#loading` block. With a header, its markers carry the scope and the anchor of
+   * the block, so the browser finds the body to hide while a memo of the header loads.
+   */
+  private emitLoadingBody(block: Block & { kind: 'loading' }, scope: Scope): void {
+    this.open(scope, block, '1');
+    this.emitBody(block.body);
     this.end(block);
   }
 

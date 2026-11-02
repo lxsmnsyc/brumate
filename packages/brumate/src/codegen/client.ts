@@ -1511,6 +1511,30 @@ class ClientGenerator {
           `export function ${fn}($$s) {\n  $$b.offscreen($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.plan.bodyScopes.get(block.body)!.id}${held});\n}`,
         );
         return;
+      case 'loading': {
+        // `#loading (posts)` holds while a memo of its header, or a memo upstream of it, loads.
+        const checks: string[] = [];
+        const seen = new Set<Declaration>();
+        for (const read of headers[0]?.reads ?? []) {
+          const slot = slotIndex(this.plan, read.declaration);
+          if (slot !== -1 && !seen.has(read.declaration)) {
+            seen.add(read.declaration);
+            checks.push(
+              `$$b.pending(${scopePath(this.plan, '$$s', base, read.declaration.scope)}, ${slot})`,
+            );
+          }
+        }
+        if (checks.length === 0) {
+          return;
+        }
+        const fallback = block.fallback;
+        const render = fallback ? this.renderName(fallback) : 'undefined';
+        const kinds = this.hoist(`[${fallback ? this.kinds([fallback]).join(', ') : ''}]`);
+        this.emit(
+          `export function ${fn}($$s) {\n  $$b.held($$s, ${anchor}, ${checks.join(' || ')}, ${this.plan.bodyScopes.get(block.body)!.id}, ${render}, ${kinds}${held});\n}`,
+        );
+        return;
+      }
       case 'key': {
         // The block around a dynamic tag keeps the element that the server rendered with the tag.
         const [inner] = block.body.children;
@@ -1586,6 +1610,17 @@ class ClientGenerator {
         !this.plan.graph.live.has(node) ||
         node.site.label === 'for key'
       ) {
+        continue;
+      }
+      if (node.block.kind === 'loading') {
+        // The browser renders the fallback of a `#loading` block with a header, never its body.
+        const fallback = node.block.fallback;
+        if (fallback) {
+          this.renders.set(this.plan.bodyScopes.get(fallback)!, {
+            body: fallback,
+            block: node.block,
+          });
+        }
         continue;
       }
       if (!['if', 'switch', 'for', 'repeat', 'key', 'offscreen'].includes(node.block.kind)) {
@@ -1667,8 +1702,12 @@ class ClientGenerator {
       },
       () => {
         emitter.flush();
-        // The body of an `#if` or a `#for` whose markup is one string clones a template.
-        cloned = block.kind === 'if' || block.kind === 'for' ? this.cloneRender(emitter) : false;
+        // The body of an `#if` or a `#for`, and the fallback of a `#loading`, whose markup is one
+        // string clones a template.
+        cloned =
+          block.kind === 'if' || block.kind === 'for' || block.kind === 'loading'
+            ? this.cloneRender(emitter)
+            : false;
         emitter.line(emitter.returnLine(0, cloned));
       },
     );
