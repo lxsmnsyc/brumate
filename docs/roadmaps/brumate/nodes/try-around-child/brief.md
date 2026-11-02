@@ -1,7 +1,7 @@
 ---
 id: try-around-child
 title: "A #try around only a child component catches its client errors"
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 186000
 owns: []
 shared:
   - .changeset/*.md

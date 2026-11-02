@@ -1,7 +1,7 @@
 ---
 id: markup-read-async-memo
 title: "An async memo whose input never changes fills in a browser render"
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 266000
 owns: []
 shared:
   - .changeset/*.md
