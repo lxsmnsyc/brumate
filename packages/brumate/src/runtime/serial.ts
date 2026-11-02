@@ -270,23 +270,42 @@ const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
 });
 
 /**
+ * The index of a file or a blob, and what a part of multipart form data does
+ * not keep: the type (an empty one arrives as `application/octet-stream`),
+ * whether the value was a blob or a file (every part arrives as a file), and
+ * the name (some characters are escaped) and `lastModified` of a file. Calls
+ * from pages before these fields send only the index.
+ */
+type UploadNode = { i: SerovalNode; t?: SerovalNode; n?: SerovalNode; l?: SerovalNode };
+
+function isFile(value: Blob): value is File {
+  const file = value as Partial<File>;
+  return typeof file.name === 'string' && typeof file.lastModified === 'number';
+}
+
+/**
  * Files and blobs, which go only in the arguments of a call, as parts of
  * multipart form data named `file<index>`. The node holds the index. The
  * call passes `sent`, which gets each blob, and the server passes the form
  * that it `received`, whose files the indexes read. Without them, as in the
  * page state and in the answer of a call, a blob throws.
  */
-export function uploadPlugin(sent?: Blob[], received?: FormData): Plugin<Blob, { i: SerovalNode }> {
-  return createPlugin<Blob, { i: SerovalNode }>({
+export function uploadPlugin(sent?: Blob[], received?: FormData): Plugin<Blob, UploadNode> {
+  return createPlugin<Blob, UploadNode>({
     tag: 'brumate/upload',
     skipPlainObjects: true,
     test: isBlob,
-    parse: parsers((value) => {
+    // Only the fields that are set go in the node, so `K` names just the index.
+    parse: parsers<Blob, 'i'>((value) => {
       if (!sent) {
         throw new Error('A file or a blob can only be sent in the arguments of a server function');
       }
-      return { i: sent.push(value) - 1 };
-    }),
+      const index = sent.push(value) - 1;
+      if (isFile(value)) {
+        return { i: index, t: value.type, n: value.name, l: value.lastModified };
+      }
+      return { i: index, t: value.type };
+    }) as Plugin<Blob, UploadNode>['parse'],
     serialize: () => {
       throw new Error('A file or a blob can only be sent in the arguments of a server function');
     },
@@ -295,7 +314,24 @@ export function uploadPlugin(sent?: Blob[], received?: FormData): Plugin<Blob, {
       if (!(file instanceof Blob)) {
         throw new TypeError('A file of the call is missing');
       }
-      return file;
+      // A page before the metadata fields sends only the index.
+      if (node.t === undefined) {
+        return file;
+      }
+      const type = ctx.deserialize(node.t);
+      if (typeof type !== 'string') {
+        throw new TypeError('A file of the call is malformed');
+      }
+      // The new blob or file refers to the bytes of the part instead of copying them.
+      if (node.n === undefined) {
+        return new Blob([file], { type });
+      }
+      const name = ctx.deserialize(node.n);
+      const lastModified = node.l === undefined ? undefined : ctx.deserialize(node.l);
+      if (typeof name !== 'string' || typeof lastModified !== 'number') {
+        throw new TypeError('A file of the call is malformed');
+      }
+      return new File([file], name, { type, lastModified });
     },
   });
 }
