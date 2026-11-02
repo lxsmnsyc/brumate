@@ -13,7 +13,7 @@ The runtime interface between a render that waits (`wait` from browser-await) an
 
 ## Interface
 
-In `packages/brumate/src/runtime/client/waits.ts`. `wait` and `fillSettled` are exported from `brumate/client`. The rest is internal to the client runtime.
+In `packages/brumate/src/runtime/client/waits.ts`. `wait`, `fillSettled`, `loading`, `countLoads` and `reveal` are exported from `brumate/client`. The rest is internal to the client runtime.
 
 ```ts
 type Out = string | DocumentFragment;
@@ -70,6 +70,28 @@ return $$b.wait($$s1, [id, n, load(id)], 2, ($$v) => {
 
 ## Behavior
 
+Compiled blocks (v1.2):
+
+```ts
+// The compiled `#loading` of a browser render. It joins the `#reveal` whose body renders it.
+function loading(body: () => Out, fallback?: () => Out): DocumentFragment;
+
+// The memos that markup of a browser render reads and that still load, counted in the boundary of the render.
+function countLoads(id: ScopeId | Scope, values: unknown[]): void;
+
+// A `#reveal` block of a browser render: one group, one chain of bodies, for the blocks that `body` renders.
+function reveal(order: RevealOrder, collapsed: boolean, body: () => Out): DocumentFragment;
+```
+
+- `loading` is an owner of `bound`/`give`. With no wait and no turn to wait for, it returns the body's nodes. Otherwise it returns two empty comments around the fallback, sets `done` to put the body in place of the fallback, and sets `f`: a failed wait keeps the fallback, as on the server, and drops the body's held scopes. A block that closed during the hold drops the body.
+- A body that `#reveal` holds for its turn, with no wait of its own, gets a boundary that `loading` makes, `{ n: 0, c: writes, o: boundary, w }`, so its work waits as a waiting body's does. This is the one place outside `bound` that makes a `Boundary`.
+- `reveal` sets the group of the render while `body` runs, as `within` sets the boundary, so the blocks of components inside it join; `loading` clears it for its own body and fallback, as the server orders only the bodies of a `#reveal` inside a body. The group ends in a microtask: a block that a later update adds is not ordered. A failed body takes its turn with its fallback, and a second rejection of the same body is not reported, since its scopes are gone.
+- `countLoads` does nothing outside a boundary. In one, it counts each thenable with `join`, ends with `leave`, and a rejection with `fail` (once per error and scope, shared with `fillSettled`) then `fault`. Its waits follow the value, not the slot, as `fillSettled` does, so a newer load that a prop starts during the hold does not hold the body.
+- The compiler emits `countLoads` after `setSlots` for the memos of a scope that the server waits for where they are declared (`blockingMemos`), and at the start of a `#loading` body for the memos that the body reads from outside (`awaitedMemos`).
+- The flag `loading` of features.ts (`__BRUMATE_HAS_LOADING__`) turns `countLoads` into a no-op in builds that render no `#loading` in the browser.
+
+Boundary internals:
+
 - `wait` with a value that is not a thenable calls `rest(slots)` at once, in the same render, and returns what it returns.
 - `wait` with a thenable returns the range, runs the `setSlots` setup on the other slots (promise props, async memos) and keeps `scope.props`, so the rest's own `setSlots` keeps a promise prop a plain promise. It puts the promise in its slot, and takes the scope out of `rendered` until the rest runs. Update code that runs during the wait, such as a prop that a parent writes, reads and writes those slots.
 - The rest runs when the slot holds a value and no newer load runs. A newer load that a prop started wins, also when it settles before the first one. `wait` waits with `until`.
@@ -107,3 +129,4 @@ In `packages/brumate/test/resume.test.ts`, `describe('a boundary')` inside `awai
 - v1 reworked before any consumer, from the review of #413 (2026-11-02). Added `Boundary.f`, `join`, `leave`, `fault` and `fillRange`. A scope that goes during a wait counts down, and the latest load wins.
 - v1 reworked again, from the re-review of #413 (2026-11-02). Added `until` and `Boundary.c`. From the third review: `Boundary.o`, and `give` into a held outer body. `join` no longer walks held scopes: `give` runs the updates that a held body missed. A nested `bound` holds only its own work.
 - v1.1 from settled-memo-merge (2026-11-02, change request accepted by the maintainer): `fillSettled` moves into `waits.ts`, is exported next to `wait`, and counts in the boundary. The two ways of waiting stay until values-build (debate client-restructure).
+- v1.2 from browser-loading-fallback (2026-11-02, additive, accepted by the orchestrator): `loading`, `countLoads` and `reveal` for the compiled `#loading` and `#reveal` of a browser render, and the `loading` feature flag. `loading` makes one `Boundary` outside `bound`, for a body that `#reveal` holds for its turn.
