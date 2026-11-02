@@ -19,6 +19,8 @@
 
 - A `#try` whose body holds only a child component has no entry in its module's `t` table (`tryCatchesClient` in graph.ts looks only at its own component's sites), so no client error of the child reaches its `#catch`. The `#catch` fixture keeps a handler inside the `#try` for this reason.
 - An async memo that only markup reads gets no slot either. In a browser render it shows empty and its value never lands, and its rejection is not handled. Separate bug, not fixed here.
+- A memo whose only read is `await memo;` in the script, or `$memo(await a)`, still gives an unhandled rejection. The browser render turns `await a;` into `a;`, and the read keeps the memo from being watched. Found in review, not fixed here.
+- Review round 1 (fresh agent, pr-review): no blocking findings. It reproduced both failures on main and checked block scopes, `$optimistic`, `$debounced` and double reporting.
 
 ## Proposed learnings
 
