@@ -1,0 +1,10 @@
+# Log: markup-read-async-memo
+
+- 2026-11-02: Applied the markup fixtures of proofs.patch on 1b6693eb (the test file part did not apply, so the tests were written again). All five fail on main: `<p class="value"></p>` stays empty.
+- Cause: the graph never marks the memo live, as no input changes, so its markup has no anchor and no update. The browser render writes the promise once (empty text) and nothing writes the settled value. A slot, when a handler reads the memo, takes the value, but no update reads the slot. Rejections go only to the `noop` of `setSlots`.
+- Rejected: marking such memos live. On a server render that would send their values in the page state and make a `#for` over `$memo(listIssues())` a live list, for every page.
+- Fix: in client mode, `Emitter.settledMemos` finds the non-primitive memos that a non-live insert or attribute reads. The clone (template.ts) holds back those writes and emits one `$$b.fillSettled(scope, [memos], (memos) => { writes })` per scope. The runtime runs the writes at once when no value is a promise, else after `Promise.all`, if the scope still exists. A rejection goes to `fail`, once per error object, as two renders (a block inside the block script) can read one memo.
+- Deferring the writes, not writing twice, matters for `putText`: the first call replaces the comment, so a second write had no place. It also keeps `value.toUpperCase()` from running on the promise.
+- Probe: a nested non-live `#if` body reads the memo of the block script; it fills, and a rejection reports once.
+- #417 (await-read-memo-rejection) note: this fix gives no memo a slot. Added a test for `{await value}` in markup with a rejecting memo; with the markup.ts hunk of #417 applied locally it still reports once (#417 emits no `unreadMemo` there).
+- Bench: `pnpm bench --only brumate --scenario todos`, JS before `load` 5 files, 35.5 kB / 14.8 kB gzip, same as main.

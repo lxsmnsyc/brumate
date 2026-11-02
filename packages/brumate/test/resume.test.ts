@@ -7535,6 +7535,19 @@ describe('an async memo whose input never changes, in a browser render', () => {
     expect(String(errors.mock.calls[0]![0])).toBe('Error: gap failed');
   });
 
+  it('reports the rejection of a memo that the markup awaits once', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    const fails = vi.fn<() => void>();
+    await showMemo('gapMarkupAwaitFail');
+    await waitFor(() => expect(text('.caught')).toBe('Error: gap failed'));
+    window.addEventListener('brumate:error', fails);
+    onTestFinished(() => window.removeEventListener('brumate:error', fails));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(fails).not.toHaveBeenCalled();
+    expect(errors).not.toHaveBeenCalled();
+  });
+
   it('fills its text between other text', async () => {
     await showMemo('gapMarkupText');
     await waitFor(() => expect(text('.value')).toBe('Value: gap ok.'));
