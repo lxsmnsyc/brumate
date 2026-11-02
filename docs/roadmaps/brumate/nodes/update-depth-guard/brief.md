@@ -1,7 +1,7 @@
 ---
 id: update-depth-guard
 title: A runaway update loop throws instead of hanging the tab
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-31
-spent:
+spent: 150000
 owns: []
 shared:
   - .changeset/*.md

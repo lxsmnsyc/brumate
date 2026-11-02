@@ -1,7 +1,7 @@
 ---
 id: try-first-error
 title: "Two errors of one #try body at once show the #catch once, with the first error"
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-31
-spent:
+spent: 72000
 owns: []
 shared:
   - .changeset/*.md
