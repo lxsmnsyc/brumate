@@ -1,0 +1,11 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  const { row } = $props<{ row: () => unknown }>();
+  let shown = $signal(true);
+</script>
+
+<button class="toggle" onClick=(() => (shown = !shown))>Toggle</button>
+#if (shown) {
+  <div>{row()}</div>
+}
