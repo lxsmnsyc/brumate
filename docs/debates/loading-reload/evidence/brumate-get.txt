@@ -1,0 +1,26 @@
+export function get(scope: Scope, slot: number): any {
+  if (dirty.size > 0 && !draining) {
+    settle(scope);
+  }
+  const value = scope.s[slot];
+  if (value instanceof Promise && !scope.plain?.has(slot)) {
+    // A memo that reads any promise waits for it.
+    if (computing > 0) {
+      throw new NotReady(value);
+    }
+    if (loadingValues.has(value)) {
+      // An effect skips the run, and runs again when the value arrives.
+      if (runningEffects > 0) {
+        throw new NotReady(value);
+      }
+      // Code that updates the page reads the promise. Anything else has no value to read.
+      if (exempt === 0) {
+        throw new Error(
+          'This value is still loading. Wait for it with await $resolve(memo), or check $isPending(memo) first',
+        );
+      }
+    }
+  }
+  // A memo that threw holds its error, and each read of it throws.
+  if (value instanceof MemoError) {
+    throw value.error;

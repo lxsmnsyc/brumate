@@ -1,0 +1,665 @@
+{
+  "goal": "Decide how a #loading boundary in the browser shows its fallback when data under it loads again, on the current runtime: Solid-style #loading (input) re-arm, a $fresh memo, or a hybrid",
+  "research": false,
+  "max_rounds": 3,
+  "roadmap": "docs/roadmaps/brumate",
+  "supersedes": "docs/debates/loading-on-update",
+  "extra_axes": [
+    {
+      "name": "semantics",
+      "by": "proponent",
+      "status": "accepted",
+      "why": "The candidates differ most in which reloads show the fallback (navigation-style input change vs any reload of a memo) and what readers outside the boundary see; device, time and tokens do not capture that.",
+      "ruling_why": "the candidates differ mainly in which reloads show the fallback and what readers see; no other axis captures that"
+    }
+  ],
+  "claims": [
+    {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Reads of a value that is still loading (no value yet) all have a defined path on main: a memo compute throws NotReady and the memo waits (startLoading); an effect skips its run and runs again when the value arrives; a handler or $client callback throws 'This value is still loading. Wait for it with await $resolve(memo), or check $isPending(memo) first' into the nearest #try; code that updates the page reads the promise. BRM182 is a compile error for such reads the compiler sees, unless guarded by $isPending or written as await $resolve(m). This corrects O6 of the superseded debate.",
+      "evidence": {
+        "type": "measured",
+        "source": "packages/brumate/src/runtime/client/updates.ts:45-66, 512, 989; docs/decisions.md:135 (debate pending-handler-reads, PR #352)",
+        "detail": "evidence/brumate-get.txt"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "A memo that loads again keeps its old value and is pending; readers see the old value; $isPending is true. A plain read in a handler gives the last value during a reload (pending-handler-reads P3).",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:135; docs/debates/pending-handler-reads/debate.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Solid 2 <Loading on>: `on` is a dependency list, a tracked function whose reads re-arm the boundary; its return value is never compared. A write to anything it reads makes the boundary fresh: if something under it is pending it shows the fallback until the new content is ready, else the notification is a no-op. Without `on`, a boundary that showed content keeps it through a refetch. Children stay alive behind the fallback. The same data read outside the boundary holds the frame so the fallback never shows (DEV LOADING_ON_OUTSIDE_HOLD). This corrects J10 of the superseded debate, which read `on` as naming the memos that load.",
+      "evidence": {
+        "type": "source",
+        "source": "../solid/packages/signals/src/boundaries.ts:775-801",
+        "detail": "evidence/solid-loading-on.txt"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The browser has a pending boundary now: waits.ts on feat/browser-async (#413, settled-memo-merge) exports wait and fillSettled and has Boundary {n, done, f, w, c, o}, join/leave/fault/until/fillRange/bound/give. browser-loading-fallback (0.5.0 must, todo) will compile #loading in client mode to a boundary that shows #else while its body's memos with no value are pending, and keeps current content on an update. This corrects J2 of the superseded debate.",
+      "evidence": {
+        "type": "source",
+        "source": "evidence/client-pending-boundary.md; docs/roadmaps/brumate/nodes/browser-loading-fallback/brief.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "A #loading header is a compile error today (loading-header-error, 0.4.0): '#loading does not take a header yet'. The grammar parses #loading (expr) and LoadingBlock.on exists in the AST.",
+      "evidence": {
+        "type": "measured",
+        "source": "packages/brumate/src/error-catalog.ts:167; docs/roadmaps/brumate/nodes/loading-header-error/brief.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Settled elsewhere and binding here: the client-restructure debate (approved 2026-11-02) says pending and fallback state live in scope slots, no new hold-back helpers, and a browser render follows the server exactly; at equal size simpler wins. The superseded debate's user answers stand: $isPending is for styles, not #if inside the body (Q1); a fresh-only UI is wanted as an opt-in (Q3); no delay before the fallback (Q2).",
+      "evidence": {
+        "type": "source",
+        "source": "docs/debates/client-restructure/debate.md; docs/debates/loading-on-update/debate.md Answers"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "Calibration: the superseded debate cost about 217k tokens over 2 rounds; M nodes on this roadmap cost 309k-834k (browser-await 834k); size budget per GOAL.md is todos within 0.3 kB per change, and the superseded estimate for option C was about 0.7 kB gzip in apps that use it, 0 otherwise.",
+      "evidence": {
+        "type": "calibration",
+        "source": "docs/debates/loading-on-update/debate.md; spent: in nodes/*/brief.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Syntax and trigger (C): `#loading (expr) { ... } #else { ... }`. The header is a dependency list, as Solid 2's `on`: the compiler makes it an update of the boundary on the slots it reads, its value is never compared, and a write to any of those slots re-arms the boundary. Without a header, behavior is exactly browser-loading-fallback's (keep content on an update), so a refresh() or a write the header does not read keeps stale content plus $isPending.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "../solid/packages/signals/src/boundaries.ts:775-801; ../solid/packages/solid/src/client/flow.ts:500-517; React docs 'Resetting Suspense boundaries on navigation' (key on <Suspense>)",
+        "detail": "Solid 2 re-arms per boundary from what `on` reads (J3); React resets a boundary to its fallback on navigation by keying it on the route, i.e. the trigger is a named input, not the data. Both keep refetches stale by default, matching J6 Q3 (fresh-only UI as an opt-in)."
+      },
+      "ruling": "rejected",
+      "ruling_why": "superseded by P9: the header names memos (J9)"
+    },
+    {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Which reads count: after the pass of the re-arming write drains, the boundary shows #else if anything under it is pending: the slots of its own scope that the body reads (a list the compiler emits) and any loadingSlots key whose scope's p/o chain reaches the body scope. It releases when none is pending, checked with waits.ts `until`. Memos read only outside the body never count; nothing pending at re-arm is a no-op, as in Solid.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/client/updates.ts:254-259 (startLoading runs in the pass), :544-549 (pending); runtime/client/state.ts:261 (loadingSlots keyed scope:slot); runtime/client/branches.ts:255 (hidden() walks p/o, the same walk); evidence/client-pending-boundary.md (until)",
+        "detail": "Memos start loading synchronously inside the write's drain, so a check queued after the drain sees every reload the write caused, with no new subscription."
+      },
+      "ruling": "rejected",
+      "ruling_why": "O3: counting every loading slot under the body includes $debounced/$throttled timers and memos only effects or handlers read; the check must be the reads that render the body"
+    },
+    {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Mechanism, built on browser-loading-fallback's boundary: on arm, move the body's nodes into a fragment held like a Boundary with c = the write count, and insert #else; on release, put the same nodes back and let give() run the updates the held body missed when the count differs. Children stay alive (same DOM nodes, input values, scopes, no re-render), and no `hiding` is needed, which would add about 1.1 kB gzip to apps without #offscreen.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/client-pending-boundary.md (give runs all updates of a held body's scopes when c differs; blocks find their markers in the page); esbuild --minify | gzip -9 on branches.ts offscreen+hiding",
+        "detail": "evidence/proponent-sizes.txt: hide 1129 B gzip"
+      },
+      "axis": "device",
+      "ruling": "rejected",
+      "ruling_why": "O1 and O2: a detached body keeps portals, window/document listeners and effects running against the #offscreen rules, and misses updates that would open branches, so the fallback releases early"
+    },
+    {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Readers outside the boundary do not change: handlers, $client callbacks, effects and markup outside the body read the old value with $isPending true (J2), so there is no new throw path and BRM182 is untouched. Effects inside the held body keep running (alive behind the fallback, as Solid). There is no frame hold, so a read outside shows stale data while the boundary shows #else; the docs say so instead of Solid's DEV LOADING_ON_OUTSIDE_HOLD warning.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:135; website/docs/async-data.md:155-162; ../solid/packages/signals/src/boundaries.ts:775-801",
+        "detail": "J1 paths stay reserved for first loads; the reload path of J2 stays the only reload path."
+      },
+      "ruling": "rejected",
+      "ruling_why": "Q2: the body kept behind the fallback follows the #offscreen rules, so readers and effects inside it pause"
+    },
+    {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Server and resume: the server renders a header #loading as a headerless one and never evaluates the header (it compiles into client code only), so first loads stream fallback then body as today. Only header blocks write markers around the body range and ship their #else template, behind a new features.ts flag. A re-arm while the streamed body has not arrived is a no-op since the fallback is still up, which replaces the old debate's first-settle bit.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/features.ts (per-feature globals the Vite plugin turns off); docs/debates/loading-on-update/debate.md step 2 (markers and first-settle bit); docs/roadmaps/brumate/nodes/browser-loading-fallback/brief.md (ships #else only for browser-renderable blocks)",
+        "detail": "Risk to test first: a header write just before the streamed swap, whose body memos then reload on resume, must count as an arm at swap time."
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P6",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Budget: about 0.4 kB gzip runtime plus each header block's #else markup and a short marker, only in apps with a header; todos 0 B. One M node (loading-on, re-refined) after browser-loading-fallback, about 400k tokens since it reuses the frozen boundary; loading-header-error already shipped the reserved syntax.",
+      "evidence": {
+        "type": "calibration",
+        "source": "J7 (M nodes 309k-834k, superseded C estimate 0.7 kB incl. hiding); evidence/proponent-sizes.txt (whole waits.ts 1235 B, resolve() 415 B)",
+        "detail": "Re-arm = one update fn, a pending scan, a detach/reinsert and an until call: smaller than resolve()+half again, and no hiding."
+      },
+      "estimate": {
+        "value": 0.4,
+        "unit": "kB gzip, apps with a header"
+      },
+      "axis": "device",
+      "ruling": "rejected",
+      "ruling_why": "O4: 0.4 kB is reasoning, not a measurement; with O5 the cost is hiding (955 B gzip measured by proxy) in apps without #offscreen"
+    },
+    {
+      "id": "P7",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "(A) `$fresh` memo: a reload writes the in-flight promise into the slot so J1 paths handle readers. Runtime is small (about 0.1 kB, a branch in asyncMemo) but: every handler read of a $fresh memo becomes BRM182 unless guarded, even one markup reads outside #loading; markup outside any boundary goes empty during a reload (memo-prop-browser-child); browser-loading-fallback keeps content on an update, so it still needs a new path for a slot that turns back into a promise; and the choice is per memo, so it cannot tell a navigation from a refresh() or differ between two boundaries reading one memo.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "website/docs/async-data.md:157-158; docs/roadmaps/brumate/nodes/browser-loading-fallback/brief.md; React 18 startTransition/useDeferredValue",
+        "detail": "React's default (an update that suspends shows the fallback again) was found too aggressive and transitions were added to opt out; A re-creates that default per memo. Svelte 5 boundaries show pending only on the first render and use $effect.pending() after."
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P8",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "(H) Header re-arm as in P1, but the boundary re-renders its body from scratch through `bound`, as `#key` would, so pending reads are first loads under J1 and browser-loading-fallback's path. About 0.2 kB, but it drops DOM nodes, input state and child scripts on every re-arm and re-runs child memos, against the superseded debate's accepted test (same DOM nodes and input state) and Solid's alive-behind-fallback.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs/debates/loading-on-update/debate.md step 3; ../solid/packages/signals/src/boundaries.ts:800-801; React key reset of a Suspense subtree",
+        "detail": "React's key reset loses state, which is why it is documented for navigations only."
+      },
+      "ruling": "rejected",
+      "ruling_why": "superseded by P16 and P13: the header keeps the body alive; the rebuild is the #key idiom"
+    },
+    {
+      "id": "O1",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "high",
+      "answers": ["P3", "P4"],
+      "text": "Detaching the body is not 'no hiding needed': it skips three things hiding does on main. A #portal in the body (a dialog) stays on screen elsewhere in the page, <window>/<document> listeners in the body keep firing, and effects keep running against nodes that are out of the page, against the #offscreen rule in decisions.md:96-98. A moved iframe reloads and focus is lost. Likely in any body with a dialog, a key listener or an effect that measures DOM; matching #offscreen brings back most of hiding's code. (Filed on time, as rework of the node, since semantics is not ruled yet; it belongs on semantics if that axis is accepted.)",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/branches.ts:326-358; handlers.ts:196-199; updates.ts:971-974; docs/decisions.md:96-98",
+        "detail": "evidence/opponent-detach.md"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O2",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "high",
+      "answers": ["P3", "P2"],
+      "text": "With the body out of the page, no update reaches it during the hold (blockStart, text and findComment need connected markers). So an #if or #for row that a settled memo would open does not render, and its loads do not start. The pending check then sees nothing, releases the fallback, and give() opens the branch after the fallback is gone, showing empty text or a nested fallback. The content the header was meant to hold escapes as a second loading phase. Certain whenever the body branches on reloaded data. (Filed on time, as rework of the node, since semantics is not ruled yet; it belongs on semantics if that axis is accepted.)",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/blocks.ts:181-235; inserts.ts:45-62; evidence/client-pending-boundary.md (give runs missed updates once the body is in)",
+        "detail": "evidence/opponent-detach.md"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O3",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": ["P2"],
+      "text": "P2 counts every loadingSlots key under the body, not the reads that render it. $debounced and $throttled memos are in loadingSlots while their timer waits, with no load in flight. Memos that only an effect, a handler or a $isPending style reads count too. So the fallback can show, or stay up, for a debounce delay or a child's background reload that the body never waits on. Solid counts only pending reads under the boundary. (Filed on time, as rework of the node, since semantics is not ruled yet; it belongs on semantics if that axis is accepted.)",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/updates.ts:252-295, 544-549; state.ts:261; ../solid/packages/signals/src/boundaries.ts:775-801",
+        "detail": "evidence/opponent-detach.md"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O4",
+      "kind": "rebuttal",
+      "answers": ["P3", "P6"],
+      "text": "The size case for detaching overstates hiding. Without offscreen() (280 B), hiding is 955 B gzip by the same proxy, not 1129 B, and 0 B extra in apps that already ship #offscreen. P6's 0.4 kB is reasoning, not a measurement. Fixing O1 adds portal, listener and effect handling on top, so the gap between detach and hiding is under 0.5 kB, and only in apps that have a header block and no #offscreen.",
+      "evidence": {
+        "type": "measured",
+        "source": "esbuild 0.28.2 --minify | gzip -9 on branches.ts extracts",
+        "detail": "evidence/opponent-sizes.txt"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O5",
+      "kind": "alternative",
+      "answers": ["P3"],
+      "text": "Keep the superseded debate's step-2 mechanism and call hiding.hide(bodyScope, start, end) directly on a re-arm, keeping the body in the page. This keeps P1's trigger and P2's check. Updates land while the body is hidden, so the O2 branches open and their loads join the hold, with no give() rerun and no index misses. Portals, listeners and effects follow the #offscreen rule. Cost is at most 955 B gzip in header apps without #offscreen (O4). The old risk O10 does not apply, since the boundary passes the body scope and markers directly instead of searching scope.children.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs/debates/loading-on-update/debate.md step 2 (hiding called directly, accepted); runtime/client/branches.ts:326-381",
+        "detail": "evidence/opponent-sizes.txt; evidence/opponent-detach.md"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O6",
+      "kind": "rebuttal",
+      "answers": ["P1", "P7"],
+      "text": "Navigation never reaches a re-arm or a $fresh memo in brumate. A client navigation keeps a layout with the same key and replaces every other route with the server's markup, which streams fallback then body. So React's key-on-route prior art does not carry over, and P7's 'cannot tell a navigation from refresh()' reduces to 'cannot tell an in-page input write from refresh()'. That still holds against $fresh, but the header's use is in-page state (a selected id, a query), which Q1 should be read against.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/navigate.ts:117-147 (plan), 9-14 (partial: layouts kept)",
+        "detail": "evidence/opponent-detach.md"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O7",
+      "kind": "cost",
+      "axis": "time",
+      "severity": "low",
+      "answers": ["P5"],
+      "text": "P5 underscopes the markers. A headerless #loading whose body cannot wait has no boundary and no markers (markup.ts:2179-2185). The streaming marker <!--l<boundary>--> carries no scope id or anchor, so the client cannot find it from its scope. A header block needs a new marker form in both server branches, and rangeEnd must count it. That is the superseded debate's O9 (upheld), which P5 does not carry forward.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs/debates/loading-on-update/ledger.json O9 (upheld); packages/brumate/src/codegen/markup.ts:2168-2224",
+        "detail": "evidence/opponent-detach.md"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O8",
+      "kind": "cost",
+      "axis": "device",
+      "severity": "low",
+      "answers": ["P3"],
+      "text": "During a detach hold, every update aimed at the body misses. findComment re-reads observer records, findElement falls back to document.querySelector of the whole page per bound element, and sweepIndexes may drop the body's index entries. Then give() runs all the body's updates again. For a list body of N bound rows, that is N full-document queries plus a second pass; hiding avoids both because the nodes stay connected.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/blocks.ts:97-111, 181-227",
+        "detail": "evidence/opponent-detach.md"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "semantics",
+      "text": "Solid documents `on` as telling an identity change from a refetch: 'Depend on the route: a navigation shows the skeleton with the new route while the page loads; a refetch of the same route keeps the page visible', and `on={[query(), page()]}` for results. In brumate, which holds no frame, an input write updates everything outside the boundary at once while the memo under it keeps the old value (J2), so the page shows the new input next to the old record's body.",
+      "evidence": {
+        "type": "source",
+        "source": "../solid/packages/solid/src/client/flow.ts:496-507; J2"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "semantics",
+      "text": "The trigger the maintainer wants is a memo update: a way for the author to make a memo that loads again show the boundary's fallback (Q1). Telling an input write from a refresh() is not the point; Solid's input-based `on` (J3, J8) is prior art for the hold, not the required trigger.",
+      "evidence": {
+        "type": "user",
+        "source": "Q1",
+        "question": "Q1"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P9",
+      "round": 2,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "P1 amended: the header names memos, not inputs. `#loading (user)` re-arms on an update of `user` (it goes pending), whatever caused it, instead of on a write to what the header reads.",
+      "answers": ["P1", "P2"],
+      "why": "J9 (Q1): the wanted trigger is a memo update the author opts into; O3: only reads that render the body may count",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P10",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "(C') Syntax and trigger: `#loading (user, posts) { ... } #else { ... }`. Each name must be a memo (including $debounced/$throttled) of the component or of a block script around the block, and markup in the body must read it, else a compile error; so only reads that render the body count (O3). While the boundary shows content, a named memo that goes pending for any cause (an input write, refresh(), a new stream) shows #else; unnamed memos in the body keep stale content plus $isPending. The header compiles to an update on the named slots, as `$isPending(user)` in an attribute does, since startLoading already triggers readers when a memo starts loading.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/client/updates.ts:253-259 (startLoading triggers readers so $isPending updates), :544-549 (pending); codegen/patch.ts:157-162, 298 ($isPending reads); J5 (LoadingBlock.on parsed); J9",
+        "detail": "No new subscription: the header is one more reader of the named slots' pending state."
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P11",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Hold mechanism, with O5's direct hiding and Q2's #offscreen rules: on the first pending of a named memo, hiding.hide(bodyScope, start, end) and render #else after the body range; updates keep landing on the hidden body. The header boundary is a waits.ts Boundary, so a branch that opens under the hidden body and waits joins it (join/leave) instead of filling in place after release. It releases, with hiding.show and removal of #else, when no named memo is pending and its count is 0.",
+      "evidence": {
+        "type": "source",
+        "source": "runtime/client/branches.ts:170-208 (offscreen calls hiding show/hide), :326-381 (hiding: portals, listeners, effects kept for show); evidence/client-pending-boundary.md (join, leave, until, Boundary.n/done)",
+        "detail": "Answers O2 by keeping the body connected (O5) and counting its new waits in the hold."
+      },
+      "ruling": "rejected",
+      "ruling_why": "O9: join() counts only inside the running render, so a branch an update opens under the hidden body fills in place; the nested join needs a change to the frozen contract"
+    },
+    {
+      "id": "P12",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Readers: outside the body nothing changes (old value, $isPending true, J2), so BRM182 and the handler/effect paths of J1 are untouched. Inside the hidden body the #offscreen rules apply (Q2): effects pause and run on show, window/document listeners stop, portals hide. J8's mismatch (new input next to the old record) is covered for the body, since #else replaces the old record there.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:96-98, 135; Q2 answer; J8",
+        "detail": "The opt-in changes one boundary's display, not the memo, so other boundaries and handlers reading the same memo keep their behavior."
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P13",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Identity change with fresh state uses `#key (id) { <script> const user = $memo(getUser(id)) </script> #loading { ... } #else { ... } }`: no new syntax and no runtime beyond browser-loading-fallback, since the rebuilt block's memo is a first load in a browser render and shows #else (J1, J4). It ships as a docs idiom with browser-loading-fallback, not as loading-on's mechanism: it needs the memo inside the keyed block (a memo of the component script keeps its old value and is only pending), drops input state by design, and does not cover a reload of the same id.",
+      "evidence": {
+        "type": "inferred",
+        "source": "website/docs/control-flow.md:164-185 (#key renders its body again, block script state starts over); website/docs/reference-signals.md:55 (only $props is barred from block scripts); Q3",
+        "detail": "Inferred that a block script may declare $memo, and that the user wants rebuild offered where state should start over and keep-alive (C') where it should not."
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P14",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Budget: in apps with a header block, header glue about the size of offscreen() (280 B gzip measured) plus hiding (935-955 B, 0 B when the app already ships #offscreen), plus each #else markup and the new marker form of O7; todos 0 B behind a features.ts flag. Time: loading-on stays one M node after browser-loading-fallback; P13 is a docs section in browser-loading-fallback. Tokens: about 450k, the lower half of J7's M range, since hiding, the boundary and the marker design exist.",
+      "evidence": {
+        "type": "measured",
+        "source": "esbuild 0.28.2 --minify | gzip -9 on branches.ts extracts",
+        "detail": "evidence/proponent-sizes.txt (off 280, hiding 935); evidence/opponent-sizes.txt (955, 280)"
+      },
+      "estimate": {
+        "value": 1.25,
+        "unit": "kB gzip max, header apps without #offscreen; about 0.3 with it"
+      },
+      "axis": "device",
+      "ruling": "rejected",
+      "ruling_why": "O12: the 280 B glue is borrowed from offscreen(), not measured, and leaves out #else rendering and the O7 marker; the total stays an estimate of about 1.3 kB in apps without #offscreen"
+    },
+    {
+      "id": "P15",
+      "round": 2,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "(A) re-weighed against J9: per memo is now the right granularity, but `$fresh` still needs P11's hiding (or a rebuild that drops state) because browser-loading-fallback keeps content on an update, so it saves no bytes over C' and keeps P7's upheld costs: BRM182 on every handler read, empty markup outside any boundary during a reload, and one setting for every boundary that reads the memo. C' gives the same per-memo trigger at the boundary where #else is written.",
+      "evidence": {
+        "type": "source",
+        "source": "P7 (upheld); docs/roadmaps/brumate/nodes/browser-loading-fallback/brief.md (keep content on an update); docs/debates/loading-on-update/debate.md Rejected A",
+        "detail": "The superseded debate rejected A for putting the choice in the script instead of where the fallback is; J9 does not change that."
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P16",
+      "round": 2,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "P8 is dropped as the mechanism: the header boundary keeps the body alive (P11), and the rebuild is offered as the #key idiom (P13) for identity changes where state should start over.",
+      "answers": ["P8"],
+      "why": "Q3 asks to weigh #key with no new syntax; Q2 fixes keep-alive under #offscreen rules, so a header that rebuilds would duplicate #key",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O9",
+      "kind": "risk",
+      "axis": "semantics",
+      "severity": "high",
+      "answers": ["P11"],
+      "text": "P11's 'a branch that opens under the hidden body joins the Boundary' is not what waits.ts does. join() counts only in the render that is running (module `boundary`, set by within() for bound and fillRange). An #if that an update opens during the drain runs outside it, so its waits fill in place, and a plain $memo there is not a wait at all. The body therefore shows with that branch still loading, which is O2 again. A fix needs updates under a header body to run within the header boundary, plus a count for memos with no value: a change to the frozen contract v1, whose re-review removed exactly that walk of held scopes.",
+      "evidence": {
+        "type": "source",
+        "source": "git show origin/feat/browser-async:packages/brumate/src/runtime/client/waits.ts:41-66, 98-104; evidence/client-pending-boundary.md (Behavior: 'A wait that starts outside such a render fills in place'; Changes: 'join no longer walks held scopes')",
+        "detail": "evidence/opponent-round2.md"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O10",
+      "kind": "cost",
+      "axis": "semantics",
+      "severity": "medium",
+      "answers": ["P10"],
+      "text": "P10 can name only memos of the component or of a block script around the block. A memo that a child component in the body loads for itself (`<UserCard id={id}/>`), and a chained memo (posts = $memo(getPosts(user.id))) that is not named, release with the named memo and show stale or empty content after #else. The author must lift each such memo into the parent and name it. That is a limit Solid's `on` does not have, since it holds for every pending read under the boundary.",
+      "evidence": {
+        "type": "source",
+        "source": "P10 text; ../solid/packages/signals/src/boundaries.ts:775-801; packages/brumate/src/pending-reads.ts:31-41 (markup sites include `prop`, so passing a memo as a prop counts as a body read)",
+        "detail": "evidence/opponent-round2.md"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O11",
+      "kind": "risk",
+      "axis": "semantics",
+      "severity": "low",
+      "answers": ["P10", "P11"],
+      "text": "Hiding sets display:none !important on the body's top-level elements, and a hidden element loses focus. A named memo whose input field sits inside the body, which is common for search, hides the field on the first keystroke. A named $debounced memo, which P10 allows, hides the body for the whole wait even when nothing loads. This is likely in search UIs; it needs a compile warning, or docs that say to keep the control outside the body.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/client/branches.ts createHiding hideNode; updates.ts:262-295",
+        "detail": "evidence/opponent-round2.md"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O12",
+      "kind": "rebuttal",
+      "answers": ["P14"],
+      "text": "P14's 280 B of glue is borrowed from offscreen()'s size, not measured for this glue. It leaves out O9's contract change, the #else render on the client and O7's marker form. The total probably stays near 1.3 kB in apps without #offscreen, so the decision does not move, but the figure should be marked an estimate and checked against the 0.3 kB-per-change rule of GOAL.md once it is built.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/opponent-sizes.txt (offscreen() 280 B is offscreen's own body)",
+        "detail": "evidence/opponent-round2.md"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O13",
+      "kind": "alternative",
+      "answers": ["P11"],
+      "text": "Ship C' without the nested join. The boundary hides on the first pending of a named memo and shows again when none is pending. A branch inside that loads its own data uses its own #loading (browser-loading-fallback), and the docs say to name every memo the body renders from (O10). The frozen client-pending-boundary contract does not change, and the node stays clear of the part that took #413 three contract reworks. The cost is a nested fallback in that one case, which can still be added later without breaking anything.",
+      "evidence": {
+        "type": "calibration",
+        "source": "evidence/client-pending-boundary.md Changes (v1 reworked three times in review of #413, 2026-11-02); docs/roadmaps/brumate/nodes/browser-loading-fallback/brief.md",
+        "detail": "evidence/opponent-round2.md"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P17",
+      "round": 3,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "Take O13: ship C' without the nested join. The boundary hides on the first pending of a named memo and shows again when none is pending, and the frozen client-pending-boundary contract does not change. A branch that loads its own data uses its own #loading. Take O12 too: the size is an estimate, checked when the node is built.",
+      "answers": ["P11", "P14"],
+      "why": "O9 shows join() counts only inside the running render, so the nested join would reopen the contract that #413 reworked three times (O13); O12 shows the 280 B glue was borrowed, not measured",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P18",
+      "round": 3,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Final structure: `#loading (m, ...) { ... } #else { ... }` names memos of the component or of a block script around the block that the body renders from (P10). It hides the body with hiding under the #offscreen rules (P12, Q2) while any named memo is pending, with no nested join (P17), and the server renders it as a headerless block (P5, O7 markers). For O10, the compiler adds to the header's list the memos of the same scope that the body renders and that read a named memo (posts of user), which it already tracks for `$isPending`, so a chain releases together; a memo a child loads for itself is a stated limit, and the child takes its own `#loading (m)`. For O11, the docs say to keep the control that writes a named memo's input outside the body, and a compile warning flags a named memo that is, or reads, a $debounced or $throttled memo, since it hides the body for the whole wait. `#key` rebuild stays a docs idiom (P13); $fresh is not adopted (P15).",
+      "evidence": {
+        "type": "source",
+        "source": "website/docs/async-data.md:115 ($isPending is true while a memo it reads loads); codegen/scopes.ts:176 (reads $isPending adds for the memos a memo reads); P10, P12, P13, P15, P16 (upheld); O10, O11, O13",
+        "detail": "The chain rule reuses the compile-time dependency list that $isPending already uses, so it adds header slots, not runtime. Child memos stay out: the parent cannot see them at compile time."
+      },
+      "ruling": "upheld",
+      "ruling_why": "amended by O14: the header holds for each named memo and its upstream memos ([m, ...upstreamMemos(m)], model.ts:234), not the memos downstream of it; authors name the last memo of a chain"
+    },
+    {
+      "id": "P19",
+      "round": 3,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Budget: estimate up to about 1.3 kB gzip in apps with a header block and no #offscreen (hiding 935-955 B measured, plus unmeasured glue, the client #else render and the O7 marker), much less in apps that ship #offscreen, 0 B in todos and every app without a header (features.ts flag). The header-app figure is checked against GOAL.md's 0.3 kB-per-change rule when built; it fails that rule unless hiding is already shipped, so the node's acceptance records the measured size for the maintainer. Time: one M node (loading-on) after browser-loading-fallback, plus a #key docs section there. Tokens: about 450k, the lower half of J7's M range.",
+      "evidence": {
+        "type": "calibration",
+        "source": "J7; evidence/proponent-sizes.txt; evidence/opponent-sizes.txt; O12",
+        "detail": "Only hiding is measured; the rest is an estimate, marked as such per O12."
+      },
+      "estimate": {
+        "value": 1.3,
+        "unit": "kB gzip max, header apps without #offscreen"
+      },
+      "axis": "device",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O14",
+      "kind": "rebuttal",
+      "answers": ["P18"],
+      "text": "P18's chain rule runs the list the wrong way. The $isPending list is upstream: $isPending(m) reads m and upstreamMemos(m), the memos that m itself reads (model.ts:234-252, rewrite.ts:461). For a named user, that does not give posts, which reads user. Adding the downstream readers needs a new inverted walk over the model's sites. Cheaper and exact: the header pending-checks [m, ...upstreamMemos(m)] for each name, the same set $isPending uses, and the docs say to name the memo the body renders from last (#loading (posts) also holds while user loads). The $debounced warning reuses the same upstream list.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/model.ts:234-252; codegen/rewrite.ts:461; codegen/scopes.ts:176; website/docs/async-data.md:115-120",
+        "detail": "evidence/opponent-round2.md (Round 3 section)"
+      },
+      "round": 3,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O15",
+      "kind": "concession",
+      "answers": ["O12"],
+      "why": "P19 marks every figure except hiding as an estimate, and records the measured size in the node's acceptance against GOAL.md's 0.3 kB rule, which is what O12 asked for",
+      "text": "O12 is met by P19, so I drop it as an objection to the budget. The budget is up to about 1.3 kB gzip in header apps without #offscreen, 0 B elsewhere, and one M node.",
+      "round": 3,
+      "by": "opponent",
+      "ruling": "upheld"
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q1",
+      "by": "proponent",
+      "blocks": ["P1", "P7"],
+      "ask": "In a #loading block that opts into showing its fallback again, should a reload that an action's refresh() causes (same inputs, newer data) also show the fallback, or only a change of the inputs the header names (such as the route or an id)?",
+      "answer": "Neither option fits the goal of the node: brumate has no way to make a memo update show the loading boundary's fallback. The feature is that way (the maintainer, 2026-11-02)."
+    },
+    {
+      "id": "Q2",
+      "by": "opponent",
+      "blocks": ["O1", "P4", "O5"],
+      "ask": "While a #loading block shows its fallback again over content that stays alive, should that hidden content follow the #offscreen rules (effects pause, <window>/<document> listeners stop, dialogs opened through #portal hide), or should its effects and listeners keep running as if it were visible?",
+      "answer": "The #offscreen rules: effects pause, window/document listeners stop, portals hide."
+    },
+    {
+      "id": "Q3",
+      "by": "judge",
+      "blocks": ["P8", "P3", "O5"],
+      "ask": "When the header's input names a different record (a new id), should the debate weigh rebuilding the body, such as #key (id) { #loading {...} #else {...} } with no new syntax, against keeping it alive?",
+      "answer": "Yes, weigh the #key rebuild."
+    }
+  ],
+  "proofs": [],
+  "hypothesis": null,
+  "spend": [
+    {
+      "round": 1,
+      "tokens": 182000,
+      "note": "proponent 76k, opponent 106k"
+    },
+    {
+      "round": 2,
+      "tokens": 45000,
+      "note": "proponent 93k and opponent ~124k cumulative"
+    },
+    {
+      "round": 3,
+      "tokens": 15000,
+      "note": "proponent 98k, opponent 134k cumulative"
+    }
+  ]
+}
