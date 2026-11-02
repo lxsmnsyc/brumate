@@ -13,8 +13,9 @@ import type { ClientModule, Scope } from './state.ts';
  * Reports an error of client code: a handler, an effect, a `$client`
  * callback or a memo that loads. It renders the `#catch` body of the nearest
  * `#try` around the scope of the code, through the parents and the owners of
- * scopes. A template's scope goes on from the scope where it was called. Without one, the page gets a `brumate:error` event on `window`,
- * with the error and the scope, and the error is logged.
+ * scopes. A template's scope goes on from the scope where it was called.
+ * Without a `#try`, the page gets a `brumate:error` event on `window`, with
+ * the error and the scope, and the error is logged.
  */
 export function fail(scope: Scope | undefined, error: unknown): void {
   options.onError?.(error, { scope: scope?.id });

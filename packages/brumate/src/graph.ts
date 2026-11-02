@@ -178,9 +178,9 @@ function isWithinAny(scope: Scope, ancestors: Scope[]): boolean {
 
 /**
  * The scopes of the templates declared outside the body of a `#try` that are
- * called in it, or in another such template. A template's scope links to
- * where it is called at runtime, so the `#try` catches the errors of these
- * calls.
+ * called in it, in another such template, or in a function that one of them
+ * calls. A template's scope links to where it is called at runtime, so the
+ * `#try` catches the errors of these calls.
  */
 function calledTemplates(model: SemanticModel, block: Block & { kind: 'try' }): Scope[] {
   const body = findBodyScope(model, block);
@@ -189,22 +189,37 @@ function calledTemplates(model: SemanticModel, block: Block & { kind: 'try' }): 
   }
   const inside = [body];
   const found: Scope[] = [];
-  // A template found can call another one, so look again until nothing is added.
+  // The functions and templates that the body calls, also through each other.
+  const called = new Set<Declaration>();
   let added = true;
   while (added) {
     added = false;
+    for (const site of model.sites) {
+      if (
+        !isWithinAny(site.scope, inside) &&
+        (site.declaration === undefined || !called.has(site.declaration))
+      ) {
+        continue;
+      }
+      for (const declaration of site.calls) {
+        if (
+          (declaration.kind === 'function' || declaration.kind === 'template') &&
+          !called.has(declaration)
+        ) {
+          called.add(declaration);
+          added = true;
+        }
+      }
+    }
     for (const scope of model.scopes) {
       if (scope.kind !== 'template' || isWithinAny(scope, inside)) {
         continue;
       }
       const declaration = lookup(scope.parent!, scope.template!.name);
-      for (const site of model.sites) {
-        if (declaration && site.calls.has(declaration) && isWithinAny(site.scope, inside)) {
-          inside.push(scope);
-          found.push(scope);
-          added = true;
-          break;
-        }
+      if (declaration && called.has(declaration)) {
+        inside.push(scope);
+        found.push(scope);
+        added = true;
       }
     }
   }

@@ -7572,11 +7572,12 @@ describe('a #try around a #template', () => {
   });
 
   // The template is declared above the scope that holds the `#try`. In the block fixture, the
-  // button is in an `#if` of the template.
+  // button is in an `#if` of the template. In the function fixture, a function calls it.
   for (const [fixture, name] of [
     ['tryTemplateFor', 'a'],
     ['tryTemplateFor', 'b'],
     ['tryTemplateBlock', 'b'],
+    ['tryTemplateFunction', 'b'],
   ] as const) {
     it(`${fixture}: catches the error of item ${name} in its own #try`, async () => {
       const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
