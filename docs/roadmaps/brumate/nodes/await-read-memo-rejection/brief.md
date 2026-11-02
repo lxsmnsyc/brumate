@@ -41,7 +41,8 @@ In a browser render, a memo whose only read is `await memo;` or `$memo(await a)`
 
 ## Context
 
-- Found by the review of #415 (unread-memo-rejection) on 2026-11-02. It is reported on `main`; confirm it there with a failing test before the fix. If it does not reproduce, close the node with that test as the outcome.
+- Proved on `main` (56e665d5) on 2026-11-02: test "await-read-memo-rejection" in the describe "PROVE 0.4.2 gaps" of /private/tmp/claude-501/-Users-alexis-Documents-GitHub-brumate/c45168df-c5c5-4277-9330-4639c7ee2942/scratchpad/gap-proofs/proofs.patch fails 3 of 3 runs with `expected [ 'Error: gap failed' ] to deeply equal []`. Fixtures: GapAwaitKid.brm (`const side = $memo(gapFail()); await side;`), gapAwaitHost.brm, gapData.ts.
+- Apply the patch on a branch from `main`, keep the tests of this node (rename the describe), drop the rest.
 - The browser render turns `await a;` into `a;`. That counts as a read, so #415 does not watch the memo, yet no slot takes the promise either.
 - Report the todos size of `pnpm bench` (within 0.3 kB).
 

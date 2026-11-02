@@ -41,7 +41,8 @@ A `#try` whose body holds only a child component catches the client errors of th
 
 ## Context
 
-- Found by the review of #415 (unread-memo-rejection) on 2026-11-02. It is reported on `main`; confirm it there with a failing test before the fix. If it does not reproduce, close the node with that test as the outcome.
+- Proved on `main` (56e665d5) on 2026-11-02 with /private/tmp/claude-501/-Users-alexis-Documents-GitHub-brumate/c45168df-c5c5-4277-9330-4639c7ee2942/scratchpad/gap-proofs/proofs.patch: "try-around-child control" (gapTryChildSibling.brm, a button beside the child in the `#try`) passes; "try-around-child" (gapTryChild.brm, only `<GapThrowKid />` in the `#try`) times out with no `.caught`. GapThrowKid.brm has a button whose handler throws.
+- Apply the patch on a branch from `main`, keep the tests of this node (rename the describe), drop the rest.
 - `tryCatchesClient` in packages/brumate/src/graph.ts looks only at the sites of its own component, so the module gets no `t` table entry. The #415 `#catch` fixture keeps a button inside the `#try` to work around it.
 - Report the todos size of `pnpm bench` (within 0.3 kB).
 

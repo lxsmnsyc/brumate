@@ -35,7 +35,7 @@ depends_on:
     why: a #try around only a child misses its client errors
   - on: markup-read-async-memo
     kind: hard
-    why: an async memo read only by markup stays empty in a browser render
+    why: an async memo whose input never changes stays empty in a browser render
 ---
 
 # Release brumate 0.4.2

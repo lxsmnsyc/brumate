@@ -1,6 +1,6 @@
 ---
 id: markup-read-async-memo
-title: "An async memo read only by markup fills in a browser render"
+title: "An async memo whose input never changes fills in a browser render"
 status: todo
 priority: must
 type: hotfix
@@ -33,16 +33,17 @@ depends_on:
     why: same codegen and runtime path; builds on its unreadMemo watch (#415)
 ---
 
-# An async memo read only by markup fills in a browser render
+# An async memo whose input never changes fills in a browser render
 
 ## Goal
 
-In a browser render, an async memo that only markup reads shows its value when it settles, and its rejection reaches the nearest `#catch`.
+In a browser render, an async `$memo` whose input never changes shows its value in markup when it settles, and its rejection reaches the nearest `#catch`.
 
 ## Context
 
-- Found by the review of #415 (unread-memo-rejection) on 2026-11-02. It is reported on `main`; confirm it there with a failing test before the fix. If it does not reproduce, close the node with that test as the outcome.
-- The memo gets no slot, so the markup stays empty and the rejection is not handled. Check how far this overlaps promise-in-markup (browser-async, 0.5.0); this node fixes the 0.4.x behavior on `main` only.
+- Proved on `main` (56e665d5) on 2026-11-02 with /private/tmp/claude-501/-Users-alexis-Documents-GitHub-brumate/c45168df-c5c5-4277-9330-4639c7ee2942/scratchpad/gap-proofs/proofs.patch. The cause is wider than "read only by markup": an async `$memo` with no input that changes (no signal, or a signal nothing writes) never fills its text in a browser render, also when a handler reads it and also in a block script of the same component. The compiled render calls `$$b.setContent(el, value)` with no scope and no `$$b.keep`, so nothing writes the settled value. boom.brm (`$memo(load(step))` with `step++` in a handler) gets `keep` and the scope, and fills. All five "markup" tests in the patch time out with `<p class="value"></p>`.
+- Not promise-in-markup: that node renders raw promises in markup for 0.5.0. This is `$memo` of a promise, which already works on `main` when its input changes. Check whether its rejection reaches `#catch` too; it has a slot, so #415 does not watch it.
+- Apply the patch on a branch from `main`, keep the tests of this node (rename the describe), drop the rest.
 - Report the todos size of `pnpm bench` (within 0.3 kB).
 
 ## Acceptance
