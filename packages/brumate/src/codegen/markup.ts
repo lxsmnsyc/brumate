@@ -794,8 +794,35 @@ export class Emitter {
         }
       }
       this.raw(this.patch.slice(statement.start, statement.end), statement.start);
+      if (this.options.mode === 'client' && statement.type === 'VariableDeclaration') {
+        this.watchUnreadMemos(statement, scope);
+      }
     }
     endRun();
+  }
+
+  /**
+   * In the browser, a memo that nothing reads has no slot, so no load takes its promise. Its
+   * rejection goes to the nearest `#try`, which is where a memo that throws sends its error. A
+   * memo that always gives a primitive, such as `count * 2`, is never a promise.
+   */
+  private watchUnreadMemos(statement: oxc.VariableDeclaration, scope: Scope): void {
+    for (const declarator of statement.declarations) {
+      const declaration =
+        declarator.id.type === 'Identifier'
+          ? scope.declarations.get(declarator.id.name)
+          : undefined;
+      if (
+        declaration &&
+        (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
+        declaration.reads.length === 0 &&
+        slotIndex(this.plan, declaration) === -1 &&
+        !(declaration.site && isPrimitive(declaration.site.node))
+      ) {
+        const target = this.scopeVar(instanceScope(this.plan, scope));
+        this.line(`$$b.unreadMemo(${target}, ${declaration.name});`);
+      }
+    }
   }
 
   private source(node: { start: number; end: number }): string {

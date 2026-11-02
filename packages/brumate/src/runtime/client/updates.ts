@@ -18,7 +18,7 @@ import { childrenReady } from './children.ts';
 import { loadModule, loadPart, loadingCode } from './code.ts';
 import { fail } from './errors.ts';
 import { call, callNow, setPass } from './references.ts';
-import { afterInsert, descendants, findRoot } from './scopes.ts';
+import { afterInsert, descendants, findRoot, resolveScope } from './scopes.ts';
 import {
   DEV,
   devtools,
@@ -301,6 +301,17 @@ export function isThenable(value: unknown): value is PromiseLike<unknown> {
     typeof value === 'object' &&
     typeof (value as PromiseLike<unknown>).then === 'function'
   );
+}
+
+/**
+ * Reports the rejection of a memo that the browser renders and nothing reads, so it has no slot.
+ * The error reaches the nearest `#try` around the scope, or `onError`.
+ */
+export function unreadMemo(scope: Scope | ScopeId, value: unknown): void {
+  if (isThenable(value)) {
+    const at = resolveScope(scope);
+    value.then(undefined, (error: unknown) => fail(at, error));
+  }
 }
 
 /**
