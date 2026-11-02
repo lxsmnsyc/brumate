@@ -415,6 +415,8 @@ export interface ScopeState {
   t?: ScopeId;
   /** For a component that passes its children on, the scope where they are finally inserted. */
   f?: ScopeId;
+  /** For the scope of a template, the scope where it was called, which errors go to. */
+  l?: ScopeId;
   /** The values that the scope provides, by context key. */
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */
@@ -507,6 +509,7 @@ export const SCOPE_IDS: {
     o: 'id',
     t: 'id',
     f: 'id',
+    l: 'id',
     v: 'map',
     x: 'none',
     s: 'values',

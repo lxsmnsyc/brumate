@@ -306,7 +306,7 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     let $$html = '';
     const n = $$index10;
     const $$e = $$b.clone($$t5), $$f = $$e[1];
-    $$b.putText($$e[0], (row(n)));
+    $$b.putText($$e[0], (row(n)), $$s1);
     return $$f;
   };
   $$html += $$b.nodes($$b.listNodes(undefined, undefined, Array.from({ length: ( 2) }, (_, index) => index), $$body11, undefined)) + "<!--b" + $$s1 + ":5-->";
