@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { row } = $props<{ row: () => unknown }>();
+</script>
+
+<div>{row()}</div>

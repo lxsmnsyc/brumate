@@ -1,0 +1,16 @@
+{
+  "recommended_parallel": 1,
+  "limited_by": "cpu",
+  "limits": {
+    "cpu": 1,
+    "disk": 12,
+    "memory": 1
+  },
+  "cores": 8,
+  "load_1m": 4.9,
+  "free_memory_mb": 2703,
+  "total_memory_mb": 8192,
+  "free_disk_mb": 14903,
+  "existing_worktrees": 3,
+  "use_worktrees": false
+}

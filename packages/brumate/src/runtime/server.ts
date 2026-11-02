@@ -953,6 +953,11 @@ export class Context {
     }
   }
 
+  /** Records the scope where the template with the scope `template` was called. */
+  call(template: ScopeId, at: ScopeId): void {
+    this.record(template).l = at;
+  }
+
   /** Records the scope of a child component at an anchor of its parent. */
   link(scope: ScopeId, anchor: number, child: ScopeId): void {
     const record = this.record(scope);
@@ -1034,10 +1039,8 @@ export class Context {
       // contexts there, as children do.
       const render = value as unknown as (...rest: unknown[]) => Promise<unknown>;
       function template(...rest: unknown[]): Lazy {
-        return new Children(scope, async () => {
-          const html = await render(...rest);
-          return isRaw(html) ? rawHTML(html) : insertValue(html);
-        });
+        // The insert links the template's scope to where it is inserted.
+        return new Children(scope, async (ctx, at) => insert(await render(...rest), ctx, at));
       }
       functionReferences.set(template, new FunctionReference(ref, scope));
       return template as T;
@@ -1539,7 +1542,11 @@ class Children implements Lazy {
    */
   [CHILDREN_REF]?: ChildrenReference;
 
-  constructor(from: ScopeId, renderBody: (ctx: Context) => Promise<string>, ref?: string) {
+  constructor(
+    from: ScopeId,
+    renderBody: (ctx: Context, at?: ScopeId) => Promise<string>,
+    ref?: string,
+  ) {
     if (ref !== undefined) {
       this[CHILDREN_REF] = new ChildrenReference(ref, from);
     }
@@ -1552,7 +1559,7 @@ class Children implements Lazy {
       }
       const html = await (at === undefined
         ? renderBody(ctx)
-        : ctx.children(from, at, () => renderBody(ctx), tag));
+        : ctx.children(from, at, () => renderBody(ctx, at), tag));
       if (ref === undefined) {
         this[RAW] ??= html;
       }
@@ -1626,6 +1633,11 @@ export function insert(
   }
   if (isLazy(value) && ctx) {
     return value[LAZY](ctx, scope, tag, anchor);
+  }
+  // The output of a template links its scope to where it is inserted, so a `#try` there catches
+  // its errors.
+  if (isRaw(value) && value.s !== undefined && ctx && scope !== undefined) {
+    ctx.call(value.s, scope);
   }
   if (Array.isArray(value)) {
     const parts: (string | Promise<string>)[] = [];

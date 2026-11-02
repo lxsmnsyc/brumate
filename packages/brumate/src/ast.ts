@@ -289,3 +289,53 @@ export interface TemplateDecl extends Range {
   params: oxc.ParamPattern[];
   body: Body;
 }
+
+/** The markup inside a node: the children of an element, or the bodies of a block. */
+export function getChildren(node: Markup): Markup[] {
+  switch (node.kind) {
+    case 'element':
+    case 'component':
+    case 'dynamic':
+    case 'fragment':
+      return node.children;
+    case 'if': {
+      const children: Markup[] = [];
+      for (const branch of node.branches) {
+        children.push(...branch.body.children);
+      }
+      children.push(...(node.fallback?.children ?? []));
+      return children;
+    }
+    case 'switch': {
+      const children: Markup[] = [];
+      for (const branch of node.cases) {
+        children.push(...branch.body.children);
+      }
+      children.push(...(node.fallback?.children ?? []));
+      return children;
+    }
+    case 'for':
+    case 'repeat':
+    case 'loading':
+    case 'client':
+    case 'defer':
+      return [...node.body.children, ...(node.fallback?.children ?? [])];
+    case 'try':
+      return [...node.body.children, ...node.fallback.children];
+    case 'key':
+    case 'portal':
+    case 'head':
+    case 'offscreen':
+      return node.body.children;
+    default:
+      return [];
+  }
+}
+
+/** Visits every markup node of a file, including blocks and templates. */
+export function forEachNode(nodes: Markup[], visit: (node: Markup) => void): void {
+  for (const node of nodes) {
+    visit(node);
+    forEachNode(getChildren(node), visit);
+  }
+}

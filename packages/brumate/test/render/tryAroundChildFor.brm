@@ -1,0 +1,11 @@
+<script>
+  import TryKid from './TryKid.brm';
+</script>
+
+#try {
+  #for (item of [1] by item) {
+    <TryKid />
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

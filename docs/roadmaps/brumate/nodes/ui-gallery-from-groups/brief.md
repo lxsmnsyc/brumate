@@ -1,6 +1,6 @@
 ---
 id: ui-gallery-from-groups
-title: Regroup the ui sidebar and build the gallery from the groups
+title: The ui cards read their summaries from the pages
 status: todo
 priority: should
 type: docs
@@ -8,7 +8,7 @@ outline: false
 milestone: 0.5.0
 target:
 from:
-size: M
+size: S
 spike: false
 verify:
 exclusive: []
@@ -17,10 +17,11 @@ gate: false
 added: 2026-10-31
 owns:
   - website/src/ui.ts
-  - website/src/routes/ui/index.brm
-  - website/src/components/Header.brm
+  - website/src/ui-landing.ts
   - website/plugins/markdown.ts
   - website/src/components/DocPage.brm
+  - website/src/routes/ui/_layout.brm
+  - website/test/**
 shared:
   - website/ui/*.md
 reserves: []
@@ -28,30 +29,25 @@ provides: []
 depends_on: []
 ---
 
-# Regroup the ui sidebar and build the gallery from the groups
+# The ui cards read their summaries from the pages
 
 ## Goal
 
-Adding a part touches its own page and one line of `groups`, and the `/ui` gallery reads in the same order as the sidebar. Today `website/src/ui.ts` is 469 lines: `groups` (the sidebar) and `gallery` (about 330 lines of cards) in one file, in different orders, and five open nodes edit it.
+Adding a part touches its own page and one line of `groups` in `website/src/ui.ts`. Today `ui.ts` also holds `gallery`, about 330 lines with a summary for each of the 64 parts, kept apart from the pages, and six open nodes edit the file.
 
 ## Context
 
-- Found by the website audit of 2026-10-31 (findings 13, 18, 19, 20 of the ui audit).
-- Move each card's summary into the front matter of its page (check whether `description` can serve), and generate the gallery by walking `groups`. Add group headings on `/ui`.
-- Regroup, as proposed by the audit (a judgment call; confirm with the maintainer before building):
-  - Actions: button, toggle-button, toggle-button-group, link, file-trigger, drop-zone.
-  - Forms: text-field, search-field, token-field, number-field, slider, checkbox, checkbox-group, radio-group, switch, select, combo-box, autocomplete, form.
-  - Pickers: colors, dates.
-  - Overlays: add menu.
-  - Navigation: add tabs, navigation-tree.
-  - Collections: list-box, grid-list, tag-group, table, tree, virtualizer, data.
-  - Utilities: add transition and selection-indicator (drops the one-page Animation group).
-- Remove the unused `brm gallery` fence (`plugins/markdown.ts` ~65, 313-317; `DocPage.brm` 60-72; `'gallery'` in the part type).
-- The header on ui pages has no link to `/` and no REPL link (`Header.brm` 28-46). Fix it here, since it is the same navigation work.
+- Re-evaluated on 2026-11-01, after the website redesign (#399, 6262541e). The redesign already lists the cards on `/ui` in the order and under the group headings of the sidebar: `kinds` in `src/ui-landing.ts` walks `sections`, and `routes/ui/index.brm` renders it. The maintainer confirmed: the groups stay as they are while the landing page and the sidebar match, and the ui header gets no REPL link.
+- Move each card's summary into the front matter of its page (check whether `description` can serve, since the search index and the meta tags may already read it), and build the cards from `sections` and the front matter. `gallery` and the lookup loop in `ui-landing.ts` go.
+- Remove the `brm gallery` fence that no page uses any more: `plugins/markdown.ts` (the `{ gallery: true }` part, about line 65 and 328-332), its branch in `DocPage.brm` (about 125-131), and `:global(.ui-gallery)` in `routes/ui/_layout.brm`.
 
 ## Acceptance
 
-- [ ] `ui.ts` holds only `groups`; the gallery is built from it and the pages' front matter.
-- [ ] The gallery and the sidebar list the parts in the same order, under the same group headings.
-- [ ] Every ui page is in exactly one group (a test fails otherwise).
+- [ ] `ui.ts` holds only `groups` (and the page and demo tables); the summaries live in the pages' front matter.
+- [ ] `/ui` shows the same cards, summaries and order as before.
+- [ ] A test fails when a ui page is in no group or in two, or when a part's page has no summary.
 - [ ] `pnpm --filter website check:samples && pnpm --filter website build` pass.
+
+## Sizing
+
+S: a data move across the part pages, one deleted fence and one test.

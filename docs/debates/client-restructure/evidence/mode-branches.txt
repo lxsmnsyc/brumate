@@ -1,0 +1,10 @@
+options.mode / .mode === branches in codegen/markup.ts (shared server+browser render emitter)
+main: 33
+origin/next: 31
+main 10 days ago (75b75156): 22
+
+fix commits touching runtime/client or codegen/{markup,template}.ts since 2026-10-15:
+48
+main 2026-10-26 (5917d067): 27
+main 2026-10-30 (a09dcb20): 27
+9d955a6c 2026-10-20

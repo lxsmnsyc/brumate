@@ -1,0 +1,19 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TryTemplateList from './TryTemplateList.brm';
+
+  let shown = $signal(true);
+</script>
+
+#template kid() {
+  <button class="boom" onClick=(() => { throw new Error('kid threw'); })>Boom</button>
+}
+
+<button class="toggle" onClick=(() => (shown = !shown))>Toggle</button>
+#if (shown) {
+  #try {
+    <TryTemplateList row=kid />
+  } #catch (error) {
+    <p class="caught">{String(error)}</p>
+  }
+}

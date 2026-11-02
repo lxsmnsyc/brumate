@@ -1,0 +1,5 @@
+<script>
+  import TryKid from './TryKid.brm';
+</script>
+
+<TryKid />

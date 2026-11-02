@@ -12,7 +12,7 @@ export default async function TemplateUpdate($$props: Record<string, never>, $$c
     const $$s2 = $$ctx.scope(2, $$s1);
     $$html += "<span class=\"price\"><!--t" + $$s2 + ":0-->" + (typeof ($$t = $$b.insert((label), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t-->: <!--t" + $$s2 + ":1-->" + (typeof ($$t = $$b.insert((amount), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "<!--/t--></span>";
     $$ctx.slots($$s2, [label, amount], ["label","amount"]);
-    return $$b.raw($$html);
+    return $$b.raw($$html, $$s2);
   }
   $$html += "<button b-b=\"" + $$s1 + ":0\" b-on=\"click=TemplateUpdate_kx4ubq#h3\">Add</button><p b-b=\"" + $$s1 + ":1\">" + (typeof ($$t = $$b.insert((price('Subtotal', total)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
   $$ctx.slots($$s1, [total], ["total"]);
@@ -48,7 +48,7 @@ function price(label: string, amount: number) {
   const $$s2 = $$b.createScope(2, $$p);
   $$html += "<span class=\"price\"><!--t" + $$s2 + ":0-->" + $$b.insert((label)) + "<!--/t-->: <!--t" + $$s2 + ":1-->" + $$b.insert((amount)) + "<!--/t--></span>";
   $$b.setSlots($$s2, [label, amount]);
-  return $$b.raw($$html);
+  return $$b.raw($$html, $$s2);
 }
 return price('Subtotal', $$b.get($$s, 0));
 })($$s));
@@ -67,7 +67,7 @@ export default function TemplateUpdate($$props: Record<string, never>): string |
     const $$s2 = $$b.createScope(2, $$s1);
     $$html += "<span class=\"price\"><!--t" + $$s2 + ":0-->" + $$b.insert((label)) + "<!--/t-->: <!--t" + $$s2 + ":1-->" + $$b.insert((amount)) + "<!--/t--></span>";
     $$b.setSlots($$s2, [label, amount]);
-    return $$b.raw($$html);
+    return $$b.raw($$html, $$s2);
   }
   const $$e = $$b.clone($$t0), $$f = $$e[2];
   $$b.keep($$s1, 0, $$e[0]);
@@ -87,4 +87,4 @@ TemplateUpdate.brumateId = "TemplateUpdate_kx4ubq";
 </p>
 
 # State
-<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"TemplateUpdate_kx4ubq",s:[1]},1:{k:2,p:0,s:["Subtotal",1]}})))</script>
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"TemplateUpdate_kx4ubq",s:[1]},1:{k:2,p:0,s:["Subtotal",1],l:0}})))</script>

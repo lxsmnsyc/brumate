@@ -1,0 +1,790 @@
+{
+  "goal": "Restructure and simplify the brumate client runtime and its browser render path, so fixes stop adding special cases, while the client keeps shrinking; weighed together with direct-update-calls and values-spike/values-build",
+  "research": false,
+  "max_rounds": 3,
+  "max_tokens": 300000,
+  "roadmap": "docs/roadmaps/brumate",
+  "supersedes": null,
+  "extra_axes": [
+    {
+      "name": "size",
+      "by": "proponent",
+      "why": "GOAL.md puts client size first and every core change reports todos gzip within 0.3 kB (J6); time and tokens do not show it",
+      "status": "accepted",
+      "ruling_why": "GOAL.md puts client size first and every core change reports todos; a step can win on structure and lose on bytes"
+    },
+    {
+      "name": "maintenance",
+      "by": "proponent",
+      "why": "the goal is that fixes stop adding special cases; measured as client-mode branches in markup.ts and browser-only helpers (22 to 33 in 10 days, evidence/mode-branches.txt)",
+      "status": "accepted",
+      "ruling_why": "the goal itself is to stop adding special cases; P1 gives a countable proxy (client-mode branches, browser-only helpers)"
+    }
+  ],
+  "claims": [
+    {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "8 cores, 8 GB RAM, 2.7 GB free, load 4.9, 14.9 GB free disk, 3 worktrees in use; capacity.py recommends 1 parallel worktree (CPU-bound)",
+      "evidence": {
+        "type": "measured",
+        "source": "capacity.py --json",
+        "detail": "evidence/capacity.json"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Client runtime on main: 21 files, 6014 lines in packages/brumate/src/runtime/client; on next 5884 lines, 201 kB raw, largest updates.ts 31.5 kB, then resume.ts 17.2 kB, templates.ts 16.4 kB, lists.ts 15.8 kB, inserts.ts 15.0 kB",
+      "evidence": {
+        "type": "measured",
+        "source": "wc -l / wc -c on main and on git archive origin/next"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Client-side codegen on main: 7681 lines in packages/brumate/src/codegen, mostly markup.ts (2684 on next) and client.ts (2085 on next)",
+      "evidence": {
+        "type": "measured",
+        "source": "wc -l packages/brumate/src/codegen/*.ts"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Test net: packages/brumate/test/resume.test.ts has 404 it() cases in 7617 lines, with 478 .brm fixtures in test/render; full check pnpm build && pnpm test && node e2e/run.mjs takes about 10 minutes (GOAL.md)",
+      "evidence": {
+        "type": "measured",
+        "source": "grep -c it( ; ls test/render/*.brm | wc -l ; GOAL.md Verification"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Branches diverge: main has 46 commits not on next (0.4.1 sync plus 0.4.2 hotfixes #415-#421 in progress), next has 15 not on main (usage-pruning-flags #414, browser-await on feat/browser-async #413). The same client files are edited by about 12 open nodes each (plan.py check warnings on runtime/client/*.ts)",
+      "evidence": {
+        "type": "measured",
+        "source": "git log origin/main..origin/next ; plan.py check"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Size baseline: todos gzip JS before load is 14.8 kB on main and 13.5 kB on next after #414; Marko 6 todos is 4.4 kB (direct-update-calls brief). GOAL.md: size comes first, every core change reports todos within 0.3 kB",
+      "evidence": {
+        "type": "measured",
+        "source": "pnpm bench --only brumate --scenario todos (#415-#421 reports, #414); nodes/direct-update-calls/brief.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "Calibration of node spend: browser-await (M) 834k, usage-pruning-flags (M) 309k, the S hotfixes unread-memo-rejection 198k, try-around-child 186k, markup-read-async-memo 266k; 22 nodes with recorded spend total 2.71M",
+      "evidence": {
+        "type": "calibration",
+        "source": "spent: fields in docs/roadmaps/brumate/nodes/*/brief.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Special cases added on main on 2026-11-02 by hotfixes: $$b.unreadMemo + watchUnreadMemos (#415, #417), Emitter.settledMemos + $$b.fillSettled held-back writes (#419, #421), holdsComponent + needsId on #try bodies (#418), calledTemplates + triesTable claim rules (#420). Each PR lists browser-render limits left open (dynamic tags, windowed #for, HTML-string markup, templates called from other scopes)",
+      "evidence": {
+        "type": "source",
+        "source": "PRs #415 #417 #418 #419 #420 #421 and nodes/*/outcome.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Planned work in the same area: drop-marker-index (0.5.0 must, L) removes the MutationObserver marker index and the clientHTML string path; browser-async story (0.5.0 must) adds waits, root boundary, #loading fallbacks to the browser render; direct-update-calls (backlog, could) compiles the update table into direct calls; values-spike (0.6.0) and values-build (backlog) emit one function per changing value and drop the update tables",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/{drop-marker-index,browser-async,direct-update-calls,values-spike,values-build}/brief.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J10",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "Capacity rule in GOAL.md: at most 3 workers at once; the bench is exclusive; one fresh reviewer per code PR; review rounds on core PRs found real bugs every time (#411-#421)",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/GOAL.md Verification; PR review histories"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P1",
+      "kind": "proposal",
+      "text": "Core of the restructure: one write path. A browser render clones its template, makes the scope with its initial slot values, and runs the same update functions a later write runs, as a first pass; template.ts emits no inline first writes and markup.ts keeps no client-mode render semantics. Fixes for async, errors and #try then land once, in the update path, and the J8 helpers (unreadMemo, watchUnreadMemos, settledMemos, fillSettled) are deleted instead of grown.",
+      "estimate": {
+        "value": 33,
+        "unit": "mode branches in codegen/markup.ts to shrink (22 on 10-23, 27 on 10-26, 33 on 11-02)"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "marko 6.4.6 dist/debug/dom (setupBranch queues the setup signal on the update queue; _await_promise calls the branch params signal); Svelte 5 template_effect and Solid createRenderEffect run one function for mount and update; plus grep of options.mode in markup.ts on main over time",
+        "detail": "evidence/marko-one-write-path.txt, evidence/mode-branches.txt"
+      },
+      "round": 1,
+      "by": "proponent",
+      "ruling": "rejected",
+      "ruling_why": "superseded by P10, which keeps the one write path but follows O2: a browser render calls each value function directly, a later write queues it"
+    },
+    {
+      "id": "P2",
+      "kind": "proposal",
+      "text": "Step 0, ships first and alone on next: delete the lazy-loading leftovers that eager loading (decision 2026-10) made dead: the slow path of trigger, updateCode, loadUpdate, updateReady, waiting, loadingUpdates and the updated() loop, and the loadModule/loadPart waits in errors.ts, branches.ts, insert.ts, props.ts and handlers.ts. It first checks client navigation, #defer and child bundles, which may still load late. M size, one worker, about 300k tokens (usage-pruning-flags M took 309k, J7).",
+      "estimate": {
+        "value": 0.3,
+        "unit": "kB gzip off todos (0.2-0.4; region alone is 0.65 kB gz standalone, an upper bound)"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "esbuild --minify + gzip -9 of updates.ts lines 563-670 vs the whole file",
+        "detail": "evidence/sizes/lazyload.txt (region 1234 B min / 654 B gz; updates.ts 8918 B min / 3681 B gz)"
+      },
+      "round": 1,
+      "by": "proponent",
+      "ruling": "rejected",
+      "ruling_why": "O1: on next prune-lazy-parts (#407) already removed updateCode, loadUpdate, updateReady and loadPart (0 hits on origin/next, measured by the judge); loadingUpdates and updated() remain for navigation, #defer and $resolve"
+    },
+    {
+      "id": "P3",
+      "kind": "proposal",
+      "text": "Step 1: build the one write path (P1) as a node on feat/browser-async right after browser-await, before browser-root-boundary; browser-root-boundary, browser-try, browser-loading-fallback and promise-in-markup are then refined on it, so pending state, fallbacks and caught errors are slot state the update path already handles, not new render-side code. This avoids a separate restructure branch that would be the 13th editor of the same client files (J5). L, about 1.0-1.3M tokens (browser-await M took 834k, J7), several days with one worker (J1).",
+      "estimate": {
+        "value": 1.2,
+        "unit": "M tokens"
+      },
+      "evidence": {
+        "type": "calibration",
+        "source": "J7 spend of browser-await; nodes/browser-async/brief.md children order; J5 file contention",
+        "detail": "browser-async Decisions 2026-11-01: continuations at await, root boundary, children order"
+      },
+      "round": 1,
+      "by": "proponent",
+      "ruling": "rejected",
+      "ruling_why": "O3 upheld: an L node that adapts the update queue for the first render, then replaced by P5's value functions, is mostly thrown away; and it lengthens the 0.5.0 must line on a one-worker machine (J1)"
+    },
+    {
+      "id": "P4",
+      "kind": "proposal",
+      "text": "Step 2: drop-marker-index as planned (0.5.0 must), ordered after P3, with one added acceptance: no body that the browser renders falls back to an HTML string, so every browser render goes through P3. Its brief says it removes almost nothing from todos; its value here is that the HTML-string fallback is the path where the #419 fix does not apply. L, about 600-900k tokens.",
+      "estimate": {
+        "value": 0.75,
+        "unit": "M tokens"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "nodes/drop-marker-index/brief.md (size audit 2026-11-01); nodes/markup-read-async-memo/outcome.md Gotchas: a render that falls back to HTML strings still does not fill",
+        "detail": "J7 for the L/M token scale"
+      },
+      "round": 1,
+      "by": "proponent",
+      "ruling": "rejected",
+      "ruling_why": "Q4: the user moved drop-marker-index off 0.5.0; its HTML-string rule moves into the node that builds the write path (O7)"
+    },
+    {
+      "id": "P5",
+      "kind": "proposal",
+      "text": "Step 3, the size step: values-spike re-aimed on top of P1. Once the first render calls the update functions, functions for values replace both g and the pass/queueWrite/drain machinery for first render and updates at once, with _or-style counters for diamonds as in Marko. The spike measures todos and rows and must keep the ordered-updates guarantees; values-build follows only on a go. Spike M, time-boxed three days, about 400-800k tokens.",
+      "estimate": {
+        "value": 3.7,
+        "unit": "kB gzip: updates.ts minified standalone, the ceiling this step attacks (todos 13.5 kB on next vs Marko 4.4 kB)"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "marko 6.4.6 _let/_const/_or in dist/debug/dom; nodes/direct-update-calls/brief.md How Marko 6 orders updates; proposals.md step 4",
+        "detail": "evidence/marko-one-write-path.txt, evidence/sizes/lazyload.txt"
+      },
+      "round": 1,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P6",
+      "kind": "proposal",
+      "text": "Guard, ships before P3: a differential test that renders each test/render fixture both ways, server render plus resume and browser render after a toggle, and compares DOM, slot values and where errors go. Each divergence it finds is a special case P3 must remove; it turns 'fixes stop adding special cases' into a count. S-M, about 250k tokens; it doubles the render part of the 10-minute suite (J4), so it runs in CI and in a filtered local run.",
+      "estimate": {
+        "value": 478,
+        "unit": "fixtures compared"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "marko-js/marko packages/runtime-tags/src/__tests__: each fixture is run as client render and as server render plus resume (recalled, not checked here); J4 counts; J8 lists the limits each hotfix left open",
+        "detail": "J4, J8"
+      },
+      "round": 1,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P7",
+      "kind": "cut",
+      "action": "merge",
+      "nodes": ["direct-update-calls"],
+      "text": "Merge direct-update-calls into values-spike and values-build: both compile the update table into direct calls. Its cheapest candidate (drop code-loading waits) becomes P2, the rest is P5.",
+      "evidence": {
+        "type": "source",
+        "source": "nodes/direct-update-calls/brief.md Candidates; nodes/values-spike/brief.md Goal; proposals.md step 4",
+        "detail": "same mechanism in both briefs"
+      },
+      "round": 1,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P8",
+      "kind": "alternative",
+      "text": "Cheaper path: keep the two render paths; ship P2, P6 and drop-marker-index as planned, leave values-spike in 0.6.0. Fixes still add client-mode cases, but P6 finds them before users do. About 1.2M tokens against about 3M for P2-P6, and no change to the browser-async children; it does not stop special cases being added.",
+      "estimate": {
+        "value": 1.2,
+        "unit": "M tokens"
+      },
+      "evidence": {
+        "type": "calibration",
+        "source": "J7 node spend; sum of estimates in P2, P4, P6",
+        "detail": "P2 0.3M + P6 0.25M + P4 0.75M"
+      },
+      "round": 1,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O1",
+      "kind": "rebuttal",
+      "answers": ["P2", "P7"],
+      "text": "P2 is already shipped: prune-lazy-parts (#407, done 2026-11-01 on next) removed updateCode, loadUpdate, updateReady, loadPart and parts, and its brief kept trigger's slow path, loadingUpdates, waiting and updated() on purpose because navigation, #defer, updated() and $resolve need them. P2 measured main's updates.ts; on next those names count 0 and updates.ts is already 214 B gz smaller, inside J6's 13.5 kB, so P2's 0.3 kB is banked and what is left of it would break those features.",
+      "estimate": {
+        "value": 0,
+        "unit": "kB gzip left for P2 on next without dropping navigation/#defer waits"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "git grep -c on main vs origin/next runtime/client; esbuild --minify + gzip -9 of origin/next updates.ts; nodes/prune-lazy-parts/brief.md Context",
+        "detail": "evidence/sizes/updates-next.txt (next 8373 B min / 3467 B gz vs main 8918 / 3681)"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O2",
+      "kind": "rebuttal",
+      "answers": ["P1"],
+      "text": "Marko does not run first render through its update queue: _let and _let_change call fn(scope) directly while rendering and call queueRender only outside a render, and _or counts inputs synchronously in the same run. Marko has one function per value with two dispatch modes, so it is prior art for P5's value functions, not for P1's routing of the first render through brumate's pass/queueWrite/drain, which would add a queue entry per slot per #for row on browser render.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "marko 6.4.6 dist/debug/dom, quoted in evidence/marko-one-write-path.txt (_let: `if (rendering) { ... fn?.(scope) } else ... queueRender`)",
+        "detail": "evidence/marko-one-write-path.txt"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O3",
+      "kind": "cost",
+      "axis": "time",
+      "severity": "high",
+      "answers": ["P3", "P5"],
+      "text": "P3 then P5 rebuild the same machinery twice: P3 (L, about 1.2M tokens) makes the browser first render run on pass/queueWrite/drain, then P5 replaces pass/queueWrite/drain with value functions, discarding the part of P3 that adapted the queue. P3 also sits before browser-root-boundary inside browser-async, which is on the 0.5.0 critical path (browser-loading-fallback -> loading-on -> browser-async -> release-0.5) with one worker (J1).",
+      "estimate": {
+        "value": 1.2,
+        "unit": "M tokens at risk of rework (P3's own estimate), plus days on the 0.5.0 critical path"
+      },
+      "evidence": {
+        "type": "calibration",
+        "source": "J7 (browser-await M 834k); plan.py overview critical path; P3 and P5 texts",
+        "detail": "plan.py docs/roadmaps/brumate overview: Critical path line"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O4",
+      "kind": "alternative",
+      "answers": ["P1", "P3", "P5"],
+      "text": "Spike first: pull values-spike forward as the next client node (M, three-day box) and re-aim it to answer P1 and P5 together: one value function per slot that a browser render calls directly (Marko-style) and a write queues, with todos and rows sizes and the J8 helpers it deletes. browser-async children go on as planned meanwhile; on a go one build node does values plus the one write path after browser-async merges, on a no-go fall back to P8.",
+      "estimate": {
+        "value": 0.6,
+        "unit": "M tokens for the spike (P5's 0.4-0.8M) before any L commitment, instead of 1.2M for P3 first"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "nodes/values-spike/brief.md (M, time-boxed three days, go/no-go outcome); O2; O3",
+        "detail": "evidence/marko-one-write-path.txt"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O5",
+      "kind": "alternative",
+      "answers": ["P1"],
+      "text": "Delete J8 helpers one by one with compile-time facts instead of a render rewrite: drop-unread-memos (0.6.0, could, M outline) stops the browser from computing a pure memo nothing reads, which removes $$b.unreadMemo and watchUnreadMemos (#415, #417; a client-mode branch in markup.ts plus a runtime export) and makes the browser match the server, the behavior Q2 asks about.",
+      "estimate": {
+        "value": 0.3,
+        "unit": "M tokens (M node, J7 scale), removes 1 mode branch and 1 runtime export"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "codegen/markup.ts 846-882 (watchUnreadMemos under options.mode === 'client'); runtime/client/updates.ts 310 (unreadMemo); nodes/drop-unread-memos/brief.md Goal",
+        "detail": "Marko prunes unread pure values at compile time (pruneBindings), per that brief"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O6",
+      "kind": "risk",
+      "axis": "tokens",
+      "severity": "medium",
+      "answers": ["P6"],
+      "text": "P6 underestimates the harness: the 478 test/render files are not standalone roots and have no snapshots (resume.test.ts compiles them together with analyzeProject liveProps, many are children fed props by hand-written cases), and 74 use server-coupled features (use server, #loading, #defer, await, $client, #offscreen). Checked prior art: Marko does run 1543 fixtures as CSR and SSR+resume, but its harness was built with per-fixture snapshots and configs, and about 75 files opt out with skip_csr or equivalent:false, so brumate needs per-fixture roots, props and baselines first; likely M (300-500k), not S-M 250k, and divergences include accepted ones (Q2), so they do not count special cases one to one.",
+      "estimate": {
+        "value": 0.4,
+        "unit": "M tokens"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "gh api marko-js/marko packages/runtime-tags/src/__tests__/main.test.ts (skip_csr, skip_ssr, equivalent -> render.md vs render-ssr.md/render-csr.md); git tree count of fixtures/*/template.marko = 1543; gh search code skip_csr = 75 files; ls test/render; grep -l of server features = 74",
+        "detail": "test/resume.test.ts lines 26-60; J7 usage-pruning-flags M 309k"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O7",
+      "kind": "cut",
+      "action": "park",
+      "nodes": ["drop-marker-index"],
+      "text": "Park drop-marker-index off the 0.5.0 must line: its own size audit says it removes almost nothing from todos because flags already prune the string path and the MutationObserver there. Keep only the acceptance P4 needs (no browser-rendered body falls back to an HTML string) inside whichever node builds the write path; saves about 0.75M tokens (P4's estimate) and an L node of days on 0.5.0 with one worker, size about 0 on todos.",
+      "estimate": {
+        "value": 0.75,
+        "unit": "M tokens saved on 0.5.0"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "nodes/drop-marker-index/brief.md Context (size audit 2026-11-01: CLIENT_HTML 181 B gz and LATE_MARKUP pruned on todos); P4",
+        "detail": "plan.py overview: release-0.5 depends on drop-marker-index"
+      },
+      "round": 1,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P9",
+      "kind": "concession",
+      "answers": ["P2"],
+      "why": "O1 and the judge measured 0 hits of updateCode, loadUpdate, updateReady and loadPart on origin/next: prune-lazy-parts (#407) shipped it, and the rest serves navigation, #defer and $resolve",
+      "text": "Drop P2. No step 0; the remaining waits stay.",
+      "round": 2,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P10",
+      "kind": "concession",
+      "answers": ["P1", "P3"],
+      "why": "O2 shows Marko renders by calling value functions directly and queues only writes outside a render; O3 shows P3 would adapt pass/queueWrite/drain only for P5 to replace it",
+      "text": "Drop P3 and adopt O4's spike first. Amend P1's form: not 'first render runs through the update queue' but one function per value with two dispatch modes, called directly while a browser render runs and queued by a later write, so first render and update share the write code and only the scheduling differs.",
+      "round": 2,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P11",
+      "kind": "proposal",
+      "answers": ["P1", "P5", "O4"],
+      "text": "The settled shape, in order. 1) drop-unread-memos, pulled from 0.6.0 to right after the 0.5.0 must line (Q2 asked for it). 2) the differential harness P6 at O6's size. 3) values-spike re-aimed per O4 and P10. 4) on a go, one values-build node that delivers the two-mode value functions for first render and updates, and deletes g, pass/queueWrite/drain, fillSettled and settledMemos. All of it runs after 0.5.0 (Q3) on one worker (J1), so it never shares the client files with browser-async children (J5).",
+      "estimate": {
+        "value": 1.3,
+        "unit": "M tokens before the go (0.3 + 0.4 + 0.6); values-build XL about 1.5-2M only on a go"
+      },
+      "evidence": {
+        "type": "calibration",
+        "source": "J7 node spend; O4, O5, O6 estimates; Q2, Q3 answers",
+        "detail": "drop-unread-memos brief: M, could, 0.6.0"
+      },
+      "round": 2,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P12",
+      "kind": "proposal",
+      "answers": ["P5", "O4"],
+      "text": "Fix the spike's go and no-go before it runs. Go if, on todos and rows, the value-function prototype is at least 1.0 kB gzip smaller than next for todos, rows create and replace are within 5% of next, and the ordered-updates tests (#152, #155) still pass. A size-neutral result also counts as a go if it deletes the 4 J8 helpers on the browser path (Q3: at equal size, simpler wins). Otherwise no-go, and P8 takes over.",
+      "estimate": {
+        "value": 1.0,
+        "unit": "kB gzip on todos, the go threshold"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "J6 (todos 13.5 kB next vs Marko 4.4 kB); evidence/sizes/lazyload.txt (updates.ts 3.7 kB gz minified standalone); Q3 answer",
+        "detail": "1.0 kB is about a quarter of updates.ts gzip, below what removing g plus the queue would remove"
+      },
+      "round": 2,
+      "by": "proponent",
+      "ruling": "rejected",
+      "ruling_why": "O8-O10 upheld: a 5% timing gate is under the ~10% noise of perf-pass-0.4 (judge read outcome.md line 5), the ordered-updates set cannot run on a hand-written prototype, and the special-case count must be taken on next; the gates become O8's script-time and click rules, O9's 9 diamond fixtures, net todos JS gzip, and counts on next (31 options.mode branches in markup.ts on origin/next, judge measured)"
+    },
+    {
+      "id": "P13",
+      "kind": "proposal",
+      "answers": ["O7", "P4"],
+      "text": "Put the rule kept from drop-marker-index (Q4) into values-build's acceptance: every body that the browser renders is a cloned template whose writes are value functions, with no HTML-string fallback. The MutationObserver removal goes to the backlog with what is left of drop-marker-index.",
+      "evidence": {
+        "type": "user",
+        "source": "Q4 answer; nodes/markup-read-async-memo/outcome.md Gotchas (HTML-string fallback does not fill)",
+        "question": "Q4"
+      },
+      "round": 2,
+      "by": "proponent",
+      "ruling": "rejected",
+      "ruling_why": "O13: on a no-go no node would carry the rule; it gets its own small node after 0.5.0"
+    },
+    {
+      "id": "P14",
+      "kind": "proposal",
+      "answers": ["P11"],
+      "text": "Until values-build lands, refine the browser-async children (browser-root-boundary, browser-loading-fallback, promise-in-markup) with one rule: pending and fallback state live in scope slots that updates read, not in new inline writes or holdback helpers in template.ts, so values-build has fewer special cases to rework. This is a brief edit, not a new node, about 0 extra tokens.",
+      "estimate": {
+        "value": 0,
+        "unit": "extra nodes"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "nodes/browser-async/brief.md Children: one client-side pending boundary; J8 fillSettled is the holdback pattern this rule avoids",
+        "detail": "markup-read-async-memo outcome: the clone holds back setContent/putText/setAttr"
+      },
+      "round": 2,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P15",
+      "kind": "rebuttal",
+      "answers": ["O5", "P11"],
+      "text": "O5 and P11 are complementary, not competing: drop-unread-memos removes only 1 of the 4 J8 helpers (unreadMemo with watchUnreadMemos). fillSettled and settledMemos (#419) and the #try claim rules (#418, #420) stay until the value functions land. On origin/next none of the 4 exist yet (0 hits), so they also arrive with the next sync from main, which a later values-build must account for.",
+      "evidence": {
+        "type": "measured",
+        "source": "git show origin/next:packages/brumate/src/{runtime/client/templates.ts,codegen/markup.ts} | grep -c fillSettled / watchUnreadMemos|settledMemos",
+        "detail": "0 and 0 on origin/next; present on main (#415, #417, #419)"
+      },
+      "round": 2,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O8",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": ["P12"],
+      "text": "P12's speed gate (rows create and replace within 5% of next) is below the measured noise and blind to the code the spike changes. perf-pass-0.4 treated timing gaps under about 10% as noise on this busy machine. In that run brumate's own script was under 1.5 ms of a 35 ms create click, so even doubling it moves the click about 4%. The rows scenario also takes about 20 minutes and has the bench to itself. Likely result: the gate flips on noise and never sees a real regression. Gate instead on brumate's own script time from profile-rows.mjs, measured back to back against next (for example at most 1.2x), plus the click within 10%.",
+      "estimate": {
+        "value": 10,
+        "unit": "% timing noise floor vs P12's 5% bound"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "docs/roadmaps/brumate/nodes/perf-pass-0.4/outcome.md lines 5, 76-77, 118; benchmarks/README.md line 10",
+        "detail": "create 1,000: 6.3 ms script+native, brumate's own code under 1.5 ms, click 35 ms"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O9",
+      "kind": "risk",
+      "axis": "tokens",
+      "severity": "medium",
+      "answers": ["P12"],
+      "text": "'The ordered-updates tests (#152, #155)' is not a set that a spike can run. They are the 100 cases of describe('updates of a signal and a memo of it') in resume.test.ts (lines 1061-2880), plus order.test.ts (7 cases), plus the effect-order tests in packages/ui (Transition). All of them compile .brm through codegen, so a hand-written todos/rows prototype runs none of them, and passing them means building the compiler path, which is values-build. Bound the spike to the 9 diamond fixtures named in ordered-updates/outcome.md, run through a minimal codegen path, and leave the full set to values-build's acceptance.",
+      "estimate": {
+        "value": 107,
+        "unit": "test cases in the ordered-updates set (100 + 7), before ui"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "grep/awk on packages/brumate/test/resume.test.ts and order.test.ts; nodes/ordered-updates/outcome.md lines 14, 38-39; nodes/values-spike/brief.md (M, three days, fast check only)",
+        "detail": "diamondContext, diamondBind, diamondChildren, diamondLift fixtures + 5 former it.fails"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O10",
+      "kind": "rebuttal",
+      "answers": ["P12"],
+      "text": "P12's size-neutral go branch cannot be observed: the J8 helpers it would delete are on main only (P15 measured 0 on next), the spike works from next, and step 1 (drop-unread-memos) already deletes unreadMemo, so a size-neutral spike passes on a criterion nobody can check. The size basis is also off: P12 cites main's updates.ts at 3.7 kB gz, but next is 3.47 kB, and value functions add code to each app module, so the 1.0 kB gate must be net todos JS gzip. Restate the simplicity branch as counts on next: mode branches in markup.ts (31 on next) and lines in waits.ts plus templates.ts, with a fixed drop.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/sizes/updates-next.txt (3467 B gz); git show origin/next:packages/brumate/src/codegen/markup.ts | grep -c options.mode = 31; P15",
+        "detail": "main 33, next 31, feat/browser-async 31 mode branches"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O11",
+      "kind": "cost",
+      "axis": "maintenance",
+      "severity": "high",
+      "answers": ["P14", "P15", "P11"],
+      "text": "P14 comes too late for the part that matters. browser-await (#413) already added a holdback mechanism on feat/browser-async: waits.ts, 278 new lines, with settledSlots and fillRange. It solves the same case as main's #419 fillSettled/settledMemos: a memo that settled during a browser render is not loaded again. When 0.4.2 syncs into next and then into feat/browser-async, the branches will carry two parallel mechanisms for one rule in the same files. Nothing in P11 merges them before values-build, which runs only on a go.",
+      "estimate": {
+        "value": 2,
+        "unit": "parallel settled-memo mechanisms after the sync"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "git diff --stat origin/next origin/feat/browser-async -- runtime/client (waits.ts +278); waits.ts lines 36-37 and 251-257",
+        "detail": "evidence/waits-feat-browser-async.ts"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O12",
+      "kind": "alternative",
+      "answers": ["P11", "P14"],
+      "text": "Make 'one settled-memo mechanism' an acceptance of the sync of 0.4.2 into next and feat/browser-async. Do not leave it to values-build. When #419 arrives, its fillSettled/settledMemos is rewritten onto waits.ts settledSlots/fillRange, or the reverse, and the #419 tests prove the result. That is one S-sized reconciliation inside a sync that has to happen anyway, and it removes a special case whether the spike says go or no-go (Q3: at equal size, simpler wins).",
+      "estimate": {
+        "value": 0.2,
+        "unit": "M tokens (J7: S hotfixes 186-266k)"
+      },
+      "evidence": {
+        "type": "calibration",
+        "source": "J7; O11; Q3 answer",
+        "detail": "S-sized nodes on the same files: try-around-child 186k, markup-read-async-memo 266k"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O13",
+      "kind": "risk",
+      "axis": "maintenance",
+      "severity": "medium",
+      "answers": ["P13"],
+      "text": "P13 puts the rule the user kept in Q4 (no browser-rendered body falls back to an HTML string) into values-build, which runs only on a go (P12). On a no-go, P8 takes over, and O7 has already parked drop-marker-index, so no node would carry the rule. Keep it in its own small node after 0.5.0 (the clientHTML path is pruned by a flag already, CLIENT_HTML 181 B gz), which values-build can then rely on.",
+      "evidence": {
+        "type": "source",
+        "source": "P12 no-go clause; O7 (upheld); Q4 answer; nodes/drop-marker-index/brief.md size audit",
+        "detail": "markup-read-async-memo outcome Gotchas: HTML-string fallback does not fill"
+      },
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O14",
+      "kind": "concession",
+      "answers": ["O5"],
+      "why": "P15 shows drop-unread-memos removes only 1 of the 4 J8 helper pairs, so it is not an alternative to P1's single path. It is a first step of it, which P11 adopts",
+      "text": "Narrow O5 to step 1 of P11: drop-unread-memos removes unreadMemo and watchUnreadMemos only. The other helpers need O12 (settled memos) or values-build.",
+      "round": 2,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P16",
+      "kind": "concession",
+      "answers": ["P12", "P13"],
+      "why": "O8 shows a 5% timing bound sits under the ~10% noise; O9 shows the ordered-updates set compiles through codegen and cannot run on a prototype; O10 shows the helpers and the 3.7 kB basis are from main, not next; O13 shows the HTML-string rule would have no carrier on a no-go",
+      "text": "Drop P12 and P13 as written. Their gates are restated in P17 and their order in P18.",
+      "round": 3,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P17",
+      "kind": "proposal",
+      "answers": ["P5", "O4", "O8", "O9", "O10"],
+      "text": "Final gates for values-spike, all measured on origin/next. Go only if all of these hold: (a) net todos JS gzip before load, app modules included, is at least 1.0 kB below next, from pnpm bench run alone; (b) brumate's own script time from profile-rows.mjs is at most 1.2x next for rows create and replace, run back to back, and the click stays within 10%; (c) the 9 diamond fixtures named in ordered-updates/outcome.md pass through a minimal codegen path. Size-neutral rule (Q3): a result under 1.0 kB but not larger than next also counts as a go if it shows, on next, a fixed drop of at least 10 of the 31 options.mode branches in markup.ts and at least 150 lines of waits.ts plus templates.ts. Anything else is a no-go, and P8 takes over. The full 107-case ordered-updates set is an acceptance of values-build, not of the spike.",
+      "estimate": {
+        "value": 1.0,
+        "unit": "kB net todos JS gzip, the go threshold"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "O8 (perf-pass-0.4 noise ~10%, profile-rows.mjs), O9 (107 cases, 9 diamond fixtures), O10 and judge (31 mode branches on origin/next), J6",
+        "detail": "thresholds 10 branches and 150 lines are about a third of the 31 branches and about half of waits.ts (278 lines, O11)"
+      },
+      "round": 3,
+      "by": "proponent",
+      "ruling": "rejected",
+      "ruling_why": "O15: at least 9 of the 31 options.mode branches only choose server syntax, a getter can lower the count with no behavior change, and waits.ts has no baseline on next; the size, speed and diamond gates stand, the simplicity gate becomes O15's form"
+    },
+    {
+      "id": "P18",
+      "kind": "proposal",
+      "answers": ["P11", "O12", "O13", "O14"],
+      "text": "Final order. 0) During the 0.4.2 sync into next and feat/browser-async: one settled-memo mechanism (O12), with #419's fillSettled/settledMemos rewritten onto waits.ts settledSlots/fillRange, and the #419 tests as proof; S, about 0.2M tokens. Plus P14's rule for the remaining browser-async children. After the 0.5.0 must line, on one worker: 1) drop-unread-memos (O14: unreadMemo and watchUnreadMemos only), about 0.3M; 2) no-html-string-fallback, its own small node (O13), about 0.2M; 3) the differential test P6 at O6's size, about 0.4M; 4) values-spike with the P17 gates, about 0.6M; 5) on a go, values-build (XL, about 1.5-2M), which deletes g and pass/queueWrite/drain; on a no-go, P8. Total before the go is about 1.7M tokens.",
+      "estimate": {
+        "value": 1.7,
+        "unit": "M tokens before the go (0.2 + 0.3 + 0.2 + 0.4 + 0.6)"
+      },
+      "evidence": {
+        "type": "calibration",
+        "source": "J7 node spend; O6, O12, O13, O14 estimates; Q2, Q3, Q4 answers",
+        "detail": "step 0 is the only one before 0.5.0 and rides a sync that happens anyway"
+      },
+      "round": 3,
+      "by": "proponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O15",
+      "kind": "rebuttal",
+      "answers": ["P17"],
+      "text": "P17's simplicity thresholds cannot be checked and can be met without the change they are meant to reward. At least 9 of the 31 options.mode branches on next only pick server syntax (await/async prefixes, $$ctx versus undefined, Promise<$$b.Raw> types, ctx helpers, spacerTag; markup.ts lines 315-322, 633, 1081, 1105, 2290), and value functions do not touch them, so 10 means removing about 10 of the other 22. A single isServer getter would also lower the count with no change in behavior. waits.ts does not exist on origin/next (it is only on feat/browser-async), and step 0 changes it, so 'on next, 150 lines of waits.ts plus templates.ts' has no baseline. Fix the baseline commit after step 0. Use P6's divergence count, which P18 runs before the spike, together with the count of browser-only runtime exports as the simplicity measure.",
+      "estimate": {
+        "value": 9,
+        "unit": "of 31 mode branches that are server syntax only"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "git show origin/next:packages/brumate/src/codegen/markup.ts | grep -n options.mode; git show origin/next:packages/brumate/src/runtime/client/waits.ts -> does not exist",
+        "detail": "evidence/waits-feat-browser-async.ts (278 lines, feat/browser-async only)"
+      },
+      "round": 3,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O16",
+      "kind": "concession",
+      "answers": ["O12"],
+      "why": "Three things make my 0.2M for step 0 too low. Each S node that built these mechanisms cost 186-266k on its own (J7: markup-read-async-memo 266k, unread-memo-rejection 198k). waits.ts is not on next, so the merge lands in the next-into-feat/browser-async sync. And the active async-memo-block-headers (M) extends fillSettled to headers, props and lists before release-0.4.2 (its brief line 33).",
+      "text": "Revise step 0 to about 0.3-0.5M tokens. Run it when main (0.4.2, including async-memo-block-headers) is synced into feat/browser-async, not in the main-into-next sync. Each of the two branches needs a full check (about 10 minutes, J4) and a fresh review (J10). It still rides syncs that happen anyway; the total before the go is about 1.8-2.0M, not 1.7M.",
+      "round": 3,
+      "by": "opponent",
+      "ruling": "upheld"
+    },
+    {
+      "id": "O17",
+      "kind": "risk",
+      "axis": "maintenance",
+      "severity": "medium",
+      "answers": ["P18"],
+      "text": "Step 0 grows while 0.4.2 is open. async-memo-block-headers (active, M, branch fix/async-memo-block-headers) is told to 'hold the block's choice until its memos settle (as fillSettled does for text)', so it may extend fillSettled to #if, #switch, #for headers and props before step 0 merges it with waits.ts. Likely, since its brief offers that option first. Cheapest guard: amend that brief now to prefer the option that makes the memo live in the browser only, or to note that the fillSettled extension is temporary, so step 0 does not inherit three more holdback sites.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/async-memo-block-headers/brief.md lines 33, 40-47; git branch -r (origin/fix/async-memo-block-headers)",
+        "detail": "brief edit only, about 0 tokens, active node not cut"
+      },
+      "round": 3,
+      "by": "opponent",
+      "ruling": "upheld",
+      "ruling_why": "the risk already happened: #421 (async-memo-block-headers) extends fillSettled to block headers, props and function reads; step 0 must merge that extension too, which O16's larger estimate covers"
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q1",
+      "by": "proponent",
+      "blocks": ["P3", "P4"],
+      "ask": "May a new node that makes the browser render reuse the update path land inside the browser-async story (its one pull request to next grows), or must structural work go in its own pull request after browser-async?",
+      "answer": "Not asked: moot after P3 was rejected; O4 builds after browser-async merges (judge)"
+    },
+    {
+      "id": "Q2",
+      "by": "proponent",
+      "blocks": ["P1", "P3"],
+      "ask": "Should a component that the browser renders follow the server exactly, for example a memo nothing reads never computes, so its rejection is never reported (today the browser computes it and reports it, #415)?",
+      "answer": "Follow the server exactly: a memo nothing reads does not run in the browser either; #415's unreadMemo can go"
+    },
+    {
+      "id": "Q3",
+      "by": "proponent",
+      "blocks": ["P3", "P4", "P5", "P8"],
+      "ask": "Is there a date or a token budget for 0.5.0, and does making the client smaller outrank making it simpler when a step is size neutral (drop-marker-index is)?",
+      "answer": "No fixed date or budget for 0.5.0; it ships when its must line is done, so the restructure may go after it. At equal size, simpler wins: size-neutral steps that remove paths or special cases are worth doing"
+    },
+    {
+      "id": "Q4",
+      "by": "opponent",
+      "blocks": ["O7", "P4"],
+      "ask": "drop-marker-index is a 0.5.0 must but its own audit says it saves almost nothing on todos. Must the MutationObserver marker index be gone in 0.5.0, or can it move to a later release, keeping only the rule that no body the browser renders falls back to an HTML string?",
+      "answer": "Move drop-marker-index off the 0.5.0 must line; keep only the rule that no browser-rendered body falls back to an HTML string"
+    }
+  ],
+  "proofs": [],
+  "hypothesis": null,
+  "spend": [
+    {
+      "round": 1,
+      "tokens": 70000,
+      "note": "proponent"
+    },
+    {
+      "round": 1,
+      "tokens": 84000,
+      "note": "opponent"
+    },
+    {
+      "round": 2,
+      "tokens": 31000,
+      "note": "proponent + opponent, from cumulative usage 81k + 104k"
+    },
+    {
+      "round": 3,
+      "tokens": 35000,
+      "note": "proponent 86k and opponent ~134k cumulative"
+    }
+  ]
+}

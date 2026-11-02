@@ -1,9 +1,10 @@
 ---
 id: browser-await-spike
 title: "Spike: await in a component that the browser renders waits, like React's use"
-status: todo
-priority: should
+status: done
+priority: must
 type: spike
+story: browser-async
 outline: false
 milestone: 0.5.0
 target:
@@ -15,6 +16,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: true
 added: 2026-10-30
+spent: 491000
 owns:
   - docs/roadmaps/brumate/nodes/browser-await-spike/**
 shared: []

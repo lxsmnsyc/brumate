@@ -1977,7 +1977,8 @@ class ClientGenerator {
    * body, and the kinds of both bodies, and the holder of a block in children.
    */
   private triesTable(): string | undefined {
-    const entries: string[] = [];
+    // The entry of each `#try` that catches, by its body.
+    const bodies = new Map<Scope, string>();
     for (const scope of this.model.scopes) {
       const block = scope.block;
       if (
@@ -1991,11 +1992,23 @@ class ClientGenerator {
       const owner = instanceScope(this.plan, scope.parent!);
       const fallback = this.plan.bodyScopes.get(block.fallback)!;
       const held = holderArguments(this.plan, block);
-      const entry = `[${owner.id}, ${this.plan.anchors.get(block)}, ${JSON.stringify(`r${scope.id}`)}, ${JSON.stringify(`r${fallback.id}`)}, [${this.kinds(blockBodies(block)).join(', ')}]${held}]`;
-      for (const inside of this.model.scopes) {
-        if (isWithin(inside, scope)) {
-          entries.push(`${inside.id}: ${entry}`);
-        }
+      bodies.set(
+        scope,
+        `[${owner.id}, ${this.plan.anchors.get(block)}, ${JSON.stringify(`r${scope.id}`)}, ${JSON.stringify(`r${fallback.id}`)}, [${this.kinds(blockBodies(block)).join(', ')}]${held}]`,
+      );
+    }
+    // Each scope takes the entry of the nearest `#try` around it. A template renders where it
+    // is called, and its scope links there at runtime, so a scope in a template takes no entry
+    // of a `#try` around the template.
+    const entries: string[] = [];
+    for (const inside of this.model.scopes) {
+      let current: Scope | undefined = inside;
+      while (current && !bodies.has(current) && current.kind !== 'template') {
+        current = current.parent;
+      }
+      const entry = current && bodies.get(current);
+      if (entry) {
+        entries.push(`${inside.id}: ${entry}`);
       }
     }
     return entries.length > 0 ? `{ ${entries.join(', ')} }` : undefined;
