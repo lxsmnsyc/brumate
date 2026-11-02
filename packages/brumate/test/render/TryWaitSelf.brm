@@ -1,0 +1,16 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  const { id } = $props<{ id: number }>();
+</script>
+
+#try {
+  <script>
+    const user = await $memo(loadUser(id));
+  </script>
+  <p class="user">{user.name}</p>
+} #catch (error, reset) {
+  <p class="caught">{String(error)}</p>
+  <button class="reset" onClick=reset>Reset</button>
+}

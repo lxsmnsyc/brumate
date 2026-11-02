@@ -15,6 +15,7 @@ import type {
   ValueAttribute,
 } from '../ast.ts';
 import { forEachNode } from '../ast.ts';
+import { tryCatchesClient } from '../graph.ts';
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
@@ -3227,7 +3228,23 @@ export class Emitter {
         // A `#loading` body inside that fails after the page is sent renders the `#catch` body then.
         const end = server ? this.emitCatcher(block, scope) : undefined;
         this.line('try {');
-        this.emitInlineBody(block.body);
+        if (
+          !server &&
+          this.options.hoist &&
+          this.plan.anchors.has(block) &&
+          tryCatchesClient(this.plan.graph.model, block)
+        ) {
+          // A wait of the body that fails ends in the boundary of the `#try`, and `fail` shows the
+          // `#catch` body in its place, as for any error of client code in the body.
+          const fn = this.bodyFunction(
+            '',
+            () => this.emitBody(block.body),
+            this.plan.bodyScopes.get(block.body),
+          );
+          this.code(`$$b.nodes($$b.attempt(${fn}))`);
+        } else {
+          this.emitInlineBody(block.body);
+        }
         this.close(`} catch (${error}) {`);
         this.line(`$$html = ${before};`);
         // The body's markup is not sent, so the page must not keep what it added: its

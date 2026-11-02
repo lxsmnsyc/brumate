@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TryWaitKid from './TryWaitKid.brm';
+
+  let open = $signal(false);
+  let k = $signal(1);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<button class="next" onClick=(() => k++)>Next</button>
+#if (open) {
+  #try {
+    <TryWaitKid id=(k) />
+  } #catch (error, reset) {
+    <p class="caught">{String(error)}</p>
+    <button class="reset" onClick=reset>Reset</button>
+  }
+}

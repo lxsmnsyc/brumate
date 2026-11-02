@@ -9703,6 +9703,355 @@ describe('a block outside every #loading that the browser renders', () => {
   });
 });
 
+describe('a write during the first of two awaits in a browser render', () => {
+  function userLoads(): UserLoad[] {
+    return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);
+  }
+
+  function loadedIds(): number[] {
+    const ids: number[] = [];
+    for (const load of userLoads()) {
+      ids.push(load.id);
+    }
+    return ids;
+  }
+
+  const settledLoads = new Set<UserLoad>();
+
+  /** Settles the first load of a user that has not settled yet. */
+  async function settleUser(id: number): Promise<void> {
+    for (const load of userLoads()) {
+      if (load.id === id && !settledLoads.has(load)) {
+        settledLoads.add(load);
+        load.done({ name: `ada${id}` });
+        break;
+      }
+    }
+    await new Promise((done) => setTimeout(done, 0));
+  }
+
+  function users(): string[] {
+    const shown: string[] = [];
+    for (const user of document.querySelectorAll('.user')) {
+      shown.push(user.textContent!);
+    }
+    return shown;
+  }
+
+  afterEach(() => {
+    userLoads().length = 0;
+    settledLoads.clear();
+    clearRuns();
+  });
+
+  it('does not update the later awaited memo before its slot holds a value', async () => {
+    const errors: unknown[] = [];
+    function onError(event: Event): void {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('waitDestrHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    // The prop changes during the first wait, so both memos load again.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2, 2, 3]));
+    await settleUser(1);
+    await settleUser(2);
+    await settleUser(2);
+    await settleUser(3);
+    await waitFor(() => expect(users()).toEqual(['ada2 ada3 AC2 0']));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(loadedIds()).toEqual([1, 2, 2, 3]);
+    expect(errors).toEqual([]);
+  });
+
+  it('computes a memo after the awaits that reads the later awaited memo', async () => {
+    const errors: unknown[] = [];
+    function onError(event: Event): void {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('waitDerivedHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2, 2, 3]));
+    await settleUser(1);
+    await settleUser(2);
+    await settleUser(2);
+    await settleUser(3);
+    await waitFor(() => expect(users()).toEqual(['ada2 ADA3 ready']));
+    // A later prop write computes the memo again, and it is not left pending.
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2, 2, 3, 3, 4]));
+    await settleUser(3);
+    await settleUser(4);
+    await waitFor(() => expect(users()).toEqual(['ada3 ADA4 ready']));
+    expect(errors).toEqual([]);
+  });
+});
+
+describe('a #try that the browser renders around a wait', () => {
+  function userLoads(): UserLoad[] {
+    return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);
+  }
+
+  const settled = new Set<UserLoad>();
+
+  /** The loads that have not settled. */
+  function inFlight(): number[] {
+    const ids: number[] = [];
+    for (const load of userLoads()) {
+      if (!settled.has(load)) {
+        ids.push(load.id);
+      }
+    }
+    return ids;
+  }
+
+  /** Settles the first load of a user that has not settled yet. */
+  async function settleUser(id: number, error?: Error): Promise<void> {
+    let found: UserLoad | undefined;
+    for (const load of userLoads()) {
+      if (load.id === id && !settled.has(load)) {
+        found = load;
+        break;
+      }
+    }
+    settled.add(found!);
+    if (error) {
+      found!.fail(error);
+    } else {
+      found!.done({ name: `ada${id}` });
+    }
+    await new Promise((done) => setTimeout(done, 0));
+  }
+
+  function users(): string[] {
+    const shown: string[] = [];
+    for (const user of document.querySelectorAll('.user')) {
+      shown.push(user.textContent!);
+    }
+    return shown;
+  }
+
+  function caught(selector = '.caught'): string[] {
+    const shown: string[] = [];
+    for (const element of document.querySelectorAll(selector)) {
+      shown.push(element.textContent!);
+    }
+    return shown;
+  }
+
+  /** The `brumate:error` events and the `onError` reports of the test. */
+  function watchErrors(): { unhandled: unknown[]; reported: unknown[] } {
+    const unhandled: unknown[] = [];
+    const reported: unknown[] = [];
+    function onError(event: Event): void {
+      unhandled.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    const spy = vi.spyOn(console, 'error').mockImplementation((error: unknown) => {
+      reported.push(error);
+    });
+    onTestFinished(() => {
+      window.removeEventListener('brumate:error', onError);
+      spy.mockRestore();
+    });
+    return { unhandled, reported };
+  }
+
+  afterEach(() => {
+    userLoads().length = 0;
+    settled.clear();
+  });
+
+  it('shows the #catch body for a rejected await in the #try body, and reset renders it again', async () => {
+    const errors = watchErrors();
+    await resume('tryWait', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await settleUser(1, new Error('no user'));
+    await waitFor(() => expect(caught()).toEqual(['Error: no user']));
+    expect(users()).toEqual([]);
+    expect(errors.unhandled).toEqual([]);
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1']));
+    expect(caught()).toEqual([]);
+    expect(errors.unhandled).toEqual([]);
+    expect(errors.reported).toEqual([]);
+  });
+
+  it('shows the #catch body for a throw in the rest of the render after the wait', async () => {
+    const errors = watchErrors();
+    await resume('tryWait', {});
+    for (let i = 1; i < 13; i++) {
+      click(document.querySelector('.next')!);
+    }
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([13]));
+    await settleUser(13);
+    await waitFor(() => expect(caught()).toEqual(['Error: bad user']));
+    expect(users()).toEqual([]);
+    click(document.querySelector('.next')!);
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(inFlight()).toEqual([14]));
+    await settleUser(14);
+    await waitFor(() => expect(users()).toEqual(['ada14']));
+    expect(errors.unhandled).toEqual([]);
+  });
+
+  it('shows the #catch body for a rejected await in a child component', async () => {
+    const errors = watchErrors();
+    await resume('tryWaitKidHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await settleUser(1, new Error('no kid'));
+    await waitFor(() => expect(caught()).toEqual(['Error: no kid']));
+    expect(users()).toEqual([]);
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1']));
+    expect(caught()).toEqual([]);
+    expect(errors.unhandled).toEqual([]);
+  });
+
+  it('shows the #catch body for a throw in the rest of a child component', async () => {
+    const errors = watchErrors();
+    await resume('tryWaitKidHost', {});
+    for (let i = 1; i < 13; i++) {
+      click(document.querySelector('.next')!);
+    }
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([13]));
+    await settleUser(13);
+    await waitFor(() => expect(caught()).toEqual(['Error: bad kid']));
+    expect(users()).toEqual([]);
+    expect(errors.unhandled).toEqual([]);
+  });
+
+  it('shows the #catch body of a #try in a component that the browser renders', async () => {
+    const errors = watchErrors();
+    await resume('tryWaitSelfHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await settleUser(1, new Error('no self'));
+    await waitFor(() => expect(caught()).toEqual(['Error: no self']));
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1']));
+    expect(errors.unhandled).toEqual([]);
+  });
+
+  it('shows the #catch body for a rejected await in a #for row', async () => {
+    const errors = watchErrors();
+    await resume('tryWaitRows', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([1, 2]));
+    await settleUser(1);
+    await settleUser(2, new Error('no row'));
+    await waitFor(() => expect(caught()).toEqual(['Error: no row']));
+    expect(users()).toEqual([]);
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(inFlight()).toEqual([1, 2]));
+    await settleUser(1);
+    await settleUser(2);
+    await waitFor(() => expect(users()).toEqual(['ada1', 'ada2']));
+    // A row that the list adds later fails into the same #catch.
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(inFlight()).toEqual([3]));
+    await settleUser(3, new Error('no new row'));
+    await waitFor(() => expect(caught()).toEqual(['Error: no new row']));
+    expect(users()).toEqual([]);
+    expect(errors.unhandled).toEqual([]);
+  });
+
+  it('shows the #catch body in place of a #loading fallback for a rejected await', async () => {
+    const errors = watchErrors();
+    await resume('tryWaitLoading', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await waitFor(() => expect(document.querySelector('.fallback')).not.toBeNull());
+    await settleUser(1, new Error('no load'));
+    await waitFor(() => expect(caught()).toEqual(['Error: no load']));
+    expect(document.querySelector('.fallback')).toBeNull();
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1']));
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(errors.unhandled).toEqual([]);
+  });
+
+  it('shows the #catch body of a #try inside a #loading body, and the body', async () => {
+    const errors = watchErrors();
+    await resume('tryWaitInLoading', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await waitFor(() => expect(document.querySelector('.fallback')).not.toBeNull());
+    await settleUser(1, new Error('no load'));
+    await waitFor(() => expect(caught()).toEqual(['Error: no load']));
+    expect(document.querySelector('.fallback')).toBeNull();
+    expect(document.querySelector('.head')).not.toBeNull();
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(users()).toEqual(['ada1']));
+    expect(errors.unhandled).toEqual([]);
+  });
+
+  it('shows the #catch body once when two rows fail at once', async () => {
+    const errors = watchErrors();
+    await resume('tryWaitRows', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(inFlight()).toEqual([1, 2]));
+    const failure = new Error('no rows');
+    userLoads()[0]!.fail(failure);
+    userLoads()[1]!.fail(new Error('no row 2'));
+    await waitFor(() => expect(caught()).toEqual(['Error: no rows']));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(caught()).toEqual(['Error: no rows']);
+    expect(errors.unhandled).toEqual([]);
+  });
+
+  it('shows the first error when two effects of the body throw in the same flush', async () => {
+    const errors = watchErrors();
+    await resume('tryTwoEffects', {});
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(caught()).toEqual(['Error: first 1']));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(caught()).toEqual(['Error: first 1']);
+    expect(errors.unhandled).toEqual([]);
+  });
+
+  it('shows the #catch body of the innermost #try', async () => {
+    const errors = watchErrors();
+    await resume('tryWaitNested', {});
+    click(document.querySelector('.toggle')!);
+    // The inner body renders in the rest of the outer one, so its load starts after the outer load.
+    await waitFor(() => expect(inFlight()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(inFlight()).toEqual([2]));
+    await settleUser(2, new Error('no inner'));
+    await waitFor(() => expect(caught('.inner')).toEqual(['Error: no inner']));
+    expect(caught('.outer')).toEqual([]);
+    expect(users()).toEqual(['ada1']);
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(inFlight()).toEqual([2]));
+    await settleUser(2);
+    await waitFor(() => expect(users()).toEqual(['ada1', 'ada2']));
+    expect(caught('.inner')).toEqual([]);
+    expect(errors.unhandled).toEqual([]);
+  });
+});
+
 describe('a promise in markup', () => {
   function markupLoads(): MarkupLoad[] {
     return ((globalThis as { markupLoads?: MarkupLoad[] }).markupLoads ??= []);

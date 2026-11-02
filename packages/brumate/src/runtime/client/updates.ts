@@ -46,6 +46,12 @@ export function get(scope: Scope, slot: number): any {
     settle(scope);
   }
   const value = scope.s[slot];
+  // Update code reads a slot that the scope has not reached, as it waits at an earlier `await`:
+  // `setSlots` and resumed records write every slot, so only a wait leaves one out. The queued
+  // update skips on `NotReady`, since the rest of the render writes the page from the slots.
+  if (value === undefined && exempt > 0 && !(slot in scope.s)) {
+    throw new NotReady(Promise.resolve());
+  }
   if (value instanceof Promise && !scope.plain?.has(slot)) {
     // A memo that reads any promise waits for it.
     if (computing > 0) {
@@ -818,7 +824,9 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
           origin = before;
         }
       } catch (error) {
-        fail(target, error);
+        if (!(error instanceof NotReady)) {
+          fail(target, error);
+        }
       }
     }
   }

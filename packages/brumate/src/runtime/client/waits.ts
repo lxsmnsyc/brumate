@@ -101,6 +101,35 @@ export function give(own: Boundary): void {
   afterInsert.push(...queued);
 }
 
+/**
+ * The body of a `#try` that the browser renders, in a boundary of its own that counts as one wait
+ * of the boundary around it. A wait of the body that fails ends there, so a `#loading` around the
+ * `#try` shows its body, and `fail` renders the `#catch` body in place of the `#try`. Outside a
+ * boundary, the body fills in place.
+ */
+export function attempt(body: () => Out): DocumentFragment {
+  if (!boundary) {
+    return toNodes(body());
+  }
+  const [out, own] = bound(body);
+  if (own) {
+    const outer = join();
+    own.done = () => {
+      give(own);
+      leave(outer);
+    };
+    own.f = () => {
+      // The `#catch` body replaces the body, so its held work goes, and a later failure of the
+      // body ends here.
+      own.done = undefined;
+      own.f = noop;
+      own.w = undefined;
+      leave(outer);
+    };
+  }
+  return toNodes(out);
+}
+
 /** Counts a new wait in the boundary of the render that runs, and returns that boundary. */
 export function join(): Boundary | undefined {
   const own = boundary;

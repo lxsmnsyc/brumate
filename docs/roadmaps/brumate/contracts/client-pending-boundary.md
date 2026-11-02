@@ -13,7 +13,7 @@ The runtime interface between a render that waits (`wait` from browser-await) an
 
 ## Interface
 
-In `packages/brumate/src/runtime/client/waits.ts`. `wait`, `fillSettled`, `loading`, `countLoads`, `reveal`, `started` and `after` are exported from `brumate/client`. The rest is internal to the client runtime.
+In `packages/brumate/src/runtime/client/waits.ts`. `wait`, `fillSettled`, `loading`, `countLoads`, `reveal`, `started`, `after` and `attempt` are exported from `brumate/client`. The rest is internal to the client runtime.
 
 ```ts
 type Out = string | DocumentFragment;
@@ -101,7 +101,7 @@ Boundary internals:
 - `join()` counts a wait in the boundary of the render that runs, and returns it, or undefined. A wait that starts outside such a render fills in place.
 - `until(own, scope, end, ready, run)` is the check that every wait uses. It runs at each write of a slot (`waiters`) and when `scope` goes. When `scope` leaves `scopes` or `end` has no parent, it ends the wait with `leave(own)`. When `ready()` is true, it runs `run(check)` a microtask later, outside the write, and `run` waits again with `waiters.set(check, scope)`. It returns the check, which code that settles a value can call at once. `run` owns the count-down: it ends with `leave(own)`, or `fault(own, error)` when it fails or throws, or it waits again.
 - `leave(own)` counts down. At 0 it runs `done`.
-- `fault(own, error)` runs `own.f(error)` when the owner set it, and `leave(own)` otherwise. So with no `f`, a failed wait releases its boundary: the body shows with the failed range empty, and the error was reported by `fail`. browser-try sets `f` to show its `#catch` in place of the boundary.
+- `fault(own, error)` runs `own.f(error)` when the owner set it, and `leave(own)` otherwise. So with no `f`, a failed wait releases its boundary: the body shows with the failed range empty, and the error was reported by `fail`. browser-try's `attempt` sets `f` to absorb the failure; `fail` renders the `#catch` through the `t` entry (v2.1).
 - `fillRange(own, end, rest)` renders `rest` with `own` as the boundary of the render, and inserts its markup before `end`. While `own.w` is set, the scopes and work of the rest join `w`, so the body enters the page with all its work in one insert.
 - `bound(body)` renders `body` with a boundary of its own. With no wait, it returns `[out]`. Otherwise it moves the `rendered` scopes and `afterInsert` work that the body added into `w`, and returns `[out, boundary]`. The work of the render around it, such as an outer `bound`, stays there. The owner sets `done`, and `f` if it handles failures, before any wait can settle. An owner that drops the whole boundary clears `done` and `f`.
 - `give(boundary)` puts `w` back into `rendered` and `afterInsert`, for the insert of the body. When the boundary around it (`o`) still holds its own body, `give` moves the work into `o.w` instead, so the outer `give` runs the updates that either body missed (its `c` is never newer).
@@ -151,6 +151,31 @@ return $$b.wait($$s2, [(loadUser(1))], 0, ($$v) => {
 
 `waitAll` is not added in the browser: the loads of a run start before the first `await`, so nested `wait` calls overlap the same way. The server keeps `waitAll`.
 
+## v2.1 (browser-try)
+
+Add to the interface in `waits.ts`, exported from `brumate/client`:
+
+```ts
+// The body of a `#try` that the browser renders, in a boundary of its own that counts as one
+// wait of the boundary around it. Outside a boundary, the body fills in place.
+function attempt(body: () => Out): DocumentFragment;
+```
+
+Compiled code, in client mode, for a `#try` that has a `t` entry (anchored, `tryCatchesClient`):
+
+```ts
+try {
+  const $$body3 = () => { ... };
+  $$html += $$b.nodes($$b.attempt($$body3));
+} catch ($$error2) { ... }
+```
+
+Behavior:
+
+- `attempt` is an owner of `bound`/`give`. With no wait, it returns the body. Otherwise it counts once in the boundary around it with `join`, sets `done` to `give` then `leave` that boundary, and sets `f`: it drops the held work of the body, sets `f` to a no-op so later failures of the body end there, and leaves the boundary around it.
+- `f` does not render the `#catch` body itself, unlike the line "browser-try's `attempt` sets `f` to absorb the failure; `fail` renders the `#catch` through the `t` entry (v2.1)". `fail` already finds the `#try` through its `t` entry and renders the `#catch` with `catchInto`, also for a `#loading` inside the `#try` and for a child component, a `#for` row and a nested `#try`. A second renderer in `f` would show the `#catch` twice, and `catchInto` in `waits.ts` makes the import cycle that browser-root-boundary hit. So `f` only keeps the failure from reaching a `#loading` around the `#try`, whose own `f` would keep the fallback and drop the body with the `#try` in it.
+- `fail` drops an error whose `#try` body was replaced since the error happened (the scope of the body under the block's holder left `scopes`), so two errors of one body at once show the first. This is also a fix for main: two effects of a `#try` body that throw in one update render the `#catch` twice, and the last error stays.
+
 ## Stub
 
 None. The real code is in `waits.ts`.
@@ -168,3 +193,4 @@ In `packages/brumate/test/resume.test.ts`, `describe('a boundary')` inside `awai
 - v1.1 from settled-memo-merge (2026-11-02, change request accepted by the maintainer): `fillSettled` moves into `waits.ts`, is exported next to `wait`, and counts in the boundary. The two ways of waiting stay until values-build (debate client-restructure).
 - v1.2 from browser-loading-fallback (2026-11-02, additive, accepted by the orchestrator): `loading`, `countLoads` and `reveal` for the compiled `#loading` and `#reveal` of a browser render, and the `loading` feature flag. `loading` makes one `Boundary` outside `bound`, for a body that `#reveal` holds for its turn.
 - v2 from browser-await-blocks (2026-11-02, additive, accepted by the orchestrator): `started` and `after`, the newer slot value winning in `wait`, the row `i` range, the rest under `updating`, and `holdRow` naming. The planned browser `waitAll` is dropped.
+- v2.1 from browser-try (2026-11-02, additive, accepted by the orchestrator): `attempt` for the body of a browser-rendered `#try`; its `f` absorbs the failure instead of showing the `#catch`, since `fail` already renders it; `fail` drops an error whose `#try` body was replaced, so the first error wins.

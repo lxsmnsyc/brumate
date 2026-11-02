@@ -57,6 +57,7 @@ export {
 export { fail } from './client/errors.ts';
 export {
   after,
+  attempt,
   countLoads,
   fillAttrs,
   fillSettled,
