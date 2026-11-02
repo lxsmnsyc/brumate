@@ -1,7 +1,7 @@
 ---
 id: try-template-call-site
 title: "A #try catches a #template by where it is called, at runtime"
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 180000
 owns: []
 shared:
   - .changeset/*.md
