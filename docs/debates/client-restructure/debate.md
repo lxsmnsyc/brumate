@@ -25,7 +25,7 @@ The browser render and later updates should share one write path. Each value tha
    - brumate's own script time from `profile-rows.mjs` at most 1.2x `next` for rows create and replace, back to back, and the click within 10% (O8);
    - the 9 diamond fixtures from ordered-updates/outcome.md pass through a minimal codegen path (O9);
    - a result under 1.0 kB but no larger than `next` is a go only if it lowers the step 3 divergence count and the count of browser-only runtime exports, from a baseline commit fixed after step 0 (O15, Q3).
-   About 0.6M, a three-day box.
+     About 0.6M, a three-day box.
 5. **On a go, values-build** (P5, P11): the two-mode value functions replace `g`, `pass`/`queueWrite`/`drain` and the settled-memo mechanism. Its acceptance includes the full ordered-updates set (107 cases, O9). About 1.5-2M. **On a no-go**, both render paths stay (P8), and steps 1-3 remain the guard.
 
 About 1.8-2.0M tokens before the go decision (O16).
