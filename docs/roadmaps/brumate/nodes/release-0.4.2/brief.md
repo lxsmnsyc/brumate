@@ -1,7 +1,7 @@
 ---
 id: release-0.4.2
 title: Release brumate 0.4.2
-status: active
+status: done
 priority: must
 type: release
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: true
 added: 2026-11-02
-spent:
+spent: 60000
 owns: []
 shared:
   - .changeset/*.md
