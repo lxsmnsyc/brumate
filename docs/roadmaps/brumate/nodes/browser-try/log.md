@@ -10,3 +10,4 @@
 - Fix 2: `fail` drops an error whose #try body scope left `scopes` before the catch.
 - blocks.txt snapshot: the #try body around `<Broken />` is now a body function under `attempt`.
 - Bench todos: 13,835 B gzip before `load` (13.5 kB), click checks pass.
+- Review round 1: one blocking finding (a conflict with the moved base), fixed by merging origin/feat/browser-async (the resume.test.ts describes were kept, and mine was appended). One should-fix: the silent drop in `fail`, now explained in a comment (`onError` still sees the error). Three non-blocking findings, recorded in outcome.md.
