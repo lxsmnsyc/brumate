@@ -320,8 +320,12 @@ describe('web values', () => {
 async function sendArgs(args: unknown[]): Promise<{ files: Blob[]; read: unknown[] }> {
   const files: Blob[] = [];
   const json = await toJSONAsync(args, { plugins: callPlugins(files), disabledFeatures });
-  const form = new FormData();
-  files.forEach((file, index) => form.set(`file${index}`, file));
+  const sending = new FormData();
+  for (const [index, file] of files.entries()) {
+    sending.set(`file${index}`, file, (file as Partial<File>).name ?? 'blob');
+  }
+  // Through a request, so the parts lose what multipart form data does not keep.
+  const form = await new Request('http://localhost/', { method: 'POST', body: sending }).formData();
   const read = fromJSON<unknown[]>(JSON.parse(JSON.stringify(json)), {
     plugins: callPlugins(undefined, form),
     disabledFeatures,
@@ -359,6 +363,43 @@ describe('uploads', () => {
     expect([...set][0]).toBe(object.nested[0]);
     expect(form.get('title')).toBe('Notes');
     expect(await (form.get('attachment') as File).text()).toBe('hi');
+  });
+
+  it('keep a blob a blob, with its empty type', async () => {
+    const { read } = await sendArgs([new Blob(['raw'])]);
+    const [blob] = read as [Blob];
+    // Every part arrives as a file, and an empty type as application/octet-stream.
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob).not.toBeInstanceOf(File);
+    expect(blob.type).toBe('');
+    expect(await blob.text()).toBe('raw');
+  });
+
+  it('keep the name and lastModified of a file', async () => {
+    // The form encoder escapes a quote as %22, and the parser decodes every %22.
+    const { read } = await sendArgs([
+      new File(['x'], 'a"b%22.txt', { type: 'text/plain', lastModified: 1234 }),
+    ]);
+    const [file] = read as [File];
+    expect(file.name).toBe('a"b%22.txt');
+    expect(file.type).toBe('text/plain');
+    expect(file.lastModified).toBe(1234);
+  });
+
+  it('read a file from a page that sends only the index', async () => {
+    const form = new FormData();
+    form.set('file0', new File(['x'], 'x.txt'));
+    const [file] = fromJSON<[File]>(
+      JSON.parse(
+        JSON.stringify(toJSON([0], { plugins, disabledFeatures })).replace(
+          '{"t":0,"s":0}',
+          '{"t":25,"i":1,"s":{"i":{"t":0,"s":0}},"c":"brumate/upload"}',
+        ),
+      ),
+      { plugins: callPlugins(undefined, form), disabledFeatures },
+    );
+    expect(file.name).toBe('x.txt');
+    expect(await file.text()).toBe('x');
   });
 
   it('refuse a file outside the arguments of a call', async () => {
