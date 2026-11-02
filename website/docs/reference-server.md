@@ -99,6 +99,7 @@ These work anywhere:
 | `isCrossSite(request, options?): boolean`                           | True when a request comes from a page of another site. See [Security](./reference-security.md).                                           |
 | `raw(html)`                                                         | The same as in `brumate/html`.                                                                                                            |
 | `createContext(key, defaultValue)`                                  | The same as in `brumate/context`.                                                                                                         |
+| `setClientBundles(bundles)`                                         | Sets the bundles that a render names when its options pass none. The Vite plugin calls it in a server build. See `RenderOptions`.         |
 
 ### `RenderOptions`
 
@@ -115,6 +116,9 @@ The options of `render`, and of every function that renders.
 | `route`     | `string`                                    | Names the route of the page. `handleRoute` sets it.                                                                  |
 | `waitUntil` | `(promise) => void`                         | Keeps work going after the response ends, for `event.waitUntil`, such as `ctx.waitUntil` of Cloudflare Workers.      |
 | `build`     | `string`                                    | The ID of the build, for skew protection. The page state carries it. The Vite plugin sets it in builds.              |
+| `bundles`   | `ClientBundles`                             | The bundles of the client build that the page state names, so the browser loads the code of the page. See below.     |
+
+In a build, a render names the bundles of the client build by default: the Vite plugin reads them from `.brumate/hints.json` of the client build and calls `setClientBundles(bundles)` when the server starts. A server that calls `render()` or `renderToStream()` itself needs no `bundles` option. Build the client first: a server build that finds no client build warns, and its pages load no client code. A `bundles` option wins over the default. The dev server loads each component by its module and names no bundles.
 
 ### `DocumentOptions`
 

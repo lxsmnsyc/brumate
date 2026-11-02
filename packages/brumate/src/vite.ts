@@ -198,6 +198,12 @@ const BUNDLE = 'virtual:brumate/bundle/';
 const BUNDLES = 'virtual:brumate/bundles';
 /** Exports `functions` and `handle(request)` for server function calls. */
 const SERVER = 'virtual:brumate/server';
+/**
+ * Sets the bundles of the client build as the default of each render in a server build. The
+ * server version of each component imports it, so a server that calls `render()` itself names
+ * the bundles of its pages too.
+ */
+const CLIENT_BUNDLES = 'virtual:brumate/client-bundles';
 
 /** A script that names a route context, or exports all of `brumate/context`. */
 const ROUTE_CONTEXTS =
@@ -1202,14 +1208,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       buildId,
       hints.all,
       hints.bundles,
-      hints.chunks && hints.members
-        ? { chunks: hints.chunks, styles: hints.styles, members: hints.members }
-        : undefined,
     );
     // The variables are checked when the server starts, before any route loads.
     const serial = serialImports().join('\n');
     const parts: string[] = [];
-    for (const part of [env ? `import ${JSON.stringify(env)};` : '', serial, code]) {
+    // A build renders with the bundles of the client build, which the components set too.
+    const bundles = isServe ? '' : `import ${JSON.stringify(CLIENT_BUNDLES)};`;
+    for (const part of [env ? `import ${JSON.stringify(env)};` : '', serial, bundles, code]) {
       if (part) {
         parts.push(part);
       }
@@ -2112,6 +2117,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
               `No ${BUILD_FILE} in ${path.relative(root, client)}, so the server does not know its build ID. Build the client first, or set BRUMATE_BUILD, for skew protection`,
             );
           }
+          // Without the bundles of the client, the pages name no client code, and stay static.
+          if (!clientHints().chunks) {
+            this.warn(
+              `No ${HINTS_FILE} in ${path.relative(root, client)}, so the pages of this server load no client code. Build the client first`,
+            );
+          }
         } else {
           buildId =
             process.env.BRUMATE_BUILD || `${Date.now().toString(36)}${hash(String(Math.random()))}`;
@@ -2136,6 +2147,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         id === ROUTES ||
         id === TESTING ||
         id === BUNDLES ||
+        id === CLIENT_BUNDLES ||
         id.startsWith(BUNDLE)
       ) {
         return `\0${id}`;
@@ -2238,6 +2250,17 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       if (id.startsWith(`\0${BUNDLE}`)) {
         return await bundleModule(id.slice(BUNDLE.length + 1));
       }
+      if (id === `\0${CLIENT_BUNDLES}`) {
+        const hints = clientHints();
+        const bundles =
+          hints.chunks && hints.members
+            ? { chunks: hints.chunks, styles: hints.styles, members: hints.members }
+            : undefined;
+        return [
+          "import { setClientBundles } from 'brumate/server';",
+          `setClientBundles(${JSON.stringify(bundles)});`,
+        ].join('\n');
+      }
       if (id === `\0${SERVER}`) {
         // A DOM test gets the server code of each file too, so its calls can run in the test.
         return serverRegistry(!loadOptions?.ssr);
@@ -2322,6 +2345,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       } else {
         code = isClient ? result.client : result.server;
         map = isClient ? result.maps.client : result.maps.server;
+        // A render in a server build names the bundles of the client build, even when the server
+        // calls `render()` itself. The import goes last, so the mappings of the lines stay.
+        if (!isClient && !isServe) {
+          code += `\nimport ${JSON.stringify(CLIENT_BUNDLES)};`;
+        }
       }
       const sources: (string | null)[] = [];
       if (map) {

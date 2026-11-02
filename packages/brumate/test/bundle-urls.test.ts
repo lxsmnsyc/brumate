@@ -31,6 +31,24 @@ function writeApp(): void {
     "import { start } from 'brumate/loader';\nimport { load } from 'virtual:brumate/manifest';\nstart({ load });\n",
   );
   writeFileSync(`${app}src/server.ts`, "export { handle } from 'virtual:brumate/routes';\n");
+  // A server that renders a component itself, with no routes.
+  writeFileSync(
+    `${app}src/custom.ts`,
+    [
+      "import { renderToStream } from 'brumate/server';",
+      "import type { ClientBundles } from 'brumate/server';",
+      "import Alone from './Alone.brm';",
+      '',
+      'export async function page(bundles?: ClientBundles): Promise<string> {',
+      '  let html = "";',
+      '  for await (const chunk of renderToStream(Alone, {}, bundles ? { bundles } : {})) {',
+      '    html += chunk;',
+      '  }',
+      '  return html;',
+      '}',
+      '',
+    ].join('\n'),
+  );
   writeFileSync(
     `${app}src/routes/_layout.brm`,
     [
@@ -73,6 +91,10 @@ function writeApp(): void {
   writeFileSync(`${app}src/Shared.brm`, counter('Shared'));
   writeFileSync(`${app}src/Later.brm`, counter('Later'));
   writeFileSync(`${app}src/Browser.brm`, counter('Browser'));
+  writeFileSync(
+    `${app}src/Alone.brm`,
+    counter('Alone', "  import Shared from './Shared.brm';\n", '<Shared />\n'),
+  );
 }
 
 const config: InlineConfig = {
@@ -104,8 +126,14 @@ interface Hints {
 }
 
 type Handle = (request: Request) => Promise<Response | undefined>;
+type Page = (bundles?: {
+  chunks: Record<string, string>;
+  members: Record<string, string[]>;
+}) => Promise<string>;
 
 let handle: Handle;
+/** `page()` of `src/custom.ts`, built in the process of the client build. */
+let custom: Page;
 let hints: Hints;
 
 /** The ID of a component of the app, from the members of the bundles. */
@@ -148,11 +176,18 @@ beforeAll(async () => {
   });
   await build({
     ...config,
-    build: { outDir: 'dist/server', ssr: 'src/server.ts' },
+    build: {
+      outDir: 'dist/server',
+      ssr: true,
+      rolldownOptions: { input: { server: 'src/server.ts', custom: 'src/custom.ts' } },
+    },
   });
   hints = JSON.parse(readFileSync(`${app}dist/client/.brumate/hints.json`, 'utf8')) as Hints;
   ({ handle } = (await import(pathToFileURL(`${app}dist/server/server.js`).href)) as {
     handle: Handle;
+  });
+  ({ page: custom } = (await import(pathToFileURL(`${app}dist/server/custom.js`).href)) as {
+    page: Page;
   });
 });
 
@@ -240,6 +275,33 @@ describe('the bundle URLs from the server', () => {
   });
 });
 
+describe('a server that renders on its own', () => {
+  it('names the bundles of the client build with no `bundles`', async () => {
+    const html = await custom();
+    expect(html).toContain('Alone');
+    expect(loads(html)).toEqual([chunk('Alone')]);
+  });
+
+  it('names them when the server builds in another process than the client', async () => {
+    // A new plugin has no hints in memory, as for `vite build` twice, so it reads `hints.json`.
+    await build({
+      ...config,
+      plugins: [brumate({ merge: 0 })],
+      build: { outDir: 'dist/separate', ssr: 'src/custom.ts' },
+    });
+    const { page } = (await import(pathToFileURL(`${app}dist/separate/custom.js`).href)) as {
+      page: Page;
+    };
+    expect(loads(await page())).toEqual([chunk('Alone')]);
+  });
+
+  it('names the bundles that the options pass instead', async () => {
+    const id = findId('Alone');
+    const html = await custom({ chunks: { [id]: '/other.js' }, members: { [id]: [id] } });
+    expect(loads(html)).toEqual(['/other.js']);
+  });
+});
+
 describe('a build with a relative base', () => {
   it('names each bundle and stylesheet relative to the loader', async () => {
     await build({
@@ -286,6 +348,14 @@ describe('the dev server', () => {
     const routes = (await dev.ssrLoadModule('virtual:brumate/routes')) as { handle: Handle };
     const html = await (await routes.handle(new Request('http://localhost/')))!.text();
     expect(html).toContain('Index');
+    expect(loads(html)).toEqual([]);
+  });
+
+  it('names no bundles for a server that renders on its own', async () => {
+    dev ??= await createServer({ ...config, appType: 'custom', server: { middlewareMode: true } });
+    const { page } = (await dev.ssrLoadModule('/src/custom.ts')) as { page: Page };
+    const html = await page();
+    expect(html).toContain('Alone');
     expect(loads(html)).toEqual([]);
   });
 });
