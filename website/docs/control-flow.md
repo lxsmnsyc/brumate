@@ -237,7 +237,7 @@ Type a note, then switch: the field empties, because the body renders again for 
 
 - An error in a component inside the body is caught too.
 - An error in the code of the body that runs in the browser is caught too. Both bodies ship when the body holds such code. See [Errors in the browser](./effects.md#errors-in-the-browser).
-- The markup of a `#template` that the body calls counts as part of the body. A template declared outside the `#try` counts only when each of its calls is in the body, and when it is declared in the same body as the `#try`, such as at the top level next to it. Otherwise the error of its browser code goes past this `#catch`.
+- The markup of a `#template` that the body calls counts as part of the body. A template declared outside the `#try` counts only for the innermost `#try` whose body holds each of its calls, and only when it is declared in the same body as that `#try`, such as at the top level next to it. Otherwise the error of its browser code goes past the `#catch`.
 - When the body throws on the server, nothing it rendered reaches the page: not its markup, the blocks inside it, or the state of its components. A component's stylesheet that only the body rendered is sent with the next copy of the component, such as one in `#catch`.
 - `reset` runs in the browser. If the body throws again, `#catch` renders again.
 - In development, `error` is the real error. In production, it is a plain `Error` with the message of a `ServerError`, or a generic message such as "The page could not render this part". The real error is logged on the server, and no stack is ever sent.
