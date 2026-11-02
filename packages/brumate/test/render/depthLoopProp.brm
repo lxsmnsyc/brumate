@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import DepthLoopChild from './DepthLoopChild.brm';
+
+  let count = $signal(0);
+
+  function bump() {
+    count++;
+  }
+</script>
+
+<button class="start" onClick=(() => count++)>Start</button>
+<p class="count">{count}</p>
+<DepthLoopChild value=count bump=bump />

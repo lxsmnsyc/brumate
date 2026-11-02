@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Mock } from 'vitest';
+import { findError } from '../src/error-catalog.ts';
 import { analyzeProject, compile } from '../src/index.ts';
 import { resolveFromDisk } from '../src/modules.ts';
 import { generateShared } from '../src/shared-module.ts';
@@ -2162,6 +2163,43 @@ describe('resume', () => {
     expect(String(errors.mock.calls[0]![0])).toContain('did not settle');
     click(document.querySelector('.inc')!);
     await waitFor(() => expect(text('.double')).toBe('4'));
+    expect(errors).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops an effect that writes what it reads, with an error in the nearest #try', async () => {
+    await resume('depthLoop', {}, {}, undefined, { dev: true });
+    click(document.querySelector('.start')!);
+    // Without the guard, the effect runs until the cap of the fixture, 100000 runs.
+    const caught = (): boolean => document.querySelector('.caught') !== null;
+    await waitFor(() => expect(caught() || text('.count') === '100000').toBe(true));
+    expect(caught(), `no #catch after ${text('.count')} runs`).toBe(true);
+    expect(text('.caught')).toContain('$untrack');
+    expect(text('.caught')).toContain('BRM187');
+    expect(Number(text('.count'))).toBeLessThan(100000);
+    // The rest of the page goes on.
+    click(document.querySelector('.other')!);
+    await waitFor(() => expect(text('.other-value')).toBe('1'));
+  });
+
+  it('stops an effect that calls the writer of its parent, with an event outside every #try', async () => {
+    await resume('depthLoopProp', {});
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    const seen: string[] = [];
+    function listen(event: Event): void {
+      seen.push(String((event as CustomEvent<{ error: unknown }>).detail.error));
+    }
+    window.addEventListener('brumate:error', listen);
+    onTestFinished(() => window.removeEventListener('brumate:error', listen));
+    click(document.querySelector('.start')!);
+    // Without the guard, the effect runs until the cap of the fixture, 100000 runs.
+    await waitFor(() => expect(seen.length > 0 || text('.count') === '100000').toBe(true));
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatch(/The effect e\d+ of DepthLoopChild_\w+ did not settle/);
+    expect(seen[0]).toContain('$untrack');
+    // The message has the form of its catalog entry, so `brumate check` and the docs explain it.
+    expect(findError(seen[0]!.replace(/^Error: /, ''))?.code).toBe('BRM187');
+    expect(Number(text('.count'))).toBeLessThan(100000);
     expect(errors).toHaveBeenCalledTimes(1);
   });
 
