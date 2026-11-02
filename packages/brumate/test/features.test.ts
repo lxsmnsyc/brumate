@@ -85,6 +85,7 @@ async function buildApp(
         'brumate/client': core,
         'brumate/loader': runtime('loader'),
         'brumate/static-loader': runtime('static-loader'),
+        'brumate/bundles': runtime('bundles'),
         'brumate/context': runtime('context'),
         'brumate/signals': runtime('signals'),
       },

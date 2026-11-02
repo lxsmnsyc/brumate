@@ -13,7 +13,7 @@ import {
   stateScript,
   useSerialEntry,
 } from '../src/runtime/server.ts';
-import type { PageState } from '../src/runtime/server.ts';
+import type { Component, PageState } from '../src/runtime/server.ts';
 import type { SerialEntry } from '../src/runtime/values.ts';
 import { toChunkStream } from '../src/runtime/stream.ts';
 import type * as ClientApi from '../src/runtime/client.ts';
@@ -7817,4 +7817,70 @@ describe('a block, prop or function that reads a constant async memo, in a brows
       expect(unhandled.map(String)).toEqual([]);
     });
   }
+});
+
+describe('the bundles that state records name', () => {
+  /** A component with one slot, rendered with the bundles of a build. */
+  async function renderRoot(id: string, base?: number): Promise<string> {
+    const Root: Component = async (_props, ctx) => {
+      ctx.slots(ctx.scope(1, undefined, id), [1]);
+      return `<p>${id}</p>`;
+    };
+    // The chunk of each bundle, as a file that exports the modules of its components.
+    const chunks: Record<string, string> = {};
+    for (const name of ['Page', 'Next']) {
+      writeFileSync(
+        join(output, `bundle-${name}.js`),
+        `export const modules = { ${name}: { id: '${name}', props: {}, g: {} } };\n`,
+      );
+      chunks[name] = file(`bundle-${name}.js`);
+    }
+    const bundles = {
+      chunks,
+      styles: { Page: [file('page.css')] },
+      members: { Page: ['Page'], Next: ['Next'] },
+    };
+    const { html, state } = await renderParts(Root, {}, { bundles, base, nonce: 'n0nce' });
+    return html + state;
+  }
+
+  beforeAll(() => {
+    // The stylesheets are files that the DOM environment cannot fetch.
+    const { settings } = (window as unknown as { happyDOM: { settings: Record<string, boolean> } })
+      .happyDOM;
+    settings.disableCSSFileLoading = true;
+    settings.handleDisabledFileLoadingAsSuccess = true;
+  });
+
+  afterEach(() => {
+    document.head.innerHTML = '';
+  });
+
+  it('load with the entry, and give `load` the modules of what the page names so far', async () => {
+    const page = await renderRoot('Page');
+    expect(page).toContain(`b-load="${file('bundle-Page.js')} ${file('page.css')}"`);
+    show(page);
+    vi.resetModules();
+    const { load } = await import('../src/runtime/bundles.ts');
+    // The stylesheet of the bundle is in the head at once, with the nonce of the record, and a
+    // navigation keeps it.
+    const links = document.head.querySelectorAll<HTMLLinkElement>('link[rel=stylesheet]');
+    expect(links).toHaveLength(1);
+    expect(links[0]!.getAttribute('nonce')).toBe('n0nce');
+    expect(links[0]!.hasAttribute('b-bundle')).toBe(true);
+    expect((await load('Page'))?.id).toBe('Page');
+    // A component that no bundle holds has no client code.
+    expect(await load('Other')).toBeUndefined();
+    // The state of a page that navigation adds names the bundles of that page.
+    appendChunk(await renderRoot('Next', 10));
+    expect((await load('Next'))?.id).toBe('Next');
+    // The record of the next page names the stylesheet again, which the page has.
+    expect(document.head.querySelectorAll('link[rel=stylesheet]')).toHaveLength(1);
+  });
+
+  it('give no module before a record names a bundle', async () => {
+    vi.resetModules();
+    const { load } = await import('../src/runtime/bundles.ts');
+    expect(load('Page')).toBeUndefined();
+  });
 });

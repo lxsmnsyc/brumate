@@ -33,6 +33,7 @@ const config: InlineConfig = {
       'brumate/client': runtime('client'),
       'brumate/loader': runtime('loader'),
       'brumate/static-loader': runtime('static-loader'),
+      'brumate/bundles': runtime('bundles'),
       'brumate/context': runtime('context'),
       'brumate/events': runtime('events'),
       'brumate/serial': runtime('values'),

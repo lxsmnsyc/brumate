@@ -16,6 +16,7 @@ export default defineConfig({
       'brumate/client': runtime('client'),
       'brumate/loader': runtime('loader'),
       'brumate/static-loader': runtime('static-loader'),
+      'brumate/bundles': runtime('bundles'),
       'brumate/context': runtime('context'),
       'brumate/html': runtime('html'),
       'brumate/signals': runtime('signals'),

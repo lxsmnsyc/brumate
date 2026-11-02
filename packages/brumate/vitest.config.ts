@@ -12,6 +12,7 @@ export default defineConfig({
       ),
       'brumate/signals': fileURLToPath(new URL('./src/runtime/signals.ts', import.meta.url)),
       'brumate/hot': fileURLToPath(new URL('./src/runtime/hot.ts', import.meta.url)),
+      'brumate/bundles': fileURLToPath(new URL('./src/runtime/bundles.ts', import.meta.url)),
       'brumate/routes': fileURLToPath(new URL('./src/runtime/routes.ts', import.meta.url)),
       'brumate/context': fileURLToPath(new URL('./src/runtime/context.ts', import.meta.url)),
       'brumate/events': fileURLToPath(new URL('./src/runtime/events.ts', import.meta.url)),

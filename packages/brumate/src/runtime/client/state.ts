@@ -107,8 +107,6 @@ export interface CoreOptions {
    * has no client code, which a build leaves out.
    */
   load: (id: string) => Promise<ClientModule> | undefined;
-  /** Loads the bundle of a root component of the page, before the modules in it. */
-  loadBundle?: (id: string) => Promise<unknown> | undefined;
   /** Adds event listeners for the `b-on` attributes in new markup. */
   listen: (root: ParentNode) => void;
   /** Tells the loader that the markup that `listen` scanned is in the page now. */
