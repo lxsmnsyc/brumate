@@ -1,16 +1,18 @@
-// A browser render that waits for memos: at `await $memo`, and in cloned markup that reads a
-// memo which never changes. The boundaries count such waits.
+// A browser render that waits for memos: at `await $memo`, in cloned markup that reads a memo
+// which never changes, and at the memos that markup reads. The boundaries count such waits, and
+// `#loading` shows its fallback until they end.
 
 import { MemoError } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
-import { rendered } from './blocks.ts';
+import { HAS_LOADING } from '../features.ts';
+import { clear, rendered } from './blocks.ts';
 import { setSlots } from './components.ts';
 import { fail } from './errors.ts';
-import { insertHTML, refresh } from './insert.ts';
-import { afterInsert, resolveScope } from './scopes.ts';
+import { insertHTML, markCloned, parseHTML, refresh } from './insert.ts';
+import { afterInsert, destroy, resolveScope } from './scopes.ts';
 import { loadingValues, renderedLoads, scopes, waiters } from './state.ts';
 import type { Scope } from './state.ts';
-import { isThenable, pending, writes } from './updates.ts';
+import { isThenable, noop, pending, writes } from './updates.ts';
 
 /** What a render function of the browser returns. */
 export type Out = string | DocumentFragment;
@@ -156,10 +158,31 @@ export function fault(own: Boundary | undefined, error: unknown): void {
 }
 
 /**
- * The scope that `fillSettled` reported each rejection to, as two renders or two writes in one
- * scope can read the same memo.
+ * The scope that `fillSettled` and `countLoads` reported each rejection to, as two renders or two
+ * writes in one scope can read the same memo.
  */
 const reportedRejections = new WeakMap<object, Scope>();
+
+/** Ends a wait for a value that rejected: `fail`, once per error and scope, then `fault`. */
+function failOnce(scope: Scope, own: Boundary | undefined, error: unknown): void {
+  // A closed block shows nothing, so its error has no `#catch` to show.
+  if (scopes.get(scope.id) !== scope) {
+    leave(own);
+    return;
+  }
+  const object = typeof error === 'object' && error !== null;
+  try {
+    if (!object || reportedRejections.get(error) !== scope) {
+      if (object) {
+        reportedRejections.set(error, scope);
+      }
+      // `onError` of the page can throw.
+      fail(scope, error);
+    }
+  } finally {
+    fault(own, error);
+  }
+}
 
 /**
  * The wait of cloned markup that reads memos which never change: `write` runs once the ones
@@ -172,11 +195,11 @@ export function fillSettled(
   values: unknown[],
   write: (...values: unknown[]) => void,
 ): void {
-  let loading = false;
+  let promised = false;
   for (const value of values) {
-    loading ||= isThenable(value);
+    promised ||= isThenable(value);
   }
-  if (!loading) {
+  if (!promised) {
     write(...values);
     return;
   }
@@ -193,25 +216,7 @@ export function fillSettled(
         leave(own);
       }
     },
-    (error: unknown) => {
-      // A closed block shows nothing, so its error has no `#catch` to show.
-      if (scopes.get(scope.id) !== scope) {
-        leave(own);
-        return;
-      }
-      const object = typeof error === 'object' && error !== null;
-      try {
-        if (!object || reportedRejections.get(error) !== scope) {
-          if (object) {
-            reportedRejections.set(error, scope);
-          }
-          // `onError` of the page can throw.
-          fail(scope, error);
-        }
-      } finally {
-        fault(own, error);
-      }
-    },
+    (error: unknown) => failOnce(scope, own, error),
   );
 }
 
@@ -335,5 +340,218 @@ export function wait(
     }
   }
   promise.then(write, (error: unknown) => write(new MemoError(error)));
+  return range;
+}
+
+/**
+ * Counts the memos that markup of a browser render reads and that still load, in the boundary of
+ * the render, as the server waits for them. The compiler passes the memos of a scope that markup
+ * outside every `#loading` body reads, and the memos that a `#loading` body reads from outside.
+ * Each counts down when its value settles. A rejection goes to `fail` and `fault`, as in
+ * `fillSettled`. Outside a boundary, the markup fills in when the values arrive.
+ */
+export function countLoads(id: ScopeId | Scope, values: unknown[]): void {
+  if (!HAS_LOADING || !boundary) {
+    return;
+  }
+  for (const value of values) {
+    if (isThenable(value)) {
+      const scope = resolveScope(id)!;
+      const own = join();
+      Promise.resolve(value).then(
+        () => leave(own),
+        (error: unknown) => failOnce(scope, own, error),
+      );
+    }
+  }
+}
+
+/** The order of a `#reveal` block. */
+type RevealOrder = 'sequential' | 'backwards' | 'together' | 'natural';
+
+/** A `#loading` block of a `#reveal` block that the browser renders. */
+interface Member {
+  /** Shows the body, once the body is ready. */
+  s?: () => void;
+  /** True once the body showed. */
+  d?: boolean;
+  /** Shows the fallback that `collapsed` held back. */
+  f?: () => void;
+}
+
+/**
+ * The `#loading` blocks of a `#reveal` block that the browser renders, in the order of the
+ * markup, as the server orders the bodies that stream. One group is one chain of bodies.
+ */
+export interface Reveal {
+  o: RevealOrder;
+  c: boolean;
+  m: Member[];
+  /** True once the render of the block ended, so the group knows its last body. */
+  e?: boolean;
+  /** Shows the bodies that are ready and whose turn it is. A page without `#reveal` has no code for it. */
+  t: () => void;
+}
+
+/** Starts a `#reveal` block in a browser render. The render ends before any body settles. */
+export function reveal(order: RevealOrder, collapsed: boolean): Reveal {
+  const group: Reveal = { o: order, c: collapsed, m: [], t: () => showTurns(group) };
+  queueMicrotask(() => {
+    group.e = true;
+    group.t();
+  });
+  return group;
+}
+
+/** Shows the bodies of a `#reveal` block that are ready and whose turn it is. */
+function showTurns(group: Reveal): void {
+  const { m: members, o: order } = group;
+  function showAt(index: number): void {
+    const member = members[index]!;
+    member.d = true;
+    member.s!();
+    // `collapsed`: the body that shows brings the fallback of the next one in.
+    members[index + 1]?.f?.();
+  }
+  if (order === 'natural') {
+    for (const [index, member] of members.entries()) {
+      if (member.s && !member.d) {
+        showAt(index);
+      }
+    }
+  } else if (order === 'sequential') {
+    for (let index = 0; index < members.length && members[index]!.s; index++) {
+      if (!members[index]!.d) {
+        showAt(index);
+      }
+    }
+  } else if (group.e && order === 'backwards') {
+    for (let index = members.length - 1; index >= 0 && members[index]!.s; index--) {
+      if (!members[index]!.d) {
+        showAt(index);
+      }
+    }
+  } else if (group.e) {
+    // `together`: every body must be ready before any shows.
+    let ready = true;
+    for (const member of members) {
+      ready &&= member.s !== undefined;
+    }
+    for (const [index, member] of members.entries()) {
+      if (ready && !member.d) {
+        showAt(index);
+      }
+    }
+  }
+}
+
+/** What a body or a fallback rendered, as nodes. HTML holds clones that it parses back in. */
+function toNodes(out: Out): DocumentFragment {
+  if (typeof out !== 'string') {
+    return out;
+  }
+  markCloned();
+  return parseHTML(out);
+}
+
+/**
+ * A `#loading` block that the browser renders, as a streamed one shows: the body at once when
+ * nothing that it reads loads, and otherwise the fallback, until every wait of the body ends.
+ * The body renders now, in a boundary of its own, and enters the page in one insert with its
+ * work. A body whose wait fails keeps the fallback, and `fail` reported the error. `group` is the
+ * `#reveal` block around it, whose order can hold a body that is ready. Updates after that keep
+ * the content, since they render no boundary.
+ */
+export function loading(body: () => Out, fallback?: () => Out, group?: Reveal): DocumentFragment {
+  const made = rendered.length;
+  const queued = afterInsert.length;
+  // A body that is ready shows at once, unless the `#reveal` around it holds it for its turn.
+  const turn =
+    group && !(group.o === 'natural' || (group.o === 'sequential' && group.m.length === 0));
+  const result = bound(body);
+  const nodes = toNodes(result[0]);
+  let own = result[1];
+  if (!own) {
+    if (!turn) {
+      return nodes;
+    }
+    // Held for its turn: its scopes and work wait, as those of a body that waits do.
+    own = { n: 0, c: writes, o: boundary, w: [rendered.splice(made), afterInsert.splice(queued)] };
+  }
+  const held = own;
+  // The range that the fallback fills, and then the body. Its comments name no block.
+  const start = document.createComment('');
+  const end = document.createComment('');
+  const range = document.createDocumentFragment();
+  // The scopes that the fallback made, which go when the body shows.
+  let fallbackScopes: Scope[] = [];
+  function showFallback(): DocumentFragment {
+    const first = rendered.length;
+    const fallbackNodes = fallback ? toNodes(fallback()) : document.createDocumentFragment();
+    fallbackScopes = rendered.slice(first);
+    return fallbackNodes;
+  }
+  const member: Member = {};
+  // `#reveal (collapsed)` holds the fallback until the body before it shows.
+  const hidden = group?.c && group.m.length > 0;
+  range.append(start);
+  if (!hidden) {
+    range.append(showFallback());
+  }
+  range.append(end);
+  if (hidden) {
+    member.f = () => {
+      if (end.parentNode) {
+        insertHTML(end, showFallback());
+      }
+    };
+  }
+  function showBody(): void {
+    // A block that closed during the wait dropped the body and its scopes.
+    let dropped = !end.parentNode;
+    for (const scope of held.w?.[0] ?? []) {
+      dropped ||= scopes.get(scope.id) !== scope;
+    }
+    if (dropped) {
+      held.w = undefined;
+      return;
+    }
+    for (const scope of fallbackScopes) {
+      destroy(scope);
+    }
+    clear(start, end);
+    give(held);
+    // The body can hold HTML that the insert reads, as a clone that a render made.
+    markCloned();
+    insertHTML(end, nodes);
+  }
+  if (group) {
+    group.m.push(member);
+  }
+  held.done = () => {
+    if (group) {
+      member.s = showBody;
+      group.t();
+    } else {
+      showBody();
+    }
+  };
+  held.f = () => {
+    // The fallback stays, as on the server, and the scopes of the body go. A body that fails
+    // takes its turn, so the bodies after it still show.
+    held.done = undefined;
+    held.f = noop;
+    for (const scope of held.w?.[0] ?? []) {
+      destroy(scope);
+    }
+    held.w = undefined;
+    if (group) {
+      member.s = noop;
+      group.t();
+    }
+  };
+  if (held.n === 0) {
+    held.done();
+  }
   return range;
 }

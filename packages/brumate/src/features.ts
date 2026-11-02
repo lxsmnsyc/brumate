@@ -32,6 +32,8 @@ export interface Features {
   dynamic: boolean;
   /** `$route` and `$navigation`, which the runtime provides. */
   routes: boolean;
+  /** `#loading` blocks that the browser renders. */
+  loading: boolean;
 }
 
 /** No feature at all, which a build that has no component uses. */
@@ -51,6 +53,7 @@ export function noFeatures(): Features {
     windows: false,
     dynamic: false,
     routes: false,
+    loading: false,
   };
 }
 
@@ -90,6 +93,7 @@ export function getFeatures(result: CompileResult): Features {
     dynamic: /\$\$b\.dynamic(?:Nodes)?\(/.test(client),
     // `$route` compiles to `$$b.routeContext`; `brumate/context` exports the contexts too.
     routes: /\b(?:routeContext|navigationContext)\b/.test(all),
+    loading: /\$\$b\.loading\(/.test(client),
   };
 }
 
@@ -111,6 +115,7 @@ export function joinFeatures(all: Features[]): Features {
     joined.windows ||= features.windows;
     joined.dynamic ||= features.dynamic;
     joined.routes ||= features.routes;
+    joined.loading ||= features.loading;
   }
   return joined;
 }
@@ -131,6 +136,7 @@ const GLOBALS: Record<keyof Features, string> = {
   windows: '__BRUMATE_HAS_WINDOWS__',
   dynamic: '__BRUMATE_HAS_DYNAMIC__',
   routes: '__BRUMATE_HAS_ROUTES__',
+  loading: '__BRUMATE_HAS_LOADING__',
 };
 
 /** True for code that reads a feature, such as the core. */

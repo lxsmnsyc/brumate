@@ -123,6 +123,7 @@ export default function Search($$props: Record<string, never>): string | Documen
   $$b.setAttr($$e[0], "value", (query));
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setSlots($$s1, [query, results]);
+  $$b.countLoads($$s1, [results]);
   $$b.fillBranch($$e[1], $$s1, 1, (false) ? 0 : -1, [$$r2]);
   $$b.fillList($$e[2], $$s1, 2, $$b.toList(( results)), $$r3);
   return $$f;

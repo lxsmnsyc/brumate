@@ -76,6 +76,19 @@ export type Part = { static: string } | { code: string; settled?: Settled };
 /** Expressions whose value is never a promise, as the memo of a list or a function. */
 const NEVER_PROMISE = new Set(['ArrayExpression', 'ArrowFunctionExpression', 'FunctionExpression']);
 
+/**
+ * True for a memo that can hold a promise in the browser: an `await` in it makes one, and others
+ * give one unless they always give a primitive, an array or a function.
+ */
+function mayLoad(declaration: Declaration): boolean {
+  return (
+    declaration.kind === 'async-memo' ||
+    (declaration.kind === 'memo' &&
+      !(declaration.site && isPrimitive(declaration.site.node)) &&
+      !NEVER_PROMISE.has(declaration.site?.node.type ?? ''))
+  );
+}
+
 /** The static or value attribute named `style`. */
 function findStyleAttribute(attributes: Attribute[]): Attribute | undefined {
   for (const attribute of attributes) {
@@ -336,6 +349,8 @@ export class Emitter {
   private nesting = 0;
   /** How many `#head` blocks contain the current node, where a `<title>` sets the title of the page. */
   private headBlocks = 0;
+  /** In the browser, the `#reveal` blocks around the node that renders, innermost last. */
+  private reveals: string[] = [];
   private counter = 0;
   /** The tags of the elements around the node that renders, innermost last. */
   private readonly elements: string[] = [];
@@ -725,6 +740,21 @@ export class Emitter {
       this.line(
         `${this.helper('slots')}(${this.scopeVar(scope)}, [${values.join(', ')}]${names});`,
       );
+    }
+    // In the browser, a `#loading` body around the render waits for the memos that the server
+    // waits for where they are declared, as markup outside every `#loading` body reads them.
+    if (this.options.mode === 'client') {
+      const loads: string[] = [];
+      for (const declaration of scope.declarations.values()) {
+        if (this.blocking.has(declaration) && mayLoad(declaration)) {
+          loads.push(declaration.name);
+        }
+      }
+      if (loads.length > 0) {
+        this.line(
+          `$$b.countLoads(${this.scopeVar(instanceScope(this.plan, scope))}, [${loads.join(', ')}]);`,
+        );
+      }
     }
     // The props that the component writes, which a parent can bind with `$bind`.
     if (scope.kind === 'component') {
@@ -1399,6 +1429,17 @@ export class Emitter {
           );
           this.emitNodes(node.children, scope);
           this.line('$$ctx.revealEnd();');
+          return;
+        }
+        // In the browser, the `#loading` blocks of the same render join a group of the block.
+        if (node.reveal && this.options.mode === 'client') {
+          const group = this.unique('reveal');
+          this.line(
+            `const ${group} = $$b.reveal(${JSON.stringify(node.reveal.order)}, ${node.reveal.collapsed});`,
+          );
+          this.reveals.push(group);
+          this.emitNodes(node.children, scope);
+          this.reveals.pop();
           return;
         }
         this.emitNodes(node.children, scope);
@@ -2349,6 +2390,41 @@ export class Emitter {
   }
 
   /**
+   * In the browser, a `#loading` block renders as a streamed one shows: `$$b.loading` renders the
+   * body in a boundary, and the fallback while a wait of the body has not ended. The body counts
+   * the memos that it reads from outside, which the server waits for in the block. The block
+   * joins the `#reveal` block of the same render around it.
+   */
+  private emitClientLoading(block: Block & { kind: 'loading' }, scope: Scope): void {
+    const body = this.plan.bodyScopes.get(block.body)!;
+    const reads: string[] = [];
+    for (const declaration of awaitedMemos(this.plan, body, this.blocking)) {
+      if (mayLoad(declaration)) {
+        reads.push(declaration.name);
+      }
+    }
+    const args = [
+      this.bodyFunction('', () => {
+        if (reads.length > 0) {
+          this.line(
+            `$$b.countLoads(${this.scopeVar(instanceScope(this.plan, scope))}, [${reads.join(', ')}]);`,
+          );
+        }
+        this.emitBody(block.body);
+      }),
+    ];
+    const fallback = block.fallback;
+    args.push(fallback ? this.bodyFunction('', () => this.emitBody(fallback)) : 'undefined');
+    args.push(this.reveals.at(-1) ?? 'undefined');
+    while (args.at(-1) === 'undefined') {
+      args.pop();
+    }
+    this.open(scope, block);
+    this.code(`$$b.nodes($$b.loading(${args.join(', ')}))`);
+    this.end(block);
+  }
+
+  /**
    * Registers the `#catch` body of a `#try` on the server, and returns the name of the function
    * that ends the registration. The body renders again here for an error that comes after the
    * page is sent, in a context of its own.
@@ -2463,7 +2539,8 @@ export class Emitter {
     this.line(`let $$html = '';`);
     content();
     this.flush();
-    const cloned = cloneLines(this, this.options.hoist!, fn);
+    // The functions of children render HTML.
+    const cloned = this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn);
     this.line(this.returnLine(fn, cloned));
     this.close('};');
     return name;
@@ -2736,11 +2813,7 @@ export class Emitter {
           this.emitLoading(block, scope);
           return;
         }
-        this.open(scope, block);
-        this.line('{');
-        this.emitBody(block.body);
-        this.close();
-        this.end(block);
+        this.emitClientLoading(block, scope);
         return;
       case 'portal':
       case 'head':

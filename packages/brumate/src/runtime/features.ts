@@ -17,6 +17,7 @@ declare const __BRUMATE_HAS_FIELDS__: boolean | undefined;
 declare const __BRUMATE_HAS_WINDOWS__: boolean | undefined;
 declare const __BRUMATE_HAS_DYNAMIC__: boolean | undefined;
 declare const __BRUMATE_HAS_ROUTES__: boolean | undefined;
+declare const __BRUMATE_HAS_LOADING__: boolean | undefined;
 
 /** Children that the browser renders with an export of their own, each time they are inserted. */
 export const HAS_CHILDREN: boolean =
@@ -80,3 +81,7 @@ export const HAS_DYNAMIC: boolean =
 /** `$route` and `$navigation`, which the runtime provides. */
 export const HAS_ROUTES: boolean =
   typeof __BRUMATE_HAS_ROUTES__ === 'undefined' || __BRUMATE_HAS_ROUTES__;
+
+/** `#loading` blocks that the browser renders, which show their fallback while memos load. */
+export const HAS_LOADING: boolean =
+  typeof __BRUMATE_HAS_LOADING__ === 'undefined' || __BRUMATE_HAS_LOADING__;

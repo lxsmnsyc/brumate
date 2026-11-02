@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { analyzeProject, compile } from '../src/index.ts';
+import { getFeatures } from '../src/features.ts';
 import { resolveFromDisk } from '../src/modules.ts';
 import { generateShared } from '../src/shared-module.ts';
 import {
@@ -8501,4 +8502,292 @@ describe('a block, prop or function that reads a constant async memo, in a brows
       expect(unhandled.map(String)).toEqual([]);
     });
   }
+});
+
+describe('#loading in markup that the browser renders', () => {
+  function userLoads(): UserLoad[] {
+    return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);
+  }
+
+  /** The IDs of the user loads so far. */
+  function loadedIds(): number[] {
+    const ids: number[] = [];
+    for (const load of userLoads()) {
+      ids.push(load.id);
+    }
+    return ids;
+  }
+
+  const settled = new Set<UserLoad>();
+
+  /** Settles the first load of a user that has not settled yet. */
+  async function settleUser(id: number, error?: Error): Promise<void> {
+    let found: UserLoad | undefined;
+    for (const load of userLoads()) {
+      if (load.id === id && !settled.has(load)) {
+        found = load;
+        break;
+      }
+    }
+    settled.add(found!);
+    if (error) {
+      found!.fail(error);
+    } else {
+      found!.done({ name: `ada${id}` });
+    }
+    await new Promise((done) => setTimeout(done, 0));
+  }
+
+  /** The texts of the elements that match. */
+  function texts(selector: string): string[] {
+    const shown: string[] = [];
+    for (const element of document.querySelectorAll(selector)) {
+      shown.push(element.textContent!.trim());
+    }
+    return shown;
+  }
+
+  /** The page without its state records, to compare the markup before and after a wait. */
+  function markup(): string {
+    return document.body.innerHTML.replace(/<script[\s\S]*?<\/script>/g, '');
+  }
+
+  /** Every content of `selector` and `.fallback` that the page shows on the way. */
+  function watchShown(): string[] {
+    const shown: string[] = [];
+    const observer = new MutationObserver(() => {
+      const now = [...texts('.fallback'), ...texts('.user')].join(',');
+      if (shown.at(-1) !== now) {
+        shown.push(now);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    onTestFinished(() => observer.disconnect());
+    return shown;
+  }
+
+  afterEach(() => {
+    userLoads().length = 0;
+    settled.clear();
+  });
+
+  it('shows the fallback until the memo of a child component in an #if that opens loads', async () => {
+    await resume('loadingHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    expect(texts('.fallback')).toEqual(['loading']);
+    expect(texts('.user')).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1']));
+    expect(texts('.fallback')).toEqual([]);
+    // The memo loads once: the refresh after the insert takes the settled value.
+    await new Promise((done) => setTimeout(done, 20));
+    expect(loadedIds()).toEqual([1]);
+  });
+
+  it('shows the fallback until a memo of a block script in the body loads', async () => {
+    await resume('loadingScript', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    expect(texts('.fallback')).toEqual(['loading']);
+    expect(texts('.user')).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1']));
+    expect(texts('.fallback')).toEqual([]);
+  });
+
+  it('shows the fallback of a component that the browser renders until a memo that its body reads loads', async () => {
+    await resume('loadingSelfHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    expect(texts('.fallback')).toEqual(['loading']);
+    expect(texts('.user')).toEqual([]);
+    await settleUser(1);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1']));
+    expect(texts('.fallback')).toEqual([]);
+    const render = readFileSync(join(output, 'LoadingSelf.brm.render.ts'), 'utf8');
+    // The body counts the memo that it reads from outside.
+    expect(render).toContain('$$b.countLoads($$s1, [user]);');
+  });
+
+  it('shows the fallback until an awaited memo of a child component loads', async () => {
+    await resume('loadingWaitHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    expect(texts('.fallback')).toEqual(['loading']);
+    await settleUser(1);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1 ADA1 0']));
+    expect(texts('.fallback')).toEqual([]);
+    // Handlers of the body work after it shows.
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1 ADA1 1']));
+    expect(loadedIds()).toEqual([1]);
+  });
+
+  it('shows the fallback of a #for row that is added later, row by row', async () => {
+    await resume('loadingRows', {});
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(loadedIds()).toEqual([3]));
+    expect(texts('.fallback')).toEqual(['loading 3']);
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(loadedIds()).toEqual([3, 4]));
+    expect(texts('.fallback')).toEqual(['loading 3', 'loading 4']);
+    await settleUser(4);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada4']));
+    expect(texts('li')).toEqual(['loading 3', 'ada4']);
+    await settleUser(3);
+    await waitFor(() => expect(texts('li')).toEqual(['ada3', 'ada4']));
+  });
+
+  it('keeps the content of a body that showed while an update loads again', async () => {
+    await resume('loadingHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    await settleUser(1);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1']));
+    const shown = watchShown();
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2]));
+    await new Promise((done) => setTimeout(done, 20));
+    expect(texts('.user')).toEqual(['ada1']);
+    await settleUser(2);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada2']));
+    // No fallback on the way.
+    expect(shown).toEqual(['ada2']);
+  });
+
+  it('drops a body whose block closed during the wait, and opens again', async () => {
+    await resume('loadingHost', {});
+    const before = markup();
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(markup()).toBe(before));
+    await settleUser(1);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(markup()).toBe(before);
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 1]));
+    expect(texts('.fallback')).toEqual(['loading']);
+    await settleUser(1);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1']));
+    expect(texts('.fallback')).toEqual([]);
+  });
+
+  it('shows the bodies of a #reveal in order, and one fallback at a time', async () => {
+    await resume('loadingReveal', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2, 3]));
+    // `collapsed`: only the first fallback shows.
+    expect(texts('.fallback')).toEqual(['one']);
+    await settleUser(3);
+    await settleUser(2);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(texts('.user')).toEqual([]);
+    expect(texts('.fallback')).toEqual(['one']);
+    await settleUser(1);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1', 'ada2', 'ada3']));
+    expect(texts('.fallback')).toEqual([]);
+  });
+
+  it('brings in the next fallback of a #reveal when a body shows', async () => {
+    await resume('loadingReveal', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 2, 3]));
+    await settleUser(1);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1']));
+    expect(texts('.fallback')).toEqual(['two']);
+    await settleUser(2);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1', 'ada2']));
+    expect(texts('.fallback')).toEqual(['three']);
+    await settleUser(3);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1', 'ada2', 'ada3']));
+  });
+
+  it('sends a rejected load to the #catch around the block, once', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const fails = vi.fn<() => void>();
+    window.addEventListener('brumate:error', fails);
+    onTestFinished(() => window.removeEventListener('brumate:error', fails));
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    onTestFinished(() => {
+      process.off('unhandledRejection', onUnhandled);
+    });
+    await resume('loadingTry', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    expect(texts('.fallback')).toEqual(['loading']);
+    await settleUser(1, new Error('No user 1'));
+    await waitFor(() => expect(texts('.caught')).toEqual(['Error: No user 1']));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(texts('.caught')).toEqual(['Error: No user 1']);
+    expect(texts('.fallback')).toEqual([]);
+    expect(fails).not.toHaveBeenCalled();
+    expect(unhandled.map(String)).toEqual([]);
+  });
+
+  it('keeps the fallback of a body whose load fails, and reports the error once', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errors: unknown[] = [];
+    function onError(event: Event): void {
+      errors.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    }
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('loadingHost', {});
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1]));
+    await settleUser(1, new Error('No user 1'));
+    await waitFor(() => expect(errors.map(String)).toEqual(['Error: No user 1']));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(errors).toHaveLength(1);
+    expect(texts('.fallback')).toEqual(['loading']);
+    expect(document.querySelector('.user')).toBeNull();
+    // Closed and opened again, it loads again.
+    click(document.querySelector('.toggle')!);
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(loadedIds()).toEqual([1, 1]));
+    await settleUser(1);
+    await waitFor(() => expect(texts('.user')).toEqual(['ada1']));
+  });
+
+  it('ships no fallback for a page whose #loading blocks only the server renders', () => {
+    const source = `<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+  let n = $signal(0);
+  const user = $memo(loadUser(1));
+</script>
+
+<button onClick=(() => n++)>{n}</button>
+#loading {
+  <p>{user.name}</p>
+} #else {
+  <p>Server fallback</p>
+}
+`;
+    const { client, parts } = compile(source, { filename: 'serverLoading.brm' });
+    for (const code of [client, ...Object.values(parts)]) {
+      expect(code).not.toContain('Server fallback');
+      expect(code).not.toContain('$$b.loading(');
+    }
+    // A block that the browser renders ships its fallback.
+    const inBlock = compile(source.replace('#loading {', '#if (n > 0) {\n#loading {') + '}\n', {
+      filename: 'clientLoading.brm',
+    });
+    const code = [inBlock.client, ...Object.values(inBlock.parts)].join('\n');
+    expect(code).toContain('Server fallback');
+    expect(code).toContain('$$b.loading(');
+    // The core keeps the count of the memos that markup reads only for such a block.
+    expect(getFeatures(inBlock).loading).toBe(true);
+    const counter = compile(
+      `<script>\n  import { $signal } from 'brumate/signals';\n  let n = $signal(0);\n</script>\n\n<p>{n}</p>\n`,
+      { filename: 'counter.brm' },
+    );
+    expect(getFeatures(counter).loading).toBe(false);
+  });
 });
