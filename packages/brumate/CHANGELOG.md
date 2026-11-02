@@ -1,5 +1,14 @@
 # brumate
 
+## 0.4.2
+
+### Patch Changes
+
+- 00f6b65: A browser render now handles the rejection of an async memo that the script reads only with `await`, as in `await side;` or `$memo((await side).length)`. The browser compiles `await side` to a plain read of the promise, which dropped it, so the rejection was unhandled. It now goes to the nearest `#catch`, or to `onError` and the `brumate:error` event.
+- 73c5b8e: In a browser render, text and attributes that read an async `$memo` whose input never changes now show the value once the promise settles. Before, they stayed empty, because nothing updates such a memo. A rejection of the memo now goes to the nearest `#try`, or to `onError` and the `brumate:error` event. Block headers, props and reads inside a function, such as `{list.map(() => value)}`, still do not wait for the memo, and neither does markup that the browser renders as HTML instead of a cloned template.
+- b834104: A `#try` whose body holds only a child component now catches the client errors of that child, such as a click handler that throws, an async handler that rejects or an effect that throws. Before, the error went past the `#catch` to `onError` and `brumate:error`, unless an element with a handler sat next to the child in the same `#try`. This also holds for a grandchild and for a child inside an `#if` or a `#for` in the `#try`.
+- 2fb5a44: A component that the browser renders now handles the rejection of an async memo that nothing reads. The error goes to the nearest `#try`, or to `onError` and the `brumate:error` event when no `#try` catches it. Before, the page got an unhandled rejection.
+
 ## 0.4.1
 
 ### Patch Changes
