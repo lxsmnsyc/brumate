@@ -80,16 +80,21 @@ export default async function Blocks($$props: { items: string[]; tab: 'a' | 'b' 
   const $$end13 = $$ctx.catcher($$s1 + ":5", async ($$ctx, $$raised14) => {
     let $$html = '';
     const error = $$b.caught($$raised14, $$ctx);
-    $$html += "<p>" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
+    const $$s10 = $$ctx.scope(10, $$s1);
+    $$html += "<p b-b=\"" + $$s10 + ":0\">" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s10)) === 'string' ? $$t : await $$t) + "</p>";
+    $$ctx.slots($$s10, [error], ["error"]);
     return $$html;
   });
   try {
-    $$html += await $$b.component(Broken, {  }, $$ctx, $$s1);
+    const $$s9 = $$ctx.scope(9, $$s1);
+    $$html += await $$b.component(Broken, {  }, $$ctx, $$s9);
   } catch ($$error11) {
     $$html = $$before10;
     $$ctx.restore($$mark12);
     const error = $$b.caught($$error11, $$ctx);
-    $$html += "<p>" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s1)) === 'string' ? $$t : await $$t) + "</p>";
+    const $$s10 = $$ctx.scope(10, $$s1);
+    $$html += "<p b-b=\"" + $$s10 + ":0\">" + (typeof ($$t = $$b.insert((String(error)), $$ctx, $$s10)) === 'string' ? $$t : await $$t) + "</p>";
+    $$ctx.slots($$s10, [error], ["error"]);
   } finally {
     $$end13();
   }
@@ -118,7 +123,8 @@ export * from "./blocks.brm?brumate-client&part=h20";
 export * from "./blocks.brm?brumate-client&part=update";
 export const id = "Blocks_jlmev2";
 export const props = {  };
-export const g = { 1: { 0: [[1, "b7"], [12, "u18"]], 1: [[1, "b8"]] }, 5: { 1: [[5, "u9"]], 0: [[5, "u10"]] } };
+export const g = { 1: { 0: [[1, "b7"], [12, "u18"]], 1: [[1, "b8"]] }, 5: { 1: [[5, "u9"]], 0: [[5, "u10"]] }, 10: { 0: [[10, "u15"]] } };
+export const t = { 9: [1, 5, "r9", "r10", [9, 10]] };
 
 # Client part: c4
 import * as $$b from 'brumate/client';
@@ -164,6 +170,9 @@ export function u9($$s) {
 export function u10($$s) {
   $$b.text($$s, 2, $$b.get($$s, 0));
 }
+export function u15($$s) {
+  $$b.content($$s, 0, String($$b.get($$s, 0)));
+}
 export function u18($$s) {
   $$b.attr($$s, 0, "class", (($$b.get($$s.p, 0) === 'a') ? "active" : ""));
 }
@@ -199,13 +208,16 @@ export function r6($$p) {
 }
 export function r9($$p) {
   let $$html = '';
-  $$html += $$b.component(Broken, {  }, undefined, $$p);
+  const $$s9 = $$b.createScope(9, $$p);
+  $$html += $$b.component(Broken, {  }, undefined, $$s9);
   return $$html;
 }
 export function r10($$p, $$error) {
   let $$html = '';
   const error = $$error;
-  $$html += "<p>" + $$b.insert((String(error))) + "</p>";
+  const $$s10 = $$b.createScope(10, $$p);
+  $$html += "<p b-b=\"" + $$s10 + ":0\">" + $$b.insert((String(error))) + "</p>";
+  $$b.setSlots($$s10, [error]);
   return $$html;
 }
 export function r11($$p) {
@@ -300,11 +312,14 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   $$html += $$b.nodes($$b.listNodes(undefined, undefined, Array.from({ length: ( 2) }, (_, index) => index), $$body11, undefined)) + "<!--b" + $$s1 + ":5-->";
   const $$before12 = $$html;
   try {
-    $$html += $$b.component(Broken, {  }, undefined, $$s1);
+    const $$s9 = $$b.createScope(9, $$s1);
+    $$html += $$b.component(Broken, {  }, undefined, $$s9);
   } catch ($$error13) {
     $$html = $$before12;
     const error = $$error13;
-    $$html += "<p>" + $$b.insert((String(error))) + "</p>";
+    const $$s10 = $$b.createScope(10, $$s1);
+    $$html += "<p b-b=\"" + $$s10 + ":0\">" + $$b.insert((String(error))) + "</p>";
+    $$b.setSlots($$s10, [error]);
   }
   $$html += "<!--/b--><template b-b=\"" + $$s1 + ":6\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":6--><!--/b-->";
   {
@@ -346,7 +361,7 @@ Blocks.brumateId = "Blocks_jlmev2";
 <b>0</b>
 <b>10</b>
 <!--b0:5-->
-<p>Error: The page could not render this part</p>
+<p b-b="4.1:0">Error: The page could not render this part</p>
 <!--/b-->
 <template b-b="0:6" b-client="idle=Blocks_jlmev2#k11">
 </template>
@@ -356,4 +371,4 @@ Blocks.brumateId = "Blocks_jlmev2";
 <p>&lt;escaped&gt;   12</p>
 
 # State
-<script b-state b-scopes b-next="5">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Blocks_jlmev2",s:["b",["one","two"],$b.e(0,2)]},1:{k:12,p:0},g:[[5,0,97,2,0,1,"1.",0,0,1,1]]})))</script>
+<script b-state b-scopes b-next="5">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"Blocks_jlmev2",s:["b",["one","two"],$b.e(0,2)]},1:{k:12,p:0},4.1:{k:10,p:0,s:[new Error("The page could not render this part")]},g:[[5,0,97,2,0,1,"1.",0,0,1,1]]})))</script>
