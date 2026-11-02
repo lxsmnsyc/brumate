@@ -1,7 +1,7 @@
 ---
 id: await-read-memo-rejection
 title: "A browser render handles the rejection of a memo read only by await"
-status: todo
+status: active
 priority: must
 type: hotfix
 outline: false

@@ -1,7 +1,7 @@
 ---
 id: markup-read-async-memo
 title: "An async memo whose input never changes fills in a browser render"
-status: todo
+status: active
 priority: must
 type: hotfix
 outline: false

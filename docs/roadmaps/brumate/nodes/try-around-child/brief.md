@@ -1,7 +1,7 @@
 ---
 id: try-around-child
 title: "A #try around only a child component catches its client errors"
-status: todo
+status: active
 priority: must
 type: hotfix
 outline: false
