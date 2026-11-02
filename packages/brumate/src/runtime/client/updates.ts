@@ -16,7 +16,7 @@ import type { ScopeId } from '../shared.ts';
 import { findElement } from './blocks.ts';
 import { childrenReady } from './children.ts';
 import { loadModule, loadingCode } from './code.ts';
-import { fail } from './errors.ts';
+import { fail, reportOnce } from './errors.ts';
 import { call, callNow, setPass } from './references.ts';
 import { afterInsert, descendants, findRoot, resolveScope } from './scopes.ts';
 import {
@@ -309,7 +309,7 @@ export function isThenable(value: unknown): value is PromiseLike<unknown> {
 export function unreadMemo(scope: Scope | ScopeId, value: unknown): void {
   if (isThenable(value)) {
     const at = resolveScope(scope);
-    value.then(undefined, (error: unknown) => fail(at, error));
+    value.then(undefined, (error: unknown) => reportOnce(at, error));
   }
 }
 

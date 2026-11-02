@@ -1,0 +1,13 @@
+<script>
+  import { $client, $props } from 'brumate/signals';
+  import { ran } from './runs.ts';
+
+  const { name } = $props<{ name: string }>();
+  ran('script', name);
+  $client(() => {
+    ran('client', name);
+    return () => ran('cleanup', name);
+  }, 'load');
+</script>
+
+<p class="part">{name}</p>

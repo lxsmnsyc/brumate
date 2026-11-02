@@ -1,6 +1,7 @@
 // Blocks that show one body of several: `#if`, `#switch`, `#key`, a dynamic tag, `#try`, `#client`
 // and `#offscreen`.
 
+import { HAS_ROOT_WAIT } from '../features.ts';
 import { parseId } from '../shared.ts';
 import type { ComponentValue } from '../shared.ts';
 import { blockStart, rangeEnd } from './blocks.ts';
@@ -10,6 +11,7 @@ import { call } from './references.ts';
 import { afterInsert, disposeKinds, inPlace, removeBlock, findRoot } from './scopes.ts';
 import { comments, hiding, scopes, setHiding } from './state.ts';
 import type { Scope } from './state.ts';
+import { hold, release, swap } from './waits.ts';
 
 export type Render = (parent: Scope, item?: unknown, index?: number) => string | DocumentFragment;
 
@@ -28,6 +30,23 @@ export function branch(
     return;
   }
   if (Number(start.data.split(':')[2]) === index) {
+    if (HAS_ROOT_WAIT) {
+      release(start);
+    }
+    return;
+  }
+  if (HAS_ROOT_WAIT) {
+    const body = inPlace(scope, renders[index], holderKind, holderAnchor);
+    swap(
+      scope,
+      kinds,
+      start,
+      index,
+      () => (body ? body(scope) : ''),
+      () => {
+        start.data = `b${scope.id}:${anchor}:${index}`;
+      },
+    );
     return;
   }
   const end = rangeEnd(start);
@@ -51,6 +70,26 @@ export function rekey(
 ): void {
   scope.keys ??= new Map();
   if (scope.keys.has(anchor) && Object.is(scope.keys.get(anchor), value)) {
+    const start = HAS_ROOT_WAIT && blockStart(scope, anchor);
+    if (start) {
+      release(start);
+    }
+    return;
+  }
+  if (HAS_ROOT_WAIT) {
+    const start = blockStart(scope, anchor);
+    const keys = scope.keys;
+    const body = inPlace(scope, render, holderKind, holderAnchor)!;
+    if (start) {
+      swap(
+        scope,
+        kinds,
+        start,
+        value,
+        () => body(scope),
+        () => keys.set(anchor, value),
+      );
+    }
     return;
   }
   scope.keys.set(anchor, value);
@@ -156,6 +195,22 @@ export function fill(
   if (!start || start.data.split(':').length > 2) {
     return;
   }
+  if (HAS_ROOT_WAIT) {
+    const body = inPlace(scope, render, holderKind, holderAnchor)!;
+    // The fallback stays until the body is ready.
+    hold(
+      start,
+      1,
+      () => body(scope),
+      (out) => {
+        start.data += ':1';
+        const end = rangeEnd(start);
+        removeBlock(scope, kinds, start, end);
+        insertHTML(end, out);
+      },
+    );
+    return;
+  }
   start.data += ':1';
   const end = rangeEnd(start);
   removeBlock(scope, kinds, start, end);
@@ -189,6 +244,16 @@ export function offscreen(
   start.data = `b${scope.id}:${anchor}:${visible ? 1 : 0}`;
   const end = rangeEnd(start);
   if (state === '-1') {
+    if (HAS_ROOT_WAIT) {
+      const body = inPlace(scope, render, holderKind, holderAnchor)!;
+      hold(
+        start,
+        1,
+        () => body(scope),
+        (out) => insertHTML(end, out),
+      );
+      return;
+    }
     insertHTML(end, inPlace(scope, render, holderKind, holderAnchor)!(scope));
     return;
   }

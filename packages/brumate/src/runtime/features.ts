@@ -18,6 +18,7 @@ declare const __BRUMATE_HAS_WINDOWS__: boolean | undefined;
 declare const __BRUMATE_HAS_DYNAMIC__: boolean | undefined;
 declare const __BRUMATE_HAS_ROUTES__: boolean | undefined;
 declare const __BRUMATE_HAS_LOADING__: boolean | undefined;
+declare const __BRUMATE_HAS_ROOT_WAIT__: boolean | undefined;
 
 /** Children that the browser renders with an export of their own, each time they are inserted. */
 export const HAS_CHILDREN: boolean =
@@ -85,3 +86,10 @@ export const HAS_ROUTES: boolean =
 /** `#loading` blocks that the browser renders, which show their fallback while memos load. */
 export const HAS_LOADING: boolean =
   typeof __BRUMATE_HAS_LOADING__ === 'undefined' || __BRUMATE_HAS_LOADING__;
+
+/**
+ * A browser render that waits at `await $memo`. A block outside every `#loading` then keeps what
+ * it shows until the waits of its new body settle, as the server holds the page.
+ */
+export const HAS_ROOT_WAIT: boolean =
+  typeof __BRUMATE_HAS_ROOT_WAIT__ === 'undefined' || __BRUMATE_HAS_ROOT_WAIT__;

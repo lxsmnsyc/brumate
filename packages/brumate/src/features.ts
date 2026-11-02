@@ -34,6 +34,8 @@ export interface Features {
   routes: boolean;
   /** `#loading` blocks that the browser renders. */
   loading: boolean;
+  /** A browser render that waits at `await $memo`, so blocks hold a new body until it settles. */
+  rootWait: boolean;
 }
 
 /** No feature at all, which a build that has no component uses. */
@@ -54,6 +56,7 @@ export function noFeatures(): Features {
     dynamic: false,
     routes: false,
     loading: false,
+    rootWait: false,
   };
 }
 
@@ -94,6 +97,7 @@ export function getFeatures(result: CompileResult): Features {
     // `$route` compiles to `$$b.routeContext`; `brumate/context` exports the contexts too.
     routes: /\b(?:routeContext|navigationContext)\b/.test(all),
     loading: /\$\$b\.loading\(/.test(client),
+    rootWait: /\$\$b\.wait\(/.test(client),
   };
 }
 
@@ -116,6 +120,7 @@ export function joinFeatures(all: Features[]): Features {
     joined.dynamic ||= features.dynamic;
     joined.routes ||= features.routes;
     joined.loading ||= features.loading;
+    joined.rootWait ||= features.rootWait;
   }
   return joined;
 }
@@ -137,6 +142,7 @@ const GLOBALS: Record<keyof Features, string> = {
   dynamic: '__BRUMATE_HAS_DYNAMIC__',
   routes: '__BRUMATE_HAS_ROUTES__',
   loading: '__BRUMATE_HAS_LOADING__',
+  rootWait: '__BRUMATE_HAS_ROOT_WAIT__',
 };
 
 /** True for code that reads a feature, such as the core. */
