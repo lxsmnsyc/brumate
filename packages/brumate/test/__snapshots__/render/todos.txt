@@ -29,7 +29,7 @@ export default async function Todos($$props: { initial: Todo[] }, $$ctx: $$b.Con
     draft = '';
     await persist(todos);
   }
-  $$html += "<h1>Todos</h1><form b-b=\"" + $$s1 + ":0\" b-on=\"submit:prevent=Todos_t3g9lr#h5\"><input" + $$b.attribute("value", (draft)) + " b-b=\"" + $$s1 + ":1\" b-on=\"input=Todos_t3g9lr#h7\"></form><ul>";
+  $$html += "<h1>Todos</h1><form b-b=\"" + $$s1 + ":0\" b-on=\"submit:prevent=Todos_t3g9lr#h5\"><input" + (typeof ($$t = $$b.attribute("value", (draft))) === 'string' ? $$t : await $$t) + " b-b=\"" + $$s1 + ":1\" b-on=\"input=Todos_t3g9lr#h7\"></form><ul>";
   $$ctx.enter();
   {
     const $$list0v = ( todos );
@@ -116,7 +116,7 @@ export function u13($$s) {
   $$b.text($$s, 1, $$b.get($$s, 0).title);
 }
 export function u14($$s) {
-  $$b.content($$s, 2, format($$b.get($$s, 0).at));
+  $$b.fillValue($$s, 2, format($$b.get($$s, 0).at), ($$v) => $$b.content($$s, 2, $$v));
 }
 export function u15($$s) {
   $$b.text($$s, 3, $$b.get($$s, 2));
@@ -131,7 +131,7 @@ export function r2($$p, $$item, $$index) {
   $$b.keep($$s2, 0, $$e[0]);
   $$b.keepText($$s2, 1, $$e[1], (todo.title));
   $$b.keep($$s2, 2, $$e[2]);
-  $$b.setContent($$e[2], (format(todo.at)), $$s2);
+  $$b.fillValue($$s2, 2, (format(todo.at)), ($$v) => $$b.setContent($$e[2], $$v, $$s2));
   $$b.setSlots($$s2, [todo]);
   $$b.setItem($$s2, $$item);
   return $$f;

@@ -27,6 +27,7 @@ import type { Patch } from './patch.ts';
 import {
   awaitedMemos,
   blockingMemos,
+  mayBePromise,
   mayWait,
   plainValues,
   instanceScope,
@@ -73,7 +74,12 @@ export interface Settled {
   scope: string;
 }
 
-export type Part = { static: string } | { code: string; settled?: Settled };
+/**
+ * A part of the markup of a render: static HTML, or code that gives HTML. In the browser,
+ * `settled` holds the memos that it waits for, and `promise` the scope of a value that can be a
+ * promise, which the clone writes once it settles.
+ */
+export type Part = { static: string } | { code: string; settled?: Settled; promise?: string };
 
 /** Expressions whose value is never a promise, as the memo of a list or a function. */
 const NEVER_PROMISE = new Set(['ArrayExpression', 'ArrowFunctionExpression', 'FunctionExpression']);
@@ -637,8 +643,24 @@ export class Emitter {
     }
   }
 
-  private code(code: string, settled?: Settled): void {
-    this.parts.push(settled ? { code, settled } : { code });
+  private code(code: string, settled?: Settled, promise?: string): void {
+    const part: Part = settled ? { code, settled } : { code };
+    if (promise) {
+      part.promise = promise;
+    }
+    this.parts.push(part);
+  }
+
+  /**
+   * In the browser, the scope of a value of markup that can be a promise: one that calls code,
+   * such as `{load(id)}`, or reads a prop typed as a promise. The clone writes its value once it
+   * settles, and a `#loading` around it shows its fallback until then.
+   */
+  private promiseScope(expression: Expression, scope: Scope): string | undefined {
+    return this.options.mode === 'client' &&
+      mayBePromise(expression.ast, this.sitesByNode.get(expression.ast))
+      ? this.scopeVar(instanceScope(this.plan, scope))
+      : undefined;
   }
 
   /**
@@ -1805,8 +1827,9 @@ export class Emitter {
         // A literal renders when the component compiles.
         const text = literalText(node.expression.ast);
         const settled = this.settledMemos([node.expression], scope);
+        const promise = this.promiseScope(node.expression, scope);
         const emitValue = (): void =>
-          text === undefined ? this.code(value, settled) : this.html(text);
+          text === undefined ? this.code(value, settled, promise) : this.html(text);
         // An insert that is the whole content of its element updates through the element's anchor.
         if (anchor && !this.plan.contents.has(node)) {
           this.html('<!--t');
@@ -2158,9 +2181,13 @@ export class Emitter {
             this.emitClasses(classes);
             break;
           }
+          // The server waits for a promise, so the element is sent with its final attributes. A
+          // string or a number is no promise.
+          const call = `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`;
           this.code(
-            `$$b.attribute(${JSON.stringify(attribute.name)}, ${this.expression(attribute.value)})`,
+            isPrimitive(attribute.value.ast) ? call : this.ready(call),
             this.settledMemos([attribute.value], scope),
+            this.promiseScope(attribute.value, scope),
           );
           // `value=$bind(name)` writes the name back as the element changes, before the element's
           // own handlers run.
@@ -2172,12 +2199,18 @@ export class Emitter {
         }
         case 'spread':
           this.code(
-            `$$b.spread(${this.expression(attribute.value)}${spreadArguments(spreadHandlers)})`,
+            this.ready(
+              `$$b.spread(${this.expression(attribute.value)}${spreadArguments(spreadHandlers)})`,
+            ),
+            undefined,
+            this.promiseScope(attribute.value, scope),
           );
           break;
         case 'computed':
           this.code(
-            `$$b.attribute(${this.expression(attribute.name)}, ${attribute.value === true ? 'true' : this.expression(attribute.value)})`,
+            this.ready(
+              `$$b.attribute(${this.expression(attribute.name)}, ${attribute.value === true ? 'true' : this.expression(attribute.value)})`,
+            ),
           );
           break;
         case 'event':
@@ -2194,8 +2227,19 @@ export class Emitter {
       // A `ref` that a rest prop holds is a binding of the parent's signal. The element goes to it.
       const forwards = anchor !== undefined && this.spreadsRest(node.attributes);
       const attributes = `$$b.mergeAttributes([${merged.join(', ')}]${variables ? `, ${variables}` : ''})`;
+      // A promise among the values is written once it settles.
+      let promise: string | undefined;
+      for (const attribute of node.attributes) {
+        if (attribute.kind === 'value' || attribute.kind === 'spread') {
+          promise ??= this.promiseScope(attribute.value, scope);
+        }
+      }
       this.code(
-        `$$b.spread(${forwards ? `${this.helper('restRef')}(${attributes}, ${anchor.scope}, ${anchor.index})` : attributes}${spreadArguments(spreadHandlers)})`,
+        this.ready(
+          `$$b.spread(${forwards ? `${this.helper('restRef')}(${attributes}, ${anchor.scope}, ${anchor.index})` : attributes}${spreadArguments(spreadHandlers)})`,
+        ),
+        undefined,
+        promise,
       );
     }
     // With a spread, the own `b-b` is already written, before it.

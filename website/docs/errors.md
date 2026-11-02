@@ -325,6 +325,19 @@ The HTML parser does not keep this nesting. A `<p>` ends at a block element such
 </div>
 ```
 
+## BRM188
+
+`"{name}" gives a promise, and {place} cannot wait for one. Await it in the code that runs, or read its value with $memo`
+
+Markup waits for a promise in text and in attribute values only. An event handler, the key of a `#for`, a `ref` and a `$bind` need the value at once, and the compiler sees that this expression gives a promise: `new Promise(…)`, a call of a server function or of an async function, or a prop typed as a promise.
+
+```brm
+<button onClick=(() => save(draft))>Save</button>
+#for (user of users by user.id) {
+  <p>{user.name}</p>
+}
+```
+
 ## BRM023
 
 `Modifiers apply to elements. Put ":{modifier}" on the element that the component renders`

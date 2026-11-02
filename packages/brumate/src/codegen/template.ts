@@ -7,12 +7,13 @@ import type { Emitter, Level, Part, Settled } from './markup.ts';
 export type Write =
   /** `named`: an element inside it has handlers and no anchor, and finds the scope from it. */
   | { kind: 'anchor'; scope: string; anchor: number; named?: boolean }
-  | { kind: 'attribute'; name: string; value: string; settled?: Settled }
-  | { kind: 'content'; value: string; at?: string; settled?: Settled }
+  /** `promise`: the scope of a value that can be a promise, which is written once it settles. */
+  | { kind: 'attribute'; name: string; value: string; settled?: Settled; promise?: string }
+  | { kind: 'content'; value: string; at?: string; settled?: Settled; promise?: string }
   /** A text insert, whose place in the clone a marked comment holds. */
-  | { kind: 'text'; scope: string; anchor: number; value: string; at?: string }
+  | { kind: 'text'; scope: string; anchor: number; value: string; at?: string; promise?: string }
   /** A text insert at the end of the marked element, which needs no comment. */
-  | { kind: 'last'; scope: string; anchor: number; value: string; at?: string }
+  | { kind: 'last'; scope: string; anchor: number; value: string; at?: string; promise?: string }
   /** A nested block, whose start comment the clone marks, and which a call fills. */
   | { kind: 'block'; scope: string; anchor: number }
   /** A child component or a dynamic tag, which renders in the place of a marked comment. */
@@ -22,7 +23,7 @@ export type Write =
   /** A comment whose data names a scope, such as the start of an item, `i` and the scope. */
   | { kind: 'comment'; data: string }
   /** A value with no markers around it, which renders in the place of a marked comment. */
-  | { kind: 'put'; value: string; at?: string; settled?: Settled }
+  | { kind: 'put'; value: string; at?: string; settled?: Settled; promise?: string }
   /** The start comment of a block whose markup is in the template, which the scope keeps. */
   | { kind: 'marker'; scope: string; anchor: number; suffix: string };
 
@@ -321,13 +322,23 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     const nextStatic = next && 'static' in next ? next.static : undefined;
     const attribute = ATTRIBUTE.exec(code);
     if (attribute && reader.inTag) {
-      add({ kind: 'attribute', name: attribute[1]!, value: attribute[2]!, settled: part.settled });
+      add({
+        kind: 'attribute',
+        name: attribute[1]!,
+        value: attribute[2]!,
+        settled: part.settled,
+        promise: part.promise,
+      });
       continue;
     }
     const spread = SPREAD.exec(code);
     if (spread && reader.inTag) {
-      const helper = spread[1] === 'spread' ? 'setSpread' : 'setOn';
-      add({ kind: 'call', call: `$$b.${helper}($$m, ${spread[2]})` });
+      // The values of a spread that can be promises are written once they settle.
+      const call =
+        spread[1] === 'spread' && part.promise
+          ? `$$b.fillSpread(${part.promise}, $$m, ${spread[2]})`
+          : `$$b.${spread[1] === 'spread' ? 'setSpread' : 'setOn'}($$m, ${spread[2]})`;
+      add({ kind: 'call', call });
       reader.handled.add(reader.element);
       continue;
     }
@@ -336,7 +347,13 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     // A void element, such as an `<input>`, ends with its start tag, so the insert is after it.
     const holder = reader.open.at(-1);
     if (insert && reader.justOpened && holder === reader.element && nextStatic?.startsWith('</')) {
-      add({ kind: 'content', value: insert[1]!, at: insert[2], settled: part.settled });
+      add({
+        kind: 'content',
+        value: insert[1]!,
+        at: insert[2],
+        settled: part.settled,
+        promise: part.promise,
+      });
       continue;
     }
     // A text insert: `<!--t`, the scope, `:anchor-->`, the value, then `<!--/t-->`.
@@ -366,6 +383,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
             anchor: Number(textEnd[1]),
             value: textInsert[1]!,
             at: textInsert[2],
+            promise: (value as { promise?: string }).promise,
           },
           parent,
         );
@@ -381,6 +399,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
           anchor: Number(textEnd[1]),
           value: textInsert[1]!,
           at: textInsert[2],
+          promise: (value as { promise?: string }).promise,
         },
       ]);
       // One comment, so the static text around it stays apart when the template is parsed. The
@@ -530,7 +549,15 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     // An insert with no markers, whose value renders once where it is.
     if (insert && !reader.inTag && !reader.raw) {
       const mark = writes.length;
-      writes.push([{ kind: 'put', value: insert[1]!, at: insert[2], settled: part.settled }]);
+      writes.push([
+        {
+          kind: 'put',
+          value: insert[1]!,
+          at: insert[2],
+          settled: part.settled,
+          promise: part.promise,
+        },
+      ]);
       reader.append(`<!--x${mark}-->`);
       continue;
     }
@@ -568,6 +595,21 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     }
   }
   return { html: reader.html, writes, foreign: reader.foreign };
+}
+
+/**
+ * A write of cloned markup, as a statement. With `scope`, its value can be a promise, which
+ * `fillValue` waits for, with `key` naming its place among the places of the scope.
+ */
+function promised(
+  scope: string | undefined,
+  key: string,
+  value: string,
+  write: (value: string) => string,
+): string {
+  return scope
+    ? `$$b.fillValue(${scope}, ${key}, ${value}, ($$v) => ${write('$$v')});`
+    : `${write(value)};`;
 }
 
 /**
@@ -714,23 +756,47 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
         lines.push(
           `${indent}$$b.keep(${write.scope}, ${write.anchor}, $$e[${index}]${write.named ? ', true' : ''});`,
         );
+      } else if (write.kind === 'last' && write.promise) {
+        lines.push(
+          `${indent}$$b.keepValue(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value}, ${write.at ?? 'undefined'}, true);`,
+        );
       } else if (write.kind === 'last') {
         lines.push(
           `${indent}$$b.appendText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
         );
       } else if (write.kind === 'text') {
+        // A value that can be a promise is written once it settles.
+        const helper = write.promise ? 'keepValue' : 'keepText';
         lines.push(
-          `${indent}$$b.keepText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
+          `${indent}$$b.${helper}(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
         );
       } else if (write.kind === 'attribute') {
-        addLine(`$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`, write.settled);
+        const key =
+          anchored?.kind === 'anchor'
+            ? `${anchored.anchor} ${JSON.parse(write.name) as string}`
+            : `x${index} ${JSON.parse(write.name) as string}`;
+        // The update of the attribute writes the same place of the scope of the anchor.
+        addLine(
+          promised(
+            write.promise && (anchored?.kind === 'anchor' ? anchored.scope : write.promise),
+            JSON.stringify(key),
+            write.value,
+            (value) => `$$b.setAttr($$e[${index}], ${write.name}, ${value})`,
+          ),
+          write.settled,
+        );
       } else if (write.kind === 'component') {
         addLine(`$$b.place($$e[${index}], ${write.call});`, write.settled);
       } else if (write.kind === 'comment') {
         lines.push(`${indent}$$b.nameComment($$e[${index}], ${write.data});`);
       } else if (write.kind === 'put') {
         addLine(
-          `$$b.putText($$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
+          promised(
+            write.promise,
+            JSON.stringify(`x${index}`),
+            write.value,
+            (value) => `$$b.putText($$e[${index}], ${value}${write.at ? `, ${write.at}` : ''})`,
+          ),
           write.settled,
         );
       } else if (write.kind === 'call') {
@@ -748,7 +814,12 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
         }
       } else {
         addLine(
-          `$$b.setContent($$e[${index}], ${write.value}${write.at ? `, ${write.at}` : at});`,
+          promised(
+            write.promise && (anchored?.kind === 'anchor' ? anchored.scope : write.promise),
+            anchored?.kind === 'anchor' ? String(anchored.anchor) : JSON.stringify(`x${index}`),
+            write.value,
+            (value) => `$$b.setContent($$e[${index}], ${value}${write.at ? `, ${write.at}` : at})`,
+          ),
           write.settled,
         );
       }

@@ -1,0 +1,10 @@
+<script>
+  import { markupLater } from './markupData.ts';
+</script>
+
+<p class="before">Before</p>
+#loading {
+  <p class="text" title=(markupLater('late title', 20))>{markupLater('late text', 20)}</p>
+} #else {
+  <p class="fallback">Loading</p>
+}

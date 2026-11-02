@@ -193,6 +193,12 @@ const SYNTAX: ErrorEntry[] = [
     '<p>Total: <span>{total}</span></p>\n<div>\n  <p>Total</p>\n</div>',
   ),
   entry(
+    'BRM188',
+    '"{name}" gives a promise, and {place} cannot wait for one. Await it in the code that runs, or read its value with $memo',
+    'Markup waits for a promise in text and in attribute values only. An event handler, the key of a `#for`, a `ref` and a `$bind` need the value at once, and the compiler sees that this expression gives a promise: `new Promise(…)`, a call of a server function or of an async function, or a prop typed as a promise.',
+    '<button onClick=(() => save(draft))>Save</button>\n#for (user of users by user.id) {\n  <p>{user.name}</p>\n}',
+  ),
+  entry(
     'BRM023',
     'Modifiers apply to elements. Put ":{modifier}" on the element that the component renders',
     'An event modifier is on a component, which only passes the handler on.',

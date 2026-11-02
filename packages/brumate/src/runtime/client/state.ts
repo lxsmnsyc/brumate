@@ -97,6 +97,11 @@ export interface Scope {
    * the start comments of text inserts.
    */
   n?: Node[];
+  /**
+   * The latest value written at each place of the markup that was ever given a promise, by
+   * anchor, or anchor and attribute name, so an older promise that settles later writes nothing.
+   */
+  q?: Record<string, unknown>;
 }
 
 export interface CoreOptions {

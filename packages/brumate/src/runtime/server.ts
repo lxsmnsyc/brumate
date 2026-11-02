@@ -4,6 +4,7 @@ import { cacheStore, tagVersions } from './cache.ts';
 import {
   VOID_ELEMENTS,
   actionAttributes,
+  attribute as attributeText,
   escape,
   escapeAttribute,
   bindEntry,
@@ -62,7 +63,6 @@ import type { Context as ContextValue } from './context.ts';
 
 export {
   affix,
-  attribute,
   classAttribute,
   escape,
   escapeAttribute,
@@ -1674,6 +1674,25 @@ export function insert(
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
 export type Component<P = any> = (props: P, ctx: Context) => Promise<string | object>;
 
+/** True for a promise, or any object with a `then` function, which markup waits for. */
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (
+    value !== null &&
+    (typeof value === 'object' || typeof value === 'function') &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  );
+}
+
+/**
+ * Renders an attribute of an element. A promise renders once it settles, so the element is sent
+ * with its final attributes: the render waits for it, as for a promise in text.
+ */
+export function attribute(name: string, value: unknown): string | Promise<string> {
+  return isThenable(value)
+    ? Promise.resolve(value).then((resolved) => attributeText(name, resolved))
+    : attributeText(name, value);
+}
+
 /**
  * Renders a child component. With `scope` and `anchor`, records the child's
  * scope so the parent can update its props on the client.
@@ -1779,7 +1798,24 @@ export function dynamic(
   }
   // The handlers of a dynamic element, and those that its props pass on, go into one `b-on`.
   const on: string[] = [];
-  const open = `<${tag}${spread(attributes, on)}${onAttribute(on, '')}>`;
+  const written = spread(attributes, on);
+  // A promise among the attributes renders once it settles.
+  if (typeof written !== 'string') {
+    return written.then((text) => dynamicElement(tag, text, on, content, ctx, scope));
+  }
+  return dynamicElement(tag, written, on, content, ctx, scope);
+}
+
+/** Renders a dynamic tag that names an element, with its attributes written. */
+function dynamicElement(
+  tag: string,
+  attributes: string,
+  on: string[],
+  content: Raw | Lazy | undefined,
+  ctx: Context,
+  scope?: ScopeId,
+): string | Promise<string> {
+  const open = `<${tag}${attributes}${onAttribute(on, '')}>`;
   if (VOID_ELEMENTS.has(tag)) {
     return open;
   }
@@ -4451,14 +4487,27 @@ export function spread(
   attributes: Record<string, unknown>,
   on?: string[],
   names?: boolean,
-): string {
+): string | Promise<string> {
+  // A promise among the values renders once they settle, as an attribute does.
+  for (const value of Object.values(attributes)) {
+    if (isThenable(value)) {
+      const keys = Object.keys(attributes);
+      return Promise.all(Object.values(attributes)).then((values) => {
+        const resolved: Record<string, unknown> = {};
+        for (const [index, name] of keys.entries()) {
+          resolved[name] = values[index];
+        }
+        return spread(resolved, on, names);
+      });
+    }
+  }
   // The `b-on` of a dynamic tag that names a component reaches the component as a prop, and
   // its handlers come first, as the element's own.
   const entries = on && ownValue('b-on', attributes['b-on']);
   if (typeof entries === 'string') {
     on!.unshift(entries);
     const { 'b-on': _, ...rest } = attributes;
-    return spread(rest, on, names);
+    return spread(rest, on, names) as string;
   }
   for (const [name, value] of Object.entries(attributes)) {
     // A merged handler writes one entry for each of its parts.

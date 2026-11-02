@@ -24,7 +24,7 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
     $$html += "<!--b" + $$s1 + ":6:1-->";
     const $$s2 = $$ctx.scope(2, $$s1);
     let draft = ('');
-    $$html += "<template b-b=\"" + $$s2 + ":0\" b-client=\"idle=Offscreen_1oupne3#c16\"></template><template b-b=\"" + $$s2 + ":1\" b-listen=\"window\" b-on=\"keydown=Offscreen_1oupne3#h17\"></template><section b-c-1oupne3 class=\"panel-a flex\"><input b-c-1oupne3 class=\"draft\"" + $$b.attribute("value", (draft)) + " b-b=\"" + $$s2 + ":2\" b-on=\"input=Offscreen_1oupne3#h19\"><p b-c-1oupne3 class=\"draft-text\" b-b=\"" + $$s2 + ":3\">" + (typeof ($$t = $$b.insert((draft), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
+    $$html += "<template b-b=\"" + $$s2 + ":0\" b-client=\"idle=Offscreen_1oupne3#c16\"></template><template b-b=\"" + $$s2 + ":1\" b-listen=\"window\" b-on=\"keydown=Offscreen_1oupne3#h17\"></template><section b-c-1oupne3 class=\"panel-a flex\"><input b-c-1oupne3 class=\"draft\"" + (typeof ($$t = $$b.attribute("value", (draft))) === 'string' ? $$t : await $$t) + " b-b=\"" + $$s2 + ":2\" b-on=\"input=Offscreen_1oupne3#h19\"><p b-c-1oupne3 class=\"draft-text\" b-b=\"" + $$s2 + ":3\">" + (typeof ($$t = $$b.insert((draft), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</p>";
     $$ctx.enter();
     if (inner) {
       $$html += "<!--b" + $$s2 + ":4:1-->";
@@ -34,7 +34,7 @@ export default async function Offscreen($$props: Record<string, any>, $$ctx: $$b
       $$html += "<!--b" + $$s2 + ":4:-1--><!--/b-->";
     }
     $$ctx.leave();
-    $$html += "</section><p b-c-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p b-c-1oupne3 class=\"styled\"" + $$b.attribute("style", (look)) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + $$b.insert((count)) + "<!--/t-->";
+    $$html += "</section><p b-c-1oupne3 class=\"inline\" style=\"display: grid\">Inline</p><p b-c-1oupne3 class=\"styled\"" + (typeof ($$t = $$b.attribute("style", (look))) === 'string' ? $$t : await $$t) + " b-b=\"" + $$s2 + ":5\">Styled</p>Count <!--t" + $$s2 + ":6-->" + $$b.insert((count)) + "<!--/t-->";
     $$ctx.enter();
     if (count > 1) {
       $$html += "<!--b" + $$s2 + ":7:0-->";

@@ -6,8 +6,9 @@ import { blockStart, clear, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
 import { insertHTML, refresh } from './insert.ts';
 import { destroy, disposeKinds, inPlace, removeBlock } from './scopes.ts';
-import { scopes } from './state.ts';
+import { DEV, scopes } from './state.ts';
 import type { Scope } from './state.ts';
+import { isThenable } from './updates.ts';
 import { hold, holdRow, release } from './waits.ts';
 
 interface Item {
@@ -153,6 +154,12 @@ export function list(
   const kept: Item[] = [];
   for (let index = 0; index < count; index++) {
     const id = (keys[index] = key(items[index], index + (park?.from ?? 0)));
+    // Markup waits for a promise in text and attributes only. Production uses the key as it is.
+    if (DEV && isThenable(id)) {
+      throw new Error(
+        'The key of a #for row gives a promise, and the key of a #for cannot wait for one [BRM188]. Await it in the code that runs, or read its value with $memo',
+      );
+    }
     const item = previous.get(id);
     if (item && !item.kept) {
       item.kept = true;

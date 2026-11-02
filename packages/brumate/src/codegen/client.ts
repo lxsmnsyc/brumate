@@ -24,7 +24,7 @@ import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
-import { instanceScope, scopePath, slotIndex } from './scopes.ts';
+import { instanceScope, mayBePromise, scopePath, slotIndex } from './scopes.ts';
 import { copy, unmarked } from '../sourcemap.ts';
 
 export interface ClientOutput {
@@ -1091,9 +1091,12 @@ class ClientGenerator {
         } else if (this.plan.contents.has(insert!)) {
           fn = 'content';
         }
-        this.emit(
-          `export function ${name('u')}($$s) {\n  $$b.${fn}($$s, ${anchor}, ${expression()});\n}`,
-        );
+        // A value that can be a promise is written once it settles, and the latest wins.
+        const write =
+          fn !== 'writeText' && mayBePromise(site.node, site)
+            ? `$$b.fillValue($$s, ${anchor}, ${expression()}, ($$v) => $$b.${fn}($$s, ${anchor}, $$v))`
+            : `$$b.${fn}($$s, ${anchor}, ${expression()})`;
+        this.emit(`export function ${name('u')}($$s) {\n  ${write};\n}`);
       }
       return;
     }
@@ -1231,8 +1234,10 @@ class ClientGenerator {
       }
       const value =
         parts.length > 1 ? `$$b.mergeAttributes([${parts.join(', ')}])` : (parts[0] ?? '{}');
+      // A spread whose values can be promises writes each one once it settles.
+      const helper = mayBePromise(site.node, site) ? 'fillAttrs' : 'attrs';
       this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${value}, ${JSON.stringify(own)});\n}`,
+        `export function ${name('u')}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${value}, ${JSON.stringify(own)});\n}`,
       );
     } else if (attribute.kind === 'value') {
       let value =
@@ -1249,9 +1254,10 @@ class ClientGenerator {
           value = `[${classed.join(', ')}]`;
         }
       }
-      this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.attr($$s, ${anchor}, ${JSON.stringify(attribute.name)}, ${value});\n}`,
-      );
+      const write = mayBePromise(attribute.value.ast, site)
+        ? `$$b.fillValue($$s, ${JSON.stringify(`${anchor} ${attribute.name}`)}, ${value}, ($$v) => $$b.attr($$s, ${anchor}, ${JSON.stringify(attribute.name)}, $$v))`
+        : `$$b.attr($$s, ${anchor}, ${JSON.stringify(attribute.name)}, ${value})`;
+      this.emit(`export function ${name('u')}($$s) {\n  ${write};\n}`);
     }
     void node;
   }

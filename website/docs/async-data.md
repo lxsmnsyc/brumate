@@ -348,6 +348,36 @@ Because the prop does not change when the promise settles:
 - `$isPending(user)` is false. Use `$isPending(profile)` of the memo `profile = $memo(user)`.
 - If the promise rejects, `await user` rejects in the child, and a read of `$memo(user)` throws into the nearest `#try`. A rejection that nothing reads is not reported.
 
+## Promises in markup
+
+A promise in text or in an attribute value renders the value that it settles to:
+
+```brm
+<script>
+  async function getTitle(): Promise<string> {
+    'use server';
+    return 'Release notes';
+  }
+</script>
+
+<h1 title=getTitle()>{Promise.resolve('hello world')}</h1>
+```
+
+A pending promise makes the nearest `#loading` pending, as a memo that loads does:
+
+- Inside a `#loading`, the block shows its `#else` until the promise settles. The server streams the body then, and sends each element with its final attributes. Outside every `#loading`, the server waits for the promise before it sends that part.
+- A `#loading` body whose text or attributes call code, such as `{format(user)}` or `title=getTitle()`, always streams from the server, since the call can give a promise. A body that only reads values can still render in place.
+- In the browser, the boundary counts the promise as a wait: a `#loading` shows its `#else`, and outside every `#loading` the block keeps what it shows until the new body is ready, in a build whose browser renders wait at an `await $memo`. In other builds, the body shows at once and the value fills in when it settles.
+- A spread follows the attribute rule: `{...{ title: getTitle() }}` writes `title` once it settles. A boolean attribute is there for `true` and gone for `false`, and `null` or `undefined` removes the attribute.
+- On resume, the browser keeps the value that the server rendered and does not call the expression again. It calls it when a signal that it reads changes. An update keeps the text or the attribute until the new promise settles. When a newer promise replaces one that has not settled, the latest wins.
+- A rejection goes to the nearest `#catch`, or the page error with none.
+
+The browser waits for a value when the compiler sees that it can be a promise: an expression that calls code, or a prop typed as a promise, such as `const { user } = $props<{ user: Promise<User> }>()`. A plain read of a prop or a signal that holds a promise renders nothing in a render of the browser. Read it with `$memo(user)` or type the prop.
+
+Markup does not wait in an event handler, the key of a `#for`, `ref` or `$bind`, which need the value at once. A promise that the compiler sees there is a compile error ([BRM188](./errors.md#brm188)). Otherwise the browser throws in development for a promise as a handler prop or a `#for` key, and production uses the value as it is.
+
+To share one promise between several reads, or to show the old value and `$isPending` while it loads again, use a memo: `const title = $memo(getTitle())`.
+
 ## Streams
 
 A server function can be an async generator. A memo of it takes each value as it arrives:

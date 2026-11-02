@@ -1,0 +1,7 @@
+<script>
+  import { markupLater } from './markupData.ts';
+</script>
+
+<p class="text">{Promise.resolve('hello world')}</p>
+<p class="attribute" title=(markupLater('a title')) hidden=(markupLater(false)) data-gone=(markupLater(null)) data-on=(markupLater(true))>Attributes</p>
+<p class="spread" {...{ title: markupLater('spread title'), lang: 'en' }}>Spread</p>

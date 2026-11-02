@@ -42,7 +42,7 @@ export function u2($$s) {
   $$b.text($$s, 1, $$b.get($$s, 1));
 }
 export function u4($$s) {
-  $$b.content($$s, 1, (($$p) => {
+  $$b.fillValue($$s, 1, (($$p) => {
 function price(label: string, amount: number) {
   let $$html = '';
   const $$s2 = $$b.createScope(2, $$p);
@@ -51,7 +51,7 @@ function price(label: string, amount: number) {
   return $$b.raw($$html, $$s2);
 }
 return price('Subtotal', $$b.get($$s, 0));
-})($$s));
+})($$s), ($$v) => $$b.content($$s, 1, $$v));
 }
 
 # Render module
@@ -72,7 +72,7 @@ export default function TemplateUpdate($$props: Record<string, never>): string |
   const $$e = $$b.clone($$t0), $$f = $$e[2];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.keep($$s1, 1, $$e[1]);
-  $$b.setContent($$e[1], (price('Subtotal', total)), $$s1);
+  $$b.fillValue($$s1, 1, (price('Subtotal', total)), ($$v) => $$b.setContent($$e[1], $$v, $$s1));
   $$b.setSlots($$s1, [total]);
   return $$f;
 }

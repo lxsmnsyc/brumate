@@ -196,6 +196,51 @@ function isBindableType(annotation: oxc.Node | undefined): boolean {
   );
 }
 
+/**
+ * True for an expression that the compiler sees gives a promise: `new Promise(…)`, a call of a
+ * method of `Promise` or of `fetch`, a call of a server function or of an async function of the
+ * file, and a prop typed as a promise.
+ */
+function givesPromise(node: oxc.Node, scope: Scope): boolean {
+  switch (node.type) {
+    case 'ParenthesizedExpression':
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSNonNullExpression':
+      return givesPromise(node.expression, scope);
+    case 'NewExpression':
+      return node.callee.type === 'Identifier' && node.callee.name === 'Promise';
+    case 'Identifier':
+      return lookup(scope, node.name)?.promise === true;
+    case 'CallExpression': {
+      const callee = node.callee;
+      if (callee.type === 'MemberExpression') {
+        return callee.object.type === 'Identifier' && callee.object.name === 'Promise';
+      }
+      if (callee.type !== 'Identifier') {
+        return false;
+      }
+      if (callee.name === 'fetch') {
+        return true;
+      }
+      const declaration = lookup(scope, callee.name);
+      return (
+        declaration?.kind === 'server-function' ||
+        declaration?.serverImport !== undefined ||
+        (declaration?.kind === 'function' &&
+          (declaration.site?.node as { async?: boolean } | undefined)?.async === true)
+      );
+    }
+    default:
+      return false;
+  }
+}
+
+/** The message of BRM188, for `code` at `place`. */
+function promiseMessage(code: string, place: string): string {
+  return `"${code}" gives a promise, and ${place} cannot wait for one. Await it in the code that runs, or read its value with $memo`;
+}
+
 /** True for `Promise<...>`, or a union that holds one. */
 function isPromiseType(annotation: oxc.Node | undefined): boolean {
   if (annotation?.type === 'TSUnionType') {
@@ -344,6 +389,7 @@ class Analyzer {
     this.checkLoadingHeaders();
     this.resolveRefs();
     this.check();
+    this.checkPromises();
 
     return {
       module: this.module,
@@ -1718,6 +1764,40 @@ class Analyzer {
         );
       } else {
         declaration.refs.push(ref);
+      }
+    }
+  }
+
+  /**
+   * Reports a promise where markup cannot wait for it: an event handler, the key of a `#for`, and
+   * the name that `ref` or `$bind` binds. Markup waits for a promise in text and attributes only.
+   */
+  private checkPromises(): void {
+    for (const site of this.sites) {
+      let place: string | undefined;
+      if (site.kind === 'event' || site.handlerProp) {
+        place = 'an event handler';
+      } else if (site.kind === 'block' && site.label === 'for key') {
+        place = 'the key of a #for';
+      }
+      if (place && givesPromise(site.node, site.scope)) {
+        this.report(
+          'error',
+          promiseMessage(this.file.source.slice(site.node.start, site.node.end), place),
+          site.range,
+        );
+      }
+    }
+    for (const binding of this.bindings) {
+      if (binding.declaration.promise) {
+        this.report('error', promiseMessage(binding.declaration.name, 'a binding'), binding.call);
+      }
+    }
+    for (const declaration of this.declarations) {
+      if (declaration.promise) {
+        for (const ref of declaration.refs) {
+          this.report('error', promiseMessage(declaration.name, 'a ref'), ref.attribute);
+        }
       }
     }
   }

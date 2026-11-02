@@ -5,11 +5,13 @@
 import { MemoError } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
 import { HAS_LOADING, HAS_ROOT_WAIT } from '../features.ts';
-import { clear, rangeEnd, rendered } from './blocks.ts';
+import { clear, findElement, rangeEnd, rendered } from './blocks.ts';
 import { setSlots } from './components.ts';
 import { fail, reportOnce } from './errors.ts';
 import { insertHTML, markCloned, parseHTML, refresh } from './insert.ts';
+import { attr, attrs } from './inserts.ts';
 import { afterInsert, destroy, removeBlock, resolveScope } from './scopes.ts';
+import { appendText, keepText, setAttr, setSpread } from './templates.ts';
 import { loadingValues, renderedLoads, scopes, updating, waiters } from './state.ts';
 import type { Scope } from './state.ts';
 import { isThenable, noop, pending, writes } from './updates.ts';
@@ -209,6 +211,109 @@ export function fillSettled(
     },
     (error: unknown) => failOnce(scope, own, error),
   );
+}
+
+/**
+ * A value of markup that the browser writes, in text or an attribute, which can be a promise.
+ * A value that is not one is written at once. A promise counts in the boundary of the render, as
+ * a memo of `fillSettled` does, and `write` gets its value once it settles. The scope keeps the
+ * latest value of each place, by `key`, so a promise that an update replaced before it settled
+ * writes nothing: the latest wins.
+ */
+export function fillValue(
+  id: ScopeId | Scope,
+  key: number | string,
+  value: unknown,
+  write: (value: unknown) => void,
+): void {
+  const scope = resolveScope(id)!;
+  if (!isThenable(value)) {
+    if (scope.q) {
+      scope.q[key] = value;
+    }
+    write(value);
+    return;
+  }
+  const latest = (scope.q ??= {});
+  latest[key] = value;
+  fillSettled(scope, [value], (settled) => {
+    if (latest[key] === value) {
+      write(settled);
+    }
+  });
+}
+
+/**
+ * A text insert of cloned markup whose value can be a promise, as `keepText` writes it, or as
+ * `appendText` does at the end of the element when `append` is set. A promise leaves an empty
+ * text node, which the scope keeps, so an update finds it, and its value takes the place of that
+ * node once it settles, in or out of the page.
+ */
+export function keepValue(
+  id: ScopeId,
+  anchor: number,
+  place: Comment | Element,
+  value: unknown,
+  at: ScopeId | Scope = id,
+  append?: boolean,
+): void {
+  const promised = isThenable(value);
+  if (append) {
+    appendText(id, anchor, place as Element, promised ? '' : value, at);
+  } else {
+    keepText(id, anchor, place as Comment, promised ? '' : value, at);
+  }
+  if (promised) {
+    fillValue(id, anchor, value, (settled) => {
+      const comment = document.createComment('');
+      (resolveScope(id)!.n![anchor] as ChildNode).replaceWith(comment);
+      keepText(id, anchor, comment, settled, at);
+    });
+  }
+}
+
+/**
+ * The update of the spreads of an element whose values can be promises, as `attrs` writes them.
+ * An attribute whose value is a promise keeps what it shows until the promise settles.
+ */
+export function fillAttrs(
+  scope: Scope,
+  anchor: number,
+  values: Record<string, unknown>,
+  own?: string[],
+): void {
+  const now: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(values)) {
+    const key = `${anchor} ${name}`;
+    if (isThenable(value)) {
+      now[name] = findElement(scope.id, anchor)?.getAttribute(name) ?? undefined;
+      fillValue(scope, key, value, (settled) => attr(scope, anchor, name, settled));
+    } else {
+      fillValue(scope, key, value, (settled) => {
+        now[name] = settled;
+      });
+    }
+  }
+  attrs(scope, anchor, now, own);
+}
+
+/**
+ * The spreads of an element of cloned markup whose values can be promises, as `setSpread` writes
+ * them. An attribute whose value is a promise is written once it settles.
+ */
+export function fillSpread(
+  id: ScopeId,
+  element: Element,
+  attributes: Record<string, unknown>,
+  on?: string[],
+  names?: boolean,
+): void {
+  setSpread(element, attributes, on, names);
+  for (const [name, value] of Object.entries(attributes)) {
+    if (isThenable(value)) {
+      fillValue(id, `s ${name}`, value, (settled) => setAttr(element, name, settled));
+    }
+  }
 }
 
 /**

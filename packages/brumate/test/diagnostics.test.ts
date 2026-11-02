@@ -634,3 +634,38 @@ function run() { log(issue); }
     );
   });
 });
+
+describe('a promise where markup cannot wait for it', () => {
+  const page = (markup: string, script = '') =>
+    `<script>\nimport { $props, $signal } from 'brumate/signals';\nconst { user } = $props<{ user: Promise<string> }>();\nlet items = $signal([{ id: 1 }]);\nasync function save() {\n  'use server';\n  return 1;\n}\nasync function later() {\n  return 2;\n}\n${script}</script>\n\n${markup}`;
+
+  it('fails for an event handler, a #for key or a binding that gives a promise [BRM188]', () => {
+    for (const [markup, code] of [
+      ['<button onClick=(save())>Save</button>', 'save()'],
+      ['<button onClick=(new Promise(() => {}))>Go</button>', 'new Promise(() => {})'],
+      ['<button onClick=(later())>Go</button>', 'later()'],
+      ['<button onClick=user>Go</button>', 'user'],
+      [
+        '#for (item of items by Promise.resolve(item.id)) {\n  <p>{item.id}</p>\n}',
+        'Promise.resolve(item.id)',
+      ],
+    ]) {
+      expect(() => compile(page(markup!), { filename: 'Test.brm' })).toThrow(
+        new RegExp(
+          `"${code!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" gives a promise, and .* cannot wait for one\\. .* \\[BRM188\\]`,
+        ),
+      );
+    }
+  });
+
+  it('compiles a promise in text and attributes, and a handler that awaits one', () => {
+    expect(() =>
+      compile(
+        page(
+          '<p title=(later())>{user}</p>\n<button onClick=(async () => await save())>Save</button>\n#for (item of items by item.id) {\n  <p>{later()}</p>\n}',
+        ),
+        { filename: 'Test.brm' },
+      ),
+    ).not.toThrow();
+  });
+});

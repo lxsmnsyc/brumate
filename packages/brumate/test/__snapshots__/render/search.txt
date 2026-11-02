@@ -18,7 +18,7 @@ export default async function Search($$props: Record<string, never>, $$ctx: $$b.
   const $$p_results = $$b.memo(() => (search(query)), $$ctx, "results");
   let results;
   try { results = (($$t = $$b.ready($$p_results)) instanceof Promise ? await $$t : $$t); } catch {}
-  $$html += "<input" + $$b.attribute("value", (query)) + " b-b=\"" + $$s1 + ":0\" b-on=\"input=Search_s4k9u0#h4\">";
+  $$html += "<input" + (typeof ($$t = $$b.attribute("value", (query))) === 'string' ? $$t : await $$t) + " b-b=\"" + $$s1 + ":0\" b-on=\"input=Search_s4k9u0#h4\">";
   $$ctx.enter();
   if (false) {
     $$html += "<!--b" + $$s1 + ":1:0--><p class=\"pending\">Searching</p><!--/b-->";

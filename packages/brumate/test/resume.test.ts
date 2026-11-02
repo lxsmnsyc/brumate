@@ -20,6 +20,7 @@ import { toChunkStream } from '../src/runtime/stream.ts';
 import type * as ClientApi from '../src/runtime/client.ts';
 import type { CoreOptions, Scope } from '../src/runtime/client/state.ts';
 import type { Boundary } from '../src/runtime/client/waits.ts';
+import type { MarkupLoad } from './render/markupData.ts';
 import type { UserLoad } from './render/waitData.ts';
 
 // The DOM environment replaces URL, so paths are plain strings.
@@ -9699,5 +9700,171 @@ describe('a block outside every #loading that the browser renders', () => {
       { filename: 'counter.brm' },
     );
     expect(getFeatures(counter).rootWait).toBe(false);
+  });
+});
+
+describe('a promise in markup', () => {
+  function markupLoads(): MarkupLoad[] {
+    return ((globalThis as { markupLoads?: MarkupLoad[] }).markupLoads ??= []);
+  }
+
+  /** Settles the loads of `key` that have not settled, and waits for the writes after them. */
+  async function settle(key: string, value: unknown): Promise<void> {
+    const loads = markupLoads();
+    for (const load of loads.filter((entry) => entry.key === key)) {
+      load.done(value);
+      loads.splice(loads.indexOf(load), 1);
+    }
+    await new Promise((done) => setTimeout(done, 0));
+  }
+
+  afterEach(() => {
+    markupLoads().length = 0;
+    (globalThis as { markupCalls?: string[] }).markupCalls = [];
+  });
+
+  it('renders the value of a promise in text and attributes on the server, which waits', async () => {
+    const server = await import(file('markupServer.brm.ts'));
+    const page = await renderParts(server.default, {});
+    show(page.html);
+    expect(text('.text')).toBe('hello world');
+    const attributes = document.querySelector('.attribute')!;
+    expect(attributes.getAttribute('title')).toBe('a title');
+    // A boolean attribute is there for true and gone for false, and null removes the attribute.
+    expect(attributes.hasAttribute('hidden')).toBe(false);
+    expect(attributes.hasAttribute('data-gone')).toBe(false);
+    expect(attributes.getAttribute('data-on')).toBe('true');
+    expect(document.querySelector('.spread')!.getAttribute('title')).toBe('spread title');
+    expect(document.querySelector('.spread')!.getAttribute('lang')).toBe('en');
+  });
+
+  it('streams a #loading body with its final attributes once its promises settle', async () => {
+    const server = await import(file('markupServerLoading.brm.ts'));
+    const page = await renderParts(server.default, {});
+    show(page.html + page.state);
+    await startLoader();
+    expect(text('.before')).toBe('Before');
+    expect(text('.fallback')).toBe('Loading');
+    expect(document.querySelector('.text')).toBeNull();
+    const chunks: string[] = [];
+    for await (const chunk of page.pending) {
+      chunks.push(chunk);
+      appendChunk(chunk);
+    }
+    expect(chunks.join('')).toContain('title="late title"');
+    await waitFor(() => expect(text('.text')).toBe('late text'));
+    expect(document.querySelector('.text')!.getAttribute('title')).toBe('late title');
+    expect(document.querySelector('.fallback')).toBeNull();
+  });
+
+  it('does not call the expression again on resume, and calls it when a signal it reads changes', async () => {
+    await resume('markupResume', {});
+    expect(text('.text')).toBe('text 1');
+    await new Promise((done) => setTimeout(done, 30));
+    expect((globalThis as { markupCalls?: string[] }).markupCalls).toEqual(['text 1', 'constant']);
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(text('.text')).toBe('text 2'));
+    expect((globalThis as { markupCalls?: string[] }).markupCalls).toEqual([
+      'text 1',
+      'constant',
+      'text 2',
+    ]);
+    expect(document.querySelector('.constant')!.getAttribute('title')).toBe('constant');
+  });
+
+  it('shows the text and attribute of a component that the browser renders once they settle', async () => {
+    await resume('markupHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() =>
+      expect(markupLoads().map((load) => load.key)).toEqual(['title 1', 'text 1']),
+    );
+    await settle('text 1', 'one');
+    // The block holds the new body while the attribute still loads, as the server would.
+    expect(document.querySelector('.text')).toBeNull();
+    await settle('title 1', 'first');
+    await waitFor(() => expect(text('.text')).toBe('one'));
+    expect(document.querySelector('.text')!.getAttribute('title')).toBe('first');
+  });
+
+  it('keeps the text and attribute until a new promise of an update settles, and the latest wins', async () => {
+    await resume('markupHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(markupLoads()).toHaveLength(2));
+    await settle('text 1', 'one');
+    await settle('title 1', 'first');
+    await waitFor(() => expect(text('.text')).toBe('one'));
+    click(document.querySelector('.next')!);
+    await waitFor(() =>
+      expect(markupLoads().map((load) => load.key)).toEqual(['title 2', 'text 2']),
+    );
+    click(document.querySelector('.next')!);
+    await waitFor(() => expect(markupLoads()).toHaveLength(4));
+    // The update keeps what shows while its promises load.
+    expect(text('.text')).toBe('one');
+    expect(document.querySelector('.text')!.getAttribute('title')).toBe('first');
+    // The newer promises settle first, and the older ones that settle later write nothing.
+    await settle('text 3', 'three');
+    await settle('title 3', 'third');
+    await waitFor(() => expect(text('.text')).toBe('three'));
+    await settle('text 2', 'two');
+    await settle('title 2', 'second');
+    await new Promise((done) => setTimeout(done, 20));
+    expect(text('.text')).toBe('three');
+    expect(document.querySelector('.text')!.getAttribute('title')).toBe('third');
+  });
+
+  it('shows the #else of a #loading that the browser renders until the promises of its body settle', async () => {
+    await resume('markupLoadingHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.fallback')).toBe('Loading'));
+    expect(document.querySelector('.text')).toBeNull();
+    await settle('text', 'body text');
+    expect(document.querySelector('.text')).toBeNull();
+    await settle('title', 'body title');
+    await waitFor(() => expect(text('.text')).toBe('body text'));
+    expect(document.querySelector('.text')!.getAttribute('title')).toBe('body title');
+    expect(document.querySelector('.fallback')).toBeNull();
+  });
+
+  it('sends a rejection to the nearest #catch', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await resume('markupTry', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: markup failed'));
+    expect(document.querySelector('.show')).toBeNull();
+  });
+
+  it('writes a promise of a spread once it settles, in markup that the browser renders', async () => {
+    await resume('markupSpread', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(markupLoads()).toHaveLength(1));
+    await settle('spread', 'spread title');
+    await waitFor(() =>
+      expect(document.querySelector('.spread')?.getAttribute('title')).toBe('spread title'),
+    );
+    expect(document.querySelector('.spread')!.getAttribute('lang')).toBe('en');
+  });
+
+  it('throws in development for a #for key that gives a promise', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    const failed: unknown[] = [];
+    const onError = (event: Event): void => {
+      failed.push((event as CustomEvent<{ error: unknown }>).detail.error);
+    };
+    window.addEventListener('brumate:error', onError);
+    onTestFinished(() => window.removeEventListener('brumate:error', onError));
+    await resume('markupKey', {});
+    click(document.querySelector('.add')!);
+    await waitFor(() => expect(failed.map(String).join('')).toContain('[BRM188]'));
+  });
+
+  it('shows a prop typed as a promise in the text of a component that the browser renders', async () => {
+    await resume('promiseTextHost', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(markupLoads()).toHaveLength(1));
+    await settle('user', 'Ada');
+    await waitFor(() => expect(text('.user')).toBe('Ada'));
   });
 });
