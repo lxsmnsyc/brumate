@@ -13,7 +13,7 @@ The runtime interface between a render that waits (`wait` from browser-await) an
 
 ## Interface
 
-In `packages/brumate/src/runtime/client/waits.ts`. `wait`, `fillSettled`, `loading`, `countLoads`, `reveal`, `started`, `after` and `attempt` are exported from `brumate/client`. The rest is internal to the client runtime.
+In `packages/brumate/src/runtime/client/waits.ts`. `wait`, `fillSettled`, `loading`, `countLoads`, `reveal`, `started`, `after`, `attempt`, `fillValue`, `keepValue`, `fillSpread` and `fillAttrs` are exported from `brumate/client`. The rest is internal to the client runtime.
 
 ```ts
 type Out = string | DocumentFragment;
@@ -194,3 +194,4 @@ In `packages/brumate/test/resume.test.ts`, `describe('a boundary')` inside `awai
 - v1.2 from browser-loading-fallback (2026-11-02, additive, accepted by the orchestrator): `loading`, `countLoads` and `reveal` for the compiled `#loading` and `#reveal` of a browser render, and the `loading` feature flag. `loading` makes one `Boundary` outside `bound`, for a body that `#reveal` holds for its turn.
 - v2 from browser-await-blocks (2026-11-02, additive, accepted by the orchestrator): `started` and `after`, the newer slot value winning in `wait`, the row `i` range, the rest under `updating`, and `holdRow` naming. The planned browser `waitAll` is dropped.
 - v2.1 from browser-try (2026-11-02, additive, accepted by the orchestrator): `attempt` for the body of a browser-rendered `#try`; its `f` absorbs the failure instead of showing the `#catch`, since `fail` already renders it; `fail` drops an error whose `#try` body was replaced, so the first error wins.
+- v2.2 from promise-in-markup (2026-11-03, additive, recorded by the orchestrator): `fillValue`, `keepValue`, `fillSpread` and `fillAttrs` hold a text, attribute or spread write whose value the compiler marks as a possible promise (`mayBePromise`). They reuse `fillSettled` and `join`; the latest value per place lives in `Scope.q`.
