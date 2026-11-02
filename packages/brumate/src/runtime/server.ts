@@ -2508,9 +2508,22 @@ export interface RenderOptions {
   /**
    * The bundles of the client build. Each state record with scopes names, in `b-load`, the
    * URLs of the bundles that hold the code of its components, so the browser loads only the
-   * code of the page. `virtual:brumate/routes` passes them.
+   * code of the page. In a build, those of the client build are the default (see
+   * `setClientBundles`), so only a render that wants others passes them.
    */
   bundles?: ClientBundles;
+}
+
+/** The bundles of the client build, for a render whose options name none. */
+let clientBundles: ClientBundles | undefined;
+
+/**
+ * Sets the bundles that a render names when its options name none. The Vite plugin calls it in
+ * a server build with those of the client build, so a server that calls `render()` itself gets
+ * pages whose code loads. The dev server loads each component by its module and sets none.
+ */
+export function setClientBundles(bundles: ClientBundles | undefined): void {
+  clientBundles = bundles;
 }
 
 /** The bundles of a client build, by the ID of their root component, such as a route. */
@@ -2650,7 +2663,7 @@ export async function render<P>(
     return `${SHOW_FALLBACK};`;
   }
   // The bundles that the records of this render named, and the components that they hold.
-  const bundles = options.bundles;
+  const bundles = options.bundles ?? clientBundles;
   const sentBundles = new Set<string>();
   const coveredComponents = new Set<string>();
   if (bundles?.loaded) {
@@ -4036,6 +4049,7 @@ async function renderDeferred(
   defer: { boundary: ScopeId; at: string },
   base: number,
 ): Promise<Response> {
+  const bundles = options.bundles ?? clientBundles;
   const parts = await render(
     viewComponent(view, props),
     {},
@@ -4047,7 +4061,7 @@ async function renderDeferred(
       base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
       defer,
       // The page that asks for the body has the bundles of its views.
-      bundles: options.bundles && { ...options.bundles, loaded: viewIds(view) },
+      bundles: bundles && { ...bundles, loaded: viewIds(view) },
     },
   );
   const headers = new Headers(parts.headers);
