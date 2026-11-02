@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import AwaitMemoKid from './AwaitMemoKid.brm';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <AwaitMemoKid />
+}

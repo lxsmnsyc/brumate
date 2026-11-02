@@ -1,0 +1,9 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { fail } from './awaitReadData.ts';
+
+  const side = $memo(fail());
+  await side;
+</script>
+
+<p class="kid">kid</p>
