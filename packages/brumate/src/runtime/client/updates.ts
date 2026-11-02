@@ -46,8 +46,9 @@ export function get(scope: Scope, slot: number): any {
     settle(scope);
   }
   const value = scope.s[slot];
-  // Update code reads a slot that the scope has not reached, as it waits at an earlier `await`.
-  // The update is skipped, since the rest of the render writes the page from the slots.
+  // Update code reads a slot that the scope has not reached, as it waits at an earlier `await`:
+  // `setSlots` and resumed records write every slot, so only a wait leaves one out. The queued
+  // update skips on `NotReady`, since the rest of the render writes the page from the slots.
   if (value === undefined && exempt > 0 && !(slot in scope.s)) {
     throw new NotReady(Promise.resolve());
   }
