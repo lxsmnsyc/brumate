@@ -1,6 +1,6 @@
 {
   "name": "@brumate/tsc",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Type-checks brumate projects, including .brm files",
   "homepage": "https://github.com/lxsmnsyc/brumate",
   "bugs": "https://github.com/lxsmnsyc/brumate/issues",
