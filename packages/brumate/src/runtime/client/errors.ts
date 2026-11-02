@@ -33,14 +33,17 @@ export function fail(scope: Scope | undefined, error: unknown): void {
       if (!entry) {
         continue;
       }
-      // The scope that holds the block, which the anchor of the block counts from.
+      // The scope that holds the block, which the anchor of the block counts from, and the
+      // scope of the body below it.
       let owner = current.p;
+      let body = current;
       while (owner && owner.k !== entry[0]) {
+        body = owner;
         owner = owner.p;
       }
       if (owner) {
         // oxlint-disable-next-line no-await-in-loop -- The first `#try` found catches the error.
-        await catchInto(owner, module!, entry, error);
+        await catchInto(owner, body, module!, entry, error);
         return;
       }
     }
@@ -78,14 +81,23 @@ export function failBoundary(error: unknown): void {
   unhandled(error);
 }
 
-/** Renders the `#catch` body of a `#try` with an error, in place of what the block shows. */
+/**
+ * Renders the `#catch` body of a `#try` with an error, in place of `body`, the body that failed.
+ */
 async function catchInto(
   owner: Scope,
+  body: Scope,
   module: ClientModule,
   [, anchor, , fallback, kinds, holderKind, holderAnchor]: NonNullable<ClientModule['t']>[number],
   error: unknown,
 ): Promise<void> {
   const updates = await loadPart(module, 'update');
+  // The `#catch` body already replaced the body that failed, for an error of the same body that
+  // came first, such as another effect that threw in the same update. The `#try` shows the first
+  // error, as on the server, and `onError` saw this one.
+  if (scopes.get(body.id) !== body) {
+    return;
+  }
   const start = blockStart(owner, anchor);
   if (!start) {
     return;

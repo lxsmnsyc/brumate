@@ -7503,6 +7503,33 @@ describe('a #try around a child component', () => {
   }
 });
 
+describe('two errors of one #try body at once', () => {
+  for (const [what, fixture, first] of [
+    ['two effects of the body throw', 'tryTwoEffects', 'Error: first 1'],
+    ['two rows of a #for throw', 'tryTwoRows', 'Error: row 1 1'],
+  ]) {
+    it(`shows the #catch body once with the first error when ${what} in one update`, async () => {
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => logged.mockRestore());
+      const unhandled = vi.fn<() => void>();
+      window.addEventListener('brumate:error', unhandled);
+      onTestFinished(() => window.removeEventListener('brumate:error', unhandled));
+      await resume(fixture!, {});
+      click(document.querySelector('.bump')!);
+      await waitFor(() => expect(document.querySelector('.caught')).not.toBeNull());
+      // The second error must not render the `#catch` again.
+      await new Promise((done) => setTimeout(done, 30));
+      const caught: string[] = [];
+      for (const node of document.querySelectorAll('.caught')) {
+        caught.push(node.textContent!);
+      }
+      expect(caught).toEqual([first]);
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(logged).not.toHaveBeenCalled();
+    });
+  }
+});
+
 describe('a #try around a #template', () => {
   // The control holds the same markup without the template.
   const fixtures = [
