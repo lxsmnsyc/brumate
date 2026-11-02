@@ -1,5 +1,17 @@
 # brumate
 
+## 0.4.2
+
+### Patch Changes
+
+- 955d3d9: In a browser render, an `#if`, `#switch` or `#for` header, a component prop, or a function in markup that reads an async `$memo` whose input never changes now waits for the memo to settle. Before, it read the promise: an `#if (user.admin)` showed its `#else` body and kept it. The block, the component or the value now renders once the memo settles, and a rejection goes to the nearest `#catch`, reported once. A child component that gets such a memo as a prop now gets the settled value, not the promise, as in a server render. A prop whose value is a function, such as `format=(() => user.name)`, does not hold the component back. Server renders do not change.
+- 00f6b65: A browser render now handles the rejection of an async memo that the script reads only with `await`, as in `await side;` or `$memo((await side).length)`. The browser compiles `await side` to a plain read of the promise, which dropped it, so the rejection was unhandled. It now goes to the nearest `#catch`, or to `onError` and the `brumate:error` event.
+- 73c5b8e: In a browser render, text and attributes that read an async `$memo` whose input never changes now show the value once the promise settles. Before, they stayed empty, because nothing updates such a memo. A rejection of the memo now goes to the nearest `#try`, or to `onError` and the `brumate:error` event. Markup that the browser renders as HTML instead of a cloned template still does not wait for the memo.
+- b834104: A `#try` whose body holds only a child component now catches the client errors of that child, such as a click handler that throws, an async handler that rejects or an effect that throws. Before, the error went past the `#catch` to `onError` and `brumate:error`, unless an element with a handler sat next to the child in the same `#try`. This also holds for a grandchild and for a child inside an `#if` or a `#for` in the `#try`.
+- 1930832: A `#try` now catches the client errors of a `#template` by where the template is called. Before, two cases went past the `#catch` to `onError` and `brumate:error`: a template called both inside and outside the `#try`, and a template declared above the scope that holds the `#try`, such as a top-level template called in a `#try` inside a `#for`. The scope of a template now links to the scope where its output is inserted, and errors go on from there.
+- bff9d65: A `#try` now catches the client errors of a `#template` that its body calls, such as a click handler that throws, an async handler that rejects or an effect that throws. Before, the error went past the `#catch` to `onError` and `brumate:error` in two cases: a template declared outside the `#try` and called in it, and a template in the `#try` that holds a component.
+- 2fb5a44: A component that the browser renders now handles the rejection of an async memo that nothing reads. The error goes to the nearest `#try`, or to `onError` and the `brumate:error` event when no `#try` catches it. Before, the page got an unhandled rejection.
+
 ## 0.4.1
 
 ### Patch Changes
