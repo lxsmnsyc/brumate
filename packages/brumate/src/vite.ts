@@ -972,6 +972,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return [...imports, 'export const modules = {', ...objects, '};'].join('\n');
   }
 
+  /** The hints of the client build of this process, for a server build that follows it. */
+  let builtHints: ClientHints | undefined;
+
   /** The IDs of the components in each bundle of the client build, by root, for `hints.json`. */
   const bundleMembers = new Map<string, string[]>();
 
@@ -1173,6 +1176,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
    * or none before a client build or in development.
    */
   function clientHints(): ClientHints {
+    if (builtHints && !isServe) {
+      return builtHints;
+    }
     const file = path.join(clientBuildDirectory(root, options.prerender), HINTS_FILE);
     if (isServe || !existsSync(file)) {
       return { all: [], bundles: {} };
@@ -2036,8 +2042,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           }
           members[id] = bundleMembers.get(id) ?? [];
         }
-        // A bundle without a chunk would leave its pages without client code.
-        for (const root of bundleMembers.keys()) {
+        // A bundle without a chunk would leave its pages without client code. Only the output
+        // with the manifest has them: a framework such as Nitro writes other outputs too.
+        let hasManifest = false;
+        for (const chunk of chunks.values()) {
+          hasManifest ||= chunk.moduleIds.includes(`\0${MANIFEST}`);
+        }
+        for (const root of hasManifest ? bundleMembers.keys() : []) {
           if (chunkUrls[root] === undefined) {
             this.error(`The client build has no chunk for the bundle of ${root}`);
           }
@@ -2047,16 +2058,19 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         for (const name of hints) {
           all.push(`${base}${name}`);
         }
-        await writeFile(
-          path.join(outDir, HINTS_FILE),
-          JSON.stringify({
-            all,
-            bundles: bundleHints,
-            chunks: chunkUrls,
-            styles: styleUrls,
-            members,
-          }),
-        );
+        const written: ClientHints = {
+          all,
+          bundles: bundleHints,
+          chunks: chunkUrls,
+          styles: styleUrls,
+          members,
+        };
+        // A build of several environments in one process, such as with Nitro, builds the
+        // server after the client, with the hints of that client.
+        if (hasManifest) {
+          builtHints = written;
+        }
+        await writeFile(path.join(outDir, HINTS_FILE), JSON.stringify(written));
         if (buildId !== undefined) {
           const written: string[] = [];
           for (const item of Object.values(bundle)) {
