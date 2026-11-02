@@ -1,0 +1,26 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+  import { gapUserFail } from './gapData.ts';
+
+  const { open = false } = $props();
+  let show = $signal(open);
+</script>
+
+#try {
+  <button class="show" onClick=(() => (show = true))>Show</button>
+  #if (show) {
+    <script>
+      const user = $memo(gapUserFail());
+    </script>
+    #switch {
+      #case (user.admin) {
+        <p class="value">admin</p>
+      }
+      #default {
+        <p class="value">guest</p>
+      }
+    }
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

@@ -1,0 +1,15 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { gapNever } from './gapData.ts';
+  import GapBlockLater from './GapBlockLater.brm';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <script>
+    const name = $memo(gapNever());
+  </script>
+  <GapBlockLater format=(() => name) />
+}

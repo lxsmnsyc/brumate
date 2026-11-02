@@ -1,0 +1,16 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+  import { gapUser } from './gapData.ts';
+  import GapBlockCard from './GapBlockCard.brm';
+
+  const { open = false } = $props();
+  let show = $signal(open);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <script>
+    const user = $memo(gapUser());
+  </script>
+  <GapBlockCard {user} />
+}

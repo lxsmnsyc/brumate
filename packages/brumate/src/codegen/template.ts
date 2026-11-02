@@ -16,7 +16,7 @@ export type Write =
   /** A nested block, whose start comment the clone marks, and which a call fills. */
   | { kind: 'block'; scope: string; anchor: number }
   /** A child component or a dynamic tag, which renders in the place of a marked comment. */
-  | { kind: 'component'; call: string }
+  | { kind: 'component'; call: string; settled?: Settled }
   /** The attributes of spreads on the marked element, and then its `b-on`. */
   | { kind: 'call'; call: string }
   /** A comment whose data names a scope, such as the start of an item, `i` and the scope. */
@@ -393,7 +393,13 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     // A child component, which renders where it is, after the elements before it.
     if (COMPONENT.test(code) && !reader.inTag && !reader.raw) {
       const mark = writes.length;
-      writes.push([{ kind: 'component', call: code.replace(COMPONENT, '$$$$b.componentNodes(') }]);
+      writes.push([
+        {
+          kind: 'component',
+          call: code.replace(COMPONENT, '$$$$b.componentNodes('),
+          settled: part.settled,
+        },
+      ]);
       reader.append(`<!--x${mark}-->`);
       continue;
     }
@@ -401,7 +407,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     const nodes = NODES.exec(code);
     if (nodes && !reader.inTag && !reader.raw) {
       const mark = writes.length;
-      writes.push([{ kind: 'component', call: nodes[1]! }]);
+      writes.push([{ kind: 'component', call: nodes[1]!, settled: part.settled }]);
       reader.append(`<!--x${mark}-->`);
       continue;
     }
@@ -719,7 +725,7 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
       } else if (write.kind === 'attribute') {
         addLine(`$$b.setAttr($$e[${index}], ${write.name}, ${write.value});`, write.settled);
       } else if (write.kind === 'component') {
-        lines.push(`${indent}$$b.place($$e[${index}], ${write.call});`);
+        addLine(`$$b.place($$e[${index}], ${write.call});`, write.settled);
       } else if (write.kind === 'comment') {
         lines.push(`${indent}$$b.nameComment($$e[${index}], ${write.data});`);
       } else if (write.kind === 'put') {

@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { format } = $props();
+</script>
+
+<p class="value">later</p>
+<button class="format" onClick=(() => format())>Format</button>

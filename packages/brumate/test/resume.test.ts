@@ -7615,3 +7615,78 @@ describe('an async memo whose input never changes, in a browser render', () => {
     });
   }
 });
+
+describe('a block, prop or function that reads a constant async memo, in a browser render', () => {
+  it('renders an #if header from a memo that settles to null', async () => {
+    await resume('gapBlockIfNull', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(texts('.value')).toEqual(['none']));
+  });
+
+  it('renders a component whose function prop reads the memo without waiting', async () => {
+    await resume('gapBlockFunctionProp', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(texts('.value')).toEqual(['later']));
+  });
+
+  const cases: [string, string, string, string[]][] = [
+    ['an #if header', 'gapBlockIf', '.value', ['admin']],
+    ['a #switch case', 'gapBlockSwitch', '.value', ['admin']],
+    ['a #for list', 'gapBlockFor', '.item', ['a', 'b']],
+    ['a component prop', 'gapBlockProp', '.value', ['Ada']],
+    ['a function in markup', 'gapBlockFunction', '.value', ['Ada']],
+  ];
+  for (const [what, page, selector, expected] of cases) {
+    it(`renders ${what} from the settled value on the server`, async () => {
+      await resume(page, { open: true });
+      expect(texts(selector)).toEqual(expected);
+    });
+
+    it(`renders ${what} from the settled value in the browser`, async () => {
+      await resume(page, {});
+      // Every content that the page shows on the way, so a wrong one shown first fails too. A
+      // held-back insert leaves its element empty until the value settles.
+      const shown: string[][] = [];
+      const observer = new MutationObserver(() => {
+        const content = texts(selector);
+        if (content.join('') !== '') {
+          shown.push(content);
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      onTestFinished(() => observer.disconnect());
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(texts(selector)).toEqual(expected));
+      await new Promise((done) => setTimeout(done, 30));
+      expect(texts(selector)).toEqual(expected);
+      for (const content of shown) {
+        expect(content).toEqual(expected);
+      }
+    });
+
+    it(`sends a rejection that ${what} reads to the nearest #catch, once`, async () => {
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      const fails = vi.fn<() => void>();
+      window.addEventListener('brumate:error', fails);
+      onTestFinished(() => window.removeEventListener('brumate:error', fails));
+      const unhandled: unknown[] = [];
+      const onUnhandled = (reason: unknown): void => {
+        unhandled.push(reason);
+      };
+      process.on('unhandledRejection', onUnhandled);
+      onTestFinished(() => {
+        process.off('unhandledRejection', onUnhandled);
+      });
+      await resume(`${page}Fail`, {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(texts('.caught')).toEqual(['Error: gap failed']));
+      expect(document.querySelector(selector)).toBeNull();
+      await new Promise((done) => setTimeout(done, 30));
+      expect(texts('.caught')).toEqual(['Error: gap failed']);
+      expect(fails).not.toHaveBeenCalled();
+      expect(errors).not.toHaveBeenCalled();
+      expect(unhandled.map(String)).toEqual([]);
+    });
+  }
+});
