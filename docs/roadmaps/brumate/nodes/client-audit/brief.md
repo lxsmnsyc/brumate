@@ -1,7 +1,7 @@
 ---
 id: client-audit
 title: "Spike: a structural audit of the client runtime, ranked removals"
-status: active
+status: done
 priority: should
 type: spike
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: true
 added: 2026-11-03
-spent:
+spent: 300000
 owns:
   - packages/brumate/test/audit/**
 shared: []
