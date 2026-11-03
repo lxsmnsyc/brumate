@@ -36,6 +36,9 @@ import {
   skipTemplate,
 } from './scan.ts';
 
+// The wrappers of brumate/events that write a modifier.
+const WRAPPERS = new Set(['prevent', 'stop', 'once', 'capture']);
+
 const VOID_ELEMENTS = new Set([
   'area',
   'base',
@@ -486,11 +489,28 @@ class Parser {
       this.checkEventName(name, owner, start);
       // Wrappers of brumate/events are the only way to write a modifier.
       if (parts.length > 1) {
-        const modifier = parts[1]!;
-        const fix =
-          modifier === 'passive'
-            ? `${name}=(handler), since listeners are passive unless a handler prevents`
-            : `${name}=(${modifier}(handler)) with ${modifier} from brumate/events`;
+        const rest = parts.slice(1);
+        const wrappers: string[] = [];
+        let unknown: string | undefined;
+        for (const modifier of rest) {
+          if (WRAPPERS.has(modifier)) {
+            wrappers.push(modifier);
+          } else if (modifier !== 'passive') {
+            unknown ??= modifier;
+          }
+        }
+        let fix: string;
+        if (unknown !== undefined) {
+          fix = `${name}=(handler) with the wrappers of brumate/events, since ":${unknown}" is not a modifier`;
+        } else if (wrappers.length === 0) {
+          fix = `${name}=(handler), since listeners are passive unless a handler prevents`;
+        } else {
+          let call = 'handler';
+          for (const wrapper of wrappers.toReversed()) {
+            call = `${wrapper}(${call})`;
+          }
+          fix = `${name}=(${call}) with ${wrappers.join(' and ')} from brumate/events`;
+        }
         this.fail(`Event modifiers in the attribute name were removed. Write ${fix}`, start);
       }
       if (this.peek() !== '=') {

@@ -58,6 +58,18 @@ describe('syntax errors', () => {
       'Event modifiers in the attribute name were removed. Write onKeyDown=(prevent(handler)) with prevent from brumate/events (Test.brm:1:7)',
     ],
     [
+      '<button onClick:self=go>x</button>',
+      'Event modifiers in the attribute name were removed. Write onClick=(handler) with the wrappers of brumate/events, since ":self" is not a modifier (Test.brm:1:9)',
+    ],
+    [
+      '<button onClick:later=go>x</button>',
+      'Event modifiers in the attribute name were removed. Write onClick=(handler) with the wrappers of brumate/events, since ":later" is not a modifier (Test.brm:1:9)',
+    ],
+    [
+      '<form onSubmit:prevent:stop=go></form>',
+      'Event modifiers in the attribute name were removed. Write onSubmit=(prevent(stop(handler))) with prevent and stop from brumate/events (Test.brm:1:7)',
+    ],
+    [
       '<button onClick:passive=go>x</button>',
       'Event modifiers in the attribute name were removed. Write onClick=(handler), since listeners are passive unless a handler prevents (Test.brm:1:9)',
     ],
