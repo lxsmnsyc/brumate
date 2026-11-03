@@ -1,7 +1,7 @@
 ---
 id: ui-page-sections
 title: One section order and one set of headings for the ui pages
-status: active
+status: done
 priority: should
 type: docs
 outline: false
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-31
+spent: 148000
 owns:
   - website/test/ui-sections.test.ts
 shared:
