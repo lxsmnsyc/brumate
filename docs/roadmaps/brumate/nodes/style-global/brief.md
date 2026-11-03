@@ -1,7 +1,7 @@
 ---
 id: style-global
 title: <style global> for a block of unscoped rules
-status: active
+status: done
 priority: must
 type: feature
 outline: false
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-28
+spent: 139000
 owns: []
 shared:
   - .changeset/*.md

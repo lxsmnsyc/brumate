@@ -1,7 +1,7 @@
 ---
 id: no-html-string-fallback
 title: "No body that the browser renders falls back to an HTML string"
-status: active
+status: done
 priority: must
 type: refactor
 outline: false
@@ -15,7 +15,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 288000
 owns: []
 shared:
   - .changeset/*.md
