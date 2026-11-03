@@ -2,13 +2,15 @@
 goal: Make a pending $memo read give its promise instead of throwing a not-ready error, and add a React use-like read that unwraps it
 date: 2026-11-03
 rounds: 3 of 3
-status: proposed
-roadmap: none yet (a spike node for docs/roadmaps/brumate after approval)
+status: rejected
+roadmap: none
 supersedes: none
-decision: none yet (would amend docs/decisions.md:26 and :135 only if the full model is approved later)
+decision: docs/decisions.md (the $resolve entry, 2026-11-03)
 ---
 
 # Debate: `$memo` reads that give a promise, and a `use`-like unwrap
+
+Rejected by the maintainer on 2026-11-03: the stale value is the deciding cost. A promise from a read is the load of one run, so `await m` can settle with a value for inputs that have changed since (O1). Nothing below is built, and the spike is not added.
 
 The maintainer's reason (Q1): simpler async handling, and types that show whether a memo is async. The goal's "like Solid" does not match Solid: Solid 2.0 throws `NotReadyError` on a pending read, which is what brumate does now (J1, J5). The model the maintainer described is React's: an async memo is a `Promise<T>`, and `use` unwraps it (J6).
 
@@ -73,7 +75,7 @@ The full model is not built now. A spike measures its cost first, and the first 
 
 ## Overruled
 
-- None.
+- The whole result: the maintainer dropped the idea, steps 1 and 2 included, because of the stale value (O1).
 
 ## Cost of this debate
 
