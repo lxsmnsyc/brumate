@@ -1,7 +1,7 @@
 ---
 id: browser-async
 title: Async values wait in markup that the browser renders
-status: active
+status: done
 priority: must
 type: story
 story:
