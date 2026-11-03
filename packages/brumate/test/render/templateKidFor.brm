@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TryKid from './TryKid.brm';
+
+  let on = $signal(true);
+</script>
+
+#for (item of [1] by item) {
+  #template kid() {
+    <TryKid />
+  }
+  {kid()}
+}

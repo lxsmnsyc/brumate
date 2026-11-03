@@ -8222,6 +8222,33 @@ describe('a #try around a #template', () => {
     });
   }
 
+  // The render module is what the browser runs for a block that changes, so it imports the
+  // component that only a template renders.
+  for (const fixture of [
+    'tryTemplateChild',
+    'templateKidTop',
+    'templateKidIf',
+    'templateKidKey',
+    'templateKidFor',
+    'templateKidLoading',
+    'templateKidSwitch',
+  ]) {
+    it(`${fixture}: renders a component used only in a template in the browser`, async () => {
+      // The render module imports the component, or the template call throws a ReferenceError.
+      const code = readFileSync(join(output, `${fixture}.brm.render.ts`), 'utf8');
+      expect(code).toMatch(/import TryKid from "\.\/TryKid\.brm\.render\.ts"/);
+      // A #try renders its body through the client entry, so it shows no markup here.
+      if (fixture === 'tryTemplateChild') {
+        return;
+      }
+      vi.resetModules();
+      const render = await import(file(`${fixture}.brm.render.ts`));
+      const host = document.createElement('div');
+      host.append(render.default({}));
+      expect(host.querySelector('.boom')).not.toBeNull();
+    });
+  }
+
   it('does not catch the error of a call of the template outside it', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     onTestFinished(() => logged.mockRestore());
