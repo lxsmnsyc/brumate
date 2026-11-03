@@ -30,6 +30,43 @@ afterEach(() => {
   logged.mockImplementation(() => {});
 });
 
+/** A promise that settles when `open` runs. */
+function latch(): { promise: Promise<void>; open: () => void } {
+  let open!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { promise, open };
+}
+
+/** A server with one function, which fails with `error` once `wait` settles. */
+function app(error: Error, wait?: Promise<void>) {
+  return {
+    async save() {
+      await wait;
+      throw error;
+    },
+  };
+}
+
+/** Posts to `save`, and answers with the status and text, with the hook of the app. */
+async function answer(boom: Error, onError: ServerErrorHandler | undefined) {
+  const response = await handleRequest(
+    {
+      save() {
+        throw boom;
+      },
+    },
+    new Request('http://localhost/_brumate/save', {
+      method: 'POST',
+      body: JSON.stringify(toJSON([])),
+    }),
+    '/_brumate',
+    { onError },
+  );
+  return [response?.status, await response?.text()];
+}
+
 /** An `onError` that records what it gets. */
 function recorder(): { onError: ServerErrorHandler; seen: [unknown, ServerErrorInfo][] } {
   const seen: [unknown, ServerErrorInfo][] = [];
@@ -233,22 +270,6 @@ describe('onError of the server', () => {
 
   it('logs both errors when the hook throws or rejects, and answers the same', async () => {
     const hook = new Error('hook failed');
-    const answer = async (boom: Error, onError: ServerErrorHandler | undefined) => {
-      const response = await handleRequest(
-        {
-          save() {
-            throw boom;
-          },
-        },
-        new Request('http://localhost/_brumate/save', {
-          method: 'POST',
-          body: JSON.stringify(toJSON([])),
-        }),
-        '/_brumate',
-        { onError },
-      );
-      return [response?.status, await response?.text()];
-    };
     const first = new Error('first');
     const plain = await answer(first, undefined);
     expect(logged.mock.calls).toEqual([[first]]);
@@ -295,7 +316,7 @@ describe('the route module', () => {
       '/src/middleware.ts',
     );
     expect(code).toContain('import * as entry from "/src/middleware.ts";');
-    expect(code).toContain('middleware: entry.default, onError: entry.onError');
+    expect(code).toContain('const { default: middleware, onError } = { ...entry };');
   });
 
   it('works with a file that only exports onError, or exports it under another name', async () => {
@@ -307,6 +328,7 @@ describe('the route module', () => {
       seen: unknown[];
     }[]) {
       const boom = new Error('call failed');
+      // oxlint-disable-next-line no-await-in-loop -- The requests run one after the other.
       await handleRequest(
         {
           save() {
@@ -330,18 +352,9 @@ describe('apps in one process', () => {
   it('sends the errors of overlapping requests to the hook of their own app', async () => {
     const first = recorder();
     const second = recorder();
-    let release: () => void = () => {};
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
+    const { promise: gate, open: release } = latch();
     const slow = new Error('slow');
     const quick = new Error('quick');
-    const app = (error: Error, wait?: Promise<void>) => ({
-      async save() {
-        await wait;
-        throw error;
-      },
-    });
     const post = (functions: ReturnType<typeof app>, onError: ServerErrorHandler) =>
       handleRequest(
         functions,
@@ -365,6 +378,7 @@ describe('apps in one process', () => {
     const { onError, seen } = recorder();
     const boom = new Error('again');
     for (let round = 0; round < 2; round++) {
+      // oxlint-disable-next-line no-await-in-loop -- The requests run one after the other.
       await handleRequest(
         {
           save() {

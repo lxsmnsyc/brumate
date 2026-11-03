@@ -523,7 +523,7 @@ describe('entry middleware', () => {
       '/src/middleware.ts',
     );
     expect(code).toContain('import * as entry from "/src/middleware.ts";');
-    expect(code).toContain('functions, fileMiddleware, middleware: entry.default');
+    expect(code).toContain('functions, fileMiddleware, middleware, onError');
   });
 });
 

@@ -160,11 +160,17 @@ export function routeModule(
     "import { handleRoute } from 'brumate/server';",
     // Forms without scripts post to their page, which runs the server function.
     "import { functions, fileMiddleware } from 'virtual:brumate/server';",
-    ...(middleware ? [`import * as entry from ${JSON.stringify(middleware)};`] : []),
+    ...(middleware
+      ? [
+          `import * as entry from ${JSON.stringify(middleware)};`,
+          // A copy, so a file without a default export or `onError` does not make a bundler warn.
+          'const { default: middleware, onError } = { ...entry };',
+        ]
+      : []),
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware: entry.default, onError: entry.onError' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware, onError' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options });`,
     '}',
   ].join('\n');
 }

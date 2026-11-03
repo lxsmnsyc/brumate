@@ -1136,7 +1136,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       ...(env ? [`import ${JSON.stringify(env)};`] : []),
       ...serialImports(),
       "import { handleRequest } from 'brumate/server';",
-      ...(entry ? [`import * as entry from ${JSON.stringify(entry)};`] : []),
+      ...(entry
+        ? [
+            `import * as entry from ${JSON.stringify(entry)};`,
+            // A copy, so a file without a default export or `onError` does not make a bundler warn.
+            'const { default: middleware, onError } = { ...entry };',
+          ]
+        : []),
       ...imports,
       ...fileImports,
       'export const functions = {',
@@ -1147,7 +1153,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       ...guards,
       '};',
       'export function handle(request, options) {',
-      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])}, ${entry ? 'middleware: entry.default, onError: entry.onError, ' : ''}fileMiddleware${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`}, ...options });`,
+      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])}, ${entry ? 'middleware, onError, ' : ''}fileMiddleware${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`}, ...options });`,
       '}',
     ].join('\n');
   }
@@ -2274,7 +2280,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return [
           "import { answerCalls as answer, createMount, createVisit } from 'brumate/testing';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
-          ...(entry ? [`import * as entry from ${JSON.stringify(entry)};`] : []),
+          ...(entry
+            ? [
+                `import * as entry from ${JSON.stringify(entry)};`,
+                // A copy, so a file without a default export or `onError` does not make a bundler warn.
+                'const { default: middleware, onError } = { ...entry };',
+              ]
+            : []),
           `export const mount = createMount({ load, rpc: ${JSON.stringify(rpc)} });`,
           // The routes and the server code load on the first visit, so a test of components skips them.
           'export const visit = createVisit({',
@@ -2286,7 +2298,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           // The server code of the app loads on the first call, so a test that makes none skips it.
           'export function answerCalls(options) {',
           `  const server = import(${JSON.stringify(SERVER)});`,
-          `  return answer(async () => (await server).functions, { rpc: ${JSON.stringify(rpc)}, ${entry ? 'middleware: entry.default, onError: entry.onError, ' : ''}fileMiddleware: async () => (await server).fileMiddleware, ...options });`,
+          `  return answer(async () => (await server).functions, { rpc: ${JSON.stringify(rpc)}, ${entry ? 'middleware, onError, ' : ''}fileMiddleware: async () => (await server).fileMiddleware, ...options });`,
           '}',
         ].join('\n');
       }
