@@ -1276,7 +1276,7 @@ class ClientGenerator {
         }
       }
       if (attribute.kind === 'event' && site) {
-        const all = [...new Set([...attribute.modifiers, ...(site.modifiers ?? [])])];
+        const all = [...new Set(site.modifiers ?? [])];
         const entry = `${[attribute.event, ...all].join(':')}=${this.plan.id}#${this.plan.symbols.get(site)}@`;
         entries.push(`${JSON.stringify(entry)} + $$s.id`);
       }

@@ -700,18 +700,9 @@ class Analyzer {
   /**
    * Reads the wrappers of `brumate/events` around a handler, such as
    * `prevent(move, 'Enter')`, into the modifiers that `b-on` holds, so the
-   * loader applies them before the handler's code loads. A modifier in the
-   * attribute name, such as `onSubmit:prevent`, still works, with a warning.
+   * loader applies them before the handler's code loads.
    */
   private readWrappers(site: Site, attribute: EventAttribute, scope: Scope): void {
-    if (attribute.modifiers.length > 0) {
-      const [first] = attribute.modifiers;
-      this.report(
-        'warning',
-        `${attribute.name}:${first} is replaced by ${attribute.name}=(${first === 'passive' ? 'handler' : `${first}(handler)`}) from brumate/events${first === 'passive' ? ', since listeners are passive unless a handler prevents' : ''}`,
-        attribute,
-      );
-    }
     const modifiers: string[] = [];
     let node: oxc.Node = attribute.handler.ast;
     for (;;) {

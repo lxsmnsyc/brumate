@@ -11,7 +11,6 @@ import type {
   FragmentNode,
   KeyBlock,
   Markup,
-  Modifier,
   Reveal,
   RevealOrder,
   SFCFile,
@@ -36,6 +35,9 @@ import {
   skipString,
   skipTemplate,
 } from './scan.ts';
+
+// The wrappers of brumate/events that write a modifier.
+const WRAPPERS = new Set(['prevent', 'stop', 'once', 'capture']);
 
 const VOID_ELEMENTS = new Set([
   'area',
@@ -74,8 +76,6 @@ export const BLOCK_KEYWORDS: Set<string> = new Set([
 
 /** The keywords of the branches of a block. */
 export const BRANCH_KEYWORDS: Set<string> = new Set(['else', 'catch', 'case', 'default']);
-
-const MODIFIERS = new Set<string>(['prevent', 'stop', 'passive', 'once', 'capture']);
 
 const CLIENT_TRIGGERS = new Set<string>(['visible', 'idle', 'load']);
 
@@ -453,7 +453,6 @@ class Parser {
           end: this.pos,
           name,
           event: name.slice(2).toLowerCase(),
-          modifiers: [],
           handler: this.expression(inner.start, inner.end),
         };
       }
@@ -487,19 +486,32 @@ class Parser {
 
     if (/^on[A-Z]/.test(fullName)) {
       const name = parts[0]!;
-      const modifiers = parts.slice(1);
       this.checkEventName(name, owner, start);
-      for (const modifier of modifiers) {
-        if (!MODIFIERS.has(modifier)) {
-          this.fail(`Unknown event modifier ":${modifier}"`, start);
+      // Wrappers of brumate/events are the only way to write a modifier.
+      if (parts.length > 1) {
+        const rest = parts.slice(1);
+        const wrappers: string[] = [];
+        let unknown: string | undefined;
+        for (const modifier of rest) {
+          if (WRAPPERS.has(modifier)) {
+            wrappers.push(modifier);
+          } else if (modifier !== 'passive') {
+            unknown ??= modifier;
+          }
         }
-      }
-      // A component gets the handler as a prop, and nothing would apply the modifiers.
-      if (owner === 'component' && modifiers.length > 0) {
-        this.fail(
-          `Modifiers apply to elements. Put ":${modifiers[0]}" on the element that the component renders`,
-          start,
-        );
+        let fix: string;
+        if (unknown !== undefined) {
+          fix = `${name}=(handler) with the wrappers of brumate/events, since ":${unknown}" is not a modifier`;
+        } else if (wrappers.length === 0) {
+          fix = `${name}=(handler), since listeners are passive unless a handler prevents`;
+        } else {
+          let call = 'handler';
+          for (const wrapper of wrappers.toReversed()) {
+            call = `${wrapper}(${call})`;
+          }
+          fix = `${name}=(${call}) with ${wrappers.join(' and ')} from brumate/events`;
+        }
+        this.fail(`Event modifiers in the attribute name were removed. Write ${fix}`, start);
       }
       if (this.peek() !== '=') {
         this.fail('Expected an event handler', this.pos);
@@ -515,7 +527,6 @@ class Parser {
         end: this.pos,
         name,
         event: name.slice(2).toLowerCase(),
-        modifiers: modifiers as Modifier[],
         handler: value,
       };
     }

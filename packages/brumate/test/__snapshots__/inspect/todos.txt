@@ -1,47 +1,47 @@
 Todos (todos.brm) Todos_t3g9lr
 
 Client code
-  h5: event form.submit (30:24)
+  h5: event form.submit (31:17)
     runs on the event, calls add and persist (server)
-  h7: event input.input (31:31)
+  h7: event input.input (32:31)
     runs on the event
-  h12: event li.click (41:43)
+  h12: event li.click (42:43)
     runs on the event, calls toggle
 
 Changes on the client
-  signal todos (13:7)
-    written by function add (22:18) and function toggle (37:16)
-  signal draft (14:7)
-    written by function add (22:18) and event input.input (31:31)
-  item todo (35:9)
+  signal todos (14:7)
+    written by function add (23:18) and function toggle (38:16)
+  signal draft (15:7)
+    written by function add (23:18) and event input.input (32:31)
+  item todo (36:9)
     its list changes
-  memo left (15:22)
+  memo left (16:22)
     reads signal todos
-  attribute input.value (31:16)
+  attribute input.value (32:16)
     reads signal draft
-  for (35:16)
+  for (36:16)
     reads signal todos
-  for key (35:25)
+  for key (36:25)
     reads item todo
-  attribute li.class (41:15)
+  attribute li.class (42:15)
     reads item todo
-  insert (42:8)
+  insert (43:8)
     reads item todo
-  insert (42:27)
+  insert (43:27)
     reads item todo
-  insert (48:5)
+  insert (49:5)
     reads memo left
 
 State
   component: todos, draft, left
-  body of #for (35:3): todo
+  body of #for (36:3): todo
 
 HTML only
   4 elements and 0 inserted values ship no client code
 
 Client modules, before minifying (bytes, gzip)
   entry: 410 B, 188 B
-  h5: 348 B, 245 B
+  h5: 443 B, 286 B
   h12: 232 B, 172 B
   h7: 120 B, 121 B
   update: 1545 B, 642 B

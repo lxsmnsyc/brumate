@@ -20,7 +20,7 @@
   "BRM019": "Only event handlers are allowed here",
   "BRM020": "Expected a spread or a shorthand attribute",
   "BRM021": "Expected an attribute name",
-  "BRM022": "Unknown event modifier \":{modifier}\"",
+  "BRM022": "Event modifiers in the attribute name were removed. Write {fix}",
   "BRM023": "Modifiers apply to elements. Put \":{modifier}\" on the element that the component renders",
   "BRM024": "Expected an event handler",
   "BRM025": "An event handler must be an expression, not a string",

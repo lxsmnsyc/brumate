@@ -76,9 +76,9 @@ describe('grammar', () => {
   });
 
   it('marks components, events and attribute values without quotes', () => {
-    const source = '<Foo value=fetchUser(id) onClick:prevent=add class={ done: x } label="hi" />';
+    const source = '<Foo value=fetchUser(id) onClick=add class={ done: x } label="hi" />';
     expect(scopeOf(source, 'Foo')).toBe('meta.tag.brumate support.class.component.brumate');
-    expect(scopeOf(source, 'onClick:prevent')).toBe(
+    expect(scopeOf(source, 'onClick')).toBe(
       'meta.tag.brumate entity.other.attribute-name.event.brumate',
     );
     expect(scopeOf(source, 'fetchUser')).toBe('meta.tag.brumate meta.embedded.expression.ts');
