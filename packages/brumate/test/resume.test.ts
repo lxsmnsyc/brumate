@@ -8222,6 +8222,31 @@ describe('a #try around a #template', () => {
     });
   }
 
+  // The render module is what the browser runs for a block that changes, so it imports the
+  // component that only a template renders.
+  for (const fixture of [
+    'tryTemplateChild',
+    'templateKidTop',
+    'templateKidIf',
+    'templateKidKey',
+    'templateKidFor',
+    'templateKidLoading',
+    'templateKidSwitch',
+  ]) {
+    it(`${fixture}: renders a component used only in a template in the browser`, async () => {
+      vi.resetModules();
+      const render = await import(file(`${fixture}.brm.render.ts`));
+      const out = render.default({});
+      // A #try renders its body through a place that the core fills.
+      const b = await import('brumate/client');
+      const host = document.createElement('div');
+      const at = document.createComment('');
+      host.append(at);
+      b.place(at, out);
+      expect(host.querySelector('.boom')).not.toBeNull();
+    });
+  }
+
   it('does not catch the error of a call of the template outside it', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     onTestFinished(() => logged.mockRestore());

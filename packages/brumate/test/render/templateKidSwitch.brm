@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TryKid from './TryKid.brm';
+
+  let on = $signal(true);
+</script>
+
+#switch {
+  #case (on) {
+    #template kid() {
+      <TryKid />
+    }
+    {kid()}
+  }
+  #default {
+    <p>off</p>
+  }
+}
