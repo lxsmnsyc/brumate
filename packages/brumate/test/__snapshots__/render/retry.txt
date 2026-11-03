@@ -56,19 +56,25 @@ import { check } from "./retry.brm?brumate-client&part=shared";
 export function u1($$s) {
   $$b.content($$s, 0, String($$b.get($$s, 0)));
 }
+const $$k0 = $$b.template("<p b-x=\"0\" class=\"ok\"></p>", 1);
 export function r2($$p) {
   let $$html = '';
-  $$html += "<p class=\"ok\">" + $$b.insert((check())) + "</p>";
-  return $$html;
+  const $$e = $$b.clone($$k0), $$f = $$e[1];
+  $$b.fillValue($$p, "x0", (check()), ($$v) => $$b.setContent($$e[0], $$v));
+  return $$f;
 }
+const $$k1 = $$b.template("<p b-x=\"0\" class=\"error\"></p><button b-x=\"1\" class=\"retry\" b-on=\"click=Retry_pyus3c#h2\">Try again</button>", 2);
 export function r3($$p, $$error) {
   let $$html = '';
   const error = $$error;
   const reset = undefined;
-  const $$s3 = $$b.createScope(3, $$p);
-  $$html += "<p class=\"error\" b-b=\"" + $$s3 + ":0\">" + $$b.insert((String(error))) + "</p><button class=\"retry\" b-b=\"" + $$s3 + ":1\" b-on=\"click=Retry_pyus3c#h2\">Try again</button>";
+  const $$s3 = $$b.createScope(3, $$p, undefined, 2);
+  const $$e = $$b.clone($$k1), $$f = $$e[2];
+  $$b.keep($$s3, 0, $$e[0]);
+  $$b.setContent($$e[0], (String(error)), $$s3);
+  $$b.keep($$s3, 1, $$e[1]);
   $$b.setSlots($$s3, [error]);
-  return $$html;
+  return $$f;
 }
 
 # Client part: shared

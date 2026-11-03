@@ -1710,10 +1710,7 @@ class ClientGenerator {
         emitter.flush();
         // The body of an `#if` or a `#for`, and the fallback of a `#loading`, whose markup is one
         // string clones a template.
-        cloned =
-          block.kind === 'if' || block.kind === 'for' || block.kind === 'loading'
-            ? this.cloneRender(emitter)
-            : false;
+        cloned = this.cloneRender(emitter);
         emitter.line(emitter.returnLine(0, cloned));
       },
     );

@@ -5,7 +5,7 @@ import { HAS_BINDINGS, HAS_CHILDREN, HAS_DYNAMIC, HAS_TEMPLATES } from '../featu
 import { attributeText, insertValue, onValue, textValue } from '../html.ts';
 import { isBinding, isSlotReference } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
-import { findComment, findElement, rangeEnd } from './blocks.ts';
+import { findComment, findElement, nameComment, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
 import { Children, RenderedChildren, TemplateCall, linkCalls } from './children.ts';
 import { loadedFunction } from './code.ts';
@@ -37,7 +37,17 @@ export function portalTo(
   // The body's scope is the first scope that the render creates.
   const id = nextId;
   const body = inPlace(scope, render, holderKind, holderAnchor)!;
-  insertHTML({ parent: element }, `<!--P${id}-->${body(scope)}<!--/P-->`);
+  const out = body(scope);
+  if (typeof out === 'string') {
+    insertHTML({ parent: element }, `<!--P${id}-->${out}<!--/P-->`);
+    return;
+  }
+  // A clone gets its markers as nodes, and the start is indexed as the scope looks for it.
+  const start = document.createComment('');
+  nameComment(start, `P${id}`);
+  out.prepend(start);
+  out.append(document.createComment('/P'));
+  insertHTML({ parent: element }, out);
 }
 
 /** Writes an inserted value between `<!--t…-->` and `<!--/t-->`. */

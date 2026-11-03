@@ -8642,6 +8642,47 @@ describe('a block, prop or function that reads a constant async memo, in a brows
   }
 });
 
+describe('a constant async memo in a body that the browser clones', () => {
+  // A `#try` body used to render HTML, and a `#client` block in it holds a `<template>`.
+  for (const [what, page] of [
+    ['a #try body', 'cloneTry'],
+    ['a #try body with a #client block', 'cloneTemplate'],
+  ] as const) {
+    it(`renders ${what} from the settled value on the server`, async () => {
+      await resume(page, { open: true });
+      expect(texts('.value')).toEqual(['Ada']);
+    });
+
+    it(`fills ${what} when the memo settles in the browser`, async () => {
+      await resume(page, {});
+      const shown: string[][] = [];
+      const observer = new MutationObserver(() => {
+        const content = texts('.value');
+        if (content.join('') !== '') {
+          shown.push(content);
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      onTestFinished(() => observer.disconnect());
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(texts('.value')).toEqual(['Ada']));
+      await new Promise((done) => setTimeout(done, 30));
+      expect(texts('.value')).toEqual(['Ada']);
+      for (const content of shown) {
+        expect(content).toEqual(['Ada']);
+      }
+    });
+  }
+
+  it('starts the #client block of a cloned body once', async () => {
+    await resume('cloneTemplate', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(texts('.later')).toEqual(['later']));
+    await new Promise((done) => setTimeout(done, 30));
+    expect(texts('.later')).toEqual(['later']);
+  });
+});
+
 describe('#loading in markup that the browser renders', () => {
   function userLoads(): UserLoad[] {
     return ((globalThis as { userLoads?: UserLoad[] }).userLoads ??= []);

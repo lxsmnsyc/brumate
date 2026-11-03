@@ -184,17 +184,21 @@ it('writes the text of a <textarea>, and attributes with static text and code in
   ]);
 });
 
-it('renders HTML for markers, raw text, blocks of the loader, and other code', () => {
-  // The loader starts each <template> of a block once.
-  expect(
-    clonedTemplate([
-      { static: '<template b-b="' },
-      { code: '$$s2' },
-      { static: ':0" b-client="load=App#k3"></template>' },
-    ]),
-  ).toBeUndefined();
+it('renders HTML for code that is not one of the writes', () => {
   // Code that is not one of the writes.
   expect(clonedTemplate([{ static: '<p>' }, { code: 'await Child($$props)' }])).toBeUndefined();
+});
+
+it('clones <template> elements and comments, and asks for the insert to index and start them', () => {
+  const block = clonedTemplate([
+    { static: '<template b-b="' },
+    { code: '$$s2' },
+    { static: ':0" b-client="load=App#k3"></template>' },
+  ]);
+  expect(block?.indexed).toBe(true);
+  expect(clonedTemplate([{ static: '<p><!--b1:0--></p>' }])?.indexed).toBe(true);
+  // A comment that a write names is not left in the template.
+  expect(clonedTemplate([{ static: '<p>Hi</p>' }])?.indexed).toBeUndefined();
 });
 
 it('clones markup with nothing to write', () => {

@@ -36,6 +36,8 @@ export interface ClonedTemplate {
    * a comment, `<!--x` and its index, which the clone replaces with a text node.
    */
   html: string;
+  /** Whether the insert of a clone indexes its markers and starts its `<template>` elements. */
+  indexed?: true;
   /** The writes on the marked elements, by their index. */
   writes: Write[][];
 }
@@ -295,7 +297,10 @@ class Reader {
 }
 
 /** The template of a render's parts, or undefined when its markup needs HTML. */
-export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefined {
+export function clonedTemplate(
+  parts: readonly Part[],
+  filled?: (scope: string, anchor: number) => boolean,
+): ClonedTemplate | undefined {
   const reader = new Reader();
   const writes: Write[][] = [];
   /** The index of each marked element, by its number in the order of the markup. */
@@ -450,7 +455,14 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     }
     // A nested block with nothing in it yet: `<!--b`, the scope, `:anchor-->`, `<!--/b-->`.
     const blockEnd = nextStatic === undefined ? null : BLOCK_END.exec(nextStatic);
-    if (SCOPE.test(code) && reader.html.endsWith(BLOCK_START) && blockEnd) {
+    // A block that no call fills, such as a `#client`, keeps its markers, which are not empty
+    // once it renders.
+    if (
+      SCOPE.test(code) &&
+      reader.html.endsWith(BLOCK_START) &&
+      blockEnd &&
+      (!filled || filled(code, Number(blockEnd[1])))
+    ) {
       reader.takeBack(BLOCK_START, 'text');
       const mark = writes.length;
       writes.push([{ kind: 'block', scope: code, anchor: Number(blockEnd[1]) }]);
@@ -570,13 +582,11 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     }
     return undefined;
   }
-  // Other comments, such as markers that a write does not name, need the HTML of a render. The
-  // loader starts each `<template>` of a block once, such as of a `$client` callback, so a clone
-  // of one would start nothing. Markup with no writes clones too, which is faster than a parse.
+  // Other comments, such as markers that a write does not name, and `<template>` elements, such
+  // as of a `$client` callback, are indexed and started when the clone is inserted, which the
+  // template asks for. The core starts the `<template>` elements of a clone, not of its template.
   const comments = reader.html.replace(/<!--x\d+-->|<!--\/[biP]-->/g, '');
-  if (comments.includes('<!--') || /<template\b/i.test(reader.html)) {
-    return undefined;
-  }
+  const indexed = comments.includes('<!--') || /<template\b/i.test(reader.html) || undefined;
   // An element with handlers and no anchor finds its scope with `closest`, from the anchor of an
   // element around it. The clone writes `b-b` only where it is asked to.
   function getAnchor(element: number): Write | undefined {
@@ -601,7 +611,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       around = reader.parents.get(around);
     }
   }
-  return { html: reader.html, writes, foreign: reader.foreign };
+  return { html: reader.html, writes, foreign: reader.foreign, indexed };
 }
 
 /**
@@ -702,15 +712,22 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
       }
     }
   }
-  const found = clonedTemplate(parts);
+  const found = clonedTemplate(
+    parts,
+    (scope, anchor) => emitter.fills?.has(`${scope}:${anchor}`) ?? false,
+  );
   if (!found) {
     return false;
   }
   const flush = tops[0];
   const indent = /^ */.exec(emitter.lines[flush!.line]!)![0];
-  const foreign = found.foreign ? `, ${JSON.stringify(found.foreign)}` : '';
+  // The arguments after the count: the foreign element, then 1 for markup that its insert indexes.
+  let options = found.foreign ? `, ${JSON.stringify(found.foreign)}` : '';
+  if (found.indexed) {
+    options += `${found.foreign ? '' : ', undefined'}, 1`;
+  }
   const name = hoist(
-    `$$b.template(${JSON.stringify(found.html)}, ${found.writes.length}${foreign})`,
+    `$$b.template(${JSON.stringify(found.html)}, ${found.writes.length}${options})`,
   );
   // The clone gives its marked nodes, then its fragment.
   const lines = [`${indent}const $$e = $$b.clone(${name}), $$f = $$e[${found.writes.length}];`];

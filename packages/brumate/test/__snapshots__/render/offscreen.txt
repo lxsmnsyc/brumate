@@ -263,12 +263,14 @@ export function r2($$p) {
   $$b.setSlots($$s2, [draft]);
   return $$html;
 }
+const $$k6 = $$b.template("<p b-x=\"0\" b-c-1oupne3 class=\"inner\">Inner </p>", 1);
 export function r3($$p) {
   let $$html = '';
   let count = $$b.get($$p.p, 1);
-  const $$s3 = $$b.createScope(3, $$p);
-  $$html += "<p b-c-1oupne3 class=\"inner\">Inner <!--t" + $$s3 + ":0-->" + $$b.insert((count)) + "<!--/t--></p>";
-  return $$html;
+  const $$s3 = $$b.createScope(3, $$p, undefined, 1);
+  const $$e = $$b.clone($$k6), $$f = $$e[1];
+  $$b.appendText($$s3, 0, $$e[0], (count));
+  return $$f;
 }
 export function r4($$p) {
   let $$html = '';
@@ -278,12 +280,14 @@ export function r4($$p) {
   $$b.appendText($$s4, 0, $$e[0], (count));
   return $$f;
 }
+const $$k7 = $$b.template("<section b-x=\"0\" b-c-1oupne3 class=\"panel-b\">B </section>", 1);
 export function r6($$p) {
   let $$html = '';
   let count = $$b.get($$p, 1);
-  const $$s6 = $$b.createScope(6, $$p);
-  $$html += "<section b-c-1oupne3 class=\"panel-b\">B <!--t" + $$s6 + ":0-->" + $$b.insert((count)) + "<!--/t--></section>";
-  return $$html;
+  const $$s6 = $$b.createScope(6, $$p, undefined, 1);
+  const $$e = $$b.clone($$k7), $$f = $$e[1];
+  $$b.appendText($$s6, 0, $$e[0], (count));
+  return $$f;
 }
 export function r7($$p) {
   let $$html = '';
@@ -298,11 +302,12 @@ export function r7($$p) {
   }
   return $$html;
 }
+const $$k8 = $$b.template("<p b-c-1oupne3 class=\"removable\">Removable</p>", 0);
 export function r8($$p) {
   let $$html = '';
   const $$s8 = $$b.createScope(8, $$p);
-  $$html += "<p b-c-1oupne3 class=\"removable\">Removable</p>";
-  return $$html;
+  const $$e = $$b.clone($$k8), $$f = $$e[0];
+  return $$f;
 }
 
 # Client part: shared

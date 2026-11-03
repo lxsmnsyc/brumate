@@ -20,14 +20,16 @@ interface Template {
   count: number;
   /** `svg` or `math`, for markup whose elements are of SVG or MathML, which parses inside one. */
   foreign?: string;
+  /** Its clones hold markers or `<template>` elements, which their insert indexes and starts. */
+  m?: 1;
   t?: HTMLTemplateElement;
   /** The moves that reach the marked nodes of a clone. See `encodeWalk`. */
   walk?: number[];
 }
 
 /** A template of the markup of a render, which `clone` parses once. */
-export function template(html: string, count: number, foreign?: string): Template {
-  return { html, count, foreign };
+export function template(html: string, count: number, foreign?: string, indexed?: 1): Template {
+  return { html, count, foreign, m: indexed };
 }
 
 /**
@@ -69,7 +71,9 @@ function parseTemplate(source: Template): number[][] {
   }
   // The loader listens to the events of the handlers of the template once, not of each clone.
   // A render before the core starts, such as in a test, has nothing that listens yet.
-  options?.listen(root);
+  if (!source.m) {
+    options?.listen(root);
+  }
   source.t = element;
   return paths;
 }
@@ -146,6 +150,9 @@ type ClonedNode = Element & Comment & DocumentFragment;
  */
 export function clone(source: Template): ClonedNode[] {
   const walk = (source.walk ??= encodeWalk(parseTemplate(source)));
+  if (source.m) {
+    markCloned();
+  }
   const fragment = source.t!.content.cloneNode(true);
   // oxlint-disable-next-line unicorn/no-new-array -- A length, with no values written in yet.
   const cloned: Node[] = new Array(source.count + 1);
