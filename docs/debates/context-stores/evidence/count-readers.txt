@@ -1,0 +1,3 @@
+readers 142 field reads 422 avg 2.97
+contexts 61
+readers with >=5 fields 25 [('Calendar.brm', 'DatePickerContext', 8), ('CalendarCell.brm', 'CalendarContext', 25), ('CalendarGrid.brm', 'CalendarContext', 12), ('Checkbox.brm', 'CheckboxGroupContext', 10), ('ColorThumb.brm', 'ColorThumbContext', 15), ('ColorWheelTrack.brm', 'ColorWheelContext', 5), ('ColumnResizer.brm', 'ColumnContext', 5), ('DateRangePicker.brm', 'DateStringsContext', 5), ('DateSegment.brm', 'DateFieldContext', 13), ('DisclosurePanel.brm', 'DisclosurePanelContext', 5), ('GridListItem.brm', 'ListBoxContext', 11), ('ListBox.brm', 'ListBoxGivenContext', 5)]

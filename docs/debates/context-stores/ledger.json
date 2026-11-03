@@ -116,7 +116,7 @@
         "unit": "B gzip client for $store runtime plus store() helper"
       },
       "ruling": "open",
-      "ruling_why": "O1 holds: a store object (a Set and closures) does not cross resume through the page state, and P1 names neither the serializer plugin nor the payload."
+      "ruling_why": "Superseded in shape by P9 and P11; the resume questions of O9 remain."
     },
     {
       "id": "P2",
@@ -187,7 +187,7 @@
         "unit": "nodes (1 L, 1 M, 3 M waves); store-lens-spike excluded"
       },
       "ruling": "open",
-      "ruling_why": "The order depends on how stores resume (O1) and on store granularity (O4, O7)."
+      "ruling_why": "The order follows the spike's result."
     },
     {
       "id": "P6",
@@ -319,7 +319,8 @@
         "source": "packages/ui/src/CalendarCell.brm (calendar.* reads); CalendarGrid.brm:121-129",
         "detail": "9 fields x 42 cells = 378, a count from source, not a build"
       },
-      "ruling": "upheld"
+      "ruling": "upheld",
+      "ruling_why": "Confirmed by P10, measured: per-field stores need 422 cells in packages/ui (about 1050 for a month grid), against 142 (42) for one store per provider."
     },
     {
       "id": "O5",
@@ -374,8 +375,7 @@
         "source": "packages/ui/src/contexts.ts (25 contexts); client/context.ts updateContext sends the whole value",
         "detail": "today a live context is already coarse; this keeps that granularity but on the store contract"
       },
-      "ruling": "open",
-      "ruling_why": "One coarse store per provider cuts O4's cells to one per reader, but it is today's whole-value re-send made explicit; whether it still delivers the size goal of J1 is unmeasured."
+      "ruling": "upheld"
     },
     {
       "id": "J8",
@@ -402,6 +402,254 @@
         "source": "node_modules marko@6.4.6 cheatsheet.md:143,230"
       },
       "ruling": "upheld"
+    },
+    {
+      "id": "P9",
+      "round": 2,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "I drop the compile error of P2 and the 'functions read at call time' rule of P4 as written, and I drop P6's byte estimate until measured. I adopt O7's one store per provider (P10).",
+      "why": "O3 shows no local rule can tell a live value from a constant; O6 shows call-time reads go stale in readers; O4 counted the per-field growth; Q2 closes the signal alternative",
+      "answers": [
+        "P2",
+        "P4",
+        "P6"
+      ],
+      "ruling": "upheld"
+    },
+    {
+      "id": "P10",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Granularity: one store per provider holding the whole context value as an immutable snapshot, read with one `$store(ctx)` per reader (O7). Measured on the ui: 142 readers read 422 fields (avg 2.97, up to 25 in CalendarCell), across 61 context names. Per-field stores would need 422 cells per set of readers (CalendarCell alone, 42 cells x up to 25 fields, is about 1050 per month), the coarse store needs 142 (42 for a month grid). Coarse equals today's grain: updateContext already sends the whole value to one slot per reader. Readers derive fields with ordinary memos over the snapshot; fine-grained field stores wait for store-lens-spike.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/count-readers.py (output evidence/count-readers.txt); client/context.ts:34-48",
+        "detail": "142 readers, 422 field reads, avg 2.97; regex counts destructured and X.field reads"
+      },
+      "axis": "device",
+      "answers": [
+        "O4",
+        "O7"
+      ],
+      "estimate": {
+        "value": 142,
+        "unit": "reader cells (coarse) against 422 (per field)"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P11",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Resume (answers O1): the object that crosses is the brumate `Store` class from `brumate/store`, through one seroval plugin registered beside the existing plugins in serial.ts (cache.ts already passes `syncPlugins`). Its payload is the value only (`v`); subscribers are not written, and the browser side builds `new Store(v)` with an empty subscriber set, then each `$store` reader subscribes when its scope resumes. The provider's page-state record holds that one store (the context value is the store, as `record.v` holds a value today), so the browser reads it as provideValue does. What ships: the plugin (about 150 B gzip, an estimate) plus the Store class (about 20 lines). Stores of other libraries (not `Store`) in a context are refused on the server with an error naming the context, because their closures cannot be written; they work at module level, since the module is imported again in the browser and `$store(foreign)` calls `get()` on resume. Server render calls `get()` once and never subscribes.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/serial.ts:7-17; runtime/cache.ts:118; runtime/client/context.ts:46-52; O1",
+        "detail": "plugin pattern exists; value-only payload; foreign stores are not written"
+      },
+      "axis": "device",
+      "answers": [
+        "O1"
+      ],
+      "estimate": {
+        "value": 170,
+        "unit": "B gzip, estimate (plugin plus class)"
+      },
+      "ruling": "open",
+      "ruling_why": "O9: four resume holes (handlers as function references, store identity across streamed chunks, a module store changed since render, a set before readers resume) need tests; a spike settles them."
+    },
+    {
+      "id": "P12",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Safety of a static context without a compile error (answers O3): (a) the docs and the type say a context value is read once, when the provider is created, and `$setContext` is typed `(ctx, value)` with the doc line 'put a store where the value changes'; (b) the compiler warns, with no whole-program analysis, only where the argument reads a local `$signal` or `$memo` declared in the same component outside an arrow function, a purely local scope lookup that analyze.ts already does; props are not warned, since liveness of a prop is project-wide; `$untrack` silences it; (c) devtools lists each context with 'static' or 'store' and, in dev, a provider whose static value (compared by `Object.is` of each field) differs from the one it sent on the server after an update logs 'context value changed but is static' once. Residual risk stays: a prop captured in a static value is stale, as in Solid and Svelte 5, whose docs say the same.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "svelte.dev/docs/svelte/context; docs.solidjs.com createContext; J6; analyze.ts scope lookup",
+        "detail": "both leave the stale-capture risk to docs plus a lint; no whole-program check"
+      },
+      "axis": "time",
+      "answers": [
+        "O3"
+      ],
+      "ruling": "upheld"
+    },
+    {
+      "id": "P13",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Ordered pass (answers O5): a provider's derived field is written by a compiler-recognized `store.derive(() => expr)` or a `$setContext` value built from one, not by a user effect. The compiler emits it as an update part of the binding stage, the place where updateContext's part sits today (codegen/client.ts:1110), so it runs after memos and before readers' bindings, and the Store's notify writes reader cells through the existing `sendContext` batch. Props and store value then reach a reader in one pass, as today's whole-value send does. A subscriber that is truly outside the graph (a foreign store, or `set` in a handler) starts a new batch like any event, which is correct for an external source. Needs `it.fails`-then-fixed cases for one provider with a derived invalid, in the ordered-updates style.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/codegen/client.ts:1110; runtime/client/context.ts:34-48; docs/roadmaps/brumate/nodes/ordered-updates/outcome.md",
+        "detail": "an update part in the binding stage plus sendContext batching exists for live contexts today"
+      },
+      "axis": "time",
+      "answers": [
+        "O5"
+      ],
+      "ruling": "open",
+      "ruling_why": "O10: the ordered pass holds only for the compiler-written derive part; user and foreign stores must write through the queued context send."
+    },
+    {
+      "id": "P14",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Functions (answers O6): the 24 context calls with functions are handlers, measured: onPress 9, open 6, close 4, toggle 4, onInvalid 4, setActive 2, onPressStart 2, and single moveFocus, selectFocused, cancel, step, jump, erase, settle, highlight, pressStart, pressEnd (evidence/ctx-functions.txt). They are called from handlers and effects, where reading current state at call time is right. Rule: a function in a context is a static value, called only in handlers, effects and `$client`; a reader that needs a result in markup or a memo takes it from the store snapshot, never from a function call. No new compile check (the graph treats a call through a context as unknown, per the function-prop debate); each ui wave audits its function fields against this rule, and the docs state it. J5 still holds for props.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/ctx-functions.txt; docs/debates/function-prop-derivations/debate.md:22,28",
+        "detail": "24 calls, nearly all event handlers by name"
+      },
+      "axis": "tokens",
+      "answers": [
+        "O6"
+      ],
+      "ruling": "upheld"
+    },
+    {
+      "id": "P15",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "`$route()` and `$navigation()` (answers O2): the runtime provides each as a `Store` it owns (it already writes them with setGlobal and updateRoute); the page state already carries the route params in `b-params`, so the plugin payload is the same value. The user API stays `$route()` and `$navigation()` and compiles to a `$store` read of that store, so no user code changes. This is step 2 of the node order, after `Store`, before the ui waves, and it lets the live path go away completely, since no context is live afterwards. Savings are small (tens of bytes; J8): the goal is one mechanism, not size.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:45; J8; runtime/client/context.ts",
+        "detail": "runtime contexts already change by direct writes"
+      },
+      "axis": "time",
+      "answers": [
+        "O2"
+      ],
+      "ruling": "rejected",
+      "ruling_why": "O11: moving `$route` and `$navigation` to stores adds code to every app that uses them and changes resume and navigation for no gain; they stay runtime contexts."
+    },
+    {
+      "id": "P16",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Static plus explicit props, no store (J9): enough where the provider's value never changes in its life. Measured: 77 of the 192 calls mention no reactive name (evidence/count-live-setcontext.txt) and need only the static compile; for the parent-to-child pairs that are one level deep (for example Breadcrumbs to Breadcrumb `isDisabled`), props already work and keep the context out. Do not drill props for the deep ones (Calendar to CalendarCell, 25 fields, a month grid between), since brumate has no `$global` to carry them and Marko drills only because it has no context. So the audit step of each wave decides per field: constant stays plain in the snapshot, one-level pairs become props, the rest go in the provider store. Size effect not claimed; the 192 calls are cut by the audit before the migration, which also cuts tokens.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "Marko 6 cheatsheet (J9); evidence/count-live-setcontext.txt",
+        "detail": "Marko has no context API and drills props; 77 of 192 calls are constants"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 77,
+        "unit": "calls that need no change"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O8",
+      "round": 2,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "device",
+      "severity": "high",
+      "answers": [
+        "P9",
+        "P10",
+        "P13"
+      ],
+      "text": "Against J8, this structure ships the same update code plus more. Today a provider costs one update part that re-evaluates the value expression in the browser (`export function u..($$s) { $$b.updateContext($$s, Ctx, <expr>) }`, codegen/client.ts:1110) and each reader one slot. P13's `store.derive` is that same compiled update part, calling `store.set(<expr>)` instead of `updateContext`; the expression still ships. On top come the Store class, the seroval plugin (P11 estimates 170 B gzip), a subscribe and a cleanup per reader, and `$store` runtime. The only code removed is `updateContext` (about 12 lines). So the client grows by roughly the P11 figure plus per-reader subscription code, and the size goal of J1 is not served; the case for the structure is one mechanism and foreign-store interop, which P15 already says. A fixture can measure it before any ui wave: one provider and 42 readers built both ways with `pnpm bench`-style gzip. Until then 'less' is unsupported.",
+      "estimate": {
+        "value": 170,
+        "unit": "B gzip added at least (P11's own estimate), before reader subscription code"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/codegen/client.ts:1110-1115; runtime/client/context.ts:34-48; J8; P11 estimate",
+        "detail": "the value expression keeps shipping as the update part; the store adds a class, a plugin and subscription code"
+      },
+      "ruling": "open",
+      "ruling_why": "Plausible from the code (the derive part is today's update part), but unmeasured; one fixture of a provider and 42 readers built both ways settles it, and it decides whether the story is about size at all."
+    },
+    {
+      "id": "O9",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P11",
+        "P1"
+      ],
+      "text": "Resume holes in P11. (1) A snapshot holds the 24 handlers; they cross only as `functionReferences`, so an inline arrow that closes over a server-only value fails on the server, as live contexts already do, but the error now names a store, not a context. (2) Identity: records share `refs` (server.ts:2196-2249) so one Store is written once, but a provider that keeps the Store in a local const used by a handler needs that const and `record.v` to point at the same instance, which only holds inside one serialization pass; streamed `#loading` bodies use a child context and are not covered. (3) P1 says the browser compares `get()` with the resumed value and keeps the store's: for a module-level foreign store that changed since the server render (a localStorage-backed store) the bindings already hold the server text, so it needs a repair pass on resume, a new code path P11 does not size. (4) A `$client` callback or effect that calls `set` before the other readers resume notifies no one, so every reader must read `get()` when it subscribes. None of these has a test.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/server.ts:2196-2250 (shared refs, streaming); runtime/serial.ts:140-145; P1 text; P11 text",
+        "detail": "estimate: case (3) needs a new update pass on resume; cases 2 and 4 need tests"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O10",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P13"
+      ],
+      "text": "P13 keeps the ordered pass only for the compiler-written `store.derive` part. A user `store()` that a handler writes, and any foreign store, calls the subscriber from outside the queue, so the reader's `$store` cell must be written through the same queued write (`set(target, slot, value)` under `sendContext`), not directly, or the diamond tests of ordered-updates fail for a reader that also reads a prop or memo of the same change. P13 asks for tests but not for this rule. Positive side, so the claim is fair: `updateContext` scans every scope in `scopes.values()` per update (client/context.ts:38-44), and subscribers replace that scan, which is the one measurable runtime gain of the structure.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/client/context.ts:34-48; runtime/client/updates.ts:391; docs/roadmaps/brumate/nodes/ordered-updates/outcome.md:9",
+        "detail": "scan of all scopes per update today; subscribers must still enter the ordered queue"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O11",
+      "round": 2,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "device",
+      "severity": "low",
+      "answers": [
+        "P15"
+      ],
+      "text": "Moving `$route` and `$navigation` to stores buys no size (P15 says so) and moves cost to apps that use them: `$route()` is gated by HAS_ROUTES (client/context.ts:69), so today an app without it ships none of this, and after the move any app with `$route()` or `$navigation()` ships Store, subscription and plugin. Client navigation then calls `store.set` in `updateRoute` (and on every `$navigation` pending flip, twice per navigation), notifying each reader; the page state would carry a URL object through the plugin where `b-params` carries only params, or the server builds the route Store per request with `get()`. Both are doable but they change resume and navigation code for no gain; the live path for these two is a global write that already works.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/client/context.ts:69-103; runtime/server.ts:709-712; docs/decisions.md:45",
+        "detail": "route is built per read on the server today; HAS_ROUTES feature gate"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O12",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "tokens",
+      "severity": "low",
+      "answers": [
+        "P12"
+      ],
+      "text": "P12's local-only warning is mostly enough, which the numbers show: of the 114 calls that mention a reactive name, 93 mention a local `$signal`, `$memo` or `let` (the warning catches these), 21 mention only a prop (silent stale), and 78 mention neither. The 21 are the case Solid and Svelte also leave to docs. All counts are upper bounds that include names inside arrow bodies. What stays open: the `Object.is` dev check logs only after an update happens, so a test that never updates the prop never sees it, and a value read through a helper call (`computeX(prop)`) is invisible to a local scope lookup. Accepting the 21 as residual is a fair trade against a whole-program check; the cost is a stale value found by users, not by the compiler.",
+      "estimate": {
+        "value": 21,
+        "unit": "calls with a prop-only capture, no warning"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/count-local-vs-prop.py (output evidence/count-local-vs-prop.txt)",
+        "detail": "93 local, 21 props only, 78 neither, of 192"
+      },
+      "ruling": "upheld"
     }
   ],
   "questions": [
@@ -422,6 +670,16 @@
       ],
       "ask": "Can signals or getters go into a static context, as in Solid and Svelte 5?",
       "answer": "No: brumate has no signal runtime like Solid and Svelte; signals are compiled slots, not values that can be passed around."
+    },
+    {
+      "id": "Q3",
+      "by": "judge",
+      "blocks": [
+        "O8",
+        "P5"
+      ],
+      "ask": "What is the story for, if a live context that becomes a store ships the same or more?",
+      "answer": "One clear rule: contexts are static, live data is an explicit store, and readers know which is which. Start with a capped spike (size of one provider and 42 readers both ways, and the four resume holes); the ui waves follow only if it passes."
     }
   ],
   "proofs": [],
@@ -430,6 +688,10 @@
     {
       "round": 1,
       "tokens": 115000
+    },
+    {
+      "round": 2,
+      "tokens": 130000
     }
   ]
 }
