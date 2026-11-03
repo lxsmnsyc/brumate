@@ -1,0 +1,18 @@
+<script module>
+  export function fail(): Promise<string> {
+    return Promise.reject(new Error('stream failed'));
+  }
+</script>
+
+<script>
+  import { $memo } from 'brumate/signals';
+
+  const greeting = $memo(`Hello ${await fail()}`);
+</script>
+
+<p>Page</p>
+#loading {
+  <p class="greeting">{greeting}</p>
+} #else {
+  <p class="fallback">Loading</p>
+}

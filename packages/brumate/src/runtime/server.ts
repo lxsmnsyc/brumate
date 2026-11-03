@@ -52,6 +52,7 @@ import {
   Redirect,
   RequestEvent,
   ServerError,
+  failures,
   idempotentIds,
   isRedirect,
   runEntry,
@@ -458,6 +459,11 @@ export class Context {
   event: RequestEvent | undefined;
   /** Results of server function calls in this render, so the same call runs once. */
   readonly calls: Map<string, unknown> = new Map();
+
+  /** The event of the request, or undefined when the render has none. */
+  requestEvent(): RequestEvent | undefined {
+    return this.root.event;
+  }
 
   /** The event of the page, for `getEvent()` in a component, which the compiler rewrites to this. */
   getEvent(): RequestEvent {
@@ -1456,7 +1462,7 @@ function heldError(error: unknown, ctx?: Context): MemoError {
   if (ctx?.isDev()) {
     sent = error instanceof Error ? error : new Error(String(error));
   } else {
-    sent = safeError(error, 'The page could not compute a value');
+    sent = safeError(error, 'The page could not compute a value', ctx?.requestEvent());
   }
   // The mark is what the serial plugin tests, as `brumate.slot` is for slot references.
   return Object.assign(new MemoError(sent), { [Symbol.for('brumate.held')]: true });
@@ -2751,6 +2757,7 @@ export async function render<P>(
   async function renderCatch(
     boundary: Boundary,
     error: unknown,
+    kind: ServerErrorKind,
   ): Promise<{ html: string; ctx: Context; key: string } | undefined> {
     const entry = boundary.catchers.at(-1);
     if (!entry) {
@@ -2761,7 +2768,7 @@ export async function render<P>(
     try {
       return { html: await entry.render(child, error), ctx: child, key: entry.key };
     } catch (failure) {
-      console.error(failure);
+      logError(failure, kind, event);
       return undefined;
     }
   }
@@ -2830,7 +2837,7 @@ export async function render<P>(
       },
       (error: unknown) => {
         if (boundary.cancelled || boundary.around || stopped()) {
-          console.error(error);
+          logError(error, 'stream', event);
           turn(skip);
           return;
         }
@@ -2838,11 +2845,13 @@ export async function render<P>(
         // place, or the browser gets the error when there is no `#try`.
         turn((after) => {
           if (ctx.isDev()) {
-            console.error(error);
+            logError(error, 'stream', event);
           }
-          void renderCatch(boundary, error).then((result) => {
+          void renderCatch(boundary, error, 'stream').then((result) => {
             if (!result) {
-              pending().push(failScript(caught(error, ctx), refs, boundary.id, root, nonce));
+              pending().push(
+                failScript(caught(error, ctx, 'stream'), refs, boundary.id, root, nonce),
+              );
               skip(after);
               return;
             }
@@ -2909,13 +2918,13 @@ export async function render<P>(
           continue;
         }
         if (ctx.isDev()) {
-          console.error(error);
+          logError(error, 'page', event);
         }
         // oxlint-disable-next-line no-await-in-loop -- The bodies settle in the order of the page.
-        const replacement = await renderCatch(boundary, error);
+        const replacement = await renderCatch(boundary, error, 'page');
         if (!replacement) {
           // The fallback stays in the page.
-          console.error(error);
+          logError(error, 'page', event);
           continue;
         }
         catches.push([replacement.key, replacement.html]);
@@ -3264,12 +3273,76 @@ async function writeParts(
  * The message and status that answer an error. A `ServerError` sends its
  * own. Any other error is logged, and sends `fallback` with status 500.
  */
-function errorAnswer(error: unknown, fallback: string): { message: string; status: number } {
+function errorAnswer(
+  error: unknown,
+  fallback: string,
+  kind: ServerErrorKind,
+  event: RequestEvent | undefined,
+): { message: string; status: number } {
   if (error instanceof ServerError) {
     return { message: error.message, status: error.status };
   }
-  console.error(error);
+  logError(error, kind, event);
   return { message: fallback, status: 500 };
+}
+
+/** Where the server met an error: `'stream'` is a `#loading` body or a route after the response started. */
+export type ServerErrorKind = RequestKind | 'stream';
+
+/** What `onError` of `src/middleware.ts` knows about an error. */
+export interface ServerErrorInfo {
+  /** The request that met the error, when there is one. */
+  event: RequestEvent | undefined;
+  kind: ServerErrorKind;
+}
+
+/** The `onError` export of `src/middleware.ts`. */
+export type ServerErrorHandler = (error: unknown, info: ServerErrorInfo) => unknown;
+
+failures.report = (error, event) => logError(error, event.kind, event);
+
+/** The `onError` of the app, set by each request. */
+let errorHandler: ServerErrorHandler | undefined;
+
+/** Errors that the handler got, so an error read in two places counts once. */
+const handled = new WeakSet<object>();
+
+/**
+ * Logs an error of the server, or gives it to `onError` when the app has one, which then logs
+ * what it wants. A `ServerError` is an answer, so the handler does not get it. A handler that
+ * fails has its error logged with the first one.
+ */
+function logError(error: unknown, kind: ServerErrorKind, event: RequestEvent | undefined): void {
+  const handler = errorHandler;
+  if (!handler) {
+    console.error(error);
+    return;
+  }
+  if (error instanceof ServerError) {
+    return;
+  }
+  if (typeof error === 'object' && error !== null) {
+    if (handled.has(error)) {
+      return;
+    }
+    handled.add(error);
+  }
+  // The body of a `#defer` block streams in a response of its own.
+  if (kind === 'stream' && event?.kind === 'defer') {
+    kind = 'defer';
+  }
+  function fail(failure: unknown): void {
+    console.error(failure);
+    console.error(error);
+  }
+  try {
+    const result = handler(error, { event, kind });
+    if (isThenable(result)) {
+      Promise.resolve(result).catch(fail);
+    }
+  } catch (failure) {
+    fail(failure);
+  }
 }
 
 /** Errors that `safeError` logged, so a failure read in two places logs once. */
@@ -3280,15 +3353,20 @@ const logged = new WeakSet<object>();
  * `ServerError`, or `fallback`, and no stack, which holds paths of the server. Any other error is
  * logged once. A thrown value that is not an object is logged each time.
  */
-function safeError(error: unknown, fallback: string): Error {
+function safeError(
+  error: unknown,
+  fallback: string,
+  event?: RequestEvent,
+  kind?: ServerErrorKind,
+): Error {
   let message = fallback;
   if (error instanceof ServerError) {
     message = error.message;
   } else if (typeof error !== 'object' || error === null) {
-    console.error(error);
+    logError(error, kind ?? event?.kind ?? 'page', event);
   } else if (!logged.has(error)) {
     logged.add(error);
-    console.error(error);
+    logError(error, kind ?? event?.kind ?? 'page', event);
   }
   const safe = new Error(message);
   safe.stack = '';
@@ -3302,11 +3380,11 @@ function safeError(error: unknown, fallback: string): Error {
  * logged, as for a server function that fails. The body renders with this value too, so the
  * HTML cannot print what the state does not carry.
  */
-export function caught(error: unknown, ctx: Context): unknown {
+export function caught(error: unknown, ctx: Context, kind?: ServerErrorKind): unknown {
   if (ctx.isDev()) {
     return error;
   }
-  return safeError(error, 'The page could not render this part');
+  return safeError(error, 'The page could not render this part', ctx.requestEvent(), kind);
 }
 
 /** True for a request that a `<form>` sent, without client code. */
@@ -3393,22 +3471,28 @@ function skewAnswer(build: string): Response {
 async function callWithForm(
   invoke: () => unknown,
   headers: Headers,
+  event: RequestEvent,
   base?: string,
 ): Promise<{ result: unknown } | { answer: Response }> {
   try {
     return { result: await invoke() };
   } catch (error) {
-    return { answer: formFailure(error, headers, base) };
+    return { answer: formFailure(error, headers, event, base) };
   }
 }
 
 /** The answer to a form post whose server function threw, or whose data could not be read. */
-function formFailure(error: unknown, headers: Headers, base?: string): Response {
+function formFailure(
+  error: unknown,
+  headers: Headers,
+  event: RequestEvent,
+  base?: string,
+): Response {
   if (error instanceof Redirect) {
     headers.set('location', base ? new URL(error.location, base).href : error.location);
     return respond(null, { status: error.status, headers });
   }
-  const { message, status } = errorAnswer(error, 'The server function failed');
+  const { message, status } = errorAnswer(error, 'The server function failed', 'call', event);
   headers.set('content-type', 'text/plain; charset=utf-8');
   return respond(message, { status, headers });
 }
@@ -3420,7 +3504,7 @@ function formFailure(error: unknown, headers: Headers, base?: string): Response 
  */
 async function handleForm(invoke: () => unknown, event: RequestEvent): Promise<Response> {
   const { headers } = event;
-  const outcome = await callWithForm(invoke, headers);
+  const outcome = await callWithForm(invoke, headers, event);
   if ('answer' in outcome) {
     return outcome.answer;
   }
@@ -3460,6 +3544,11 @@ export interface RequestOptions {
    * The Vite plugin passes the default export of `src/middleware.ts`.
    */
   middleware?: EntryMiddleware;
+  /**
+   * The `onError` export of `src/middleware.ts`, which gets each error of the server that is not
+   * a `ServerError`, in place of `console.error`. The Vite plugin passes it.
+   */
+  onError?: ServerErrorHandler;
   /**
    * The middleware of each `'use server'` file, by the ID of each of its
    * functions. It runs before the function, after the middleware of the
@@ -3530,6 +3619,7 @@ export async function handleRequest(
   prefix = '/_brumate',
   options: RequestOptions = {},
 ): Promise<Response | undefined> {
+  errorHandler = options.onError;
   const url = new URL(request.url);
   if (request.method !== 'POST' || !url.pathname.startsWith(`${prefix}/`)) {
     return undefined;
@@ -3568,7 +3658,9 @@ export async function handleRequest(
   try {
     args = form ? [await request.formData()] : await readArgs(request);
   } catch (error) {
-    return posted ? formFailure(error, event.headers) : callFailure(error, event.headers);
+    return posted
+      ? formFailure(error, event.headers, event)
+      : callFailure(error, event.headers, event);
   }
   event.call = { id, args };
   // The function runs with its event, so `getEvent()` before its first await returns it.
@@ -3616,17 +3708,17 @@ async function answerCall(
       { headers },
     );
   } catch (error) {
-    return callFailure(error, headers);
+    return callFailure(error, headers, event);
   }
 }
 
 /** The answer to a call whose server function threw, or whose arguments could not be read. */
-function callFailure(error: unknown, headers: Headers): Response {
+function callFailure(error: unknown, headers: Headers, event: RequestEvent): Response {
   if (error instanceof Redirect) {
     headers.set('x-brumate-redirect', error.location);
     return respond(null, { status: 204, headers });
   }
-  const { message, status } = errorAnswer(error, 'The server function failed');
+  const { message, status } = errorAnswer(error, 'The server function failed', 'call', event);
   headers.set('content-type', 'application/json');
   return respond(JSON.stringify({ error: message }), { status, headers });
 }
@@ -3898,6 +3990,7 @@ async function runAction(
   const outcome = await callWithForm(
     () => withEvent(event, () => fn(...args)),
     new Headers(),
+    event,
     request.url,
   );
   return 'answer' in outcome ? outcome : { actions: new Map([[fn, outcome.result]]) };
@@ -3929,7 +4022,7 @@ async function readAction(
   try {
     event.call = { id, args: [await request.formData()] };
   } catch (error) {
-    return formFailure(error, new Headers(), request.url);
+    return formFailure(error, new Headers(), event, request.url);
   }
   return undefined;
 }
@@ -4145,7 +4238,7 @@ async function renderError(
       });
     } catch (failure) {
       // An error file that throws hands the error to the one outside it.
-      console.error(failure);
+      logError(failure, options.event?.kind ?? 'page', options.event);
     }
   }
   return undefined;
@@ -4187,6 +4280,7 @@ export async function handleRoute(
   request: Request,
   options: RouteOptions = {},
 ): Promise<Response | undefined> {
+  errorHandler = options.onError;
   if (
     options.shell !== undefined &&
     (request.method === 'GET' || request.method === 'HEAD') &&
@@ -4277,7 +4371,7 @@ function fillHoles(
         ? await answer.text()
         : '';
     } catch (error) {
-      console.error(error);
+      logError(error, 'defer', undefined);
       return '';
     }
   }
@@ -4389,7 +4483,15 @@ async function answerRoute(
     const handler =
       endpoint[request.method] ?? (request.method === 'HEAD' ? endpoint.GET : undefined);
     if (handler) {
-      return withEvent(options.event, () => handler(request, match.params));
+      try {
+        return await withEvent(options.event, () => handler(request, match.params));
+      } catch (error) {
+        // A redirect is an answer, and so is a `ServerError`, which `logError` leaves out.
+        if (!isRedirect(error)) {
+          logError(error, 'endpoint', options.event);
+        }
+        throw error;
+      }
     }
     if (match.view.load === missingPage || request.method !== 'GET') {
       const allow: string[] = [];
@@ -4460,11 +4562,12 @@ async function renderRoute(
       });
     }
     if (options.dev && !(error instanceof ServerError)) {
+      logError(error, options.event?.kind ?? 'page', options.event);
       throw error;
     }
     const page = await renderError(
       match.errors,
-      errorAnswer(error, 'Something went wrong'),
+      errorAnswer(error, 'Something went wrong', options.event?.kind ?? 'page', options.event),
       match.params,
       request,
       options,

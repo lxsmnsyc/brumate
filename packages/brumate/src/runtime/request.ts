@@ -48,6 +48,9 @@ export interface RequestEventOptions {
   prerender?: boolean;
 }
 
+/** Where the server takes the error of a `waitUntil` promise that no host keeps, in place of the log. */
+export const failures: { report?: (error: unknown, event: RequestEvent) => void } = {};
+
 /**
  * A request that the server handles: a server function call, a form post,
  * a page render, or a call of middleware or an endpoint. Its methods read
@@ -220,7 +223,7 @@ export class RequestEvent {
     if (this.keepGoing) {
       this.keepGoing(promise);
     } else {
-      promise.catch((error: unknown) => console.error(error));
+      promise.catch((error: unknown) => (failures.report ?? console.error)(error, this));
     }
   }
 

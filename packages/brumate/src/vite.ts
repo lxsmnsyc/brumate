@@ -424,6 +424,10 @@ function buildFingerprint(): string {
   return fingerprint;
 }
 
+/** The entry middleware exports `onError`, as a function, a variable or a name in a list. */
+const EXPORTS_ON_ERROR =
+  /\bexport\s+(?:async\s+)?(?:function\s*\*?|const|let|var)\s+onError\b|\bexport\s*\{[^}]*\bonError\b[^}]*\}/;
+
 /** The Vite plugin for `.brm` files. */
 export default function brumate(options: BrumateOptions = {}): Plugin {
   const rpc = options.rpc ?? '/_brumate';
@@ -440,6 +444,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       return undefined;
     }
     return file;
+  }
+  /** True when the entry middleware exports `onError`. */
+  function hasErrorHook(file: string): boolean {
+    return EXPORTS_ON_ERROR.test(readFileSync(file, 'utf8'));
   }
   /** The serial entry, when the app has one. */
   function serialFile(): string | undefined {
@@ -1136,7 +1144,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       ...(env ? [`import ${JSON.stringify(env)};`] : []),
       ...serialImports(),
       "import { handleRequest } from 'brumate/server';",
-      ...(entry ? [`import middleware from ${JSON.stringify(entry)};`] : []),
+      ...(entry
+        ? [
+            `import middleware${hasErrorHook(entry) ? ', { onError }' : ''} from ${JSON.stringify(entry)};`,
+          ]
+        : []),
       ...imports,
       ...fileImports,
       'export const functions = {',
@@ -1147,7 +1159,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       ...guards,
       '};',
       'export function handle(request, options) {',
-      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])}, ${entry ? 'middleware, ' : ''}fileMiddleware${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`}, ...options });`,
+      `  return handleRequest(functions, request, ${JSON.stringify(rpc)}, { origins: ${JSON.stringify(options.origins ?? [])}, ${entry ? 'middleware, ' : ''}${entry && hasErrorHook(entry) ? 'onError, ' : ''}fileMiddleware${buildId === undefined ? '' : `, build: ${JSON.stringify(buildId)}`}, ...options });`,
       '}',
     ].join('\n');
   }
@@ -1197,6 +1209,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   function routeTree(server = false): string {
     const env = envFile();
     const hints = clientHints();
+    const entry = middlewareFile();
     const code = routeModule(
       currentRoutes(),
       (file) =>
@@ -1204,10 +1217,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       rpc,
       options.origins,
       isServe,
-      middlewareFile(),
+      entry,
       buildId,
       hints.all,
       hints.bundles,
+      entry !== undefined && hasErrorHook(entry),
     );
     // The variables are checked when the server starts, before any route loads.
     const serial = serialImports().join('\n');
@@ -2273,7 +2287,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         return [
           "import { answerCalls as answer, createMount, createVisit } from 'brumate/testing';",
           `import { load } from ${JSON.stringify(MANIFEST)};`,
-          ...(entry ? [`import middleware from ${JSON.stringify(entry)};`] : []),
+          ...(entry
+            ? [
+                `import middleware${hasErrorHook(entry) ? ', { onError }' : ''} from ${JSON.stringify(entry)};`,
+              ]
+            : []),
           `export const mount = createMount({ load, rpc: ${JSON.stringify(rpc)} });`,
           // The routes and the server code load on the first visit, so a test of components skips them.
           'export const visit = createVisit({',
@@ -2285,7 +2303,7 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           // The server code of the app loads on the first call, so a test that makes none skips it.
           'export function answerCalls(options) {',
           `  const server = import(${JSON.stringify(SERVER)});`,
-          `  return answer(async () => (await server).functions, { rpc: ${JSON.stringify(rpc)}, ${entry ? 'middleware, ' : ''}fileMiddleware: async () => (await server).fileMiddleware, ...options });`,
+          `  return answer(async () => (await server).functions, { rpc: ${JSON.stringify(rpc)}, ${entry ? 'middleware, ' : ''}${entry && hasErrorHook(entry) ? 'onError, ' : ''}fileMiddleware: async () => (await server).fileMiddleware, ...options });`,
           '}',
         ].join('\n');
       }

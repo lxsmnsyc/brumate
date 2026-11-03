@@ -16,7 +16,7 @@ import type { ClientModule } from './client.ts';
 import { start } from './loader.ts';
 import { wholeNodes } from './nodes.ts';
 import { handleRequest, render } from './server.ts';
-import type { Component, EntryMiddleware, RenderOptions } from './server.ts';
+import type { Component, EntryMiddleware, RenderOptions, ServerErrorHandler } from './server.ts';
 
 /** The middleware of files of server functions, by function ID. */
 type FileMiddleware = Record<string, EntryMiddleware>;
@@ -361,6 +361,8 @@ export interface AnswerOptions {
   onCall?: (id: string) => void;
   /** The middleware of the entry, which runs before each call. `virtual:brumate/testing` passes the app's. */
   middleware?: EntryMiddleware;
+  /** The `onError` of the entry middleware, which gets the errors of calls. `virtual:brumate/testing` passes the app's. */
+  onError?: ServerErrorHandler;
   /**
    * The middleware of each `'use server'` file, by function ID, or a
    * function that imports them. `virtual:brumate/testing` passes them.
@@ -433,6 +435,7 @@ export function answerCalls(
     function handle(): Promise<Response | undefined> {
       return handleRequest(registry, request, prefix, {
         middleware: options.middleware,
+        onError: options.onError,
         fileMiddleware,
       });
     }
