@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-03
-spent: 175000
+spent: 232000
 owns:
   - packages/brumate/test/server-on-error.test.ts
 shared:
