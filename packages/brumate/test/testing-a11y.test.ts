@@ -3,7 +3,7 @@ import { createVitest } from 'vitest/node';
 import { expect, it } from 'vitest';
 import brumate from '../src/vite.ts';
 
-// test/testing-a11y/a11y.fixture.ts checks mounted components with axe-core, in happy-dom.
+// test/testing-a11y/*.fixture.ts check mounted components and visited pages with axe-core, in happy-dom.
 const root = fileURLToPath(new URL('./testing-a11y/', import.meta.url));
 const runtime = (name: string): string =>
   fileURLToPath(new URL(`../src/runtime/${name}.ts`, import.meta.url));
@@ -38,7 +38,7 @@ it('checks a mounted component with axe-core', async () => {
     expect(result.unhandledErrors).toEqual([]);
     expect(
       result.testModules.flatMap((module) => Array.from(module.children.allTests('passed'))),
-    ).toHaveLength(5);
+    ).toHaveLength(7);
   } finally {
     await vitest.close();
     process.exitCode = exitCode;

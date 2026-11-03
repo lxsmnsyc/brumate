@@ -208,7 +208,7 @@ it('names the button', async () => {
 ```
 
 - axe-core is an optional peer dependency. Install it with `npm install --save-dev axe-core`. A test file that never calls the check does not load it, and the error without it says how to install it.
-- For `mount`, the rules about a whole page, such as `landmark-one-main` and `region`, are off. For `visit` they are on, except while a modal or a menu makes the page inert (an element with `inert` or `aria-modal="true"`).
+- For `mount`, the rules about a whole page, such as `landmark-one-main` and `region`, are off. For `visit` they are on. While an element with `inert` or `aria-modal="true"` is in the page, only the landmark and region rules are off, and the rules about the document, such as `document-title` and `html-has-lang`, stay on.
 - The rules that need layout, such as `color-contrast`, are off, since the DOM of a test has none. Run those in an end-to-end test in a browser.
 - `checkAccessibility({ rules: { 'button-name': { enabled: false } } })` turns a rule off or on by its ID.
 

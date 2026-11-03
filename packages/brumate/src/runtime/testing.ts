@@ -77,22 +77,22 @@ export interface Checks {
   /**
    * Runs axe-core on what the test rendered, and throws with each violation,
    * its element and its fix. Needs `axe-core` installed. Rules about a whole
-   * page, such as `landmark-one-main`, are off for `mount` and while a modal
-   * makes the page inert. Rules that need layout, such as `color-contrast`,
+   * page are off for `mount`. The landmark rules, such as `landmark-one-main`,
+   * are off for `visit` while an element with `inert` or `aria-modal="true"`
+   * is in the page. Rules that need layout, such as `color-contrast`,
    * are off, since the DOM of a test has none.
    */
   checkAccessibility: (options?: AccessibilityOptions) => Promise<void>;
 }
 
-/** The rules about a whole page. */
-const PAGE_RULES = [
+/** The rules about the document itself, which stay on for a page that an inert background covers. */
+const DOCUMENT_RULES = ['bypass', 'document-title', 'html-has-lang', 'html-lang-valid'];
+
+/** The rules about the landmarks of a page, which an inert background breaks. */
+const LANDMARK_RULES = [
   'landmark-one-main',
   'page-has-heading-one',
   'region',
-  'bypass',
-  'document-title',
-  'html-has-lang',
-  'html-lang-valid',
   'landmark-unique',
   'landmark-no-duplicate-banner',
   'landmark-no-duplicate-contentinfo',
@@ -128,10 +128,15 @@ function checks(root: Element | Document, wholePage: boolean): Checks {
       for (const id of LAYOUT_RULES) {
         rules[id] = { enabled: false };
       }
-      // An open modal or menu makes the rest of the page inert, so rules about the page are off.
+      // An element that makes the rest of the page inert breaks the landmark rules.
       const inert = wholePage && document.querySelector('[inert], [aria-modal="true"]') !== null;
       if (!wholePage || inert) {
-        for (const id of PAGE_RULES) {
+        for (const id of LANDMARK_RULES) {
+          rules[id] = { enabled: false };
+        }
+      }
+      if (!wholePage) {
+        for (const id of DOCUMENT_RULES) {
           rules[id] = { enabled: false };
         }
       }
