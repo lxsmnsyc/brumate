@@ -48,33 +48,38 @@ export function u3($$s) {
 export function u5($$s) {
   $$b.content($$s, 0, $$b.get($$s.p, 0));
 }
+const $$k0 = $$b.template("<p b-x=\"0\" class=\"body\">Client </p>", 1);
 export function r2($$p) {
   let $$html = '';
   let count = $$b.get($$p, 0);
-  const $$s2 = $$b.createScope(2, $$p);
-  $$html += "<p class=\"body\">Client <!--t" + $$s2 + ":0-->" + $$b.insert((count)) + "<!--/t--></p>";
-  return $$html;
+  const $$s2 = $$b.createScope(2, $$p, undefined, 1);
+  const $$e = $$b.clone($$k0), $$f = $$e[1];
+  $$b.appendText($$s2, 0, $$e[0], (count));
+  return $$f;
 }
-const $$k0 = [3];
+const $$k1 = [3];
 export function k2($$s) {
-  $$b.fill($$s, 1, r2, $$k0);
+  $$b.fill($$s, 1, r2, $$k1);
 }
 
 # Render module
 import * as $$b from 'brumate/client';
+const $$t0 = $$b.template("<button b-x=\"0\" class=\"outer\" b-on=\"click=ClientElse_1w4g5uu#h1\"></button><template b-x=\"1\" b-client=\"idle=ClientElse_1w4g5uu#k2\"></template><!--x2--><p class=\"fallback\">Loading <button b-x=\"3\" class=\"inner\" b-on=\"click=ClientElse_1w4g5uu#h4\"></button></p><!--/b-->", 4, undefined, 1);
 
 export default function ClientElse($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "ClientElse_1w4g5uu");
   let count = (0);
-  $$html += "<button class=\"outer\" b-b=\"" + $$s1 + ":0\" b-on=\"click=ClientElse_1w4g5uu#h1\">" + $$b.insert((count)) + "</button><template b-b=\"" + $$s1 + ":1\" b-client=\"idle=ClientElse_1w4g5uu#k2\"></template><!--b" + $$s1 + ":1-->";
-  {
-    const $$s3 = $$b.createScope(3, $$s1);
-    $$html += "<p class=\"fallback\">Loading <button class=\"inner\" b-b=\"" + $$s3 + ":0\" b-on=\"click=ClientElse_1w4g5uu#h4\">" + $$b.insert((count)) + "</button></p>";
-  }
-  $$html += "<!--/b-->";
+    const $$s3 = $$b.createScope(3, $$s1, undefined, 1);
+  const $$e = $$b.clone($$t0), $$f = $$e[4];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.setContent($$e[0], (count), $$s1);
+  $$b.keep($$s1, 1, $$e[1]);
+  $$b.markBlock($$e[2], $$s1, 1, "");
+  $$b.keep($$s3, 0, $$e[3]);
+  $$b.setContent($$e[3], (count), $$s3);
   $$b.setSlots($$s1, [count]);
-  return $$html;
+  return $$f;
 }
 ClientElse.brumateId = "ClientElse_1w4g5uu";
 

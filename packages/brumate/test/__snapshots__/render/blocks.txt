@@ -176,23 +176,25 @@ export function u15($$s) {
 export function u18($$s) {
   $$b.attr($$s, 0, "class", (($$b.get($$s.p, 0) === 'a') ? "active" : ""));
 }
+const $$k4 = $$b.template("<p>A</p>", 0);
 export function r3($$p) {
   let $$html = '';
-  $$html += "<p>A</p>";
-  return $$html;
+  const $$e = $$b.clone($$k4), $$f = $$e[0];
+  return $$f;
 }
+const $$k5 = $$b.template("<p>B</p>", 0);
 export function r4($$p) {
   let $$html = '';
-  $$html += "<p>B</p>";
-  return $$html;
+  const $$e = $$b.clone($$k5), $$f = $$e[0];
+  return $$f;
 }
-const $$k4 = $$b.template("<li b-x=\"0\"><!--x1-->. </li>", 2);
+const $$k6 = $$b.template("<li b-x=\"0\"><!--x1-->. </li>", 2);
 export function r5($$p, $$item, $$index) {
   let $$html = '';
   const item = $$item;
   const i = $$index;
   const $$s5 = $$b.createScope(5, $$p, undefined, 3);
-  const $$e = $$b.clone($$k4), $$f = $$e[2];
+  const $$e = $$b.clone($$k6), $$f = $$e[2];
   $$b.keep($$s5, 0, $$e[0]);
   $$b.appendText($$s5, 2, $$e[0], (item));
   $$b.keepText($$s5, 1, $$e[1], (i));
@@ -200,38 +202,44 @@ export function r5($$p, $$item, $$index) {
   $$b.setItem($$s5, $$item);
   return $$f;
 }
-const $$k5 = $$b.template("<li>Empty</li>", 0);
+const $$k7 = $$b.template("<li>Empty</li>", 0);
 export function r6($$p) {
   let $$html = '';
-  const $$e = $$b.clone($$k5), $$f = $$e[0];
+  const $$e = $$b.clone($$k7), $$f = $$e[0];
   return $$f;
 }
+const $$k8 = $$b.template("<!--x0-->", 1);
 export function r9($$p) {
   let $$html = '';
   const $$s9 = $$b.createScope(9, $$p);
-  $$html += $$b.component(Broken, {  }, undefined, $$s9);
-  return $$html;
+  const $$e = $$b.clone($$k8), $$f = $$e[1];
+  $$b.place($$e[0], $$b.componentNodes(Broken, {  }, undefined, $$s9));
+  return $$f;
 }
+const $$k9 = $$b.template("<p b-x=\"0\"></p>", 1);
 export function r10($$p, $$error) {
   let $$html = '';
   const error = $$error;
-  const $$s10 = $$b.createScope(10, $$p);
-  $$html += "<p b-b=\"" + $$s10 + ":0\">" + $$b.insert((String(error))) + "</p>";
+  const $$s10 = $$b.createScope(10, $$p, undefined, 1);
+  const $$e = $$b.clone($$k9), $$f = $$e[1];
+  $$b.keep($$s10, 0, $$e[0]);
+  $$b.setContent($$e[0], (String(error)), $$s10);
   $$b.setSlots($$s10, [error]);
-  return $$html;
+  return $$f;
 }
+const $$k10 = $$b.template("<p>Client only</p>", 0);
 export function r11($$p) {
   let $$html = '';
-  $$html += "<p>Client only</p>";
-  return $$html;
+  const $$e = $$b.clone($$k10), $$f = $$e[0];
+  return $$f;
 }
 export function k11($$s) {
   $$b.fill($$s, 6, r11);
 }
-const $$k6 = $$b.template("Dynamic", 0);
+const $$k11 = $$b.template("Dynamic", 0);
 export function n0($$p) {
   let $$html = '';
-  const $$e = $$b.clone($$k6), $$f = $$e[0];
+  const $$e = $$b.clone($$k11), $$f = $$e[0];
   return $$f;
 }
 

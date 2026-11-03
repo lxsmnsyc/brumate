@@ -76,11 +76,12 @@ export function r2($$p) {
   $$b.addPortal($$portal0);
   return '';
 }
+const $$k3 = $$b.template("<span class=\"targeted\">In the target</span>", 0);
 export function r5($$p) {
   let $$html = '';
   const $$s5 = $$b.createScope(5, $$p);
-  $$html += "<span class=\"targeted\">In the target</span>";
-  return $$html;
+  const $$e = $$b.clone($$k3), $$f = $$e[0];
+  return $$f;
 }
 export function k5($$s) {
   $$b.portalTo($$s, '#target', r5);
