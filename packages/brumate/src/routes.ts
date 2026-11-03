@@ -108,8 +108,6 @@ export function routeModule(
   hints: string[] = [],
   /** The chunks of the bundle of each root component, by ID, from the client build. */
   bundleHints: Record<string, string[]> = {},
-  /** True when the entry middleware exports `onError`. */
-  onError = false,
 ): string {
   // Static imports in a build, because the server registry of server functions imports every
   // file anyway. In development, a route loads when a request needs it, so a file that does not
@@ -162,13 +160,11 @@ export function routeModule(
     "import { handleRoute } from 'brumate/server';",
     // Forms without scripts post to their page, which runs the server function.
     "import { functions, fileMiddleware } from 'virtual:brumate/server';",
-    ...(middleware
-      ? [`import middleware${onError ? ', { onError }' : ''} from ${JSON.stringify(middleware)};`]
-      : []),
+    ...(middleware ? [`import * as entry from ${JSON.stringify(middleware)};`] : []),
     ...imports,
     `export const routes = ${routes};`,
     'export function handle(request, options) {',
-    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware' : ''}${middleware && onError ? ', onError' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options });`,
+    `  return handleRoute(routes, request, { rpc: ${JSON.stringify(rpc)}, origins: ${JSON.stringify(origins)}, functions, fileMiddleware${middleware ? ', middleware: entry.default, onError: entry.onError' : ''}${dev ? ', dev: true' : ''}${build === undefined ? '' : `, build: ${JSON.stringify(build)}`}${hints.length > 0 ? `, hints: ${JSON.stringify(hints)}` : ''}${Object.keys(bundleHints).length > 0 ? `, bundleHints: ${JSON.stringify(bundleHints)}` : ''}, ...options });`,
     '}',
   ].join('\n');
 }

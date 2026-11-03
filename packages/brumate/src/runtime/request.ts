@@ -46,10 +46,36 @@ export interface RequestEventOptions {
   address?: string;
   /** True while the build prerenders the page. Rate limits do not count then. */
   prerender?: boolean;
+  /** The `onError` of the app, which gets the errors of this request. */
+  onError?: ServerErrorHandler;
 }
 
 /** Where the server takes the error of a `waitUntil` promise that no host keeps, in place of the log. */
 export const failures: { report?: (error: unknown, event: RequestEvent) => void } = {};
+
+/** Where the server met an error: `'stream'` is a `#loading` body or a route after the response started. */
+export type ServerErrorKind = RequestKind | 'stream';
+
+/** What `onError` of `src/middleware.ts` knows about an error. */
+export interface ServerErrorInfo {
+  /** The request that met the error, when there is one. */
+  event: RequestEvent | undefined;
+  kind: ServerErrorKind;
+}
+
+/** The `onError` export of `src/middleware.ts`. */
+export type ServerErrorHandler = (error: unknown, info: ServerErrorInfo) => unknown;
+
+/** The `onError` of a request, with the errors it got, so an error read in two places counts once. */
+export interface ErrorSink {
+  handler: ServerErrorHandler;
+  handled: WeakSet<object>;
+}
+
+/** The sink of a handler, or none without one. */
+export function errorSink(handler: ServerErrorHandler | undefined): ErrorSink | undefined {
+  return handler && { handler, handled: new WeakSet() };
+}
 
 /**
  * A request that the server handles: a server function call, a form post,
@@ -187,6 +213,8 @@ export class RequestEvent {
    * `fetch(url, { signal })`, so work that nobody waits for stops.
    */
   readonly signal: AbortSignal = this.controller.signal;
+  /** Where the errors of the request go, when the app has an `onError`. */
+  readonly errors: ErrorSink | undefined;
   private readonly keepGoing?: (promise: Promise<unknown>) => void;
 
   constructor(request: Request, options: RequestEventOptions = {}) {
@@ -195,6 +223,7 @@ export class RequestEvent {
     this.keepGoing = options.waitUntil;
     this.address = options.address;
     this.prerender = options.prerender ?? false;
+    this.errors = errorSink(options.onError);
     watchPersonal(request.headers, () => {
       this.personal = true;
     });

@@ -285,25 +285,124 @@ describe('onError of the server', () => {
 });
 
 describe('the route module', () => {
-  it('imports onError from the entry middleware only when it exports one', () => {
-    const files = routeFiles(['index.brm']);
-    const resolve = (file: string) => `/r/${file}`;
-    const without = routeModule(files, resolve, '/_brumate', [], false, '/src/middleware.ts');
-    expect(without).toContain('import middleware from "/src/middleware.ts";');
-    expect(without).not.toContain('onError');
-    const withHook = routeModule(
-      files,
-      resolve,
+  it('reads the middleware and onError from the namespace of the entry file', () => {
+    const code = routeModule(
+      routeFiles(['index.brm']),
+      (file) => `/r/${file}`,
       '/_brumate',
       [],
       false,
       '/src/middleware.ts',
-      undefined,
-      [],
-      {},
-      true,
     );
-    expect(withHook).toContain('import middleware, { onError } from "/src/middleware.ts";');
-    expect(withHook).toContain('fileMiddleware, middleware, onError');
+    expect(code).toContain('import * as entry from "/src/middleware.ts";');
+    expect(code).toContain('middleware: entry.default, onError: entry.onError');
+  });
+
+  it('works with a file that only exports onError, or exports it under another name', async () => {
+    const only = await import('./server-on-error/only-on-error.ts');
+    const renamed = await import('./server-on-error/renamed.ts');
+    for (const entry of [only, renamed] as {
+      default?: never;
+      onError: ServerErrorHandler;
+      seen: unknown[];
+    }[]) {
+      const boom = new Error('call failed');
+      await handleRequest(
+        {
+          save() {
+            throw boom;
+          },
+        },
+        new Request('http://localhost/_brumate/save', {
+          method: 'POST',
+          body: JSON.stringify(toJSON([])),
+        }),
+        '/_brumate',
+        { middleware: entry.default, onError: entry.onError },
+      );
+      expect(entry.seen).toEqual([boom]);
+    }
+    expect(logged).not.toHaveBeenCalled();
+  });
+});
+
+describe('apps in one process', () => {
+  it('sends the errors of overlapping requests to the hook of their own app', async () => {
+    const first = recorder();
+    const second = recorder();
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const slow = new Error('slow');
+    const quick = new Error('quick');
+    const app = (error: Error, wait?: Promise<void>) => ({
+      async save() {
+        await wait;
+        throw error;
+      },
+    });
+    const post = (functions: ReturnType<typeof app>, onError: ServerErrorHandler) =>
+      handleRequest(
+        functions,
+        new Request('http://localhost/_brumate/save', {
+          method: 'POST',
+          body: JSON.stringify(toJSON([])),
+        }),
+        '/_brumate',
+        { onError },
+      );
+    // The first request starts, the second app answers its own, and then the first fails.
+    const waiting = post(app(slow, gate), first.onError);
+    await post(app(quick), second.onError);
+    release();
+    await waiting;
+    expect(first.seen.map(([error]) => error)).toEqual([slow]);
+    expect(second.seen.map(([error]) => error)).toEqual([quick]);
+  });
+
+  it('counts an error again in another request', async () => {
+    const { onError, seen } = recorder();
+    const boom = new Error('again');
+    for (let round = 0; round < 2; round++) {
+      await handleRequest(
+        {
+          save() {
+            throw boom;
+          },
+        },
+        new Request('http://localhost/_brumate/save', {
+          method: 'POST',
+          body: JSON.stringify(toJSON([])),
+        }),
+        '/_brumate',
+        { onError },
+      );
+    }
+    expect(seen).toHaveLength(2);
+  });
+
+  it('sends the error of a render without a request to the onError option', async () => {
+    const { onError, seen } = recorder();
+    const module = await load('failing-loading');
+    const { render } = await import('../src/runtime/server.ts');
+    const parts = await render(module.default, {}, { onError });
+    for await (const chunk of parts.pending) {
+      void chunk;
+    }
+    expect(seen.filter(([error]) => String(error).includes('stream failed'))).toHaveLength(1);
+  });
+
+  it('rethrows an endpoint error without logging it when there is no hook', async () => {
+    const boom = new Error('endpoint failed');
+    const tree = {
+      endpoint: async () => ({
+        GET() {
+          throw boom;
+        },
+      }),
+    };
+    await expect(handleRoute(tree as never, new Request('http://localhost/'))).rejects.toBe(boom);
+    expect(logged).not.toHaveBeenCalled();
   });
 });

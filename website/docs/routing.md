@@ -237,7 +237,7 @@ export function onError(error: unknown, info: ServerErrorInfo): void {
 - A `ServerError` is an answer, not a failure, so it does not reach `onError`. An error that the server reads in two places reaches it once.
 - With `onError`, the server does not call `console.error` for these errors. The app logs what it wants. When `onError` throws, or returns a promise that rejects, the server logs its error and the first one with `console.error`, and the request goes on.
 - The response does not change: `_error.brm`, the statuses and the messages are the same. The hook runs in development too, and the dev server shows the same error page.
-- The default export is required, as the plugin imports it with `onError`. `export default defineMiddleware((event, next) => next())` is enough.
+- A file can export `onError` alone, with no default middleware.
 - `virtual:brumate/testing` passes `onError` to `visit` and `answerCalls`, so a test sees the errors of a page.
 
 A `'use server'` file can export `middleware` too, with the same shape. It runs before each function of the file, after the middleware of the entry, for a group of functions with the same rule. The browser gets no stub for it.
