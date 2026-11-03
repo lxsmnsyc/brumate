@@ -208,7 +208,13 @@ export function insertHTML(
   }
 }
 
-/** True when a clone holds markup that it rendered as HTML, whose markers its insert indexes. */
+/**
+ * True when a clone holds markup that it rendered as HTML, or markers and `<template>` elements
+ * of its own (`clone` of an indexed template), whose markers its insert indexes. The flag is
+ * global and the next insert takes it, so an insert that runs between such a clone and its own
+ * insert would take it instead and the clone would not be indexed. No render does that today:
+ * a render makes its clones and returns them, and the insert comes after all of them.
+ */
 let clonedMarkup = false;
 
 /** Notes that a clone holds markup that it rendered as HTML. */

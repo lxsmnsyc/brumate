@@ -150,6 +150,7 @@ type ClonedNode = Element & Comment & DocumentFragment;
  */
 export function clone(source: Template): ClonedNode[] {
   const walk = (source.walk ??= encodeWalk(parseTemplate(source)));
+  // The flag is global: the next insert indexes and starts this clone. See `clonedMarkup`.
   if (source.m) {
     markCloned();
   }

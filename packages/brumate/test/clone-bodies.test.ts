@@ -21,6 +21,7 @@ const forms = {
 const HTML_BODIES = new Set<string>([
   'awaitInline.brm:r2',
   'cloneTemplate.brm:r2',
+  'clonedForeignTry.brm:r2',
   'cloneTry.brm:r2',
   'fields.brm:r2',
   'offscreen.brm:r2',

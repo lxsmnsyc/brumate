@@ -21,7 +21,7 @@ import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
 import { holdsStream, serverFunctionId } from '../plan.ts';
 import { findLoadStarts, hasAwait } from './starts.ts';
-import { cloneLines } from './template.ts';
+import { cloneLines, foreignContext } from './template.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
 import type { Patch } from './patch.ts';
@@ -570,6 +570,11 @@ export class Emitter {
       this.depth++;
       this.braces.push({ kind: 'control' });
     }
+  }
+
+  /** `svg` or `math` when the elements around `owner`, a body or children, put its markup there. */
+  foreignAround(owner: object | undefined): string | undefined {
+    return foreignContext(this.file, owner);
   }
 
   /**
@@ -2443,7 +2448,8 @@ export class Emitter {
     this.atTopLevel(() => this.emitNodes(nodes, scope));
     this.flush();
     // Children whose markup can clone give the clone, which the insert puts in place.
-    const cloned = this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn);
+    const cloned =
+      this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn, node);
     this.line(this.returnLine(fn, cloned));
     this.close('});');
     return name;
@@ -2764,7 +2770,7 @@ export class Emitter {
     const cloned =
       this.options.mode === 'client' &&
       this.options.hoist !== undefined &&
-      cloneLines(this, this.options.hoist, fn);
+      cloneLines(this, this.options.hoist, fn, block.body);
     this.line(cloned ? 'return $$f;' : 'return $$html;');
     this.close('})();');
     // `#head` content goes to the document's head, and portal content to the end of the page.
@@ -3002,7 +3008,8 @@ export class Emitter {
     this.splitBody(scope, content, () => {
       this.flush();
       // The functions of children render HTML.
-      const cloned = this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn);
+      const cloned =
+        this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn, scope?.body);
       this.line(this.returnLine(fn, cloned));
     });
     this.close('};');

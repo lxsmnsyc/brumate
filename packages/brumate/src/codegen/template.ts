@@ -1,7 +1,64 @@
 // Cloned templates of the markup that the browser renders. A render whose markup is one string
 // of static HTML, attributes, the content of elements, and anchors compiles to a `<template>`
 // that it clones, and writes the elements that it marks. The rest renders HTML.
+import type { Markup, SFCFile } from '../ast.ts';
+import { blockBodies } from '../plan.ts';
 import type { Emitter, Level, Part, Settled } from './markup.ts';
+
+const contexts = new WeakMap<SFCFile, Map<object, string | undefined>>();
+
+/**
+ * `svg` or `math` when the elements around a body, or around the children of a component, put
+ * its markup in SVG or MathML, which HTML that the browser parses there would find at run time.
+ * `owner` is the body, or the component or dynamic tag that the children belong to.
+ */
+export function foreignContext(file: SFCFile, owner: object | undefined): string | undefined {
+  if (!owner) {
+    return undefined;
+  }
+  let found = contexts.get(file);
+  if (!found) {
+    found = new Map();
+    contexts.set(file, found);
+    const map = found;
+    const walk = (nodes: Markup[], around: string | undefined): void => {
+      for (const node of nodes) {
+        switch (node.kind) {
+          case 'element': {
+            const tag = node.tag.toLowerCase();
+            let inside = around;
+            if (tag === 'svg' || tag === 'math') {
+              inside = tag;
+            } else if (tag === 'foreignobject') {
+              inside = undefined;
+            }
+            walk(node.children, inside);
+            break;
+          }
+          case 'component':
+          case 'dynamic':
+            map.set(node, around);
+            walk(node.children, around);
+            break;
+          case 'fragment':
+            walk(node.children, around);
+            break;
+          case 'text':
+          case 'insert':
+          case 'listener':
+            break;
+          default:
+            for (const body of blockBodies(node)) {
+              map.set(body, around);
+              walk(body.children, around);
+            }
+        }
+      }
+    };
+    walk(file.children, undefined);
+  }
+  return found.get(owner);
+}
 
 /** What a render writes on an element of its clone. */
 export type Write =
@@ -300,8 +357,10 @@ class Reader {
 export function clonedTemplate(
   parts: readonly Part[],
   filled?: (scope: string, anchor: number) => boolean,
+  around?: string,
 ): ClonedTemplate | undefined {
   const reader = new Reader();
+  reader.foreign = around;
   const writes: Write[][] = [];
   /** The index of each marked element, by its number in the order of the markup. */
   const marks = new Map<number, number>();
@@ -637,7 +696,12 @@ function promised(
  * The lines between the first and the last `$$html +=` can only declare the values of the
  * writes, which run after them. Plain `{` blocks around them go, so the writes see them.
  */
-export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn = 0): boolean {
+export function cloneLines(
+  emitter: Emitter,
+  hoist: (code: string) => string,
+  fn = 0,
+  owner?: object,
+): boolean {
   const { lines: source, levels } = emitter;
   // Lines of the function, and lines in its branches and loops. Others are in functions inside.
   function isTop(at: number): boolean {
@@ -715,6 +779,7 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
   const found = clonedTemplate(
     parts,
     (scope, anchor) => emitter.fills?.has(`${scope}:${anchor}`) ?? false,
+    emitter.foreignAround(owner),
   );
   if (!found) {
     return false;

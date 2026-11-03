@@ -4312,6 +4312,17 @@ describe('cloned SVG', () => {
     expect(document.querySelector('.icon')!.hasAttribute('viewbox')).toBe(false);
   });
 
+  it('parses a body that starts with an ambiguous element inside SVG as SVG', async () => {
+    await resume('clonedForeignTry', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.in-try')).not.toBeNull());
+    const svg = 'http://www.w3.org/2000/svg';
+    // A `#try` body and an `#if` body that start with `<a>`, which HTML puts in the HTML namespace.
+    expect(document.querySelector('.in-try')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.in-try circle')!.namespaceURI).toBe(svg);
+    expect(document.querySelector('.in-if')!.namespaceURI).toBe(svg);
+  });
+
   it('puts an insert after a void element, not inside it', async () => {
     await resume('clonedForeign', {});
     click(document.querySelector('.open')!);
