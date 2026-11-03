@@ -11,10 +11,14 @@
 
 ## Deviations
 
-- Acceptance 1 is met in part. Still on HTML: `#try` that renders in place between markers (try/catch with a rewind of `$$html`), `#for` with a window, `#offscreen`, waits in a body script (19 bodies, listed in `clone-bodies.test.ts`), plus `#template` functions (they return `$$b.raw`) and `children` closures. Cloning these needs a nodes form of `#try` (a `tryNodes` helper) and a fragment return for template calls; each is more than S. Proposed as follow-up nodes.
+- First acceptance criterion: partly met: 19 bodies, listed in test/clone-bodies.test.ts. Still on HTML: `#try` that renders in place between markers (try/catch with a rewind of `$$html`), `#for` with a window, `#offscreen`, waits in a body script (19 bodies, listed in `clone-bodies.test.ts`), plus `#template` functions (they return `$$b.raw`) and `children` closures. Cloning these needs a nodes form of `#try` (a `tryNodes` helper) and a fragment return for template calls; each is more than S. Proposed as follow-up nodes.
 - New file `packages/brumate/test/clone-bodies.test.ts` (outside the shared paths, test only).
 - Runtime change in `inserts.ts` and `templates.ts` (under the shared `runtime/client/**`).
 - No changeset: no user can see the change.
+
+- The held-write fixes (#419, #421) do not reach the in-place `#try` pages yet: their bodies still render HTML.
+- Review fix: a body inside `<svg>` or `<math>` gets its namespace from the elements around it (`foreignContext` in `template.ts`, for every block kind and for children), not only from its first element. Tests: `clonedForeignTry.brm` in `resume.test.ts`.
+- The mis-indented `createScope` line in `clientElse.txt` is left (cosmetic, from the plain block that the clone drops).
 
 ## Stubs left
 
@@ -40,3 +44,5 @@
 ## Size
 
 - Estimated S, actual M: the long tail of causes was found by counting, and the portal and flag changes needed runtime edits.
+
+- Note: the list now has 20 entries; the review-fix page `clonedForeignTry.brm` holds an in-place `#try`, so its outer body is on the list too (the `#try` body inside it clones).
