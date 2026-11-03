@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import WaitDestr from './WaitDestr.brm';
+
+  let open = $signal(false);
+  let k = $signal(1);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<button class="next" onClick=(() => k++)>Next</button>
+#if (open) {
+  <WaitDestr id=(k) />
+}

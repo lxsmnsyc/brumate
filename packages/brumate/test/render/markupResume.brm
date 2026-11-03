@@ -1,0 +1,10 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { markupCounted } from './markupData.ts';
+
+  let n = $signal(1);
+</script>
+
+<p class="text">{markupCounted(`text ${n}`)}</p>
+<p class="constant" title=(markupCounted('constant'))>Constant</p>
+<button class="next" onClick=(() => n++)>Next</button>

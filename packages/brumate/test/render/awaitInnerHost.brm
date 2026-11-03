@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import AwaitInner from './AwaitInner.brm';
+
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  <AwaitInner id=(1) />
+}

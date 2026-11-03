@@ -1,0 +1,15 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { children } = $props();
+</script>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Async values in the browser</title>
+  </head>
+  <body>
+    <main>{children}</main>
+  </body>
+</html>

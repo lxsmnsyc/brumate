@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import WaitUser from './WaitUser.brm';
+
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  #loading {
+    <WaitUser id=(1) />
+  } #else {
+    <p class="fallback">loading</p>
+  }
+}

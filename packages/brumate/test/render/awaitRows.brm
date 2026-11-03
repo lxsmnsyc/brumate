@@ -1,0 +1,19 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  let ids = $signal<number[]>([]);
+</script>
+
+<button class="add" onClick=(() => (ids = [...ids, ids.length + 3]))>Add</button>
+<button class="reverse" onClick=(() => (ids = [...ids].reverse()))>Reverse</button>
+<button class="drop" onClick=(() => (ids = ids.slice(1)))>Drop</button>
+<ul>
+  #for (id of ids by id) {
+    <script>
+      const row = await $memo(loadUser(id));
+      const big = row.name.toUpperCase();
+    </script>
+    <li class="user">{row.name} {big}</li>
+  }
+</ul>

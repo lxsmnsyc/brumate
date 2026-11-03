@@ -24,7 +24,7 @@ import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
-import { instanceScope, scopePath, slotIndex } from './scopes.ts';
+import { instanceScope, mayBePromise, scopePath, slotIndex } from './scopes.ts';
 import { copy, unmarked } from '../sourcemap.ts';
 
 export interface ClientOutput {
@@ -1091,9 +1091,12 @@ class ClientGenerator {
         } else if (this.plan.contents.has(insert!)) {
           fn = 'content';
         }
-        this.emit(
-          `export function ${name('u')}($$s) {\n  $$b.${fn}($$s, ${anchor}, ${expression()});\n}`,
-        );
+        // A value that can be a promise is written once it settles, and the latest wins.
+        const write =
+          fn !== 'writeText' && mayBePromise(site.node, site)
+            ? `$$b.fillValue($$s, ${anchor}, ${expression()}, ($$v) => $$b.${fn}($$s, ${anchor}, $$v))`
+            : `$$b.${fn}($$s, ${anchor}, ${expression()})`;
+        this.emit(`export function ${name('u')}($$s) {\n  ${write};\n}`);
       }
       return;
     }
@@ -1231,8 +1234,10 @@ class ClientGenerator {
       }
       const value =
         parts.length > 1 ? `$$b.mergeAttributes([${parts.join(', ')}])` : (parts[0] ?? '{}');
+      // A spread whose values can be promises writes each one once it settles.
+      const helper = mayBePromise(site.node, site) ? 'fillAttrs' : 'attrs';
       this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.attrs($$s, ${anchor}, ${value}, ${JSON.stringify(own)});\n}`,
+        `export function ${name('u')}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${value}, ${JSON.stringify(own)});\n}`,
       );
     } else if (attribute.kind === 'value') {
       let value =
@@ -1249,9 +1254,10 @@ class ClientGenerator {
           value = `[${classed.join(', ')}]`;
         }
       }
-      this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.attr($$s, ${anchor}, ${JSON.stringify(attribute.name)}, ${value});\n}`,
-      );
+      const write = mayBePromise(attribute.value.ast, site)
+        ? `$$b.fillValue($$s, ${JSON.stringify(`${anchor} ${attribute.name}`)}, ${value}, ($$v) => $$b.attr($$s, ${anchor}, ${JSON.stringify(attribute.name)}, $$v))`
+        : `$$b.attr($$s, ${anchor}, ${JSON.stringify(attribute.name)}, ${value})`;
+      this.emit(`export function ${name('u')}($$s) {\n  ${write};\n}`);
     }
     void node;
   }
@@ -1511,6 +1517,30 @@ class ClientGenerator {
           `export function ${fn}($$s) {\n  $$b.offscreen($$s, ${anchor}, ${header(0)}, ${this.renderName(block.body)}, ${this.plan.bodyScopes.get(block.body)!.id}${held});\n}`,
         );
         return;
+      case 'loading': {
+        // `#loading (posts)` holds while a memo of its header, or a memo upstream of it, loads.
+        const checks: string[] = [];
+        const seen = new Set<Declaration>();
+        for (const read of headers[0]?.reads ?? []) {
+          const slot = slotIndex(this.plan, read.declaration);
+          if (slot !== -1 && !seen.has(read.declaration)) {
+            seen.add(read.declaration);
+            checks.push(
+              `$$b.pending(${scopePath(this.plan, '$$s', base, read.declaration.scope)}, ${slot})`,
+            );
+          }
+        }
+        if (checks.length === 0) {
+          return;
+        }
+        const fallback = block.fallback;
+        const render = fallback ? this.renderName(fallback) : 'undefined';
+        const kinds = this.hoist(`[${fallback ? this.kinds([fallback]).join(', ') : ''}]`);
+        this.emit(
+          `export function ${fn}($$s) {\n  $$b.held($$s, ${anchor}, ${checks.join(' || ')}, ${this.plan.bodyScopes.get(block.body)!.id}, ${render}, ${kinds}${held});\n}`,
+        );
+        return;
+      }
       case 'key': {
         // The block around a dynamic tag keeps the element that the server rendered with the tag.
         const [inner] = block.body.children;
@@ -1588,6 +1618,17 @@ class ClientGenerator {
       ) {
         continue;
       }
+      if (node.block.kind === 'loading') {
+        // The browser renders the fallback of a `#loading` block with a header, never its body.
+        const fallback = node.block.fallback;
+        if (fallback) {
+          this.renders.set(this.plan.bodyScopes.get(fallback)!, {
+            body: fallback,
+            block: node.block,
+          });
+        }
+        continue;
+      }
       if (!['if', 'switch', 'for', 'repeat', 'key', 'offscreen'].includes(node.block.kind)) {
         continue;
       }
@@ -1654,18 +1695,31 @@ class ClientGenerator {
     for (const template of this.declared(inside).slice(1)) {
       emitter.emitTemplate(template.template!);
     }
-    if (isItem) {
-      emitter.emitItem(block, '$$item', '$$index');
-    } else {
-      emitter.emitBody(body);
-    }
-    emitter.flush();
-    // The body of an `#if` or a `#for` whose markup is one string clones a template.
-    const cloned = block.kind === 'if' || block.kind === 'for' ? this.cloneRender(emitter) : false;
+    // The script of the body can split the function at `await $memo`.
+    let cloned = false;
+    emitter.splitBody(
+      scope,
+      () => {
+        if (isItem) {
+          emitter.emitItem(block, '$$item', '$$index');
+        } else {
+          emitter.emitBody(body);
+        }
+      },
+      () => {
+        emitter.flush();
+        // The body of an `#if` or a `#for`, and the fallback of a `#loading`, whose markup is one
+        // string clones a template.
+        cloned =
+          block.kind === 'if' || block.kind === 'for' || block.kind === 'loading'
+            ? this.cloneRender(emitter)
+            : false;
+        emitter.line(emitter.returnLine(0, cloned));
+      },
+    );
     if (fill && !cloned) {
       return undefined;
     }
-    emitter.line(emitter.returnLine(0, cloned));
     emitter.close();
     return emitter.lines.join('\n');
   }

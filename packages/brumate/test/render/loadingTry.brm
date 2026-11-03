@@ -1,0 +1,19 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import LoadUser from './LoadUser.brm';
+
+  let open = $signal(false);
+</script>
+
+#try {
+  <button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+  #if (open) {
+    #loading {
+      <LoadUser id=(1) />
+    } #else {
+      <p class="fallback">loading</p>
+    }
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

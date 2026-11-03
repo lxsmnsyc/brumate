@@ -1,0 +1,10 @@
+<script>
+  import { $isPending, $memo, $props } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  const { id } = $props<{ id: number }>();
+  const side = $memo(loadUser(id + 100));
+  const user = await $memo(loadUser(id));
+</script>
+
+<p class="user">{user.name} {$isPending(side) ? '' : side.name}</p>

@@ -1,13 +1,15 @@
 // `#for` and `#repeat` lists, and the windowed lists that draw only the items in view.
 
-import { HAS_WINDOWS } from '../features.ts';
+import { HAS_ROOT_WAIT, HAS_WINDOWS } from '../features.ts';
 import { parseId } from '../shared.ts';
 import { blockStart, clear, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
 import { insertHTML, refresh } from './insert.ts';
-import { destroy, disposeKinds, inPlace } from './scopes.ts';
-import { scopes } from './state.ts';
+import { destroy, disposeKinds, inPlace, removeBlock } from './scopes.ts';
+import { DEV, scopes } from './state.ts';
 import type { Scope } from './state.ts';
+import { isThenable } from './updates.ts';
+import { hold, holdRow, release } from './waits.ts';
 
 interface Item {
   scope: Scope;
@@ -112,6 +114,20 @@ export function list(
     if (previous.size === 0 && others) {
       return;
     }
+    if (HAS_ROOT_WAIT) {
+      // The items stay until the fallback is ready.
+      hold(
+        start,
+        0,
+        () => (fallback ? fallback(scope) : ''),
+        (out) => {
+          // The items as they are when it shows.
+          removeBlock(scope, [], start, end);
+          insertHTML(end, out);
+        },
+      );
+      return;
+    }
     for (const [id, item] of previous) {
       leave(id, item);
     }
@@ -120,6 +136,9 @@ export function list(
       insertHTML(end, fallback(scope));
     }
     return;
+  }
+  if (HAS_ROOT_WAIT) {
+    release(start);
   }
 
   disposeKinds(scope, fallbackKinds);
@@ -135,6 +154,12 @@ export function list(
   const kept: Item[] = [];
   for (let index = 0; index < count; index++) {
     const id = (keys[index] = key(items[index], index + (park?.from ?? 0)));
+    // Markup waits for a promise in text and attributes only. Production uses the key as it is.
+    if (DEV && isThenable(id)) {
+      throw new Error(
+        'The key of a #for row gives a promise, and the key of a #for cannot wait for one [BRM188]. Await it in the code that runs, or read its value with $memo',
+      );
+    }
     const item = previous.get(id);
     if (item && !item.kept) {
       item.kept = true;
@@ -181,7 +206,17 @@ export function list(
       continue;
     }
     if (!item) {
-      const out = render(scope, items[index], index);
+      let out: string | DocumentFragment;
+      if (HAS_ROOT_WAIT) {
+        // A new row outside every `#loading` shows when its waits end.
+        out = holdRow(scope, () => render(scope, items[index], index));
+        // A row that waits gives nodes, which go in after the HTML of the rows before it.
+        if (typeof out === 'string' ? addedNodes : added) {
+          flushAdded();
+        }
+      } else {
+        out = render(scope, items[index], index);
+      }
       if (typeof out === 'string') {
         added += out;
       } else {

@@ -1,0 +1,27 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import LoadUser from './LoadUser.brm';
+
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  #reveal ('sequential', collapsed) {
+    #loading {
+      <LoadUser id=(1) />
+    } #else {
+      <p class="fallback">one</p>
+    }
+    #loading {
+      <LoadUser id=(2) />
+    } #else {
+      <p class="fallback">two</p>
+    }
+    #loading {
+      <LoadUser id=(3) />
+    } #else {
+      <p class="fallback">three</p>
+    }
+  }
+}

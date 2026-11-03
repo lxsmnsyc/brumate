@@ -16,7 +16,7 @@ import type { ScopeId } from '../shared.ts';
 import { findElement } from './blocks.ts';
 import { childrenReady } from './children.ts';
 import { loadModule, loadingCode } from './code.ts';
-import { fail } from './errors.ts';
+import { fail, reportOnce } from './errors.ts';
 import { call, callNow, setPass } from './references.ts';
 import { afterInsert, descendants, findRoot, resolveScope } from './scopes.ts';
 import {
@@ -46,6 +46,12 @@ export function get(scope: Scope, slot: number): any {
     settle(scope);
   }
   const value = scope.s[slot];
+  // Update code reads a slot that the scope has not reached, as it waits at an earlier `await`:
+  // `setSlots` and resumed records write every slot, so only a wait leaves one out. The queued
+  // update skips on `NotReady`, since the rest of the render writes the page from the slots.
+  if (value === undefined && exempt > 0 && !(slot in scope.s)) {
+    throw new NotReady(Promise.resolve());
+  }
   if (value instanceof Promise && !scope.plain?.has(slot)) {
     // A memo that reads any promise waits for it.
     if (computing > 0) {
@@ -309,7 +315,7 @@ export function isThenable(value: unknown): value is PromiseLike<unknown> {
 export function unreadMemo(scope: Scope | ScopeId, value: unknown): void {
   if (isThenable(value)) {
     const at = resolveScope(scope);
-    value.then(undefined, (error: unknown) => fail(at, error));
+    value.then(undefined, (error: unknown) => reportOnce(at, error));
   }
 }
 
@@ -492,9 +498,13 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   if (guesses?.same(key)) {
     return;
   }
+  // The render computed the memo: a promise loads, and a value stays. A key with a value here
+  // comes from `wait`, or from a promise of the render that settled before this first compute.
   const rendered = scope.s[slot];
-  if (renderedLoads.delete(key) && isThenable(rendered)) {
-    asyncMemo(scope, slot, Promise.resolve(rendered));
+  if (renderedLoads.delete(key)) {
+    if (isThenable(rendered)) {
+      asyncMemo(scope, slot, Promise.resolve(rendered));
+    }
     return;
   }
   let value: unknown;
@@ -814,7 +824,9 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
           origin = before;
         }
       } catch (error) {
-        fail(target, error);
+        if (!(error instanceof NotReady)) {
+          fail(target, error);
+        }
       }
     }
   }

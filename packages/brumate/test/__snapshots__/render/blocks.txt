@@ -306,14 +306,20 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
     let $$html = '';
     const n = $$index10;
     const $$e = $$b.clone($$t5), $$f = $$e[1];
-    $$b.putText($$e[0], (row(n)), $$s1);
+    $$b.fillValue($$s1, "x0", (row(n)), ($$v) => $$b.putText($$e[0], $$v, $$s1));
     return $$f;
   };
   $$html += $$b.nodes($$b.listNodes(undefined, undefined, Array.from({ length: ( 2) }, (_, index) => index), $$body11, undefined)) + "<!--b" + $$s1 + ":5-->";
   const $$before12 = $$html;
   try {
-    const $$s9 = $$b.createScope(9, $$s1);
-    $$html += $$b.component(Broken, {  }, undefined, $$s9);
+    const $$body14 = () => {
+      let $$html = '';
+      const $$s9 = $$b.createScope(9, $$s1);
+      const $$e = $$b.clone($$t5), $$f = $$e[1];
+      $$b.place($$e[0], $$b.componentNodes(Broken, {  }, undefined, $$s9));
+      return $$f;
+    };
+    $$html += $$b.nodes($$b.attempt($$body14));
   } catch ($$error13) {
     $$html = $$before12;
     const error = $$error13;
@@ -324,12 +330,12 @@ export default function Blocks($$props: { items: string[]; tab: 'a' | 'b' }): st
   $$html += "<!--/b--><template b-b=\"" + $$s1 + ":6\" b-client=\"idle=Blocks_jlmev2#k11\"></template><!--b" + $$s1 + ":6--><!--/b-->";
   {
     const $$s12 = $$b.createScope(12, $$s1);
-    const $$children14 = $$b.children($$s12, () => {
+    const $$children15 = $$b.children($$s12, () => {
       let $$html = '';
       const $$e = $$b.clone($$t6), $$f = $$e[0];
       return $$f;
     });
-    $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": $$b.internal(`${$$s12}:0`), "b-on": $$b.internal("click=Blocks_jlmev2#h20@" + $$s12) }, $$children14, undefined, $$s12);
+    $$html += $$b.dynamic((tag), { "class": ({ active: tab === 'a' }), "style": ({ fontSize: '12px' }), "b-b": $$b.internal(`${$$s12}:0`), "b-on": $$b.internal("click=Blocks_jlmev2#h20@" + $$s12) }, $$children15, undefined, $$s12);
   }
   $$html += "<p>&lt;escaped&gt;   " + $$b.insert(([1, 2])) + "</p>";
   $$b.setSlots($$s1, [tab, list, input]);

@@ -8,7 +8,7 @@ pnpm e2e
 
 ## Options
 
-- `--only website,todos,tracker,nitro,kit,ui` runs only these suites.
+- `--only website,todos,tracker,nitro,kit,ui,browser-async` runs only these suites.
 - `--no-build` uses the builds that are there. By default it runs `pnpm build`, then the build of each suite.
 - `--headed` shows the browser.
 - `--install-browser` downloads Playwright's Chromium when no Chrome is found.
@@ -76,6 +76,13 @@ Each check is a named step. Any uncaught error, console error or failed request 
 
 - `VisuallyHidden`: the link that skips to the content takes no space until Tab reaches it, then shows, and a button with a hidden name has that name for screen readers.
 - axe-core finds no violations on the page.
+
+`browser-async` serves the production build of `examples/browser-async`, under the same policy. Each block opens in the browser, and the test settles its promises from the page, so no step waits on a timer.
+
+- `#if` branch and `#for` rows: a `#loading` fallback, an awaited memo and a promise in text, rows settling out of order.
+- Root boundary: a block outside every `#loading` keeps the old content until its memo settles.
+- `#loading (memo)`: the fallback shows again, and the same nodes and input value come back.
+- `#try`: a rejected wait shows the `#catch`.
 
 ## Failures
 

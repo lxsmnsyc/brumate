@@ -1,0 +1,23 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  let open = $signal(false);
+  let id = $signal(1);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<button class="next" onClick=(() => id++)>Next</button>
+#if (open) {
+  <script>
+    const user = $memo(loadUser(id));
+  </script>
+  #loading (user) {
+    <script>
+      const extra = await $memo(loadUser(70));
+    </script>
+    <p class="user">{user.name} {extra.name}</p>
+  } #else {
+    <p class="fallback">loading</p>
+  }
+}

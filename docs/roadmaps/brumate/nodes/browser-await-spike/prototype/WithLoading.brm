@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import User from './User.brm';
+  let open = $signal(false);
+</script>
+<button class="toggle" onClick=(() => (open = !open))>t</button>
+#if (open) {
+  #loading {
+    <p class="sib">sib</p>
+    <User id=(1) />
+  } #else {
+    <p class="wait">wait</p>
+  }
+}

@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { markupFail } from './markupData.ts';
+
+  let show = $signal(false);
+</script>
+
+#try {
+  <button class="show" onClick=(() => (show = true))>Show</button>
+  #if (show) {
+    <p class="text">{markupFail()}</p>
+  }
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

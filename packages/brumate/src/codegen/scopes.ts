@@ -1,4 +1,4 @@
-import type { InsertNode, Markup } from '../ast.ts';
+import type { ElementNode, InsertNode, Markup } from '../ast.ts';
 import type { Declaration, Reference, Scope, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
@@ -67,6 +67,14 @@ export function isMemo(declaration: Declaration): boolean {
 }
 
 /**
+ * True for the header of `#loading (memo)`, which reads whether its memos are pending, not their
+ * values, so the render does not wait for them.
+ */
+export function isLoadingHeader(site: Site): boolean {
+  return site.kind === 'block' && site.block?.kind === 'loading';
+}
+
+/**
  * The scope whose render waits for a read. A read with `await` inside a
  * `#loading` body makes the render around the block wait, so it counts as
  * a read in the scope that holds the block. Inside a `#defer` body, the
@@ -99,7 +107,7 @@ export function blockingMemos(plan: Plan): Set<Declaration> {
       continue;
     }
     for (const read of declaration.reads) {
-      if (read.range.start === read.range.end) {
+      if (read.range.start === read.range.end || isLoadingHeader(read.site)) {
         continue;
       }
       const site = read.site;
@@ -174,7 +182,11 @@ export function awaitedMemos(plan: Plan, body: Scope, blocking: Set<Declaration>
     }
     for (const read of site.reads) {
       // Reads that `$isPending` adds for the memos a memo reads have no range, and need no value.
-      if (read.range.start === read.range.end || loadingBody(readScope(read)) !== body) {
+      if (
+        read.range.start === read.range.end ||
+        isLoadingHeader(site) ||
+        loadingBody(readScope(read)) !== body
+      ) {
         continue;
       }
       if (isMemo(read.declaration) && !blocking.has(read.declaration)) {
@@ -201,23 +213,137 @@ function findSite(plan: Plan, node: oxc.Node): Site | undefined {
   return undefined;
 }
 
+/** Global functions whose result is never a promise. */
+const PLAIN_FUNCTIONS = new Set([
+  'Boolean',
+  'Number',
+  'String',
+  'decodeURIComponent',
+  'encodeURIComponent',
+  'parseFloat',
+  'parseInt',
+]);
+
+/** Methods of strings, numbers and arrays whose result is never a promise. */
+const PLAIN_METHODS = new Set([
+  'concat',
+  'endsWith',
+  'filter',
+  'includes',
+  'indexOf',
+  'join',
+  'map',
+  'padEnd',
+  'padStart',
+  'repeat',
+  'replace',
+  'replaceAll',
+  'slice',
+  'split',
+  'startsWith',
+  'toFixed',
+  'toLocaleString',
+  'toLowerCase',
+  'toString',
+  'toUpperCase',
+  'trim',
+  'trimEnd',
+  'trimStart',
+]);
+
+/**
+ * True if a value of markup can be a promise, which the browser writes once it settles: a call,
+ * such as `{load(id)}` or `title=getTitle()`, or a read of a prop typed as a promise. A call of a
+ * macro of brumate, such as `$isPending`, of `String` or of a method of strings and arrays, such
+ * as `name.toUpperCase()`, gives no promise, nor does a string, a number or a property. An
+ * object can hold one, for a spread.
+ */
+export function mayBePromise(node: oxc.Node, site: Site | undefined): boolean {
+  switch (node.type) {
+    case 'ParenthesizedExpression':
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+    case 'TSNonNullExpression':
+      return mayBePromise(node.expression, site);
+    case 'ConditionalExpression':
+      return mayBePromise(node.consequent, site) || mayBePromise(node.alternate, site);
+    case 'LogicalExpression':
+      return mayBePromise(node.left, site) || mayBePromise(node.right, site);
+    case 'SequenceExpression':
+      return mayBePromise(node.expressions.at(-1)!, site);
+    case 'NewExpression':
+      return node.callee.type === 'Identifier' && node.callee.name === 'Promise';
+    case 'TaggedTemplateExpression':
+    case 'ImportExpression':
+      return true;
+    // The attributes of a spread, such as `{...{ title: getTitle() }}`.
+    case 'ObjectExpression':
+      for (const property of node.properties) {
+        if (
+          mayBePromise(property.type === 'SpreadElement' ? property.argument : property.value, site)
+        ) {
+          return true;
+        }
+      }
+      return false;
+    case 'CallExpression': {
+      const callee = node.callee;
+      if (callee.type === 'Identifier') {
+        return !callee.name.startsWith('$') && !PLAIN_FUNCTIONS.has(callee.name);
+      }
+      return !(
+        callee.type === 'MemberExpression' &&
+        callee.property.type === 'Identifier' &&
+        PLAIN_METHODS.has(callee.property.name)
+      );
+    }
+    case 'Identifier':
+      for (const reference of site?.reads ?? []) {
+        if (reference.declaration.promise === true && reference.range.start === node.start) {
+          return true;
+        }
+      }
+      return false;
+    default:
+      return false;
+  }
+}
+
 /**
  * True if the markup of a `#loading` body may wait for something other than
  * the memos it reads, so the body cannot render in place when those memos
- * are ready: a child component, a dynamic tag, a template, or an insert of
- * a prop, which can be a promise or the children of a parent. Bodies that
- * render later, such as those of a `#loading` or a `#defer` inside it, wait
- * on their own.
+ * are ready: a child component, a dynamic tag, a template, an insert of
+ * a prop, which can be a promise or the children of a parent, or an insert or
+ * attribute whose value can be a promise, such as a call. Bodies that render
+ * later, such as those of a `#loading` or a `#defer` inside it, wait on their
+ * own.
  */
 export function mayWait(plan: Plan, nodes: Markup[]): boolean {
   function insertWaits(node: InsertNode): boolean {
     const site = findSite(plan, node.expression.ast);
+    if (mayBePromise(node.expression.ast, site)) {
+      return true;
+    }
     if (!site) {
       return false;
     }
     for (const read of site.reads) {
       const kind = read.declaration.kind;
       if (kind === 'prop' || kind === 'props-rest' || kind === 'template') {
+        return true;
+      }
+    }
+    return false;
+  }
+  // An attribute or spread whose value can be a promise: the server sends the element once it
+  // settles.
+  function attributesWait(node: ElementNode): boolean {
+    for (const attribute of node.attributes) {
+      const value =
+        attribute.kind === 'value' || attribute.kind === 'spread' || attribute.kind === 'computed'
+          ? attribute.value
+          : true;
+      if (value !== true && mayBePromise(value.ast, findSite(plan, value.ast))) {
         return true;
       }
     }
@@ -234,6 +360,10 @@ export function mayWait(plan: Plan, nodes: Markup[]): boolean {
         }
         break;
       case 'element':
+        if (attributesWait(node) || mayWait(plan, node.children)) {
+          return true;
+        }
+        break;
       case 'fragment':
         if (mayWait(plan, node.children)) {
           return true;

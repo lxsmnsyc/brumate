@@ -9,7 +9,7 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
   const id = $$ctx.id($$s1, 0);
   const hint = $$ctx.id($$s1, 1);
   let names = (['First', 'Last']);
-  $$html += "<label" + $$b.attribute("for", (id)) + ">Email</label><input" + $$b.attribute("id", (id)) + $$b.attribute("aria-describedby", (hint)) + "><p" + $$b.attribute("id", (hint)) + ">We never share it.</p>";
+  $$html += "<label" + (typeof ($$t = $$b.attribute("for", (id))) === 'string' ? $$t : await $$t) + ">Email</label><input" + (typeof ($$t = $$b.attribute("id", (id))) === 'string' ? $$t : await $$t) + (typeof ($$t = $$b.attribute("aria-describedby", (hint))) === 'string' ? $$t : await $$t) + "><p" + (typeof ($$t = $$b.attribute("id", (hint))) === 'string' ? $$t : await $$t) + ">We never share it.</p>";
   $$ctx.enter();
   {
     const $$list0v = ( names);
@@ -22,7 +22,7 @@ export default async function Fields($$props: Record<string, never>, $$ctx: $$b.
       const $$s2 = $$ctx.scope(2, $$s1);
       $$html += "<!--i" + $$s2 + "-->";
       const field = $$ctx.id($$s2, 0);
-      $$html += "<label" + $$b.attribute("for", (field)) + " b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert((name), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</label><input" + $$b.attribute("id", (field)) + ">";
+      $$html += "<label" + (typeof ($$t = $$b.attribute("for", (field))) === 'string' ? $$t : await $$t) + " b-b=\"" + $$s2 + ":0\">" + (typeof ($$t = $$b.insert((name), $$ctx, $$s2)) === 'string' ? $$t : await $$t) + "</label><input" + (typeof ($$t = $$b.attribute("id", (field))) === 'string' ? $$t : await $$t) + ">";
       $$ctx.slots($$s2, [name, field], ["name","field"]);
       $$ctx.item($$s2, $$item1, $$source3);
       $$html += "<!--/i-->";

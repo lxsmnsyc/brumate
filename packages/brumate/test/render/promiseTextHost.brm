@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import PromiseTextKid from './PromiseTextKid.brm';
+  import { markupLoad } from './markupData.ts';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <PromiseTextKid user=(markupLoad('user')) />
+}

@@ -1,0 +1,33 @@
+<script>
+  import { $effect, $memo, $signal } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  let id = $signal(1);
+  let other = $signal(10);
+  let count = $signal(0);
+  const user = $memo(loadUser(id));
+  const note = $memo(loadUser(other));
+
+  function log(entry: string): void {
+    ((globalThis as { loadingOnLog?: string[] }).loadingOnLog ??= []).push(entry);
+  }
+</script>
+
+<button class="next" onClick=(() => id++)>Next</button>
+<button class="other" onClick=(() => other++)>Other</button>
+<button class="bump" onClick=(() => count++)>Bump</button>
+#loading (user) {
+  <script>
+    $effect(() => {
+      log(`effect ${count}`);
+      return () => log('cleanup');
+    });
+  </script>
+  <window onKeyDown=(() => log('key'))/>
+  <p class="user">{user.name}</p>
+  <p class="note">{note.name}</p>
+  <p class="count">{count}</p>
+  <input class="field">
+} #else {
+  <p class="fallback">loading</p>
+}

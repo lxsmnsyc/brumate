@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import WaitUser from './WaitUser.brm';
+  import WaitSide from './WaitSide.brm';
+
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  <WaitUser id=(7) />
+  <WaitSide id=(1) />
+}
