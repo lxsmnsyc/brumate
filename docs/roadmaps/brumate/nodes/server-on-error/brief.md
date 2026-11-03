@@ -1,7 +1,7 @@
 ---
 id: server-on-error
 title: onError in src/middleware.ts for errors of the server
-status: active
+status: done
 priority: must
 type: feature
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-03
-spent:
+spent: 175000
 owns:
   - packages/brumate/test/server-on-error.test.ts
 shared:
