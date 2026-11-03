@@ -7,7 +7,7 @@ import { ServerError } from '../src/runtime/request.ts';
 import { handleRequest, handleRoute } from '../src/runtime/server.ts';
 import type { ServerErrorHandler, ServerErrorInfo } from '../src/runtime/server.ts';
 
-const input = new URL('./render/', import.meta.url);
+const input = new URL('./server-on-error/', import.meta.url);
 const output = new URL('./.output/server-on-error/', import.meta.url);
 
 beforeAll(() => {
