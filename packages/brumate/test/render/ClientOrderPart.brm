@@ -1,0 +1,18 @@
+<script>
+  import { $client, $props } from 'brumate/signals';
+
+  const { name } = $props<{ name: string }>();
+
+  function log(entry: string) {
+    (globalThis as { orderLog?: string[] }).orderLog?.push(entry);
+  }
+
+  // Records whether the markup of the part is in the page when the callback runs.
+  $client(() => {
+    const parts = [...document.querySelectorAll('.part')].map((part) => part.textContent);
+    log(`client ${name} ${parts.includes(`Part ${name}`) ? 'in the page' : 'missing'}`);
+    return () => log(`cleanup ${name}`);
+  }, 'idle');
+</script>
+
+<p class="part">Part {name}</p>
