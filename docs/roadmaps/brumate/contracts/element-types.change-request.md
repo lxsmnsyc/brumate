@@ -51,3 +51,30 @@ None needed. The PR changes the types and the parser at once.
 ## Decision
 
 Accepted by the maintainer on 2026-10-28. PR #317 makes the change, and the contract is v1.3.
+
+---
+
+# Change request: element-types v1.4 (from aria-types)
+
+## Problem
+
+`aria-*` takes any string, number or boolean, and `role` any string, so a wrong value such as `aria-expanded="yes"` or an unknown role type-checks.
+
+## Proposed change
+
+- Each `aria-*` attribute of WAI-ARIA 1.2 has its own type, in `AriaAttributes` (exported from `brumate/elements`, and part of `GlobalAttributes`). Booleans take `boolean | 'true' | 'false'`, since the runtime writes both as words. `aria-checked` and `aria-pressed` also take `'mixed'`. `aria-current`, `aria-haspopup` and `aria-invalid` take their tokens plus a boolean. Counts, levels and values take `number | \`${number}\``. ID lists and text are strings.
+- `role` takes `AriaRole`, the 83 roles of WAI-ARIA 1.2 and the `doc-*` roles of DPUB-ARIA, or a space-separated fallback list that starts with one (`role="doc-footnote listitem"`), as HTML allows. An unknown first role is an error.
+- `aria-${string}` still takes `string | number | boolean` for a name not in the list, such as the deprecated `aria-dropeffect` and `aria-grabbed`.
+- Tests: packages/brumate/test/elements-types.ts, section "ARIA attributes".
+
+## Affected nodes
+
+missing-attributes and control-target (0.7.0) build on these types. Callers that pass `String(flag)` or keep a role in a `string` variable narrow it; in this repo #442 changes 5 of them.
+
+## Workaround in place
+
+None needed. #442 changes the types and the callers at once.
+
+## Decision
+
+Accepted by the orchestrator on 2026-11-03, with the fallback list of roles from the review of #442. The contract becomes v1.4 when #442 merges.
