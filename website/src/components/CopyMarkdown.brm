@@ -1,0 +1,48 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+
+  // Copies the Markdown of the page, which the build writes at its path with `.md`.
+  const { path } = $props<{ path: string }>();
+  let copied = $signal(false);
+
+  // The text is a promise inside the click, so the browser keeps the permission of the gesture
+  // while the file loads.
+  async function copy() {
+    const text = fetch(path).then((response) => response.blob());
+    await navigator.clipboard.write([new ClipboardItem({ 'text/plain': text })]);
+    copied = true;
+    setTimeout(() => {
+      copied = false;
+    }, 1600);
+  }
+</script>
+
+<button type="button" class="copy-markdown" onClick=(copy)>
+  {copied ? 'Copied' : 'Copy Markdown'}
+</button>
+
+<style>
+  .copy-markdown {
+    float: right;
+    padding: 0.2rem 0.65rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--bg-elevated);
+    color: var(--muted);
+    font: 500 var(--text-xs) var(--mono);
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition:
+      color var(--duration-fast) var(--ease),
+      transform var(--duration-fast) var(--ease);
+  }
+
+  .copy-markdown:hover {
+    color: var(--text);
+    transform: translateY(-1px);
+  }
+
+  .copy-markdown:active {
+    transform: scale(0.98);
+  }
+</style>

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import brumate from 'brumate/vite';
 import { defineConfig } from 'vite';
+import llms from './plugins/llms.ts';
 import markdown, { SITE_PAGES, UI_PAGES } from './plugins/markdown.ts';
 import search from './plugins/search.ts';
 import showcase from './plugins/showcase.ts';
@@ -81,6 +82,8 @@ export default defineConfig({
   plugins: [
     markdown(),
     showcase(),
+    // /llms.txt, /llms-full.txt and the Markdown of each page.
+    llms(siteUrl),
     // The pages of the site. The design notes of the repository are not on it.
     search(
       [fileURLToPath(new URL('docs', import.meta.url))],
