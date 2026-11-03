@@ -1,7 +1,7 @@
 ---
 id: drop-unread-memos
 title: Drop memos that no browser code reads
-status: active
+status: done
 priority: must
 type: feature
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-27
-spent:
+spent: 241000
 owns: []
 shared:
   - .changeset/*.md

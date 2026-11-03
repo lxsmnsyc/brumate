@@ -1,0 +1,359 @@
+{
+  "round": 1,
+  "claims": {
+    "J1": {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The maintainer's choice (2026-11-03): every context is static, whatever its value; live values come from a store put into the context, through a store contract and `$store`. 'There is no $store' in decisions.md was a state note, now revised.",
+      "evidence": {
+        "type": "user",
+        "source": "maintainer, 2026-11-03; docs/decisions.md:40",
+        "question": "Q1"
+      }
+    },
+    "J2": {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Today every context declaration is live (graph.ts marks `context` declarations live, analyze.ts makes each `$getContext` one). Outside tests there are 192 `$setContext` calls and 148 `$getContext` calls in 91 .brm files, most in packages/ui, many passing values that change (isInvalid, errors, isCurrent, picker values, field state).",
+      "evidence": {
+        "type": "measured",
+        "source": "git ls-files '*.brm' | grep -v /test/ | xargs grep '$setContext(' / '$getContext('; graph.ts on next",
+        "detail": "evidence/setcontext.txt, evidence/graph-context.txt"
+      }
+    },
+    "J3": {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "static-contexts (#448, closed) proved a context static only when it could: website JS -897 B gzip in total, home entry -1 B, about 190 lines and a project-wide fixpoint, and its review found two silent miscompiles (a signal hidden in a variable; contexts keyed by local import name).",
+      "evidence": {
+        "type": "measured",
+        "source": "review of #448; docs/roadmaps/brumate/nodes/static-contexts/outcome.md"
+      }
+    },
+    "J4": {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Planned nodes, now children of story context-stores (0.7.0): store-contract (outline, L, could): a contract with `subscribe(callback): cleanup` and `get()`, and `$store` to bind one in a component; the name `$store` belongs to it (maintainer, 2026-10-30). store-lens-spike (M, could): a path-tracked store with its own name, and lens utilities; questions on the static graph, resume, `#for`, `$bind` and cost.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/store-contract/brief.md; nodes/store-lens-spike/brief.md"
+      }
+    },
+    "J5": {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "A function prop is live when its function reads state; the parent sends the child a new bound function when that state changes (decisions.md:139, the function-prop-derivations debate). Whether a function inside a static context would keep that is not decided.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:139; docs/debates/function-prop-derivations/debate.md"
+      }
+    },
+    "J6": {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Prior art: Solid's context value is set once and is not reactive itself; reactivity comes from signals or stores placed in it. Svelte 5's setContext is not reactive; you pass $state objects or getters. Vue's provide/inject passes a plain value unless it is a ref or reactive. React re-renders consumers when the provided value's identity changes.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs.solidjs.com (createContext/useContext); svelte.dev/docs/svelte/context; vuejs.org/guide/components/provide-inject (working with reactivity); react.dev/reference/react/useContext"
+      }
+    },
+    "J7": {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "0.x breaks are minor bumps with no deprecation period; client size is a release goal (todos 13.6 kB gzip on 0.5.0); the context-stores story is in 0.7.0, after release-0.6.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md; maintainer rules"
+      }
+    },
+    "P1": {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "A store is any object with `get()`, `subscribe(cb): cleanup` and optional `set(v)`. `$store(src)` is a compile-time function like `$signal`: the compiler turns it into one signal cell plus a subscription made on mount and cleaned with the owner; reads are tracked like a signal, so the static graph is unchanged (the cell is a normal signal declaration). Server: call `get()` once, never subscribe. Resume: the page state carries the cell's value (one signal entry), and the browser subscribes lazily at the first event or effect that needs it and compares `get()` with the resumed value, keeping the store's. brumate ships only the contract plus a tiny `store(initial)` helper (about 15 lines: value, a Set of callbacks) for components that expose state; no store class with paths.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/store-contract/brief.md",
+        "detail": "contract from the brief; silmaril README Stores; React useSyncExternalStore"
+      },
+      "axis": "device",
+      "estimate": {
+        "value": 300,
+        "unit": "B gzip client for $store runtime plus store() helper"
+      }
+    },
+    "P2": {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "A context is static: `$setContext(Ctx, v)` compiles to a plain scope-keyed value set once at component creation, `$getContext` to a lookup with no signal and no re-run; graph.ts stops marking `context` declarations live and analyze.ts stops making each `$getContext` a live read. The value may hold signals' stores, constants and functions, but the compiler never wraps the value in a signal. This replaces the #448 fixpoint (about 190 lines, two miscompiles) by deleting the live path, not by proving cases static. Rule for the compiler: a reactive read directly inside the `$setContext` argument is a compile error ('pass a store: `$store`/`store()`') so a silent stale value is impossible.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/graph-context.txt; J2; J3",
+        "detail": "graph.ts:566 area marks context declarations live; static-contexts outcome.md"
+      },
+      "axis": "device",
+      "estimate": {
+        "value": -190,
+        "unit": "lines of compiler (net, after removing live context path)"
+      }
+    },
+    "P3": {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "The ui parts move in groups by the 192 calls. Measured: 115 of 192 mention a name of their file that is a prop, signal, memo or let (upper bound, evidence/count-live-setcontext.py); 77 are constants such as ids or no reactive names and need only the static compile, no change. Of the 115, the change is grouped by context, not by call: ui/src/contexts.ts defines 25 contexts, so about 25 context shapes change. Each live field (isInvalid, errors, isCurrent, field state, picker value) becomes a `store()` made in the provider (`const invalid = store(...)` or `$store`-backed derived store) and the reader writes `$store(ctx.invalid)`. Fields that are constant per mount (id, labelId) stay plain.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/count-live-setcontext.txt; packages/ui/src/contexts.ts",
+        "detail": "192 calls, 115 reference reactive names, 25 createContext in contexts.ts"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 25,
+        "unit": "context shapes to migrate (115 calls)"
+      }
+    },
+    "P4": {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Functions in a context are static values and do not follow J5. A function that reads state reads it when it is called (a handler pattern), not through a re-sent bound function. So Calendar's `highlight`/`pressStart` (they read `anchor`, `range`) must read stores or call-time state. Measured: 24 of 192 calls hold an arrow or function expression. The compiler rule: a context function that closes over a signal is rewritten to read the signal's current value at call time (signals already read untracked inside handlers), so it is never stale; only the *render* of a reader that depends on it needs a store. This keeps the function-prop rule for props and drops it for contexts.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:139; packages/ui/src/Calendar.brm:397-430; evidence/count-live-setcontext.txt",
+        "detail": "J5 leaves open; handlers already read current signal value at call time"
+      },
+      "axis": "time"
+    },
+    "P5": {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Order of nodes: (1) store-contract, scoped to the contract, `$store`, the `store()` helper and a decisions.md edit, plus a resume test; (2) static-contexts-v2: delete the live context path and add the compile error for reactive reads in a `$setContext` value; it must land with (3) in one release since ui breaks without it; (3) ui migration in three waves by provider family: field/form (Label, Text, FieldError, Input, Group: most calls), calendar/date/color, collection/menu/combobox; each wave is one PR, with the docs page and tests of each part unchanged; (4) store-lens-spike last, as a separate optional node because path stores are not needed for any ui part. Keep to 0.7.0 as planned; one minor bump, no deprecation.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/nodes/store-contract/brief.md; memory: 0.x breaks are minor, no deprecation periods; node sizing rules",
+        "detail": "store-lens-spike stays optional because the ui needs only get/subscribe/set"
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 5,
+        "unit": "nodes (1 L, 1 M, 3 M waves); store-lens-spike excluded"
+      }
+    },
+    "P6": {
+      "id": "P6",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Cost estimate: client bytes up by about 300 B gzip for the `$store` runtime plus about 30 B per `store()` provider; down by the live-context machinery in the client (each live context today sends a signal per `$setContext`, each `$getContext` re-runs reads). Estimate net -0.5 to +0.3 kB gzip on the ui-heavy website, to be measured by the migration PRs, not promised (static-contexts gained only 897 B total, J3). Time: store-contract L, static pass M, three ui waves M each: roughly 5 worker runs. Tokens: about 115 call sites to rewrite across about 60 files; each wave a few hundred thousand tokens.",
+      "evidence": {
+        "type": "estimate",
+        "source": "J3; evidence/count-live-setcontext.txt",
+        "detail": "no build done; sizes inferred from #448 result and node sizes"
+      },
+      "axis": "device",
+      "estimate": {
+        "value": 300,
+        "unit": "B gzip upper bound added to client, net may be below zero"
+      }
+    },
+    "P7": {
+      "id": "P7",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Cheaper on tokens and device: do not add a store contract. Contexts stay static, and live values travel as signals or getters in the context, as Solid (signals in context) and Svelte 5 ($state objects or getters in setContext) do. The compiler passes a `$signal` or `$memo` read by reference: `$setContext(Ctx, { invalid: () => invalid })` and the reader calls `ctx.invalid()` in its reactive scope, tracked like any read. Saves the contract, `$store`, and the resume question (state already resumes as signals), and the ui migration is mechanical (wrap the live field in a getter). Costs: ties live context values to brumate's own signals (no foreign-library interop, which is the store contract's point) and getters in context are exactly the function-in-context case (P4), so a reader must know a field is a getter.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs.solidjs.com createContext; svelte.dev/docs/svelte/context; J6",
+        "detail": "both frameworks put live values in context as signals/getters, context itself stays static"
+      },
+      "axis": "tokens"
+    },
+    "P8": {
+      "id": "P8",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Staging inside the chosen direction, as the cheapest sequence: ship `store()` helper and `$store` first, then migrate ui parts while the old live context path still exists (so every wave is independently mergeable, each part stays correct), and delete the live path only after the last wave, as one small node. This keeps PRs non-blocking and avoids a flag day, at the cost of two code paths for a few waves. Reader code `$store(ctx.field)` already works against a live context too, since a store in a live context is a store.",
+      "evidence": {
+        "type": "inferred",
+        "source": "memory: PRs non-blocking, no landing PRs; ci before merge",
+        "detail": "expand and contract for the context change"
+      },
+      "axis": "time"
+    },
+    "O1": {
+      "id": "O1",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "device",
+      "severity": "high",
+      "answers": [
+        "P1",
+        "P2"
+      ],
+      "text": "A store does not cross resume as P1 describes. Components never run again in the browser (decisions.md:5), so the browser gets a provider's context value only from the page state (`record.v`, runtime/server.ts provide; client/context.ts provideValue reads `scope.v`). A static context cannot be left out of the page state, because `$store(ctx.field)` in the browser needs the store there. A `store()` helper holds a Set and closures, and serial.ts serializes a function only when it is in `functionReferences`, so the object would throw or needs a registered plugin that rebuilds it. P1 names neither, and 'carries one signal entry' covers only the reader's cell, not the store object in the context.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/serial.ts:140-145; runtime/server.ts:679-686; runtime/client/context.ts:34-52; docs/decisions.md:5",
+        "detail": "the #448 trick of keeping a static value out of the page state (outcome.md, provide flag) does not apply to a context the browser reads"
+      }
+    },
+    "O2": {
+      "id": "O2",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "device",
+      "severity": "medium",
+      "answers": [
+        "P2",
+        "P6"
+      ],
+      "text": "The '-190 lines' baseline does not exist: #448 is closed, `liveContexts` appears nowhere in packages/brumate/src on main, so there is no fixpoint to delete. What the live path costs on main is one line in graph.ts (`declaration.kind === 'context'`), `updateContext` (about 12 lines) and the slot map `x` in client/context.ts and server consume. The client saving is therefore tens of bytes, not the machinery P6 credits. Also `$route` and `$navigation` are contexts that change (setGlobal/updateRoute), so 'every context static' needs them as stores too, which P1 to P8 do not cover.",
+      "estimate": {
+        "value": 12,
+        "unit": "lines of client runtime removed"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "grep -rn liveContexts packages/brumate/src (no hits); packages/brumate/src/runtime/client/context.ts:34-103; docs/roadmaps/brumate/nodes/static-contexts/outcome.md (Size: -897 B total, -1 B home)",
+        "detail": "P2 estimate -190 lines is against code that is not on main"
+      }
+    },
+    "O3": {
+      "id": "O3",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "tokens",
+      "severity": "high",
+      "answers": [
+        "P2",
+        "P5"
+      ],
+      "text": "The compile error for a reactive read in a `$setContext` value cannot be told from a legitimate use without the whole-program analysis P2 says it avoids. In brm a signal, memo or prop is a plain variable, so there is no way to pass one 'by reference'; every field like `id`, `locale.locale`, `typeof current === 'string' ? current : null` (Calendar.brm:398-402) is a reactive read, whether the prop ever changes or not. The upper bound of 115 of 192 calls (P3) would error, and each needs `$untrack(...)` noise or a store, with no way to say 'constant'. Whether a prop is live is exactly graph.ts `isLiveProp(options.liveProps)`, a project-wide fixpoint. Reading inside arrow functions (handlers) must be exempt, which the rule must also decide.",
+      "evidence": {
+        "type": "measured",
+        "source": "packages/ui/src/Calendar.brm:396-440; evidence/count-live-setcontext.txt; packages/brumate/src/graph.ts:560-566",
+        "detail": "115/192 mention a reactive name; no by-reference syntax"
+      }
+    },
+    "O4": {
+      "id": "O4",
+      "round": 1,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "device",
+      "severity": "high",
+      "answers": [
+        "P3",
+        "P6"
+      ],
+      "text": "Per-field stores multiply subscriptions. CalendarCell reads 9 live fields of CalendarContext (available, end, start, isDisabled, isReadOnly, locale, maxValue, minValue, selection). A month is up to 42 cells (CalendarGrid #for week/date), so `$store(calendar.x)` per field gives up to 378 signal cells, closures and Set entries per month, each a page-state slot. Today one context key gives one slot `x[key]` per reader. P6's net -0.5 to +0.3 kB is unmeasured and ignores this growth, which is per instance in page state, not only in code.",
+      "estimate": {
+        "value": 378,
+        "unit": "store cells per month grid"
+      },
+      "evidence": {
+        "type": "estimate",
+        "source": "packages/ui/src/CalendarCell.brm (calendar.* reads); CalendarGrid.brm:121-129",
+        "detail": "9 fields x 42 cells = 378, a count from source, not a build"
+      }
+    },
+    "O5": {
+      "id": "O5",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P1",
+        "P3"
+      ],
+      "text": "A provider's derived field (`const invalid = $memo(isInvalid || unavailable)`, Calendar.brm:174) becomes a store only through a write-through: an effect calls `set` on the store. The update queue runs memos, then bindings, then effects, in graph order (ordered-updates outcome.md). A subscriber callback is a write from outside that graph, so readers see new props with the old store value in the first pass, then a second pass. This is the cross-component glitch that ordered-updates fixed for props, reopened for every store-backed field. Tests would need `it.fails`-style cases for each shape.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs/roadmaps/brumate/nodes/ordered-updates/outcome.md:9; website/docs/reactive-graph.md step 7",
+        "detail": "order inside the compiler graph is memos, bindings, effects; an external subscribe sits outside it"
+      }
+    },
+    "O6": {
+      "id": "O6",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "high",
+      "answers": [
+        "P4"
+      ],
+      "text": "A context function that reads state 'at call time' is safe in a handler but silently stale in a reader's memo or markup, because the reader's graph has no edge from the signal the function reads. J5's rule exists for this (the parent re-sends a bound function). The compiler cannot see through `ctx.fn()` to warn. The lab already met this: the function-prop-derivations debate found context calls hidden from the graph (writer loops through a context call, O7/O12), and decided a call through a context counts as unknown. In Calendar the function fields are called from handlers (CalendarCell.brm:83-144), but 24 of 192 calls hold functions across ui and nothing checks the reader side.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs/debates/function-prop-derivations/debate.md:22,28; docs/decisions.md:139; packages/ui/src/CalendarCell.brm:83-144",
+        "detail": "the graph cannot see a read behind a context function call"
+      }
+    },
+    "O7": {
+      "id": "O7",
+      "round": 1,
+      "by": "opponent",
+      "kind": "alternative",
+      "axis": "device",
+      "answers": [
+        "P3",
+        "P1"
+      ],
+      "text": "Coarse stores: one store per provider holding the whole context snapshot, rebuilt as one immutable object when any field changes, and read with one `$store(ctx)` per reader. Fields then stay plain object fields, readers derive from the snapshot with ordinary memos, the page state holds one store entry per provider instead of one per field per reader, and migration is per context (25 shapes), not per field. It matches today's semantics (the whole value is re-sent) so output stays the same and O4's 378 cells become 42. Fine-grained per-field stores can come later with store-lens-spike for the few contexts that need them.",
+      "evidence": {
+        "type": "inferred",
+        "source": "packages/ui/src/contexts.ts (25 contexts); client/context.ts updateContext sends the whole value",
+        "detail": "today a live context is already coarse; this keeps that granularity but on the store contract"
+      }
+    },
+    "J8": {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "On next, the live-context path is: graph.ts:624 and analyze.ts:2366 treat a `context` declaration as live, codegen/client.ts:1110 emits an update part that calls `$$b.updateContext`, and runtime/client/context.ts:34 defines it. The per-reader cost of a live context is its update part and slot, not a large runtime. `$route()` and `$navigation()` are runtime-provided contexts that change (decisions.md:45).",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep on origin/next: kind === 'context', updateContext; docs/decisions.md:45"
+      }
+    }
+  }
+}
