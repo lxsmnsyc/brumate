@@ -1,7 +1,7 @@
 ---
 id: aria-types
 title: Typed ARIA attributes and roles
-status: todo
+status: active
 priority: must
 type: feature
 outline: false

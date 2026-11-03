@@ -1,7 +1,7 @@
 ---
 id: style-global
 title: <style global> for a block of unscoped rules
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
