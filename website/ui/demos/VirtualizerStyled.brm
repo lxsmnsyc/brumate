@@ -26,9 +26,9 @@
   <TreeItem class="virtualizer-styled-row" textValue=(file.name)>{file.name}</TreeItem>
 }
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.virtualizer-styled-demo) {
+  .virtualizer-styled-demo {
     --virtualizer-styled-bg: Canvas;
     --virtualizer-styled-text: CanvasText;
     --virtualizer-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
@@ -39,7 +39,7 @@
   }
 
   /* The box that scrolls: a height, a border, and room for the scrollbar. */
-  :global(.virtualizer-styled) {
+  .virtualizer-styled {
     box-sizing: border-box;
     width: min(20rem, 100%);
     height: 14rem;
@@ -49,17 +49,17 @@
     scrollbar-gutter: stable;
   }
 
-  :global(.virtualizer-styled:focus-within) {
+  .virtualizer-styled:focus-within {
     border-color: var(--virtualizer-styled-accent);
   }
 
-  :global(.virtualizer-styled-tree) {
+  .virtualizer-styled-tree {
     display: block;
     outline: none;
   }
 
   /* A row has the height of rowHeight, so the box can place it. */
-  :global(.virtualizer-styled-row) {
+  .virtualizer-styled-row {
     box-sizing: border-box;
     display: flex;
     align-items: center;
@@ -68,20 +68,20 @@
     outline: none;
   }
 
-  :global(.virtualizer-styled-row[data-hovered]) {
+  .virtualizer-styled-row[data-hovered] {
     background: var(--virtualizer-styled-hover);
   }
 
-  :global(.virtualizer-styled-row[data-pressed]) {
+  .virtualizer-styled-row[data-pressed] {
     background: color-mix(in srgb, var(--virtualizer-styled-accent) 32%, Canvas);
   }
 
-  :global(.virtualizer-styled-row[data-selected]) {
+  .virtualizer-styled-row[data-selected] {
     background: var(--virtualizer-styled-selected);
     font-weight: 600;
   }
 
-  :global(.virtualizer-styled-row[data-focus-visible]) {
+  .virtualizer-styled-row[data-focus-visible] {
     box-shadow:
       inset 0 0 0 2px var(--virtualizer-styled-accent),
       inset 0 0 0 4px var(--virtualizer-styled-bg);

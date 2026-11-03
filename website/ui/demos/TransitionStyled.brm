@@ -27,9 +27,9 @@
   }
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.transition-styled-stage) {
+  .transition-styled-stage {
     --transition-styled-bg: light-dark(#e3efff, #1d3350);
     --transition-styled-fg: light-dark(#0b3a78, #cfe3ff);
     display: grid;
@@ -39,12 +39,12 @@
     color: CanvasText;
   }
 
-  :global(.transition-styled-bar) {
+  .transition-styled-bar {
     display: flex;
     gap: 0.5rem;
   }
 
-  :global(.transition-styled-button) {
+  .transition-styled-button {
     padding: 0.4rem 0.8rem;
     border: 1px solid color-mix(in srgb, CanvasText 50%, Canvas);
     border-radius: 8px;
@@ -54,25 +54,25 @@
     cursor: pointer;
   }
 
-  :global(.transition-styled-button:focus-visible) {
+  .transition-styled-button:focus-visible {
     outline: 2px solid Canvas;
     outline-offset: 0;
     box-shadow: 0 0 0 4px Highlight;
   }
 
-  :global(.transition-styled-slots) {
+  .transition-styled-slots {
     display: grid;
     gap: 0.5rem;
   }
 
-  :global(.transition-styled-slot) {
+  .transition-styled-slot {
     display: grid;
     gap: 0.3rem;
     margin: 0;
     font-size: 0.85rem;
   }
 
-  :global(.transition-styled) {
+  .transition-styled {
     padding: 0.6rem 0.9rem;
     border-radius: 8px;
     background: var(--transition-styled-bg);
@@ -81,13 +81,13 @@
   }
 
   /* The closed state is also where an enter starts from. */
-  :global(.transition-styled[data-closed]) {
+  .transition-styled[data-closed] {
     opacity: 0;
     translate: 0 -0.5rem;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.transition-styled) {
+    .transition-styled {
       transition: none;
     }
   }

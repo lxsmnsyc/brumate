@@ -18,15 +18,15 @@
   </div>
 </Slider>
 
-<style>
+<style global>
   /* The badge of the thumb sits below it, so it does not cover it. */
-  :global(.anatomy-stage .slider-anatomy-thumb[data-mark]::before) {
+  .anatomy-stage .slider-anatomy-thumb[data-mark]::before {
     bottom: -1.5rem;
     inset-inline-start: 50%;
     translate: -50% 0;
   }
 
-  :global(.slider-anatomy-track) {
+  .slider-anatomy-track {
     grid-column: 1 / -1;
   }
 </style>

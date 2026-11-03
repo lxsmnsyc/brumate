@@ -45,12 +45,12 @@
   <p>Writes: {mine}. Asks: {asked}. Last callback: {log || 'none'}.</p>
 </form>
 
-<style>
-  :global(.color-wheel-state-row) {
+<style global>
+  .color-wheel-state-row {
     flex-wrap: wrap;
   }
 
-  :global(.color-wheel-state-item) {
+  .color-wheel-state-item {
     width: 100px;
     font-size: 0.8rem;
   }

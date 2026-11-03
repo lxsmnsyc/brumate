@@ -58,9 +58,9 @@
   </ResizableTableContainer>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.table-styled-demo) {
+  .table-styled-demo {
     --table-styled-bg: Canvas;
     --table-styled-text: CanvasText;
     --table-styled-muted: color-mix(in srgb, CanvasText 68%, Canvas);
@@ -72,26 +72,26 @@
     color: var(--table-styled-text);
   }
 
-  :global(.table-styled-container) {
+  .table-styled-container {
     max-width: 100%;
     border: 1px solid var(--table-styled-border);
     border-radius: 8px;
     background: var(--table-styled-bg);
   }
 
-  :global(.table-styled) {
+  .table-styled {
     width: 100%;
     border-collapse: collapse;
     outline: none;
   }
 
-  :global(.table-styled:focus-visible) {
+  .table-styled:focus-visible {
     outline: 2px solid var(--table-styled-accent);
     outline-offset: 2px;
   }
 
   /* Headers: rest, hover and press on a column that sorts, the arrow, keyboard focus. */
-  :global(.table-styled-column) {
+  .table-styled-column {
     position: relative;
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--table-styled-border);
@@ -102,51 +102,51 @@
     outline: none;
   }
 
-  :global(.table-styled-column[data-allows-sorting]) {
+  .table-styled-column[data-allows-sorting] {
     cursor: pointer;
   }
 
-  :global(.table-styled-column[data-hovered][data-allows-sorting]) {
+  .table-styled-column[data-hovered][data-allows-sorting] {
     background: var(--table-styled-hover);
   }
 
-  :global(.table-styled-column[data-pressed]) {
+  .table-styled-column[data-pressed] {
     background: var(--table-styled-selected);
   }
 
-  :global(.table-styled-column[data-sort-direction]) {
+  .table-styled-column[data-sort-direction] {
     color: var(--table-styled-text);
   }
 
-  :global(.table-styled-column[data-sort-direction='ascending'])::after {
+  .table-styled-column[data-sort-direction='ascending']::after {
     content: ' ▲';
     font-size: 0.7em;
   }
 
-  :global(.table-styled-column[data-sort-direction='descending'])::after {
+  .table-styled-column[data-sort-direction='descending']::after {
     content: ' ▼';
     font-size: 0.7em;
   }
 
-  :global(.table-styled-column[data-focus-visible]),
-  :global(.table-styled-row[data-focus-visible]),
-  :global(.table-styled-cell[data-focus-visible]) {
+  .table-styled-column[data-focus-visible],
+  .table-styled-row[data-focus-visible],
+  .table-styled-cell[data-focus-visible] {
     box-shadow:
       inset 0 0 0 2px var(--table-styled-accent),
       inset 0 0 0 4px var(--table-styled-bg);
   }
 
-  :global(.table-styled-check) {
+  .table-styled-check {
     width: 2.5rem;
   }
 
-  :global(.table-styled-number) {
+  .table-styled-number {
     text-align: end;
     font-variant-numeric: tabular-nums;
   }
 
   /* The resizer: a bar at the end of the column that shows on hover, drag and focus. */
-  :global(.table-styled-resizer) {
+  .table-styled-resizer {
     position: absolute;
     inset-block: 0;
     inset-inline-end: 0;
@@ -155,39 +155,39 @@
     border-inline-end: 2px solid var(--table-styled-border);
   }
 
-  :global(.table-styled-resizer[data-hovered]),
-  :global(.table-styled-resizer[data-resizing]),
-  :global(.table-styled-resizer[data-focus-visible]) {
+  .table-styled-resizer[data-hovered],
+  .table-styled-resizer[data-resizing],
+  .table-styled-resizer[data-focus-visible] {
     border-color: var(--table-styled-accent);
   }
 
   /* Rows: hover, selected, keyboard focus and disabled. */
-  :global(.table-styled-row) {
+  .table-styled-row {
     outline: none;
     transition: background-color 0.15s;
   }
 
-  :global(.table-styled-row[data-hovered]) {
+  .table-styled-row[data-hovered] {
     background: var(--table-styled-hover);
   }
 
-  :global(.table-styled-row[data-selected]) {
+  .table-styled-row[data-selected] {
     background: var(--table-styled-selected);
   }
 
-  :global(.table-styled-row[data-disabled]) {
+  .table-styled-row[data-disabled] {
     color: var(--table-styled-muted);
     text-decoration: line-through;
   }
 
-  :global(.table-styled-cell) {
+  .table-styled-cell {
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid color-mix(in srgb, var(--table-styled-border) 50%, Canvas);
     outline: none;
   }
 
   /* The checkbox: empty, checked, mixed, keyboard focus and disabled. */
-  :global(.table-styled-box) {
+  .table-styled-box {
     display: inline-grid;
     place-items: center;
     width: 1.1rem;
@@ -202,32 +202,32 @@
     vertical-align: middle;
   }
 
-  :global(.table-styled-box[data-selected]),
-  :global(.table-styled-box[data-indeterminate]) {
+  .table-styled-box[data-selected],
+  .table-styled-box[data-indeterminate] {
     border-color: var(--table-styled-accent);
     background: var(--table-styled-accent);
   }
 
-  :global(.table-styled-box[data-selected])::after {
+  .table-styled-box[data-selected]::after {
     content: '✓';
   }
 
-  :global(.table-styled-box[data-indeterminate])::after {
+  .table-styled-box[data-indeterminate]::after {
     content: '–';
   }
 
-  :global(.table-styled-box[data-focus-visible]) {
+  .table-styled-box[data-focus-visible] {
     box-shadow:
       0 0 0 2px var(--table-styled-bg),
       0 0 0 4px var(--table-styled-accent);
   }
 
-  :global(.table-styled-box[data-disabled]) {
+  .table-styled-box[data-disabled] {
     opacity: 0.5;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.table-styled-row) {
+    .table-styled-row {
       transition: none;
     }
   }

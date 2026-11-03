@@ -19,9 +19,9 @@
   </div>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.separator-styled-stage) {
+  .separator-styled-stage {
     --separator-styled-line: color-mix(in srgb, CanvasText 50%, Canvas);
     display: grid;
     gap: 1.5rem;
@@ -30,33 +30,33 @@
     color: CanvasText;
   }
 
-  :global(.separator-styled-card p),
-  :global(.separator-styled-title) {
+  .separator-styled-card p,
+  .separator-styled-title {
     margin: 0;
   }
 
-  :global(.separator-styled-title) {
+  .separator-styled-title {
     font-size: 1rem;
   }
 
-  :global(.separator-styled) {
+  .separator-styled {
     border: 0;
     background: var(--separator-styled-line);
   }
 
   /* Both orientations: a rule of 1px, across or down. */
-  :global(.separator-styled:not([data-orientation='vertical'])) {
+  .separator-styled:not([data-orientation='vertical']) {
     height: 1px;
     margin: 0.9rem 0;
   }
 
-  :global(.separator-styled[data-orientation='vertical']) {
+  .separator-styled[data-orientation='vertical'] {
     align-self: stretch;
     width: 1px;
     margin: 0;
   }
 
-  :global(.separator-styled-row) {
+  .separator-styled-row {
     display: flex;
     gap: 0.9rem;
     align-items: center;

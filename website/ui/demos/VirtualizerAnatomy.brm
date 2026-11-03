@@ -27,17 +27,17 @@
   }
 }
 
-<style>
-  :global(.virtualizer-anatomy-box) {
+<style global>
+  .virtualizer-anatomy-box {
     padding: 0.8rem 0.8rem 1.4rem;
     width: min(22rem, 100%);
   }
 
-  :global(.virtualizer-anatomy-self) {
+  .virtualizer-anatomy-self {
     display: inline-block;
   }
 
-  :global(.virtualizer-anatomy) {
+  .virtualizer-anatomy {
     height: 9rem;
   }
 </style>

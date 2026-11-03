@@ -9,8 +9,8 @@
   <Button class="ui-button" data-mark="3">Search</Button>
 </Group>
 
-<style>
-  :global(.group-anatomy-input) {
+<style global>
+  .group-anatomy-input {
     display: grid;
   }
 </style>

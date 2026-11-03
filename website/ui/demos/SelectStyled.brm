@@ -30,10 +30,10 @@
   <Button type="submit" class="select-styled-submit">Order</Button>
 </Form>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.select-styled-form),
-  :global(.select-styled-popover) {
+  .select-styled-form,
+  .select-styled-popover {
     /* light-dark() follows color-scheme, which the page sets for its theme. */
     --select-styled-bg: Canvas;
     --select-styled-text: CanvasText;
@@ -45,7 +45,7 @@
     --select-styled-radius: 8px;
   }
 
-  :global(.select-styled-form) {
+  .select-styled-form {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
@@ -53,18 +53,18 @@
     color: var(--select-styled-text);
   }
 
-  :global(.select-styled) {
+  .select-styled {
     display: grid;
     gap: 0.3rem;
     width: 14rem;
   }
 
-  :global(.select-styled-label) {
+  .select-styled-label {
     font-weight: 600;
   }
 
   /* The button: rest, hover, press, focus, open, disabled and invalid. */
-  :global(.select-styled-button) {
+  .select-styled-button {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -79,7 +79,7 @@
     transition: border-color 0.15s, box-shadow 0.15s;
   }
 
-  :global(.select-styled-button)::after {
+  .select-styled-button::after {
     content: '';
     width: 0.5rem;
     height: 0.5rem;
@@ -90,54 +90,54 @@
     transition: rotate 0.15s;
   }
 
-  :global(.select-styled-button[data-hovered]) {
+  .select-styled-button[data-hovered] {
     border-color: var(--select-styled-accent);
   }
 
-  :global(.select-styled-button[data-pressed]) {
+  .select-styled-button[data-pressed] {
     background: color-mix(in srgb, var(--select-styled-accent) 12%, var(--select-styled-bg));
   }
 
-  :global(.select-styled-button[data-focus-visible]) {
+  .select-styled-button[data-focus-visible] {
     outline: 2px solid var(--select-styled-accent);
     outline-offset: 2px;
   }
 
-  :global(.select-styled[data-open] .select-styled-button) {
+  .select-styled[data-open] .select-styled-button {
     border-color: var(--select-styled-accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--select-styled-accent) 25%, transparent);
   }
 
-  :global(.select-styled[data-open] .select-styled-button)::after {
+  .select-styled[data-open] .select-styled-button::after {
     rotate: 225deg;
     translate: 0 2px;
   }
 
-  :global(.select-styled[data-disabled] .select-styled-button) {
+  .select-styled[data-disabled] .select-styled-button {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  :global(.select-styled[data-invalid] .select-styled-button) {
+  .select-styled[data-invalid] .select-styled-button {
     border-color: var(--select-styled-danger);
   }
 
-  :global(.select-styled-value[data-placeholder]) {
+  .select-styled-value[data-placeholder] {
     color: var(--select-styled-muted);
   }
 
-  :global(.select-styled-help) {
+  .select-styled-help {
     color: var(--select-styled-muted);
     font-size: 0.875rem;
   }
 
-  :global(.select-styled-error) {
+  .select-styled-error {
     color: var(--select-styled-danger);
     font-size: 0.875rem;
   }
 
   /* The list: as wide as the button, and it fades and rises while it opens and closes. */
-  :global(.select-styled-popover) {
+  .select-styled-popover {
     box-sizing: border-box;
     width: var(--trigger-width);
     max-height: var(--available-height);
@@ -149,19 +149,19 @@
     transition: opacity 0.15s, translate 0.15s;
   }
 
-  :global(.select-styled-popover[data-closed]) {
+  .select-styled-popover[data-closed] {
     opacity: 0;
     translate: 0 -4px;
   }
 
-  :global(.select-styled-list) {
+  .select-styled-list {
     display: grid;
     padding: 0.25rem;
     outline: none;
   }
 
   /* The items: hover, keyboard focus, selected and disabled. */
-  :global(.select-styled-item) {
+  .select-styled-item {
     display: flex;
     justify-content: space-between;
     padding: 0.4rem 0.6rem;
@@ -169,32 +169,32 @@
     outline: none;
   }
 
-  :global(.select-styled-item[data-hovered]) {
+  .select-styled-item[data-hovered] {
     background: color-mix(in srgb, var(--select-styled-accent) 12%, var(--select-styled-bg));
   }
 
   /* Two bands, so the ring shows on the page and on the accent fill of a selected item. */
-  :global(.select-styled-item[data-focus-visible]) {
+  .select-styled-item[data-focus-visible] {
     box-shadow:
       inset 0 0 0 2px var(--select-styled-accent),
       inset 0 0 0 4px var(--select-styled-bg);
   }
 
-  :global(.select-styled-item[data-selected]) {
+  .select-styled-item[data-selected] {
     background: var(--select-styled-accent);
     color: var(--select-styled-on-accent);
   }
 
-  :global(.select-styled-item[data-selected])::after {
+  .select-styled-item[data-selected]::after {
     content: '✓';
   }
 
-  :global(.select-styled-item[data-disabled]) {
+  .select-styled-item[data-disabled] {
     color: var(--select-styled-muted);
     cursor: not-allowed;
   }
 
-  :global(.select-styled-submit) {
+  .select-styled-submit {
     padding: 0.5rem 1rem;
     border: 0;
     border-radius: var(--select-styled-radius);
@@ -205,15 +205,15 @@
     cursor: pointer;
   }
 
-  :global(.select-styled-submit[data-focus-visible]) {
+  .select-styled-submit[data-focus-visible] {
     outline: 2px solid var(--select-styled-accent);
     outline-offset: 2px;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.select-styled-button),
-    :global(.select-styled-button)::after,
-    :global(.select-styled-popover) {
+    .select-styled-button,
+    .select-styled-button::after,
+    .select-styled-popover {
       transition: none;
     }
   }

@@ -45,13 +45,13 @@
   }
 }
 
-<style>
-  :global(.tree-anatomy-box) {
+<style global>
+  .tree-anatomy-box {
     padding: 0.8rem 0.8rem 1.2rem;
     width: min(24rem, 100%);
   }
 
-  :global(.tree-anatomy-self) {
+  .tree-anatomy-self {
     display: inline-grid;
   }
 </style>

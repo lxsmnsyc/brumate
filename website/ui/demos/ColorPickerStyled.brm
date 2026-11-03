@@ -44,9 +44,9 @@
   </div>
 </ColorPicker>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.color-picker-styled) {
+  .color-picker-styled {
     --color-picker-styled-page: Canvas;
     --color-picker-styled-edge: color-mix(in srgb, CanvasText 50%, Canvas);
     --color-picker-styled-accent: light-dark(#2a76b2, #6fb2e6);
@@ -56,7 +56,7 @@
     color: CanvasText;
   }
 
-  :global(.color-picker-styled-area) {
+  .color-picker-styled-area {
     height: 10rem;
     border-radius: 0.75rem;
     background: var(--area-background);
@@ -64,23 +64,23 @@
     box-shadow: 0 0 0 1px var(--color-picker-styled-edge);
   }
 
-  :global(.color-picker-styled-slider) {
+  .color-picker-styled-slider {
     display: grid;
     gap: 0.3rem;
   }
 
-  :global(.color-picker-styled-label) {
+  .color-picker-styled-label {
     font-weight: 600;
   }
 
-  :global(.color-picker-styled-track) {
+  .color-picker-styled-track {
     height: 1.25rem;
     border-radius: 0.625rem;
     background: var(--track-background);
     box-shadow: 0 0 0 1px var(--color-picker-styled-edge);
   }
 
-  :global(.color-picker-styled-thumb) {
+  .color-picker-styled-thumb {
     box-sizing: border-box;
     width: 1.5rem;
     height: 1.5rem;
@@ -90,11 +90,11 @@
     box-shadow: 0 0 0 1.5px #000, inset 0 0 0 1.5px #000;
   }
 
-  :global(.color-picker-styled-thumb[data-dragging]) {
+  .color-picker-styled-thumb[data-dragging] {
     scale: 1.15;
   }
 
-  :global(.color-picker-styled-thumb[data-focus-visible]) {
+  .color-picker-styled-thumb[data-focus-visible] {
     box-shadow:
       0 0 0 1.5px #000,
       0 0 0 3.5px var(--color-picker-styled-page),
@@ -102,19 +102,19 @@
       inset 0 0 0 1.5px #000;
   }
 
-  :global(.color-picker-styled-row) {
+  .color-picker-styled-row {
     display: flex;
     gap: 0.6rem;
     align-items: end;
   }
 
-  :global(.color-picker-styled-field) {
+  .color-picker-styled-field {
     display: grid;
     flex: 1;
     gap: 0.3rem;
   }
 
-  :global(.color-picker-styled-input) {
+  .color-picker-styled-input {
     width: 100%;
     box-sizing: border-box;
     padding: 0.45rem 0.6rem;
@@ -126,29 +126,29 @@
     outline: none;
   }
 
-  :global(.color-picker-styled-input[data-hovered]) {
+  .color-picker-styled-input[data-hovered] {
     border-color: var(--color-picker-styled-accent);
   }
 
-  :global(.color-picker-styled-input[data-focus-visible]) {
+  .color-picker-styled-input[data-focus-visible] {
     border-color: var(--color-picker-styled-accent);
     box-shadow: 0 0 0 2px var(--color-picker-styled-page), 0 0 0 4px var(--color-picker-styled-accent);
   }
 
-  :global(.color-picker-styled-swatch) {
+  .color-picker-styled-swatch {
     width: 2.4rem;
     height: 2.4rem;
     border-radius: 8px;
     box-shadow: 0 0 0 1px var(--color-picker-styled-edge);
   }
 
-  :global(.color-picker-styled-presets) {
+  .color-picker-styled-presets {
     display: flex;
     gap: 0.4rem;
     outline: none;
   }
 
-  :global(.color-picker-styled-preset) {
+  .color-picker-styled-preset {
     padding: 3px;
     border-radius: 50%;
     outline: none;
@@ -156,27 +156,27 @@
     cursor: pointer;
   }
 
-  :global(.color-picker-styled-preset[data-hovered]) {
+  .color-picker-styled-preset[data-hovered] {
     box-shadow: 0 0 0 2px var(--color-picker-styled-edge);
   }
 
-  :global(.color-picker-styled-preset[data-selected]) {
+  .color-picker-styled-preset[data-selected] {
     box-shadow: 0 0 0 3px var(--color-picker-styled-accent);
   }
 
-  :global(.color-picker-styled-preset[data-selected][data-hovered]) {
+  .color-picker-styled-preset[data-selected][data-hovered] {
     box-shadow: 0 0 0 5px var(--color-picker-styled-accent);
   }
 
-  :global(.color-picker-styled-preset[data-pressed]) {
+  .color-picker-styled-preset[data-pressed] {
     scale: 0.92;
   }
 
-  :global(.color-picker-styled-preset[data-focus-visible]) {
+  .color-picker-styled-preset[data-focus-visible] {
     box-shadow: 0 0 0 2px var(--color-picker-styled-page), 0 0 0 5px var(--color-picker-styled-accent);
   }
 
-  :global(.color-picker-styled-dot) {
+  .color-picker-styled-dot {
     width: 1.6rem;
     height: 1.6rem;
     border-radius: 50%;

@@ -30,8 +30,8 @@
   <p>Writes: {mine}. Asks: {asked}. Last callback: {log || 'none'}.</p>
 </form>
 
-<style>
-  :global(.color-area-state) {
+<style global>
+  .color-area-state {
     width: 8rem;
     height: 8rem;
   }

@@ -25,23 +25,23 @@
   <FieldError class="ui-error" style="justify-self: start" data-mark="8" data-mark-side="after">The table seats 10.</FieldError>
 </NumberField>
 
-<style>
+<style global>
   /* The badge of the group sits in the middle of its lower edge, so it does not read as the minus button. */
-  :global(.anatomy-stage .numberfield-anatomy-group[data-mark]::before) {
+  .anatomy-stage .numberfield-anatomy-group[data-mark]::before {
     inset-inline-start: calc(50% - 0.7rem);
   }
 
-  :global(.numberfield-anatomy-wrap) {
+  .numberfield-anatomy-wrap {
     display: inline-flex;
   }
 
-  :global(.numberfield-anatomy-input) {
+  .numberfield-anatomy-input {
     display: flex;
     flex: 1;
     min-width: 0;
   }
 
-  :global(.numberfield-anatomy-input .ui-input) {
+  .numberfield-anatomy-input .ui-input {
     flex: 1;
     min-width: 0;
   }

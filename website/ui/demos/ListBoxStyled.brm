@@ -38,9 +38,9 @@
   }
 </ListBox>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.listbox-styled) {
+  .listbox-styled {
     /* light-dark() follows color-scheme, which the page sets for its theme. */
     --listbox-styled-bg: Canvas;
     --listbox-styled-text: CanvasText;
@@ -61,7 +61,7 @@
     outline: none;
   }
 
-  :global(.listbox-styled-header) {
+  .listbox-styled-header {
     padding: 0.4rem 0.6rem 0.2rem;
     color: var(--listbox-styled-muted);
     font-size: 0.75rem;
@@ -71,7 +71,7 @@
   }
 
   /* An item: rest, hover, press, keyboard focus, selected and disabled. */
-  :global(.listbox-styled-item) {
+  .listbox-styled-item {
     display: grid;
     grid-template-columns: 1fr auto;
     column-gap: 0.5rem;
@@ -83,67 +83,67 @@
     transition: background-color 0.15s;
   }
 
-  :global(.listbox-styled-name) {
+  .listbox-styled-name {
     font-weight: 600;
   }
 
-  :global(.listbox-styled-note) {
+  .listbox-styled-note {
     grid-column: 1;
     color: var(--listbox-styled-muted);
     font-size: 0.8125rem;
   }
 
-  :global(.listbox-styled-item[data-hovered]) {
+  .listbox-styled-item[data-hovered] {
     background: color-mix(in srgb, var(--listbox-styled-accent) 14%, var(--listbox-styled-bg));
   }
 
-  :global(.listbox-styled-item[data-pressed]) {
+  .listbox-styled-item[data-pressed] {
     background: color-mix(in srgb, var(--listbox-styled-accent) 26%, var(--listbox-styled-bg));
   }
 
   /* The muted note takes the text color while pressed, for its contrast on the tint. */
-  :global(.listbox-styled-item[data-pressed] .listbox-styled-note) {
+  .listbox-styled-item[data-pressed] .listbox-styled-note {
     color: var(--listbox-styled-text);
   }
 
   /* Two bands, so the ring shows on the page and on the accent fill of a selected item. */
-  :global(.listbox-styled-item[data-focus-visible]) {
+  .listbox-styled-item[data-focus-visible] {
     box-shadow:
       inset 0 0 0 2px var(--listbox-styled-accent),
       inset 0 0 0 4px var(--listbox-styled-bg);
   }
 
-  :global(.listbox-styled-item[data-selected]) {
+  .listbox-styled-item[data-selected] {
     background: var(--listbox-styled-accent);
     color: var(--listbox-styled-on-accent);
   }
 
-  :global(.listbox-styled-item[data-selected])::after {
+  .listbox-styled-item[data-selected]::after {
     content: '✓';
     grid-column: 2;
     grid-row: 1 / span 2;
   }
 
   /* A selected item gets darker in a light theme and lighter in a dark one, so its text keeps its contrast. */
-  :global(.listbox-styled-item[data-selected][data-hovered]) {
+  .listbox-styled-item[data-selected][data-hovered] {
     background: color-mix(in srgb, var(--listbox-styled-accent), CanvasText 15%);
   }
 
-  :global(.listbox-styled-item[data-selected][data-pressed]) {
+  .listbox-styled-item[data-selected][data-pressed] {
     background: color-mix(in srgb, var(--listbox-styled-accent), CanvasText 28%);
   }
 
-  :global(.listbox-styled-item[data-selected] .listbox-styled-note) {
+  .listbox-styled-item[data-selected] .listbox-styled-note {
     color: inherit;
   }
 
-  :global(.listbox-styled-item[data-disabled]) {
+  .listbox-styled-item[data-disabled] {
     color: var(--listbox-styled-muted);
     cursor: not-allowed;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.listbox-styled-item) {
+    .listbox-styled-item {
       transition: none;
     }
   }

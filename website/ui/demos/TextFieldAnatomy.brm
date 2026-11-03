@@ -15,12 +15,12 @@
   <FieldError class="ui-error" style="justify-self: start" data-mark="5" data-mark-side="after">Enter a full address.</FieldError>
 </TextField>
 
-<style>
-  :global(.textfield-anatomy-input) {
+<style global>
+  .textfield-anatomy-input {
     display: flex;
   }
 
-  :global(.textfield-anatomy-input .ui-input) {
+  .textfield-anatomy-input .ui-input {
     flex: 1;
   }
 </style>

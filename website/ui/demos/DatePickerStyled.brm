@@ -67,10 +67,10 @@
   <p role="status" class="date-picker-styled-status">{sent}</p>
 </Form>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. The Popover is a layer outside the form, so it has them too. */
-  :global(.date-picker-styled-form),
-  :global(.date-picker-styled-popover) {
+  .date-picker-styled-form,
+  .date-picker-styled-popover {
     --date-picker-styled-page: Canvas;
     --date-picker-styled-text: CanvasText;
     --date-picker-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
@@ -82,24 +82,24 @@
     --date-picker-styled-danger: light-dark(#c4271d, #f28b82);
   }
 
-  :global(.date-picker-styled-form) {
+  .date-picker-styled-form {
     display: grid;
     justify-items: start;
     gap: 0.9rem;
     color: var(--date-picker-styled-text);
   }
 
-  :global(.date-picker-styled) {
+  .date-picker-styled {
     display: grid;
     gap: 0.3rem;
   }
 
-  :global(.date-picker-styled-label) {
+  .date-picker-styled-label {
     font-weight: 600;
   }
 
   /* The group is the box. The input and the trigger sit in it. */
-  :global(.date-picker-styled-group) {
+  .date-picker-styled-group {
     display: inline-flex;
     align-items: center;
     width: fit-content;
@@ -111,50 +111,50 @@
     transition: border-color 0.15s, box-shadow 0.15s;
   }
 
-  :global(.date-picker-styled-group:hover) {
+  .date-picker-styled-group:hover {
     border-color: var(--date-picker-styled-accent);
   }
 
-  :global(.date-picker-styled-group:focus-within) {
+  .date-picker-styled-group:focus-within {
     border-color: var(--date-picker-styled-accent);
     box-shadow: 0 0 0 3px var(--date-picker-styled-page), 0 0 0 5px var(--date-picker-styled-accent);
   }
 
-  :global(.date-picker-styled[data-invalid] .date-picker-styled-group) {
+  .date-picker-styled[data-invalid] .date-picker-styled-group {
     border-color: var(--date-picker-styled-danger);
   }
 
-  :global(.date-picker-styled[data-invalid] .date-picker-styled-group:focus-within) {
+  .date-picker-styled[data-invalid] .date-picker-styled-group:focus-within {
     box-shadow: 0 0 0 3px var(--date-picker-styled-page), 0 0 0 5px var(--date-picker-styled-danger);
   }
 
-  :global(.date-picker-styled[data-open] .date-picker-styled-group) {
+  .date-picker-styled[data-open] .date-picker-styled-group {
     border-color: var(--date-picker-styled-accent);
   }
 
-  :global(.date-picker-styled-input) {
+  .date-picker-styled-input {
     display: inline-flex;
     font-variant-numeric: tabular-nums;
   }
 
-  :global(.date-picker-styled-input [data-segment]:not([data-type='literal'])) {
+  .date-picker-styled-input [data-segment]:not([data-type='literal']) {
     padding: 0 2px;
     border-radius: 4px;
     outline: none;
     caret-color: transparent;
   }
 
-  :global(.date-picker-styled-input [data-placeholder]) {
+  .date-picker-styled-input [data-placeholder] {
     color: var(--date-picker-styled-muted);
   }
 
-  :global(.date-picker-styled-input [data-focused]) {
+  .date-picker-styled-input [data-focused] {
     background: var(--date-picker-styled-accent);
     color: var(--date-picker-styled-on-accent);
   }
 
   /* The trigger: rest, hover, press, keyboard focus, open and disabled. */
-  :global(.date-picker-styled-trigger) {
+  .date-picker-styled-trigger {
     width: 2rem;
     height: 2rem;
     border: 0;
@@ -166,36 +166,36 @@
     outline: none;
   }
 
-  :global(.date-picker-styled-trigger[data-hovered]) {
+  .date-picker-styled-trigger[data-hovered] {
     background: var(--date-picker-styled-hover);
   }
 
-  :global(.date-picker-styled-trigger[data-pressed]),
-  :global(.date-picker-styled-trigger[aria-expanded='true']) {
+  .date-picker-styled-trigger[data-pressed],
+  .date-picker-styled-trigger[aria-expanded='true'] {
     background: var(--date-picker-styled-press);
   }
 
-  :global(.date-picker-styled-trigger[data-focus-visible]) {
+  .date-picker-styled-trigger[data-focus-visible] {
     box-shadow: 0 0 0 2px var(--date-picker-styled-page), 0 0 0 4px var(--date-picker-styled-accent);
   }
 
-  :global(.date-picker-styled-trigger[data-disabled]) {
+  .date-picker-styled-trigger[data-disabled] {
     opacity: 0.4;
     cursor: default;
   }
 
-  :global(.date-picker-styled-help) {
+  .date-picker-styled-help {
     color: var(--date-picker-styled-muted);
     font-size: 0.875rem;
   }
 
-  :global(.date-picker-styled-error) {
+  .date-picker-styled-error {
     color: var(--date-picker-styled-danger);
     font-size: 0.875rem;
   }
 
   /* The layer: it fades and rises while it opens and closes. */
-  :global(.date-picker-styled-popover) {
+  .date-picker-styled-popover {
     box-sizing: border-box;
     border: 1px solid var(--date-picker-styled-border);
     border-radius: 12px;
@@ -205,48 +205,48 @@
     transition: opacity 0.15s, translate 0.15s;
   }
 
-  :global(.date-picker-styled-popover[data-closed]) {
+  .date-picker-styled-popover[data-closed] {
     opacity: 0;
     translate: 0 -4px;
   }
 
-  :global(.date-picker-styled-dialog) {
+  .date-picker-styled-dialog {
     padding: 0.75rem;
     outline: none;
   }
 
   /* The prose styles of the page give a table borders and a heading a rule, so reset them. */
-  :global(.date-picker-styled-popover .date-picker-styled-grid td) {
+  .date-picker-styled-popover .date-picker-styled-grid td {
     padding: 0;
     border: 0;
     text-align: center;
     vertical-align: middle;
   }
 
-  :global(.date-picker-styled-popover .date-picker-styled-header .date-picker-styled-heading) {
+  .date-picker-styled-popover .date-picker-styled-header .date-picker-styled-heading {
     margin: 0;
     padding: 0;
     border: 0;
   }
 
-  :global(.date-picker-styled-calendar) {
+  .date-picker-styled-calendar {
     width: 17rem;
   }
 
-  :global(.date-picker-styled-header) {
+  .date-picker-styled-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 0.5rem;
   }
 
-  :global(.date-picker-styled-heading) {
+  .date-picker-styled-heading {
     font-size: 1rem;
     font-weight: 600;
   }
 
   /* The month buttons: rest, hover, press, keyboard focus and disabled at a limit. */
-  :global(.date-picker-styled-nav) {
+  .date-picker-styled-nav {
     width: 2rem;
     height: 2rem;
     border: 0;
@@ -258,30 +258,30 @@
     outline: none;
   }
 
-  :global(.date-picker-styled-nav[data-hovered]) {
+  .date-picker-styled-nav[data-hovered] {
     background: var(--date-picker-styled-hover);
   }
 
-  :global(.date-picker-styled-nav[data-pressed]) {
+  .date-picker-styled-nav[data-pressed] {
     background: var(--date-picker-styled-press);
   }
 
-  :global(.date-picker-styled-nav[data-focus-visible]) {
+  .date-picker-styled-nav[data-focus-visible] {
     box-shadow: 0 0 0 2px var(--date-picker-styled-page), 0 0 0 4px var(--date-picker-styled-accent);
   }
 
-  :global(.date-picker-styled-nav[data-disabled]) {
+  .date-picker-styled-nav[data-disabled] {
     opacity: 0.4;
     cursor: default;
   }
 
-  :global(.date-picker-styled-grid) {
+  .date-picker-styled-grid {
     width: 100%;
     border-collapse: collapse;
     text-align: center;
   }
 
-  :global(.date-picker-styled-popover .date-picker-styled-grid th) {
+  .date-picker-styled-popover .date-picker-styled-grid th {
     padding: 0 0 0.25rem;
     border: 0;
     background: transparent;
@@ -291,7 +291,7 @@
   }
 
   /* A date: rest, hover, press, today, selected, keyboard focus, unavailable and out of range. */
-  :global(.date-picker-styled-grid [data-date]) {
+  .date-picker-styled-grid [data-date] {
     width: 2.25rem;
     height: 2.25rem;
     margin: 1px auto;
@@ -302,53 +302,53 @@
     transition: background-color 0.15s, box-shadow 0.15s;
   }
 
-  :global(.date-picker-styled-grid [data-date]:hover) {
+  .date-picker-styled-grid [data-date]:hover {
     background: var(--date-picker-styled-hover);
   }
 
-  :global(.date-picker-styled-grid [data-date][data-pressed]) {
+  .date-picker-styled-grid [data-date][data-pressed] {
     background: var(--date-picker-styled-press);
   }
 
   /* Today has a ring, so it does not depend on color alone. */
-  :global(.date-picker-styled-grid [data-today]) {
+  .date-picker-styled-grid [data-today] {
     font-weight: 700;
     box-shadow: inset 0 0 0 1px var(--date-picker-styled-border);
   }
 
-  :global(.date-picker-styled-grid [data-selected]) {
+  .date-picker-styled-grid [data-selected] {
     background: var(--date-picker-styled-accent);
     color: var(--date-picker-styled-on-accent);
   }
 
-  :global(.date-picker-styled-grid [data-selected]:hover),
-  :global(.date-picker-styled-grid [data-selected][data-pressed]) {
+  .date-picker-styled-grid [data-selected]:hover,
+  .date-picker-styled-grid [data-selected][data-pressed] {
     background: color-mix(in srgb, var(--date-picker-styled-accent) 80%, CanvasText);
   }
 
   /* Two bands, so the ring shows on the fill of a selected date too. */
-  :global(.date-picker-styled-grid [data-focus-visible]) {
+  .date-picker-styled-grid [data-focus-visible] {
     box-shadow: 0 0 0 2px var(--date-picker-styled-page), 0 0 0 4px var(--date-picker-styled-accent);
   }
 
-  :global(.date-picker-styled-grid [data-unavailable]) {
+  .date-picker-styled-grid [data-unavailable] {
     color: var(--date-picker-styled-muted);
     text-decoration: line-through;
     cursor: default;
   }
 
-  :global(.date-picker-styled-grid [data-disabled]) {
+  .date-picker-styled-grid [data-disabled] {
     color: var(--date-picker-styled-muted);
     opacity: 0.55;
     cursor: default;
   }
 
-  :global(.date-picker-styled-grid [data-disabled]:hover),
-  :global(.date-picker-styled-grid [data-unavailable]:hover) {
+  .date-picker-styled-grid [data-disabled]:hover,
+  .date-picker-styled-grid [data-unavailable]:hover {
     background: transparent;
   }
 
-  :global(.date-picker-styled-submit) {
+  .date-picker-styled-submit {
     padding: 0.5rem 1rem;
     border: 0;
     border-radius: 8px;
@@ -360,27 +360,27 @@
     outline: none;
   }
 
-  :global(.date-picker-styled-submit[data-hovered]) {
+  .date-picker-styled-submit[data-hovered] {
     background: color-mix(in srgb, var(--date-picker-styled-accent) 85%, CanvasText);
   }
 
-  :global(.date-picker-styled-submit[data-pressed]) {
+  .date-picker-styled-submit[data-pressed] {
     background: color-mix(in srgb, var(--date-picker-styled-accent) 70%, CanvasText);
   }
 
-  :global(.date-picker-styled-submit[data-focus-visible]) {
+  .date-picker-styled-submit[data-focus-visible] {
     box-shadow: 0 0 0 2px var(--date-picker-styled-page), 0 0 0 4px var(--date-picker-styled-accent);
   }
 
-  :global(.date-picker-styled-status) {
+  .date-picker-styled-status {
     margin: 0;
     color: var(--date-picker-styled-muted);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.date-picker-styled-group),
-    :global(.date-picker-styled-popover),
-    :global(.date-picker-styled-grid [data-date]) {
+    .date-picker-styled-group,
+    .date-picker-styled-popover,
+    .date-picker-styled-grid [data-date] {
       transition: none;
     }
   }

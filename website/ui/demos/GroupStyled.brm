@@ -19,9 +19,9 @@
   </Group>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.group-styled-stack) {
+  .group-styled-stack {
     --group-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
     --group-styled-hover: color-mix(in srgb, CanvasText 75%, Canvas);
     --group-styled-accent: light-dark(#2a76b2, #6fb2e6);
@@ -35,7 +35,7 @@
   }
 
   /* The group draws one frame for the input and the button. It reacts to its own attributes. */
-  :global(.group-styled) {
+  .group-styled {
     display: flex;
     overflow: hidden;
     border: 2px solid var(--group-styled-border);
@@ -44,28 +44,28 @@
     transition: border-color 0.15s, box-shadow 0.15s;
   }
 
-  :global(.group-styled[data-hovered]) {
+  .group-styled[data-hovered] {
     border-color: var(--group-styled-hover);
   }
 
-  :global(.group-styled[data-focus-within]) {
+  .group-styled[data-focus-within] {
     border-color: var(--group-styled-accent);
   }
 
-  :global(.group-styled[data-focus-visible]) {
+  .group-styled[data-focus-visible] {
     box-shadow: 0 0 0 2px Canvas, 0 0 0 4px var(--group-styled-accent);
   }
 
-  :global(.group-styled[data-invalid]) {
+  .group-styled[data-invalid] {
     border-color: var(--group-styled-invalid);
   }
 
-  :global(.group-styled[data-disabled]) {
+  .group-styled[data-disabled] {
     opacity: 0.6;
   }
 
   /* The input has no frame of its own, and the group's ring says that focus is inside. */
-  :global(.group-styled-input) {
+  .group-styled-input {
     flex: 1;
     min-width: 0;
     padding: 0.5rem 0.7rem;
@@ -75,12 +75,12 @@
     font: inherit;
   }
 
-  :global(.group-styled-input[data-focus-visible]),
-  :global(.group-styled-input:focus-visible) {
+  .group-styled-input[data-focus-visible],
+  .group-styled-input:focus-visible {
     outline: none;
   }
 
-  :global(.group-styled-button) {
+  .group-styled-button {
     padding: 0.5rem 1rem;
     border: 0;
     background: var(--group-styled-accent);
@@ -90,25 +90,25 @@
     cursor: pointer;
   }
 
-  :global(.group-styled-button[data-hovered]) {
+  .group-styled-button[data-hovered] {
     background: color-mix(in srgb, var(--group-styled-accent), CanvasText 15%);
   }
 
-  :global(.group-styled-button[data-pressed]) {
+  .group-styled-button[data-pressed] {
     background: color-mix(in srgb, var(--group-styled-accent), CanvasText 28%);
   }
 
-  :global(.group-styled-button[data-focus-visible]) {
+  .group-styled-button[data-focus-visible] {
     outline: none;
     box-shadow: inset 0 0 0 2px var(--group-styled-on-accent);
   }
 
-  :global(.group-styled-button[data-disabled]) {
+  .group-styled-button[data-disabled] {
     cursor: not-allowed;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.group-styled) {
+    .group-styled {
       transition: none;
     }
   }

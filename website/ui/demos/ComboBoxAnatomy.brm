@@ -28,13 +28,13 @@
   </ListBox>
 </div>
 
-<style>
-  :global(.combo-anatomy-input) {
+<style global>
+  .combo-anatomy-input {
     display: flex;
     flex: 1;
   }
 
-  :global(.combo-anatomy-self) {
+  .combo-anatomy-self {
     justify-self: start;
   }
 </style>

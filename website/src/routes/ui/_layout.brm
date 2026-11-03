@@ -12,26 +12,26 @@
 
 <DocsShell section="ui" {sections} label="Parts" bare=landing>{children}</DocsShell>
 
-<style>
+<style global>
   /*
     The parts of @brumate/ui have no styles. These give the demos the look of the site, from the
     data attributes of the parts.
   */
-  :global(.ui-demo) {
+  .ui-demo {
     margin: 1.5rem 0;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     overflow: hidden;
   }
 
-  :global(.ui-demo pre) {
+  .ui-demo pre {
     margin: 0;
     border: 0;
     border-top: 1px solid var(--border);
     border-radius: 0;
   }
 
-  :global(.ui-demo-stage) {
+  .ui-demo-stage {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
@@ -41,36 +41,7 @@
     background: var(--surface, transparent);
   }
 
-  :global(.ui-card) {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    margin: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    transition: border-color 0.15s;
-  }
-
-  :global(.ui-card:hover),
-  :global(.ui-card:focus-within) {
-    border-color: var(--accent);
-  }
-
-  /*
-    Every preview has the same box. The demo is inside it at its natural size, and a script sets
-    --fit to scale it down to fit, never up. Before the script runs, 0.8 fits most demos.
-  */
-  :global(.ui-card .ui-demo-stage) {
-    position: relative;
-    flex: none;
-    height: 14rem;
-    padding: 1rem;
-    overflow: hidden;
-    border-bottom: 1px solid var(--border);
-  }
-
-  :global(.ui-fit) {
+  .ui-fit {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -84,64 +55,15 @@
     transform: translate(-50%, -50%) scale(var(--fit, 0.8));
   }
 
-  /* A line of text in a preview takes a row of its own, under the parts. */
-  :global(.ui-card .ui-fit > p) {
-    flex-basis: 100%;
-    margin: 0;
-    text-align: center;
-  }
-
-  /* A field in a card is as wide as its parts, so the card centers it. */
-  :global(.ui-card .ui-field) {
-    min-width: 0;
-  }
-
   /* Boxes stack in a column that starts at one edge, and the column is centered. */
-  :global(.ui-stack) {
+  .ui-stack {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     align-items: flex-start;
   }
 
-  :global(.ui-card .ui-demo-stage p) {
-    margin: 0;
-    font-size: 0.875rem;
-  }
-
-  :global(.ui-card-title) {
-    padding: 0.75rem 1rem 0;
-    color: var(--text);
-    font-weight: 700;
-    text-decoration: none;
-  }
-
-  /* The link covers the card, so a click anywhere on it opens the page. */
-  :global(.ui-card-title)::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-  }
-
-  /* The focus ring of the link is the outline of the card. */
-  :global(.ui-card-title:focus-visible) {
-    outline: none;
-  }
-
-  :global(.ui-card-title:focus-visible)::after {
-    border-radius: var(--radius);
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-
-  :global(.ui-card > p) {
-    margin: 0.15rem 0 0;
-    padding: 0 1rem 0.85rem;
-    color: var(--muted);
-    font-size: 0.875rem;
-  }
-
-  :global(.ui-button) {
+  .ui-button {
     padding: 0.45rem 0.9rem;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -152,57 +74,57 @@
     cursor: pointer;
   }
 
-  :global(.ui-button[data-hovered]) {
+  .ui-button[data-hovered] {
     border-color: var(--accent);
   }
 
-  :global(.ui-button[data-pressed]) {
+  .ui-button[data-pressed] {
     background: var(--accent-soft);
   }
 
-  :global(.ui-button[data-selected]) {
+  .ui-button[data-selected] {
     background: var(--accent-strong);
     border-color: var(--accent-strong);
     color: var(--bg);
   }
 
-  :global(.ui-button[data-disabled]),
-  :global(.ui-button[data-pending]) {
+  .ui-button[data-disabled],
+  .ui-button[data-pending] {
     opacity: 0.55;
     cursor: default;
   }
 
-  :global([data-focus-visible]) {
+  [data-focus-visible] {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
-  :global(.ui-link) {
+  .ui-link {
     color: var(--accent-strong);
     cursor: pointer;
   }
 
-  :global(.ui-link[data-current]) {
+  .ui-link[data-current] {
     color: var(--text);
     font-weight: 700;
   }
 
-  :global(.ui-link[data-disabled]) {
+  .ui-link[data-disabled] {
     color: var(--muted);
     cursor: default;
   }
 
-  :global(.ui-field) {
+  .ui-field {
     display: grid;
     gap: 0.3rem;
     min-width: 16rem;
   }
 
-  :global(.ui-field label) {
+  .ui-field label {
     font-weight: 600;
   }
 
-  :global(.ui-input) {
+  .ui-input {
     padding: 0.45rem 0.6rem;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -211,32 +133,32 @@
     font: inherit;
   }
 
-  :global(.ui-input[data-focused]) {
+  .ui-input[data-focused] {
     border-color: var(--accent);
   }
 
-  :global(.ui-input[data-invalid]) {
+  .ui-input[data-invalid] {
     border-color: var(--danger);
   }
 
-  :global(.ui-help) {
+  .ui-help {
     color: var(--muted);
     font-size: 0.875rem;
   }
 
-  :global(.ui-error) {
+  .ui-error {
     color: var(--danger);
     font-size: 0.875rem;
   }
 
-  :global(.ui-box) {
+  .ui-box {
     display: inline-flex;
     gap: 0.5rem;
     align-items: center;
     cursor: pointer;
   }
 
-  :global(.ui-mark) {
+  .ui-mark {
     display: inline-grid;
     place-items: center;
     width: 1.1rem;
@@ -248,35 +170,35 @@
   }
 
   /* A box shows the icon of its state: a check, or a dash while it is indeterminate. */
-  :global(.ui-mark .icon) {
+  .ui-mark .icon {
     display: none;
   }
 
-  :global(.ui-box[data-selected]:not([data-indeterminate]) .ui-mark .icon-check),
-  :global(.ui-box[data-indeterminate] .ui-mark .icon-minus) {
+  .ui-box[data-selected]:not([data-indeterminate]) .ui-mark .icon-check,
+  .ui-box[data-indeterminate] .ui-mark .icon-minus {
     display: block;
   }
 
-  :global(.ui-box[data-hovered] .ui-mark) {
+  .ui-box[data-hovered] .ui-mark {
     border-color: var(--accent);
   }
 
-  :global(.ui-box[data-pressed] .ui-mark) {
+  .ui-box[data-pressed] .ui-mark {
     scale: 0.92;
   }
 
-  :global(.ui-box[data-selected] .ui-mark:not(.round)),
-  :global(.ui-box[data-indeterminate] .ui-mark) {
+  .ui-box[data-selected] .ui-mark:not(.round),
+  .ui-box[data-indeterminate] .ui-mark {
     background: var(--accent-fill);
     border-color: var(--accent-fill);
   }
 
   /* A radio is a ring, with a dot while it is chosen. */
-  :global(.ui-mark.round) {
+  .ui-mark.round {
     border-radius: 50%;
   }
 
-  :global(.ui-mark.round)::after {
+  .ui-mark.round::after {
     content: '';
     width: 0.5rem;
     height: 0.5rem;
@@ -286,26 +208,26 @@
     transition: scale 0.15s;
   }
 
-  :global(.ui-box[data-selected] .ui-mark.round) {
+  .ui-box[data-selected] .ui-mark.round {
     border-color: var(--accent);
   }
 
-  :global(.ui-box[data-selected] .ui-mark.round)::after {
+  .ui-box[data-selected] .ui-mark.round::after {
     scale: 1;
   }
 
-  :global(.ui-box[data-focus-visible] .ui-mark),
-  :global(.ui-box[data-focus-visible] .ui-track) {
+  .ui-box[data-focus-visible] .ui-mark,
+  .ui-box[data-focus-visible] .ui-track {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
-  :global(.ui-box[data-disabled]) {
+  .ui-box[data-disabled] {
     opacity: 0.55;
     cursor: default;
   }
 
-  :global(.ui-track) {
+  .ui-track {
     position: relative;
     width: 2.2rem;
     height: 1.25rem;
@@ -314,7 +236,7 @@
     transition: background 0.15s;
   }
 
-  :global(.ui-track)::after {
+  .ui-track::after {
     content: '';
     position: absolute;
     top: 0.15rem;
@@ -326,19 +248,19 @@
     transition: translate 0.15s;
   }
 
-  :global(.ui-box[data-selected] .ui-track) {
+  .ui-box[data-selected] .ui-track {
     background: var(--accent-fill);
   }
 
-  :global(.ui-box[data-selected] .ui-track)::after {
+  .ui-box[data-selected] .ui-track::after {
     background: var(--on-accent);
   }
 
-  :global(.ui-box[data-selected] .ui-track)::after {
+  .ui-box[data-selected] .ui-track::after {
     translate: 0.95rem 0;
   }
 
-  :global(.ui-group) {
+  .ui-group {
     display: inline-flex;
     gap: 0.4rem;
     align-items: center;
@@ -347,57 +269,57 @@
     list-style: none;
   }
 
-  :global(.ui-bar) {
+  .ui-bar {
     display: grid;
     gap: 0.35rem;
     min-width: 16rem;
   }
 
-  :global(.ui-bar)::after {
+  .ui-bar::after {
     content: '';
     height: 0.5rem;
     border-radius: 1rem;
     background: linear-gradient(to right, var(--accent) var(--percentage, 0%), var(--border) 0);
   }
 
-  :global(.ui-icon-button) {
+  .ui-icon-button {
     display: inline-grid;
     place-items: center;
     padding: 0.5rem;
   }
 
   /* An icon inside the start of an input, such as the glass of a search field. */
-  :global(.ui-input-icon) {
+  .ui-input-icon {
     position: relative;
     display: inline-flex;
     align-items: center;
   }
 
-  :global(.ui-input-icon .icon) {
+  .ui-input-icon .icon {
     position: absolute;
     left: 0.65rem;
     color: var(--muted);
     pointer-events: none;
   }
 
-  :global(.ui-input-icon .ui-input) {
+  .ui-input-icon .ui-input {
     padding-left: 2rem;
   }
 
-  :global(.ui-crumb) {
+  .ui-crumb {
     display: inline-flex;
     gap: 0.4rem;
     align-items: center;
     color: var(--muted);
   }
 
-  :global(.ui-form) {
+  .ui-form {
     display: grid;
     justify-items: start;
     gap: 0.75rem;
   }
 
-  :global(.ui-kbd) {
+  .ui-kbd {
     padding: 0.1rem 0.4rem;
     border: 1px solid var(--border);
     border-bottom-width: 2px;
@@ -405,19 +327,19 @@
     font: 600 0.8rem var(--mono, ui-monospace, monospace);
   }
 
-  :global(.ui-accordion) {
+  .ui-accordion {
     width: 100%;
     max-width: 26rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
   }
 
-  :global(.ui-disclosure + .ui-disclosure) {
+  .ui-disclosure + .ui-disclosure {
     border-top: 1px solid var(--border);
   }
 
   /* A demo heading is a level below the title of the page, with none of the look of the page's. */
-  :global(.ui-disclosure h2) {
+  .ui-disclosure h2 {
     margin: 0;
     padding: 0;
     border: 0;
@@ -425,7 +347,7 @@
     letter-spacing: normal;
   }
 
-  :global(.ui-disclosure-trigger) {
+  .ui-disclosure-trigger {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -440,39 +362,39 @@
     cursor: pointer;
   }
 
-  :global(.ui-disclosure-trigger .icon) {
+  .ui-disclosure-trigger .icon {
     transition: rotate 0.2s;
   }
 
-  :global(.ui-disclosure[data-expanded] .ui-disclosure-trigger .icon) {
+  .ui-disclosure[data-expanded] .ui-disclosure-trigger .icon {
     rotate: 180deg;
   }
 
   /* The panel slides from the height that it holds while it moves, and fades. */
-  :global(.ui-disclosure-panel) {
+  .ui-disclosure-panel {
     height: var(--disclosure-panel-height, auto);
     overflow: clip;
     color: var(--muted);
     transition: height 0.25s, opacity 0.25s;
   }
 
-  :global(.ui-disclosure-panel[data-closed]) {
+  .ui-disclosure-panel[data-closed] {
     opacity: 0;
   }
 
-  :global(.ui-disclosure-panel p) {
+  .ui-disclosure-panel p {
     margin: 0;
     padding: 0 0.9rem 0.8rem;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.ui-disclosure-panel) {
+    .ui-disclosure-panel {
       transition: none;
     }
   }
 
   /* A transition from the data attributes of Transition, with no classes. */
-  :global(.ui-note) {
+  .ui-note {
     flex-basis: 100%;
     padding: 0.75rem 1rem;
     border-radius: 8px;
@@ -481,19 +403,19 @@
     transition: opacity 0.25s, translate 0.25s;
   }
 
-  :global(.ui-note[data-closed]) {
+  .ui-note[data-closed] {
     opacity: 0;
     translate: 0 -0.5rem;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.ui-note) {
+    .ui-note {
       transition: none;
     }
   }
 
   /* A list of options, whose selected options take the accent. */
-  :global(.ui-listbox) {
+  .ui-listbox {
     display: grid;
     width: min(16rem, 100%);
     max-height: 14rem;
@@ -505,12 +427,12 @@
     outline: none;
   }
 
-  :global(.ui-listbox:focus-visible) {
+  .ui-listbox:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
-  :global(.ui-listbox-header) {
+  .ui-listbox-header {
     padding: 0.5rem 0.6rem 0.25rem;
     color: var(--muted);
     font-size: 0.75rem;
@@ -519,45 +441,45 @@
     text-transform: uppercase;
   }
 
-  :global(.ui-option) {
+  .ui-option {
     padding: 0.4rem 0.6rem;
     border-radius: 6px;
     cursor: default;
     outline: none;
   }
 
-  :global(.ui-option[data-hovered]) {
+  .ui-option[data-hovered] {
     background: var(--surface);
   }
 
-  :global(.ui-option[data-focus-visible]) {
+  .ui-option[data-focus-visible] {
     box-shadow: inset 0 0 0 2px var(--accent);
   }
 
-  :global(.ui-option[data-selected]) {
+  .ui-option[data-selected] {
     background: var(--accent-strong);
     color: var(--bg);
   }
 
-  :global(.ui-option[data-disabled]) {
+  .ui-option[data-disabled] {
     color: var(--muted);
   }
 
   /* Parts side by side, such as the triggers of two menus. */
-  :global(.ui-row) {
+  .ui-row {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
   }
 
   /* A select: a field whose button shows the value, and a list as wide as the button. */
-  :global(.ui-select) {
+  .ui-select {
     display: grid;
     gap: 0.35rem;
     width: min(16rem, 100%);
   }
 
-  :global(.ui-select-button) {
+  .ui-select-button {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -565,52 +487,52 @@
     text-align: start;
   }
 
-  :global(.ui-select-button)::after {
+  .ui-select-button::after {
     color: var(--muted);
     content: '▾';
   }
 
-  :global(.ui-select-value[data-placeholder]) {
+  .ui-select-value[data-placeholder] {
     color: var(--muted);
   }
 
-  :global(.ui-select-popover .ui-listbox) {
+  .ui-select-popover .ui-listbox {
     width: var(--trigger-width);
     box-shadow: var(--shadow);
   }
 
   /* A combobox: an input and its button in one box. */
-  :global(.ui-combobox-box) {
+  .ui-combobox-box {
     display: flex;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--bg);
   }
 
-  :global(.ui-combobox-box:focus-within) {
+  .ui-combobox-box:focus-within {
     border-color: var(--accent);
   }
 
-  :global(.ui-combobox-box .ui-input) {
+  .ui-combobox-box .ui-input {
     flex: 1;
     min-width: 0;
     border: 0;
     outline: none;
   }
 
-  :global(.ui-combobox-box .ui-select-button) {
+  .ui-combobox-box .ui-select-button {
     border: 0;
     background: none;
   }
 
   /* Tabs: a row of tabs whose selected one takes the accent, over its panel. */
-  :global(.ui-tablist) {
+  .ui-tablist {
     display: flex;
     gap: 0.25rem;
     border-bottom: 1px solid var(--border);
   }
 
-  :global(.ui-tab) {
+  .ui-tab {
     padding: 0.45rem 0.8rem;
     border-bottom: 2px solid transparent;
     color: var(--muted);
@@ -618,36 +540,36 @@
     outline: none;
   }
 
-  :global(.ui-tab[data-hovered]) {
+  .ui-tab[data-hovered] {
     color: var(--text);
   }
 
-  :global(.ui-tab[data-selected]) {
+  .ui-tab[data-selected] {
     border-color: var(--accent);
     color: var(--text);
     font-weight: 600;
   }
 
-  :global(.ui-tab[data-focus-visible]),
-  :global(.ui-tabpanel:focus-visible) {
+  .ui-tab[data-focus-visible],
+  .ui-tabpanel:focus-visible {
     border-radius: 6px;
     box-shadow: inset 0 0 0 2px var(--accent);
   }
 
-  :global(.ui-tabpanel) {
+  .ui-tabpanel {
     padding: 0.75rem 0.25rem;
     outline: none;
   }
 
   /* Tags: rounded chips in a row, whose selected ones take the accent. */
-  :global(.ui-taglist) {
+  .ui-taglist {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
     outline: none;
   }
 
-  :global(.ui-tag) {
+  .ui-tag {
     display: inline-flex;
     gap: 0.3rem;
     align-items: center;
@@ -658,21 +580,21 @@
     outline: none;
   }
 
-  :global(.ui-tag[data-hovered]) {
+  .ui-tag[data-hovered] {
     border-color: var(--muted);
   }
 
-  :global(.ui-tag[data-selected]) {
+  .ui-tag[data-selected] {
     border-color: var(--accent-strong);
     background: var(--accent-strong);
     color: var(--bg);
   }
 
-  :global(.ui-tag[data-focus-visible]) {
+  .ui-tag[data-focus-visible] {
     box-shadow: 0 0 0 2px var(--accent);
   }
 
-  :global(.ui-tag-remove) {
+  .ui-tag-remove {
     padding: 0;
     border: 0;
     background: none;
@@ -682,7 +604,7 @@
   }
 
   /* A grid list: rows with a checkbox and a button, whose selected rows take the accent. */
-  :global(.ui-gridlist) {
+  .ui-gridlist {
     display: grid;
     width: min(22rem, 100%);
     padding: 0.25rem;
@@ -691,12 +613,12 @@
     outline: none;
   }
 
-  :global(.ui-gridlist:focus-visible) {
+  .ui-gridlist:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
-  :global(.ui-gridrow) {
+  .ui-gridrow {
     display: flex;
     gap: 0.6rem;
     align-items: center;
@@ -705,31 +627,31 @@
     outline: none;
   }
 
-  :global(.ui-gridrow[data-hovered]) {
+  .ui-gridrow[data-hovered] {
     background: var(--surface);
   }
 
-  :global(.ui-gridrow[data-selected]) {
+  .ui-gridrow[data-selected] {
     background: var(--accent-soft);
   }
 
-  :global(.ui-gridrow[data-focus-visible]) {
+  .ui-gridrow[data-focus-visible] {
     box-shadow: inset 0 0 0 2px var(--accent);
   }
 
-  :global(.ui-gridrow[data-dragging]) {
+  .ui-gridrow[data-dragging] {
     opacity: 0.5;
   }
 
-  :global(.ui-gridrow[data-drop-target='before']) {
+  .ui-gridrow[data-drop-target='before'] {
     box-shadow: inset 0 2px 0 var(--accent);
   }
 
-  :global(.ui-gridrow[data-drop-target='after']) {
+  .ui-gridrow[data-drop-target='after'] {
     box-shadow: inset 0 -2px 0 var(--accent);
   }
 
-  :global(.ui-grip) {
+  .ui-grip {
     display: grid;
     place-items: center;
     padding: 0.15rem;
@@ -740,29 +662,29 @@
     cursor: grab;
   }
 
-  :global(.ui-grip:focus-visible) {
+  .ui-grip:focus-visible {
     outline: 2px solid var(--accent);
   }
 
-  :global(.ui-gridrow .ui-button) {
+  .ui-gridrow .ui-button {
     margin-inline-start: auto;
     padding: 0.2rem 0.6rem;
   }
 
   /* A table: its sorted column shows an arrow, and selected rows take the accent. */
-  :global(.ui-table) {
+  .ui-table {
     width: min(32rem, 100%);
     border-collapse: collapse;
     border: 1px solid var(--border);
     outline: none;
   }
 
-  :global(.ui-table:focus-visible) {
+  .ui-table:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
-  :global(.ui-column) {
+  .ui-column {
     padding: 0.4rem 0.6rem;
     border-bottom: 1px solid var(--border);
     font-weight: 600;
@@ -770,28 +692,28 @@
     outline: none;
   }
 
-  :global(.ui-column[data-allows-sorting]) {
+  .ui-column[data-allows-sorting] {
     cursor: pointer;
   }
 
-  :global(.ui-column[data-sort-direction='ascending'])::after {
+  .ui-column[data-sort-direction='ascending']::after {
     content: ' ▲';
   }
 
-  :global(.ui-column[data-sort-direction='descending'])::after {
+  .ui-column[data-sort-direction='descending']::after {
     content: ' ▼';
   }
 
-  :global(.ui-resizable) {
+  .ui-resizable {
     max-width: 100%;
   }
 
-  :global(.ui-resizable-column) {
+  .ui-resizable-column {
     position: relative;
   }
 
   /* A resizer: a bar at the end of the header, which shows while it is used. */
-  :global(.ui-resizer) {
+  .ui-resizer {
     position: absolute;
     inset-block: 0;
     inset-inline-end: 0;
@@ -800,47 +722,47 @@
     border-inline-end: 2px solid var(--border);
   }
 
-  :global(.ui-resizer[data-resizing]),
-  :global(.ui-resizer[data-focus-visible]) {
+  .ui-resizer[data-resizing],
+  .ui-resizer[data-focus-visible] {
     border-color: var(--accent);
   }
 
-  :global(.ui-select-column) {
+  .ui-select-column {
     width: 2rem;
   }
 
-  :global(.ui-tablerow) {
+  .ui-tablerow {
     outline: none;
   }
 
-  :global(.ui-tablerow[data-hovered]) {
+  .ui-tablerow[data-hovered] {
     background: var(--surface);
   }
 
-  :global(.ui-tablerow[data-selected]) {
+  .ui-tablerow[data-selected] {
     background: var(--accent-soft);
   }
 
-  :global(.ui-tablerow[data-focus-visible]),
-  :global(.ui-column:focus-visible),
-  :global(.ui-cell:focus-visible) {
+  .ui-tablerow[data-focus-visible],
+  .ui-column:focus-visible,
+  .ui-cell:focus-visible {
     box-shadow: inset 0 0 0 2px var(--accent);
   }
 
-  :global(.ui-cell) {
+  .ui-cell {
     padding: 0.35rem 0.6rem;
     font-weight: normal;
     text-align: start;
     outline: none;
   }
 
-  :global(.ui-number) {
+  .ui-number {
     text-align: end;
     font-variant-numeric: tabular-nums;
   }
 
   /* A tree: rows indented by their level, with a chevron that turns while the row is open. */
-  :global(.ui-tree) {
+  .ui-tree {
     display: grid;
     width: min(22rem, 100%);
     padding: 0.25rem;
@@ -849,12 +771,12 @@
     outline: none;
   }
 
-  :global(.ui-tree:focus-visible) {
+  .ui-tree:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
-  :global(.ui-treerow) {
+  .ui-treerow {
     display: flex;
     gap: 0.5rem;
     align-items: center;
@@ -864,46 +786,46 @@
     outline: none;
   }
 
-  :global(.ui-treerow[data-hovered]) {
+  .ui-treerow[data-hovered] {
     background: var(--surface);
   }
 
-  :global(.ui-treerow[data-selected]) {
+  .ui-treerow[data-selected] {
     background: var(--accent-soft);
   }
 
-  :global(.ui-treerow[data-focus-visible]) {
+  .ui-treerow[data-focus-visible] {
     box-shadow: inset 0 0 0 2px var(--accent);
   }
 
-  :global(.ui-row-action) {
+  .ui-row-action {
     margin-inline-start: auto;
     padding: 0 0.5rem;
   }
 
   /* A field of text with tokens: each token is a chip in the line of text. */
-  :global(.ui-token-input) {
+  .ui-token-input {
     min-height: 2.5rem;
     line-height: 1.8;
   }
 
-  :global(.ui-token) {
+  .ui-token {
     padding: 0.05rem 0.4rem;
     border-radius: 999px;
     background: var(--surface);
     border: 1px solid var(--border);
   }
 
-  :global(.ui-mention) {
+  .ui-mention {
     border-color: var(--accent);
     font-weight: 600;
   }
 
-  :global(.ui-token[data-selected]) {
+  .ui-token[data-selected] {
     background: var(--accent-soft);
   }
 
-  :global(.ui-dropzone) {
+  .ui-dropzone {
     display: grid;
     gap: 0.75rem;
     justify-items: center;
@@ -914,32 +836,32 @@
     text-align: center;
   }
 
-  :global(.ui-dropzone[data-drop-target]),
-  :global(.ui-dropzone[data-focus-visible]) {
+  .ui-dropzone[data-drop-target],
+  .ui-dropzone[data-focus-visible] {
     border-style: solid;
     border-color: currentColor;
   }
 
-  :global(.ui-virtualizer) {
+  .ui-virtualizer {
     height: 16rem;
     width: min(22rem, 100%);
   }
 
-  :global(.ui-virtualizer .ui-tree) {
+  .ui-virtualizer .ui-tree {
     width: 100%;
   }
 
-  :global(.ui-navlink) {
+  .ui-navlink {
     color: inherit;
     text-decoration: none;
   }
 
-  :global(.ui-navlink[aria-current='page']) {
+  .ui-navlink[aria-current='page'] {
     color: var(--accent-strong);
     font-weight: 600;
   }
 
-  :global(.ui-navrow[data-current-ancestor])::after {
+  .ui-navrow[data-current-ancestor]::after {
     content: '';
     width: 6px;
     height: 6px;
@@ -948,7 +870,7 @@
     background: var(--accent);
   }
 
-  :global(.ui-chevron) {
+  .ui-chevron {
     display: inline-grid;
     place-items: center;
     width: 1.25rem;
@@ -962,28 +884,28 @@
     transition: transform 0.15s;
   }
 
-  :global(.ui-treerow[data-expanded] .ui-chevron) {
+  .ui-treerow[data-expanded] .ui-chevron {
     transform: none;
   }
 
-  :global(.ui-treerow:dir(rtl) .ui-chevron) {
+  .ui-treerow:dir(rtl) .ui-chevron {
     transform: rotate(90deg);
   }
 
-  :global(.ui-treerow[data-expanded]:dir(rtl) .ui-chevron) {
+  .ui-treerow[data-expanded]:dir(rtl) .ui-chevron {
     transform: none;
   }
 
   /* A bar under the selected tab, which slides to the next one. */
-  :global(.ui-tab:has(.ui-indicator)) {
+  .ui-tab:has(.ui-indicator) {
     position: relative;
   }
 
-  :global(.ui-tablist-sliding .ui-tab[data-selected]) {
+  .ui-tablist-sliding .ui-tab[data-selected] {
     border-color: transparent;
   }
 
-  :global(.ui-indicator) {
+  .ui-indicator {
     position: absolute;
     right: 0;
     bottom: -1px;
@@ -995,7 +917,7 @@
   }
 
   /* A number field: an input between its two buttons, in one box. */
-  :global(.ui-number) {
+  .ui-number {
     display: inline-flex;
     width: 12rem;
     border: 1px solid var(--border);
@@ -1003,11 +925,11 @@
     background: var(--bg);
   }
 
-  :global(.ui-number:focus-within) {
+  .ui-number:focus-within {
     border-color: var(--accent);
   }
 
-  :global(.ui-number .ui-input) {
+  .ui-number .ui-input {
     flex: 1;
     min-width: 0;
     border: 0;
@@ -1015,7 +937,7 @@
     text-align: center;
   }
 
-  :global(.ui-step) {
+  .ui-step {
     width: 2rem;
     border: 0;
     background: none;
@@ -1024,26 +946,26 @@
     cursor: pointer;
   }
 
-  :global(.ui-step[disabled]) {
+  .ui-step[disabled] {
     color: var(--muted);
     cursor: default;
   }
 
   /* A slider: a line with round thumbs, and a fill between them. */
-  :global(.ui-slider) {
+  .ui-slider {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0.5rem;
     width: 16rem;
   }
 
-  :global(.ui-slider-track) {
+  .ui-slider-track {
     position: relative;
     grid-column: 1 / -1;
     height: 1.5rem;
   }
 
-  :global(.ui-slider-track::before) {
+  .ui-slider-track::before {
     content: '';
     position: absolute;
     top: 50%;
@@ -1055,7 +977,7 @@
     background: var(--border);
   }
 
-  :global(.ui-thumb) {
+  .ui-thumb {
     top: 50%;
     width: 1.25rem;
     height: 1.25rem;
@@ -1065,17 +987,17 @@
     background: var(--bg);
   }
 
-  :global(.ui-thumb[data-dragging]) {
+  .ui-thumb[data-dragging] {
     background: var(--accent);
   }
 
-  :global(.ui-thumb[data-focus-visible]) {
+  .ui-thumb[data-focus-visible] {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
   /* A swatch of a color: a rounded square. */
-  :global(.ui-swatch) {
+  .ui-swatch {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 0.375rem;
@@ -1083,21 +1005,21 @@
   }
 
   /* A slider of a color: the track is the gradient of the channel, and the thumb shows the color. */
-  :global(.ui-color-slider) {
+  .ui-color-slider {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0.5rem;
     width: 16rem;
   }
 
-  :global(.ui-color-slider .ui-color-track) {
+  .ui-color-slider .ui-color-track {
     grid-column: 1 / -1;
     height: 1.5rem;
     border-radius: 0.375rem;
     background: var(--track-background);
   }
 
-  :global(.ui-color-thumb) {
+  .ui-color-thumb {
     width: 1.5rem;
     height: 1.5rem;
     border: 3px solid #fff;
@@ -1105,17 +1027,17 @@
     box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4), inset 0 0 0 1px rgb(0 0 0 / 0.4);
   }
 
-  :global(.ui-color-thumb[data-dragging]) {
+  .ui-color-thumb[data-dragging] {
     transform: translate(-50%, -50%) scale(1.15);
   }
 
-  :global(.ui-color-thumb[data-focus-visible]) {
+  .ui-color-thumb[data-focus-visible] {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
   /* An area of a color: the gradient of two channels, with the thumb on it. */
-  :global(.ui-color-area) {
+  .ui-color-area {
     width: 12rem;
     height: 12rem;
     border-radius: 0.375rem;
@@ -1124,17 +1046,17 @@
   }
 
   /* A wheel of hues: the ring is drawn by the track, and the thumb sits on it. */
-  :global(.ui-color-wheel) {
+  .ui-color-wheel {
     margin-inline: auto;
   }
 
   /* A color field beside its swatch, level with the input. */
-  :global(.ui-color-row) {
+  .ui-color-row {
     align-items: end;
   }
 
   /* A picker of swatches: a grid or a stack, with a ring on the selected one. */
-  :global(.ui-swatch-picker) {
+  .ui-swatch-picker {
     display: flex;
     flex-wrap: wrap;
     gap: 0.375rem;
@@ -1142,59 +1064,59 @@
     outline: none;
   }
 
-  :global(.ui-swatch-picker[data-layout='stack']) {
+  .ui-swatch-picker[data-layout='stack'] {
     flex-direction: column;
     flex-wrap: nowrap;
     width: max-content;
   }
 
-  :global(.ui-swatch-option) {
+  .ui-swatch-option {
     border-radius: 0.5rem;
     padding: 2px;
     outline: none;
   }
 
-  :global(.ui-swatch-option[data-selected]) {
+  .ui-swatch-option[data-selected] {
     box-shadow: 0 0 0 2px var(--accent, #2563eb);
   }
 
-  :global(.ui-swatch-option[data-focus-visible]) {
+  .ui-swatch-option[data-focus-visible] {
     outline: 2px solid var(--accent, #2563eb);
     outline-offset: 2px;
   }
 
-  :global(.ui-swatch-option[data-disabled]) {
+  .ui-swatch-option[data-disabled] {
     opacity: 0.4;
   }
 
   /* A date field: segments in a row, each shaded while it has focus. */
-  :global(.ui-date-input) {
+  .ui-date-input {
     display: inline-flex;
     gap: 1px;
     font-variant-numeric: tabular-nums;
   }
 
-  :global(.ui-date-input [data-segment]:not([data-type='literal'])) {
+  .ui-date-input [data-segment]:not([data-type='literal']) {
     padding: 0 2px;
     border-radius: 3px;
     outline: none;
   }
 
-  :global(.ui-date-input [data-placeholder]) {
+  .ui-date-input [data-placeholder] {
     color: var(--muted);
   }
 
-  :global(.ui-date-input [data-focused]) {
+  .ui-date-input [data-focused] {
     background: var(--accent-fill);
     color: var(--on-accent);
   }
 
   /* A calendar: the heading between its buttons, and a grid of round days. */
-  :global(.ui-calendar) {
+  .ui-calendar {
     width: 16rem;
   }
 
-  :global(.ui-calendar header) {
+  .ui-calendar header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1203,15 +1125,15 @@
   }
 
   /* The prose styles of the page give a heading a rule and a table borders, so reset them. */
-  :global(.ui-calendar header h2) {
+  .ui-calendar header h2 {
     margin: 0;
     padding: 0;
     border: 0;
     font-size: 1rem;
   }
 
-  :global(.ui-calendar table th),
-  :global(.ui-calendar table td) {
+  .ui-calendar table th,
+  .ui-calendar table td {
     padding: 0;
     border: 0;
     background: transparent;
@@ -1219,19 +1141,19 @@
     vertical-align: middle;
   }
 
-  :global(.ui-calendar table) {
+  .ui-calendar table {
     width: 100%;
     border-collapse: collapse;
     text-align: center;
   }
 
-  :global(.ui-calendar table th) {
+  .ui-calendar table th {
     padding-bottom: 0.25rem;
     color: var(--muted);
     font-weight: 400;
   }
 
-  :global(.ui-calendar [data-date]) {
+  .ui-calendar [data-date] {
     width: 2rem;
     height: 2rem;
     margin: auto;
@@ -1240,33 +1162,33 @@
     cursor: default;
   }
 
-  :global(.ui-calendar [data-today]) {
+  .ui-calendar [data-today] {
     font-weight: 700;
   }
 
-  :global(.ui-calendar [data-unavailable]),
-  :global(.ui-calendar [data-disabled]) {
+  .ui-calendar [data-unavailable],
+  .ui-calendar [data-disabled] {
     color: var(--muted);
     text-decoration: line-through;
   }
 
-  :global(.ui-calendar [data-selected]) {
+  .ui-calendar [data-selected] {
     background: var(--accent-fill);
     color: var(--on-accent);
   }
 
   /* The days inside a range are squares, so the range reads as one band. */
-  :global(.ui-calendar [data-selected]:not([data-selection-start], [data-selection-end])) {
+  .ui-calendar [data-selected]:not([data-selection-start], [data-selection-end]) {
     border-radius: 0;
   }
 
-  :global(.ui-calendar [data-focus-visible]) {
+  .ui-calendar [data-focus-visible] {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
   /* A menu in a popover. The item that has focus, from the keyboard or the pointer, is shaded. */
-  :global(.ui-menu) {
+  .ui-menu {
     display: grid;
     min-width: 11rem;
     padding: 0.25rem;
@@ -1277,7 +1199,7 @@
     outline: none;
   }
 
-  :global(.ui-menu-item) {
+  .ui-menu-item {
     display: flex;
     gap: 0.5rem;
     align-items: center;
@@ -1287,42 +1209,42 @@
     outline: none;
   }
 
-  :global(.ui-menu-item[data-focused]),
-  :global(.ui-menu-item[data-open]) {
+  .ui-menu-item[data-focused],
+  .ui-menu-item[data-open] {
     background: var(--surface);
   }
 
-  :global(.ui-menu-item[data-focus-visible]) {
+  .ui-menu-item[data-focus-visible] {
     box-shadow: inset 0 0 0 2px var(--accent);
   }
 
   /* A filter hides an item with the hidden attribute, which display: flex would override. */
-  :global(.ui-menu-item[hidden]) {
+  .ui-menu-item[hidden] {
     display: none;
   }
 
-  :global(.ui-menu-item[data-disabled]) {
+  .ui-menu-item[data-disabled] {
     color: var(--muted);
   }
 
   /* A checked item shows a mark, and an item with a submenu an arrow. */
-  :global(.ui-menu-item[role='menuitemradio']::before),
-  :global(.ui-menu-item[role='menuitemcheckbox']::before) {
+  .ui-menu-item[role='menuitemradio']::before,
+  .ui-menu-item[role='menuitemcheckbox']::before {
     width: 1rem;
     content: '';
   }
 
-  :global(.ui-menu-item[aria-checked='true']::before) {
+  .ui-menu-item[aria-checked='true']::before {
     content: '✓';
   }
 
-  :global(.ui-menu-item[aria-haspopup]::after) {
+  .ui-menu-item[aria-haspopup]::after {
     margin-inline-start: auto;
     color: var(--muted);
     content: '›';
   }
 
-  :global(.ui-menu hr) {
+  .ui-menu hr {
     width: 100%;
     margin: 0.25rem 0;
     border: 0;
@@ -1330,7 +1252,7 @@
   }
 
   /* A tooltip fades in above its trigger, with an arrow. */
-  :global(.ui-tooltip) {
+  .ui-tooltip {
     z-index: 30;
     max-width: 16rem;
     padding: 0.3rem 0.6rem;
@@ -1341,11 +1263,11 @@
     transition: opacity 0.15s;
   }
 
-  :global(.ui-tooltip[data-closed]) {
+  .ui-tooltip[data-closed] {
     opacity: 0;
   }
 
-  :global(.ui-tooltip-arrow) {
+  .ui-tooltip-arrow {
     width: 8px;
     height: 8px;
     margin-left: -4px;
@@ -1353,16 +1275,16 @@
     rotate: 45deg;
   }
 
-  :global(.ui-tooltip-arrow[data-placement='top']) {
+  .ui-tooltip-arrow[data-placement='top'] {
     bottom: -4px;
   }
 
-  :global(.ui-tooltip-arrow[data-placement='bottom']) {
+  .ui-tooltip-arrow[data-placement='bottom'] {
     top: -4px;
   }
 
   /* Toasts stack in a corner of the window, and slide in from its edge. */
-  :global(.ui-toasts) {
+  .ui-toasts {
     position: fixed;
     right: 1rem;
     bottom: 1rem;
@@ -1373,7 +1295,7 @@
     outline: none;
   }
 
-  :global(.ui-toast) {
+  .ui-toast {
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
@@ -1385,43 +1307,43 @@
     transition: opacity 0.2s, translate 0.2s;
   }
 
-  :global(.ui-toast[data-closed]) {
+  .ui-toast[data-closed] {
     opacity: 0;
     translate: 0 0.5rem;
   }
 
-  :global(.ui-toast:focus-visible) {
+  .ui-toast:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
-  :global(.ui-toast-content) {
+  .ui-toast-content {
     display: grid;
     flex: 1;
     gap: 0.125rem;
     font-size: 0.875rem;
   }
 
-  :global(.ui-toast-title) {
+  .ui-toast-title {
     font-weight: 600;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.ui-tooltip),
-    :global(.ui-toast) {
+    .ui-tooltip,
+    .ui-toast {
       transition: none;
     }
   }
 
   /* Overlays are above the header of the site, which has a z-index of its own. */
-  :global([data-modal-overlay]),
-  :global(.ui-popover) {
+  [data-modal-overlay],
+  .ui-popover {
     z-index: 20;
   }
 
   /* A modal fades in over a dim backdrop, and a sheet slides in from its edge. */
-  :global(.ui-backdrop),
-  :global([data-modal-overlay]:has(> .ui-sheet)) {
+  .ui-backdrop,
+  [data-modal-overlay]:has(> .ui-sheet) {
     display: grid;
     place-items: center;
     padding: 1rem;
@@ -1429,12 +1351,12 @@
     transition: opacity 0.2s;
   }
 
-  :global(.ui-backdrop[data-closed]),
-  :global([data-modal-overlay][data-closed]:has(> .ui-sheet)) {
+  .ui-backdrop[data-closed],
+  [data-modal-overlay][data-closed]:has(> .ui-sheet) {
     opacity: 0;
   }
 
-  :global(.ui-modal) {
+  .ui-modal {
     width: min(24rem, 100%);
     max-height: calc(var(--visual-viewport-height) * 0.9);
     overflow: auto;
@@ -1447,17 +1369,17 @@
     transition: scale 0.2s;
   }
 
-  :global([data-closed] > .ui-modal) {
+  [data-closed] > .ui-modal {
     scale: 0.96;
   }
 
-  :global(.ui-actions) {
+  .ui-actions {
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
   }
 
-  :global(.ui-sheet) {
+  .ui-sheet {
     position: fixed;
     inset-block: 0;
     width: min(18rem, 85vw);
@@ -1468,33 +1390,33 @@
     transition: translate 0.25s;
   }
 
-  :global(.ui-sheet[data-side='left']) {
+  .ui-sheet[data-side='left'] {
     left: 0;
   }
 
-  :global(.ui-sheet[data-side='right']) {
+  .ui-sheet[data-side='right'] {
     right: 0;
   }
 
-  :global([data-closed] > .ui-sheet[data-side='left']) {
+  [data-closed] > .ui-sheet[data-side='left'] {
     translate: -100% 0;
   }
 
-  :global([data-closed] > .ui-sheet[data-side='right']) {
+  [data-closed] > .ui-sheet[data-side='right'] {
     translate: 100% 0;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.ui-backdrop),
-    :global(.ui-modal),
-    :global(.ui-sheet),
-    :global([data-modal-overlay]:has(> .ui-sheet)) {
+    .ui-backdrop,
+    .ui-modal,
+    .ui-sheet,
+    [data-modal-overlay]:has(> .ui-sheet) {
       transition: none;
     }
   }
 
   /* A popover fades and rises from the side of its trigger. */
-  :global(.ui-popover) {
+  .ui-popover {
     max-width: 20rem;
     padding: 1rem;
     border: 1px solid var(--border);
@@ -1505,7 +1427,7 @@
   }
 
   /* The list of a select is the box itself. */
-  :global(.ui-popover.ui-select-popover) {
+  .ui-popover.ui-select-popover {
     max-width: none;
     padding: 0;
     border: 0;
@@ -1513,27 +1435,27 @@
     box-shadow: none;
   }
 
-  :global(.ui-popover[data-closed]) {
+  .ui-popover[data-closed] {
     opacity: 0;
     translate: 0 4px;
   }
 
-  :global(.ui-popover[data-closed][data-placement='top']) {
+  .ui-popover[data-closed][data-placement='top'] {
     translate: 0 -4px;
   }
 
-  :global(.ui-dialog) {
+  .ui-dialog {
     display: grid;
     gap: 0.75rem;
     outline: none;
   }
 
-  :global(.ui-dialog h4),
-  :global(.ui-dialog p) {
+  .ui-dialog h4,
+  .ui-dialog p {
     margin: 0;
   }
 
-  :global(.ui-arrow) {
+  .ui-arrow {
     width: 12px;
     height: 12px;
     margin-left: -6px;
@@ -1543,23 +1465,23 @@
     background: var(--bg);
   }
 
-  :global(.ui-arrow[data-placement='bottom']) {
+  .ui-arrow[data-placement='bottom'] {
     top: -7px;
     rotate: 45deg;
   }
 
-  :global(.ui-arrow[data-placement='top']) {
+  .ui-arrow[data-placement='top'] {
     bottom: -7px;
     rotate: 225deg;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.ui-popover) {
+    .ui-popover {
       transition: none;
     }
   }
 
-  :global(.ui-separator) {
+  .ui-separator {
     align-self: stretch;
     width: 1px;
     margin: 0;

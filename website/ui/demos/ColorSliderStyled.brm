@@ -33,9 +33,9 @@
   </ColorSlider>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.color-slider-styled-stack) {
+  .color-slider-styled-stack {
     --color-slider-styled-page: Canvas;
     --color-slider-styled-text: CanvasText;
     --color-slider-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
@@ -45,24 +45,24 @@
     color: var(--color-slider-styled-text);
   }
 
-  :global(.color-slider-styled) {
+  .color-slider-styled {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0.4rem;
     width: min(100%, 18rem);
   }
 
-  :global(.color-slider-styled-label) {
+  .color-slider-styled-label {
     font-weight: 600;
   }
 
-  :global(.color-slider-styled-output) {
+  .color-slider-styled-output {
     color: var(--color-slider-styled-muted);
     font-variant-numeric: tabular-nums;
   }
 
   /* The part gives the gradient of the channel as --track-background. */
-  :global(.color-slider-styled-track) {
+  .color-slider-styled-track {
     grid-column: 1 / -1;
     height: 1.5rem;
     border-radius: 0.75rem;
@@ -71,7 +71,7 @@
   }
 
   /* The thumb fills with the color. A white band and a dark band outside it show on any track. */
-  :global(.color-slider-styled-thumb) {
+  .color-slider-styled-thumb {
     box-sizing: border-box;
     width: 1.75rem;
     height: 1.75rem;
@@ -82,12 +82,12 @@
     transition: scale 0.12s;
   }
 
-  :global(.color-slider-styled-thumb[data-dragging]) {
+  .color-slider-styled-thumb[data-dragging] {
     scale: 1.15;
   }
 
   /* Keyboard focus: an accent band outside a band of the page color, so it shows on any track. */
-  :global(.color-slider-styled-thumb[data-focus-visible]) {
+  .color-slider-styled-thumb[data-focus-visible] {
     box-shadow:
       0 0 0 1.5px #000,
       0 0 0 3.5px var(--color-slider-styled-page),
@@ -96,12 +96,12 @@
   }
 
   /* A disabled slider dims the track and the thumb. The text keeps its contrast. */
-  :global(.color-slider-styled[data-disabled] .color-slider-styled-track) {
+  .color-slider-styled[data-disabled] .color-slider-styled-track {
     opacity: 0.5;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.color-slider-styled-thumb) {
+    .color-slider-styled-thumb {
       transition: none;
     }
   }
