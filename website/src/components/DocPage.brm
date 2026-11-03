@@ -4,6 +4,7 @@
   import type { Page } from '../docs.ts';
   import * as ui from '../ui.ts';
   import AnatomyFigure from './AnatomyFigure.brm';
+  import CopyMarkdown from './CopyMarkdown.brm';
   import LiveSample from './LiveSample.brm';
   import Meta from './Meta.brm';
   import StyledExample from './StyledExample.brm';
@@ -118,6 +119,7 @@
 }
 <article class="prose" onClick=(copyCode)>
   #if (page) {
+    <CopyMarkdown path=(`${base}${section}/${slug || 'index'}.md`) />
     <p class="eyebrow">{group}</p>
     #for (part, index of page.parts by index) {
       #if ('files' in part) {
