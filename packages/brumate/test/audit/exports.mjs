@@ -119,7 +119,15 @@ const groups = { render: [], other: [], both: [], none: [] };
 for (const name of [...exported].sort()) {
   const r = render.has(name);
   const o = other.has(name);
-  groups[r && o ? 'both' : r ? 'render' : o ? 'other' : 'none'].push(name);
+  let group = 'none';
+  if (r && o) {
+    group = 'both';
+  } else if (r) {
+    group = 'render';
+  } else if (o) {
+    group = 'other';
+  }
+  groups[group].push(name);
 }
 console.log(
   `${compiled} of ${files.length} components, ${exported.size} exports: ` +

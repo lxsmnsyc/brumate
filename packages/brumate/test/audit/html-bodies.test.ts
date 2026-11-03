@@ -1,8 +1,9 @@
 // client-audit: for each body that still gives an HTML string (test/clone-bodies.test.ts), the
-// constructs in it that keep it on HTML. Run: npx vitest run test/audit/html-bodies.test.ts
+// constructs in it that keep it on HTML.
+// Run: AUDIT_OUT=<file> npx vitest run test/audit/html-bodies.test.ts
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { it } from 'vitest';
+import { expect, it } from 'vitest';
 import { analyzeProject, compile } from '../../src/index.ts';
 import { resolveFromDisk } from '../../src/modules.ts';
 
@@ -51,6 +52,7 @@ it('lists the reasons of each HTML body', () => {
   }
   writeFileSync(
     process.env.AUDIT_OUT ?? '/dev/stdout',
-    `${rows.length} bodies\n${rows.sort().join('\n')}\n$$b.raw calls ${templates}`,
+    `${rows.length} bodies\n${rows.toSorted().join('\n')}\n$$b.raw calls ${templates}`,
   );
+  expect(rows).toHaveLength(20);
 });
