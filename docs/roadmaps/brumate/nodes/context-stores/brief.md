@@ -32,13 +32,12 @@ Every context is static: `$getContext` gives the value as it was set, whatever t
 ## Context
 
 - Order matters: the ui parts pass live values through 192 `$setContext` calls today (field state, `isInvalid`, `errors`, `isCurrent`, picker values). They must move to stores before contexts turn static, or they stop updating.
-- Parts, refined after the debate: store-lens-spike (the store's shape and cost), store-contract (`$store`), moving the ui parts' live context values to stores, and turning contexts static (graph.ts marks context declarations live today).
-- A debate settles the combined design first: docs/debates/context-stores/.
+- The design is settled by the approved debate docs/debates/context-stores/debate.md (2026-11-03): one store per provider, a capped spike first, then store-contract, three ui waves and static-contexts-final. The story is for one clear rule, not size.
 - Expected gain: every context reader drops its update code, not only the ones #448 could prove static (which saved 897 B gzip across the website).
 
 ## Acceptance
 
-- [ ] Set by the debate and the refined children.
+- [ ] Every child node is done; contexts are static and live values are stores, in packages/ui and the docs.
 
 ## Sizing
 

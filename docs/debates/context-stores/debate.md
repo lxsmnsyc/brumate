@@ -2,7 +2,7 @@
 goal: Make every context static and carry live values through a store contract and $store, moving the ui parts' live context values to stores first
 date: 2026-11-03
 rounds: 2 of 3
-status: proposed
+status: approved
 roadmap: docs/roadmaps/brumate (story context-stores)
 supersedes: none
 decision: docs/decisions.md (to write when the story lands)
