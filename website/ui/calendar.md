@@ -10,7 +10,7 @@ A grid of the days of a month, to pick a date.
 
 ```
 
-```html
+```brm
 <Calendar aria-label="Delivery date" value=$bind(date)>
   <header>
     <Button slot="previous">‹</Button>
@@ -38,7 +38,7 @@ A grid of the days of a month, to pick a date.
 `CalendarCell`: One date. Optional, since the grid renders one for each date.
 ```
 
-```html
+```brm
 <Calendar>
   <CalendarHeading />
   <Button slot="previous" />
@@ -156,6 +156,24 @@ A cell shows `data-hovered` under a mouse or a pen. This stylesheet styles the m
 
 ```
 
+## Use cases
+
+### A calendar in the language of the user
+
+An [I18nProvider](./i18n-provider.md) gives the names of the days and months, the first day of the week and the words that a screen reader hears. The `aria-label` stays your own text. Change the language below:
+
+```brm demo CalendarLocaleDemo
+
+```
+
+### Two months and days that are taken
+
+`visibleDuration` shows two months, with a `CalendarGrid` for each and an `offset` on the second. `isDateUnavailable` marks the days that are taken, `minValue` and `maxValue` limit the months, and `firstDayOfWeek` starts the weeks on Monday.
+
+```brm demo CalendarBookingDemo
+
+```
+
 ## Dates
 
 - `minValue` and `maxValue` limit the dates. The Buttons stop at them.
@@ -179,7 +197,7 @@ A cell shows `data-hovered` under a mouse or a pen. This stylesheet styles the m
 
 - A `CalendarGrid` renders a `CalendarCell` for each date. Pass `cell`, a `#template` that gets the date, to render your own:
 
-```html
+```brm
 <CalendarGrid cell=day />
 
 #template day(date) {
@@ -190,21 +208,3 @@ A cell shows `data-hovered` under a mouse or a pen. This stylesheet styles the m
 - Only the date that has focus is in the order of Tab.
 - A date of another month is hidden and disabled.
 - A cell shows `data-focused` while focus is in its grid. It shows `data-selected`, `data-focus-visible`, `data-today`, `data-disabled`, `data-unavailable`, `data-outside-month`, `data-outside-visible-range`, `data-invalid` and `data-pressed`.
-
-## Use cases
-
-### A calendar in the language of the user
-
-An [I18nProvider](./i18n-provider.md) gives the names of the days and months, the first day of the week and the words that a screen reader hears. The `aria-label` stays your own text. Change the language below:
-
-```brm demo CalendarLocaleDemo
-
-```
-
-### Two months and days that are taken
-
-`visibleDuration` shows two months, with a `CalendarGrid` for each and an `offset` on the second. `isDateUnavailable` marks the days that are taken, `minValue` and `maxValue` limit the months, and `firstDayOfWeek` starts the weeks on Monday.
-
-```brm demo CalendarBookingDemo
-
-```

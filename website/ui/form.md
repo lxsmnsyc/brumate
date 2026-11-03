@@ -25,7 +25,7 @@ A `<form>` that tells its fields how to validate, and gives them the errors of t
 `Button`: Sends the form with `type="submit"`.
 ```
 
-```html
+```brm
 <Form>
   <TextField>
     <Label />

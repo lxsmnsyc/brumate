@@ -17,12 +17,6 @@ A preview of a link or a button, such as a card of the author behind a name. It 
 - It is not modal, and focus stays where it is when it shows. The trigger gets `aria-expanded` and `aria-controls`.
 - `isOpen` is the state. See [State](./state.md). `isDisabled` never shows it.
 
-## Closing
-
-- Leaving the trigger and the preview hides it after `closeDelay`, 200 milliseconds by default. The pointer can move from the trigger onto the preview.
-- Focus that leaves both hides it at once, and so does a press of the trigger from the keyboard. A press of the mouse hides it, and the pointer that stays on the trigger shows it again. A press on plain content outside moves no focus, so it hides nothing.
-- Escape hides it, and gives focus back to the trigger. That focus does not show it again.
-
 ## Anatomy
 
 ```brm anatomy PreviewTriggerAnatomy
@@ -33,7 +27,7 @@ A preview of a link or a button, such as a card of the author behind a name. It 
 
 The picture draws the Popover in place, open, under the trigger, so that it can carry a number. The real Popover shows in a layer at the end of the page, next to the trigger, and the rest of the page stays active.
 
-```html
+```brm
 <PreviewTrigger>
   <Link />
   <Popover>
@@ -110,3 +104,9 @@ The trigger can be a `Button`. The preview shows a file's first lines on hover o
 ```brm demo PreviewTriggerFilesDemo
 
 ```
+
+## Closing
+
+- Leaving the trigger and the preview hides it after `closeDelay`, 200 milliseconds by default. The pointer can move from the trigger onto the preview.
+- Focus that leaves both hides it at once, and so does a press of the trigger from the keyboard. A press of the mouse hides it, and the pointer that stays on the trigger shows it again. A press on plain content outside moves no focus, so it hides nothing.
+- Escape hides it, and gives focus back to the trigger. That focus does not show it again.

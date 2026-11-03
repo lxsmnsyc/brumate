@@ -10,7 +10,7 @@ A time of day that the user types segment by segment.
 
 ```
 
-```html
+```brm
 <TimeField value=$bind(start)>
   <Label>Start</Label>
   <DateInput />
@@ -35,7 +35,7 @@ A time of day that the user types segment by segment.
 `FieldError`: Shows the message of an invalid field. Optional.
 ```
 
-```html
+```brm
 <TimeField>
   <Label />
   <DateInput>
@@ -110,23 +110,6 @@ A segment has no `data-hovered` or `data-focus-visible`, so use `:hover` and `da
 
 ```
 
-## Segments
-
-- `granularity` is the smallest segment: `hour`, `minute`, the default, or `second`.
-- The hour shows on the clock of the locale of an [I18nProvider](./i18n-provider.md): from 1 to 12 with AM and PM in `en-US`, or from 0 to 23 in `de-DE`. `hourCycle` of `12` or `24` picks one.
-- A segment that is not set shows `––`, and AM and PM show the period of `placeholderValue`.
-- The order of the segments and the separators come from the locale. The times have no time zone.
-
-## Values
-
-- AM and PM are a segment of their own, which must be set for the field to have a value.
-- On a 12-hour clock, the hour keeps its period when it is typed.
-- `minValue` and `maxValue` compare times by their seconds, so `09:30:00` is not past `09:30`.
-
-## Validation
-
-- `minValue` and `maxValue`, such as `"08:00"` and `"18:00"`, limit the time. A time outside them makes the field invalid, as `isInvalid` does.
-
 ## Use cases
 
 ### Opening hours in a form
@@ -144,3 +127,20 @@ An [I18nProvider](./i18n-provider.md) gives the clock, the order of the segments
 ```brm demo TimeFieldClockDemo
 
 ```
+
+## Segments
+
+- `granularity` is the smallest segment: `hour`, `minute`, the default, or `second`.
+- The hour shows on the clock of the locale of an [I18nProvider](./i18n-provider.md): from 1 to 12 with AM and PM in `en-US`, or from 0 to 23 in `de-DE`. `hourCycle` of `12` or `24` picks one.
+- A segment that is not set shows `––`, and AM and PM show the period of `placeholderValue`.
+- The order of the segments and the separators come from the locale. The times have no time zone.
+
+## Values
+
+- AM and PM are a segment of their own, which must be set for the field to have a value.
+- On a 12-hour clock, the hour keeps its period when it is typed.
+- `minValue` and `maxValue` compare times by their seconds, so `09:30:00` is not past `09:30`.
+
+## Validation
+
+- `minValue` and `maxValue`, such as `"08:00"` and `"18:00"`, limit the time. A time outside them makes the field invalid, as `isInvalid` does.

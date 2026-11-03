@@ -10,7 +10,7 @@ A slider for one channel of a color.
 
 ```
 
-```html
+```brm
 <ColorSlider channel="hue" value=$bind(color)>
   <Label>Hue</Label>
   <SliderOutput />
@@ -41,7 +41,7 @@ A slider for one channel of a color.
 `ColorThumb`: The handle. It holds a range input for the keys and screen readers.
 ```
 
-```html
+```brm
 <ColorSlider>
   <Label />
   <SliderOutput />

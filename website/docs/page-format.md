@@ -28,7 +28,7 @@ An anchor is a node that client code must find. Each anchor has an index within 
 
 ### Elements
 
-```html
+```brm
 <button b-b="0:2" b-on="click=Counter_24o7ge#h4">+</button>
 ```
 
@@ -41,7 +41,7 @@ A reference is `<component ID>#<export name>`. The component ID is the component
 
 ### Text
 
-```html
+```brm
 <!--t0:3-->1<!--/t-->
 ```
 
@@ -49,7 +49,7 @@ The value of a live insert is between the two comments.
 
 When the insert is the whole content of an element, the element gets the anchor instead, and the value is its children:
 
-```html
+```brm
 <span b-b="1:1">One</span>
 ```
 
@@ -61,7 +61,7 @@ A `<textarea>` or a `<title>` has no comments, because their content is text, wh
 
 ### Blocks
 
-```html
+```brm
 <!--b0:4:1--><p>B</p><!--/b-->
 ```
 
@@ -72,7 +72,7 @@ A `<textarea>` or a `<title>` has no comments, because their content is text, wh
 
 ### Items
 
-```html
+```brm
 <!--b0:2--><!--i1--><li>…</li><!--/i--><!--i2--><li>…</li><!--/i--><!--/b-->
 ```
 
@@ -80,7 +80,7 @@ Each item of a live `#for` or `#repeat` is between `<!--i<scope>-->` and `<!--/i
 
 When the body of the item is one element and nothing else, the element's `b-b` marks the item instead. The element always gets an anchor, and its scope is the item's scope:
 
-```html
+```brm
 <!--b0:2--><li b-b="1:0">…</li><li b-b="2:0">…</li><!--/b-->
 ```
 
@@ -88,13 +88,13 @@ The core tells these elements from the elements of the fallback by their scopes.
 
 ### `#loading`
 
-```html
+```brm
 <!--l0--><p>Loading…</p><!--/l-->
 ```
 
 The server writes the fallback between `<!--l<id>-->` and `<!--/l-->`, where the number is the boundary ID, and renders the body after the rest of the page. When the body is ready, the stream sends:
 
-```html
+```brm
 <template b-l="0"><blockquote>…</blockquote></template>
 <script>$bS(0)</script>
 <script b-state b-scopes b-next="5">$bR(($R,$b)=>(…))</script>
@@ -116,7 +116,7 @@ A `#loading` body that sets the head after the first render also sends `<templat
 
 ### `#defer`
 
-```html
+```brm
 <template b-b="0:1" b-defer="visible:2:0"></template><!--l2--><p>Loading…</p><!--/l-->
 ```
 
@@ -135,7 +135,7 @@ The server renders the route again with that base, and the `#loading` and `#defe
 
 ### `#portal`
 
-```html
+```brm
 <!--P4--><dialog open>Saved</dialog><!--/P-->
 ```
 
@@ -143,7 +143,7 @@ The content of a portal is between `<!--P<scope>-->` and `<!--/P-->`, where the 
 
 ### Listeners and `$client` callbacks
 
-```html
+```brm
 <template b-b="0:1" b-listen="window" b-on="keydown=Blocks_jlmev2#h6"></template>
 <template b-b="0:0" b-client="idle=Blocks_jlmev2#c4"></template>
 ```
@@ -154,7 +154,7 @@ The content of a portal is between `<!--P<scope>-->` and `<!--/P-->`, where the 
 
 ### Route slots
 
-```html
+```brm
 <!--R0:children:3:%2Ftodos%2F%5Bid%5D%20%7B%22id%22%3A%223%22%7D--><article>…</article><!--/R-->
 ```
 
@@ -169,7 +169,7 @@ The stylesheet of a component is `<style b-style="<component ID>">`, once per pa
 
 ## State
 
-```html
+```brm
 <script b-state b-scopes b-next="5" b-route="…">function $bR(f){…}$bR(($R,$b)=>(($R[0]={0:$R[1]={k:1,m:"App_x1",s:$R[2]=[1]}})))</script>
 <script b-state>$bR(($R,$b)=>(…))</script>
 ```

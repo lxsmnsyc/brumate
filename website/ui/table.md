@@ -10,7 +10,7 @@ Rows and columns of data, which the user can move through with the keys, select 
 
 ```
 
-```html
+```brm
 <Table aria-label="Files" selectionMode="multiple" selectedKeys=$bind(picked) sortDescriptor=$bind(sort)>
   <TableHeader>
     <Column><Checkbox slot="selection" aria-label="Select all" /></Column>
@@ -51,7 +51,7 @@ Rows and columns of data, which the user can move through with the keys, select 
 `Checkbox` with `slot="selection"`: In a Cell, selects its row.
 ```
 
-```html
+```brm
 <ResizableTableContainer>
   <Table>
     <TableHeader>
@@ -224,11 +224,11 @@ Pass `items` to the Table and an `item` template to its `TableBody`, and put the
 
 ```
 
-## Rows from data
+## Items from data
 
 Pass `items` to the Table and an `item` template to its `TableBody`. The TableBody does not get the type of the items from the Table, so give the template's parameter a type, such as `item: File`.
 
-```html
+```brm
 <Table aria-label="Files" items=files>
   <TableHeader>…</TableHeader>
   <TableBody item=row />
@@ -273,7 +273,7 @@ The Table renders a `table` with `role="grid"`, a `thead` and a `tbody` with `ro
 
 ```
 
-```html
+```brm
 <ResizableTableContainer onResize=saveWidths>
   <Table aria-label="Files">
     <TableHeader>

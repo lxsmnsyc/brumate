@@ -10,7 +10,7 @@ A date that the user types segment by segment.
 
 ```
 
-```html
+```brm
 <DateField value=$bind(birthday)>
   <Label>Birthday</Label>
   <DateInput />
@@ -37,7 +37,7 @@ A date that the user types segment by segment.
 `FieldError`: Shows the message of an invalid field. Optional.
 ```
 
-```html
+```brm
 <DateField>
   <Label />
   <DateInput>
@@ -144,12 +144,30 @@ A segment shows `data-hovered` and `data-focus-visible`. This stylesheet draws t
 
 ```
 
+## Use cases
+
+### A date in a form
+
+`isRequired` makes the browser check the field on a submit, and the FieldError shows the message. `minValue` and `maxValue` make a date outside them invalid, and the browser does not submit the form with one: the FieldError shows its message. `name` posts the date as `YYYY-MM-DD`, and Reset gives back the first date.
+
+```brm demo DateFieldFormDemo
+
+```
+
+### A date in the language of the user
+
+An [I18nProvider](./i18n-provider.md) gives the order of the segments, the text between them, the placeholders and the names that a screen reader hears. Three providers give three locales to one signal. Empty a segment with Backspace to see its placeholder: the value becomes empty until every segment is set again, and a set value is always `YYYY-MM-DD`:
+
+```brm demo DateFieldLocaleDemo
+
+```
+
 ## Segments
 
 - The `DateInput` is a group that the Label names. It holds a `DateSegment` for the month, the day and the year, in the order of the locale of an [I18nProvider](./i18n-provider.md), with the text between them.
 - Pass `segment`, a `#template` that gets each segment, to render your own:
 
-```html
+```brm
 <script>
   import type { Segment } from '@brumate/ui/segments.ts';
 </script>
@@ -178,21 +196,3 @@ A segment shows `data-hovered` and `data-focus-visible`. This stylesheet draws t
 
 - `minValue` and `maxValue` limit the date, and `isDateUnavailable` marks dates that cannot be picked. A date outside them makes the field invalid, as `isInvalid` does.
 - The errors of a [Form](./form.md) for its `name` show in the FieldError.
-
-## Use cases
-
-### A date in a form
-
-`isRequired` makes the browser check the field on a submit, and the FieldError shows the message. `minValue` and `maxValue` make a date outside them invalid, and the browser does not submit the form with one: the FieldError shows its message. `name` posts the date as `YYYY-MM-DD`, and Reset gives back the first date.
-
-```brm demo DateFieldFormDemo
-
-```
-
-### A date in the language of the user
-
-An [I18nProvider](./i18n-provider.md) gives the order of the segments, the text between them, the placeholders and the names that a screen reader hears. Three providers give three locales to one signal. Empty a segment with Backspace to see its placeholder: the value becomes empty until every segment is set again, and a set value is always `YYYY-MM-DD`:
-
-```brm demo DateFieldLocaleDemo
-
-```

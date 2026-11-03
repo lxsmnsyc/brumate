@@ -10,7 +10,7 @@ A field that picks one item from a list, which opens from a button.
 
 ```
 
-```html
+```brm
 <Select name="animal" selectedKey=$bind(animal)>
   <Label>Favorite animal</Label>
   <Button><SelectValue /></Button>
@@ -43,7 +43,7 @@ A field that picks one item from a list, which opens from a button.
 
 The picture draws the Popover in place, open, so that it can carry a number. The real Popover opens in a layer at the end of the page.
 
-```html
+```brm
 <Select>
   <Label />
   <Button>
@@ -168,7 +168,7 @@ A `ListBoxSection` with a `Header` groups the items. An item with a `Text` of `s
 
 The server does not know the text of a key that the Select starts with, so the HTML shows the key until the code loads. `render`, a `#template`, names the selection in the HTML too. It gets `selectedKey`, `selectedText` and `isPlaceholder`.
 
-```html
+```brm
 <Button><SelectValue render=sizeName /></Button>
 
 #template sizeName(state) {

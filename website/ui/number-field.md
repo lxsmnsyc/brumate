@@ -10,7 +10,7 @@ A field for a number, in the format of the locale, with buttons that step it.
 
 ```
 
-```html
+```brm
 <NumberField minValue=(0) step=(5) value=$bind(width)>
   <Label>Width</Label>
   <Group>
@@ -41,7 +41,7 @@ A field for a number, in the format of the locale, with buttons that step it.
 `FieldError`: Shows while the field is invalid. The picture sets 12, which is above `maxValue`, so the field is invalid and the plus button is disabled.
 ```
 
-```html
+```brm
 <NumberField>
   <Label />
   <Group>

@@ -10,7 +10,7 @@ A box that scrolls a long collection, such as thousands of rows, and renders onl
 
 ```
 
-```html
+```brm
 <Virtualizer rowHeight=(32) style="height: 300px">
   <Tree aria-label="Photos" items=files item=file />
 </Virtualizer>
@@ -28,7 +28,7 @@ A box that scrolls a long collection, such as thousands of rows, and renders onl
 `Tree`: The collection. A GridList, a ListBox or a Table goes here too.
 ```
 
-```html
+```brm
 <Virtualizer>
   <Tree />
 </>
@@ -52,6 +52,10 @@ A Tree, a GridList, a ListBox or a Table goes inside. The picture has 5000 rows 
 
 A Virtualizer takes no keys. The collection inside does, and its keys reach rows that are out of view. See [Focus and keys](#focus-and-keys).
 
+## Controlled and uncontrolled
+
+A Virtualizer has no state of its own, so it has no `$bind` shape. Its scroll position is the scroll of the browser and is not a prop. The selection, the open rows and the sort belong to the collection inside, and take the shapes of [State](./state.md) there. A reset of a form leaves a Virtualizer as it is.
+
 ## Styling
 
 The Virtualizer is a `div` with `overflow: auto`. Give it a `height`, such as `style="height: 300px"`. See [Styling](./styling.md).
@@ -61,10 +65,6 @@ This stylesheet styles the box and the rows in it: the height and border of the 
 ```brm styled VirtualizerStyled
 
 ```
-
-## Controlled and uncontrolled
-
-A Virtualizer has no state of its own, so it has no `$bind` shape. Its scroll position is the scroll of the browser and is not a prop. The selection, the open rows and the sort belong to the collection inside, and take the shapes of [State](./state.md) there. A reset of a form leaves a Virtualizer as it is.
 
 ## Use cases
 
@@ -88,7 +88,7 @@ A `#for` with `window(32)` renders only the rows in view of rows that you write 
 
 A [GridList](./grid-list.md), a [ListBox](./list-box.md) or a [Table](./table.md) takes `items`, as a Tree does, and renders only the rows in view when it is in a Virtualizer:
 
-```html
+```brm
 <Virtualizer rowHeight=(32) style="height: 300px">
   <ListBox aria-label="Files" items=files item=file getTextValue=((file) => file.name) />
 </Virtualizer>
@@ -98,7 +98,7 @@ A Table takes `items` and `getTextValue`, and its `TableBody` takes `item`. The 
 
 Rows that you write out or render from a `#for` of your own have no data to read. Give the `#for` `window(height)`, and it renders only the rows in view, in the box that scrolls:
 
-```html
+```brm
 <Virtualizer style="height: 300px">
   <Table aria-label="Files">
     <TableHeader>…</TableHeader>

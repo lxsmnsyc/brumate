@@ -26,7 +26,7 @@ A section that the user expands and collapses, such as a question of an FAQ.
 `DisclosurePanel`: The content. It is hidden while the disclosure is collapsed.
 ```
 
-```html
+```brm
 <Disclosure>
   <Heading>
     <Button slot="trigger" />
@@ -103,6 +103,24 @@ This stylesheet makes a card list: rest, hover, press, a two-band focus ring, ex
 
 ```
 
+## Use cases
+
+### Terms that must be opened
+
+`onExpandedChange` runs when the user opens the disclosure, so the page can know that the terms were opened. The Accept button waits for it. It is disabled only until then: a button that disables itself while it has focus drops focus to the page, so Accept stays enabled after it is pressed.
+
+```brm demo DisclosureTermsDemo
+
+```
+
+### Options that keep their state
+
+`unmount="offscreen"` takes the collapsed panel out of the page and keeps its state. Type an address, collapse the section and open it again: the field still holds the text. With the default `unmount={false}` the content stays in the page too, and find in page reaches it. Use `'offscreen'` when the content is heavy and the page does not need to find it.
+
+```brm demo DisclosureOptionsDemo
+
+```
+
 ## Animating the panel
 
 `transition` on the `DisclosurePanel` lets CSS animate it. The demo above uses it.
@@ -133,21 +151,3 @@ This stylesheet makes a card list: rest, hover, press, a two-band focus ring, ex
 | `'offscreen'` | Stays in an [`#offscreen`](../docs/control-flow.md#offscreen) block, with its state, and its effects pause. |
 
 With `true` and `'offscreen'`, a panel that starts collapsed has no content in the page that the server sends, so find in page and search engines do not reach it. Keep the default for text that people search for.
-
-## Use cases
-
-### Terms that must be opened
-
-`onExpandedChange` runs when the user opens the disclosure, so the page can know that the terms were opened. The Accept button waits for it. It is disabled only until then: a button that disables itself while it has focus drops focus to the page, so Accept stays enabled after it is pressed.
-
-```brm demo DisclosureTermsDemo
-
-```
-
-### Options that keep their state
-
-`unmount="offscreen"` takes the collapsed panel out of the page and keeps its state. Type an address, collapse the section and open it again: the field still holds the text. With the default `unmount={false}` the content stays in the page too, and find in page reaches it. Use `'offscreen'` when the content is heavy and the page does not need to find it.
-
-```brm demo DisclosureOptionsDemo
-
-```

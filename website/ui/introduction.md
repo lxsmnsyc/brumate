@@ -11,9 +11,15 @@ Accessible, unstyled components for brumate. They resume like the rest of a brum
 
 ## Use a part
 
+Install the package. `brumate` is a peer dependency, so a project that has [brumate](../docs/getting-started.md) already has it:
+
+```bash
+pnpm add @brumate/ui
+```
+
 Import a part from `@brumate/ui`, and use it as any component:
 
-```html
+```brm
 <script>
   import Button from '@brumate/ui/Button.brm';
   import { $signal } from 'brumate/signals';
@@ -43,7 +49,7 @@ cp -r node_modules/@brumate/ui/skills/brumate-ui .claude/skills/
 
 A part that holds other parts gives them their IDs and state through a context. A `TextField` names its `Label`, `Input` and `FieldError` for each other:
 
-```html
+```brm
 <TextField name="email" type="email" isRequired>
   <Label>Email</Label>
   <Input />

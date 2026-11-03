@@ -2,7 +2,7 @@
 
 The parts render no CSS. Style them with classes and the `data-*` attributes of their state. This page styles one part of each kind in full, with the CSS beside the result.
 
-```html
+```brm
 <Button class="button">Save</Button>
 
 <style>
@@ -91,7 +91,7 @@ Check the contrast of text on the accent in both themes.
 
 A `Checkbox`, a `Radio` and a `Switch` hide their native input, which keeps working for screen readers and forms. Draw the box in the children, from the attributes of the label:
 
-```html
+```brm
 <Checkbox class="box">
   <span class="mark" aria-hidden="true"></span>
   Subscribe

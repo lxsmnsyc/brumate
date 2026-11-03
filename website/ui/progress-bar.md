@@ -21,7 +21,7 @@ The progress of a task.
 `Label`: Names the bar.
 ```
 
-```html
+```brm
 <ProgressBar>
   <Label />
 </>
@@ -53,10 +53,6 @@ This stylesheet draws a track and a fill in a `content` template. The fill reads
 
 ```
 
-## State
-
-A bar has no state of its own. It draws the `value` that you pass, so the page keeps the number, such as in a signal. A form reset leaves it as it is, and the server renders the value it gets.
-
 ## Use cases
 
 ### An upload that can be cancelled
@@ -74,3 +70,7 @@ The page writes the value from a timer. Each start or cancel makes a new run, so
 ```brm demo ProgressBarStepsDemo
 
 ```
+
+## State
+
+A bar has no state of its own. It draws the `value` that you pass, so the page keeps the number, such as in a signal. A form reset leaves it as it is, and the server renders the value it gets.

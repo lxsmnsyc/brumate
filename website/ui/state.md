@@ -8,7 +8,7 @@ A part with state has one prop for it, such as `isSelected` of a `Checkbox` or `
 
 ## The four shapes
 
-```html
+```brm
 <!-- The part keeps its own state, which starts off. -->
 <Checkbox>Subscribe</Checkbox>
 

@@ -21,7 +21,7 @@ Parts that belong together, such as an input and its buttons.
 `Button`: Another part inside.
 ```
 
-```html
+```brm
 <Group>
   <Input />
   <Button />
@@ -60,10 +60,6 @@ This stylesheet draws one frame for an input and a button. The frame reads the g
 
 ```
 
-## State
-
-A group keeps no state. Hover, focus and the flags come from the pointer, the focus and the props, and the group does not write them anywhere you can bind. A form reset leaves it as it is. The server renders it without hover and focus.
-
 ## Use cases
 
 ### A quantity with buttons
@@ -81,3 +77,7 @@ A group inside a `TextField` frames the input and its button. The button waits u
 ```brm demo GroupSearchDemo
 
 ```
+
+## State
+
+A group keeps no state. Hover, focus and the flags come from the pointer, the focus and the props, and the group does not write them anywhere you can bind. A form reset leaves it as it is. The server renders it without hover and focus.

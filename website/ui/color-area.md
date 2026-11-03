@@ -10,7 +10,7 @@ An area for two channels of a color.
 
 ```
 
-```html
+```brm
 <ColorArea xChannel="saturation" yChannel="brightness" value=$bind(color)>
   <ColorThumb />
 </ColorArea>
@@ -34,7 +34,7 @@ An area for two channels of a color.
 `ColorThumb`: The handle. It holds two range inputs, one for each axis.
 ```
 
-```html
+```brm
 <ColorArea>
   <ColorThumb />
 </>
@@ -126,7 +126,7 @@ An area edits two channels, so the third needs a slider. Both use `colorSpace="h
 
 ```
 
-## Keys and screen readers
+## Focus and keys
 
 - There is one tab stop. When focus was last on the y input, the x input is out of the tab order (`tabindex="-1"`) and hidden from screen readers (`aria-hidden="true"`). The y input is out of both until it has the focus or a key changed the value.
 - The focus goes to the input of the axis that a key moved.
@@ -138,7 +138,7 @@ An area edits two channels, so the third needs a slider. Both use `colorSpace="h
 - A press on the area moves the thumb there, and a drag follows. A press with Alt, Ctrl or Meta does nothing.
 - A press on the thumb keeps the distance from the pointer to its center, so the thumb does not jump to the pointer.
 
-## Style
+## Custom properties
 
 - The element of the ColorArea has the custom property `--area-background`, the gradient of the two channels with the third one as it is. Give it to the area: `background: var(--area-background)`. The gradient follows the direction of the locale.
 - For `rgb` the channels add up, so the layers need `background-blend-mode: var(--area-background-blend-mode)`, which is `screen` for `rgb` and `normal` otherwise.

@@ -10,7 +10,7 @@ A group of tags, which the user can select and remove.
 
 ```
 
-```html
+```brm
 <TagGroup selectionMode="multiple" onRemove=((keys) => remove(keys))>
   <Label>Categories</Label>
   <TagList>
@@ -36,7 +36,7 @@ A group of tags, which the user can select and remove.
 `Text` with `slot="description"`: Describes the list. Optional.
 ```
 
-```html
+```brm
 <TagGroup>
   <Label />
   <TagList>

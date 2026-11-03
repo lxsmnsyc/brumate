@@ -10,7 +10,7 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 
 ```
 
-```html
+```brm
 <Tree aria-label="Files" items=files item=file selectedKeys=$bind(picked) expandedKeys=$bind(open) selectionMode="multiple" />
 
 #template file(file) {
@@ -38,7 +38,7 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 `Checkbox` with `slot="selection"`: Selects the row.
 ```
 
-```html
+```brm
 <Tree>
   <TreeItem>
     <Button slot="chevron" />
@@ -139,7 +139,7 @@ A single selection with `disallowEmptySelection` always holds one folder. The ca
 
 ```
 
-## Rows
+## Items
 
 - The Tree is a treegrid, and its rows are flat. Each TreeItem is a row with one cell, with `aria-level`, `aria-posinset` and `aria-setsize`, and `aria-expanded` when it has children. The server renders them all, so the page is right before its code loads.
 - A `Button` with `slot="chevron"` opens and closes its row. It is not a tab stop, and its label says Expand or Collapse, with the name of the row.

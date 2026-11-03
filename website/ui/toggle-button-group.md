@@ -22,7 +22,7 @@ ToggleButtons with one selection, as radios, or several, as a toolbar.
 `ToggleButton`: One choice. It names itself with `id`, and shows `data-selected` when it is on.
 ```
 
-```html
+```brm
 <ToggleButtonGroup>
   <ToggleButton />
 </>

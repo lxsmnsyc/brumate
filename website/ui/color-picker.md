@@ -10,7 +10,7 @@ Holds one color for the color parts inside it.
 
 ```
 
-```html
+```brm
 <ColorPicker value=$bind(color)>
   <ColorArea xChannel="saturation" yChannel="brightness"><ColorThumb /></ColorArea>
   <ColorField><Input /></ColorField>
@@ -27,7 +27,7 @@ Holds one color for the color parts inside it.
 
 ## Anatomy
 
-```html
+```brm
 <ColorPicker>
   <ColorArea />
   <ColorSlider />

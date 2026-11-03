@@ -29,7 +29,7 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 `Text` with `slot="description"`: Describes the item. The item needs `hasDescription`. Optional.
 ```
 
-```html
+```brm
 <ListBox>
   <ListBoxSection>
     <Header />
@@ -153,7 +153,7 @@ A [Toolbar](./toolbar.md) above the list holds the buttons that act on the selec
 
 Instead of writing the items out, pass `items` and an `item` template that renders a `ListBoxItem` for each. The template's parameter takes its type from `items`, so the template knows the fields of the item. A type on the parameter, such as `item: Animal`, is allowed too.
 
-```html
+```brm
 <ListBox aria-label="Animals" items=animals item=row />
 
 #template row(item) {
@@ -185,7 +185,7 @@ With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets 
 
 `ListBoxSection` groups items, and a `Header` inside names the group. A section with no Header needs `aria-label`.
 
-```html
+```brm
 <ListBoxSection>
   <Header>Birds</Header>
   <ListBoxItem id="kiwi">Kiwi</ListBoxItem>

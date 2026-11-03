@@ -16,13 +16,33 @@ Gives the parts inside it a locale and its direction.
 - `strings` replaces the words of the date parts with a whole set, in one prop. See [Date strings](#date-strings).
 - It renders only its children. Put `lang` and `dir` on an element yourself, such as `<html>`.
 
+## Props
+
+```props I18nProvider
+
+```
+
+## Styling
+
+An `I18nProvider` renders no element, so it has nothing to style. Put `lang` and `dir` on an element yourself.
+
+## Use cases
+
+### A locale switch
+
+The Meter formats its value in the locale, and the direction comes from the element that you put `dir` on. One `I18nProvider` takes the locale from a signal, so a button that sets the signal changes the format of the Meter.
+
+```brm demo I18nProviderLocaleDemo
+
+```
+
 ## Date strings
 
 The date parts read their words from the locale: the placeholders of the segments, the names of the segments for screen readers, and the labels of the Calendar and the DatePicker. English, German, French, Spanish, Japanese and Chinese (Simplified, and Traditional for `zh-Hant`, `zh-TW`, `zh-HK` and `zh-MO`) have a table. Another language shows English words in the order and with the numbers of its locale.
 
 The server looks up the table once and writes only that language into the page, so the browser never loads the other languages. To use your own words, pass the whole set as `strings`. Start from `getDateStrings` to change a few:
 
-```html
+```brm
 <script>
   import { getDateStrings } from '@brumate/ui/date-strings.ts';
 
@@ -44,23 +64,3 @@ The server looks up the table once and writes only that language into the page, 
 | `selected`       | The label of a selected cell, such as `{date} selected`.                                |
 | `firstAvailable` | The label of the first date that can be picked, such as `{date}, First available date`. |
 | `lastAvailable`  | The label of the last date that can be picked, such as `{date}, Last available date`.   |
-
-## Use cases
-
-### A locale switch
-
-The Meter formats its value in the locale, and the direction comes from the element that you put `dir` on. One `I18nProvider` takes the locale from a signal, so a button that sets the signal changes the format of the Meter.
-
-```brm demo I18nProviderLocaleDemo
-
-```
-
-## Props
-
-```props I18nProvider
-
-```
-
-## Styling
-
-An `I18nProvider` renders no element, so it has nothing to style. Put `lang` and `dir` on an element yourself.

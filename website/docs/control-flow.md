@@ -68,7 +68,7 @@ Pick a key that stays the same for an item, such as an ID from a database. A key
 
 A long list can render only the items in view. `window(height)` after the header gives the height of an item in pixels, and the browser renders the items that come into view as the user scrolls:
 
-```html
+```brm
 <div style="height: 400px; overflow: auto">
   <table>
     <tbody>

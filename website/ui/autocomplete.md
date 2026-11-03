@@ -10,7 +10,7 @@ A search field that filters a Menu or a ListBox next to it, such as for a list o
 
 ```
 
-```html
+```brm
 <Autocomplete>
   <SearchField>
     <Label>Commands</Label>
@@ -37,7 +37,7 @@ A search field that filters a Menu or a ListBox next to it, such as for a list o
 `MenuItem`: One command. It shows only while its text matches.
 ```
 
-```html
+```brm
 <Autocomplete>
   <SearchField>
     <Label />

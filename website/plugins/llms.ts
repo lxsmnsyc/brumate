@@ -161,7 +161,7 @@ export function toMarkdown(
       if (live[2]) {
         out.push(`<!-- ${live[2]} -->`);
       }
-      out.push(`${fence}${live[1]}`, ...body, fence);
+      out.push(`${fence}${live[1] === 'ts' ? 'ts' : 'brm'}`, ...body, fence);
     } else {
       out.push(line, ...body, fence);
     }

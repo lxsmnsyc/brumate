@@ -10,7 +10,7 @@ A circular track for the hue of a color.
 
 ```
 
-```html
+```brm
 <ColorWheel value=$bind(color) outerRadius=(90) innerRadius=(66)>
   <ColorWheelTrack />
   <ColorThumb />
@@ -35,7 +35,7 @@ A circular track for the hue of a color.
 `ColorThumb`: The handle. It sits on the ring at the angle of the hue.
 ```
 
-```html
+```brm
 <ColorWheel>
   <ColorWheelTrack />
   <ColorThumb />

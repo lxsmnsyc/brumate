@@ -24,7 +24,7 @@ A search input with a button that clears it.
 `Button`: Clears the field. It reads "Clear search" and is out of the order of Tab.
 ```
 
-```html
+```brm
 <SearchField>
   <Label />
   <Input />

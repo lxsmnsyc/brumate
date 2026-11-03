@@ -25,7 +25,7 @@ A field of a `Label`, an `Input` or a `TextArea`, a description and a `FieldErro
 `FieldError`: Shows while the field is invalid. The picture forces it with `isInvalid`.
 ```
 
-```html
+```brm
 <TextField>
   <Label />
   <Input />
@@ -135,6 +135,24 @@ This stylesheet styles rest, hover, keyboard focus as two bands, invalid, read o
 
 ```
 
+## Use cases
+
+### A list that follows the text
+
+A field bound to a signal gives the page the text as the user types. The list is a memo of it.
+
+```brm demo TextFieldFilterDemo
+
+```
+
+### A note with a limit
+
+A `TextArea` takes the place of the `Input`. `maxLength` stops the box at the limit, and the count under it is a memo of the signal.
+
+```brm demo TextFieldCounterDemo
+
+```
+
 ## Validation
 
 With the default `validationBehavior="native"`, the browser checks the field when its form is sent:
@@ -156,7 +174,7 @@ A [Form](./form.md) sets the default for its fields, and gives them the errors o
 
 `field` takes a field of [`createForm`](../docs/forms.md#forms-with-createform): its name, ID, posted value and errors, and the ID and `role="alert"` of its error.
 
-```html
+```brm
 <form action=save {...attrs}>
   <TextField field=(fields.email) type="email">
     <Label>Email</Label>
@@ -171,21 +189,3 @@ A [Form](./form.md) sets the default for its fields, and gives them the errors o
 - `Label` is a `<label>` with the ID and the `for` that its field gives.
 - `Text` with `slot="description"` is the description, which the input names in `aria-describedby`. A field without one leaves its ID out once the browser is idle.
 - `FieldError` renders only while its field is invalid. Without children, it shows the messages.
-
-## Use cases
-
-### A list that follows the text
-
-A field bound to a signal gives the page the text as the user types. The list is a memo of it.
-
-```brm demo TextFieldFilterDemo
-
-```
-
-### A note with a limit
-
-A `TextArea` takes the place of the `Input`. `maxLength` stops the box at the limit, and the count under it is a memo of the signal.
-
-```brm demo TextFieldCounterDemo
-
-```

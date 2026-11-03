@@ -16,7 +16,7 @@ Opens the file picker of the browser from a `Button` inside it.
 
 ## Anatomy
 
-```html
+```brm
 <FileTrigger>
   <Button />
 </>

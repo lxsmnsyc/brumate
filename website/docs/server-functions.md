@@ -507,7 +507,7 @@ export const getProfile = batched(getProfiles, (found, id: string) => found.get(
 });
 ```
 
-```html
+```brm
 <!-- Row.brm: each row asks for one profile. -->
 <script>
   const profile = $memo(getProfile(id));

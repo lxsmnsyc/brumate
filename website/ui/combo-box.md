@@ -10,7 +10,7 @@ A text field with a list of suggestions, which shows the items that match what w
 
 ```
 
-```html
+```brm
 <ComboBox name="animal" selectedKey=$bind(animal)>
   <Label>Favorite animal</Label>
   <Input />
@@ -42,7 +42,7 @@ A text field with a list of suggestions, which shows the items that match what w
 `ListBoxItem`: One suggestion. Its `id` is its key.
 ```
 
-```html
+```brm
 <ComboBox>
   <Label />
   <Input />
