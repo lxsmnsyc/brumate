@@ -127,6 +127,7 @@ export async function run({ browser, url, runner }) {
   await step('#loading (memo): the fallback shows again and the same DOM comes back', async () => {
     await page.click('.doc-open');
     await page.waitForSelector('.doc-fallback', { timeout: TIMEOUT });
+    await pending(page, 'doc-1');
     await settle(page, 'doc-1', 'first');
     await page.waitForSelector('.doc-value', { timeout: TIMEOUT });
     assert((await text(page, '.doc-value')) === 'first', 'the first value is missing');

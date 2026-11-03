@@ -9,8 +9,6 @@ interface Entry {
 export interface Gates {
   /** The promises of `name` that have not settled. */
   pending: (name: string) => number;
-  /** Every promise of `name`, ever made. */
-  made: (name: string) => number;
   /** Resolves the pending promises of `name`. */
   settle: (name: string, value: string) => void;
   /** Rejects the pending promises of `name`. */
@@ -19,10 +17,10 @@ export interface Gates {
 
 const all: Entry[] = [];
 
-function countOf(name: string, onlyPending: boolean): number {
+function countPending(name: string): number {
   let total = 0;
   for (const entry of all) {
-    if (entry.name === name && !(onlyPending && entry.settled)) {
+    if (entry.name === name && !entry.settled) {
       total++;
     }
   }
@@ -30,8 +28,7 @@ function countOf(name: string, onlyPending: boolean): number {
 }
 
 const registry: Gates = {
-  pending: (name) => countOf(name, true),
-  made: (name) => countOf(name, false),
+  pending: countPending,
   settle(name, value) {
     for (const entry of all) {
       if (entry.name === name && !entry.settled) {
