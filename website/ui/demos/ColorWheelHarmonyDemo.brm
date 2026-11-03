@@ -33,8 +33,8 @@
   </div>
 </div>
 
-<style>
-  :global(.harmony) {
+<style global>
+  .harmony {
     align-items: center;
   }
 </style>

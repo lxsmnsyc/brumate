@@ -15,15 +15,15 @@
   }
 </ToggleButtonGroup>
 
-<style>
-  :global(.selection-indicator-group) {
+<style global>
+  .selection-indicator-group {
     display: inline-flex;
     padding: 3px;
     border: 1px solid color-mix(in srgb, CanvasText 50%, Canvas);
     border-radius: 999px;
   }
 
-  :global(.selection-indicator-item) {
+  .selection-indicator-item {
     position: relative;
     padding: 0.35rem 1rem;
     border: 0;
@@ -33,18 +33,18 @@
     cursor: pointer;
   }
 
-  :global(.selection-indicator-item[data-selected]) {
+  .selection-indicator-item[data-selected] {
     color: HighlightText;
   }
 
-  :global(.selection-indicator-item[data-focus-visible]) {
+  .selection-indicator-item[data-focus-visible] {
     outline: 2px solid Canvas;
     outline-offset: 0;
     box-shadow: 0 0 0 4px Highlight;
     border-radius: 999px;
   }
 
-  :global(.selection-indicator-pill) {
+  .selection-indicator-pill {
     position: absolute;
     inset: 0;
     border-radius: 999px;
@@ -53,7 +53,7 @@
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
-  :global(.selection-indicator-text) {
+  .selection-indicator-text {
     position: relative;
   }
 </style>

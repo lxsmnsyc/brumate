@@ -16,8 +16,8 @@
   </Popover>
 </DialogTrigger>
 
-<style>
-  :global(.styling-overlay-trigger) {
+<style global>
+  .styling-overlay-trigger {
     padding: 0.5rem 1rem;
     border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas);
     border-radius: 8px;
@@ -26,13 +26,13 @@
     font: inherit;
   }
 
-  :global(.styling-overlay-trigger[data-focus-visible]) {
+  .styling-overlay-trigger[data-focus-visible] {
     outline: 2px solid light-dark(#2a76b2, #6fb2e6);
     outline-offset: 2px;
   }
 
   /* The overlay is a layer at the end of <body>, so its look cannot come from a parent. */
-  :global(.styling-overlay) {
+  .styling-overlay {
     max-width: 18rem;
     padding: 1rem;
     border: 1px solid color-mix(in srgb, CanvasText 25%, Canvas);
@@ -44,28 +44,28 @@
   }
 
   /* `transition` keeps it in the page while these play, and sets data-closed, data-enter and data-leave. */
-  :global(.styling-overlay[data-closed]) {
+  .styling-overlay[data-closed] {
     opacity: 0;
     translate: 0 4px;
   }
 
-  :global(.styling-overlay[data-closed][data-placement='top']) {
+  .styling-overlay[data-closed][data-placement='top'] {
     translate: 0 -4px;
   }
 
-  :global(.styling-overlay-dialog) {
+  .styling-overlay-dialog {
     display: grid;
     gap: 0.5rem;
     outline: none;
   }
 
-  :global(.styling-overlay-title),
-  :global(.styling-overlay-dialog p) {
+  .styling-overlay-title,
+  .styling-overlay-dialog p {
     margin: 0;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.styling-overlay) {
+    .styling-overlay {
       transition: none;
     }
   }

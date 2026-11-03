@@ -19,9 +19,9 @@
   </ProgressBar>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.progress-styled-list) {
+  .progress-styled-list {
     --progress-styled-track: color-mix(in srgb, CanvasText 18%, Canvas);
     --progress-styled-fill: light-dark(#2a76b2, #6fb2e6);
     display: grid;
@@ -31,23 +31,23 @@
     color: CanvasText;
   }
 
-  :global(.progress-styled) {
+  .progress-styled {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0.3rem 1rem;
   }
 
-  :global(.progress-styled-label) {
+  .progress-styled-label {
     font-weight: 600;
   }
 
-  :global(.progress-styled-value) {
+  .progress-styled-value {
     grid-row: 1;
     grid-column: 2;
     font-variant-numeric: tabular-nums;
   }
 
-  :global(.progress-styled-track) {
+  .progress-styled-track {
     grid-column: 1 / -1;
     height: 0.6rem;
     overflow: hidden;
@@ -55,7 +55,7 @@
     background: var(--progress-styled-track);
   }
 
-  :global(.progress-styled-fill) {
+  .progress-styled-fill {
     display: block;
     width: var(--percentage);
     height: 100%;
@@ -65,7 +65,7 @@
   }
 
   /* An indeterminate bar has no --percentage, so a stripe of fixed width slides across. */
-  :global(.progress-styled[data-indeterminate] .progress-styled-fill) {
+  .progress-styled[data-indeterminate] .progress-styled-fill {
     width: 40%;
     transition: none;
     animation: progress-styled-slide 1.2s ease-in-out infinite alternate;
@@ -82,11 +82,11 @@
 
   /* With reduced motion the stripe stops, and fills the track in a lighter shade. */
   @media (prefers-reduced-motion: reduce) {
-    :global(.progress-styled-fill) {
+    .progress-styled-fill {
       transition: none;
     }
 
-    :global(.progress-styled[data-indeterminate] .progress-styled-fill) {
+    .progress-styled[data-indeterminate] .progress-styled-fill {
       width: 100%;
       animation: none;
       opacity: 0.5;

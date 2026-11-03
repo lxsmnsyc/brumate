@@ -37,34 +37,34 @@
   </Dialog>
 </div>
 
-<style>
-  :global(.date-range-picker-anatomy-group) {
+<style global>
+  .date-range-picker-anatomy-group {
     padding-top: 0.75rem;
   }
 
   /* The badge of an input sits above it, in the padding of the Group, so it stays off the digits. */
-  :global(.date-range-picker-anatomy-group .ui-date-input[data-mark])::before {
+  .date-range-picker-anatomy-group .ui-date-input[data-mark]::before {
     top: -1.1rem;
     inset-inline-end: auto;
     inset-inline-start: 0;
   }
 
   /* Wide enough for the RangeCalendar, which the Select-sized block of the picture is not. */
-  :global(.anatomy-stage .date-range-picker-anatomy-popover) {
+  .anatomy-stage .date-range-picker-anatomy-popover {
     justify-self: start;
     width: 20rem;
     max-width: 100%;
     padding: 1rem;
   }
 
-  :global(.date-range-picker-anatomy-dialog) {
+  .date-range-picker-anatomy-dialog {
     display: grid;
     padding: 0.25rem 0.25rem 1.25rem;
     border: 1px dashed var(--muted);
     border-radius: 6px;
   }
 
-  :global(.date-range-picker-anatomy-dialog .ui-calendar) {
+  .date-range-picker-anatomy-dialog .ui-calendar {
     width: auto;
   }
 </style>

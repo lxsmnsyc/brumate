@@ -33,9 +33,9 @@
   <p class="calendar-styled-status">{date ? `Delivery on ${date}.` : 'Pick a day.'}</p>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.calendar-styled-wrap) {
+  .calendar-styled-wrap {
     --calendar-styled-page: Canvas;
     --calendar-styled-text: CanvasText;
     --calendar-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
@@ -50,7 +50,7 @@
     color: var(--calendar-styled-text);
   }
 
-  :global(.calendar-styled) {
+  .calendar-styled {
     width: 18rem;
     padding: 0.75rem;
     border: 1px solid var(--calendar-styled-border);
@@ -58,20 +58,20 @@
     background: var(--calendar-styled-page);
   }
 
-  :global(.calendar-styled-header) {
+  .calendar-styled-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 0.5rem;
   }
 
-  :global(.calendar-styled-heading) {
+  .calendar-styled-heading {
     font-size: 1rem;
     font-weight: 600;
   }
 
   /* The month buttons: rest, hover, press, keyboard focus and disabled at a limit. */
-  :global(.calendar-styled-nav) {
+  .calendar-styled-nav {
     width: 2rem;
     height: 2rem;
     border: 0;
@@ -83,44 +83,44 @@
     outline: none;
   }
 
-  :global(.calendar-styled-nav[data-hovered]) {
+  .calendar-styled-nav[data-hovered] {
     background: var(--calendar-styled-hover);
   }
 
-  :global(.calendar-styled-nav[data-pressed]) {
+  .calendar-styled-nav[data-pressed] {
     background: var(--calendar-styled-press);
   }
 
-  :global(.calendar-styled-nav[data-focus-visible]) {
+  .calendar-styled-nav[data-focus-visible] {
     box-shadow: 0 0 0 2px var(--calendar-styled-page), 0 0 0 4px var(--calendar-styled-accent);
   }
 
-  :global(.calendar-styled-nav[data-disabled]) {
+  .calendar-styled-nav[data-disabled] {
     opacity: 0.4;
     cursor: default;
   }
 
   /* The prose styles of the page give a table borders and a heading a rule, so reset them. */
-  :global(.calendar-styled .calendar-styled-grid td) {
+  .calendar-styled .calendar-styled-grid td {
     padding: 0;
     border: 0;
     text-align: center;
     vertical-align: middle;
   }
 
-  :global(.calendar-styled .calendar-styled-header .calendar-styled-heading) {
+  .calendar-styled .calendar-styled-header .calendar-styled-heading {
     margin: 0;
     padding: 0;
     border: 0;
   }
 
-  :global(.calendar-styled-grid) {
+  .calendar-styled-grid {
     width: 100%;
     border-collapse: collapse;
     text-align: center;
   }
 
-  :global(.calendar-styled .calendar-styled-grid th) {
+  .calendar-styled .calendar-styled-grid th {
     padding: 0 0 0.25rem;
     border: 0;
     background: transparent;
@@ -130,7 +130,7 @@
   }
 
   /* A date: rest, hover, press, today, selected, keyboard focus, unavailable and out of range. */
-  :global(.calendar-styled-grid [data-date]) {
+  .calendar-styled-grid [data-date] {
     width: 2.25rem;
     height: 2.25rem;
     margin: 1px auto;
@@ -141,59 +141,59 @@
     transition: background-color 0.15s, box-shadow 0.15s;
   }
 
-  :global(.calendar-styled-grid [data-date]:hover) {
+  .calendar-styled-grid [data-date]:hover {
     background: var(--calendar-styled-hover);
   }
 
-  :global(.calendar-styled-grid [data-date][data-pressed]) {
+  .calendar-styled-grid [data-date][data-pressed] {
     background: var(--calendar-styled-press);
   }
 
   /* Today has a ring, so it does not depend on color alone. */
-  :global(.calendar-styled-grid [data-today]) {
+  .calendar-styled-grid [data-today] {
     font-weight: 700;
     box-shadow: inset 0 0 0 1px var(--calendar-styled-border);
   }
 
-  :global(.calendar-styled-grid [data-selected]) {
+  .calendar-styled-grid [data-selected] {
     background: var(--calendar-styled-accent);
     color: var(--calendar-styled-on-accent);
   }
 
-  :global(.calendar-styled-grid [data-selected]:hover),
-  :global(.calendar-styled-grid [data-selected][data-pressed]) {
+  .calendar-styled-grid [data-selected]:hover,
+  .calendar-styled-grid [data-selected][data-pressed] {
     background: color-mix(in srgb, var(--calendar-styled-accent) 80%, CanvasText);
   }
 
   /* Two bands, so the ring shows on the fill of a selected date too. */
-  :global(.calendar-styled-grid [data-focus-visible]) {
+  .calendar-styled-grid [data-focus-visible] {
     box-shadow: 0 0 0 2px var(--calendar-styled-page), 0 0 0 4px var(--calendar-styled-accent);
   }
 
-  :global(.calendar-styled-grid [data-unavailable]) {
+  .calendar-styled-grid [data-unavailable] {
     color: var(--calendar-styled-muted);
     text-decoration: line-through;
     cursor: default;
   }
 
-  :global(.calendar-styled-grid [data-disabled]) {
+  .calendar-styled-grid [data-disabled] {
     color: var(--calendar-styled-muted);
     opacity: 0.55;
     cursor: default;
   }
 
-  :global(.calendar-styled-grid [data-disabled]:hover),
-  :global(.calendar-styled-grid [data-unavailable]:hover) {
+  .calendar-styled-grid [data-disabled]:hover,
+  .calendar-styled-grid [data-unavailable]:hover {
     background: transparent;
   }
 
-  :global(.calendar-styled-status) {
+  .calendar-styled-status {
     margin: 0;
     color: var(--calendar-styled-muted);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.calendar-styled-grid [data-date]) {
+    .calendar-styled-grid [data-date] {
       transition: none;
     }
   }

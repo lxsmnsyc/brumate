@@ -98,7 +98,7 @@ describe('anatomy and styled blocks', () => {
   for (const block of all.filter((item) => item.kind === 'styled')) {
     describe(`${block.page}: styled ${block.name}`, () => {
       it('has its demo file, with a stylesheet of its own', () => {
-        expect(readFileSync(demo(block.name), 'utf8')).toContain('<style>');
+        expect(readFileSync(demo(block.name), 'utf8')).toMatch(/<style( global)?>/);
       });
     });
   }

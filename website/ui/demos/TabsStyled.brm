@@ -24,9 +24,9 @@
   }
 </Tabs>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.tabs-styled) {
+  .tabs-styled {
     /* light-dark() follows color-scheme, which the page sets for its theme. */
     --tabs-styled-bg: Canvas;
     --tabs-styled-text: CanvasText;
@@ -38,14 +38,14 @@
     color: var(--tabs-styled-text);
   }
 
-  :global(.tabs-styled-list) {
+  .tabs-styled-list {
     display: flex;
     gap: 0.25rem;
     border-bottom: 1px solid var(--tabs-styled-border);
   }
 
   /* A tab: rest, hover, press, keyboard focus, selected and disabled. */
-  :global(.tabs-styled-tab) {
+  .tabs-styled-tab {
     position: relative;
     padding: 0.5rem 0.9rem;
     border-radius: var(--tabs-styled-radius) var(--tabs-styled-radius) 0 0;
@@ -55,44 +55,44 @@
     transition: background-color 0.15s, color 0.15s;
   }
 
-  :global(.tabs-styled-tab[data-hovered]) {
+  .tabs-styled-tab[data-hovered] {
     background: color-mix(in srgb, var(--tabs-styled-accent) 12%, var(--tabs-styled-bg));
     color: var(--tabs-styled-text);
   }
 
-  :global(.tabs-styled-tab[data-pressed]) {
+  .tabs-styled-tab[data-pressed] {
     background: color-mix(in srgb, var(--tabs-styled-accent) 24%, var(--tabs-styled-bg));
     color: var(--tabs-styled-text);
   }
 
-  :global(.tabs-styled-tab[data-selected]) {
+  .tabs-styled-tab[data-selected] {
     color: var(--tabs-styled-text);
     font-weight: 600;
   }
 
   /* A selected tab that is hovered or pressed keeps its bar and takes the tint. */
-  :global(.tabs-styled-tab[data-selected][data-hovered]) {
+  .tabs-styled-tab[data-selected][data-hovered] {
     background: color-mix(in srgb, var(--tabs-styled-accent) 16%, var(--tabs-styled-bg));
   }
 
-  :global(.tabs-styled-tab[data-selected][data-pressed]) {
+  .tabs-styled-tab[data-selected][data-pressed] {
     background: color-mix(in srgb, var(--tabs-styled-accent) 28%, var(--tabs-styled-bg));
   }
 
   /* Two bands, so the ring shows on the page and on the tint of a hovered tab. */
-  :global(.tabs-styled-tab[data-focus-visible]) {
+  .tabs-styled-tab[data-focus-visible] {
     box-shadow:
       inset 0 0 0 2px var(--tabs-styled-accent),
       inset 0 0 0 4px var(--tabs-styled-bg);
   }
 
-  :global(.tabs-styled-tab[data-disabled]) {
+  .tabs-styled-tab[data-disabled] {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
   /* The bar slides from the last selected tab to the new one. */
-  :global(.tabs-styled-bar) {
+  .tabs-styled-bar {
     position: absolute;
     right: 0;
     bottom: -1px;
@@ -104,12 +104,12 @@
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
-  :global(.tabs-styled-panel) {
+  .tabs-styled-panel {
     padding: 0.9rem 0.25rem;
     outline: none;
   }
 
-  :global(.tabs-styled-panel:focus-visible) {
+  .tabs-styled-panel:focus-visible {
     border-radius: var(--tabs-styled-radius);
     box-shadow:
       inset 0 0 0 2px var(--tabs-styled-accent),
@@ -117,11 +117,11 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.tabs-styled-tab) {
+    .tabs-styled-tab {
       transition: none;
     }
 
-    :global(.tabs-styled-bar) {
+    .tabs-styled-bar {
       transition-duration: 0s;
     }
   }

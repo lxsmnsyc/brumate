@@ -21,8 +21,8 @@
   </span>
 </div>
 
-<style>
-  :global(.label-chip) {
+<style global>
+  .label-chip {
     display: inline-flex;
     gap: 0.5rem;
     align-items: center;
@@ -32,7 +32,7 @@
     border-radius: 999px;
   }
 
-  :global(.label-chip-dot) {
+  .label-chip-dot {
     width: 1rem;
     height: 1rem;
     border-radius: 50%;

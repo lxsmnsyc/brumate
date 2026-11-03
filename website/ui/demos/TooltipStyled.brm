@@ -23,10 +23,10 @@
   }
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
-  :global(.tooltip-styled-root),
-  :global(.tooltip-styled-tip) {
+  .tooltip-styled-root,
+  .tooltip-styled-tip {
     --tooltip-styled-bg: Canvas;
     --tooltip-styled-text: CanvasText;
     --tooltip-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
@@ -38,7 +38,7 @@
     color: var(--tooltip-styled-text);
   }
 
-  :global(.tooltip-styled-trigger) {
+  .tooltip-styled-trigger {
     padding: 0.45rem 0.9rem;
     border: 1px solid var(--tooltip-styled-border);
     border-radius: var(--tooltip-styled-radius);
@@ -49,43 +49,43 @@
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
 
-  :global(.tooltip-styled-trigger)[data-hovered] {
+  .tooltip-styled-trigger[data-hovered] {
     border-color: var(--tooltip-styled-accent);
   }
 
-  :global(.tooltip-styled-trigger)[data-pressed] {
+  .tooltip-styled-trigger[data-pressed] {
     background: color-mix(in srgb, var(--tooltip-styled-accent) 14%, var(--tooltip-styled-bg));
   }
 
-  :global(.tooltip-styled-trigger)[aria-expanded='true'] {
+  .tooltip-styled-trigger[aria-expanded='true'] {
     border-color: var(--tooltip-styled-accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--tooltip-styled-accent) 25%, transparent);
   }
 
   /* Two bands, so the ring shows on the page and on a fill. */
-  :global(.tooltip-styled-trigger)[data-focus-visible] {
+  .tooltip-styled-trigger[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--tooltip-styled-bg), 0 0 0 4px var(--tooltip-styled-accent);
   }
 
-  :global(.tooltip-styled-trigger)[data-disabled] {
+  .tooltip-styled-trigger[data-disabled] {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  :global(.tooltip-styled-root) {
+  .tooltip-styled-root {
     display: flex;
     gap: 0.5rem;
   }
 
-  :global(.tooltip-styled-trigger) {
+  .tooltip-styled-trigger {
     min-width: 2.5rem;
     padding-inline: 0;
     font-weight: 700;
   }
 
   /* The tip is a dark chip in both themes. It fades in, and data-closed is the hidden look. */
-  :global(.tooltip-styled-tip) {
+  .tooltip-styled-tip {
     z-index: 30;
     max-width: 16rem;
     padding: 0.3rem 0.6rem;
@@ -96,41 +96,41 @@
     transition: opacity 0.15s;
   }
 
-  :global(.tooltip-styled-tip[data-closed]) {
+  .tooltip-styled-tip[data-closed] {
     opacity: 0;
   }
 
   /* The tooltip sets left or top of the arrow along the side, and CSS points it. */
-  :global(.tooltip-styled-arrow) {
+  .tooltip-styled-arrow {
     width: 8px;
     height: 8px;
     background: light-dark(#1d2630, #e7edf3);
     rotate: 45deg;
   }
 
-  :global(.tooltip-styled-arrow[data-placement='top']) {
+  .tooltip-styled-arrow[data-placement='top'] {
     bottom: -4px;
     margin-left: -4px;
   }
 
-  :global(.tooltip-styled-arrow[data-placement='bottom']) {
+  .tooltip-styled-arrow[data-placement='bottom'] {
     top: -4px;
     margin-left: -4px;
   }
 
-  :global(.tooltip-styled-arrow[data-placement='right']) {
+  .tooltip-styled-arrow[data-placement='right'] {
     left: -4px;
     margin-top: -4px;
   }
 
-  :global(.tooltip-styled-arrow[data-placement='left']) {
+  .tooltip-styled-arrow[data-placement='left'] {
     right: -4px;
     margin-top: -4px;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.tooltip-styled-trigger),
-    :global(.tooltip-styled-tip) {
+    .tooltip-styled-trigger,
+    .tooltip-styled-tip {
       transition: none;
     }
   }

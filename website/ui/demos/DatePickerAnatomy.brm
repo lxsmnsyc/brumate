@@ -35,27 +35,27 @@
   </Dialog>
 </div>
 
-<style>
-  :global(.date-picker-anatomy-group) {
+<style global>
+  .date-picker-anatomy-group {
     padding-top: 0.75rem;
   }
 
   /* Wide enough for the Calendar, which the Select-sized block of the picture is not. */
-  :global(.anatomy-stage .date-picker-anatomy-popover) {
+  .anatomy-stage .date-picker-anatomy-popover {
     justify-self: start;
     width: 20rem;
     max-width: 100%;
     padding: 1rem;
   }
 
-  :global(.date-picker-anatomy-dialog) {
+  .date-picker-anatomy-dialog {
     display: grid;
     padding: 0.25rem 0.25rem 1.25rem;
     border: 1px dashed var(--muted);
     border-radius: 6px;
   }
 
-  :global(.date-picker-anatomy-dialog .ui-calendar) {
+  .date-picker-anatomy-dialog .ui-calendar {
     width: auto;
   }
 </style>

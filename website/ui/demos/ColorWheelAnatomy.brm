@@ -13,8 +13,8 @@
   </ColorWheel>
 </div>
 
-<style>
-  :global(.color-wheel-anatomy) {
+<style global>
+  .color-wheel-anatomy {
     width: 180px;
   }
 </style>

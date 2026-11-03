@@ -14,8 +14,8 @@
   <FieldError class="ui-error" style="justify-self: start" data-mark="5" data-mark-side="after">Pick a color.</FieldError>
 </ColorField>
 
-<style>
-  :global(.color-field-anatomy-input) {
+<style global>
+  .color-field-anatomy-input {
     display: grid;
   }
 </style>

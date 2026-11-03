@@ -22,10 +22,10 @@
   in 1843.
 </p>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
-  :global(.preview-styled-root),
-  :global(.preview-styled-card) {
+  .preview-styled-root,
+  .preview-styled-card {
     --preview-styled-bg: Canvas;
     --preview-styled-text: CanvasText;
     --preview-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
@@ -37,7 +37,7 @@
     color: var(--preview-styled-text);
   }
 
-  :global(.preview-styled-follow) {
+  .preview-styled-follow {
     padding: 0.45rem 0.9rem;
     border: 1px solid transparent;
     border-radius: var(--preview-styled-radius);
@@ -49,21 +49,21 @@
     transition: background 0.15s, box-shadow 0.15s;
   }
 
-  :global(.preview-styled-follow)[data-hovered] {
+  .preview-styled-follow[data-hovered] {
     background: color-mix(in srgb, var(--preview-styled-accent) 85%, CanvasText);
   }
 
-  :global(.preview-styled-follow)[data-pressed] {
+  .preview-styled-follow[data-pressed] {
     background: color-mix(in srgb, var(--preview-styled-accent) 70%, CanvasText);
   }
 
-  :global(.preview-styled-follow)[data-focus-visible] {
+  .preview-styled-follow[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--preview-styled-bg), 0 0 0 4px var(--preview-styled-accent);
   }
 
   /* The link: rest, hover, press, keyboard focus and the preview that shows (aria-expanded). */
-  :global(.preview-styled-link) {
+  .preview-styled-link {
     color: light-dark(#1d5f94, #6fb2e6);
     text-decoration: underline dotted;
     text-underline-offset: 3px;
@@ -71,22 +71,22 @@
     cursor: pointer;
   }
 
-  :global(.preview-styled-link[data-hovered]),
-  :global(.preview-styled-link[aria-expanded='true']) {
+  .preview-styled-link[data-hovered],
+  .preview-styled-link[aria-expanded='true'] {
     text-decoration-style: solid;
   }
 
-  :global(.preview-styled-link[data-pressed]) {
+  .preview-styled-link[data-pressed] {
     color: color-mix(in srgb, light-dark(#1d5f94, #6fb2e6) 70%, CanvasText);
   }
 
-  :global(.preview-styled-link[data-focus-visible]) {
+  .preview-styled-link[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--preview-styled-bg), 0 0 0 4px var(--preview-styled-accent);
   }
 
   /* The card fades and rises. It is not modal, so the page behind it stays live. */
-  :global(.preview-styled-card) {
+  .preview-styled-card {
     z-index: 20;
     box-sizing: border-box;
     width: 18rem;
@@ -98,16 +98,16 @@
     transition: opacity 0.18s, translate 0.18s;
   }
 
-  :global(.preview-styled-card[data-closed]) {
+  .preview-styled-card[data-closed] {
     opacity: 0;
     translate: 0 4px;
   }
 
-  :global(.preview-styled-card[data-closed][data-placement='top']) {
+  .preview-styled-card[data-closed][data-placement='top'] {
     translate: 0 -4px;
   }
 
-  :global(.preview-styled-arrow) {
+  .preview-styled-arrow {
     width: 12px;
     height: 12px;
     margin-left: -6px;
@@ -117,29 +117,29 @@
     background: var(--preview-styled-bg);
   }
 
-  :global(.preview-styled-arrow[data-placement='bottom']) {
+  .preview-styled-arrow[data-placement='bottom'] {
     top: -7px;
     rotate: 45deg;
   }
 
-  :global(.preview-styled-arrow[data-placement='top']) {
+  .preview-styled-arrow[data-placement='top'] {
     bottom: -7px;
     rotate: 225deg;
   }
 
-  :global(.preview-styled-body) {
+  .preview-styled-body {
     display: grid;
     gap: 0.5rem;
     justify-items: start;
   }
 
-  :global(.preview-styled-text) {
+  .preview-styled-text {
     color: var(--preview-styled-muted);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.preview-styled-follow),
-    :global(.preview-styled-card) {
+    .preview-styled-follow,
+    .preview-styled-card {
       transition: none;
     }
   }

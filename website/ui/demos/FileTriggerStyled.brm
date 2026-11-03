@@ -13,9 +13,9 @@
   <span class="file-styled-name">{name || 'Nothing chosen'}</span>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.file-styled-row) {
+  .file-styled-row {
     --file-styled-border: color-mix(in srgb, CanvasText 35%, Canvas);
     --file-styled-accent: light-dark(#2a76b2, #6fb2e6);
     --file-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
@@ -27,7 +27,7 @@
   }
 
   /* The trigger draws no element, so the Button inside it carries every state. */
-  :global(.file-styled-button) {
+  .file-styled-button {
     padding: 0.5rem 1rem;
     border: 1px dashed var(--file-styled-border);
     border-radius: 8px;
@@ -38,32 +38,32 @@
     transition: border-color 0.15s, background-color 0.15s;
   }
 
-  :global(.file-styled-button[data-hovered]) {
+  .file-styled-button[data-hovered] {
     border-color: var(--file-styled-accent);
     border-style: solid;
   }
 
-  :global(.file-styled-button[data-pressed]) {
+  .file-styled-button[data-pressed] {
     background: color-mix(in srgb, var(--file-styled-accent) 16%, transparent);
   }
 
-  :global(.file-styled-button[data-focus-visible]) {
+  .file-styled-button[data-focus-visible] {
     outline: 2px solid var(--file-styled-accent);
     outline-offset: 2px;
   }
 
-  :global(.file-styled-button[data-disabled]) {
+  .file-styled-button[data-disabled] {
     opacity: 0.45;
     cursor: not-allowed;
   }
 
-  :global(.file-styled-name) {
+  .file-styled-name {
     color: var(--file-styled-muted);
     font-size: 0.9rem;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.file-styled-button) {
+    .file-styled-button {
       transition: none;
     }
   }

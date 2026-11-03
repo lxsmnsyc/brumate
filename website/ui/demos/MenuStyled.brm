@@ -58,10 +58,10 @@
   <p class="menu-styled-status">Last action: {last}. View: {view[0]}.</p>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.menu-styled-demo),
-  :global(.menu-styled-popover) {
+  .menu-styled-demo,
+  .menu-styled-popover {
     /* light-dark() follows color-scheme, which the page sets for its theme. */
     --menu-styled-bg: Canvas;
     --menu-styled-text: CanvasText;
@@ -73,7 +73,7 @@
     --menu-styled-radius: 8px;
   }
 
-  :global(.menu-styled-demo) {
+  .menu-styled-demo {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -81,13 +81,13 @@
     color: var(--menu-styled-text);
   }
 
-  :global(.menu-styled-status) {
+  .menu-styled-status {
     flex-basis: 100%;
     margin: 0;
   }
 
   /* The trigger: rest, hover, press, focus and open. */
-  :global(.menu-styled-button) {
+  .menu-styled-button {
     padding: 0.45rem 0.9rem;
     border: 1px solid var(--menu-styled-border);
     border-radius: var(--menu-styled-radius);
@@ -99,28 +99,28 @@
     transition: background-color 0.15s, border-color 0.15s;
   }
 
-  :global(.menu-styled-button[data-hovered]) {
+  .menu-styled-button[data-hovered] {
     background: var(--menu-styled-hover);
   }
 
-  :global(.menu-styled-button[data-pressed]) {
+  .menu-styled-button[data-pressed] {
     background: color-mix(in srgb, var(--menu-styled-accent) 28%, Canvas);
   }
 
-  :global(.menu-styled-button[aria-expanded='true']) {
+  .menu-styled-button[aria-expanded='true'] {
     border-color: var(--menu-styled-accent);
     border-width: 2px;
     padding: calc(0.45rem - 1px) calc(0.9rem - 1px);
   }
 
-  :global(.menu-styled-button[data-focus-visible]) {
+  .menu-styled-button[data-focus-visible] {
     box-shadow:
       0 0 0 2px var(--menu-styled-bg),
       0 0 0 4px var(--menu-styled-accent);
   }
 
   /* The popover fades and rises while it opens and closes. */
-  :global(.menu-styled-popover) {
+  .menu-styled-popover {
     z-index: 20;
     box-sizing: border-box;
     border: 1px solid var(--menu-styled-border);
@@ -131,19 +131,19 @@
     transition: opacity 0.15s, translate 0.15s;
   }
 
-  :global(.menu-styled-popover[data-closed]) {
+  .menu-styled-popover[data-closed] {
     opacity: 0;
     translate: 0 -4px;
   }
 
-  :global(.menu-styled) {
+  .menu-styled {
     display: grid;
     min-width: 12rem;
     padding: 0.25rem;
     outline: none;
   }
 
-  :global(.menu-styled-header) {
+  .menu-styled-header {
     padding: 0.4rem 0.6rem 0.2rem;
     color: var(--menu-styled-muted);
     font-size: 0.75rem;
@@ -152,7 +152,7 @@
     text-transform: uppercase;
   }
 
-  :global(.menu-styled-separator) {
+  .menu-styled-separator {
     width: 100%;
     margin: 0.25rem 0;
     border: 0;
@@ -160,7 +160,7 @@
   }
 
   /* The items: hover and focus (data-focused), keyboard focus, press, checked, open submenu and disabled. */
-  :global(.menu-styled-item) {
+  .menu-styled-item {
     display: flex;
     gap: 0.5rem;
     align-items: center;
@@ -170,61 +170,61 @@
     outline: none;
   }
 
-  :global(.menu-styled-item[data-focused]),
-  :global(.menu-styled-item[data-open]) {
+  .menu-styled-item[data-focused],
+  .menu-styled-item[data-open] {
     background: var(--menu-styled-hover);
   }
 
-  :global(.menu-styled-item[data-pressed]) {
+  .menu-styled-item[data-pressed] {
     background: color-mix(in srgb, var(--menu-styled-accent) 30%, Canvas);
   }
 
   /* Two bands, so the ring shows on the page and on a shaded item. */
-  :global(.menu-styled-item[data-focus-visible]) {
+  .menu-styled-item[data-focus-visible] {
     box-shadow:
       inset 0 0 0 2px var(--menu-styled-accent),
       inset 0 0 0 4px var(--menu-styled-bg);
   }
 
-  :global(.menu-styled-item[data-disabled]) {
+  .menu-styled-item[data-disabled] {
     color: var(--menu-styled-muted);
     text-decoration: line-through;
   }
 
-  :global(.menu-styled-item[role='menuitemradio'])::before {
+  .menu-styled-item[role='menuitemradio']::before {
     width: 1rem;
     content: '';
   }
 
-  :global(.menu-styled-item[aria-checked='true'])::before {
+  .menu-styled-item[aria-checked='true']::before {
     color: var(--menu-styled-accent);
     font-weight: 700;
     content: '✓';
   }
 
-  :global(.menu-styled-item[aria-haspopup])::after {
+  .menu-styled-item[aria-haspopup]::after {
     margin-inline-start: auto;
     content: '›';
   }
 
-  :global(.menu-styled-text) {
+  .menu-styled-text {
     display: grid;
   }
 
-  :global(.menu-styled-hint),
-  :global(.menu-styled-key) {
+  .menu-styled-hint,
+  .menu-styled-key {
     color: var(--menu-styled-muted);
     font-size: 0.8125rem;
   }
 
-  :global(.menu-styled-key) {
+  .menu-styled-key {
     margin-inline-start: auto;
     font-family: inherit;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.menu-styled-button),
-    :global(.menu-styled-popover) {
+    .menu-styled-button,
+    .menu-styled-popover {
       transition: none;
     }
   }

@@ -5,24 +5,24 @@ The parts render no CSS. Style them with classes and the `data-*` attributes of 
 ```brm
 <Button class="button">Save</Button>
 
-<style>
-  :global(.button) {
+<style global>
+  .button {
     padding: 0.5rem 1rem;
     border-radius: 8px;
   }
 
-  :global(.button[data-pressed]) {
+  .button[data-pressed] {
     background: #ddd;
   }
 
-  :global(.button[data-focus-visible]) {
+  .button[data-focus-visible] {
     outline: 2px solid royalblue;
   }
 </style>
 ```
 
 - A `class` that you pass adds to the classes of the part.
-- The styles of a component are scoped to the elements that it writes. A part renders its own elements, so select them with `:global`, under a class of yours. The examples on this page are written as brumate components, so their rules say `:global(.name)`. In a plain stylesheet, write `.name` and drop `:global(...)`.
+- The styles of a component are scoped to the elements that it writes. A part renders its own elements, so write the rules in a `<style global>` block, under a class of yours. Use a scoped `<style>` for the elements that the component writes itself, and `:global(.name)` for a single selector among scoped rules.
 - An attribute is there only while the state is on, such as `[data-selected]`. It is never `data-selected="false"`.
 
 ## The attributes
@@ -97,8 +97,8 @@ A `Checkbox`, a `Radio` and a `Switch` hide their native input, which keeps work
   Subscribe
 </Checkbox>
 
-<style>
-  :global(.box[data-selected] .mark) {
+<style global>
+  .box[data-selected] .mark {
     background: royalblue;
   }
 </style>

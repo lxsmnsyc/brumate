@@ -37,9 +37,9 @@
   <p role="status" class="color-field-styled-status">{sent}</p>
 </Form>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.color-field-styled-form) {
+  .color-field-styled-form {
     --color-field-styled-page: Canvas;
     --color-field-styled-border: color-mix(in srgb, CanvasText 50%, Canvas);
     --color-field-styled-muted: color-mix(in srgb, CanvasText 70%, Canvas);
@@ -52,24 +52,24 @@
     color: CanvasText;
   }
 
-  :global(.color-field-styled-row) {
+  .color-field-styled-row {
     display: flex;
     gap: 0.75rem;
     align-items: start;
   }
 
-  :global(.color-field-styled) {
+  .color-field-styled {
     display: grid;
     gap: 0.3rem;
     width: 16rem;
   }
 
-  :global(.color-field-styled-label) {
+  .color-field-styled-label {
     font-weight: 600;
   }
 
   /* The input: rest, hover, keyboard focus, invalid and disabled. */
-  :global(.color-field-styled-input) {
+  .color-field-styled-input {
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--color-field-styled-border);
     border-radius: 8px;
@@ -80,38 +80,38 @@
     transition: border-color 0.15s, box-shadow 0.15s;
   }
 
-  :global(.color-field-styled-input[data-hovered]) {
+  .color-field-styled-input[data-hovered] {
     border-color: var(--color-field-styled-accent);
   }
 
-  :global(.color-field-styled-input[data-focus-visible]) {
+  .color-field-styled-input[data-focus-visible] {
     border-color: var(--color-field-styled-accent);
     box-shadow: 0 0 0 3px var(--color-field-styled-page), 0 0 0 5px var(--color-field-styled-accent);
   }
 
-  :global(.color-field-styled-input[data-invalid]) {
+  .color-field-styled-input[data-invalid] {
     border-color: var(--color-field-styled-danger);
   }
 
-  :global(.color-field-styled-input[data-invalid][data-focus-visible]) {
+  .color-field-styled-input[data-invalid][data-focus-visible] {
     box-shadow: 0 0 0 3px var(--color-field-styled-page), 0 0 0 5px var(--color-field-styled-danger);
   }
 
-  :global(.color-field-styled[data-disabled] .color-field-styled-input) {
+  .color-field-styled[data-disabled] .color-field-styled-input {
     opacity: 0.55;
   }
 
-  :global(.color-field-styled-help) {
+  .color-field-styled-help {
     color: var(--color-field-styled-muted);
     font-size: 0.875rem;
   }
 
-  :global(.color-field-styled-error) {
+  .color-field-styled-error {
     color: var(--color-field-styled-danger);
     font-size: 0.875rem;
   }
 
-  :global(.color-field-styled-swatch) {
+  .color-field-styled-swatch {
     width: 2.6rem;
     height: 2.6rem;
     margin-top: 1.55rem;
@@ -119,7 +119,7 @@
     box-shadow: 0 0 0 1px var(--color-field-styled-border);
   }
 
-  :global(.color-field-styled-submit) {
+  .color-field-styled-submit {
     padding: 0.5rem 1rem;
     border: 0;
     border-radius: 8px;
@@ -131,20 +131,20 @@
     outline: none;
   }
 
-  :global(.color-field-styled-submit[data-hovered]) {
+  .color-field-styled-submit[data-hovered] {
     background: color-mix(in srgb, var(--color-field-styled-accent) 85%, CanvasText);
   }
 
-  :global(.color-field-styled-submit[data-pressed]) {
+  .color-field-styled-submit[data-pressed] {
     background: color-mix(in srgb, var(--color-field-styled-accent) 70%, CanvasText);
   }
 
-  :global(.color-field-styled-submit[data-focus-visible]) {
+  .color-field-styled-submit[data-focus-visible] {
     box-shadow: 0 0 0 2px var(--color-field-styled-page), 0 0 0 4px var(--color-field-styled-accent);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.color-field-styled-input) {
+    .color-field-styled-input {
       transition: none;
     }
   }

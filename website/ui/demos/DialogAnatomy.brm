@@ -14,8 +14,8 @@
   </Dialog>
 </div>
 
-<style>
-  :global(.anatomy-self) {
+<style global>
+  .anatomy-self {
     justify-self: start;
   }
 </style>

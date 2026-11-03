@@ -25,10 +25,10 @@
   </DialogTrigger>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
-  :global(.modal-styled-root),
-  :global(.modal-styled-backdrop) {
+  .modal-styled-root,
+  .modal-styled-backdrop {
     --modal-styled-bg: Canvas;
     --modal-styled-text: CanvasText;
     --modal-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
@@ -40,7 +40,7 @@
     color: var(--modal-styled-text);
   }
 
-  :global(.modal-styled-trigger) {
+  .modal-styled-trigger {
     padding: 0.45rem 0.9rem;
     border: 1px solid var(--modal-styled-border);
     border-radius: var(--modal-styled-radius);
@@ -51,31 +51,31 @@
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
 
-  :global(.modal-styled-trigger)[data-hovered] {
+  .modal-styled-trigger[data-hovered] {
     border-color: var(--modal-styled-accent);
   }
 
-  :global(.modal-styled-trigger)[data-pressed] {
+  .modal-styled-trigger[data-pressed] {
     background: color-mix(in srgb, var(--modal-styled-accent) 14%, var(--modal-styled-bg));
   }
 
-  :global(.modal-styled-trigger)[aria-expanded='true'] {
+  .modal-styled-trigger[aria-expanded='true'] {
     border-color: var(--modal-styled-accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--modal-styled-accent) 25%, transparent);
   }
 
   /* Two bands, so the ring shows on the page and on a fill. */
-  :global(.modal-styled-trigger)[data-focus-visible] {
+  .modal-styled-trigger[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--modal-styled-bg), 0 0 0 4px var(--modal-styled-accent);
   }
 
-  :global(.modal-styled-trigger)[data-disabled] {
+  .modal-styled-trigger[data-disabled] {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  :global(.modal-styled-cancel) {
+  .modal-styled-cancel {
     padding: 0.45rem 0.9rem;
     border: 1px solid var(--modal-styled-border);
     border-radius: var(--modal-styled-radius);
@@ -86,31 +86,31 @@
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
 
-  :global(.modal-styled-cancel)[data-hovered] {
+  .modal-styled-cancel[data-hovered] {
     border-color: var(--modal-styled-accent);
   }
 
-  :global(.modal-styled-cancel)[data-pressed] {
+  .modal-styled-cancel[data-pressed] {
     background: color-mix(in srgb, var(--modal-styled-accent) 14%, var(--modal-styled-bg));
   }
 
-  :global(.modal-styled-cancel)[aria-expanded='true'] {
+  .modal-styled-cancel[aria-expanded='true'] {
     border-color: var(--modal-styled-accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--modal-styled-accent) 25%, transparent);
   }
 
   /* Two bands, so the ring shows on the page and on a fill. */
-  :global(.modal-styled-cancel)[data-focus-visible] {
+  .modal-styled-cancel[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--modal-styled-bg), 0 0 0 4px var(--modal-styled-accent);
   }
 
-  :global(.modal-styled-cancel)[data-disabled] {
+  .modal-styled-cancel[data-disabled] {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  :global(.modal-styled-delete) {
+  .modal-styled-delete {
     padding: 0.45rem 0.9rem;
     border: 1px solid transparent;
     border-radius: var(--modal-styled-radius);
@@ -122,21 +122,21 @@
     transition: background 0.15s, box-shadow 0.15s;
   }
 
-  :global(.modal-styled-delete)[data-hovered] {
+  .modal-styled-delete[data-hovered] {
     background: color-mix(in srgb, var(--modal-styled-danger) 85%, CanvasText);
   }
 
-  :global(.modal-styled-delete)[data-pressed] {
+  .modal-styled-delete[data-pressed] {
     background: color-mix(in srgb, var(--modal-styled-danger) 70%, CanvasText);
   }
 
-  :global(.modal-styled-delete)[data-focus-visible] {
+  .modal-styled-delete[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--modal-styled-bg), 0 0 0 4px var(--modal-styled-danger);
   }
 
   /* The overlay covers the window. It fades in, and the box scales in with it. */
-  :global(.modal-styled-backdrop) {
+  .modal-styled-backdrop {
     z-index: 20;
     display: grid;
     place-items: center;
@@ -145,11 +145,11 @@
     transition: opacity 0.2s;
   }
 
-  :global(.modal-styled-backdrop[data-closed]) {
+  .modal-styled-backdrop[data-closed] {
     opacity: 0;
   }
 
-  :global(.modal-styled-box) {
+  .modal-styled-box {
     box-sizing: border-box;
     width: min(24rem, 100%);
     max-height: calc(var(--visual-viewport-height) * 0.9);
@@ -163,38 +163,38 @@
     transition: scale 0.2s;
   }
 
-  :global(.modal-styled-backdrop[data-closed] > .modal-styled-box) {
+  .modal-styled-backdrop[data-closed] > .modal-styled-box {
     scale: 0.96;
   }
 
-  :global(.modal-styled-dialog) {
+  .modal-styled-dialog {
     display: grid;
     gap: 0.75rem;
     outline: none;
   }
 
-  :global(.modal-styled-title) {
+  .modal-styled-title {
     margin: 0;
     font-size: 1.1rem;
   }
 
-  :global(.modal-styled-text) {
+  .modal-styled-text {
     margin: 0;
     color: var(--modal-styled-muted);
   }
 
-  :global(.modal-styled-actions) {
+  .modal-styled-actions {
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.modal-styled-trigger),
-    :global(.modal-styled-cancel),
-    :global(.modal-styled-delete),
-    :global(.modal-styled-backdrop),
-    :global(.modal-styled-box) {
+    .modal-styled-trigger,
+    .modal-styled-cancel,
+    .modal-styled-delete,
+    .modal-styled-backdrop,
+    .modal-styled-box {
       transition: none;
     }
   }

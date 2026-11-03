@@ -24,9 +24,9 @@
   }
 }
 
-<style>
+<style global>
   /* The badge of a segment sits above it, in the padding of the input, so it stays off the digits. */
-  :global(.ui-date-input [data-type='hour'][data-mark])::before {
+  .ui-date-input [data-type='hour'][data-mark]::before {
     top: -1.5rem;
     inset-inline-end: auto;
     inset-inline-start: 0;

@@ -45,23 +45,23 @@
   </ResizableTableContainer>
 </div>
 
-<style>
-  :global(.table-anatomy-box) {
+<style global>
+  .table-anatomy-box {
     padding: 1.2rem 0.8rem 1.8rem;
     border: 1px dashed var(--muted);
     border-radius: var(--radius);
   }
 
-  :global(.table-anatomy-table) {
+  .table-anatomy-table {
     width: min(32rem, 100%);
   }
 
-  :global(.table-anatomy-self) {
+  .table-anatomy-self {
     display: inline-block;
   }
 
   /* A point at the end of the Name column, since a resizer is a thin bar that clips a number. */
-  :global(.table-anatomy-grip) {
+  .table-anatomy-grip {
     position: absolute;
     inset-block: 0;
     inset-inline-end: 0.9rem;

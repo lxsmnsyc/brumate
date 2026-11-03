@@ -35,34 +35,34 @@
   </div>
 </div>
 
-<style>
-  :global(.menu-anatomy-row) {
+<style global>
+  .menu-anatomy-row {
     display: flex;
     flex-wrap: wrap;
     gap: 1.5rem;
     align-items: flex-start;
   }
 
-  :global(.menu-anatomy-popover) {
+  .menu-anatomy-popover {
     padding: 1.2rem 0.8rem;
     border: 1px dashed var(--muted);
     border-radius: var(--radius);
   }
 
-  :global(.menu-anatomy-popover .ui-menu) {
+  .menu-anatomy-popover .ui-menu {
     gap: 0.5rem;
     min-width: 16rem;
   }
 
-  :global(.menu-anatomy-line) {
+  .menu-anatomy-line {
     padding-block: 0.2rem;
   }
 
-  :global(.menu-anatomy-text) {
+  .menu-anatomy-text {
     display: grid;
   }
 
-  :global(.menu-anatomy-self) {
+  .menu-anatomy-self {
     justify-self: start;
   }
 </style>

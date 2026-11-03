@@ -47,8 +47,8 @@
   </ul>
 </div>
 
-<style>
-  :global(.menu-view-list) {
+<style global>
+  .menu-view-list {
     margin: 0;
     padding-inline-start: 1.25rem;
   }
