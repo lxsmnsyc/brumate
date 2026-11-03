@@ -1,7 +1,7 @@
 ---
 id: ui-page-sections
 title: One section order and one set of headings for the ui pages
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
@@ -19,6 +19,8 @@ owns:
   - website/test/ui-sections.test.ts
 shared:
   - website/ui/*.md
+  - website/plugins/**
+  - website/src/**
 reserves: []
 provides: []
 depends_on:

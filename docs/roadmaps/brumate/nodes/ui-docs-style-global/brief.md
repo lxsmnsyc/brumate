@@ -1,7 +1,7 @@
 ---
 id: ui-docs-style-global
 title: The ui docs and demos style with <style global> instead of :global on every selector
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
