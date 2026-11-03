@@ -1,0 +1,20 @@
+<script>
+  import { $client, $signal } from 'brumate/signals';
+  import ClientOrderPart from './ClientOrderPart.brm';
+
+  let open = $signal(false);
+
+  function log(entry: string) {
+    (globalThis as { orderLog?: string[] }).orderLog?.push(entry);
+  }
+
+  $client(() => {
+    log('client page');
+  }, 'idle');
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  <ClientOrderPart name="first" />
+  <ClientOrderPart name="second" />
+}
