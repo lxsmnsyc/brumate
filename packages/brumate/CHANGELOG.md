@@ -1,5 +1,12 @@
 # brumate
 
+## 0.5.1
+
+### Patch Changes
+
+- 1edc1f7: Fix a block that holds a body of a component the browser renders: it showed the body before the update code of a settled memo had run, so a `<textarea>` or text that reads the memo was empty until the code loaded. The hold now waits for those updates.
+- e43bf63: Fix the browser render module of a component that uses another component only in a `#template` inside a block (`#try`, `#if`, `#switch`, `#for`, `#key`, `#loading`): it now imports that component, where it threw `ReferenceError`.
+
 ## 0.5.0
 
 ### Minor Changes
