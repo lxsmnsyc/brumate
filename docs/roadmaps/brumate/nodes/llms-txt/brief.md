@@ -1,7 +1,7 @@
 ---
 id: llms-txt
 title: llms.txt, the Markdown of each page, and a copy button
-status: active
+status: done
 priority: must
 type: feature
 outline: false
