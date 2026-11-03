@@ -15,7 +15,8 @@
       "text": "The maintainer's choice (2026-11-03): every context is static, whatever its value; live values come from a store put into the context, through a store contract and `$store`. 'There is no $store' in decisions.md was a state note, now revised.",
       "evidence": {
         "type": "user",
-        "source": "maintainer, 2026-11-03; docs/decisions.md:40"
+        "source": "maintainer, 2026-11-03; docs/decisions.md:40",
+        "question": "Q1"
       },
       "ruling": "upheld"
     },
@@ -99,7 +100,17 @@
       "ruling": "upheld"
     }
   ],
-  "questions": [],
+  "questions": [
+    {
+      "id": "Q1",
+      "by": "judge",
+      "blocks": [
+        "J1"
+      ],
+      "ask": "How should static-contexts go on, after #448's review found two miscompiles and a tiny gain?",
+      "answer": "Keep every context static, regardless of the value; the future $store API will provide live values. 'There is no $store' in decisions.md is a state note, not a rule."
+    }
+  ],
   "proofs": [],
   "hypothesis": null,
   "spend": []
