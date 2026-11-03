@@ -23,7 +23,7 @@
 ```
 
 - `<script>` runs once for each instance, on the server. `<script module>` runs once per module, and its exports can be imported.
-- `<style>` is scoped to the component. `lang="scss"` and `lang="less"` work.
+- `<style>` is scoped to the component. `<style global>` is not: its rules apply to the whole page, such as `body` or `.toolbar button`, with no `:global(…)` around them. `lang="scss"` and `lang="less"` work in both. Both are top level only.
 - A file has at most one of each script. Markup can come before or after them.
 - Markup in a script, an expression or an attribute value is an error. Use a `#template`.
 

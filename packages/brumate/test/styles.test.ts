@@ -199,15 +199,31 @@ describe('<style global>', () => {
   it('is an error inside a block, with a code', () => {
     expect(() =>
       compile('<div><style global>p { margin: 0; }</style></div>', { filename: 'Card.brm' }),
-    ).toThrow(/<style> must be at the top level/);
+    ).toThrow(/<style> must be at the top level.*\[BRM011\]/);
   });
 
   it('rejects other attributes and a value', () => {
     expect(() => compile('<style scoped>p{}</style><p>x</p>', { filename: 'A.brm' })).toThrow(
-      /Unknown <style> attribute/,
+      /Unknown <style> attribute "scoped".*\[BRM189\]/,
     );
     expect(() => compile('<style global="x">p{}</style><p>x</p>', { filename: 'A.brm' })).toThrow(
-      /global takes no value/,
+      /global takes no value.*\[BRM190\]/,
     );
+  });
+
+  it('has no selector on the scope attribute, so it reaches child components', () => {
+    const parent = compile(
+      '<script>\n  import Child from \'./Child.brm\';\n</script>\n<style global>\n  .item { color: red; }\n</style>\n<div class="item"><Child /></div>',
+      { filename: 'Parent.brm' },
+    );
+    const child = compile('<style>\n  .item { color: blue; }\n</style>\n<p class="item">Hi</p>', {
+      filename: 'Child.brm',
+    });
+    // The child's elements carry its own attribute, never the parent's.
+    expect(child.plan.styles.attribute).not.toBe(parent.plan.styles.attribute);
+    expect(child.server).not.toContain(parent.plan.styles.attribute);
+    // The parent's rule is `.item` with no attribute, so it matches the child's `.item` too.
+    expect(parent.plan.styles.css).toBe('.item { color: red; }');
+    expect(parent.plan.styles.targets).toEqual([]);
   });
 });
