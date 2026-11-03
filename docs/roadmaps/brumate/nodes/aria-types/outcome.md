@@ -4,6 +4,7 @@
 
 - packages/brumate/elements.d.ts: `AriaAttributes` (all 52 `aria-*` of WAI-ARIA 1.2 with their value types) and `AriaRole` (83 roles of 1.2 and 41 `doc-*`), both exported; `GlobalAttributes` includes `AriaAttributes` and `role` takes `AriaRole`. `aria-${string}` stays for other names.
 - packages/brumate/test/elements-types.ts: valid cases and 5 expected errors (wrong `aria-expanded`, `aria-live`, unknown `role`, `aria-level`, `aria-pressed`).
+- `role` also takes a fallback list (`doc-footnote listitem`); `aria-relevant` takes the tokens in any order (review fixes).
 - .changeset/aria-types.md (minor). PR #442 (draft, against next).
 
 ## Deviations
