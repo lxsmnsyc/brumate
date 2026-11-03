@@ -1,7 +1,7 @@
 ---
 id: flaky-resume-reads
 title: "Two resume tests stop failing in CI: a pending handler read and a textarea value"
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-03
-spent:
+spent: 159000
 owns: []
 shared:
   - .changeset/*.md
