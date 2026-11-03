@@ -2,7 +2,7 @@ import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { analyzeProject, compile } from '../../src/index.ts';
+import { analyzeProject, analyzeProjectAll, compile } from '../../src/index.ts';
 import { resolveFromDisk } from '../../src/modules.ts';
 import { generateShared } from '../../src/shared-module.ts';
 import { handleRequest, render as renderParts } from '../../src/runtime/server.ts';
@@ -86,6 +86,7 @@ function prepare(): void {
     sources.set(`${base}.diff.brm`, wrapper(base, PROPS[base] ?? {}));
   }
   const liveProps = analyzeProject(sources);
+  const liveContexts = analyzeProjectAll(sources).contexts;
   const forms = {
     path: join(output, 'forms.brm.ts'),
     source: readFileSync(resolve(import.meta.dirname, '../../forms/forms.brm.ts'), 'utf8'),
@@ -101,6 +102,7 @@ function prepare(): void {
     const { server, client, parts, render, plan } = compile(source, {
       filename: name,
       liveProps: liveProps.get(name),
+      liveContexts,
       path: join(output, name),
       resolveModule,
       sendableClasses: ['Money'],

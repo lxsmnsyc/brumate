@@ -1,0 +1,10 @@
+<script>
+  import { $getContext, $signal } from 'brumate/signals';
+  import { StaticWords } from './staticContext.ts';
+
+  const words = $getContext(StaticWords);
+  let count = $signal(0);
+  const hello = words.table[words.lang];
+</script>
+<p class="hello">{hello}</p>
+<button class="count" onClick=(() => count++)>{count}</button>

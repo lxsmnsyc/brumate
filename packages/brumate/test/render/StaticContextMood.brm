@@ -1,0 +1,7 @@
+<script>
+  import { $getContext } from 'brumate/signals';
+  import { StaticMood } from './staticContext.ts';
+
+  const mood = $getContext(StaticMood);
+</script>
+<p class="mood">{mood}</p>

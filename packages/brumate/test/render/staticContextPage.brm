@@ -1,0 +1,11 @@
+<script>
+  import { $setContext } from 'brumate/signals';
+  import StaticContextReader from './StaticContextReader.brm';
+  import { StaticWords } from './staticContext.ts';
+
+  $setContext(StaticWords, {
+    lang: 'de',
+    table: { en: 'Hello', de: 'Hallo', fr: 'STATIC-TABLE-FR', es: 'STATIC-TABLE-ES' },
+  });
+</script>
+<StaticContextReader />

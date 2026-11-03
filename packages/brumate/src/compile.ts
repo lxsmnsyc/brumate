@@ -31,6 +31,8 @@ export interface CompileOptions {
    * `*` means every prop. Without it, every prop can change.
    */
   liveProps?: Set<string>;
+  /** The contexts that can change on the client, from the whole project. Without it, all can. */
+  liveContexts?: Set<string>;
   /** The absolute path of the file, so SCSS and Less can import files next to it. */
   path?: string;
   /**
@@ -383,7 +385,10 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   checkPendingReads(model.sites, model.pendingCalls, (message, range) =>
     model.diagnostics.push({ severity: 'error', message, range }),
   );
-  const graph = buildGraph(model, { liveProps: options.liveProps });
+  const graph = buildGraph(model, {
+    liveProps: options.liveProps,
+    liveContexts: options.liveContexts,
+  });
   const diagnostics = [
     ...model.diagnostics,
     ...graph.diagnostics,

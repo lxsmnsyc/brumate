@@ -105,6 +105,11 @@ export interface Declaration {
   boundAs?: Set<string>;
   /** True for `const name = await $memo(value)`: the render waits for the memo where it is declared. */
   awaited?: boolean;
+  /**
+   * For `const name = $getContext(Context)`, the name of the context: its export name, or its local
+   * name. Undefined for `$route` and `$navigation`, and when the argument is not a name.
+   */
+  contextKey?: string;
   /** For `const name = $id()`, the position of the call among the `$id` calls of its scope. */
   idIndex?: number;
   /** For `const name = $isPassed(prop)`, the key of the prop. */

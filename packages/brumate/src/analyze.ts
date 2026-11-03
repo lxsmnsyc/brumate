@@ -332,6 +332,24 @@ function readProvidedValues(value: oxc.Node): oxc.Node[] {
   return [value];
 }
 
+/**
+ * The name that stands for a context in the whole program: the name it is exported by, or the
+ * name it is read with after a namespace or a default import. Undefined when the expression is
+ * not a name, so the context cannot be told from another.
+ */
+export function contextName(node: oxc.Node | undefined, scope: Scope): string | undefined {
+  if (node?.type === 'Identifier') {
+    const imported = lookup(scope, node.name)?.imported;
+    return imported && imported.name !== 'default' && imported.name !== '*'
+      ? imported.name
+      : node.name;
+  }
+  if (node?.type === 'MemberExpression' && !node.computed && node.property.type === 'Identifier') {
+    return node.property.name;
+  }
+  return undefined;
+}
+
 export function analyze(file: SFCFile): SemanticModel {
   return new Analyzer(file).run();
 }
@@ -1152,8 +1170,9 @@ class Analyzer {
       if (call.arguments.length !== 1) {
         this.report('error', '$getContext takes one argument, the context', call);
       }
-      this.addDeclaration(scope, id.name, 'context', id);
+      const reader = this.addDeclaration(scope, id.name, 'context', id);
       const argument = call.arguments[0];
+      reader.contextKey = contextName(argument, scope);
       if (argument) {
         this.createSite('setup', scope, argument, `context ${id.name}`);
       }

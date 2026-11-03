@@ -1,0 +1,50 @@
+# Server module
+import * as $$b from 'brumate/server';
+import StaticContextReader from './StaticContextReader.brm';
+import { StaticWords } from './staticContext.ts';
+export const rpc = {  };
+let $$t: any;
+
+export default async function StaticContextPage($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "StaticContextPage_hkh2tk");
+  $$ctx.provide(StaticWords, {
+    lang: 'de',
+    table: { en: 'Hello', de: 'Hallo', fr: 'STATIC-TABLE-FR', es: 'STATIC-TABLE-ES' },
+  }, $$s1, false);
+  $$html += await $$b.component(StaticContextReader, {  }, $$ctx, $$s1);
+  return $$html;
+}
+StaticContextPage.brumateId = "StaticContextPage_hkh2tk";
+
+# Client entry
+
+export const id = "StaticContextPage_hkh2tk";
+export const props = {  };
+export const g = {  };
+
+# Render module
+import * as $$b from 'brumate/client';
+import StaticContextReader from "./StaticContextReader.brm?brumate-render";
+import { StaticWords } from "./staticContext.ts";
+const $$t0 = $$b.template("<!--x0-->", 1);
+
+export default function StaticContextPage($$props: Record<string, never>): string | DocumentFragment {
+  let $$html = '';
+  const $$s1 = $$b.createScope(1, undefined, "StaticContextPage_hkh2tk");
+  $$b.provideValue(StaticWords, {
+    lang: 'de',
+    table: { en: 'Hello', de: 'Hallo', fr: 'STATIC-TABLE-FR', es: 'STATIC-TABLE-ES' },
+  }, $$s1);
+  const $$e = $$b.clone($$t0), $$f = $$e[1];
+  $$b.place($$e[0], $$b.componentNodes(StaticContextReader, {  }, undefined, $$s1));
+  return $$f;
+}
+StaticContextPage.brumateId = "StaticContextPage_hkh2tk";
+
+# HTML
+<p class="hello">Hallo</p>
+<button class="count" b-b="1:0" b-on="click=StaticContextReader_1dlqrbw#h4">0</button>
+
+# State
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"StaticContextPage_hkh2tk"},1:{k:1,m:"StaticContextReader_1dlqrbw",o:0,s:[0]}})))</script>

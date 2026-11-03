@@ -33,6 +33,8 @@ export interface Graph {
   reached: Set<Site>;
   /** Body and template scopes that the client may create. */
   created: Set<Scope>;
+  /** The contexts that can change on the client, from the options. */
+  liveContexts?: Set<string>;
   diagnostics: Diagnostic[];
 }
 
@@ -59,6 +61,20 @@ export interface GraphOptions {
    * Without it, every prop can change, as when a file is compiled alone.
    */
   liveProps?: Set<string>;
+  /**
+   * The contexts whose value can change on the client, by name (`*` means every context): a
+   * provider sets one from a value that changes, or runs in the browser. Without it, every
+   * context can change, as when a file is compiled alone.
+   */
+  liveContexts?: Set<string>;
+}
+
+/** True if the browser may need a context, because it changes or code in the browser reads it. */
+export function isLiveContextName(
+  name: string | undefined,
+  liveContexts: Set<string> | undefined,
+): boolean {
+  return !liveContexts || name === undefined || liveContexts.has('*') || liveContexts.has(name);
 }
 
 /** True if a prop or the rest of the props can change on the client. */
@@ -563,7 +579,8 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
           declaration.writable === true &&
           anyReached(declaration.writes, reached)) ||
         // A provider above can change the value.
-        declaration.kind === 'context' ||
+        (declaration.kind === 'context' &&
+          isLiveContextName(declaration.contextKey, options.liveContexts)) ||
         // A form writes the result of its server function.
         declaration.kind === 'action' ||
         // A server function can ask the client to load the memo again.
@@ -669,5 +686,14 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
     }
   }
 
-  return { model, nodes, edges, live, reached, created, diagnostics };
+  return {
+    model,
+    nodes,
+    edges,
+    live,
+    reached,
+    created,
+    liveContexts: options.liveContexts,
+    diagnostics,
+  };
 }

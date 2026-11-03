@@ -34,7 +34,7 @@ import {
 import type { CompileOptions, CompileResult } from './compile.ts';
 import { getLocation } from './error.ts';
 import { functionId, getComponentName, hash } from './plan.ts';
-import { analyzeProject, importedComponents, resolveRelative } from './project.ts';
+import { analyzeProjectAll, importedComponents, resolveRelative } from './project.ts';
 import {
   allFeatures,
   getFeatures,
@@ -526,6 +526,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   const shapes = new Map<string, Shape>();
   /** The props that parents can change, by absolute file path. */
   let liveProps = new Map<string, Set<string>>();
+  /** The contexts that the browser may need, by name. */
+  let liveContexts = new Set<string>();
   /** The names of the server functions that the app refreshes, or undefined before the first scan. */
   let refreshed: Set<string> | undefined;
 
@@ -690,7 +692,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     for (const [index, file] of list.entries()) {
       sources.set(file, contents[index]!);
     }
-    liveProps = analyzeProject(sources, resolveComponent);
+    const analysis = analyzeProjectAll(sources, resolveComponent);
+    liveProps = new Map();
+    for (const [file, props] of analysis.props) {
+      liveProps.set(file, new Set(props.keys()));
+    }
+    liveContexts = analysis.contexts;
     // The server functions that the app refreshes, from its components and its scripts.
     const scripts = await findScripts(root, exclude);
     const scriptSources = await inBatches(
@@ -774,6 +781,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return {
       filename: getFileName(file),
       liveProps: liveProps.get(file),
+      // A file that the analysis did not see may provide any context.
+      liveContexts: liveProps.has(file) ? liveContexts : undefined,
       refreshed,
       path: file,
       merge: options.merge ?? DEFAULT_MERGE,

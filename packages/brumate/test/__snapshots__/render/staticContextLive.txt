@@ -1,0 +1,63 @@
+# Server module
+import * as $$b from 'brumate/server';
+import StaticContextMood from './StaticContextMood.brm';
+import { StaticMood } from './staticContext.ts';
+export const rpc = {  };
+let $$t: any;
+
+export default async function StaticContextLive($$props: Record<string, never>, $$ctx: $$b.Context): Promise<string> {
+  let $$html = '';
+  const $$s1 = $$ctx.scope(1, undefined, "StaticContextLive_fm8t4h");
+  let mood = ('calm');
+  $$ctx.provide(StaticMood, mood, $$s1);
+  $$html += "<button class=\"mood-set\" b-b=\"" + $$s1 + ":0\" b-on=\"click=StaticContextLive_fm8t4h#h2\">Cheer</button>" + await $$b.component(StaticContextMood, {  }, $$ctx, $$s1);
+  $$ctx.slots($$s1, [mood], ["mood"]);
+  return $$html;
+}
+StaticContextLive.brumateId = "StaticContextLive_fm8t4h";
+
+# Client entry
+export * from "./staticContextLive.brm?brumate-client&part=h2";
+export * from "./staticContextLive.brm?brumate-client&part=update";
+export const id = "StaticContextLive_fm8t4h";
+export const props = {  };
+export const g = { 1: { 0: [[1, "u1"]] } };
+
+# Client part: h2
+import * as $$b from 'brumate/client';
+
+export const h2 = ($$s) => ($$b.set($$s, 0, 'happy'));
+
+# Client part: update
+import * as $$b from 'brumate/client';
+import { StaticMood } from "./staticContext.ts";
+
+export function u1($$s) {
+  $$b.updateContext($$s, StaticMood, $$b.get($$s, 0));
+}
+
+# Render module
+import * as $$b from 'brumate/client';
+import StaticContextMood from "./StaticContextMood.brm?brumate-render";
+import { StaticMood } from "./staticContext.ts";
+const $$t0 = $$b.template("<button b-x=\"0\" class=\"mood-set\" b-on=\"click=StaticContextLive_fm8t4h#h2\">Cheer</button><!--x1-->", 2);
+
+export default function StaticContextLive($$props: Record<string, never>): string | DocumentFragment {
+  let $$html = '';
+  const $$s1 = $$b.createScope(1, undefined, "StaticContextLive_fm8t4h");
+  let mood = ('calm');
+  $$b.provideValue(StaticMood, mood, $$s1);
+  const $$e = $$b.clone($$t0), $$f = $$e[2];
+  $$b.keep($$s1, 0, $$e[0]);
+  $$b.place($$e[1], $$b.componentNodes(StaticContextMood, {  }, undefined, $$s1));
+  $$b.setSlots($$s1, [mood]);
+  return $$f;
+}
+StaticContextLive.brumateId = "StaticContextLive_fm8t4h";
+
+# HTML
+<button class="mood-set" b-b="0:0" b-on="click=StaticContextLive_fm8t4h#h2">Cheer</button>
+<p class="mood" b-b="1:0">calm</p>
+
+# State
+<script b-state b-scopes b-next="2">function $bR(f){(self.$brm=self.$brm||[]).push([document.currentScript,f])}$bR(($R,$b)=>(({0:{k:1,m:"StaticContextLive_fm8t4h",v:{"staticcontext.mood":"calm"},s:["calm"]},1:{k:1,m:"StaticContextMood_17x4nkc",o:0,x:{"staticcontext.mood":0},s:["calm"]}})))</script>

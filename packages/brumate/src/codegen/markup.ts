@@ -15,7 +15,8 @@ import type {
   ValueAttribute,
 } from '../ast.ts';
 import { forEachNode } from '../ast.ts';
-import { tryCatchesClient } from '../graph.ts';
+import { contextName } from '../analyze.ts';
+import { isLiveContextName, tryCatchesClient } from '../graph.ts';
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
@@ -1213,8 +1214,13 @@ export class Emitter {
           const [context, value] = expression.arguments;
           if (context && value) {
             const target = this.scopeVar(instanceScope(this.plan, scope));
+            // No code in the browser reads a static context, so the page state leaves its value out.
+            const sent = isLiveContextName(
+              contextName(context, scope),
+              this.plan.graph.liveContexts,
+            );
             this.line(
-              `${this.helper('provide')}(${this.source(context)}, ${this.providedValue(value, scope)}, ${target});`,
+              `${this.helper('provide')}(${this.source(context)}, ${this.providedValue(value, scope)}, ${target}${sent || this.options.mode === 'client' ? '' : ', false'});`,
             );
           }
           continue;

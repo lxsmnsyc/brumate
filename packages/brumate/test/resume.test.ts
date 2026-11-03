@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { findError } from '../src/error-catalog.ts';
-import { analyzeProject, compile } from '../src/index.ts';
+import { analyzeProject, analyzeProjectAll, compile } from '../src/index.ts';
 import { getFeatures } from '../src/features.ts';
 import { resolveFromDisk } from '../src/modules.ts';
 import { generateShared } from '../src/shared-module.ts';
@@ -40,6 +40,7 @@ beforeAll(() => {
   );
   // Compiled as the Vite plugin does, with the props that parents can change.
   const liveProps = analyzeProject(sources);
+  const liveContexts = analyzeProjectAll(sources).contexts;
   // `brumate/forms`, a module function of the package, as if it were next to the components.
   const forms = {
     path: join(input, 'forms.brm.ts'),
@@ -62,6 +63,7 @@ beforeAll(() => {
     const { server, client, parts, render, plan } = compile(sources.get(name)!, {
       filename: name,
       liveProps: liveProps.get(name),
+      liveContexts,
       path: join(input, name),
       resolveModule,
       // The class of the serial entry of the tests, `render/money.ts`.

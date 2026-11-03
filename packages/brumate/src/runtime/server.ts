@@ -701,13 +701,16 @@ export class Context {
   }
 
   /** Provides a value of a context to the scopes inside `scope`. */
-  provide<T>(context: ContextValue<T>, value: T, scope: ScopeId): void {
+  provide<T>(context: ContextValue<T>, value: T, scope: ScopeId, send = true): void {
     const node = this.find(scope)!;
     node.values ??= new Map();
     node.values.set(context.key, value);
     const record = this.record(scope);
-    record.v ??= {};
-    record.v[context.key] = value;
+    // A context that no code in the browser reads stays out of the page state.
+    if (send) {
+      record.v ??= {};
+      record.v[context.key] = value;
+    }
   }
 
   /**

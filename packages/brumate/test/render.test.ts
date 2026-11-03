@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { analyzeProject, compile } from '../src/index.ts';
+import { analyzeProject, analyzeProjectAll, compile } from '../src/index.ts';
 import { attribute } from '../src/runtime/html.ts';
 import { insert, render as renderParts, renderToStream } from '../src/runtime/server.ts';
 import type { Context } from '../src/runtime/server.ts';
@@ -28,6 +28,8 @@ const props: Record<string, unknown> = {
   retry: {},
   search: {},
   doubler: {},
+  staticContextPage: {},
+  staticContextLive: {},
   themes: {},
   Themed: {},
   fields: {},
@@ -52,6 +54,7 @@ const sources = new Map(
     .map((name) => [name, readFileSync(new URL(name, input), 'utf8')]),
 );
 const liveProps = analyzeProject(sources);
+const liveContexts = analyzeProjectAll(sources).contexts;
 
 beforeAll(() => {
   rmSync(output, { recursive: true, force: true });
@@ -61,6 +64,7 @@ beforeAll(() => {
       const { server } = compile(sources.get(name)!, {
         filename: name,
         liveProps: liveProps.get(name),
+        liveContexts,
         path: fileURLToPath(new URL(name, input)),
         // The class of the serial entry of the tests, `render/money.ts`.
         sendableClasses: ['Money'],
@@ -79,6 +83,7 @@ describe('server render', () => {
     const { server, client, parts, render } = compile(source, {
       filename,
       liveProps: liveProps.get(filename),
+      liveContexts,
       path: fileURLToPath(new URL(filename, input)),
     });
     const module = await import(new URL(`${name}.brm.ts`, output).href);
@@ -99,6 +104,24 @@ describe('server render', () => {
       '',
     ].join('\n');
     await expect(text).toMatchFileSnapshot(`./__snapshots__/render/${name}.txt`);
+  });
+});
+
+describe('static contexts', () => {
+  it('leaves the value of a static context out of the page state', async () => {
+    const module = await import(new URL('staticContextPage.brm.ts', output).href);
+    const { html, state } = await renderParts(module.default, {});
+    expect(html).toContain('<p class="hello"');
+    expect(html).toContain('Hallo');
+    // The table has four languages, and the page shows one. The browser needs none of them.
+    expect(state).not.toContain('STATIC-TABLE');
+    expect(state).not.toContain('Hallo');
+  });
+
+  it('sends the value of a context that a signal sets', async () => {
+    const module = await import(new URL('staticContextLive.brm.ts', output).href);
+    const { state } = await renderParts(module.default, {});
+    expect(state).toContain('calm');
   });
 });
 

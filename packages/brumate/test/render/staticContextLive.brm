@@ -1,0 +1,10 @@
+<script>
+  import { $setContext, $signal } from 'brumate/signals';
+  import StaticContextMood from './StaticContextMood.brm';
+  import { StaticMood } from './staticContext.ts';
+
+  let mood = $signal('calm');
+  $setContext(StaticMood, mood);
+</script>
+<button class="mood-set" onClick=(() => (mood = 'happy'))>Cheer</button>
+<StaticContextMood />
