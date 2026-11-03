@@ -1,7 +1,7 @@
 ---
 id: browser-await-blocks
 title: "await in block scripts, #for rows and markup, with topological starts"
-status: todo
+status: done
 priority: must
 type: feature
 story: browser-async
@@ -19,7 +19,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-01
-spent:
+spent: 342000
 owns:
   - packages/brumate/src/codegen/**
   - packages/brumate/test/resume.test.ts

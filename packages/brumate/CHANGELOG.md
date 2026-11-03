@@ -1,5 +1,12 @@
 # brumate
 
+## 0.4.4
+
+### Patch Changes
+
+- 3ee4318: When two errors of one `#try` body arrive at the same time in the browser, such as two effects that throw in one update or two rows of a `#for` that fail at once, the `#try` now renders its `#catch` once and shows the first error, as the server does. Before, it rendered the `#catch` once per error and the last error stayed. `onError` still receives every error.
+- 2c186c1: An effect or an update that writes a value it reads no longer hangs the tab. After 1000 rounds of effects in one change, or 10000 rounds of updates as before, the page stops the loop and sends an error to the nearest `#try`, or to `onError` and the `brumate:error` event when no `#try` is around it. The message names the effect or update and its component, points to `$untrack`, and has the code BRM187.
+
 ## 0.4.3
 
 ### Patch Changes

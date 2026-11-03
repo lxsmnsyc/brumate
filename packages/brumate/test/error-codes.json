@@ -184,5 +184,6 @@
   "BRM184": "$resolve cannot run where a memo computes or markup renders. Call it in a handler, an effect or a $client callback",
   "BRM185": "<{tag}> cannot be inside <{parent}>: the HTML parser closes or moves it before the page runs. Move it out of the <{parent}>, or use a <span> or as=\"span\"",
   "BRM186": "\"{name}\" in the #loading header is not a memo that markup in the body reads. Name a $memo of the component or of a block script around the block",
+  "BRM187": "The {kind} {name} of {component} did not settle: it writes a value that it reads, and runs again without end. Wrap the read or the write in $untrack, or write only when the value changes",
   "BRM188": "\"{name}\" gives a promise, and {place} cannot wait for one. Await it in the code that runs, or read its value with $memo"
 }

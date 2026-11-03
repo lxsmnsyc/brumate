@@ -1,0 +1,23 @@
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+
+  let n = $signal(0);
+</script>
+
+<button class="bump" onClick=(() => n++)>Bump</button>
+#try {
+  <ul>
+    #for (id of [1, 2] by id) {
+      <script>
+        $effect(() => {
+          if (n > 0) {
+            throw new Error(`row ${id} ${n}`);
+          }
+        });
+      </script>
+      <li class="row">{id}</li>
+    }
+  </ul>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

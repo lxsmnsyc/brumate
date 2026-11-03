@@ -193,6 +193,12 @@ const SYNTAX: ErrorEntry[] = [
     '<p>Total: <span>{total}</span></p>\n<div>\n  <p>Total</p>\n</div>',
   ),
   entry(
+    'BRM187',
+    'The {kind} {name} of {component} did not settle: it writes a value that it reads, and runs again without end. Wrap the read or the write in $untrack, or write only when the value changes',
+    'In the browser, an effect or an update writes a value that it reads, so each run schedules the next. Past 1000 rounds of effects, or 10000 rounds of updates, in one change, the page stops the loop and sends this error to the nearest `#try` in place of hanging the tab. A production build sends the short form `Update loop {scope}:{name} [BRM187]`.',
+    "<script>\n  import { $effect, $signal, $untrack } from 'brumate/signals';\n\n  let query = $signal('');\n  let saves = $signal(0);\n\n  $effect(() => {\n    void query;\n    $untrack(saves++);\n  });\n</script>",
+  ),
+  entry(
     'BRM188',
     '"{name}" gives a promise, and {place} cannot wait for one. Await it in the code that runs, or read its value with $memo',
     'Markup waits for a promise in text and in attribute values only. An event handler, the key of a `#for`, a `ref` and a `$bind` need the value at once, and the compiler sees that this expression gives a promise: `new Promise(…)`, a call of a server function or of an async function, or a prop typed as a promise.',
