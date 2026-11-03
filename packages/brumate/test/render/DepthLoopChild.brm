@@ -1,0 +1,14 @@
+<script>
+  import { $effect, $props } from 'brumate/signals';
+
+  let { value, bump } = $props<{ value: number; bump: () => void }>();
+
+  // Calls the writer of its parent with the value it reads, so each run schedules the next.
+  $effect(() => {
+    if (value > 0 && value < 100000) {
+      bump();
+    }
+  });
+</script>
+
+<p class="child-value">{value}</p>

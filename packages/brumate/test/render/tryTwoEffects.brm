@@ -1,0 +1,24 @@
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+
+  let n = $signal(0);
+</script>
+
+<button class="bump" onClick=(() => n++)>Bump</button>
+#try {
+  <script>
+    $effect(() => {
+      if (n > 0) {
+        throw new Error(`first ${n}`);
+      }
+    });
+    $effect(() => {
+      if (n > 0) {
+        throw new Error(`second ${n}`);
+      }
+    });
+  </script>
+  <p>body</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

@@ -1,5 +1,5 @@
 ---
-milestones: ["0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.5.0", "0.6.0", backlog]
+milestones: ["0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.5.0", "0.6.0", backlog]
 # S, docs and chore nodes self-review; the rest, and gates, contracts, releases and hotfixes, get a fresh
 # reviewer (the maintainer, 2026-10-30; this is what ran since 2026-10-27, when an inline comment hid `fresh`).
 review: auto
@@ -55,6 +55,7 @@ Milestones are releases (the maintainer, 2026-10-29).
 
 - 0.4.0: brumate 0.4.0 and @brumate/ui 0.1.0. The cut is the `depends_on` list of release-0.4. changeset-review waits for every open node of the cut, and release-0.4 waits for changeset-review. Every node done before 2026-10-29 ships here.
 - 0.4.1: patch fixes of 0.4.0 behavior that add no API (the maintainer, 2026-10-31). The nodes keep `target: main` in their briefs, since the policy sends minor work to `next`, and release-0.4.1 waits for them and for next-branch. Run next-branch before any 0.5.0 node, so minor work never lands on `main`.
+- 0.4.4: the update-depth guard, a hang on `main` (2026-11-02); release-0.4.4 waits for it and syncs `next`.
 - 0.4.3: hotfixes of bugs found on `main` after 0.4.2 (2026-11-02); release-0.4.3 waits for them and syncs `next`.
 - 0.4.2: hotfixes of bugs found on `main` during 0.5.0 work (2026-11-02). Each branches from `main`; release-0.4.2 waits for them and syncs `next`.
 - 0.5.0 (laid down 2026-11-01): the must nodes above, and the should nodes: the type audit, the agent tools, `$searchParam`, `<style global>`, the docs and ui page work. release-0.5 waits only for the must nodes. Should nodes merged into `next` by then ship; the ones still open move to 0.6.0 when release-0.5 starts. The could nodes moved to 0.6.0 on 2026-11-01.

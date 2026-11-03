@@ -1,7 +1,7 @@
 ---
 id: browser-try
 title: "A #try that the browser renders catches a rejected wait"
-status: todo
+status: done
 priority: must
 type: fix
 story: browser-async
@@ -19,7 +19,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-01
-spent:
+spent: 164000
 owns:
   - packages/brumate/src/codegen/**
   - packages/brumate/test/resume.test.ts

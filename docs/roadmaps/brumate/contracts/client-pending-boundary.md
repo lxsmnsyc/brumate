@@ -13,7 +13,7 @@ The runtime interface between a render that waits (`wait` from browser-await) an
 
 ## Interface
 
-In `packages/brumate/src/runtime/client/waits.ts`. `wait`, `fillSettled`, `loading`, `countLoads` and `reveal` are exported from `brumate/client`. The rest is internal to the client runtime.
+In `packages/brumate/src/runtime/client/waits.ts`. `wait`, `fillSettled`, `loading`, `countLoads`, `reveal`, `started`, `after`, `attempt`, `fillValue`, `keepValue`, `fillSpread` and `fillAttrs` are exported from `brumate/client`. The rest is internal to the client runtime.
 
 ```ts
 type Out = string | DocumentFragment;
@@ -101,7 +101,7 @@ Boundary internals:
 - `join()` counts a wait in the boundary of the render that runs, and returns it, or undefined. A wait that starts outside such a render fills in place.
 - `until(own, scope, end, ready, run)` is the check that every wait uses. It runs at each write of a slot (`waiters`) and when `scope` goes. When `scope` leaves `scopes` or `end` has no parent, it ends the wait with `leave(own)`. When `ready()` is true, it runs `run(check)` a microtask later, outside the write, and `run` waits again with `waiters.set(check, scope)`. It returns the check, which code that settles a value can call at once. `run` owns the count-down: it ends with `leave(own)`, or `fault(own, error)` when it fails or throws, or it waits again.
 - `leave(own)` counts down. At 0 it runs `done`.
-- `fault(own, error)` runs `own.f(error)` when the owner set it, and `leave(own)` otherwise. So with no `f`, a failed wait releases its boundary: the body shows with the failed range empty, and the error was reported by `fail`. browser-try sets `f` to show its `#catch` in place of the boundary.
+- `fault(own, error)` runs `own.f(error)` when the owner set it, and `leave(own)` otherwise. So with no `f`, a failed wait releases its boundary: the body shows with the failed range empty, and the error was reported by `fail`. browser-try's `attempt` sets `f` to absorb the failure; `fail` renders the `#catch` through the `t` entry (v2.1).
 - `fillRange(own, end, rest)` renders `rest` with `own` as the boundary of the render, and inserts its markup before `end`. While `own.w` is set, the scopes and work of the rest join `w`, so the body enters the page with all its work in one insert.
 - `bound(body)` renders `body` with a boundary of its own. With no wait, it returns `[out]`. Otherwise it moves the `rendered` scopes and `afterInsert` work that the body added into `w`, and returns `[out, boundary]`. The work of the render around it, such as an outer `bound`, stays there. The owner sets `done`, and `f` if it handles failures, before any wait can settle. An owner that drops the whole boundary clears `done` and `f`.
 - `give(boundary)` puts `w` back into `rendered` and `afterInsert`, for the insert of the body. When the boundary around it (`o`) still holds its own body, `give` moves the work into `o.w` instead, so the outer `give` runs the updates that either body missed (its `c` is never newer).
@@ -110,9 +110,71 @@ Boundary internals:
 - Without a boundary, the rest fills the place of the component (fill in place). browser-root-boundary adds a boundary outside every `#loading`.
 - On an update, a boundary keeps its current content until the new waits settle. Outside every `#loading`, the root boundary does the same (browser-root-boundary).
 
-## Planned additions
+## v2 (browser-await-blocks)
 
-- v2, additive, for browser-await-blocks: `waitAll` (a run of awaits), `started` and `after` (loads that start before their `await`), from the spike outcome, "Topological awaits". They count through `join`, `leave` and `fault`.
+In `packages/brumate/src/runtime/client/waits.ts`, exported from `brumate/client`:
+
+```ts
+// The load of an awaited memo that starts before its `await`. A throw becomes a rejected
+// promise, and a rejection is handled here, so neither surfaces before the `await`.
+function started(load: () => unknown): unknown;
+
+// The load of an awaited memo that reads other awaited memos whose `await` comes later: it
+// starts when their loads settle, with their values. A rejection of theirs rejects it.
+function after(loads: unknown[], load: (...values: any[]) => unknown): unknown;
+```
+
+Compiled code, in a render module or a render function of a block:
+
+```ts
+const $$w_b = $$b.started(() => (loadUser(2)));
+const $$w_d = $$b.after([$$w_b], (b) => (loadUser(b.name.length + 20)));
+let a;
+return $$b.wait($$s2, [(loadUser(1))], 0, ($$v) => {
+  [a] = $$v;
+  ran('between', a.name);
+  let b;
+  return $$b.wait($$s2, [a, $$w_b], 1, ($$v) => { ... });
+});
+```
+
+- The start points are the server's (`findLoadStarts`, `Emitter.earlyLoads`). A run of adjacent awaits, which the server starts together with `waitAll`, starts before its first `await` in the browser.
+- A load reads the memos of `after` as parameters. A load that reads such a memo through a local function or another memo starts after that memo's `await` instead.
+
+## Changed behavior of `wait`
+
+- A value that an update wrote into the slot during an earlier wait of the scope replaces `slots[slot]`: a newer load wins over the load that started before the `await`.
+- The range of a wait of a `#for` row in its own script or markup is `<!--i<id>-->` and `<!--/i-->`, when the row is not inside an earlier range of its own. The scope has `i` (`setItem` runs before the wait), so the list finds the row while it waits and after.
+- The rest runs inside `updating`, as an update does, so a render function inside it reads a memo of an outer scope that still loads as a promise, not as an error.
+
+- `holdRow` (browser-root-boundary) names its range after the `i` range that starts the row's output when no held scope has the list as parent: a row that waits in its own script is out of `rendered` until its rest runs.
+
+`waitAll` is not added in the browser: the loads of a run start before the first `await`, so nested `wait` calls overlap the same way. The server keeps `waitAll`.
+
+## v2.1 (browser-try)
+
+Add to the interface in `waits.ts`, exported from `brumate/client`:
+
+```ts
+// The body of a `#try` that the browser renders, in a boundary of its own that counts as one
+// wait of the boundary around it. Outside a boundary, the body fills in place.
+function attempt(body: () => Out): DocumentFragment;
+```
+
+Compiled code, in client mode, for a `#try` that has a `t` entry (anchored, `tryCatchesClient`):
+
+```ts
+try {
+  const $$body3 = () => { ... };
+  $$html += $$b.nodes($$b.attempt($$body3));
+} catch ($$error2) { ... }
+```
+
+Behavior:
+
+- `attempt` is an owner of `bound`/`give`. With no wait, it returns the body. Otherwise it counts once in the boundary around it with `join`, sets `done` to `give` then `leave` that boundary, and sets `f`: it drops the held work of the body, sets `f` to a no-op so later failures of the body end there, and leaves the boundary around it.
+- `f` does not render the `#catch` body itself, unlike the line "browser-try's `attempt` sets `f` to absorb the failure; `fail` renders the `#catch` through the `t` entry (v2.1)". `fail` already finds the `#try` through its `t` entry and renders the `#catch` with `catchInto`, also for a `#loading` inside the `#try` and for a child component, a `#for` row and a nested `#try`. A second renderer in `f` would show the `#catch` twice, and `catchInto` in `waits.ts` makes the import cycle that browser-root-boundary hit. So `f` only keeps the failure from reaching a `#loading` around the `#try`, whose own `f` would keep the fallback and drop the body with the `#try` in it.
+- `fail` drops an error whose `#try` body was replaced since the error happened (the scope of the body under the block's holder left `scopes`), so two errors of one body at once show the first. This is also a fix for main: two effects of a `#try` body that throw in one update render the `#catch` twice, and the last error stays.
 
 ## Stub
 
@@ -130,3 +192,6 @@ In `packages/brumate/test/resume.test.ts`, `describe('a boundary')` inside `awai
 - v1 reworked again, from the re-review of #413 (2026-11-02). Added `until` and `Boundary.c`. From the third review: `Boundary.o`, and `give` into a held outer body. `join` no longer walks held scopes: `give` runs the updates that a held body missed. A nested `bound` holds only its own work.
 - v1.1 from settled-memo-merge (2026-11-02, change request accepted by the maintainer): `fillSettled` moves into `waits.ts`, is exported next to `wait`, and counts in the boundary. The two ways of waiting stay until values-build (debate client-restructure).
 - v1.2 from browser-loading-fallback (2026-11-02, additive, accepted by the orchestrator): `loading`, `countLoads` and `reveal` for the compiled `#loading` and `#reveal` of a browser render, and the `loading` feature flag. `loading` makes one `Boundary` outside `bound`, for a body that `#reveal` holds for its turn.
+- v2 from browser-await-blocks (2026-11-02, additive, accepted by the orchestrator): `started` and `after`, the newer slot value winning in `wait`, the row `i` range, the rest under `updating`, and `holdRow` naming. The planned browser `waitAll` is dropped.
+- v2.1 from browser-try (2026-11-02, additive, accepted by the orchestrator): `attempt` for the body of a browser-rendered `#try`; its `f` absorbs the failure instead of showing the `#catch`, since `fail` already renders it; `fail` drops an error whose `#try` body was replaced, so the first error wins.
+- v2.2 from promise-in-markup (2026-11-03, additive, recorded by the orchestrator): `fillValue`, `keepValue`, `fillSpread` and `fillAttrs` hold a text, attribute or spread write whose value the compiler marks as a possible promise (`mayBePromise`). They reuse `fillSettled` and `join`; the latest value per place lives in `Scope.q`.

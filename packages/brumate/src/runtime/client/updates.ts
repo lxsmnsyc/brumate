@@ -802,8 +802,8 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
           failed = true;
           throw new Error(
             DEV
-              ? 'The updates of a write did not settle after 10000 rounds. An update writes a value that it reads, such as through ref=$bind.'
-              : 'Update loop',
+              ? `The ${name[0] === 'e' ? 'effect' : 'update'} ${name} of ${findRoot(target).m} did not settle: it writes a value that it reads, and runs again without end. Wrap the read or the write in $untrack, or write only when the value changes [BRM187]`
+              : `Update loop ${key} [BRM187]`,
           );
         }
         const before = origin;
@@ -856,7 +856,8 @@ const depths: Map<Scope, number> = new Map();
 // True once the pass was stopped for running too many rounds.
 let failed = false;
 
-// True once the pass ran 10000 rounds of bindings, for updates that keep writing what they read.
+// True once the pass ran 10000 rounds of bindings, or the effects 1000 rounds, for updates that
+// keep writing what they read.
 let stuck = false;
 
 /**
@@ -918,12 +919,18 @@ function flushEffects(): void {
     return;
   }
   flushing = true;
+  let rounds = 0;
   try {
     // The effects that wait run as one pass, so their writes update the page once. A pass that
     // they start puts the effects it schedules back, and they run next.
     while (pendingEffects.size > 0) {
       const run = [...pendingEffects.values()];
       pendingEffects.clear();
+      // Effects that keep writing what they read stop after 1000 rounds: the next one fails. An
+      // effect that waits after it starts with a new count.
+      if ((stuck = ++rounds > 1000)) {
+        rounds = 0;
+      }
       pass(() => {
         for (const runEffect of run) {
           runEffect();

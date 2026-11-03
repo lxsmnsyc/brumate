@@ -1,12 +1,12 @@
 ---
 id: update-depth-guard
 title: A runaway update loop throws instead of hanging the tab
-status: todo
-priority: should
-type: feature
+status: done
+priority: must
+type: hotfix
 outline: false
-milestone: 0.5.0
-target:
+milestone: 0.4.4
+target: main
 from:
 size: S
 spike: false
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-31
+spent: 150000
 owns: []
 shared:
   - .changeset/*.md
@@ -33,6 +34,8 @@ depends_on: []
 When updates keep scheduling more updates past a limit, the client stops and throws into the nearest `#try`, with a message that names the effect or update and points to `$untrack`, as Svelte 5 (`effect_update_depth_exceeded`) and React ("Maximum update depth exceeded") do.
 
 ## Context
+
+- Moved to a 0.4.4 hotfix on 2026-11-02: the hang exists on `main`, so the fix branches from `main` (patch: a hang becomes an error).
 
 - The debate function-prop-derivations found no update-depth guard in the client (O1): any loop of an effect that writes what it reads hangs the tab.
 - Size comes first: measure todos with `pnpm bench` and stay within 0.3 kB; a counter in the flush loop should cost a few bytes.

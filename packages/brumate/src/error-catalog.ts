@@ -193,6 +193,12 @@ const SYNTAX: ErrorEntry[] = [
     '<p>Total: <span>{total}</span></p>\n<div>\n  <p>Total</p>\n</div>',
   ),
   entry(
+    'BRM187',
+    'The {kind} {name} of {component} did not settle: it writes a value that it reads, and runs again without end. Wrap the read or the write in $untrack, or write only when the value changes',
+    'In the browser, an effect or an update writes a value that it reads, so each run schedules the next. Past 1000 rounds of effects, or 10000 rounds of updates, in one change, the page stops the loop and sends this error to the nearest `#try` in place of hanging the tab. A production build sends the short form `Update loop {scope}:{name} [BRM187]`.',
+    "<script>\n  import { $effect, $signal, $untrack } from 'brumate/signals';\n\n  let query = $signal('');\n  let saves = $signal(0);\n\n  $effect(() => {\n    void query;\n    $untrack(saves++);\n  });\n</script>",
+  ),
+  entry(
     'BRM023',
     'Modifiers apply to elements. Put ":{modifier}" on the element that the component renders',
     'An event modifier is on a component, which only passes the handler on.',

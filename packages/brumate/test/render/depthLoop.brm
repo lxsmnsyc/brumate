@@ -1,0 +1,26 @@
+<script>
+  import { $effect, $signal } from 'brumate/signals';
+
+  let on = $signal(false);
+  let count = $signal(0);
+  let other = $signal(0);
+</script>
+
+<button class="start" onClick=(() => (on = true))>Start</button>
+<button class="other" onClick=(() => other++)>Other</button>
+<p class="other-value">{other}</p>
+<p class="count">{count}</p>
+#try {
+  <script>
+    // Writes what it reads, so each run schedules the next. The cap stops it without a guard,
+    // so the test fails in place of hanging.
+    $effect(() => {
+      if (on && count < 100000) {
+        count++;
+      }
+    });
+  </script>
+  <p class="inside">{count}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

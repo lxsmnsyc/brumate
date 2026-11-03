@@ -1,7 +1,7 @@
 ---
 id: browser-root-boundary
 title: "A block outside every #loading holds until its waits settle"
-status: todo
+status: done
 priority: must
 type: feature
 story: browser-async
@@ -19,7 +19,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-01
-spent:
+spent: 267000
 owns:
   - packages/brumate/src/runtime/client/**
   - packages/brumate/src/runtime/features.ts
