@@ -14,7 +14,7 @@ import { afterInsert, destroy, removeBlock, resolveScope } from './scopes.ts';
 import { appendText, keepText, setAttr, setSpread } from './templates.ts';
 import { loadingValues, renderedLoads, scopes, updating, waiters } from './state.ts';
 import type { Scope } from './state.ts';
-import { isThenable, noop, pending, writes } from './updates.ts';
+import { isThenable, noop, pending, updated, writes } from './updates.ts';
 
 /** What a render function of the browser returns. */
 export type Out = string | DocumentFragment;
@@ -681,8 +681,9 @@ export function countLoads(id: ScopeId | Scope, values: unknown[]): void {
     if (isThenable(value)) {
       const scope = resolveScope(id)!;
       const own = join();
+      // The wait ends once the writes of the value have run, also the ones whose code still loads.
       Promise.resolve(value).then(
-        () => leave(own),
+        () => updated().then(() => leave(own)),
         (error: unknown) => failOnce(scope, own, error),
       );
     }
