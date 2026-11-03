@@ -75,6 +75,7 @@ skip(
 
 skip('A child that throws on purpose; the pages that render it cover where the error goes.', [
   'AwaitReadKid',
+  'AwaitShownKid',
   'GapMarkupFailKid',
   'PrimitiveAwaitFailKid',
   'memoErrorAwaitOutside',
@@ -153,7 +154,7 @@ export const CAUSES: Record<string, Cause> = {
   'memo-reject': {
     verdict: 'remove',
     reason:
-      'A $memo that nothing reads and whose promise rejects: the server render stays silent, and the browser render reports the error to onError.',
+      'A memo awaited where it is declared, in a #try, whose promise rejects: both renders show the #catch body, and only the browser render also reports the error to onError.',
   },
   'pending-read': {
     verdict: 'remove',
@@ -253,14 +254,7 @@ diverge('memo-throw', [
   'memoErrorServerScript',
   'memoErrorServerTwo',
 ]);
-diverge('memo-reject', [
-  'AwaitFieldKid',
-  'AwaitMemoKid',
-  'AwaitSumKid',
-  'PrimitiveAwaitUnreadKid',
-  'UnreadMemoKid',
-  'memoErrorAwaitServer',
-]);
+diverge('memo-reject', ['memoErrorAwaitServer']);
 diverge('pending-read', ['fnReadAsync', 'loadingChain', 'loadingOnChain']);
 diverge('await-in-script', ['PromiseLateChild', 'promiseLate']);
 diverge('template-import', ['tryTemplateChild']);

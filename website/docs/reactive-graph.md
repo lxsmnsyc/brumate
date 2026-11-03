@@ -166,6 +166,7 @@ The graph is static. The runtime records no subscriptions.
 - A read inside a local function counts for every site that calls the function, and for the functions that it calls in turn.
 - `$untrack(expression)` reads without an edge. A call inside it, such as `$untrack(save())`, adds no edges for what the function reads either.
 - A memo or binding is live when something upstream of it can change in the browser. Only live nodes get client code.
+- A memo that no code reads has no client code and does not run in the browser. Neither does a memo that only such a memo reads. A memo that only an `await` reads still runs, so a rejection reaches the nearest `#try`.
 
 When a client root writes a signal, the runtime looks up the nodes that read that slot and runs their updates in order. It needs the edges of that signal only, not the whole component.
 

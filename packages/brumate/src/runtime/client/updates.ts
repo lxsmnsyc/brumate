@@ -309,8 +309,9 @@ export function isThenable(value: unknown): value is PromiseLike<unknown> {
 }
 
 /**
- * Reports the rejection of a memo that the browser renders and nothing reads, so it has no slot.
- * The error reaches the nearest `#try` around the scope, or `onError`.
+ * Reports the rejection of a memo that the browser renders and that only an `await` reads, so it
+ * has no slot. The server throws the error at the `await`. It reaches the nearest `#try` around
+ * the scope, or `onError`. A memo that nothing reads is not declared at all.
  */
 export function unreadMemo(scope: Scope | ScopeId, value: unknown): void {
   if (isThenable(value)) {
