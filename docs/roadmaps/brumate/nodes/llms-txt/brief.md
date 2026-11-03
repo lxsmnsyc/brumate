@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by: 
 gate: false
 added: 
+spent: 139000
 owns:
   - website/plugins/llms.ts
   - website/src/components/CopyMarkdown.brm
