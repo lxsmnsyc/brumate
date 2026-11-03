@@ -1,7 +1,7 @@
 ---
 id: static-contexts
 title: A context set once on the server is not live in the browser
-status: active
+status: dropped
 priority: must
 type: feature
 outline: false
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-28
+spent: 238000
 owns:
   - packages/brumate/test/render/staticContext*.brm
 shared:
@@ -34,6 +35,8 @@ depends_on:
     kind: hard
     why: it moved a lookup into I18nProvider to work around this; the node can move it back as its proof
 ---
+
+> Dropped on 2026-11-03: the maintainer chose that every context is static, whatever its value, and that live values come from a `$store` put into the context. #448 (this node's live/static analysis) is closed unmerged; its review findings are in outcome.md. The new plan is the story context-stores.
 
 # A context set once on the server is not live in the browser
 

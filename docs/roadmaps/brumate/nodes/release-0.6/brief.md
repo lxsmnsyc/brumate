@@ -37,9 +37,6 @@ depends_on:
   - on: aria-types
     kind: hard
     why: typed ARIA attributes and roles
-  - on: static-contexts
-    kind: hard
-    why: a server-only context ships no live browser code
   - on: drop-colon-modifiers
     kind: hard
     why: the breaking cleanup of event modifiers in attribute names
