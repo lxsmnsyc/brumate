@@ -4,6 +4,7 @@ title: "Spike: a path-tracked store and lens utilities"
 status: todo
 priority: could
 type: spike
+story: context-stores
 outline: false
 milestone: 0.7.0
 target:

@@ -4,6 +4,7 @@ title: The store contract and $store
 status: todo
 priority: could
 type: feature
+story: context-stores
 outline: true
 milestone: 0.7.0
 target:

@@ -4,7 +4,7 @@ title: Static contexts, with live values through $store
 status: todo
 priority: should
 type: story
-outline: true
+outline: false
 milestone: 0.7.0
 target: next
 from:
