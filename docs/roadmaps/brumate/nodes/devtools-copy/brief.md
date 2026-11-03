@@ -23,7 +23,10 @@ shared:
   - .changeset/*.md
 reserves: []
 provides: []
-depends_on: []
+depends_on:
+  - on: dev-dock-redesign
+    kind: hard
+    why: the copy buttons go into the redesigned panel
 ---
 
 # Copy for an agent in the devtools
