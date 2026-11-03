@@ -207,9 +207,7 @@
       },
       "axis": "readability",
       "severity": "high",
-      "answers": [
-        "P1"
-      ]
+      "answers": ["P1"]
     },
     "O2": {
       "id": "O2",
@@ -224,10 +222,7 @@
       },
       "axis": "readability",
       "severity": "medium",
-      "answers": [
-        "P3",
-        "P6"
-      ]
+      "answers": ["P3", "P6"]
     },
     "O3": {
       "id": "O3",
@@ -241,10 +236,7 @@
       },
       "axis": "tokens",
       "severity": "medium",
-      "answers": [
-        "P4",
-        "A2"
-      ],
+      "answers": ["P4", "A2"],
       "estimate": {
         "value": 8000,
         "unit": "tokens (A2 estimate is understated, no formatter to extend)"
@@ -263,10 +255,7 @@
       },
       "axis": "readability",
       "severity": "low",
-      "answers": [
-        "P1",
-        "P5"
-      ],
+      "answers": ["P1", "P5"],
       "estimate": {
         "value": 11,
         "unit": "bodies wrongly counted"
@@ -285,10 +274,7 @@
       },
       "axis": "tokens",
       "severity": "medium",
-      "answers": [
-        "P1",
-        "P4"
-      ],
+      "answers": ["P1", "P4"],
       "estimate": {
         "value": 25000,
         "unit": "tokens, unverified"
@@ -306,9 +292,7 @@
       },
       "axis": "readability",
       "severity": "medium",
-      "answers": [
-        "P1"
-      ]
+      "answers": ["P1"]
     },
     "O7": {
       "id": "O7",
@@ -323,9 +307,7 @@
       },
       "axis": "tokens",
       "severity": "medium",
-      "answers": [
-        "P1"
-      ],
+      "answers": ["P1"],
       "estimate": {
         "value": 5000,
         "unit": "tokens, estimate"
@@ -343,9 +325,7 @@
       },
       "axis": "readability",
       "severity": "low",
-      "answers": [
-        "A1"
-      ]
+      "answers": ["A1"]
     },
     "J7": {
       "id": "J7",
@@ -408,11 +388,7 @@
       "by": "proponent",
       "kind": "concession",
       "text": "P3 and P6 claimed to remove the goto-fail class; O2 is right that the element-only child rule removes only the else-binding case. P9 now carries the indent case, and P1 (header-only) is dropped for P7.",
-      "answers": [
-        "P1",
-        "P3",
-        "P6"
-      ],
+      "answers": ["P1", "P3", "P6"],
       "why": "O1 showed P1 sends the maintainer's `#try` example back to braces; O2 showed goto fail was an indent bug, not dangling else"
     },
     "P11": {
@@ -444,9 +420,7 @@
       },
       "axis": "readability",
       "severity": "low",
-      "answers": [
-        "P7"
-      ]
+      "answers": ["P7"]
     },
     "O10": {
       "id": "O10",
@@ -460,9 +434,7 @@
       },
       "axis": "readability",
       "severity": "low",
-      "answers": [
-        "P7"
-      ]
+      "answers": ["P7"]
     },
     "O11": {
       "id": "O11",
@@ -477,10 +449,7 @@
       },
       "axis": "readability",
       "severity": "medium",
-      "answers": [
-        "P9",
-        "P11"
-      ],
+      "answers": ["P9", "P11"],
       "estimate": {
         "value": 102,
         "unit": "of 267 bodies over 100 columns on the header line"
@@ -498,10 +467,7 @@
       },
       "axis": "tokens",
       "severity": "low",
-      "answers": [
-        "P11",
-        "P7"
-      ],
+      "answers": ["P11", "P7"],
       "estimate": {
         "value": 165,
         "unit": "bodies that fit one 100-column line (267-102)"
@@ -520,9 +486,7 @@
       },
       "axis": "readability",
       "severity": "low",
-      "answers": [
-        "P9"
-      ]
+      "answers": ["P9"]
     }
   }
 }

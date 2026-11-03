@@ -1,7 +1,7 @@
 ---
 id: drop-colon-modifiers
 title: Remove event modifiers in the attribute name
-status: active
+status: done
 priority: must
 type: feature
 outline: false
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-29
+spent: 160000
 owns: []
 shared:
   - .changeset/*.md
