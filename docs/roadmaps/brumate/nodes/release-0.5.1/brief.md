@@ -1,7 +1,7 @@
 ---
 id: release-0.5.1
 title: Release brumate 0.5.1
-status: active
+status: done
 priority: must
 type: release
 outline: false

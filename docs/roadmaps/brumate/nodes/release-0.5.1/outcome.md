@@ -18,3 +18,7 @@
 - The maintainer keeps #441 open (2026-11-03) so more hotfixes found during 0.6.0 work can join 0.5.1. Each new hotfix gets its own node in milestone 0.5.1 that this node waits for; rerun the checks on `main` before the hand-off.
 
 - After #441 merges and 0.5.1 is on npm: merge `main` into `next` directly, and remove the "template-import" entry of the differential test in that merge.
+
+## Released
+
+- 0.5.1 on npm (2026-11-03, #441), with #438 and #450. `main` merged into `next` (8445f9c3), and the template-import divergence removed from the differential test (d7de5f7e). Checks on the merge: lint, format, typecheck, and brumate's 2797 tests pass.
