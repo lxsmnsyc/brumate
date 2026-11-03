@@ -1,5 +1,27 @@
 # brumate
 
+## 0.5.0
+
+### Minor Changes
+
+- db63624: `await $memo(...)` waits in the script of a component, a block body or a `#for` row that the browser renders. `await name` waits at the start of its markup. The code before an `await` runs once, and the component or body fills its place when the memo settles. The loads of awaited memos start where the server starts them, so two independent loads run at the same time. A load that fails goes to the nearest `#catch`, also when a `#try` body waits.
+- cbe48a5: Outside every `#loading`, a block that the browser renders holds its new body until the memos it waits for settle, as the server holds the page. A branch of an `#if` or `#switch`, a `#key` body, a `#client` body and the fallback of a `#for` keep what they show until then, and a new row of a `#for` shows when it settles. A switch back during the wait drops the held body, and a switch to it again before it settles takes it back without a second load. It is on in a build where a component that the browser renders waits at `await $memo(...)`. With it on, the script of a new body runs before the cleanups of the old one, and its effects and `$client` callbacks after them.
+- 7f07cfb: The client entry of a build no longer holds a table of every bundle of the app. The server names the bundles that a page needs, and their stylesheets, in the `b-load` attribute of its state records, for the first load, for client navigation and for `#defer` bodies. The new `brumate/bundles` module, which `virtual:brumate/manifest` re-exports, loads them. The website entry drops from 13.3 kB to 3.8 kB (gzip). A page links to the stylesheets of the bundles of its views in its head.
+
+  `start()` no longer takes `loadBundle`, and the manifest of a build exports only `load`. In a build, `render()` names the bundles of the client build by default, so a server that calls it itself needs no new option. `brumate/server` exports `setClientBundles()`, which sets the bundles that a render names when its options pass none. The Vite plugin calls it in a server build with those of the client build, and warns when the server build finds no `.brumate/hints.json` of a client build.
+
+- 3b62101: `#loading` shows its `#else` in markup that the browser renders, such as a branch of an `#if` that opens or a row that a `#for` adds, while a memo that its body waits for loads, then the body, as a streamed block does. A memo of a child component counts too. Later updates keep the content. `#reveal` orders such blocks, also those of the components inside it, and a body whose load fails keeps its fallback and reports the error to the nearest `#catch`.
+- b4f8ec8: `#loading (posts) { … } #else { … }` names memos that the body renders from. Once the body has shown, the block shows its `#else` again while a named memo, or a memo that it reads, loads. The cause can be a write of its input, a `refresh` from a server function or a load it starts. The body stays in the page, hidden with the `#offscreen` rules, and comes back with the same elements and their state. A name that is not a memo that markup in the body reads fails to compile, with BRM186 in place of BRM181. A named memo that is or reads a `$debounced` or `$throttled` memo warns.
+- 6c4cee2: A promise in markup renders the value that it settles to, in text and in attribute values, such as `<p title=getTitle()>{Promise.resolve('hello world')}</p>`. A pending promise makes the nearest `#loading` pending: the block shows its `#else` until the promise settles, the server streams the body then, and sends each element with its final attributes. Outside every `#loading`, the server waits for the promise. A spread follows the attribute rule. In the browser, the boundary counts the promise as a wait, an update keeps what shows until the new promise settles, the latest promise wins, and a rejection goes to the nearest `#catch`. A `#loading` body whose text or attributes call code now always streams from the server, since the call can give a promise. A promise that the compiler sees in an event handler, the key of a `#for`, `ref` or `$bind` is a compile error, BRM188.
+
+### Patch Changes
+
+- 87ddc16: On the server, each `const x = await $memo(...)` starts its load as soon as the values it reads are ready, not where its run of awaits starts. A load moves up to right after the last statement that declares a name it reads or can change one, such as `q = x`, `params.set()` or a call of a local function, so two independent awaits with a statement between them load at the same time. Each `await` still waits where it is written, the statements between run once and in their order, and an error of the load or a throw of its expression comes where the `await` is. `$effect`, `$client`, imports and types no longer end a run of awaits.
+- db63624: The client of a build is smaller:
+
+  - It drops five more runtime paths when no component uses them: `#try`, the fields of an element `$bind`, windowed lists, dynamic tags and `$route` or `$navigation`. The Vite plugin sets a flag for each from the compiled components, as it does for the other features. The client of a page like the todos example is about 1 kB smaller (gzip). A build with `features: 'all'` is unchanged.
+  - The code-part loading that lazy loading left is gone. A handler or an update no longer waits for a part of its module, and a build no longer emits the `w` export. Effects now also wait for writes that wait for code, so an effect such as the check of Tabs never sees a half updated page.
+
 ## 0.4.4
 
 ### Patch Changes
