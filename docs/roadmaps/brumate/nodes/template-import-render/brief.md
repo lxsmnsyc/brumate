@@ -1,7 +1,7 @@
 ---
 id: template-import-render
 title: "The browser render module imports a component used only in a #template"
-status: active
+status: done
 priority: must
 type: hotfix
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-03
-spent:
+spent: 199000
 owns: []
 shared:
   - .changeset/*.md
