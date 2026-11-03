@@ -27,6 +27,9 @@ shared:
 reserves: []
 provides: []
 depends_on:
+  - on: client-audit
+    kind: hard
+    why: item 3 of its ranked removals; 14 in-place #try, 3 #offscreen, 2 windowed #for, 1 fields
   - on: no-html-string-fallback
     kind: hard
     why: it moved every other body to cloned templates and keeps the list of the rest
