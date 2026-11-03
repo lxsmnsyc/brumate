@@ -11,7 +11,7 @@
 
 ## Deviations
 
-- Edited files outside the shared list: packages/brumate/src/codegen/client.ts and markup.ts (they read `attribute.modifiers`), packages/brumate/test/error-codes.json (pinned message of BRM022), packages/brumate/test/__snapshots__/{inspect,render,}todos snapshots, .changeset/drop-colon-modifiers-vscode.md.
+- Edited files outside the shared list: packages/brumate/src/codegen/client.ts and markup.ts (they read `attribute.modifiers`), packages/brumate/test/error-codes.json (pinned message of BRM022), packages/brumate/test/**snapshots**/{inspect,render,}todos snapshots, .changeset/drop-colon-modifiers-vscode.md.
 - No new error code; BRM022 reworded, BRM023 deleted.
 
 ## Stubs left
