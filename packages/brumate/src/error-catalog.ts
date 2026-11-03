@@ -301,6 +301,18 @@ const SYNTAX: ErrorEntry[] = [
     '<style lang="scss">\n  p {\n    a {\n      color: red;\n    }\n  }\n</style>',
   ),
   entry(
+    'BRM189',
+    'Unknown <style> attribute "{name}"',
+    'A `<style>` has an attribute other than `lang` and `global`.',
+    '<style scoped>\n  p {\n    color: red;\n  }\n</style>',
+  ),
+  entry(
+    'BRM190',
+    'global takes no value, as in <style global>',
+    'A `<style global>` gives `global` a value.',
+    '<style global="true">\n  p {\n    color: red;\n  }\n</style>',
+  ),
+  entry(
     'BRM039',
     "#reveal takes an order, 'sequential', 'backwards', 'together' or 'natural', and collapsed, such as #reveal ('sequential', collapsed)",
     '`#reveal` has an option that it does not know.',

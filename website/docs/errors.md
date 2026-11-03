@@ -538,6 +538,34 @@ A `<style>` names another language.
 </style>
 ```
 
+## BRM189
+
+`Unknown <style> attribute "{name}"`
+
+A `<style>` has an attribute other than `lang` and `global`.
+
+```brm
+<style scoped>
+  p {
+    color: red;
+  }
+</style>
+```
+
+## BRM190
+
+`global takes no value, as in <style global>`
+
+A `<style global>` gives `global` a value.
+
+```brm
+<style global="true">
+  p {
+    color: red;
+  }
+</style>
+```
+
 ## BRM039
 
 `#reveal takes an order, 'sequential', 'backwards', 'together' or 'natural', and collapsed, such as #reveal ('sequential', collapsed)`

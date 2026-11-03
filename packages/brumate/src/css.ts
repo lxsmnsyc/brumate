@@ -6,7 +6,7 @@ import type { Expression, SFCFile } from './ast.ts';
 import type { Diagnostic } from './model.ts';
 
 export interface StyleOutput {
-  /** The scoped CSS of every `<style>` block, or an empty string. */
+  /** The CSS of every `<style>` block, scoped except `<style global>`, or an empty string. */
   css: string;
   /** The attribute that marks the component's elements, such as `b-c-1abc`. */
   attribute: string;
@@ -85,9 +85,10 @@ type SelectorPart = Parameters<Parameters<selectorParser.Selector['each']>[0]>[0
 
 /**
  * Adds the scope attribute to every compound selector, except inside
- * `:global(…)`. Each scoped compound goes into `targets`.
+ * `:global(…)`. Each scoped compound goes into `targets`. With `unscoped`, no
+ * compound is scoped, and `:global(…)` is only unwrapped.
  */
-function scopeSelector(attribute: string, targets: ScopeTarget[]) {
+function scopeSelector(attribute: string, targets: ScopeTarget[], unscoped: boolean) {
   return selectorParser((selectors) => {
     // `:global(h1, h2)` is a list: the selector around it becomes one selector for each item.
     for (let index = 0; index < selectors.nodes.length; index++) {
@@ -151,7 +152,7 @@ function scopeSelector(attribute: string, targets: ScopeTarget[]) {
           global.replaceWith(...clones);
           continue;
         }
-        if (compound.length === 0) {
+        if (compound.length === 0 || unscoped) {
           continue;
         }
         targets.push(scopeTarget(compound));
@@ -175,8 +176,13 @@ function scopeSelector(attribute: string, targets: ScopeTarget[]) {
   });
 }
 
-function scopeRules(root: Root, attribute: string, targets: ScopeTarget[]): void {
-  const processor = scopeSelector(attribute, targets);
+function scopeRules(
+  root: Root,
+  attribute: string,
+  targets: ScopeTarget[],
+  unscoped: boolean,
+): void {
+  const processor = scopeSelector(attribute, targets, unscoped);
   root.walkRules((rule) => {
     // Keyframe steps such as `from` and `50%` are not selectors.
     if (rule.parent?.type === 'atrule' && /keyframes$/i.test((rule.parent as AtRule).name)) {
@@ -364,7 +370,7 @@ export function compileStyles(file: SFCFile, scope: string, filePath?: string): 
       const root = parse(
         style.lang === 'css' ? content : preprocess(style.lang, content, filePath, dependencies),
       );
-      scopeRules(root, attribute, targets);
+      scopeRules(root, attribute, targets, style.global);
       parts.push(root.toString().trim());
     } catch (error) {
       diagnostics.push({
