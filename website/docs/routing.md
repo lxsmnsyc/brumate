@@ -39,7 +39,7 @@ src/routes/
 
 A page gets the dynamic segments of its path as `params`. `RouteParams` from `brumate/routes` gives their type:
 
-```html
+```brm
 <!-- src/routes/posts/[slug].brm -->
 <script>
   import type { RouteParams } from 'brumate/routes';
@@ -68,7 +68,7 @@ A page gets the dynamic segments of its path as `params`. `RouteParams` from `br
 
 A `_layout.brm` wraps every route of its folder and of the folders inside it. It gets the matched route as `children`, and inserts it where the route should go:
 
-```html
+```brm
 <!-- src/routes/_layout.brm -->
 <script>
   import { $props } from 'brumate/signals';
@@ -97,7 +97,7 @@ A `_layout.brm` wraps every route of its folder and of the folders inside it. It
 
 A folder that starts with `@` is a second route tree for the same URLs. Its match renders in a slot of the layout next to it, named after the folder:
 
-```html
+```brm
 <!-- src/routes/_layout.brm -->
 <script>
   import { $props } from 'brumate/signals';
@@ -121,7 +121,7 @@ For `/about`, `@aside` has no match, so `aside` renders `@aside/_default.brm`. A
 
 `_error.brm` renders in place of a route of its folder that throws. It gets `error`, with a `message` and a `status`:
 
-```html
+```brm
 <!-- src/routes/_error.brm -->
 <script>
   import { $props } from 'brumate/signals';
@@ -145,7 +145,7 @@ For `/about`, `@aside` has no match, so `aside` renders `@aside/_default.brm`. A
 
 A catch-all page can answer with a 404 status itself, with `setStatus` on the event of the page:
 
-```html
+```brm
 <!-- src/routes/[...rest].brm -->
 <script>
   import { $props } from 'brumate/signals';
@@ -164,7 +164,7 @@ A catch-all page can answer with a 404 status itself, with `setStatus` on the ev
 
 `_loading.brm` shows while a route of its folder loads. The layouts render first, and the route streams in when it is ready:
 
-```html
+```brm
 <!-- src/routes/posts/_loading.brm -->
 <p>Loading the post…</p>
 ```
@@ -289,7 +289,7 @@ declare module 'brumate/server' {
 
 A route exports `cache` from its module script to let a browser or a CDN keep the page:
 
-```html
+```brm
 <script module>
   export const cache = { maxAge: 60, staleWhileRevalidate: 600 };
 </script>
@@ -319,7 +319,7 @@ The server also keeps each public page, in the store of [`cached`](./server-func
 
 Links are plain `<a>` elements. `href` from `brumate/routes` writes the URL of a route from its path in the route files, and TypeScript checks both:
 
-```html
+```brm
 <script>
   import { href } from 'brumate/routes';
 </script>

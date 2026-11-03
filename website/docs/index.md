@@ -6,7 +6,7 @@ brumate is a component language and a compiler for web apps that resume instead 
 
 Components are `.brm` files. A `<script>` declares state, and the markup reads it. This one runs in the page. Click the button, then edit the code:
 
-```html live
+```brm live
 <script>
   import { $memo, $signal } from 'brumate/signals';
 

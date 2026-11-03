@@ -6,11 +6,11 @@ summary: Two date fields and a button that opens a range calendar.
 
 Two date fields and a button that opens a RangeCalendar.
 
-```html demo DateRangePickerDemo
+```brm demo DateRangePickerDemo
 
 ```
 
-```html
+```brm
 <DateRangePicker value=$bind(stay)>
   <Label>Stay</Label>
   <Group>
@@ -39,7 +39,7 @@ Two date fields and a button that opens a RangeCalendar.
 
 ## Anatomy
 
-```html anatomy DateRangePickerAnatomy
+```brm anatomy DateRangePickerAnatomy
 `DateRangePicker`: The picker and its state. It shows `data-open`, `data-invalid` and the states of a DateField.
 `Label`: Names the group, and the Button that opens the Popover.
 `Group`: Holds the two inputs and the Button. It is named by the Label.
@@ -55,7 +55,7 @@ Two date fields and a button that opens a RangeCalendar.
 
 The picture draws the Popover in place, open, as a block of its own under the field, so that each layer can carry a number. The real Popover opens in a layer at the end of the page.
 
-```html
+```brm
 <DateRangePicker>
   <Label />
   <Group>
@@ -105,7 +105,7 @@ The segments of each DateInput take the keys of a [DateField](./date-field.md#ke
 
 `value` holds the range as `{ start, end }` of `YYYY-MM-DD` dates, or `null` until both dates are set, and `isOpen` holds whether the Popover shows. How you pass them picks who keeps them. Change a picker below and use the buttons under them:
 
-```html demo DateRangePickerStateDemo
+```brm demo DateRangePickerStateDemo
 
 ```
 
@@ -123,7 +123,7 @@ Style the picker with the data attributes above, and the parts inside it with th
 
 The Popover is a layer outside the form, so put the custom properties of the example on its class too. A segment and a date show `data-hovered`. This stylesheet draws the Group as the box with two inputs and a trigger, the layer that fades while it opens and closes, and the range as a band with round ends. The 22nd is taken, and the dates before the 5th of October and after the 20th of November are out of range. Press Save with no dates to see the error.
 
-```html styled DateRangePickerStyled
+```brm styled DateRangePickerStyled
 
 ```
 
@@ -133,7 +133,7 @@ The Popover is a layer outside the form, so put the custom properties of the exa
 
 `startName` and `endName` post the two dates, `isRequired` makes the browser check them, and `minValue` and `maxValue` limit both inputs and the RangeCalendar. Type an end before the start, and the range is invalid. An invalid range does not stop a submit, so the form here looks for `data-invalid` before it sends. Reset gives back the first range.
 
-```html demo DateRangePickerBookingDemo
+```brm demo DateRangePickerBookingDemo
 
 ```
 
@@ -141,7 +141,7 @@ The Popover is a layer outside the form, so put the custom properties of the exa
 
 An [I18nProvider](./i18n-provider.md) gives the order and the placeholders of the segments, the names of the days and months, and the name of the Button. Two providers give two locales to one signal.
 
-```html demo DateRangePickerLocaleDemo
+```brm demo DateRangePickerLocaleDemo
 
 ```
 

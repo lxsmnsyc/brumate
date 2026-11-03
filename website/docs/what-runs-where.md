@@ -23,7 +23,7 @@ Code runs in the browser only when it starts from one of these:
 
 The compiler starts at each of these and follows what it reads, writes and calls. What it reaches goes to the browser. Everything else stays on the server.
 
-```html live
+```brm live
 <script>
   import { $memo, $signal } from 'brumate/signals';
 

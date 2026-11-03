@@ -6,7 +6,7 @@ summary: The arrow keys move between its items.
 
 A toolbar where the arrow keys move focus between its items.
 
-```html demo ToolbarDemo
+```brm demo ToolbarDemo
 
 ```
 
@@ -20,7 +20,7 @@ A toolbar where the arrow keys move focus between its items.
 
 ## Anatomy
 
-```html anatomy ToolbarAnatomy
+```brm anatomy ToolbarAnatomy
 `Toolbar`: Moves focus between its items with the arrow keys.
 `Button`: An item. Any part that takes focus can be one.
 `Separator`: A line between groups of items.
@@ -28,7 +28,7 @@ A toolbar where the arrow keys move focus between its items.
 `ToggleButton`: An item of that group.
 ```
 
-```html
+```brm
 <Toolbar>
   <Button />
   <Separator />
@@ -70,7 +70,7 @@ Style the toolbar with `[data-orientation='vertical']`. See [Styling](./styling.
 
 This stylesheet makes a horizontal and a vertical bar. Its items have hover, press, on, disabled and a two-band focus ring. Press Tab to enter a bar, then the arrow keys to move in it.
 
-```html styled ToolbarStyled
+```brm styled ToolbarStyled
 
 ```
 
@@ -80,7 +80,7 @@ This stylesheet makes a horizontal and a vertical bar. Its items have hover, pre
 
 Toggle buttons write a list, buttons change a size within limits, and a text field takes the keys that move its caret. Once focus is in the field, the arrow keys, Home and End stay in it, and Tab leaves it. The size buttons clamp the size and stay enabled: a button that disables itself while it has focus drops focus to the page, since the browser does that for any disabled button.
 
-```html demo ToolbarEditorDemo
+```brm demo ToolbarEditorDemo
 
 ```
 
@@ -88,7 +88,7 @@ Toggle buttons write a list, buttons change a size within limits, and a text fie
 
 Inside an [I18nProvider](./i18n-provider.md) with an Arabic locale, ArrowLeft moves to the next item. Put `dir="rtl"` on an element yourself, since the provider renders none.
 
-```html demo ToolbarArabicDemo
+```brm demo ToolbarArabicDemo
 
 ```
 

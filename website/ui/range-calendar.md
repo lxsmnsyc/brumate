@@ -6,11 +6,11 @@ summary: The days of a month, to pick a range of dates.
 
 A grid of the days of a month, to pick a range of dates.
 
-```html demo RangeCalendarDemo
+```brm demo RangeCalendarDemo
 
 ```
 
-```html
+```brm
 <RangeCalendar aria-label="Stay" value=$bind(stay)>
   <header>
     <Button slot="previous">‹</Button>
@@ -28,7 +28,7 @@ A grid of the days of a month, to pick a range of dates.
 
 ## Anatomy
 
-```html anatomy RangeCalendarAnatomy
+```brm anatomy RangeCalendarAnatomy
 `RangeCalendar`: The grid and its range. It shows `data-disabled` and `data-invalid`.
 `CalendarHeading`: Shows the months, such as `October 2026`. Optional.
 `Button` with `slot="previous"`: Shows the months before.
@@ -37,7 +37,7 @@ A grid of the days of a month, to pick a range of dates.
 `CalendarCell`: One date. It shows `data-selected`, and `data-selection-start` or `data-selection-end` at the ends of the range. Optional.
 ```
 
-```html
+```brm
 <RangeCalendar>
   <CalendarHeading />
   <Button slot="previous" />
@@ -86,7 +86,7 @@ The dates use the Gregorian calendar. Names and numbers follow the locale.
 
 `value` holds the selected range as `{ start, end }` of `YYYY-MM-DD` dates, or `null`. How you pass it picks who keeps it. Pick a range in each calendar, then use the buttons under them:
 
-```html demo RangeCalendarStateDemo
+```brm demo RangeCalendarStateDemo
 
 ```
 
@@ -105,7 +105,7 @@ Style the dates with `data-selected`, `data-selection-start` and `data-selection
 
 A cell shows `data-hovered` under a mouse or a pen. This stylesheet draws the range as a band with round ends, and styles a date in rest, hover, press, today, keyboard focus, unavailable and out of range. The 22nd is taken, so a range that starts before it stops there.
 
-```html styled RangeCalendarStyled
+```brm styled RangeCalendarStyled
 
 ```
 
@@ -115,7 +115,7 @@ A cell shows `data-hovered` under a mouse or a pen. This stylesheet draws the ra
 
 Two `CalendarGrid`s show two months, and `isDateUnavailable` marks the nights that are taken. A range stops before them, and the dates past them cannot be picked. `onChange` or the signal gives the range, and the nights are the difference of the dates.
 
-```html demo RangeCalendarStayDemo
+```brm demo RangeCalendarStayDemo
 
 ```
 
@@ -123,7 +123,7 @@ Two `CalendarGrid`s show two months, and `isDateUnavailable` marks the nights th
 
 An [I18nProvider](./i18n-provider.md) gives the names, the first day of the week and the words that a screen reader hears. Change the language below:
 
-```html demo RangeCalendarLocaleDemo
+```brm demo RangeCalendarLocaleDemo
 
 ```
 

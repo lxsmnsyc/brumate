@@ -6,7 +6,7 @@ summary: A preview of a link, on hover, focus and a long press.
 
 A preview of a link or a button, such as a card of the author behind a name. It shows on hover, on focus from the keyboard, and on a long press of a touch.
 
-```html demo PreviewTriggerDemo
+```brm demo PreviewTriggerDemo
 
 ```
 
@@ -19,7 +19,7 @@ A preview of a link or a button, such as a card of the author behind a name. It 
 
 ## Anatomy
 
-```html anatomy PreviewTriggerAnatomy
+```brm anatomy PreviewTriggerAnatomy
 `Link`: The trigger. It gets `aria-expanded` and `aria-controls`. A `Button` works too.
 `Popover`: The preview. It is not modal, and it can hold links and buttons.
 `OverlayArrow`: Points from the preview to the trigger. Optional.
@@ -27,7 +27,7 @@ A preview of a link or a button, such as a card of the author behind a name. It 
 
 The picture draws the Popover in place, open, under the trigger, so that it can carry a number. The real Popover shows in a layer at the end of the page, next to the trigger, and the rest of the page stays active.
 
-```html
+```brm
 <PreviewTrigger>
   <Link />
   <Popover>
@@ -65,7 +65,7 @@ The preview renders at the end of the page, in a [layer](./layers.md), so Tab mo
 
 `isOpen` holds whether the preview shows. Hover and focus from the keyboard change it in every shape below:
 
-```html demo PreviewTriggerStateDemo
+```brm demo PreviewTriggerStateDemo
 
 ```
 
@@ -83,7 +83,7 @@ Style the preview as a [Popover](./popover.md#styling). See [Styling](./styling.
 
 This stylesheet styles the link in every state (rest, hover, press, keyboard focus, and `aria-expanded` while the preview shows), the card with its closed look, the arrow on both sides, and the Follow button. Hover the name, or Tab to it. Its tokens are at the top, and they follow the color scheme.
 
-```html styled PreviewTriggerStyled
+```brm styled PreviewTriggerStyled
 
 ```
 
@@ -93,7 +93,7 @@ This stylesheet styles the link in every state (rest, hover, press, keyboard foc
 
 Each name in the text has its own `PreviewTrigger`. Hover one and the card shows after `delay`. Move to the next name and its card shows at once, since one preview has just shown. The pointer can go from the name onto the card to press Follow.
 
-```html demo PreviewTriggerMentionsDemo
+```brm demo PreviewTriggerMentionsDemo
 
 ```
 
@@ -101,7 +101,7 @@ Each name in the text has its own `PreviewTrigger`. Hover one and the card shows
 
 The trigger can be a `Button`. The preview shows a file's first lines on hover or focus. A press runs `onPress` and opens the file. After a hover the card fades out and then shows again within about 370 ms, since the pointer is still on the trigger. A press with the keyboard hides it.
 
-```html demo PreviewTriggerFilesDemo
+```brm demo PreviewTriggerFilesDemo
 
 ```
 

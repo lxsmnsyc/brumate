@@ -6,7 +6,7 @@ summary: The content of an overlay, named by its title.
 
 The content of an overlay that people act on, such as a [Popover](./popover.md) or a [Modal](./modal.md).
 
-```html demo DialogDemo
+```brm demo DialogDemo
 
 ```
 
@@ -16,7 +16,7 @@ The content of an overlay that people act on, such as a [Popover](./popover.md) 
 
 ## Anatomy
 
-```html anatomy DialogAnatomy
+```brm anatomy DialogAnatomy
 `Button`: Opens the overlay. It gets `aria-expanded`, and `aria-controls` while the overlay is open.
 `Popover`: The overlay around the dialog. A `Modal` can take its place.
 `Dialog`: The `dialog`. It takes focus when the overlay opens, and a `Heading` names it.
@@ -26,7 +26,7 @@ The content of an overlay that people act on, such as a [Popover](./popover.md) 
 
 The picture draws the Popover in place, open, as a block of its own under the trigger, so that each layer can carry a number. The real Popover opens in a layer at the end of the page, and the rest of the page is inert while it is open.
 
-```html
+```brm
 <DialogTrigger>
   <Button />
   <Popover>
@@ -68,7 +68,7 @@ The overlay is a `Popover` or a `Modal`. The `Heading` and the close `Button` ar
 
 A `Dialog` has no state. The `DialogTrigger` around it holds whether the overlay is open:
 
-```html demo DialogStateDemo
+```brm demo DialogStateDemo
 
 ```
 
@@ -86,7 +86,7 @@ A `Dialog` and a `DialogTrigger` set no data attributes. Style the dialog by its
 
 This stylesheet styles the Button in every state (rest, hover, press, keyboard focus, open), the closed look of the Popover, the dialog, its title and its close Button. The dialog takes focus when it opens, so it draws no ring of its own. Its tokens are at the top, and they follow the color scheme.
 
-```html styled DialogStyled
+```brm styled DialogStyled
 
 ```
 
@@ -96,7 +96,7 @@ This stylesheet styles the Button in every state (rest, hover, press, keyboard f
 
 A `Modal` with a `Dialog` of `role="alertdialog"` asks before something that cannot be undone. A `Button` with `slot="close"` closes the overlay and still runs its own `onPress`, so "Delete" removes the file and closes. `autofocus` on "Keep it" puts focus on the safe answer when the dialog opens. The overlay has its own `isOpen`, so one Modal serves every row. Escape and "Keep it" close it with focus back on the Delete button that opened it. After "Delete" the row and its button are gone, so focus goes to the page, and a real list should move it to the next row.
 
-```html demo DialogConfirmDemo
+```brm demo DialogConfirmDemo
 
 ```
 
@@ -104,7 +104,7 @@ A `Modal` with a `Dialog` of `role="alertdialog"` asks before something that can
 
 The Popover holds a [Form](./form.md) inside its Dialog. The form is a component of its own, `DialogRenameForm`, and its `onSubmit` is `prevent(submit)`: `prevent` stops the browser from sending the form and loading the page again, and it must wrap the handler in the attribute, since a listener that calls `event.preventDefault()` itself is passive and refused. The browser checks the required name when Save is pressed, and `onSubmit` runs only for a valid name, so the form calls `onSave`, which saves and closes the popover by writing the signal of the `DialogTrigger`. `onOpenChange` copies the saved name into the draft each time the popover opens, so Cancel throws a draft away. `autofocus` on the Input moves focus to the field.
 
-```html demo DialogRenameDemo
+```brm demo DialogRenameDemo
 
 ```
 

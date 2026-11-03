@@ -6,7 +6,7 @@ summary: Validation, and the errors of the server.
 
 A `<form>` that tells its fields how to validate, and gives them the errors of the server.
 
-```html demo FormDemo
+```brm demo FormDemo
 
 ```
 
@@ -16,7 +16,7 @@ A `<form>` that tells its fields how to validate, and gives them the errors of t
 
 ## Anatomy
 
-```html anatomy FormAnatomy
+```brm anatomy FormAnatomy
 `Form`: The `<form>`. It gives its fields the default validation and the errors of the server.
 `TextField`: A field of the form. It finds its errors by `name`.
 `Label`: Names the field.
@@ -25,7 +25,7 @@ A `<form>` that tells its fields how to validate, and gives them the errors of t
 `Button`: Sends the form with `type="submit"`.
 ```
 
-```html
+```brm
 <Form>
   <TextField>
     <Label />
@@ -64,7 +64,7 @@ A Form sets no data attributes. With `validationBehavior="aria"` it sets `novali
 
 This stylesheet styles a form of fields and buttons: input hover, keyboard focus, an error of the server on the email, a disabled field, and the Save button at rest, hover, press, focus, pending and disabled. Edit the email so that the server error goes, then press Save to see the pending button.
 
-```html styled FormStyled
+```brm styled FormStyled
 
 ```
 
@@ -74,7 +74,7 @@ This stylesheet styles a form of fields and buttons: input hover, keyboard focus
 
 The browser checks `isRequired`, `type="email"` and `minLength` when the form is sent, and `validate` checks the repeated password. The first invalid field gets focus. The submit handler still starts with `if (saving) return`, as a form with one field needs. This form has three fields, so Chrome does not send it on Enter while it is pending. A reply with an error is passed back as `validationErrors`, and the field shows it until the user edits the field.
 
-```html demo FormSignupDemo
+```brm demo FormSignupDemo
 
 ```
 
@@ -82,7 +82,7 @@ The browser checks `isRequired`, `type="email"` and `minLength` when the form is
 
 Fields bound to signals filter a list as the user types, and the form only holds them together. A `type="reset"` Button gives every field its start value, which writes the signals back.
 
-```html demo FormFilterBarDemo
+```brm demo FormFilterBarDemo
 
 ```
 
@@ -90,6 +90,6 @@ Fields bound to signals filter a list as the user types, and the form only holds
 
 Fields with a start value post under their names, and the handler reads them with `FormData`. A switch that is off posts nothing. Change the settings, press Discard changes, and each field goes back.
 
-```html demo FormSettingsDemo
+```brm demo FormSettingsDemo
 
 ```

@@ -6,7 +6,7 @@ summary: Content for screen readers alone.
 
 Hides its content from sight, and keeps it for screen readers, such as the name of a button that shows only a mark.
 
-```html demo VisuallyHiddenDemo
+```brm demo VisuallyHiddenDemo
 
 ```
 
@@ -39,6 +39,6 @@ The part brings its own styles for hiding. Its `class` adds to them. With `focus
 
 `as="a"` with `focusable` makes a link that sits out of sight until focus reaches it, so a keyboard user can jump over the menu. Click into the sample and press Tab: the link shows.
 
-```html demo VisuallyHiddenSkipDemo
+```brm demo VisuallyHiddenSkipDemo
 
 ```

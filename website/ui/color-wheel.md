@@ -6,11 +6,11 @@ summary: A circular track for the hue of a color.
 
 A circular track for the hue of a color.
 
-```html demo ColorWheelDemo
+```brm demo ColorWheelDemo
 
 ```
 
-```html
+```brm
 <ColorWheel value=$bind(color) outerRadius=(90) innerRadius=(66)>
   <ColorWheelTrack />
   <ColorThumb />
@@ -29,13 +29,13 @@ A circular track for the hue of a color.
 
 ## Anatomy
 
-```html anatomy ColorWheelAnatomy
+```brm anatomy ColorWheelAnatomy
 `ColorWheel`: The square that holds the ring. Give it `outerRadius` and `innerRadius`.
 `ColorWheelTrack`: Draws the ring as a conic gradient of the hue.
 `ColorThumb`: The handle. It sits on the ring at the angle of the hue.
 ```
 
-```html
+```brm
 <ColorWheel>
   <ColorWheelTrack />
   <ColorThumb />
@@ -91,7 +91,7 @@ The keys act on the thumb. Ctrl, Alt or Meta with an arrow moves the thumb one s
 
 `value` holds a color of CSS. How you pass it picks who keeps it. Each wheel below edits the hue, and Reset the form gives each one back the color it started with:
 
-```html demo ColorWheelStateDemo
+```brm demo ColorWheelStateDemo
 
 ```
 
@@ -110,7 +110,7 @@ Style the thumb with the data attributes above. The ring is the CSS of the Color
 
 This stylesheet styles the thumb in rest, dragging, keyboard focus and disabled, and dims a disabled wheel. The ring is the track of the part. A thumb has no hover state. Drag the thumb, or tab to it and press the arrows.
 
-```html styled ColorWheelStyled
+```brm styled ColorWheelStyled
 
 ```
 
@@ -120,7 +120,7 @@ This stylesheet styles the thumb in rest, dragging, keyboard focus and disabled,
 
 A wheel edits only the hue. The base color, its complement and two near colors are computed from the hue with the helpers of `@brumate/ui/color.ts`. The signal holds the color as text.
 
-```html demo ColorWheelHarmonyDemo
+```brm demo ColorWheelHarmonyDemo
 
 ```
 
@@ -128,7 +128,7 @@ A wheel edits only the hue. The base color, its complement and two near colors a
 
 `name` sends the hue with the form, also before the code of the page loads. Reset gives back the color the wheel started with.
 
-```html demo ColorWheelFormDemo
+```brm demo ColorWheelFormDemo
 
 ```
 

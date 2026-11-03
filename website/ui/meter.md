@@ -6,7 +6,7 @@ summary: A value in a known range, in the locale.
 
 A value that stays in a known range, such as the space used on a disk.
 
-```html demo MeterDemo
+```brm demo MeterDemo
 
 ```
 
@@ -17,12 +17,12 @@ A value that stays in a known range, such as the space used on a disk.
 
 ## Anatomy
 
-```html anatomy MeterAnatomy
+```brm anatomy MeterAnatomy
 `Meter`: The element with `role="meter"`. It sets `--percentage`.
 `Label`: Names the meter.
 ```
 
-```html
+```brm
 <Meter>
   <Label />
 </>
@@ -48,7 +48,7 @@ Draw the bar with `--percentage`, from `0%` to `100%`, or with the `content` tem
 
 This stylesheet draws a track and a fill in a `content` template, and the fill changes color with the level: green, amber and red. A meter has no data attributes, so the template picks the level from the percentage that it gets. The text beside the bar carries the value too, so color is not the only sign.
 
-```html styled MeterStyled
+```brm styled MeterStyled
 
 ```
 
@@ -58,7 +58,7 @@ This stylesheet draws a track and a fill in a `content` template, and the fill c
 
 `formatOptions` writes the value in a unit or a currency, and `valueLabel` replaces the text. The meter sets the text as `aria-valuetext`, so a screen reader says it too. A `minValue` other than 0 moves the start of the range, so a value of 3 in 1 to 5 fills half.
 
-```html demo MeterUnitsDemo
+```brm demo MeterUnitsDemo
 
 ```
 
@@ -66,7 +66,7 @@ This stylesheet draws a track and a fill in a `content` template, and the fill c
 
 The page keeps the charge in a signal. The meter follows it, and the note under it reads the same number.
 
-```html demo MeterBatteryDemo
+```brm demo MeterBatteryDemo
 
 ```
 

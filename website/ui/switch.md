@@ -6,7 +6,7 @@ summary: A setting that applies at once.
 
 A native checkbox with `role="switch"`, for a setting that applies at once.
 
-```html demo SwitchDemo
+```brm demo SwitchDemo
 
 ```
 
@@ -45,7 +45,7 @@ The label shows the state:
 
 `isSelected` holds whether the switch is on. How you pass it picks who keeps it:
 
-```html demo SwitchStateDemo
+```brm demo SwitchStateDemo
 
 ```
 
@@ -64,7 +64,7 @@ Style the switch from the attributes of the label, such as `[data-selected]` and
 
 This stylesheet draws a track with a knob that moves. It styles rest, hover, press, on, on and hovered, on and pressed, keyboard focus, read only and disabled. The focus ring has two bands outside the track, so it shows next to the fill.
 
-```html styled SwitchStyled
+```brm styled SwitchStyled
 
 ```
 
@@ -74,7 +74,7 @@ This stylesheet draws a track with a knob that moves. It styles rest, hover, pre
 
 Switches in a form post with it: `name` names the field, and a switch that is on posts its `value`, or `on` without one. Turning Airplane mode on turns Wi-Fi off and disables its switch. Reset the settings gives each switch back the state it started with.
 
-```html demo SwitchSettingsDemo
+```brm demo SwitchSettingsDemo
 
 ```
 
@@ -82,6 +82,6 @@ Switches in a form post with it: `name` names the field, and a switch that is on
 
 A setting that applies at once has no Save button. The switch moves when the user toggles it, and `onChange` starts the save. Toggle it twice in a row: each toggle starts a save, and only the last one reports.
 
-```html demo SwitchSavingDemo
+```brm demo SwitchSavingDemo
 
 ```

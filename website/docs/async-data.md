@@ -2,7 +2,7 @@
 
 A `$memo` can hold a promise, such as the result of a server function. The memo gives the value that the promise settles to, so markup and other memos never see the promise.
 
-```html live
+```brm live
 <script>
   import { $isPending, $memo, $signal } from 'brumate/signals';
 
@@ -50,7 +50,7 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 
 `#loading` renders its `#else` body first, and its own body once the values it reads have loaded. The rest of the page does not wait for them:
 
-```html live
+```brm live
 <script>
   import { $memo } from 'brumate/signals';
 
@@ -80,7 +80,7 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 
 Name memos in the header of `#loading` to show its `#else` body again while one of them loads:
 
-```html
+```brm
 <script>
   import { $memo, $signal } from 'brumate/signals';
 
@@ -116,7 +116,7 @@ Name memos in the header of `#loading` to show its `#else` body again while one 
 
 To show a new record with fresh state, such as a form for another user, wrap the block in `#key`. The body renders again for each ID, and the fallback shows while its memos load. A reload of the same ID keeps the content:
 
-```html
+```brm
 <script>
   import { $memo, $props } from 'brumate/signals';
 
@@ -156,7 +156,7 @@ When the browser loads the page itself, it gives the page no event for a connect
 
 `#loading` bodies show as their data arrives, in any order, so a page with several of them can jump around while it streams. `#reveal` shows them in an order:
 
-```html
+```brm
 #reveal ('sequential', collapsed) {
   #loading { <Profile /> } #else { <p>Loading the profile…</p> }
   #loading { <Posts /> } #else { <p>Loading the posts…</p> }
@@ -238,7 +238,7 @@ When a value that the memo reads changes in the browser, the memo runs again:
 
 A search field that loads results as the user types should wait for a pause. `$debounced(value, ms)` is a memo that takes the value once it stops changing for `ms` milliseconds:
 
-```html
+```brm
 <script>
   import { $debounced, $isPending, $memo, $signal } from 'brumate/signals';
   import { search } from './search.ts';
@@ -268,7 +268,7 @@ A search field that loads results as the user types should wait for a pause. `$d
 
 A memo that calls a server function loads again when the values it reads change. When another server function changes the data, call `event.refresh` with the function that reads it. Every memo on the page that calls that function loads again.
 
-```html live
+```brm live
 <script module>
   // Kept in memory for the sample. A real app would use a database.
   const names: string[] = ['Ada'];
@@ -309,7 +309,7 @@ A memo that calls a server function loads again when the values it reads change.
 
 A component can pass a promise to another component as a prop. The child loads it with a memo:
 
-```html live
+```brm live
 <script>
   import { $signal } from 'brumate/signals';
   import Profile from './Profile.brm';
@@ -327,7 +327,7 @@ A component can pass a promise to another component as a prop. The child loads i
 <Profile user=getUser(id) />
 ```
 
-```html live Profile.brm
+```brm live Profile.brm
 <script>
   import { $isPending, $memo, $props } from 'brumate/signals';
 
@@ -352,7 +352,7 @@ Because the prop does not change when the promise settles:
 
 A promise in text or in an attribute value renders the value that it settles to:
 
-```html
+```brm
 <script>
   async function getTitle(): Promise<string> {
     'use server';
@@ -382,7 +382,7 @@ To share one promise between several reads, or to show the old value and `$isPen
 
 A server function can be an async generator. A memo of it takes each value as it arrives:
 
-```html live
+```brm live
 <script>
   import { $isPending, $memo, $signal } from 'brumate/signals';
 
@@ -414,7 +414,7 @@ A server function can be an async generator. A memo of it takes each value as it
 
 `gather` from `brumate/stream` turns a stream into the list of its values so far, such as the tokens of a reply, search results or log lines. A memo of it renders with `#for`:
 
-```html
+```brm
 <script>
   import { $memo, $signal } from 'brumate/signals';
   import { gather } from 'brumate/stream';
@@ -442,7 +442,7 @@ A server function can be an async generator. A memo of it takes each value as it
 
 `await` says where the server waits instead of streaming. A read with `await` gives the value, never a promise and never a fallback:
 
-```html
+```brm
 <script>
   import { $memo, $props } from 'brumate/signals';
   import { fetchSettings, fetchUser, listTags } from './data.server';
@@ -496,7 +496,7 @@ A `#loading` body streams in a `<template>` that a script swaps in. A reader tha
 
 `#defer` renders its body on the server later, in a request of its own. The page has the `#else` body until the trigger fires, with the same triggers as [`#client`](./effects.md#client-blocks). The browser then asks the server for the body, which replaces the fallback:
 
-```html
+```brm
 #defer ('visible') {
   <Recommendations {user} />
 } #else {

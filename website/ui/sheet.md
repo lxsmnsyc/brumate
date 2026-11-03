@@ -6,7 +6,7 @@ summary: A modal along an edge of the window.
 
 A [Modal](./modal.md) along an edge of the window, such as a menu or a panel of filters.
 
-```html demo SheetDemo
+```brm demo SheetDemo
 
 ```
 
@@ -16,7 +16,7 @@ A [Modal](./modal.md) along an edge of the window, such as a menu or a panel of 
 
 ## Anatomy
 
-```html anatomy SheetAnatomy
+```brm anatomy SheetAnatomy
 `Button`: Opens the sheet. It gets `aria-expanded`, and `aria-controls` while the sheet is open.
 `Sheet`: The panel along an edge of the window. It has `data-sheet` and `data-side`.
 `Dialog`: The dialog in the panel. It takes focus when the sheet opens.
@@ -26,7 +26,7 @@ A [Modal](./modal.md) along an edge of the window, such as a menu or a panel of 
 
 The picture draws the window, dimmed, with the Sheet in it, open and in place, so that the pieces can carry numbers. The real Sheet opens in a layer at the end of the page, along the edge of the whole window, and the rest of the page is inert while it is open. The dim area is the overlay that the Sheet renders around itself.
 
-```html
+```brm
 <DialogTrigger>
   <Button />
   <Sheet>
@@ -66,7 +66,7 @@ The keys are those of a [Modal](./modal.md#keyboard). `Escape` closes a sheet, a
 
 `isOpen` holds whether the sheet is open, as on a [Modal](./modal.md#controlled-and-uncontrolled). Inside a `DialogTrigger`, the trigger holds it, and a sheet with its own `isOpen` ignores the trigger:
 
-```html demo SheetStateDemo
+```brm demo SheetStateDemo
 
 ```
 
@@ -86,7 +86,7 @@ A `Sheet` passes its class to the box, not to the overlay behind it, which has `
 
 This stylesheet places the sheet on each of the four edges, slides it in from its edge as the overlay fades in, and styles the trigger and the close Button in every state. Press each trigger. Its tokens are at the top, and they follow the color scheme.
 
-```html styled SheetStyled
+```brm styled SheetStyled
 
 ```
 
@@ -96,7 +96,7 @@ This stylesheet places the sheet on each of the four edges, slides it in from it
 
 A `Button` with `slot="close"` closes the sheet and still runs its own `onPress`, so each item sets the page and closes the menu. Focus goes back to the Menu Button.
 
-```html demo SheetNavDemo
+```brm demo SheetNavDemo
 
 ```
 
@@ -104,6 +104,6 @@ A `Button` with `slot="close"` closes the sheet and still runs its own `onPress`
 
 The sheet edits a draft, so a Cancel throws it away. The `DialogTrigger` copies the applied filters into the draft each time the sheet opens, and Apply copies the draft back. The sheet sits on the `end` edge.
 
-```html demo SheetFiltersDemo
+```brm demo SheetFiltersDemo
 
 ```

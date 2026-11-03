@@ -41,7 +41,7 @@ describe('the Markdown of a page', () => {
   it('writes a demo as its source and a props block as a table', () => {
     const button = pages.find((page) => pagePath(page) === 'ui/button.md')!;
     expect(button.markdown).toContain('| Prop | Type | Default | Description |');
-    expect(button.markdown).toContain('```html\n<script>');
+    expect(button.markdown).toContain('```brm\n<script>');
   });
 
   it('points links at the Markdown of the other page', () => {

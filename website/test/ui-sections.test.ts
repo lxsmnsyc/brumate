@@ -103,11 +103,11 @@ describe('sections of the pages of @brumate/ui', () => {
 });
 
 describe('fences of .brm samples', () => {
-  it('use html, not brm', () => {
+  it('use brm, not html', () => {
     for (const directory of [UI, DOCS]) {
       for (const name of listPages(directory)) {
         const source = readFileSync(new URL(`${name}.md`, directory), 'utf8');
-        expect(/^```brm(\s|$)/m.test(source), `${name}.md has a brm fence`).toBe(false);
+        expect(/^```html(\s|$)/m.test(source), `${name}.md has an html fence`).toBe(false);
       }
     }
   });

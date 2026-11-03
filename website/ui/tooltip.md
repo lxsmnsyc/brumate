@@ -6,7 +6,7 @@ summary: A short description of a button, on hover and focus.
 
 A short description of a button, which shows on hover and on focus from the keyboard.
 
-```html demo TooltipDemo
+```brm demo TooltipDemo
 
 ```
 
@@ -21,7 +21,7 @@ A short description of a button, which shows on hover and on focus from the keyb
 
 ## Anatomy
 
-```html anatomy TooltipAnatomy
+```brm anatomy TooltipAnatomy
 `Button`: The trigger. It points to the tooltip with `aria-describedby` while the tooltip shows.
 `Tooltip`: The text, a `tooltip` that takes no focus. It sets `data-placement`.
 `OverlayArrow`: Points from the tooltip to the trigger. Optional.
@@ -29,7 +29,7 @@ A short description of a button, which shows on hover and on focus from the keyb
 
 The picture draws the Tooltip in place, above the Button, shown, so that it can carry a number. The real Tooltip shows in a layer at the end of the page, and takes no space where the button is.
 
-```html
+```brm
 <TooltipTrigger>
   <Button />
   <Tooltip>
@@ -80,7 +80,7 @@ The `OverlayArrow` is described on the [Popover](./popover.md#props) page.
 
 `isOpen` on the `TooltipTrigger` holds whether the tooltip shows. Hover and focus from the keyboard change it in every shape below:
 
-```html demo TooltipStateDemo
+```brm demo TooltipStateDemo
 
 ```
 
@@ -98,7 +98,7 @@ Style the tooltip with the data attributes above, such as `[data-placement='top'
 
 This stylesheet styles the trigger in every state (rest, hover, press, keyboard focus), the tooltip and its closed look, and the arrow on each of the four sides. Hover each button, or Tab to it. The third one opens beside the button. Its tokens are at the top, and they follow the color scheme.
 
-```html styled TooltipStyled
+```brm styled TooltipStyled
 
 ```
 
@@ -108,7 +108,7 @@ This stylesheet styles the trigger in every state (rest, hover, press, keyboard 
 
 A button with a glyph needs a name, so `aria-label` names it, and the tooltip adds the shortcut as its description. The [Toolbar](./toolbar.md) moves focus with the arrow keys, and focus from the keyboard shows the tooltip at once. Once one tooltip has shown, the next shows without waiting for `delay`.
 
-```html demo TooltipToolbarDemo
+```brm demo TooltipToolbarDemo
 
 ```
 
@@ -116,6 +116,6 @@ A button with a glyph needs a name, so `aria-label` names it, and the tooltip ad
 
 A `TooltipTrigger` inside a `DialogTrigger` keeps what the `DialogTrigger` gives the Button. Hover or focus from the keyboard shows the tooltip, and a press hides it and opens the popover. Escape on a focused trigger hides the tooltip.
 
-```html demo TooltipPopoverDemo
+```brm demo TooltipPopoverDemo
 
 ```

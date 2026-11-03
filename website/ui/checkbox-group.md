@@ -6,7 +6,7 @@ summary: Checkboxes with one value.
 
 Checkboxes with one value, the list of the checked ones.
 
-```html demo CheckboxGroupDemo
+```brm demo CheckboxGroupDemo
 
 ```
 
@@ -16,7 +16,7 @@ Checkboxes with one value, the list of the checked ones.
 
 ## Anatomy
 
-```html anatomy CheckboxGroupAnatomy
+```brm anatomy CheckboxGroupAnatomy
 `CheckboxGroup`: Holds the boxes and the list of the checked values. It is a `group`.
 `Label`: Names the group.
 `Checkbox`: One choice, named by its `value`.
@@ -24,7 +24,7 @@ Checkboxes with one value, the list of the checked ones.
 `FieldError`: Shows while the group is invalid. The picture forces it with `isInvalid`.
 ```
 
-```html
+```brm
 <CheckboxGroup>
   <Label />
   <Checkbox value="a" />
@@ -69,7 +69,7 @@ The group adds no keys. Each box takes the keys of a [Checkbox](./checkbox.md#ke
 
 `value` holds the list of the `value` of each checked box. How you pass it picks who keeps it:
 
-```html demo CheckboxGroupStateDemo
+```brm demo CheckboxGroupStateDemo
 
 ```
 
@@ -86,7 +86,7 @@ Style the group with the data attributes above, and each box from its own, such 
 
 This stylesheet turns the boxes into chips that fill when checked. It styles rest, hover, press, checked, checked and hovered, checked and pressed, keyboard focus, invalid and disabled, and the description and the error. Clear all the chips and press Order. The group is required, and the error shows once its code has loaded.
 
-```html styled CheckboxGroupStyled
+```brm styled CheckboxGroupStyled
 
 ```
 
@@ -96,7 +96,7 @@ This stylesheet turns the boxes into chips that fill when checked. It styles res
 
 A group bound to a signal gives the page the list of the kinds. With none checked, the list shows everything.
 
-```html demo CheckboxGroupFilterDemo
+```brm demo CheckboxGroupFilterDemo
 
 ```
 
@@ -104,6 +104,6 @@ A group bound to a signal gives the page the list of the kinds. With none checke
 
 The request of `$bind` can refuse a list. This one keeps at most two colors, and says so in the description. The group shows what you keep, so the box that the user clicked is drawn off again. Check the list on the server too.
 
-```html demo CheckboxGroupLimitDemo
+```brm demo CheckboxGroupLimitDemo
 
 ```

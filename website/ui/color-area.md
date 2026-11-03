@@ -6,11 +6,11 @@ summary: Two channels of a color on a plane.
 
 An area for two channels of a color.
 
-```html demo ColorAreaDemo
+```brm demo ColorAreaDemo
 
 ```
 
-```html
+```brm
 <ColorArea xChannel="saturation" yChannel="brightness" value=$bind(color)>
   <ColorThumb />
 </ColorArea>
@@ -29,12 +29,12 @@ An area for two channels of a color.
 
 ## Anatomy
 
-```html anatomy ColorAreaAnatomy
+```brm anatomy ColorAreaAnatomy
 `ColorArea`: The group with the two-channel gradient as `--area-background`. Give it an `aria-label`.
 `ColorThumb`: The handle. It holds two range inputs, one for each axis.
 ```
 
-```html
+```brm
 <ColorArea>
   <ColorThumb />
 </>
@@ -85,7 +85,7 @@ The arrows act on either input of the thumb, and each moves its own axis. The ot
 
 `value` holds a color of CSS, `#ffffff` without one. How you pass it picks who keeps it. Each area below edits saturation and brightness, and Reset the form gives each one back the color it started with:
 
-```html demo ColorAreaStateDemo
+```brm demo ColorAreaStateDemo
 
 ```
 
@@ -104,7 +104,7 @@ Style the area with `background: var(--area-background)` and `background-blend-m
 
 This stylesheet styles the area with its gradient, the thumb in rest, dragging, keyboard focus and disabled, and a swatch that follows the value. A thumb has no hover state. Drag the thumb, or tab to it and press the arrows.
 
-```html styled ColorAreaStyled
+```brm styled ColorAreaStyled
 
 ```
 
@@ -114,7 +114,7 @@ This stylesheet styles the area with its gradient, the thumb in rest, dragging, 
 
 An area edits two channels, so the third needs a slider. Both use `colorSpace="hsb"` and one `$bind` signal. A drag in the area keeps the hue, and a move of the slider keeps the saturation and the brightness.
 
-```html demo ColorAreaHueDemo
+```brm demo ColorAreaHueDemo
 
 ```
 
@@ -122,7 +122,7 @@ An area edits two channels, so the third needs a slider. Both use `colorSpace="h
 
 `xName` and `yName` send the two values with the form, also before the code of the page loads. Reset gives back the color the area started with.
 
-```html demo ColorAreaFormDemo
+```brm demo ColorAreaFormDemo
 
 ```
 

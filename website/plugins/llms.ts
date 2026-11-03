@@ -149,7 +149,7 @@ export function toMarkdown(
     const live = /^(brm|html|ts)\s+live\b\s*(\S+)?/.exec(info);
     if (demo) {
       const file = path.join(directory, 'demos', `${demo[2]}.brm`);
-      out.push('```html', readFileSync(file, 'utf8').trim(), '```');
+      out.push('```brm', readFileSync(file, 'utf8').trim(), '```');
     } else if (anatomy) {
       const pieces = body.filter((text) => text.trim());
       for (const [number, text] of pieces.entries()) {
@@ -161,7 +161,7 @@ export function toMarkdown(
       if (live[2]) {
         out.push(`<!-- ${live[2]} -->`);
       }
-      out.push(`${fence}${live[1] === 'ts' ? 'ts' : 'html'}`, ...body, fence);
+      out.push(`${fence}${live[1] === 'ts' ? 'ts' : 'brm'}`, ...body, fence);
     } else {
       out.push(line, ...body, fence);
     }

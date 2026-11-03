@@ -6,11 +6,11 @@ summary: A field for a number, in the format of the locale.
 
 A field for a number, in the format of the locale, with buttons that step it.
 
-```html demo NumberFieldDemo
+```brm demo NumberFieldDemo
 
 ```
 
-```html
+```brm
 <NumberField minValue=(0) step=(5) value=$bind(width)>
   <Label>Width</Label>
   <Group>
@@ -30,7 +30,7 @@ A field for a number, in the format of the locale, with buttons that step it.
 
 ## Anatomy
 
-```html anatomy NumberFieldAnatomy
+```brm anatomy NumberFieldAnatomy
 `NumberField`: Holds the parts and keeps the number. It shows the data attributes of the field.
 `Label`: Names the input.
 `Group`: Draws the input and the two buttons as one box.
@@ -41,7 +41,7 @@ A field for a number, in the format of the locale, with buttons that step it.
 `FieldError`: Shows while the field is invalid. The picture sets 12, which is above `maxValue`, so the field is invalid and the plus button is disabled.
 ```
 
-```html
+```brm
 <NumberField>
   <Label />
   <Group>
@@ -92,7 +92,7 @@ Keys act while the input has focus. A key with Shift, Ctrl, Alt or Meta does not
 
 `value` holds the number, or `NaN` when the field is empty. How you pass it picks who keeps it:
 
-```html demo NumberFieldStateDemo
+```brm demo NumberFieldStateDemo
 
 ```
 
@@ -110,7 +110,7 @@ Style the field with the data attributes above, and the buttons with `[data-disa
 
 This stylesheet draws the input and the buttons as one box. It styles rest, hover, press, keyboard focus on the box as two bands, invalid, the buttons at the ends of the range, disabled, the description and the error. Clear the box and press Send. The browser blocks the form and the `FieldError` shows its message.
 
-```html styled NumberFieldStyled
+```brm styled NumberFieldStyled
 
 ```
 
@@ -120,7 +120,7 @@ This stylesheet draws the input and the buttons as one box. It styles rest, hove
 
 The field is bound to a signal, and the total is a memo of it. `minValue` and `maxValue` keep the number in range and disable the button at each end.
 
-```html demo NumberFieldTicketsDemo
+```brm demo NumberFieldTicketsDemo
 
 ```
 
@@ -128,7 +128,7 @@ The field is bound to a signal, and the total is a memo of it. `minValue` and `m
 
 `formatOptions` with `style: 'percent'` shows 0.1 as 10%, and the step is counted in hundredths. With `name`, the form sends the number, and Reset gives back the first one. Empty the box and press Send: with `isRequired`, the browser asks for a number.
 
-```html demo NumberFieldDiscountDemo
+```brm demo NumberFieldDiscountDemo
 
 ```
 

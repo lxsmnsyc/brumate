@@ -6,7 +6,7 @@ summary: Animates content as it comes and goes.
 
 Animates content in and out. It keeps the content in the page until its leave ends, which CSS cannot do for content that is removed.
 
-```html demo TransitionDemo
+```brm demo TransitionDemo
 
 ```
 
@@ -34,7 +34,7 @@ Other parts run the same steps with their `transition` prop: [DisclosurePanel](.
 
 ## Anatomy
 
-```html
+```brm
 <Transition>
   <TransitionChild>The content.</>
 </>
@@ -73,7 +73,7 @@ Style the content with the attributes above, or with the classes of `enter`, `en
 
 This stylesheet fades and slides a note from the data attributes, with no classes. The first note leaves the page after its leave, the second stays with `hidden` (`unmount=false`), and the third one enters on its own when you add it (`appear`). Press Hide both while it is moving, and press it again.
 
-```html styled TransitionStyled
+```brm styled TransitionStyled
 
 ```
 
@@ -96,7 +96,7 @@ An element inside a `Transition`, or inside a part with `transition`, that moves
 - It enters once its parent has entered. With `appear`, it enters with its parent.
 - Its parent leaves once it has left, so a group animates in from the outside and out from the inside.
 
-```html
+```brm
 <Transition show=open class="backdrop">
   <TransitionChild class="panel">The panel slides in after the backdrop fades in.</TransitionChild>
 </Transition>

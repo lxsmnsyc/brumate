@@ -6,7 +6,7 @@ summary: A list of options to select, by keyboard and pointer.
 
 A list of options that the user selects from, with the keyboard, a pointer or a screen reader.
 
-```html demo ListBoxDemo
+```brm demo ListBoxDemo
 
 ```
 
@@ -20,7 +20,7 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 
 ## Anatomy
 
-```html anatomy ListBoxAnatomy
+```brm anatomy ListBoxAnatomy
 `ListBox`: Holds the items and the selection. It is a `listbox` and takes one stop of Tab.
 `ListBoxSection`: Groups items. It is named by its Header, or by `aria-label`. Optional.
 `Header`: Names the section.
@@ -29,7 +29,7 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 `Text` with `slot="description"`: Describes the item. The item needs `hasDescription`. Optional.
 ```
 
-```html
+```brm
 <ListBox>
   <ListBoxSection>
     <Header />
@@ -110,7 +110,7 @@ The keys act while an item has focus. With `orientation="horizontal"`, Left and 
 
 `selectedKeys` holds the keys of the selected items, as a list. How you pass it picks who keeps it. The lists here select several items:
 
-```html demo ListBoxStateDemo
+```brm demo ListBoxStateDemo
 
 ```
 
@@ -127,7 +127,7 @@ Style an item with the data attributes above, such as `[data-selected]` and `[da
 
 This stylesheet styles every state of an item: rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled. Its tokens are at the top, and they follow the color scheme. Tab into the list and press the arrow keys, then Space.
 
-```html styled ListBoxStyled
+```brm styled ListBoxStyled
 
 ```
 
@@ -137,7 +137,7 @@ This stylesheet styles every state of an item: rest, hover, press, keyboard focu
 
 The list renders the items that match the text of a [SearchField](./search-field.md), from a `#for` over a derived list, with the key as `by`. The selection is a list of keys, so it stays when the item leaves the list. Typing in the list still moves focus to the item whose text starts with the letters, among the items that show.
 
-```html demo ListBoxFilterDemo
+```brm demo ListBoxFilterDemo
 
 ```
 
@@ -145,7 +145,7 @@ The list renders the items that match the text of a [SearchField](./search-field
 
 A [Toolbar](./toolbar.md) above the list holds the buttons that act on the selection. `Select all` writes every key into the bound signal, `Clear` empties it, and `Delete` removes the selected items from the data and clears the signal. Select a few folders, press Delete, then Restore.
 
-```html demo ListBoxToolbarDemo
+```brm demo ListBoxToolbarDemo
 
 ```
 
@@ -153,7 +153,7 @@ A [Toolbar](./toolbar.md) above the list holds the buttons that act on the selec
 
 Instead of writing the items out, pass `items` and an `item` template that renders a `ListBoxItem` for each. The template's parameter takes its type from `items`, so the template knows the fields of the item. A type on the parameter, such as `item: Animal`, is allowed too.
 
-```html
+```brm
 <ListBox aria-label="Animals" items=animals item=row />
 
 #template row(item) {
@@ -185,7 +185,7 @@ With `selectionMode="none"`, a press or Enter acts on the item: `onAction` gets 
 
 `ListBoxSection` groups items, and a `Header` inside names the group. A section with no Header needs `aria-label`.
 
-```html
+```brm
 <ListBoxSection>
   <Header>Birds</Header>
   <ListBoxItem id="kiwi">Kiwi</ListBoxItem>

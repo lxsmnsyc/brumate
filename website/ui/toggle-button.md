@@ -6,7 +6,7 @@ summary: A button that stays pressed.
 
 A button that stays pressed, with `aria-pressed` and `data-selected`.
 
-```html demo ToggleButtonDemo
+```brm demo ToggleButtonDemo
 
 ```
 
@@ -39,7 +39,7 @@ It shows the [data attributes of a Button](./button.md#data-attributes), and:
 
 `isSelected` holds whether the button is on. How you pass it picks who keeps it:
 
-```html demo ToggleButtonStateDemo
+```brm demo ToggleButtonStateDemo
 
 ```
 
@@ -56,7 +56,7 @@ Style the button with `[data-selected]` and the attributes above. See [Styling](
 
 This stylesheet styles rest, hover, press, keyboard focus, on and disabled. The ring has two bands, so it shows on the accent fill of an on button.
 
-```html styled ToggleButtonStyled
+```brm styled ToggleButtonStyled
 
 ```
 
@@ -66,7 +66,7 @@ This stylesheet styles rest, hover, press, keyboard focus, on and disabled. The 
 
 Each filter is a ToggleButton with its own `isSelected=$bind(signal)`. A memo reads the three signals and filters the list. For filters that are one choice among several, use a [group](./toggle-button-group.md).
 
-```html demo ToggleButtonFilterDemo
+```brm demo ToggleButtonFilterDemo
 
 ```
 
@@ -74,6 +74,6 @@ Each filter is a ToggleButton with its own `isSelected=$bind(signal)`. A memo re
 
 ToggleButtons in a [Toolbar](./toolbar.md) share one stop of Tab and the arrow keys. A button with only an icon or a letter needs an `aria-label`.
 
-```html demo ToggleButtonToolbarDemo
+```brm demo ToggleButtonToolbarDemo
 
 ```

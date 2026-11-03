@@ -6,11 +6,11 @@ summary: A time of day that the user types segment by segment.
 
 A time of day that the user types segment by segment.
 
-```html demo TimeFieldDemo
+```brm demo TimeFieldDemo
 
 ```
 
-```html
+```brm
 <TimeField value=$bind(start)>
   <Label>Start</Label>
   <DateInput />
@@ -26,7 +26,7 @@ A time of day that the user types segment by segment.
 
 ## Anatomy
 
-```html anatomy TimeFieldAnatomy
+```brm anatomy TimeFieldAnatomy
 `TimeField`: The field and its state. It shows `data-invalid`, `data-required` and the other states.
 `Label`: Names the group of segments.
 `DateInput`: The group that holds the segments and the text between them.
@@ -35,7 +35,7 @@ A time of day that the user types segment by segment.
 `FieldError`: Shows the message of an invalid field. Optional.
 ```
 
-```html
+```brm
 <TimeField>
   <Label />
   <DateInput>
@@ -88,7 +88,7 @@ The keys act on the segment that has focus. A segment takes none of them while t
 
 `value` holds the time as `HH:MM`, or `HH:MM:SS` with `granularity="second"`, or `null` until every segment is set. How you pass it picks who keeps it. Change a field below and press Reset the form:
 
-```html demo TimeFieldStateDemo
+```brm demo TimeFieldStateDemo
 
 ```
 
@@ -106,7 +106,7 @@ Style the segments with `data-type`, `data-placeholder` and `data-focused`, and 
 
 A segment has no `data-hovered` or `data-focus-visible`, so use `:hover` and `data-focused`. This stylesheet draws the input as a box with its segments in rest, placeholder, focus, invalid and disabled, and the description and the error. Press Save with no time, or type one outside 8 AM to 6 PM.
 
-```html styled TimeFieldStyled
+```brm styled TimeFieldStyled
 
 ```
 
@@ -116,7 +116,7 @@ A segment has no `data-hovered` or `data-focus-visible`, so use `:hover` and `da
 
 The `minValue` of the closing time follows the signal of the opening time, so a closing time before it is invalid and the FieldError shows the message. An invalid time does not stop a submit: the form here looks for `data-invalid` before it sends. `name` posts each time as `HH:MM`, and Reset gives back the first times.
 
-```html demo TimeFieldHoursDemo
+```brm demo TimeFieldHoursDemo
 
 ```
 
@@ -124,7 +124,7 @@ The `minValue` of the closing time follows the signal of the opening time, so a 
 
 An [I18nProvider](./i18n-provider.md) gives the clock, the order of the segments and the words that a screen reader hears. `hourCycle` picks 12 or 24 hours whatever the locale. The value stays `HH:MM`.
 
-```html demo TimeFieldClockDemo
+```brm demo TimeFieldClockDemo
 
 ```
 

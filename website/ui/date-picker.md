@@ -6,11 +6,11 @@ summary: A date field with a button that opens a calendar.
 
 A DateField with a button that opens a Calendar.
 
-```html demo DatePickerDemo
+```brm demo DatePickerDemo
 
 ```
 
-```html
+```brm
 <DatePicker value=$bind(departure)>
   <Label>Departure</Label>
   <Group>
@@ -40,7 +40,7 @@ A DateField with a button that opens a Calendar.
 
 ## Anatomy
 
-```html anatomy DatePickerAnatomy
+```brm anatomy DatePickerAnatomy
 `DatePicker`: The picker and its state. It shows `data-open`, `data-invalid` and the states of a DateField.
 `Label`: Names the group, and the Button that opens the Popover.
 `Group`: Holds the input and the Button. It is named by the Label.
@@ -55,7 +55,7 @@ A DateField with a button that opens a Calendar.
 
 The picture draws the Popover in place, open, as a block of its own under the field, so that each layer can carry a number. The real Popover opens in a layer at the end of the page.
 
-```html
+```brm
 <DatePicker>
   <Label />
   <Group>
@@ -104,7 +104,7 @@ The segments of the DateInput take the keys of a [DateField](./date-field.md#key
 
 `value` holds the date as `YYYY-MM-DD`, or `null`, and `isOpen` holds whether the Popover shows. How you pass them picks who keeps them. Pick a date in each picker, then use the buttons under them:
 
-```html demo DatePickerStateDemo
+```brm demo DatePickerStateDemo
 
 ```
 
@@ -123,7 +123,7 @@ Style the picker with the data attributes above, and the parts inside it with th
 
 The Popover is a layer outside the form, so put the custom properties of the example on its class too. A segment and a date show `data-hovered`. This stylesheet draws the Group as the box, the Button as its trigger, the layer that fades while it opens and closes, and the Calendar in it. The weekends cannot be picked, and the dates before the 5th of October and after the 20th of November are out of range. Press Save with no date to see the error.
 
-```html styled DatePickerStyled
+```brm styled DatePickerStyled
 
 ```
 
@@ -133,7 +133,7 @@ The Popover is a layer outside the form, so put the custom properties of the exa
 
 `name` posts the date, `isRequired` makes the browser check it, and `minValue`, `maxValue` and `isDateUnavailable` limit the field and the Calendar both. Mondays and two more days are taken: type one, and the field turns invalid. An invalid date does not stop a submit, so the form here looks for `data-invalid` before it sends.
 
-```html demo DatePickerBookingDemo
+```brm demo DatePickerBookingDemo
 
 ```
 
@@ -141,7 +141,7 @@ The Popover is a layer outside the form, so put the custom properties of the exa
 
 An [I18nProvider](./i18n-provider.md) gives the order and the placeholders of the segments, the names of the days and months, and the name of the Button, which a screen reader hears as `Kalender` in German. Two providers give two locales to one signal.
 
-```html demo DatePickerLocaleDemo
+```brm demo DatePickerLocaleDemo
 
 ```
 

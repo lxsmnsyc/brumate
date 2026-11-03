@@ -6,7 +6,7 @@ summary: Parts that belong together.
 
 Parts that belong together, such as an input and its buttons.
 
-```html demo GroupDemo
+```brm demo GroupDemo
 
 ```
 
@@ -15,13 +15,13 @@ Parts that belong together, such as an input and its buttons.
 
 ## Anatomy
 
-```html anatomy GroupAnatomy
+```brm anatomy GroupAnatomy
 `Group`: The element with `role="group"`. It shows the state of the whole.
 `Input`: A part inside. It keeps its own look and keys.
 `Button`: Another part inside.
 ```
 
-```html
+```brm
 <Group>
   <Input />
   <Button />
@@ -56,7 +56,7 @@ Style the group with the data attributes above, such as `[data-focus-within]` fo
 
 This stylesheet draws one frame for an input and a button. The frame reads the group's attributes: hover, focus inside, a ring for the keyboard, invalid and disabled. The input draws no frame of its own. Press Tab to see the ring.
 
-```html styled GroupStyled
+```brm styled GroupStyled
 
 ```
 
@@ -66,7 +66,7 @@ This stylesheet draws one frame for an input and a button. The frame reads the g
 
 `isInvalid` on the group shows `data-invalid` and `aria-invalid="true"`, so the frame can warn about the whole, not one piece.
 
-```html demo GroupAmountDemo
+```brm demo GroupAmountDemo
 
 ```
 
@@ -74,7 +74,7 @@ This stylesheet draws one frame for an input and a button. The frame reads the g
 
 A group inside a `TextField` frames the input and its button. The button waits until there is text.
 
-```html demo GroupSearchDemo
+```brm demo GroupSearchDemo
 
 ```
 

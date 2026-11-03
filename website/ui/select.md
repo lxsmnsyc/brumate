@@ -6,11 +6,11 @@ summary: A field that picks one item from a list.
 
 A field that picks one item from a list, which opens from a button.
 
-```html demo SelectDemo
+```brm demo SelectDemo
 
 ```
 
-```html
+```brm
 <Select name="animal" selectedKey=$bind(animal)>
   <Label>Favorite animal</Label>
   <Button><SelectValue /></Button>
@@ -32,7 +32,7 @@ A field that picks one item from a list, which opens from a button.
 
 ## Anatomy
 
-```html anatomy SelectAnatomy
+```brm anatomy SelectAnatomy
 `Label`: Names the field. It is read with the value as the name of the Button.
 `Button`: Opens the list. It shows the focus ring and `aria-expanded`.
 `SelectValue`: Shows the text of the selected item, or the placeholder.
@@ -43,7 +43,7 @@ A field that picks one item from a list, which opens from a button.
 
 The picture draws the Popover in place, open, so that it can carry a number. The real Popover opens in a layer at the end of the page.
 
-```html
+```brm
 <Select>
   <Label />
   <Button>
@@ -113,7 +113,7 @@ The items show [the attributes of a ListBoxItem](./list-box.md#data-attributes).
 
 `selectedKey` holds the key of the selected item, or `null`. `isOpen` holds whether the list is open in the same way. How you pass each one picks who keeps it:
 
-```html demo SelectStateDemo
+```brm demo SelectStateDemo
 
 ```
 
@@ -131,7 +131,7 @@ Style the field with the data attributes above, such as `[data-open]` and `[data
 
 This stylesheet styles every state: rest, hover, press, keyboard focus, open, invalid, disabled, and the items of the list. Open the list, tab to the Button, or press Order with nothing chosen. Its tokens are at the top, and they follow the color scheme.
 
-```html styled SelectStyled
+```brm styled SelectStyled
 
 ```
 
@@ -141,7 +141,7 @@ This stylesheet styles every state: rest, hover, press, keyboard focus, open, in
 
 Put `name` on the Select and it sends the key with its form, also before the code of the page loads. `isRequired` makes the browser check it, and the FieldError shows the message. A Reset button gives back the key that the Select started with.
 
-```html demo SelectFormDemo
+```brm demo SelectFormDemo
 
 ```
 
@@ -149,7 +149,7 @@ Put `name` on the Select and it sends the key with its form, also before the cod
 
 A `ListBoxSection` with a `Header` groups the items. An item with a `Text` of `slot="label"` and one of `slot="description"` needs `hasLabel` and `hasDescription`, and `textValue` sets what the Button shows and what typing matches.
 
-```html demo SelectSectionsDemo
+```brm demo SelectSectionsDemo
 
 ```
 
@@ -168,7 +168,7 @@ A `ListBoxSection` with a `Header` groups the items. An item with a `Text` of `s
 
 The server does not know the text of a key that the Select starts with, so the HTML shows the key until the code loads. `render`, a `#template`, names the selection in the HTML too. It gets `selectedKey`, `selectedText` and `isPlaceholder`.
 
-```html
+```brm
 <Button><SelectValue render=sizeName /></Button>
 
 #template sizeName(state) {

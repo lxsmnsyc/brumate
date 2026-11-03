@@ -6,7 +6,7 @@ summary: A dialog over the page, which it locks.
 
 A dialog over the page, which the user deals with before they go on, such as a confirmation.
 
-```html demo ModalDemo
+```brm demo ModalDemo
 
 ```
 
@@ -22,7 +22,7 @@ A dialog over the page, which the user deals with before they go on, such as a c
 
 ## Anatomy
 
-```html anatomy ModalAnatomy
+```brm anatomy ModalAnatomy
 `Button`: Opens the modal. It gets `aria-expanded`, and `aria-controls` while the modal is open.
 `ModalOverlay`: Covers the window and dims the page. Optional.
 `Modal`: The box over the overlay.
@@ -33,7 +33,7 @@ A dialog over the page, which the user deals with before they go on, such as a c
 
 The picture draws the trigger, the ModalOverlay, the Modal and the Dialog in place, open, each as a block of its own, so that each layer can carry a number. The real overlay opens in a layer at the end of the page, over the whole window, and the rest of the page is inert while it is open.
 
-```html
+```brm
 <DialogTrigger>
   <Button />
   <ModalOverlay>
@@ -95,7 +95,7 @@ The `ModalOverlay` is optional: a `Modal` renders one around itself. The `Dialog
 
 Inside a `DialogTrigger`, the trigger holds whether the modal is open. A modal with its own `isOpen` ignores the trigger:
 
-```html demo ModalStateDemo
+```brm demo ModalStateDemo
 
 ```
 
@@ -113,7 +113,7 @@ Style the overlay and the box with the data attributes above, such as `[data-clo
 
 This stylesheet styles the trigger, the Cancel button and the danger button in every state, the dim overlay, and the box, which scales in as the overlay fades in. Press Delete the draft, Tab through the two buttons, then press the dim area. Its tokens are at the top, and they follow the color scheme.
 
-```html styled ModalStyled
+```brm styled ModalStyled
 
 ```
 
@@ -123,7 +123,7 @@ This stylesheet styles the trigger, the Cancel button and the danger button in e
 
 A form in a modal can lose work, so this one guards itself. `isKeyboardDismissDisabled` follows the form: while the text differs from the saved one, Escape does nothing. Cancel then opens a second Modal over the first, and Escape closes only that one. The press on a clean form closes at once.
 
-```html demo ModalUnsavedDemo
+```brm demo ModalUnsavedDemo
 
 ```
 
@@ -131,7 +131,7 @@ A form in a modal can lose work, so this one guards itself. `isKeyboardDismissDi
 
 A modal needs no trigger. When the work ends, the code sets the signal that `isOpen` is bound to. This one opens when a slow action is done. The pending Button keeps its focus, and the modal gives focus back to it when it closes.
 
-```html demo ModalPublishDemo
+```brm demo ModalPublishDemo
 
 ```
 

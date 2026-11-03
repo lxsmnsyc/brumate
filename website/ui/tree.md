@@ -6,11 +6,11 @@ summary: Rows that nest and open and close, such as files in folders.
 
 Rows that nest, open and close, such as the folders and files of a file browser, which the user can select and act on.
 
-```html demo TreeDemo
+```brm demo TreeDemo
 
 ```
 
-```html
+```brm
 <Tree aria-label="Files" items=files item=file selectedKeys=$bind(picked) expandedKeys=$bind(open) selectionMode="multiple" />
 
 #template file(file) {
@@ -31,14 +31,14 @@ Rows that nest, open and close, such as the folders and files of a file browser,
 
 ## Anatomy
 
-```html anatomy TreeAnatomy
+```brm anatomy TreeAnatomy
 `Tree`: Holds the rows and moves focus between them. It is named by `aria-label` or `aria-labelledby`.
 `TreeItem`: One row. Its level, its place in the list and, with children, whether it is open are on the row.
 `Button` with `slot="chevron"`: Opens and closes the row.
 `Checkbox` with `slot="selection"`: Selects the row.
 ```
 
-```html
+```brm
 <Tree>
   <TreeItem>
     <Button slot="chevron" />
@@ -101,7 +101,7 @@ Right to left, Left and Right turn around.
 
 `expandedKeys` holds the keys of the open items, and `selectedKeys` the keys of the selected rows. `expandedKeys=(['docs'])` and `selectedKeys=(['a'])` start the tree's own state, and `$bind(signal)` writes your signal. `onExpandedChange` and `onSelectionChange` get the keys after each change. The children of a closed item do not render. See [State](./state.md).
 
-```html demo TreeStateDemo
+```brm demo TreeStateDemo
 
 ```
 
@@ -117,7 +117,7 @@ Style a row with the data attributes above, such as `[data-expanded]` and `[data
 
 This stylesheet styles a row at rest, on hover, on press, selected, with keyboard focus and disabled, the indent by level, and the chevron, which turns while the row is open and flips right to left. Its tokens are at the top, and they follow the color scheme. Tab into the tree, then use the arrow keys. `old.ts` is disabled.
 
-```html styled TreeStyled
+```brm styled TreeStyled
 
 ```
 
@@ -127,7 +127,7 @@ This stylesheet styles a row at rest, on hover, on press, selected, with keyboar
 
 With no selection, `onAction` gets the key of the row that Enter or a press acts on. A row with children still opens with the chevron and with Right. Without `onAction` and with nothing selectable, Enter and a press open and close a row, so give the tree an action only when the rows do something.
 
-```html demo TreeBrowserDemo
+```brm demo TreeBrowserDemo
 
 ```
 
@@ -135,7 +135,7 @@ With no selection, `onAction` gets the key of the row that Enter or a press acts
 
 A single selection with `disallowEmptySelection` always holds one folder. The caller writes `expandedKeys` too, so a button can open every row. The Save button reads the signal, so the choice outlives the tree.
 
-```html demo TreeFolderDemo
+```brm demo TreeFolderDemo
 
 ```
 

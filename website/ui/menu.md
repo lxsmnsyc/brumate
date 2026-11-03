@@ -6,11 +6,11 @@ summary: Actions and options that open from a button, with submenus.
 
 A list of actions or options that opens from a button, with the keyboard, a pointer or a screen reader.
 
-```html demo MenuDemo
+```brm demo MenuDemo
 
 ```
 
-```html
+```brm
 <MenuTrigger>
   <Button>Edit</Button>
   <Popover>
@@ -30,7 +30,7 @@ A list of actions or options that opens from a button, with the keyboard, a poin
 
 ## Anatomy
 
-```html anatomy MenuAnatomy
+```brm anatomy MenuAnatomy
 `Button`: Opens the menu. It gets `aria-haspopup="menu"`, `aria-expanded` and `aria-controls`.
 `Popover`: Places the menu by its trigger and closes it on a press outside.
 `Menu`: Holds the items and moves focus between them. It is named by the Button.
@@ -45,7 +45,7 @@ A list of actions or options that opens from a button, with the keyboard, a poin
 `Menu`: The menu of the submenu.
 ```
 
-```html
+```brm
 <MenuTrigger>
   <Button />
   <Popover>
@@ -137,7 +137,7 @@ These are the attributes of a `MenuItem`. The `Button` of the trigger shows [its
 
 `isOpen` on the `MenuTrigger` holds whether the menu is open, and `selectedKeys` on the `Menu` holds the checked items of a menu with `selectionMode`. Both take the shapes of [State](./state.md):
 
-```html demo MenuStateDemo
+```brm demo MenuStateDemo
 
 ```
 
@@ -154,7 +154,7 @@ Style an item with the data attributes above, such as `[data-focused]` and `[dat
 
 This stylesheet styles the trigger, the popover and every state of an item: rest, hover and focus, press, keyboard focus, checked, an open submenu and disabled. Its tokens are at the top, and they follow the color scheme. Press Edit, then use the arrow keys, and Right on Share.
 
-```html styled MenuStyled
+```brm styled MenuStyled
 
 ```
 
@@ -164,7 +164,7 @@ This stylesheet styles the trigger, the popover and every state of an item: rest
 
 Each row has its own `MenuTrigger`. The `onAction` of the Menu gets the key of the item, and the handler changes the list of the rows. The Button needs an `aria-label` that names the row, since the same word is on every row. After an action, focus goes back to the Button of that row. After Delete the row and its Button are gone, so focus goes to the page.
 
-```html demo MenuRowDemo
+```brm demo MenuRowDemo
 
 ```
 
@@ -172,7 +172,7 @@ Each row has its own `MenuTrigger`. The `onAction` of the Menu gets the key of t
 
 A Menu with `selectionMode="multiple"` keeps the menu open after a press, so several items can change. A single selection closes it. `disallowEmptySelection` keeps one item checked.
 
-```html demo MenuViewDemo
+```brm demo MenuViewDemo
 
 ```
 
@@ -204,7 +204,7 @@ A Menu with `selectionMode="multiple"` keeps the menu open after a press, so sev
 
 A `SubmenuTrigger` holds a `MenuItem` and a `Popover` with the Menu of the submenu.
 
-```html
+```brm
 <SubmenuTrigger>
   <MenuItem id="share">Share</MenuItem>
   <Popover>

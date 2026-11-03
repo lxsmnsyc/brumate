@@ -6,7 +6,7 @@ summary: A labeled input, checked by the browser.
 
 A field of a `Label`, an `Input` or a `TextArea`, a description and a `FieldError`. It gives each part its ID, so the label names the input, and the description and the errors describe it.
 
-```html demo TextFieldDemo
+```brm demo TextFieldDemo
 
 ```
 
@@ -17,7 +17,7 @@ A field of a `Label`, an `Input` or a `TextArea`, a description and a `FieldErro
 
 ## Anatomy
 
-```html anatomy TextFieldAnatomy
+```brm anatomy TextFieldAnatomy
 `TextField`: Holds the parts, gives them their IDs and shows the state of the field.
 `Label`: Names the input.
 `Input`: The text. A `TextArea` takes its place for several lines.
@@ -25,7 +25,7 @@ A field of a `Label`, an `Input` or a `TextArea`, a description and a `FieldErro
 `FieldError`: Shows while the field is invalid. The picture forces it with `isInvalid`.
 ```
 
-```html
+```brm
 <TextField>
   <Label />
   <Input />
@@ -114,7 +114,7 @@ An `Input` or a `TextArea` takes the attributes of its element, and those that y
 
 `value` holds the text. How you pass it picks who keeps it:
 
-```html demo TextFieldStateDemo
+```brm demo TextFieldStateDemo
 
 ```
 
@@ -131,7 +131,7 @@ Style the field, its input and its error with the data attributes above, such as
 
 This stylesheet styles rest, hover, keyboard focus as two bands, invalid, read only and disabled, the description and the error. Press Send with the email empty. The browser blocks the form and the `FieldError` shows its message.
 
-```html styled TextFieldStyled
+```brm styled TextFieldStyled
 
 ```
 
@@ -141,7 +141,7 @@ This stylesheet styles rest, hover, keyboard focus as two bands, invalid, read o
 
 A field bound to a signal gives the page the text as the user types. The list is a memo of it.
 
-```html demo TextFieldFilterDemo
+```brm demo TextFieldFilterDemo
 
 ```
 
@@ -149,7 +149,7 @@ A field bound to a signal gives the page the text as the user types. The list is
 
 A `TextArea` takes the place of the `Input`. `maxLength` stops the box at the limit, and the count under it is a memo of the signal.
 
-```html demo TextFieldCounterDemo
+```brm demo TextFieldCounterDemo
 
 ```
 
@@ -164,7 +164,7 @@ With the default `validationBehavior="native"`, the browser checks the field whe
 
 With `validationBehavior="aria"`, `validate` shows its errors at once, and the form is never blocked:
 
-```html demo ValidateDemo
+```brm demo ValidateDemo
 
 ```
 
@@ -174,7 +174,7 @@ A [Form](./form.md) sets the default for its fields, and gives them the errors o
 
 `field` takes a field of [`createForm`](../docs/forms.md#forms-with-createform): its name, ID, posted value and errors, and the ID and `role="alert"` of its error.
 
-```html
+```brm
 <form action=save {...attrs}>
   <TextField field=(fields.email) type="email">
     <Label>Email</Label>

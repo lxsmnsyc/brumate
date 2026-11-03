@@ -6,7 +6,7 @@ summary: A locale and its direction for the parts.
 
 Gives the parts inside it a locale and its direction.
 
-```html demo I18nProviderDemo
+```brm demo I18nProviderDemo
 
 ```
 
@@ -32,7 +32,7 @@ An `I18nProvider` renders no element, so it has nothing to style. Put `lang` and
 
 The Meter formats its value in the locale, and the direction comes from the element that you put `dir` on. One `I18nProvider` takes the locale from a signal, so a button that sets the signal changes the format of the Meter.
 
-```html demo I18nProviderLocaleDemo
+```brm demo I18nProviderLocaleDemo
 
 ```
 
@@ -42,7 +42,7 @@ The date parts read their words from the locale: the placeholders of the segment
 
 The server looks up the table once and writes only that language into the page, so the browser never loads the other languages. To use your own words, pass the whole set as `strings`. Start from `getDateStrings` to change a few:
 
-```html
+```brm
 <script>
   import { getDateStrings } from '@brumate/ui/date-strings.ts';
 

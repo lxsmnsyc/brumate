@@ -6,11 +6,11 @@ summary: Rows with buttons and checkboxes, to select and act on.
 
 A list of rows that can hold buttons, checkboxes and links, which the user can select and act on.
 
-```html demo GridListDemo
+```brm demo GridListDemo
 
 ```
 
-```html
+```brm
 <GridList aria-label="Files" selectionMode="multiple" selectedKeys=$bind(picked)>
   #for (file of files by file) {
     <GridListItem id=file textValue=file>
@@ -30,7 +30,7 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 
 ## Anatomy
 
-```html anatomy GridListAnatomy
+```brm anatomy GridListAnatomy
 `GridList`: Holds the rows and the selection. It is a `grid`, takes one stop of Tab, and needs `aria-label`.
 `GridListItem`: One row, with one cell. Its `id` is its key, and it shows `data-selected` when it is selected.
 `Checkbox` with `slot="selection"`: Shows whether the row is selected, and toggles it. Optional.
@@ -38,7 +38,7 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 `Button`: Any other control in the row. Its press is its own and does not select the row.
 ```
 
-```html
+```brm
 <GridList>
   <GridListItem>
     <Checkbox slot="selection" />
@@ -104,7 +104,7 @@ The Checkbox with `slot="selection"` and the Button with `slot="drag"` are optio
 
 `selectedKeys` holds the keys of the selected rows, as a list. How you pass it picks who keeps it:
 
-```html demo GridListStateDemo
+```brm demo GridListStateDemo
 
 ```
 
@@ -120,7 +120,7 @@ Style a row with the data attributes above, such as `[data-selected]` and `[data
 
 This stylesheet styles every state of a row: rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled, with the Checkbox and the Button in it. Its tokens are at the top, and they follow the color scheme. Tab to the list, press the arrow keys and Space, then Right to reach the Button.
 
-```html styled GridListStyled
+```brm styled GridListStyled
 
 ```
 
@@ -130,7 +130,7 @@ This stylesheet styles every state of a row: rest, hover, press, keyboard focus,
 
 A Checkbox with `slot="selection"` selects a row, and a Button in the row acts on that row alone. The button above the list acts on the selected rows. Both remove keys from the data. The GridList keeps the keys that you give it, so the demo also drops them from the bound selection, and the signal keeps no key of a row that is gone.
 
-```html demo GridListBulkDemo
+```brm demo GridListBulkDemo
 
 ```
 
@@ -138,7 +138,7 @@ A Checkbox with `slot="selection"` selects a row, and a Button in the row acts o
 
 With no `selectionMode`, a press or Enter on a row acts: `onAction` gets its key. `onReorder` lets the rows move, by a pointer drag or from the keys with the Button of `slot="drag"`: press it, choose the place with Up and Down, and drop with Enter. `moveKeys` of the [data helpers](./data.md) moves the keys in the list of your data.
 
-```html demo GridListPlaylistDemo
+```brm demo GridListPlaylistDemo
 
 ```
 
@@ -156,7 +156,7 @@ With `onReorder`, the Button with `slot="drag"` starts a drag from the keys. The
 
 Pass `items` and an `item` template that renders a `GridListItem` for each. The template's parameter takes its type from `items`.
 
-```html
+```brm
 <GridList aria-label="Files" items=files item=row />
 
 #template row(item) {
@@ -182,7 +182,7 @@ The GridList is a grid, and each GridListItem is a row with one cell. A press on
 
 Rows drag to new places with `onReorder`, and out of the list, such as to a [DropZone](./drop-zone.md), with `getItems`.
 
-```html
+```brm
 <GridList aria-label="Files" onReorder=reorder getItems=((keys) => keys.map((key) => ({ 'text/plain': key })))>
   #for (file of files by file) {
     <GridListItem id=file textValue=file>

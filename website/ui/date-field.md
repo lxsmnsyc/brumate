@@ -6,11 +6,11 @@ summary: A date that the user types segment by segment.
 
 A date that the user types segment by segment.
 
-```html demo DateFieldDemo
+```brm demo DateFieldDemo
 
 ```
 
-```html
+```brm
 <DateField value=$bind(birthday)>
   <Label>Birthday</Label>
   <DateInput />
@@ -28,7 +28,7 @@ A date that the user types segment by segment.
 
 ## Anatomy
 
-```html anatomy DateFieldAnatomy
+```brm anatomy DateFieldAnatomy
 `DateField`: The field and its state. It shows `data-invalid`, `data-required` and the other states.
 `Label`: Names the group of segments.
 `DateInput`: The group that holds the segments and the text between them.
@@ -37,7 +37,7 @@ A date that the user types segment by segment.
 `FieldError`: Shows the message of an invalid field. Optional.
 ```
 
-```html
+```brm
 <DateField>
   <Label />
   <DateInput>
@@ -121,7 +121,7 @@ The keys act on the segment that has focus. A segment takes none of them while t
 
 `value` holds the date as `YYYY-MM-DD`, or `null` until every segment is set. How you pass it picks who keeps it. Change a field below and press Reset the form:
 
-```html demo DateFieldStateDemo
+```brm demo DateFieldStateDemo
 
 ```
 
@@ -140,7 +140,7 @@ Style the segments with `data-type`, `data-placeholder` and `data-focused`, and 
 
 A segment shows `data-hovered` and `data-focus-visible`. This stylesheet draws the input as a box with its segments in rest, placeholder, focus, invalid and disabled, and the description and the error. Press Save with no date to see the error.
 
-```html styled DateFieldStyled
+```brm styled DateFieldStyled
 
 ```
 
@@ -150,7 +150,7 @@ A segment shows `data-hovered` and `data-focus-visible`. This stylesheet draws t
 
 `isRequired` makes the browser check the field on a submit, and the FieldError shows the message. `minValue` and `maxValue` make a date outside them invalid, and the browser does not submit the form with one: the FieldError shows its message. `name` posts the date as `YYYY-MM-DD`, and Reset gives back the first date.
 
-```html demo DateFieldFormDemo
+```brm demo DateFieldFormDemo
 
 ```
 
@@ -158,7 +158,7 @@ A segment shows `data-hovered` and `data-focus-visible`. This stylesheet draws t
 
 An [I18nProvider](./i18n-provider.md) gives the order of the segments, the text between them, the placeholders and the names that a screen reader hears. Three providers give three locales to one signal. Empty a segment with Backspace to see its placeholder: the value becomes empty until every segment is set again, and a set value is always `YYYY-MM-DD`:
 
-```html demo DateFieldLocaleDemo
+```brm demo DateFieldLocaleDemo
 
 ```
 
@@ -167,7 +167,7 @@ An [I18nProvider](./i18n-provider.md) gives the order of the segments, the text 
 - The `DateInput` is a group that the Label names. It holds a `DateSegment` for the month, the day and the year, in the order of the locale of an [I18nProvider](./i18n-provider.md), with the text between them.
 - Pass `segment`, a `#template` that gets each segment, to render your own:
 
-```html
+```brm
 <script>
   import type { Segment } from '@brumate/ui/segments.ts';
 </script>

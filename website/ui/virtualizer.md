@@ -6,11 +6,11 @@ summary: Thousands of rows that render as they come into view.
 
 A box that scrolls a long collection, such as thousands of rows, and renders only the rows in view.
 
-```html demo VirtualizerDemo
+```brm demo VirtualizerDemo
 
 ```
 
-```html
+```brm
 <Virtualizer rowHeight=(32) style="height: 300px">
   <Tree aria-label="Photos" items=files item=file />
 </Virtualizer>
@@ -23,12 +23,12 @@ A box that scrolls a long collection, such as thousands of rows, and renders onl
 
 ## Anatomy
 
-```html anatomy VirtualizerAnatomy
+```brm anatomy VirtualizerAnatomy
 `Virtualizer`: A box that scrolls. It gives the collection inside its height and renders only the rows in view.
 `Tree`: The collection. A GridList, a ListBox or a Table goes here too.
 ```
 
-```html
+```brm
 <Virtualizer>
   <Tree />
 </>
@@ -62,7 +62,7 @@ The Virtualizer is a `div` with `overflow: auto`. Give it a `height`, such as `s
 
 This stylesheet styles the box and the rows in it: the height and border of the box, a border that takes the accent while focus is inside, and a row at rest, on hover, on press, selected and with keyboard focus. A row sets its own height to `rowHeight`. Its tokens are at the top, and they follow the color scheme. Scroll, or Tab into the list and press End.
 
-```html styled VirtualizerStyled
+```brm styled VirtualizerStyled
 
 ```
 
@@ -72,7 +72,7 @@ This stylesheet styles the box and the rows in it: the height and border of the 
 
 A ListBox with `items` renders about twenty of 10000 options. `getTextValue` lets letters reach options that are not in view, and the selection holds a key, so it survives a scroll. Press End, then type a letter.
 
-```html demo VirtualizerPickDemo
+```brm demo VirtualizerPickDemo
 
 ```
 
@@ -80,7 +80,7 @@ A ListBox with `items` renders about twenty of 10000 options. `getTextValue` let
 
 A `#for` with `window(32)` renders only the rows in view of rows that you write out, such as the lines of a log. The Table has no `items`, so its keys move between the rows that render, and a move to the edge of the view scrolls it.
 
-```html demo VirtualizerWindowDemo
+```brm demo VirtualizerWindowDemo
 
 ```
 
@@ -88,7 +88,7 @@ A `#for` with `window(32)` renders only the rows in view of rows that you write 
 
 A [GridList](./grid-list.md), a [ListBox](./list-box.md) or a [Table](./table.md) takes `items`, as a Tree does, and renders only the rows in view when it is in a Virtualizer:
 
-```html
+```brm
 <Virtualizer rowHeight=(32) style="height: 300px">
   <ListBox aria-label="Files" items=files item=file getTextValue=((file) => file.name) />
 </Virtualizer>
@@ -98,7 +98,7 @@ A Table takes `items` and `getTextValue`, and its `TableBody` takes `item`. The 
 
 Rows that you write out or render from a `#for` of your own have no data to read. Give the `#for` `window(height)`, and it renders only the rows in view, in the box that scrolls:
 
-```html
+```brm
 <Virtualizer style="height: 300px">
   <Table aria-label="Files">
     <TableHeader>…</TableHeader>

@@ -6,7 +6,7 @@ summary: A keyboard shortcut.
 
 A keyboard shortcut, as a `<kbd>`.
 
-```html demo KeyboardDemo
+```brm demo KeyboardDemo
 
 ```
 
@@ -33,6 +33,6 @@ Style the `<kbd>` by its class or the `kbd` selector. See [Styling](./styling.md
 
 The page is `dir="rtl"`, and each shortcut still reads `Ctrl`, then the letter, left to right.
 
-```html demo KeyboardListDemo
+```brm demo KeyboardListDemo
 
 ```

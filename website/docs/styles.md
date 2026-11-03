@@ -2,7 +2,7 @@
 
 A `<style>` block holds CSS for its component. Its selectors match only the elements of that component, so class names never clash between components.
 
-```html live
+```brm live
 <p class="note">This note is styled by its component.</p>
 
 <style>
@@ -46,7 +46,7 @@ Every selector in a `<style>` block matches only elements that the component its
 
 A `<style global>` block holds rules that are not scoped, so a stylesheet of many unscoped selectors needs no `:global(…)` around each one:
 
-```html
+```brm
 <style global>
   body {
     margin: 0;
@@ -75,7 +75,7 @@ A `<style global>` block holds rules that are not scoped, so a stylesheet of man
 
 `${expression}` in CSS reads a value of the component. When the value changes in the browser, the style changes with it.
 
-```html live
+```brm live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -128,7 +128,7 @@ The first keeps each component in charge of its own look, so it is the easiest t
 
 `lang="scss"` or `lang="less"` compiles the block with Sass or Less first:
 
-```html
+```brm
 <style lang="scss">
   $gap: 4px;
 
@@ -151,7 +151,7 @@ The first keeps each component in charge of its own look, so it is the easiest t
 
 Styles that apply to the whole site, such as a reset or fonts, go in the root layout. Two simple ways:
 
-```html
+```brm
 <!-- src/routes/_layout.brm: inline the file, so it arrives with the first byte of the page -->
 <script>
   import { $props } from 'brumate/signals';
@@ -169,7 +169,7 @@ Styles that apply to the whole site, such as a reset or fonts, go in the root la
 </html>
 ```
 
-```html
+```brm
 <!-- Or serve the file from public/ and link it -->
 <link rel="stylesheet" href="/site.css">
 ```

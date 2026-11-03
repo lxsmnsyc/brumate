@@ -6,11 +6,11 @@ summary: A field for a color, as hex or as one channel.
 
 A field for a color, as hex or as one channel.
 
-```html demo ColorFieldDemo
+```brm demo ColorFieldDemo
 
 ```
 
-```html
+```brm
 <ColorField value=$bind(accent)>
   <Label>Accent</Label>
   <Input />
@@ -32,7 +32,7 @@ A field for a color, as hex or as one channel.
 
 ## Anatomy
 
-```html anatomy ColorFieldAnatomy
+```brm anatomy ColorFieldAnatomy
 `ColorField`: The field. It shows `data-channel`, `data-invalid` and the other states.
 `Label`: Names the input.
 `Input`: Holds the text. The keys step the color, and leaving it commits the text.
@@ -40,7 +40,7 @@ A field for a color, as hex or as one channel.
 `FieldError`: Shows the message of an invalid field. Optional.
 ```
 
-```html
+```brm
 <ColorField>
   <Label />
   <Input />
@@ -87,7 +87,7 @@ The keys act while the input has focus. A key with Shift, Ctrl, Alt or Meta is l
 
 `value` holds a color of CSS, or `null` when the field is empty. How you pass it picks who keeps it. Change a field below and press Reset the form:
 
-```html demo ColorFieldStateDemo
+```brm demo ColorFieldStateDemo
 
 ```
 
@@ -106,7 +106,7 @@ Style the field with the data attributes above. The `Input` and the `Label` are 
 
 This stylesheet styles the input in rest, hover, keyboard focus, invalid and disabled, the description and the error, and a swatch beside the field. Clear the first field and press Save to see the error.
 
-```html styled ColorFieldStyled
+```brm styled ColorFieldStyled
 
 ```
 
@@ -116,7 +116,7 @@ This stylesheet styles the input in rest, hover, keyboard focus, invalid and dis
 
 Fields with a `channel` and `colorSpace="rgb"` edit one number each, and the hex field edits all three. They share one `$bind` signal, so a change in one shows in the others.
 
-```html demo ColorFieldChannelsDemo
+```brm demo ColorFieldChannelsDemo
 
 ```
 
@@ -124,7 +124,7 @@ Fields with a `channel` and `colorSpace="rgb"` edit one number each, and the hex
 
 `isRequired` makes the browser check the hex field, and the FieldError shows the message. `name` sends the hex as the input reads it, and for a channel field the value of the channel, such as the opacity here. Reset gives back the first values.
 
-```html demo ColorFieldFormDemo
+```brm demo ColorFieldFormDemo
 
 ```
 

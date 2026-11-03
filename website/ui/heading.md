@@ -25,6 +25,6 @@ A `Heading` sets no data attributes. A part that holds it can give it attributes
 
 `slot="title"` makes the Heading the name of the [Dialog](./dialog.md), and `level` places it in the outline of the page. Here the page has an `h2`, so the title is a level 3. Without `level`, it is a 3 anyway.
 
-```html demo HeadingDialogDemo
+```brm demo HeadingDialogDemo
 
 ```

@@ -4,7 +4,7 @@ A component is a `.brm` file. It has scripts for its state and logic, an optiona
 
 ## The parts of a file
 
-```html
+```brm
 <script module>
   // Runs once, when the module loads. Its exports can be imported by other files.
   export const MAX = 10;
@@ -39,7 +39,7 @@ The compile-time functions, such as `$signal` and `$props`, come from `brumate/s
 
 Import the file, and render it with a capitalized tag. Attributes are its props:
 
-```html live
+```brm live
 <script>
   import Greeting from './Greeting.brm';
 </script>
@@ -48,7 +48,7 @@ Import the file, and render it with a capitalized tag. Attributes are its props:
 <Greeting name="Grace" excited=(true) />
 ```
 
-```html live Greeting.brm
+```brm live Greeting.brm
 <script>
   import { $props } from 'brumate/signals';
 
@@ -80,7 +80,7 @@ const { title, size = 'medium', ...rest } = $props<{
 
 A prop changes in the browser only when the parent passes a value that can change there, such as a signal. The compiler finds these props across the project, so a prop that every parent passes as a constant ships no update code.
 
-```html live
+```brm live
 <script>
   import { $signal } from 'brumate/signals';
   import Meter from './Meter.brm';
@@ -92,7 +92,7 @@ A prop changes in the browser only when the parent passes a value that can chang
 <Meter value=level max=(5) />
 ```
 
-```html live Meter.brm
+```brm live Meter.brm
 <script>
   import { $props } from 'brumate/signals';
 
@@ -107,7 +107,7 @@ A prop changes in the browser only when the parent passes a value that can chang
 
 Destructure `$props()` with `let` to write a prop. `$bind` in the parent passes its own value, so the child's writes change it.
 
-```html live
+```brm live
 <script>
   import { $bind, $signal } from 'brumate/signals';
   import Toggle from './Toggle.brm';
@@ -120,7 +120,7 @@ Destructure `$props()` with `let` to write a prop. `$bind` in the parent passes 
 <Toggle label="Own copy" on=open />
 ```
 
-```html live Toggle.brm
+```brm live Toggle.brm
 <script>
   import { $props } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
@@ -142,7 +142,7 @@ Destructure `$props()` with `let` to write a prop. `$bind` in the parent passes 
 
 A part such as a dialog keeps its own state, or writes the state of its caller. A `let` prop does both, so the caller picks:
 
-```html
+```brm
 <script>
   import { $props } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
@@ -179,7 +179,7 @@ A bare `ref=input` is a compile error (BRM027): write `ref=$bind(input)`.
 
 A component that renders an element for its caller can pass the element on. It declares `ref` as a bindable prop, and puts `ref=$bind(ref)` on the element:
 
-```html live
+```brm live
 <script>
   import { $bind, $signal } from 'brumate/signals';
   import FancyButton from './FancyButton.brm';
@@ -191,7 +191,7 @@ A component that renders an element for its caller can pass the element on. It d
 <button onClick=(() => button!.focus())>Focus the button</button>
 ```
 
-```html live FancyButton.brm
+```brm live FancyButton.brm
 <script>
   import { $props } from 'brumate/signals';
   import type { Bindable } from 'brumate/signals';
@@ -214,7 +214,7 @@ A component that renders an element for its caller can pass the element on. It d
 
 A component cannot write the signals of its parent. To let a child change a value, the parent passes a function that writes it:
 
-```html live
+```brm live
 <script>
   import { $signal } from 'brumate/signals';
   import Stepper from './Stepper.brm';
@@ -226,7 +226,7 @@ A component cannot write the signals of its parent. To let a child change a valu
 <p>You are buying {quantity}.</p>
 ```
 
-```html live Stepper.brm
+```brm live Stepper.brm
 <script>
   import { $props } from 'brumate/signals';
 
@@ -246,7 +246,7 @@ A component cannot write the signals of its parent. To let a child change a valu
 
 A handler that the caller passes, such as `onClick`, goes through `{...rest}` to the element, with its wrappers of `brumate/events`. The element keeps its own handlers too, and both run, its own first:
 
-```html
+```brm
 <!-- Button.brm -->
 <script>
   import { $props, $signal } from 'brumate/signals';
@@ -258,7 +258,7 @@ A handler that the caller passes, such as `onClick`, goes through `{...rest}` to
 <button onClick=(() => pressed++) {...rest}>{label}</button>
 ```
 
-```html
+```brm
 <Button label="Save" onClick=(prevent(save)) />
 ```
 
@@ -270,7 +270,7 @@ A handler that the caller passes, such as `onClick`, goes through `{...rest}` to
 
 A function in a script is not a handler until markup uses it, so a spread leaves it out. `$handler(fn, ...args)` from `brumate/signals` marks it as one. A function that makes the attributes of a button can then give its handler too:
 
-```html live
+```brm live
 <script>
   import { $handler, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -304,7 +304,7 @@ A function in a script is not a handler until markup uses it, so a spread leaves
 
 Markup between the tags of a component is its `children` prop. Insert it with `{children}`:
 
-```html live
+```brm live
 <script>
   import { $signal } from 'brumate/signals';
   import Panel from './Panel.brm';
@@ -318,7 +318,7 @@ Markup between the tags of a component is its `children` prop. Insert it with `{
 </Panel>
 ```
 
-```html live Panel.brm
+```brm live Panel.brm
 <script>
   import { $props, $signal } from 'brumate/signals';
 
@@ -343,7 +343,7 @@ Markup between the tags of a component is its `children` prop. Insert it with `{
 
 A `#template` is a piece of markup with parameters. Pass one as a prop to let a component render your markup for its own data:
 
-```html live
+```brm live
 <script>
   import List from './List.brm';
 
@@ -357,7 +357,7 @@ A `#template` is a piece of markup with parameters. Pass one as a prop to let a 
 }
 ```
 
-```html live List.brm
+```brm live List.brm
 <script>
   import { $props } from 'brumate/signals';
 
@@ -387,7 +387,7 @@ A prop can be a promise. See [Promises as props](./async-data.md#promises-as-pro
 
 `generics` on the instance script declares type parameters, so the props of a component can depend on each other:
 
-```html
+```brm
 <script generics="T">
   import { $props } from 'brumate/signals';
 

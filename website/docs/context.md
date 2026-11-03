@@ -2,7 +2,7 @@
 
 A context passes a value from a component to every component inside it, without props. It suits values that many components read, such as a theme, the current user or a language.
 
-```html live
+```brm live
 <script>
   import { $setContext, $signal } from 'brumate/signals';
   import Toolbar from './Toolbar.brm';
@@ -16,7 +16,7 @@ A context passes a value from a component to every component inside it, without 
 <Toolbar />
 ```
 
-```html live Toolbar.brm
+```brm live Toolbar.brm
 <script>
   import Badge from './Badge.brm';
 </script>
@@ -24,7 +24,7 @@ A context passes a value from a component to every component inside it, without 
 <p>The toolbar does not read the theme. <Badge /></p>
 ```
 
-```html live Badge.brm
+```brm live Badge.brm
 <script>
   import { $getContext } from 'brumate/signals';
   import { Theme } from './theme.ts';
@@ -87,7 +87,7 @@ const locale = $getContext(Locale);
 
 A component cannot assign to a value that it reads from a context. The component that provides it can give functions that change it, and any component below can call them:
 
-```html live
+```brm live
 <script>
   import { $setContext, $signal } from 'brumate/signals';
   import { Counter } from './counter.ts';
@@ -108,7 +108,7 @@ A component cannot assign to a value that it reads from a context. The component
 <Buttons />
 ```
 
-```html live Buttons.brm
+```brm live Buttons.brm
 <script>
   import { $getContext } from 'brumate/signals';
   import { Counter } from './counter.ts';

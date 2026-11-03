@@ -6,7 +6,7 @@ A form can post to a server function. It works before any script loads, and with
 
 Set the `action` of the form to a server function. The function gets the `FormData` of the form.
 
-```html
+```brm
 <script>
   async function subscribe(form: FormData) {
     'use server';
@@ -36,7 +36,7 @@ What happens when the form is sent:
 
 A form often needs the answer of its function, such as an error to show next to a field. `$action(fn)` holds the latest result of a server function that a form of this component posts to.
 
-```html live
+```brm live
 <script module>
   // Kept in memory for the sample. A real app would use a database.
   const emails: string[] = [];
@@ -81,7 +81,7 @@ A form often needs the answer of its function, such as an error to show next to 
 
 `parseForm(schema, form)` from `brumate/server` turns the fields of a form into an object, and checks it with a [Standard Schema](https://standardschema.dev). It returns `{ value }` or `{ issues }`, and does not throw. `fieldErrors(issues)` groups the messages by field, for `$action` to show:
 
-```html live
+```brm live
 <script module>
   import type { StandardSchemaV1 } from 'brumate/server';
 
@@ -170,7 +170,7 @@ What `fieldErrors` returns:
 
 `createForm` from `brumate/forms` gives the attributes of a form and of its fields: names, IDs, the values that were posted, errors and their ARIA attributes, and buttons that add and remove the items of a list. Its server function reads the form with `parseSubmission` from `brumate/server`. The form works without scripts, and with scripts it posts without loading the page.
 
-```html
+```brm
 <script>
   import { createForm } from 'brumate/forms';
   import { parseSubmission } from 'brumate/server';
@@ -306,7 +306,7 @@ A function that throws a `ServerError` answers with its status and message. With
 
 A form with a file input sends its files to the function as `File` values in the `FormData`:
 
-```html
+```brm
 <script>
   async function upload(form: FormData) {
     'use server';
@@ -342,7 +342,7 @@ export const placeOrder = idempotent(async (form: FormData) => {
 });
 ```
 
-```html
+```brm
 <script>
   import { placeOrder } from '../orders.ts';
 </script>
@@ -364,7 +364,7 @@ After a form changes data, call `event.refresh(fn)` in its function with the ser
 
 `$optimistic(source)` follows a memo, and handlers can write it. The page shows the new value at once, and the server sends the real one after:
 
-```html
+```brm
 <script>
   import { $action, $memo, $optimistic } from 'brumate/signals';
   import { getEvent } from 'brumate/server';

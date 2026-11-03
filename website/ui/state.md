@@ -2,13 +2,13 @@
 
 A part with state has one prop for it, such as `isSelected` of a `Checkbox` or `value` of a `TextField`. How you pass it picks who keeps the state. The four shapes below are all live. Each checkbox holds its own copy, except the last two, which share your signal. Lock it and the last one stops taking changes.
 
-```html demo StateShapesDemo
+```brm demo StateShapesDemo
 
 ```
 
 ## The four shapes
 
-```html
+```brm
 <!-- The part keeps its own state, which starts off. -->
 <Checkbox>Subscribe</Checkbox>
 
@@ -41,7 +41,7 @@ There is no `defaultSelected` or `defaultValue`: a `let` prop of brumate already
 
 A `reset` of the form gives every form field the value that it started with. Change the name, then press Reset:
 
-```html demo StateFormDemo
+```brm demo StateFormDemo
 
 ```
 

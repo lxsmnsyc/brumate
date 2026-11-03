@@ -6,11 +6,11 @@ summary: Rows and columns that the user can select and sort.
 
 Rows and columns of data, which the user can move through with the keys, select and sort.
 
-```html demo TableDemo
+```brm demo TableDemo
 
 ```
 
-```html
+```brm
 <Table aria-label="Files" selectionMode="multiple" selectedKeys=$bind(picked) sortDescriptor=$bind(sort)>
   <TableHeader>
     <Column><Checkbox slot="selection" aria-label="Select all" /></Column>
@@ -38,7 +38,7 @@ Rows and columns of data, which the user can move through with the keys, select 
 
 ## Anatomy
 
-```html anatomy TableAnatomy
+```brm anatomy TableAnatomy
 `ResizableTableContainer`: Lets the columns resize and scrolls a Table that is wider than it.
 `Table`: Holds the header and the body. It is named by `aria-label` or `aria-labelledby`.
 `TableHeader`: Holds the columns.
@@ -51,7 +51,7 @@ Rows and columns of data, which the user can move through with the keys, select 
 `Checkbox` with `slot="selection"`: In a Cell, selects its row.
 ```
 
-```html
+```brm
 <ResizableTableContainer>
   <Table>
     <TableHeader>
@@ -186,7 +186,7 @@ Right to left, Left and Right turn around.
 
 `selectedKeys` holds the keys of the selected rows, and `sortDescriptor` holds the sort, `{ column, direction }`. `selectedKeys=(['a'])` and `sortDescriptor=({ column: 'name', direction: 'ascending' })` start the table's own state, and `$bind(signal)` writes your signal. `onSelectionChange` and `onSortChange` get each change. The Table does not reorder the rows: sort them by `sortDescriptor`. See [State](./state.md).
 
-```html demo TableStateDemo
+```brm demo TableStateDemo
 
 ```
 
@@ -202,7 +202,7 @@ Style a row with the data attributes above, such as `[data-selected]`, and a col
 
 This stylesheet styles a header at rest, on hover, on press and with keyboard focus, the arrow of the sorted column, the resizer, the rows (hover, selected, keyboard focus, disabled) and the Checkbox. Its tokens are at the top, and they follow the color scheme. Press a header to sort, drag the edge of Name, or use Tab and the arrow keys. Linus is disabled.
 
-```html styled TableStyled
+```brm styled TableStyled
 
 ```
 
@@ -212,7 +212,7 @@ This stylesheet styles a header at rest, on hover, on press and with keyboard fo
 
 Keep the rows in a signal and `selectedKeys` in another. A button reads the keys and changes the rows. A `$memo` can total the selected rows. After the action, clear the selection, since the keys of removed rows would stay in it.
 
-```html demo TableBulkDemo
+```brm demo TableBulkDemo
 
 ```
 
@@ -220,7 +220,7 @@ Keep the rows in a signal and `selectedKeys` in another. A button reads the keys
 
 Pass `items` to the Table and an `item` template to its `TableBody`, and put the Table in a [Virtualizer](./virtualizer.md). It renders about twenty rows of 3000, and sorting by `sortDescriptor` orders all of them. Press a header, then End to reach the last row.
 
-```html demo TableLargeDemo
+```brm demo TableLargeDemo
 
 ```
 
@@ -228,7 +228,7 @@ Pass `items` to the Table and an `item` template to its `TableBody`, and put the
 
 Pass `items` to the Table and an `item` template to its `TableBody`. The TableBody does not get the type of the items from the Table, so give the template's parameter a type, such as `item: File`.
 
-```html
+```brm
 <Table aria-label="Files" items=files>
   <TableHeader>…</TableHeader>
   <TableBody item=row />
@@ -269,11 +269,11 @@ The Table renders a `table` with `role="grid"`, a `thead` and a `tbody` with `ro
 
 ## Column resizing
 
-```html demo TableResizeDemo
+```brm demo TableResizeDemo
 
 ```
 
-```html
+```brm
 <ResizableTableContainer onResize=saveWidths>
   <Table aria-label="Files">
     <TableHeader>

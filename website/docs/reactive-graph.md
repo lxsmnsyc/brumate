@@ -6,7 +6,7 @@ The compiler decides what ships to the browser from a graph of what reads what, 
 
 This section follows one component from its source to a click that updates the page:
 
-```html
+```brm
 <script>
   import { $memo, $signal } from 'brumate/signals';
 
@@ -63,7 +63,7 @@ $$ctx.slots($$s1, [count, double], ["count", "double"]);
 
 The HTML of the page:
 
-```html
+```brm
 <h1>Clicks</h1>
 <button b-b="0:0" b-on="click=Counter_24o7ge#h4">+</button>
 <p><!--t0:1-->0<!--/t--> / <!--t0:2-->0<!--/t--></p>
@@ -76,7 +76,7 @@ The HTML of the page:
 
 The slots go into the page as a script:
 
-```html
+```brm
 <script b-state b-scopes b-next="1">…$bR(($R,$b)=>(({0:{k:1,m:"Counter_24o7ge",s:[0,0]}})))</script>
 ```
 

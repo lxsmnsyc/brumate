@@ -27,7 +27,7 @@ The code for this loads on the first navigation, so pages that never navigate do
 
 A link keeps the layouts that both pages share, with their markup and their state in the browser. Only the routes inside them are replaced.
 
-```html
+```brm
 <!-- src/routes/_layout.brm -->
 <script>
   import { $props, $signal } from 'brumate/signals';
@@ -57,7 +57,7 @@ A page starts to load when the pointer rests on its link, or when the link gets 
 
 Turn it off for a link that should not load early, such as a link that logs the user out:
 
-```html
+```brm
 <a href="/logout" data-prefetch="none">Log out</a>
 ```
 
@@ -71,7 +71,7 @@ The loader leaves a link to the browser, which loads a full page, when:
 - A key such as Ctrl, Shift or Cmd is held, or another mouse button is used, so the browser can open a new tab.
 - The link only changes the hash of the current page. The browser scrolls to the target.
 
-```html
+```brm
 <a href="/export.csv" download>Export</a>
 <a href="/dashboard" data-reload>Open the dashboard</a>
 ```
@@ -84,7 +84,7 @@ To turn client navigation off for the whole site, set `navigate: false` in the p
 
 `navigate(href, options)` from `brumate/routes` loads a page as a link does: the layouts that stay keep their state. It returns when the page shows.
 
-```html
+```brm
 <script>
   import { $signal } from 'brumate/signals';
   import { href, navigate } from 'brumate/routes';
@@ -107,7 +107,7 @@ To turn client navigation off for the whole site, set `navigate: false` in the p
 
 `$route()` from `brumate/signals` gives the route of the page: `url`, `search`, which is `url.searchParams`, and the `params` of the route. `$route('/issues/[id]')` types the params from the route files, as `href` does.
 
-```html
+```brm
 <script>
   import { $route } from 'brumate/signals';
   import { navigate } from 'brumate/routes';
@@ -127,7 +127,7 @@ To turn client navigation off for the whole site, set `navigate: false` in the p
 
 A filter, a tab or a page of results belongs in the URL, so it survives a reload and can be shared. `$searchParam(name, options)` from `brumate/signals` gives a signal bound to one parameter of the query string.
 
-```html
+```brm
 <script>
   import { $bind, $searchParam } from 'brumate/signals';
 
@@ -155,7 +155,7 @@ A filter, a tab or a page of results belongs in the URL, so it survives a reload
 
 `$navigation()` gives the navigation that loads: `{ pending, from, to }`, with `pending` false when none does. It is `{ pending: false }` on the server.
 
-```html
+```brm
 <script>
   import { $navigation } from 'brumate/signals';
 

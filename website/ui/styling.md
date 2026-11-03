@@ -2,7 +2,7 @@
 
 The parts render no CSS. Style them with classes and the `data-*` attributes of their state. This page styles one part of each kind in full, with the CSS beside the result.
 
-```html
+```brm
 <Button class="button">Save</Button>
 
 <style>
@@ -43,7 +43,7 @@ Each part lists its own attributes on its page.
 
 A button has rest, hover, press, keyboard focus, disabled and pending. Each is an attribute, so each is one rule. Press, tab and hover below.
 
-```html styled StylingButtonDemo
+```brm styled StylingButtonDemo
 
 ```
 
@@ -51,7 +51,7 @@ A button has rest, hover, press, keyboard focus, disabled and pending. Each is a
 
 The field holds the state of the group, and the `Input` holds its own. Style the border on the input and the label on the field. `data-invalid` comes from `isInvalid`, a failed `isRequired` or a server error, and `FieldError` shows only while it holds. Send the form empty to see it.
 
-```html styled StylingFieldDemo
+```brm styled StylingFieldDemo
 
 ```
 
@@ -59,7 +59,7 @@ The field holds the state of the group, and the `Input` holds its own. Style the
 
 A list has one rule for each state of an item. `data-focus-visible` is the ring of the keyboard, `data-hovered` never fires on touch, and `data-selected` is the choice. Select two items, then use the arrow keys.
 
-```html styled StylingListDemo
+```brm styled StylingListDemo
 
 ```
 
@@ -67,7 +67,7 @@ A list has one rule for each state of an item. `data-focus-visible` is the ring 
 
 An overlay renders in a layer at the end of `<body>`, so a rule that depends on a parent of the trigger does not reach it. Give the overlay its own class. `transition` on the Popover keeps it in the page while it leaves, and `data-closed` marks the closed look, so CSS animates both ways. The [Transition](./transition.md) page covers the steps.
 
-```html styled StylingOverlayDemo
+```brm styled StylingOverlayDemo
 
 ```
 
@@ -91,7 +91,7 @@ Check the contrast of text on the accent in both themes.
 
 A `Checkbox`, a `Radio` and a `Switch` hide their native input, which keeps working for screen readers and forms. Draw the box in the children, from the attributes of the label:
 
-```html
+```brm
 <Checkbox class="box">
   <span class="mark" aria-hidden="true"></span>
   Subscribe

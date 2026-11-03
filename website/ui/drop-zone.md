@@ -6,7 +6,7 @@ summary: An area that takes drops and pastes of text and files.
 
 An area that takes drops of text and files, and pastes from keyboard users.
 
-```html demo DropZoneDemo
+```brm demo DropZoneDemo
 
 ```
 
@@ -19,7 +19,7 @@ An area that takes drops of text and files, and pastes from keyboard users.
 
 ## Anatomy
 
-```html anatomy DropZoneAnatomy
+```brm anatomy DropZoneAnatomy
 `DropZone`: The area that takes drops. It holds a hidden button for keyboard focus and paste.
 `Text` with `slot="label"`: Names the hidden button. Optional.
 `Button`: Opens the file picker of the FileTrigger around it. Optional.
@@ -27,7 +27,7 @@ An area that takes drops of text and files, and pastes from keyboard users.
 
 The FileTrigger draws no element, so it has no number. The hidden button of the area is out of sight, so it has none either.
 
-```html
+```brm
 <DropZone>
   <Text slot="label" />
   <FileTrigger>
@@ -77,7 +77,7 @@ Style the area with the data attributes above, such as `[data-drop-target]` for 
 
 This stylesheet styles rest, hover, a drag over the area, keyboard focus and disabled. Drag a file over the first area, tab to it, or look at the second.
 
-```html styled DropZoneStyled
+```brm styled DropZoneStyled
 
 ```
 
@@ -87,7 +87,7 @@ This stylesheet styles rest, hover, a drag over the area, keyboard focus and dis
 
 `getDropOperation` looks at the types of the drag and returns `'cancel'` when none is an image, so the area shows no drop target for other files and the drop does nothing. The label follows `onDropEnter` and `onDropExit`. The Browse button picks images from the device for users who do not drag.
 
-```html demo DropZoneImagesDemo
+```brm demo DropZoneImagesDemo
 
 ```
 
@@ -95,6 +95,6 @@ This stylesheet styles rest, hover, a drag over the area, keyboard focus and dis
 
 A text item gives its text with `getText('text/plain')`. Select text on the page and drag it here. A keyboard user focuses the area and pastes, which drops the text of the clipboard with the `copy` operation.
 
-```html demo DropZoneNotesDemo
+```brm demo DropZoneNotesDemo
 
 ```

@@ -6,7 +6,7 @@ summary: A section that expands and collapses.
 
 A section that the user expands and collapses, such as a question of an FAQ.
 
-```html demo DisclosureDemo
+```brm demo DisclosureDemo
 
 ```
 
@@ -19,14 +19,14 @@ A section that the user expands and collapses, such as a question of an FAQ.
 
 ## Anatomy
 
-```html anatomy DisclosureAnatomy
+```brm anatomy DisclosureAnatomy
 `Disclosure`: Holds the state, and names the trigger and the panel to each other.
 `Heading`: Optional. Puts the trigger in a heading of the page.
 `Button`: The trigger, with `slot="trigger"`. It gets `aria-expanded` and `aria-controls`.
 `DisclosurePanel`: The content. It is hidden while the disclosure is collapsed.
 ```
 
-```html
+```brm
 <Disclosure>
   <Heading>
     <Button slot="trigger" />
@@ -83,7 +83,7 @@ The trigger shows the data attributes of a [Button](./button.md#data-attributes)
 
 `isExpanded` holds the state. How you pass it picks who keeps it:
 
-```html demo DisclosureStateDemo
+```brm demo DisclosureStateDemo
 
 ```
 
@@ -99,7 +99,7 @@ Style the disclosure and its panel with the data attributes above, such as `[dat
 
 This stylesheet makes a card list: rest, hover, press, a two-band focus ring, expanded, disabled, and a panel that grows from nothing to its height. Press Tab to see the ring.
 
-```html styled DisclosureStyled
+```brm styled DisclosureStyled
 
 ```
 
@@ -109,7 +109,7 @@ This stylesheet makes a card list: rest, hover, press, a two-band focus ring, ex
 
 `onExpandedChange` runs when the user opens the disclosure, so the page can know that the terms were opened. The Accept button waits for it. It is disabled only until then: a button that disables itself while it has focus drops focus to the page, so Accept stays enabled after it is pressed.
 
-```html demo DisclosureTermsDemo
+```brm demo DisclosureTermsDemo
 
 ```
 
@@ -117,7 +117,7 @@ This stylesheet makes a card list: rest, hover, press, a two-band focus ring, ex
 
 `unmount="offscreen"` takes the collapsed panel out of the page and keeps its state. Type an address, collapse the section and open it again: the field still holds the text. With the default `unmount={false}` the content stays in the page too, and find in page reaches it. Use `'offscreen'` when the content is heavy and the page does not need to find it.
 
-```html demo DisclosureOptionsDemo
+```brm demo DisclosureOptionsDemo
 
 ```
 

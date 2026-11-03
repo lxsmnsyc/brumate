@@ -6,11 +6,11 @@ summary: A mark of the selected item, which moves with the selection.
 
 A mark of the selected item, such as a bar under the selected tab, which moves to the next item when the selection changes.
 
-```html demo SelectionIndicatorDemo
+```brm demo SelectionIndicatorDemo
 
 ```
 
-```html
+```brm
 <Tab id="overview">
   Overview
   <SelectionIndicator class="bar" />
@@ -32,7 +32,7 @@ A mark of the selected item, such as a bar under the selected tab, which moves t
 
 ## Anatomy
 
-```html
+```brm
 <Tab>
   <SelectionIndicator />
 </>
@@ -63,7 +63,7 @@ Style the indicator with its own CSS, such as `position`, `transition-duration` 
 
 In a [ToggleButtonGroup](./toggle-button-group.md), the indicator is a pill under the text of the selected button. It slides to the next one when you press it, and it stays still with reduced motion.
 
-```html demo SelectionIndicatorToggleDemo
+```brm demo SelectionIndicatorToggleDemo
 
 ```
 

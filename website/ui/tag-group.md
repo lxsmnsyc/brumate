@@ -6,11 +6,11 @@ summary: Tags that the user can select and remove.
 
 A group of tags, which the user can select and remove.
 
-```html demo TagGroupDemo
+```brm demo TagGroupDemo
 
 ```
 
-```html
+```brm
 <TagGroup selectionMode="multiple" onRemove=((keys) => remove(keys))>
   <Label>Categories</Label>
   <TagList>
@@ -27,7 +27,7 @@ A group of tags, which the user can select and remove.
 
 ## Anatomy
 
-```html anatomy TagGroupAnatomy
+```brm anatomy TagGroupAnatomy
 `TagGroup`: Holds the selection and the removal. It has no role of its own.
 `Label`: Names the list.
 `TagList`: Holds the tags. It is a `grid`, takes one stop of Tab, and is named by the Label.
@@ -36,7 +36,7 @@ A group of tags, which the user can select and remove.
 `Text` with `slot="description"`: Describes the list. Optional.
 ```
 
-```html
+```brm
 <TagGroup>
   <Label />
   <TagList>
@@ -101,7 +101,7 @@ Right to left, Left and Right turn around.
 
 `selectedKeys` holds the keys of the selected tags, as a list. How you pass it picks who keeps it:
 
-```html demo TagGroupStateDemo
+```brm demo TagGroupStateDemo
 
 ```
 
@@ -118,7 +118,7 @@ Style a tag with the data attributes above, such as `[data-selected]` and `[data
 
 This stylesheet styles every state of a tag: rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled, and the remove button. Its tokens are at the top, and they follow the color scheme. Tab to the list, press the arrow keys and Space, then Delete.
 
-```html styled TagGroupStyled
+```brm styled TagGroupStyled
 
 ```
 
@@ -128,7 +128,7 @@ This stylesheet styles every state of a tag: rest, hover, press, keyboard focus,
 
 A group with `selectionMode="multiple"` and a bound `selectedKeys` is a filter. The list below shows the posts of the selected topics, and all of them while no tag is selected.
 
-```html demo TagGroupFilterDemo
+```brm demo TagGroupFilterDemo
 
 ```
 
@@ -136,7 +136,7 @@ A group with `selectionMode="multiple"` and a bound `selectedKeys` is a filter. 
 
 The tags are data of yours: the form adds a text to the list, and `onRemove` takes the keys out of it. A key is the text of the tag, so the form skips a text that a tag has already, whatever its case, and a second press of Add does nothing. Focus a tag and press Delete, or press its × button.
 
-```html demo TagGroupEditDemo
+```brm demo TagGroupEditDemo
 
 ```
 

@@ -6,11 +6,11 @@ summary: One color, shared by the color parts inside it.
 
 Holds one color for the color parts inside it.
 
-```html demo ColorPickerDemo
+```brm demo ColorPickerDemo
 
 ```
 
-```html
+```brm
 <ColorPicker value=$bind(color)>
   <ColorArea xChannel="saturation" yChannel="brightness"><ColorThumb /></ColorArea>
   <ColorField><Input /></ColorField>
@@ -27,7 +27,7 @@ Holds one color for the color parts inside it.
 
 ## Anatomy
 
-```html
+```brm
 <ColorPicker>
   <ColorArea />
   <ColorSlider />
@@ -50,7 +50,7 @@ Every part inside is optional.
 
 `value` holds a color of CSS. How you pass it picks who keeps it. Each picker below holds a ColorField and a swatch:
 
-```html demo ColorPickerStateDemo
+```brm demo ColorPickerStateDemo
 
 ```
 
@@ -69,7 +69,7 @@ A ColorPicker has no element, so it has no data attributes and no classes. Style
 
 This stylesheet styles a picker of an area, a hue slider, a hex field, a swatch and presets. Every part follows the color of the picker. It names the states of each part: thumbs in rest, dragging and keyboard focus, the input in rest, hover and focus, and the presets in rest, hover, press, selected and keyboard focus.
 
-```html styled ColorPickerStyled
+```brm styled ColorPickerStyled
 
 ```
 
@@ -79,7 +79,7 @@ This stylesheet styles a picker of an area, a hue slider, a hex field, a swatch 
 
 The ColorField inside the picker has a `name`, so the form sends the hex. The presets change the color, and typing in the field changes the selected preset.
 
-```html demo ColorPickerFormDemo
+```brm demo ColorPickerFormDemo
 
 ```
 
@@ -87,7 +87,7 @@ The ColorField inside the picker has a `name`, so the form sends the hex. The pr
 
 A part with a `value` of its own does not read or write the picker. The second slider below starts at red and moves alone, and `onChange` of the picker runs for the others only.
 
-```html demo ColorPickerIndependentDemo
+```brm demo ColorPickerIndependentDemo
 
 ```
 

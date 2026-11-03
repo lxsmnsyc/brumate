@@ -6,11 +6,11 @@ summary: The days of a month, to pick a date.
 
 A grid of the days of a month, to pick a date.
 
-```html demo CalendarDemo
+```brm demo CalendarDemo
 
 ```
 
-```html
+```brm
 <Calendar aria-label="Delivery date" value=$bind(date)>
   <header>
     <Button slot="previous">‹</Button>
@@ -29,7 +29,7 @@ A grid of the days of a month, to pick a date.
 
 ## Anatomy
 
-```html anatomy CalendarAnatomy
+```brm anatomy CalendarAnatomy
 `Calendar`: The grid and its state. It shows `data-disabled` and `data-invalid`.
 `CalendarHeading`: Shows the months, such as `October 2026`. Optional.
 `Button` with `slot="previous"`: Shows the months before.
@@ -38,7 +38,7 @@ A grid of the days of a month, to pick a date.
 `CalendarCell`: One date. Optional, since the grid renders one for each date.
 ```
 
-```html
+```brm
 <Calendar>
   <CalendarHeading />
   <Button slot="previous" />
@@ -132,7 +132,7 @@ The Calendar has `role="application"`, and a hidden Next button follows the grid
 
 `value` holds the selected date as `YYYY-MM-DD`, or `null`. How you pass it picks who keeps it. Pick a date in each calendar, then use the buttons under them:
 
-```html demo CalendarStateDemo
+```brm demo CalendarStateDemo
 
 ```
 
@@ -152,7 +152,7 @@ Style the dates with the data attributes above. The grid is a table, so style it
 
 A cell shows `data-hovered` under a mouse or a pen. This stylesheet styles the month Buttons and a date in rest, hover, press, today, selected, keyboard focus, unavailable and out of range. The weekends cannot be picked, and the dates before the 5th of October and after the 20th of November are out of range.
 
-```html styled CalendarStyled
+```brm styled CalendarStyled
 
 ```
 
@@ -162,7 +162,7 @@ A cell shows `data-hovered` under a mouse or a pen. This stylesheet styles the m
 
 An [I18nProvider](./i18n-provider.md) gives the names of the days and months, the first day of the week and the words that a screen reader hears. The `aria-label` stays your own text. Change the language below:
 
-```html demo CalendarLocaleDemo
+```brm demo CalendarLocaleDemo
 
 ```
 
@@ -170,7 +170,7 @@ An [I18nProvider](./i18n-provider.md) gives the names of the days and months, th
 
 `visibleDuration` shows two months, with a `CalendarGrid` for each and an `offset` on the second. `isDateUnavailable` marks the days that are taken, `minValue` and `maxValue` limit the months, and `firstDayOfWeek` starts the weeks on Monday.
 
-```html demo CalendarBookingDemo
+```brm demo CalendarBookingDemo
 
 ```
 
@@ -197,7 +197,7 @@ An [I18nProvider](./i18n-provider.md) gives the names of the days and months, th
 
 - A `CalendarGrid` renders a `CalendarCell` for each date. Pass `cell`, a `#template` that gets the date, to render your own:
 
-```html
+```brm
 <CalendarGrid cell=day />
 
 #template day(date) {
