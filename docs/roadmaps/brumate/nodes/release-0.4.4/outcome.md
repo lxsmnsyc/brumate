@@ -20,4 +20,4 @@
 ## Follow-ups
 
 - The tooltip step of the website overlays flow is flaky under load: it waits a fixed 1500 ms after Escape. A wait for the tooltip to go, with a timeout, would make it stable.
-- Sync `main` into `next`, then `next` into feat/browser-async, pushed directly, after #432 merges.
+- Done: 0.4.4 published to npm on 2026-11-03; `main` merged into `next` (bb4cb4a7). feat/browser-async had already merged into `next` (#433).
