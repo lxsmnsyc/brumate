@@ -1,7 +1,7 @@
 ---
 id: values-spike
 title: Spike: functions for values
-status: active
+status: done
 priority: must
 type: experiment
 outline: false
@@ -16,6 +16,7 @@ fulfilled_by:
 gate: true
 added: 
 hypothesis: docs/debates/client-restructure/debate.md
+spent: 289000
 owns:
   - docs/roadmaps/brumate/nodes/values-spike/**
 shared:
