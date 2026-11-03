@@ -76,9 +76,11 @@ export const middleware: Middleware = async (request, next) => {
 
 The entry middleware, `src/middleware.ts`, runs before it, for every request of the app, server function calls included. Its default export takes the `RequestEvent` and `next`. See [Middleware](./routing.md#middleware).
 
+It can export `onError(error: unknown, info: ServerErrorInfo)` too. The server calls it in place of `console.error` with each error that is not a `ServerError`: a page, an endpoint, a call, a `#defer` body, or a `#loading` body after the response started. `info` is `{ event: RequestEvent | undefined, kind: 'page' | 'endpoint' | 'call' | 'defer' | 'stream' }`. `ServerErrorInfo` comes from `brumate/server`. See [Errors of the server](./routing.md#errors-of-the-server).
+
 ## Errors
 
-- A `ServerError` gives the error file its message and status. Any other error gives status 500 and a generic message, and is logged on the server.
+- A `ServerError` gives the error file its message and status. Any other error gives status 500 and a generic message, and is logged on the server, or goes to `onError` of `src/middleware.ts` when the app has one.
 - An error file that throws hands the error to the next error file outside it.
 - A path that no route matches renders the `_error.brm` of the root, with status 404.
 - An error in a `#loading` body, or a route that streams after a `_loading.brm`, keeps its fallback, because the page has started.

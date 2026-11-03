@@ -1,0 +1,12 @@
+<script module>
+  export function boom(): string {
+    throw new Error('defer failed');
+  }
+</script>
+
+<p>Page</p>
+#defer ('idle') {
+  <p>{boom()}</p>
+} #else {
+  <p>Loading</p>
+}

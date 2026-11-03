@@ -216,7 +216,7 @@ Throw a `ServerError` to answer with a message and a status. The call in the bro
 ```
 
 - The status of a `ServerError` defaults to 400.
-- Any other error answers with status 500 and a generic message, so details of the server do not reach the browser. The server logs the error.
+- Any other error answers with status 500 and a generic message, so details of the server do not reach the browser. The server logs the error, or gives it to `onError` of `src/middleware.ts` when the app has one, with `kind: 'call'`. A `ServerError` does not reach it. See [Errors of the server](./routing.md#errors-of-the-server).
 
 ### Errors as values
 
