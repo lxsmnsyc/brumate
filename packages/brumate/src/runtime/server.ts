@@ -82,6 +82,7 @@ export {
 } from './html.ts';
 export type { Raw } from './html.ts';
 export { produce } from './produce.ts';
+export { searchParam } from './search-params.ts';
 export { createContext, navigationContext, routeContext } from './context.ts';
 export type { NavigationState, Route } from './context.ts';
 import { ROUTE_KEY } from './context.ts';

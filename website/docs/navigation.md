@@ -123,6 +123,34 @@ To turn client navigation off for the whole site, set `navigate: false` in the p
 - When navigation changes the URL, code that reads the route updates, such as in a layout that stays.
 - A change of the query string still asks the server for the page.
 
+## State in the URL
+
+A filter, a tab or a page of results belongs in the URL, so it survives a reload and can be shared. `$searchParam(name, options)` from `brumate/signals` gives a signal bound to one parameter of the query string.
+
+```brm
+<script>
+  import { $bind, $searchParam } from 'brumate/signals';
+
+  let query = $searchParam('q', { default: '' });
+  let page = $searchParam('page', { default: 1, parse: Number });
+</script>
+
+<input type="search" value=$bind(query)>
+<p>Page {page}</p>
+<button onClick=(() => (page += 1))>Next</button>
+```
+
+- The server reads the URL of the request, so the first render shows the right state.
+- A write in the browser changes the URL with `history.replaceState`, or with `history.pushState` for `{ history: 'push' }`, and asks the server nothing. The updates run in the browser, as for any signal.
+- Back and forward write the signal from the URL. A change of another parameter, or of the path, loads the page as before.
+- Two writes in one handler make one change of the URL.
+- `parse` converts the text of the parameter to a value, and `serialize` converts a value to text. Both default to the text. Without `default`, a parameter that is not in the URL gives `null`.
+- A value equal to `default` leaves the parameter out of the URL.
+- `{ server: true }` keeps the request: a write navigates, so the server renders the page with the new value. Use it for a parameter that the server needs, such as the page of results that a `#defer` body reads. The back button of such a parameter loads the page too.
+- `$route().search` reads the parameters that `$searchParam` writes.
+- Declare it with `let` at the top level of a script, and pass the name as a string. The options are an object literal.
+- A page that uses `$searchParam` loads its code when the page loads, so the history can write the signal at once.
+
 ## While a page loads
 
 `$navigation()` gives the navigation that loads: `{ pending, from, to }`, with `pending` false when none does. It is `{ pending: false }` on the server.

@@ -115,6 +115,7 @@ export {
   setSpread,
   template,
 } from './client/templates.ts';
+export { paramEffect, searchParam } from './client/search.ts';
 export { title } from './client/titles.ts';
 export {
   asyncMemo,

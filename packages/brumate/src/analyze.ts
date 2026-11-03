@@ -386,6 +386,7 @@ class Analyzer {
       new Resolver(this, site).run();
     }
     this.addPendingReads();
+    this.addSearchParamReads();
     this.checkLoadingHeaders();
     this.resolveRefs();
     this.check();
@@ -401,6 +402,32 @@ class Analyzer {
       diagnostics: this.diagnostics,
       pendingCalls: this.pendingCalls,
     };
+  }
+
+  /**
+   * The effect of a `$searchParam` reads its signal, so it runs again when the signal changes.
+   * The range is empty, so no identifier starts there.
+   */
+  private addSearchParamReads(): void {
+    for (const declaration of this.declarations) {
+      if (!declaration.searchParam) {
+        continue;
+      }
+      for (const site of this.sites) {
+        if (site.node === declaration.searchParam && site.kind === 'effect') {
+          const at = { start: site.node.end, end: site.node.end };
+          const read: Reference = {
+            range: at,
+            declaration,
+            site,
+            tracked: true,
+            inFunction: false,
+          };
+          declaration.reads.push(read);
+          site.reads.push(read);
+        }
+      }
+    }
   }
 
   /** `$isPending(memo)` calls, which also read the memos that the memo reads. */
@@ -1058,6 +1085,43 @@ class Analyzer {
       // The caller's attributes decide it, so it never changes and depends on nothing.
       const declaration = this.addDeclaration(scope, id.name, 'const', id);
       declaration.passedKey = prop.propKey;
+      return;
+    }
+
+    if (name === '$searchParam') {
+      const expected = 'let';
+      if (kind !== expected) {
+        this.report('error', `Declare ${name} with ${expected}`, declarator);
+      }
+      if (id.type !== 'Identifier') {
+        this.report('error', `${name} cannot be destructured`, id);
+        return;
+      }
+      const [first, options] = call.arguments;
+      if (
+        first?.type !== 'Literal' ||
+        typeof first.value !== 'string' ||
+        call.arguments.length > 2 ||
+        (options && options.type !== 'ObjectExpression')
+      ) {
+        this.report('error', `${name} needs a value`, call);
+        return;
+      }
+      // Two signals of one parameter in one component could disagree.
+      for (const other of this.declarations) {
+        const [earlier] = other.searchParam?.arguments ?? [];
+        if (other.scope === scope && earlier?.type === 'Literal' && earlier.value === first.value) {
+          this.report('error', `"${id.name}" is already declared`, id);
+          return;
+        }
+      }
+      // A signal whose value the server reads from the URL. An effect writes the URL when it
+      // changes, and the browser writes it back when the history moves.
+      const declaration = this.addDeclaration(scope, id.name, 'signal', id);
+      declaration.searchParam = call;
+      this.createSite('effect', scope, call, 'search param');
+      // The first run, when the page loads, follows the history before any write.
+      this.createSite('client', scope, call, 'search param', { trigger: 'load' });
       return;
     }
 
@@ -2413,6 +2477,13 @@ class Resolver {
               );
             }
             for (const argument of recipe ? [recipe, ...rest] : rest) {
+              this.visit(argument);
+            }
+            return;
+          }
+          if (name === '$searchParam' && this.site.node === node) {
+            // The effect of the declaration: only its arguments are code of the site.
+            for (const argument of node.arguments) {
               this.visit(argument);
             }
             return;
