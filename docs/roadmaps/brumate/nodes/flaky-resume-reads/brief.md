@@ -1,7 +1,7 @@
 ---
 id: flaky-resume-reads
 title: "Two resume tests stop failing in CI: a pending handler read and a textarea value"
-status: todo
+status: active
 priority: must
 type: hotfix
 outline: false
@@ -22,6 +22,7 @@ shared:
   - packages/brumate/src/runtime/client/**
   - packages/brumate/test/resume.test.ts
   - packages/brumate/test/render/**
+  - packages/brumate/test/**
 reserves: []
 provides: []
 depends_on: []

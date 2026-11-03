@@ -1,7 +1,7 @@
 ---
 id: drop-colon-modifiers
 title: Remove event modifiers in the attribute name
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
@@ -33,6 +33,11 @@ shared:
   - docs/decisions.md
   - docs/grammar.md
   - website/docs/**
+  - packages/brumate/test/**
+  - website/docs/errors.md
+  - packages/brumate/skills/**
+  - packages/ui/src/**
+  - examples/**
 reserves: []
 provides: []
 depends_on:

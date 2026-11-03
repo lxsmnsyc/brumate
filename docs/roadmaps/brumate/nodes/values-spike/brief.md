@@ -1,7 +1,7 @@
 ---
 id: values-spike
 title: Spike: functions for values
-status: todo
+status: active
 priority: must
 type: experiment
 outline: false
@@ -20,6 +20,7 @@ owns:
   - docs/roadmaps/brumate/nodes/values-spike/**
 shared:
   - .changeset/*.md
+  - packages/brumate/test/**
 reserves: []
 provides: []
 depends_on:
