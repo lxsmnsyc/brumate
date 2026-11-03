@@ -41,7 +41,7 @@ The styling sections and the styled demos of @brumate/ui, and the demo styles in
 - Asked by the maintainer on 2026-10-28. On 2026-11-03 (re-checked): 1510 `:global(...)` across 96 files in website/ui and website/src/routes/ui; no `<style global>` is used in website/ yet. `<style global>` landed in #443 (website/docs/styles.md, Global blocks).
 - styling.md explains `:global` once; replace that with `<style global>`, and say when a scoped style is still the better choice.
 - Update the pattern in docs/roadmaps/brumate/nodes/ui-docs-kit/outcome.md so later docs nodes write `<style global>`.
-- The ui-docs-pages nodes have landed. ui-preview-center edits the same `_layout.brm` rules: land it first, or rebase on it. Split the work into a few PRs by folder if one diff gets too large to review.
+- The ui-docs-pages nodes have landed. ui-preview-center edits the same `_layout.brm` rules: land it first, or rebase on it. Split the work into a few PRs by folder if one diff gets too large to review. ui-gallery-from-groups (#454) left the `:global(.ui-card*)` rules in `_layout.brm` unused; remove them here.
 - The look must not change: compare screenshots of a few pages before and after.
 
 ## Acceptance
