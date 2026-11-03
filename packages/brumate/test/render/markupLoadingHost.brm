@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { markupLoad } from './markupData.ts';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  #loading {
+    <p class="text" title=(markupLoad('title'))>{markupLoad('text')}</p>
+  } #else {
+    <p class="fallback">Loading</p>
+  }
+}

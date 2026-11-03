@@ -1,0 +1,11 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { load, note } from './startsData.ts';
+
+  const first = await $memo(load('first'));
+  // Reads nothing of the loads, so the second starts before the first settles.
+  note('between');
+  const second = await $memo(load('second'));
+</script>
+
+<p class="names">{first} {second}</p>

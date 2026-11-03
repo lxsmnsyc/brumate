@@ -15,8 +15,8 @@ import {
 import type { ScopeId } from '../shared.ts';
 import { findElement } from './blocks.ts';
 import { childrenReady } from './children.ts';
-import { loadModule, loadPart, loadingCode } from './code.ts';
-import { fail } from './errors.ts';
+import { loadModule, loadingCode } from './code.ts';
+import { fail, reportOnce } from './errors.ts';
 import { call, callNow, setPass } from './references.ts';
 import { afterInsert, descendants, findRoot, resolveScope } from './scopes.ts';
 import {
@@ -24,7 +24,6 @@ import {
   devtools,
   guesses,
   hiding,
-  loadedParts,
   loadingSlots,
   loads,
   memoControllers,
@@ -47,6 +46,12 @@ export function get(scope: Scope, slot: number): any {
     settle(scope);
   }
   const value = scope.s[slot];
+  // Update code reads a slot that the scope has not reached, as it waits at an earlier `await`:
+  // `setSlots` and resumed records write every slot, so only a wait leaves one out. The queued
+  // update skips on `NotReady`, since the rest of the render writes the page from the slots.
+  if (value === undefined && exempt > 0 && !(slot in scope.s)) {
+    throw new NotReady(Promise.resolve());
+  }
   if (value instanceof Promise && !scope.plain?.has(slot)) {
     // A memo that reads any promise waits for it.
     if (computing > 0) {
@@ -310,7 +315,7 @@ export function isThenable(value: unknown): value is PromiseLike<unknown> {
 export function unreadMemo(scope: Scope | ScopeId, value: unknown): void {
   if (isThenable(value)) {
     const at = resolveScope(scope);
-    value.then(undefined, (error: unknown) => fail(at, error));
+    value.then(undefined, (error: unknown) => reportOnce(at, error));
   }
 }
 
@@ -493,9 +498,13 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   if (guesses?.same(key)) {
     return;
   }
+  // The render computed the memo: a promise loads, and a value stays. A key with a value here
+  // comes from `wait`, or from a promise of the render that settled before this first compute.
   const rendered = scope.s[slot];
-  if (renderedLoads.delete(key) && isThenable(rendered)) {
-    asyncMemo(scope, slot, Promise.resolve(rendered));
+  if (renderedLoads.delete(key)) {
+    if (isThenable(rendered)) {
+      asyncMemo(scope, slot, Promise.resolve(rendered));
+    }
     return;
   }
   let value: unknown;
@@ -566,7 +575,7 @@ function trigger(scope: Scope, slot: number): void {
   }
   const id = findRoot(scope).m!;
   const children = childrenReady(scope);
-  if (modules.has(id) && loadedParts.has(`${id}:update`) && loadingCode.size === 0 && !children) {
+  if (modules.has(id) && loadingCode.size === 0 && !children) {
     pass(() => queueWrite(scope, slot));
     return;
   }
@@ -576,7 +585,13 @@ function trigger(scope: Scope, slot: number): void {
   // `waiting` is set only while a pass runs.
   if (waiting) {
     // Its code starts to load now, so the pass waits no longer than the first write.
-    waiting.push([scope, slot, updateCode(scope, slot).catch((error) => fail(scope, error))]);
+    waiting.push([
+      scope,
+      slot,
+      loadModule(id)
+        .then(() => childrenReady(scope))
+        .catch((error) => fail(scope, error)),
+    ]);
     return;
   }
   const from = origin;
@@ -586,8 +601,7 @@ function trigger(scope: Scope, slot: number): void {
     waiting = list;
   }
   const loading = loadModule(id)
-    .then(async (loaded) => {
-      await (loaded.g[scope.k]?.[slot] && loadPart(loaded, 'update'));
+    .then(async () => {
       const waits: unknown[] = [...loadingCode, children];
       for (const [, , load] of list) {
         waits.push(load);
@@ -614,39 +628,13 @@ function trigger(scope: Scope, slot: number): void {
       flushEffects();
     });
   loadingUpdates.add(loading);
-  void loading.finally(() => loadingUpdates.delete(loading));
-}
-
-/** Loads the code of a component, its update code when something reads the slot, and its children. */
-async function updateCode(scope: Scope, slot: number): Promise<unknown> {
-  await loadUpdate(scope, slot);
-  return childrenReady(scope);
-}
-
-/** Loads the module of a component and its update code, when something reads the slot. */
-function loadUpdate(scope: Scope, slot?: number): Promise<unknown> {
-  return loadModule(findRoot(scope).m!).then((loaded) => {
-    const reads = loaded.g[scope.k];
-    return (slot === undefined ? reads : reads?.[slot]) && loadPart(loaded, 'update');
+  void loading.finally(() => {
+    loadingUpdates.delete(loading);
+    // The effects that the pass of another handler held back, until the writes landed.
+    if (loadingUpdates.size === 0 && running === 0) {
+      flushEffects();
+    }
   });
-}
-
-/**
- * Loads the update code that a write of a handler can need, so its writes run before it returns.
- * A handler that is not in `w` of its module writes only the slots of its own component, and
- * waits for the code of that component. A handler in `w` also waits for the components above it, which a
- * write of a bound prop reaches, and for the scope that its children render in.
- */
-export async function updateReady(scope: Scope | undefined, ref?: string): Promise<unknown> {
-  if (!scope) {
-    return;
-  }
-  const root = findRoot(scope);
-  const own = ref && !(await loadModule(root.m!)).w?.includes(ref.split('#')[1]!);
-  return Promise.all([
-    loadUpdate(scope),
-    own ? loadUpdate(root) : Promise.all([updateReady(scope.p ?? scope.o), updateReady(scope.t)]),
-  ]);
 }
 
 /** The writes of the pass that runs that wait for code, to run as one pass of their own. */
@@ -741,7 +729,8 @@ export function pass<T>(write: () => T): T {
     }
   }
   if (running === 0) {
-    if (!held) {
+    // Effects wait for the writes that wait for code, so they never see the page half updated.
+    if (!held && loadingUpdates.size === 0) {
       flushEffects();
     }
     if (DEV) {
@@ -791,13 +780,12 @@ export function flush(): void {
 function queueWrite(scope: Scope, slot: number): void {
   const id = findRoot(scope).m!;
   const module = modules.get(id);
-  const updates = loadedParts.get(`${id}:update`);
-  if (!module || !updates) {
+  if (!module) {
     return;
   }
   for (const [kind, name] of module.g[scope.k]?.[slot] ?? []) {
     for (const target of kind === scope.k ? [scope] : descendants(scope, kind)) {
-      queue(updates[name] as (scope: Scope) => void, name, target);
+      queue((module as unknown as Record<string, (scope: Scope) => void>)[name]!, name, target);
     }
   }
 }
@@ -836,7 +824,9 @@ function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
           origin = before;
         }
       } catch (error) {
-        fail(target, error);
+        if (!(error instanceof NotReady)) {
+          fail(target, error);
+        }
       }
     }
   }

@@ -413,17 +413,35 @@ describe('ref', () => {
 });
 
 describe('#loading header', () => {
-  const page = (header: string) =>
-    `<script>\nimport { $signal } from 'brumate/signals';\nlet data = $signal(1);\n</script>\n\n#loading${header} {\n  <p>{data}</p>\n} #else {\n  <p>Loading</p>\n}`;
+  const page = (header: string, script = '') =>
+    `<script>\nimport { $debounced, $memo, $signal } from 'brumate/signals';\nlet id = $signal(1);\nconst user = $memo(fetch(\`/u/\${id}\`).then((r) => r.json()));\nconst other = $memo(fetch(\`/o/\${id}\`).then((r) => r.json()));\n${script}</script>\n\n<button onClick=(() => id++)>Next</button>\n#loading${header} {\n  <p>{user.name}</p>\n} #else {\n  <p>Loading</p>\n}`;
 
-  it('fails to compile with a header', () => {
-    expect(() => compile(page(' (data)'), { filename: 'Test.brm' })).toThrow(
-      '#loading does not take a header yet',
+  it('compiles with a header that names a memo that the body reads', () => {
+    expect(compile(page(' (user)'), { filename: 'Test.brm' }).warnings).toEqual([]);
+    expect(() => compile(page(''), { filename: 'Test.brm' })).not.toThrow();
+  });
+
+  it('fails for a name that the body does not read, or that is not a memo', () => {
+    expect(() => compile(page(' (other)'), { filename: 'Test.brm' })).toThrow(
+      /"other" in the #loading header is not a memo that markup in the body reads\. .* \[BRM186\]/,
+    );
+    expect(() => compile(page(' (user, id)'), { filename: 'Test.brm' })).toThrow(
+      '"id" in the #loading header is not a memo',
+    );
+    expect(() => compile(page(' (user.name)'), { filename: 'Test.brm' })).toThrow(
+      '"user.name" in the #loading header is not a memo',
     );
   });
 
-  it('compiles without a header', () => {
-    expect(() => compile(page(''), { filename: 'Test.brm' })).not.toThrow();
+  it('warns for a memo that is or reads a $debounced memo', () => {
+    const source = page(' (user)', 'const query = $debounced(id, 300);\n').replace(
+      '/u/${id}',
+      '/u/${query}',
+    );
+    const found = compile(source, { filename: 'Test.brm' }).warnings;
+    expect(found.map((warning) => warning.message)).toEqual([
+      '#loading (user) shows its fallback while the $debounced memo "query" waits, at each change of its value',
+    ]);
   });
 });
 
@@ -614,5 +632,40 @@ function run() { log(issue); }
     expect(() => build('async function run() { await $resolve(id); }')).toThrow(
       '$resolve needs a $memo',
     );
+  });
+});
+
+describe('a promise where markup cannot wait for it', () => {
+  const page = (markup: string, script = '') =>
+    `<script>\nimport { $props, $signal } from 'brumate/signals';\nconst { user } = $props<{ user: Promise<string> }>();\nlet items = $signal([{ id: 1 }]);\nasync function save() {\n  'use server';\n  return 1;\n}\nasync function later() {\n  return 2;\n}\n${script}</script>\n\n${markup}`;
+
+  it('fails for an event handler, a #for key or a binding that gives a promise [BRM188]', () => {
+    for (const [markup, code] of [
+      ['<button onClick=(save())>Save</button>', 'save()'],
+      ['<button onClick=(new Promise(() => {}))>Go</button>', 'new Promise(() => {})'],
+      ['<button onClick=(later())>Go</button>', 'later()'],
+      ['<button onClick=user>Go</button>', 'user'],
+      [
+        '#for (item of items by Promise.resolve(item.id)) {\n  <p>{item.id}</p>\n}',
+        'Promise.resolve(item.id)',
+      ],
+    ]) {
+      expect(() => compile(page(markup!), { filename: 'Test.brm' })).toThrow(
+        new RegExp(
+          `"${code!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" gives a promise, and .* cannot wait for one\\. .* \\[BRM188\\]`,
+        ),
+      );
+    }
+  });
+
+  it('compiles a promise in text and attributes, and a handler that awaits one', () => {
+    expect(() =>
+      compile(
+        page(
+          '<p title=(later())>{user}</p>\n<button onClick=(async () => await save())>Save</button>\n#for (item of items by item.id) {\n  <p>{later()}</p>\n}',
+        ),
+        { filename: 'Test.brm' },
+      ),
+    ).not.toThrow();
   });
 });

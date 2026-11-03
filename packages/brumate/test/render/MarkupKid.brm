@@ -1,0 +1,9 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { markupLoad } from './markupData.ts';
+
+  let n = $signal(1);
+</script>
+
+<p class="text" title=(markupLoad(`title ${n}`))>{markupLoad(`text ${n}`)}</p>
+<button class="next" onClick=(() => n++)>Next</button>

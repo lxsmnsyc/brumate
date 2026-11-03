@@ -1,0 +1,15 @@
+<script>
+  import { $memo } from 'brumate/signals';
+  import { load } from './startsData.ts';
+
+  let q = 'a';
+  const params = new URLSearchParams();
+  const first = await $memo(load('first'));
+  // A write and a call that change what the next loads read hold them here.
+  q = 'b';
+  params.set('k', 'v');
+  const second = await $memo(load(`second-${q}`));
+  const third = await $memo(load(`third-${params}`));
+</script>
+
+<p class="names">{first} {second} {third}</p>

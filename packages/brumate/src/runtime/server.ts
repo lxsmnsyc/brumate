@@ -4,6 +4,7 @@ import { cacheStore, tagVersions } from './cache.ts';
 import {
   VOID_ELEMENTS,
   actionAttributes,
+  attribute as attributeText,
   escape,
   escapeAttribute,
   bindEntry,
@@ -62,7 +63,6 @@ import type { Context as ContextValue } from './context.ts';
 
 export {
   affix,
-  attribute,
   classAttribute,
   escape,
   escapeAttribute,
@@ -1463,6 +1463,21 @@ function heldError(error: unknown, ctx?: Context): MemoError {
 }
 
 /**
+ * Starts the load of an awaited memo before the statements that it does not
+ * read, where the compiler moves its declaration. It keeps a synchronous
+ * throw of the compute and a rejection in the memo, so the `await` where the
+ * source has it throws them, not the start.
+ */
+export function start(node: Memo): void {
+  try {
+    const value = ready(node);
+    if (value instanceof Promise) {
+      value.catch(() => {});
+    }
+  } catch {}
+}
+
+/**
  * Starts every memo of a run of declarations that the render waits for,
  * so they load at the same time. Returns a promise that settles when all
  * of them have, or undefined when none is loading. A memo that fails
@@ -1659,6 +1674,25 @@ export function insert(
 // oxlint-disable-next-line typescript/no-explicit-any -- Components take any props.
 export type Component<P = any> = (props: P, ctx: Context) => Promise<string | object>;
 
+/** True for a promise, or any object with a `then` function, which markup waits for. */
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (
+    value !== null &&
+    (typeof value === 'object' || typeof value === 'function') &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  );
+}
+
+/**
+ * Renders an attribute of an element. A promise renders once it settles, so the element is sent
+ * with its final attributes: the render waits for it, as for a promise in text.
+ */
+export function attribute(name: string, value: unknown): string | Promise<string> {
+  return isThenable(value)
+    ? Promise.resolve(value).then((resolved) => attributeText(name, resolved))
+    : attributeText(name, value);
+}
+
 /**
  * Renders a child component. With `scope` and `anchor`, records the child's
  * scope so the parent can update its props on the client.
@@ -1764,7 +1798,24 @@ export function dynamic(
   }
   // The handlers of a dynamic element, and those that its props pass on, go into one `b-on`.
   const on: string[] = [];
-  const open = `<${tag}${spread(attributes, on)}${onAttribute(on, '')}>`;
+  const written = spread(attributes, on);
+  // A promise among the attributes renders once it settles.
+  if (typeof written !== 'string') {
+    return written.then((text) => dynamicElement(tag, text, on, content, ctx, scope));
+  }
+  return dynamicElement(tag, written, on, content, ctx, scope);
+}
+
+/** Renders a dynamic tag that names an element, with its attributes written. */
+function dynamicElement(
+  tag: string,
+  attributes: string,
+  on: string[],
+  content: Raw | Lazy | undefined,
+  ctx: Context,
+  scope?: ScopeId,
+): string | Promise<string> {
+  const open = `<${tag}${attributes}${onAttribute(on, '')}>`;
   if (VOID_ELEMENTS.has(tag)) {
     return open;
   }
@@ -2238,6 +2289,8 @@ export interface StateAttributes {
   params?: Record<string, string>;
   /** The ID of the build that rendered the page, on its first record, for skew protection. */
   build?: string;
+  /** The URLs of the bundles that the components of the record need, which the browser imports. */
+  load?: string[];
   /** The ID of a `#loading` boundary whose body failed. The record is the error. */
   fail?: ScopeId;
   /** The marker of a `#try` whose `#catch` body replaces its body, from the template `b-c`. */
@@ -2267,6 +2320,9 @@ export function stateScript(
   }
   if (attributes.next !== undefined) {
     extra += ` b-next="${attributes.next}"`;
+  }
+  if (attributes.load !== undefined && attributes.load.length > 0) {
+    extra += ` b-load="${escapeAttribute(attributes.load.join(' '))}"`;
   }
   // Records of a render that starts above 0 name it, so their references stay apart from other renders.
   if (attributes.root) {
@@ -2485,6 +2541,83 @@ export interface RenderOptions {
    * `pending`, and `html` and `state` are empty.
    */
   defer?: { boundary: ScopeId; at: string };
+  /**
+   * The bundles of the client build. Each state record with scopes names, in `b-load`, the
+   * URLs of the bundles that hold the code of its components, so the browser loads only the
+   * code of the page. In a build, those of the client build are the default (see
+   * `setClientBundles`), so only a render that wants others passes them.
+   */
+  bundles?: ClientBundles;
+}
+
+/** The bundles of the client build, for a render whose options name none. */
+let clientBundles: ClientBundles | undefined;
+
+/**
+ * Sets the bundles that a render names when its options name none. The Vite plugin calls it in
+ * a server build with those of the client build, so a server that calls `render()` itself gets
+ * pages whose code loads. The dev server loads each component by its module and sets none.
+ */
+export function setClientBundles(bundles: ClientBundles | undefined): void {
+  clientBundles = bundles;
+}
+
+/** The bundles of a client build, by the ID of their root component, such as a route. */
+export interface ClientBundles {
+  /** The URL of the chunk of each bundle. */
+  chunks: Record<string, string>;
+  /** The URLs of the stylesheets that the modules of each bundle import. */
+  styles?: Record<string, string[]>;
+  /** The IDs of the components whose code each bundle holds. */
+  members: Record<string, string[]>;
+  /** The roots whose bundles the browser has, such as those of a page that asks for a `#defer` body. */
+  loaded?: string[];
+}
+
+/** The first bundle that holds each component, for each table of members. */
+const bundleOwners = new WeakMap<ClientBundles['members'], Map<string, string>>();
+
+/**
+ * Returns the URLs of the bundles that hold the code of the components of `scopes`, other than
+ * those in `sent`. A root loads its own bundle, and another component the first bundle that
+ * holds it, unless a bundle in `sent` holds it. `sent` and `covered` keep the bundles and the
+ * components of the render so far.
+ */
+function bundleUrls(
+  bundles: ClientBundles,
+  scopes: Iterable<string | undefined>,
+  sent: Set<string>,
+  covered: Set<string>,
+): string[] {
+  let owners = bundleOwners.get(bundles.members);
+  if (!owners) {
+    owners = new Map();
+    for (const [root, ids] of Object.entries(bundles.members)) {
+      for (const id of ids) {
+        if (!owners.has(id)) {
+          owners.set(id, root);
+        }
+      }
+    }
+    bundleOwners.set(bundles.members, owners);
+  }
+  const urls: string[] = [];
+  for (const id of scopes) {
+    if (id === undefined || covered.has(id)) {
+      continue;
+    }
+    covered.add(id);
+    const root = bundles.chunks[id] === undefined ? owners.get(id) : id;
+    if (root === undefined || sent.has(root)) {
+      continue;
+    }
+    sent.add(root);
+    urls.push(bundles.chunks[root]!, ...(bundles.styles?.[root] ?? []));
+    for (const member of bundles.members[root] ?? []) {
+      covered.add(member);
+    }
+  }
+  return urls;
 }
 
 /**
@@ -2565,6 +2698,13 @@ export async function render<P>(
     fallbackDefined = true;
     return `${SHOW_FALLBACK};`;
   }
+  // The bundles that the records of this render named, and the components that they hold.
+  const bundles = options.bundles ?? clientBundles;
+  const sentBundles = new Set<string>();
+  const coveredComponents = new Set<string>();
+  if (bundles?.loaded) {
+    bundleUrls(bundles, bundles.loaded, sentBundles, coveredComponents);
+  }
   function serialize(
     target: Context,
     onScopes: (script: string) => void,
@@ -2578,9 +2718,14 @@ export async function render<P>(
       refs,
       (code, initial) => {
         if (initial) {
+          const ids: (string | undefined)[] = [];
+          for (const entry of target.scopes) {
+            ids.push(entry.record.m);
+          }
           onScopes(
             stateScript(code, true, {
               next: ctx.next(),
+              load: bundles && bundleUrls(bundles, ids, sentBundles, coveredComponents),
               route,
               root,
               nonce,
@@ -2858,18 +3003,18 @@ function rendersInOrder(
  */
 function replaceBlock(html: string, key: string, inner: string): string {
   const open = `<!--b${key}-->`;
-  const start = html.indexOf(open);
-  if (start === -1) {
+  const at = html.indexOf(open);
+  if (at === -1) {
     return html;
   }
   const comments = /<!--([^>]*?)-->/g;
-  comments.lastIndex = start + open.length;
+  comments.lastIndex = at + open.length;
   let depth = 0;
   for (let found = comments.exec(html); found; found = comments.exec(html)) {
     const data = found[1]!;
     if (data[0] === '/') {
       if (depth === 0) {
-        return html.slice(0, start + open.length) + inner + html.slice(found.index);
+        return html.slice(0, at + open.length) + inner + html.slice(found.index);
       }
       depth--;
     } else if (/^[btilP]-?\d/.test(data)) {
@@ -3011,8 +3156,9 @@ function firstRender(
   const tail = state + (options.scripts ?? '');
   const match = HTML.exec(html);
   if (!match) {
-    const start = typeof options.start === 'function' ? options.start(head) : (options.start ?? '');
-    return start + html + tail + (options.end ?? '');
+    const before =
+      typeof options.start === 'function' ? options.start(head) : (options.start ?? '');
+    return before + html + tail + (options.end ?? '');
   }
   // Markup before <html>, such as the stylesheet of the root component, belongs in the head.
   const headContent = html.slice(0, match.index) + head;
@@ -3722,8 +3868,9 @@ export interface RouteOptions extends DocumentOptions, RequestOptions {
   hints?: string[];
   /**
    * The URLs of the bundle of each root component, such as a route or a layout, by component ID:
-   * its chunk and the chunks that it imports. A page adds those of its views to `hints`, so the
-   * code of the page loads with the HTML. `virtual:brumate/routes` passes them.
+   * its chunk, the chunks that it imports and its stylesheets. A page adds the scripts of its
+   * views to `hints`, so the code of the page loads with the HTML, and links to their
+   * stylesheets in its head. `virtual:brumate/routes` passes them.
    */
   bundleHints?: Record<string, string[]>;
   /**
@@ -3809,15 +3956,25 @@ async function renderPage(
   }
   const path = new URL(request.url).pathname;
   const endRender = event?.traced('render', path) ?? (() => {});
-  // Client navigation has the loader and the core already.
-  let hints: string[] = [];
-  if (!request.headers.has('x-brumate-base')) {
-    const wanted: string[] = [...(options.hints ?? [])];
-    for (const id of viewIds(view)) {
-      wanted.push(...(options.bundleHints?.[id] ?? []));
+  // Client navigation has the loader and the core already. The stylesheets of the bundles of the
+  // views go in the head of every page, so a navigation keeps those of the next page.
+  const navigation = request.headers.has('x-brumate-base');
+  const wanted: string[] = navigation ? [] : [...(options.hints ?? [])];
+  const styles = new Set<string>();
+  for (const id of viewIds(view)) {
+    for (const url of options.bundleHints?.[id] ?? []) {
+      // A relative URL is relative to the page, which is wrong on a page deeper than the base,
+      // so the state records name those stylesheets for the loader instead.
+      if (url.endsWith('.css')) {
+        if (!url.startsWith('.')) {
+          styles.add(url);
+        }
+      } else if (!navigation) {
+        wanted.push(url);
+      }
     }
-    hints = [...new Set(wanted)];
   }
+  const hints = [...new Set(wanted)];
   // A page with a nonce, under a strict policy, loads only what carries the nonce. A `Link`
   // header cannot, so the links are in the head only.
   const nonce = options.nonce === undefined ? '' : ` nonce="${escapeAttribute(options.nonce)}"`;
@@ -3833,6 +3990,9 @@ async function renderPage(
   let preload = '';
   for (const url of hints) {
     preload += `<link rel="modulepreload"${nonce} href="${escapeAttribute(url)}">`;
+  }
+  for (const url of styles) {
+    preload += `<link rel="stylesheet"${nonce} href="${escapeAttribute(url)}">`;
   }
   const parts = await render(
     viewComponent(view, props),
@@ -3925,6 +4085,7 @@ async function renderDeferred(
   defer: { boundary: ScopeId; at: string },
   base: number,
 ): Promise<Response> {
+  const bundles = options.bundles ?? clientBundles;
   const parts = await render(
     viewComponent(view, props),
     {},
@@ -3935,6 +4096,8 @@ async function renderDeferred(
       params: props.params as Record<string, string> | undefined,
       base: Number.isSafeInteger(base) && base > 0 ? base : undefined,
       defer,
+      // The page that asks for the body has the bundles of its views.
+      bundles: bundles && { ...bundles, loaded: viewIds(view) },
     },
   );
   const headers = new Headers(parts.headers);
@@ -4324,14 +4487,27 @@ export function spread(
   attributes: Record<string, unknown>,
   on?: string[],
   names?: boolean,
-): string {
+): string | Promise<string> {
+  // A promise among the values renders once they settle, as an attribute does.
+  for (const value of Object.values(attributes)) {
+    if (isThenable(value)) {
+      const keys = Object.keys(attributes);
+      return Promise.all(Object.values(attributes)).then((values) => {
+        const resolved: Record<string, unknown> = {};
+        for (const [index, name] of keys.entries()) {
+          resolved[name] = values[index];
+        }
+        return spread(resolved, on, names);
+      });
+    }
+  }
   // The `b-on` of a dynamic tag that names a component reaches the component as a prop, and
   // its handlers come first, as the element's own.
   const entries = on && ownValue('b-on', attributes['b-on']);
   if (typeof entries === 'string') {
     on!.unshift(entries);
     const { 'b-on': _, ...rest } = attributes;
-    return spread(rest, on, names);
+    return spread(rest, on, names) as string;
   }
   for (const [name, value] of Object.entries(attributes)) {
     // A merged handler writes one entry for each of its parts.

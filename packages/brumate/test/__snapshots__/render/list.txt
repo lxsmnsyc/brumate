@@ -112,7 +112,7 @@ export function a3($$s, $$item, $$index) {
   $$b.set($$s, 1, $$index);
 }
 export function u9($$s) {
-  $$b.text($$s, 1, (($$p) => {
+  $$b.fillValue($$s, 1, (($$p) => {
 let label = $$b.get($$p, 2);
 function row(index: number) {
   let $$html = '';
@@ -122,7 +122,7 @@ function row(index: number) {
   return $$b.raw($$html, $$s2);
 }
 return row($$b.get($$s, 1));
-})($$s.p));
+})($$s.p), ($$v) => $$b.text($$s, 1, $$v));
 }
 export function u10($$s) {
   $$b.prop($$s, 2, "value", $$b.get($$s, 0));
@@ -152,7 +152,7 @@ export function r3($$p, $$item, $$index) {
   const $$s3 = $$b.createScope(3, $$p, undefined, 2);
   const $$e = $$b.clone($$k4), $$f = $$e[3];
   $$b.keep($$s3, 0, $$e[0]);
-  $$b.keepText($$s3, 1, $$e[1], (row(i)), $$s3);
+  $$b.keepValue($$s3, 1, $$e[1], (row(i)), $$s3);
   $$b.place($$e[2], $$b.componentNodes(Child, { "value": (count), "onChange": $$b.handlerProp(((value) => (counts = counts.map((item, index) => (index === i ? value : item)))), "List_12rwm68#h11", $$s3) }, undefined, $$s3, 2));
   $$b.setSlots($$s3, [count, i]);
   $$b.setItem($$s3, $$item);

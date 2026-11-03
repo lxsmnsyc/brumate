@@ -1,0 +1,14 @@
+<script>
+  import { $memo, $props, $signal } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  const { id } = $props<{ id: number }>();
+  const { a, b: [c] } = { a: 'A', b: ['C'] };
+  const show = () => `${a}${c}${id}`;
+  let n = $signal(0);
+  const user = await $memo(loadUser(id));
+  const user2 = await $memo(loadUser(id + 1));
+</script>
+
+<p class="user">{user.name} {user2.name} {show()} {n}</p>
+<button class="inc" onClick=(() => n++)>+</button>

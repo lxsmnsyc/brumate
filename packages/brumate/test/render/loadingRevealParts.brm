@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import LoadingSelf from './LoadingSelf.brm';
+
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  #reveal ('sequential') {
+    <LoadingSelf id=(1) />
+    <LoadingSelf id=(2) />
+  }
+}

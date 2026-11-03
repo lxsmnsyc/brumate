@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { markupCounted } from './markupData.ts';
+
+  let items = $signal(['a']);
+</script>
+
+<button class="add" onClick=(() => (items = [...items, 'b']))>Add</button>
+#for (item of items by markupCounted(item)) {
+  <p class="item">{item}</p>
+}

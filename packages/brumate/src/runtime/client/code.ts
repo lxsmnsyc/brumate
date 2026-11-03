@@ -1,8 +1,8 @@
-// Loads the code of components: their modules, their parts, and the components of the page.
+// Loads the code of components: their modules and the components of the page.
 
 import type { Handler } from './references.ts';
-import { loadedParts, loading, modules, options, getPart, parts, valueRenders } from './state.ts';
-import type { ClientModule, Part } from './state.ts';
+import { loading, modules, options, valueRenders } from './state.ts';
+import type { ClientModule } from './state.ts';
 
 export function loadModule(id: string): Promise<ClientModule> {
   let promise = loading.get(id);
@@ -17,25 +17,6 @@ export function loadModule(id: string): Promise<ClientModule> {
       return module;
     });
     loading.set(id, promise);
-  }
-  return promise;
-}
-
-export function loadPart(module: ClientModule, name: string): Promise<Part> {
-  const key = `${module.id}:${name}`;
-  let promise = parts.get(key);
-  if (!promise) {
-    let loaded: Promise<Part>;
-    if (!module.load) {
-      loaded = Promise.resolve(module as unknown as Part);
-    } else {
-      loaded = options.loadPart ? options.loadPart(module, name) : module.load(name);
-    }
-    promise = loaded.then((part) => {
-      loadedParts.set(key, part);
-      return part;
-    });
-    parts.set(key, promise);
   }
   return promise;
 }
@@ -81,9 +62,5 @@ export function loadedFunction(ref: string): Handler | undefined {
   if (!module) {
     return undefined;
   }
-  // A module without `load` holds every part itself.
-  const part = module.load
-    ? loadedParts.get(`${id}:${getPart(name)}`)
-    : (module as unknown as Part);
-  return part?.[name] as Handler | undefined;
+  return (module as unknown as Record<string, Handler | undefined>)[name];
 }

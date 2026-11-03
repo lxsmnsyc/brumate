@@ -80,20 +80,34 @@ export const ready = new Promise<string>((resolve) => {
 export function release(value: string): void {
     open(value);
   }
-const $$t0 = $$b.template("<button b-x=\"0\" class=\"outer\" b-on=\"click=Loading_1sx8r1u#h2\"></button><p b-x=\"1\" class=\"greeting\"></p><button b-x=\"2\" class=\"inner\" b-on=\"click=Loading_1sx8r1u#h5\"></button>", 3);
+const $$t0 = $$b.template("<p b-x=\"0\" class=\"greeting\"></p><button b-x=\"1\" class=\"inner\" b-on=\"click=Loading_1sx8r1u#h5\"></button>", 2);
+const $$t1 = $$b.template("<p class=\"fallback\">Loading</p>", 0);
+const $$t2 = $$b.template("<button b-x=\"0\" class=\"outer\" b-on=\"click=Loading_1sx8r1u#h2\"></button><!--x1-->", 2);
 
 export default function Loading($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';
   const $$s1 = $$b.createScope(1, undefined, "Loading_1sx8r1u");
   let count = (0);
   const greeting = (async () => (`Hello ${await ready}`))();
+  const $$body0 = () => {
+    let $$html = '';
+    $$b.countLoads($$s1, [greeting]);
     const $$s2 = $$b.createScope(2, $$s1, undefined, 1);
-  const $$e = $$b.clone($$t0), $$f = $$e[3];
+    const $$e = $$b.clone($$t0), $$f = $$e[2];
+    $$b.keep($$s2, 0, $$e[1]);
+    $$b.setContent($$e[1], (count), $$s2);
+    $$b.fillSettled($$s2, [greeting], (greeting) => { $$b.setContent($$e[0], (greeting)); });
+    return $$f;
+  };
+  const $$body1 = () => {
+    let $$html = '';
+    const $$e = $$b.clone($$t1), $$f = $$e[0];
+    return $$f;
+  };
+  const $$e = $$b.clone($$t2), $$f = $$e[2];
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setContent($$e[0], (count), $$s1);
-  $$b.keep($$s2, 0, $$e[2]);
-  $$b.setContent($$e[2], (count), $$s2);
-  $$b.fillSettled($$s2, [greeting], (greeting) => { $$b.setContent($$e[1], (greeting)); });
+  $$b.place($$e[1], $$b.loading($$body0, $$body1));
   $$b.setSlots($$s1, [count]);
   return $$f;
 }

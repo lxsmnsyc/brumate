@@ -1,0 +1,19 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { ran } from './runs.ts';
+  import { loadUser } from './waitData.ts';
+
+  let open = $signal(false);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  <script>
+    const a = await $memo(loadUser(1));
+    ran('between', a.name);
+    const b = await $memo(loadUser(2));
+    const c = await $memo(loadUser(a.name.length + 10));
+    const d = await $memo(loadUser(b.name.length + 20));
+  </script>
+  <p class="user">{a.name} {b.name} {c.name} {d.name}</p>
+}

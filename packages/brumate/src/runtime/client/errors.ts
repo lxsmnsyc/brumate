@@ -2,9 +2,10 @@
 
 import { blockStart, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
-import { loadModule, loadPart } from './code.ts';
+import { loadModule } from './code.ts';
 import { insertHTML } from './insert.ts';
 import { inPlace, removeBlock, findRoot } from './scopes.ts';
+import { HAS_TRIES } from '../features.ts';
 import { options, scopes } from './state.ts';
 import { parseId } from '../shared.ts';
 import type { ClientModule, Scope } from './state.ts';
@@ -19,6 +20,10 @@ import type { ClientModule, Scope } from './state.ts';
  */
 export function fail(scope: Scope | undefined, error: unknown): void {
   options.onError?.(error, { scope: scope?.id });
+  if (!HAS_TRIES) {
+    unhandled(error, scope);
+    return;
+  }
   void (async () => {
     for (let current = scope; current; current = current.l ?? current.p ?? current.o) {
       const id = findRoot(current).m;
@@ -75,6 +80,23 @@ export function replaceTry(key: string): void {
   template?.remove();
 }
 
+/**
+ * The scope that each rejection was reported to, as an unread memo and the waits of a render in
+ * one scope can hold the same promise.
+ */
+const reported = new WeakMap<object, Scope | undefined>();
+
+/** `fail`, once per error and scope. */
+export function reportOnce(scope: Scope | undefined, error: unknown): void {
+  if (typeof error === 'object' && error !== null) {
+    if (reported.has(error) && reported.get(error) === scope) {
+      return;
+    }
+    reported.set(error, scope);
+  }
+  fail(scope, error);
+}
+
 /** Reports the error of a `#loading` body that failed on the server, with no `#try` around it. */
 export function failBoundary(error: unknown): void {
   options.onError?.(error, {});
@@ -91,7 +113,7 @@ async function catchInto(
   [, anchor, , fallback, kinds, holderKind, holderAnchor]: NonNullable<ClientModule['t']>[number],
   error: unknown,
 ): Promise<void> {
-  const updates = await loadPart(module, 'update');
+  const updates = module as unknown as Record<string, unknown>;
   // The `#catch` body already replaced the body that failed, for an error of the same body that
   // came first, such as another effect that threw in the same update. The `#try` shows the first
   // error, as on the server, and `onError` saw this one.

@@ -257,15 +257,16 @@ https://brumate-docs.vercel.app/docs/errors#brm180
 <input onKeyDown=(handle) onFocusOut=(handle) />
 ```
 
-## BRM181: #loading does not take a header yet. Write #loading { … }, since the header would be dropped
+## BRM186: "{name}" in the #loading header is not a memo that markup in the body reads. Name a $memo of the component or of a block script around the block
 
-A `#loading` block has a header in parentheses. The compiler reads no meaning from it.
+The header of `#loading (…)` names something other than a memo, or a memo that no markup in the body reads, so its loads would not show the fallback for that body.
 
-https://brumate-docs.vercel.app/docs/errors#brm181
+https://brumate-docs.vercel.app/docs/errors#brm186
 
 ```brm fragment
-#loading (data) {
-  <p>{data.name}</p>
+const posts = $memo(loadPosts(id));
+#loading (posts) {
+  <p>{posts.length} posts</p>
 } #else {
   <p>Loading</p>
 }
@@ -342,6 +343,19 @@ https://brumate-docs.vercel.app/docs/errors#brm187
     $untrack(saves++);
   });
 </script>
+```
+
+## BRM188: "{name}" gives a promise, and {place} cannot wait for one. Await it in the code that runs, or read its value with $memo
+
+Markup waits for a promise in text and in attribute values only. An event handler, the key of a `#for`, a `ref` and a `$bind` need the value at once, and the compiler sees that this expression gives a promise: `new Promise(…)`, a call of a server function or of an async function, or a prop typed as a promise.
+
+https://brumate-docs.vercel.app/docs/errors#brm188
+
+```brm fragment
+<button onClick=(() => save(draft))>Save</button>
+#for (user of users by user.id) {
+  <p>{user.name}</p>
+}
 ```
 
 ## BRM023: Modifiers apply to elements. Put ":{modifier}" on the element that the component renders

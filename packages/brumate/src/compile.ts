@@ -88,8 +88,6 @@ export interface CompileResult {
    * they are needed. A small component has none: its entry holds the code.
    */
   parts: Record<string, string>;
-  /** The parts that the entry loads for each part name, its own first. See `ClientOutput`. */
-  loaders: Record<string, string[]>;
   /** The ID, the props map and the update tables of the client entry, without code. */
   table: string;
   /** False when nothing of the component runs in the browser, so it needs no client module. */
@@ -451,7 +449,6 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
     server: server.code,
     client: entry.code,
     parts: partCodes,
-    loaders: client.loaders,
     table: client.table,
     clientCode: client.clientCode,
     render: render.code,

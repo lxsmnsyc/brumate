@@ -46,8 +46,7 @@ describe('hot updates', () => {
     const client = await import('../src/runtime/client.ts');
     let version = 0;
     const load = vi.fn<(id: string) => Promise<never>>(
-      async () =>
-        ({ id: 'Card_1', props: {}, g: {}, load: async () => ({}), version: ++version }) as never,
+      async () => ({ id: 'Card_1', props: {}, g: {}, version: ++version }) as never,
     );
     client.init({ load, listen: () => {} });
     await client.loadModule('Card_1');

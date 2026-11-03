@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import HoldPart from './HoldPart.brm';
+
+  let mode = $signal(0);
+</script>
+
+<button class="a" onClick=(() => (mode = 1))>A</button>
+<button class="b" onClick=(() => (mode = 2))>B</button>
+#if (mode === 1) {
+  <HoldPart name="a" />
+} #else if (mode === 2) {
+  <HoldPart name="b" />
+}

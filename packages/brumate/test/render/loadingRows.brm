@@ -1,0 +1,19 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import LoadUser from './LoadUser.brm';
+
+  let ids = $signal<number[]>([]);
+</script>
+
+<button class="add" onClick=(() => (ids = [...ids, ids.length + 3]))>Add</button>
+<ul>
+  #for (id of ids by id) {
+    <li>
+      #loading {
+        <LoadUser {id} />
+      } #else {
+        <p class="fallback">loading {id}</p>
+      }
+    </li>
+  }
+</ul>

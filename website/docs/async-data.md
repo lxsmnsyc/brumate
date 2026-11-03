@@ -74,7 +74,71 @@ const posts = $memo(fetch(`/api/posts?user=${id}`).then((response) => response.j
 - The heading shows at once. The quote streams in after a second and a half.
 - Without `#loading`, the whole page waits for the quote.
 - When the values that the body reads are ready as the block renders, such as a value the page waited for with [`await`](#await), the body renders in place: no fallback, no swap. A body that renders a component, a dynamic tag, a template or a prop always streams, because those can wait on their own.
-- On the client, a `#loading` body keeps its content while a new value loads. Use `$isPending` to show that it is loading again.
+- On the client, a `#loading` body keeps its content while a new value loads. Use `$isPending` to show that it is loading again, or name the memo in the header to show the `#else` body again (see [below](#show-the-fallback-again)).
+
+### Show the fallback again
+
+Name memos in the header of `#loading` to show its `#else` body again while one of them loads:
+
+```brm
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  async function postsOf(user: number): Promise<string[]> {
+    'use server';
+    return [`Post of ${user}`];
+  }
+
+  let user = $signal(1);
+  const posts = $memo(postsOf(user));
+</script>
+
+<button onClick=(() => user++)>Next user</button>
+#loading (posts) {
+  <ul>
+    #for (post of posts) {
+      <li>{post}</li>
+    }
+  </ul>
+} #else {
+  <p>Loading the posts…</p>
+}
+```
+
+- Once the body has shown, the `#else` body shows while `posts` loads again. The cause can be a write of a value it reads, a server function that calls `refresh` for it, or a load that it starts. When the load ends, the body comes back with the same elements. Text typed in a field and the scroll of a list stay.
+- The body stays in the page, hidden as a hidden [`#offscreen`](./control-flow.md#offscreen) body is. Its effects and `$client` callbacks stop, its `window` and `document` handlers do not run, and its `#portal` content hides. Updates still reach it.
+- Each name is a memo of the component, or of a block script around the block, that markup in the body reads. Any other name is a compile error.
+- The block also shows the fallback while a memo that the named one reads loads. With `const posts = $memo(postsOf(user.id))` and `user` a memo that loads, `#loading (posts)` holds while either loads. Name the last memo of a chain.
+- Memos that the header does not name keep the content while they load, as without a header. Readers outside the body keep the old value, and `$isPending` is true for them.
+- Put the control that changes a named memo's input outside the body. A hidden body loses the focus.
+- A memo that a child component loads for itself is not held by the header of its parent. Give the child its own `#loading (memo)`, or pass the memo to it as a prop.
+- A `$debounced` or `$throttled` memo is pending while it waits. A header that names it, or a memo that reads it, shows the fallback at each change of its value, and the compiler warns.
+
+To show a new record with fresh state, such as a form for another user, wrap the block in `#key`. The body renders again for each ID, and the fallback shows while its memos load. A reload of the same ID keeps the content:
+
+```brm
+<script>
+  import { $memo, $props } from 'brumate/signals';
+
+  async function userOf(id: number): Promise<{ name: string }> {
+    'use server';
+    return { name: `User ${id}` };
+  }
+
+  const { id } = $props<{ id: number }>();
+</script>
+
+#key (id) {
+  <script>
+    const user = $memo(userOf(id));
+  </script>
+  #loading {
+    <input value=(user.name)>
+  } #else {
+    <p>Loading…</p>
+  }
+}
+```
 
 ### When a value fails
 
@@ -108,7 +172,7 @@ When the browser loads the page itself, it gives the page no event for a connect
 - The data of every body still loads at once. Only the showing waits, on the server, so it needs no code in the browser.
 - A body that fails keeps its fallback and takes its turn, so the bodies after it still show.
 - It orders the `#loading` blocks in its markup, and those of the components that it renders, such as a list of cards that each load their own data.
-- A `#reveal` inside a `#loading` body orders the bodies of that body. Markup that the browser renders has no stream, so there `#reveal` renders its children as they are. `#defer` blocks inside it are not ordered.
+- A `#reveal` inside a `#loading` body orders the bodies of that body. In markup that the browser renders, `#reveal` orders the `#loading` blocks that it renders, also those of the components inside it, in the same orders and with `collapsed`. A block that a later update adds inside it, such as a new row, is not ordered. `#defer` blocks inside it are not ordered.
 
 ## `$isPending`
 
@@ -155,7 +219,7 @@ async function save() {
 Without it, a plain read in a handler gives the last value, which can be stale while the memo loads again. `$isPending(memo)` is true then:
 
 - A handler, a handler prop of a component and a `$client` callback that read a memo that has no value yet are a compile error, [BRM182](./errors.md#brm182), unless `$isPending` guards the read or the code waits with `await $resolve(memo)`. The compiler follows the functions of the same script that they call.
-- A memo has no value yet when it is async (it awaits, or calls a server function) or reads such a memo, and the server did not wait for it. The server waits for a memo that markup reads outside `#loading`, and for one declared with `await $memo(…)`, so a read of those compiles. In a component that the browser renders, `await $memo(…)` does not wait yet, and the read throws at run time. There, `#loading` has no fallback yet: a memo of a promise prop (`$memo(user)`) is empty text, or an absent attribute, until its value arrives (fallbacks there come later).
+- A memo has no value yet when it is async (it awaits, or calls a server function) or reads such a memo, and the server did not wait for it. The server waits for a memo that markup reads outside `#loading`, and for one declared with `await $memo(…)`, so a read of those compiles. In a component that the browser renders, `await $memo(…)` in its script waits too (see [`await`](#await)). There, a `#loading` block shows its `#else` while a memo that its body waits for loads, as a streamed one does, and keeps its content on later updates. Outside every `#loading` block, a memo that loads, such as a memo of a promise prop (`$memo(user)`), is empty text, or an absent attribute, until its value arrives. In an app where a component that the browser renders waits at `await $memo(…)`, a block outside every `#loading` holds its new body until such memos settle instead, as the server does.
 - These guards count: an earlier `if ($isPending(memo)) return;` (or `throw`, `continue`, `break`), also through `const waiting = $isPending(memo)`, a read inside `if (!$isPending(memo)) { … }` or in the `else` of `if ($isPending(memo))`, `$isPending(memo) ? … : read`, and `!$isPending(memo) && read`. A check of a memo that reads the memo counts too, and so does an earlier `await $resolve(memo)` that always runs before the read in the same block (not one inside an `if`, a `&&` or a `try`).
 - A read that the compiler cannot follow, such as a function that a parent passes as a prop, an imported helper or code after an `await`, throws an error at run time when the value is still loading. It goes to the nearest [`#try`](./control-flow.md#try-and-catch) like other handler errors, and the message points to `$resolve`.
 - A prop that the parent passes as a promise, and a promise that the server streams in a signal, have no value until they settle, so they follow the same rule. A promise that code in the browser writes into a signal is an ordinary value.
@@ -284,6 +348,36 @@ Because the prop does not change when the promise settles:
 - `$isPending(user)` is false. Use `$isPending(profile)` of the memo `profile = $memo(user)`.
 - If the promise rejects, `await user` rejects in the child, and a read of `$memo(user)` throws into the nearest `#try`. A rejection that nothing reads is not reported.
 
+## Promises in markup
+
+A promise in text or in an attribute value renders the value that it settles to:
+
+```brm
+<script>
+  async function getTitle(): Promise<string> {
+    'use server';
+    return 'Release notes';
+  }
+</script>
+
+<h1 title=getTitle()>{Promise.resolve('hello world')}</h1>
+```
+
+A pending promise makes the nearest `#loading` pending, as a memo that loads does:
+
+- Inside a `#loading`, the block shows its `#else` until the promise settles. The server streams the body then, and sends each element with its final attributes. Outside every `#loading`, the server waits for the promise before it sends that part.
+- A `#loading` body whose text or attributes call code, such as `{format(user)}` or `title=getTitle()`, always streams from the server, since the call can give a promise. A body that only reads values can still render in place.
+- In the browser, the boundary counts the promise as a wait: a `#loading` shows its `#else`, and outside every `#loading` the block keeps what it shows until the new body is ready, in a build whose browser renders wait at an `await $memo`. In other builds, the body shows at once and the value fills in when it settles.
+- A spread follows the attribute rule: `{...{ title: getTitle() }}` writes `title` once it settles. A boolean attribute is there for `true` and gone for `false`, and `null` or `undefined` removes the attribute.
+- On resume, the browser keeps the value that the server rendered and does not call the expression again. It calls it when a signal that it reads changes. An update keeps the text or the attribute until the new promise settles. When a newer promise replaces one that has not settled, the latest wins.
+- A rejection goes to the nearest `#catch`, or the page error with none.
+
+The browser waits for a value when the compiler sees that it can be a promise: an expression that calls code, or a prop typed as a promise, such as `const { user } = $props<{ user: Promise<User> }>()`. A plain read of a prop or a signal that holds a promise renders nothing in a render of the browser. Read it with `$memo(user)` or type the prop.
+
+Markup does not wait in an event handler, the key of a `#for`, `ref` or `$bind`, which need the value at once. A promise that the compiler sees there is a compile error ([BRM188](./errors.md#brm188)). Otherwise the browser throws in development for a promise as a handler prop or a `#for` key, and production uses the value as it is.
+
+To share one promise between several reads, or to show the old value and `$isPending` while it loads again, use a memo: `const title = $memo(getTitle())`.
+
 ## Streams
 
 A server function can be an async generator. A memo of it takes each value as it arrives:
@@ -374,9 +468,12 @@ A server function can be an async generator. A memo of it takes each value as it
 
 - In a script, `await` of a promise works as in JavaScript. The script runs on the server only, so the value is a constant. A component whose script awaits a promise renders only on the server: the browser throws when it renders the component, such as inside a block of a parent that changes.
 - `const name = await $memo(value)` declares a memo that the page waits for where it is declared. In the browser it is a memo like any other: it loads again when what it reads changes.
+- A component that the browser renders, such as in a branch of an `#if` that opens or in a new row of a `#for`, waits at `await $memo(…)` in its script too, and so does the script of a block body or of a `#for` row that the browser renders. The code before the `await` runs once. Outside every `#loading` block, the block holds its new body until the memo settles, as the server holds the page: a branch of an `#if` or `#switch`, a `#key` body, a `#client` body or the fallback of a `#for` keeps what it shows until then, and a new row shows nothing until then. A switch back during the wait drops the held body, unless the block switches to it again before it settles, which does not load again. The old body stays live until the swap, so the old body of a `#key` that reads the key takes the new key too. The script of a new body runs before the cleanups of the old one, and its effects and `$client` callbacks after them. A prop that changes during the wait loads the memo again, and the component renders with the value of the latest load. The loads of several `await $memo(…)` start where the server starts them, see below. A load that reads an awaited memo through a function or another memo starts after that memo's `await` in the browser.
+- In the browser, a load that rejects, or a render after the `await` that throws, goes to the nearest `#try` that the server rendered, or to the `brumate:error` event on `window`. A `#try` that the browser renders does not catch it yet.
 - `await name` of a memo, in a script, an insert, an attribute, a prop or a block header, waits for the memo in the render around it, and never shows a fallback for it. Outside every `#loading` body, the page waits. Inside a `#loading` body, the render around the block waits before it reaches the block: the page, or the body of a `#loading` around it. Inside a `#defer` body, the request for the body waits.
-- In the browser, the value of a memo is settled when the code that reads it runs, so `await name` is a plain read. Code that the browser renders or updates, such as a branch of an `#if` that changes, can await nothing other than a memo. The compiler reports it in the same file.
-- A run of `await $memo(…)` declarations, one after another, starts every memo of the run, then waits for all of them where the run ends: before the next statement, and before any markup. Independent memos load at the same time. Another statement ends the run, so code between two declarations sees the first memo settled, as it would in JavaScript. A memo that reads another one waits for it by itself, so in `const a = await $memo(foo()); const b = await $memo(bar(a))`, `bar(a)` runs when `foo()` settles. When a memo fails, the error comes where the run waits.
+- In the browser, the value of a memo is settled when the code that reads it runs, so `await name` is a plain read. In markup that the browser renders, the render waits for the memos that the markup reads with `await` at the start of the markup, after the script, as a `#loading` body waits on the server. Code that the browser renders or updates, such as a branch of an `#if` that changes, can await nothing other than a memo. The compiler reports it in the same file.
+- On the server, and in a render of the browser, each `await $memo(…)` starts its load as soon as the values it reads are ready, and still waits where it is written. The load starts right after the last statement before it that declares a name it reads, or that can change one: a write such as `q = x`, a call such as `params.set('a', '1')`, a name passed to a call, or a call of a local function that mentions the name. A plain read of the name does not hold the load. So in `const user = await $memo(a()); log('next'); const tags = await $memo(b())`, `b()` starts with `a()`. Its expression runs before the statements it does not depend on, and those statements still run once, in their order, after `user` settles. A guard such as `if (!user) throw redirect('/login')` does not hold a later load that reads nothing of `user`, and neither does a call of an imported function that changes state the load reads only through the module: make the load read a name that the statement changes, or read `user`.
+- A run of `await $memo(…)` declarations, one after another, waits for all of them where the run ends: before the next statement, and before any markup. `$effect`, `$client`, imports and types do not end a run. A memo that reads another one waits for it by itself, so in `const a = await $memo(foo()); const b = await $memo(bar(a))`, `bar(a)` runs when `foo()` settles. A memo that reads a value computed from another one, such as `const id = a.id`, waits for that statement. When a memo fails, or its expression throws, the error comes where its `await` is written.
 
 ## On the server
 

@@ -21,6 +21,7 @@ export default defineConfig({
     'src/runtime/forms.ts',
     'src/runtime/devtools.ts',
     'src/runtime/hot.ts',
+    'src/runtime/bundles.ts',
     'src/vite.ts',
     'src/cli.ts',
   ],

@@ -1,0 +1,21 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { ran } from './runs.ts';
+  import { loadUser } from './waitData.ts';
+
+  let open = $signal(false);
+  let k = $signal(1);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<button class="next" onClick=(() => k++)>Next</button>
+#if (open) {
+  <script>
+    const user = await $memo(loadUser(k));
+    ran('after', user.name);
+    const upper = user.name.toUpperCase();
+  </script>
+  <p class="user">{user.name} {upper}</p>
+} #else {
+  <p class="old">old</p>
+}

@@ -1,0 +1,94 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { gate } from '../gates.ts';
+
+  // The page renders with nothing pending. Each block opens in the browser.
+  let branchOpen = $signal(false);
+  let rows = $signal<number[]>([]);
+  let rootOpen = $signal(false);
+  let docOpen = $signal(false);
+  let version = $signal(1);
+  let tryOpen = $signal(false);
+</script>
+
+<h1>Async values</h1>
+
+<section class="branch">
+  <button class="branch-open" onClick=(() => (branchOpen = true))>Open</button>
+  #if (branchOpen) {
+    #loading {
+      <script>
+        const user = await $memo(gate('branch-memo'));
+      </script>
+      <p class="branch-memo">{user}</p>
+      <p class="branch-text">{gate('branch-text')}</p>
+    } #else {
+      <p class="branch-fallback">loading</p>
+    }
+  }
+</section>
+
+<section class="rows">
+  <button class="rows-add" onClick=(() => (rows = [...rows, rows.length + 1]))>Add</button>
+  <ul>
+    #for (id of rows by id) {
+      <li class="row">
+        #loading {
+          <script>
+            const name = await $memo(gate(`row-memo-${id}`));
+          </script>
+          <span class="row-memo">{name}</span>
+          <span class="row-text">{gate(`row-text-${id}`)}</span>
+        } #else {
+          <span class="row-fallback">loading {id}</span>
+        }
+      </li>
+    }
+  </ul>
+</section>
+
+<section class="root">
+  <button class="root-open" onClick=(() => (rootOpen = true))>Open</button>
+  #if (rootOpen) {
+    <script>
+      const slow = await $memo(gate('root-memo'));
+    </script>
+    <p class="root-value">{slow}</p>
+  } #else {
+    <p class="root-old">old content</p>
+  }
+</section>
+
+<section class="doc">
+  <button class="doc-open" onClick=(() => (docOpen = true))>Open</button>
+  <button class="doc-next" onClick=(() => version++)>Next</button>
+  #if (docOpen) {
+    <script>
+      const doc = $memo(gate(`doc-${version}`));
+    </script>
+    #loading (doc) {
+      <p class="doc-value">{doc}</p>
+      <input class="doc-field">
+    } #else {
+      <p class="doc-fallback">loading</p>
+    }
+  }
+</section>
+
+<section class="try">
+  <button class="try-open" onClick=(() => (tryOpen = true))>Open</button>
+  #if (tryOpen) {
+    #try {
+      <script>
+        const tried = await $memo(gate('try-memo'));
+      </script>
+      <p class="try-value">{tried}</p>
+    } #catch (error) {
+      <p class="try-caught">{String(error)}</p>
+    }
+  }
+</section>
+
+<section class="outside">
+  <p class="outside-block">outside</p>
+</section>

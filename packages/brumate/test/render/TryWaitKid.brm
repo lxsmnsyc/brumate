@@ -1,0 +1,12 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  const { id } = $props<{ id: number }>();
+  const user = await $memo(loadUser(id));
+  if (user.name === 'ada13') {
+    throw new Error('bad kid');
+  }
+</script>
+
+<p class="user">{user.name}</p>

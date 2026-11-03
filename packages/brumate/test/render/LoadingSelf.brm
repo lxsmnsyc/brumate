@@ -1,0 +1,13 @@
+<script>
+  import { $memo, $props } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  const { id } = $props<{ id: number }>();
+  const user = $memo(loadUser(id));
+</script>
+
+#loading {
+  <p class="user">{user.name}</p>
+} #else {
+  <p class="fallback">loading</p>
+}

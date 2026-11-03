@@ -89,6 +89,7 @@ export default function Doubler($$props: Record<string, never>): string | Docume
   $$b.keep($$s1, 1, $$e[1]);
   $$b.setContent($$e[1], (doubled), $$s1);
   $$b.setSlots($$s1, [count, doubled]);
+  $$b.countLoads($$s1, [doubled]);
   $$b.fillBranch($$e[2], $$s1, 2, (false) ? 0 : -1, [$$r2]);
   return $$f;
 }

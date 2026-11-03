@@ -282,7 +282,6 @@ describe('client entries and handlers', () => {
     const small = compile(widgetSource(2), { filename: 'T.brm', merge: DEFAULT_MERGE });
     expect(small.parts).toEqual({});
     expect(small.client).not.toContain('export function load');
-    expect(Object.keys(small.loaders)).toHaveLength(3);
     // Eight handlers keep one module per part, which the entry exports.
     expect(partsSize(widgetSource(8))).toBeGreaterThan(DEFAULT_MERGE);
     const large = compile(widgetSource(8), { filename: 'T.brm', merge: DEFAULT_MERGE });
@@ -548,6 +547,52 @@ describe('await', () => {
     expect(server).not.toContain('$$b.waitAll(');
   });
 
+  it('does not end a run at $effect, $client, an import or a type', () => {
+    const { server } = compile(
+      `${header.replace('$signal', '$client, $effect, $signal')}  const user = await $memo(load(id));\n  $effect(() => console.log(id));\n  $client(() => console.log(id));\n  import { format } from './format.ts';\n  type Tag = string;\n  interface Named { name: string }\n  const tags = await $memo(loadTags(id));\n</script>\n<p>{user.name} {tags.length} {format(id)}</p>`,
+      { filename: 'T.brm' },
+    );
+    expect(server).toContain(
+      'if (($$t = $$b.waitAll([$$p_user, $$p_tags])) !== undefined) await $$t;',
+    );
+    expect(server).not.toContain('$$b.start(');
+  });
+
+  it('starts a load before a statement that waits, after what it reads', () => {
+    const { server } = compile(
+      `${header}  const user = await $memo(load(id));\n  let count = $signal(0);\n  let q = id;\n  q = q + 1;\n  const tags = await $memo(loadTags(q));\n  const more = await $memo(loadTags(id));\n</script>\n<p>{user.name} {tags.length} {more.length} {count}</p>`,
+      { filename: 'T.brm' },
+    );
+    // `more` reads only `id`, so it starts after its declaration, before the wait for `user`.
+    expect(server).toContain(
+      'let id = (1);\n  const $$p_more = $$b.memo(() => (loadTags(id)), $$ctx, "more");\n  $$b.start($$p_more);\n  const $$p_user',
+    );
+    // `tags` reads `q`, which the statement before it writes, so it stays in its run.
+    expect(server).toContain(
+      'q = q + 1;\n  const $$p_tags = $$b.memo(() => (loadTags(q)), $$ctx, "tags");\n  if (($$t = $$b.waitAll([$$p_tags, $$p_more])) !== undefined) await $$t;',
+    );
+    expect(server).not.toContain('$$b.start($$p_tags)');
+    expect(server).not.toContain('$$b.start($$p_user)');
+  });
+
+  it.each([
+    ['const r = q + 1;', 'q', true],
+    ['q = 2;', 'q', false],
+    ["params.set('a', '1');", 'params', false],
+    ['list.push(1);', 'list', false],
+    ['console.log({ list });', 'list', false],
+    ['bump();', 'q', false],
+    ['let w = id;', 'w', false],
+  ])('after %s, a load that reads %s starts early: %s', (statement, name, early) => {
+    const { server } = compile(
+      `${header}  let q = 1;\n  const params = new URLSearchParams();\n  const list: number[] = [];\n  function bump() { q++; }\n  const user = await $memo(load(id));\n  ${statement}\n  const tags = await $memo(loadTags(${name}));\n</script>\n<p>{user.name} {tags.length}</p>`,
+      { filename: 'T.brm' },
+    );
+    expect(server.includes('$$b.start($$p_tags);')).toBe(early);
+    // The statement still runs after the wait for `user`.
+    expect(server.indexOf(statement)).toBeGreaterThan(server.indexOf('const user = '));
+  });
+
   it('reads a memo with await as a plain value, in a memo, in markup and in a handler', () => {
     const {
       server,
@@ -688,6 +733,34 @@ describe('await', () => {
     );
     expect(modules.update).toContain('$$b.setContent($$e[0], ((user).name), $$s2)');
     expect(parseSync('update.ts', modules.update!).errors).toEqual([]);
+    // The body waits for the memo at the start of its markup.
+    expect(modules.update).toContain('return $$b.wait($$s2, [user], 0, ($$v) => {');
+    expect(modules.update).toContain('const [user] = $$v;');
+  });
+
+  it('starts the loads of a run of awaits in a body that the browser renders before the first', () => {
+    const { parts: modules } = compile(
+      `${header}</script>\n<button onClick=(() => id++)>+</button>\n#if (id > 1) {\n  <script>\n    const user = await $memo(load(id));\n    const tags = await $memo(loadTags(id));\n  </script>\n  <p>{user.name} {tags.length}</p>\n}`,
+      { filename: 'T.brm' },
+    );
+    const update = modules.update!;
+    expect(update).toContain('const $$w_user = $$b.started(() => (load(id)));');
+    expect(update).toContain('const $$w_tags = $$b.started(() => (loadTags(id)));');
+    expect(update.indexOf('$$w_tags =')).toBeLessThan(update.indexOf('let user;'));
+    expect(update).toContain('return $$b.wait($$s2, [$$w_user], 0, ($$v) => {');
+  });
+
+  it('starts a load that reads an awaited memo through a function after its await, in the browser', () => {
+    const { parts: modules } = compile(
+      `${header}</script>\n<button onClick=(() => id++)>+</button>\n#if (id > 1) {\n  <script>\n    const user = await $memo(load(id));\n    const pick = () => user.name;\n    const tags = await $memo(loadTags(pick()));\n    const more = await $memo(loadTags(user.name));\n  </script>\n  <p>{tags.length} {more.length}</p>\n}`,
+      { filename: 'T.brm' },
+    );
+    const update = modules.update!;
+    // `tags` reads `user` through `pick`, so it starts after the wait for `user`, and `more`
+    // with it, as the two form a run.
+    expect(update).not.toContain('$$b.after(');
+    expect(update.indexOf('const $$w_tags')).toBeGreaterThan(update.indexOf('[user] = $$v;'));
+    expect(update).toContain('const $$w_more = $$b.started(() => (loadTags(user.name)));');
   });
 
   it('reports await of a compile-time function other than $memo', () => {

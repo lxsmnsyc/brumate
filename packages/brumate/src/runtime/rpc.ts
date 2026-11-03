@@ -141,7 +141,7 @@ async function answer(id: string, response: Response): Promise<unknown> {
  * only the answer of a server call starts it.
  */
 export function refreshMemos(ids: string[]): Promise<void> {
-  return import('./client.ts').then(({ descendants, loadModule, loadPart, scopes }) => {
+  return import('./client.ts').then(({ descendants, loadModule, scopes }) => {
     for (const root of scopes.values()) {
       if (!root.m) {
         continue;
@@ -154,7 +154,7 @@ export function refreshMemos(ids: string[]): Promise<void> {
         if (entries.length === 0) {
           return;
         }
-        const updates = await loadPart(module, 'update');
+        const updates = module as unknown as Record<string, unknown>;
         for (const [kind, name] of entries) {
           for (const target of kind === root.k ? [root] : descendants(root, kind)) {
             if (scopes.has(target.id)) {

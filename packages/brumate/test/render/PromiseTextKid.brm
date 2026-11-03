@@ -1,0 +1,7 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  const { user } = $props<{ user: Promise<string> }>();
+</script>
+
+<p class="user">{user}</p>

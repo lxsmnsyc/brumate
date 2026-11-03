@@ -103,6 +103,10 @@
       "types": "./dist/runtime/hot.d.ts",
       "default": "./dist/runtime/hot.js"
     },
+    "./bundles": {
+      "types": "./dist/runtime/bundles.d.ts",
+      "default": "./dist/runtime/bundles.js"
+    },
     "./testing": {
       "types": "./dist/runtime/testing.d.ts",
       "default": "./dist/runtime/testing.js"

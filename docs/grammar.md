@@ -122,7 +122,7 @@ SwitchBlock     = "#switch" "{" { "#case" "(" TS<Expression> ")" Body }
                   [ "#default" Body ] "}" ;
 KeyBlock        = "#key" "(" TS<Expression> ")" Body ;
 TryBlock        = "#try" Body "#catch" [ "(" Ident [ "," Ident ] ")" ] Body ;
-LoadingBlock    = "#loading" [ "(" TS<Expression> ")" ] Body [ "#else" Body ] ;
+LoadingBlock    = "#loading" [ "(" Ident { "," Ident } ")" ] Body [ "#else" Body ] ;
 PortalBlock     = "#portal" [ "(" TS<Expression> ")" ] Body ;
 HeadBlock       = "#head" Body ;
 ClientBlock     = "#client" [ "(" Trigger ")" ] Body [ "#else" Body ] ;
@@ -142,6 +142,7 @@ TemplateDecl    = "#template" Ident "(" TS<Parameters> ")" Body ;
 - A `BlockScript` cannot export and cannot call `$props()`.
 - A `TemplateDecl` at the top level can be used anywhere in the file. In a body, it can be used in that body.
 - A `DeferBlock` cannot be inside the body of a `ClientBlock`, or in markup that the client renders.
+- Each `Ident` in the header of a `LoadingBlock` names a `$memo` of the component or of a block script around the block, which markup in the body reads (BRM186).
 
 ## `#` in text
 

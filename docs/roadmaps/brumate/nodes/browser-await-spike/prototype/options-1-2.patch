@@ -1,0 +1,194 @@
+--- a/packages/brumate/src/runtime/client/branches.ts
++++ b/packages/brumate/src/runtime/client/branches.ts
+@@ -35,7 +35,12 @@
+   start.data = `b${scope.id}:${anchor}:${index}`;
+   const render = inPlace(scope, renders[index], holderKind, holderAnchor);
+   if (render) {
+-    insertHTML(end, render(scope));
++    const shown = start.data;
++    void Promise.resolve(render(scope)).then((out) => {
++      if (start.data === shown && start.isConnected) {
++        insertHTML(end, out);
++      }
++    });
+   }
+ }
+ 
+@@ -60,7 +65,11 @@
+   }
+   const end = rangeEnd(start);
+   removeBlock(scope, kinds, start, end);
+-  insertHTML(end, inPlace(scope, render, holderKind, holderAnchor)!(scope));
++  void Promise.resolve(inPlace(scope, render, holderKind, holderAnchor)!(scope)).then((out) => {
++    if (Object.is(scope.keys!.get(anchor), value) && start.isConnected) {
++      insertHTML(end, out);
++    }
++  });
+ }
+ 
+ /**
+@@ -159,7 +168,11 @@
+   start.data += ':1';
+   const end = rangeEnd(start);
+   removeBlock(scope, kinds, start, end);
+-  insertHTML(end, inPlace(scope, render, holderKind, holderAnchor)!(scope));
++  void Promise.resolve(inPlace(scope, render, holderKind, holderAnchor)!(scope)).then((out) => {
++    if (start.isConnected) {
++      insertHTML(end, out);
++    }
++  });
+ }
+ 
+ /**
+@@ -189,7 +202,11 @@
+   start.data = `b${scope.id}:${anchor}:${visible ? 1 : 0}`;
+   const end = rangeEnd(start);
+   if (state === '-1') {
+-    insertHTML(end, inPlace(scope, render, holderKind, holderAnchor)!(scope));
++    void Promise.resolve(inPlace(scope, render, holderKind, holderAnchor)!(scope)).then((out) => {
++      if (start.data === `b${scope.id}:${anchor}:1`) {
++        insertHTML(end, out);
++      }
++    });
+     return;
+   }
+   let body: Scope | undefined;
+diff --git a/packages/brumate/test/_spike/option1-sketch.ts b/packages/brumate/test/_spike/option1-sketch.ts
+new file mode 100644
+index 00000000..3b00801a
+--- /dev/null
++++ b/packages/brumate/test/_spike/option1-sketch.ts
+@@ -0,0 +1,67 @@
++import { rendered } from '../../src/runtime/client/blocks.ts';
++import { fail } from '../../src/runtime/client/errors.ts';
++import { afterInsert, disposeKinds } from '../../src/runtime/client/scopes.ts';
++import { isThenable } from '../../src/runtime/client/updates.ts';
++import type { Scope } from '../../src/runtime/client/state.ts';
++
++class Suspend {
++  constructor(readonly p: PromiseLike<unknown>) {}
++}
++const settled = new WeakMap<object, { v: unknown; e?: boolean }>();
++let attempt: { c: unknown[]; i: number } | undefined;
++
++export function use(compute: () => unknown): unknown {
++  const a = attempt;
++  let value: unknown;
++  if (a && a.i < a.c.length) {
++    value = a.c[a.i++];
++  } else {
++    value = compute();
++    if (a) {
++      a.c.push(value);
++      a.i++;
++    }
++  }
++  if (!isThenable(value)) {
++    return value;
++  }
++  const result = settled.get(value);
++  if (result) {
++    if (result.e) {
++      throw result.v;
++    }
++    return result.v;
++  }
++  throw new Suspend(value);
++}
++
++export function retry<T>(
++  scope: Scope,
++  kinds: number[],
++  render: () => T,
++  insert: (out: T) => void,
++  cache: { c: unknown[]; i: number } = { c: [], i: 0 },
++): void {
++  const outer = attempt;
++  attempt = cache;
++  cache.i = 0;
++  let out: T;
++  try {
++    out = render();
++  } catch (error) {
++    if (!(error instanceof Suspend)) {
++      throw error;
++    }
++    disposeKinds(scope, kinds);
++    afterInsert.length = 0;
++    rendered.length = 0;
++    Promise.resolve(error.p).then(
++      (v) => settled.set(error.p as object, { v }),
++      (v) => settled.set(error.p as object, { v, e: true }),
++    ).then(() => retry(scope, kinds, render, insert, cache), (e) => fail(scope, e));
++    return;
++  } finally {
++    attempt = outer;
++  }
++  insert(out);
++}
+diff --git a/packages/brumate/test/_spike/hops.test.ts b/packages/brumate/test/_spike/hops.test.ts
+new file mode 100644
+index 00000000..f445095b
+--- /dev/null
++++ b/packages/brumate/test/_spike/hops.test.ts
+@@ -0,0 +1,60 @@
++// @vitest-environment happy-dom
++// SPIKE: what an async render costs over a sync one, for 1,000 rows that clone a template.
++import { it } from 'vitest';
++
++const template = document.createElement('template');
++template.innerHTML = '<li><button class="todo">x</button></li>';
++
++function row(): DocumentFragment {
++  return template.content.cloneNode(true) as DocumentFragment;
++}
++async function asyncRow(): Promise<DocumentFragment> {
++  return template.content.cloneNode(true) as DocumentFragment;
++}
++// A row whose child component renders async too: two awaits deep.
++async function asyncChild(): Promise<DocumentFragment> {
++  return template.content.cloneNode(true) as DocumentFragment;
++}
++async function asyncNested(): Promise<DocumentFragment> {
++  const f = template.content.cloneNode(true) as DocumentFragment;
++  f.firstChild!.appendChild(await asyncChild());
++  return f;
++}
++
++function median(values: number[]): number {
++  values.sort((a, b) => a - b);
++  return values[Math.floor(values.length / 2)]!;
++}
++
++it('times 1,000 rows', async () => {
++  const n = 1000;
++  const sync: number[] = [];
++  const serial: number[] = [];
++  const all: number[] = [];
++  const nested: number[] = [];
++  for (let round = 0; round < 41; round++) {
++    let ul = document.createElement('ul');
++    let t = performance.now();
++    for (let i = 0; i < n; i++) ul.append(row());
++    sync.push(performance.now() - t);
++    ul = document.createElement('ul');
++    t = performance.now();
++    for (let i = 0; i < n; i++) ul.append(await asyncRow());
++    serial.push(performance.now() - t);
++    ul = document.createElement('ul');
++    t = performance.now();
++    const rows: Promise<DocumentFragment>[] = [];
++    for (let i = 0; i < n; i++) rows.push(asyncRow());
++    ul.append(...(await Promise.all(rows)));
++    all.push(performance.now() - t);
++    ul = document.createElement('ul');
++    t = performance.now();
++    const deep: Promise<DocumentFragment>[] = [];
++    for (let i = 0; i < n; i++) deep.push(asyncNested());
++    ul.append(...(await Promise.all(deep)));
++    nested.push(performance.now() - t);
++  }
++  console.log(
++    JSON.stringify({ sync: median(sync), serial: median(serial), all: median(all), nested: median(nested) }),
++  );
++});

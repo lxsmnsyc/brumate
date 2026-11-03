@@ -8,7 +8,7 @@
 
 import { HAS_ACTIONS, HAS_BLOCKS, HAS_LATE_MARKUP, HAS_LISTENERS } from './features.ts';
 import type * as Client from './client.ts';
-import type { ClientModule, DevtoolsHooks, Part } from './client.ts';
+import type { ClientModule, DevtoolsHooks } from './client.ts';
 import type { SerialEntry } from './values.ts';
 
 /** True on the dev server. A Vite build replaces it with `false`, so the devtools calls go. */
@@ -25,12 +25,6 @@ export interface LoaderOptions {
    * a component that has no client code.
    */
   load: (id: string) => Promise<ClientModule> | undefined;
-  /**
-   * Loads the bundle of a root component of the page, such as a route: the client modules of
-   * the components that it can render, in one chunk. Undefined for a component that is not a
-   * root.
-   */
-  loadBundle?: (id: string) => Promise<unknown> | undefined;
   /** The URL prefix of server function calls. */
   rpc?: string;
   /** Imports the serial entry, which the core takes before it reads the page state. */
@@ -167,7 +161,7 @@ export function boot(
 
   // Client navigation imports the core with the code that reads the pages it adds.
   let load = importCore;
-  // The modules and parts that the loader asked for, which the core takes, so a handler whose
+  // The modules that the loader asked for, which the core takes, so a handler whose
   // code loaded runs without another `import()`. In Chrome, an `import()` of a module that is
   // loaded already still resolves in a task of its own, which can wait for the next frame.
   const modules = new Map<string, Promise<ClientModule> | undefined>();
@@ -181,17 +175,6 @@ export function boot(
     promise?.catch(() => modules.delete(id));
     return promise;
   };
-  const partLoads = new Map<string, Promise<Part>>();
-  const loadPart = (module: ClientModule, part: string): Promise<Part> => {
-    const key = `${module.id}#${part}`;
-    let promise = partLoads.get(key);
-    if (!promise) {
-      promise = module.load!(part);
-      partLoads.set(key, promise);
-      promise.catch(() => partLoads.delete(key));
-    }
-    return promise;
-  };
   // The serial entry loads with the core, so the core can make the values of the app.
   let serialLoad: Promise<SerialEntry> | undefined;
   const loadSerial = (): Promise<SerialEntry> | undefined => {
@@ -201,7 +184,7 @@ export function boot(
   };
   const loadCore = (): Promise<Core> =>
     (core ??= Promise.all([load(), loadSerial()]).then(([client, serial]) => {
-      client.init({ ...options, load: loadModule, loadPart, listen: scanInsert, inserted, serial });
+      client.init({ ...options, load: loadModule, listen: scanInsert, inserted, serial });
       return client;
     }));
 
@@ -543,25 +526,6 @@ export function boot(
   // The core starts at once and loads the code of the components on the page, so a call of a
   // function of another component, such as a function prop, runs at once and in order.
   void loadCore().catch(() => {});
-  // The bundles of the components in the state start with it, so the code of the page comes in
-  // the same round trip as the core. The core asks for them again when it reads the state.
-  const bundled = new Set<string>();
-  const loadBundles = (): void => {
-    for (const script of document.querySelectorAll('script[b-state]')) {
-      for (const [, id] of script.textContent?.matchAll(/\bm:"([^"]+)"/g) ?? []) {
-        if (!bundled.has(id!)) {
-          bundled.add(id!);
-          void options.loadBundle?.(id!)?.catch(() => {});
-        }
-      }
-    }
-  };
-  if (options.loadBundle) {
-    loadBundles();
-    if (document.readyState === 'loading') {
-      listen(document, 'DOMContentLoaded', loadBundles);
-    }
-  }
   return () => {
     stopped = true;
     observer?.disconnect();

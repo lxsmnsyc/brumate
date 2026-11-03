@@ -1,0 +1,24 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+  import { loadUser } from './waitData.ts';
+
+  let open = $signal(false);
+  let k = $signal(1);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<button class="next" onClick=(() => k++)>Next</button>
+#if (open) {
+  #try {
+    <script>
+      const user = await $memo(loadUser(k));
+      if (user.name === 'ada13') {
+        throw new Error('bad user');
+      }
+    </script>
+    <p class="user">{user.name}</p>
+  } #catch (error, reset) {
+    <p class="caught">{String(error)}</p>
+    <button class="reset" onClick=reset>Reset</button>
+  }
+}
