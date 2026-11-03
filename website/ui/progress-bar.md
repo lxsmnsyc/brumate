@@ -1,3 +1,7 @@
+---
+summary: The progress of a task.
+---
+
 # ProgressBar
 
 The progress of a task.

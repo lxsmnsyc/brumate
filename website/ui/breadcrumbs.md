@@ -1,3 +1,7 @@
+---
+summary: A trail to the current page.
+---
+
 # Breadcrumbs
 
 A trail of links to the current page.

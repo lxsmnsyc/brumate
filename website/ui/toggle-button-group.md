@@ -1,3 +1,7 @@
+---
+summary: Toggle buttons with one selection or several.
+---
+
 # ToggleButtonGroup
 
 ToggleButtons with one selection, as radios, or several, as a toolbar.

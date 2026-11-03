@@ -1,3 +1,7 @@
+---
+summary: A field that picks one item from a list.
+---
+
 # Select
 
 A field that picks one item from a list, which opens from a button.

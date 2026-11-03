@@ -1,3 +1,7 @@
+---
+summary: A value, or a range of values, on a track.
+---
+
 # Slider
 
 A value, or a range of values, that thumbs move on a track.

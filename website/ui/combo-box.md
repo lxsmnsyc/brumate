@@ -1,3 +1,7 @@
+---
+summary: A text field with a list of suggestions that filters as you type.
+---
+
 # ComboBox
 
 A text field with a list of suggestions, which shows the items that match what was typed.

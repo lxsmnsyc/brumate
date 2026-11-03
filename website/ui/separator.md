@@ -1,3 +1,7 @@
+---
+summary: A line between two parts of the content.
+---
+
 # Separator
 
 A line between two parts of the content.

@@ -1,3 +1,7 @@
+---
+summary: An area that takes drops and pastes of text and files.
+---
+
 # DropZone
 
 An area that takes drops of text and files, and pastes from keyboard users.

@@ -1,3 +1,7 @@
+---
+summary: Disclosures that open one at a time.
+---
+
 # DisclosureGroup
 
 Disclosures that open one at a time, such as an accordion.

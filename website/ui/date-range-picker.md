@@ -1,3 +1,7 @@
+---
+summary: Two date fields and a button that opens a range calendar.
+---
+
 # DateRangePicker
 
 Two date fields and a button that opens a RangeCalendar.

@@ -1,3 +1,7 @@
+---
+summary: The days of a month, to pick a range of dates.
+---
+
 # RangeCalendar
 
 A grid of the days of a month, to pick a range of dates.

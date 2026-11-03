@@ -1,3 +1,7 @@
+---
+summary: Tabs that show one panel at a time.
+---
+
 # Tabs
 
 Tabs that show one panel at a time.

@@ -8,6 +8,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
+import { splitFrontMatter } from './front-matter.ts';
 import { readProps } from './props-table.ts';
 import type { PropRow } from './props-table.ts';
 
@@ -110,7 +111,7 @@ function rewriteLinks(
 
 /**
  * The Markdown of a page: code blocks keep their text, and the special blocks of the site
- * become plain ones. A demo is its source, a props block is a table, and a gallery is dropped.
+ * become plain ones. A demo is its source, a props block is a table.
  */
 export function toMarkdown(
   source: string,
@@ -156,8 +157,6 @@ export function toMarkdown(
       }
     } else if (props) {
       out.push(propsTable(readProps(props[1]!)));
-    } else if (/^(?:brm|html)\s+gallery\b/.test(info)) {
-      // A grid of previews, which has no text.
     } else if (live) {
       if (live[2]) {
         out.push(`<!-- ${live[2]} -->`);
@@ -190,7 +189,10 @@ export function readPages(docs: string, ui: string, base: string): LlmsPage[] {
   }
   const pages: LlmsPage[] = [];
   for (const [section, directory, slug] of files) {
-    const source = readFileSync(path.join(directory, `${slug}.md`), 'utf8');
+    // The front matter is for the site, not for the text of the page.
+    const { body: source } = splitFrontMatter(
+      readFileSync(path.join(directory, `${slug}.md`), 'utf8'),
+    );
     const markdown = toMarkdown(source, directory, base, section, known);
     pages.push({
       section,

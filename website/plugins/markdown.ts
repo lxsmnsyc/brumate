@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import MarkdownIt from 'markdown-it';
 import type { Plugin } from 'vite';
 import { language as brm } from '../src/highlight/brm.ts';
+import { splitFrontMatter } from './front-matter.ts';
 import { PART_FILES, readProps, renderProps } from './props-table.ts';
 
 const REPOSITORY = 'https://github.com/lxsmnsyc/brumate';
@@ -61,13 +62,14 @@ export interface LiveFile {
 export type PagePart =
   | { html: unknown }
   | { files: LiveFile[] }
-  | { demo: string; source: unknown; variant?: 'anatomy' | 'styled'; label?: string }
-  | { gallery: true };
+  | { demo: string; source: unknown; variant?: 'anatomy' | 'styled'; label?: string };
 
 export interface Page {
   title: string;
   /** The first paragraph as plain text, for the description of the page in search results and link previews. */
   description: string;
+  /** The summary of the front matter, for the card of the page. Empty when the page has none. */
+  summary: string;
   parts: PagePart[];
   headings: Heading[];
 }
@@ -313,7 +315,8 @@ export default function markdown(): Plugin {
       const env = { headings: [] as Heading[] };
       const section = id.startsWith(UI_DIRECTORY) ? 'ui' : 'docs';
       const parser = createRenderer(base, section);
-      const tokens = parser.parse(code, env);
+      const { data, body } = splitFrontMatter(code);
+      const tokens = parser.parse(body, env);
       // The page is HTML between live samples. Each sample is its files.
       const parts: string[] = [];
       let start = 0;
@@ -325,15 +328,7 @@ export default function markdown(): Plugin {
         }
       };
       while (index < tokens.length) {
-        // ```` ```brm gallery ```` is the grid of the demos of every part.
         const token = tokens[index]!;
-        if (token.type === 'fence' && /^(?:brm|html)\s+gallery\b/.test(token.info.trim())) {
-          flush(index);
-          parts.push('{ gallery: true }');
-          index++;
-          start = index;
-          continue;
-        }
         // ```` ```props Button ```` is the props table of a part, from its exported type.
         const props =
           token.type === 'fence' ? /^props\s+(\w+)$/.exec(token.info.trim())?.[1] : undefined;
@@ -394,7 +389,7 @@ export default function markdown(): Plugin {
         code: [
           // Resolved from the site, because some documents are outside it.
           `import { raw } from ${JSON.stringify(RAW_MODULE)};`,
-          `export default { title: ${JSON.stringify(title)}, description: ${JSON.stringify(description)}, headings: ${JSON.stringify(env.headings)}, parts: [${parts.join(', ')}] };`,
+          `export default { title: ${JSON.stringify(title)}, description: ${JSON.stringify(description)}, summary: ${JSON.stringify(data.summary ?? '')}, headings: ${JSON.stringify(env.headings)}, parts: [${parts.join(', ')}] };`,
         ].join('\n'),
         map: null,
       };

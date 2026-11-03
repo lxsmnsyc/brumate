@@ -1,3 +1,7 @@
+---
+summary: Animates content as it comes and goes.
+---
+
 # Transition
 
 Animates content in and out. It keeps the content in the page until its leave ends, which CSS cannot do for content that is removed.

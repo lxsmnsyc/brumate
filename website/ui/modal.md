@@ -1,3 +1,7 @@
+---
+summary: A dialog over the page, which it locks.
+---
+
 # Modal
 
 A dialog over the page, which the user deals with before they go on, such as a confirmation.

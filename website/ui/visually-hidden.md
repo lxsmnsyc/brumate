@@ -1,3 +1,7 @@
+---
+summary: Content for screen readers alone.
+---
+
 # VisuallyHidden
 
 Hides its content from sight, and keeps it for screen readers, such as the name of a button that shows only a mark.

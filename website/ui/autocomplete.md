@@ -1,3 +1,7 @@
+---
+summary: A search field that filters a menu or a list next to it.
+---
+
 # Autocomplete
 
 A search field that filters a Menu or a ListBox next to it, such as for a list of commands.

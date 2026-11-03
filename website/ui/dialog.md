@@ -1,3 +1,7 @@
+---
+summary: The content of an overlay, named by its title.
+---
+
 # Dialog
 
 The content of an overlay that people act on, such as a [Popover](./popover.md) or a [Modal](./modal.md).

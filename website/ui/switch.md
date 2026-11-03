@@ -1,3 +1,7 @@
+---
+summary: A setting that applies at once.
+---
+
 # Switch
 
 A native checkbox with `role="switch"`, for a setting that applies at once.

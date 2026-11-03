@@ -1,3 +1,7 @@
+---
+summary: A circular track for the hue of a color.
+---
+
 # ColorWheel
 
 A circular track for the hue of a color.

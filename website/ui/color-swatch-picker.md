@@ -1,3 +1,7 @@
+---
+summary: A list of color swatches, to pick one.
+---
+
 # ColorSwatchPicker
 
 A list of color swatches, to pick one.

@@ -1,3 +1,7 @@
+---
+summary: The days of a month, to pick a date.
+---
+
 # Calendar
 
 A grid of the days of a month, to pick a date.

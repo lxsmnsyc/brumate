@@ -1,3 +1,7 @@
+---
+summary: Parts that belong together.
+---
+
 # Group
 
 Parts that belong together, such as an input and its buttons.

@@ -1,3 +1,7 @@
+---
+summary: Native radios that the arrow keys move.
+---
+
 # RadioGroup
 
 Native radios with one name, from which the user picks one.

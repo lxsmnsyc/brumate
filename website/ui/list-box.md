@@ -1,3 +1,7 @@
+---
+summary: A list of options to select, by keyboard and pointer.
+---
+
 # ListBox
 
 A list of options that the user selects from, with the keyboard, a pointer or a screen reader.

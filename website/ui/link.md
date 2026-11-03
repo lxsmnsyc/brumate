@@ -1,3 +1,7 @@
+---
+summary: A link that presses as a button does.
+---
+
 # Link
 
 A link that presses as a button does, and that the browser follows.

@@ -1,3 +1,7 @@
+---
+summary: A locale and its direction for the parts.
+---
+
 # I18nProvider
 
 Gives the parts inside it a locale and its direction.

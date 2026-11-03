@@ -1,3 +1,7 @@
+---
+summary: Opens the file picker from a button.
+---
+
 # FileTrigger
 
 Opens the file picker of the browser from a `Button` inside it.

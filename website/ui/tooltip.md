@@ -1,3 +1,7 @@
+---
+summary: A short description of a button, on hover and focus.
+---
+
 # Tooltip
 
 A short description of a button, which shows on hover and on focus from the keyboard.

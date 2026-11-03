@@ -1,3 +1,7 @@
+---
+summary: A notice that comes and goes, in a landmark.
+---
+
 # Toast
 
 A notice that comes and goes, such as "Draft saved".

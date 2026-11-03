@@ -1,3 +1,7 @@
+---
+summary: A value in a known range, in the locale.
+---
+
 # Meter
 
 A value that stays in a known range, such as the space used on a disk.

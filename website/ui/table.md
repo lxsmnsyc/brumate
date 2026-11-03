@@ -1,3 +1,7 @@
+---
+summary: Rows and columns that the user can select and sort.
+---
+
 # Table
 
 Rows and columns of data, which the user can move through with the keys, select and sort.

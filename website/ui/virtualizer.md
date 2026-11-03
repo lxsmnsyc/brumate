@@ -1,3 +1,7 @@
+---
+summary: Thousands of rows that render as they come into view.
+---
+
 # Virtualizer
 
 A box that scrolls a long collection, such as thousands of rows, and renders only the rows in view.

@@ -1,3 +1,7 @@
+---
+summary: Checkboxes with one value.
+---
+
 # CheckboxGroup
 
 Checkboxes with one value, the list of the checked ones.

@@ -1,3 +1,7 @@
+---
+summary: A modal along an edge of the window.
+---
+
 # Sheet
 
 A [Modal](./modal.md) along an edge of the window, such as a menu or a panel of filters.
