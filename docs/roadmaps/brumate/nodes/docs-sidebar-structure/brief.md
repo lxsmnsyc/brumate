@@ -1,7 +1,7 @@
 ---
 id: docs-sidebar-structure
 title: Order the docs sidebar by the reader's path and split testing.md
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
@@ -22,6 +22,9 @@ shared:
   - website/docs/testing.md
   - website/docs/security.md
   - website/docs/reference-security.md
+  - website/docs/**
+  - website/src/**
+  - packages/brumate/skills/**
 reserves: []
 provides: []
 depends_on: []

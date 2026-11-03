@@ -1,7 +1,7 @@
 ---
 id: ui-gallery-from-groups
 title: The ui cards read their summaries from the pages
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
@@ -24,6 +24,8 @@ owns:
   - website/test/**
 shared:
   - website/ui/*.md
+  - website/ui/**
+  - website/src/**
 reserves: []
 provides: []
 depends_on: []

@@ -1,7 +1,7 @@
 ---
 id: ui-preview-center
 title: Center the demo previews on the ui docs pages
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
@@ -20,6 +20,8 @@ owns:
   - website/src/components/AnatomyFigure.brm
 shared:
   - website/src/routes/ui/_layout.brm
+  - website/src/**
+  - website/ui/**
 reserves: []
 provides: []
 depends_on: []

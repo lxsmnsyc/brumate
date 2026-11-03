@@ -1,7 +1,7 @@
 ---
 id: client-markup-docs
 title: Document $client in markup that the browser renders
-status: todo
+status: active
 priority: should
 type: docs
 outline: false
@@ -20,6 +20,8 @@ owns:
   - packages/brumate/test/client-order.test.ts
 shared:
   - .changeset/*.md
+  - packages/brumate/test/**
+  - website/docs/**
 reserves: []
 provides: []
 depends_on: []
