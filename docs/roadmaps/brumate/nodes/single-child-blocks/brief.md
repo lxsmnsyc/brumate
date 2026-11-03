@@ -1,7 +1,7 @@
 ---
 id: single-child-blocks
 title: A block body can be one markup child without braces
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
@@ -32,6 +32,9 @@ shared:
   - packages/language-core/**
   - website/docs/control-flow.md
   - website/docs/markup.md
+  - packages/brumate/test/**
+  - website/docs/errors.md
+  - packages/brumate/skills/**
 reserves: []
 provides: []
 depends_on: []

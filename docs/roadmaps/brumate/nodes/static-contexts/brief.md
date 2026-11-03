@@ -1,7 +1,7 @@
 ---
 id: static-contexts
 title: A context set once on the server is not live in the browser
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
@@ -24,6 +24,9 @@ shared:
   - packages/brumate/src/codegen/**
   - packages/brumate/test/**
   - packages/ui/src/**
+  - website/docs/errors.md
+  - packages/brumate/skills/**
+  - docs/decisions.md
 reserves: []
 provides: []
 depends_on:

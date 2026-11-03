@@ -1,7 +1,7 @@
 ---
 id: a11y-in-tests
 title: Accessibility checks in brumate/testing
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
@@ -21,6 +21,10 @@ owns:
   - website/docs/testing.md
 shared:
   - .changeset/*.md
+  - packages/brumate/test/**
+  - website/docs/errors.md
+  - packages/brumate/skills/**
+  - docs/decisions.md
 reserves: []
 provides: []
 depends_on: []
