@@ -94,7 +94,7 @@ export {
   setOwner,
   sink,
 } from './client/scopes.ts';
-export { DEVTOOLS, build, hooks, rpcPrefix, scopes, skew } from './client/state.ts';
+export { DEVTOOLS, build, first, hooks, rpcPrefix, scopes, skew } from './client/state.ts';
 export type { ClientModule, CoreOptions, DevtoolsHooks, Scope } from './client/state.ts';
 export {
   appendText,
@@ -127,6 +127,7 @@ export {
   isBound,
   memo,
   pending,
+  q,
   resolve,
   set,
   timed,

@@ -10,7 +10,7 @@ import type { Children } from './children.ts';
 import { callable, spread } from './handlers.ts';
 import { holdPlace, markCloned, parseHTML } from './insert.ts';
 import { nextId, resolveScope, setOwner } from './scopes.ts';
-import { loadingValues, loads, renderedLoads, scopes, valueRenders } from './state.ts';
+import { flushFirst, loadingValues, loads, renderedLoads, scopes, unset, valueRenders } from './state.ts';
 import type { Scope } from './state.ts';
 import { setContent } from './templates.ts';
 import { isThenable, noop, set } from './updates.ts';
@@ -172,6 +172,7 @@ export function dynamic(
 
 export function setSlots(id: ScopeId, values: unknown[]): void {
   scopes.get(id)!.s = values;
+  unset.delete(scopes.get(id)!);
   // A render function computes a memo that loads as a promise, which the first compute of the
   // memo takes. Its failure is the memo's to report, not an unhandled rejection.
   for (let slot = 0; slot < values.length; slot++) {
@@ -201,6 +202,7 @@ export function setSlots(id: ScopeId, values: unknown[]): void {
     }
   }
   scopes.get(id)!.props = undefined;
+  flushFirst();
 }
 
 export function setItem(id: ScopeId, value: unknown): void {

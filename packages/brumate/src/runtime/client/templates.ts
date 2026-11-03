@@ -187,6 +187,10 @@ export function keep(scope: ScopeId, anchor: number, element: Element, named?: b
     (found.n ??= [])[anchor] = element;
   }
   // `named`: elements inside it have handlers and find their scope from it with `closest`.
+  // values-spike: a comment of a text insert is kept as it is.
+  if (element.nodeType !== 1) {
+    return;
+  }
   if (named || element.parentNode?.nodeType === 11 || element.hasAttribute('b-on')) {
     element.setAttribute('b-b', `${scope}:${anchor}`);
   }

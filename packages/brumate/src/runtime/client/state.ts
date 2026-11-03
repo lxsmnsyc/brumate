@@ -14,8 +14,8 @@ export interface ClientModule {
   id: string;
   /** Prop names to slot indices. `*` is the slot of a props object. */
   props: Record<string, number>;
-  /** Scope kind, then slot, to the updates that read it. */
-  g: Record<number, Record<number, Update[]>>;
+  /** values-spike: scope kind, then slot, to the value function that queues what reads it. */
+  v?: Record<number, Record<number, (scope: Scope) => void>>;
   /**
    * The render functions of components that this component sends as values, such as in a
    * prop. The state holds only their IDs, so `dynamic` finds them here.
@@ -309,6 +309,78 @@ export function updating<T>(run: () => T): T {
   try {
     return run();
   } finally {
+    exempt--;
+  }
+}
+
+/**
+ * values-spike: while `m` is set, `q` gives each update of the scope itself and its rank in
+ * place of queueing it, for a refresh, which runs them all.
+ */
+export const collector: {
+  m?: Map<(scope: Scope) => void, number>;
+  /** The kind whose value functions run, and the kind whose updates it keeps. */
+  k?: number;
+  t?: number;
+} = {};
+
+/**
+ * values-spike: more than 0 while a browser render calls update functions, whose nodes are in
+ * the clone and not yet in the page.
+ */
+export let rendering: number = 0;
+
+/**
+ * values-spike: the first render of the sites of a scope that a clone made. It calls the
+ * update functions that a later write queues, once each, after the slots are set.
+ */
+export function first(id: ScopeId, fns: ((scope: Scope) => void)[]): void {
+  const scope = scopes.get(id)!;
+  // A body that renders before the scopes around it have their slots, such as a `#loading` body,
+  // waits for them: its updates read their slots.
+  for (let up = scope.p; up; up = up.p) {
+    if (unset.has(up)) {
+      waitingFirst.push([scope, fns]);
+      return;
+    }
+  }
+  runFirst(scope, fns);
+}
+
+/** values-spike: the scopes that the browser made and whose slots are not set yet. */
+export const unset: WeakSet<Scope> = new WeakSet();
+
+const waitingFirst: [Scope, ((scope: Scope) => void)[]][] = [];
+
+/** values-spike: runs the first renders that waited, once the scopes around them have their slots. */
+export function flushFirst(all?: boolean): void {
+  for (let index = 0; index < waitingFirst.length; ) {
+    const [scope, fns] = waitingFirst[index]!;
+    let ready = true;
+    for (let up = scope.p; up && !all; up = up.p) {
+      if (unset.has(up)) {
+        ready = false;
+        break;
+      }
+    }
+    if (ready) {
+      waitingFirst.splice(index, 1);
+      runFirst(scope, fns);
+    } else {
+      index++;
+    }
+  }
+}
+
+function runFirst(scope: Scope, fns: ((scope: Scope) => void)[]): void {
+  rendering++;
+  exempt++;
+  try {
+    for (const fn of fns) {
+      fn(scope);
+    }
+  } finally {
+    rendering--;
     exempt--;
   }
 }

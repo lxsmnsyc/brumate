@@ -13,7 +13,7 @@ import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
 import { prop, spreadProps } from './props.ts';
 import { afterInsert, disposeKinds, inPlace, nextId } from './scopes.ts';
-import { hiding, options, scopes } from './state.ts';
+import { hiding, options, rendering, scopes } from './state.ts';
 import type { Scope } from './state.ts';
 import { give, set } from './updates.ts';
 
@@ -54,6 +54,17 @@ export function portalTo(
 export function text(scope: Scope, anchor: number, value: unknown): void {
   // A clone keeps the text node of the insert, or the start comment of its markers.
   let kept = scope.n?.[anchor];
+  // values-spike: the first render of the insert, at the comment that the clone kept.
+  if (rendering > 0 && kept?.nodeType === 8 && !kept.isConnected) {
+    if (typeof value === 'string' || typeof value === 'number') {
+      const node = document.createTextNode(String(value));
+      (kept as Comment).replaceWith(node);
+      scope.n![anchor] = node;
+      return;
+    }
+    (kept as Comment).data = `t${scope.id}:${anchor}`;
+    (kept as Comment).after(document.createComment('/t'));
+  }
   if (kept?.nodeType === 3 && kept.isConnected) {
     if (typeof value === 'string' || typeof value === 'number') {
       const data = String(value);
@@ -68,7 +79,10 @@ export function text(scope: Scope, anchor: number, value: unknown): void {
     (kept as Text).after(document.createComment('/t'));
     scope.n![anchor] = kept = start;
   }
-  const start = kept?.isConnected ? (kept as Comment) : findComment(`t${scope.id}:${anchor}`);
+  const start =
+    kept && (kept.isConnected || rendering > 0)
+      ? (kept as Comment)
+      : findComment(`t${scope.id}:${anchor}`);
   if (start) {
     write(start.parentNode!, start.nextSibling, rangeEnd(start), value, scope, start, anchor);
   }
@@ -166,6 +180,11 @@ function write(
       // The same text again changes nothing, and a write would still notify observers.
       (first as Text).data = data;
     }
+    return;
+  }
+  // values-spike: text into an empty place, as a first render writes it.
+  if (rendering > 0 && (typeof value === 'string' || typeof value === 'number') && first === end) {
+    parent.insertBefore(document.createTextNode(String(value)), end);
     return;
   }
   while (first && first !== end) {

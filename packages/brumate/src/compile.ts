@@ -444,7 +444,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   for (const module of modules) {
     modulePaths.push(module.path);
   }
-  const render = done(generateRender(file, plan, client.fillOf));
+  const render = done(generateRender(file, plan, client.fillOf, client.directOf));
   return {
     server: server.code,
     client: entry.code,

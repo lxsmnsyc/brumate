@@ -17,6 +17,7 @@ import {
   scopes,
   waiters,
   timers,
+  unset,
 } from './state.ts';
 import type { Scope } from './state.ts';
 
@@ -264,6 +265,7 @@ export function createScope(
     created.n = new Array(nodes);
   }
   rendered.push(created);
+  unset.add(created);
   // A component that the browser renders loads its code, as the components of the page do.
   if (module !== undefined) {
     loadComponent(module);

@@ -817,6 +817,22 @@ export function cloneLines(
     group.writes.push(line);
   }
   let missing = false;
+  // values-spike: the update functions that a site's write is, which the clone calls once each,
+  // after the slots are set, in place of its own write. By the scope that they update.
+  const firsts = new Map<string, string[]>();
+  function direct(scope: string, key: string): boolean {
+    const kind = /^\$\$s(\d+)$/.exec(scope)?.[1];
+    const fn = kind === undefined ? undefined : emitter.direct?.(`${kind}:${key}`);
+    if (fn === undefined) {
+      return false;
+    }
+    const list = firsts.get(scope) ?? [];
+    firsts.set(scope, list);
+    if (!list.includes(fn)) {
+      list.push(fn);
+    }
+    return true;
+  }
   for (const [index, writes] of found.writes.entries()) {
     // The scope of the anchor of the element, where its content finds its contexts.
     let anchored: Write | undefined;
@@ -853,12 +869,26 @@ export function cloneLines(
         lines.push(
           `${indent}$$b.appendText(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
         );
+      } else if (
+        write.kind === 'text' &&
+        !write.promise &&
+        direct(write.scope, `text:${write.anchor}:`)
+      ) {
+        lines.push(`${indent}$$b.keep(${write.scope}, ${write.anchor}, $$e[${index}]);`);
       } else if (write.kind === 'text') {
         // A value that can be a promise is written once it settles.
         const helper = write.promise ? 'keepValue' : 'keepText';
         lines.push(
           `${indent}$$b.${helper}(${write.scope}, ${write.anchor}, $$e[${index}], ${write.value}${write.at ? `, ${write.at}` : ''});`,
         );
+      } else if (
+        write.kind === 'attribute' &&
+        !write.promise &&
+        !write.settled &&
+        anchored?.kind === 'anchor' &&
+        direct(anchored.scope, `attr:${anchored.anchor}:${JSON.parse(write.name) as string}`)
+      ) {
+        // values-spike: the update of the attribute writes it.
       } else if (write.kind === 'attribute') {
         const key =
           anchored?.kind === 'anchor'
@@ -903,11 +933,22 @@ export function cloneLines(
         );
       } else if (write.kind === 'block') {
         const call = emitter.fills.get(`${write.scope}:${write.anchor}`);
-        if (call === undefined) {
+        if (call?.startsWith('$$b.fillList(') && direct(write.scope, `list:${write.anchor}:`)) {
+          lines.push(
+            `${indent}$$b.markBlock($$e[${index}], ${write.scope}, ${write.anchor}, "");`,
+          );
+        } else if (call === undefined) {
           missing = true;
         } else {
           fills.push(`${indent}${call.replace('$$m', () => `$$e[${index}]`)};`);
         }
+      } else if (
+        !write.promise &&
+        !write.settled &&
+        anchored?.kind === 'anchor' &&
+        direct(anchored.scope, `content:${anchored.anchor}:`)
+      ) {
+        // values-spike: the update of the content writes it.
       } else {
         addLine(
           promised(
@@ -921,6 +962,12 @@ export function cloneLines(
       }
     }
   }
+  // values-spike: the updates run after the slots are set, before the nested blocks fill.
+  const calls: string[] = [];
+  for (const [scope, fns] of firsts) {
+    calls.push(`${indent}$$b.first(${scope}, ${hoist(`[${fns.join(', ')}]`)});`);
+  }
+  fills.unshift(...calls);
   // The values of the memos shadow the memos, so the writes read the values.
   for (const group of settled.values()) {
     const names = group.names.join(', ');

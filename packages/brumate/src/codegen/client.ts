@@ -45,6 +45,8 @@ export interface ClientOutput {
    * for the render module, which imports them.
    */
   fillOf: (block: Block) => Fill | undefined;
+  /** values-spike: the update function that is the one write of a site (`EmitterOptions.direct`). */
+  directOf: (key: string) => string | undefined;
   diagnostics: Diagnostic[];
 }
 
@@ -195,6 +197,8 @@ class ClientGenerator {
     this.emitRoots();
     this.part = 'update';
     this.emitUpdates();
+    this.collectDirect();
+    this.emitValues();
     this.emitWindowStarts();
     this.emitRenders();
     this.emitChildrenRenders();
@@ -246,7 +250,6 @@ class ClientGenerator {
     const table = [
       `export const id = ${JSON.stringify(this.plan.id)};`,
       `export const props = ${this.propsMap()};`,
-      `export const g = ${this.table()};`,
       ...(refresh ? [`export const refresh = ${refresh};`] : []),
       ...(tries ? [`export const t = ${tries};`] : []),
     ];
@@ -272,6 +275,7 @@ class ClientGenerator {
         parts,
         clientCode,
         fillOf: (block) => this.createFill(block),
+        directOf: (key) => this.direct.get(key),
         diagnostics: this.diagnostics,
       };
     }
@@ -288,6 +292,7 @@ class ClientGenerator {
       parts,
       clientCode,
       fillOf: (block) => this.createFill(block),
+      directOf: (key) => this.direct.get(key),
       diagnostics: this.diagnostics,
     };
   }
@@ -1654,6 +1659,31 @@ class ClientGenerator {
    * Replaces the one `$$html +=` line of a render with a clone of a template and the writes on
    * its elements. Returns false when the markup needs HTML.
    */
+  /** values-spike: the update functions that are one write of a site, by `kind:helper:anchor:name`. */
+  private readonly direct = new Map<string, string>();
+
+  /** values-spike: finds the update functions that are one call of `text`, `content`, `attr` or `list`. */
+  private collectDirect(): void {
+    const kinds = new Map<string, number>();
+    for (const [node, name] of this.updates) {
+      if (node.kind !== 'source') {
+        kinds.set(name, instanceScope(this.plan, node.site.scope).id);
+      }
+    }
+    for (const code of this.out.get('update') ?? []) {
+      const match =
+        /^export function ([ub]\d+)\(\$\$s\) \{\n {2}\$\$b\.(text|content|attr|list)\(\$\$s, (\d+)(?:, ("[^"\n]*"))?[^\n]*;\n\}$/.exec(
+          code,
+        );
+      const kind = match && kinds.get(match[1]!);
+      if (!match || kind === undefined) {
+        continue;
+      }
+      const name = match[2] === 'attr' ? (JSON.parse(match[4]!) as string) : '';
+      this.direct.set(`${kind}:${match[2]}:${match[3]}:${name}`, match[1]!);
+    }
+  }
+
   private cloneRender(emitter: Emitter, body: Body): boolean {
     return cloneLines(emitter, (code) => this.hoist(code), 0, body);
   }
@@ -1670,6 +1700,7 @@ class ClientGenerator {
       outer: { inside, base, baseVar: '$$p' },
       fills: fill ? (nested) => this.createFill(nested) : undefined,
       hoist: (code) => this.hoist(code),
+      direct: (key) => this.direct.get(key),
     });
     const isItem = (block.kind === 'for' || block.kind === 'repeat') && block.body === body;
     const isCatch = block.kind === 'try' && block.fallback === body;
@@ -2098,7 +2129,41 @@ class ClientGenerator {
     return `{ ${items.join(', ')} }`;
   }
 
-  private table(): string {
+  /**
+   * values-spike: one function for each slot that changes, by the kind of its scope and the slot.
+   * A write calls it, and it queues the updates that read the slot: on the scope, or on its
+   * descendants of another kind. A memo passes its rank, an effect its name.
+   */
+  private emitValues(): void {
+    const entries = this.tableEntries();
+    if (entries.size === 0) {
+      return;
+    }
+    const scopes: string[] = [];
+    for (const [scope, slots] of entries) {
+      const items: string[] = [];
+      for (const [slot, list] of slots) {
+        // Memos first, so bindings read their new values.
+        const sorted = list.toSorted((a, b) => Number(b[2]) - Number(a[2]));
+        const calls: string[] = [];
+        for (const [kind, name] of sorted) {
+          let rank = '';
+          if (name[0] === 'm') {
+            rank = `, ${name.slice(1)}`;
+          } else if (name[0] === 'e') {
+            rank = `, ${JSON.stringify(name)}`;
+          }
+          const other = kind === scope ? '' : `${rank ? '' : ', undefined'}, ${kind}`;
+          calls.push(`$$b.q($$s, ${name}${rank}${other});`);
+        }
+        items.push(`${slot}: ($$s) => { ${calls.join(' ')} }`);
+      }
+      scopes.push(`${scope}: { ${items.join(', ')} }`);
+    }
+    this.emit(`export const v = { ${scopes.join(', ')} };`);
+  }
+
+  private tableEntries(): Map<number, Map<number, [number, string, boolean][]>> {
     const table = new Map<number, Map<number, [number, string, boolean][]>>();
     for (const edge of this.plan.graph.edges) {
       const from = edge.from;
@@ -2130,20 +2195,6 @@ class ClientGenerator {
         entries.push([kind, fn, edge.to.kind === 'memo']);
       }
     }
-    const scopes: string[] = [];
-    for (const [scope, slots] of table) {
-      const items: string[] = [];
-      for (const [slot, entries] of slots) {
-        // Memos update first, so bindings read their new values.
-        const sorted = entries.toSorted((a, b) => Number(b[2]) - Number(a[2]));
-        const pairs: string[] = [];
-        for (const [kind, name] of sorted) {
-          pairs.push(`[${kind}, ${JSON.stringify(name)}]`);
-        }
-        items.push(`${slot}: [${pairs.join(', ')}]`);
-      }
-      scopes.push(`${scope}: { ${items.join(', ')} }`);
-    }
-    return `{ ${scopes.join(', ')} }`;
+    return table;
   }
 }

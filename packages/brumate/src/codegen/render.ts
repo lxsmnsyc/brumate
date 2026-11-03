@@ -148,6 +148,7 @@ export function generateRender(
   file: SFCFile,
   plan: Plan,
   getFill?: (block: Block) => Fill | undefined,
+  getDirect?: (key: string) => string | undefined,
 ): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
@@ -287,6 +288,11 @@ export function generateRender(
       fills: fill ? fills : undefined,
       hoist,
       waits: true,
+      // values-spike: the clone calls the update functions of the client entry.
+      direct: fill && getDirect ? (key) => {
+        const name = getDirect(key);
+        return name && local(name);
+      } : undefined,
     });
     emitter.line(signature);
     emitter.line(`let $$html = '';`);

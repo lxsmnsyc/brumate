@@ -233,6 +233,11 @@ export interface EmitterOptions {
    * the rest of it runs in `$$b.wait` when the memo settles.
    */
   waits?: boolean;
+  /**
+   * values-spike: the update function that is the one write of a site, by
+   * `kind:helper:anchor:name`, which a clone calls in place of its own write.
+   */
+  direct?: (key: string) => string | undefined;
 }
 
 /**
@@ -378,6 +383,10 @@ export class Emitter {
    * `$$m` in a call is the start comment of the block.
    */
   readonly fills: Map<string, string> = new Map();
+  /** values-spike: see `EmitterOptions.direct`. */
+  get direct(): ((key: string) => string | undefined) | undefined {
+    return this.options.direct;
+  }
   private readonly file: SFCFile;
   private readonly plan: Plan;
   private readonly patch: Patch;

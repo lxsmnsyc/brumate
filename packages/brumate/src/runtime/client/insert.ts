@@ -15,7 +15,7 @@ import {
 } from './blocks.ts';
 import { codeReady, loadModule } from './code.ts';
 import { afterInsert, findRoot } from './scopes.ts';
-import { hiding, options, scopes, updating } from './state.ts';
+import { collector, flushFirst, hiding, options, scopes, unset, updating } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
 import { watchTitles } from './titles.ts';
 
@@ -48,10 +48,10 @@ export function refresh(added: Scope[], memosOnly = false): void {
     void loadModule(id).then(async (module) => {
       // The names of the updates of each kind of scope, memos first, so the other updates read
       // their new values.
-      const byKind = new Map<number, string[]>();
+      const byKind = new Map<number, ((scope: Scope) => void)[]>();
       for (const scope of list) {
         if (!byKind.has(scope.k)) {
-          byKind.set(scope.k, refreshNames(module, scope.k, memosOnly));
+          byKind.set(scope.k, refreshNames(module, scope, memosOnly));
         }
       }
       let any = false;
@@ -61,16 +61,15 @@ export function refresh(added: Scope[], memosOnly = false): void {
       if (!any) {
         return;
       }
-      const updates = module as unknown as Record<string, unknown>;
       // The updates can render templates and call functions of other components.
       await codeReady();
       refreshing = true;
       try {
         updating(() => {
           for (const scope of list) {
-            for (const name of byKind.get(scope.k)!) {
+            for (const update of byKind.get(scope.k)!) {
               if (scopes.has(scope.id)) {
-                (updates[name] as (scope: Scope) => void)(scope);
+                update(scope);
               }
             }
           }
@@ -82,25 +81,35 @@ export function refresh(added: Scope[], memosOnly = false): void {
   }
 }
 
-/** The names of the updates of a kind of scope that `refresh` runs, memos first. */
-function refreshNames(module: ClientModule, kind: number, memosOnly: boolean): string[] {
-  const memos = new Set<string>();
-  const others = new Set<string>();
-  for (const slots of Object.values(module.g)) {
-    for (const entries of Object.values(slots)) {
-      for (const [entryKind, name] of entries) {
-        if (entryKind !== kind || name[0] === 'e') {
-          continue;
-        }
-        if (name[0] === 'm') {
-          memos.add(name);
-        } else if (!memosOnly) {
-          others.add(name);
-        }
+/**
+ * values-spike: the updates of the kind of a scope that `refresh` runs, memos first, from its
+ * value functions. Effects are left out.
+ */
+function refreshNames(
+  module: ClientModule,
+  scope: Scope,
+  memosOnly: boolean,
+): ((scope: Scope) => void)[] {
+  const found = new Map<(scope: Scope) => void, number>();
+  collector.m = found;
+  collector.t = scope.k;
+  try {
+    for (const [kind, values] of Object.entries(module.v ?? {})) {
+      collector.k = Number(kind);
+      for (const value of Object.values(values)) {
+        value(scope);
       }
     }
+  } finally {
+    collector.m = undefined;
   }
-  return [...memos, ...others];
+  const result: ((scope: Scope) => void)[] = [];
+  for (const [fn, rank] of [...found].toSorted((a, b) => a[1] - b[1])) {
+    if (!memosOnly || rank < 1e9) {
+      result.push(fn);
+    }
+  }
+  return result;
 }
 
 /**
@@ -113,6 +122,11 @@ export function insertHTML(
 ): void {
   // A fragment that the browser cloned from a template keeps its elements on their scopes, so
   // it is not parsed or indexed. The clones of a list go in one by one, so each node moves once.
+  // values-spike: the render is done, so the first renders that waited for slots run now.
+  for (const scope of rendered) {
+    unset.delete(scope);
+  }
+  flushFirst(true);
   const cloned = typeof html !== 'string';
   let fragments: DocumentFragment[];
   if (typeof html === 'string') {

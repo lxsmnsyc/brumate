@@ -21,6 +21,7 @@ import { call, callNow, setPass } from './references.ts';
 import { afterInsert, descendants, findRoot, resolveScope } from './scopes.ts';
 import {
   DEV,
+  collector,
   devtools,
   guesses,
   hiding,
@@ -577,7 +578,7 @@ function trigger(scope: Scope, slot: number): void {
   const id = findRoot(scope).m!;
   const children = childrenReady(scope);
   if (modules.has(id) && loadingCode.size === 0 && !children) {
-    pass(() => queueWrite(scope, slot));
+    pass(() => writeValue(scope, slot));
     return;
   }
   // The first write to a component loads its update code. Later writes wait in order, and for
@@ -615,7 +616,7 @@ function trigger(scope: Scope, slot: number): void {
       try {
         pass(() => {
           for (const [target, at] of list) {
-            queueWrite(target, at);
+            writeValue(target, at);
           }
         });
       } finally {
@@ -660,21 +661,32 @@ export async function updated(): Promise<void> {
 // Effects wait until every other update of a write has run, and run once each.
 export const pendingEffects: Map<string, () => void> = new Map();
 
-/**
- * The updates that wait in the pass at one depth of scopes, so each runs once.
- * A memo has its rank, the number in its name: memos are numbered in the
- * order they are declared, after the memos they read.
- */
-interface Level {
-  /** The memos, in buckets by rank. */
-  m: Map<string, () => void>[];
-  /** The bindings. */
-  b: Map<string, () => void>;
-  /** The effects. */
-  e: Map<string, () => void>;
+/** values-spike: an update that waits in the pass, in the order of depth, then rank. */
+interface Entry {
+  /** The scope that it updates. */
+  s: Scope;
+  /** The update. */
+  f: (scope: Scope) => void;
+  /** The depth of the scope. */
+  d: number;
+  /** The rank of a memo, or `BINDING` for any other update. */
+  r: number;
+  /** The effect whose run queued it. */
+  o: string | undefined;
 }
 
-let levels: Level[] = [];
+const BINDING = 1e9;
+
+/** The updates of the pass, sorted, and the place of the next one to run. */
+let queue: Entry[] = [];
+let next = 0;
+
+/** The updates that wait, by scope, so each waits once. */
+const queued: Map<Scope, Set<(scope: Scope) => void>> = new Map();
+
+/** The effects of the pass, by depth, by key. */
+let effects: Map<string, () => void>[] = [];
+
 
 let running = 0;
 
@@ -713,13 +725,16 @@ export function pass<T>(write: () => T): T {
     }
     if (--running === 0) {
       // The deepest effects first. An effect that waits already keeps its place.
-      // oxlint-disable-next-line unicorn/no-array-reverse -- The levels are dropped right after.
-      for (const level of levels.reverse()) {
-        for (const [key, runEffect] of level?.e ?? []) {
+      // oxlint-disable-next-line unicorn/no-array-reverse -- The effects are dropped right after.
+      for (const level of effects.reverse()) {
+        for (const [key, runEffect] of level ?? []) {
           pendingEffects.set(key, runEffect);
         }
       }
-      levels = [];
+      effects = [];
+      queue = [];
+      next = 0;
+      queued.clear();
       // Writes that wait for code run as a pass of their own, and the effects wait for it.
       held = waiting !== undefined;
       waiting = undefined;
@@ -750,11 +765,12 @@ const dirty: Set<Scope> = new Set();
 function settle(scope: Scope): void {
   // A memo that reads another memo of the scope settles it through `get`, so the order here does not matter.
   if (dirty.delete(scope)) {
-    for (const [rank, bucket] of (levels[getDepth(scope)]?.m ?? []).entries()) {
-      const key = `${scope.id}:m${rank}`;
-      const compute = bucket?.get(key);
-      bucket?.delete(key);
-      compute?.();
+    const waiting = queued.get(scope);
+    for (let at = next; at < queue.length; at++) {
+      const entry = queue[at]!;
+      if (entry.s === scope && entry.r !== BINDING && waiting?.delete(entry.f)) {
+        runEntry(entry);
+      }
     }
   }
 }
@@ -774,70 +790,117 @@ export function flush(): void {
 
 (globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.flush')] = flush;
 
+/** values-spike: a write calls the value function of the slot, which queues what reads it. */
+function writeValue(scope: Scope, slot: number): void {
+  modules.get(findRoot(scope).m!)?.v?.[scope.k]?.[slot]?.(scope);
+}
+
 /**
- * Queues the updates that read a slot, on the scope and on its descendants of
- * each kind, once the code of the component has loaded.
+ * values-spike: what a value function calls for each update that reads its slot. `rank` is the
+ * rank of a memo or the name of an effect, and `kind` the kind of the descendants it updates.
  */
-function queueWrite(scope: Scope, slot: number): void {
-  const id = findRoot(scope).m!;
-  const module = modules.get(id);
-  if (!module) {
+export function q(
+  scope: Scope,
+  fn: (scope: Scope) => void,
+  rank?: number | string,
+  kind?: number,
+): void {
+  if (collector.m) {
+    if ((kind ?? collector.k) === collector.t && typeof rank !== 'string') {
+      collector.m.set(fn, rank ?? BINDING);
+    }
     return;
   }
-  for (const [kind, name] of module.g[scope.k]?.[slot] ?? []) {
-    for (const target of kind === scope.k ? [scope] : descendants(scope, kind)) {
-      queue((module as unknown as Record<string, (scope: Scope) => void>)[name]!, name, target);
+  if (kind === undefined) {
+    enqueue(scope, fn, rank);
+  } else {
+    for (const target of descendants(scope, kind)) {
+      enqueue(target, fn, rank);
     }
   }
 }
 
 /** Queues an update of a scope, once. */
-function queue(fn: (scope: Scope) => void, name: string, target: Scope): void {
+function enqueue(target: Scope, fn: (scope: Scope) => void, rank: number | string | undefined): void {
   if (DEV) {
     updateCount++;
   }
-  const key = `${target.id}:${name}`;
-  // An effect does not run again on a change of a context that its own run caused.
   const from = origin;
-  if (name[0] === 'e' && viaContext && from === key) {
+  if (typeof rank === 'string') {
+    const key = `${target.id}:${rank}`;
+    // An effect does not run again on a change of a context that its own run caused.
+    if (viaContext && from === key) {
+      return;
+    }
+    const entry: Entry = { s: target, f: fn, d: 0, r: BINDING, o: from };
+    (effects[getDepth(target)] ??= new Map()).set(key, () => runEntry(entry));
     return;
   }
-  // An update of a scope that left the page in the pass does not run. An error goes to the
-  // nearest `#try` around the update, whether its write ran at once or waited for code.
-  function later(): void {
-    if (!failed && scopes.get(target.id) === target) {
-      try {
-        // Past the limit of rounds, the next update fails in place of running.
-        if (stuck) {
-          // The rest of the pass does not run.
-          failed = true;
-          throw new Error(
-            DEV
-              ? `The ${name[0] === 'e' ? 'effect' : 'update'} ${name} of ${findRoot(target).m} did not settle: it writes a value that it reads, and runs again without end. Wrap the read or the write in $untrack, or write only when the value changes [BRM187]`
-              : `Update loop ${key} [BRM187]`,
-          );
-        }
-        const before = origin;
-        origin = from;
-        try {
-          updating(() => fn(target));
-        } finally {
-          origin = before;
-        }
-      } catch (error) {
-        if (!(error instanceof NotReady)) {
-          fail(target, error);
-        }
-      }
+  let waiting = queued.get(target);
+  if (!waiting) {
+    waiting = new Set();
+    queued.set(target, waiting);
+  }
+  if (waiting.has(fn)) {
+    return;
+  }
+  waiting.add(fn);
+  const depth = getDepth(target);
+  const order = rank ?? BINDING;
+  // After the updates of the same or a lower place, and never before the one that runs.
+  let low = next;
+  let high = queue.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    const other = queue[middle]!;
+    if (other.d < depth || (other.d === depth && other.r <= order)) {
+      low = middle + 1;
+    } else {
+      high = middle;
     }
   }
-  const depth = getDepth(target);
-  const level = (levels[depth] ??= { m: [], b: new Map(), e: new Map() });
-  if (name[0] === 'm') {
-    (level.m[+name.slice(1)] ??= new Map()).set(key, later);
-    dirty.add(target);
+  const entry: Entry = { s: target, f: fn, d: depth, r: order, o: from };
+  if (low === queue.length) {
+    queue.push(entry);
   } else {
-    (name[0] === 'e' ? level.e : level.b).set(key, later);
+    queue.splice(low, 0, entry);
+  }
+  if (rank !== undefined) {
+    dirty.add(target);
+  }
+}
+
+/**
+ * Runs an update. One of a scope that left the page in the pass does not run. An error goes to
+ * the nearest `#try` around the update, whether its write ran at once or waited for code.
+ */
+function runEntry(entry: Entry): void {
+  const target = entry.s;
+  if (failed || scopes.get(target.id) !== target) {
+    return;
+  }
+  try {
+    // Past the limit of runs, the next update fails in place of running.
+    if (stuck) {
+      // The rest of the pass does not run.
+      failed = true;
+      throw new Error(
+        DEV
+          ? `The update ${entry.f.name} of ${findRoot(target).m} did not settle: it writes a value that it reads, and runs again without end. Wrap the read or the write in $untrack, or write only when the value changes [BRM187]`
+          : `Update loop ${target.id}:${entry.f.name} [BRM187]`,
+      );
+    }
+    const before = origin;
+    origin = entry.o;
+    try {
+      updating(() => entry.f(target));
+    } finally {
+      origin = before;
+    }
+  } catch (error) {
+    if (!(error instanceof NotReady)) {
+      fail(target, error);
+    }
   }
 }
 
@@ -874,49 +937,25 @@ let failed = false;
 let stuck = false;
 
 /**
- * Runs what waits, the lowest depth first: its memo of the lowest rank, until
- * none waits, then its bindings as one round. After each, it looks again from
- * the top, since a write can queue updates of a lower depth, such as a `$bind`
- * write into a parent.
+ * Runs what waits in order: the lowest depth first, at a depth the memos by rank, then the other
+ * updates. A write that queues a lower depth or rank, such as a `$bind` write into a parent, puts
+ * the update next.
  */
 function drain(): void {
-  let rounds = 0;
-  let depth = 0;
+  let runs = 0;
+  // Updates that keep writing what they read stop: the next one fails.
+  const limit = 100 * (scopes.size + 100);
   draining = true;
   try {
-    while (depth < levels.length) {
-      const level = levels[depth];
-      if (!level) {
-        depth++;
+    while (next < queue.length) {
+      const entry = queue[next++]!;
+      if (!queued.get(entry.s)?.delete(entry.f)) {
         continue;
       }
-      // The bucket of the lowest rank. Each runs whole, so the scan is short.
-      const memos = level.m;
-      let rank = 0;
-      while (rank < memos.length && !memos[rank]?.size) {
-        rank++;
+      if (entry.r === BINDING) {
+        stuck = ++runs > limit;
       }
-      const bucket = memos[rank];
-      if (bucket) {
-        // The whole bucket runs in one loop, with the memos that join it while it runs. A memo that
-        // queues a lower rank or a lower depth, such as of a template that a shallower component
-        // renders, runs after the bucket, since the scan starts again.
-        for (const [key, compute] of bucket) {
-          bucket.delete(key);
-          compute();
-        }
-      } else if (level.b.size > 0) {
-        stuck = ++rounds > 10_000;
-        const round = [...level.b.values()];
-        level.b.clear();
-        for (const waiter of round) {
-          waiter();
-        }
-      } else {
-        depth++;
-        continue;
-      }
-      depth = 0;
+      runEntry(entry);
     }
   } finally {
     draining = false;

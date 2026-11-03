@@ -4,7 +4,7 @@
 import { HAS_CLIENT_HTML, HAS_LATE_MARKUP } from '../features.ts';
 import { parseId } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
-import { comments, elements, scopes } from './state.ts';
+import { comments, elements, rendering, scopes } from './state.ts';
 import type { Scope } from './state.ts';
 
 /**
@@ -198,7 +198,7 @@ export function findComment(key: string): Comment | undefined {
 
 export function findElement(scope: ScopeId, anchor: number): Element | null {
   const own = scopes.get(scope)?.n?.[anchor];
-  if (own?.isConnected) {
+  if (own && (own.isConnected || rendering > 0)) {
     return own as Element;
   }
   const key = `${scope}:${anchor}`;
@@ -229,7 +229,7 @@ export function findElement(scope: ScopeId, anchor: number): Element | null {
 /** The start marker of a block: kept on its scope in a clone, or found in the page. */
 export function blockStart(scope: Scope, anchor: number): Comment | undefined {
   const kept = scope.n?.[anchor];
-  return kept?.isConnected && kept.nodeType === 8
+  return kept && (kept.isConnected || rendering > 0) && kept.nodeType === 8
     ? (kept as Comment)
     : findComment(`b${scope.id}:${anchor}`);
 }

@@ -9,7 +9,7 @@ export function loadModule(id: string): Promise<ClientModule> {
   if (!promise) {
     // A component without client code has nothing to update.
     promise = Promise.resolve(options.load(id)).then((loaded) => {
-      const module = loaded ?? { id, props: {}, g: {} };
+      const module = loaded ?? { id, props: {} };
       modules.set(id, module);
       for (const render of module.components ?? []) {
         valueRenders[render.brumateId] = render;
