@@ -1,0 +1,8 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // `named` false renders a button with no accessible name.
+  const { named } = $props<{ named: boolean }>();
+</script>
+
+<button class="icon">#if (named) {Save}</button>

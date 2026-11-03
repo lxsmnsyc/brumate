@@ -52,7 +52,109 @@ export interface Actions {
   waitFor: (assertion: () => void, timeout?: number) => Promise<void>;
 }
 
-export interface Mounted extends Actions {
+/** The options of `checkAccessibility`. */
+export interface AccessibilityOptions {
+  /** Turns axe-core rules on or off by ID, over the defaults of the test. */
+  rules?: Record<string, { enabled: boolean }>;
+}
+
+/** The part of axe-core that the check uses. */
+interface Axe {
+  run: (
+    context: Element | Document,
+    options: { rules: Record<string, { enabled: boolean }> },
+  ) => Promise<{
+    violations: {
+      id: string;
+      help: string;
+      helpUrl: string;
+      nodes: { target: unknown[]; html: string; failureSummary?: string }[];
+    }[];
+  }>;
+}
+
+export interface Checks {
+  /**
+   * Runs axe-core on what the test rendered, and throws with each violation,
+   * its element and its fix. Needs `axe-core` installed. Rules about a whole
+   * page, such as `landmark-one-main`, are off for `mount` and while a modal
+   * makes the page inert. Rules that need layout, such as `color-contrast`,
+   * are off, since the DOM of a test has none.
+   */
+  checkAccessibility: (options?: AccessibilityOptions) => Promise<void>;
+}
+
+/** The rules about a whole page. */
+const PAGE_RULES = [
+  'landmark-one-main',
+  'page-has-heading-one',
+  'region',
+  'bypass',
+  'document-title',
+  'html-has-lang',
+  'html-lang-valid',
+  'landmark-unique',
+  'landmark-no-duplicate-banner',
+  'landmark-no-duplicate-contentinfo',
+  'landmark-no-duplicate-main',
+  'landmark-banner-is-top-level',
+  'landmark-contentinfo-is-top-level',
+  'landmark-main-is-top-level',
+  'landmark-complementary-is-top-level',
+];
+
+/** The rules that need layout, which happy-dom has none of. */
+const LAYOUT_RULES = ['color-contrast', 'color-contrast-enhanced', 'scrollable-region-focusable'];
+
+/** Loads axe-core, or says how to install it. */
+async function loadAxe(): Promise<Axe> {
+  try {
+    const module = (await import('axe-core')) as { default?: Axe } & Axe;
+    return module.default ?? module;
+  } catch (cause) {
+    throw new Error(
+      'checkAccessibility needs axe-core. Install it with: npm install --save-dev axe-core',
+      { cause },
+    );
+  }
+}
+
+/** The accessibility check for the elements inside `root`. */
+function checks(root: Element | Document, wholePage: boolean): Checks {
+  return {
+    checkAccessibility: async (options = {}) => {
+      const axe = await loadAxe();
+      const rules: Record<string, { enabled: boolean }> = {};
+      for (const id of LAYOUT_RULES) {
+        rules[id] = { enabled: false };
+      }
+      // An open modal or menu makes the rest of the page inert, so rules about the page are off.
+      const inert = wholePage && document.querySelector('[inert], [aria-modal="true"]') !== null;
+      if (!wholePage || inert) {
+        for (const id of PAGE_RULES) {
+          rules[id] = { enabled: false };
+        }
+      }
+      const { violations } = await axe.run(root, { rules: { ...rules, ...options.rules } });
+      if (violations.length === 0) {
+        return;
+      }
+      const lines: string[] = [];
+      for (const violation of violations) {
+        lines.push(`${violation.id}: ${violation.help} (${violation.helpUrl})`);
+        for (const node of violation.nodes) {
+          lines.push(`  ${node.html}`);
+          if (node.failureSummary) {
+            lines.push(`    ${node.failureSummary.replaceAll('\n', '\n    ')}`);
+          }
+        }
+      }
+      throw new Error(`${violations.length} accessibility violation(s):\n${lines.join('\n')}`);
+    },
+  };
+}
+
+export interface Mounted extends Actions, Checks {
   /** The element that holds the component. */
   container: HTMLElement;
   /** Stops the loader and removes the component. */
@@ -340,6 +442,7 @@ export function createMount(options: TestingOptions): Mount {
     return {
       container,
       ...actions(container),
+      ...checks(container, false),
       unmount: () => {
         stop();
         container.remove();
@@ -475,7 +578,7 @@ export interface VisitOptions {
   offscreen?: string;
 }
 
-export interface Visited extends Actions {
+export interface Visited extends Actions, Checks {
   /** The path and the query of the page, such as `/issues?q=bug`. It changes with client navigation. */
   readonly url: string;
   /** The status of the first page. */
@@ -683,6 +786,7 @@ export function createVisit(options: VisitorOptions): Visit {
 
     const current: Visited = {
       ...actions(document),
+      ...checks(document, true),
       get url() {
         return location.pathname + location.search;
       },

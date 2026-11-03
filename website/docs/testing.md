@@ -51,17 +51,18 @@ The test runs in a DOM environment, so Vite gives it the browser version of a `.
 
 ## What `mount` returns
 
-| Member                        | What it does                                                    |
-| ----------------------------- | --------------------------------------------------------------- |
-| `container`                   | The element that holds the component.                           |
-| `get(selector)`               | The first element that matches, or an error if none does.       |
-| `text(selector)`              | The text of the first element that matches.                     |
-| `click(selector)`             | Clicks an element.                                              |
-| `input(selector, value)`      | Types a value into a field and fires `input`.                   |
-| `submit(selector)`            | Submits a form, as its submit button does.                      |
-| `reveal(selector)`            | Brings elements that `offscreen` kept out of view into view.    |
-| `waitFor(assertion, timeout)` | Retries an assertion until it passes, for 2 seconds by default. |
-| `unmount()`                   | Stops the loader and removes the component.                     |
+| Member                        | What it does                                                         |
+| ----------------------------- | -------------------------------------------------------------------- |
+| `container`                   | The element that holds the component.                                |
+| `get(selector)`               | The first element that matches, or an error if none does.            |
+| `text(selector)`              | The text of the first element that matches.                          |
+| `click(selector)`             | Clicks an element.                                                   |
+| `input(selector, value)`      | Types a value into a field and fires `input`.                        |
+| `submit(selector)`            | Submits a form, as its submit button does.                           |
+| `reveal(selector)`            | Brings elements that `offscreen` kept out of view into view.         |
+| `waitFor(assertion, timeout)` | Retries an assertion until it passes, for 2 seconds by default.      |
+| `checkAccessibility(options)` | Runs axe-core on the component. See [Accessibility](#accessibility). |
+| `unmount()`                   | Stops the loader and removes the component.                          |
 
 `mount` takes the options of `render` as its third argument, such as a `request` for components that read it with `getEvent()`, and `offscreen`. See [Triggers](#triggers).
 
@@ -191,9 +192,25 @@ it('signs in and opens a new issue', async () => {
 | `cookies` | The cookies that the browser has now, by name.                     |
 | `close()` | Stops the loader, puts `fetch` back and empties the document.      |
 
-`get`, `text`, `click`, `input`, `submit`, `reveal` and `waitFor` work as they do for `mount`, on the whole document.
+`get`, `text`, `click`, `input`, `submit`, `reveal`, `waitFor` and `checkAccessibility` work as they do for `mount`, on the whole document.
 
 Requests to other origins go to the `fetch` from before. Use `visit` or `mount` in a test, not both, since each starts a loader.
+
+## Accessibility
+
+`checkAccessibility()` runs [axe-core](https://github.com/dequelabs/axe-core) on what `mount` or `visit` rendered. It throws with each violation, its element and how to fix it:
+
+```ts
+it('names the button', async () => {
+  const page = await mount(IconButton, {});
+  await page.checkAccessibility();
+});
+```
+
+- axe-core is an optional peer dependency. Install it with `npm install --save-dev axe-core`. A test file that never calls the check does not load it, and the error without it says how to install it.
+- For `mount`, the rules about a whole page, such as `landmark-one-main` and `region`, are off. For `visit` they are on, except while a modal or a menu makes the page inert (an element with `inert` or `aria-modal="true"`).
+- The rules that need layout, such as `color-contrast`, are off, since the DOM of a test has none. Run those in an end-to-end test in a browser.
+- `checkAccessibility({ rules: { 'button-name': { enabled: false } } })` turns a rule off or on by its ID.
 
 ## Type-checking tests
 
