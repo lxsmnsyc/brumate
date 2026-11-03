@@ -31,7 +31,7 @@
 
 - `pnpm --filter website exec vitest run test/llms.test.ts`: pass (7 tests).
 - `pnpm lint`: pass (no errors). `pnpm format:check`: pass. `pnpm typecheck`: pass (after building language-server; it failed once with SIGKILL under load).
-- `pnpm --filter website check:samples`: pass (65 samples). `pnpm --filter website build`: pass; dist/client has llms.txt, llms-full.txt, docs/*.md, ui/*.md.
+- `pnpm --filter website check:samples`: pass (65 samples). `pnpm --filter website build`: pass; dist/client has llms.txt, llms-full.txt, docs/_.md, ui/_.md.
 
 ## Size
 
