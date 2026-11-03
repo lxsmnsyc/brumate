@@ -56,7 +56,7 @@ const SOURCE_KINDS = new Set<DeclarationKind>([
   'template-param',
 ]);
 
-/** True if the read is inside the compute of one of the memos. */
+/** True if the read is inside the compute of one of the memos; a read in its inner function counts. */
 function isReadIn(read: Reference, memos: Set<Declaration>): boolean {
   const site = read.site;
   return site.kind === 'memo' && site.declaration !== undefined && memos.has(site.declaration);

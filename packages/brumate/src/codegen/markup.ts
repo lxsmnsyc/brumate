@@ -1254,6 +1254,8 @@ export class Emitter {
           continue;
         }
         if (kept.length < statement.declarations.length) {
+          // The kept slices of the patch carry their source markers, which map the line. `raw`
+          // takes the offset only to strip the indent of later lines.
           code = `${statement.kind} ${kept.join(', ')};`;
           partial = true;
         }
