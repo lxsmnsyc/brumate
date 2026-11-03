@@ -108,7 +108,7 @@
   }
 
   // A group with one selection is a radiogroup. Another is a toolbar, or a group in a Toolbar.
-  function getRole(mode: string, inToolbar: boolean): string {
+  function getRole(mode: string, inToolbar: boolean): 'radiogroup' | 'group' | 'toolbar' {
     if (mode === 'single') {
       return 'radiogroup';
     }

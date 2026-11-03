@@ -313,3 +313,32 @@ export const noStrayEntry: [Exclude<keyof ElementEventNames, DomEvents | 'itemac
 ]
   ? true
   : false = true;
+
+// ARIA attributes take the values of WAI-ARIA 1.2, and `role` one of its roles.
+export const ariaValid: ElementProps<'div'> = {
+  role: 'tablist',
+  'aria-expanded': true,
+  'aria-pressed': 'mixed',
+  'aria-checked': 'false',
+  'aria-live': 'polite',
+  'aria-level': 2,
+  'aria-valuenow': '3',
+  'aria-haspopup': 'menu',
+  'aria-controls': 'a b',
+  'aria-hidden': null,
+};
+export const ariaOther: ElementProps<'div'> = { 'aria-future-thing': 'x', role: 'doc-toc' };
+export const ariaFallbackRole: ElementProps<'li'> = {
+  role: 'doc-footnote listitem',
+  'aria-relevant': 'additions removals text',
+};
+// @ts-expect-error `aria-expanded` is a boolean, not a free string.
+export const ariaBadExpanded: ElementProps<'div'> = { 'aria-expanded': 'yes' };
+// @ts-expect-error `aria-live` is `off`, `polite` or `assertive`.
+export const ariaBadLive: ElementProps<'div'> = { 'aria-live': 'loud' };
+// @ts-expect-error `menu` is a role, `menus` is not.
+export const ariaBadRole: ElementProps<'div'> = { role: 'menus' };
+// @ts-expect-error `aria-level` is a number.
+export const ariaBadLevel: ElementProps<'div'> = { 'aria-level': 'deep' };
+// @ts-expect-error `aria-pressed` takes `mixed`, not `maybe`.
+export const ariaBadPressed: ElementProps<'button'> = { 'aria-pressed': 'maybe' };

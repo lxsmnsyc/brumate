@@ -14,7 +14,7 @@
 <div {...rest}></div>
 <div [name]=(5)></div>
 <Badge label="a" count=(1)>hello</Badge>
-<div ref=$bind(element) tabindex="0" class=(['a', false && 'b']) aria-label=(1) data-x=(2) hidden>
+<div ref=$bind(element) tabindex="0" class=(['a', false && 'b']) aria-level=(1) data-x=(2) hidden>
   <button ref=$bind(button) type="button" title=name></button>
 </div>
 <span autocorrect="off" contenteditable="true"></span>
