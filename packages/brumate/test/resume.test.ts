@@ -8114,8 +8114,11 @@ describe('await $memo in a component that the browser renders', () => {
   });
 });
 
-describe('an unread async memo in a browser render', () => {
-  it('reports its rejection to the page when no #try catches it, with no unhandled rejection', async () => {
+describe('a memo that nothing reads, in a browser render', () => {
+  const counts = globalThis as { failRuns?: number };
+
+  /** Collects the unhandled rejections of the test. */
+  function watchUnhandled(): unknown[] {
     const unhandled: unknown[] = [];
     const onUnhandled = (reason: unknown): void => {
       unhandled.push(reason);
@@ -8124,23 +8127,52 @@ describe('an unread async memo in a browser render', () => {
     onTestFinished(() => {
       process.off('unhandledRejection', onUnhandled);
     });
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-    onTestFinished(() => errors.mockRestore());
-    await resume('unreadMemoHost', {});
-    click(document.querySelector('.show')!);
-    await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
-    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
-    await new Promise((done) => setTimeout(done, 30));
-    expect(String(errors.mock.calls[0]![0])).toBe('Error: side failed');
-    expect(unhandled.map(String)).toEqual([]);
-  });
+    return unhandled;
+  }
 
-  it('sends its rejection to the nearest #catch', async () => {
-    await resume('unreadMemoTry', {});
-    click(document.querySelector('.show')!);
-    await waitFor(() => expect(text('.caught')).toBe('Error: side failed'));
-    expect(document.querySelector('.kid')).toBeNull();
-  });
+  const hosts = [
+    ['unreadMemoHost', 'is not read'],
+    ['primitiveAwaitUnreadHost', 'gives a string with `await` inside and is not read'],
+    [
+      'awaitFieldHost',
+      'is read only in another memo that nothing reads, `$memo((await side).length)`',
+    ],
+    [
+      'awaitSumHost',
+      'is awaited only at the start of a memo that nothing reads, `$memo(await side + 1)`',
+    ],
+    [
+      'awaitMemoHost',
+      'is awaited only as the whole value of a memo that nothing reads, `$memo(await side)`',
+    ],
+  ] as const;
+  for (const [host, what] of hosts) {
+    it(`does not run when it ${what}`, async () => {
+      const unhandled = watchUnhandled();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      onTestFinished(() => errors.mockRestore());
+      counts.failRuns = 0;
+      await resume(host, {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
+      await new Promise((done) => setTimeout(done, 40));
+      expect(counts.failRuns).toBe(0);
+      expect(errors).not.toHaveBeenCalled();
+      expect(unhandled.map(String)).toEqual([]);
+    });
+  }
+
+  for (const page of ['unreadMemoTry', 'primitiveAwaitUnreadTry']) {
+    it(`${page}: does not run inside a #try, which shows its body`, async () => {
+      counts.failRuns = 0;
+      await resume(page, {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
+      await new Promise((done) => setTimeout(done, 40));
+      expect(counts.failRuns).toBe(0);
+      expect(document.querySelector('.caught')).toBeNull();
+    });
+  }
 });
 
 describe('a #try around a child component', () => {
@@ -8369,12 +8401,12 @@ describe('an async memo that a browser render reads only with await', () => {
     return unhandled;
   }
 
+  // The server waits at the `await` and throws there, so the browser reports the rejection. An
+  // `await` in a memo that nothing reads does not count: neither memo runs (see above).
   const hosts = [
     ['awaitReadHost', 'as a statement, `await side;`'],
-    ['awaitFieldHost', 'in another memo, `$memo((await side).length)`'],
-    ['awaitSumHost', 'at the start of another memo, `$memo(await side + 1)`'],
-    // The other memo holds the same promise, so the error is reported once.
-    ['awaitMemoHost', 'as the whole value of another memo, `$memo(await side)`'],
+    // The memo that reads it shows in the markup, so both run and the error is reported once.
+    ['awaitShownHost', 'in a memo that the markup shows, `$memo((await side).length)`'],
   ] as const;
   for (const [host, read] of hosts) {
     it(`reports its rejection once when the read is ${read}`, async () => {
@@ -8554,26 +8586,6 @@ describe('an async memo that gives a string, with await inside, in a browser ren
     expect(errors).toHaveBeenCalledTimes(1);
     expect(String(errors.mock.calls[0]![0])).toBe('Error: gap failed');
     expect(unhandled.map(String)).toEqual([]);
-  });
-
-  it('reports the rejection of such a memo that nothing reads, with no unhandled rejection', async () => {
-    const unhandled = watchUnhandled();
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
-    onTestFinished(() => errors.mockRestore());
-    await resume('primitiveAwaitUnreadHost', {});
-    click(document.querySelector('.show')!);
-    await waitFor(() => expect(document.querySelector('.kid')).not.toBeNull());
-    await waitFor(() => expect(errors).toHaveBeenCalledTimes(1));
-    await new Promise((done) => setTimeout(done, 30));
-    expect(String(errors.mock.calls[0]![0])).toBe('Error: side failed');
-    expect(unhandled.map(String)).toEqual([]);
-  });
-
-  it('sends the rejection of such a memo that nothing reads to the nearest #catch', async () => {
-    await resume('primitiveAwaitUnreadTry', {});
-    click(document.querySelector('.show')!);
-    await waitFor(() => expect(text('.caught')).toBe('Error: side failed'));
-    expect(document.querySelector('.kid')).toBeNull();
   });
 });
 

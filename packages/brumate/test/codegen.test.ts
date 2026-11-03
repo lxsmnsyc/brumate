@@ -879,3 +879,81 @@ describe('memo of a prop', () => {
     }
   });
 });
+
+describe('memos that no browser code reads', () => {
+  /** The render module and the client parts of a component with the given script and markup. */
+  function build(script: string, markup: string): { render: string; client: string } {
+    const { render, parts } = compile(
+      `<script>\n  import { $debounced, $effect, $memo, $signal } from 'brumate/signals';\n  import { slow, log } from './data.ts';\n  let count = $signal(1);\n${script}\n</script>\n${markup}`,
+      { filename: 'Unread.brm' },
+    );
+    return { render, client: Object.values(parts).join('\n') };
+  }
+
+  it('leaves out the declaration and the compute of a memo with no read', () => {
+    const { render, client } = build('  const lost = $memo(log(count));', '<p>{count}</p>');
+    expect(render).not.toContain('lost');
+    expect(render).not.toContain('log(count)');
+    expect(client).not.toContain('log(');
+    expect(parseSync('Unread.brm.ts', render).errors).toEqual([]);
+  });
+
+  it('leaves out a memo that only an unread memo reads, and keeps the one that markup reads', () => {
+    const { render, client } = build(
+      '  const a = $memo(slow(count));\n  const b = $memo(a + 1);\n  const c = $memo(count * 3);',
+      '<button onClick=(() => count++)>{c}</button>',
+    );
+    expect(render).not.toContain('slow(');
+    expect(render).not.toContain('a + 1');
+    expect(render).toContain('const c = (count * 3);');
+    expect(client).not.toContain('slow(');
+    expect(client).toContain('* 3');
+  });
+
+  it('keeps a memo that a handler, an effect or a function reads', () => {
+    const { render } = build(
+      '  const a = $memo(slow(count));\n  const b = $memo(slow(count + 1));\n  const c = $memo(slow(count + 2));\n  const read = () => c;\n  $effect(() => log(b));',
+      '<button onClick=(() => log(a))>{count}</button>',
+    );
+    for (const name of ['a', 'b', 'c']) {
+      expect(render).toMatch(new RegExp(`const ${name} = `));
+    }
+  });
+
+  it('keeps the other declarators of a statement', () => {
+    const { render } = build(
+      '  const lost = $memo(log(count)), shown = $memo(count + 1);',
+      '<p>{shown}</p>',
+    );
+    expect(render).toContain('const shown = (count + 1);');
+    expect(render).not.toContain('lost');
+  });
+
+  it('keeps a debounced value and an awaited memo', () => {
+    const { render } = build(
+      '  const slowed = $debounced(count, 50);\n  const loaded = await $memo(slow(count));',
+      '<p>{count}</p>',
+    );
+    expect(render).toContain('slowed');
+    expect(render).toContain('loaded');
+  });
+
+  it('reports the rejection of a memo that only `await` reads, and of nothing else', () => {
+    const { render } = build(
+      '  const side = $memo(slow(count));\n  await side;\n  const lost = $memo(log(count));',
+      '<p>{count}</p>',
+    );
+    expect(render).toContain('$$b.unreadMemo($$s1, side);');
+    expect(render).not.toContain('lost');
+    expect(render).not.toContain('unreadMemo($$s1, lost)');
+  });
+
+  it('does not report a memo that only an unread memo awaits', () => {
+    const { render } = build(
+      '  const side = $memo(slow(count));\n  const size = $memo((await side).length);',
+      '<p>{count}</p>',
+    );
+    expect(render).not.toContain('unreadMemo');
+    expect(render).not.toContain('slow(');
+  });
+});

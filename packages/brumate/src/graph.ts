@@ -6,6 +6,7 @@ import type {
   Declaration,
   DeclarationKind,
   Diagnostic,
+  Reference,
   Scope,
   SemanticModel,
   Site,
@@ -33,6 +34,8 @@ export interface Graph {
   reached: Set<Site>;
   /** Body and template scopes that the client may create. */
   created: Set<Scope>;
+  /** Memos that no browser code reads, which the browser does not declare or compute. */
+  unread: Set<Declaration>;
   diagnostics: Diagnostic[];
 }
 
@@ -52,6 +55,60 @@ const SOURCE_KINDS = new Set<DeclarationKind>([
   'error',
   'template-param',
 ]);
+
+/** True if the read is inside the compute of one of the memos. */
+function isReadIn(read: Reference, memos: Set<Declaration>): boolean {
+  const site = read.site;
+  return site.kind === 'memo' && site.declaration !== undefined && memos.has(site.declaration);
+}
+
+/**
+ * Finds the memos that no browser code reads: no read at all, or reads only in the compute of
+ * other such memos. The server computes a memo when something reads it, so the browser does not
+ * compute these either. A memo that is awaited where it is declared, a debounced or throttled
+ * value, an optimistic value, a search parameter, a bound value and a ref target stay.
+ */
+function findUnread(model: SemanticModel): Set<Declaration> {
+  const unread = new Set<Declaration>();
+  const candidates: Declaration[] = [];
+  for (const declaration of model.declarations) {
+    if (
+      isMemoKind(declaration.kind) &&
+      declaration.site?.kind === 'memo' &&
+      !declaration.awaited &&
+      !declaration.timing &&
+      !declaration.optimistic &&
+      !declaration.writable &&
+      !declaration.searchParam &&
+      !declaration.bound &&
+      declaration.refs.length === 0 &&
+      declaration.writes.length === 0
+    ) {
+      candidates.push(declaration);
+    }
+  }
+  // A memo that only an unread memo reads is unread too, so repeat until nothing changes.
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const declaration of candidates) {
+      if (unread.has(declaration)) {
+        continue;
+      }
+      let read = false;
+      for (const item of declaration.reads) {
+        if (!isReadIn(item, unread)) {
+          read = true;
+          break;
+        }
+      }
+      if (!read) {
+        unread.add(declaration);
+        changed = true;
+      }
+    }
+  }
+  return unread;
+}
 
 export interface GraphOptions {
   /**
@@ -490,6 +547,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
   const live = new Set<GraphNode>();
   const reached = new Set<Site>();
   const created = new Set<Scope>();
+  const unread = findUnread(model);
 
   function reach(site: Site): void {
     if (reached.has(site)) {
@@ -545,7 +603,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         (site.kind === 'block' && site.block?.kind === 'for' && site.block.window !== undefined) ||
         (site.kind === 'effect' && live.has(siteNodes.get(site)!)) ||
         created.has(site.scope);
-      if (isRoot) {
+      if (isRoot && !(site.kind === 'memo' && unread.has(site.declaration!))) {
         reach(site);
       }
     }
@@ -593,6 +651,11 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
           propagated = true;
         }
       }
+    }
+
+    // The browser does not compute an unread memo, so it never changes there.
+    for (const declaration of unread) {
+      live.delete(declarationNodes.get(declaration)!);
     }
 
     if (live.size + reached.size + created.size !== before) {
@@ -669,5 +732,5 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
     }
   }
 
-  return { model, nodes, edges, live, reached, created, diagnostics };
+  return { model, nodes, edges, live, reached, created, unread, diagnostics };
 }

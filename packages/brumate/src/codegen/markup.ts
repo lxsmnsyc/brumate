@@ -1237,9 +1237,33 @@ export class Emitter {
         }
       }
       let code = this.patch.slice(statement.start, statement.end);
+      let partial = false;
+      if (this.options.mode === 'client' && statement.type === 'VariableDeclaration') {
+        // The browser follows the server: a memo that no browser code reads is not computed.
+        const kept: string[] = [];
+        for (const declarator of statement.declarations) {
+          const declaration =
+            declarator.id.type === 'Identifier'
+              ? scope.declarations.get(declarator.id.name)
+              : undefined;
+          if (!declaration || !this.plan.graph.unread.has(declaration)) {
+            kept.push(this.patch.slice(declarator.start, declarator.end));
+          }
+        }
+        if (kept.length === 0) {
+          continue;
+        }
+        if (kept.length < statement.declarations.length) {
+          code = `${statement.kind} ${kept.join(', ')};`;
+          partial = true;
+        }
+      }
       if (index < lastAwait && statement.type === 'VariableDeclaration') {
         if (statement.kind === 'const') {
-          code = `let${this.patch.slice(statement.start + 'const'.length, statement.end)}`;
+          // The patch can rewrite the keyword, so a statement that is whole starts at its offset.
+          code = partial
+            ? `let${code.slice('const'.length)}`
+            : `let${this.patch.slice(statement.start + 'const'.length, statement.end)}`;
         }
         for (const declaration of scope.declarations.values()) {
           if (
@@ -1431,12 +1455,13 @@ export class Emitter {
   }
 
   /**
-   * In the browser, a memo that nothing reads has no slot, so no load takes its promise. Its
-   * rejection goes to the nearest `#try`, which is where a memo that throws sends its error. A
-   * memo that always gives a primitive, such as `count * 2`, is never a promise, unless it has
-   * `await` inside. `await memo` compiles to a plain read of the promise, which drops it, unless
-   * the read is the whole value of another memo, as in `$memo(await memo)`, which then holds the
-   * same promise.
+   * In the browser, a memo that only `await` reads has no slot, so no load takes its promise.
+   * The server waits at the `await` and throws the error there, so the rejection goes to the
+   * nearest `#try`, which is where a memo that throws sends its error. A memo that always gives a
+   * primitive, such as `count * 2`, is never a promise, unless it has `await` inside. `await memo`
+   * compiles to a plain read of the promise, which drops it, unless the read is the whole value of
+   * another memo, as in `$memo(await memo)`, which then holds the same promise. A memo that
+   * nothing reads is not declared (`Graph.unread`), and neither is one that only such a memo reads.
    */
   private watchUnreadMemos(
     statement: oxc.VariableDeclaration,
@@ -1454,12 +1479,14 @@ export class Emitter {
         declaration &&
         !awaited.includes(declaration) &&
         (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
+        !this.plan.graph.unread.has(declaration) &&
         declaration.reads.every(
           (read) =>
-            read.await &&
-            (read.site.kind !== 'memo' ||
-              read.site.node.start !== read.await.start ||
-              read.site.node.end !== read.await.end),
+            (read.site.kind === 'memo' && this.plan.graph.unread.has(read.site.declaration!)) ||
+            (read.await &&
+              (read.site.kind !== 'memo' ||
+                read.site.node.start !== read.await.start ||
+                read.site.node.end !== read.await.end)),
         ) &&
         slotIndex(this.plan, declaration) === -1 &&
         !isNeverPromise(declaration)
