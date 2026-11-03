@@ -6,7 +6,7 @@ summary: A date that the user types segment by segment.
 
 A date that the user types segment by segment.
 
-```brm demo DateFieldDemo
+```html demo DateFieldDemo
 
 ```
 
@@ -28,7 +28,7 @@ A date that the user types segment by segment.
 
 ## Anatomy
 
-```brm anatomy DateFieldAnatomy
+```html anatomy DateFieldAnatomy
 `DateField`: The field and its state. It shows `data-invalid`, `data-required` and the other states.
 `Label`: Names the group of segments.
 `DateInput`: The group that holds the segments and the text between them.
@@ -121,7 +121,7 @@ The keys act on the segment that has focus. A segment takes none of them while t
 
 `value` holds the date as `YYYY-MM-DD`, or `null` until every segment is set. How you pass it picks who keeps it. Change a field below and press Reset the form:
 
-```brm demo DateFieldStateDemo
+```html demo DateFieldStateDemo
 
 ```
 
@@ -140,7 +140,25 @@ Style the segments with `data-type`, `data-placeholder` and `data-focused`, and 
 
 A segment shows `data-hovered` and `data-focus-visible`. This stylesheet draws the input as a box with its segments in rest, placeholder, focus, invalid and disabled, and the description and the error. Press Save with no date to see the error.
 
-```brm styled DateFieldStyled
+```html styled DateFieldStyled
+
+```
+
+## Use cases
+
+### A date in a form
+
+`isRequired` makes the browser check the field on a submit, and the FieldError shows the message. `minValue` and `maxValue` make a date outside them invalid, and the browser does not submit the form with one: the FieldError shows its message. `name` posts the date as `YYYY-MM-DD`, and Reset gives back the first date.
+
+```html demo DateFieldFormDemo
+
+```
+
+### A date in the language of the user
+
+An [I18nProvider](./i18n-provider.md) gives the order of the segments, the text between them, the placeholders and the names that a screen reader hears. Three providers give three locales to one signal. Empty a segment with Backspace to see its placeholder: the value becomes empty until every segment is set again, and a set value is always `YYYY-MM-DD`:
+
+```html demo DateFieldLocaleDemo
 
 ```
 
@@ -178,21 +196,3 @@ A segment shows `data-hovered` and `data-focus-visible`. This stylesheet draws t
 
 - `minValue` and `maxValue` limit the date, and `isDateUnavailable` marks dates that cannot be picked. A date outside them makes the field invalid, as `isInvalid` does.
 - The errors of a [Form](./form.md) for its `name` show in the FieldError.
-
-## Use cases
-
-### A date in a form
-
-`isRequired` makes the browser check the field on a submit, and the FieldError shows the message. `minValue` and `maxValue` make a date outside them invalid, and the browser does not submit the form with one: the FieldError shows its message. `name` posts the date as `YYYY-MM-DD`, and Reset gives back the first date.
-
-```brm demo DateFieldFormDemo
-
-```
-
-### A date in the language of the user
-
-An [I18nProvider](./i18n-provider.md) gives the order of the segments, the text between them, the placeholders and the names that a screen reader hears. Three providers give three locales to one signal. Empty a segment with Backspace to see its placeholder: the value becomes empty until every segment is set again, and a set value is always `YYYY-MM-DD`:
-
-```brm demo DateFieldLocaleDemo
-
-```

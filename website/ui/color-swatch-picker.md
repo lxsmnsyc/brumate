@@ -6,7 +6,7 @@ summary: A list of color swatches, to pick one.
 
 A list of color swatches, to pick one.
 
-```brm demo ColorSwatchPickerDemo
+```html demo ColorSwatchPickerDemo
 
 ```
 
@@ -26,7 +26,7 @@ A list of color swatches, to pick one.
 
 ## Anatomy
 
-```brm anatomy ColorSwatchPickerAnatomy
+```html anatomy ColorSwatchPickerAnatomy
 `ColorSwatchPicker`: The listbox of colors. It shows `data-layout`.
 `ColorSwatchPickerItem`: One color. The selected item shows `data-selected`.
 `ColorSwatch`: Shows the color of the item. Optional.
@@ -96,7 +96,7 @@ The selection follows focus. A disabled item is skipped.
 
 `value` holds a color of CSS. How you pass it picks who keeps it:
 
-```brm demo ColorSwatchPickerStateDemo
+```html demo ColorSwatchPickerStateDemo
 
 ```
 
@@ -114,7 +114,7 @@ Style the items with the data attributes above, and the list with `data-layout`.
 
 This stylesheet styles an item in rest, hover, press, keyboard focus, selected, selected and hovered, and disabled. The ring grows with the state, and the keyboard ring has two bands. Press the arrow keys in the list, since the selection follows focus.
 
-```brm styled ColorSwatchPickerStyled
+```html styled ColorSwatchPickerStyled
 
 ```
 
@@ -124,7 +124,7 @@ This stylesheet styles an item in rest, hover, press, keyboard focus, selected, 
 
 A `layout="stack"` list moves with ArrowUp and ArrowDown only. The chip below takes its color from the signal.
 
-```brm demo ColorSwatchPickerLabelDemo
+```html demo ColorSwatchPickerLabelDemo
 
 ```
 
@@ -132,7 +132,7 @@ A `layout="stack"` list moves with ArrowUp and ArrowDown only. The chip below ta
 
 Inside a [ColorPicker](./color-picker.md), the list and a ColorField share the color. Type a color that no preset has, and every item is unselected, since an item is selected when its color equals the value.
 
-```brm demo ColorSwatchPickerCustomDemo
+```html demo ColorSwatchPickerCustomDemo
 
 ```
 

@@ -2,7 +2,7 @@
 
 A function with `'use server'` runs only on the server. Client code calls it like any other async function: the arguments go to the server, and the result comes back.
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -63,7 +63,7 @@ export async function saveTodo(todo: Todo) {
 }
 ```
 
-```brm
+```html
 <script>
   import { listTodos, saveTodo } from '../todos.ts';
 </script>
@@ -129,7 +129,7 @@ async function save(input: unknown) {
 
 `safeParse(schema, value)` does not throw. It returns `{ value }` or `{ issues }`, so the function can return the issues for the page to show:
 
-```brm live
+```html live
 <script module>
   import type { StandardSchemaV1 } from 'brumate/server';
 
@@ -179,7 +179,7 @@ async function save(input: unknown) {
 
 Throw a `ServerError` to answer with a message and a status. The call in the browser rejects with an error that has the same message.
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
   import { ServerError } from 'brumate/server';
@@ -222,7 +222,7 @@ Throw a `ServerError` to answer with a message and a status. The call in the bro
 
 A thrown error reaches the browser as a message, and `catch` types it as `unknown`. To let the page tell errors apart by type, return them as values. The browser gets the return type of the server function, so TypeScript narrows the result and checks each case:
 
-```brm live
+```html live
 <script module>
   type Renamed =
     | { ok: true; name: string }
@@ -402,7 +402,7 @@ A custom Node server sends the cookies with `toNodeHeaders(answer.headers)`, whi
 
 Pass a `File` or a `Blob` as an argument, or inside an array or a plain object. The server function gets a `File`.
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 

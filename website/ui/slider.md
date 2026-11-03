@@ -6,7 +6,7 @@ summary: A value, or a range of values, on a track.
 
 A value, or a range of values, that thumbs move on a track.
 
-```brm demo SliderDemo
+```html demo SliderDemo
 
 ```
 
@@ -29,7 +29,7 @@ A value, or a range of values, that thumbs move on a track.
 
 ## Anatomy
 
-```brm anatomy SliderAnatomy
+```html anatomy SliderAnatomy
 `Slider`: Holds the values and the range. It is a `group`.
 `Label`: Names the slider.
 `SliderOutput`: Shows the values as text, in the format of the locale.
@@ -112,7 +112,7 @@ Keys act on the thumb that has focus.
 
 `value` holds a number for one thumb, or a list of numbers for several. How you pass it picks who keeps it:
 
-```brm demo SliderStateDemo
+```html demo SliderStateDemo
 
 ```
 
@@ -129,7 +129,7 @@ Style the thumb with the data attributes above. The thumb is placed with `left`,
 
 The part draws no fill. This stylesheet puts a `div` in the track and sets its `left` and `width` from the signal, which is one value or two. It styles rest, hover, drag, keyboard focus, a range of two thumbs and disabled. A form sends each thumb with its `name`.
 
-```brm styled SliderStyled
+```html styled SliderStyled
 
 ```
 
@@ -139,7 +139,7 @@ The part draws no fill. This stylesheet puts a `div` in the track and sets its `
 
 Two thumbs bind a list of two numbers. `onChangeEnd` applies the range when the user lets go, so the list does not jump during a drag.
 
-```brm demo SliderPriceDemo
+```html demo SliderPriceDemo
 
 ```
 
@@ -147,7 +147,7 @@ Two thumbs bind a list of two numbers. `onChangeEnd` applies the range when the 
 
 `orientation="vertical"` lays the track in a column, and the thumb is placed with `bottom`. The buttons write the three signals at once.
 
-```brm demo SliderMixerDemo
+```html demo SliderMixerDemo
 
 ```
 

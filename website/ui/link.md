@@ -6,7 +6,7 @@ summary: A link that presses as a button does.
 
 A link that presses as a button does, and that the browser follows.
 
-```brm demo LinkDemo
+```html demo LinkDemo
 
 ```
 
@@ -49,7 +49,7 @@ Style the link with the data attributes above, such as `[data-current]` for the 
 
 This stylesheet styles rest, hover, press, keyboard focus, current and disabled. Its tokens are at the top, and they follow the color scheme.
 
-```brm styled LinkStyled
+```html styled LinkStyled
 
 ```
 
@@ -59,7 +59,7 @@ This stylesheet styles rest, hover, press, keyboard focus, current and disabled.
 
 A `nav` with a Link for each page. `isCurrent` follows a signal that `onPress` writes, and a disabled Link leaves the order of Tab. In an app with a router, set `isCurrent` from the route.
 
-```brm demo LinkNavDemo
+```html demo LinkNavDemo
 
 ```
 
@@ -67,6 +67,6 @@ A `nav` with a Link for each page. `isCurrent` follows a signal that `onPress` w
 
 A Link with `href` is an `<a>`, so `target` and `rel` pass to it. A Link without `href` has `role="link"` and a place in the order of Tab, and `onPress` runs what it does. Use it for an action that reads as a link, such as opening a longer text. For anything else, use a [Button](./button.md).
 
-```brm demo LinkActionDemo
+```html demo LinkActionDemo
 
 ```

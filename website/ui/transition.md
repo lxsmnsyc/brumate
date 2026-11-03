@@ -6,7 +6,7 @@ summary: Animates content as it comes and goes.
 
 Animates content in and out. It keeps the content in the page until its leave ends, which CSS cannot do for content that is removed.
 
-```brm demo TransitionDemo
+```html demo TransitionDemo
 
 ```
 
@@ -31,39 +31,6 @@ Other parts run the same steps with their `transition` prop: [DisclosurePanel](.
 - `unmount` decides what happens once it has left. `true` removes the content, `false` keeps it with `hidden`, and `'offscreen'` keeps it in an [`#offscreen`](../docs/control-flow.md#offscreen) block, with its state.
 - `appear` runs the enter when the browser renders the content, such as in markup that opens later.
 - `beforeEnter`, `afterEnter`, `beforeLeave` and `afterLeave` follow each step. A transition that another one interrupts never reaches its `afterEnter` or `afterLeave`.
-
-## Styling
-
-This stylesheet fades and slides a note from the data attributes, with no classes. The first note leaves the page after its leave, the second stays with `hidden` (`unmount=false`), and the third one enters on its own when you add it (`appear`). Press Hide both while it is moving, and press it again.
-
-```brm styled TransitionStyled
-
-```
-
-## Reduced motion
-
-Reduced motion is for the CSS: a transition that a `prefers-reduced-motion` query removes has nothing to wait for.
-
-```css
-@media (prefers-reduced-motion: reduce) {
-  .note {
-    transition: none;
-  }
-}
-```
-
-## TransitionChild
-
-An element inside a `Transition`, or inside a part with `transition`, that moves with it. It takes the props of `Transition`, except `show`.
-
-- It enters once its parent has entered. With `appear`, it enters with its parent.
-- Its parent leaves once it has left, so a group animates in from the outside and out from the inside.
-
-```html
-<Transition show=open class="backdrop">
-  <TransitionChild class="panel">The panel slides in after the backdrop fades in.</TransitionChild>
-</Transition>
-```
 
 ## Anatomy
 
@@ -101,3 +68,36 @@ A `TransitionChild` takes the props of `Transition`, except `show`.
 | `data-transition` | It is entering or leaving.              |
 
 Style the content with the attributes above, or with the classes of `enter`, `enterFrom` and the other class props. See [Styling](./styling.md).
+
+## Styling
+
+This stylesheet fades and slides a note from the data attributes, with no classes. The first note leaves the page after its leave, the second stays with `hidden` (`unmount=false`), and the third one enters on its own when you add it (`appear`). Press Hide both while it is moving, and press it again.
+
+```html styled TransitionStyled
+
+```
+
+## Reduced motion
+
+Reduced motion is for the CSS: a transition that a `prefers-reduced-motion` query removes has nothing to wait for.
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .note {
+    transition: none;
+  }
+}
+```
+
+## TransitionChild
+
+An element inside a `Transition`, or inside a part with `transition`, that moves with it. It takes the props of `Transition`, except `show`.
+
+- It enters once its parent has entered. With `appear`, it enters with its parent.
+- Its parent leaves once it has left, so a group animates in from the outside and out from the inside.
+
+```html
+<Transition show=open class="backdrop">
+  <TransitionChild class="panel">The panel slides in after the backdrop fades in.</TransitionChild>
+</Transition>
+```

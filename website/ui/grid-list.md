@@ -6,7 +6,7 @@ summary: Rows with buttons and checkboxes, to select and act on.
 
 A list of rows that can hold buttons, checkboxes and links, which the user can select and act on.
 
-```brm demo GridListDemo
+```html demo GridListDemo
 
 ```
 
@@ -30,7 +30,7 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 
 ## Anatomy
 
-```brm anatomy GridListAnatomy
+```html anatomy GridListAnatomy
 `GridList`: Holds the rows and the selection. It is a `grid`, takes one stop of Tab, and needs `aria-label`.
 `GridListItem`: One row, with one cell. Its `id` is its key, and it shows `data-selected` when it is selected.
 `Checkbox` with `slot="selection"`: Shows whether the row is selected, and toggles it. Optional.
@@ -100,21 +100,11 @@ The Checkbox with `slot="selection"` and the Button with `slot="drag"` are optio
 | `Escape`                    | Clears the selection, also from a control in a row.                                                       |
 | `a` to `z`                  | Moves focus to the row whose text starts with what was typed.                                             |
 
-## Drag from the keys
-
-With `onReorder`, the Button with `slot="drag"` starts a drag from the keys. Then the keys act on the drag.
-
-| Key                      | Action                                                |
-| ------------------------ | ----------------------------------------------------- |
-| `ArrowDown` or `ArrowUp` | Moves the drop place to the next or the previous one. |
-| `Enter`                  | Drops the rows at the place.                          |
-| `Escape` or `Tab`        | Cancels the drag.                                     |
-
 ## Controlled and uncontrolled
 
 `selectedKeys` holds the keys of the selected rows, as a list. How you pass it picks who keeps it:
 
-```brm demo GridListStateDemo
+```html demo GridListStateDemo
 
 ```
 
@@ -130,7 +120,7 @@ Style a row with the data attributes above, such as `[data-selected]` and `[data
 
 This stylesheet styles every state of a row: rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled, with the Checkbox and the Button in it. Its tokens are at the top, and they follow the color scheme. Tab to the list, press the arrow keys and Space, then Right to reach the Button.
 
-```brm styled GridListStyled
+```html styled GridListStyled
 
 ```
 
@@ -140,7 +130,7 @@ This stylesheet styles every state of a row: rest, hover, press, keyboard focus,
 
 A Checkbox with `slot="selection"` selects a row, and a Button in the row acts on that row alone. The button above the list acts on the selected rows. Both remove keys from the data. The GridList keeps the keys that you give it, so the demo also drops them from the bound selection, and the signal keeps no key of a row that is gone.
 
-```brm demo GridListBulkDemo
+```html demo GridListBulkDemo
 
 ```
 
@@ -148,11 +138,21 @@ A Checkbox with `slot="selection"` selects a row, and a Button in the row acts o
 
 With no `selectionMode`, a press or Enter on a row acts: `onAction` gets its key. `onReorder` lets the rows move, by a pointer drag or from the keys with the Button of `slot="drag"`: press it, choose the place with Up and Down, and drop with Enter. `moveKeys` of the [data helpers](./data.md) moves the keys in the list of your data.
 
-```brm demo GridListPlaylistDemo
+```html demo GridListPlaylistDemo
 
 ```
 
-## Rows from data
+## Drag from the keys
+
+With `onReorder`, the Button with `slot="drag"` starts a drag from the keys. Then the keys act on the drag.
+
+| Key                      | Action                                                |
+| ------------------------ | ----------------------------------------------------- |
+| `ArrowDown` or `ArrowUp` | Moves the drop place to the next or the previous one. |
+| `Enter`                  | Drops the rows at the place.                          |
+| `Escape` or `Tab`        | Cancels the drag.                                     |
+
+## Items from data
 
 Pass `items` and an `item` template that renders a `GridListItem` for each. The template's parameter takes its type from `items`.
 
@@ -174,7 +174,7 @@ Pass `items` and an `item` template that renders a `GridListItem` for each. The 
 - With `items` in a windowed list, Home, End, the page keys, Ctrl+A, ranges with Shift and letters reach rows that are out of view. A move to one scrolls it into view, then focuses it.
 - A text field in a row keeps its own keys, other than Up, Down and Tab.
 
-## Rows
+## Items
 
 The GridList is a grid, and each GridListItem is a row with one cell. A press on a control in a row, such as a Button, is the control's own, and does not select the row. A row shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
 

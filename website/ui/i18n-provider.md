@@ -6,7 +6,7 @@ summary: A locale and its direction for the parts.
 
 Gives the parts inside it a locale and its direction.
 
-```brm demo I18nProviderDemo
+```html demo I18nProviderDemo
 
 ```
 
@@ -15,6 +15,26 @@ Gives the parts inside it a locale and its direction.
 - `timeZone` is an IANA time zone, such as `Asia/Tokyo`. It decides what today is in the date parts. Without it, the server uses its own time zone for the first render and the browser takes its own after that.
 - `strings` replaces the words of the date parts with a whole set, in one prop. See [Date strings](#date-strings).
 - It renders only its children. Put `lang` and `dir` on an element yourself, such as `<html>`.
+
+## Props
+
+```props I18nProvider
+
+```
+
+## Styling
+
+An `I18nProvider` renders no element, so it has nothing to style. Put `lang` and `dir` on an element yourself.
+
+## Use cases
+
+### A locale switch
+
+The Meter formats its value in the locale, and the direction comes from the element that you put `dir` on. One `I18nProvider` takes the locale from a signal, so a button that sets the signal changes the format of the Meter.
+
+```html demo I18nProviderLocaleDemo
+
+```
 
 ## Date strings
 
@@ -44,23 +64,3 @@ The server looks up the table once and writes only that language into the page, 
 | `selected`       | The label of a selected cell, such as `{date} selected`.                                |
 | `firstAvailable` | The label of the first date that can be picked, such as `{date}, First available date`. |
 | `lastAvailable`  | The label of the last date that can be picked, such as `{date}, Last available date`.   |
-
-## Use cases
-
-### A locale switch
-
-The Meter formats its value in the locale, and the direction comes from the element that you put `dir` on. One `I18nProvider` takes the locale from a signal, so a button that sets the signal changes the format of the Meter.
-
-```brm demo I18nProviderLocaleDemo
-
-```
-
-## Props
-
-```props I18nProvider
-
-```
-
-## Styling
-
-An `I18nProvider` renders no element, so it has nothing to style. Put `lang` and `dir` on an element yourself.

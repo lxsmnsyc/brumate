@@ -73,7 +73,7 @@ In another editor, add the plugin to `tsconfig.json`, and use the TypeScript ver
 - Links made with `href` from `brumate/routes`, against the route files. See [Routing](./routing.md).
 - Values that the page sends to the client. A signal or memo that client code reads must hold a [serializable value](./reference-serialization.md). A function, an instance of a class with methods, or a regular expression is reported at its declaration:
 
-```brm
+```html
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -88,7 +88,7 @@ Values that only the server reads are not checked, because they are not sent.
 
 Other files need the props type of a component, such as a wrapper that passes props on, a story or a test. A component exports it from `<script module>`, and its instance script uses it:
 
-```brm
+```html
 <script module>
   export interface BadgeProps {
     label: string;
@@ -121,7 +121,7 @@ const props: BadgeProps = { label: 'New', isDisabled: 'yes' };
 
 A wrapper that adds props to a component uses an intersection, since an interface cannot extend a type that depends on a parameter:
 
-```brm
+```html
 <script module>
   import type { ButtonProps } from '@brumate/ui/Button.brm';
 
@@ -144,7 +144,7 @@ A wrapper that adds props to a component uses an intersection, since an interfac
 
 `generics` on the instance script declares the type parameter, and the props type takes it:
 
-```brm
+```html
 <script module>
   export interface ListProps<T> {
     items: T[];
@@ -167,7 +167,7 @@ A part that renders one element takes `as`, the name of an element or a componen
 
 The props type takes the target, `ButtonProps<'a'>` or `ButtonProps<typeof Link>`, and `ButtonProps` alone is a button. `ButtonOwnProps` has the props of the part without the target. To write a part like this, use `AsProps` of `@brumate/ui/as.ts`:
 
-```brm
+```html
 <script module>
   import type { AsProps, AsTarget } from '@brumate/ui/as.ts';
 

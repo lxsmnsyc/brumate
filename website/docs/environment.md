@@ -52,7 +52,7 @@ async function listIssues() {
 
 The browser gets the file without the server variables: the plugin removes their schemas, and writes in the values of the public variables, read when the dev server or the build ran. The public schemas check them in the browser as the server's do on the server, so a default such as `'Tracker'` works in both.
 
-```brm
+```html
 <script>
   import env from './env.ts';
 </script>
@@ -64,7 +64,7 @@ Code that the browser loads imports the file only from components. A script that
 
 The compiler knows which code runs in the browser, so it reports a read of a server variable there, in a handler, an effect, a `$client` callback or a memo that the browser computes again. A value made from a server variable that the browser reads, such as a signal, is reported too, because the page state would send it:
 
-```brm
+```html
 <script>
   import { $signal } from 'brumate/signals';
   import env from './env.ts';
@@ -85,7 +85,7 @@ A server variable that a component reads while it renders, such as in a memo tha
 
 The compiler sees the reads in a component only. A helper in another module can read a secret, and a component can put what it returns in a signal that the browser reads:
 
-```brm
+```html
 <script>
   import { $signal } from 'brumate/signals';
   import { connectionString } from './db.ts';

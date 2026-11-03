@@ -6,7 +6,7 @@ summary: A field that picks one item from a list.
 
 A field that picks one item from a list, which opens from a button.
 
-```brm demo SelectDemo
+```html demo SelectDemo
 
 ```
 
@@ -32,7 +32,7 @@ A field that picks one item from a list, which opens from a button.
 
 ## Anatomy
 
-```brm anatomy SelectAnatomy
+```html anatomy SelectAnatomy
 `Label`: Names the field. It is read with the value as the name of the Button.
 `Button`: Opens the list. It shows the focus ring and `aria-expanded`.
 `SelectValue`: Shows the text of the selected item, or the placeholder.
@@ -113,7 +113,7 @@ The items show [the attributes of a ListBoxItem](./list-box.md#data-attributes).
 
 `selectedKey` holds the key of the selected item, or `null`. `isOpen` holds whether the list is open in the same way. How you pass each one picks who keeps it:
 
-```brm demo SelectStateDemo
+```html demo SelectStateDemo
 
 ```
 
@@ -131,7 +131,7 @@ Style the field with the data attributes above, such as `[data-open]` and `[data
 
 This stylesheet styles every state: rest, hover, press, keyboard focus, open, invalid, disabled, and the items of the list. Open the list, tab to the Button, or press Order with nothing chosen. Its tokens are at the top, and they follow the color scheme.
 
-```brm styled SelectStyled
+```html styled SelectStyled
 
 ```
 
@@ -141,7 +141,7 @@ This stylesheet styles every state: rest, hover, press, keyboard focus, open, in
 
 Put `name` on the Select and it sends the key with its form, also before the code of the page loads. `isRequired` makes the browser check it, and the FieldError shows the message. A Reset button gives back the key that the Select started with.
 
-```brm demo SelectFormDemo
+```html demo SelectFormDemo
 
 ```
 
@@ -149,7 +149,7 @@ Put `name` on the Select and it sends the key with its form, also before the cod
 
 A `ListBoxSection` with a `Header` groups the items. An item with a `Text` of `slot="label"` and one of `slot="description"` needs `hasLabel` and `hasDescription`, and `textValue` sets what the Button shows and what typing matches.
 
-```brm demo SelectSectionsDemo
+```html demo SelectSectionsDemo
 
 ```
 

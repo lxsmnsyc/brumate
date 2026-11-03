@@ -6,7 +6,7 @@ The compiler decides what ships to the browser from a graph of what reads what, 
 
 This section follows one component from its source to a click that updates the page:
 
-```brm
+```html
 <script>
   import { $memo, $signal } from 'brumate/signals';
 

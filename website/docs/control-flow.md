@@ -6,7 +6,7 @@ Blocks start with `#`, such as `#if` and `#for`, and wrap their body in braces. 
 
 `#if (condition)` renders its body when the condition is true. `#else if` and `#else` follow it:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -30,7 +30,7 @@ Blocks start with `#`, such as `#if` and `#for`, and wrap their body in braces. 
 
 `#for (item of list)` renders its body for each item. `#else` renders when the list is empty:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -90,7 +90,7 @@ A long list can render only the items in view. `window(height)` after the header
 
 A block body can start with a `<script>`. It runs for each instance of the body, such as for each item of a `#for`, and can declare signals and functions of its own:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -117,7 +117,7 @@ Each question has its own `open`. The script can read the item and the values of
 
 `#repeat (index of count)` renders its body `count` times, with `index` from 0. `#else` renders when the count is 0:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -136,7 +136,7 @@ Each question has its own `open`. The script can read the item and the values of
 
 `#switch` renders the first `#case` whose condition is true, or `#default`:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -165,7 +165,7 @@ Each question has its own `open`. The script can read the item and the values of
 
 `#key (value)` renders its body again when the value changes. The state inside the body starts over, such as the signals of a block script or of a component:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -190,7 +190,7 @@ Type a note, then switch: the field empties, because the body renders again for 
 
 `#template name(parameters)` declares a piece of markup that takes arguments. Call it in an expression:
 
-```brm live
+```html live
 <script>
   const total = 42;
 </script>
@@ -211,7 +211,7 @@ Type a note, then switch: the field empties, because the body renders again for 
 
 `#try` renders its body, and `#catch` renders instead if the body throws. `#catch (error, reset)` names the error and a function that renders the body again:
 
-```brm live
+```html live
 <script module>
   let ready = false;
 
@@ -247,7 +247,7 @@ Type a note, then switch: the field empties, because the body renders again for 
 
 `#portal` renders its body somewhere else in the page, such as a dialog at the end of the body. `#portal (target)` renders into an element or the element that a selector finds:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -271,7 +271,7 @@ Type a note, then switch: the field empties, because the body renders again for 
 
 `#offscreen (visible)` shows its body while `visible` is true. When it turns false, the body is hidden but stays in the page, with its elements and its state:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 

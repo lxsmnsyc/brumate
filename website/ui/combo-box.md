@@ -6,7 +6,7 @@ summary: A text field with a list of suggestions that filters as you type.
 
 A text field with a list of suggestions, which shows the items that match what was typed.
 
-```brm demo ComboBoxDemo
+```html demo ComboBoxDemo
 
 ```
 
@@ -31,7 +31,7 @@ A text field with a list of suggestions, which shows the items that match what w
 
 ## Anatomy
 
-```brm anatomy ComboBoxAnatomy
+```html anatomy ComboBoxAnatomy
 `Label`: Names the field.
 `Input`: Holds the text. Focus stays here, and it has `role="combobox"`. The badge is on a wrapper.
 `Button`: Opens and closes the list. It is out of the order of Tab.
@@ -97,7 +97,7 @@ Focus stays in the input. `aria-activedescendant` names the active item.
 
 `selectedKey` holds the key of the selected item, or `null`, and `inputValue` holds the text in the input. How you pass them picks who keeps them. Type in a field, pick an item, then press Reset the form:
 
-```brm demo ComboBoxStateDemo
+```html demo ComboBoxStateDemo
 
 ```
 
@@ -115,7 +115,7 @@ Style the field with the data attributes above, such as `[data-open]` and `[data
 
 This stylesheet styles the box, the Button and the list: rest, hover, focus in the input, open, invalid, and the items with hover, the active item, selected and disabled. Its tokens are at the top, and they follow the color scheme. Focus stays in the input, so the active item shows `data-focused`. Press Save with the field empty to see the invalid look. The page sets `isInvalid` itself.
 
-```brm styled ComboBoxStyled
+```html styled ComboBoxStyled
 
 ```
 
@@ -125,7 +125,7 @@ This stylesheet styles the box, the Button and the list: rest, hover, focus in t
 
 `isRequired` makes the input required, and `name` sends the key of the selected item. The browser blocks the submit of an empty field, and the FieldError shows its message. The message follows the field: it goes when the field is valid, and comes back when the field is empty again. An error of your own is `isInvalid` with a message in the FieldError, as the demo does for Japan, and the demo clears it when the selection changes. Reset gives the field its start state back.
 
-```brm demo ComboBoxFormDemo
+```html demo ComboBoxFormDemo
 
 ```
 
@@ -133,7 +133,7 @@ This stylesheet styles the box, the Button and the list: rest, hover, focus in t
 
 `allowsCustomValue` keeps what was typed, and the form gets the text. `menuTrigger="focus"` opens the list when the input gets focus. Typed text that differs from the selected item clears the selection when the field commits (blur, Enter with no active item, or Escape), or when the text becomes empty. The demo tells a team member from a guest by the key.
 
-```brm demo ComboBoxCustomDemo
+```html demo ComboBoxCustomDemo
 
 ```
 

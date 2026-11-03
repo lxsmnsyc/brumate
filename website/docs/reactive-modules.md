@@ -2,7 +2,7 @@
 
 A `.brm.ts` module holds state and logic that several components share. Its functions use `$signal`, `$memo` and the other compile-time functions, and a component calls one at the top level of its script.
 
-```brm live
+```html live
 <script>
   import { counter } from './counter.brm.ts';
 
@@ -53,7 +53,7 @@ The module can import other modules and declare constants. The function can read
 
 Destructure the call at the top level of a `<script>`:
 
-```brm
+```html
 <script>
   import { counter } from './counter.brm.ts';
 
@@ -70,7 +70,7 @@ Destructure the call at the top level of a `<script>`:
 
 An argument that is a name, such as a signal or a prop, stays reactive inside the function. Any other argument is computed once, when the component renders.
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
   import { scaled } from './scaled.brm.ts';
@@ -100,7 +100,7 @@ A module function can use `$effect`, `$client`, `$produce`, `$untrack` and the r
 
 A function that gives a handler with [`$handler`](./components.md#handlers-that-a-script-makes) is compiled into each component that calls it, rather than shared, because its handler is a part of that component.
 
-```brm live
+```html live
 <script>
   import { clock } from './clock.brm.ts';
 

@@ -6,7 +6,7 @@ summary: A preview of a link, on hover, focus and a long press.
 
 A preview of a link or a button, such as a card of the author behind a name. It shows on hover, on focus from the keyboard, and on a long press of a touch.
 
-```brm demo PreviewTriggerDemo
+```html demo PreviewTriggerDemo
 
 ```
 
@@ -17,15 +17,9 @@ A preview of a link or a button, such as a card of the author behind a name. It 
 - It is not modal, and focus stays where it is when it shows. The trigger gets `aria-expanded` and `aria-controls`.
 - `isOpen` is the state. See [State](./state.md). `isDisabled` never shows it.
 
-## Closing
-
-- Leaving the trigger and the preview hides it after `closeDelay`, 200 milliseconds by default. The pointer can move from the trigger onto the preview.
-- Focus that leaves both hides it at once, and so does a press of the trigger from the keyboard. A press of the mouse hides it, and the pointer that stays on the trigger shows it again. A press on plain content outside moves no focus, so it hides nothing.
-- Escape hides it, and gives focus back to the trigger. That focus does not show it again.
-
 ## Anatomy
 
-```brm anatomy PreviewTriggerAnatomy
+```html anatomy PreviewTriggerAnatomy
 `Link`: The trigger. It gets `aria-expanded` and `aria-controls`. A `Button` works too.
 `Popover`: The preview. It is not modal, and it can hold links and buttons.
 `OverlayArrow`: Points from the preview to the trigger. Optional.
@@ -71,7 +65,7 @@ The preview renders at the end of the page, in a [layer](./layers.md), so Tab mo
 
 `isOpen` holds whether the preview shows. Hover and focus from the keyboard change it in every shape below:
 
-```brm demo PreviewTriggerStateDemo
+```html demo PreviewTriggerStateDemo
 
 ```
 
@@ -89,7 +83,7 @@ Style the preview as a [Popover](./popover.md#styling). See [Styling](./styling.
 
 This stylesheet styles the link in every state (rest, hover, press, keyboard focus, and `aria-expanded` while the preview shows), the card with its closed look, the arrow on both sides, and the Follow button. Hover the name, or Tab to it. Its tokens are at the top, and they follow the color scheme.
 
-```brm styled PreviewTriggerStyled
+```html styled PreviewTriggerStyled
 
 ```
 
@@ -99,7 +93,7 @@ This stylesheet styles the link in every state (rest, hover, press, keyboard foc
 
 Each name in the text has its own `PreviewTrigger`. Hover one and the card shows after `delay`. Move to the next name and its card shows at once, since one preview has just shown. The pointer can go from the name onto the card to press Follow.
 
-```brm demo PreviewTriggerMentionsDemo
+```html demo PreviewTriggerMentionsDemo
 
 ```
 
@@ -107,6 +101,12 @@ Each name in the text has its own `PreviewTrigger`. Hover one and the card shows
 
 The trigger can be a `Button`. The preview shows a file's first lines on hover or focus. A press runs `onPress` and opens the file. After a hover the card fades out and then shows again within about 370 ms, since the pointer is still on the trigger. A press with the keyboard hides it.
 
-```brm demo PreviewTriggerFilesDemo
+```html demo PreviewTriggerFilesDemo
 
 ```
+
+## Closing
+
+- Leaving the trigger and the preview hides it after `closeDelay`, 200 milliseconds by default. The pointer can move from the trigger onto the preview.
+- Focus that leaves both hides it at once, and so does a press of the trigger from the keyboard. A press of the mouse hides it, and the pointer that stays on the trigger shows it again. A press on plain content outside moves no focus, so it hides nothing.
+- Escape hides it, and gives focus back to the trigger. That focus does not show it again.

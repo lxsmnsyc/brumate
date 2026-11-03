@@ -6,7 +6,7 @@ summary: A search field that filters a menu or a list next to it.
 
 A search field that filters a Menu or a ListBox next to it, such as for a list of commands.
 
-```brm demo AutocompleteDemo
+```html demo AutocompleteDemo
 
 ```
 
@@ -28,7 +28,7 @@ A search field that filters a Menu or a ListBox next to it, such as for a list o
 
 ## Anatomy
 
-```brm anatomy AutocompleteAnatomy
+```html anatomy AutocompleteAnatomy
 `SearchField`: The field. It holds the text, and it is a form field of its own.
 `Label`: Names the field.
 `Input`: Holds the text. Focus stays here, and `aria-activedescendant` names the active item. The badge is on a wrapper.
@@ -79,7 +79,7 @@ Focus stays in the field. `aria-activedescendant` on the input names the active 
 
 `inputValue` holds the text that filters the items. How you pass it picks who keeps it:
 
-```brm demo AutocompleteStateDemo
+```html demo AutocompleteStateDemo
 
 ```
 
@@ -95,7 +95,7 @@ The Autocomplete has no element to style. Style the field and the collection ins
 
 This stylesheet styles the field, its clear button and the Menu: rest, hover, focus inside the field, an empty field, and the items with hover, press, the active item and disabled. Its tokens are at the top, and they follow the color scheme. Focus stays in the field, so the active item shows `data-focused`. Type `fi`, then press the arrow keys and Enter. A `display` rule on an item overrides the `hidden` attribute that the filter sets, so keep `[hidden] { display: none }` for the item class if you set `display`.
 
-```brm styled AutocompleteStyled
+```html styled AutocompleteStyled
 
 ```
 
@@ -105,7 +105,7 @@ This stylesheet styles the field, its clear button and the Menu: rest, hover, fo
 
 An Autocomplete in a Dialog of a Modal gives a palette. The Dialog takes focus when it opens, so the Input has `autofocus` to move it to the field. The arrow keys and Enter act on the commands while focus stays in the field. The action closes the dialog through the signal of the `DialogTrigger`. The first Escape clears the text, and the second closes the dialog.
 
-```brm demo AutocompletePaletteDemo
+```html demo AutocompletePaletteDemo
 
 ```
 
@@ -113,7 +113,7 @@ An Autocomplete in a Dialog of a Modal gives a palette. The Dialog takes focus w
 
 The collection can be a ListBox with a selection, and `filter` changes the match. This one matches the start of a name. Typing filters the list, and Enter or a press selects the active item. A selected item that is filtered out stays selected.
 
-```brm demo AutocompleteFilterDemo
+```html demo AutocompleteFilterDemo
 
 ```
 

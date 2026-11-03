@@ -41,7 +41,7 @@ A package cannot ship routes. The routes of an app come only from its own `src/r
 
 The app adds the package to its `dependencies` or `devDependencies`, and imports from it:
 
-```brm
+```html
 <script>
   import Button from '@acme/ui/Button.brm';
 </script>
@@ -200,7 +200,7 @@ export function counter(start: number) {
 }
 ```
 
-```brm
+```html
 <!-- src/Counter.brm -->
 <script>
   import { $props } from 'brumate/signals';
@@ -229,7 +229,7 @@ export async function greet(name: string): Promise<string> {
 }
 ```
 
-```brm
+```html
 <!-- src/Greeter.brm -->
 <script>
   import { $props, $signal } from 'brumate/signals';

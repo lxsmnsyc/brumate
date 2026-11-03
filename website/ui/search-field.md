@@ -6,7 +6,7 @@ summary: A search input that Escape clears.
 
 A search input with a button that clears it.
 
-```brm demo SearchFieldDemo
+```html demo SearchFieldDemo
 
 ```
 
@@ -16,7 +16,7 @@ A search input with a button that clears it.
 
 ## Anatomy
 
-```brm anatomy SearchFieldAnatomy
+```html anatomy SearchFieldAnatomy
 `SearchField`: Holds the parts and shows `data-empty` and `data-disabled`.
 `Label`: Names the input.
 `Input`: The text, with `type="search"`.
@@ -66,7 +66,7 @@ A disabled or read-only field does neither.
 
 `value` holds the text. How you pass it picks who keeps it:
 
-```brm demo SearchFieldStateDemo
+```html demo SearchFieldStateDemo
 
 ```
 
@@ -83,7 +83,7 @@ Style the field with `[data-empty]`, for example to hide the clear button of an 
 
 This stylesheet draws the field as a pill with a glass and a clear button. It styles rest, hover, keyboard focus as two bands, empty, with text, and disabled. The pill takes its ring from `:has([data-focus-visible])`, since the ring belongs to the whole field and not to the bare input.
 
-```brm styled SearchFieldStyled
+```html styled SearchFieldStyled
 
 ```
 
@@ -93,7 +93,7 @@ This stylesheet draws the field as a pill with a glass and a clear button. It st
 
 `onSubmit` gets the text when the user presses Enter, and `onClear` runs on Escape and the button. The page searches on Enter and keeps the last three searches.
 
-```brm demo SearchFieldRecentDemo
+```html demo SearchFieldRecentDemo
 
 ```
 
@@ -101,6 +101,6 @@ This stylesheet draws the field as a pill with a glass and a clear button. It st
 
 Escape on a field with text clears it and goes no further, so the dialog stays open. Escape on an empty field reaches the dialog and closes it. Type, press Escape twice, and the dialog closes after the text is gone.
 
-```brm demo SearchFieldDialogDemo
+```html demo SearchFieldDialogDemo
 
 ```

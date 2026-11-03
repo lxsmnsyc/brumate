@@ -6,11 +6,11 @@ summary: Items that an app adds, moves and removes, with their selection.
 
 State for the items of a collection that an app changes: the items, a selection, and the changes that add, move and remove them. They hold the items of a list or a tree in a signal.
 
-```brm demo DataDemo
+```html demo DataDemo
 
 ```
 
-```brm
+```html
 <script>
   import { $bind } from 'brumate/signals';
   import { treeData } from '@brumate/ui/data.brm.ts';
@@ -42,7 +42,7 @@ Both are [reactive modules](../docs/reactive-modules.md): a component calls one 
 
 The module is the state, and the collection is bound to it. `selectedKeys=$bind(selectedKeys)` gives the collection the module's signal, so a press on a row writes it, and `setSelectedKeys(keys)` and `addKeysToSelection(keys)` change the collection from code:
 
-```brm demo DataStateDemo
+```html demo DataStateDemo
 
 ```
 
@@ -62,7 +62,7 @@ The module has no markup and no classes. Style the collection that shows its ite
 
 `filterText` and `setFilterText` hold the text of a field, and `items` keeps the items that `filter` accepts. `moveBefore(key, keys)` moves the selected items to the top, and `removeSelectedItems()` removes them. A removed item leaves the selection. Select Panda, move it to the top, then filter for `sn`.
 
-```brm demo DataListDemo
+```html demo DataListDemo
 
 ```
 
@@ -70,7 +70,7 @@ The module has no markup and no classes. Style the collection that shows its ite
 
 `treeData` keeps the nodes and the parents. `move(key, toParentKey, index)` moves a node with its children, and a move into the node itself is refused. Select a task and press a button.
 
-```brm demo DataTreeDemo
+```html demo DataTreeDemo
 
 ```
 

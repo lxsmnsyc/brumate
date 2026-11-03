@@ -6,7 +6,7 @@ summary: An overlay beside its trigger, with layers inside.
 
 An overlay beside its trigger, such as a menu of settings.
 
-```brm demo PopoverDemo
+```html demo PopoverDemo
 
 ```
 
@@ -18,7 +18,7 @@ An overlay beside its trigger, such as a menu of settings.
 
 ## Anatomy
 
-```brm anatomy PopoverAnatomy
+```html anatomy PopoverAnatomy
 `Button`: Opens the popover. It gets `aria-expanded`, and `aria-controls` while the popover is open.
 `Popover`: The layer beside the trigger. It sets `data-placement`, `--trigger-width` and `--available-height`.
 `OverlayArrow`: Points from the popover to the trigger. The popover moves it along the side. Optional.
@@ -88,7 +88,7 @@ The `OverlayArrow` and the `Heading` are optional. The `DialogTrigger` is option
 
 Inside a `DialogTrigger`, the trigger holds whether the popover is open, with `isOpen` and `onOpenChange`. These popovers are not modal (`isNonModal`), so the buttons below stay usable while one is open:
 
-```brm demo PopoverStateDemo
+```html demo PopoverStateDemo
 
 ```
 
@@ -107,7 +107,7 @@ Style the popover with the data attributes above, such as `[data-placement='top'
 
 This stylesheet styles the trigger in every state (rest, hover, press, keyboard focus, open), the closed look of the popover on both sides, the arrow on both sides, and the items in the popover. The popover is at least as wide as its trigger. Press Share, then Tab through the items. Its tokens are at the top, and they follow the color scheme.
 
-```brm styled PopoverStyled
+```html styled PopoverStyled
 
 ```
 
@@ -117,7 +117,7 @@ This stylesheet styles the trigger in every state (rest, hover, press, keyboard 
 
 `placement` picks the side. Press each button: `bottom start` and `bottom end` line up with the start and the end of the trigger, `top` opens above it, and `end` opens beside it. When the popover does not fit on the side that you asked for, it flips, and `data-placement` and the arrow follow. Scroll the demo toward the edge of the window and open `top` to see it.
 
-```brm demo PopoverPlacementDemo
+```html demo PopoverPlacementDemo
 
 ```
 
@@ -125,7 +125,7 @@ This stylesheet styles the trigger in every state (rest, hover, press, keyboard 
 
 A popover holds more than a menu. This one holds a [CheckboxGroup](./checkbox-group.md) bound to a signal, so the list behind it changes as you tick, and the trigger shows how many filters apply. Tab stays inside the popover, and Escape or a press outside closes it with the filters kept.
 
-```brm demo PopoverFiltersDemo
+```html demo PopoverFiltersDemo
 
 ```
 

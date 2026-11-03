@@ -53,7 +53,7 @@ import 'virtual:brumate/start';
 
 A layout renders the document around the pages. `children` is the page for the current path:
 
-```brm
+```html
 <!-- src/routes/_layout.brm -->
 <script>
   import { $props } from 'brumate/signals';
@@ -73,7 +73,7 @@ A layout renders the document around the pages. `children` is the page for the c
 
 `index.brm` is the page at `/`:
 
-```brm
+```html
 <!-- src/routes/index.brm -->
 <script>
   import { $signal } from 'brumate/signals';

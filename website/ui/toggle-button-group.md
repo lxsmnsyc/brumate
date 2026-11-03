@@ -6,7 +6,7 @@ summary: Toggle buttons with one selection or several.
 
 ToggleButtons with one selection, as radios, or several, as a toolbar.
 
-```brm demo ToggleButtonGroupDemo
+```html demo ToggleButtonGroupDemo
 
 ```
 
@@ -17,7 +17,7 @@ ToggleButtons with one selection, as radios, or several, as a toolbar.
 
 ## Anatomy
 
-```brm anatomy ToggleButtonGroupAnatomy
+```html anatomy ToggleButtonGroupAnatomy
 `ToggleButtonGroup`: Holds the buttons and the selection. It is a `radiogroup`, or a toolbar with `selectionMode="multiple"`.
 `ToggleButton`: One choice. It names itself with `id`, and shows `data-selected` when it is on.
 ```
@@ -68,7 +68,7 @@ Only one button of the group is in the order of Tab. It is the one that had focu
 
 `selectedKeys` holds the `id` of each button that is on, as a list. How you pass it picks who keeps it:
 
-```brm demo ToggleButtonGroupStateDemo
+```html demo ToggleButtonGroupStateDemo
 
 ```
 
@@ -84,7 +84,7 @@ Style the group with `[data-orientation]` and `[data-disabled]`, and each button
 
 This stylesheet makes a segmented control: a track, buttons that fill with the accent when on, and a two-band focus ring that shows on the track and on the fill. Press the arrow keys to move focus.
 
-```brm styled ToggleButtonGroupStyled
+```html styled ToggleButtonGroupStyled
 
 ```
 
@@ -94,7 +94,7 @@ This stylesheet makes a segmented control: a track, buttons that fill with the a
 
 A group with one selection and `disallowEmptySelection` always shows one view. `selectedKeys=$bind(view)` lets the page read the choice.
 
-```brm demo ToggleButtonGroupViewDemo
+```html demo ToggleButtonGroupViewDemo
 
 ```
 
@@ -102,6 +102,6 @@ A group with one selection and `disallowEmptySelection` always shows one view. `
 
 `selectionMode="multiple"` lets several buttons be on. With none on, the list shows everything. `orientation="vertical"` lays the buttons in a column and moves focus with ArrowUp and ArrowDown.
 
-```brm demo ToggleButtonGroupFilterDemo
+```html demo ToggleButtonGroupFilterDemo
 
 ```

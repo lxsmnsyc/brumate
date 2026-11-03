@@ -6,7 +6,7 @@ summary: A line between two parts of the content.
 
 A line between two parts of the content.
 
-```brm demo SeparatorDemo
+```html demo SeparatorDemo
 
 ```
 
@@ -31,7 +31,7 @@ Style the line with `[data-orientation='vertical']`. See [Styling](./styling.md)
 
 This stylesheet draws a rule of 1px in both orientations. The line is 50% of the text color, which keeps about 3:1 against the page in light and dark.
 
-```brm styled SeparatorStyled
+```html styled SeparatorStyled
 
 ```
 
@@ -41,6 +41,6 @@ This stylesheet draws a rule of 1px in both orientations. The line is 50% of the
 
 A vertical `Separator` between the buttons of a [Toolbar](./toolbar.md) tells the groups apart. It takes no focus.
 
-```brm demo SeparatorMenuDemo
+```html demo SeparatorMenuDemo
 
 ```

@@ -6,7 +6,7 @@ summary: A field for a number, in the format of the locale.
 
 A field for a number, in the format of the locale, with buttons that step it.
 
-```brm demo NumberFieldDemo
+```html demo NumberFieldDemo
 
 ```
 
@@ -30,7 +30,7 @@ A field for a number, in the format of the locale, with buttons that step it.
 
 ## Anatomy
 
-```brm anatomy NumberFieldAnatomy
+```html anatomy NumberFieldAnatomy
 `NumberField`: Holds the parts and keeps the number. It shows the data attributes of the field.
 `Label`: Names the input.
 `Group`: Draws the input and the two buttons as one box.
@@ -92,7 +92,7 @@ Keys act while the input has focus. A key with Shift, Ctrl, Alt or Meta does not
 
 `value` holds the number, or `NaN` when the field is empty. How you pass it picks who keeps it:
 
-```brm demo NumberFieldStateDemo
+```html demo NumberFieldStateDemo
 
 ```
 
@@ -110,7 +110,7 @@ Style the field with the data attributes above, and the buttons with `[data-disa
 
 This stylesheet draws the input and the buttons as one box. It styles rest, hover, press, keyboard focus on the box as two bands, invalid, the buttons at the ends of the range, disabled, the description and the error. Clear the box and press Send. The browser blocks the form and the `FieldError` shows its message.
 
-```brm styled NumberFieldStyled
+```html styled NumberFieldStyled
 
 ```
 
@@ -120,7 +120,7 @@ This stylesheet draws the input and the buttons as one box. It styles rest, hove
 
 The field is bound to a signal, and the total is a memo of it. `minValue` and `maxValue` keep the number in range and disable the button at each end.
 
-```brm demo NumberFieldTicketsDemo
+```html demo NumberFieldTicketsDemo
 
 ```
 
@@ -128,7 +128,7 @@ The field is bound to a signal, and the total is a memo of it. `minValue` and `m
 
 `formatOptions` with `style: 'percent'` shows 0.1 as 10%, and the step is counted in hundredths. With `name`, the form sends the number, and Reset gives back the first one. Empty the box and press Send: with `isRequired`, the browser asks for a number.
 
-```brm demo NumberFieldDiscountDemo
+```html demo NumberFieldDiscountDemo
 
 ```
 

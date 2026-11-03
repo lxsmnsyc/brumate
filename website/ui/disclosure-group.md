@@ -6,7 +6,7 @@ summary: Disclosures that open one at a time.
 
 Disclosures that open one at a time, such as an accordion.
 
-```brm demo DisclosureGroupDemo
+```html demo DisclosureGroupDemo
 
 ```
 
@@ -16,7 +16,7 @@ Disclosures that open one at a time, such as an accordion.
 
 ## Anatomy
 
-```brm anatomy DisclosureGroupAnatomy
+```html anatomy DisclosureGroupAnatomy
 `DisclosureGroup`: Holds the keys of the open disclosures.
 `Disclosure`: One section. It names itself with `id`.
 `Button`: The trigger of a disclosure, with `slot="trigger"`.
@@ -54,7 +54,7 @@ The group takes no keys of its own. Each trigger works as in a [Disclosure](./di
 
 `expandedKeys` holds the keys of the open disclosures. How you pass it picks who keeps it:
 
-```brm demo DisclosureGroupStateDemo
+```html demo DisclosureGroupStateDemo
 
 ```
 
@@ -71,7 +71,7 @@ Style the group with `[data-disabled]`, and each disclosure with its [data attri
 
 This stylesheet makes a stack of cards. The open card gets an accent edge and a minus in place of the plus, and the triggers show hover, press and a two-band focus ring.
 
-```brm styled DisclosureGroupStyled
+```html styled DisclosureGroupStyled
 
 ```
 
@@ -81,7 +81,7 @@ This stylesheet makes a stack of cards. The open card gets an accent edge and a 
 
 `allowsMultipleExpanded` lets several be open, and `expandedKeys=$bind(open)` lets two buttons write the list.
 
-```brm demo DisclosureGroupAllDemo
+```html demo DisclosureGroupAllDemo
 
 ```
 
@@ -89,6 +89,6 @@ This stylesheet makes a stack of cards. The open card gets an accent edge and a 
 
 A press of Continue writes the list, so the next step opens and the first closes. The Continue button leaves with its panel, so the handler moves focus to the trigger of the next step on purpose.
 
-```brm demo DisclosureGroupStepsDemo
+```html demo DisclosureGroupStepsDemo
 
 ```

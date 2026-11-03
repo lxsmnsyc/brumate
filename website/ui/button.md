@@ -6,7 +6,7 @@ summary: Presses with a pointer, a key or a screen reader.
 
 A button that presses with a mouse, a touch, a pen, Enter, Space, or a screen reader. Each way calls the same handlers.
 
-```brm demo ButtonDemo
+```html demo ButtonDemo
 
 ```
 
@@ -51,7 +51,7 @@ Style the button with the data attributes above, such as `[data-pressed]` and `[
 
 This stylesheet styles every state: rest, hover, press, keyboard focus, pending and disabled. Press a button, tab to it, or look at the last two. Its tokens are at the top, and they follow the color scheme.
 
-```brm styled ButtonStyled
+```html styled ButtonStyled
 
 ```
 
@@ -68,7 +68,7 @@ This stylesheet styles every state: rest, hover, press, keyboard focus, pending 
 
 A pending reset button becomes `type="button"`, so it resets nothing. Here the submit starts a save, the button shows it, and the Reset button waits with `isDisabled` until the save is done.
 
-```brm demo ButtonSaveDemo
+```html demo ButtonSaveDemo
 
 ```
 
@@ -76,7 +76,7 @@ A pending reset button becomes `type="button"`, so it resets nothing. Here the s
 
 A [Toolbar](./toolbar.md) moves focus between its buttons with the arrow keys, so the group takes one stop of Tab. A disabled button leaves the arrow order too, and so does a pending one, which has `aria-disabled`. Undo is disabled until there is something to undo.
 
-```brm demo ButtonToolbarDemo
+```html demo ButtonToolbarDemo
 
 ```
 

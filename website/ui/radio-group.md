@@ -6,7 +6,7 @@ summary: Native radios that the arrow keys move.
 
 Native radios with one name, from which the user picks one.
 
-```brm demo RadioGroupDemo
+```html demo RadioGroupDemo
 
 ```
 
@@ -16,7 +16,7 @@ Native radios with one name, from which the user picks one.
 
 ## Anatomy
 
-```brm anatomy RadioGroupAnatomy
+```html anatomy RadioGroupAnatomy
 `RadioGroup`: Holds the radios and the chosen value. It is a `radiogroup`.
 `Label`: Names the group.
 `Radio`: One choice, named by its `value`. It shows `data-selected` when chosen.
@@ -91,7 +91,7 @@ The radios are native, so Tab and the arrow keys work as in every browser, with 
 
 `value` holds the `value` of the chosen radio, or `null` for no choice. How you pass it picks who keeps it:
 
-```brm demo RadioGroupStateDemo
+```html demo RadioGroupStateDemo
 
 ```
 
@@ -108,7 +108,7 @@ Style the group with the data attributes above, and draw each circle from the at
 
 This stylesheet makes each radio a card with a ring, a name and a note. It styles rest, hover, press, chosen, chosen and hovered, chosen and pressed, keyboard focus, invalid and disabled. Press Choose with nothing picked, once the code of the group has loaded, to see the error. The focus ring has two bands, so it shows on the tinted card.
 
-```brm styled RadioGroupStyled
+```html styled RadioGroupStyled
 
 ```
 
@@ -118,7 +118,7 @@ This stylesheet makes each radio a card with a ring, a name and a note. It style
 
 Two groups bound to signals feed one total. A radio group holds one choice, so each question gets its own group.
 
-```brm demo RadioGroupPlanDemo
+```html demo RadioGroupPlanDemo
 
 ```
 
@@ -126,6 +126,6 @@ Two groups bound to signals feed one total. A radio group holds one choice, so e
 
 With `isRequired`, the browser asks for a choice when the form is sent, and the `FieldError` shows the message. Reset gives back no choice.
 
-```brm demo RadioGroupShippingDemo
+```html demo RadioGroupShippingDemo
 
 ```

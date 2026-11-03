@@ -10,7 +10,7 @@ This page is generated from `packages/brumate/src/error-catalog.ts`. Do not edit
 
 A comment starts and never ends.
 
-```brm
+```html
 <!-- A comment ends with -->
 <script>
   /* and so does this one */
@@ -73,7 +73,7 @@ const list = [1, 2];
 
 A `#` block opens with `{` and the file ends before its `}`.
 
-```brm
+```html
 #if (open) {
   <p>Open</p>
 }
@@ -85,7 +85,7 @@ A `#` block opens with `{` and the file ends before its `}`.
 
 An element is never closed.
 
-```brm
+```html
 <div>
   <p>Text</p>
 </div>
@@ -97,7 +97,7 @@ An element is never closed.
 
 A closing tag has no opening tag.
 
-```brm
+```html
 <p>Text</p>
 ```
 
@@ -107,7 +107,7 @@ A closing tag has no opening tag.
 
 A `<script>` is inside an element, or after other markup in a block.
 
-```brm
+```html
 #for (item of items) {
   <script>
     let open = $signal(false);
@@ -122,7 +122,7 @@ A `<script>` is inside an element, or after other markup in a block.
 
 A `<style>` is inside an element or a block.
 
-```brm
+```html
 <style>
   p {
     color: red;
@@ -137,7 +137,7 @@ A `<style>` is inside an element or a block.
 
 A `#template` is inside an element, or after other markup in a block.
 
-```brm
+```html
 #template price(amount: number) {
   <b>{amount}</b>
 }
@@ -149,7 +149,7 @@ A `#template` is inside an element, or after other markup in a block.
 
 A branch such as `#else` or `#catch` comes without the block that it belongs to.
 
-```brm
+```html
 #if (open) {
   <p>Open</p>
 } #else {
@@ -163,7 +163,7 @@ A branch such as `#else` or `#catch` comes without the block that it belongs to.
 
 A `<` starts a tag with no name.
 
-```brm
+```html
 <p>1 &lt; 2</p>
 ```
 
@@ -173,7 +173,7 @@ A `<` starts a tag with no name.
 
 `<window>` and `<document>` take no children, so they close with `/>`.
 
-```brm
+```html
 <window onKeyDown=(handler) />
 ```
 
@@ -183,7 +183,7 @@ A `<` starts a tag with no name.
 
 A closing tag is not complete.
 
-```brm
+```html
 <p>Text</p>
 ```
 
@@ -193,7 +193,7 @@ A closing tag is not complete.
 
 A tag starts and the file ends before its `>`.
 
-```brm
+```html
 <input value=name>
 ```
 
@@ -203,7 +203,7 @@ A tag starts and the file ends before its `>`.
 
 Two attributes touch each other.
 
-```brm
+```html
 <input id=name type="text">
 ```
 
@@ -213,7 +213,7 @@ Two attributes touch each other.
 
 `<window>` and `<document>` take event handlers and nothing else.
 
-```brm
+```html
 <document onKeyDown=(handler) />
 ```
 
@@ -223,7 +223,7 @@ Two attributes touch each other.
 
 A `{` in a tag holds something other than `...rest` or a name.
 
-```brm
+```html
 <a {href} {...rest}>Open</a>
 ```
 
@@ -233,7 +233,7 @@ A `{` in a tag holds something other than `...rest` or a name.
 
 A tag has a character where an attribute name belongs.
 
-```brm
+```html
 <input disabled>
 ```
 
@@ -243,7 +243,7 @@ A tag has a character where an attribute name belongs.
 
 A modifier follows the event name, as in `onSubmit:prevent=send`. Wrappers of `brumate/events` write modifiers now, and `:passive` is the default, since listeners are passive unless a handler prevents.
 
-```brm
+```html
 import { prevent } from 'brumate/events';
 
 <form onSubmit=(prevent(send))></form>
@@ -255,7 +255,7 @@ import { prevent } from 'brumate/events';
 
 An event of more than one word is written in camel case. The lower-case form is an error.
 
-```brm
+```html
 <input onKeyDown=(handle) onFocusOut=(handle) />
 ```
 
@@ -265,7 +265,7 @@ An event of more than one word is written in camel case. The lower-case form is 
 
 The header of `#loading (…)` names something other than a memo, or a memo that no markup in the body reads, so its loads would not show the fallback for that body.
 
-```brm
+```html
 const posts = $memo(loadPosts(id));
 #loading (posts) {
   <p>{posts.length} posts</p>
@@ -280,7 +280,7 @@ const posts = $memo(loadPosts(id));
 
 A handler, a handler prop or a `$client` callback reads an async memo that may still be loading, with no `$isPending` check or `await $resolve` before the read.
 
-```brm
+```html
 <script>
   const user = $memo(getUser(id));
   async function save() {
@@ -320,7 +320,7 @@ async function save() {
 
 The HTML parser does not keep this nesting. A `<p>` ends at a block element such as `<div>`, an `<a>` or a `<form>` inside the same tag starts again, and a table keeps only table parts. The browser builds a page that differs from the markup, and the start and end markers of a block can land in different parents.
 
-```brm
+```html
 <p>Total: <span>{total}</span></p>
 <div>
   <p>Total</p>
@@ -333,7 +333,7 @@ The HTML parser does not keep this nesting. A `<p>` ends at a block element such
 
 In the browser, an effect or an update writes a value that it reads, so each run schedules the next. Past 1000 rounds of effects, or 10000 rounds of updates, in one change, the page stops the loop and sends this error to the nearest `#try` in place of hanging the tab. A production build sends the short form `Update loop {scope}:{name} [BRM187]`.
 
-```brm
+```html
 <script>
   import { $effect, $signal, $untrack } from 'brumate/signals';
 
@@ -353,7 +353,7 @@ In the browser, an effect or an update writes a value that it reads, so each run
 
 Markup waits for a promise in text and in attribute values only. An event handler, the key of a `#for`, a `ref` and a `$bind` need the value at once, and the compiler sees that this expression gives a promise: `new Promise(…)`, a call of a server function or of an async function, or a prop typed as a promise.
 
-```brm
+```html
 <button onClick=(() => save(draft))>Save</button>
 #for (user of users by user.id) {
   <p>{user.name}</p>
@@ -366,7 +366,7 @@ Markup waits for a promise in text and in attribute values only. An event handle
 
 An event attribute has no `=` and no value.
 
-```brm
+```html
 <button onClick=(() => count++)>Add</button>
 ```
 
@@ -376,7 +376,7 @@ An event attribute has no `=` and no value.
 
 The value of an event attribute is a quoted string.
 
-```brm
+```html
 <button onClick=(() => count++)>Add</button>
 ```
 
@@ -386,7 +386,7 @@ The value of an event attribute is a quoted string.
 
 An attribute name has two or more `:`.
 
-```brm
+```html
 <svg xlink:href="#icon"></svg>
 ```
 
@@ -396,7 +396,7 @@ An attribute name has two or more `:`.
 
 `ref` has a value that is not `$bind(name)`.
 
-```brm
+```html
 <input ref=$bind(input)>
 ```
 
@@ -406,7 +406,7 @@ An attribute name has two or more `:`.
 
 The `prefetch` attribute no longer exists.
 
-```brm
+```html
 <a href="/about">About</a>
 ```
 
@@ -416,7 +416,7 @@ The `prefetch` attribute no longer exists.
 
 An attribute value holds an element.
 
-```brm
+```html
 <List item=row />
 
 #template row(name: string) {
@@ -430,7 +430,7 @@ An attribute value holds an element.
 
 An attribute has `=` and nothing after it.
 
-```brm
+```html
 <input value=name>
 ```
 
@@ -440,7 +440,7 @@ An attribute has `=` and nothing after it.
 
 An attribute value without quotes has an operator or a space in it.
 
-```brm
+```html
 <button disabled=(count > 3)>Add</button>
 ```
 
@@ -450,7 +450,7 @@ An attribute value without quotes has an operator or a space in it.
 
 A tag has text where its `>` belongs.
 
-```brm
+```html
 <input value=name>
 ```
 
@@ -460,7 +460,7 @@ A tag has text where its `>` belongs.
 
 A `<script>` or `<style>` attribute has `=` without a quoted value.
 
-```brm
+```html
 <script generics="T"></script>
 ```
 
@@ -470,7 +470,7 @@ A `<script>` or `<style>` attribute has `=` without a quoted value.
 
 A `<script>` or `<style>` is not closed.
 
-```brm
+```html
 <script>
   let a = 1;
 </script>
@@ -482,7 +482,7 @@ A `<script>` or `<style>` is not closed.
 
 A `<script>` has an attribute other than `module` and `generics`.
 
-```brm
+```html
 <script module>
   export const MAX = 10;
 </script>
@@ -494,7 +494,7 @@ A `<script>` has an attribute other than `module` and `generics`.
 
 A file has two module scripts.
 
-```brm
+```html
 <script module>
   export const MAX = 10;
   export const MIN = 1;
@@ -507,7 +507,7 @@ A file has two module scripts.
 
 A file has two instance scripts.
 
-```brm
+```html
 <script>
   let a = $signal(1);
   let b = $signal(2);
@@ -520,7 +520,7 @@ A file has two instance scripts.
 
 A `<style>` names another language.
 
-```brm
+```html
 <style lang="scss">
   p {
     a {
@@ -536,7 +536,7 @@ A `<style>` names another language.
 
 A `<style>` has an attribute other than `lang` and `global`.
 
-```brm
+```html
 <style scoped>
   p {
     color: red;
@@ -550,7 +550,7 @@ A `<style>` has an attribute other than `lang` and `global`.
 
 A `<style global>` gives `global` a value.
 
-```brm
+```html
 <style global="true">
   p {
     color: red;
@@ -564,7 +564,7 @@ A `<style global>` gives `global` a value.
 
 `#reveal` has an option that it does not know.
 
-```brm
+```html
 #reveal ('sequential', collapsed) {
   …
 }
@@ -576,7 +576,7 @@ A `<style global>` gives `global` a value.
 
 `collapsed` goes with `sequential` only.
 
-```brm
+```html
 #reveal ('sequential', collapsed) {
   …
 }
@@ -588,7 +588,7 @@ A `<style global>` gives `global` a value.
 
 A `#reveal` body starts with a `<script>`.
 
-```brm
+```html
 <script>
   let open = $signal(false);
 </script>
@@ -603,7 +603,7 @@ A `#reveal` body starts with a `<script>`.
 
 A block that takes a condition or a list has no `(`.
 
-```brm
+```html
 #if (open) {
   <p>Open</p>
 }
@@ -615,7 +615,7 @@ A block that takes a condition or a list has no `(`.
 
 The parentheses of a block are empty.
 
-```brm
+```html
 #if (open) {
   <p>Open</p>
 }
@@ -627,7 +627,7 @@ The parentheses of a block are empty.
 
 The header of a block is not followed by `{`.
 
-```brm
+```html
 #if (open) {
   <p>Open</p>
 }
@@ -639,7 +639,7 @@ The header of a block is not followed by `{`.
 
 `#switch` has no `{` after it.
 
-```brm
+```html
 #switch {
   #case (tab === 1) {
     <p>One</p>
@@ -653,7 +653,7 @@ The header of a block is not followed by `{`.
 
 A `<script>` at the start of a block has attributes such as `module`.
 
-```brm
+```html
 #for (item of items) {
   <script>
     let open = $signal(false);
@@ -668,7 +668,7 @@ A `<script>` at the start of a block has attributes such as `module`.
 
 A `#try` body is not followed by `#catch`.
 
-```brm
+```html
 #try {
   <p>{load()}</p>
 } #catch (error, reset) {
@@ -682,7 +682,7 @@ A `#try` body is not followed by `#catch`.
 
 The header of `#catch` names something other than a plain error name and a plain reset name.
 
-```brm
+```html
 #catch (error, reset) {
   <p>{String(error)}</p>
 }
@@ -694,7 +694,7 @@ The header of `#catch` names something other than a plain error name and a plain
 
 A `#client` block names another trigger.
 
-```brm
+```html
 #client ('idle') {
   <p>In the browser</p>
 }
@@ -706,7 +706,7 @@ A `#client` block names another trigger.
 
 A `#` starts a block that does not exist.
 
-```brm
+```html
 #if (open) {
   <p>Open</p>
 }
@@ -718,7 +718,7 @@ A `#` starts a block that does not exist.
 
 The header of `#repeat` is not `index of count`.
 
-```brm
+```html
 #repeat (star of 5) {
   <i>{star}</i>
 }
@@ -730,7 +730,7 @@ The header of `#repeat` is not `index of count`.
 
 The header of `#for` has no `of`.
 
-```brm
+```html
 #for (item, index of items by item.id) {
   <li>{item.name}</li>
 }
@@ -742,7 +742,7 @@ The header of `#for` has no `of`.
 
 `window` after a `#for` header has no height.
 
-```brm
+```html
 #for (row of rows by row.id) window(32) {
   <tr><td>{row.name}</td></tr>
 }
@@ -754,7 +754,7 @@ The header of `#for` has no `of`.
 
 A `#switch` holds markup other than its cases.
 
-```brm
+```html
 #switch {
   #case (tab === 1) {
     <p>One</p>
@@ -771,7 +771,7 @@ A `#switch` holds markup other than its cases.
 
 A `#case` comes after the `#default`.
 
-```brm
+```html
 #switch {
   #case (tab === 1) {
     <p>One</p>
@@ -788,7 +788,7 @@ A `#case` comes after the `#default`.
 
 A `#template` has no parameter list.
 
-```brm
+```html
 #template price(amount: number) {
   <b>{amount}</b>
 }
@@ -800,7 +800,7 @@ A `#template` has no parameter list.
 
 An attribute or a block has code that is not an expression.
 
-```brm
+```html
 <p>{count + 1}</p>
 ```
 
@@ -810,7 +810,7 @@ An attribute or a block has code that is not an expression.
 
 The name of a `#for` or `#catch` is not a name or a pattern.
 
-```brm
+```html
 #for ({ id, name } of people by id) {
   <li>{name}</li>
 }
@@ -822,7 +822,7 @@ The name of a `#for` or `#catch` is not a name or a pattern.
 
 The parameters of a `#template` are not a parameter list.
 
-```brm
+```html
 #template price(amount: number) {
   <b>{amount}</b>
 }
@@ -845,7 +845,7 @@ let total = $signal(0);
 
 `prevent`, `stop`, `once`, `capture` or `transition` has no handler, or `stop`, `once` or `capture` has keys.
 
-```brm
+```html
 <form onSubmit=(prevent(send))></form>
 ```
 
@@ -855,7 +855,7 @@ let total = $signal(0);
 
 Keys are given to `prevent` of an event that is not `onKeyDown`, `onKeyUp` or `onKeyPress`.
 
-```brm
+```html
 <ul onKeyDown=(prevent(move, 'ArrowDown'))></ul>
 ```
 
@@ -865,7 +865,7 @@ Keys are given to `prevent` of an event that is not `onKeyDown`, `onKeyUp` or `o
 
 A key of `prevent` is not a string literal of an `event.key`.
 
-```brm
+```html
 <ul onKeyDown=(prevent(move, 'ArrowDown', 'Mod+ArrowUp'))></ul>
 ```
 
@@ -875,7 +875,7 @@ A key of `prevent` is not a string literal of an `event.key`.
 
 A key of `prevent` is not a string literal.
 
-```brm
+```html
 <input onKeyDown=(prevent(submit, 'Enter'))>
 ```
 
@@ -898,7 +898,7 @@ async function save(list: string[]) {
 
 `<script module>` has `export default`.
 
-```brm
+```html
 <script module>
   export const MAX = 10;
 </script>
@@ -910,7 +910,7 @@ async function save(list: string[]) {
 
 The instance script has an `export`.
 
-```brm
+```html
 <script module>
   export const MAX = 10;
 </script>
@@ -1279,7 +1279,7 @@ onClick: $handler(removeAt, index, kind),
 
 The setter of `$bind` is not a function.
 
-```brm
+```html
 <Toggle on=$bind(open, (next) => (open = next)) />
 ```
 
@@ -1289,7 +1289,7 @@ The setter of `$bind` is not a function.
 
 The setter of `$bind` reads a local value that is not a value of the component.
 
-```brm
+```html
 <Toggle on=$bind(open, (next) => (open = next)) />
 ```
 
@@ -1299,7 +1299,7 @@ The setter of `$bind` reads a local value that is not a value of the component.
 
 `$bind` is somewhere else, such as on a `class` or a `<div>`.
 
-```brm
+```html
 <input value=$bind(draft)>
 ```
 
@@ -1309,7 +1309,7 @@ The setter of `$bind` reads a local value that is not a value of the component.
 
 `$bind` has no argument, or an argument that is not a name.
 
-```brm
+```html
 <Toggle on=$bind(open) />
 ```
 
@@ -1319,7 +1319,7 @@ The setter of `$bind` reads a local value that is not a value of the component.
 
 The name in `$bind` is a memo, a const prop or another value.
 
-```brm
+```html
 let open = $signal(false);
 <Toggle on=$bind(open) />
 ```
@@ -1341,7 +1341,7 @@ const bound = () => $isBound(open);
 
 The argument of `$isPending` is not a memo that holds a promise.
 
-```brm
+```html
 const results = $memo(search(query));
 #if ($isPending(results)) {
   <p>Searching…</p>
@@ -1378,7 +1378,7 @@ $produce(todos, (draft) => {
 
 An attribute starts with `b-`.
 
-```brm
+```html
 <div data-id=id></div>
 ```
 
@@ -1388,7 +1388,7 @@ An attribute starts with `b-`.
 
 The name in `ref=$bind(name)` is not a value of the component.
 
-```brm
+```html
 let input = $signal<HTMLInputElement>();
 <input ref=$bind(input)>
 ```
@@ -1399,7 +1399,7 @@ let input = $signal<HTMLInputElement>();
 
 The name in `ref=$bind(name)` is a memo, a const prop or another value.
 
-```brm
+```html
 let input = $signal<HTMLInputElement>();
 <input ref=$bind(input)>
 ```
@@ -1420,7 +1420,7 @@ let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();
 
 The props object or the rest of `$props()` is used as a whole outside a markup spread: spread in code, passed to a function, `$memo`, `$setContext`, a signal or a variable, or given as a value in markup, such as `title=rest` or `<Badge {rest} />`. The copy loses the `ref` and the live props.
 
-```brm
+```html
 const { class: className, ...rest } = $props();
 <button {...rest} class=className>
 ```
@@ -1671,7 +1671,7 @@ $client(() => {
 
 `$ref` was removed.
 
-```brm
+```html
 let input = $signal<HTMLInputElement>();
 <input ref=$bind(input)>
 ```
@@ -1810,7 +1810,7 @@ async function key() {
 
 A `#defer` is in markup that only the browser renders.
 
-```brm
+```html
 #defer {
   <Comments />
 }
@@ -1822,7 +1822,7 @@ A `#defer` is in markup that only the browser renders.
 
 A `#defer` is in a body that the browser adds later, such as the body of a changing `#if`.
 
-```brm
+```html
 #defer {
   <Comments />
 }
@@ -1834,7 +1834,7 @@ A `#defer` is in a body that the browser adds later, such as the body of a chang
 
 A `<title>`, `<textarea>`, `<style>` or `<script>` holds a changing value next to other content.
 
-```brm
+```html
 <textarea>{`Count ${count}`}</textarea>
 ```
 
@@ -1844,7 +1844,7 @@ A `<title>`, `<textarea>`, `<style>` or `<script>` holds a changing value next t
 
 A `<title>` is outside `#head`.
 
-```brm
+```html
 #head {
   <title>{`${count} left`}</title>
 }
@@ -1886,7 +1886,7 @@ const user = $memo(await load(id));
 
 The name or the value of an attribute with a computed name, as in `[name]=value`, changes in the browser.
 
-```brm
+```html
 <div class=(open ? "open" : "closed")></div>
 ```
 
@@ -1896,7 +1896,7 @@ The name or the value of an attribute with a computed name, as in `[name]=value`
 
 An element has a computed attribute, as in `[name]=(value)`, and a spread or another computed attribute that can change. The name or the value is a constant, or a signal that nothing writes, so the browser has no code for it, and an update of the element would remove the attribute. Make both a signal that the page writes, or write the attribute without brackets.
 
-```brm
+```html
 let name = $signal('data-x');
 let value = $signal('on');
 
@@ -1934,7 +1934,7 @@ shown = shown + 1;
 
 A `<style>` has CSS that does not parse.
 
-```brm
+```html
 <style>
   p {
     color: red;

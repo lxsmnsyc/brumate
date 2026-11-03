@@ -6,7 +6,7 @@ summary: Rows and columns that the user can select and sort.
 
 Rows and columns of data, which the user can move through with the keys, select and sort.
 
-```brm demo TableDemo
+```html demo TableDemo
 
 ```
 
@@ -38,7 +38,7 @@ Rows and columns of data, which the user can move through with the keys, select 
 
 ## Anatomy
 
-```brm anatomy TableAnatomy
+```html anatomy TableAnatomy
 `ResizableTableContainer`: Lets the columns resize and scrolls a Table that is wider than it.
 `Table`: Holds the header and the body. It is named by `aria-label` or `aria-labelledby`.
 `TableHeader`: Holds the columns.
@@ -186,7 +186,7 @@ Right to left, Left and Right turn around.
 
 `selectedKeys` holds the keys of the selected rows, and `sortDescriptor` holds the sort, `{ column, direction }`. `selectedKeys=(['a'])` and `sortDescriptor=({ column: 'name', direction: 'ascending' })` start the table's own state, and `$bind(signal)` writes your signal. `onSelectionChange` and `onSortChange` get each change. The Table does not reorder the rows: sort them by `sortDescriptor`. See [State](./state.md).
 
-```brm demo TableStateDemo
+```html demo TableStateDemo
 
 ```
 
@@ -202,7 +202,7 @@ Style a row with the data attributes above, such as `[data-selected]`, and a col
 
 This stylesheet styles a header at rest, on hover, on press and with keyboard focus, the arrow of the sorted column, the resizer, the rows (hover, selected, keyboard focus, disabled) and the Checkbox. Its tokens are at the top, and they follow the color scheme. Press a header to sort, drag the edge of Name, or use Tab and the arrow keys. Linus is disabled.
 
-```brm styled TableStyled
+```html styled TableStyled
 
 ```
 
@@ -212,7 +212,7 @@ This stylesheet styles a header at rest, on hover, on press and with keyboard fo
 
 Keep the rows in a signal and `selectedKeys` in another. A button reads the keys and changes the rows. A `$memo` can total the selected rows. After the action, clear the selection, since the keys of removed rows would stay in it.
 
-```brm demo TableBulkDemo
+```html demo TableBulkDemo
 
 ```
 
@@ -220,11 +220,11 @@ Keep the rows in a signal and `selectedKeys` in another. A button reads the keys
 
 Pass `items` to the Table and an `item` template to its `TableBody`, and put the Table in a [Virtualizer](./virtualizer.md). It renders about twenty rows of 3000, and sorting by `sortDescriptor` orders all of them. Press a header, then End to reach the last row.
 
-```brm demo TableLargeDemo
+```html demo TableLargeDemo
 
 ```
 
-## Rows from data
+## Items from data
 
 Pass `items` to the Table and an `item` template to its `TableBody`. The TableBody does not get the type of the items from the Table, so give the template's parameter a type, such as `item: File`.
 
@@ -269,7 +269,7 @@ The Table renders a `table` with `role="grid"`, a `thead` and a `tbody` with `ro
 
 ## Column resizing
 
-```brm demo TableResizeDemo
+```html demo TableResizeDemo
 
 ```
 

@@ -2,7 +2,7 @@
 
 State is the data of a component that can change in the browser. `$signal` declares a value that you write, and `$memo` declares a value that is computed from other values.
 
-```brm live
+```html live
 <script>
   import { $memo, $signal } from 'brumate/signals';
 
@@ -18,7 +18,7 @@ State is the data of a component that can change in the browser. `$signal` decla
 
 `$signal(value)` declares writable state. The variable is the value: read it like any variable, and assign to it to change it.
 
-```brm
+```html
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -34,7 +34,7 @@ State is the data of a component that can change in the browser. `$signal` decla
 - Without an argument, the value is `undefined`. Give the type as `$signal<number>()`, and the type includes `undefined`.
 - The initial value does not track what it reads. `let total = $signal(price * 2)` keeps its value when `price` changes. Use `$memo` for a value that follows other values.
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -58,7 +58,7 @@ A signal can be written in code that runs in the browser:
 
 Code that runs while the component renders cannot write a signal. Its value at render time is the value that the page starts with, so a later write there would have no effect. The compiler reports it:
 
-```brm
+```html
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -77,7 +77,7 @@ Compute the starting value in the call instead: `let count = $signal(5)`.
 
 `$memo(expression)` declares a value that is computed from other values. When a value that it reads changes, the memo computes again.
 
-```brm live
+```html live
 <script>
   import { $memo, $signal } from 'brumate/signals';
 
@@ -110,7 +110,7 @@ A memo can also hold a promise, such as the result of a server function. [Async 
 
 A signal changes when you assign a new value. To change one item of an array or one field of an object, `$produce` gives you a draft that you can change in place, and writes the result as a new value:
 
-```brm live
+```html live
 <script>
   import { $memo, $produce, $signal } from 'brumate/signals';
 
@@ -157,7 +157,7 @@ Without `$produce`, write a new value yourself: `todos = todos.map((todo) => (to
 
 Here the list follows the filter as you type, but a new page size only applies with the next change of the filter:
 
-```brm live
+```html live
 <script>
   import { $memo, $signal, $untrack } from 'brumate/signals';
 
@@ -194,7 +194,7 @@ A handler is one update pass. The page changes when the handler returns, not at 
 - A write that has not settled after 10000 rounds stops with an error. A loop through `ref=$bind` can cause it, when an update writes a value that it reads.
 - `flush()` from `brumate/signals` runs the waiting bindings at once, for a handler that must focus or measure what it rendered:
 
-```brm
+```html
 <script>
   import { $signal, flush } from 'brumate/signals';
 

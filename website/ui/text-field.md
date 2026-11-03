@@ -6,7 +6,7 @@ summary: A labeled input, checked by the browser.
 
 A field of a `Label`, an `Input` or a `TextArea`, a description and a `FieldError`. It gives each part its ID, so the label names the input, and the description and the errors describe it.
 
-```brm demo TextFieldDemo
+```html demo TextFieldDemo
 
 ```
 
@@ -17,7 +17,7 @@ A field of a `Label`, an `Input` or a `TextArea`, a description and a `FieldErro
 
 ## Anatomy
 
-```brm anatomy TextFieldAnatomy
+```html anatomy TextFieldAnatomy
 `TextField`: Holds the parts, gives them their IDs and shows the state of the field.
 `Label`: Names the input.
 `Input`: The text. A `TextArea` takes its place for several lines.
@@ -114,7 +114,7 @@ An `Input` or a `TextArea` takes the attributes of its element, and those that y
 
 `value` holds the text. How you pass it picks who keeps it:
 
-```brm demo TextFieldStateDemo
+```html demo TextFieldStateDemo
 
 ```
 
@@ -131,7 +131,25 @@ Style the field, its input and its error with the data attributes above, such as
 
 This stylesheet styles rest, hover, keyboard focus as two bands, invalid, read only and disabled, the description and the error. Press Send with the email empty. The browser blocks the form and the `FieldError` shows its message.
 
-```brm styled TextFieldStyled
+```html styled TextFieldStyled
+
+```
+
+## Use cases
+
+### A list that follows the text
+
+A field bound to a signal gives the page the text as the user types. The list is a memo of it.
+
+```html demo TextFieldFilterDemo
+
+```
+
+### A note with a limit
+
+A `TextArea` takes the place of the `Input`. `maxLength` stops the box at the limit, and the count under it is a memo of the signal.
+
+```html demo TextFieldCounterDemo
 
 ```
 
@@ -146,7 +164,7 @@ With the default `validationBehavior="native"`, the browser checks the field whe
 
 With `validationBehavior="aria"`, `validate` shows its errors at once, and the form is never blocked:
 
-```brm demo ValidateDemo
+```html demo ValidateDemo
 
 ```
 
@@ -171,21 +189,3 @@ A [Form](./form.md) sets the default for its fields, and gives them the errors o
 - `Label` is a `<label>` with the ID and the `for` that its field gives.
 - `Text` with `slot="description"` is the description, which the input names in `aria-describedby`. A field without one leaves its ID out once the browser is idle.
 - `FieldError` renders only while its field is invalid. Without children, it shows the messages.
-
-## Use cases
-
-### A list that follows the text
-
-A field bound to a signal gives the page the text as the user types. The list is a memo of it.
-
-```brm demo TextFieldFilterDemo
-
-```
-
-### A note with a limit
-
-A `TextArea` takes the place of the `Input`. `maxLength` stops the box at the limit, and the count under it is a memo of the signal.
-
-```brm demo TextFieldCounterDemo
-
-```

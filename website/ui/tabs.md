@@ -6,7 +6,7 @@ summary: Tabs that show one panel at a time.
 
 Tabs that show one panel at a time.
 
-```brm demo TabsDemo
+```html demo TabsDemo
 
 ```
 
@@ -28,7 +28,7 @@ Tabs that show one panel at a time.
 
 ## Anatomy
 
-```brm anatomy TabsAnatomy
+```html anatomy TabsAnatomy
 `Tabs`: Holds the selection. It shows `data-orientation`.
 `TabList`: Holds the tabs. It is a `tablist`, takes one stop of Tab, and needs `aria-label`.
 `Tab`: One tab. Its `id` is its key, and it shows `data-selected` when it is selected.
@@ -110,7 +110,7 @@ Horizontal tabs use Left and Right, and leave Up and Down to the page. With `ori
 
 `selectedKey` holds the key of the selected tab, or `null`. How you pass it picks who keeps it:
 
-```brm demo TabsStateDemo
+```html demo TabsStateDemo
 
 ```
 
@@ -126,7 +126,7 @@ Style a tab with the data attributes above, such as `[data-selected]`, and the t
 
 This stylesheet styles every state of a tab: rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled, with a bar that slides between tabs. Its tokens are at the top, and they follow the color scheme. Tab to the list, press the arrow keys, and note that Billing is skipped.
 
-```brm styled TabsStyled
+```html styled TabsStyled
 
 ```
 
@@ -136,7 +136,7 @@ This stylesheet styles every state of a tab: rest, hover, press, keyboard focus,
 
 The tabs after the furthest step that you reached are disabled with `disabledKeys`, and the Back and Next buttons write the bound `selectedKey`. A disabled tab cannot be selected by a press or by the arrow keys, which skip it. The buttons clamp the step, so a fast double press on Next stops at the last step.
 
-```brm demo TabsStepsDemo
+```html demo TabsStepsDemo
 
 ```
 
@@ -144,7 +144,7 @@ The tabs after the furthest step that you reached are disabled with `disabledKey
 
 A panel that is not selected does not render, so a field in it starts empty when its tab is selected again. `shouldForceMount` on a TabPanel keeps it on the page, hidden, with its state. Type in both fields, switch tabs, and come back.
 
-```brm demo TabsFormDemo
+```html demo TabsFormDemo
 
 ```
 

@@ -6,7 +6,7 @@ summary: A trail to the current page.
 
 A trail of links to the current page.
 
-```brm demo BreadcrumbsDemo
+```html demo BreadcrumbsDemo
 
 ```
 
@@ -16,7 +16,7 @@ A trail of links to the current page.
 
 ## Anatomy
 
-```brm anatomy BreadcrumbsAnatomy
+```html anatomy BreadcrumbsAnatomy
 `Breadcrumbs`: The `<ol>` of the trail.
 `Breadcrumb`: One step, an `<li>`. The last one has `isCurrent`.
 `Link`: The link of the step.
@@ -76,13 +76,9 @@ Style the trail with the data attributes above, such as `[data-current]` for the
 
 This stylesheet draws a `/` before every step but the first with `li + li::before`, links that underline on hover, a disabled step with a line through it, and a bold current step. The picture above uses an icon after each step, since a badge needs the `::before` of its piece.
 
-```brm styled BreadcrumbsStyled
+```html styled BreadcrumbsStyled
 
 ```
-
-## State
-
-Breadcrumbs keep no state. They draw the trail that you give them, so a use case below keeps the path in a signal of its own. A form reset has nothing to reset, and the server renders the trail as it is.
 
 ## Use cases
 
@@ -90,7 +86,7 @@ Breadcrumbs keep no state. They draw the trail that you give them, so a use case
 
 The path is a list in a signal. A Link without `href` is an element with `role="link"` that runs `onPress`, so a press on a step cuts the path back to it, and a button opens a folder. The pressed step becomes the current one, and its link turns into plain text, and the folder buttons are replaced. So the handler moves focus to the list of folders on purpose.
 
-```brm demo BreadcrumbsFolderDemo
+```html demo BreadcrumbsFolderDemo
 
 ```
 
@@ -98,6 +94,10 @@ The path is a list in a signal. A Link without `href` is an element with `role="
 
 `isDisabled` on the `Breadcrumbs` disables every link, such as while a form has changes that a click would throw away. The current step is disabled already.
 
-```brm demo BreadcrumbsDirtyDemo
+```html demo BreadcrumbsDirtyDemo
 
 ```
+
+## State
+
+Breadcrumbs keep no state. They draw the trail that you give them, so a use case below keeps the path in a signal of its own. A form reset has nothing to reset, and the server renders the trail as it is.

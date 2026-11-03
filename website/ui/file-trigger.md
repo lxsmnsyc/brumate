@@ -6,7 +6,7 @@ summary: Opens the file picker from a button.
 
 Opens the file picker of the browser from a `Button` inside it.
 
-```brm demo FileTriggerDemo
+```html demo FileTriggerDemo
 
 ```
 
@@ -49,7 +49,7 @@ A FileTrigger has no data attributes. Style its [Button](./button.md#data-attrib
 
 This stylesheet styles the Button of a trigger: a dashed edge at rest that turns solid on hover, the press, keyboard focus and disabled.
 
-```brm styled FileTriggerStyled
+```html styled FileTriggerStyled
 
 ```
 
@@ -59,7 +59,7 @@ This stylesheet styles the Button of a trigger: a dashed edge at rest that turns
 
 `allowsMultiple` lets the picker take several files. The page copies the name and the size of each into a signal, since a signal holds data and not `File` objects, and a press on Remove drops one.
 
-```brm demo FileTriggerListDemo
+```html demo FileTriggerListDemo
 
 ```
 
@@ -67,6 +67,6 @@ This stylesheet styles the Button of a trigger: a dashed edge at rest that turns
 
 `acceptedFileTypes` limits what the picker offers. The page makes an object URL for the first file and shows it in an `img`. It frees the old URL before it makes another.
 
-```brm demo FileTriggerPreviewDemo
+```html demo FileTriggerPreviewDemo
 
 ```

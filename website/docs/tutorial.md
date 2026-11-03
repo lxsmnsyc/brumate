@@ -6,7 +6,7 @@ This tutorial builds a todo list in six steps: a list, a form that adds items, t
 
 A signal holds the todos, and `#for` renders one item for each:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -38,7 +38,7 @@ A signal holds the todos, and `#for` renders one item for each:
 
 A second signal holds the text of the field. Submitting the form adds a todo with it:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -91,7 +91,7 @@ A second signal holds the text of the field. Submitting the form adds a todo wit
 
 A checkbox on each item marks it done. `$produce` changes one item in place on a copy, and writes the copy:
 
-```brm live
+```html live
 <script>
   import { $produce, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -155,7 +155,7 @@ A checkbox on each item marks it done. `$produce` changes one item in place on a
 
 A memo computes a value from other values. It updates when they change:
 
-```brm live
+```html live
 <script>
   import { $memo, $produce, $signal } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -229,7 +229,7 @@ A memo computes a value from other values. It updates when they change:
 
 A function with `'use server'` runs on the server. In the browser, calling it sends a request. Here the server keeps the todos in a list of its module. This sample's server runs in the page, so the list resets when you edit the code:
 
-```brm live
+```html live
 <script module>
   // The todos on the server. A real app would use a database.
   const saved = [
@@ -325,7 +325,7 @@ A function with `'use server'` runs on the server. In the browser, calling it se
 
 In an app, the todo list is a component that a route renders. Move the component to `src/Todos.brm`, and render it from a route file:
 
-```brm
+```html
 <!-- src/routes/todos.brm -->
 <script>
   import Todos from '../Todos.brm';
@@ -336,7 +336,7 @@ In an app, the todo list is a component that a route renders. Move the component
 
 The page is now at `/todos`, inside the layout of `src/routes/_layout.brm`. Add a link to it in the layout:
 
-```brm
+```html
 <nav>
   <a href="/">Home</a>
   <a href="/todos">Todos</a>

@@ -6,7 +6,7 @@ summary: A slider for one channel of a color.
 
 A slider for one channel of a color.
 
-```brm demo ColorSliderDemo
+```html demo ColorSliderDemo
 
 ```
 
@@ -33,7 +33,7 @@ A slider for one channel of a color.
 
 ## Anatomy
 
-```brm anatomy ColorSliderAnatomy
+```html anatomy ColorSliderAnatomy
 `ColorSlider`: The group that holds the slider. The Label names it. It gives the track its gradient as `--track-background`.
 `Label`: Names the slider.
 `SliderOutput`: Shows the channel, such as `210°`.
@@ -106,7 +106,7 @@ The keys act on the thumb. Ctrl, Alt or Meta with an arrow moves the thumb one s
 
 `value` holds a color of CSS. How you pass it picks who keeps it. Each slider below edits the hue, and Reset the form gives each one back the color it started with:
 
-```brm demo ColorSliderStateDemo
+```html demo ColorSliderStateDemo
 
 ```
 
@@ -125,7 +125,7 @@ Style the track with `background: var(--track-background)`, and the thumb with t
 
 This stylesheet styles the track with the gradient of the part, the value, and every state of the thumb: rest, dragging, keyboard focus and disabled. A thumb has no hover state. Drag the thumb, or tab to it and press the arrows.
 
-```brm styled ColorSliderStyled
+```html styled ColorSliderStyled
 
 ```
 
@@ -135,7 +135,7 @@ This stylesheet styles the track with the gradient of the part, the value, and e
 
 `colorSpace="rgb"` reads the color in rgb, so each slider adjusts one of its channels. Three sliders on one `$bind` signal share a color, and the swatch and the text follow every one.
 
-```brm demo ColorSliderRgbDemo
+```html demo ColorSliderRgbDemo
 
 ```
 
@@ -143,7 +143,7 @@ This stylesheet styles the track with the gradient of the part, the value, and e
 
 `name` sends the value of the channel with the form, as the hue here, also before the code of the page loads. The range input of the thumb carries it. Reset gives back the color the slider started with.
 
-```brm demo ColorSliderFormDemo
+```html demo ColorSliderFormDemo
 
 ```
 

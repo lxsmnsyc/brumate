@@ -6,7 +6,7 @@ summary: The arrow keys move between its items.
 
 A toolbar where the arrow keys move focus between its items.
 
-```brm demo ToolbarDemo
+```html demo ToolbarDemo
 
 ```
 
@@ -20,7 +20,7 @@ A toolbar where the arrow keys move focus between its items.
 
 ## Anatomy
 
-```brm anatomy ToolbarAnatomy
+```html anatomy ToolbarAnatomy
 `Toolbar`: Moves focus between its items with the arrow keys.
 `Button`: An item. Any part that takes focus can be one.
 `Separator`: A line between groups of items.
@@ -70,13 +70,9 @@ Style the toolbar with `[data-orientation='vertical']`. See [Styling](./styling.
 
 This stylesheet makes a horizontal and a vertical bar. Its items have hover, press, on, disabled and a two-band focus ring. Press Tab to enter a bar, then the arrow keys to move in it.
 
-```brm styled ToolbarStyled
+```html styled ToolbarStyled
 
 ```
-
-## State
-
-A toolbar keeps no value. After focus has entered it, the item that Tab stops at is the one that had focus last, and the toolbar keeps that as the `tabindex` of its items, in the page, not in a signal. Before that, no item has a `tabindex`, so all of them are in the order of Tab. A form reset leaves it as it is. The items hold their own state: see [ToggleButtonGroup](./toggle-button-group.md#controlled-and-uncontrolled).
 
 ## Use cases
 
@@ -84,7 +80,7 @@ A toolbar keeps no value. After focus has entered it, the item that Tab stops at
 
 Toggle buttons write a list, buttons change a size within limits, and a text field takes the keys that move its caret. Once focus is in the field, the arrow keys, Home and End stay in it, and Tab leaves it. The size buttons clamp the size and stay enabled: a button that disables itself while it has focus drops focus to the page, since the browser does that for any disabled button.
 
-```brm demo ToolbarEditorDemo
+```html demo ToolbarEditorDemo
 
 ```
 
@@ -92,6 +88,10 @@ Toggle buttons write a list, buttons change a size within limits, and a text fie
 
 Inside an [I18nProvider](./i18n-provider.md) with an Arabic locale, ArrowLeft moves to the next item. Put `dir="rtl"` on an element yourself, since the provider renders none.
 
-```brm demo ToolbarArabicDemo
+```html demo ToolbarArabicDemo
 
 ```
+
+## State
+
+A toolbar keeps no value. After focus has entered it, the item that Tab stops at is the one that had focus last, and the toolbar keeps that as the `tabindex` of its items, in the page, not in a signal. Before that, no item has a `tabindex`, so all of them are in the order of Tab. A form reset leaves it as it is. The items hold their own state: see [ToggleButtonGroup](./toggle-button-group.md#controlled-and-uncontrolled).

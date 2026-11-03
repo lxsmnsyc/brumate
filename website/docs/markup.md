@@ -6,7 +6,7 @@ The markup of a component is HTML with `{…}` expressions, attribute values wit
 
 `{expression}` inserts a value. It updates when the values it reads change:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -30,7 +30,7 @@ The markup of a component is HTML with `{…}` expressions, attribute values wit
 
 An attribute takes a quoted string, a value without quotes, or an expression in parentheses:
 
-```brm
+```html
 <input type="text" value=draft maxlength=(limit - 1) disabled=(!editable)>
 <img src=user.avatar alt=(`Photo of ${user.name}`)>
 ```
@@ -46,7 +46,7 @@ An attribute takes a quoted string, a value without quotes, or an expression in 
 
 Shorthands:
 
-```brm
+```html
 <a {href}>Open</a>            <!-- the same as href=href -->
 <button {onClick}>Go</button>  <!-- the same as onClick=onClick, a handler -->
 <input {...rest}>              <!-- every property of rest as an attribute -->
@@ -57,7 +57,7 @@ Shorthands:
 
 `class` takes a string, an array, or an object whose keys are class names that apply while their values are true. `style` takes a string, or an object of properties in camel case:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -76,7 +76,7 @@ Shorthands:
 
 `<{tag}>` renders the element or component that `tag` names. Close it with `</>`:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -91,7 +91,7 @@ When `tag` changes in the browser, the element renders again with the new tag.
 
 A tag with no content can close itself, as a void element or a component with no children does:
 
-```brm
+```html
 <script>
   import { $props } from 'brumate/signals';
 
@@ -107,7 +107,7 @@ A tag with no content can close itself, as a void element or a component with no
 
 Inserted text is escaped. `raw` from `brumate/html` inserts a string as HTML, such as the HTML of a Markdown file:
 
-```brm
+```html
 <script>
   import { raw } from 'brumate/html';
   import { html } from './post.md';
@@ -122,7 +122,7 @@ Insert only HTML that you trust. HTML from a user can run scripts in your page.
 
 `onEvent=handler` runs the handler when the event fires. The name after `on` is the DOM event, so `onClick` listens to `click` and `onKeyDown` to `keydown`. The handler gets the event:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
   import { once, prevent } from 'brumate/events';
@@ -163,7 +163,7 @@ A handler runs after the event has finished dispatching, so the browser has acte
 
 Handlers run as if each element had its own listener. Those wrapped by `capture` run first, from the outside in, and then the others, from the target outwards. An event that does not bubble, such as `focus`, `blur`, `mouseenter` or `scroll`, runs only the handlers of its target and the `capture` handlers around it. Listeners are passive unless a handler of the event prevents, so there is no `passive` wrapper.
 
-```brm
+```html
 <script>
   import { prevent, stop } from 'brumate/events';
 </script>
@@ -204,7 +204,7 @@ const stop = cancelWhen(form, 'submit', () => form.hasAttribute('data-pending'))
 
 `transition(handler)` from `brumate/events` runs the handler inside a [view transition](https://developer.mozilla.org/docs/Web/API/View_Transition_API). The browser animates from the page before the handler to the page after it, including elements that `#if` or `#for` removes and items that change order. CSS styles the animation.
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
   import { transition } from 'brumate/events';
@@ -231,7 +231,7 @@ const stop = cancelWhen(form, 'submit', () => form.hasAttribute('data-pending'))
 
 `<window>` and `<document>` listen to events of the window and the document. They must close with `/>`:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -261,7 +261,7 @@ An element with a spread or a computed attribute is not checked, because any att
 
 `$id()` returns an ID that is unique in the page. Use it to connect a label or a description to a field:
 
-```brm live
+```html live
 <script>
   import { $id } from 'brumate/signals';
 
@@ -279,7 +279,7 @@ An element with a spread or a computed attribute is not checked, because any att
 - An ID has only letters, digits, `-` and `_`, such as `b3-0`, so it also works in a CSS selector, as `#b3-0`.
 - In the [script of a block](./control-flow.md#a-script-in-a-block), such as the body of a `#for`, each item gets its own IDs:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 

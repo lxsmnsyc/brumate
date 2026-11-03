@@ -11,6 +11,12 @@ Accessible, unstyled components for brumate. They resume like the rest of a brum
 
 ## Use a part
 
+Install the package. `brumate` is a peer dependency, so a project that has [brumate](../docs/getting-started.md) already has it:
+
+```bash
+pnpm add @brumate/ui
+```
+
 Import a part from `@brumate/ui`, and use it as any component:
 
 ```html

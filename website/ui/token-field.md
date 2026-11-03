@@ -6,7 +6,7 @@ summary: Text with mentions and tags that the user types.
 
 A field of text with tokens in it, such as mentions, tags or commands, which the user types and the field turns into tokens.
 
-```brm demo TokenFieldDemo
+```html demo TokenFieldDemo
 
 ```
 
@@ -31,7 +31,7 @@ A field of text with tokens in it, such as mentions, tags or commands, which the
 
 ## Anatomy
 
-```brm anatomy TokenFieldAnatomy
+```html anatomy TokenFieldAnatomy
 `TokenField`: Holds the segments and the settings of the field.
 `Label`: Names the box.
 `TokenInput`: The box the user types in. It is an element with `contenteditable`.
@@ -112,7 +112,7 @@ The browser edits the text of the box, so its usual keys work. These are the key
 
 `value` holds the segments. How you pass it picks who keeps it:
 
-```brm demo TokenFieldStateDemo
+```html demo TokenFieldStateDemo
 
 ```
 
@@ -129,7 +129,7 @@ Style the box with the data attributes above, and show the placeholder from `dat
 
 This stylesheet styles rest, hover, keyboard focus as two bands, empty with its placeholder, read only and disabled, and two kinds of token, also while the selection covers it. Select a token with the mouse or Shift and the arrow keys.
 
-```brm styled TokenFieldStyled
+```html styled TokenFieldStyled
 
 ```
 
@@ -139,7 +139,7 @@ This stylesheet styles rest, hover, keyboard focus as two bands, empty with its 
 
 With `name`, a form sends the text of the value. Each token is sent as its text.
 
-```brm demo TokenFieldMessageDemo
+```html demo TokenFieldMessageDemo
 
 ```
 
@@ -147,7 +147,7 @@ With `name`, a form sends the text of the value. Each token is sent as its text.
 
 `role="searchbox"` marks the field as a search. The tokens are the filters, and the text around them is a word of the title. The page reads the signal.
 
-```brm demo TokenFieldFilterDemo
+```html demo TokenFieldFilterDemo
 
 ```
 

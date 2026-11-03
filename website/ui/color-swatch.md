@@ -6,7 +6,7 @@ summary: A sample of a color, named for screen readers.
 
 A sample of a color, named for screen readers.
 
-```brm demo ColorSwatchDemo
+```html demo ColorSwatchDemo
 
 ```
 
@@ -34,7 +34,7 @@ A ColorSwatch has no data attributes. The element has the custom property `--col
 
 This stylesheet gives the swatch a size, a shape and an edge that shows on the page in both themes. The part draws the color, and the checkerboard under a color with alpha. A swatch has no state, so there is nothing else to style.
 
-```brm styled ColorSwatchStyled
+```html styled ColorSwatchStyled
 
 ```
 
@@ -44,7 +44,7 @@ This stylesheet gives the swatch a size, a shape and an edge that shows on the p
 
 `colorName` names a swatch for screen readers, and a color without it gets a name in English, such as `dark blue`. The table gives the name and the value as text too, since a swatch alone is not enough for someone who cannot see it.
 
-```brm demo ColorSwatchPaletteDemo
+```html demo ColorSwatchPaletteDemo
 
 ```
 
@@ -52,7 +52,7 @@ This stylesheet gives the swatch a size, a shape and an edge that shows on the p
 
 A color with alpha shows over a checkerboard, so the opacity can be seen. The slider writes the alpha of the color that the swatch shows.
 
-```brm demo ColorSwatchPreviewDemo
+```html demo ColorSwatchPreviewDemo
 
 ```
 

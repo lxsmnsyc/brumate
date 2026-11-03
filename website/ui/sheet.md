@@ -6,7 +6,7 @@ summary: A modal along an edge of the window.
 
 A [Modal](./modal.md) along an edge of the window, such as a menu or a panel of filters.
 
-```brm demo SheetDemo
+```html demo SheetDemo
 
 ```
 
@@ -16,7 +16,7 @@ A [Modal](./modal.md) along an edge of the window, such as a menu or a panel of 
 
 ## Anatomy
 
-```brm anatomy SheetAnatomy
+```html anatomy SheetAnatomy
 `Button`: Opens the sheet. It gets `aria-expanded`, and `aria-controls` while the sheet is open.
 `Sheet`: The panel along an edge of the window. It has `data-sheet` and `data-side`.
 `Dialog`: The dialog in the panel. It takes focus when the sheet opens.
@@ -66,7 +66,7 @@ The keys are those of a [Modal](./modal.md#keyboard). `Escape` closes a sheet, a
 
 `isOpen` holds whether the sheet is open, as on a [Modal](./modal.md#controlled-and-uncontrolled). Inside a `DialogTrigger`, the trigger holds it, and a sheet with its own `isOpen` ignores the trigger:
 
-```brm demo SheetStateDemo
+```html demo SheetStateDemo
 
 ```
 
@@ -86,7 +86,7 @@ A `Sheet` passes its class to the box, not to the overlay behind it, which has `
 
 This stylesheet places the sheet on each of the four edges, slides it in from its edge as the overlay fades in, and styles the trigger and the close Button in every state. Press each trigger. Its tokens are at the top, and they follow the color scheme.
 
-```brm styled SheetStyled
+```html styled SheetStyled
 
 ```
 
@@ -96,7 +96,7 @@ This stylesheet places the sheet on each of the four edges, slides it in from it
 
 A `Button` with `slot="close"` closes the sheet and still runs its own `onPress`, so each item sets the page and closes the menu. Focus goes back to the Menu Button.
 
-```brm demo SheetNavDemo
+```html demo SheetNavDemo
 
 ```
 
@@ -104,6 +104,6 @@ A `Button` with `slot="close"` closes the sheet and still runs its own `onPress`
 
 The sheet edits a draft, so a Cancel throws it away. The `DialogTrigger` copies the applied filters into the draft each time the sheet opens, and Apply copies the draft back. The sheet sits on the `end` edge.
 
-```brm demo SheetFiltersDemo
+```html demo SheetFiltersDemo
 
 ```

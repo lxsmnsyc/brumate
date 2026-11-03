@@ -6,7 +6,7 @@ summary: A dialog over the page, which it locks.
 
 A dialog over the page, which the user deals with before they go on, such as a confirmation.
 
-```brm demo ModalDemo
+```html demo ModalDemo
 
 ```
 
@@ -22,7 +22,7 @@ A dialog over the page, which the user deals with before they go on, such as a c
 
 ## Anatomy
 
-```brm anatomy ModalAnatomy
+```html anatomy ModalAnatomy
 `Button`: Opens the modal. It gets `aria-expanded`, and `aria-controls` while the modal is open.
 `ModalOverlay`: Covers the window and dims the page. Optional.
 `Modal`: The box over the overlay.
@@ -95,7 +95,7 @@ The `ModalOverlay` is optional: a `Modal` renders one around itself. The `Dialog
 
 Inside a `DialogTrigger`, the trigger holds whether the modal is open. A modal with its own `isOpen` ignores the trigger:
 
-```brm demo ModalStateDemo
+```html demo ModalStateDemo
 
 ```
 
@@ -113,7 +113,7 @@ Style the overlay and the box with the data attributes above, such as `[data-clo
 
 This stylesheet styles the trigger, the Cancel button and the danger button in every state, the dim overlay, and the box, which scales in as the overlay fades in. Press Delete the draft, Tab through the two buttons, then press the dim area. Its tokens are at the top, and they follow the color scheme.
 
-```brm styled ModalStyled
+```html styled ModalStyled
 
 ```
 
@@ -123,7 +123,7 @@ This stylesheet styles the trigger, the Cancel button and the danger button in e
 
 A form in a modal can lose work, so this one guards itself. `isKeyboardDismissDisabled` follows the form: while the text differs from the saved one, Escape does nothing. Cancel then opens a second Modal over the first, and Escape closes only that one. The press on a clean form closes at once.
 
-```brm demo ModalUnsavedDemo
+```html demo ModalUnsavedDemo
 
 ```
 
@@ -131,7 +131,7 @@ A form in a modal can lose work, so this one guards itself. `isKeyboardDismissDi
 
 A modal needs no trigger. When the work ends, the code sets the signal that `isOpen` is bound to. This one opens when a slow action is done. The pending Button keeps its focus, and the modal gives focus back to it when it closes.
 
-```brm demo ModalPublishDemo
+```html demo ModalPublishDemo
 
 ```
 

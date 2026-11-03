@@ -6,7 +6,7 @@ A component renders on the server, so its script never runs in the browser. To r
 
 `$effect(callback)` runs the callback in the browser when a value that it reads changes:
 
-```brm live
+```html live
 <script>
   import { $effect, $signal } from 'brumate/signals';
 
@@ -48,7 +48,7 @@ An effect is for work outside the page's state: an element method, a cookie, `do
 
 This effect copies `count` into `message`:
 
-```brm
+```html
 <script>
   import { $effect, $signal } from 'brumate/signals';
 
@@ -66,7 +66,7 @@ This effect copies `count` into `message`:
 
 The effect writes `message` after the page has updated for `count`, so one click updates the page twice. A memo computes in the same update as `count`:
 
-```brm live
+```html live
 <script>
   import { $memo, $signal } from 'brumate/signals';
 
@@ -82,7 +82,7 @@ The effect writes `message` after the page has updated for `count`, so one click
 
 The callback can return a function. It runs before the next run of the effect, and when the component is removed from the page:
 
-```brm live
+```html live
 <script>
   import { $effect, $signal, $untrack } from 'brumate/signals';
 
@@ -114,7 +114,7 @@ An effect depends on every value that it reads. That includes values read in the
 
 A function that writes a signal it also reads is the common mistake:
 
-```brm
+```html
 <script>
   import { $effect, $signal } from 'brumate/signals';
 
@@ -136,7 +136,7 @@ A function that writes a signal it also reads is the common mistake:
 
 The effect depends on `saves`, so each save runs the effect again, without end. After 1000 runs in one change, the page stops the loop and sends the error [BRM187](./errors.md#brm187) to the nearest [`#try`](./control-flow.md#try-and-catch), so the tab does not hang. Call such functions inside `$untrack`, which reads without depending on anything inside:
 
-```brm live
+```html live
 <script>
   import { $effect, $signal, $untrack } from 'brumate/signals';
 
@@ -166,7 +166,7 @@ The effect depends on `saves`, so each save runs the effect again, without end. 
 
 A preference such as the theme, a dismissed banner or the width of a panel belongs in a cookie. The server reads it, so the first render has the right value, and an `$effect` writes it when the value changes:
 
-```brm
+```html
 <script>
   import { getEvent } from 'brumate/server';
   import { $effect, $signal } from 'brumate/signals';
@@ -194,7 +194,7 @@ A preference such as the theme, a dismissed banner or the width of a panel belon
 
 `ref=$bind(name)` on an element writes the element into the signal `name`, so browser code can use it:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -219,7 +219,7 @@ A preference such as the theme, a dismissed banner or the width of a panel belon
 
 `$client(callback, trigger)` runs the callback in the browser once, when the trigger fires. It does not wait for a change:
 
-```brm live
+```html live
 <script>
   import { $client, $signal } from 'brumate/signals';
 
@@ -255,7 +255,7 @@ A `$client` callback is a handler for reads of a memo that has no value yet: the
 
 A component can enter the page after it loads, such as in an `#if` that opens or a new item of a `#for`. Its `$client` callback follows the same rules as one of the first render:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
   import Chart from './Chart.brm';
@@ -269,7 +269,7 @@ A component can enter the page after it loads, such as in an `#if` that opens or
 }
 ```
 
-```brm live Chart.brm
+```html live Chart.brm
 <script>
   import { $client, $signal } from 'brumate/signals';
 
@@ -294,7 +294,7 @@ A component can enter the page after it loads, such as in an `#if` that opens or
 
 A `#client` block skips its body on the server. The browser renders it when the trigger fires, with the same triggers as `$client`:
 
-```brm live
+```html live
 <script>
   import { $signal } from 'brumate/signals';
 
@@ -312,7 +312,7 @@ Use it for markup that needs the browser, such as a map or a value from `localSt
 
 An `#else` body renders on the server in place of the body, until the body renders:
 
-```brm live
+```html live
 #client ('idle') {
   <p>Your time zone is {Intl.DateTimeFormat().resolvedOptions().timeZone}.</p>
 } #else {
@@ -341,7 +341,7 @@ export function clickOutside(element: HTMLElement, onOutside: () => void): () =>
 }
 ```
 
-```brm
+```html
 <script>
   import { $client, $signal } from 'brumate/signals';
   import { autosize, clickOutside } from './behaviors.ts';
@@ -380,7 +380,7 @@ Handlers are often enough. A value that a handler writes updates the page by its
 
 Code that runs in the browser can throw: a handler, the promise that an async handler returns, an effect, or a `$client` callback. The error goes to the nearest `#try` around the scope that the code belongs to, which renders its `#catch` body with the error and `reset`:
 
-```brm
+```html
 #try {
   <button onClick=(async () => { await save(); })>Save</button>
 } #catch (error, reset) {

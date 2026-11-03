@@ -6,7 +6,7 @@ summary: A value in a known range, in the locale.
 
 A value that stays in a known range, such as the space used on a disk.
 
-```brm demo MeterDemo
+```html demo MeterDemo
 
 ```
 
@@ -17,7 +17,7 @@ A value that stays in a known range, such as the space used on a disk.
 
 ## Anatomy
 
-```brm anatomy MeterAnatomy
+```html anatomy MeterAnatomy
 `Meter`: The element with `role="meter"`. It sets `--percentage`.
 `Label`: Names the meter.
 ```
@@ -48,13 +48,9 @@ Draw the bar with `--percentage`, from `0%` to `100%`, or with the `content` tem
 
 This stylesheet draws a track and a fill in a `content` template, and the fill changes color with the level: green, amber and red. A meter has no data attributes, so the template picks the level from the percentage that it gets. The text beside the bar carries the value too, so color is not the only sign.
 
-```brm styled MeterStyled
+```html styled MeterStyled
 
 ```
-
-## State
-
-A meter has no state of its own. It draws the `value` that you pass, so the page keeps the number, such as in a signal. A form reset leaves it as it is, and the server renders the value it gets.
 
 ## Use cases
 
@@ -62,7 +58,7 @@ A meter has no state of its own. It draws the `value` that you pass, so the page
 
 `formatOptions` writes the value in a unit or a currency, and `valueLabel` replaces the text. The meter sets the text as `aria-valuetext`, so a screen reader says it too. A `minValue` other than 0 moves the start of the range, so a value of 3 in 1 to 5 fills half.
 
-```brm demo MeterUnitsDemo
+```html demo MeterUnitsDemo
 
 ```
 
@@ -70,6 +66,10 @@ A meter has no state of its own. It draws the `value` that you pass, so the page
 
 The page keeps the charge in a signal. The meter follows it, and the note under it reads the same number.
 
-```brm demo MeterBatteryDemo
+```html demo MeterBatteryDemo
 
 ```
+
+## State
+
+A meter has no state of its own. It draws the `value` that you pass, so the page keeps the number, such as in a signal. A form reset leaves it as it is, and the server renders the value it gets.

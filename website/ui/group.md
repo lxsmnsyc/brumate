@@ -6,7 +6,7 @@ summary: Parts that belong together.
 
 Parts that belong together, such as an input and its buttons.
 
-```brm demo GroupDemo
+```html demo GroupDemo
 
 ```
 
@@ -15,7 +15,7 @@ Parts that belong together, such as an input and its buttons.
 
 ## Anatomy
 
-```brm anatomy GroupAnatomy
+```html anatomy GroupAnatomy
 `Group`: The element with `role="group"`. It shows the state of the whole.
 `Input`: A part inside. It keeps its own look and keys.
 `Button`: Another part inside.
@@ -56,13 +56,9 @@ Style the group with the data attributes above, such as `[data-focus-within]` fo
 
 This stylesheet draws one frame for an input and a button. The frame reads the group's attributes: hover, focus inside, a ring for the keyboard, invalid and disabled. The input draws no frame of its own. Press Tab to see the ring.
 
-```brm styled GroupStyled
+```html styled GroupStyled
 
 ```
-
-## State
-
-A group keeps no state. Hover, focus and the flags come from the pointer, the focus and the props, and the group does not write them anywhere you can bind. A form reset leaves it as it is. The server renders it without hover and focus.
 
 ## Use cases
 
@@ -70,7 +66,7 @@ A group keeps no state. Hover, focus and the flags come from the pointer, the fo
 
 `isInvalid` on the group shows `data-invalid` and `aria-invalid="true"`, so the frame can warn about the whole, not one piece.
 
-```brm demo GroupAmountDemo
+```html demo GroupAmountDemo
 
 ```
 
@@ -78,6 +74,10 @@ A group keeps no state. Hover, focus and the flags come from the pointer, the fo
 
 A group inside a `TextField` frames the input and its button. The button waits until there is text.
 
-```brm demo GroupSearchDemo
+```html demo GroupSearchDemo
 
 ```
+
+## State
+
+A group keeps no state. Hover, focus and the flags come from the pointer, the focus and the props, and the group does not write them anywhere you can bind. A form reset leaves it as it is. The server renders it without hover and focus.

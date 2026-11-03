@@ -6,7 +6,7 @@ summary: A list of options to select, by keyboard and pointer.
 
 A list of options that the user selects from, with the keyboard, a pointer or a screen reader.
 
-```brm demo ListBoxDemo
+```html demo ListBoxDemo
 
 ```
 
@@ -20,7 +20,7 @@ A list of options that the user selects from, with the keyboard, a pointer or a 
 
 ## Anatomy
 
-```brm anatomy ListBoxAnatomy
+```html anatomy ListBoxAnatomy
 `ListBox`: Holds the items and the selection. It is a `listbox` and takes one stop of Tab.
 `ListBoxSection`: Groups items. It is named by its Header, or by `aria-label`. Optional.
 `Header`: Names the section.
@@ -110,7 +110,7 @@ The keys act while an item has focus. With `orientation="horizontal"`, Left and 
 
 `selectedKeys` holds the keys of the selected items, as a list. How you pass it picks who keeps it. The lists here select several items:
 
-```brm demo ListBoxStateDemo
+```html demo ListBoxStateDemo
 
 ```
 
@@ -127,7 +127,7 @@ Style an item with the data attributes above, such as `[data-selected]` and `[da
 
 This stylesheet styles every state of an item: rest, hover, press, keyboard focus, selected, selected and hovered, selected and pressed, and disabled. Its tokens are at the top, and they follow the color scheme. Tab into the list and press the arrow keys, then Space.
 
-```brm styled ListBoxStyled
+```html styled ListBoxStyled
 
 ```
 
@@ -137,7 +137,7 @@ This stylesheet styles every state of an item: rest, hover, press, keyboard focu
 
 The list renders the items that match the text of a [SearchField](./search-field.md), from a `#for` over a derived list, with the key as `by`. The selection is a list of keys, so it stays when the item leaves the list. Typing in the list still moves focus to the item whose text starts with the letters, among the items that show.
 
-```brm demo ListBoxFilterDemo
+```html demo ListBoxFilterDemo
 
 ```
 
@@ -145,7 +145,7 @@ The list renders the items that match the text of a [SearchField](./search-field
 
 A [Toolbar](./toolbar.md) above the list holds the buttons that act on the selection. `Select all` writes every key into the bound signal, `Clear` empties it, and `Delete` removes the selected items from the data and clears the signal. Select a few folders, press Delete, then Restore.
 
-```brm demo ListBoxToolbarDemo
+```html demo ListBoxToolbarDemo
 
 ```
 

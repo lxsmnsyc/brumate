@@ -6,7 +6,7 @@
 
 `#head` renders its content into the `<head>` of the page, for tags such as `<meta>` and `<link>`:
 
-```brm
+```html
 <script>
   import { $props } from 'brumate/signals';
 
@@ -32,7 +32,7 @@
 
 A `<title>` in `#head` sets the title of the page, as `<meta>` and `<link>` in `#head` add to the head:
 
-```brm
+```html
 <script>
   import { $memo, $signal } from 'brumate/signals';
 
