@@ -934,9 +934,7 @@ export function cloneLines(
       } else if (write.kind === 'block') {
         const call = emitter.fills.get(`${write.scope}:${write.anchor}`);
         if (call?.startsWith('$$b.fillList(') && direct(write.scope, `list:${write.anchor}:`)) {
-          lines.push(
-            `${indent}$$b.markBlock($$e[${index}], ${write.scope}, ${write.anchor}, "");`,
-          );
+          lines.push(`${indent}$$b.markBlock($$e[${index}], ${write.scope}, ${write.anchor}, "");`);
         } else if (call === undefined) {
           missing = true;
         } else {

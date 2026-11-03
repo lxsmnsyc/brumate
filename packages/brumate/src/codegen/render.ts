@@ -289,10 +289,13 @@ export function generateRender(
       hoist,
       waits: true,
       // values-spike: the clone calls the update functions of the client entry.
-      direct: fill && getDirect ? (key) => {
-        const name = getDirect(key);
-        return name && local(name);
-      } : undefined,
+      direct:
+        fill && getDirect
+          ? (key) => {
+              const name = getDirect(key);
+              return name && local(name);
+            }
+          : undefined,
     });
     emitter.line(signature);
     emitter.line(`let $$html = '';`);

@@ -354,7 +354,7 @@ const waitingFirst: [Scope, ((scope: Scope) => void)[]][] = [];
 
 /** values-spike: runs the first renders that waited, once the scopes around them have their slots. */
 export function flushFirst(all?: boolean): void {
-  for (let index = 0; index < waitingFirst.length; ) {
+  for (let index = 0; index < waitingFirst.length;) {
     const [scope, fns] = waitingFirst[index]!;
     let ready = true;
     for (let up = scope.p; up && !all; up = up.p) {

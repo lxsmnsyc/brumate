@@ -12,7 +12,10 @@ const entry = readFileSync(`${root}src/runtime/client.ts`, 'utf8');
 const exported = new Set();
 for (const block of entry.matchAll(/export \{([^}]*)\} from/g)) {
   for (const part of block[1].split(',')) {
-    const name = part.trim().split(/\s+as\s+/).pop();
+    const name = part
+      .trim()
+      .split(/\s+as\s+/)
+      .pop();
     if (name) {
       exported.add(name);
     }

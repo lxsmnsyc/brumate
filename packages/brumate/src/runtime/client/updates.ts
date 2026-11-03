@@ -687,7 +687,6 @@ const queued: Map<Scope, Set<(scope: Scope) => void>> = new Map();
 /** The effects of the pass, by depth, by key. */
 let effects: Map<string, () => void>[] = [];
 
-
 let running = 0;
 
 let flushing = false;
@@ -821,7 +820,11 @@ export function q(
 }
 
 /** Queues an update of a scope, once. */
-function enqueue(target: Scope, fn: (scope: Scope) => void, rank: number | string | undefined): void {
+function enqueue(
+  target: Scope,
+  fn: (scope: Scope) => void,
+  rank: number | string | undefined,
+): void {
   if (DEV) {
     updateCount++;
   }

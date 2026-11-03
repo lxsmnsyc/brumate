@@ -10,7 +10,15 @@ import type { Children } from './children.ts';
 import { callable, spread } from './handlers.ts';
 import { holdPlace, markCloned, parseHTML } from './insert.ts';
 import { nextId, resolveScope, setOwner } from './scopes.ts';
-import { flushFirst, loadingValues, loads, renderedLoads, scopes, unset, valueRenders } from './state.ts';
+import {
+  flushFirst,
+  loadingValues,
+  loads,
+  renderedLoads,
+  scopes,
+  unset,
+  valueRenders,
+} from './state.ts';
 import type { Scope } from './state.ts';
 import { setContent } from './templates.ts';
 import { isThenable, noop, set } from './updates.ts';
