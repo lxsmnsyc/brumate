@@ -2,7 +2,7 @@
 id: drop-colon-modifiers
 title: Remove event modifiers in the attribute name
 status: todo
-priority: should
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0

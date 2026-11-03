@@ -43,9 +43,9 @@ depends_on:
   - on: static-contexts
     kind: hard
     why: a server-only context ships no live browser code
-  - on: dev-setup-in-plugin
+  - on: drop-colon-modifiers
     kind: hard
-    why: hot updates and devtools for every client entry
+    why: the breaking cleanup of event modifiers in attribute names
   - on: a11y-in-tests
     kind: hard
     why: `checkAccessibility()` in brumate/testing
