@@ -2,7 +2,7 @@
 id: search-params
 title: State in the URL with $searchParam
 status: todo
-priority: should
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0

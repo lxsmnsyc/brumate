@@ -2,7 +2,7 @@
 id: drop-unread-memos
 title: Drop memos that no browser code reads
 status: todo
-priority: should
+priority: must
 type: feature
 outline: true
 milestone: 0.6.0

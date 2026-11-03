@@ -2,7 +2,7 @@
 id: values-spike
 title: Spike: functions for values
 status: todo
-priority: should
+priority: must
 type: experiment
 outline: false
 milestone: 0.6.0

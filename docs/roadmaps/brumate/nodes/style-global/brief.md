@@ -2,7 +2,7 @@
 id: style-global
 title: <style global> for a block of unscoped rules
 status: todo
-priority: should
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0

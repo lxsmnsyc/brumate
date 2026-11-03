@@ -2,7 +2,7 @@
 id: single-child-blocks
 title: A block body can be one markup child without braces
 status: todo
-priority: could
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0

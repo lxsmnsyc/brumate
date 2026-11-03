@@ -2,7 +2,7 @@
 id: static-contexts
 title: A context set once on the server is not live in the browser
 status: todo
-priority: could
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0

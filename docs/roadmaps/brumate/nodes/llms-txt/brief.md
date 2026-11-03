@@ -2,7 +2,7 @@
 id: llms-txt
 title: llms.txt, the Markdown of each page, and a copy button
 status: todo
-priority: should
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0

@@ -2,7 +2,7 @@
 id: no-html-string-fallback
 title: "No body that the browser renders falls back to an HTML string"
 status: todo
-priority: should
+priority: must
 type: refactor
 outline: false
 milestone: 0.6.0

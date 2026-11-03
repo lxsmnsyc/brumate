@@ -2,7 +2,7 @@
 id: a11y-in-tests
 title: Accessibility checks in brumate/testing
 status: todo
-priority: should
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0
