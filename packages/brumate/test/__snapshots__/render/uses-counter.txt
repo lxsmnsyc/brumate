@@ -97,7 +97,6 @@ export default function UsesCounter($$props: Record<string, never>): string | Do
       count += STEP;
     }
   let other = (base);
-  const counter_double = (other * 2);
   function bump() {
       other += STEP;
     }
