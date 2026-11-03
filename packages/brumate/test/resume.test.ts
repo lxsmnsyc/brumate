@@ -8234,17 +8234,15 @@ describe('a #try around a #template', () => {
     'templateKidSwitch',
   ]) {
     it(`${fixture}: renders a component used only in a template in the browser`, async () => {
-      // The render module imports the component, or the template call throws a ReferenceError.
-      const code = readFileSync(join(output, `${fixture}.brm.render.ts`), 'utf8');
-      expect(code).toMatch(/import TryKid from "\.\/TryKid\.brm\.render\.ts"/);
-      // A #try renders its body through the client entry, so it shows no markup here.
-      if (fixture === 'tryTemplateChild') {
-        return;
-      }
       vi.resetModules();
       const render = await import(file(`${fixture}.brm.render.ts`));
+      const out = render.default({});
+      // A #try renders its body through a place that the core fills.
+      const b = await import('brumate/client');
       const host = document.createElement('div');
-      host.append(render.default({}));
+      const at = document.createComment('');
+      host.append(at);
+      b.place(at, out);
       expect(host.querySelector('.boom')).not.toBeNull();
     });
   }
