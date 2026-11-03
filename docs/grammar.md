@@ -17,12 +17,13 @@ TopLevel        = ModuleScript | InstanceScript | Style | TemplateDecl | Markup 
 
 ModuleScript    = "<script" ws "module" ">" TS<Module> "</script>" ;
 InstanceScript  = "<script" [ ws "generics=" String ] ">" TS<Module> "</script>" ;
-Style           = "<style" [ ws "lang=" String ] ">" CSS "</style>" ;
+Style           = "<style" [ ws "global" ] [ ws "lang=" String ] ">" CSS "</style>" ;
 ```
 
 - A file has at most one `ModuleScript` and one `InstanceScript`. They can come in any order.
 - A file can have any number of `Style` blocks.
 - `lang` is `"css"`, `"scss"` or `"less"`.
+- `global` takes no value. The rules of a `<style global>` get no scope attribute. `global` and `lang` can come in either order.
 - Scripts do not contain markup. Use a `#template` for markup that is used as a value.
 
 ## Markup

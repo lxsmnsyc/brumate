@@ -17,6 +17,8 @@ export interface Script extends Range {
 
 export interface Style extends Range {
   lang: 'css' | 'scss' | 'less';
+  /** True for `<style global>`: its rules get no scope attribute. */
+  global: boolean;
   /** The CSS between the tags, with `${…}` interpolations left in place. */
   content: string;
   /** The `${…}` interpolations, in source order. */

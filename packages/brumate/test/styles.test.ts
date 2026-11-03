@@ -172,3 +172,58 @@ describe('minified styles', () => {
     expect(result.css).toContain('/* note */');
   });
 });
+
+describe('<style global>', () => {
+  it('leaves the rules unscoped and keeps a scoped style scoped', () => {
+    const result = compile(
+      source(
+        '<style global>\n  p { margin: 0; }\n  .a :global(b) { color: red; }\n</style>\n<style>\n  .card { padding: 1px; }\n</style>',
+      ),
+      { filename: 'Card.brm' },
+    );
+    const styles = result.plan.styles;
+    expect(styles.css).toMatch(/^p \{ margin: 0; \}/);
+    expect(styles.css).toMatch(/\.a b \{/);
+    expect(styles.css).toMatch(/\.card\[b-c-\w+\] \{/);
+    expect(styles.css).not.toMatch(/p\[b-c/);
+    // Only the scoped rule marks elements.
+    expect(styles.targets).toEqual([{ classes: ['card'] }]);
+  });
+
+  it('works with SCSS and interpolations', () => {
+    const result = css('<style global lang="scss">\n  .x { .y { color: ${color}; } }\n</style>');
+    expect(result).toMatch(/\.x \.y \{\n\s+color: var\(--s-\w+-0\);\n\}/);
+    expect(result).not.toMatch(/b-c-/);
+  });
+
+  it('is an error inside a block, with a code', () => {
+    expect(() =>
+      compile('<div><style global>p { margin: 0; }</style></div>', { filename: 'Card.brm' }),
+    ).toThrow(/<style> must be at the top level.*\[BRM011\]/);
+  });
+
+  it('rejects other attributes and a value', () => {
+    expect(() => compile('<style scoped>p{}</style><p>x</p>', { filename: 'A.brm' })).toThrow(
+      /Unknown <style> attribute "scoped".*\[BRM189\]/,
+    );
+    expect(() => compile('<style global="x">p{}</style><p>x</p>', { filename: 'A.brm' })).toThrow(
+      /global takes no value.*\[BRM190\]/,
+    );
+  });
+
+  it('has no selector on the scope attribute, so it reaches child components', () => {
+    const parent = compile(
+      '<script>\n  import Child from \'./Child.brm\';\n</script>\n<style global>\n  .item { color: red; }\n</style>\n<div class="item"><Child /></div>',
+      { filename: 'Parent.brm' },
+    );
+    const child = compile('<style>\n  .item { color: blue; }\n</style>\n<p class="item">Hi</p>', {
+      filename: 'Child.brm',
+    });
+    // The child's elements carry its own attribute, never the parent's.
+    expect(child.plan.styles.attribute).not.toBe(parent.plan.styles.attribute);
+    expect(child.server).not.toContain(parent.plan.styles.attribute);
+    // The parent's rule is `.item` with no attribute, so it matches the child's `.item` too.
+    expect(parent.plan.styles.css).toBe('.item { color: red; }');
+    expect(parent.plan.styles.targets).toEqual([]);
+  });
+});

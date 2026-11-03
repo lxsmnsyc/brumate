@@ -723,6 +723,14 @@ class Parser {
     const start = this.pos;
     const { attributes, contentStart } = this.parseBlockTag('style');
     const { contentEnd } = this.readBlockContent('style', contentStart);
+    for (const name of Object.keys(attributes)) {
+      if (name !== 'lang' && name !== 'global') {
+        this.fail(`Unknown <style> attribute "${name}"`, start);
+      }
+    }
+    if (attributes.global !== undefined && attributes.global !== true) {
+      this.fail('global takes no value, as in <style global>', start);
+    }
     const lang = attributes.lang ?? 'css';
     if (lang !== 'css' && lang !== 'scss' && lang !== 'less') {
       return this.fail('lang must be "css", "scss" or "less"', start);
@@ -745,6 +753,7 @@ class Parser {
       start,
       end: this.pos,
       lang,
+      global: attributes.global === true,
       content: this.source.slice(contentStart, contentEnd),
       variables,
     };

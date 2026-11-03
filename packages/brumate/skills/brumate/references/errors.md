@@ -538,6 +538,34 @@ https://brumate-docs.vercel.app/docs/errors#brm038
 </style>
 ```
 
+## BRM189: Unknown <style> attribute "{name}"
+
+A `<style>` has an attribute other than `lang` and `global`.
+
+https://brumate-docs.vercel.app/docs/errors#brm189
+
+```brm fragment
+<style scoped>
+  p {
+    color: red;
+  }
+</style>
+```
+
+## BRM190: global takes no value, as in <style global>
+
+A `<style global>` gives `global` a value.
+
+https://brumate-docs.vercel.app/docs/errors#brm190
+
+```brm fragment
+<style global="true">
+  p {
+    color: red;
+  }
+</style>
+```
+
 ## BRM039: #reveal takes an order, 'sequential', 'backwards', 'together' or 'natural', and collapsed, such as #reveal ('sequential', collapsed)
 
 `#reveal` has an option that it does not know.
