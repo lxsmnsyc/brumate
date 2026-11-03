@@ -1,5 +1,11 @@
 # @brumate/tsc
 
+## 0.1.10
+
+### Patch Changes
+
+- @brumate/language-core@0.2.6
+
 ## 0.1.9
 
 ### Patch Changes

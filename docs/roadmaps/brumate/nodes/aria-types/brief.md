@@ -1,8 +1,8 @@
 ---
 id: aria-types
 title: Typed ARIA attributes and roles
-status: todo
-priority: should
+status: done
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-27
+spent: 134000
 owns: []
 shared:
   - .changeset/*.md

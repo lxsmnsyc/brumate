@@ -1,0 +1,919 @@
+{
+  "goal": "Make a pending $memo read give its promise instead of throwing a not-ready error, and add a React use-like read that unwraps it",
+  "research": false,
+  "max_rounds": 3,
+  "roadmap": null,
+  "supersedes": null,
+  "extra_axes": [],
+  "claims": [
+    {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Current rule: any $memo can hold a promise; a read of a value still loading throws a not-ready error that carries the load, and nothing turns a memo into a promise (named 'as in Solid'). On the client, a memo that reads a loading value keeps its old value and is pending.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:26"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Current rule for imperative code: a read never gives a promise or undefined typed as the value; code that waits says so with $resolve(memo, {timeout, signal}); a handler that reads an async memo with no value is BRM182 unless $isPending guards it. Passing the raw promise to handlers (Marko 6) was weighed and rejected because it types the promise as the value; the maintainer chose the explicit wait.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs/decisions.md:135; docs/debates/pending-handler-reads/debate.md:13,63"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "A promise in markup already renders its settled value in text and attributes, makes the nearest #loading pending, and the latest promise wins (maintainer, 2026-10-30, shipped in 0.5.0). A promise prop is a plain promise in the child, and $memo(prop) is how a child gets a pending value.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:136-137"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Usage in the repo: 1301 tracked .brm files; 58 `await $memo` sites, 7 `$resolve(` sites, 19 `$isPending(` sites, 65 `#loading` blocks; $memo appears in .brm files under packages/brumate (170), packages/ui (72), website/ui (27), website/src (8), examples (12), benchmarks (4). NotReady appears 17 times in src (server.ts 9, client/updates.ts 8); 23 test files mention NotReady, $resolve or $isPending; 14 website docs pages mention pending, not-ready or $resolve.",
+      "evidence": {
+        "type": "measured",
+        "source": "git ls-files '*.brm' | xargs grep; grep -rn NotReady packages/brumate/src",
+        "detail": "evidence/baseline.txt"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Solid 2.0 does not return promises from reads: computations may return promises, every read before the first value throws NotReadyError, <Loading> catches render reads, later reads give the last settled value with isPending/latest, and resolve(fn) is the imperative wait. Solid 1 createResource returned undefined while loading, with resource.loading. The goal's 'like Solid' matches neither.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "solidjs/solid next: documentation/solid-2.0/05-async-data.md (cited in docs/debates/pending-handler-reads ledger J12, J17)",
+        "detail": "brumate's current rule (J1) is the Solid 2.0 model"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "React use(promise): reads the value or suspends the component by throwing to the nearest Suspense; can be called conditionally, not in handlers; the promise must be stable across renders (created outside render or cached), otherwise each render makes a new promise and suspends again. A promise in state or props is a plain value.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://react.dev/reference/react/use"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Marko 6: a promise is a plain value everywhere; only <await> unwraps it; handlers and scripts that read a promise get the promise. Svelte 5 (experimental async, 5.36+): `await` in a component script, in $derived and in markup expressions; a <svelte:boundary> with a pending snippet shows while the first await is pending, and later updates keep the old UI.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://unpkg.com/marko@6.3.33/cheatsheet.md; https://svelte.dev/docs/svelte/await-expressions"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Breaking changes in 0.x are minor bumps, and the project ships breaks with no deprecation period; 0.6.0 is planned to carry about 8 features, chosen by the maintainer.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md milestones; maintainer, 2026-11-03 (this session); syntax-proposals rule: no deprecation periods"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "A client restructure toward one write path (values-spike, then values-build) is approved and not started; until it lands, browser render fixes keep pending state in scope slots, and at equal size the simpler client wins. Client size is a release goal: todos gzip JS before load is 13.6 kB on 0.5.0, below the 14.8 kB 0.4.1 figure.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:140; docs/roadmaps/brumate/nodes/release-0.5/outcome.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Step 1, additive: `$use(memo)` is a compile-time read that gives the settled value, and suspends (NotReady into the nearest #loading, as a bare read does today) while the memo loads. Typed Awaited<T>. Allowed where a memo computes, markup renders or a script runs; a compile error in handlers, effects and $client callbacks, which keep $resolve. It names the suspend point that a bare read hides, like React use(promise). Ships as a minor with no break.",
+      "estimate": {
+        "value": 3,
+        "unit": "days of one worker (M)"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/signals.ts:122-133 ($resolve is the template: compile-time-only export, Awaited typing, compiler-checked context); docs/decisions.md:135 ($resolve already is a compile error where a memo computes)"
+      },
+      "ruling": "open",
+      "ruling_why": "O4 holds: with bare reads unchanged, $use emits the same read and adds only a name; its value depends on whether bare reads stop unwrapping (Q1)."
+    },
+    {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Step 2: a read of a pending memo in imperative code (handler, handler prop, effect, $client callback) gives the memo's promise instead of throwing, and BRM182 stops firing for it. The client already does this for code that updates the page (`value instanceof Promise` at updates.ts:56-70 returns the slot's promise when exempt === 0), so the work is to widen exempt to handlers and effects, plus the server read() at server.ts:1344. Code awaits it: `await m`.",
+      "estimate": {
+        "value": 5,
+        "unit": "days of one worker (L)"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/client/updates.ts:45-70; packages/brumate/src/runtime/server.ts:1331-1344; docs/decisions.md:135 ('Code that updates the page reads the promise, as before')"
+      },
+      "ruling": "open",
+      "ruling_why": "Upheld risks O1 and O2 weigh against it, and it reverses a maintainer decision (J2); whether that reversal is wanted is Q1."
+    },
+    {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Typing for P2 stays honest by rule: in imperative code the type of an async memo read is `T | Promise<T>` only when the compiler cannot see a value (the BRM182 case), and `Promise<T>` is never typed as `T`. Reads guarded by $isPending or already settled keep type T. This keeps the maintainer's J2 rule 'a read never gives a promise typed as the value' true, since the promise is now in the type. Needs a spike on the type checker's virtual file for .brm.",
+      "estimate": {
+        "value": 2,
+        "unit": "days spike inside P2"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs/debates/pending-handler-reads/debate.md:13,63",
+        "detail": "Marko 6 handler reads were rejected because the promise was typed as the value. P3 meets that objection by typing it, so it needs a new maintainer ruling that reverses 'the maintainer chose the explicit wait' (decisions.md:135)."
+      },
+      "ruling": "open",
+      "ruling_why": "No one has shown the checker can type the BRM182 case as T | Promise<T> only where a value is unseen; needs a spike if P2 survives Q1."
+    },
+    {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Codemod and docs ship with each step: BRM182 sites in 1301 tracked .brm files stay valid (explicit $resolve still works), so no codemod is needed for steps 1-2. 14 docs pages that mention pending, not-ready or $resolve get a `$use` section and one page for 'read gives a promise'. A decision entry replaces the sentence 'nothing turns a memo into a promise' (decisions.md:26) and amends line 135.",
+      "estimate": {
+        "value": 2,
+        "unit": "days of one worker (S-M)"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/baseline.txt; ledger J4",
+        "detail": "58 `await $memo`, 7 `$resolve(`, 19 `$isPending(` sites; 14 docs pages; 23 tests mention NotReady/$resolve/$isPending"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "tokens",
+      "text": "Client size and cost: $use is a compile-time name, so it emits the same read the compiler emits for a bare read and adds 0 B. P2 removes a throw path in handlers and should not grow the todos client (13.6 kB gz now); the size gate is 'no growth on todos', measured with the usual bench. Tokens: one worker for P1, one for P2, about 150k tokens each with review.",
+      "estimate": {
+        "value": 300,
+        "unit": "k tokens, two workers"
+      },
+      "evidence": {
+        "type": "estimate",
+        "source": "decisions.md:140 (equal size, simpler client wins); release-0.5 outcome.md 13.6 kB gz"
+      },
+      "ruling": "open",
+      "ruling_why": "O5 holds: the size and token figures are estimates with no bench or calibration."
+    },
+    {
+      "id": "P6",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Order and release: P1 first as its own PR to 0.6.0 (additive, can merge any time), then P3 spike, then P2 (a 0.x break of BRM182 behavior, a minor per the rule), then P4 docs in the same PRs. Park the flip of the memo's static type to Promise<T> (React's real shape) as a later story, since it breaks hundreds of bare reads of the 297 .brm files with $memo.",
+      "estimate": {
+        "value": 1,
+        "unit": "0.6.0 slot of about 8"
+      },
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md milestones; ledger J8",
+        "detail": "0.6.0 carries about 8 features chosen by the maintainer; 0.x breaks are minor with no deprecation."
+      },
+      "ruling": "open",
+      "ruling_why": "The order depends on which structure Q1 picks."
+    },
+    {
+      "id": "P7",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "axis": "time",
+      "answers": ["P2"],
+      "text": "Cheapest path to the goal: ship only P1 (`$use`) and keep reads as they are. The goal's 'use-like read that unwraps' is met, and the first half (pending read gives a promise) is met by the existing escape hatch `await $resolve(m)` and by passing the memo through a promise-typed prop. Costs 3 days and 150k tokens, no break, no reversal of the maintainer's J2 choice.",
+      "estimate": {
+        "value": 3,
+        "unit": "days, 150k tokens"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:135-137; signals.ts:122"
+      },
+      "ruling": "open",
+      "ruling_why": "Cheapest path, but O4 shows $use alone is a second spelling of a bare read; it stands only if Q1 values a named suspend point."
+    },
+    {
+      "id": "P8",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "axis": "time",
+      "answers": ["P1", "P2"],
+      "text": "Narrow variant: P2 without P1. Only handlers and effects get the promise; no new name. Cheaper in surface (no new export, no docs for $use) but gives no 'unwrap' read, and a bare `m` that is a promise in handlers but a value in markup is the split that J2 warned about.",
+      "estimate": {
+        "value": 5,
+        "unit": "days"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs/debates/pending-handler-reads/debate.md",
+        "detail": "rejected there as an implicit contract; kept here as the lower-surface option"
+      },
+      "ruling": "rejected",
+      "ruling_why": "The proponent concedes the J2 split itself, and O1 and O2 apply to it in full with no unwrap read to offset them."
+    },
+    {
+      "id": "O1",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "text": "A promise from a read is the load of one run: $resolve waits for the memo's current inputs (signals.ts doc: 'when the inputs change while it waits, it waits for the load of the current inputs'), but `await m` on the raw promise settles with the stale run's value if inputs changed meanwhile. A handler would then act on an outdated value, a correctness gap that P2 and P3 do not address.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/signals.ts:117-133"
+      },
+      "severity": "high",
+      "answers": ["P2"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O2",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "text": "Untyped-as-value is not the only danger: `T | Promise<T>` in a handler makes `if (m)`, `m + 1`, `${m}` and `m.length` type errors only if the checker narrows; JS truthiness of a promise is always true, so a guard like `if (m)` silently passes. Also an unawaited rejected promise becomes an unhandled rejection that the old throw never produced. The maintainer already rejected this shape.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs/debates/pending-handler-reads/debate.md:13,63",
+        "detail": "raw promise to handlers rejected as 'types the promise as the value'; decisions.md:135 maintainer chose the explicit wait"
+      },
+      "severity": "high",
+      "answers": ["P2", "P3"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O3",
+      "round": 1,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "time",
+      "text": "P2 reverses a settled maintainer ruling (decisions.md:135) and its own estimate leans on the client already returning the promise when exempt===0; but the same updates.ts branch throws the J2-era error text only for exempt===0 false, so widening exempt to handlers also widens it to every code path that reads with exempt>0 (queued updates), where a NotReady skip is relied on. Regression surface is the 23 test files on NotReady/$resolve/$isPending, not 5 days of L work, plus the server read() path.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/client/updates.ts:45-70; packages/brumate/src/runtime/server.ts:1331-1344; ledger J4"
+      },
+      "severity": "medium",
+      "answers": ["P2"],
+      "estimate": {
+        "value": 8,
+        "unit": "days, L+ with P3 spike"
+      },
+      "ruling": "rejected",
+      "ruling_why": "J10: queued updates already read the promise at exempt > 0; P2 removes the exempt === 0 throw and does not widen exempt, so the claimed regression path does not exist. The 8-day figure is an estimate against an estimate."
+    },
+    {
+      "id": "O4",
+      "round": 1,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "time",
+      "text": "$use(memo) emits the same read as a bare read, so in markup, memos and scripts it adds a name and a docs section with no capability; the only new behavior is a compile error in handlers, which $resolve already gives. Cost is API surface (export, typings, compiler context check, 14 docs pages) for a rename, and two spellings for one read invites style debate. The goal says 'like React use', but React's use unwraps a promise value, which a promise prop already does in markup (J3).",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:135-137; signals.ts:122-133"
+      },
+      "severity": "medium",
+      "answers": ["P1"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O5",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "tokens",
+      "text": "The 0 B claim for P1 is plausible, but 'P2 removes a throw path and should not grow todos' is unmeasured and an estimate; it adds a promise return path and server read() branch. Gate must be measured on the todos bench (13.6 kB gz) before merge; 150k tokens per worker is a guess with no calibration cited.",
+      "evidence": {
+        "type": "estimate",
+        "source": "P5 cites only decisions.md:140 and outcome.md figure",
+        "detail": "no measured delta or past worker spend given"
+      },
+      "severity": "medium",
+      "answers": ["P5"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O6",
+      "round": 1,
+      "by": "opponent",
+      "kind": "alternative",
+      "axis": "time",
+      "text": "Cheapest route to the first half of the goal: keep reads throwing, and let `$use`'s sibling be a compile-time `$promise(memo)` (or `$resolve` without waiting on inputs) that returns the memo's load as Promise<T> explicitly. The promise is typed honestly with no T|Promise<T> union, no reversal of decisions.md:135, no widening of exempt. About P1's cost, one worker.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/decisions.md:135; signals.ts $resolve template",
+        "detail": "pattern: explicit compile-time export typed Promise<Awaited<T>>"
+      },
+      "severity": "medium",
+      "answers": ["P2", "P3", "P8"],
+      "estimate": {
+        "value": 3,
+        "unit": "days"
+      },
+      "ruling": "rejected",
+      "ruling_why": "$resolve already returns Promise<Awaited<T>> explicitly (J2, J10); a $promise that skips current inputs carries O1, so O6 adds nothing over what ships."
+    },
+    {
+      "id": "O7",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "text": "0.6.0 has about 8 slots chosen by the maintainer; P2 is a behavior break while the values-spike/values-build client restructure is approved and pending (J9). Changing read semantics on the client now likely gets reworked by that restructure.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:140; ledger J8, J9"
+      },
+      "severity": "low",
+      "answers": ["P6"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "J10",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "On the client, get() returns a loading memo's promise only when exempt > 0 (update code); at exempt === 0 (handlers, $client callbacks) it throws 'This value is still loading. Wait for it with await $resolve(memo)\u2026', effects throw NotReady and skip, memos that compute throw NotReady. So P2 means removing the exempt === 0 throw and the effect skip, not widening exempt; queued updates (exempt > 0) already read the promise. $resolve's doc says it waits for the load of the current inputs when they change while it waits.",
+      "evidence": {
+        "type": "measured",
+        "source": "packages/brumate/src/runtime/client/updates.ts:43-70; packages/brumate/src/runtime/signals.ts:121-133; packages/brumate/src/runtime/server.ts:1331-1344"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J11",
+      "round": 2,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "`$effect` never runs on page load, and the server runtime has no effect code (0 matches for 'effect' in server.ts). Today the server triggers a #loading boundary only from reads in markup (and in memos that markup reads), and waits at `await`; an effect cannot trigger a server boundary in the current model. On the client, an effect that reads a loading memo skips the run and runs again when it settles (J10).",
+      "evidence": {
+        "type": "measured",
+        "source": "docs/decisions.md:11; grep -c -i effect packages/brumate/src/runtime/server.ts = 0; packages/brumate/src/runtime/client/updates.ts:59-62"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P9",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "Model per Q1 (React shape): a memo whose compute returns a promise, calls a server function or awaits is typed `Promise<T>` at every bare read, in scripts, handlers, effects and markup alike. The type tells the user it is async, which is the maintainer's goal. Markup `{m}` renders it as a promise already renders (J3: settled value, nearest #loading, latest wins). `$use(m)` is the unwrap read, typed T. This supersedes P1-P3: the P3 union goes, since the type is always Promise<T> and `$use` is the only way to a T.",
+      "estimate": {
+        "value": 8,
+        "unit": "days (L-XL), 2 workers"
+      },
+      "evidence": {
+        "type": "user",
+        "question": "Q1",
+        "source": "Q1 answer",
+        "detail": "closest to option b; motivation is simpler async handling and types"
+      },
+      "ruling": "open",
+      "ruling_why": "The model is what Q1 asked for, but its cost (O10) and the behavior split (O13) are unmeasured; a spike settles both."
+    },
+    {
+      "id": "P10",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "A memo that reads another async memo has two honest spellings and the compiler gives each a type. (a) `const b = $memo($use(a) + 1)`: $use inside the compute throws NotReady as a bare read does today, so b is async and typed Promise<number>; dependency tracking and the client's 'keep old value while pending' stay as they are. (b) `$memo(a.then(x => x + 1))` chains the promise by hand, with no throw. A bare `a + 1` in a compute is a type error (Promise + number) and a compile error, which replaces the silent automatic pending. The compiler infers the async type of b from a `$use` of an async memo in its compute, so b is Promise<T> without annotation.",
+      "estimate": {
+        "value": 3,
+        "unit": "days, inside P9"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/client/updates.ts:56-63 (a memo that computes and reads a promise throws NotReady(value)); packages/brumate/src/pending-reads.ts:15-28 (isAsync already infers async-ness from server imports and reads)"
+      },
+      "ruling": "open",
+      "ruling_why": "O13 holds: spelling (a) keeps the old value while pending, while a rendered promise shows only settled values, so `{m}` would depend on how m was built."
+    },
+    {
+      "id": "P11",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "text": "What happens to the other names. `await $memo(x)` is unchanged: it declares a server wait point and the name is T (it is `$use` at the declaration, so 58 sites stay valid). `$isPending(m)` stays: it reads whether the memo's current promise is unsettled and the memo has an older settled value. `#loading (m)` headers stay, as they are driven by the same pending set. `$resolve(m)` stays as the wait for the current inputs (the answer to O1) and is now optional sugar, since `await m` works. BRM182 goes away: a handler read gives a typed promise, so nothing is untyped. No codemod for `await $memo`; bare reads of async memos in scripts that expect T become type errors, listed by the checker.",
+      "estimate": {
+        "value": 2,
+        "unit": "days of fixes in repo .brm files"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:27,28,135,141; ledger J4 (58 await $memo, 7 $resolve, 19 $isPending, 65 #loading)"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P12",
+      "round": 2,
+      "by": "proponent",
+      "kind": "rebuttal",
+      "answers": ["O1"],
+      "axis": "time",
+      "text": "Answer to O1 under Promise<T>: `await m` in a handler captures the promise of the inputs at read time, as `await fetch()` does, and it is typed as that, so it is no longer a hidden wrong value. For the latest value the user keeps `await $resolve(m)`, whose doc already waits for the current inputs. The docs say `await m` for a snapshot and `$resolve` for the latest. A read in a handler no longer lies about type; the stale case is a documented semantic, not a typed-as-T bug.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/signals.ts:121-133 ($resolve waits for the current inputs)"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P13",
+      "round": 2,
+      "by": "proponent",
+      "kind": "rebuttal",
+      "answers": ["O2"],
+      "axis": "tokens",
+      "text": "Answer to O2: with the type always Promise<T>, `if (m)`, `m + 1` and `m.length` are type errors or caught by the `no-misused-promises` and `no-floating-promises` rules of oxlint (type-aware), not silent. The union that made `if (m)` pass is gone. For unhandled rejections the memo attaches a no-op catch to the promise it hands out, since the memo itself holds the error (decisions.md:128) and each read of it throws in $use; a handler that drops the promise gets no extra unhandled rejection.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:128 (memo holds the error; the rejection already goes to #try); oxlint typescript rules",
+        "detail": "the no-op catch is a design requirement to test, not yet measured"
+      },
+      "ruling": "rejected",
+      "ruling_why": "O8: no type-aware lint exists and oxlint does not read .brm scripts; O9: a no-op catch swallows errors that today reach the handler error path."
+    },
+    {
+      "id": "P14",
+      "round": 2,
+      "by": "proponent",
+      "kind": "cost",
+      "axis": "device",
+      "answers": ["P9"],
+      "severity": "medium",
+      "text": "Does the runtime get simpler? Measured: the NotReady throw is needed by any suspending read, so `$use` keeps it (17 refs in server.ts and updates.ts stay). What goes: the handler throw and the effect skip at exempt===0 in updates.ts get() (about 20 of 1032 lines), the J10 error text, pending-reads.ts (392 lines) and its checks, BRM182 (1 catalog entry plus the 7 $resolve/$isPending guards), and the compile-time rule that rejects a read. What comes: the async type inference in the compiler (the isAsync piece of pending-reads.ts, about 20 lines, moves to the type checker) and the compile check that a bare read in a compute is not Promise. Net: the compiler loses about 370 lines of pending-reads.ts and gains maybe 100 for inference; the runtime loses about 20-40. The gain is mostly types and one rule fewer, not a smaller runtime.",
+      "estimate": {
+        "value": -250,
+        "unit": "lines net, compiler plus runtime (estimate)"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "wc -l packages/brumate/src/pending-reads.ts runtime/client/updates.ts runtime/server.ts; grep NotReady",
+        "detail": "pending-reads.ts 392 lines, updates.ts 1032, server.ts 4535; NotReady 17 refs; the line estimates for what goes are read from updates.ts:45-70 and are not a diff"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P15",
+      "round": 2,
+      "by": "proponent",
+      "kind": "rebuttal",
+      "answers": ["J11"],
+      "axis": "time",
+      "text": "Reconcile with the maintainer's 'effects trigger a boundary' and J11. Today and after the change, effects never run on the server or on load, so they trigger no server boundary; only markup reads do. What the model does give: on the client, an effect that reads `$use(m)` skips and runs again on settle (J10), and an effect that reads bare `m` gets the promise and may await it. So the real number of boundary triggers is one (markup) plus explicit `$use` in scripts and memos, not two; the docs and the decision entry should say so. The maintainer's picture of one rule holds for the types, not for effects on the server.",
+      "evidence": {
+        "type": "source",
+        "source": "ledger J10, J11; Q1 answer"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P16",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "tokens",
+      "text": "Order, size gate and what to park. Spike first (2 days, capped): `$memo` typed Promise<T> in the checker plus `$use`, run on website/ui (27 .brm files with $memo) to count type errors in real code, and measure todos gz (gate: no growth over 13.6 kB, `pnpm bench --only brumate --scenario todos`). Then runtime and compiler, then docs and the repo-wide fix. Because values-spike/values-build (O7) rewrites the client write path, do the type and compiler work first (it does not touch the write path), and land the exempt===0 change after values-build or inside it. Release as a minor in 0.6.0, one slot, with the types as the visible win.",
+      "estimate": {
+        "value": 8,
+        "unit": "days total, 300k+ tokens (uncalibrated estimate)"
+      },
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/decisions.md:140; ledger J8, J9; O7 ruling",
+        "detail": "keeps type/compiler work independent of the client restructure"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O8",
+      "round": 2,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "tokens",
+      "text": "P13's safety net does not exist here: .oxlintrc.json enables no type-aware rules (plugins typescript, unicorn, oxc, import, vitest; no no-misused-promises or no-floating-promises, no tsgolint), and oxlint does not lint .brm scripts. `if (m)` on a Promise<T> is caught only if the .brm virtual-file checker flags it, and TS itself allows `if (promise)` without that lint rule. So O2's truthiness hole stays open under P9.",
+      "evidence": {
+        "type": "measured",
+        "source": "cat .oxlintrc.json; grep -rn 'no-misused-promises\\|no-floating-promises\\|tsgolint' .oxlintrc.json package.json (0 matches)"
+      },
+      "answers": ["P13"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O9",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "text": "The no-op catch the memo attaches to the handed-out promise makes a dropped promise swallow its error. Today a handler read of a failed memo throws into the handler error path; under P9 `m;` or `void m` in a handler fails silently, with no #try and no unhandled-rejection signal. That trades O2's noise for lost errors, and it is untested ('a design requirement to test', P13).",
+      "evidence": {
+        "type": "source",
+        "source": "ledger P13 detail; docs/decisions.md:128"
+      },
+      "severity": "high",
+      "answers": ["P13"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O10",
+      "round": 2,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "time",
+      "text": "P11's '2 days of fixes' is unmeasured and the P16 spike samples only website/ui (27 .brm files). The repo has 297 .brm files with $memo and 532 `= $memo(` declarations; a crude grep finds 79 declarations that compute from another named value (arithmetic or derived-looking), each a candidate for P10's rule that a bare `a + 1` in a compute becomes a compile error. packages/brumate (170 files) and packages/ui (72) hold most of them, so the spike should sample those, not website/ui.",
+      "evidence": {
+        "type": "measured",
+        "source": "git ls-files '*.brm' | xargs grep -l '$memo' (297); grep -hE '= $memo(' (532); crude derived-pattern grep (79); ledger J4"
+      },
+      "severity": "high",
+      "answers": ["P11", "P16"],
+      "estimate": {
+        "value": 79,
+        "unit": "candidate memo sites (crude upper-ish bound)"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O11",
+      "round": 2,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "time",
+      "text": "P14 concedes the runtime is not smaller, and the 'simpler async handling' goal (Q1) is not met by the name count: `await $memo`, `$isPending`, `#loading`, `$resolve` all stay (P11), the NotReady throw stays (P14), and $use plus a Promise<T> bare read and the P10 spelling (a)/(b) are added. Async reads go from 3 spellings to 5. Also pending-reads.ts is cited as -370 lines, but P14 labels it not a diff; the +100 inference and the new checks in the type checker are equally unmeasured.",
+      "evidence": {
+        "type": "source",
+        "source": "ledger P11, P14; packages/brumate/src/pending-reads.ts (392 lines); Q1 answer"
+      },
+      "severity": "medium",
+      "answers": ["P14"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O12",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "text": "Q1's motivation rests on a premise J11 contradicts: effects never run on server or on load, so 'effects and host markup trigger a boundary' is false today and stays false under P9 (P15 concedes this). The maintainer's belief that 'the current memo works the same way' is wrong in the other direction, so the user's reason for the change (one rule, two trigger places) is not delivered and needs the user to re-confirm before an 8-day L-XL build.",
+      "evidence": {
+        "type": "source",
+        "source": "ledger J11, P15, Q1 answer; docs/decisions.md:11"
+      },
+      "severity": "high",
+      "answers": ["P9", "P15"],
+      "ruling": "rejected",
+      "ruling_why": "Q1 names simpler async handling and type inference as the reasons; the effects point was a side belief that J11 corrects, and the type gain still stands. The approval of debate.md is where the maintainer confirms the trade."
+    },
+    {
+      "id": "O13",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "text": "P10 (a) has `$use(a)` inside a compute throw NotReady while the memo is typed Promise<number>; the memo then holds a throw-based suspend but exposes a promise, so two models (throw into the nearest #loading, and promise-with-latest-wins from J3) are live for one value. J3 says a promise prop renders the settled value with no old value kept; the memo path keeps the old value while pending. A `{m}` in markup then has two behaviors depending on how m was built, which needs a spike case, not P16's type-error count alone.",
+      "evidence": {
+        "type": "source",
+        "source": "ledger J1, J3; updates.ts:56-63 (a memo that computes and reads a promise throws NotReady)"
+      },
+      "severity": "medium",
+      "answers": ["P10"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "J12",
+      "round": 2,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": ".oxlintrc.json enables the typescript, unicorn, oxc, import and vitest plugins with no type-aware rules (no no-floating-promises or no-misused-promises); the repo has 532 `= $memo(` declarations in tracked .brm files.",
+      "evidence": {
+        "type": "measured",
+        "source": ".oxlintrc.json; git ls-files '*.brm' | xargs grep -c '= $memo('"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P17",
+      "round": 3,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "answers": ["O10"],
+      "text": "Cheapest structure for Q1: only async memos change type. A memo is async when its compute awaits, calls a 'use server' function or returns a promise (the isAsync rule of pending-reads.ts); it is typed Promise<T> at a bare read, and sync memos keep T. Measured with evidence/async-memo-reads.py: 28 of 590 memo declarations are async (5%), 3 of them awaited. Bare mentions after the declaration: 15 in script code (the reads that break) and 76 in markup (which keep working, since markup renders a promise). The script count is a lower bound: it misses memos derived from an async memo and promises from helpers that are not 'use server' imports. This replaces the 532-declaration scare of O10 with about 15 direct breaks, to be confirmed by the spike.",
+      "estimate": {
+        "value": 15,
+        "unit": "direct script reads break (lower bound)"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "python3 docs/debates/memo-promise-reads/evidence/async-memo-reads.py",
+        "detail": "evidence/async-memo-reads.txt; heuristic regex over git ls-files '*.brm', so it undercounts transitive derivations"
+      },
+      "ruling": "open",
+      "ruling_why": "Limiting Promise<T> to async memos stands as the shape, but O14 and O15 show the 28/15 counts are a floor from an unreliable heuristic; only a type-checker run gives the number."
+    },
+    {
+      "id": "P18",
+      "round": 3,
+      "by": "proponent",
+      "kind": "concession",
+      "answers": ["P13"],
+      "why": "O8: no type-aware lint exists in .oxlintrc.json and oxlint does not read .brm scripts. O9: a no-op catch swallows errors that reach the handler error path today.",
+      "text": "Drop the no-op catch of P13 and its lint claim. The memo hands out a fresh derived promise per read, with no catch attached. A dropped rejected promise is a normal unhandled rejection in the browser (window unhandledrejection), as for any promise in JS. The memo's own error is untouched: it still holds the error, and a $use, a markup read or a #try path throws it as now (decisions.md:128). Nothing is swallowed. Type safety rests on the checker's type error for `m + 1` and `if (m)` on Promise<T>, with no oxlint rule.",
+      "ruling": "open",
+      "ruling_why": "Dropping the no-op catch answers O9, but O17 holds: a fresh promise per read breaks the identity that 'latest wins' needs, so the promise must be stable per load."
+    },
+    {
+      "id": "P19",
+      "round": 3,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "time",
+      "answers": ["O13", "O11"],
+      "text": "One pending rule for `{m}`, whatever way m is built: markup waits for the memo's current promise, shows nothing new until it settles, keeps the content already shown on later loads, and makes the nearest #loading pending on the first load (decisions.md:137 and the #loading rule at :27). That is the promise-in-markup rule J3 plus the existing 'later updates keep the content'. The memo's 'keep the old value' for script reads goes: in a script, `$use(m)` while a reload runs suspends (a compute) or skips the run (an effect), and `$isPending(m)` is the only way to see the old state. One spelling in computes: `$use(a)`. Drop the `.then` spelling (b) of P10 as a documented form; it works because it is a promise, but it is not taught. Drop spelling (a)'s 'keeps the old value in scripts' claim.",
+      "estimate": {
+        "value": 2,
+        "unit": "days, inside P9"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:27,137; ledger J3, J10"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P20",
+      "round": 3,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "device",
+      "answers": ["O11"],
+      "text": "Names under the model (answer to O11). Go: `$resolve` (7 sites) if the promise handed out by a read follows the latest load of the memo, that is, when inputs change before it settles it settles with the newest value; that is $resolve's rule moved into the read, and it fixes O1 properly instead of leaving a snapshot; BRM182 and pending-reads.ts (392 lines) go with it. Stay: NotReady (17 refs; `$use` is a throw), `await $memo` (58 sites; server schedule point, equal to `$use` at the declaration), `$isPending` (19; a promise cannot say 'reloading with an old value') and `#loading (m)` (65; same). Net: spellings of an async read go from three ($resolve, `await $memo`, $isPending) to three (bare promise, `$use`, `await $memo`) with $isPending a state test, so the names do not shrink, and the runtime does not get smaller. The gain is the type, and the removal of one compile error class. I do not claim more.",
+      "estimate": {
+        "value": -1,
+        "unit": "name ($resolve) and 1 error code (BRM182), net of $use"
+      },
+      "evidence": {
+        "type": "measured",
+        "source": "ledger J4; wc -l packages/brumate/src/pending-reads.ts; grep NotReady",
+        "detail": "392 lines, 17 refs, 7/58/19/65 sites"
+      },
+      "ruling": "rejected",
+      "ruling_why": "O16 and J13: a read promise that follows the latest load carries $resolve's machinery into every read, and 14 call sites use timeout or signal, so $resolve does not go."
+    },
+    {
+      "id": "P21",
+      "round": 3,
+      "by": "proponent",
+      "kind": "proposal",
+      "axis": "tokens",
+      "text": "Spike gates, 3 days, capped. Sample: packages/brumate (170 .brm files) and packages/ui (72) plus the tests of the 23 files that mention NotReady/$resolve/$isPending, not website/ui alone. Counts, by a script under evidence/ run on the spike branch: type errors from bare reads of async memos (expect about 15 direct plus derived; go if at most 60 and each fixable by `$use` or `await`), async memos the checker fails to infer (kill if any 'use server' import or awaited memo is missed), `{m}` cases: a derived memo and a direct one render the same in one browser test (gate: P19 rule holds). Size: todos gzip JS before load at most 13.6 kB, from `pnpm bench --only brumate --scenario todos`. Kill: more than 100 breaks, inference blind to helpers that return promises, or any growth over 13.6 kB. Schedule behind or inside values-build for the client change (decisions.md:140).",
+      "estimate": {
+        "value": 3,
+        "unit": "days, about 120k tokens (uncalibrated)"
+      },
+      "evidence": {
+        "type": "inferred",
+        "source": "ledger J9, J12, O10 ruling; bench-todos rule in the project; docs/decisions.md:140"
+      },
+      "ruling": "rejected",
+      "ruling_why": "O18: the 60 and 100 thresholds have no baseline and rest on the heuristic O14 broke; O19's report-only spike measures first."
+    },
+    {
+      "id": "P22",
+      "round": 3,
+      "by": "proponent",
+      "kind": "alternative",
+      "axis": "time",
+      "answers": ["P9"],
+      "text": "Concede-with-fallback if the spike fails the inference or break gate: ship types only as a smaller step. Keep runtime reads as they are, add `$use` as the typed wait in computes (an alias of today's throw), and type async memos as Promise<T> only in the checker's view of handlers and $client callbacks, where the runtime already throws BRM182 and `await $resolve(m)` is the answer. That gives users the type signal for handler code, which is where they now fail, without touching markup, computes or the client write path. About 3 days; reverses nothing; O4 (a second spelling) stays as the cost.",
+      "estimate": {
+        "value": 3,
+        "unit": "days, 150k tokens"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "ledger O4 ruling; docs/decisions.md:135; packages/brumate/src/pending-reads.ts"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O14",
+      "round": 3,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "time",
+      "text": "The 28-of-590 count is a floor with known blind spots. The script only treats a call as async when its import resolves to a file with 'use server' in the first 300 bytes; 31 .brm files declare 'use server' inline (23 $memo calls inside them) and are missed. Its argument window stops at the first ');', cutting multi-line computes. A grep for $memo calls to get/load/list/fetch/read-named functions finds 72 lines against 28 detected. 18 files have no </script>, so rfind returns -1 and their script/markup split is wrong. The 15 direct breaks cannot be used as a go figure.",
+      "evidence": {
+        "type": "measured",
+        "source": "python3 evidence/async-memo-reads.py (28 / 590, 15, 76); grep -l 'use server' on git ls-files '*.brm' = 31; grep -hE '$memo(' with get|load|list|fetch|read call names = 72; grep -L '</script>' = 18"
+      },
+      "severity": "high",
+      "answers": ["P17"],
+      "estimate": {
+        "value": 72,
+        "unit": "memo lines with loader-named calls vs 28 detected"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O15",
+      "round": 3,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "tokens",
+      "text": "The read counts also mix kinds: the regex counts every mention of the name after the declaration, so `$isPending(m)`, `await $resolve(m)` and `#loading (m)` mentions are counted as breaking reads, and mentions of a shadowing local of the same name too. The 76 markup mentions assume `{m}` keeps working, but markup reads of derived memos and attribute/prop uses (J3 covers text and attributes only) are not tested. The count has errors in both directions, so only a type-checker run can give the number.",
+      "evidence": {
+        "type": "source",
+        "source": "evidence/async-memo-reads.py: re.findall of (?<![\\w.$])name(?![\\w$]) over script body after the declaration"
+      },
+      "severity": "medium",
+      "answers": ["P17"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O16",
+      "round": 3,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "time",
+      "text": "Dropping $resolve by making each read's promise follow the memo's latest load is buildable, but it moves $resolve's machinery into every read, not out of the runtime. client resolve() (updates.ts:405-466, about 60 lines) carries a waiter registry, settle of dirty scopes, loadingUpdates draining, an abort when the scope leaves the page, timeout and signal. A read in markup or a handler would have to create that per read, or the memo cache one shared 'latest' promise (new state per memo on server and client, which P9's size gate at 13.6 kB gz does not yet price). 17 doc/code lines use timeout or signal, so those options need a new spelling (Promise.race by hand) or stay as $resolve, so $resolve does not go. P20 itself says the runtime does not get smaller.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/client/updates.ts:405-466; grep -E '$resolve(' | grep -E 'timeout|signal' = 17 over .brm .ts .md files"
+      },
+      "severity": "high",
+      "answers": ["P20"],
+      "estimate": {
+        "value": 60,
+        "unit": "lines of resolve() to rehome, plus per-memo latest-promise state"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O17",
+      "round": 3,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "text": "P18 says the memo hands out a fresh promise per read; P20 says the promise follows the latest load. Both cannot hold cheaply: a fresh following promise per `{m}` render registers a new waiter on each update, and J3's 'latest promise wins' in markup then sees a new promise identity on every re-render of the same pending load. Identity must be stable per load, which is the shared-state option of O16. The spike needs a test that re-rendering a pending `{m}` twice does not restart #loading or leak waiters.",
+      "evidence": {
+        "type": "source",
+        "source": "ledger P18, P20, J3; updates.ts:405-466 (waiters map)"
+      },
+      "severity": "medium",
+      "answers": ["P20", "P18"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O18",
+      "round": 3,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "text": "P21's gates have gaps. The 'go if at most 60 breaks' threshold has no basis (no baseline from a type-checker run, and O14 shows the heuristic is unreliable). The kill rule 'inference blind to helpers that return promises' conflicts with P17's own rule that only awaits, 'use server' calls and promise returns count, so any helper miss kills it with no stated sample size. The size gate has no tolerance, and todos has been 13.6 kB only for client code that this spike does not run through the changed read paths until values-build lands. It is also scheduled behind values-build, so 3 days is not the delivery time.",
+      "evidence": {
+        "type": "inferred",
+        "source": "ledger P17, P21, J9; docs/decisions.md:140",
+        "detail": "gate numbers 60 and 100 are not derived from a measurement"
+      },
+      "severity": "medium",
+      "answers": ["P21"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O19",
+      "round": 3,
+      "by": "opponent",
+      "kind": "alternative",
+      "axis": "time",
+      "text": "A cheaper first step than P22 that also tests inference: the spike runs the checker with async memos typed Promise<T> in the sample and reports counts, but ships nothing. If it passes, ship P22's handler-only typing first (BRM182 sites are where users fail now) and treat P9's markup/compute model as a later story after values-build. This puts the one irreversible choice, Promise<T> at every bare read, behind a measured count instead of an 8-day build.",
+      "evidence": {
+        "type": "inferred",
+        "source": "ledger P16, P21, P22, J9; docs/decisions.md:135,140"
+      },
+      "severity": "medium",
+      "answers": ["P9", "P22"],
+      "estimate": {
+        "value": 3,
+        "unit": "days spike, then P22 at 3 days"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J13",
+      "round": 3,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Tracked files outside debates mention `$resolve(` 69 times, 14 of them with a timeout or signal option; 7 are in .brm files. The $resolve runtime (resolve() in updates.ts around lines 405-466) holds a waiter, abort and timeout handling.",
+      "evidence": {
+        "type": "measured",
+        "source": "git ls-files | xargs grep -n '\\$resolve('; sed -n 400,470p packages/brumate/src/runtime/client/updates.ts"
+      },
+      "ruling": "upheld"
+    }
+  ],
+  "questions": [
+    {
+      "id": "Q1",
+      "by": "judge",
+      "blocks": ["P1", "P2", "P3", "P6", "P7"],
+      "ask": "What should the $memo change buy? (a) Handlers can write `await m`: today they write `await $resolve(m)`, which also waits for the current inputs. (b) The React model: an async memo is typed and read as Promise<T> everywhere, markup renders it as it renders promises now, and a `$use(m)` read unwraps it in scripts and render code. This breaks hundreds of bare reads. (c) Only a named suspend point: `$use(m)` marks where render waits, and bare reads stay as they are.",
+      "answer": "The goal is to simplify async handling and give better type inference: users would know from the type whether a memo is async. With promise-giving memos, an effect that reads an async memo triggers the loading boundary on the server, which leaves two places that can trigger a loading boundary: effects and host markup. The maintainer believes the current memo works the same way. (Closest to option b, the React model, with the motivation being runtime simplicity and types.)"
+    },
+    {
+      "id": "Q2",
+      "by": "opponent",
+      "blocks": ["P9", "P16"],
+      "ask": "Effects never run on the server or on page load, so an effect cannot trigger a server #loading boundary today, and the new model does not change that. Is the change still worth building if the only boundary trigger stays host markup, with the gain being the Promise<T> type and `$use`?",
+      "answer": "Not asked; inferred from Q1: the maintainer named type inference as a reason on its own. Whether that gain is worth the measured cost is decided when the maintainer approves debate.md."
+    }
+  ],
+  "proofs": [],
+  "hypothesis": null,
+  "spend": [
+    {
+      "round": 1,
+      "tokens": 141000
+    },
+    {
+      "round": 2,
+      "tokens": 115000
+    },
+    {
+      "round": 3,
+      "tokens": 138000
+    }
+  ]
+}

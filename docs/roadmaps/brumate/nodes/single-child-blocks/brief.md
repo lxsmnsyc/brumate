@@ -1,8 +1,8 @@
 ---
 id: single-child-blocks
 title: A block body can be one markup child without braces
-status: todo
-priority: could
+status: dropped
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 177000
 owns: []
 shared:
   - .changeset/*.md
@@ -32,10 +32,15 @@ shared:
   - packages/language-core/**
   - website/docs/control-flow.md
   - website/docs/markup.md
+  - packages/brumate/test/**
+  - website/docs/errors.md
+  - packages/brumate/skills/**
 reserves: []
 provides: []
 depends_on: []
 ---
+
+> Dropped by the maintainer on 2026-11-03 after the single-child-blocks debate (docs/debates/single-child-blocks/debate.md): block bodies keep `#word { }`. PR #445 closed unmerged.
 
 # A block body can be one markup child without braces
 

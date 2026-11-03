@@ -1,0 +1,192 @@
+docs/debates/function-prop-derivations/evidence/ProvCtx.brm:7:  $setContext(LabelCtx, { label: nameOf });
+docs/debates/function-prop-derivations/evidence/ProvCtx3.brm:7:  $setContext(LabelCtx, { label: nameOf });
+docs/debates/function-prop-derivations/evidence/ProvCtx4.brm:8:  $setContext(LabelCtx, { label: nameOf });
+docs/debates/function-prop-derivations/evidence/ctxLoop.brm:8:  $setContext(PcTotal, { add: addTotal, read: readTotal });
+docs/debates/function-prop-derivations/evidence/opp-ctxEff.brm:8:  $setContext(PcTotal, { add: addTotal, read: readTotal });
+examples/tracker/src/routes/_layout.brm:13:  $setContext(CurrentUser, user);
+packages/ui/src/Autocomplete.brm:171:  $setContext(FieldInputContext, {
+packages/ui/src/Autocomplete.brm:176:  $setContext(CollectionFocusContext, {
+packages/ui/src/Breadcrumb.brm:28:  $setContext(LinkContext, { isCurrent, isDisabled: disabled });
+packages/ui/src/Breadcrumbs.brm:22:  $setContext(LinkContext, { isDisabled });
+packages/ui/src/Calendar.brm:397:  $setContext(CalendarContext, {
+packages/ui/src/Calendar.brm:475:  $setContext(ButtonContext, {
+packages/ui/src/Calendar.brm:481:  $setContext(TextContext, { slots: { errorMessage: { id: errorId } } });
+packages/ui/src/CalendarGrid.brm:108:  $setContext(CalendarGridContext, { start });
+packages/ui/src/Checkbox.brm:97:  $setContext(LabelContext, group ? groupLabel : { id: labelId });
+packages/ui/src/Checkbox.brm:98:  $setContext(
+packages/ui/src/Checkbox.brm:102:  $setContext(
+packages/ui/src/CheckboxGroup.brm:123:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/CheckboxGroup.brm:124:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/CheckboxGroup.brm:125:  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+packages/ui/src/CheckboxGroup.brm:126:  $setContext(CheckboxGroupContext, {
+packages/ui/src/ColorArea.brm:453:  $setContext(ColorThumbContext, {
+packages/ui/src/ColorField.brm:523:  $setContext(LabelContext, { id: labelId, for: inputId });
+packages/ui/src/ColorField.brm:524:  $setContext(GroupContext, {
+packages/ui/src/ColorField.brm:530:  $setContext(InputContext, {
+packages/ui/src/ColorField.brm:551:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/ColorField.brm:552:  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+packages/ui/src/ColorPicker.brm:75:  $setContext(ColorPickerContext, { value, color, setValue });
+packages/ui/src/ColorSlider.brm:282:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/ColorSlider.brm:283:  $setContext(SliderContext, {
+packages/ui/src/ColorSlider.brm:299:  $setContext(ColorThumbContext, {
+packages/ui/src/ColorSwatchPicker.brm:118:  $setContext(ListBoxContext, {
+packages/ui/src/ColorSwatchPickerItem.brm:40:  $setContext(ColorSwatchContext, { color });
+packages/ui/src/ColorWheel.brm:287:  $setContext(ColorWheelContext, {
+packages/ui/src/ColorWheel.brm:293:  $setContext(ColorThumbContext, {
+packages/ui/src/Column.brm:72:  $setContext(ColumnContext, {
+packages/ui/src/ComboBox.brm:417:  $setContext(LabelContext, { id: labelId, for: inputId });
+packages/ui/src/ComboBox.brm:418:  $setContext(InputContext, {
+packages/ui/src/ComboBox.brm:437:  $setContext(ButtonContext, {
+packages/ui/src/ComboBox.brm:458:  $setContext(OverlayTriggerContext, {
+packages/ui/src/ComboBox.brm:468:  $setContext(ListBoxGivenContext, {
+packages/ui/src/ComboBox.brm:474:  $setContext(FieldInputContext, null);
+packages/ui/src/ComboBox.brm:475:  $setContext(CollectionFocusContext, {
+packages/ui/src/ComboBox.brm:482:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/ComboBox.brm:483:  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+packages/ui/src/DateField.brm:159:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/DateField.brm:160:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/DateField.brm:161:  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+packages/ui/src/DateField.brm:162:  $setContext(DateFieldContext, {
+packages/ui/src/DateInput.brm:39:  $setContext(DateFieldContext, picked());
+packages/ui/src/DatePicker.brm:102:  $setContext(ButtonContext, {
+packages/ui/src/DatePicker.brm:112:  $setContext(GroupContext, {
+packages/ui/src/DatePicker.brm:117:  $setContext(OverlayTriggerContext, {
+packages/ui/src/DatePicker.brm:126:  $setContext(DatePickerContext, {
+packages/ui/src/DateRangePicker.brm:232:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/DateRangePicker.brm:233:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/DateRangePicker.brm:234:  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+packages/ui/src/DateRangePicker.brm:235:  $setContext(DateRangeFieldContext, {
+packages/ui/src/DateRangePicker.brm:271:  $setContext(ButtonContext, {
+packages/ui/src/DateRangePicker.brm:281:  $setContext(GroupContext, {
+packages/ui/src/DateRangePicker.brm:287:  $setContext(OverlayTriggerContext, {
+packages/ui/src/DateRangePicker.brm:296:  $setContext(DatePickerContext, {
+packages/ui/src/Dialog.brm:58:  $setContext(HeadingContext, { slots: { default: {}, title: { id: titleId } } });
+packages/ui/src/Dialog.brm:59:  $setContext(ButtonContext, { slots: { default: {}, close: { onPress: close } } });
+packages/ui/src/DialogTrigger.brm:51:  $setContext(ButtonContext, {
+packages/ui/src/DialogTrigger.brm:57:  $setContext(OverlayTriggerContext, { isOpen, triggerId, overlayId, open, close });
+packages/ui/src/Disclosure.brm:76:  $setContext(ButtonContext, {
+packages/ui/src/Disclosure.brm:88:  $setContext(DisclosurePanelContext, {
+packages/ui/src/DisclosureGroup.brm:65:  $setContext(DisclosureGroupContext, { expandedKeys, isDisabled, toggle });
+packages/ui/src/DisclosurePanel.brm:64:  $setContext(TransitionContext, { show: Boolean(state?.isExpanded), entered: rested });
+packages/ui/src/DropZone.brm:62:  $setContext(TextContext, { slots: { label: { id: textId } } });
+packages/ui/src/FileTrigger.brm:55:  $setContext(ButtonContext, { onPress: open });
+packages/ui/src/Form.brm:29:  $setContext(FormContext, state);
+packages/ui/src/GridList.brm:475:  $setContext(ListBoxContext, {
+packages/ui/src/GridListItem.brm:69:  $setContext(CheckboxGroupContext, {
+packages/ui/src/GridListItem.brm:147:  $setContext(ButtonContext, {
+packages/ui/src/GridListItem.brm:159:  $setContext(SelectionIndicatorContext, { isSelected: selected });
+packages/ui/src/I18nProvider.brm:29:  $setContext(LocaleContext, value);
+packages/ui/src/I18nProvider.brm:32:  $setContext(DateStringsContext, words);
+packages/ui/src/ListBox.brm:233:  $setContext(ListBoxContext, {
+packages/ui/src/ListBox.brm:245:  $setContext(CollectionFocusContext, null);
+packages/ui/src/ListBox.brm:246:  $setContext(FieldInputContext, null);
+packages/ui/src/ListBoxItem.brm:75:  $setContext(TextContext, {
+packages/ui/src/ListBoxItem.brm:128:  $setContext(SelectionIndicatorContext, { isSelected: selected });
+packages/ui/src/ListBoxSection.brm:25:  $setContext(SectionContext, { headerId });
+packages/ui/src/Menu.brm:142:  $setContext(MenuContext, {
+packages/ui/src/Menu.brm:153:  $setContext(CollectionFocusContext, null);
+packages/ui/src/Menu.brm:154:  $setContext(FieldInputContext, null);
+packages/ui/src/Menu.brm:171:  $setContext(SubmenuContext, null);
+packages/ui/src/MenuItem.brm:81:  $setContext(TextContext, {
+packages/ui/src/MenuSection.brm:25:  $setContext(SectionContext, { headerId });
+packages/ui/src/MenuTrigger.brm:72:  $setContext(ButtonContext, {
+packages/ui/src/MenuTrigger.brm:79:  $setContext(OverlayTriggerContext, { isOpen, triggerId, overlayId, open, close });
+packages/ui/src/MenuTrigger.brm:80:  $setContext(MenuTriggerContext, {
+packages/ui/src/Meter.brm:65:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/Modal.brm:47:  $setContext(ModalOverlayContext, null);
+packages/ui/src/ModalContent.brm:18:  $setContext(ModalOverlayContext, null);
+packages/ui/src/ModalOverlay.brm:96:  $setContext(LayerContext, { id: layerId });
+packages/ui/src/ModalOverlay.brm:97:  $setContext(DialogContext, { close });
+packages/ui/src/ModalOverlay.brm:98:  $setContext(ModalOverlayContext, { close });
+packages/ui/src/ModalOverlay.brm:99:  $setContext(TransitionContext, { show: wanted, entered: rested });
+packages/ui/src/ModalOverlay.brm:101:  $setContext(OverlayTriggerContext, null);
+packages/ui/src/ModalOverlay.brm:103:  $setContext(ButtonContext, null);
+packages/ui/src/ModalOverlay.brm:104:  $setContext(LinkContext, null);
+packages/ui/src/NavigationTree.brm:42:  $setContext(NavigationTreeContext, { selectedRoute, ancestors });
+packages/ui/src/NavigationTreeItem.brm:45:  $setContext(NavigationLinkContext, { href, isCurrent: current, isDisabled: disabled });
+packages/ui/src/NumberField.brm:416:  $setContext(LabelContext, { id: labelId, for: inputId });
+packages/ui/src/NumberField.brm:417:  $setContext(GroupContext, {
+packages/ui/src/NumberField.brm:422:  $setContext(InputContext, {
+packages/ui/src/NumberField.brm:443:  $setContext(ButtonContext, {
+packages/ui/src/NumberField.brm:467:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/NumberField.brm:468:  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+packages/ui/src/Popover.brm:129:  $setContext(LayerContext, { id: layerId });
+packages/ui/src/Popover.brm:130:  $setContext(DialogContext, { close, labelledBy: trigger?.labelledBy });
+packages/ui/src/Popover.brm:131:  $setContext(TransitionContext, { show: wanted, entered: rested });
+packages/ui/src/Popover.brm:133:  $setContext(OverlayTriggerContext, null);
+packages/ui/src/Popover.brm:135:  $setContext(ButtonContext, null);
+packages/ui/src/Popover.brm:136:  $setContext(LinkContext, null);
+packages/ui/src/PreviewTrigger.brm:189:  $setContext(ButtonContext, {
+packages/ui/src/PreviewTrigger.brm:200:  $setContext(LinkContext, {
+packages/ui/src/PreviewTrigger.brm:211:  $setContext(OverlayTriggerContext, {
+packages/ui/src/ProgressBar.brm:68:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/Radio.brm:110:  $setContext(SelectionIndicatorContext, { isSelected: selected });
+packages/ui/src/RadioGroup.brm:100:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/RadioGroup.brm:101:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/RadioGroup.brm:102:  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+packages/ui/src/RadioGroup.brm:103:  $setContext(RadioGroupContext, {
+packages/ui/src/ResizableTableContainer.brm:76:  $setContext(TableResizeContext, { widths, resizing, start, resize, end });
+packages/ui/src/Row.brm:51:  $setContext(CheckboxGroupContext, {
+packages/ui/src/Row.brm:125:  $setContext(SelectionIndicatorContext, { isSelected: selected });
+packages/ui/src/Row.brm:127:  $setContext(TableRowContext, { cells: { count: 0 } });
+packages/ui/src/SearchField.brm:114:  $setContext(LabelContext, { id: labelId, for: inputId });
+packages/ui/src/SearchField.brm:115:  $setContext(InputContext, {
+packages/ui/src/SearchField.brm:130:  $setContext(ButtonContext, {
+packages/ui/src/SearchField.brm:136:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/Select.brm:261:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/Select.brm:262:  $setContext(ButtonContext, {
+packages/ui/src/Select.brm:282:  $setContext(OverlayTriggerContext, {
+packages/ui/src/Select.brm:291:  $setContext(ListBoxGivenContext, {
+packages/ui/src/Select.brm:298:  $setContext(SelectValueContext, {
+packages/ui/src/Select.brm:304:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/Select.brm:305:  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+packages/ui/src/Slider.brm:188:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/Slider.brm:189:  $setContext(SliderContext, {
+packages/ui/src/SubmenuTrigger.brm:87:  $setContext(SubmenuContext, { triggerId, overlayId, isOpen, open, hoverStart, hoverEnd });
+packages/ui/src/SubmenuTrigger.brm:88:  $setContext(OverlayTriggerContext, {
+packages/ui/src/SubmenuTrigger.brm:98:  $setContext(MenuTriggerContext, { triggerId, focusStrategy, closeAll, isSubmenu: true });
+packages/ui/src/Switch.brm:74:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/Switch.brm:75:  $setContext(TextContext, { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } });
+packages/ui/src/Switch.brm:76:  $setContext(FieldErrorContext, {
+packages/ui/src/Tab.brm:93:  $setContext(SelectionIndicatorContext, { isSelected: selected });
+packages/ui/src/Table.brm:271:  $setContext(ListBoxContext, {
+packages/ui/src/Table.brm:280:  $setContext(TableContext, {
+packages/ui/src/TableHeader.brm:24:  $setContext(CheckboxGroupContext, {
+packages/ui/src/Tabs.brm:100:  $setContext(TabsContext, {
+packages/ui/src/Tag.brm:107:  $setContext(ButtonContext, {
+packages/ui/src/Tag.brm:156:  $setContext(SelectionIndicatorContext, { isSelected: selected });
+packages/ui/src/TagGroup.brm:86:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/TagGroup.brm:87:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/TagGroup.brm:88:  $setContext(TagGroupContext, {
+packages/ui/src/TextField.brm:257:  $setContext(LabelContext, { id: labelId, for: id });
+packages/ui/src/TextField.brm:258:  $setContext(InputContext, {
+packages/ui/src/TextField.brm:264:  $setContext(TextAreaContext, {
+packages/ui/src/TextField.brm:271:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/TextField.brm:272:  $setContext(FieldErrorContext, {
+packages/ui/src/TimeField.brm:171:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/TimeField.brm:172:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/TimeField.brm:173:  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+packages/ui/src/TimeField.brm:174:  $setContext(DateFieldContext, {
+packages/ui/src/Toast.brm:49:  $setContext(ToastContext, { titleId, descriptionId });
+packages/ui/src/Toast.brm:50:  $setContext(ButtonContext, {
+packages/ui/src/ToastContent.brm:24:  $setContext(TextContext, {
+packages/ui/src/ToastRegion.brm:64:  $setContext(ToastRegionContext, { queue });
+packages/ui/src/ToggleButton.brm:83:  $setContext(SelectionIndicatorContext, { isSelected: selected });
+packages/ui/src/ToggleButtonGroup.brm:121:  $setContext(ToggleGroupContext, { selectionMode, selectedKeys, isDisabled, toggle });
+packages/ui/src/TokenField.brm:102:  $setContext(LabelContext, { id: labelId });
+packages/ui/src/TokenField.brm:103:  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+packages/ui/src/TokenField.brm:104:  $setContext(TokenFieldContext, {
+packages/ui/src/TokenInput.brm:64:  $setContext(TokenContext, { isDisabled: disabled });
+packages/ui/src/Toolbar.brm:38:  $setContext(ToolbarContext, true);
+packages/ui/src/Tooltip.brm:76:  $setContext(ButtonContext, null);
+packages/ui/src/Tooltip.brm:77:  $setContext(LinkContext, null);
+packages/ui/src/TooltipTrigger.brm:135:  $setContext(ButtonContext, {
+packages/ui/src/TooltipTrigger.brm:145:  $setContext(TooltipTriggerContext, { isOpen, triggerId, tooltipId, keep, close });
+packages/ui/src/Transition.brm:129:  $setContext(TransitionContext, { show: wanted, entered: rested });
+packages/ui/src/Tree.brm:170:  $setContext(TreeContext, { toggle: toggleExpanded, windowed: Boolean(windowHeight) });
+packages/ui/src/Tree.brm:219:  $setContext(ListBoxContext, {
+packages/ui/src/TreeItem.brm:76:  $setContext(CheckboxGroupContext, {
+packages/ui/src/TreeItem.brm:87:  $setContext(ButtonContext, {
+packages/ui/src/TreeItem.brm:173:  $setContext(SelectionIndicatorContext, { isSelected: selected });
+packages/ui/src/TreeRow.brm:20:  $setContext(TreeRowContext, { row });
+packages/ui/src/Virtualizer.brm:26:  $setContext(VirtualizerContext, { rowHeight });

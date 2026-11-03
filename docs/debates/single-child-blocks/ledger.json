@@ -1,0 +1,559 @@
+{
+  "goal": "Decide whether a block body may be one markup child without braces (#445), or blocks keep #word { } only",
+  "research": false,
+  "max_rounds": 3,
+  "roadmap": null,
+  "supersedes": null,
+  "extra_axes": [
+    {
+      "name": "readability",
+      "by": "proponent",
+      "why": "the change is about how markup reads and how a reader finds where a body ends; device cost is nil, so the decision rests on this",
+      "status": "accepted",
+      "ruling_why": "the goal is a syntax choice whose gain is mostly in what a reader scans; a claim on it can change the decision"
+    }
+  ],
+  "claims": [
+    {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Before #445, `#word` in markup starts a block only when `(` or `{` follows the word (or `if` after `#else`); text such as `#defer <b>` is text.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/parser.ts blockKeyword on origin/next; review of #445"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "#445 (branch feat/single-child-blocks, +277 -14, 15 files, draft, reviewed) adds the short form: a body may be one markup child, so `#word <` and `#word #` also start a block. Probes: `use #if <b>` becomes BRM042, `<p>call #defer <b>x</b></p>` and `see #head <title/>` silently become blocks. No tracked .brm, docs or website sample changes meaning. `{'#if'}` writes the text. `#else` binds to the nearest block; braces give it to the outer one. A comment is not the one child (BRM044).",
+      "evidence": {
+        "type": "measured",
+        "source": "gh pr view 445; review comment on #445; commit 70c9f667"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Of 480 block bodies in 563 non-test tracked .brm files, 281 hold one element on one line (heuristic), where the short form would drop the two braces.",
+      "evidence": {
+        "type": "measured",
+        "source": "python3 evidence/count.py",
+        "detail": "evidence/count.txt"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Rules on brumate syntax: a `#` block fits only what shapes markup; no deprecation periods; 0.x breaks are minor bumps; do not undo a recorded decision.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/decisions.md; maintainer rules recorded 2026-10-26 and 2026-10-29"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Prior art: Svelte 5 blocks always close with `{/if}`; Marko uses tags (`<if=x>`); Vue uses `v-if` attributes; Rust and Swift require braces on every `if`; C and JavaScript allow a braceless body and carry the dangling-else rule (the 2014 Apple 'goto fail' bug came from a braceless if); Kotlin and C# allow it too. JSX has no blocks.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "svelte.dev/docs/svelte/if; markojs.com/docs/reference/core-tag; vuejs.org/guide/essentials/conditional; Rust reference (if expressions require a block); CVE-2014-1266"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "#445 cost so far: about 106k worker tokens and 71k review tokens; the brief is node single-child-blocks, a must feature of 0.6.0 picked by the orchestrator on 2026-11-03 at the maintainer's request.",
+      "evidence": {
+        "type": "measured",
+        "source": "agent usage reports; docs/roadmaps/brumate/nodes/single-child-blocks/brief.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Narrow the short form to bodies that follow a header or a branch word: `#if (x) <b/>`, `#for (...) <li/>`, `#else <i/>`, `#else if (y) <b/>`. Headerless first blocks (`#head`, `#try`, `#loading`, `#client`) and any `#word <` or `#word #` in text keep braces. Start rule: after `)` of a header, or after `#else`/`#catch`-type branch word that only parses after a block.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/split.txt (same heuristic as J3)",
+        "detail": "254 of the 281 one-line bodies (90%) have a header or are a bare #else; only 27 are headerless first blocks"
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 254,
+        "unit": "bodies shortened of 281"
+      },
+      "ruling": "rejected",
+      "ruling_why": "O1 and J7: it sends the maintainer's own motivating example, headerless `#try`, back to braces, and makes readers learn which words have headers."
+    },
+    {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "A text trap is impossible after a header: `#word (` already starts a block (J1), so `use #if <b>` and `call #defer <b>x</b>` stay text and BRM042 never appears. The new start rule adds no probe from J2. Only `#else <` after a block needs a check, because text may follow a block on the same line.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/parser.ts blockKeyword (worktree) lines 173-205; J2 probes"
+      },
+      "axis": "time",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "The short child must be an element or component, not a `#` block. Then `#else` has one owner: the nearest block, and a nested block with its own `#else` needs braces. This removes the dangling-else rule (and the goto-fail class of bug) instead of defining it, and drops the `#word #` start.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "CVE-2014-1266; J5",
+        "detail": "C and JS keep the dangling else; Rust, Swift, Svelte avoid it by requiring braces. A child-must-be-element rule gets the short form without the rule."
+      },
+      "axis": "time",
+      "ruling": "open",
+      "ruling_why": "It removes the else-binding question, but O2 shows the sibling-indent confusion remains, and J7's brief allows a block as the child."
+    },
+    {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Tooling cost of P1-P3: parser change of about 20 lines (replace the `child` test with a check after the header), one tmLanguage pattern, one grammar.md paragraph, formatter keeps the author's form (no rewrite pass) or prints the short form only when the one element fits in the line width. No language server change, since the AST is the same block node with one child. Additive, so a minor bump with no migration (J4).",
+      "evidence": {
+        "type": "source",
+        "source": "packages/vscode/syntaxes/brumate.tmLanguage.json and parser.ts in the worktree; #445 diff touches the same files"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 25000,
+        "unit": "tokens to rework #445 to the narrow rule"
+      },
+      "ruling": "open",
+      "ruling_why": "O5 and O12: the rework cost stays an estimate until the rework."
+    },
+    {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Saving: each short body drops 2 braces and, in a multi-line layout, 2 lines. 254 bodies x 2 chars = 508 chars in the repo today, and header blocks are the common case in the docs and ui package (`#if (open) <Icon/>`), so the gain is in what a reader scans, not in bytes. Device and runtime cost are nil: the AST and the compiled output are unchanged.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/split.txt",
+        "detail": "254 bodies; compiled output unchanged because parseBlock yields the same node"
+      },
+      "axis": "device",
+      "estimate": {
+        "value": 0,
+        "unit": "bytes of runtime or client change"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P6",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Precedent for a braceless body keyed on a header: Kotlin `if (x) foo()`, C# and JS `if (x) stmt`, Ruby/Python modifier forms. These work because the header closes with `)`; the failures (goto fail, dangling else) come from statement bodies that can be blocks, which P3 excludes.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "CVE-2014-1266; Kotlin and C# language references",
+        "detail": "short bodies are common and ergonomic; the bug class is nested statements without braces"
+      },
+      "axis": "time",
+      "ruling": "rejected",
+      "ruling_why": "O2: goto fail came from a sibling line indented like a braceless body, which an element-only child does not prevent."
+    },
+    {
+      "id": "A1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Keep braces only and allow nothing new: `#if (x) { <b/> }` already fits one line (the 281 bodies are already one line). Cost is zero tokens, zero tooling and no new mistake class; the loss is 2 characters per block. Choose this if the maintainer values one form over 508 characters.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/count.txt (J3)",
+        "detail": "281 one-line bodies already read on one line with braces"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 0,
+        "unit": "tokens"
+      },
+      "ruling": "open",
+      "ruling_why": "Braces only is cheapest and safest; whether the readability gain is worth a rule is the maintainer's call (J7)."
+    },
+    {
+      "id": "A2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Let the formatter and editor do the work: the formatter prints a one-element body on the header line (`#if (x) { <b/> }`) and the vscode extension offers a fold, with no language change. Cheaper than P1 on parser and docs, and it cuts the vertical noise that the short form targets.",
+      "evidence": {
+        "type": "estimate",
+        "source": "reasoned from J3: the 281 bodies are already one line, so the vertical gain is done by layout alone"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 8000,
+        "unit": "tokens"
+      },
+      "ruling": "rejected",
+      "ruling_why": "O3: brumate has no .brm formatter, so this needs a new formatter, well above 8k tokens."
+    },
+    {
+      "id": "O1",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P1 contradicts the recorded decision: docs/decisions.md on the #445 branch (maintainer, 2026-11-02) gives `#try <A /> #catch (error, reset) <B {error} {reset} />` as its example, and `#try` is a headerless first block that P1 sends back to braces. P1 also splits one rule into two (after a header yes, after a bare word no), so a reader must know which words have headers.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md line 143 in .claude/worktrees/single-child-blocks (not yet on main)"
+      },
+      "axis": "readability",
+      "severity": "high",
+      "answers": ["P1"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O2",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P3 and P6 claim to remove the goto-fail class, but that bug was a second statement indented like the body of a braceless if, not the dangling else. With `#if (a) <b/>` a next line `<c/>` at the same indent reads as part of the body or not, with no brace to say. P3 removes only the else-binding case. Svelte, Rust and Swift avoid the class by requiring a close.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "CVE-2014-1266 (goto fail); J5",
+        "detail": "cause was a duplicated line after a braceless if, which no element-only child rule changes"
+      },
+      "axis": "readability",
+      "severity": "medium",
+      "answers": ["P3", "P6"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O3",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P4 and A2 assume a formatter that prints or keeps the form. None exists for .brm: grep for a format step in packages/brumate/src/cli.ts, packages/language-server/src and packages/vscode/package.json finds none, and src/print.ts prints the semantic graph for debugging. A2 therefore costs a new formatter, far above 8000 tokens, and without one two forms will mix in the repo.",
+      "evidence": {
+        "type": "measured",
+        "source": "grep -rniE format packages/brumate/src/cli.ts packages/language-server/src packages/vscode/package.json; head of print.ts"
+      },
+      "axis": "tokens",
+      "severity": "medium",
+      "answers": ["P4", "A2"],
+      "estimate": {
+        "value": 8000,
+        "unit": "tokens (A2 estimate is understated, no formatter to extend)"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O4",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "J3 and P1 overstate the gain: the heuristic counts a body that starts with `<` and ends with `>` on one line, which includes two siblings. A rough sibling check finds 11 of the 281 with more than one child, so the short form fits at most about 270 and the P1 count of 254 is high by up to 11. At 2 characters each the saving stays under 600 characters across 563 files.",
+      "evidence": {
+        "type": "measured",
+        "source": "python3 scan of git ls-files '*.brm' with the count.py pattern plus a `</x>\\s*<` or `/>\\s*<` sibling test",
+        "detail": "output: 281 one-line, 11 with siblings"
+      },
+      "axis": "readability",
+      "severity": "low",
+      "answers": ["P1", "P5"],
+      "estimate": {
+        "value": 11,
+        "unit": "bodies wrongly counted"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O5",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "text": "Rework to P1 costs on top of sunk spend (J6: 106k worker + 71k review). P1 changes a parser path that the #445 tests, 14 website docs pages and the tmLanguage test already cover in the wider form, so tests and docs written for headerless forms must be redone. The 25k estimate has no basis beyond reasoning; the narrow rule also needs its own text-trap probes for `#else <`.",
+      "evidence": {
+        "type": "estimate",
+        "source": "P4 estimate of 25000 tokens; J6; J2 file list",
+        "detail": "stated basis: tests and docs of #445 cover the wide rule"
+      },
+      "axis": "tokens",
+      "severity": "medium",
+      "answers": ["P1", "P4"],
+      "estimate": {
+        "value": 25000,
+        "unit": "tokens, unverified"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O6",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "text": "The wide rule (as in #445) has a real text trap: J2 probes show `see #head <title/>` and `<p>call #defer <b>x</b></p>` silently become blocks. Prose that mentions a block word before an element is rare, but the error is silent. Prior failure class: a start token that was text before now changes meaning.",
+      "evidence": {
+        "type": "measured",
+        "source": "J2 probes from review of #445"
+      },
+      "axis": "readability",
+      "severity": "medium",
+      "answers": ["P1"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O7",
+      "round": 1,
+      "by": "opponent",
+      "kind": "alternative",
+      "text": "Keep #445's wide rule and remove the silent trap cheaply: a headerless `#word <` or `#word #` starts a block only when the word is the first token on its line (or follows `}`/`>` closing a block), which is a few lines in blockKeyword. This keeps `#try <A /> #catch` from the decision, needs no rework of docs or tests for the common cases, and fixes both J2 silent probes. Basis: both probes sit mid-line after text.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/decisions.md line 143 on the branch; J2 probes",
+        "detail": "the maintainer example `#try <A /> #catch ...` has #try at a line start and #catch after a block"
+      },
+      "axis": "tokens",
+      "severity": "medium",
+      "answers": ["P1"],
+      "estimate": {
+        "value": 5000,
+        "unit": "tokens, estimate"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O8",
+      "round": 1,
+      "by": "opponent",
+      "kind": "cost",
+      "text": "Choosing A1 (braces only) means reversing a decision already recorded in docs/decisions.md on the #445 branch and the node brief (J4: do not undo a recorded decision). A1 is cheapest in tokens, but it is the maintainer's call, so the debate should weigh only variants of the short form unless the maintainer reopens it.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/decisions.md line 143 on the branch; J4"
+      },
+      "axis": "readability",
+      "severity": "low",
+      "answers": ["A1"],
+      "ruling": "rejected",
+      "ruling_why": "J7: the entry is unmerged and written by the worker, and the maintainer reopened the choice, so A1 reverses no recorded decision."
+    },
+    {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "readability",
+      "text": "The maintainer asked for the short form on 2026-11-02; the brief's goal example is the headerless `#try <UnsafeComponent /> #catch (error, reset) <Fallback {error} {reset} />`, and its context says a single child may be one element, component, dynamic tag or one block. The decisions.md entry that O1 cites exists only on the #445 branch, written by the worker; nothing on main records the short form. On 2026-11-03 the maintainer asked to re-evaluate it, 'or just stick with #word { }'.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/single-child-blocks/brief.md (Goal, Context); git log of the brief; maintainer, 2026-11-03"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P7",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Replace P1 with a start rule on position: a headerless `#word <` or `#word #` starts a short block only where a node starts, meaning no text before it on the line inside the same parent (line start, first thing after an open tag, or after a closed tag or block). Inside a text run the old rule applies (`(` or `{` after the word), so `see #head <title/>` and `use #if <b>` stay text. Branch words (`#catch`, `#else`) keep working after a short body, so `#try <A /> #catch (e) <B />` parses as the maintainer wrote it. This is O7 with the wording tightened: the check sits in the text-run loop of parseText, and the node-start call of blockKeyword keeps the wide test.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/midline.txt",
+        "detail": "13 occurrences of a block word before `<` or `#` in tracked .brm and docs: 4 at line start, 8 after `}` or `>`, 1 mid-line after text, and that one is prose in docs/decisions.md, not a .brm file. The rule keeps all 12 real uses and cuts the one trap."
+      },
+      "axis": "readability",
+      "estimate": {
+        "value": 10,
+        "unit": "lines changed in parser.ts (a flag on blockKeyword, read from parseText)"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P8",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Reject the component-only start rule (headerless short block only before an uppercase tag): it keeps the `#try <A />` example but not `#head <title/>` or `#else <p>..</p>`, and it leaves `call #defer <B/>` a silent block in prose, so it fixes less of O6 than P7 and adds a rule about tag case. P7 beats it on both counts.",
+      "evidence": {
+        "type": "source",
+        "source": "J2 probes and the maintainer example in brief.md",
+        "detail": "`call #defer <b>x</b>` has a lowercase tag, `see #head <title/>` too; an uppercase test removes neither unless the prose names a component"
+      },
+      "axis": "readability",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P9",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "The short child starts on the header's line: `#if (a) <b/>`, never `#if (a)` then `<b/>` on the next line. A sibling on the next line at the same indent is then always a sibling, and the goto-fail look-alike (a second line that seems to be in the body) cannot be written as a body at all; a diagnostic names a header whose next token is a line break and then `<`. Bodies that need more than one line or child keep braces.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "CVE-2014-1266; J5",
+        "detail": "goto fail came from an indented duplicate line after a braceless if whose body sat on the next line. A same-line-only body gives the reader the signal that Python and Kotlin one-liners give: the body is what is on the line."
+      },
+      "axis": "readability",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P10",
+      "round": 2,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "P3 and P6 claimed to remove the goto-fail class; O2 is right that the element-only child rule removes only the else-binding case. P9 now carries the indent case, and P1 (header-only) is dropped for P7.",
+      "answers": ["P1", "P3", "P6"],
+      "why": "O1 showed P1 sends the maintainer's `#try` example back to braces; O2 showed goto fail was an indent bug, not dangling else",
+      "ruling": "upheld"
+    },
+    {
+      "id": "P11",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "If P7 and P9 do not settle, braces only (A1) is the right fallback: the saving is under 600 characters (O4: at most 270 bodies x 2) and the whole gain is reader-side. The short form is worth its learning cost only if the start rule has no text trap, and P7 is the only form that gives that with the maintainer's example intact. Estimated rework of #445 to P7 plus P9: about 10 parser lines, 3 to 5 tests and one decisions.md edit, near 15k tokens (estimate, unmeasured).",
+      "evidence": {
+        "type": "estimate",
+        "source": "reasoned from the parser.ts blockKeyword and parseText code in the worktree; O5 asks for a measure, none exists until the rework"
+      },
+      "axis": "tokens",
+      "estimate": {
+        "value": 15000,
+        "unit": "tokens"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O9",
+      "round": 2,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P7 keeps a silent trap at its own allowed positions: a paragraph that opens with a block word, `<p>#defer <b>x</b></p>`, has the word as the first thing after an open tag, so it becomes a block. The midline.txt scan finds none in tracked files only because it counted 13 occurrences in 1808 files; it says nothing about user prose, and `#if (x) <b>` inside text is safe only because it has a header. The trap shrinks from anywhere in text to the start of a text run, it does not go away.",
+      "evidence": {
+        "type": "source",
+        "source": "P7 wording ('first thing after an open tag'); evidence/midline.txt",
+        "detail": "no probe was run on the open-tag position"
+      },
+      "axis": "readability",
+      "severity": "low",
+      "answers": ["P7"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O10",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "text": "P7 is a rule about position in a parent, so it lives in the parser only. The TextMate grammar (packages/vscode/syntaxes/brumate.tmLanguage.json, `block` begin `(#)(word)\\b`) matches a block word anywhere, line based, with no parent. It already highlights text such as `see #head` as a block today, so P7 adds no new mismatch there; but it cannot show the difference between a start and text, and the language server must take it from the AST. Cost is a documented gap, not a rework, so the risk is low.",
+      "evidence": {
+        "type": "source",
+        "source": "brumate.tmLanguage.json lines 245-275 in the #445 worktree"
+      },
+      "axis": "readability",
+      "severity": "low",
+      "answers": ["P7"],
+      "ruling": "upheld"
+    },
+    {
+      "id": "O11",
+      "round": 2,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P9 (child on the header's line) collides with line width. Of 267 one-line single-element bodies, 102 would put header plus child past 100 columns on one line (printWidth is the oxfmt default of 100, .oxfmtrc.json sets none), and 137 more bodies are multi-line elements. So about 40 percent of the bodies P1/P5 count as gain would not fit the same line, and either stay braced or the file runs long. The next-line form that would solve it is the one P9 forbids. No tracked .brm or .md has a header followed by a line break then `<`, so P9 breaks nothing today.",
+      "evidence": {
+        "type": "measured",
+        "source": "python scan in the #445 worktree: git ls-files '*.brm' minus tests, length of the header line + ' ' + child > 100",
+        "detail": "output: 267 one-line bodies, 102 over 100 columns, 137 multi-line element bodies"
+      },
+      "axis": "readability",
+      "severity": "medium",
+      "answers": ["P9", "P11"],
+      "estimate": {
+        "value": 102,
+        "unit": "of 267 bodies over 100 columns on the header line"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O12",
+      "round": 2,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "text": "P11's rework figure (15k) and P7's ten lines are reasoned, not measured, and the same code is already in the worktree: parseText calls blockKeyword at line 296 for node starts and text runs alike, so P7 needs a way to tell the two callers apart plus the BRANCH_KEYWORDS path. The numbers are plausible and small; the point is P7+P9 is cheap enough that cost does not decide it. The choice rests on whether readability gain (P9 leaves roughly 165 of 267 bodies on one line) beats two forms with no formatter (O3).",
+      "evidence": {
+        "type": "source",
+        "source": "parser.ts line 296 in the worktree; O3; O11"
+      },
+      "axis": "tokens",
+      "severity": "low",
+      "answers": ["P11", "P7"],
+      "estimate": {
+        "value": 165,
+        "unit": "bodies that fit one 100-column line (267-102)"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O13",
+      "round": 2,
+      "by": "opponent",
+      "kind": "alternative",
+      "text": "Cheapest structure that reaches the maintainer's example: ship P7 as the start rule but do not adopt P9's line-break diagnostic; leave a header followed by a line break then `<` as the existing parse error it is today (no tracked file writes it). That avoids a new diagnostic and its docs while keeping P9's effect, since the body cannot start on the next line either way. If the maintainer wants the short form at all, this is P7 only.",
+      "evidence": {
+        "type": "measured",
+        "source": "scan for header, newline, `<` in git ls-files '*.brm' '*.md' in the #445 worktree: no matches",
+        "detail": "the error is BRM044 or a parse error in the worktree; confirm before adopting"
+      },
+      "axis": "readability",
+      "severity": "low",
+      "answers": ["P9"],
+      "ruling": "open",
+      "ruling_why": "Which error a header, a line break and then `<` raises today is unchecked; the rework node checks it and keeps the clearer of the two."
+    }
+  ],
+  "questions": [],
+  "proofs": [],
+  "hypothesis": null,
+  "spend": [
+    {
+      "round": 1,
+      "tokens": 97000
+    },
+    {
+      "round": 2,
+      "tokens": 60000
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 name: element-types
-version: 1.3
+version: 1.4
 status: frozen
 defined_by: element-types
 ---
@@ -64,7 +64,7 @@ export interface ElementEvents extends HTMLElementEventMap {}
 - An attribute is in `Elements` only when HTML or SVG has it as an attribute, not every field of the DOM interface. `tabIndex` is an error, `tabindex` takes a number.
 - Names are as the markup writes them, such as `tabindex`, `for`, `viewBox` and `stroke-width`.
 - A handler is `on` plus the event, in camel case only (`onKeyDown`, `onFocusIn`, `onContextLost`, `onPointerRawUpdate`). The lower-case form of an event of more than one word (`onKeydown`) is a compile error at the attribute and is not in the types. Events of one word (`onClick`) are unchanged. The event is the event of the name with `currentTarget` typed as the element. An event that the DOM does not have is added by merging into `ElementEvents`; an event of several words also merges its camel word into `ElementEventNames` (`itemaction: 'ItemAction'`), or its attribute keeps the one-word name (`onItemaction`).
-- Attributes with a closed set of values (`type` of `input` and `button`, `method`, `loading`) take a union. `target` takes the known names or any string. `data-*` takes any value. `aria-*` takes a string, number, boolean, `null` or `undefined`.
+- Attributes with a closed set of values (`type` of `input` and `button`, `method`, `loading`) take a union. `target` takes the known names or any string. `data-*` takes any value. Each `aria-*` attribute of WAI-ARIA 1.2 has its own type, in `AriaAttributes`; `role` takes `AriaRole` or a space-separated fallback list that starts with one; another `aria-*` name takes a string, number, boolean, `null` or `undefined` (v1.4).
 - `class` takes a `ClassValue`: a string, or an array or an object of them, where `false`, `0`, `0n`, `null` and `undefined` add nothing. A number is not a class value. `style` takes a string or a `StyleObject`, with camel-case names of CSS properties and `--` variables, and a value that is a string, `false`, `null` or `undefined`. A number is allowed only for the properties without a unit (`opacity`, `zIndex`, `flexGrow`, `lineHeight`, ...) and for `--` variables, since the runtime prints it with no unit.
 - Number attributes (`tabindex`, `rows`, `cols`, `colspan`, `maxlength`, ...) take ``number | `${number}` ``, since a static attribute is a string.
 - `value` of `input`, `select` and `textarea` and `checked` of `input` also take `$bind(name)`. The binding writes the string (`value`) or the boolean (`checked`) of the field, so the type is `BindableMark<unknown> & WritableMark<string>` or `WritableMark<boolean>`: a signal of a number is an error. `select` has `value`.
@@ -104,6 +104,7 @@ packages/brumate/test/elements-types.ts, checked by `tsc --noEmit -p .` in packa
 
 ## Changes
 
+- v1.4, aria-types (change request accepted on 2026-11-03, #442): typed `aria-*` attributes in `AriaAttributes` and roles in `AriaRole` (WAI-ARIA 1.2 and DPUB-ARIA), both exported; `role` also takes a fallback list; `aria-relevant` takes `all` or one to three tokens in any order; other `aria-*` names keep the loose type.
 - v1.1, element-values (change request accepted on 2026-10-27): `class` takes `ClassValue` and `style` takes `string | StyleObject`; `select` has `value`; `value` and `checked` of `input`, `select` and `textarea` take a binding; `form action` and `formaction` take a `ServerFunction`; number attributes take ``number | `${number}` ``; `autocomplete` takes a boolean; `onToggleEnd` is removed (lib.dom has no such event) and `onKeyPress` is added; `EventHandler`, `ClassValue`, `StyleObject` and `ServerFunction` are exported. Review fixes: a number in a style object only for unitless properties and variables, and `0` and `0n` are class values that add nothing. Each value is checked against the runtime in nodes/element-values/log.md.
 - v1, second review: the write side of `ref` is required, `BoundSignal<T>` is the return type of `$bind`.
 - v1, review fixes: `ref` is `BindableMark<unknown> & WritableMark<E>`; added `Template`; `Component` has `brumateId` and defaults to `never`; check.ts, types.d.ts and the typecheck script changed as above; added the camel events `onContextLost`, `onContextRestored` and `onPointerRawUpdate`.

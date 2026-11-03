@@ -1,8 +1,8 @@
 ---
 id: differential-render-test
 title: "Render every test page in the server and in the browser and compare"
-status: todo
-priority: should
+status: done
+priority: must
 type: chore
 outline: false
 milestone: 0.6.0
@@ -15,7 +15,7 @@ exclusive: [bench]
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 201000
 owns: []
 shared:
   - packages/brumate/test/**

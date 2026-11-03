@@ -1,4 +1,4 @@
-import type { Block, Markup, SFCFile } from '../ast.ts';
+import type { Block, Body, Markup, SFCFile } from '../ast.ts';
 import type { oxc } from '../oxc.ts';
 import { componentFunctionName, serverFunctionId } from '../plan.ts';
 import type { Plan } from '../plan.ts';
@@ -28,39 +28,53 @@ export function componentNames(nodes: Markup[], names: Set<string> = new Set()):
         break;
       case 'if':
         for (const branch of node.branches) {
-          componentNames(branch.body.children, names);
+          bodyNames(branch.body, names);
         }
-        componentNames(node.fallback?.children ?? [], names);
+        if (node.fallback) {
+          bodyNames(node.fallback, names);
+        }
         break;
       case 'switch':
         for (const branch of node.cases) {
-          componentNames(branch.body.children, names);
+          bodyNames(branch.body, names);
         }
-        componentNames(node.fallback?.children ?? [], names);
+        if (node.fallback) {
+          bodyNames(node.fallback, names);
+        }
         break;
       case 'for':
       case 'repeat':
       case 'loading':
       case 'client':
       case 'defer':
-        componentNames(node.body.children, names);
-        componentNames(node.fallback?.children ?? [], names);
+        bodyNames(node.body, names);
+        if (node.fallback) {
+          bodyNames(node.fallback, names);
+        }
         break;
       case 'try':
-        componentNames(node.body.children, names);
-        componentNames(node.fallback.children, names);
+        bodyNames(node.body, names);
+        bodyNames(node.fallback, names);
         break;
       case 'key':
       case 'portal':
       case 'head':
       case 'offscreen':
-        componentNames(node.body.children, names);
+        bodyNames(node.body, names);
         break;
       default:
         break;
     }
   }
   return names;
+}
+
+/** Adds the components that a block body renders, in its markup and its templates. */
+function bodyNames(body: Body, names: Set<string>): void {
+  componentNames(body.children, names);
+  for (const template of body.templates) {
+    bodyNames(template.body, names);
+  }
 }
 
 /** Returns the source of an import, with `.brm` imports pointing to render modules. */
@@ -156,7 +170,7 @@ export function generateRender(
   // The names that rendering reads, so server-only imports stay out.
   const names = componentNames(file.children);
   for (const template of file.templates) {
-    componentNames(template.body.children, names);
+    bodyNames(template.body, names);
   }
   for (const site of model.sites) {
     if (!SKIPPED_SITES.has(site.kind)) {

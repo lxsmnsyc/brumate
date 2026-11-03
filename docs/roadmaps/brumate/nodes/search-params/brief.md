@@ -1,8 +1,8 @@
 ---
 id: search-params
 title: State in the URL with $searchParam
-status: todo
-priority: should
+status: done
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by: 
 gate: false
 added: 
+spent: 298000
 owns:
   - packages/brumate/src/runtime/search-params.ts
   - packages/brumate/test/search-params.test.ts

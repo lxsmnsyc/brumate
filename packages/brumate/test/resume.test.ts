@@ -630,6 +630,19 @@ describe('resume', () => {
       expect(document.querySelector('textarea')!.value).toBe('Ada');
     });
 
+    it('shows a settled memo of a promise prop in a textarea when its code loads late', async () => {
+      const server = await import(file('promiseMemoArea.brm.ts'));
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await startLoader({ all: 300 });
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('textarea')).not.toBeNull());
+      expect(document.querySelector('textarea')!.value).toBe('Ada');
+    });
+
     it('passes a promise that is not a loading memo to a handler as a value', async () => {
       await streaming('streamedMemoParent');
       click(document.querySelector('.hold')!);
@@ -890,7 +903,15 @@ describe('resume', () => {
     const server = await import(file('streamedMemoBrowser.brm.ts'));
     const child = await import(file('StreamedMemoChild.brm.ts'));
     const runtime = await import('../src/runtime/server.ts');
+    // The first call waits for the test, so the memo stays pending however long the page takes.
+    let land!: () => void;
+    let gate: Promise<void> | undefined = new Promise<void>((done) => {
+      land = done;
+    });
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      const first = gate;
+      gate = undefined;
+      await first;
       return runtime.handleRequest(child.rpc, new Request(`http://localhost${url}`, init));
     });
     const { html, state } = await runtime.render(server.default, {});
@@ -902,9 +923,11 @@ describe('resume', () => {
     const reads = (): unknown[][] => (globalThis as { reads?: unknown[][] }).reads!;
     await waitFor(() => expect(reads()).toContainEqual(['handler', 'pending']));
     // The first load lands, without a change that computes the memo.
-    await new Promise((done) => setTimeout(done, 300));
-    click(document.querySelector('.read')!);
-    await waitFor(() => expect(reads()).toContainEqual(['handler', 'Ada']));
+    land();
+    await waitFor(() => {
+      click(document.querySelector('.read')!);
+      expect(reads()).toContainEqual(['handler', 'Ada']);
+    });
     // A change loads again. The effect skips the read of the promise and runs with the value.
     click(document.querySelector('.rename')!);
     await waitFor(() => expect(reads()).toContainEqual(['effect', 'Grace']));
@@ -8262,6 +8285,31 @@ describe('a #try around a #template', () => {
       await waitFor(() => expect(text('.caught')).toBe(message));
       expect(document.querySelector('.boom')).toBeNull();
       expect(logged).not.toHaveBeenCalled();
+    });
+  }
+
+  // The render module is what the browser runs for a block that changes, so it imports the
+  // component that only a template renders.
+  for (const fixture of [
+    'tryTemplateChild',
+    'templateKidTop',
+    'templateKidIf',
+    'templateKidKey',
+    'templateKidFor',
+    'templateKidLoading',
+    'templateKidSwitch',
+  ]) {
+    it(`${fixture}: renders a component used only in a template in the browser`, async () => {
+      vi.resetModules();
+      const render = await import(file(`${fixture}.brm.render.ts`));
+      const out = render.default({});
+      // A #try renders its body through a place that the core fills.
+      const b = await import('brumate/client');
+      const host = document.createElement('div');
+      const at = document.createComment('');
+      host.append(at);
+      b.place(at, out);
+      expect(host.querySelector('.boom')).not.toBeNull();
     });
   }
 

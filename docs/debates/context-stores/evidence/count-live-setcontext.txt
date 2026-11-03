@@ -1,0 +1,1 @@
+output: 192 calls; 115 mention a prop/signal/memo/let name of their file (upper bound); 24 hold an arrow or function expression

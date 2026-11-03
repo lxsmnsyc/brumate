@@ -1,7 +1,7 @@
 ---
 id: release-0.5
 title: Release brumate 0.5.0
-status: active
+status: done
 priority: must
 type: release
 story:
@@ -69,10 +69,10 @@ Promote `next` to `main` and publish brumate 0.5.0, with @brumate/ui and the oth
 
 ## Acceptance
 
-- [ ] The open should nodes of 0.5.0 are moved to 0.6.0, and the changesets on `next` are trimmed.
-- [ ] Build, tests, e2e, website, bench and pack checks pass on `next`; the results are in the outcome.
-- [ ] Todos gzip JS before `load` is below the 0.4.1 figure (14.8 kB).
-- [ ] The maintainer merges the promotion and the Version Packages pull requests, and brumate 0.5.0 is on npm.
+- [x] The open should nodes of 0.5.0 are moved to 0.6.0, and the changesets on `next` are trimmed.
+- [x] Build, tests, e2e, website, bench and pack checks pass on `next`; the results are in the outcome.
+- [x] Todos gzip JS before `load` is below the 0.4.1 figure (14.8 kB).
+- [x] The maintainer merges the promotion and the Version Packages pull requests, and brumate 0.5.0 is on npm.
 
 ## Sizing
 

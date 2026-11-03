@@ -1,8 +1,8 @@
 ---
 id: llms-txt
 title: llms.txt, the Markdown of each page, and a copy button
-status: todo
-priority: should
+status: done
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by: 
 gate: false
 added: 
+spent: 139000
 owns:
   - website/plugins/llms.ts
   - website/src/components/CopyMarkdown.brm

@@ -1,7 +1,7 @@
 ---
 id: values-build
 title: Functions for values
-status: todo
+status: dropped
 priority: later
 type: story
 outline: true
@@ -27,6 +27,8 @@ depends_on:
     kind: hard
     why: it replaces how the update tables run
 ---
+
+> Dropped on 2026-11-03: values-spike missed its gates (#451, nodes/values-spike/outcome.md) and the maintainer took the no-go. Both render paths stay; the client is simplified one special case at a time, from the client-audit node.
 
 # Functions for values
 

@@ -1,0 +1,3 @@
+files scanned 1808 occurrences of block word before < or #: 13
+line start 4 after } or > 8 mid-line after other text 1
+('docs/decisions.md', 143, '- A block body can be one markup child without braces (the maintainer, 2026-11-02): `#if (')

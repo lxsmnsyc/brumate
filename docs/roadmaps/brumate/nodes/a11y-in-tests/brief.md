@@ -1,8 +1,8 @@
 ---
 id: a11y-in-tests
 title: Accessibility checks in brumate/testing
-status: todo
-priority: should
+status: done
+priority: must
 type: feature
 outline: false
 milestone: 0.6.0
@@ -15,12 +15,17 @@ exclusive: []
 fulfilled_by: 
 gate: false
 added: 
+spent: 209000
 owns:
   - packages/brumate/src/runtime/testing.ts
   - packages/brumate/test/testing-a11y.test.ts
   - website/docs/testing.md
 shared:
   - .changeset/*.md
+  - packages/brumate/test/**
+  - website/docs/errors.md
+  - packages/brumate/skills/**
+  - docs/decisions.md
 reserves: []
 provides: []
 depends_on: []

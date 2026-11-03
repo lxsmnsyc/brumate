@@ -1,5 +1,5 @@
 ---
-milestones: ["0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.5.0", "0.6.0", backlog]
+milestones: ["0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.5.0", "0.5.1", "0.6.0", "0.7.0", backlog]
 # S, docs and chore nodes self-review; the rest, and gates, contracts, releases and hotfixes, get a fresh
 # reviewer (the maintainer, 2026-10-30; this is what ran since 2026-10-27, when an inline comment hid `fresh`).
 review: auto
@@ -55,13 +55,15 @@ Milestones are releases (the maintainer, 2026-10-29).
 
 - 0.4.0: brumate 0.4.0 and @brumate/ui 0.1.0. The cut is the `depends_on` list of release-0.4. changeset-review waits for every open node of the cut, and release-0.4 waits for changeset-review. Every node done before 2026-10-29 ships here.
 - 0.4.1: patch fixes of 0.4.0 behavior that add no API (the maintainer, 2026-10-31). The nodes keep `target: main` in their briefs, since the policy sends minor work to `next`, and release-0.4.1 waits for them and for next-branch. Run next-branch before any 0.5.0 node, so minor work never lands on `main`.
+- 0.5.1: hotfixes of bugs found on `main` after 0.5.0 (2026-11-03): template-import-render; release-0.5.1 waits for them and syncs `next`.
 - 0.4.4: the update-depth guard, a hang on `main` (2026-11-02); release-0.4.4 waits for it and syncs `next`.
 - 0.4.3: hotfixes of bugs found on `main` after 0.4.2 (2026-11-02); release-0.4.3 waits for them and syncs `next`.
 - 0.4.2: hotfixes of bugs found on `main` during 0.5.0 work (2026-11-02). Each branches from `main`; release-0.4.2 waits for them and syncs `next`.
 - 0.5.0 (laid down 2026-11-01): the must nodes above, and the should nodes: the type audit, the agent tools, `$searchParam`, `<style global>`, the docs and ui page work. release-0.5 waits only for the must nodes. Should nodes merged into `next` by then ship; the ones still open move to 0.6.0 when release-0.5 starts. The could nodes moved to 0.6.0 on 2026-11-01.
   - browser-async is a story on `feat/browser-async`: browser-await-spike first (gate: the maintainer picks the approach), then browser-loading-fallback, promise-in-markup and loading-on, refined from the spike's outcome. One PR to `next`.
   - A promotion carries all of `next`. A 0.6.0 node that merges into `next` before release-0.5 ships in 0.5.0, and its milestone moves to 0.5.0.
-- 0.6.0: the could nodes, the new ui parts and the spikes.
+- 0.6.0 (picked 2026-11-03; the maintainer asked the orchestrator to infer the cut): eight features as must nodes, `$searchParam` (search-params), `<style global>` (style-global), typed ARIA (aria-types), no event modifiers in attribute names (drop-colon-modifiers), accessibility checks in tests (a11y-in-tests) and llms.txt (llms-txt). server-on-error (`onError` in `src/middleware.ts`, asked by the maintainer on 2026-11-03) is must too. Phase 1 of the client restructure is must too, on one worker beside the features: drop-unread-memos, no-html-string-fallback, differential-render-test, then values-spike, whose go or no-go the maintainer decides; values-build stays in the backlog until then. single-child-blocks was dropped on 2026-11-03 after its debate, and static-contexts was replaced by the story context-stores in 0.7.0. Small docs and chores ride along as should nodes; on 2026-11-03 tsc-check-api, skill-tasks, dom-content-loaded and clone-remaining-bodies moved to 0.7.0 after a re-check, and six docs and ui-page nodes stay. dev-setup-in-plugin moved to 0.7.0 on 2026-11-03: `virtual:brumate/start` covers every start option but a wrapped `load`, `onError` and the stop function, and only the website needs a custom entry. release-0.6 waits only for the must nodes.
+- 0.7.0: the new ui parts, the other features and the spikes moved out of 0.6.0 on 2026-11-03.
 - backlog: outlines, refined when a release takes them. Large features are outline stories (`type: story`); refining one means writing its children, which merge into `feat/<story id>`, and the story is one PR to its target.
 
 ## Constraints

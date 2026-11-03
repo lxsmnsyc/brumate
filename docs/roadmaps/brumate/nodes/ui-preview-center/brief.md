@@ -1,7 +1,7 @@
 ---
 id: ui-preview-center
 title: Center the demo previews on the ui docs pages
-status: todo
+status: done
 priority: should
 type: docs
 outline: false
@@ -15,11 +15,14 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-31
+spent: 58000
 owns:
   - website/src/components/StyledExample.brm
   - website/src/components/AnatomyFigure.brm
 shared:
   - website/src/routes/ui/_layout.brm
+  - website/src/**
+  - website/ui/**
 reserves: []
 provides: []
 depends_on: []
