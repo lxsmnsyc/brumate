@@ -37,7 +37,11 @@ for (const [name, dir] of Object.entries(apps)) {
   const all = [];
   for (const file of walk(root + dir, [])) {
     try {
-      all.push(getFeatures(compile(readFileSync(file, 'utf8'), { filename: file.split('/').pop(), path: file })));
+      all.push(
+        getFeatures(
+          compile(readFileSync(file, 'utf8'), { filename: file.split('/').pop(), path: file }),
+        ),
+      );
     } catch {}
   }
   const joined = joinFeatures(all);

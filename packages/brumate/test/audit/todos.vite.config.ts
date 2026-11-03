@@ -3,11 +3,12 @@
 // npx vite build -c ../../packages/brumate/test/audit/todos.vite.config.ts --outDir <dir> --sourcemap
 import { fileURLToPath } from 'node:url';
 import brumate from 'brumate/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type UserConfig } from 'vite';
 
-const runtime = (file: string) => fileURLToPath(new URL(`../../src/runtime/${file}`, import.meta.url));
+const runtime = (file: string) =>
+  fileURLToPath(new URL(`../../src/runtime/${file}`, import.meta.url));
 
-export default defineConfig({
+const config: UserConfig = defineConfig({
   root: fileURLToPath(new URL('../../../../benchmarks/brumate', import.meta.url)),
   resolve: {
     alias: [
@@ -28,3 +29,5 @@ export default defineConfig({
   ],
   build: { manifest: true, rolldownOptions: { input: 'src/client.ts' } },
 });
+
+export default config;

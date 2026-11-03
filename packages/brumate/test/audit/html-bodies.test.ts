@@ -49,5 +49,8 @@ it('lists the reasons of each HTML body', () => {
       }
     }
   }
-  writeFileSync(process.env.AUDIT_OUT ?? "/dev/stdout", `${rows.length} bodies\n${rows.sort().join('\n')}\n$$b.raw calls ${templates}`);
+  writeFileSync(
+    process.env.AUDIT_OUT ?? '/dev/stdout',
+    `${rows.length} bodies\n${rows.sort().join('\n')}\n$$b.raw calls ${templates}`,
+  );
 });

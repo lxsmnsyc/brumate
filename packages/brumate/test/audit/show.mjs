@@ -10,5 +10,6 @@ if (!which || which === 'source') console.log(`// ---- source\n${readFileSync(pa
 if (!which || which === 'server') console.log(`// ---- server\n${result.code ?? result.server}`);
 if (!which || which === 'render') console.log(`// ---- render\n${result.render}`);
 if (!which || which === 'parts') {
-  for (const [part, code] of Object.entries(result.parts ?? {})) console.log(`// ---- part ${part}\n${code}`);
+  for (const [part, code] of Object.entries(result.parts ?? {}))
+    console.log(`// ---- part ${part}\n${code}`);
 }
