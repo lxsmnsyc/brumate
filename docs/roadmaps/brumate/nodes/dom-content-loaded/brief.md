@@ -5,7 +5,7 @@ status: todo
 priority: could
 type: fix
 outline: false
-milestone: 0.6.0
+milestone: 0.7.0
 target:
 from:
 size: S
@@ -30,6 +30,8 @@ depends_on:
     kind: hard
     why: it made the event list and the camel-case rule this node extends
 ---
+
+> Re-checked on 2026-11-03: camel-event-names did not cover `DOMContentLoaded` (test/elements-types.ts lists it as a one-word event whose capitals a handler name cannot carry, and elements.d.ts has no `onDOMContentLoaded`). Page code loads after the HTML, so the handler may never run. Decide at refine: a compile error with a catalog entry, or drop the node.
 
 # A DOMContentLoaded handler listens to the right event
 

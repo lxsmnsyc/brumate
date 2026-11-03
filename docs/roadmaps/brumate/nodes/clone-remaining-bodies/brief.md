@@ -5,7 +5,7 @@ status: todo
 priority: should
 type: refactor
 outline: false
-milestone: 0.6.0
+milestone: 0.7.0
 target:
 from:
 size: M
@@ -36,7 +36,7 @@ depends_on:
 
 ## Goal
 
-Finish what no-html-string-fallback started: no body that the browser renders falls back to an HTML string. After it, 19 bodies of the test pages still render from `$$html` (listed in packages/brumate/test/clone-bodies.test.ts), and so do `#template` functions (`$$b.raw`) and children closures.
+Finish what no-html-string-fallback started: no body that the browser renders falls back to an HTML string. After it, 20 bodies of the test pages still render from `$$html` (listed in packages/brumate/test/clone-bodies.test.ts), and so do `#template` functions (`$$b.raw`) and children closures.
 
 - An in-place `#try` (markers plus a rollback of `$$html`): needs a nodes form of `#try`, such as a `tryNodes` helper.
 - A windowed `#for`, `#offscreen`, and bodies that wait in their script.
@@ -47,6 +47,7 @@ Finish what no-html-string-fallback started: no body that the browser renders fa
 - From no-html-string-fallback's outcome and its fresh review (2026-11-03). The held-write fixes (#419, #421) do not reach the in-place `#try` pages yet, so this node covers them too.
 - Until values-build lands, keep pending and fallback state in scope slots, not new hold-back helpers (docs/decisions.md, the client restructure entry).
 - The differential test lists known divergences; a fix that makes one match removes its entry.
+- Wait for the client-audit outcome (0.7.0), which ranks this work against the other special-case removals.
 - Split into two PRs if the `#try` nodes form and the template fragment return turn out independent.
 
 ## Acceptance
