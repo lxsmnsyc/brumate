@@ -1,7 +1,7 @@
 ---
 id: differential-render-test
 title: "Render every test page in the server and in the browser and compare"
-status: todo
+status: active
 priority: must
 type: chore
 outline: false
