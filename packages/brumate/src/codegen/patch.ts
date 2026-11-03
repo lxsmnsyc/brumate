@@ -283,6 +283,18 @@ export function addValueEdits(
         );
         return;
       }
+      if (name === '$searchParam' && argument) {
+        // The server reads the URL of the request, and the browser reads `location`.
+        patch.replace(
+          node.start,
+          argument.start,
+          mode === 'server' ? '$$b.searchParam($$ctx, ' : '$$b.searchParam(',
+        );
+        for (const rest of node.arguments) {
+          visit(rest);
+        }
+        return;
+      }
       if (name === '$isBound') {
         // Nothing writes on the server.
         patch.replace(node.start, node.end, 'false');
