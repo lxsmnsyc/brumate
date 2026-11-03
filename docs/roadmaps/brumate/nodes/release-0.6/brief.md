@@ -61,6 +61,9 @@ depends_on:
   - on: differential-render-test
     kind: hard
     why: client restructure step 3
+  - on: server-on-error
+    kind: hard
+    why: onError in src/middleware.ts for errors of the server
   - on: values-spike
     kind: hard
     why: client restructure step 4; its go or no-go is the maintainer's
