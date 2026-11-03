@@ -166,11 +166,6 @@ export const CAUSES: Record<string, Cause> = {
     reason:
       'A component with an await in its script or markup in a child that the browser renders: the browser reports that only the server can render it.',
   },
-  'template-import': {
-    verdict: 'remove',
-    reason:
-      'The render module of a page that uses a component only inside a #template in a #try lacks the import of the component (ReferenceError), where the server module and the client part have it. A bug.',
-  },
   'class-order': {
     verdict: 'remove',
     reason:
@@ -257,7 +252,6 @@ diverge('memo-throw', [
 diverge('memo-reject', ['memoErrorAwaitServer']);
 diverge('pending-read', ['fnReadAsync', 'loadingChain', 'loadingOnChain']);
 diverge('await-in-script', ['PromiseLateChild', 'promiseLate']);
-diverge('template-import', ['tryTemplateChild']);
 diverge('class-order', ['classes']);
 diverge('debounce-start', ['timing']);
 diverge('template-context', ['tplContextListPage']);
