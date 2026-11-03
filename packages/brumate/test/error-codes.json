@@ -42,7 +42,7 @@
   "BRM041": "#reveal has no script of its own",
   "BRM042": "Expected \"(\" after #{keyword}",
   "BRM043": "Expected an expression after #{keyword}",
-  "BRM044": "Expected \"{\" after #{keyword}",
+  "BRM044": "Expected \"{\" or one markup child after #{keyword}",
   "BRM045": "Expected \"{\" after #switch",
   "BRM046": "The script of a block takes no attributes",
   "BRM047": "#try needs a #catch block",

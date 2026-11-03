@@ -193,7 +193,9 @@ class Parser {
       next++;
     }
     const after = this.source[next];
-    if (after === '(' || after === '{') {
+    // A body can be one child, but `#defer</p>` is text.
+    const child = (after === '<' && this.source[next + 1] !== '/') || after === '#';
+    if (after === '(' || after === '{' || child) {
       return keyword;
     }
     // `#else if` has a keyword after `#else`.
@@ -822,7 +824,7 @@ class Parser {
   private parseBody(keyword: string): Body {
     this.skipWhitespace();
     if (this.peek() !== '{') {
-      this.fail(`Expected "{" after #${keyword}`, this.pos);
+      return this.parseShortBody(keyword);
     }
     const start = this.pos;
     this.pos++;
@@ -840,6 +842,26 @@ class Parser {
     const children = this.parseNodes('body', templates);
     this.pos++;
     return { start, end: this.pos, script, templates, children };
+  }
+
+  /**
+   * A body without braces: one element, component, dynamic tag, fragment or
+   * block. Text, `{ … }`, `<script>`, `<style>` and `#template` need braces.
+   */
+  private parseShortBody(keyword: string): Body {
+    const start = this.pos;
+    const isTag =
+      this.peek() === '<' &&
+      this.source[this.pos + 1] !== '/' &&
+      !this.startsWith('<!--') &&
+      !this.isTagStart('script') &&
+      !this.isTagStart('style');
+    const block = this.peek() === '#' ? this.blockKeyword(BLOCK_KEYWORDS) : undefined;
+    if (!isTag && (!block || block === 'template')) {
+      this.fail(`Expected "{" or one markup child after #${keyword}`, this.pos);
+    }
+    const child = isTag ? this.parseTag() : this.parseBlock(block!);
+    return { start, end: this.pos, templates: [], children: [child] };
   }
 
   /** Consumes `#keyword` if it comes next, after whitespace and comments. */

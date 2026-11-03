@@ -1,6 +1,6 @@
 # Control flow
 
-Blocks start with `#`, such as `#if` and `#for`, and wrap their body in braces. A block's code ships to the browser only if what it depends on can change there. Otherwise the block is HTML only.
+Blocks start with `#`, such as `#if` and `#for`, and wrap their body in braces, or take one element, component or block without them (see [One child without braces](#one-child-without-braces)). A block's code ships to the browser only if what it depends on can change there. Otherwise the block is HTML only.
 
 ## `#if`
 
@@ -335,3 +335,28 @@ Use it for tabs, steps of a form, or panels that the user switches between. Use 
 ## `#head`
 
 `#head` renders its body into the `<head>` of the page. See [`#head`](./page-metadata.md#head).
+
+## One child without braces
+
+A body that is one element, component, dynamic tag or block needs no braces:
+
+```brm
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let user = $signal<{ name: string } | undefined>({ name: 'Ada' });
+  let items = $signal([{ id: 1, name: 'Pen' }]);
+</script>
+
+#if (user) <p>Hello, {user.name}</p> #else <a href="/signin">Sign in</a>
+<ul>
+  #for (item of items by item.id) <li>{item.name}</li>
+</ul>
+#try <p>{items[0].name}</p> #catch (error) <p>{String(error)}</p>
+```
+
+- Text and `{expression}` are not children. After a block header, `{` always opens a braced body, so `#if (ok) {name}` renders the text `name`. Write `#if (ok) <b>{name}</b>` for an insert.
+- A body with a `<script>` or a `#template` needs braces.
+- Blocks nest: `#if (a) #if (b) <p>Both</p>`. An `#else` belongs to the nearest block, so use braces to give it to the outer one.
+- `#switch` keeps its braces around the cases. Each `#case` and `#default` can take one child.
+- The short form compiles to the same code as the braced form.

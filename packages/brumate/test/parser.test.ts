@@ -19,7 +19,7 @@ describe('syntax errors', () => {
     ['<div></span>', 'Expected </div> (Test.brm:1:6)'],
     ['<p {a + b}>x</p>', 'Expected a spread or a shorthand attribute (Test.brm:1:4)'],
     ['#if () { x }', 'Expected an expression after #if (Test.brm:1:6)'],
-    ['#if (a) x', 'Expected "{" after #if (Test.brm:1:9)'],
+    ['#if (a) x', 'Expected "{" or one markup child after #if (Test.brm:1:9)'],
     ['#else { x }', '#else must follow its block (Test.brm:1:1)'],
     [
       '#for (item in list) { x }',
@@ -193,5 +193,83 @@ describe('attribute values', () => {
       actual = value.handler.code;
     }
     expect(actual).toBe(code);
+  });
+});
+
+describe('block bodies without braces', () => {
+  /** The body of the first block, as the printed kinds of its children. */
+  function kinds(source: string): string[] {
+    const block = parse(source).children[0];
+    if (block?.kind !== 'if' && block?.kind !== 'for') {
+      throw new Error('Expected a block');
+    }
+    const body = block.kind === 'if' ? block.branches[0]!.body : block.body;
+    return body.children.map((child) => child.kind);
+  }
+
+  it.each([
+    ['#if (a) <p>x</p>', ['element']],
+    ['#if (a) <Row />', ['component']],
+    ['#if (a) <{tag}>x</>', ['key']],
+    ['#if (a) <>x</>', ['fragment']],
+    ['#if (a) #if (b) <p />', ['if']],
+    ['#for (item of items by item) <li />', ['element']],
+  ])('%s has one child', (source, expected) => {
+    expect(kinds(source)).toEqual(expected);
+  });
+
+  it.each([
+    '#if (a) <p /> #else if (b) <q /> #else <r />',
+    '#for (a of b) <p /> #else <q />',
+    '#repeat (3) <p /> #else <q />',
+    '#switch { #case (1) <p /> #case (2) <q /> #default <r /> }',
+    '#key (a) <p />',
+    '#try <A /> #catch (error, reset) <B {error} {reset} />',
+    '#try <A /> #catch <B />',
+    '#loading (a) <A /> #else <B />',
+    '#portal (a) <A />',
+    '#head <title>x</title>',
+    '#client ("visible") <A /> #else <B />',
+    '#defer ("visible") <A /> #else <B />',
+    '#offscreen (a) <A />',
+    '#reveal <A />',
+  ])('%s parses', (source) => {
+    expect(() => parse(source)).not.toThrow();
+  });
+
+  it('gives the else to the nearest if', () => {
+    const outer = parse('#if (a) #if (b) <p /> #else <q />').children[0];
+    if (outer?.kind !== 'if') {
+      throw new Error('Expected an if');
+    }
+    expect(outer.fallback).toBeUndefined();
+    const inner = outer.branches[0]!.body.children[0];
+    expect(inner?.kind === 'if' && inner.fallback?.children[0]?.kind).toBe('element');
+  });
+
+  it('keeps `{` as the start of a braced body with text', () => {
+    const block = parse('#if (x) {name}').children[0];
+    if (block?.kind !== 'if') {
+      throw new Error('Expected an if');
+    }
+    expect(block.branches[0]!.body.children).toMatchObject([{ kind: 'text', value: 'name' }]);
+  });
+
+  it.each([
+    ['#if (a) x', 'Test.brm:1:9'],
+    ['#if (a) <script>let a = 1;</script>', 'Test.brm:1:9'],
+    ['#if (a) <style>p {}</style>', 'Test.brm:1:9'],
+    ['#if (a) #template Row() { <p /> }', 'Test.brm:1:9'],
+    ['#if (a) </p>', 'Test.brm:1:9'],
+    ['#try <A /> #catch (e) x', 'Test.brm:1:23'],
+  ])('rejects %s', (source, place) => {
+    expect(() => parse(source, { filename: 'Test.brm' })).toThrow(
+      new RegExp(`^Expected "\\{" or one markup child after #\\w+ \\[BRM044\\] \\(${place}\\)`),
+    );
+  });
+
+  it('takes one child only', () => {
+    const file = parse('#if (a) <p /> <q />');
+    expect(file.children.map((child) => child.kind)).toEqual(['if', 'text', 'element']);
   });
 });

@@ -1,0 +1,19 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+  let rows = $signal(['a', 'b']);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+<button class="add" onClick=(() => (rows = [...rows, 'c']))>Add</button>
+#if (open) <p class="open">Open</p> #else <p class="closed">Closed</p>
+#if (open) #if (rows.length > 2) <p class="many">Many</p> #else <p class="few">Few</p>
+<ul>
+  #for (row of rows by row) <li>{row}</li> #else <li class="none">None</li>
+</ul>
+#switch {
+  #case (open) <b class="on">on</b>
+  #default <b class="off">off</b>
+}
+#try <span class="fine">Fine</span> #catch <span class="gone">Gone</span>

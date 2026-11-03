@@ -252,7 +252,7 @@
           "name": "keyword.control.block.brumate"
         }
       },
-      "end": "(\\{)|(?=<|\\n\\s*\\n)",
+      "end": "(\\{)|(?=<|#|\\n\\s*\\n)",
       "endCaptures": {
         "1": {
           "name": "punctuation.section.block.begin.brumate"

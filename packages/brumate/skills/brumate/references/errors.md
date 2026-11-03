@@ -629,9 +629,9 @@ https://brumate-docs.vercel.app/docs/errors#brm043
 }
 ```
 
-## BRM044: Expected "{" after #{keyword}
+## BRM044: Expected "{" or one markup child after #{keyword}
 
-The header of a block is not followed by `{`.
+The header of a block is followed by neither `{` nor one element, component or block. Text, an interpolation, a `<script>`, a `<style>` and a `#template` need braces.
 
 https://brumate-docs.vercel.app/docs/errors#brm044
 
@@ -639,6 +639,7 @@ https://brumate-docs.vercel.app/docs/errors#brm044
 #if (open) {
   <p>Open</p>
 }
+#if (open) <p>Open</p>
 ```
 
 ## BRM045: Expected "{" after #switch

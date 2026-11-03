@@ -344,9 +344,9 @@ const SYNTAX: ErrorEntry[] = [
   ),
   entry(
     'BRM044',
-    'Expected "{" after #{keyword}',
-    'The header of a block is not followed by `{`.',
-    '#if (open) {\n  <p>Open</p>\n}',
+    'Expected "{" or one markup child after #{keyword}',
+    'The header of a block is followed by neither `{` nor one element, component or block. Text, an interpolation, a `<script>`, a `<style>` and a `#template` need braces.',
+    '#if (open) {\n  <p>Open</p>\n}\n#if (open) <p>Open</p>',
   ),
   entry(
     'BRM045',

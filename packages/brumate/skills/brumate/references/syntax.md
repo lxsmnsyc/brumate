@@ -183,6 +183,7 @@ A file uses another component by importing it, and renders it with a capitalized
 
 - The body of a block can start with a `<script>` of its own, which runs for each instance, such as each item of a `#for`. It can declare signals and functions.
 - `#for (item of list) { … }` has no `by` for a list that needs no key: each item is its own key. Use `by item.id` when items are objects that change.
+- A body that is one element, component or block needs no braces: `#if (user) <Profile {user} /> #else <SignIn />`, `#for (item of items by item.id) <Row {item} />`, `#try <A /> #catch (error, reset) <B {error} {reset} />`. Text and `{expression}` are not children (`#if (x) {name}` is a braced body with the text `name`), and a body with a `<script>` or a `#template` needs braces. `#else` binds to the nearest block.
 - Write `} #else if (…) {` and `} #else {` on the line of the closing brace, as the style. The compiler accepts `#else` on the next line too.
 - `#for (item of list) window(32) { … }` renders only the items in view, for a long list. `32` is the height of an item.
 - `#loading { … } #else { … }` and `#defer { … }` are for async data. See state.md.

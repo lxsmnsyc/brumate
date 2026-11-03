@@ -879,3 +879,27 @@ describe('memo of a prop', () => {
     }
   });
 });
+
+describe('block bodies without braces', () => {
+  it.each([
+    ['#if (open) <p>a</p> #else <p>b</p>', '#if (open) {\n<p>a</p>\n} #else {\n<p>b</p>\n}'],
+    [
+      '#for (row of rows by row) <li>{row}</li> #else <li>none</li>',
+      '#for (row of rows by row) {\n<li>{row}</li>\n} #else {\n<li>none</li>\n}',
+    ],
+    [
+      '#switch { #case (open) <b>on</b> #default <b>off</b> }',
+      '#switch { #case (open) {\n<b>on</b>\n} #default {\n<b>off</b>\n} }',
+    ],
+    ['#try <p>a</p> #catch <p>b</p>', '#try {\n<p>a</p>\n} #catch {\n<p>b</p>\n}'],
+    ['#if (open) #if (rows) <p />', '#if (open) {\n#if (rows) {\n<p />\n}\n}'],
+  ])('compiles %s as the braced form', (short, braced) => {
+    const script =
+      "<script>\n  import { $signal } from 'brumate/signals';\n  let open = $signal(true);\n  let rows = $signal(['a']);\n</script>\n";
+    const first = compile(script + short, { filename: 'T.brm' });
+    const second = compile(script + braced, { filename: 'T.brm' });
+    expect(first.server).toBe(second.server);
+    expect(first.client).toBe(second.client);
+    expect(first.parts).toEqual(second.parts);
+  });
+});

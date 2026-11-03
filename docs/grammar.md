@@ -110,7 +110,9 @@ Block           = IfBlock | ForBlock | RepeatBlock | SwitchBlock | KeyBlock
                 | TryBlock | LoadingBlock | PortalBlock | HeadBlock | ClientBlock
                 | OffscreenBlock ;
 
-Body            = "{" [ BlockScript ] { TemplateDecl } { Markup } "}" ;
+Body            = Braced | Child ;
+Braced          = "{" [ BlockScript ] { TemplateDecl } { Markup } "}" ;
+Child           = Element | Component | DynamicTag | Fragment | Block ;
 BlockScript     = "<script>" TS<Module> "</script>" ;
 
 IfBlock         = "#if" "(" TS<Expression> ")" Body
@@ -137,6 +139,8 @@ RevealOption    = "'sequential'" | "'backwards'" | "'together'" | "'natural'" | 
 TemplateDecl    = "#template" Ident "(" TS<Parameters> ")" Body ;
 ```
 
+- A `Body` is a braced body or one markup child. A child is one element, component, dynamic tag, fragment or block, with its own children. Text, `{expression}`, `<script>`, `<style>` and `#template` are not children: after a block header, `{` always opens a braced body, so `#if (x) {name}` is a body with the text `name`, and a body with a block script or templates needs braces. Anything else after the header is BRM044. `#switch` keeps its braces around the cases, and each `#case` and `#default` takes a `Body`. The body of `#reveal` is a fragment, so `#reveal <A />` works too.
+- `#else` binds to the nearest `#if` or `#for`, so in `#if (a) #if (b) <p /> #else <q />` the `#else` belongs to the inner block. Use braces to give it to the outer one.
 - `#else`, `#else if` and `#catch` come right after the body of their block. Only whitespace and comments may be in between.
 - In `ForBlock`, `by` followed by the index name keys items by position.
 - Only `#case`, `#default`, whitespace and comments are allowed directly inside `#switch`. `#default` is last.
