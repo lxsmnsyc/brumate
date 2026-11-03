@@ -1,0 +1,106 @@
+{
+  "goal": "Make every context static and carry live values through a store contract and $store, moving the ui parts' live context values to stores first",
+  "research": false,
+  "max_rounds": 3,
+  "roadmap": "docs/roadmaps/brumate",
+  "supersedes": null,
+  "extra_axes": [],
+  "claims": [
+    {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The maintainer's choice (2026-11-03): every context is static, whatever its value; live values come from a store put into the context, through a store contract and `$store`. 'There is no $store' in decisions.md was a state note, now revised.",
+      "evidence": {
+        "type": "user",
+        "source": "maintainer, 2026-11-03; docs/decisions.md:40"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Today every context declaration is live (graph.ts marks `context` declarations live, analyze.ts makes each `$getContext` one). Outside tests there are 192 `$setContext` calls and 148 `$getContext` calls in 91 .brm files, most in packages/ui, many passing values that change (isInvalid, errors, isCurrent, picker values, field state).",
+      "evidence": {
+        "type": "measured",
+        "source": "git ls-files '*.brm' | grep -v /test/ | xargs grep '$setContext(' / '$getContext('; graph.ts on next",
+        "detail": "evidence/setcontext.txt, evidence/graph-context.txt"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "static-contexts (#448, closed) proved a context static only when it could: website JS -897 B gzip in total, home entry -1 B, about 190 lines and a project-wide fixpoint, and its review found two silent miscompiles (a signal hidden in a variable; contexts keyed by local import name).",
+      "evidence": {
+        "type": "measured",
+        "source": "review of #448; docs/roadmaps/brumate/nodes/static-contexts/outcome.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Planned nodes, now children of story context-stores (0.7.0): store-contract (outline, L, could): a contract with `subscribe(callback): cleanup` and `get()`, and `$store` to bind one in a component; the name `$store` belongs to it (maintainer, 2026-10-30). store-lens-spike (M, could): a path-tracked store with its own name, and lens utilities; questions on the static graph, resume, `#for`, `$bind` and cost.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/store-contract/brief.md; nodes/store-lens-spike/brief.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "A function prop is live when its function reads state; the parent sends the child a new bound function when that state changes (decisions.md:139, the function-prop-derivations debate). Whether a function inside a static context would keep that is not decided.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:139; docs/debates/function-prop-derivations/debate.md"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Prior art: Solid's context value is set once and is not reactive itself; reactivity comes from signals or stores placed in it. Svelte 5's setContext is not reactive; you pass $state objects or getters. Vue's provide/inject passes a plain value unless it is a ref or reactive. React re-renders consumers when the provided value's identity changes.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "docs.solidjs.com (createContext/useContext); svelte.dev/docs/svelte/context; vuejs.org/guide/components/provide-inject (working with reactivity); react.dev/reference/react/useContext"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "0.x breaks are minor bumps with no deprecation period; client size is a release goal (todos 13.6 kB gzip on 0.5.0); the context-stores story is in 0.7.0, after release-0.6.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md; maintainer rules"
+      },
+      "ruling": "upheld"
+    }
+  ],
+  "questions": [],
+  "proofs": [],
+  "hypothesis": null,
+  "spend": []
+}
