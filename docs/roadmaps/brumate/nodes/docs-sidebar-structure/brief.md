@@ -1,7 +1,7 @@
 ---
 id: docs-sidebar-structure
 title: Order the docs sidebar by the reader's path and split testing.md
-status: active
+status: done
 priority: should
 type: docs
 outline: false
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-31
+spent: 47000
 owns:
   - website/src/docs.ts
   - website/docs/testing-server.md

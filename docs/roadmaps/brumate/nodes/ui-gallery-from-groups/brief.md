@@ -1,7 +1,7 @@
 ---
 id: ui-gallery-from-groups
 title: The ui cards read their summaries from the pages
-status: active
+status: done
 priority: should
 type: docs
 outline: false
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-31
+spent: 73000
 owns:
   - website/src/ui.ts
   - website/src/ui-landing.ts

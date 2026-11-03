@@ -1,7 +1,7 @@
 ---
 id: client-markup-docs
 title: Document $client in markup that the browser renders
-status: active
+status: done
 priority: should
 type: docs
 outline: false
@@ -15,6 +15,7 @@ exclusive: []
 fulfilled_by: 
 gate: false
 added: 
+spent: 67000
 owns:
   - website/docs/effects.md
   - packages/brumate/test/client-order.test.ts
