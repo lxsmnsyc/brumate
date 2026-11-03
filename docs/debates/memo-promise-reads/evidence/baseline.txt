@@ -1,0 +1,60 @@
+## NotReady refs in src
+packages/brumate/src/runtime/server.ts:9
+packages/brumate/src/runtime/client/updates.ts:8
+## total
+      17
+## tests mentioning pending/NotReady/$resolve/$isPending
+      23
+## .brm files using $memo
+(eval):1: no matches found: --include=*.brm
+       0
+## await $memo uses in .brm
+(eval):1: no matches found: --include=*.brm
+       0
+## $resolve uses in .brm
+(eval):1: no matches found: --include=*.brm
+       0
+## BRM182
+packages/brumate/src/error-catalog.ts:172:    'BRM182',
+## .brm files with $memo (excl node_modules, test output)
+     297
+## total .brm
+    1301
+## await $memo in .brm
+      58
+## $resolve( in .brm
+       7
+## $isPending( in .brm
+      19
+## #loading in .brm
+      65
+## by area ($memo files)
+ 170 packages/brumate
+  72 packages/ui
+  27 website/ui
+   8 website/src
+   5 examples/tracker
+   3 examples/todos
+   3 examples/hackernews
+   2 benchmarks/brumate-0.3
+   2 benchmarks/brumate
+   1 examples/ui
+## pending/thenable/wait refs in runtime client
+      41
+## runtime sizes (lines)
+   11582 total
+## docs mentioning not-ready / pending reads
+website/docs/reference-serialization.md
+website/docs/forms.md
+website/docs/reference-server.md
+website/docs/state.md
+website/docs/async-data.md
+website/docs/errors.md
+website/docs/navigation.md
+website/docs/deploying.md
+website/docs/effects.md
+website/docs/reference-signals.md
+website/docs/client-modules.md
+website/docs/markup.md
+website/docs/page-format.md
+website/docs/server-functions.md

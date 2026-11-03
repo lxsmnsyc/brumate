@@ -1,0 +1,2 @@
+memo declarations 590 async (heuristic) 28 of them awaited 3
+script-side mentions after declaration 15 markup mentions 76
