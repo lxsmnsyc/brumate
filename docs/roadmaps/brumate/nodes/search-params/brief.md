@@ -1,7 +1,7 @@
 ---
 id: search-params
 title: State in the URL with $searchParam
-status: todo
+status: active
 priority: must
 type: feature
 outline: false

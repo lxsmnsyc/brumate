@@ -1,7 +1,7 @@
 ---
 id: server-on-error
 title: onError in src/middleware.ts for errors of the server
-status: todo
+status: active
 priority: must
 type: feature
 outline: false

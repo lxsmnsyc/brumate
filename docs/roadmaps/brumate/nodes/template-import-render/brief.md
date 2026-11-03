@@ -1,7 +1,7 @@
 ---
 id: template-import-render
 title: "The browser render module imports a component used only in a #template"
-status: todo
+status: active
 priority: must
 type: hotfix
 outline: false
