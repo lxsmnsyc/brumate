@@ -1,7 +1,7 @@
 ---
 id: browser-async-e2e
 title: "e2e cases for async values in markup that the browser renders"
-status: todo
+status: done
 priority: must
 type: chore
 story: browser-async
