@@ -132,7 +132,7 @@
   tabindex="-1"
   data-key=(keyAttribute(id))
   data-text-value=textValue
-  aria-selected=(mode === 'none' ? undefined : String(selected))
+  aria-selected=(mode === 'none' ? undefined : selected)
   aria-disabled=(disabled ? 'true' : undefined)
   data-selected=(selected || undefined)
   data-disabled=(disabled || undefined)

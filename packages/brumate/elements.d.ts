@@ -258,45 +258,243 @@ export type Handlers<E> = {
   [K in keyof ElementEvents & string as `on${EventWord<K>}`]?: Handler<ElementEvents[K], E>;
 };
 
+/** A value of an ARIA attribute that is `true` or `false`. The runtime writes both as words. */
+type AriaBool = boolean | 'true' | 'false';
+
+/** The roles of WAI-ARIA 1.2 and of the Digital Publishing module (`doc-*`). */
+export type AriaRole =
+  | 'alert'
+  | 'alertdialog'
+  | 'application'
+  | 'article'
+  | 'banner'
+  | 'blockquote'
+  | 'button'
+  | 'caption'
+  | 'cell'
+  | 'checkbox'
+  | 'code'
+  | 'columnheader'
+  | 'combobox'
+  | 'complementary'
+  | 'contentinfo'
+  | 'definition'
+  | 'deletion'
+  | 'dialog'
+  | 'directory'
+  | 'document'
+  | 'emphasis'
+  | 'feed'
+  | 'figure'
+  | 'form'
+  | 'generic'
+  | 'grid'
+  | 'gridcell'
+  | 'group'
+  | 'heading'
+  | 'img'
+  | 'insertion'
+  | 'link'
+  | 'list'
+  | 'listbox'
+  | 'listitem'
+  | 'log'
+  | 'main'
+  | 'mark'
+  | 'marquee'
+  | 'math'
+  | 'menu'
+  | 'menubar'
+  | 'menuitem'
+  | 'menuitemcheckbox'
+  | 'menuitemradio'
+  | 'meter'
+  | 'navigation'
+  | 'none'
+  | 'note'
+  | 'option'
+  | 'paragraph'
+  | 'presentation'
+  | 'progressbar'
+  | 'radio'
+  | 'radiogroup'
+  | 'region'
+  | 'row'
+  | 'rowgroup'
+  | 'rowheader'
+  | 'scrollbar'
+  | 'search'
+  | 'searchbox'
+  | 'separator'
+  | 'slider'
+  | 'spinbutton'
+  | 'status'
+  | 'strong'
+  | 'subscript'
+  | 'superscript'
+  | 'switch'
+  | 'tab'
+  | 'table'
+  | 'tablist'
+  | 'tabpanel'
+  | 'term'
+  | 'textbox'
+  | 'time'
+  | 'timer'
+  | 'toolbar'
+  | 'tooltip'
+  | 'tree'
+  | 'treegrid'
+  | 'treeitem'
+  | 'doc-abstract'
+  | 'doc-acknowledgments'
+  | 'doc-afterword'
+  | 'doc-appendix'
+  | 'doc-backlink'
+  | 'doc-biblioentry'
+  | 'doc-bibliography'
+  | 'doc-biblioref'
+  | 'doc-chapter'
+  | 'doc-colophon'
+  | 'doc-conclusion'
+  | 'doc-cover'
+  | 'doc-credit'
+  | 'doc-credits'
+  | 'doc-dedication'
+  | 'doc-endnote'
+  | 'doc-endnotes'
+  | 'doc-epigraph'
+  | 'doc-epilogue'
+  | 'doc-errata'
+  | 'doc-example'
+  | 'doc-footnote'
+  | 'doc-foreword'
+  | 'doc-glossary'
+  | 'doc-glossref'
+  | 'doc-index'
+  | 'doc-introduction'
+  | 'doc-noteref'
+  | 'doc-notice'
+  | 'doc-pagebreak'
+  | 'doc-pagefooter'
+  | 'doc-pageheader'
+  | 'doc-pagelist'
+  | 'doc-part'
+  | 'doc-preface'
+  | 'doc-prologue'
+  | 'doc-pullquote'
+  | 'doc-qna'
+  | 'doc-subtitle'
+  | 'doc-tip'
+  | 'doc-toc';
+
+/** The ARIA attributes of WAI-ARIA 1.2 and the value of each. */
+export interface AriaAttributes {
+  'aria-activedescendant'?: Attr<string>;
+  'aria-atomic'?: Attr<AriaBool>;
+  'aria-autocomplete'?: Attr<'none' | 'inline' | 'list' | 'both'>;
+  'aria-braillelabel'?: Attr<string>;
+  'aria-brailleroledescription'?: Attr<string>;
+  'aria-busy'?: Attr<AriaBool>;
+  'aria-checked'?: Attr<AriaBool | 'mixed'>;
+  'aria-colcount'?: Attr<Num>;
+  'aria-colindex'?: Attr<Num>;
+  'aria-colindextext'?: Attr<string>;
+  'aria-colspan'?: Attr<Num>;
+  /** A list of IDs, separated by spaces. */
+  'aria-controls'?: Attr<string>;
+  'aria-current'?: Attr<AriaBool | 'page' | 'step' | 'location' | 'date' | 'time'>;
+  'aria-describedby'?: Attr<string>;
+  'aria-description'?: Attr<string>;
+  'aria-details'?: Attr<string>;
+  'aria-disabled'?: Attr<AriaBool>;
+  'aria-errormessage'?: Attr<string>;
+  'aria-expanded'?: Attr<AriaBool>;
+  'aria-flowto'?: Attr<string>;
+  'aria-haspopup'?: Attr<AriaBool | 'menu' | 'listbox' | 'tree' | 'grid' | 'dialog'>;
+  'aria-hidden'?: Attr<AriaBool>;
+  'aria-invalid'?: Attr<AriaBool | 'grammar' | 'spelling'>;
+  'aria-keyshortcuts'?: Attr<string>;
+  'aria-label'?: Attr<string>;
+  'aria-labelledby'?: Attr<string>;
+  'aria-level'?: Attr<Num>;
+  'aria-live'?: Attr<'off' | 'assertive' | 'polite'>;
+  'aria-modal'?: Attr<AriaBool>;
+  'aria-multiline'?: Attr<AriaBool>;
+  'aria-multiselectable'?: Attr<AriaBool>;
+  'aria-orientation'?: Attr<'horizontal' | 'vertical'>;
+  'aria-owns'?: Attr<string>;
+  'aria-placeholder'?: Attr<string>;
+  'aria-posinset'?: Attr<Num>;
+  'aria-pressed'?: Attr<AriaBool | 'mixed'>;
+  'aria-readonly'?: Attr<AriaBool>;
+  'aria-relevant'?: Attr<
+    | 'additions'
+    | 'additions removals'
+    | 'additions text'
+    | 'all'
+    | 'removals'
+    | 'removals additions'
+    | 'removals text'
+    | 'text'
+    | 'text additions'
+    | 'text removals'
+  >;
+  'aria-required'?: Attr<AriaBool>;
+  'aria-roledescription'?: Attr<string>;
+  'aria-rowcount'?: Attr<Num>;
+  'aria-rowindex'?: Attr<Num>;
+  'aria-rowindextext'?: Attr<string>;
+  'aria-rowspan'?: Attr<Num>;
+  'aria-selected'?: Attr<AriaBool>;
+  'aria-setsize'?: Attr<Num>;
+  'aria-sort'?: Attr<'none' | 'ascending' | 'descending' | 'other'>;
+  'aria-valuemax'?: Attr<Num>;
+  'aria-valuemin'?: Attr<Num>;
+  'aria-valuenow'?: Attr<Num>;
+  'aria-valuetext'?: Attr<string>;
+}
+
 /**
  * The attributes that every element takes: `class`, `style`, the handlers, `ref`, `data-*` and
  * `aria-*`. `E` is the element, for the handlers and `ref`.
  */
-export type GlobalAttributes<E> = Handlers<E> & {
-  /**
-   * Binds the element to a name: `ref=$bind(name)`. The signal can hold the element, a supertype
-   * of it such as `HTMLElement | undefined`, or `null`. A signal of another element is an error.
-   */
-  ref?: BindableMark<unknown> & WritableMark<E>;
-  class?: Attr<ClassValue>;
-  style?: Attr<string | StyleObject>;
-  id?: Attr<string>;
-  slot?: Attr<string>;
-  part?: Attr<string>;
-  is?: Attr<string>;
-  role?: Attr<string>;
-  title?: Attr<string>;
-  lang?: Attr<string>;
-  dir?: Attr<'ltr' | 'rtl' | 'auto'>;
-  nonce?: Attr<string>;
-  accesskey?: Attr<string>;
-  autocapitalize?: Attr<'off' | 'none' | 'on' | 'sentences' | 'words' | 'characters'>;
-  autofocus?: Attr<boolean>;
-  contenteditable?: Attr<boolean | 'true' | 'false' | 'plaintext-only'>;
-  draggable?: Attr<boolean | 'true' | 'false'>;
-  enterkeyhint?: Attr<'enter' | 'done' | 'go' | 'next' | 'previous' | 'search' | 'send'>;
-  hidden?: Attr<boolean | 'hidden' | 'until-found'>;
-  inert?: Attr<boolean>;
-  inputmode?: Attr<'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search'>;
-  popover?: Attr<boolean | 'auto' | 'manual' | 'hint'>;
-  spellcheck?: Attr<boolean | 'true' | 'false'>;
-  tabindex?: Attr<Num>;
-  translate?: Attr<'yes' | 'no'>;
-  writingsuggestions?: Attr<boolean | 'true' | 'false'>;
-  autocorrect?: Attr<boolean | 'on' | 'off'>;
-  [attribute: `data-${string}`]: unknown;
-  [attribute: `aria-${string}`]: Attr<string | number | boolean>;
-};
+export type GlobalAttributes<E> = Handlers<E> &
+  AriaAttributes & {
+    /**
+     * Binds the element to a name: `ref=$bind(name)`. The signal can hold the element, a supertype
+     * of it such as `HTMLElement | undefined`, or `null`. A signal of another element is an error.
+     */
+    ref?: BindableMark<unknown> & WritableMark<E>;
+    class?: Attr<ClassValue>;
+    style?: Attr<string | StyleObject>;
+    id?: Attr<string>;
+    slot?: Attr<string>;
+    part?: Attr<string>;
+    is?: Attr<string>;
+    role?: Attr<AriaRole>;
+    title?: Attr<string>;
+    lang?: Attr<string>;
+    dir?: Attr<'ltr' | 'rtl' | 'auto'>;
+    nonce?: Attr<string>;
+    accesskey?: Attr<string>;
+    autocapitalize?: Attr<'off' | 'none' | 'on' | 'sentences' | 'words' | 'characters'>;
+    autofocus?: Attr<boolean>;
+    contenteditable?: Attr<boolean | 'true' | 'false' | 'plaintext-only'>;
+    draggable?: Attr<boolean | 'true' | 'false'>;
+    enterkeyhint?: Attr<'enter' | 'done' | 'go' | 'next' | 'previous' | 'search' | 'send'>;
+    hidden?: Attr<boolean | 'hidden' | 'until-found'>;
+    inert?: Attr<boolean>;
+    inputmode?: Attr<'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search'>;
+    popover?: Attr<boolean | 'auto' | 'manual' | 'hint'>;
+    spellcheck?: Attr<boolean | 'true' | 'false'>;
+    tabindex?: Attr<Num>;
+    translate?: Attr<'yes' | 'no'>;
+    writingsuggestions?: Attr<boolean | 'true' | 'false'>;
+    autocorrect?: Attr<boolean | 'on' | 'off'>;
+    [attribute: `data-${string}`]: unknown;
+    [attribute: `aria-${string}`]: Attr<string | number | boolean>;
+  };
 
 type Referrer =
   | 'no-referrer'

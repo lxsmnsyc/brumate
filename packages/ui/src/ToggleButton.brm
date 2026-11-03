@@ -62,7 +62,7 @@
   // The ARIA of the button: a radio in a group with one selection, else a toggle. Attributes that
   // do not apply are left out, so they do not replace the role of a Button that is not native.
   function state(radio: boolean, on: boolean) {
-    return radio ? { role: 'radio', 'aria-checked': String(on) } : { 'aria-pressed': String(on) };
+    return radio ? { role: 'radio' as const, 'aria-checked': on } : { 'aria-pressed': on };
   }
 
   function toggle(event: PressEvent) {
