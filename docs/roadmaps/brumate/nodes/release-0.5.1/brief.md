@@ -27,6 +27,9 @@ depends_on:
   - on: template-import-render
     kind: hard
     why: a page that uses a component only in a #template throws in a browser render on 0.5.0
+  - on: flaky-resume-reads
+    kind: hard
+    why: two resume tests fail CI about once in three runs; one may be a late textarea write
 ---
 
 # Release brumate 0.5.1
