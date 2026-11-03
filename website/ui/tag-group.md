@@ -1,3 +1,7 @@
+---
+summary: Tags that the user can select and remove.
+---
+
 # TagGroup
 
 A group of tags, which the user can select and remove.

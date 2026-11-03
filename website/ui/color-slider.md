@@ -1,3 +1,7 @@
+---
+summary: A slider for one channel of a color.
+---
+
 # ColorSlider
 
 A slider for one channel of a color.

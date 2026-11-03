@@ -1,3 +1,7 @@
+---
+summary: Actions and options that open from a button, with submenus.
+---
+
 # Menu
 
 A list of actions or options that opens from a button, with the keyboard, a pointer or a screen reader.

@@ -1,3 +1,7 @@
+---
+summary: A labeled input, checked by the browser.
+---
+
 # TextField
 
 A field of a `Label`, an `Input` or a `TextArea`, a description and a `FieldError`. It gives each part its ID, so the label names the input, and the description and the errors describe it.

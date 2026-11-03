@@ -1,3 +1,7 @@
+---
+summary: Two channels of a color on a plane.
+---
+
 # ColorArea
 
 An area for two channels of a color.

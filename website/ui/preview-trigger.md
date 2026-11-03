@@ -1,3 +1,7 @@
+---
+summary: A preview of a link, on hover, focus and a long press.
+---
+
 # PreviewTrigger
 
 A preview of a link or a button, such as a card of the author behind a name. It shows on hover, on focus from the keyboard, and on a long press of a touch.

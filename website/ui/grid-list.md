@@ -1,3 +1,7 @@
+---
+summary: Rows with buttons and checkboxes, to select and act on.
+---
+
 # GridList
 
 A list of rows that can hold buttons, checkboxes and links, which the user can select and act on.

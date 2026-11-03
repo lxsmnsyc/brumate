@@ -1,3 +1,7 @@
+---
+summary: An overlay beside its trigger, with layers inside.
+---
+
 # Popover
 
 An overlay beside its trigger, such as a menu of settings.

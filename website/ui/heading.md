@@ -1,3 +1,7 @@
+---
+summary: A heading whose level follows its place, and that names a dialog.
+---
+
 # Heading
 
 A heading of `level` 1 to 6, 3 by default.

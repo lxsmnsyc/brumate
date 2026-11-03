@@ -1,3 +1,7 @@
+---
+summary: A date field with a button that opens a calendar.
+---
+
 # DatePicker
 
 A DateField with a button that opens a Calendar.

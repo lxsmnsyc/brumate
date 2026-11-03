@@ -1,3 +1,7 @@
+---
+summary: Rows that nest and open and close, such as files in folders.
+---
+
 # Tree
 
 Rows that nest, open and close, such as the folders and files of a file browser, which the user can select and act on.

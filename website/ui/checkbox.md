@@ -1,3 +1,7 @@
+---
+summary: A native checkbox, with a box of your own.
+---
+
 # Checkbox
 
 A `<label>` around a native checkbox, which stays for screen readers and forms. The browser toggles it on a click and on Space, with or without scripts.

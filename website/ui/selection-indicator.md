@@ -1,3 +1,7 @@
+---
+summary: A mark of the selected item, which moves with the selection.
+---
+
 # SelectionIndicator
 
 A mark of the selected item, such as a bar under the selected tab, which moves to the next item when the selection changes.

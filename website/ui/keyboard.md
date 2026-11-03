@@ -1,3 +1,7 @@
+---
+summary: A keyboard shortcut.
+---
+
 # Keyboard
 
 A keyboard shortcut, as a `<kbd>`.

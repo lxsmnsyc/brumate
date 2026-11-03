@@ -1,3 +1,7 @@
+---
+summary: A date that the user types segment by segment.
+---
+
 # DateField
 
 A date that the user types segment by segment.

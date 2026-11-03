@@ -1,3 +1,7 @@
+---
+summary: A field for a color, as hex or as one channel.
+---
+
 # ColorField
 
 A field for a color, as hex or as one channel.

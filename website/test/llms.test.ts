@@ -34,6 +34,7 @@ describe('the Markdown of a page', () => {
       expect(page.title).not.toBe('');
       expect(page.markdown).not.toMatch(/^```\S*\s+(?:demo|styled|anatomy|gallery)/m);
       expect(page.markdown).not.toMatch(/^```props/m);
+      expect(page.markdown.startsWith('---')).toBe(false);
     }
   });
 

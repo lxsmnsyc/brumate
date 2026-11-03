@@ -1,3 +1,7 @@
+---
+summary: The arrow keys move between its items.
+---
+
 # Toolbar
 
 A toolbar where the arrow keys move focus between its items.

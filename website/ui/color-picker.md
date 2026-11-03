@@ -1,3 +1,7 @@
+---
+summary: One color, shared by the color parts inside it.
+---
+
 # ColorPicker
 
 Holds one color for the color parts inside it.

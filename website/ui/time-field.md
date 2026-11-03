@@ -1,3 +1,7 @@
+---
+summary: A time of day that the user types segment by segment.
+---
+
 # TimeField
 
 A time of day that the user types segment by segment.

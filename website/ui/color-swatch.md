@@ -1,3 +1,7 @@
+---
+summary: A sample of a color, named for screen readers.
+---
+
 # ColorSwatch
 
 A sample of a color, named for screen readers.

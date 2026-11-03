@@ -1,3 +1,7 @@
+---
+summary: A search input that Escape clears.
+---
+
 # SearchField
 
 A search input with a button that clears it.

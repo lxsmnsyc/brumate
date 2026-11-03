@@ -1,3 +1,7 @@
+---
+summary: A field for a number, in the format of the locale.
+---
+
 # NumberField
 
 A field for a number, in the format of the locale, with buttons that step it.

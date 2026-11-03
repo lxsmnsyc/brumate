@@ -1,3 +1,7 @@
+---
+summary: A button that stays pressed.
+---
+
 # ToggleButton
 
 A button that stays pressed, with `aria-pressed` and `data-selected`.

@@ -1,3 +1,7 @@
+---
+summary: A tree of links that shows the page that the user is on.
+---
+
 # NavigationTree
 
 A tree of links, such as the pages of a site or of a guide, which shows the page that the user is on.

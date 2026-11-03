@@ -1,3 +1,7 @@
+---
+summary: A section that expands and collapses.
+---
+
 # Disclosure
 
 A section that the user expands and collapses, such as a question of an FAQ.

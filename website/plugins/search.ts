@@ -7,6 +7,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { Plugin } from 'vite';
+import { splitFrontMatter } from './front-matter.ts';
 import { slug } from './markdown.ts';
 
 export interface Entry {
@@ -38,7 +39,9 @@ async function entries(directories: string[], pages?: Set<string>): Promise<Entr
     );
     // oxlint-disable-next-line no-await-in-loop -- Two directories, read in order.
     const sources = await Promise.all(
-      files.map((file) => readFile(path.join(directory, file), 'utf8')),
+      files.map(
+        async (file) => splitFrontMatter(await readFile(path.join(directory, file), 'utf8')).body,
+      ),
     );
     files.forEach((file, index) => {
       const name = file.replace(/\.md$/, '');
