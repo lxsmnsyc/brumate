@@ -42,8 +42,11 @@ export function paramEffect(
       bound.set(key, { scope, slot, name, options });
       (globalThis as Record<symbol, unknown>)[HOOK] = follow;
     }
+    // The URL changes only when the signal differs from it, never when the page loads: a
+    // parameter such as `?page=1` or `?page=abc` stays as the user wrote it.
     const text = writeParam(get(scope, slot), options);
-    if (new URLSearchParams(location.search).get(name) !== text) {
+    const current = readParam(new URLSearchParams(location.search), name, options);
+    if (writeParam(current, options) !== text) {
       if (waiting.size === 0) {
         queueMicrotask(commit);
       }
@@ -61,16 +64,15 @@ function commit(): void {
   const url = new URL(location.href);
   let push = false;
   let server = false;
+  const changes = new Map<string, string | null>();
   for (const [name, { text, options }] of waiting) {
-    if (text === null) {
-      url.searchParams.delete(name);
-    } else {
-      url.searchParams.set(name, text);
-    }
+    changes.set(name, text);
     push ||= options?.history === 'push';
     server ||= options?.server === true;
   }
+  const names = new Set(waiting.keys());
   waiting.clear();
+  url.search = editQuery(url.search, changes);
   if (server) {
     void navigate(url.href, { replace: !push, scroll: false });
     return;
@@ -80,9 +82,51 @@ function commit(): void {
   } else {
     history.replaceState(history.state, '', url);
   }
+  // Signals of other components that follow the same parameter take the value too.
+  pass(() => {
+    for (const { scope, slot, name, options } of bound.values()) {
+      if (names.has(name)) {
+        set(scope, slot, readParam(url.searchParams, name, options));
+      }
+    }
+  });
   // The loader tells a change of the page from one of the query string by this event.
   document.dispatchEvent(new Event('brumate:search'));
   updateRoute();
+}
+
+/** The names of the parameters in a query string, as the URL reads them. */
+function queryName(piece: string): string {
+  return new URLSearchParams(piece).keys().next().value ?? '';
+}
+
+/**
+ * The query string with the changes made, and every other parameter as it was written. The
+ * first piece of a changed name takes the new text, and its other pieces go.
+ */
+function editQuery(search: string, changes: Map<string, string | null>): string {
+  const pieces: string[] = [];
+  const done = new Set<string>();
+  for (const piece of search.slice(1).split('&')) {
+    const name = piece === '' ? '' : queryName(piece);
+    if (!changes.has(name)) {
+      if (piece !== '') {
+        pieces.push(piece);
+      }
+      continue;
+    }
+    const text = changes.get(name)!;
+    if (text !== null && !done.has(name)) {
+      pieces.push(new URLSearchParams({ [name]: text }).toString());
+    }
+    done.add(name);
+  }
+  for (const [name, text] of changes) {
+    if (text !== null && !done.has(name)) {
+      pieces.push(new URLSearchParams({ [name]: text }).toString());
+    }
+  }
+  return pieces.length > 0 ? `?${pieces.join('&')}` : '';
 }
 
 /**
@@ -98,14 +142,19 @@ function follow(from: string): boolean {
   const names = new Set([...before.searchParams.keys(), ...now.searchParams.keys()]);
   const changed: Bound[] = [];
   for (const name of names) {
-    if (before.searchParams.getAll(name).join() === now.searchParams.getAll(name).join()) {
+    if (same(before.searchParams.getAll(name), now.searchParams.getAll(name))) {
       continue;
     }
-    const found = [...bound.values()].filter((item) => item.name === name);
-    if (found.length === 0) {
+    let owned = false;
+    for (const item of bound.values()) {
+      if (item.name === name) {
+        changed.push(item);
+        owned = true;
+      }
+    }
+    if (!owned) {
       return false;
     }
-    changed.push(...found);
   }
   // The writes make one pass, so the memos that read two parameters see both new values.
   pass(() => {
@@ -114,5 +163,18 @@ function follow(from: string): boolean {
     }
   });
   updateRoute();
+  return true;
+}
+
+/** True for two lists of texts that are equal item by item. */
+function same(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let index = 0; index < a.length; index++) {
+    if (a[index] !== b[index]) {
+      return false;
+    }
+  }
   return true;
 }

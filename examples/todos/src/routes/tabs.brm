@@ -1,0 +1,11 @@
+<script>
+  import { $searchParam } from 'brumate/signals';
+
+  // Each tab is an entry of the history, so back and forward move between them.
+  let tab = $searchParam('tab', { default: 'one', history: 'push' });
+</script>
+
+<h1>Tabs</h1>
+<button class="tab-two" onClick=(() => (tab = 'two'))>Two</button>
+<button class="tab-three" onClick=(() => (tab = 'three'))>Three</button>
+<p class="tab">{tab}</p>

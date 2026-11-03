@@ -1097,10 +1097,23 @@ class Analyzer {
         this.report('error', `${name} cannot be destructured`, id);
         return;
       }
-      const first = call.arguments[0];
-      if (first?.type !== 'Literal' || typeof first.value !== 'string') {
+      const [first, options] = call.arguments;
+      if (
+        first?.type !== 'Literal' ||
+        typeof first.value !== 'string' ||
+        call.arguments.length > 2 ||
+        (options && options.type !== 'ObjectExpression')
+      ) {
         this.report('error', `${name} needs a value`, call);
         return;
+      }
+      // Two signals of one parameter in one component could disagree.
+      for (const other of this.declarations) {
+        const [earlier] = other.searchParam?.arguments ?? [];
+        if (other.scope === scope && earlier?.type === 'Literal' && earlier.value === first.value) {
+          this.report('error', `"${id.name}" is already declared`, id);
+          return;
+        }
       }
       // A signal whose value the server reads from the URL. An effect writes the URL when it
       // changes, and the browser writes it back when the history moves.

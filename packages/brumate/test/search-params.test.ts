@@ -206,10 +206,101 @@ describe('$searchParam', () => {
   });
 });
 
+/** Waits until the page registered its parameters with the loader, which the load callbacks do. */
+async function loaded(): Promise<void> {
+  await vi.waitFor(
+    () => expect(Reflect.get(globalThis, Symbol.for('brumate.search'))).toBeDefined(),
+    {
+      timeout: 5000,
+    },
+  );
+  await new Promise((done) => setTimeout(done, 50));
+}
+
+function click(selector: string): void {
+  document.querySelector(selector)!.dispatchEvent(new Event('click', { bubbles: true }));
+}
+
+describe('$searchParam at load and in the URL', () => {
+  it.each([
+    ['a value equal to the default', '/list?page=1&q=cats'],
+    ['an empty value', '/list?q='],
+    ['a value that does not parse', '/list?page=abc'],
+  ])('leaves %s as written', async (_, url) => {
+    await resume(url);
+    await loaded();
+    expect(location.pathname + location.search).toBe(url);
+  });
+
+  it('keeps the other parameters as they are written', async () => {
+    await resume('/list?x=a%20b&y=c+d&q=cats');
+    await loaded();
+    click('.more');
+    await vi.waitFor(() => expect(location.search).toBe('?x=a%20b&y=c+d&q=cats%21&page=2'), {
+      timeout: 5000,
+    });
+  });
+
+  it('writes the first of a parameter that the URL repeats and drops the others', async () => {
+    await resume('/list?q=a&q=b&page=3');
+    await loaded();
+    click('.more');
+    await vi.waitFor(() => expect(location.search).toBe('?q=a%21&page=4'), { timeout: 5000 });
+  });
+
+  it('encodes the text of a value', async () => {
+    await resume('/list');
+    await loaded();
+    const field = document.querySelector<HTMLInputElement>('.query')!;
+    field.value = 'a b&c=d';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await vi.waitFor(() => expect(location.search).toBe('?q=a+b%26c%3Dd'), { timeout: 5000 });
+  });
+
+  it('loads the page when the history moves to another route', async () => {
+    await resume('/list?q=cats');
+    await loaded();
+    const fetched = vi.fn<() => Promise<Response>>(() => new Promise<Response>(() => {}));
+    vi.stubGlobal('fetch', fetched);
+    history.replaceState(null, '', '/other?q=dogs');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await vi.waitFor(() => expect(fetched).toHaveBeenCalled(), { timeout: 5000 });
+  });
+
+  it('follows back and forward between two writes', async () => {
+    await resume('/list');
+    await loaded();
+    click('.tab-b');
+    await vi.waitFor(() => expect(location.search).toBe('?tab=b'), { timeout: 5000 });
+    history.replaceState(null, '', '/list');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await vi.waitFor(() => expect(text('.tab')).toBe('none'), { timeout: 5000 });
+    history.replaceState(null, '', '/list?tab=b');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await vi.waitFor(() => expect(text('.tab')).toBe('b'), { timeout: 5000 });
+  });
+
+  it('writes the URL of the page while another page loads', async () => {
+    await resume('/list');
+    await loaded();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<() => Promise<Response>>(() => new Promise<Response>(() => {})),
+    );
+    const { navigate } = await import('../src/runtime/routes.ts');
+    void navigate('/next');
+    click('.tab-b');
+    await vi.waitFor(() => expect(location.search).toBe('?tab=b'), { timeout: 5000 });
+    expect(text('.tab')).toBe('b');
+  });
+});
+
 describe('$searchParam declarations', () => {
   it.each([
     ['const', "const q = $searchParam('q');"],
     ['a name that is not a string', 'let q = $searchParam(name);'],
+    ['options that are not an object literal', "let q = $searchParam('q', name);"],
+    ['two signals of one parameter', "let q = $searchParam('q');\n  let p = $searchParam('q');"],
     ['a call in a function', "function f() { let q = $searchParam('q'); }"],
   ])('rejects %s', (_, line) => {
     const source = `<script>\n  import { $searchParam } from 'brumate/signals';\n  const name = 'q';\n  ${line}\n</script>\n<p>{typeof q}</p>`;

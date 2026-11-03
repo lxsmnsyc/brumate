@@ -8,5 +8,6 @@ declare module 'brumate/routes' {
     '/api/hello': {};
     '/counter/[start]': { start: string };
     '/guestbook': {};
+    '/tabs': {};
   }
 }
