@@ -261,6 +261,14 @@ export type Handlers<E> = {
 /** A value of an ARIA attribute that is `true` or `false`. The runtime writes both as words. */
 type AriaBool = boolean | 'true' | 'false';
 
+/** The tokens of `aria-relevant`: `all`, or one to three of the others in any order. */
+type AriaRelevantToken = 'additions' | 'removals' | 'text';
+type AriaRelevant =
+  | 'all'
+  | AriaRelevantToken
+  | `${AriaRelevantToken} ${AriaRelevantToken}`
+  | `${AriaRelevantToken} ${AriaRelevantToken} ${AriaRelevantToken}`;
+
 /** The roles of WAI-ARIA 1.2 and of the Digital Publishing module (`doc-*`). */
 export type AriaRole =
   | 'alert'
@@ -428,18 +436,7 @@ export interface AriaAttributes {
   'aria-posinset'?: Attr<Num>;
   'aria-pressed'?: Attr<AriaBool | 'mixed'>;
   'aria-readonly'?: Attr<AriaBool>;
-  'aria-relevant'?: Attr<
-    | 'additions'
-    | 'additions removals'
-    | 'additions text'
-    | 'all'
-    | 'removals'
-    | 'removals additions'
-    | 'removals text'
-    | 'text'
-    | 'text additions'
-    | 'text removals'
-  >;
+  'aria-relevant'?: Attr<AriaRelevant>;
   'aria-required'?: Attr<AriaBool>;
   'aria-roledescription'?: Attr<string>;
   'aria-rowcount'?: Attr<Num>;
@@ -472,7 +469,8 @@ export type GlobalAttributes<E> = Handlers<E> &
     slot?: Attr<string>;
     part?: Attr<string>;
     is?: Attr<string>;
-    role?: Attr<AriaRole>;
+    /** A role, or a list of fallback roles: `doc-footnote listitem`. */
+    role?: Attr<AriaRole | `${AriaRole} ${string}`>;
     title?: Attr<string>;
     lang?: Attr<string>;
     dir?: Attr<'ltr' | 'rtl' | 'auto'>;

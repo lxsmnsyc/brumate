@@ -328,6 +328,10 @@ export const ariaValid: ElementProps<'div'> = {
   'aria-hidden': null,
 };
 export const ariaOther: ElementProps<'div'> = { 'aria-future-thing': 'x', role: 'doc-toc' };
+export const ariaFallbackRole: ElementProps<'li'> = {
+  role: 'doc-footnote listitem',
+  'aria-relevant': 'additions removals text',
+};
 // @ts-expect-error `aria-expanded` is a boolean, not a free string.
 export const ariaBadExpanded: ElementProps<'div'> = { 'aria-expanded': 'yes' };
 // @ts-expect-error `aria-live` is `off`, `polite` or `assertive`.
