@@ -181,7 +181,7 @@ Handlers run as if each element had its own listener. Those wrapped by `capture`
 - A key that an input method gets while it composes text, such as the Enter that ends a word in Japanese, is never prevented, because it belongs to the input method.
 - A key alone is prevented only while Ctrl, Meta and Alt are up, so the shortcuts of the browser, such as Cmd+Left or Alt+Left to go back, keep working. Shift does not count. To prevent a key with a modifier held, name the modifier: `'Mod+ArrowDown'` for Ctrl or Meta, or `'Ctrl+…'`, `'Meta+…'` or `'Alt+…'`. A list that moves focus with Ctrl and an arrow prevents `'Mod+ArrowDown'` too.
 
-A modifier after the event name, as in `onSubmit:prevent=send`, does the same, with a warning that points to the wrapper. It goes in a later version. A modifier on a component is a compile error: the component puts the wrapper on the element that it renders, such as a listbox that prevents the keys it handles.
+A modifier after the event name, as in `onSubmit:prevent=send`, is a compile error that names the wrapper to write. A component takes no modifier either: it puts the wrapper on the element that it renders, such as a listbox that prevents the keys it handles.
 
 ### Cancel an event from a part
 

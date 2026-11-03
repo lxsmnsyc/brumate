@@ -107,8 +107,6 @@ export interface InsertNode extends Range {
   expression: Expression;
 }
 
-export type Modifier = 'prevent' | 'stop' | 'passive' | 'once' | 'capture';
-
 export interface StaticAttribute extends Range {
   kind: 'static';
   name: string;
@@ -127,7 +125,6 @@ export interface EventAttribute extends Range {
   name: string;
   /** The DOM event name, such as `click`. */
   event: string;
-  modifiers: Modifier[];
   handler: Expression;
 }
 

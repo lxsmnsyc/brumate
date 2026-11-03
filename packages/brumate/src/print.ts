@@ -20,14 +20,6 @@ function printAttributes(items: Attribute[]): string {
   return text;
 }
 
-function printModifiers(modifiers: string[]): string {
-  let text = '';
-  for (const modifier of modifiers) {
-    text += `:${modifier}`;
-  }
-  return text;
-}
-
 function printAttribute(item: Attribute): string {
   switch (item.kind) {
     case 'static':
@@ -35,7 +27,7 @@ function printAttribute(item: Attribute): string {
     case 'value':
       return `${item.name}=(${item.value.code})`;
     case 'event':
-      return `${item.name}${printModifiers(item.modifiers)}=(${item.handler.code})`;
+      return `${item.name}=(${item.handler.code})`;
     case 'ref':
       return `ref=$bind(${item.target})`;
     case 'spread':

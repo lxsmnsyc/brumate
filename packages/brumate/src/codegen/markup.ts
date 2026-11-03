@@ -1986,10 +1986,10 @@ export class Emitter {
     return `${event}=$bind#${hops}.${slotIndex(this.plan, binding.declaration)}`;
   }
 
-  private eventEntry({ event, modifiers, handler }: EventAttribute): string {
+  private eventEntry({ event, handler }: EventAttribute): string {
     const site = this.sitesByNode.get(handler.ast)!;
-    // The modifiers of the attribute name, and those of the wrappers of `brumate/events`.
-    const all = [...new Set([...modifiers, ...(site.modifiers ?? [])])];
+    // The modifiers of the wrappers of `brumate/events`.
+    const all = [...new Set(site.modifiers ?? [])];
     return `${[event, ...all].join(':')}=${this.plan.id}#${this.plan.symbols.get(site)}`;
   }
 

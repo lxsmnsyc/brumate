@@ -41,10 +41,25 @@ describe('syntax errors', () => {
       '<p>#defer (later) { x }</p>',
       'The trigger of #defer must be "visible", "idle" or "load" (Test.brm:1:12)',
     ],
-    ['<button onClick:later=go>x</button>', 'Unknown event modifier ":later" (Test.brm:1:9)'],
+    [
+      '<form onSubmit:prevent=save></form>',
+      'Event modifiers in the attribute name were removed. Write onSubmit=(prevent(handler)) with prevent from brumate/events (Test.brm:1:7)',
+    ],
+    [
+      '<window onKeyDown:stop=go />',
+      'Event modifiers in the attribute name were removed. Write onKeyDown=(stop(handler)) with stop from brumate/events (Test.brm:1:9)',
+    ],
+    [
+      '<document onClick:once=go />',
+      'Event modifiers in the attribute name were removed. Write onClick=(once(handler)) with once from brumate/events (Test.brm:1:11)',
+    ],
     [
       '<Item onKeyDown:prevent=go />',
-      'Modifiers apply to elements. Put ":prevent" on the element that the component renders (Test.brm:1:7)',
+      'Event modifiers in the attribute name were removed. Write onKeyDown=(prevent(handler)) with prevent from brumate/events (Test.brm:1:7)',
+    ],
+    [
+      '<button onClick:passive=go>x</button>',
+      'Event modifiers in the attribute name were removed. Write onClick=(handler), since listeners are passive unless a handler prevents (Test.brm:1:9)',
     ],
     [
       '<input onKeydown=go />',
