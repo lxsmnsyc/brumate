@@ -37,9 +37,6 @@ depends_on:
   - on: aria-types
     kind: hard
     why: typed ARIA attributes and roles
-  - on: single-child-blocks
-    kind: hard
-    why: a block body without braces
   - on: static-contexts
     kind: hard
     why: a server-only context ships no live browser code

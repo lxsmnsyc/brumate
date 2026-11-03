@@ -1,7 +1,7 @@
 ---
 id: single-child-blocks
 title: A block body can be one markup child without braces
-status: active
+status: dropped
 priority: must
 type: feature
 outline: false
@@ -15,7 +15,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-02
-spent:
+spent: 177000
 owns: []
 shared:
   - .changeset/*.md
@@ -39,6 +39,8 @@ reserves: []
 provides: []
 depends_on: []
 ---
+
+> Dropped by the maintainer on 2026-11-03 after the single-child-blocks debate (docs/debates/single-child-blocks/debate.md): block bodies keep `#word { }`. PR #445 closed unmerged.
 
 # A block body can be one markup child without braces
 

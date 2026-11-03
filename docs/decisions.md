@@ -155,3 +155,5 @@
 6. Render components on the client, inside blocks that change. Done. See [Render modules](./compiler.md#render-modules).
 7. Add a Vite plugin that serves the modules and answers server function calls. Done. See [Vite](../website/docs/reference-plugin.md).
 8. Add component summaries. Done as a project analysis in the Vite plugin. See [Props across files](./compiler.md#props-across-files).
+
+- A block body keeps its braces, `#word { }`, even when it holds one element. A braceless single child was built (#445) and dropped on 2026-11-03: `#` blocks sit inside markup text, so any rule that lets `#word <` open a block turns some prose into a block, and the narrowest rule found still left a trap and a rule about position and line breaks, to save under 600 characters across the repo. See [the debate](./debates/single-child-blocks/debate.md).
