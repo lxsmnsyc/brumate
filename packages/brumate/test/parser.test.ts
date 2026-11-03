@@ -273,3 +273,73 @@ describe('block bodies without braces', () => {
     expect(file.children.map((child) => child.kind)).toEqual(['if', 'text', 'element']);
   });
 });
+
+describe('block bodies without braces, else and text', () => {
+  /** The kinds of a block's own else body, or undefined. */
+  function elseOf(source: string): string | undefined {
+    const block = parse(source, { filename: 'Test.brm' }).children[0] as {
+      fallback?: { children: { kind: string }[] };
+    };
+    return block.fallback?.children[0]?.kind;
+  }
+
+  it.each([
+    '#for (a of b) #if (c) <p /> #else <q />',
+    '#loading #if (c) <p /> #else <q />',
+    "#client ('visible') #if (c) <p /> #else <q />",
+    "#defer ('visible') #if (c) <p /> #else <q />",
+  ])('%s gives the else to the inner block', (source) => {
+    const block = parse(source, { filename: 'Test.brm' }).children[0] as {
+      fallback?: unknown;
+      body?: { children: { kind: string; fallback?: unknown }[] };
+    };
+    expect(block.fallback).toBeUndefined();
+    expect(block.body?.children[0]?.kind).toBe('if');
+    expect(block.body?.children[0]?.fallback).toBeDefined();
+  });
+
+  it.each([
+    ['#for (a of b) <p /> #else <q />', 'element'],
+    ['#loading <p /> #else <q />', 'element'],
+    ["#client ('visible') <p /> #else <q />", 'element'],
+    ["#defer ('visible') <p /> #else <q />", 'element'],
+  ])('%s has its own else', (source, kind) => {
+    expect(elseOf(source)).toBe(kind);
+  });
+
+  it('rejects an else after a #catch body', () => {
+    expect(() => parse('#try <p /> #catch <q /> #else <r />', { filename: 'Test.brm' })).toThrow(
+      /BRM013/,
+    );
+  });
+
+  it('gives the else to the outer block with braces', () => {
+    const outer = parse('#if (a) { #if (b) <p /> } #else <q />').children[0];
+    if (outer?.kind !== 'if') {
+      throw new Error('Expected an if');
+    }
+    expect(outer.fallback?.children[0]?.kind).toBe('element');
+    const inner = outer.branches[0]!.body.children[0];
+    expect(inner?.kind === 'if' && inner.fallback).toBeUndefined();
+  });
+
+  it('holds a short #if in a #switch case', () => {
+    const block = parse('#switch { #case (1) #if (a) <p /> #else <q /> #default <r /> }')
+      .children[0];
+    if (block?.kind !== 'switch') {
+      throw new Error('Expected a switch');
+    }
+    const inner = block.cases[0]!.body.children[0];
+    expect(inner?.kind === 'if' && inner.fallback).toBeDefined();
+    expect(block.fallback?.children[0]?.kind).toBe('element');
+  });
+
+  it("keeps `use {'#if'} <b>x</b>` as text", () => {
+    const kinds = parse("use {'#if'} <b>x</b>").children.map((child) => child.kind);
+    expect(kinds).toEqual(['text', 'insert', 'text', 'element']);
+  });
+
+  it('does not take a comment as the child', () => {
+    expect(() => parse('#if (a) <!-- c --> <p />', { filename: 'Test.brm' })).toThrow(/BRM044/);
+  });
+});

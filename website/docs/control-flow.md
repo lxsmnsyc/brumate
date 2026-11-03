@@ -356,7 +356,8 @@ A body that is one element, component, dynamic tag or block needs no braces:
 ```
 
 - Text and `{expression}` are not children. After a block header, `{` always opens a braced body, so `#if (ok) {name}` renders the text `name`. Write `#if (ok) <b>{name}</b>` for an insert.
-- A body with a `<script>` or a `#template` needs braces.
+- A body with a `<script>` or a `#template` needs braces. A comment is not the child, so `#if (a) <!-- c --> <p />` is an error: put the comment inside the braces.
+- In markup, `#word` followed by `<`, `#`, `(` or `{` opens a block when `word` is a block keyword. To write such text, insert it: `use {'#if'} <b>x</b>` shows `use #if` and then the element.
 - Blocks nest: `#if (a) #if (b) <p>Both</p>`. An `#else` belongs to the nearest block, so use braces to give it to the outer one.
 - `#switch` keeps its braces around the cases. Each `#case` and `#default` can take one child.
 - The short form compiles to the same code as the braced form.

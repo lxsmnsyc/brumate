@@ -95,4 +95,15 @@ describe('grammar', () => {
     expect(scopeOf(source, 'text')).toBe('');
     expect(scopeOf(source, 'draft')).toBe('meta.tag.brumate meta.embedded.expression.ts');
   });
+
+  it('ends a block header at a short body, and keeps # inside parentheses', () => {
+    const short = '#if (a) <p>x</p> #else #if (b) <q />';
+    expect(scopeOf(short, 'if')).toContain('keyword.control.block.brumate');
+    expect(scopeOf(short, 'p')).toContain('entity.name.tag');
+    const field = '#if (this.#x) <p>x</p>';
+    expect(scopeOf(field, 'p')).toContain('entity.name.tag');
+    expect(tokens(field).filter((token) => token.includes('keyword.control.block'))).toHaveLength(
+      2,
+    );
+  });
 });
