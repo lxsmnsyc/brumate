@@ -230,11 +230,19 @@ export function bindings(
  * is a slot of `scope`, `[scope, slot]` for a slot of another scope, or
  * `[value]` for a value that does not change, such as a literal argument.
  */
-export function cells(scope: Scope, links: unknown[], names: string[]): Record<string, unknown> {
+export function cells(
+  scope: Scope | Record<string, unknown>,
+  links: unknown[] | 0,
+  names: string[],
+): Record<string, unknown> {
+  // A render function passes the cells over its locals as they are.
+  if (links === 0) {
+    return scope as Record<string, unknown>;
+  }
   const result: Record<string, unknown> = {};
   for (const [index, name] of names.entries()) {
     const ref = links[index];
-    let owner = scope;
+    let owner = scope as Scope;
     let slot: number;
     if (typeof ref === 'number') {
       slot = ref;

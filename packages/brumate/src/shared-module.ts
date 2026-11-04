@@ -19,7 +19,7 @@ import { forEachReference, parseModule } from './modules.ts';
 import type { CallName, ModuleInfo, ReactiveModule } from './modules.ts';
 import { children, getPatternNames } from './oxc.ts';
 import type { oxc } from './oxc.ts';
-import { finish } from './sourcemap.ts';
+import { finish, unmarked } from './sourcemap.ts';
 import type { SourceMap } from './sourcemap.ts';
 import { Patch } from './codegen/patch.ts';
 
@@ -245,6 +245,20 @@ export function generateShared(module: ReactiveModule): { code: string; map: Sou
   const usedDeclarations = new Set<string>();
   let usesRuntime = false;
   const body: string[] = [];
+  // Sites with the same names share one list, and sites with the same code share one export.
+  const nameLists = new Map<string, string>();
+  const listUses = new Map<string, number>();
+  const exports = new Map<string, string>();
+  function push(name: string, code: string): void {
+    const key = unmarked(code);
+    const same = exports.get(key);
+    if (same) {
+      body.push(`export const ${name} = ${same};`);
+      return;
+    }
+    exports.set(key, name);
+    body.push(code.replaceAll('$$SITE', name));
+  }
   for (const { site, node, locals } of sites.values()) {
     const patch = new Patch(module.source);
     forEachReference(node, (identifier, shorthand) => {
@@ -285,11 +299,19 @@ export function generateShared(module: ReactiveModule): { code: string; map: Sou
     }
     rewriteMacros(node);
     // The names of the call, built once from the refs that the component passes.
-    const cells = `const $$c: any = $$b.cells($$s, $$k, ${JSON.stringify(site.names)});`;
+    const list = JSON.stringify(site.names);
+    let names = nameLists.get(list);
+    if (!names) {
+      names = `$$n${nameLists.size}`;
+      nameLists.set(list, names);
+    }
+    listUses.set(names, (listUses.get(names) ?? 0) + 1);
+    const cells = `const $$c: any = $$b.cells($$s, $$k, ${names});`;
     if (site.kind === 'expression') {
       const awaits = module.source.slice(node.start, node.end).includes('await');
-      body.push(
-        `export const ${site.name} = ${awaits ? 'async ' : ''}($$s: any, $$k: any[]) => {\n  ${cells}\n  return (${patch.slice(node.start, node.end)});\n};`,
+      push(
+        site.name,
+        `export const $$SITE = ${awaits ? 'async ' : ''}($$s: any, $$k: any[]) => {\n  ${cells}\n  return (${patch.slice(node.start, node.end)});\n};`,
       );
       continue;
     }
@@ -304,10 +326,11 @@ export function generateShared(module: ReactiveModule): { code: string; map: Sou
       fn.body!.type === 'BlockStatement'
         ? `${code.slice(0, brace + 1)}\n  ${cells}${code.slice(brace + 1)}`
         : `{\n  ${cells}\n  return (${code});\n}`;
-    body.push(
+    push(
+      site.name,
       fn.type === 'ArrowFunctionExpression'
-        ? `export const ${site.name} = ${fn.async ? 'async ' : ''}($$s: any, $$k: any[]${params}) => ${block};`
-        : `export ${fn.async ? 'async ' : ''}function${fn.generator ? '*' : ''} ${site.name}($$s: any, $$k: any[]${params}) ${block}`,
+        ? `export const $$SITE = ${fn.async ? 'async ' : ''}($$s: any, $$k: any[]${params}) => ${block};`
+        : `export ${fn.async ? 'async ' : ''}function${fn.generator ? '*' : ''} $$SITE($$s: any, $$k: any[]${params}) ${block}`,
     );
   }
   const self = `./${module.path.split('/').pop()}`;
@@ -348,7 +371,17 @@ export function generateShared(module: ReactiveModule): { code: string; map: Sou
   for (const [specifier, names] of bySpecifier) {
     header.push(`import { ${names.join(', ')} } from ${JSON.stringify(specifier)};`);
   }
-  const marked = [...header, '', ...body, ''].join('\n');
+  // A list that one site uses stays in its place.
+  const lists: string[] = [];
+  let code = body.join('\n');
+  for (const [list, name] of nameLists) {
+    if (listUses.get(name)! > 1) {
+      lists.push(`const ${name} = ${list};`);
+    } else {
+      code = code.replace(`, ${name});`, `, ${list});`);
+    }
+  }
+  const marked = [...header, '', ...lists, code, ''].join('\n');
   return finish(marked, [{ name: module.path, content: module.source }]);
 }
 

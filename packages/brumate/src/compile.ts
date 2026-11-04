@@ -191,13 +191,14 @@ function expand(
   file: SFCFile;
   origin: (offset: number) => Origin;
   modules: ReactiveModule[];
-  calls: ModuleCall[];
+  calls: ModuleCall[][];
 } {
   let file = parse(source, { filename });
   let origin = identity;
   const modules = new Map<string, ReactiveModule>();
-  // The calls that the component itself makes. Their offsets are offsets of `source`.
-  let calls: ModuleCall[] = [];
+  // The calls of each round. Those of round 0 are the calls that the component itself makes, at
+  // offsets of `source`. Those of a later round are at offsets of the source of that round.
+  const calls: ModuleCall[][] = [];
   for (let round = 0; ; round++) {
     let expansion;
     try {
@@ -218,9 +219,7 @@ function expand(
     if (!expansion) {
       return { file, origin, modules: [...modules.values()], calls };
     }
-    if (round === 0) {
-      calls = expansion.calls;
-    }
+    calls.push(expansion.calls);
     if (round === MAX_EXPANSIONS) {
       throw new CompileError(source, filename, [
         {
@@ -248,6 +247,7 @@ function expand(
         call: call?.call ?? (call && { start: call.offset, end: outer(found.call!.end).offset }),
         // Code of a module function that a module function calls, rather than the component.
         nested: round > 0,
+        inner: round > 0 && found.call ? { round, start: found.call.start } : undefined,
       };
     };
     try {
@@ -290,15 +290,20 @@ function isFunction(node: { type: string }): boolean {
 function sharedContext(
   origin: (offset: number) => Origin,
   modules: ReactiveModule[],
-  calls: ModuleCall[],
+  calls: ModuleCall[][],
   path: string,
 ): SharedContext | undefined {
   if (calls.length === 0) {
     return undefined;
   }
-  const byStart = new Map<number, ModuleCall>();
-  for (const call of calls) {
-    byStart.set(call.start, call);
+  // The calls of each round, by the offset of their statement.
+  const byStart: Map<number, ModuleCall>[] = [];
+  for (const round of calls) {
+    const starts = new Map<number, ModuleCall>();
+    for (const call of round) {
+      starts.set(call.start, call);
+    }
+    byStart.push(starts);
   }
   const specifiers: string[] = [];
   for (const module of modules) {
@@ -310,10 +315,14 @@ function sharedContext(
     specifiers,
     find(node) {
       const at = origin(node.start);
-      if (!at.module || at.nested || !at.call) {
+      if (!at.module || !at.call || (at.nested && (!at.inner || process.env.BRM_NO_NESTED))) {
         return undefined;
       }
-      const call = byStart.get(at.call.start);
+      // Nested code has its own call, in a module function that the component calls. Its names
+      // are names of the component too, since the earlier rounds copied that function in.
+      const call = at.inner
+        ? byStart[at.inner.round]?.get(at.inner.start)
+        : byStart[0]?.get(at.call.start);
       const site = sharedSites(at.module).get(at.offset);
       if (!call || call.module !== at.module.path || !site) {
         return undefined;
@@ -444,7 +453,7 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
   for (const module of modules) {
     modulePaths.push(module.path);
   }
-  const render = done(generateRender(file, plan, client.fillOf));
+  const render = done(generateRender(file, plan, client.fillOf, shared));
   return {
     server: server.code,
     client: entry.code,

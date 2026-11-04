@@ -19,6 +19,7 @@ import { tryCatchesClient } from '../graph.ts';
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
+import type { SharedContext } from '../shared-module.ts';
 import { holdsStream, serverFunctionId } from '../plan.ts';
 import { findLoadStarts, hasAwait } from './starts.ts';
 import { cloneLines } from './template.ts';
@@ -233,6 +234,11 @@ export interface EmitterOptions {
    * the rest of it runs in `$$b.wait` when the memo settles.
    */
   waits?: boolean;
+  /**
+   * For the render module: the shared code of module functions. A function that a module
+   * function gave the component calls it, so the browser does not get a copy of its body.
+   */
+  shared?: SharedContext;
 }
 
 /**
@@ -1231,6 +1237,11 @@ export class Emitter {
           continue;
         }
       }
+      const shared = this.sharedFunction(statement);
+      if (shared) {
+        this.line(shared);
+        continue;
+      }
       let code = this.patch.slice(statement.start, statement.end);
       if (index < lastAwait && statement.type === 'VariableDeclaration') {
         if (statement.kind === 'const') {
@@ -1251,6 +1262,80 @@ export class Emitter {
       }
     }
     endRun();
+  }
+
+  /** The indexes of the shared modules that the render calls. */
+  readonly sharedModules: Set<number> = new Set();
+
+  /**
+   * A function that a module function gave the component, as a call of its shared code with
+   * cells over the locals of the render: `function f(...$$a) { return $$m0.s3({ … }, 0, ...$$a); }`.
+   * Undefined for other statements, and for a function whose names the call does not give.
+   */
+  private sharedFunction(statement: oxc.Node): string | undefined {
+    const shared = this.options.shared;
+    if (!shared || this.options.mode !== 'client' || process.env.BRM_NO_RENDER_SHARE) {
+      return undefined;
+    }
+    let name: string;
+    let node: oxc.Node;
+    let kind: string;
+    if (statement.type === 'FunctionDeclaration' && statement.id) {
+      name = statement.id.name;
+      node = statement;
+      kind = 'function';
+    } else if (
+      statement.type === 'VariableDeclaration' &&
+      statement.declarations.length === 1 &&
+      statement.declarations[0]!.id.type === 'Identifier' &&
+      statement.declarations[0]!.init
+    ) {
+      name = statement.declarations[0]!.id.name;
+      node = statement.declarations[0]!.init;
+      kind = statement.kind;
+    } else {
+      return undefined;
+    }
+    const found = shared.find(node);
+    if (!found || found.site.kind !== 'function') {
+      return undefined;
+    }
+    const fn = node as oxc.Function | oxc.ArrowFunctionExpression;
+    if (fn.generator) {
+      return undefined;
+    }
+    // A getter for each name, and a setter for each name that it writes. See `cells`.
+    const writes = new Set(found.site.writes);
+    const cells: string[] = [];
+    for (const field of found.site.names) {
+      const value = found.names.get(field);
+      if (!value) {
+        return undefined;
+      }
+      if ('literal' in value) {
+        cells.push(`get ${field}() { return ${value.literal}; }`);
+        continue;
+      }
+      cells.push(`get ${field}() { return ${value.name}; }`);
+      if (writes.has(field)) {
+        cells.push(`set ${field}($$v) { ${value.name} = $$v; }`);
+      }
+    }
+    const call = `$$m${found.module}.${found.site.name}({ ${cells.join(', ')} }, 0, ...$$a)`;
+    const code =
+      kind === 'function'
+        ? `function ${name}(...$$a) { return ${call}; }`
+        : `${kind} ${name} = (...$$a) => ${call};`;
+    // A short function costs less as a copy than as a call with its cells. Comments and spaces
+    // do not count, since the build removes them.
+    const copied = unmarked(this.patch.slice(statement.start, statement.end))
+      .replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '')
+      .replace(/\s+/g, ' ');
+    if (code.replace(/\s+/g, ' ').length >= copied.length) {
+      return undefined;
+    }
+    this.sharedModules.add(found.module);
+    return code;
   }
 
   /**

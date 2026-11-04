@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CompileError, compile } from '../src/index.ts';
+import { CompileError, compile, generateShared } from '../src/index.ts';
 import type { CompileResult } from '../src/index.ts';
 
 const header =
@@ -147,6 +147,55 @@ describe('reactive logic in modules', () => {
       /const increment\$ = \(\$\$s, \.\.\.\$\$a\) => \$\$m0\.s\d+\(\$\$s, \[\d+\], \.\.\.\$\$a\);/,
     );
     expect(parts).not.toContain('count++');
+  });
+
+  it('calls shared code for a module function that a module function calls', () => {
+    const result = build(
+      '  const { count, increment } = counter(1);',
+      {
+        'counter.brm.ts': `import { base } from './base.brm.ts';\nexport function counter(start: number) {\n  const { value, add } = base(start);\n  return { count: value, increment: add };\n}\n`,
+        'base.brm.ts': `import { $signal } from 'brumate/signals';\nexport function base(start: number) {\n  let value = $signal(start);\n  function add(step: number) {\n    const next = value + step;\n    value = next > 1000 ? 1000 : next;\n  }\n  return { value, add };\n}\n`,
+      },
+      '<button onClick=(() => increment(1))>{count}</button>',
+    );
+    const parts = Object.values(result.parts).join('\n');
+    expect(parts).toContain('./base.brm.ts?brumate-shared');
+    expect(parts).not.toContain('next > 1000');
+  });
+
+  it('calls shared code from the render, with cells over its locals', () => {
+    const result = build(
+      '  const { count, add } = counter(1);',
+      {
+        'counter.brm.ts': `import { $signal } from 'brumate/signals';\nexport function counter(start: number) {\n  let count = $signal(start);\n  function add(step: number) {\n    const next = count + step;\n    count = next > 1000 ? 1000 : next < -1000 ? -1000 : Math.round(next * 100) / 100;\n  }\n  return { count, add };\n}\n`,
+      },
+      '<button onClick=(() => add(1))>{count}</button>',
+    );
+    expect(result.render).toContain('import * as $$m0 from "./counter.brm.ts?brumate-shared";');
+    expect(result.render).toMatch(
+      /function add\(\.\.\.\$\$a\) \{ return \$\$m0\.s\d+\(\{ get count\(\) \{ return count; \}, set count\(\$\$v\) \{ count = \$\$v; \} \}, 0, \.\.\.\$\$a\); \}/,
+    );
+    expect(result.render).not.toContain('next > 1000');
+  });
+
+  it('copies a function into the render when the copy is shorter than the call', () => {
+    const result = build(
+      '  const { count, increment } = counter(1);',
+      { 'counter.brm.ts': counter },
+      '<button onClick=increment>{count}</button>',
+    );
+    expect(result.render).not.toContain('brumate-shared');
+  });
+
+  it('exports one function for sites with the same code, and one list for the same names', () => {
+    const { code } = generateShared({
+      path: '/app/press.brm.ts',
+      source: `import { $signal } from 'brumate/signals';\nexport function press() {\n  let pressed = $signal(false);\n  function up() {\n    pressed = false;\n  }\n  function cancel() {\n    pressed = false;\n  }\n  function down() {\n    pressed = true;\n  }\n  return { pressed, up, cancel, down };\n}\n`,
+    });
+    const names = [...code.matchAll(/export function (s\d+)/g)].map((match) => match[1]!);
+    expect(names).toHaveLength(2);
+    expect(code).toMatch(new RegExp(`export const s\\d+ = ${names[0]};`));
+    expect(code).toContain('const $$n0 = ["pressed"];');
   });
 
   it('reports a local that the function returns under two keys', () => {

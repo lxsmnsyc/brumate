@@ -114,7 +114,10 @@ describe('vite plugin', () => {
 
   it('serves the shared code of a module of reactive logic', async () => {
     const shared = await server.transformRequest('/counting.brm.ts?brumate-shared');
-    expect(shared?.code).toContain('$$b.cells($$s, $$k, ["count"])');
+    // Two sites read `count`, so they share its list. One site reads `count` and `start`.
+    expect(shared?.code).toContain('const $$n0 = ["count"];');
+    expect(shared?.code).toContain('$$b.cells($$s, $$k, $$n0)');
+    expect(shared?.code).toContain('$$b.cells($$s, $$k, ["count", "start"])');
     // Types are removed.
     expect(shared?.code).not.toContain(': any');
   });

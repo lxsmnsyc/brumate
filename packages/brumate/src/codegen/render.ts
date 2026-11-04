@@ -9,6 +9,7 @@ import type { Fill } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
 import { propsType } from './server.ts';
 import { copy } from '../sourcemap.ts';
+import type { SharedContext } from '../shared-module.ts';
 
 // Sites whose reads a render module never runs.
 const SKIPPED_SITES = new Set(['server-function', 'event', 'effect', 'client']);
@@ -162,6 +163,7 @@ export function generateRender(
   file: SFCFile,
   plan: Plan,
   getFill?: (block: Block) => Fill | undefined,
+  shared?: SharedContext,
 ): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
@@ -301,6 +303,7 @@ export function generateRender(
       fills: fill ? fills : undefined,
       hoist,
       waits: true,
+      shared,
     });
     emitter.line(signature);
     emitter.line(`let $$html = '';`);
@@ -337,6 +340,9 @@ export function generateRender(
   }
   moduleBody.push(...templates);
   const { emitter } = emitted;
+  for (const index of emitter.sharedModules) {
+    header.push(`import * as $$m${index} from ${JSON.stringify(shared!.specifiers[index])};`);
+  }
 
   return [...header, ...moduleBody, '', ...emitter.lines, markWithId, ''].join('\n');
 }

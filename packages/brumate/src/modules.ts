@@ -63,6 +63,11 @@ export interface Origin {
   call?: { start: number; end: number };
   /** True for code of a module function that another module function calls. */
   nested?: boolean;
+  /**
+   * For nested code: the round of expansion that copied it, and its own call, in the source
+   * of that round. See `expand` in `compile.ts`.
+   */
+  inner?: { round: number; start: number };
 }
 
 /** The source of a component with its calls of module functions replaced. */
