@@ -6637,6 +6637,74 @@ describe('navigation after a write', () => {
     await waitFor(() => expect(items()).toEqual(['banana']));
     expect(calls).toHaveLength(1);
   });
+
+  it('updates a layout that reads the route with the new page, before the code of the page loads', async () => {
+    history.replaceState(null, '', '/');
+    vi.resetModules();
+    const where = await import(file('where.brm.ts'));
+    const counter = await import(file('counter.brm.ts'));
+    const search = await import(file('search.brm.ts'));
+    const runtime = await import('../src/runtime/server.ts');
+    const request = new Request('http://localhost/');
+    const layout = await runtime.render(where.default, {}, { base: 0, request });
+    const root = Number(/b-next="(\d+)"/.exec(layout.state)![1]);
+    const first = await runtime.render(counter.default, {}, { base: root, route: 'root' });
+    const next = Number(/b-next="(\d+)"/.exec(first.state)![1]);
+    const second = await runtime.render(search.default, {}, { base: next, route: 'root' });
+    const later: string[] = [];
+    for await (const chunk of second.pending) {
+      later.push(chunk);
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<Fetch>(
+        async () =>
+          new Response(
+            `<!doctype html><html><head></head><body>${layout.html}<a class="link" href="/b">B</a>${region('/b', next, second.html)}${second.state}</body></html>${later.join('')}`,
+            { headers: { 'content-type': 'text/html' } },
+          ),
+      ),
+    );
+    show(
+      `${layout.html}<a class="link" href="/b">B</a>${region('/', root, first.html)}${layout.state}${first.state}`,
+    );
+    // The code of the new page loads only when the test lets it.
+    let release: (() => void) | undefined;
+    const held = new Promise<void>((done) => {
+      release = done;
+    });
+    vi.resetModules();
+    const { start } = await import('../src/runtime/loader.ts');
+    stop = start({
+      load: (id) => {
+        const loaded = import(modules.get(id)!);
+        return modules.get(id)!.endsWith('/search.brm.client.ts')
+          ? held.then(() => loaded)
+          : loaded;
+      },
+    });
+
+    expect(text('.where')).toBe('/ - -');
+    click(document.querySelector('button')!);
+    await waitFor(() => expect(text('main p')).toBe('1 / 2'));
+    // A browser runs the state records as navigation inserts them, which starts the code of the
+    // new page loading. The test DOM does not, so an observer runs them.
+    const observer = new MutationObserver(() => {
+      for (const script of document.querySelectorAll('script[b-roots]:not([data-ran])')) {
+        script.setAttribute('data-ran', '');
+        run(script);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    onTestFinished(() => observer.disconnect());
+    document.querySelector<HTMLAnchorElement>('.link')!.click();
+    await waitFor(() => expect(items()).toEqual(['apple', 'apricot', 'banana']));
+    // The layout shows the new path in the frame that shows the new page, while the code of
+    // the page still loads.
+    await new Promise((done) => setTimeout(done, 50));
+    expect(text('.where')).toBe('/b - -');
+    release!();
+  });
 });
 
 describe('unmount', () => {

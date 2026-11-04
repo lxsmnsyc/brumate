@@ -15,7 +15,7 @@ import {
 import type { ScopeId } from '../shared.ts';
 import { findElement } from './blocks.ts';
 import { childrenReady } from './children.ts';
-import { loadModule, loadingCode } from './code.ts';
+import { codeAbove, loadModule } from './code.ts';
 import { fail, reportOnce } from './errors.ts';
 import { call, callNow, setPass } from './references.ts';
 import { afterInsert, descendants, findRoot, resolveScope } from './scopes.ts';
@@ -575,14 +575,14 @@ function trigger(scope: Scope, slot: number): void {
   }
   const id = findRoot(scope).m!;
   const children = childrenReady(scope);
-  if (modules.has(id) && loadingCode.size === 0 && !children) {
+  if (modules.has(id) && codeAbove(scope).length === 0 && !children) {
     pass(() => queueWrite(scope, slot));
     return;
   }
   // The first write to a component loads its update code. Later writes wait in order, and for
-  // the code of the page, which the updates can render and call. The writes of one pass that
-  // wait, such as the props of a child, join its list and run as one pass, so a child computes once.
-  // `waiting` is set only while a pass runs.
+  // the code of the components at the scope and above it, which the updates can render and
+  // call. The writes of one pass that wait, such as the props of a child, join its list and run
+  // as one pass, so a child computes once. `waiting` is set only while a pass runs.
   if (waiting) {
     // Its code starts to load now, so the pass waits no longer than the first write.
     waiting.push([
@@ -602,9 +602,11 @@ function trigger(scope: Scope, slot: number): void {
   }
   const loading = loadModule(id)
     .then(async () => {
-      const waits: unknown[] = [...loadingCode, children];
-      for (const [, , load] of list) {
-        waits.push(load);
+      // Read again once the module has loaded: loads start and end in the meantime, and other
+      // writes of the pass join the list.
+      const waits: unknown[] = [children];
+      for (const [target, , load] of list) {
+        waits.push(...codeAbove(target), load);
       }
       await Promise.allSettled(waits);
       const before = origin;
