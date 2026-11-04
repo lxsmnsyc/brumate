@@ -580,9 +580,9 @@ function trigger(scope: Scope, slot: number): void {
     return;
   }
   // The first write to a component loads its update code. Later writes wait in order, and for
-  // the code of the components at the scope and above it, which the updates can render and call. The writes of one pass that
-  // wait, such as the props of a child, join its list and run as one pass, so a child computes once.
-  // `waiting` is set only while a pass runs.
+  // the code of the components at the scope and above it, which the updates can render and
+  // call. The writes of one pass that wait, such as the props of a child, join its list and run
+  // as one pass, so a child computes once. `waiting` is set only while a pass runs.
   if (waiting) {
     // Its code starts to load now, so the pass waits no longer than the first write.
     waiting.push([
@@ -602,6 +602,8 @@ function trigger(scope: Scope, slot: number): void {
   }
   const loading = loadModule(id)
     .then(async () => {
+      // Read again once the module has loaded: loads start and end in the meantime, and other
+      // writes of the pass join the list.
       const waits: unknown[] = [children];
       for (const [target, , load] of list) {
         waits.push(...codeAbove(target), load);

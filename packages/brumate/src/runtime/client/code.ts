@@ -61,6 +61,10 @@ export function loadComponent(id: string): void {
  * The code that still loads for the components at a scope and above it. An update of the scope
  * renders the templates and calls the function props of those components, never the code of a
  * component below it, so a layout that stays updates while the code of a new page loads.
+ *
+ * The walk is the one of contexts. Children that a component C inserted go to C through `t`,
+ * and C goes to the parent P that wrote the children through `o`, so the code of P, which
+ * the templates and function props of the children come from, is on the walk too.
  */
 export function codeAbove(scope: Scope): Promise<unknown>[] {
   const waits: Promise<unknown>[] = [];
