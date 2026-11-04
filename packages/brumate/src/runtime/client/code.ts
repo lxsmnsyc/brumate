@@ -2,7 +2,7 @@
 
 import type { Handler } from './references.ts';
 import { loading, modules, options, valueRenders } from './state.ts';
-import type { ClientModule } from './state.ts';
+import type { ClientModule, Scope } from './state.ts';
 
 export function loadModule(id: string): Promise<ClientModule> {
   let promise = loading.get(id);
@@ -32,6 +32,9 @@ export function isTemplate(ref: string): boolean {
  */
 export const loadingCode: Set<Promise<unknown>> = new Set();
 
+/** The same loads as `loadingCode`, by the ID of the component. */
+const loadingComponents = new Map<string, Promise<unknown>>();
+
 /** The components whose code loads, or has loaded, with the page. */
 export const pageComponents: Set<string> = new Set();
 
@@ -46,8 +49,35 @@ export function loadComponent(id: string): void {
   // handler or an update needs it.
   const code: Promise<unknown> = loadModule(id)
     .catch(() => {})
-    .finally(() => loadingCode.delete(code));
+    .finally(() => {
+      loadingCode.delete(code);
+      loadingComponents.delete(id);
+    });
   loadingCode.add(code);
+  loadingComponents.set(id, code);
+}
+
+/**
+ * The code that still loads for the components at a scope and above it. An update of the scope
+ * renders the templates and calls the function props of those components, never the code of a
+ * component below it, so a layout that stays updates while the code of a new page loads.
+ */
+export function codeAbove(scope: Scope): Promise<unknown>[] {
+  const waits: Promise<unknown>[] = [];
+  if (loadingComponents.size === 0) {
+    return waits;
+  }
+  for (
+    let current: Scope | undefined = scope;
+    current;
+    current = current.t ?? current.p ?? current.o
+  ) {
+    const code = current.m === undefined ? undefined : loadingComponents.get(current.m);
+    if (code) {
+      waits.push(code);
+    }
+  }
+  return waits;
 }
 
 /** Resolves when the code of the components on the page has loaded. */
