@@ -1,6 +1,6 @@
 {
   "name": "@brumate/typescript-plugin",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "TypeScript server plugin for .brm files",
   "homepage": "https://github.com/lxsmnsyc/brumate",
   "bugs": "https://github.com/lxsmnsyc/brumate/issues",
