@@ -35,7 +35,8 @@
   description="Unstyled, accessible parts for brumate pages. The server renders them, the browser keeps their state, and a part you do not render ships nothing."
   path="ui"
 />
-<main class="landing">
+<!-- The layout shows no sidebar beside a root with data-bare. -->
+<main class="landing" data-bare>
   <section class="hero">
     <div class="copy">
       <p class="eyebrow">@brumate/ui</p>
