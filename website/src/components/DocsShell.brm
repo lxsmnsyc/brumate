@@ -3,12 +3,11 @@
 
   // The sidebar of a section of the docs, the docs of brumate or the parts of @brumate/ui. It is
   // in a layout, so it stays when a link loads another page, with its scroll position.
-  const { section, sections, label, bare = false, children } = $props<{
+  // A page without the sidebar, such as the landing page of a section, has `data-bare` on its root.
+  const { section, sections, label, children } = $props<{
     section: 'docs' | 'ui';
     sections: { title: string; pages: { slug: string; title: string }[] }[];
     label: string;
-    /** A page without the sidebar, such as the landing page of a section. */
-    bare?: boolean;
     children?: unknown;
   }>();
   const route = $route();
@@ -61,11 +60,11 @@
 </script>
 
 
-<div class={ docs: true, bare }>
-  <details class="sidebar-toggle" hidden=bare ref=$bind(menu)>
+<div class="docs">
+  <details class="sidebar-toggle" ref=$bind(menu)>
     <summary>Menu</summary>
   </details>
-  <nav class="sidebar" hidden=bare aria-label=label ref=$bind(sidebar)>
+  <nav class="sidebar" aria-label=label ref=$bind(sidebar)>
     <span class="sidebar-marker" aria-hidden="true" ref=$bind(marker)></span>
     #for (section of sections by section.title) {
       <p class="sidebar-title">{section.title}</p>
@@ -94,13 +93,17 @@
     padding: 0 1.5rem;
   }
 
-  .docs.bare {
+  /*
+    CSS hides the sidebar, not a prop of the layout. The layout stays when a link loads another
+    page, and the new page shows before the client updates the layout.
+  */
+  :global(.docs:has(> [data-bare])) {
     display: block;
     max-width: none;
     padding: 0;
   }
 
-  .docs.bare > [hidden] {
+  :global(.docs:has(> [data-bare]) > :is(.sidebar, .sidebar-toggle)) {
     display: none !important;
   }
 
