@@ -26,6 +26,7 @@
     $props,
     $setContext,
     $signal,
+    $store,
   } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
@@ -74,7 +75,8 @@
   let { value = '' } = $props<ColorSwatchPickerProps>();
 
   // Inside a ColorPicker, a list without a `value` shows the color of the picker and writes it.
-  const picker = $getContext(ColorPickerContext);
+  const given = $getContext(ColorPickerContext);
+  const picker = $store(given.state);
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
@@ -107,7 +109,7 @@
     // A disabled item is never selected.
     if (item?.getAttribute('aria-disabled') !== 'true' && text && tryParseColor(text)) {
       if (picker && !passed) {
-        picker.setValue(parseColor(text), text);
+        given.setValue?.(parseColor(text), text);
       } else {
         value = text;
       }

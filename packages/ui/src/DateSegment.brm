@@ -9,7 +9,7 @@
 </script>
 
 <script>
-  import { $getContext, $id, $props } from 'brumate/signals';
+  import { $getContext, $id, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { DateFieldContext, PAGE_STEP, SEGMENT_NAMES, focusSegment } from './segments.ts';
 
@@ -29,7 +29,8 @@
    */
   const { segment, ...rest } = $props<DateSegmentProps>();
 
-  const field = $getContext(DateFieldContext);
+  const given = $getContext(DateFieldContext);
+  const field = $store(given.state);
   const id = $id();
 
   /** The part that this segment edits. */
@@ -54,22 +55,22 @@
     }
     switch (event.key) {
       case 'ArrowUp':
-        field.step(type, 1);
+        given.step?.(type, 1);
         return;
       case 'ArrowDown':
-        field.step(type, -1);
+        given.step?.(type, -1);
         return;
       case 'PageUp':
-        field.step(type, PAGE_STEP[type]);
+        given.step?.(type, PAGE_STEP[type]);
         return;
       case 'PageDown':
-        field.step(type, -PAGE_STEP[type]);
+        given.step?.(type, -PAGE_STEP[type]);
         return;
       case 'Home':
-        field.jump(type, 'min');
+        given.jump?.(type, 'min');
         return;
       case 'End':
-        field.jump(type, 'max');
+        given.jump?.(type, 'max');
         return;
       default:
         return;
@@ -84,13 +85,13 @@
       return;
     }
     if (event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward') {
-      if (field.erase(type)) {
+      if (given.erase?.(type)) {
         move(element, -1);
       }
       return;
     }
     for (const char of event.data ?? '') {
-      if (field.type(type, char)) {
+      if (given.type?.(type, char)) {
         move(element, 1);
         return;
       }
@@ -106,7 +107,7 @@
   function focusOut(event: FocusEvent & { currentTarget: HTMLElement }) {
     event.currentTarget.removeAttribute('data-focused');
     event.currentTarget.removeAttribute('data-focus-visible');
-    field?.settle();
+    given.settle?.();
   }
 
   // Only a mouse or a pen hovers: a finger that taps is no hover.

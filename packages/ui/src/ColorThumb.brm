@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $getContext, $props } from 'brumate/signals';
+  import { $getContext, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { swatchBackground, tryParseColor, formatColor } from './color.ts';
   import { ColorThumbContext } from './color-thumb.ts';
@@ -28,7 +28,8 @@
    */
   const { children, ...rest } = $props<ColorThumbProps>();
 
-  const thumb = $getContext(ColorThumbContext);
+  const given = $getContext(ColorThumbContext);
+  const thumb = $store(given.state);
 
   function color(css: string | undefined): string {
     const parsed = css ? tryParseColor(css) : undefined;
@@ -41,7 +42,7 @@
     }
     const element = event.currentTarget;
     try {
-      thumb.onInputChange(index, Number(element.value));
+      given.onInputChange?.(index, Number(element.value));
     } finally {
       // A setter that refuses or throws leaves the old value, so the input goes back to it once
       // the part has drawn.
@@ -67,8 +68,8 @@
     ) {
       return;
     }
-    thumb.onInputKey?.(index, event.key, event.shiftKey);
-    thumb.onChangeEnd();
+    given.onInputKey?.(index, event.key, event.shiftKey);
+    given.onChangeEnd?.();
   }
 
   // A press with Alt, Ctrl or Meta moves nothing.
@@ -81,7 +82,7 @@
       !event.ctrlKey &&
       !event.metaKey
     ) {
-      thumb.onPress(event);
+      given.onPress?.(event);
     }
   }
 
@@ -96,7 +97,7 @@
         }
       }
     }
-    thumb?.onFocusChange(true, target.matches?.(':focus-visible') ?? false, index);
+    given.onFocusChange?.(true, target.matches?.(':focus-visible') ?? false, index);
   }
 
   // The focus that moves from one input of the thumb to the other is not leaving it.
@@ -105,7 +106,7 @@
     if (next && event.currentTarget.contains(next)) {
       return;
     }
-    thumb?.onFocusChange(false, false, -1);
+    given.onFocusChange?.(false, false, -1);
   }
 </script>
 
@@ -143,7 +144,7 @@
       aria-valuetext=(item.valueText)
       class="input"
       onInput=((event) => input(event, index))
-      onChange=(() => thumb?.onChangeEnd())
+      onChange=(() => given.onChangeEnd?.())
       onKeyDown=(prevent((event: KeyboardEvent) => keyAll(event, index), 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'))
     >
   }

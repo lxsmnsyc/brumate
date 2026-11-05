@@ -2,7 +2,9 @@
 // Dates are ISO strings, such as `2026-10-25`, since the page state
 // cannot hold the classes of `@internationalized/date`.
 import { createContext } from 'brumate/context';
+import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 import {
   DateFormatter,
   endOfMonth,
@@ -45,15 +47,6 @@ export interface CalendarState {
    * range, or the range from the first date of a range to the date under the pointer or focus.
    */
   selection: [DateString, DateString] | null;
-  /** In a RangeCalendar, after the first press of a range: the dates show the range to `date`. */
-  highlight: (date: DateString) => void;
-  /** In a RangeCalendar, drops the first date of a range that is not done. */
-  cancel: () => void;
-  /** In a RangeCalendar, a press of the pointer on a date starts a range, which a release on another date ends. */
-  pressStart: (date: DateString, event: PointerEvent) => void;
-  pressEnd: (date: DateString) => void;
-  /** True for a click that ends the press that started a range, which selects nothing more. */
-  startedBy: (date: DateString) => boolean;
   /** True while focus is in the grid, so the focused date shows `data-focused`. */
   isFocused: boolean;
   /** The day that starts a week, or that of the locale. */
@@ -87,6 +80,19 @@ export interface CalendarState {
   today: DateString;
   /** The words of the labels, in the language of the calendar. */
   strings: CalendarStrings | null;
+}
+
+/** What a Calendar runs for its heading, grids and cells. The handlers never change. */
+export interface CalendarHandlers {
+  /** In a RangeCalendar, after the first press of a range: the dates show the range to `date`. */
+  highlight: (date: DateString) => void;
+  /** In a RangeCalendar, drops the first date of a range that is not done. */
+  cancel: () => void;
+  /** In a RangeCalendar, a press of the pointer on a date starts a range, which a release on another date ends. */
+  pressStart: (date: DateString, event: PointerEvent) => void;
+  pressEnd: (date: DateString) => void;
+  /** True for a click that ends the press that started a range, which selects nothing more. */
+  startedBy: (date: DateString) => boolean;
   isDateUnavailable?: (date: DateString) => boolean;
   /** Moves focus to a date, and moves the visible months to show it. */
   focusDate: (date: DateString) => void;
@@ -100,34 +106,47 @@ export interface CalendarState {
   selectFocused: () => void;
 }
 
+/** What a Calendar gives: the store of its state, and its handlers. Outside a Calendar there is
+ * no handler. */
+export interface CalendarGiven extends Partial<CalendarHandlers> {
+  state: StoreLike<CalendarState | null>;
+}
+
 /**
  * What a DatePicker or a DateRangePicker gives the Calendar or the RangeCalendar in its popover:
  * the value that it shows, and the function that takes a date or a range and closes the popover.
  */
 export interface DatePickerState {
   value: DateString | DateRange | null;
-  select: (value: DateString | DateRange) => void;
   minValue?: DateString;
   maxValue?: DateString;
-  isDateUnavailable?: (date: DateString, anchor?: DateString | null) => boolean;
   /** The date that the Calendar shows first when there is no value. */
   placeholderValue?: DateString;
   isDisabled?: boolean;
   isReadOnly?: boolean;
 }
 
-export const DatePickerContext: Context<DatePickerState | null> =
-  createContext<DatePickerState | null>('brumate-ui:date-picker', null);
+/** What a DatePicker gives: the store of its state, and its handlers. */
+export interface DatePickerGiven {
+  state: StoreLike<DatePickerState | null>;
+  select?: (value: DateString | DateRange) => void;
+  isDateUnavailable?: (date: DateString, anchor?: DateString | null) => boolean;
+}
 
-export const CalendarContext: Context<CalendarState | null> = createContext<CalendarState | null>(
+export const DatePickerContext: Context<DatePickerGiven> = createContext<DatePickerGiven>(
+  'brumate-ui:date-picker',
+  { state: store(null) },
+);
+
+export const CalendarContext: Context<CalendarGiven> = createContext<CalendarGiven>(
   'brumate-ui:calendar',
-  null,
+  { state: store(null) },
 );
 
 /** The month that a CalendarGrid shows, so its cells know the dates outside it. */
-export const CalendarGridContext: Context<{ start: DateString } | null> = createContext<{
-  start: DateString;
-} | null>('brumate-ui:calendar-grid', null);
+export const CalendarGridContext: Context<StoreLike<{ start: DateString } | null>> = createContext<
+  StoreLike<{ start: DateString } | null>
+>('brumate-ui:calendar-grid', store(null));
 
 export function toDate(value: DateString): CalendarDate {
   return parseDate(value);

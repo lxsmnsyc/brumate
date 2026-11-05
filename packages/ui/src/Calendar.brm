@@ -45,7 +45,7 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import {
     CalendarContext,
     DatePickerContext,
@@ -62,6 +62,7 @@
     unitDuration,
     watchToday,
   } from './calendar.ts';
+  import type { CalendarState } from './calendar.ts';
   import { DateStringsContext } from './date-strings.ts';
   import { ButtonContext, TextContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
@@ -109,7 +110,8 @@
   let { value = null } = $props<CalendarProps>();
   // In a DatePicker, the picker holds the value, and a pick goes to it. The limits of the picker
   // apply when the Calendar has none of its own.
-  const picker = $getContext(DatePickerContext);
+  const pickerGiven = $getContext(DatePickerContext);
+  const picker = $store(pickerGiven.state);
   const locale = $getContext(LocaleContext);
   const timeZone = ownTimeZone ?? locale.timeZone;
   const minValue = $memo(ownMinValue ?? picker?.minValue);
@@ -293,7 +295,7 @@
    * gets the first date of a range that is not done.
    */
   function isDateUnavailable(date: DateString): boolean {
-    return (ownUnavailable ?? picker?.isDateUnavailable)?.(date, anchor) ?? false;
+    return (ownUnavailable ?? pickerGiven?.isDateUnavailable)?.(date, anchor) ?? false;
   }
 
   /** The first date of a value: the date, or the start of the range. */
@@ -351,7 +353,7 @@
       hovered = null;
       const next = { start: from, end: to };
       if (picker) {
-        picker.select(next);
+        pickerGiven.select?.(next);
         return;
       }
       value = next;
@@ -359,7 +361,7 @@
       return;
     }
     if (picker) {
-      picker.select(date);
+      pickerGiven.select?.(date);
       return;
     }
     if (value !== date) {
@@ -394,12 +396,33 @@
     }
   });
 
-  $setContext(CalendarContext, {
+  const calendarState = $memo<CalendarState>({
     id,
     locale: locale.locale,
     direction: locale.direction,
     value: typeof current === 'string' ? current : null,
     selection,
+    isFocused,
+    firstDayOfWeek,
+    errorId,
+    available,
+    autoFocus: picker !== null,
+    focusedDate: focusedValue,
+    start,
+    end,
+    visibleDuration,
+    minValue,
+    maxValue,
+    isDisabled,
+    isReadOnly,
+    isInvalid: invalid,
+    ariaLabel,
+    label,
+    today,
+    strings,
+  });
+  $setContext(CalendarContext, {
+    state: $toStore(calendarState),
     highlight: (date: DateString) => {
       // The date under the pointer takes the focus too.
       if (anchor !== null) {
@@ -432,29 +455,11 @@
       }
       return false;
     },
-    isFocused,
-    firstDayOfWeek,
-    errorId,
-    available,
-    autoFocus: picker !== null,
     cancel: () => {
       anchor = null;
       hovered = null;
       pressedStart = null;
     },
-    focusedDate: focusedValue,
-    start,
-    end,
-    visibleDuration,
-    minValue,
-    maxValue,
-    isDisabled,
-    isReadOnly,
-    isInvalid: invalid,
-    ariaLabel,
-    label,
-    today,
-    strings,
     isDateUnavailable,
     focusDate,
     cellFocused,

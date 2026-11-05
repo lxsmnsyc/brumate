@@ -34,6 +34,7 @@
 <script>
   import { $bind, $getContext, $id, $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { DatePickerContext } from './calendar.ts';
+  import type { DatePickerState } from './calendar.ts';
   import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
   import { DateStringsContext } from './date-strings.ts';
   import DateField from './DateField.brm';
@@ -124,16 +125,15 @@
     placement: 'bottom start',
     labelledBy: `${triggerId} ${labelId}`,
   });
-  $setContext(DatePickerContext, {
+  const pickerState = $memo<DatePickerState>({
     value,
-    select,
     minValue,
     maxValue,
-    isDateUnavailable,
     placeholderValue,
     isDisabled,
     isReadOnly,
   });
+  $setContext(DatePickerContext, { state: $toStore(pickerState), select, isDateUnavailable });
 </script>
 
 <DateField

@@ -286,25 +286,35 @@ export interface ColorSwatchState {
   color: string;
 }
 
-export const ColorSwatchContext: Context<ColorSwatchState | null> =
-  createContext<ColorSwatchState | null>('brumate-ui:color-swatch', null);
+export const ColorSwatchContext: Context<StoreLike<ColorSwatchState | null>> = createContext<
+  StoreLike<ColorSwatchState | null>
+>('brumate-ui:color-swatch', store(null));
 
 /**
- * What a ColorPicker gives the color parts inside it: its color, and how to change it. A part
- * that the caller gave a `value` keeps its own.
+ * What a ColorPicker gives the color parts inside it: its color. A part that the caller gave a
+ * `value` keeps its own.
  */
 export interface ColorPickerState {
   /** The color as text, in the format of the caller. */
   value: string;
   /** The color at full precision, which the parts edit. It follows `value` when that changes. */
   color: Color;
-  /**
-   * Sets the color. The picker writes it to `value` in the format of `value`, only when that is
-   * another color, or writes `text` instead when it is given.
-   */
-  /** Writes the color, and gives the color that the picker shows after the write. */
-  setValue: (color: Color, text?: string) => Color;
 }
 
-export const ColorPickerContext: Context<ColorPickerState | null> =
-  createContext<ColorPickerState | null>('brumate-ui:color-picker', null);
+/** What a ColorPicker gives: the store of its color, and how to change it. */
+export interface ColorPickerGiven {
+  state: StoreLike<ColorPickerState | null>;
+  /**
+   * Sets the color. The picker writes it to `value` in the format of `value`, only when that is
+   * another color, or writes `text` instead when it is given. It gives the color that the picker
+   * shows after the write.
+   */
+  setValue?: (color: Color, text?: string) => Color;
+}
+
+const noPicker: ColorPickerGiven = { state: store(null) };
+
+export const ColorPickerContext: Context<ColorPickerGiven> = createContext<ColorPickerGiven>(
+  'brumate-ui:color-picker',
+  noPicker,
+);
