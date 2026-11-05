@@ -1,7 +1,7 @@
 <script module>
   import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
-  import type { Key } from './collection.ts';
+  import type { CollectionFocus, Key, ListBoxGiven } from './collection.ts';
 
   export interface ComboBoxOwnProps {
     /** The name that sends the value with the form. */
@@ -60,6 +60,7 @@
     $store,
     $toStore,
   } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
     CollectionFocusContext,
@@ -478,18 +479,21 @@
     isNonModal: true,
     autoFocus: false,
   });
-  $setContext(ListBoxGivenContext, {
+  const listGiven = $memo<ListBoxGiven>({
     selectedKeys: selectedKey === null ? [] : [selectedKey],
     labelledBy: labelId,
-    select,
   });
+  $setContext(ListBoxGivenContext, { state: $toStore(listGiven), select });
   // An Autocomplete around names its own collection, not the list of the ComboBox.
-  $setContext(FieldInputContext, null);
-  $setContext(CollectionFocusContext, {
+  $setContext(FieldInputContext, store(null));
+  const focusGiven = $memo<CollectionFocus>({
     id: listId,
     activeKey,
-    setActive: (key: Key) => activate(key),
     filterText: isOpen ? filterText : undefined,
+  });
+  $setContext(CollectionFocusContext, {
+    state: $toStore(focusGiven),
+    setActive: (key: Key) => activate(key),
     filtered,
   });
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });

@@ -2,7 +2,7 @@
   import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { DragItem, DropTarget, ReorderEvent } from './drop.ts';
-  import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import type { Key, ListBoxState, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
 
   export interface GridListOwnProps<V extends { id: Key } = { id: Key }, T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
@@ -53,7 +53,7 @@
 </script>
 
 <script generics="V extends { id: Key }, T extends AsTarget = 'div'">
-  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ROWS_TYPE, setDragData } from './drop.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
@@ -472,20 +472,18 @@
   }, 'visible');
 
   // The rows read the selection from the state of a ListBox, which they share with its options.
-  $setContext(ListBoxContext, {
+  const listState = $memo<ListBoxState>({
     selectionMode,
     selectionBehavior,
     selectedKeys,
     disabledKeys,
-    select,
-    action,
     hasAction,
     isDraggable,
     dragging,
     dropTarget,
     isReorderable: hasReorder,
-    startDrag,
   });
+  $setContext(ListBoxContext, { state: $toStore(listState), select, action, startDrag });
 
   function findRow(target: EventTarget | null) {
     const element = ref as HTMLElement | undefined;

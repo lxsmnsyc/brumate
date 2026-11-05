@@ -27,7 +27,7 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $isPassed, $memo, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $isPassed, $memo, $props, $setContext, $store } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
   import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
   import { DEFAULT_SLOT } from './slots.ts';
@@ -58,7 +58,8 @@
   } = $props<GridListItemProps<T>>();
   let { ref } = $props<GridListItemOwnProps<T>>();
 
-  const list = $getContext(ListBoxContext);
+  const listGiven = $getContext(ListBoxContext);
+  const list = $store(listGiven.state);
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.
   const acts = $isPassed(onAction);
   const mode = $memo(list?.selectionMode ?? 'none');
@@ -72,7 +73,7 @@
     isReadOnly: false,
     isInvalid: false,
     isRequired: false,
-    toggle: () => list?.select(id, { shift: false, toggle: true }),
+    toggle: () => listGiven.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
 
@@ -82,10 +83,10 @@
     }
     if (mode === 'none') {
       onAction?.();
-      list.action(id);
+      listGiven.action!(id);
       return;
     }
-    list.select(id, {
+    listGiven.select!(id, {
       shift: event.shiftKey,
       toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
     });
@@ -150,7 +151,7 @@
       drag: {
         'aria-label': textValue ? `Drag ${textValue}` : 'Drag',
         isDisabled: disabled || !list?.isReorderable,
-        onPress: () => list?.startDrag?.(id),
+        onPress: () => listGiven.startDrag?.(id),
       },
     },
   });

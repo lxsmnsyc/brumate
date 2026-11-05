@@ -47,8 +47,11 @@
     $props,
     $setContext,
     $signal,
+    $store,
+    $toStore,
     $untrack,
   } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
     CollectionFocusContext,
@@ -66,6 +69,7 @@
   import { DialogContext, FieldInputContext } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import { MENU_ITEMS, MenuContext, MenuTriggerContext, SubmenuContext } from './menu.ts';
+  import type { MenuState } from './menu.ts';
 
   /**
    * A list of actions or options. It opens in a Popover from a
@@ -99,9 +103,11 @@
   let { selectedKeys = [] } = $props<MenuOwnProps<T>>();
   let { ref } = $props<MenuOwnProps<T>>();
 
-  const trigger = $getContext(MenuTriggerContext);
+  const triggerGiven = $getContext(MenuTriggerContext);
+  const trigger = $store(triggerGiven.state);
   // A field around the menu, such as of an Autocomplete, keeps focus and can filter the items.
-  const field = $getContext(CollectionFocusContext);
+  const fieldGiven = $getContext(CollectionFocusContext);
+  const field = $store(fieldGiven.state);
   const dialog = $getContext(DialogContext);
   const locale = $getContext(LocaleContext);
   const menuId = $id();
@@ -136,22 +142,27 @@
 
   function closeAll() {
     onClose?.();
-    trigger?.closeAll();
+    if (trigger) {
+      triggerGiven.closeAll!();
+    }
   }
 
-  $setContext(MenuContext, {
+  const menuState = $memo<MenuState>({
     selectionMode,
     selectedKeys,
     disabledKeys,
     focusedId,
+    activeKey: field?.activeKey,
+  });
+  $setContext(MenuContext, {
+    state: $toStore(menuState),
     action,
     closeAll,
-    activeKey: field?.activeKey,
-    setActive: field?.setActive,
+    setActive: fieldGiven.setActive,
   });
   // The collections inside, such as of a submenu, have fields of their own.
-  $setContext(CollectionFocusContext, null);
-  $setContext(FieldInputContext, null);
+  $setContext(CollectionFocusContext, { state: store(null) });
+  $setContext(FieldInputContext, store(null));
 
   // A field around the menu shows only the items that match its text: when the menu is on the
   // page, and each time the text changes.
@@ -159,7 +170,7 @@
     const text = field?.filterText;
     const element = ref as HTMLElement | undefined;
     if (text !== undefined && element) {
-      field!.filtered?.(filterItems(element, text, field!.filter, MENU_ITEMS));
+      fieldGiven.filtered?.(filterItems(element, text, fieldGiven.filter, MENU_ITEMS));
     }
   }
   $client(() => applyFilter(), 'idle');
@@ -168,7 +179,7 @@
     $untrack(applyFilter());
   });
   // The items of this menu do not open the submenu of a trigger around it.
-  $setContext(SubmenuContext, null);
+  $setContext(SubmenuContext, { state: store(null) });
 
   function focused(event: FocusEvent) {
     const element = ref as HTMLElement | undefined;

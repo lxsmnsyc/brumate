@@ -10,7 +10,7 @@
 </script>
 
 <script>
-  import { $getContext, $props } from 'brumate/signals';
+  import { $getContext, $props, $store } from 'brumate/signals';
   import { TableContext, TableRowContext } from './table.ts';
 
   /**
@@ -20,7 +20,8 @@
    */
   const { textValue, children, ...rest } = $props<CellProps>();
 
-  const table = $getContext(TableContext);
+  const tableGiven = $getContext(TableContext);
+  const table = $store(tableGiven.state);
   const row = $getContext(TableRowContext);
   // The place of the cell in its row, which is the column that it is in.
   const index = row ? row.cells.count++ : 0;

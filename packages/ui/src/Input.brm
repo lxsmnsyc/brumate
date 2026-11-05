@@ -26,7 +26,7 @@
   const handlers = $getContext(InputContext);
   const context = $store(handlers.props);
   // The attributes of a part around the field, such as an Autocomplete.
-  const outer = $getContext(FieldInputContext);
+  const outer = $store(FieldInputContext);
   const outerAttributes = $memo(outer ?? {});
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(attributes.disabled ?? rest.disabled));

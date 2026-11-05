@@ -32,7 +32,7 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $id, $isPassed, $memo, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $store } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { ListBoxContext, keyAttribute } from './collection.ts';
@@ -60,7 +60,8 @@
   } = $props<ListBoxItemProps<T>>();
   let { ref } = $props<ListBoxItemOwnProps<T>>();
 
-  const list = $getContext(ListBoxContext);
+  const listGiven = $getContext(ListBoxContext);
+  const list = $store(listGiven.state);
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.
   const acts = $isPassed(onAction);
   const optionId = $id();
@@ -86,10 +87,10 @@
     }
     if (mode === 'none') {
       onAction?.();
-      list.action(id);
+      listGiven.action!(id);
       return;
     }
-    list.select(id, {
+    listGiven.select!(id, {
       shift: event.shiftKey,
       toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
     });
@@ -119,7 +120,7 @@
     () => {},
     () => {},
     () => {},
-    () => list?.setActive?.(id),
+    () => listGiven.setActive?.(id),
     () => {},
     () => {},
     () => {},

@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $getContext, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $props, $setContext, $store } from 'brumate/signals';
   import { CheckboxGroupContext } from './contexts.ts';
   import { TableContext } from './table.ts';
 
@@ -19,7 +19,8 @@
    */
   const { children, ...rest } = $props<TableHeaderProps>();
 
-  const table = $getContext(TableContext);
+  const tableGiven = $getContext(TableContext);
+  const table = $store(tableGiven.state);
 
   $setContext(CheckboxGroupContext, {
     value: table?.selectAll.all ? [''] : [],
@@ -28,7 +29,7 @@
     isReadOnly: false,
     isInvalid: false,
     isRequired: false,
-    toggle: () => table?.toggleAll(),
+    toggle: () => tableGiven.toggleAll?.(),
     onInvalid: () => {},
   });
 </script>

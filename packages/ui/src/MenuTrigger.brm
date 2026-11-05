@@ -1,7 +1,7 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
   import type { PressEvent } from './events.ts';
-  import type { FocusStrategy } from './menu.ts';
+  import type { FocusStrategy, MenuTriggerState } from './menu.ts';
 
   export interface MenuTriggerProps {
     /** Runs with each change of whether the menu is open. */
@@ -14,7 +14,7 @@
 </script>
 
 <script>
-  import { $id, $props, $setContext, $signal } from 'brumate/signals';
+  import { $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, OverlayTriggerContext } from './contexts.ts';
   import { MenuTriggerContext } from './menu.ts';
@@ -77,12 +77,8 @@
     onPress: pressed,
   });
   $setContext(OverlayTriggerContext, { isOpen, triggerId, overlayId, open, close });
-  $setContext(MenuTriggerContext, {
-    triggerId,
-    focusStrategy,
-    closeAll: close,
-    isSubmenu: false,
-  });
+  const menuTrigger = $memo<MenuTriggerState>({ triggerId, focusStrategy, isSubmenu: false });
+  $setContext(MenuTriggerContext, { state: $toStore(menuTrigger), closeAll: close });
 </script>
 
 <div style="display: contents" onKeyDown=(prevent(keyDown, 'ArrowDown', 'ArrowUp'))>{children}</div>

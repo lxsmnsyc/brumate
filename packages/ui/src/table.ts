@@ -1,6 +1,8 @@
 // The state that the parts of a Table share: its columns, its sort, and the cells of each row.
 import { createContext } from 'brumate/context';
+import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 import type { Key } from './collection.ts';
 
 /** The column that a Table is sorted by, and the direction. */
@@ -15,26 +17,30 @@ export interface TableColumn {
   isRowHeader: boolean;
 }
 
-/** What a Table gives its parts. */
+/** What a Table gives its parts. It changes, so it is in a store. */
 export interface TableState {
   /** The columns, in order. Each Column adds itself as it renders, before the rows. */
   columns: TableColumn[];
   sortDescriptor: SortDescriptor | null;
-  /** Sorts by a column: ascending, or descending when it is sorted ascending already. */
-  sort: (column: Key) => void;
   /** Whether every row that can be selected is, and whether some are, for the box in the header. */
   selectAll: { all: boolean; some: boolean };
-  toggleAll: () => void;
   /** The data of the rows, when the Table has `items`, which its TableBody renders. */
   items: readonly { id: Key }[] | undefined;
   /** The height of a row in pixels when only the rows in view render, else none. */
   windowHeight: number | undefined;
 }
 
-export const TableContext: Context<TableState | null> = createContext<TableState | null>(
-  'brumate-ui:table',
-  null,
-);
+/** What a Table gives: the store of its state, and its handlers. Outside a table there is no handler. */
+export interface TableGiven {
+  state: StoreLike<TableState | null>;
+  /** Sorts by a column: ascending, or descending when it is sorted ascending already. */
+  sort?: (column: Key) => void;
+  toggleAll?: () => void;
+}
+
+export const TableContext: Context<TableGiven> = createContext<TableGiven>('brumate-ui:table', {
+  state: store(null),
+});
 
 /** What a Row gives its Cells: the place of the next cell. */
 export interface TableRowState {
@@ -58,19 +64,26 @@ export function nextSort(current: SortDescriptor | null, column: Key): SortDescr
 /** A size of a column: pixels, a percentage such as `'25%'`, or a fraction such as `'1fr'`. */
 export type ColumnSize = number | `${number}%` | `${number}fr`;
 
-/** What a ResizableTableContainer gives a Table and its columns. */
+/** What a ResizableTableContainer gives a Table and its columns. It changes, so it is in a store. */
 export interface TableResizeState {
   /** The widths of the columns in pixels, by key, once a resize starts. */
   widths: Record<string, number>;
   /** The key of the column that resizes, as written by `keyAttribute`. */
   resizing: string | null;
-  start: (key: string) => void;
-  resize: (key: string, width: number) => void;
-  end: () => void;
 }
 
-export const TableResizeContext: Context<TableResizeState | null> =
-  createContext<TableResizeState | null>('brumate-ui:table-resize', null);
+/** What a ResizableTableContainer gives: the store of its state, and its handlers. */
+export interface TableResizeGiven {
+  state: StoreLike<TableResizeState | null>;
+  start?: (key: string) => void;
+  resize?: (key: string, width: number) => void;
+  end?: () => void;
+}
+
+export const TableResizeContext: Context<TableResizeGiven> = createContext<TableResizeGiven>(
+  'brumate-ui:table-resize',
+  { state: store(null) },
+);
 
 /** The CSS width of a column size. A fraction leaves the column to share the rest. */
 export function cssWidth(size: ColumnSize | null | undefined): string | undefined {

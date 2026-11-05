@@ -23,7 +23,7 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store } from 'brumate/signals';
   import { ListBoxContext, focusItem, keyAttribute } from './collection.ts';
   import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
@@ -53,8 +53,10 @@
   let { ref } = $props<TreeItemOwnProps<T>>();
 
   const tree = $getContext(TreeRowContext);
-  const state = $getContext(TreeContext);
-  const list = $getContext(ListBoxContext);
+  const treeGiven = $getContext(TreeContext);
+  const state = $store(treeGiven.state);
+  const listGiven = $getContext(ListBoxContext);
+  const list = $store(listGiven.state);
   if (!tree) {
     throw new Error('A TreeItem goes in the `item` template of a Tree.');
   }
@@ -68,7 +70,7 @@
 
   function toggle() {
     if (!disabled && row.hasChildItems) {
-      state?.toggle(id);
+      treeGiven.toggle?.(id);
     }
   }
 
@@ -79,7 +81,7 @@
     isReadOnly: false,
     isInvalid: false,
     isRequired: false,
-    toggle: () => list?.select(id, { shift: false, toggle: true }),
+    toggle: () => listGiven.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
 
@@ -110,13 +112,13 @@
     if (mode === 'none') {
       onAction?.();
       if (list.hasAction) {
-        list.action(id);
+        listGiven.action!(id);
       } else {
         toggle();
       }
       return;
     }
-    list.select(id, {
+    listGiven.select!(id, {
       shift: event.shiftKey,
       toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
     });

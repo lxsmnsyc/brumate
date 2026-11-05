@@ -130,10 +130,9 @@ export const TextAreaContext: Context<InputField> = createContext<InputField>(
  * that names its collection. A TextField or a SearchField passes them on, and the Input or the
  * TextArea renders them under those of the field.
  */
-export const FieldInputContext: Context<Record<string, unknown> | null> = createContext<Record<
-  string,
-  unknown
-> | null>('brumate-ui:field-input', null);
+export const FieldInputContext: Context<StoreLike<Record<string, unknown> | null>> = createContext<
+  StoreLike<Record<string, unknown> | null>
+>('brumate-ui:field-input', store(null));
 
 /** The state of the validation of a field, which its FieldError shows. */
 export interface FieldErrorState {

@@ -1,6 +1,6 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { Key } from './collection.ts';
+  import type { CollectionFocus, Key } from './collection.ts';
 
   export interface AutocompleteProps {
     /** Whether an item's text matches what was typed. By default, it contains it. */
@@ -15,7 +15,7 @@
 </script>
 
 <script>
-  import { $effect, $id, $props, $setContext, $signal } from 'brumate/signals';
+  import { $effect, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { CollectionFocusContext, enabledItems, readItemKey, moveFrom } from './collection.ts';
   import { FieldInputContext } from './contexts.ts';
@@ -168,16 +168,16 @@
   }
 
   // The input of the field names the collection that it controls, and its active item.
-  $setContext(FieldInputContext, {
+  const inputGiven = $memo<Record<string, unknown>>({
     'aria-controls': collectionId,
     'aria-autocomplete': 'list',
     'aria-activedescendant': activeId,
   });
+  $setContext(FieldInputContext, $toStore(inputGiven));
+  const focusGiven = $memo<CollectionFocus>({ id: collectionId, activeKey, filterText });
   $setContext(CollectionFocusContext, {
-    id: collectionId,
-    activeKey,
+    state: $toStore(focusGiven),
     setActive: (key: Key) => activate(key),
-    filterText,
     filter,
     filtered,
   });

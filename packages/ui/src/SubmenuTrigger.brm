@@ -1,5 +1,5 @@
 <script module>
-  import type { FocusStrategy } from './menu.ts';
+  import type { FocusStrategy, MenuTriggerState, SubmenuState } from './menu.ts';
 
   export interface SubmenuTriggerProps {
     /** The time in milliseconds that the pointer rests on the item before the submenu opens. */
@@ -10,7 +10,18 @@
 </script>
 
 <script>
-  import { $effect, $getContext, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import {
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+    $untrack,
+  } from 'brumate/signals';
   import { OverlayTriggerContext } from './contexts.ts';
   import {
     MenuContext,
@@ -35,7 +46,8 @@
    */
   const { delay = 200, children } = $props<SubmenuTriggerProps>();
 
-  const parent = $getContext(MenuContext);
+  const parentGiven = $getContext(MenuContext);
+  const parent = $store(parentGiven.state);
   const parentTrigger = $getContext(MenuTriggerContext);
   const triggerId = $id();
   const overlayId = $id();
@@ -69,10 +81,10 @@
   // The parent menu closes too, with its `onClose`, and the menus around it.
   function closeAll() {
     close();
-    if (parent?.closeAll) {
-      parent.closeAll();
+    if (parentGiven.closeAll) {
+      parentGiven.closeAll();
     } else {
-      parentTrigger?.closeAll();
+      parentTrigger.closeAll?.();
     }
   }
 
@@ -84,7 +96,8 @@
     }
   });
 
-  $setContext(SubmenuContext, { triggerId, overlayId, isOpen, open, hoverStart, hoverEnd });
+  const submenuState = $memo<SubmenuState>({ triggerId, overlayId, isOpen });
+  $setContext(SubmenuContext, { state: $toStore(submenuState), open, hoverStart, hoverEnd });
   $setContext(OverlayTriggerContext, {
     isOpen,
     triggerId,
@@ -95,7 +108,8 @@
     placement: 'end top',
     autoFocus,
   });
-  $setContext(MenuTriggerContext, { triggerId, focusStrategy, closeAll, isSubmenu: true });
+  const menuTrigger = $memo<MenuTriggerState>({ triggerId, focusStrategy, isSubmenu: true });
+  $setContext(MenuTriggerContext, { state: $toStore(menuTrigger), closeAll });
 </script>
 
 {children}

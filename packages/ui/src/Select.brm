@@ -1,7 +1,7 @@
 <script module>
   import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
-  import type { Key } from './collection.ts';
+  import type { Key, ListBoxGiven, SelectValueState } from './collection.ts';
   import type { PressEvent } from './events.ts';
 
   export interface SelectOwnProps {
@@ -290,19 +290,19 @@
     placement: 'bottom start',
     keepsContent: true,
   });
-  $setContext(ListBoxGivenContext, {
+  const listGiven = $memo<ListBoxGiven>({
     selectedKeys: selectedKey === null ? [] : [selectedKey],
     labelledBy: labelId,
-    select,
-    tab: close,
     focusStrategy,
   });
-  $setContext(SelectValueContext, {
+  $setContext(ListBoxGivenContext, { state: $toStore(listGiven), select, tab: close });
+  const valueGiven = $memo<SelectValueState>({
     id: valueId,
     selectedKey,
     selectedText: textKey === selectedKey ? selectedText : undefined,
     placeholder,
   });
+  $setContext(SelectValueContext, $toStore(valueGiven));
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
   const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
   $setContext(FieldErrorContext, $toStore(errorGiven));

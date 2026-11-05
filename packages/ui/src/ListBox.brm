@@ -1,7 +1,7 @@
 <script module>
   import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
-  import type { Key, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import type { Key, ListBoxState, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
 
   export interface ListBoxOwnProps<V extends { id: Key } = { id: Key }, T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
@@ -66,8 +66,11 @@
     $props,
     $setContext,
     $signal,
+    $store,
+    $toStore,
     $untrack,
   } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
     CollectionFocusContext,
@@ -140,9 +143,11 @@
 
   const locale = $getContext(LocaleContext);
   // A Select around the list keeps the selection, with one item at most.
-  const given = $getContext(ListBoxGivenContext);
+  const givenState = $getContext(ListBoxGivenContext);
+  const given = $store(givenState.state);
   // A field around the list, such as of a ComboBox, keeps focus and can filter the items.
-  const field = $getContext(CollectionFocusContext);
+  const fieldGiven = $getContext(CollectionFocusContext);
+  const field = $store(fieldGiven.state);
   const virtualizer = $getContext(VirtualizerContext);
   // A list windows when its options are made from data. A field around it filters the options in
   // the page, and a horizontal list has no window.
@@ -203,7 +208,7 @@
 
   function select(key: Key, request: SelectionRequest) {
     if (given) {
-      given.select(key);
+      givenState.select!(key);
       return;
     }
     const element = ref as HTMLElement | undefined;
@@ -230,20 +235,23 @@
     onAction?.(key);
   }
 
-  $setContext(ListBoxContext, {
+  const listState = $memo<ListBoxState>({
     selectionMode: mode,
     selectionBehavior,
     selectedKeys: chosen,
     disabledKeys,
-    select,
-    action,
     hasAction,
     activeKey: field?.activeKey,
-    setActive: field?.setActive,
+  });
+  $setContext(ListBoxContext, {
+    state: $toStore(listState),
+    select,
+    action,
+    setActive: fieldGiven.setActive,
   });
   // The lists inside, such as in an item, have fields of their own.
-  $setContext(CollectionFocusContext, null);
-  $setContext(FieldInputContext, null);
+  $setContext(CollectionFocusContext, { state: store(null) });
+  $setContext(FieldInputContext, store(null));
 
   // A part around the list, such as a ComboBox, shows only the items that match its text: when
   // the list is on the page, and each time the text changes.
@@ -251,7 +259,7 @@
     const text = field?.filterText;
     const element = ref as HTMLElement | undefined;
     if (text !== undefined && element) {
-      field!.filtered?.(filterItems(element, text, field!.filter));
+      fieldGiven.filtered?.(filterItems(element, text, fieldGiven.filter));
     }
   }
   $client(() => applyFilter(), 'idle');
@@ -341,8 +349,8 @@
       }
       return;
     }
-    if (event.key === 'Tab' && given?.tab) {
-      given.tab();
+    if (event.key === 'Tab' && givenState.tab) {
+      givenState.tab();
       return;
     }
     if ((event.key === 'a' || event.key === 'A') && toggle && mode === 'multiple') {

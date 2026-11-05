@@ -1,4 +1,4 @@
-// The field, form, calendar, date and color parts give changing values through stores. Their handlers still go through
+// The field, form, calendar, date, color and collection parts give changing values through stores. Their handlers still go through
 // the context, and the compiler keeps an update of the context for them until the live path is gone.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -72,7 +72,69 @@ const SHAPED = [
   'ColorPickerContext',
   'ColorSwatchContext',
 ];
-const FORWARDED = new Set(['isDateUnavailable']);
+// A handler that a part passes on, from a prop or from the context above, reads state to find it.
+// The exemption is for these keys of these parts only, so another part that reads state is caught.
+const FORWARDED = new Map<string, Set<string>>([
+  ['Calendar', new Set(['isDateUnavailable'])],
+  ['DatePicker', new Set(['isDateUnavailable'])],
+  ['DateRangePicker', new Set(['isDateUnavailable'])],
+  ['Autocomplete', new Set(['filter'])],
+  ['ListBox', new Set(['setActive'])],
+  ['Menu', new Set(['setActive'])],
+]);
+
+// The collection, menu, select and combobox parts.
+const COLLECTION_PARTS = [
+  'ListBox',
+  'ListBoxItem',
+  'GridList',
+  'GridListItem',
+  'Tree',
+  'TreeItem',
+  'Table',
+  'TableHeader',
+  'TableBody',
+  'Column',
+  'ColumnResizer',
+  'Row',
+  'Cell',
+  'ResizableTableContainer',
+  'NavigationTree',
+  'NavigationTreeItem',
+  'NavigationTreeItemLink',
+  'Menu',
+  'MenuItem',
+  'MenuTrigger',
+  'SubmenuTrigger',
+  'Select',
+  'SelectValue',
+  'ComboBox',
+  'Autocomplete',
+  'Input',
+  'TextArea',
+  'ColorSwatchPicker',
+];
+
+// Stores alone: the whole value of the context is a store.
+const COLLECTION_CONTEXTS = [
+  'SelectValueContext',
+  'FieldInputContext',
+  'NavigationTreeContext',
+  'NavigationLinkContext',
+];
+
+// A store beside handlers.
+const COLLECTION_SHAPED = [
+  'ListBoxContext',
+  'ListBoxGivenContext',
+  'CollectionFocusContext',
+  'MenuContext',
+  'MenuTriggerContext',
+  'SubmenuContext',
+  'TableContext',
+  'TableResizeContext',
+  'TreeContext',
+];
 
 /**
  * The keys of the object that an update gives the context, with their values as text. It splits
@@ -120,30 +182,30 @@ function liveUpdates(text: string, context: string): string[] {
   return found;
 }
 
-it('passes the field, calendar, date and color contexts no changing value through the live context path', () => {
+function scan(parts: string[], contexts: string[], shapedContexts: string[]) {
   const problems: string[] = [];
   let scanned = 0;
   let shaped = 0;
-  for (const name of PARTS) {
+  for (const name of parts) {
     const path = join(import.meta.dirname, `../src/${name}.brm`);
     const { parts, client } = compile(readFileSync(path, 'utf8'), {
       filename: `${name}.brm`,
       path,
     });
     const text = [client, ...Object.values(parts)].join('\n');
-    for (const context of SHAPED) {
+    for (const context of shapedContexts) {
       for (const update of liveUpdates(text, context)) {
         shaped++;
         for (const [key, value] of providedKeys(update)) {
           // A function reads state when it runs, which is the live path of a handler.
           const isFunction = value.includes('=>') || value.includes('.bind(');
-          if (!isFunction && value.includes('$$b.get(') && !FORWARDED.has(key)) {
+          if (!isFunction && value.includes('$$b.get(') && !FORWARDED.get(name)?.has(key)) {
             problems.push(`${name} gives ${context} the changing value ${key} without a store`);
           }
         }
       }
     }
-    for (const context of CONTEXTS) {
+    for (const context of contexts) {
       for (const update of liveUpdates(text, context)) {
         scanned++;
         if (update.includes('$$b.get')) {
@@ -152,9 +214,22 @@ it('passes the field, calendar, date and color contexts no changing value throug
       }
     }
   }
+  return { problems, scanned, shaped };
+}
+
+it('passes the field, calendar, date and color contexts no changing value through the live context path', () => {
+  const { problems, scanned, shaped } = scan(PARTS, CONTEXTS, SHAPED);
   // The handlers of TextField keep an update of InputContext, so a scan that finds none is broken.
   expect(scanned).toBeGreaterThan(0);
   // The calendar, date and color parts keep updates for their handlers, so none scanned is a broken scan.
   expect(shaped).toBeGreaterThan(0);
+  expect(problems).toEqual([]);
+});
+
+it('passes the collection, menu, select and combobox contexts no changing value through the live context path', () => {
+  const { problems, shaped } = scan(COLLECTION_PARTS, COLLECTION_CONTEXTS, COLLECTION_SHAPED);
+  // The providers that hold handlers keep an update of the context for them, so a scan that
+  // finds none is broken.
+  expect(shaped).toBeGreaterThan(10);
   expect(problems).toEqual([]);
 });

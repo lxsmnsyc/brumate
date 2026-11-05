@@ -3,12 +3,13 @@
   import type { Bindable } from 'brumate/signals';
   import type {
     Key,
+    ListBoxState,
     Movement,
     SelectionBehavior,
     SelectionMode,
     SelectionRequest,
   } from './collection.ts';
-  import type { SortDescriptor, TableColumn } from './table.ts';
+  import type { SortDescriptor, TableColumn, TableState } from './table.ts';
 
   export interface TableProps<V extends { id: Key } = { id: Key }> extends Omit<ElementProps<'table'>, 'onSelectionChange'> {
     /** How many items can be selected: `none`, `single` or `multiple`. */
@@ -49,7 +50,7 @@
 </script>
 
 <script generics="V extends { id: Key }">
-  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -122,7 +123,8 @@
   const virtualizer = $getContext(VirtualizerContext);
   // Only a table with its items as data can window, since the rows are then made from the data.
   const windowHeight = $memo(items ? (rowHeight ?? virtualizer?.rowHeight) : undefined);
-  const sizes = $getContext(TableResizeContext);
+  const sizesGiven = $getContext(TableResizeContext);
+  const sizes = $store(sizesGiven.state);
   // In a ResizableTableContainer, the table lays out its columns by their widths, and is as wide
   // as they are once a resize gives them all widths.
   const resizedWidth = $memo(
@@ -268,24 +270,16 @@
   });
 
   // The rows read the selection from the state of a ListBox, as the rows of a GridList do.
-  $setContext(ListBoxContext, {
+  const listState = $memo<ListBoxState>({
     selectionMode,
     selectionBehavior,
     selectedKeys,
     disabledKeys,
-    select,
-    action,
     hasAction,
   });
-  $setContext(TableContext, {
-    columns,
-    sortDescriptor,
-    sort,
-    selectAll,
-    toggleAll,
-    items,
-    windowHeight,
-  });
+  $setContext(ListBoxContext, { state: $toStore(listState), select, action });
+  const tableState = $memo<TableState>({ columns, sortDescriptor, selectAll, items, windowHeight });
+  $setContext(TableContext, { state: $toStore(tableState), sort, toggleAll });
 
   /** The row, cell or column header of the table that holds an element. */
   function findItem(target: EventTarget | null) {

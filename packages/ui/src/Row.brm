@@ -18,7 +18,7 @@
 
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $memo, $props, $setContext, $store } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
   import { CheckboxGroupContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
@@ -42,7 +42,8 @@
     ...rest
   } = $props<RowProps>();
 
-  const list = $getContext(ListBoxContext);
+  const listGiven = $getContext(ListBoxContext);
+  const list = $store(listGiven.state);
   const mode = $memo(list?.selectionMode ?? 'none');
   const selected = $memo(Boolean(list?.selectedKeys.includes(id)));
   const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));
@@ -54,7 +55,7 @@
     isReadOnly: false,
     isInvalid: false,
     isRequired: false,
-    toggle: () => list?.select(id, { shift: false, toggle: true }),
+    toggle: () => listGiven.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
 
@@ -64,10 +65,10 @@
     }
     if (mode === 'none') {
       onAction?.();
-      list.action(id);
+      listGiven.action!(id);
       return;
     }
-    list.select(id, {
+    listGiven.select!(id, {
       shift: event.shiftKey,
       toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
     });
