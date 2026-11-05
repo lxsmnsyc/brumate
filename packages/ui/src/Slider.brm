@@ -34,6 +34,7 @@
   import { LocaleContext } from './locale.ts';
   import { snapToStep } from './numbers.ts';
   import { SliderContext, thumbId } from './slider.ts';
+  import type { SliderState } from './slider.ts';
 
   /**
    * A slider with one thumb or several. It holds a Label, a
@@ -187,7 +188,7 @@
 
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(SliderContext, {
+  const sliderState = $memo<SliderState>({
     values,
     minValue,
     maxValue,
@@ -200,9 +201,8 @@
     label,
     labels,
     dragging,
-    setThumb,
-    setDragging,
   });
+  $setContext(SliderContext, { state: $toStore(sliderState), setThumb, setDragging });
 </script>
 
 <div

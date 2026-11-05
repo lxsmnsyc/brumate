@@ -52,6 +52,7 @@
   import { LocaleContext } from './locale.ts';
   import { clamp, snapToStep } from './numbers.ts';
   import { SliderContext, pointAt, startDrag, thumbId, valueAt } from './slider.ts';
+  import type { SliderState } from './slider.ts';
 
   /**
    * A slider for one channel of a color. It holds a Label,
@@ -283,7 +284,7 @@
 
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(SliderContext, {
+  const sliderState = $memo<SliderState>({
     values: [current],
     minValue: range.minValue,
     maxValue: range.maxValue,
@@ -296,9 +297,8 @@
     label,
     labels: [valueText],
     dragging: dragging ? [0] : [],
-    setThumb,
-    setDragging,
   });
+  $setContext(SliderContext, { state: $toStore(sliderState), setThumb, setDragging });
   const thumbState = $memo<ColorThumbState>({
     color: formatColor(displayColor(color, channel)),
     left: vertical ? 50 : rtl ? 100 - percent : percent,

@@ -20,7 +20,8 @@
    */
   const { children, ...rest } = $props<SliderTrackProps>();
 
-  const slider = $getContext(SliderContext);
+  const sliderGiven = $getContext(SliderContext);
+  const slider = $store(sliderGiven.state);
   const locale = $store(LocaleContext);
 
   function pressed(event: PointerEvent & { currentTarget: HTMLElement }) {
@@ -48,12 +49,12 @@
       return;
     }
     thumb?.focus({ preventScroll: true });
-    slider.setThumb(index, value);
-    slider.setDragging(index, true);
+    sliderGiven.setThumb!(index, value);
+    sliderGiven.setDragging!(index, true);
     startDrag(
       event.pointerId,
-      (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
-      () => slider.setDragging(index, false),
+      (move) => sliderGiven.setThumb!(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
+      () => sliderGiven.setDragging!(index, false),
       event.currentTarget,
     );
   }
