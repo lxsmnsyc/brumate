@@ -35,7 +35,8 @@
   const { as, children, ...rest } = $props<TabListProps<T>>();
   let { ref } = $props<TabListOwnProps<T>>();
 
-  const tabs = $getContext(TabsContext);
+  const tabsGiven = $getContext(TabsContext);
+  const tabs = $store(tabsGiven.state);
   const locale = $store(LocaleContext);
   const orientation = $memo(tabs?.orientation ?? 'horizontal');
 
@@ -61,7 +62,7 @@
     focusItem(target);
     const key = target ? readItemKey(target) : undefined;
     if (key !== undefined && tabs?.keyboardActivation !== 'manual') {
-      tabs?.select(key);
+      tabsGiven.select?.(key);
     }
   }
 
