@@ -1,7 +1,7 @@
 ---
 id: has-context
 title: $hasContext, and a guarded $store for contexts that may be missing
-status: todo
+status: active
 priority: must
 type: feature
 story: context-stores
