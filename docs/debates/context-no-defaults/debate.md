@@ -5,7 +5,7 @@ rounds: 2 of 2
 status: approved
 roadmap: docs/roadmaps/brumate
 supersedes: none
-decision: docs/decisions.md entry written by node context-docs on the story branch
+decision: docs/decisions.md, the entry "Contexts have no default value" (on feat/context-stores, e87e290e)
 ---
 
 # Debate: contexts without default values
