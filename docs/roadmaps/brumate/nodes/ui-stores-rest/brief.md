@@ -9,7 +9,7 @@ outline: false
 milestone: 0.7.0
 target:
 from:
-size: M
+size: L
 spike: false
 verify:
 exclusive: []
@@ -39,7 +39,9 @@ depends_on:
 
 ## Goal
 
-A wave of step 3 of the approved context-stores debate (docs/debates/context-stores/debate.md), for the contexts no other ui-stores node covers. ui-stores-fields found them (its outcome, "Stubs left"): `TextContext` (only `hidden` changes, in Checkbox and Switch), `CheckboxGroupContext`, `RadioGroupContext`, `SliderContext`, `TagGroupContext`, `TokenFieldContext`, the toggle and disclosure group contexts, and the `ButtonContext` of NumberField. Without this node, static-contexts-final would delete the live path these parts still use and they would stop updating.
+A wave of step 3 of the approved context-stores debate (docs/debates/context-stores/debate.md), for the contexts no other ui-stores node covers. ui-stores-fields found them (its outcome, "Stubs left"): `TextContext` (only `hidden` changes, in Checkbox and Switch), `CheckboxGroupContext`, `RadioGroupContext`, `SliderContext`, `TagGroupContext`, `TokenFieldContext`, the toggle and disclosure group contexts, and the `ButtonContext` of NumberField. ui-stores-calendar (2026-11-05) found more that no node had: `ButtonContext`, `TextContext` and `OverlayTriggerContext` as Calendar, DatePicker and DateRangePicker provide them, `LocaleContext` (28 readers; the locale changes, see the i18n-locale-change test) and `DateStringsContext` from I18nProvider. They are yours too. This node owns every context still on the live path after ui-stores-collections: start from the compiler's `$setContext` warnings across packages/ui (91 after ui-stores-calendar) and end at none, or list each one left with the reason it never changes.
+
+Without this node, static-contexts-final would delete the live path these parts still use and they would stop updating.
 
 Each provider that passes a value that changes puts it in one store per provider, and its readers read it with `$store`. Constant values stay plain; a context passed only one level down may become props; context functions stay for handlers only (the debate's P14, P16).
 
@@ -53,4 +55,4 @@ Use the API store-contract shipped and the pattern ui-stores-fields used (read b
 
 ## Sizing
 
-M.
+L: about 15 contexts across many parts, plus the locale readers.
