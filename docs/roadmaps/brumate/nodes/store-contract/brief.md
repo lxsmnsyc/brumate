@@ -56,6 +56,16 @@ The maintainer approved the spike on 2026-11-05 (PR #463, outcome in nodes/conte
 - Give the 4 spike messages, and any message the direct form needs, codes from BRM191 to BRM195, and remove the `pending` sets the spike added to `test/skill.test.ts`.
 - Fix the gap the spike left: the scope id inside a store is not moved when client navigation shifts scope ids (Gotchas of the spike outcome).
 
+Gaps from the fresh review of #463 (review 5780262575), to fix here:
+
+- A context value that holds a store emits no update for the whole value (codegen/client.ts:1151), so a live field beside the store, as in `{ state: $toStore(s), label }`, stops updating with no diagnostic. Keep the outer update for the fields that are not stores until static-contexts-final; the ui waves move one field at a time.
+- The key form `$store(field.state)` never imports the context module (client.ts:567), so a store in a context default never links when no provider exists. Test the key form against a context default.
+- `$store(box.inner)` compiles when `box` is not a context (codegen/markup.ts:1557) and fails at run time. With any source allowed, it must read `box.inner` as a store expression, or report an error.
+- The foreign-store refusal (runtime/store.ts:72, server.ts:727) throws on any object with a `subscribe` function, so a context of handlers `{ subscribe, publish }` breaks. Treat a value as a store only when it has both `subscribe` and `get` functions.
+- A reader that leaves the page stays subscribed until the store's next send (runtime/client/context.ts:157). Unsubscribe when the scope is cleaned up.
+- context.ts:212 drops a store silently when its origin scope is missing; report it in dev.
+- Nits: the theme test should check that the server rendered `light`.
+
 ## Acceptance
 
 - [ ] The spike's resume and ordered-update cases pass as tests.
