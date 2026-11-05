@@ -67,3 +67,7 @@ The shape follows Svelte 5.40 (Q1, J13), not Solid 2.0, which keeps optional def
 ## Cost of this debate
 
 - 2 of 2 rounds, about 163k tokens
+
+## Correction after approval
+
+- 2026-11-05: fact J10 (a `$store` source must be a context, a key of a `$getContext` value or an import, else BRM194) was a limit the store-contract worker added, not a rule the maintainer set. It drove the guarded `$store` shapes (O1, O9) and part of the case against P7. The maintainer ruled that `$store` takes any expression, as silmaril's `$store`, Svelte's `$store` and React's `useSyncExternalStore` do. Nodes store-any-source and ui-store-guards follow, before store-repair-compare. The rest of the settled structure stands.

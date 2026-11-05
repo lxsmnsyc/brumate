@@ -34,6 +34,9 @@ depends_on:
   - on: static-contexts-final
     kind: hard
     why: both edit runtime/client/context.ts; static-contexts-final goes first so the story is not held
+  - on: ui-store-guards
+    kind: hard
+    why: store-any-source changes how the browser finds stores on resume, which this node repairs
   - on: ui-no-defaults-4
     kind: hard
     why: contexts lose their defaults first (docs/debates/context-no-defaults/debate.md), which removes the object default that caused the rewrite
