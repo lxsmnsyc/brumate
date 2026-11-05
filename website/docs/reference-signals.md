@@ -233,14 +233,16 @@ function $hasContext<T>(context: Context<T>): boolean;
 
 ```ts
 function $store<T>(source: Context<StoreLike<T>> | StoreLike<T>): T;
+function $store<T>(source: Context<StoreLike<T>> | StoreLike<T> | undefined | null): T | undefined;
 ```
 
 Binds a store to a variable that holds its value. A store is any value with `get()`, `subscribe(listener)`, which returns the function that stops it, and optionally `set(value)`. See [Live values with stores](./context.md#live-values-with-stores).
 
-- The source is a context that holds the store, a key of the value of a `$getContext`, as in `$store(field.state)`, or a store that the file imports. Anything else is a compile error (BRM194), since the browser must find the store again when the page resumes.
+- The source is any expression that gives a store or a context that holds one: a context, a key of the value of a `$getContext`, as in `$store(field.state)`, an import, a prop, a value of `<script module>`, a call or `store(0)`. `undefined` or `null` gives `undefined`, as in `$store(field?.state)`. A source that awaits is a compile error ([BRM198](./errors.md#brm198)).
 - It runs once and is not tracked. The subscription ends with the scope.
+- On resume the variable keeps the server's value. The browser finds a store of a context from its provider, and runs any other source once with the resumed values. It subscribes, and writes the variable once if the store's value differs. It never calls `set`. A store that the source makes starts from its first value in the browser.
 - `const x = $store(source)`: the store writes the variable.
-- `let x = $store(source)`: a write to the variable, such as `x = next` or `x++`, also calls `set(next)` of the store. A store without `set` throws a `TypeError` when the variable registers.
+- `let x = $store(source)`: a write to the variable, such as `x = next` or `x++`, also calls `set(next)` of the store. A store without `set`, or a source that gives no store, throws a `TypeError` when the variable registers.
 - The variable is a name, not a pattern.
 
 ## `$toStore`

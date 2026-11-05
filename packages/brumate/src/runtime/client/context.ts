@@ -113,7 +113,7 @@ export function updateRoute(): void {
 // Stores in contexts: `$toStore` in a provided value, and `$store` in a reader.
 
 /** The store that a read finds from `scope` by the key of its context. */
-function findStore(scope: Scope, read: StoreRead): StoreLike<unknown> {
+function findStore(scope: Scope, read: StoreRead): StoreLike<unknown> | undefined {
   const [key, , path, write] = read as [string, number, string | undefined, 1 | undefined];
   const provider = findProvider(scope, key);
   if (!provider) {
@@ -148,13 +148,17 @@ function subscribeSlot(
 
 /** Links a read of `$store` that a scope resumed with. */
 function linkRead(scope: Scope, read: StoreRead): void {
-  subscribeSlot(scope, read[1], findStore(scope, read), true, read[3]);
+  const found = findStore(scope, read);
+  if (found) {
+    subscribeSlot(scope, read[1], found, true, read[3]);
+  }
 }
 
 /**
  * Subscribes the reads of `$store` of scopes that the page state added, and writes the value of
- * each store that changed since the server render, in one pass. A store of an import is found
- * in the exports `z` of the component, once its code has loaded.
+ * each store that changed since the server render, in one pass. A store that is not in a context
+ * comes from its source in the exports `z` of the component, which runs once its code has loaded,
+ * with the resumed values of the scope. Resume never calls `set`.
  */
 export function resumeStoreReads(
   added: Scope[],
@@ -162,21 +166,32 @@ export function resumeStoreReads(
 ): void {
   pass(() => {
     for (const scope of added) {
+      const sourced: StoreRead[] = [];
       for (const read of reads(scope) ?? []) {
         if (typeof read[0] === 'string') {
           linkRead(scope, read);
-          continue;
+        } else {
+          sourced.push(read);
         }
-        const [link, slot, path, write] = read;
-        void loadModule(findRoot(scope).m!).then((module) => {
-          if (scopes.get(scope.id) === scope) {
-            pass(() => {
-              const found = findStored(module.z![link], path, !!write, () => undefined);
+      }
+      if (sourced.length === 0) {
+        continue;
+      }
+      // The sources of a scope run in one pass, so a repair of two slots updates once.
+      void loadModule(findRoot(scope).m!).then((module) => {
+        if (scopes.get(scope.id) !== scope) {
+          return;
+        }
+        pass(() => {
+          for (const [link, slot, path, write] of sourced) {
+            const source = module.z![link as number]!(scope);
+            const found = findStored(source, path, !!write, () => undefined);
+            if (found) {
               subscribeSlot(scope, slot, found, true, write);
-            });
+            }
           }
         });
-      }
+      });
     }
   });
 }
@@ -221,6 +236,9 @@ export function consumeStore<T>(
     }
     return provider.v![context.key];
   });
+  if (!found) {
+    return undefined as T;
+  }
   if (slot >= 0) {
     subscribeSlot(target, slot, found, false, write);
   }

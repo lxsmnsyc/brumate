@@ -1,0 +1,17 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import StoreAnyReader from './StoreAnyReader.brm';
+
+  const count = store(1);
+  const holder = { state: store(7) };
+  let later = $signal(false);
+</script>
+
+<button class="bump" onClick=(() => count.set(count.get() + 1))>Bump</button>
+<button class="later" onClick=(() => (later = true))>Later</button>
+<section class="first"><StoreAnyReader s=(count) n=(2) /></section>
+<section class="held"><StoreAnyReader s=(count) given=(holder) n=(3) /></section>
+#if (later) {
+  <section class="second"><StoreAnyReader s=(count) given=(holder) n=(4) /></section>
+}

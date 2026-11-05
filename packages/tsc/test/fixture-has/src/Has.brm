@@ -9,9 +9,12 @@
   const state: { count: number } | undefined = $hasContext(FieldCtx)
     ? $store(field.state)
     : undefined;
+  // `?.` on the guarded value gives `T | undefined`.
+  const again: { count: number } | undefined = $store(field?.state);
   // The guarded types are not the bare ones.
   const wrongLevel: number = $hasContext(Level) ? $store(Level) : undefined;
   const wrongFound: string = $hasContext(Level);
+  const wrongAgain: { count: number } = $store(field?.state);
 </script>
 
-<p>{found} {level} {state?.count} {wrongLevel} {wrongFound}</p>
+<p>{found} {level} {state?.count} {again?.count} {wrongLevel} {wrongFound} {wrongAgain}</p>

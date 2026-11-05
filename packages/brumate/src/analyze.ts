@@ -74,14 +74,14 @@ const KEY_EVENTS = new Set(['keydown', 'keyup', 'keypress']);
 
 const COMPILE_TIME_FUNCTIONS = MACROS;
 
-/** The messages of BRM191 to BRM195 and BRM197. */
+/** The messages of BRM191 to BRM193, BRM195, BRM197 and BRM198. */
 const STORE_FORM =
   'Read a store with "const name = $store(source)" or "let name = $store(source)" at the top level of a script';
 const STORE_ARGUMENT = '$store takes one argument, a context, a store or a key of one';
 const TO_STORE_ARGUMENT =
   '$toStore takes one argument, a memo, a signal or a prop, as a value of $setContext';
 const STORE_SOURCE =
-  'The browser finds the store of $store again from a context, from a store that the file imports, or from a key of one';
+  'The source of $store gives its store at once, so it cannot await or call a server function';
 const STORE_PATTERN = '$store gives one name, not a pattern such as { a }';
 const HAS_CONTEXT_FORM =
   'Keep the answer of $hasContext with "const name = $hasContext(Context)", or guard a read of the same context with "const name = $hasContext(Context) ? $store(Context) : undefined", with const and no other test';
@@ -357,8 +357,8 @@ class Analyzer {
   readonly bindings: SemanticModel['bindings'] = [];
   /** The declarations of `$store`, which `resolveStores` completes. */
   private readonly storeReaders: Declaration[] = [];
-  /** The names of the imports that `$store` reads. See `SemanticModel.storeImports`. */
-  private readonly storeImports: string[] = [];
+  /** The sources of `$store` that the browser runs again. See `SemanticModel.storeSources`. */
+  private readonly storeSources: Site[] = [];
   /** The `$toStore` calls that a `$setContext` value holds. */
   readonly storeCalls = new Set<oxc.Node>();
   private readonly diagnostics: Diagnostic[] = [];
@@ -411,6 +411,7 @@ class Analyzer {
     this.resolveRefs();
     this.check();
     this.checkPromises();
+    this.checkStoreSources();
 
     return {
       module: this.module,
@@ -419,20 +420,26 @@ class Analyzer {
       declarations: this.declarations,
       sites: this.sites,
       bindings: this.bindings,
-      storeImports: this.storeImports,
+      storeSources: this.storeSources,
       diagnostics: this.diagnostics,
       pendingCalls: this.pendingCalls,
     };
   }
 
   /**
-   * Finds where the browser gets the store of each `$store`: the context, a key of its value, or
-   * a store that the file imports. The browser finds a store again from only those.
+   * Finds where the browser gets the store of each `$store`. A context, or a key of the value of
+   * `$getContext`, is found again from its provider. Any other source is code that the browser
+   * runs again on resume, from the exports `z` of the update part.
    */
   private resolveStores(): void {
     for (const declaration of this.storeReaders) {
       const store = declaration.store!;
+      // `g?.state` reads the same key as `g.state`, and is `undefined` when `g` is.
       let argument = store.source;
+      const optional = argument.type === 'ChainExpression';
+      if (argument.type === 'ChainExpression') {
+        argument = argument.expression as oxc.Node;
+      }
       let path: string | undefined;
       if (
         argument.type === 'MemberExpression' &&
@@ -445,27 +452,23 @@ class Analyzer {
       }
       const root =
         argument.type === 'Identifier' ? lookup(declaration.scope, argument.name) : undefined;
-      let source: oxc.Node | undefined;
-      let import_: string | undefined;
-      if (root?.kind === 'import' && (path !== undefined || root.imported)) {
-        // A context or a store of another file. A namespace import is a source only with a key.
-        source = argument;
-        import_ = root.name;
-      } else if (root?.kind === 'context' && root.contextSource) {
+      let source = store.source;
+      if (root?.kind === 'context' && root.contextSource && (path !== undefined || !optional)) {
         // A value of `$getContext`: the context, and a key of its value. A guarded one is
-        // `undefined` without a provider, so the read needs the guard too.
+        // `undefined` without a provider, so the read needs the guard too, or `?.`, which
+        // guards it the same way.
         if (root.guard && !declaration.guard) {
-          this.report('error', HAS_CONTEXT_FORM, store.source);
-          continue;
+          if (!optional || store.write) {
+            this.report('error', HAS_CONTEXT_FORM, store.source);
+            continue;
+          }
+          declaration.guard = root.guard;
         }
         source = root.contextSource;
-        const named =
-          source.type === 'Identifier' ? lookup(declaration.scope, source.name) : undefined;
-        import_ = named?.kind === 'import' ? named.name : undefined;
-      }
-      if (!source) {
-        this.report('error', STORE_SOURCE, store.source);
-        continue;
+        store.path = path;
+      } else {
+        // Code that gives the store, which the browser runs again with the resumed values.
+        store.link = this.storeSources.push(store.site) - 1;
       }
       const guard = declaration.guard;
       if (
@@ -477,13 +480,25 @@ class Analyzer {
         continue;
       }
       store.source = source;
-      store.path = path;
-      if (import_ !== undefined) {
-        let link = this.storeImports.indexOf(import_);
-        if (link === -1) {
-          link = this.storeImports.push(import_) - 1;
+    }
+  }
+
+  /** A source of `$store` that the browser runs again must give its store at once. */
+  private checkStoreSources(): void {
+    for (const site of this.storeSources) {
+      let server = site.awaits;
+      for (const callee of site.calls) {
+        if (callee.kind === 'server-function') {
+          server = true;
         }
-        store.link = link;
+      }
+      for (const read of site.reads) {
+        if (read.declaration.serverImport !== undefined) {
+          server = true;
+        }
+      }
+      if (server) {
+        this.report('error', STORE_SOURCE, site.node);
       }
     }
   }
@@ -1257,10 +1272,10 @@ class Analyzer {
       // The slot holds the value of the store, which the store's sends write. `let` writes the
       // store back: a write of the variable calls the `set` of the store.
       const declaration = this.addDeclaration(scope, id.name, 'context', id);
-      declaration.store = { source: argument, write: kind === 'let' };
+      const site = this.createSite('setup', scope, argument, `store ${id.name}`);
+      declaration.store = { source: argument, site, write: kind === 'let' };
       declaration.guard = guard;
       this.storeReaders.push(declaration);
-      this.createSite('setup', scope, argument, `store ${id.name}`);
       if (guard) {
         this.createSite('setup', scope, guard, `guard ${id.name}`);
       }

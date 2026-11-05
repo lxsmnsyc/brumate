@@ -201,8 +201,10 @@ class ClientGenerator {
 
     const parts: Record<string, string> = {};
     for (const name of new Set([...this.out.keys(), ...this.reach.keys()])) {
-      // A component whose updates are all on the server has no `update` part.
-      if (name !== 'shared' && (this.out.get(name)?.length ?? 0) > 0) {
+      // A component whose updates are all on the server has no `update` part, unless it holds
+      // the sources of `$store` that the browser runs again.
+      const stores = name === 'update' && this.model.storeSources.length > 0;
+      if (name !== 'shared' && ((this.out.get(name)?.length ?? 0) > 0 || stores)) {
         parts[name] = this.assemble(name);
       }
     }
@@ -555,21 +557,22 @@ class ClientGenerator {
   }
 
   /**
-   * The imports that `$store` reads, which the update part exports as `z`: their modules run in
-   * the browser, which links the readers of a store in the default value of a context, and a
-   * reader of an imported store finds it there.
+   * The sources of `$store` that the browser runs again on resume, as functions of the reader's
+   * scope, which the update part exports as `z`. A reader whose store is not a context finds it
+   * there by its index.
    */
   private storeSources(): string[] {
-    return this.model.storeImports;
+    const result: string[] = [];
+    for (const site of this.model.storeSources) {
+      result.push(`($$s) => (${this.rewrittenCode(site)})`);
+    }
+    return result;
   }
 
   private assemble(name: string): string {
     const reads = this.reads(this.partSites(name));
     const names = new Set<string>();
     const stores = name === 'update' ? this.storeSources() : [];
-    for (const store of stores) {
-      names.add(store);
-    }
     const shared: string[] = [];
     for (const item of reads) {
       if (item.kind === 'import') {
@@ -614,9 +617,6 @@ class ClientGenerator {
       scopes.push(...this.templateScopes(name));
     }
     const stores = names.includes('update') ? this.storeSources() : [];
-    for (const store of stores) {
-      imports.add(store);
-    }
     const lines = [
       "import * as $$b from 'brumate/client';",
       ...this.importsFor(imports, scopes, names.includes('update')),

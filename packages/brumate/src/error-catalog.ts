@@ -948,12 +948,6 @@ const SCRIPT: ErrorEntry[] = [
     '$setContext(Field, { state: $toStore(state), pick });',
   ),
   entry(
-    'BRM194',
-    'The browser finds the store of $store again from a context, from a store that the file imports, or from a key of one',
-    'The source of `$store` is a local value, a call or another expression, which the browser cannot find again when the page resumes.',
-    "import { theme } from './theme';\nconst value = $store(theme);",
-  ),
-  entry(
     'BRM195',
     '$store gives one name, not a pattern such as { a }',
     '`$store` initializes a pattern.',
@@ -970,6 +964,12 @@ const SCRIPT: ErrorEntry[] = [
     'Keep the answer of $hasContext with "const name = $hasContext(Context)", or guard a read of the same context with "const name = $hasContext(Context) ? $store(Context) : undefined", with const and no other test',
     '`$hasContext` is used in another shape: in a `let`, in a test with another condition, around another call than `$store` or `$getContext`, with an `else` that is not `undefined`, or with a context other than the one that the guarded `$store` reads.',
     'const field = $hasContext(Field) ? $getContext(Field) : undefined;\nconst state = $hasContext(Field) ? $store(field.state) : undefined;',
+  ),
+  entry(
+    'BRM198',
+    'The source of $store gives its store at once, so it cannot await or call a server function',
+    'The source of `$store` awaits, or calls a server function. The browser runs the source again when the page resumes, and links the store in the same pass, so the source must give the store, not a promise of it.',
+    "import { theme } from './theme';\nconst value = $store(theme);",
   ),
   entry(
     'BRM144',

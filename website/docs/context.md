@@ -99,6 +99,7 @@ const state = $hasContext(ButtonGroup) ? $store(group.state) : undefined;
 const level = $hasContext(Level) ? $store(Level) : undefined;
 ```
 
+- `$store(group?.state)` guards a key of a guarded value the same way, and is `undefined` without a provider.
 - The guarded read is `const`, not `let`, and the guard and the read name the same context. Another form is [BRM197](./errors.md#brm197).
 
 ## Changing a provided value
@@ -190,9 +191,13 @@ import type { Store } from 'brumate/store';
 export const Level = createContext<{ level: Store<number>; reset: () => void }>('level');
 ```
 
-- `$store(source)` takes a context that holds a store, `$store(Level)`, a key of its value, `$store(field.level)`, or a store that the file imports, `$store(theme)`. Nothing else, since the browser finds the store again when the page resumes.
-- `const x = $store(source)` follows the store. `let x = $store(source)` also writes it: `x = next` calls `set(next)`. A store without `set`, such as one from a memo, throws a `TypeError` when the variable registers.
+- `$store(source)` takes any expression at the top level of a script that gives a store or a context that holds one: a context, `$store(Level)`, a key of its value, `$store(field.level)`, an import, `$store(theme)`, a prop, a value of `<script module>`, a call, or a store made there, `$store(store(0))`. A source that gives `undefined` or `null`, such as `$store(field?.level)`, gives `undefined` and subscribes to nothing.
+- On resume the browser keeps the value that the server rendered. It finds the store of a context again from its provider, and runs any other source once, with the values the page resumed, when the component's code loads. Then it subscribes, and writes the variable once if the store's value differs from the server's. It never calls `set`.
+- A store that the source makes, such as `$store(store(0))` or a call that returns a new store, is made again in the browser and starts from its first value there. A store of an import is one for the page in the browser, as it is one for each server process.
+- A store that reaches the browser in a value the page sends, such as a prop or a value of the script, must be a store of `brumate/store`, since only its value crosses. A store of another library works from an import, `<script module>` or a call.
+- The source gives its store at once. A source that awaits is [BRM198](./errors.md#brm198).
+- `const x = $store(source)` follows the store. `let x = $store(source)` also writes it: `x = next` calls `set(next)`. A store without `set`, such as one from a memo, or a source that gives no store, throws a `TypeError` when the variable registers.
 - The provider has one store for each `$toStore`, and a reader updates in the same ordered pass as the props and memos around it.
-- The page sends only the value of a store from `brumate/store`. A store of another library, with `get` and `subscribe`, works when the file imports it, and the server refuses it inside a provided value, with an error that names the context.
+- The page sends only the value of a store from `brumate/store`. The server refuses a store of another library inside a provided value, with an error that names the context.
 - `import { store } from 'brumate/store'` makes a store for a module: `export const theme = store('light')`. `Store` calls its listeners only when the value changes (`Object.is`).
 - Keep functions for handlers. A reader renders from the store, not from a function that reads a signal.

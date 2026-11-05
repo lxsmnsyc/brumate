@@ -747,7 +747,8 @@ export class Context {
   /**
    * `$store(source)`: the value of the store, and a record of its slot, so the browser subscribes
    * the slot when the scope resumes. The browser finds the store again from the key of a context,
-   * or from the export `link` of an import, with `path` for a key of the value.
+   * with `path` for a key of its value, or by running the source `link` of the component's
+   * exports `z`. A source that gives `undefined` records nothing.
    */
   consumeStore<T>(
     source: unknown,
@@ -756,14 +757,15 @@ export class Context {
     path?: string,
     link?: number,
     write?: boolean,
-  ): T {
+  ): T | undefined {
     const found = findStored(source, path, write, (context) => this.consume(context, scope));
+    if (!found) {
+      return undefined;
+    }
     if (slot >= 0) {
       const ref = isContext(source) ? source.key : link;
       if (ref === undefined) {
-        throw new Error(
-          'The browser cannot find the store of $store again. Read a context, or a store that the file imports',
-        );
+        throw new Error('The browser cannot find the store of $store again');
       }
       let entry: StoreRead = [ref, slot];
       if (write) {
