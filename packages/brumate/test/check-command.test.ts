@@ -138,6 +138,18 @@ describe('check', () => {
     expect(record.source).toBe('brumate');
   });
 
+  it('reports a guard on another context with BRM197', async () => {
+    const root = project({
+      'A.brm':
+        "<script>\n  import { $hasContext, $store } from 'brumate/signals';\n  import { Ctx, Other } from './ctx.ts';\n  const x = $hasContext(Other) ? $store(Ctx) : undefined;\n</script>\n<p></p>\n",
+    });
+    const { records } = await check(root, { types: false });
+    expect(records).toHaveLength(1);
+    expect(records[0]!.code).toBe('BRM197');
+    expect(records[0]!.link).toBe(errorLink('BRM197'));
+    expect(records[0]!.range!.start.line).toBe(4);
+  });
+
   it('reports a syntax error with its code', async () => {
     const root = project({ 'A.brm': SYNTAX });
     const { records } = await check(root, { types: false });

@@ -966,6 +966,12 @@ const SCRIPT: ErrorEntry[] = [
     '$setContext(Field, { state: $toStore(state), pick: () => value });',
   ),
   entry(
+    'BRM197',
+    'Keep the answer of $hasContext with "const name = $hasContext(Context)", or guard a read of the same context with "const name = $hasContext(Context) ? $store(Context) : undefined", with const and no other test',
+    '`$hasContext` is used in another shape: in a `let`, in a test with another condition, around another call than `$store` or `$getContext`, with an `else` that is not `undefined`, or with a context other than the one that the guarded `$store` reads.',
+    'const field = $hasContext(Field) ? $getContext(Field) : undefined;\nconst state = $hasContext(Field) ? $store(field.state) : undefined;',
+  ),
+  entry(
     'BRM144',
     '$get is not supported. Signals cannot leave the file',
     '`$get` was removed. A signal never leaves its file.',

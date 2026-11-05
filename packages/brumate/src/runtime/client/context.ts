@@ -68,6 +68,18 @@ export function consumeContext<T>(
   return globals.get(context.key) as T;
 }
 
+/**
+ * True when a scope above `scope` provides the context, or the runtime does. Providers are
+ * static, so the answer is fixed when the scope is made.
+ */
+export function hasContext(context: ContextValue<unknown>, scope: Scope | ScopeId): boolean {
+  return (
+    findProvider(resolveScope(scope)!, context.key) !== undefined ||
+    (HAS_ROUTES && (context.key === ROUTE_KEY || context.key === NAVIGATION_KEY)) ||
+    globals.has(context.key)
+  );
+}
+
 /** The values of the contexts that the runtime provides to the whole page, by key. */
 const globals = new Map<string, unknown>();
 

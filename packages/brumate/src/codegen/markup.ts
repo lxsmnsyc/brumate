@@ -174,16 +174,32 @@ function callsTemplate(site: Site | undefined): boolean {
   return false;
 }
 
+/** The read of `$hasContext(Context) ? read : undefined`, or the node itself. */
+function guardedRead(node: oxc.Node | null | undefined): oxc.Node | null | undefined {
+  return node?.type === 'ConditionalExpression' && node.test.type === 'CallExpression'
+    ? node.consequent
+    : node;
+}
+
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
 function specialCall(
   declarator: oxc.VariableDeclarator,
-): '$getContext' | '$store' | '$id' | '$isPassed' | '$route' | '$navigation' | undefined {
-  const init = declarator.init;
+):
+  | '$getContext'
+  | '$hasContext'
+  | '$store'
+  | '$id'
+  | '$isPassed'
+  | '$route'
+  | '$navigation'
+  | undefined {
+  const init = guardedRead(declarator.init);
   if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') {
     return undefined;
   }
   const name = init.callee.name;
   return name === '$getContext' ||
+    name === '$hasContext' ||
     name === '$store' ||
     name === '$id' ||
     name === '$isPassed' ||
@@ -262,6 +278,7 @@ const CLIENT_HELPERS: Record<string, string> = {
   own: 'setOwner',
   provide: 'provideValue',
   consume: 'consumeContext',
+  has: 'hasContext',
   consumeStore: 'consumeStore',
   toStore: 'toStore',
   head: 'addHead',
@@ -1523,12 +1540,22 @@ export class Emitter {
     }
     const target = this.scopeVar(instanceScope(this.plan, scope));
     for (const declarator of statement.declarations) {
-      const init = declarator.init as oxc.CallExpression;
+      const init = guardedRead(declarator.init) as oxc.CallExpression;
       const call = specialCall(declarator);
       const declaration =
         declarator.id.type === 'Identifier'
           ? scope.declarations.get(declarator.id.name)
           : undefined;
+      // A guarded read asks first, and is `undefined` when no provider exists.
+      const guard = declaration?.guard;
+      const ask = guard ? `${this.helper('has')}(${this.source(guard)}, ${target}) ? ` : '';
+      const otherwise = guard ? ' : undefined' : '';
+      if (call === '$hasContext' && declaration?.hasSource) {
+        this.line(
+          `const ${declaration.name} = ${this.helper('has')}(${this.source(declaration.hasSource)}, ${target});`,
+        );
+        continue;
+      }
       if (call === '$id' && declaration?.idIndex !== undefined) {
         this.line(
           `const ${declaration.name} = ${this.helper('id')}(${target}, ${declaration.idIndex});`,
@@ -1557,7 +1584,7 @@ export class Emitter {
         }
         const more = rest.map((item) => `, ${item ?? 'undefined'}`).join('');
         this.line(
-          `const ${declarator.id.name} = ${this.helper('consumeStore')}(${this.source(source)}, ${target}, ${slot}${more});`,
+          `const ${declarator.id.name} = ${ask}${this.helper('consumeStore')}(${this.source(source)}, ${target}, ${slot}${more})${otherwise};`,
         );
         continue;
       }
@@ -1576,7 +1603,7 @@ export class Emitter {
       // client. The value of `$getContext` is read once.
       const record = slot === -1 || !BUILT_IN_CONTEXTS[call ?? ''] ? '' : `, ${slot}`;
       this.line(
-        `const ${declarator.id.name} = ${this.helper('consume')}(${context}, ${target}${record});`,
+        `const ${declarator.id.name} = ${ask}${this.helper('consume')}(${context}, ${target}${record})${otherwise};`,
       );
     }
     return true;

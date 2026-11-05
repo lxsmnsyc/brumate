@@ -111,6 +111,13 @@ export interface Declaration {
   passedKey?: string;
   /** For `const field = $getContext(Context)`, the context. */
   contextSource?: oxc.Node;
+  /** For `const name = $hasContext(Context)`, the context. */
+  hasSource?: oxc.Node;
+  /**
+   * For a read in `$hasContext(Context) ? $store(Context) : undefined`, the context in the guard.
+   * The variable is `undefined` when no provider exists.
+   */
+  guard?: oxc.Node;
   /**
    * For `const name = $store(source)` and `let name = $store(source)`: the code that gives the
    * store or its context, the key of the value that holds the store, the index of the import that

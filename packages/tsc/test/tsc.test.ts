@@ -98,3 +98,17 @@ it('prints the code of a syntax error in place of BRM', () => {
   expect(line).toMatch(/Broken\.brm\(1,\d+\): error BRM\d{3}: [^[]+$/);
   expect(result.status).not.toBe(0);
 });
+
+it('types $hasContext as a boolean and a guarded read as T | undefined', () => {
+  const project = fileURLToPath(new URL('./fixture-has/tsconfig.json', import.meta.url));
+  const result = spawnSync(process.execPath, [bin, '-p', project], { encoding: 'utf8' });
+  const errors = result.stdout
+    .split('\n')
+    .filter((line) => line.includes('error TS'))
+    .map((line) => line.replace(/^.*src\//, ''));
+  // Only the two wrong lines fail. `field.state` needs no `?.` under its guard.
+  expect(errors).toEqual([
+    "Has.brm(13,9): error TS2322: Type 'number | undefined' is not assignable to type 'number'.",
+    "Has.brm(14,9): error TS2322: Type 'boolean' is not assignable to type 'string'.",
+  ]);
+});

@@ -788,14 +788,9 @@ export class Context {
       record.x ??= {};
       record.x[context.key] = slot;
     }
-    // A scope reads the contexts of the scopes above it, not its own, so a component can read a
-    // context and provide it again to the scopes inside it.
-    for (let id: ScopeId | undefined = this.find(scope)?.parent; id !== undefined;) {
-      const node = this.find(id);
-      if (node?.values?.has(context.key)) {
-        return node.values.get(context.key) as T;
-      }
-      id = node?.parent;
+    const provider = this.findProvider(context.key, scope);
+    if (provider) {
+      return provider.values!.get(context.key) as T;
     }
     // The route of the page comes from its request and the params of its route.
     if (context.key === ROUTE_KEY) {
@@ -807,6 +802,34 @@ export class Context {
       return { pending: false } as T;
     }
     throw missingContext(context.key);
+  }
+
+  /**
+   * True when a scope above `scope` provides the context, or the runtime does, as it does for
+   * `$route` and `$navigation`. Providers are static, so the answer never changes.
+   */
+  has(context: ContextValue<unknown>, scope: ScopeId): boolean {
+    return (
+      this.findProvider(context.key, scope) !== undefined ||
+      context.key === ROUTE_KEY ||
+      context.key === NAVIGATION_KEY
+    );
+  }
+
+  /**
+   * The nearest scope above `scope` that provides the key. A scope reads the contexts of the
+   * scopes above it, not its own, so a component can read a context and provide it again to the
+   * scopes inside it.
+   */
+  private findProvider(key: string, scope: ScopeId): ScopeEntry | undefined {
+    for (let id: ScopeId | undefined = this.find(scope)?.parent; id !== undefined;) {
+      const node = this.find(id);
+      if (node?.values?.has(key)) {
+        return node;
+      }
+      id = node?.parent;
+    }
+    return undefined;
   }
 
   /** The ID that the next call to `scope()` returns. */

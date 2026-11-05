@@ -46,6 +46,7 @@ const UNSHARED = new Set([
   '$isPassed',
   '$id',
   '$getContext',
+  '$hasContext',
   '$setContext',
   '$store',
   '$toStore',

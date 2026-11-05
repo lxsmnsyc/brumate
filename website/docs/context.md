@@ -81,6 +81,26 @@ const locale = $getContext(Locale);
 - Without a provider above, it is the default value of the context.
 - Components that the browser renders later, such as a new item of a `#for`, read the value of their provider at that time.
 
+## Reading without a provider
+
+A part that works on its own, such as a button outside any group, asks first. `$hasContext(context)` is `true` when a component above provides the context, and `false` when none does:
+
+```ts
+const grouped = $hasContext(ButtonGroup);
+```
+
+- Declare it with `const`. The answer is fixed when the component renders, since providers are static. It is the same on the server and in the browser.
+- `$route()` and `$navigation()` have a provider on every page, so it is `true` for them.
+- To read only when there is a provider, guard the read with the same context. Without a provider the variable is `undefined`, and nothing links to a store:
+
+```ts
+const group = $hasContext(ButtonGroup) ? $getContext(ButtonGroup) : undefined;
+const state = $hasContext(ButtonGroup) ? $store(group.state) : undefined;
+const level = $hasContext(Level) ? $store(Level) : undefined;
+```
+
+- The guarded read is `const`, not `let`, and the guard and the read name the same context. Another form is [BRM197](./errors.md#brm197).
+
 ## Changing a provided value
 
 A component cannot assign to a value that it reads from a context. The component that provides it can give functions that change its own state, and any component below can call them:

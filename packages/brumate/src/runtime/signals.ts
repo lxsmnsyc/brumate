@@ -165,6 +165,15 @@ export function $getContext<T>(_context: Context<T>): T {
 }
 
 /**
+ * True when a component above provides the context, or the runtime does. Providers are static, so
+ * the answer is fixed when the component renders. Use it as the value of a const, or as the guard
+ * of a read that has no provider, `$hasContext(Field) ? $store(Field) : undefined`.
+ */
+export function $hasContext<T>(_context: Context<T>): boolean {
+  return compileTimeOnly('$hasContext');
+}
+
+/**
  * Binds a store to a variable. The store is any value with the functions `get`, `subscribe`
  * (which returns a function that stops it) and, optionally, `set`. The source is a context that
  * holds the store, `$store(FieldContext)`, a key of the value of a context,

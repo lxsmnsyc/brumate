@@ -1,0 +1,10 @@
+<script>
+  import { $hasContext, $props, $store } from 'brumate/signals';
+  import { Picker } from './contexts.ts';
+
+  const { where } = $props<{ where: string }>();
+  const found = $hasContext(Picker);
+  const value = $hasContext(Picker) ? $store(Picker) : undefined;
+</script>
+
+<p class=(`has-${where}`)>{found ? `yes ${value}` : 'no'}</p>

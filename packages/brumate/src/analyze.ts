@@ -74,7 +74,7 @@ const KEY_EVENTS = new Set(['keydown', 'keyup', 'keypress']);
 
 const COMPILE_TIME_FUNCTIONS = MACROS;
 
-/** The messages of BRM191 to BRM195. */
+/** The messages of BRM191 to BRM195 and BRM197. */
 const STORE_FORM =
   'Read a store with "const name = $store(source)" or "let name = $store(source)" at the top level of a script';
 const STORE_ARGUMENT = '$store takes one argument, a context, a store or a key of one';
@@ -83,6 +83,8 @@ const TO_STORE_ARGUMENT =
 const STORE_SOURCE =
   'The browser finds the store of $store again from a context, from a store that the file imports, or from a key of one';
 const STORE_PATTERN = '$store gives one name, not a pattern such as { a }';
+const HAS_CONTEXT_FORM =
+  'Keep the answer of $hasContext with "const name = $hasContext(Context)", or guard a read of the same context with "const name = $hasContext(Context) ? $store(Context) : undefined", with const and no other test';
 
 const MISPLACED: Record<string, string> = {
   $setContext: 'Call $setContext at the top level of a script',
@@ -93,6 +95,7 @@ const MISPLACED: Record<string, string> = {
   $getContext:
     'Read a context with "const name = $getContext(Context)" at the top level of a script',
   $store: STORE_FORM,
+  $hasContext: HAS_CONTEXT_FORM,
   $route: 'Read the route with "const name = $route()" at the top level of a script',
   $navigation: 'Read the navigation with "const name = $navigation()" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
@@ -449,7 +452,12 @@ class Analyzer {
         source = argument;
         import_ = root.name;
       } else if (root?.kind === 'context' && root.contextSource) {
-        // A value of `$getContext`: the context, and a key of its value.
+        // A value of `$getContext`: the context, and a key of its value. A guarded one is
+        // `undefined` without a provider, so the read needs the guard too.
+        if (root.guard && !declaration.guard) {
+          this.report('error', HAS_CONTEXT_FORM, store.source);
+          continue;
+        }
         source = root.contextSource;
         const named =
           source.type === 'Identifier' ? lookup(declaration.scope, source.name) : undefined;
@@ -457,6 +465,15 @@ class Analyzer {
       }
       if (!source) {
         this.report('error', STORE_SOURCE, store.source);
+        continue;
+      }
+      const guard = declaration.guard;
+      if (
+        guard &&
+        this.file.source.slice(guard.start, guard.end) !==
+          this.file.source.slice(source.start, source.end)
+      ) {
+        this.report('error', HAS_CONTEXT_FORM, guard);
         continue;
       }
       store.source = source;
@@ -1054,7 +1071,28 @@ class Analyzer {
     ) {
       this.report('error', `await works with $memo, not ${awaitedName}`, awaited);
     }
-    const init = awaitedName === '$memo' ? awaited!.argument : declarator.init;
+    let init = awaitedName === '$memo' ? awaited!.argument : declarator.init;
+    // `$hasContext(Context) ? $store(Context) : undefined` reads only when a provider exists.
+    let guard: oxc.Node | undefined;
+    if (init?.type === 'ConditionalExpression' && calleeName(init.test) === '$hasContext') {
+      const test = init.test as oxc.CallExpression;
+      const readName = calleeName(init.consequent);
+      const argument = test.arguments[0];
+      if (
+        kind !== 'const' ||
+        id.type !== 'Identifier' ||
+        test.arguments.length !== 1 ||
+        argument?.type === 'SpreadElement' ||
+        (readName !== '$store' && readName !== '$getContext') ||
+        init.alternate.type !== 'Identifier' ||
+        init.alternate.name !== 'undefined'
+      ) {
+        this.report('error', HAS_CONTEXT_FORM, declarator);
+        return;
+      }
+      guard = argument;
+      init = init.consequent;
+    }
     const name = calleeName(init);
     const call = init as oxc.CallExpression;
 
@@ -1220,8 +1258,29 @@ class Analyzer {
       // store back: a write of the variable calls the `set` of the store.
       const declaration = this.addDeclaration(scope, id.name, 'context', id);
       declaration.store = { source: argument, write: kind === 'let' };
+      declaration.guard = guard;
       this.storeReaders.push(declaration);
       this.createSite('setup', scope, argument, `store ${id.name}`);
+      if (guard) {
+        this.createSite('setup', scope, guard, `guard ${id.name}`);
+      }
+      return;
+    }
+
+    if (name === '$hasContext') {
+      if (kind !== 'const' || id.type !== 'Identifier' || call.arguments.length !== 1) {
+        this.report('error', HAS_CONTEXT_FORM, declarator);
+        return;
+      }
+      const argument = call.arguments[0]!;
+      if (argument.type === 'SpreadElement') {
+        this.report('error', HAS_CONTEXT_FORM, call);
+        return;
+      }
+      // The answer is fixed when the scope is made, so it never changes in the browser.
+      const declaration = this.addDeclaration(scope, id.name, 'context', id);
+      declaration.hasSource = argument;
+      this.createSite('setup', scope, argument, `has ${id.name}`);
       return;
     }
 
@@ -1237,7 +1296,11 @@ class Analyzer {
       const argument = call.arguments[0];
       if (argument) {
         declaration.contextSource = argument;
+        declaration.guard = guard;
         this.createSite('setup', scope, argument, `context ${id.name}`);
+        if (guard) {
+          this.createSite('setup', scope, guard, `guard ${id.name}`);
+        }
       }
       return;
     }

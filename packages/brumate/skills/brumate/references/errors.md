@@ -1776,6 +1776,17 @@ https://brumate-docs.vercel.app/docs/errors#brm196
 $setContext(Field, { state: $toStore(state), pick: () => value });
 ```
 
+## BRM197: Keep the answer of $hasContext with "const name = $hasContext(Context)", or guard a read of the same context with "const name = $hasContext(Context) ? $store(Context) : undefined", with const and no other test
+
+`$hasContext` is used in another shape: in a `let`, in a test with another condition, around another call than `$store` or `$getContext`, with an `else` that is not `undefined`, or with a context other than the one that the guarded `$store` reads.
+
+https://brumate-docs.vercel.app/docs/errors#brm197
+
+```brm fragment
+const field = $hasContext(Field) ? $getContext(Field) : undefined;
+const state = $hasContext(Field) ? $store(field.state) : undefined;
+```
+
 ## BRM144: $get is not supported. Signals cannot leave the file
 
 `$get` was removed. A signal never leaves its file.

@@ -1,0 +1,17 @@
+<script>
+  import { $getContext, $hasContext, $store } from 'brumate/signals';
+  import { FieldCtx, Level } from './ctx';
+
+  // Plain, and both guarded shapes, type-check with no error.
+  const found: boolean = $hasContext(FieldCtx);
+  const level: number | undefined = $hasContext(Level) ? $store(Level) : undefined;
+  const field = $hasContext(FieldCtx) ? $getContext(FieldCtx) : undefined;
+  const state: { count: number } | undefined = $hasContext(FieldCtx)
+    ? $store(field.state)
+    : undefined;
+  // The guarded types are not the bare ones.
+  const wrongLevel: number = $hasContext(Level) ? $store(Level) : undefined;
+  const wrongFound: string = $hasContext(Level);
+</script>
+
+<p>{found} {level} {state?.count} {wrongLevel} {wrongFound}</p>

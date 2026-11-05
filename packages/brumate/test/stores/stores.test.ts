@@ -513,3 +513,148 @@ describe('compile checks', () => {
     expect(output.warnings).toEqual([]);
   });
 });
+
+describe('$hasContext', () => {
+  it('is false on the server and in the browser without a provider', async () => {
+    const server = await import(file('hasAlone.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    expect(html).toContain('<p class="found">no</p>');
+    expect(html).toContain('>none</button>');
+    // Nothing is recorded to link, so the resume finds no read.
+    expect(state).not.toContain('z:[');
+    show(html + state);
+    await startLoader();
+    expect(text('.found')).toBe('no');
+    expect(text('.bump')).toBe('none');
+    await waitFor(async () => expect(await scopesOf('HasFieldReader_')).toHaveLength(1));
+    const [reader] = await scopesOf('HasFieldReader_');
+    expect(reader!.s.some((value) => value instanceof Object && 'get' in value)).toBe(false);
+    // The click handler reads the missing field with `?.`.
+    click(document.querySelector('.bump')!);
+    expect(text('.bump')).toBe('none');
+  });
+
+  it('binds with a provider rendered by the server, and a resume does not write the store', async () => {
+    const server = await import(file('hasField.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    expect(html).toContain('<p class="found">yes</p>');
+    expect(html).toContain('>0</button>');
+    expect(state).toContain('z:[["store-field",1,"state"]]');
+    show(html + state);
+    await startLoader();
+    await waitFor(async () => expect(await scopesOf('HasField_')).toHaveLength(1));
+    const [provider] = await scopesOf('HasField_');
+    const provided = provider!.v!['store-field'] as { state: Store<unknown> };
+    const set = vi.spyOn(provided.state, 'set');
+    expect(text('.found')).toBe('yes');
+    expect(text('.bump')).toBe('0');
+    expect(set).not.toHaveBeenCalled();
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.bump')).toBe('1'));
+    expect(text('.count')).toBe('1');
+  });
+
+  it('agrees with a provider and a reader that a browser render makes', async () => {
+    await resume('hasLater');
+    click(document.querySelector('.provide')!);
+    await waitFor(() => expect(text('.with .found')).toBe('yes'));
+    expect(text('.with .bump')).toBe('5');
+    click(document.querySelector('.with .bump')!);
+    await waitFor(() => expect(text('.with .bump')).toBe('6'));
+    click(document.querySelector('.alone')!);
+    await waitFor(() => expect(text('.without .found')).toBe('no'));
+    expect(text('.without .bump')).toBe('none');
+  });
+
+  it('agrees on both sides in a streamed #loading chunk', async () => {
+    for (const [name, outer, inner] of [
+      ['hasLoading', 'yes a', 'yes a'],
+      ['hasLoadingNone', 'no', 'no'],
+    ] as const) {
+      document.body.innerHTML = '';
+      const server = await import(file(`${name}.brm.ts`));
+      server.reset();
+      const { html, state, pending } = await renderParts(server.default, {});
+      show(html + state);
+      await startLoader();
+      expect(text('.has-outer')).toBe(outer);
+      server.release('Ada');
+      for await (const chunk of pending) {
+        appendChunk(chunk);
+      }
+      await waitFor(() => expect(text('.data')).toBe('Ada'));
+      expect(text('.has-inner')).toBe(inner);
+      expect(text('.has-outer')).toBe(outer);
+      stop?.();
+    }
+  });
+
+  it('is true for $route and $navigation in the browser', async () => {
+    const { hasContext } = await import('../../src/runtime/client/context.ts');
+    const { routeContext, navigationContext } = await import('../../src/runtime/context.ts');
+    const scope = { id: 1, s: [] } as unknown as Scope;
+    expect(hasContext(routeContext, scope)).toBe(true);
+    expect(hasContext(navigationContext, scope)).toBe(true);
+    expect(hasContext({ key: 'nothing' }, scope)).toBe(false);
+  });
+
+  it('is true for $route and $navigation on the server', async () => {
+    const { Context, routeContext, navigationContext } =
+      await import('../../src/runtime/server.ts').then(async (server) => ({
+        ...(await import('../../src/runtime/context.ts')),
+        Context: server.Context,
+      }));
+    const ctx = new Context();
+    const scope = ctx.scope(1, undefined, 'Test');
+    expect(ctx.has(routeContext, scope)).toBe(true);
+    expect(ctx.has(navigationContext, scope)).toBe(true);
+    expect(ctx.has({ key: 'nothing' }, scope)).toBe(false);
+  });
+});
+
+describe('BRM197', () => {
+  const head =
+    "import { $getContext, $hasContext, $store } from 'brumate/signals';\nimport { Ctx, Other } from './ctx.ts';\nimport { theme } from './theme.ts';\n";
+  function build(script: string): ReturnType<typeof compile> {
+    return compile(`<script>\n${head}${script}\n</script>\n<p></p>`, { filename: 'Test.brm' });
+  }
+
+  it('accepts the guarded shapes and the plain answer', () => {
+    expect(() => build('const x = $hasContext(Ctx) ? $store(Ctx) : undefined;')).not.toThrow();
+    expect(() => build('const g = $hasContext(Ctx) ? $getContext(Ctx) : undefined;')).not.toThrow();
+    expect(() =>
+      build(
+        'const g = $hasContext(Ctx) ? $getContext(Ctx) : undefined;\nconst y = $hasContext(Ctx) ? $store(g.state) : undefined;',
+      ),
+    ).not.toThrow();
+    expect(() => build('const has = $hasContext(Ctx);')).not.toThrow();
+  });
+
+  it('reports a let, a guard on another context and other shapes, with the shape in the message', () => {
+    const shape = 'const name = $hasContext(Context) ? $store(Context) : undefined';
+    const shapes = [
+      'let x = $hasContext(Ctx) ? $store(Ctx) : undefined;',
+      'const x = $hasContext(Other) ? $store(Ctx) : undefined;',
+      'const g = $getContext(Ctx);\nconst x = $hasContext(Other) ? $store(g.state) : undefined;',
+      'const x = $hasContext(Ctx) ? $store(theme) : undefined;',
+      'const g = $hasContext(Ctx) ? $getContext(Ctx) : undefined;\nconst y = $store(g.state);',
+      'const x = $hasContext(Ctx) ? $store(Ctx) : null;',
+      'const x = $hasContext(Ctx) ? $store(Ctx) : $store(Other);',
+      'const x = $hasContext(Ctx) ? 1 : undefined;',
+      'const x = $hasContext() ? $store(Ctx) : undefined;',
+      'let has = $hasContext(Ctx);',
+      'const x = $hasContext(Ctx, Other);',
+      'const x = [$hasContext(Ctx)];',
+    ];
+    for (const script of shapes) {
+      let thrown: unknown;
+      try {
+        build(script);
+      } catch (error) {
+        thrown = error;
+      }
+      expect((thrown as Error | undefined)?.message).toContain('[BRM197]');
+      expect((thrown as Error).message).toContain(shape);
+    }
+  });
+});

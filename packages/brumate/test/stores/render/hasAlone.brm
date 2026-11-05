@@ -1,0 +1,5 @@
+<script>
+  import HasFieldReader from './HasFieldReader.brm';
+</script>
+
+<HasFieldReader />

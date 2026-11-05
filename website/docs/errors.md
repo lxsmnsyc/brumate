@@ -1776,6 +1776,17 @@ The value of `$setContext` reads a signal, a memo, a prop or a `$bind` value tha
 $setContext(Field, { state: $toStore(state), pick: () => value });
 ```
 
+## BRM197
+
+`Keep the answer of $hasContext with "const name = $hasContext(Context)", or guard a read of the same context with "const name = $hasContext(Context) ? $store(Context) : undefined", with const and no other test`
+
+`$hasContext` is used in another shape: in a `let`, in a test with another condition, around another call than `$store` or `$getContext`, with an `else` that is not `undefined`, or with a context other than the one that the guarded `$store` reads.
+
+```ts
+const field = $hasContext(Field) ? $getContext(Field) : undefined;
+const state = $hasContext(Field) ? $store(field.state) : undefined;
+```
+
 ## BRM144
 
 `$get is not supported. Signals cannot leave the file`

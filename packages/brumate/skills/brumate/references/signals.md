@@ -4,34 +4,35 @@ The compiler replaces each call and removes the import, so none of them ship. Im
 
 "Top level of a script" means a statement of the component's `<script>`, or of a `<script>` at the start of a block body. It is not inside a function or another statement.
 
-| Function                       | Returns                    | Where                                                 |
-| ------------------------------ | -------------------------- | ----------------------------------------------------- |
-| `$props<T>()`                  | `T`                        | `const` or `let` in the component script              |
-| `$signal<T>(value?)`           | `T`                        | `let` at the top level of a script                    |
-| `$memo<T>(value)`              | the value, never a promise | `const` at the top level of a script                  |
-| `$debounced(value, ms)`        | the value, as a memo       | `const` at the top level of a script                  |
-| `$throttled(value, ms)`        | the value, as a memo       | `const` at the top level of a script                  |
-| `$isPending(memo)`             | `boolean`                  | Any expression                                        |
-| `$resolve(memo, options?)`     | `Promise<T>`               | A handler, an effect or a `$client` callback          |
-| `$isPassed(prop)`              | `boolean`                  | `const` in the component script                       |
-| `$isBound(prop)`               | `boolean`                  | Any expression                                        |
-| `$effect(callback)`            | `void`                     | Statement at the top level of a script                |
-| `$client(callback, trigger?)`  | `void`                     | Statement at the top level of a script                |
-| `$untrack(value)`              | the value                  | Any expression                                        |
-| `$produce(signal, recipe)`     | `void`                     | Where a signal can be written                         |
-| `$setContext(context, value)`  | `void`                     | Statement at the top level of a script                |
-| `$getContext(context)`         | the value                  | `const` at the top level of a script                  |
-| `$store(source)`               | the value of the store     | `const` or `let` at the top level of a script         |
-| `$toStore(value)`              | a store                    | A value of `$setContext`                              |
-| `$route(path?)`                | `{ url, search, params }`  | `const` at the top level of a script                  |
-| `$searchParam(name, options?)` | the value of the parameter | `let` at the top level of a script                    |
-| `$navigation()`                | `{ pending, from, to }`    | `const` at the top level of a script                  |
-| `$id()`                        | `string`                   | `const` at the top level of a script                  |
-| `$title(value)`                | `void`                     | Statement at the top level of a script                |
-| `$action(fn)`                  | the result, or `undefined` | `const` at the top level of a script                  |
-| `$optimistic(source)`          | the value of `source`      | `let` at the top level of a script                    |
-| `$handler(fn, ...args)`        | a handler                  | Any expression of a script or a module function       |
-| `$bind(value, set?)`           | a binding                  | The whole value of a prop, or of `value` or `checked` |
+| Function                       | Returns                    | Where                                                        |
+| ------------------------------ | -------------------------- | ------------------------------------------------------------ |
+| `$props<T>()`                  | `T`                        | `const` or `let` in the component script                     |
+| `$signal<T>(value?)`           | `T`                        | `let` at the top level of a script                           |
+| `$memo<T>(value)`              | the value, never a promise | `const` at the top level of a script                         |
+| `$debounced(value, ms)`        | the value, as a memo       | `const` at the top level of a script                         |
+| `$throttled(value, ms)`        | the value, as a memo       | `const` at the top level of a script                         |
+| `$isPending(memo)`             | `boolean`                  | Any expression                                               |
+| `$resolve(memo, options?)`     | `Promise<T>`               | A handler, an effect or a `$client` callback                 |
+| `$isPassed(prop)`              | `boolean`                  | `const` in the component script                              |
+| `$isBound(prop)`               | `boolean`                  | Any expression                                               |
+| `$effect(callback)`            | `void`                     | Statement at the top level of a script                       |
+| `$client(callback, trigger?)`  | `void`                     | Statement at the top level of a script                       |
+| `$untrack(value)`              | the value                  | Any expression                                               |
+| `$produce(signal, recipe)`     | `void`                     | Where a signal can be written                                |
+| `$setContext(context, value)`  | `void`                     | Statement at the top level of a script                       |
+| `$getContext(context)`         | the value                  | `const` at the top level of a script                         |
+| `$hasContext(context)`         | `boolean`                  | `const` at the top level of a script, or the guard of a read |
+| `$store(source)`               | the value of the store     | `const` or `let` at the top level of a script                |
+| `$toStore(value)`              | a store                    | A value of `$setContext`                                     |
+| `$route(path?)`                | `{ url, search, params }`  | `const` at the top level of a script                         |
+| `$searchParam(name, options?)` | the value of the parameter | `let` at the top level of a script                           |
+| `$navigation()`                | `{ pending, from, to }`    | `const` at the top level of a script                         |
+| `$id()`                        | `string`                   | `const` at the top level of a script                         |
+| `$title(value)`                | `void`                     | Statement at the top level of a script                       |
+| `$action(fn)`                  | the result, or `undefined` | `const` at the top level of a script                         |
+| `$optimistic(source)`          | the value of `source`      | `let` at the top level of a script                           |
+| `$handler(fn, ...args)`        | a handler                  | Any expression of a script or a module function              |
+| `$bind(value, set?)`           | a binding                  | The whole value of a prop, or of `value` or `checked`        |
 
 ## What each one does
 
@@ -50,6 +51,7 @@ The compiler replaces each call and removes the import, so none of them ship. Im
 - `$produce(signal, recipe)`: changes a draft of an object or array in a signal, and writes the result as a new value. The recipe can return a new value instead.
 - `$setContext(context, value)`: gives a value of a context to the components inside. Create the context with `createContext` from `brumate/context`. The value is read once. A signal, memo, prop or `$bind` value that changes, read outside a function, is BRM196: put it in a store with `$toStore`.
 - `$getContext(context)`: reads a context from the nearest component above that provides it, or its default.
+- `$hasContext(context)`: `true` when a component above provides the context, fixed when the component renders, the same on the server and in the browser. Guard a read of a context that may be missing with the same context: `const state = $hasContext(Field) ? $store(Field) : undefined`, or `const field = $hasContext(Field) ? $getContext(Field) : undefined` and `$hasContext(Field) ? $store(field.state) : undefined`. Without a provider the variable is `undefined`. The guarded read is `const`, and a `let`, a guard on another context or another shape is BRM197.
 - `$store(source)`: binds a store, any value with `get()`, `subscribe(listener)` (returns a function that stops it) and optionally `set(value)`, to a variable. The source is a context that holds the store, a key of the value of `$getContext`, such as `$store(field.state)`, or a store that the file imports. The variable follows the store. With `let`, a write such as `x = next` or `x++` calls `set`, and a store without `set` throws a `TypeError` when the variable registers. A source that is a local value or a call is an error (BRM194).
 - `$toStore(value)`: a store for a value of `$setContext`, from a memo, a signal or a prop, alone or as a key of an object. A store of a signal has a `set` that writes the signal. Every context is static, and its readers update through the stores it holds. Make a store of your own with `store(value)` from `brumate/store`.
 - `$route(path?)`: the current route, as `{ url, search, params }`. The path is the route, such as `'/posts/[id]'`, and takes at most one argument.
