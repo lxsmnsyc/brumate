@@ -193,12 +193,12 @@
         background: radial-gradient(circle, #ffffff0d 1px, transparent 1.2px) 0 0 / 18px 18px; }
       .gwrap.panning { cursor: grabbing; }
       .gwrap > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-      .gcol { font: 10.5px system-ui; fill: var(--faint); font-weight: 600; }
       .gn { cursor: pointer; }
       .gn rect.box { fill: var(--raised); stroke: var(--line2); stroke-width: 1; transition: fill .2s, stroke .2s; }
       .gn:hover rect.box { stroke: #4a464f; }
       .gn .kd { font: 10px var(--mono); fill: var(--faint); }
       .gn .nm { font: 500 12px var(--mono); fill: var(--text); }
+      .gn .vl { font: 11px var(--mono); }
       .gn .vl { font: 11px var(--mono); }
       .gn.sel rect.box { fill: #ee7a3e14; stroke: #ee7a3e80; }
       .gn.mark rect.box { fill: #ffd16624; stroke: #ffd166; }
@@ -209,9 +209,6 @@
       .ge.dim { opacity: .25; }
       .gtools { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--bg); box-shadow: 0 0 0 1px var(--line2), 0 8px 20px #0007; }
       .gtools .icon { width: 26px; height: 26px; }
-      .gtools .z { font: 10.5px/26px var(--mono); color: var(--faint); min-width: 40px; text-align: center; }
-      .glegend { position: absolute; right: 14px; top: 10px; display: flex; gap: 12px; font-size: 11px; color: var(--faint); pointer-events: none; }
-      .glegend i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 5px; }
       .gside { position: absolute; top: 10px; right: 10px; bottom: 10px; width: 250px; overflow: auto; padding: 14px 16px; border-radius: 10px; background: var(--bg); box-shadow: 0 0 0 1px var(--line2), 0 12px 32px #0009; cursor: default; animation: rise .2s var(--ease); }
       .gside h4 { margin: 0; font: 600 13px var(--mono); display: flex; align-items: center; gap: 8px; }
       .gside .icon { margin-left: auto; width: 24px; height: 24px; }
@@ -613,569 +610,609 @@
     </div>
 
     <script>
-      const $ = (s, r = document) => r.querySelector(s);
-      const panel = $('#panel'), grip = $('#grip'), body = $('#body');
-      let ws = 'inspect', sel = 'Index', side = false, picking = false, issue = 0, paused = false;
-      const t0 = performance.now();
+            const $ = (s, r = document) => r.querySelector(s);
+            const panel = $('#panel'), grip = $('#grip'), body = $('#body');
+            let ws = 'inspect', sel = 'Index', side = false, picking = false, issue = 0, paused = false;
+            const t0 = performance.now();
 
-      const tree = [
-        { name: 'Layout', file: 'src/routes/_layout.brm', depth: 0, scopes: 1 },
-        { name: 'App', file: 'src/App.brm', depth: 1, scopes: 1 },
-        { name: '#head', block: true, depth: 2, meta: '#3' },
-        { name: 'Index', file: 'src/routes/index.brm', depth: 1, scopes: 3, el: 'c-index' },
-        { name: '#for todos', block: true, depth: 2, meta: '2 items' },
-        { name: 'Quote', file: 'src/Quote.brm', depth: 2, scopes: 1, el: 'c-quote', defer: true },
-        { name: 'Default', file: 'src/routes/@aside/_default.brm', depth: 1, scopes: 1, el: 'c-tip' },
-        { name: 'Counter', file: 'src/Counter.brm', depth: 1, scopes: 0, off: true },
-      ];
-      const slots = {
-        Index: [
-          ['todos', 'Todo[]', '[{ text: "Write the docs", done: true }, …1]', 'list, left'],
-          ['draft', 'string', '""', 'input value'],
-          ['left', 'number', '1', 'h2 text'],
-          ['add', 'handler', 'onClick', 'button'],
-        ],
-        Layout: [['wide', 'boolean', 'false', 'class:wide']],
-        App: [['title', 'string', '"Todos"', '#head']],
-        Quote: [['quote', 'string', '"Ship less code to the browser."', 'em text']],
-        Default: [], Counter: [],
-      };
-      let log = [
-        { t: 1.2, kind: 'nav', text: 'GET /', sub: '200 · server render', d: '38 ms' },
-        { t: 1.31, kind: 'block', text: '#defer Quote', sub: 'rendered', d: '4 ms' },
-        { t: 2.04, kind: 'handler', text: 'Index · onToggle(todo 0)', d: '0.4 ms' },
-        { t: 2.04, kind: 'write', text: 'todos[0].done ← true', child: true },
-        { t: 2.05, kind: 'effect', text: 'left 2 → 1 · 2 nodes updated', child: true },
-        { t: 3.6, kind: 'server', text: 'saveTodos()', sub: '200', d: '21 ms', call: 'save1' },
-        { t: 4.8, kind: 'handler', text: 'Guestbook · sign()', d: '0.2 ms' },
-        { t: 4.81, kind: 'server', text: 'addEntry()', sub: '500', d: '62 ms', call: 'fail1', child: true, bad: true },
-      ];
-      let selCall = null, armed = false;
-      const calls = {
-        save1: {
-          fn: 'saveTodos', file: 'src/todos.server.ts:14', from: 'Index · onToggle(todo 0)', status: 200,
-          args: [['todos', [['0', { text: '"Write the docs"', done: 'true' }], ['1', { text: '"Build the compiler"', done: 'false' }]]]],
-          result: [['saved', 'true'], ['at', '2026-11-05T09:14:02.118Z']],
-          timing: [['module', 2, 'var(--faint)'], ['network', 5, 'var(--blue)'], ['server', 13, 'var(--pink)'], ['decode', 1, 'var(--green)']],
-          server: { memos: ['session (cached)', 'db (cached)'], nested: [], logs: [] },
-          after: 'No writes. The result is not read.',
-        },
-        fail1: {
-          fn: 'addEntry', file: 'src/guestbook.server.ts:22', from: 'Guestbook · sign()', status: 500,
-          args: [['name', '"Ada"'], ['message', '"Hello from the dock prototype, a message that goes on…" (64 of 212 chars)']],
-          error: ['Error: entries table is full', 'addEntry  src/guestbook.server.ts:31:11', 'insert  src/db.ts:48:7', '4 frames of brumate hidden'],
-          timing: [['module', 3, 'var(--faint)'], ['network', 6, 'var(--blue)'], ['server', 52, 'var(--pink)'], ['decode', 1, 'var(--green)']],
-          server: { memos: ['session (cached)'], nested: ['countEntries()  41 ms'], logs: [['warn', 'guestbook: 1000 of 1000 entries']] },
-          after: 'sign() rejected. The #catch of Guestbook rendered its fallback.',
-        },
-      };
-      let nextSave = 2;
-      const colors = { nav: 'var(--blue)', block: 'var(--purple)', handler: 'var(--accent)', write: 'var(--yellow)', effect: 'var(--green)', server: 'var(--pink)' };
-      const labels = { nav: 'Navigation', handler: 'Handler', write: 'Write', effect: 'Effect', server: 'Server', block: 'Block' };
-      const on = new Set(Object.keys(colors));
-      const issues = [
-        { src: 'Browser error', color: 'var(--red)', msg: 'TypeError: todo is undefined', at: 'src/routes/index.brm:47:21', line: 47 },
-        { src: 'Compiler check', color: 'var(--yellow)', msg: '`onclick` is not an event name. Did you mean `onClick`?', code: 'BRM167', at: 'src/Counter.brm:12:11', line: 12 },
-      ];
+            const tree = [
+              { name: 'Layout', file: 'src/routes/_layout.brm', depth: 0, scopes: 1 },
+              { name: 'App', file: 'src/App.brm', depth: 1, scopes: 1 },
+              { name: '#head', block: true, depth: 2, meta: '#3' },
+              { name: 'Index', file: 'src/routes/index.brm', depth: 1, scopes: 3, el: 'c-index' },
+              { name: '#for todos', block: true, depth: 2, meta: '2 items' },
+              { name: 'Quote', file: 'src/Quote.brm', depth: 2, scopes: 1, el: 'c-quote', defer: true },
+              { name: 'Default', file: 'src/routes/@aside/_default.brm', depth: 1, scopes: 1, el: 'c-tip' },
+              { name: 'Counter', file: 'src/Counter.brm', depth: 1, scopes: 0, off: true },
+            ];
+            const slots = {
+              Index: [
+                ['todos', 'Todo[]', '[{ text: "Write the docs", done: true }, …1]', 'list, left'],
+                ['draft', 'string', '""', 'input value'],
+                ['left', 'number', '1', 'h2 text'],
+                ['add', 'handler', 'onClick', 'button'],
+              ],
+              Layout: [['wide', 'boolean', 'false', 'class:wide']],
+              App: [['title', 'string', '"Todos"', '#head']],
+              Quote: [['quote', 'string', '"Ship less code to the browser."', 'em text']],
+              Default: [], Counter: [],
+            };
+            let log = [
+              { t: 1.2, kind: 'nav', text: 'GET /', sub: '200 · server render', d: '38 ms' },
+              { t: 1.31, kind: 'block', text: '#defer Quote', sub: 'rendered', d: '4 ms' },
+              { t: 2.04, kind: 'handler', text: 'Index · onToggle(todo 0)', d: '0.4 ms' },
+              { t: 2.04, kind: 'write', text: 'todos[0].done ← true', child: true },
+              { t: 2.05, kind: 'effect', text: 'left 2 → 1 · 2 nodes updated', child: true },
+              { t: 3.6, kind: 'server', text: 'saveTodos()', sub: '200', d: '21 ms', call: 'save1' },
+              { t: 4.8, kind: 'handler', text: 'Guestbook · sign()', d: '0.2 ms' },
+              { t: 4.81, kind: 'server', text: 'addEntry()', sub: '500', d: '62 ms', call: 'fail1', child: true, bad: true },
+            ];
+            let selCall = null, armed = false;
+            const calls = {
+              save1: {
+                fn: 'saveTodos', file: 'src/todos.server.ts:14', from: 'Index · onToggle(todo 0)', status: 200,
+                args: [['todos', [['0', { text: '"Write the docs"', done: 'true' }], ['1', { text: '"Build the compiler"', done: 'false' }]]]],
+                result: [['saved', 'true'], ['at', '2026-11-05T09:14:02.118Z']],
+                timing: [['module', 2, 'var(--faint)'], ['network', 5, 'var(--blue)'], ['server', 13, 'var(--pink)'], ['decode', 1, 'var(--green)']],
+                server: { memos: ['session (cached)', 'db (cached)'], nested: [], logs: [] },
+                after: 'No writes. The result is not read.',
+              },
+              fail1: {
+                fn: 'addEntry', file: 'src/guestbook.server.ts:22', from: 'Guestbook · sign()', status: 500,
+                args: [['name', '"Ada"'], ['message', '"Hello from the dock prototype, a message that goes on…" (64 of 212 chars)']],
+                error: ['Error: entries table is full', 'addEntry  src/guestbook.server.ts:31:11', 'insert  src/db.ts:48:7', '4 frames of brumate hidden'],
+                timing: [['module', 3, 'var(--faint)'], ['network', 6, 'var(--blue)'], ['server', 52, 'var(--pink)'], ['decode', 1, 'var(--green)']],
+                server: { memos: ['session (cached)'], nested: ['countEntries()  41 ms'], logs: [['warn', 'guestbook: 1000 of 1000 entries']] },
+                after: 'sign() rejected. The #catch of Guestbook rendered its fallback.',
+              },
+            };
+            let nextSave = 2;
+            const colors = { nav: 'var(--blue)', block: 'var(--purple)', handler: 'var(--accent)', write: 'var(--yellow)', effect: 'var(--green)', server: 'var(--pink)' };
+            const labels = { nav: 'Navigation', handler: 'Handler', write: 'Write', effect: 'Effect', server: 'Server', block: 'Block' };
+            const on = new Set(Object.keys(colors));
+            const issues = [
+              { src: 'Browser error', color: 'var(--red)', msg: 'TypeError: todo is undefined', at: 'src/routes/index.brm:47:21', line: 47 },
+              { src: 'Compiler check', color: 'var(--yellow)', msg: '`onclick` is not an event name. Did you mean `onClick`?', code: 'BRM167', at: 'src/Counter.brm:12:11', line: 12 },
+            ];
 
-      const ico = {
-        ext: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>',
-        chev: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
-        x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
-        find: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
-      };
+            const ico = {
+              ext: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>',
+              chev: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+              x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+              find: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+            };
 
-      function render() {
-        for (const b of $('#ws').querySelectorAll('button')) b.setAttribute('aria-selected', b.dataset.ws === ws);
-        const cur = $(`#ws button[data-ws="${ws}"]`), ind = $('#ind');
-        ind.style.left = cur.offsetLeft + 'px'; ind.style.width = cur.offsetWidth + 'px';
-        body.innerHTML = { inspect, activity, issues: issuesView, page }[ws]();
-        if (ws === 'inspect') bindInspect();
-        if (ws === 'activity') bindActivity();
-        if (ws === 'issues') for (const el of body.querySelectorAll('.iss')) el.onclick = () => { issue = +el.dataset.i; render(); };
-        if (ws === 'page') for (const b of body.querySelectorAll('[data-go]')) b.onclick = () => { ws = b.dataset.go; render(); };
-        addSplit();
-      }
+            function render() {
+              for (const b of $('#ws').querySelectorAll('button')) b.setAttribute('aria-selected', b.dataset.ws === ws);
+              const cur = $(`#ws button[data-ws="${ws}"]`), ind = $('#ind');
+              ind.style.left = cur.offsetLeft + 'px'; ind.style.width = cur.offsetWidth + 'px';
+              body.innerHTML = { inspect, activity, issues: issuesView, page }[ws]();
+              addSplit();
+              if (ws === 'inspect') bindInspect();
+              if (ws === 'activity') bindActivity();
+              if (ws === 'issues') for (const el of body.querySelectorAll('.iss')) el.onclick = () => { issue = +el.dataset.i; render(); };
+              if (ws === 'page') for (const b of body.querySelectorAll('[data-go]')) b.onclick = () => { ws = b.dataset.go; render(); };
+            }
 
-      /* the graph of each component, from the compiler: sources, memos, then what reads them */
-      const kinds = {
-        signal: { label: 'signal', color: '#ffc28f', col: 0 },
-        prop: { label: 'prop', color: '#ffc28f', col: 0 },
-        memo: { label: '$memo', color: 'var(--purple)', col: 1 },
-        markup: { label: 'markup', color: 'var(--blue)', col: 2 },
-        effect: { label: '$effect', color: 'var(--green)', col: 2 },
-      };
-      const graphs = {
-        Index: [
-          { id: 'todos', kind: 'signal', name: 'todos', value: 'Array(2)', line: 4, reads: [] },
-          { id: 'draft', kind: 'signal', name: 'draft', value: '""', line: 5, reads: [] },
-          { id: 'left', kind: 'memo', name: 'left', value: '1', line: 7, reads: ['todos'] },
-          { id: 'empty', kind: 'memo', name: 'empty', value: 'false', line: 8, reads: ['todos'] },
-          { id: 'small', kind: 'markup', name: '<small> text', value: '"1 left"', line: 31, reads: ['left'] },
-          { id: 'for', kind: 'markup', name: '#for todos', value: '2 items', line: 45, reads: ['todos'] },
-          { id: 'input', kind: 'markup', name: '<input> value', value: '""', line: 34, reads: ['draft'] },
-          { id: 'add', kind: 'markup', name: '<button> disabled', value: 'false', line: 35, reads: ['draft'] },
-          { id: 'hint', kind: 'markup', name: '#if empty', value: 'closed', line: 52, reads: ['empty'] },
-          { id: 'save', kind: 'effect', name: 'save', value: 'ran 1 time', line: 11, reads: ['todos'] },
-        ],
-        Layout: [
-          { id: 'wide', kind: 'signal', name: 'wide', value: 'false', line: 3, reads: [] },
-          { id: 'cls', kind: 'markup', name: 'class:wide', value: 'false', line: 9, reads: ['wide'] },
-        ],
-        App: [
-          { id: 'title', kind: 'prop', name: 'title', value: '"Todos"', line: 2, reads: [] },
-          { id: 'head', kind: 'markup', name: '#head <title>', value: '"Todos"', line: 6, reads: ['title'] },
-        ],
-        Quote: [
-          { id: 'quote', kind: 'signal', name: 'quote', value: '"Ship less code…"', line: 3, reads: [] },
-          { id: 'em', kind: 'markup', name: '<em> text', value: '"Ship less code…"', line: 8, reads: ['quote'] },
-        ],
-        Default: [], Counter: [],
-      };
-      let mode = 'values', gsel = null, gview = null, saves = 1;
-      const NW = 168, NH = 46, CX = 230, RY = 62;
-      function layout(nodes) {
-        const rows = [0, 0, 0], pos = {};
-        // Sources and memos keep their order; the third column follows the rows of what it reads, so fewer lines cross.
-        for (const n of nodes) { const c = kinds[n.kind].col; if (c < 2) pos[n.id] = { x: 30 + c * CX, y: 46 + rows[c]++ * RY }; }
-        const last = nodes.filter(n => kinds[n.kind].col === 2).map(n => ({ n, key: Math.min(...n.reads.map(r => pos[r].y + (kinds[nodes.find(x => x.id === r).kind].col === 1 ? 1 : 0))) }));
-        last.sort((a, b) => a.key - b.key);
-        for (const { n } of last) pos[n.id] = { x: 30 + 2 * CX, y: 46 + rows[2]++ * RY };
-        return pos;
-      }
-      function downstream(nodes, id) {
-        const out = new Map([[id, 0]]), queue = [id];
-        while (queue.length) { const cur = queue.shift(); for (const n of nodes) if (n.reads.includes(cur) && !out.has(n.id)) { out.set(n.id, out.get(cur) + 1); queue.push(n.id); } }
-        return out;
-      }
-      function valueClass(v) { return v.startsWith('"') ? 'str' : /^(true|false)$/.test(v) ? 'bool' : /^\d/.test(v) ? 'num' : 'dim'; }
-      function drawGraph() {
-        const wrap = $('#gwrap', body); if (!wrap) return;
-        const nodes = graphs[sel] || [];
-        if (!nodes.length) { wrap.innerHTML = '<div class="faint" style="padding:20px">Nothing in this component changes in the browser.</div>'; return; }
-        const pos = layout(nodes);
-        const fresh = !gview || gview.of !== sel;
-        if (fresh) gview = { of: sel, x: 0, y: 0, k: 1 };
-        const related = gsel ? new Set([gsel, ...nodes.find(n => n.id === gsel).reads, ...nodes.filter(n => n.reads.includes(gsel)).map(n => n.id)]) : null;
-        const edges = nodes.flatMap(n => n.reads.map(r => {
-          const a = pos[r], b = pos[n.id], x1 = a.x + NW, y1 = a.y + NH / 2, x2 = b.x, y2 = b.y + NH / 2, m = (x1 + x2) / 2;
-          const hot = gsel && (r === gsel || n.id === gsel);
-          return `<path class="ge ${hot ? 'hot' : related ? 'dim' : ''}" data-from="${r}" data-to="${n.id}" d="M${x1},${y1} C${m},${y1} ${m},${y2} ${x2},${y2}"/>`;
-        })).join('');
-        const heads = ['Signals and props', 'Memos', 'Markup and effects'].map((h, i) => `<text class="gcol" x="${30 + i * CX}" y="30">${h}</text>`).join('');
-        const boxes = nodes.map(n => {
-          const p = pos[n.id], k = kinds[n.kind];
-          return `<g class="gn ${n.id === gsel ? 'sel' : ''} ${related && !related.has(n.id) ? 'dim' : ''}" data-g="${n.id}" transform="translate(${p.x},${p.y})" tabindex="0">
-            <rect class="box" width="${NW}" height="${NH}" rx="8"/>
-            <rect x="10" y="12" width="7" height="7" rx="2" fill="${k.color}"/>
-            <text class="kd" x="23" y="19">${k.label}</text>
-            <text class="nm" x="10" y="36">${n.name.replace(/</g, '&lt;')}</text>
-            <text class="vl ${valueClass(n.value)}" x="${NW - 10}" y="19" text-anchor="end" fill="currentColor">${n.value}</text>
-          </g>`;
-        }).join('');
-        const g = gsel && nodes.find(n => n.id === gsel);
-        wrap.innerHTML = `
-          <svg><g id="gview" transform="translate(${gview.x},${gview.y}) scale(${gview.k})">${heads}${edges}${boxes}</g></svg>
-          <div class="glegend">${['signal', 'memo', 'markup', 'effect'].map(k => `<span><i style="background:${kinds[k].color}"></i>${kinds[k].label}</span>`).join('')}</div>
-          <div class="gtools">
-            <button class="icon" data-z="-1" title="Zoom out"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
-            <span class="z">${Math.round(gview.k * 100)}%</span>
-            <button class="icon" data-z="1" title="Zoom in"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button>
-            <button class="icon" data-z="0" title="Fit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-          </div>
-          ${g ? `<aside class="gside">
-            <h4><i style="width:8px;height:8px;border-radius:2px;background:${kinds[g.kind].color}"></i>${g.name.replace(/</g, '&lt;')}<button class="icon" id="gx" title="Close">${ico.x}</button></h4>
-            <div class="faint mono" style="margin-top:2px">${kinds[g.kind].label}</div>
-            <div class="val gv"><span class="${valueClass(g.value)}">${g.value}</span></div>
-            <div class="sec">Reads <span class="n">${g.reads.length}</span></div>
-            ${g.reads.map(r => nodes.find(n => n.id === r)).map(n => `<div class="lk" data-to="${n.id}"><i style="background:${kinds[n.kind].color}"></i>${n.name.replace(/</g, '&lt;')}</div>`).join('') || '<div class="faint">Nothing. It is a source.</div>'}
-            <div class="sec">Read by <span class="n">${nodes.filter(n => n.reads.includes(g.id)).length}</span></div>
-            ${nodes.filter(n => n.reads.includes(g.id)).map(n => `<div class="lk" data-to="${n.id}"><i style="background:${kinds[n.kind].color}"></i>${n.name.replace(/</g, '&lt;')}</div>`).join('') || '<div class="faint">Nothing reads it.</div>'}
-            <div class="sec">In the file</div>
-            <a class="path">${tree.find(t => t.name === sel).file}:${g.line}${ico.ext}</a>
-          </aside>` : ''}`;
-        bindGraph(wrap, nodes, pos);
-        if (fresh) fit(wrap, pos);
-      }
-      function setView() { const v = $('#gview', body); if (v) v.setAttribute('transform', `translate(${gview.x},${gview.y}) scale(${gview.k})`); const z = $('.gtools .z', body); if (z) z.textContent = Math.round(gview.k * 100) + '%'; }
-      function fit(wrap, pos) {
-        const xs = Object.values(pos), w = Math.max(...xs.map(p => p.x)) + NW + 30, h = Math.max(...xs.map(p => p.y)) + NH + 20;
-        const r = wrap.getBoundingClientRect(), room = r.width - (gsel ? 270 : 0);
-        gview.k = Math.max(.4, Math.min(1.2, room / w, r.height / h)); gview.x = 0; gview.y = 0; setView();
-      }
-      function zoomAt(k, cx, cy) { k = Math.max(.4, Math.min(2, k)); gview.x = cx - (cx - gview.x) * (k / gview.k); gview.y = cy - (cy - gview.y) * (k / gview.k); gview.k = k; setView(); }
-      function bindGraph(wrap, nodes, pos) {
-        for (const el of wrap.querySelectorAll('.gn')) {
-          el.onclick = e => { e.stopPropagation(); gsel = gsel === el.dataset.g ? null : el.dataset.g; drawGraph(); };
-          el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.onclick(e); } };
-        }
-        for (const el of wrap.querySelectorAll('.lk')) el.onclick = () => { gsel = el.dataset.to; drawGraph(); };
-        const gx = $('#gx', wrap); if (gx) gx.onclick = () => { gsel = null; drawGraph(); };
-        for (const b of wrap.querySelectorAll('[data-z]')) b.onclick = e => {
-          e.stopPropagation(); const r = wrap.getBoundingClientRect();
-          if (b.dataset.z === '0') fit(wrap, pos); else zoomAt(gview.k * (b.dataset.z === '1' ? 1.2 : 1 / 1.2), r.width / 2, r.height / 2);
-        };
-        wrap.onwheel = e => { e.preventDefault(); const r = wrap.getBoundingClientRect(); zoomAt(gview.k * Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top); };
-        wrap.onpointerdown = e => {
-          if (e.target.closest('.gn, .gtools, .gside')) return;
-          const sx = e.clientX - gview.x, sy = e.clientY - gview.y; let moved = false;
-          wrap.setPointerCapture(e.pointerId); wrap.classList.add('panning');
-          wrap.onpointermove = ev => { moved = true; gview.x = ev.clientX - sx; gview.y = ev.clientY - sy; setView(); };
-          wrap.onpointerup = () => { wrap.onpointermove = wrap.onpointerup = null; wrap.classList.remove('panning'); if (!moved && gsel) { gsel = null; drawGraph(); } };
-        };
-      }
-      /* a write marks its node and every node after it, in order, for a moment */
-      function markGraph(of, id) {
-        if (sel !== of || mode !== 'graph' || ws !== 'inspect' || !isOpen()) return;
-        const order = downstream(graphs[of], id);
-        for (const [nid, depth] of order) setTimeout(() => {
-          const el = body.querySelector(`.gn[data-g="${nid}"]`); if (el) { el.classList.add('mark'); setTimeout(() => el.classList.remove('mark'), 900); }
-          for (const e of body.querySelectorAll(`.ge[data-to="${nid}"]`)) if (order.has(e.dataset.from)) { e.classList.add('mark'); setTimeout(() => e.classList.remove('mark'), 900); }
-        }, depth * 140);
-      }
-      function setValue(of, id, v) { const n = (graphs[of] || []).find(x => x.id === id); if (n) n.value = v; const t = body.querySelector(`.gn[data-g="${id}"] .vl`); if (t) { t.textContent = v; } }
+            /* the graph of each component, from the compiler: sources, memos, then what reads them */
+            const kinds = {
+              signal: { label: 'signal', color: '#ffc28f' },
+              prop: { label: 'prop', color: '#ffc28f' },
+              memo: { label: '$memo', color: 'var(--purple)' },
+              markup: { label: 'markup', color: 'var(--blue)' },
+              effect: { label: '$effect', color: 'var(--green)' },
+            };
+            const graphs = {
+              Index: [
+                { id: 'todos', kind: 'signal', name: 'todos', value: 'Array(2)', line: 4, reads: [] },
+                { id: 'draft', kind: 'signal', name: 'draft', value: '""', line: 5, reads: [] },
+                { id: 'done', kind: 'memo', name: 'done', value: '1', line: 7, reads: ['todos'] },
+                { id: 'left', kind: 'memo', name: 'left', value: '1', line: 8, reads: ['todos', 'done'] },
+                { id: 'label', kind: 'memo', name: 'label', value: '"1 left"', line: 9, reads: ['left'] },
+                { id: 'empty', kind: 'memo', name: 'empty', value: 'false', line: 10, reads: ['todos'] },
+                { id: 'small', kind: 'markup', name: '<small> text', value: '"1 left"', line: 31, reads: ['label'] },
+                { id: 'progress', kind: 'markup', name: '<progress> value', value: '1 of 2', line: 32, reads: ['done', 'todos'] },
+                { id: 'for', kind: 'markup', name: '#for todos', value: '2 items', line: 45, reads: ['todos'] },
+                { id: 'hint', kind: 'markup', name: '#if empty', value: 'closed', line: 52, reads: ['empty'] },
+                { id: 'save', kind: 'effect', name: 'save', value: 'ran 1 time', line: 12, reads: ['todos'] },
+                { id: 'input', kind: 'markup', name: '<input> value', value: '""', line: 34, reads: ['draft'] },
+                { id: 'add', kind: 'markup', name: '<button> disabled', value: 'true', line: 35, reads: ['draft'] },
+              ],
+              Layout: [
+                { id: 'wide', kind: 'signal', name: 'wide', value: 'false', line: 3, reads: [] },
+                { id: 'cls', kind: 'markup', name: 'class:wide', value: 'false', line: 9, reads: ['wide'] },
+              ],
+              App: [
+                { id: 'title', kind: 'prop', name: 'title', value: '"Todos"', line: 2, reads: [] },
+                { id: 'head', kind: 'markup', name: '#head <title>', value: '"Todos"', line: 6, reads: ['title'] },
+              ],
+              Quote: [
+                { id: 'quote', kind: 'signal', name: 'quote', value: '"Ship less code…"', line: 3, reads: [] },
+                { id: 'em', kind: 'markup', name: '<em> text', value: '"Ship less code…"', line: 8, reads: ['quote'] },
+              ],
+              Default: [], Counter: [],
+            };
+            let mode = 'values', gsel = null, gview = null, saves = 1;
+            const NW = 148, NH = 42, GAP = 56, RY = 54, PAD = 24;
+            /* Layered layout: a node's column is its depth (the longest path from a source), so a memo
+               of a memo sits one column further. An edge that skips columns passes through placeholder
+               points in each column it crosses, and a few sweeps sort each column by the mean row of its
+               neighbours, so fewer lines cross and none goes through a node. */
+            function layout(nodes) {
+              const byId = new Map(nodes.map(n => [n.id, n])), rank = new Map();
+              function depth(n) { if (!rank.has(n.id)) rank.set(n.id, n.reads.length ? 1 + Math.max(...n.reads.map(r => depth(byId.get(r)))) : 0); return rank.get(n.id); }
+              for (const n of nodes) depth(n);
+              const layers = [];
+              const put = (item, l) => { (layers[l] ||= []).push(item); };
+              for (const n of nodes) put({ id: n.id }, rank.get(n.id));
+              const routes = [];
+              for (const n of nodes) for (const r of n.reads) {
+                const pts = [r];
+                for (let l = rank.get(r) + 1; l < rank.get(n.id); l++) { const d = `~${r}>${n.id}@${l}`; put({ id: d, dummy: true }, l); pts.push(d); }
+                pts.push(n.id); routes.push({ from: r, to: n.id, pts });
+              }
+              const up = new Map(), down = new Map();
+              for (const { pts } of routes) for (let i = 1; i < pts.length; i++) { (up.get(pts[i]) || up.set(pts[i], []).get(pts[i])).push(pts[i - 1]); (down.get(pts[i - 1]) || down.set(pts[i - 1], []).get(pts[i - 1])).push(pts[i]); }
+              const row = new Map();
+              const index = () => { for (const L of layers) L.forEach((it, i) => row.set(it.id, i)); };
+              index();
+              for (let sweep = 0; sweep < 6; sweep++) {
+                const forward = sweep % 2 === 0, order = forward ? layers.slice(1) : layers.slice(0, -1).reverse();
+                for (const L of order) {
+                  for (const it of L) { const nb = (forward ? up : down).get(it.id) || []; it.key = nb.length ? nb.reduce((a, x) => a + row.get(x), 0) / nb.length : row.get(it.id); }
+                  L.sort((a, b) => a.key - b.key); index();
+                }
+              }
+              // Each column is centred on the tallest one.
+        const tall = Math.max(...layers.map(L => L.length)), pos = {};
+        layers.forEach((L, l) => {
+          const top = PAD + (tall - L.length) * RY / 2;
+          L.forEach((it, i) => { pos[it.id] = { x: PAD + l * (NW + GAP), y: top + i * RY, h: NH }; });
+        });
+        return { pos, routes };
+            }
+            function downstream(nodes, id) {
+              const out = new Map([[id, 0]]), queue = [id];
+              while (queue.length) { const cur = queue.shift(); for (const n of nodes) if (n.reads.includes(cur) && !out.has(n.id)) { out.set(n.id, out.get(cur) + 1); queue.push(n.id); } }
+              return out;
+            }
+            function upstream(nodes, id) {
+              const out = new Set([id]), queue = [id];
+              while (queue.length) { const id = queue.shift(), n = nodes.find(x => x.id === id); for (const r of n.reads) if (!out.has(r)) { out.add(r); queue.push(r); } }
+              return out;
+            }
+            function valueClass(v) { return v.startsWith('"') ? 'str' : /^(true|false)$/.test(v) ? 'bool' : /^\d/.test(v) ? 'num' : 'dim'; }
+            function edgePath(pts, pos) {
+              // From the right side of the source, through the placeholder points, to the left side of the target.
+              const p = pts.map((id, i) => i === 0 ? { x: pos[id].x + NW, y: pos[id].y + NH / 2 } : i === pts.length - 1 ? { x: pos[id].x - 7, y: pos[id].y + NH / 2 } : { x: pos[id].x, y: pos[id].y + pos[id].h / 2, pass: true });
+              let d = `M${p[0].x},${p[0].y}`;
+              for (let i = 1; i < p.length; i++) {
+                const a = p[i - 1], b = p[i];
+                if (b.pass) { const m = (a.x + b.x) / 2; d += ` C${m},${a.y} ${m},${b.y} ${b.x},${b.y} L${b.x + NW},${b.y}`; p[i] = { x: b.x + NW, y: b.y }; }
+                else { const m = (a.x + b.x) / 2; d += ` C${m},${a.y} ${m},${b.y} ${b.x},${b.y}`; }
+              }
+              return d;
+            }
+            function drawGraph() {
+              const wrap = $('#gwrap', body); if (!wrap) return;
+              const nodes = graphs[sel] || [];
+              if (!nodes.length) { wrap.innerHTML = '<div class="faint" style="padding:20px">Nothing in this component changes in the browser.</div>'; return; }
+              const { pos, routes } = layout(nodes);
+              const fresh = !gview || gview.of !== sel;
+              if (fresh) gview = { of: sel, x: 0, y: 0, k: 1 };
+              // Selecting a node keeps its whole lineage, what it reads and what reads it at any depth, and dims the rest.
+              const ups = gsel && upstream(nodes, gsel), downs = gsel && new Set(downstream(nodes, gsel).keys());
+        const lineage = gsel ? new Set([...ups, ...downs]) : null;
+              const edges = routes.map(({ from, to, pts }) => {
+                // An edge is lit only on a path through the selected node: both ends above it, or both below it.
+          const on = !!gsel && ((ups.has(from) && ups.has(to)) || (downs.has(from) && downs.has(to)));
+                return `<path class="ge ${on ? 'hot' : lineage ? 'dim' : ''}" data-from="${from}" data-to="${to}" d="${edgePath(pts, pos)}" marker-end="url(#ah-${on ? 'hot' : 'base'})"/>`;
+              }).join('');
+              const esc = t => t.replace(/</g, '&lt;');
+              const boxes = nodes.map(n => {
+                const p = pos[n.id], k = kinds[n.kind];
+                return `<g class="gn ${n.id === gsel ? 'sel' : ''} ${lineage && !lineage.has(n.id) ? 'dim' : ''}" data-g="${n.id}" transform="translate(${p.x},${p.y})" tabindex="0" aria-label="${k.label} ${esc(n.name)}">
+                  <title>${k.label}</title>
+                  <rect class="box" width="${NW}" height="${NH}" rx="8"/>
+                  <circle cx="14" cy="15" r="3.5" fill="${k.color}"/>
+                  <text class="nm" x="24" y="19">${esc(n.name)}</text>
+                  <text class="vl ${valueClass(n.value)}" x="24" y="33" fill="currentColor">${n.value}</text>
+                </g>`;
+              }).join('');
+              const g = gsel && nodes.find(n => n.id === gsel);
+              const readers = g ? nodes.filter(n => n.reads.includes(g.id)) : [];
+              const link = n => `<div class="lk" data-to="${n.id}"><i style="background:${kinds[n.kind].color}"></i>${esc(n.name)}<span class="faint" style="margin-left:auto">${n.value}</span></div>`;
+              wrap.innerHTML = `
+                <svg><defs>
+                  <marker id="ah-base" viewBox="0 0 8 8" refX="1" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0.5 L7,4 L0,7.5 z" fill="#5a5560"/></marker>
+                  <marker id="ah-hot" viewBox="0 0 8 8" refX="1" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0.5 L7,4 L0,7.5 z" fill="#ee7a3e"/></marker>
+                  <marker id="ah-mark" viewBox="0 0 8 8" refX="1" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0.5 L7,4 L0,7.5 z" fill="#ffd166"/></marker>
+                </defs><g id="gview" transform="translate(${gview.x},${gview.y}) scale(${gview.k})">${edges}${boxes}</g></svg>
+                <div class="gtools">
+                  <button class="icon" data-z="-1" title="Zoom out"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+                  <button class="icon" data-z="1" title="Zoom in"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button>
+                  <button class="icon" data-z="0" title="Fit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+                </div>
+                ${g ? `<aside class="gside">
+                  <h4><i style="width:8px;height:8px;border-radius:2px;background:${kinds[g.kind].color}"></i>${esc(g.name)}<button class="icon" id="gx" title="Close">${ico.x}</button></h4>
+                  <a class="path" style="margin-top:4px">${kinds[g.kind].label} · line ${g.line}${ico.ext}</a>
+                  <div class="val gv"><span class="${valueClass(g.value)}">${g.value}</span></div>
+                  ${g.reads.length ? `<div class="sec">Reads</div>${g.reads.map(r => link(nodes.find(n => n.id === r))).join('')}` : ''}
+                  ${readers.length ? `<div class="sec">Read by</div>${readers.map(link).join('')}` : ''}
+                </aside>` : ''}`;
+              bindGraph(wrap, nodes, pos);
+              if (fresh) fit(wrap, pos);
+            }
+            function setView() { const v = $('#gview', body); if (v) v.setAttribute('transform', `translate(${gview.x},${gview.y}) scale(${gview.k})`); }
+            function fit(wrap, pos) {
+              const xs = Object.values(pos), w = Math.max(...xs.map(p => p.x)) + NW + PAD, h = Math.max(...xs.map(p => p.y + p.h)) + PAD;
+              const r = wrap.getBoundingClientRect(), room = r.width - (gsel ? 270 : 0);
+              gview.k = Math.max(.4, Math.min(1.1, room / w, r.height / h)); gview.x = Math.max(0, (room - w * gview.k) / 2); gview.y = Math.max(0, (r.height - h * gview.k) / 2); setView();
+            }
+            function zoomAt(k, cx, cy) { k = Math.max(.4, Math.min(2, k)); gview.x = cx - (cx - gview.x) * (k / gview.k); gview.y = cy - (cy - gview.y) * (k / gview.k); gview.k = k; setView(); }
+            function bindGraph(wrap, nodes, pos) {
+              for (const el of wrap.querySelectorAll('.gn')) {
+                el.onclick = e => { e.stopPropagation(); gsel = gsel === el.dataset.g ? null : el.dataset.g; drawGraph(); };
+                el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.onclick(e); } };
+              }
+              for (const el of wrap.querySelectorAll('.lk')) el.onclick = () => { gsel = el.dataset.to; drawGraph(); };
+              const gx = $('#gx', wrap); if (gx) gx.onclick = () => { gsel = null; drawGraph(); };
+              for (const b of wrap.querySelectorAll('[data-z]')) b.onclick = e => {
+                e.stopPropagation(); const r = wrap.getBoundingClientRect();
+                if (b.dataset.z === '0') fit(wrap, pos); else zoomAt(gview.k * (b.dataset.z === '1' ? 1.2 : 1 / 1.2), r.width / 2, r.height / 2);
+              };
+              wrap.onwheel = e => { e.preventDefault(); const r = wrap.getBoundingClientRect(); zoomAt(gview.k * Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top); };
+              wrap.onpointerdown = e => {
+                if (e.target.closest('.gn, .gtools, .gside')) return;
+                const sx = e.clientX - gview.x, sy = e.clientY - gview.y; let moved = false;
+                wrap.setPointerCapture(e.pointerId); wrap.classList.add('panning');
+                wrap.onpointermove = ev => { moved = true; gview.x = ev.clientX - sx; gview.y = ev.clientY - sy; setView(); };
+                wrap.onpointerup = () => { wrap.onpointermove = wrap.onpointerup = null; wrap.classList.remove('panning'); if (!moved && gsel) { gsel = null; drawGraph(); } };
+              };
+            }
+            /* a write marks its node and every node after it, in order, for a moment */
+            function markGraph(of, id) {
+              if (sel !== of || mode !== 'graph' || ws !== 'inspect' || !isOpen()) return;
+              const order = downstream(graphs[of], id);
+              for (const [nid, depth] of order) setTimeout(() => {
+                const el = body.querySelector(`.gn[data-g="${nid}"]`); if (el) { el.classList.add('mark'); setTimeout(() => el.classList.remove('mark'), 900); }
+                for (const e of body.querySelectorAll(`.ge[data-to="${nid}"]`)) if (order.has(e.dataset.from)) { const m = e.getAttribute('marker-end'); e.classList.add('mark'); e.setAttribute('marker-end', 'url(#ah-mark)'); setTimeout(() => { e.classList.remove('mark'); e.setAttribute('marker-end', m); }, 900); }
+              }, depth * 140);
+            }
+            function setValue(of, id, v) { const n = (graphs[of] || []).find(x => x.id === id); if (n) n.value = v; const t = body.querySelector(`.gn[data-g="${id}"] .vl`); if (t) { t.textContent = v; } }
 
-      /* inspect */
-      function inspect() {
-        const c = tree.find(t => t.name === sel), s = slots[sel] || [];
-        return `
-        <div class="col side">
-          <label class="filter">${ico.find}<input placeholder="Filter components" /></label>
-          ${tree.map(t => `
-            <div class="r ${t.off ? 'off' : ''}" data-n="${t.name}" aria-current="${t.name === sel}">
-              <span class="ind2" style="width:${t.depth * 14}px"></span>
-              <span class="tw">${t.block ? '' : ico.chev}</span>
-              ${t.block ? `<span class="blk">${t.name}</span>` : `<span class="name">${t.name}</span>`}
-              <span class="heat" id="heat-${t.name}"></span>
-              <span class="meta">${t.meta || (t.off ? 'not on page' : t.scopes + (t.scopes === 1 ? ' scope' : ' scopes'))}</span>
-            </div>`).join('')}
-        </div>
-        <div class="col main ${mode === 'graph' ? 'gmode' : ''}">
-          <div class="title"><h3>${c.name}</h3><a class="path">${c.file}${ico.ext}</a>
-            <span class="seg" role="group" aria-label="View"><button data-mode="values" aria-pressed="${mode === 'values'}">Values</button><button data-mode="graph" aria-pressed="${mode === 'graph'}">Graph</button></span></div>
-          <div class="tags"><span class="tag">${c.scopes} ${c.scopes === 1 ? 'scope' : 'scopes'}</span>${c.defer ? '<span class="tag p">#defer</span>' : ''}${sel === 'Index' ? '<span class="tag g">resumed</span><span class="tag">code loaded on first click</span>' : '<span class="tag g">resumed</span>'}</div>
-          ${mode === 'graph' ? '<div class="gwrap" id="gwrap"></div>' : `
-          <div class="sec">Values <span class="n">${s.length}</span></div>
-          ${s.length ? `<div class="kv">${s.map(r => `
-            <div class="k">${r[0]}</div><div class="ty">${r[1]}</div>
-            <div class="v">${r[1] === 'handler' ? `<span class="faint mono">${r[2]}</span>` : `<input data-k="${r[0]}" value='${r[2]}' class="${r[1] === 'string' ? 'str' : r[1] === 'number' ? 'num' : r[1] === 'boolean' ? 'bool' : ''}" spellcheck="false" />`}</div>
-            <div class="rd">${r[3]}</div>`).join('')}</div>` : '<div class="faint">No values in this component.</div>'}
-          ${sel === 'Index' ? `
-          <div class="sec">What reads todos <button class="chip" data-mode="graph" style="margin-left:auto">Open the graph</button></div>
-          <div class="flow">
-            <span class="n"><i style="background:#ffc28f"></i>todos</span><span class="ar">→</span>
-            <span class="n"><i style="background:var(--purple)"></i>$memo left</span><span class="ar">→</span>
-            <span class="n"><i style="background:var(--blue)"></i>&lt;small&gt; text</span>
-            <span class="ar" style="margin-left:8px">and</span>
-            <span class="n"><i style="background:var(--purple)"></i>#for todos</span><span class="ar">→</span>
-            <span class="n"><i style="background:var(--blue)"></i>2 &lt;div&gt;</span>
-          </div>` : ''}`}
-        </div>`;
-      }
-      function bindInspect() {
-        for (const r of body.querySelectorAll('.r')) {
-          const t = tree.find(x => x.name === r.dataset.n);
-          r.onclick = () => { if (!t.block) { sel = t.name; render(); } };
-          r.onmouseenter = () => t.el && highlight(t.el);
-          r.onmouseleave = () => !picking && highlight(null);
-        }
-        for (const inp of body.querySelectorAll('.v input')) inp.onchange = () => {
-          if (inp.dataset.k === 'left') $('#left').textContent = inp.value + ' left';
-          flashEl('c-index'); push('write', `${inp.dataset.k} ← ${inp.value}`, '', true, 'edited in the dock');
-        };
-        for (const b of body.querySelectorAll('[data-mode]')) b.onclick = () => { mode = b.dataset.mode; gsel = null; render(); };
-        drawGraph();
-      }
-
-      /* activity */
-      function activity() {
-        const span = 6;
-        const ticks = log.filter(e => on.has(e.kind)).map(e => `<span class="tick" style="left:${(e.t / span) * 100}%;height:${e.child ? 10 : 16}px;background:${colors[e.kind]}"></span>`).join('');
-        const rules = [0, 1, 2, 3, 4, 5].map(s => `<span class="rule" style="left:${(s / span) * 100}%"></span><span class="rl" style="left:${(s / span) * 100}%">${s}s</span>`).join('');
-        return `
-        <div class="col act">
-          <div class="tools">${Object.keys(colors).map(k => `<button class="chip" data-k="${k}" aria-pressed="${on.has(k)}"><i style="background:${colors[k]}"></i>${labels[k]}</button>`).join('')}
-            <span class="grow"></span>
-            <button class="chip" id="pause" aria-pressed="${paused}">${paused ? 'Resume' : 'Pause'}</button>
-            <button class="chip" id="clear">Clear</button></div>
-          <div class="strip">${rules}${ticks}</div>
-          <div class="log" id="log">${log.filter(e => on.has(e.kind)).map(e => `
-            <div class="ent ${e.fresh ? 'new' : ''} ${e.call ? 'call' : ''} ${e.child ? 'child' : ''}" ${e.call ? `data-call="${e.call}" aria-current="${e.call === selCall}"` : ''}>
-              <span class="t">${e.t.toFixed(2)}s</span>
-              <span class="k"><i style="background:${colors[e.kind]}"></i>${labels[e.kind]}</span>
-              <span class="x">${e.child ? '<span class="faint">└ </span>' : ''}<span class="${e.bad ? 'bad' : ''}">${e.text}</span>${e.sub ? ` <span class="sub ${e.bad ? 'bad' : ''}">${e.sub}</span>` : ''}</span>
-              <span class="d">${e.d || ''}</span>
-            </div>`).join('') || '<div class="faint" style="padding:20px 8px">Nothing yet. Use the page.</div>'}
-          </div>
-        </div>${selCall ? callDetail(calls[selCall]) : ''}`;
-      }
-      function tree2(pairs) {
-        return pairs.map(([k, v]) => Array.isArray(v)
-          ? `<details open><summary><span class="kk">${k}</span> <span class="faint">Array(${v.length})</span></summary>${tree2(v)}</details>`
-          : typeof v === 'object'
-            ? `<details><summary><span class="kk">${k}</span> <span class="faint">{ ${Object.keys(v).join(', ')} }</span></summary>${Object.entries(v).map(([a, b]) => `<div class="row2"><span class="kk">${a}</span>: ${hl(b)}</div>`).join('')}</details>`
-            : `<div><span class="kk">${k}</span>: ${hl(v)}</div>`).join('');
-      }
-      function hl(v) { return v.startsWith('"') ? `<span class="str">${v}</span>` : /^(true|false)$/.test(v) ? `<span class="bool">${v}</span>` : /^\d+$/.test(v) ? `<span class="num">${v}</span>` : `<span>${v}</span>`; }
-      function callDetail(c) {
-        const total = c.timing.reduce((a, t) => a + t[1], 0);
-        return `<div class="col calld">
-          <div class="title"><h3 class="mono" style="font-size:14px">${c.fn}()</h3><span class="tag ${c.status === 200 ? 'g' : 'r'}">${c.status}</span><span class="faint mono">${total} ms</span>
-            <button class="icon xbtn" id="xcall" title="Close">${ico.x}</button></div>
-          <a class="path" style="margin-top:4px">${c.file}${ico.ext}</a>
-          <div class="from">Called by <a id="fromh">${c.from}</a></div>
-          <div class="sec">Arguments</div><div class="val">${tree2(c.args)}</div>
-          ${c.error
-            ? `<div class="sec">Error on the server</div><div class="lines"><div class="errline">${c.error[0]}</div>${c.error.slice(1).map(l => `<div class="dim">${l}</div>`).join('')}</div>`
-            : `<div class="sec">Result</div><div class="val">${tree2(c.result)}</div>`}
-          <div class="sec">Timing <span class="n">${total} ms</span></div>
-          <div class="tbar">${c.timing.map(t => `<span style="flex:${t[1] || .2};background:${t[2]}"></span>`).join('')}</div>
-          <div class="leg">${c.timing.map(t => `<span><i style="background:${t[2]}"></i>${t[0]} ${t[1]} ms</span>`).join('')}</div>
-          <div class="sec">On the server</div>
-          <div class="lines">
-            ${c.server.memos.map(m => `<div><span class="faint">read</span>${m}</div>`).join('')}
-            ${c.server.nested.map(m => `<div><span class="faint">called</span>${m}</div>`).join('')}
-            ${c.server.logs.map(([lv, m]) => `<div><span class="faint">${lv}</span><span class="warn">${m}</span></div>`).join('') || '<div><span class="faint">console</span><span class="faint">no output</span></div>'}
-          </div>
-          <div class="sec">After the call</div><div class="dim">${c.after}</div>
-          <div class="acts"><button class="btn ${armed ? 'warn' : 'pri'}" id="rerun">${armed ? 'Run it again' : 'Run again'}</button><button class="btn">Copy as fetch</button><button class="btn">Copy for an agent</button></div>
-          ${armed ? `<div class="note">Runs ${c.fn}() on the server with the same arguments. Its side effects happen again.</div>` : ''}
-        </div>`;
-      }
-      function bindActivity() {
-        for (const c of body.querySelectorAll('.chip[data-k]')) c.onclick = () => { on.has(c.dataset.k) ? on.delete(c.dataset.k) : on.add(c.dataset.k); render(); };
-        $('#pause').onclick = () => { paused = !paused; $('#live').classList.toggle('paused', paused); $('#live').lastChild.textContent = paused ? 'paused' : 'live'; render(); };
-        $('#clear').onclick = () => { log = []; selCall = null; render(); };
-        for (const e of log) e.fresh = false;
-        for (const r of body.querySelectorAll('.ent.call')) r.onclick = () => { selCall = selCall === r.dataset.call ? null : r.dataset.call; armed = false; render(); };
-        const x = $('#xcall', body); if (x) x.onclick = () => { selCall = null; render(); };
-        const fh = $('#fromh', body); if (fh) fh.onclick = () => { const n = calls[selCall].from.split(' ')[0]; if (tree.find(t => t.name === n)) { sel = n; ws = 'inspect'; render(); } };
-        const rr = $('#rerun', body); if (rr) rr.onclick = () => {
-          if (!armed) { armed = true; render(); return; }
-          armed = false; const c = calls[selCall];
-          push('server', `${c.fn}()`, c.timing.reduce((a, t) => a + t[1], 0) + ' ms', false, 'run again from the dock'); log.at(-1).call = selCall; render();
-        };
-        const l = $('#log', body); l.scrollTop = l.scrollHeight;
-      }
-
-      /* issues */
-      function issuesView() {
-        const it = issues[issue];
-        const code = it.line === 47 ? [
-          [45, '<span class="kw">#for</span> todos <span class="kw">as</span> todo, i'],
-          [46, '  &lt;<span class="tg">li</span> <span class="at2">class:done</span>={todo.done}&gt;'],
-          [47, '    &lt;<span class="tg">input</span> <span class="at2">checked</span>={<span class="squig">todo</span>.done} <span class="at2">onChange</span>={toggle(i)} /&gt;', true],
-          [48, '    {todo.text}'],
-          [49, '  &lt;/<span class="tg">li</span>&gt;'],
-        ] : [
-          [11, '&lt;<span class="tg">button</span>'],
-          [12, '  <span class="squig at2">onclick</span>={increment}', true],
-          [13, '&gt;{count}&lt;/<span class="tg">button</span>&gt;'],
-        ];
-        return `
-        <div class="col side">${issues.map((x, i) => `
-          <div class="iss" data-i="${i}" aria-current="${i === issue}">
-            <div class="src"><i style="background:${x.color}"></i>${x.src}${x.code ? ` · <span class="mono">${x.code}</span>` : ''}</div>
-            <div class="msg">${x.msg}</div><div class="at">${x.at}</div></div>`).join('')}
-        </div>
-        <div class="col main">
-          <div class="title"><h3>${it.msg}</h3></div>
-          <a class="path" style="margin-top:4px">${it.at}${ico.ext}</a>
-          <div class="code">${code.map(([n, s, bad]) => `<div class="${bad ? 'bad' : ''}"><span class="ln">${n}</span><span>${s}</span></div>`).join('')}</div>
-          ${it.line === 47
-            ? `<div class="sec">Stack</div>
-               <div class="lines"><div>toggle  <span class="faint" style="width:auto">src/routes/index.brm:22</span></div><div>onChange  <span class="faint" style="width:auto">src/routes/index.brm:47</span></div><div class="faint">3 frames of brumate hidden</div></div>`
-            : `<div class="hint">Event attributes are camelCase in brumate. <b>onClick</b> listens to <span class="mono">click</span>.</div>`}
-          <div class="acts"><button class="btn pri">Open in editor</button><button class="btn">Copy for an agent</button>${it.line === 47 ? '<button class="btn">Show in Activity</button>' : ''}</div>
-        </div>`;
-      }
-
-      /* page */
-      function page() {
-        return `<div class="pg">
-          <div class="metrics">
-            <div class="metric"><div class="l">Components</div><div class="big">5</div><div class="s">8 scopes in the browser</div></div>
-            <div class="metric"><div class="l">Page state</div><div class="big">0.5<small>kB</small></div><div class="s">records from the server</div></div>
-            <div class="metric"><div class="l">Handlers run</div><div class="big">${log.filter(e => e.kind === 'handler').length}</div><div class="s">${log.filter(e => e.kind === 'server').length} server calls</div></div>
-            <div class="metric"><div class="l">Ready in</div><div class="big">41<small>ms</small></div><div class="s">server 38 · browser 3</div></div>
-          </div>
-          <div class="pgrid">
-            <section>
-              <div class="sec">What the browser loaded <span class="n">38 kB</span></div>
-              <div class="bar2"><span style="flex:28;background:var(--accent)"></span><span style="flex:6;background:var(--blue)"></span><span style="flex:3;background:var(--purple)"></span><span style="flex:1;background:var(--faint)"></span></div>
-              <div class="leg"><span><i style="background:var(--accent)"></i>brumate 28 kB</span><span><i style="background:var(--blue)"></i>Index 6 kB</span><span><i style="background:var(--purple)"></i>Quote 3 kB</span><span><i style="background:var(--faint)"></i>page state 0.5 kB</span></div>
-              <div class="sec">Blocks <span class="n">2</span></div>
-              <div class="brow"><span class="mono"><span style="color:var(--purple)">#defer</span> Quote</span><span class="tag g">rendered</span><button class="btn" style="height:24px">Run again</button></div>
-              <div class="brow"><span class="mono"><span style="color:var(--purple)">#client</span> Clock</span><span class="tag">waiting · visible</span><button class="btn" style="height:24px">Trigger now</button></div>
-            </section>
-            <section>
-              <div class="sec">Environment</div>
-              <div class="env">
-                <span class="faint">brumate</span><span>0.6.0</span>
-                <span class="faint">vite</span><span>8.3.4</span>
-                <span class="faint">route</span><span>/ <span class="faint">src/routes/index.brm</span></span>
-                <span class="faint">layouts</span><span>_layout.brm, @aside/_default.brm</span>
-                <span class="faint">render</span><span>server, resumed</span>
+            /* inspect */
+            function inspect() {
+              const c = tree.find(t => t.name === sel), s = slots[sel] || [];
+              return `
+              <div class="col side">
+                <label class="filter">${ico.find}<input placeholder="Filter components" /></label>
+                ${tree.map(t => `
+                  <div class="r ${t.off ? 'off' : ''}" data-n="${t.name}" aria-current="${t.name === sel}">
+                    <span class="ind2" style="width:${t.depth * 14}px"></span>
+                    <span class="tw">${t.block ? '' : ico.chev}</span>
+                    ${t.block ? `<span class="blk">${t.name}</span>` : `<span class="name">${t.name}</span>`}
+                    <span class="heat" id="heat-${t.name}"></span>
+                    <span class="meta">${t.meta || (t.off ? 'not on page' : t.scopes + (t.scopes === 1 ? ' scope' : ' scopes'))}</span>
+                  </div>`).join('')}
               </div>
-              <div class="acts"><button class="btn" data-go="issues">2 issues</button><button class="btn" data-go="activity">Activity</button></div>
-            </section>
-          </div>
-        </div>`;
-      }
+              <div class="col main ${mode === 'graph' ? 'gmode' : ''}">
+                <div class="title"><h3>${c.name}</h3><a class="path">${c.file}${ico.ext}</a>
+                  <span class="seg" role="group" aria-label="View"><button data-mode="values" aria-pressed="${mode === 'values'}">Values</button><button data-mode="graph" aria-pressed="${mode === 'graph'}">Graph</button></span></div>
+                <div class="tags"><span class="tag">${c.scopes} ${c.scopes === 1 ? 'scope' : 'scopes'}</span>${c.defer ? '<span class="tag p">#defer</span>' : ''}${sel === 'Index' ? '<span class="tag g">resumed</span><span class="tag">code loaded on first click</span>' : '<span class="tag g">resumed</span>'}</div>
+                ${mode === 'graph' ? '<div class="gwrap" id="gwrap"></div>' : `
+                <div class="sec">Values <span class="n">${s.length}</span></div>
+                ${s.length ? `<div class="kv">${s.map(r => `
+                  <div class="k">${r[0]}</div><div class="ty">${r[1]}</div>
+                  <div class="v">${r[1] === 'handler' ? `<span class="faint mono">${r[2]}</span>` : `<input data-k="${r[0]}" value='${r[2]}' class="${r[1] === 'string' ? 'str' : r[1] === 'number' ? 'num' : r[1] === 'boolean' ? 'bool' : ''}" spellcheck="false" />`}</div>
+                  <div class="rd">${r[3]}</div>`).join('')}</div>` : '<div class="faint">No values in this component.</div>'}
+      `}
+              </div>`;
+            }
+            function bindInspect() {
+              for (const r of body.querySelectorAll('.r')) {
+                const t = tree.find(x => x.name === r.dataset.n);
+                r.onclick = () => { if (!t.block) { sel = t.name; render(); } };
+                r.onmouseenter = () => t.el && highlight(t.el);
+                r.onmouseleave = () => !picking && highlight(null);
+              }
+              for (const inp of body.querySelectorAll('.v input')) inp.onchange = () => {
+                if (inp.dataset.k === 'left') $('#left').textContent = inp.value + ' left';
+                flashEl('c-index'); push('write', `${inp.dataset.k} ← ${inp.value}`, '', true, 'edited in the dock');
+              };
+              for (const b of body.querySelectorAll('[data-mode]')) b.onclick = () => { mode = b.dataset.mode; gsel = null; render(); };
+              drawGraph();
+            }
 
-      /* open, close, resize, dock side */
-      const isOpen = () => !panel.classList.contains('closed');
-      function open(w) { if (w) ws = w; panel.classList.remove('closed'); grip.classList.add('hidden'); render(); pad(); }
-      function close() { panel.classList.add('closed'); grip.classList.remove('hidden'); if (picking) togglePick(); pad(); grip.focus(); }
-      /* resizable panels: one handle between the two columns of a workspace.
-         The column that does not grow is the one that keeps its size. Sizes are
-         kept per workspace and side, with the dock's size, for the next open. */
-      const saved = JSON.parse(localStorage.getItem('dock-sizes') || '{}');
-      function save() { localStorage.setItem('dock-sizes', JSON.stringify(saved)); }
-      function addSplit() {
-        const cols = [...body.children].filter(c => c.classList.contains('col'));
-        if (cols.length !== 2) return;
-        const vertical = !side;
-        const fixedIndex = getComputedStyle(cols[0]).flexGrow === '0' ? 0 : 1;
-        const fixed = cols[fixedIndex];
-        const key = ws + (selCall && ws === 'activity' ? '-call' : '') + (side ? '-right' : '-bottom');
-        const dim = vertical ? 'width' : 'height';
-        const min = vertical ? 200 : 110;
-        function limit(n) { const total = vertical ? body.clientWidth : body.clientHeight; return Math.round(Math.max(min, Math.min(total - min, n))); }
-        function apply(n) { fixed.style[dim] = limit(n) + 'px'; place(); }
-        const handle = document.createElement('div');
-        handle.className = 'split ' + (vertical ? 'v' : 'h');
-        handle.tabIndex = 0; handle.setAttribute('role', 'separator');
-        handle.setAttribute('aria-orientation', vertical ? 'vertical' : 'horizontal');
-        handle.setAttribute('aria-label', 'Resize the panels'); handle.title = 'Drag, or use the arrow keys. Double-click to reset.';
-        handle.innerHTML = '<span class="grab"></span>';
-        body.append(handle);
-        function place() {
-          const r = cols[1].getBoundingClientRect(), b = body.getBoundingClientRect();
-          if (vertical) handle.style.left = (r.left - b.left) + 'px'; else handle.style.top = (r.top - b.top) + 'px';
-          handle.setAttribute('aria-valuenow', Math.round(fixed.getBoundingClientRect()[dim]));
-        }
-        if (saved[key]) apply(saved[key]); else place();
-        handle.onpointerdown = e => {
-          e.preventDefault(); handle.setPointerCapture(e.pointerId); handle.classList.add('on'); document.body.classList.add('resizing');
-          const b = body.getBoundingClientRect();
-          handle.onpointermove = ev => {
-            const at = vertical ? ev.clientX - b.left : ev.clientY - b.top;
-            const total = vertical ? b.width : b.height;
-            apply(fixedIndex === 0 ? at : total - at);
-          };
-          handle.onpointerup = () => {
-            handle.onpointermove = handle.onpointerup = null; handle.classList.remove('on'); document.body.classList.remove('resizing');
-            saved[key] = Math.round(fixed.getBoundingClientRect()[dim]); save();
-          };
-        };
-        handle.ondblclick = () => { delete saved[key]; save(); fixed.style[dim] = ''; place(); };
-        handle.onkeydown = e => {
-          const grow = vertical ? { ArrowRight: 1, ArrowLeft: -1 } : { ArrowDown: 1, ArrowUp: -1 };
-          const d = grow[e.key]; if (!d) return;
-          e.preventDefault();
-          const step = (e.shiftKey ? 64 : 16) * d * (fixedIndex === 0 ? 1 : -1);
-          apply(fixed.getBoundingClientRect()[dim] + step);
-          saved[key] = Math.round(fixed.getBoundingClientRect()[dim]); save();
-        };
-      }
+            /* activity */
+            function activity() {
+              const span = 6;
+              const ticks = log.filter(e => on.has(e.kind)).map(e => `<span class="tick" style="left:${(e.t / span) * 100}%;height:${e.child ? 10 : 16}px;background:${colors[e.kind]}"></span>`).join('');
+              const rules = [0, 1, 2, 3, 4, 5].map(s => `<span class="rule" style="left:${(s / span) * 100}%"></span><span class="rl" style="left:${(s / span) * 100}%">${s}s</span>`).join('');
+              return `
+              <div class="col act">
+                <div class="tools">${Object.keys(colors).map(k => `<button class="chip" data-k="${k}" aria-pressed="${on.has(k)}"><i style="background:${colors[k]}"></i>${labels[k]}</button>`).join('')}
+                  <span class="grow"></span>
+                  <button class="chip" id="pause" aria-pressed="${paused}">${paused ? 'Resume' : 'Pause'}</button>
+                  <button class="chip" id="clear">Clear</button></div>
+                <div class="strip">${rules}${ticks}</div>
+                <div class="log" id="log">${log.filter(e => on.has(e.kind)).map(e => `
+                  <div class="ent ${e.fresh ? 'new' : ''} ${e.call ? 'call' : ''} ${e.child ? 'child' : ''}" ${e.call ? `data-call="${e.call}" aria-current="${e.call === selCall}"` : ''}>
+                    <span class="t">${e.t.toFixed(2)}s</span>
+                    <span class="k"><i style="background:${colors[e.kind]}"></i>${labels[e.kind]}</span>
+                    <span class="x">${e.child ? '<span class="faint">└ </span>' : ''}<span class="${e.bad ? 'bad' : ''}">${e.text}</span>${e.sub ? ` <span class="sub ${e.bad ? 'bad' : ''}">${e.sub}</span>` : ''}</span>
+                    <span class="d">${e.d || ''}</span>
+                  </div>`).join('') || '<div class="faint" style="padding:20px 8px">Nothing yet. Use the page.</div>'}
+                </div>
+              </div>${selCall ? callDetail(calls[selCall]) : ''}`;
+            }
+            function tree2(pairs) {
+              return pairs.map(([k, v]) => Array.isArray(v)
+                ? `<details open><summary><span class="kk">${k}</span> <span class="faint">Array(${v.length})</span></summary>${tree2(v)}</details>`
+                : typeof v === 'object'
+                  ? `<details><summary><span class="kk">${k}</span> <span class="faint">{ ${Object.keys(v).join(', ')} }</span></summary>${Object.entries(v).map(([a, b]) => `<div class="row2"><span class="kk">${a}</span>: ${hl(b)}</div>`).join('')}</details>`
+                  : `<div><span class="kk">${k}</span>: ${hl(v)}</div>`).join('');
+            }
+            function hl(v) { return v.startsWith('"') ? `<span class="str">${v}</span>` : /^(true|false)$/.test(v) ? `<span class="bool">${v}</span>` : /^\d+$/.test(v) ? `<span class="num">${v}</span>` : `<span>${v}</span>`; }
+            function callDetail(c) {
+              const total = c.timing.reduce((a, t) => a + t[1], 0);
+              return `<div class="col calld">
+                <div class="title"><h3 class="mono" style="font-size:14px">${c.fn}()</h3><span class="tag ${c.status === 200 ? 'g' : 'r'}">${c.status}</span><span class="faint mono">${total} ms</span>
+                  <button class="icon xbtn" id="xcall" title="Close">${ico.x}</button></div>
+                <a class="path" style="margin-top:4px">${c.file}${ico.ext}</a>
+                <div class="from">Called by <a id="fromh">${c.from}</a></div>
+                <div class="sec">Arguments</div><div class="val">${tree2(c.args)}</div>
+                ${c.error
+                  ? `<div class="sec">Error on the server</div><div class="lines"><div class="errline">${c.error[0]}</div>${c.error.slice(1).map(l => `<div class="dim">${l}</div>`).join('')}</div>`
+                  : `<div class="sec">Result</div><div class="val">${tree2(c.result)}</div>`}
+                <div class="sec">Timing <span class="n">${total} ms</span></div>
+                <div class="tbar">${c.timing.map(t => `<span style="flex:${t[1] || .2};background:${t[2]}"></span>`).join('')}</div>
+                <div class="leg">${c.timing.map(t => `<span><i style="background:${t[2]}"></i>${t[0]} ${t[1]} ms</span>`).join('')}</div>
+                <div class="sec">On the server</div>
+                <div class="lines">
+                  ${c.server.memos.map(m => `<div><span class="faint">read</span>${m}</div>`).join('')}
+                  ${c.server.nested.map(m => `<div><span class="faint">called</span>${m}</div>`).join('')}
+                  ${c.server.logs.map(([lv, m]) => `<div><span class="faint">${lv}</span><span class="warn">${m}</span></div>`).join('') || '<div><span class="faint">console</span><span class="faint">no output</span></div>'}
+                </div>
+                <div class="sec">After the call</div><div class="dim">${c.after}</div>
+                <div class="acts"><button class="btn ${armed ? 'warn' : 'pri'}" id="rerun">${armed ? 'Run it again' : 'Run again'}</button><button class="btn">Copy as fetch</button><button class="btn">Copy for an agent</button></div>
+                ${armed ? `<div class="note">Runs ${c.fn}() on the server with the same arguments. Its side effects happen again.</div>` : ''}
+              </div>`;
+            }
+            function bindActivity() {
+              for (const c of body.querySelectorAll('.chip[data-k]')) c.onclick = () => { on.has(c.dataset.k) ? on.delete(c.dataset.k) : on.add(c.dataset.k); render(); };
+              $('#pause').onclick = () => { paused = !paused; $('#live').classList.toggle('paused', paused); $('#live').lastChild.textContent = paused ? 'paused' : 'live'; render(); };
+              $('#clear').onclick = () => { log = []; selCall = null; render(); };
+              for (const e of log) e.fresh = false;
+              for (const r of body.querySelectorAll('.ent.call')) r.onclick = () => { selCall = selCall === r.dataset.call ? null : r.dataset.call; armed = false; render(); };
+              const x = $('#xcall', body); if (x) x.onclick = () => { selCall = null; render(); };
+              const fh = $('#fromh', body); if (fh) fh.onclick = () => { const n = calls[selCall].from.split(' ')[0]; if (tree.find(t => t.name === n)) { sel = n; ws = 'inspect'; render(); } };
+              const rr = $('#rerun', body); if (rr) rr.onclick = () => {
+                if (!armed) { armed = true; render(); return; }
+                armed = false; const c = calls[selCall];
+                push('server', `${c.fn}()`, c.timing.reduce((a, t) => a + t[1], 0) + ' ms', false, 'run again from the dock'); log.at(-1).call = selCall; render();
+              };
+              const l = $('#log', body); l.scrollTop = l.scrollHeight;
+            }
 
-      function pad() {
-        const s = $('#site');
-        s.style.paddingBottom = isOpen() && !side ? (panel.offsetHeight + 40) + 'px' : '';
-        s.style.marginRight = isOpen() && side ? (panel.offsetWidth + 16) + 'px' : '';
-      }
-      $('#edge').onpointerdown = e => {
-        e.preventDefault(); panel.classList.add('dragging'); $('#edge').setPointerCapture(e.pointerId);
-        const move = ev => {
-          if (side) panel.style.setProperty('--w', Math.min(innerWidth * .7, Math.max(340, innerWidth - ev.clientX)) + 'px');
-          else panel.style.setProperty('--h', Math.min(innerHeight * .85, Math.max(200, innerHeight - ev.clientY)) + 'px');
-          pad();
-        };
-        const up = () => { saved.dock = { h: panel.style.getPropertyValue('--h'), w: panel.style.getPropertyValue('--w') }; save(); panel.classList.remove('dragging'); removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
-        addEventListener('pointermove', move); addEventListener('pointerup', up);
-      };
-      $('#side').onclick = () => { side = !side; saved.side = side; save(); panel.classList.toggle('right', side); panel.classList.toggle('bottom', !side); $('#side').setAttribute('aria-pressed', side); $('#side').title = side ? 'Dock to the bottom' : 'Dock to the right'; render(); pad(); };
-      grip.onclick = () => open();
-      grip.onpointerdown = e => { const y = e.clientY; const up = ev => { removeEventListener('pointerup', up); if (y - ev.clientY > 20) open(); }; addEventListener('pointerup', up); };
-      $('#close').onclick = close;
-      $('#ws').onclick = e => { const b = e.target.closest('button'); if (b) { ws = b.dataset.ws; render(); } };
+            /* issues */
+            function issuesView() {
+              const it = issues[issue];
+              const code = it.line === 47 ? [
+                [45, '<span class="kw">#for</span> todos <span class="kw">as</span> todo, i'],
+                [46, '  &lt;<span class="tg">li</span> <span class="at2">class:done</span>={todo.done}&gt;'],
+                [47, '    &lt;<span class="tg">input</span> <span class="at2">checked</span>={<span class="squig">todo</span>.done} <span class="at2">onChange</span>={toggle(i)} /&gt;', true],
+                [48, '    {todo.text}'],
+                [49, '  &lt;/<span class="tg">li</span>&gt;'],
+              ] : [
+                [11, '&lt;<span class="tg">button</span>'],
+                [12, '  <span class="squig at2">onclick</span>={increment}', true],
+                [13, '&gt;{count}&lt;/<span class="tg">button</span>&gt;'],
+              ];
+              return `
+              <div class="col side">${issues.map((x, i) => `
+                <div class="iss" data-i="${i}" aria-current="${i === issue}">
+                  <div class="src"><i style="background:${x.color}"></i>${x.src}${x.code ? ` · <span class="mono">${x.code}</span>` : ''}</div>
+                  <div class="msg">${x.msg}</div><div class="at">${x.at}</div></div>`).join('')}
+              </div>
+              <div class="col main">
+                <div class="title"><h3>${it.msg}</h3></div>
+                <a class="path" style="margin-top:4px">${it.at}${ico.ext}</a>
+                <div class="code">${code.map(([n, s, bad]) => `<div class="${bad ? 'bad' : ''}"><span class="ln">${n}</span><span>${s}</span></div>`).join('')}</div>
+                ${it.line === 47
+                  ? `<div class="sec">Stack</div>
+                     <div class="lines"><div>toggle  <span class="faint" style="width:auto">src/routes/index.brm:22</span></div><div>onChange  <span class="faint" style="width:auto">src/routes/index.brm:47</span></div><div class="faint">3 frames of brumate hidden</div></div>`
+                  : `<div class="hint">Event attributes are camelCase in brumate. <b>onClick</b> listens to <span class="mono">click</span>.</div>`}
+                <div class="acts"><button class="btn pri">Open in editor</button><button class="btn">Copy for an agent</button>${it.line === 47 ? '<button class="btn">Show in Activity</button>' : ''}</div>
+              </div>`;
+            }
 
-      /* the page and picking */
-      function highlight(id) { for (const e of document.querySelectorAll('.hl')) e.classList.remove('hl'); if (id) $('#' + id).classList.add('hl'); }
-      function flashEl(id) { const e = $('#' + id); e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); }
-      function push(kind, text, d = '', child = false, sub = '') {
-        if (paused) return;
-        log.push({ t: ((performance.now() - t0) / 1000) % 6, kind, text, d, child, sub, fresh: true });
-        $('#act-c').textContent = log.length;
-        if (ws === 'activity' && isOpen()) render();
-      }
-      function togglePick() { picking = !picking; $('#pick').setAttribute('aria-pressed', picking); document.body.style.cursor = picking ? 'crosshair' : ''; if (!picking) highlight(null); }
-      $('#pick').onclick = togglePick;
-      for (const c of document.querySelectorAll('.cardx')) {
-        c.onmouseenter = () => picking && highlight(c.id);
-        c.onmouseleave = () => picking && highlight(null);
-        c.onclick = e => { if (!picking) return; e.preventDefault(); e.stopPropagation(); sel = tree.find(x => x.el === c.id).name; togglePick(); open('inspect'); };
-      }
-      let upd = false;
-      $('#upd').onclick = () => { upd = !upd; $('#upd').setAttribute('aria-pressed', upd); };
-      $('#draft').oninput = () => { const v = JSON.stringify($('#draft').value); setValue('Index', 'draft', v); setValue('Index', 'input', v); setValue('Index', 'add', String(!$('#draft').value)); markGraph('Index', 'draft'); };
-      $('#add').onclick = () => {
-        const v = $('#draft').value.trim() || 'New todo';
-        $('#list').insertAdjacentHTML('beforeend', `<div class="todo"><i></i><span>${v}</span></div>`);
-        const n = $('#list').querySelectorAll('.todo:not(.done)').length; $('#left').textContent = n + ' left'; $('#draft').value = '';
-        if (upd) flashEl('c-index');
-        push('handler', 'Index · add()', '0.3 ms'); push('write', `todos.push("${v}")`, '', true); push('effect', `left ${n - 1} → ${n} · #for +1 item`, '', true);
-        const id = 'save' + nextSave++;
-        calls[id] = { ...calls.save1, from: 'Index · add()', args: [['todos', [...calls.save1.args[0][1], [String(n), { text: `"${v}"`, done: 'false' }]]]],
-          timing: [['module', 0, 'var(--faint)'], ['network', 4, 'var(--blue)'], ['server', 11, 'var(--pink)'], ['decode', 1, 'var(--green)']] };
-        push('server', 'saveTodos()', '16 ms', true, '200'); if (!paused) log.at(-1).call = id; if (ws === 'activity' && isOpen()) render();
-        setValue('Index', 'todos', `Array(${$('#list').children.length})`); setValue('Index', 'left', String(n)); setValue('Index', 'small', `"${n} left"`);
-        setValue('Index', 'for', `${$('#list').children.length} items`); setValue('Index', 'save', `ran ${++saves} times`); markGraph('Index', 'todos');
-        const h = $('#heat-Index'); if (h) { h.classList.remove('on'); void h.offsetWidth; h.classList.add('on'); }
-      };
+            /* page */
+            function page() {
+              return `<div class="pg">
+                <div class="metrics">
+                  <div class="metric"><div class="l">Components</div><div class="big">5</div><div class="s">8 scopes in the browser</div></div>
+                  <div class="metric"><div class="l">Page state</div><div class="big">0.5<small>kB</small></div><div class="s">records from the server</div></div>
+                  <div class="metric"><div class="l">Handlers run</div><div class="big">${log.filter(e => e.kind === 'handler').length}</div><div class="s">${log.filter(e => e.kind === 'server').length} server calls</div></div>
+                  <div class="metric"><div class="l">Ready in</div><div class="big">41<small>ms</small></div><div class="s">server 38 · browser 3</div></div>
+                </div>
+                <div class="pgrid">
+                  <section>
+                    <div class="sec">What the browser loaded <span class="n">38 kB</span></div>
+                    <div class="bar2"><span style="flex:28;background:var(--accent)"></span><span style="flex:6;background:var(--blue)"></span><span style="flex:3;background:var(--purple)"></span><span style="flex:1;background:var(--faint)"></span></div>
+                    <div class="leg"><span><i style="background:var(--accent)"></i>brumate 28 kB</span><span><i style="background:var(--blue)"></i>Index 6 kB</span><span><i style="background:var(--purple)"></i>Quote 3 kB</span><span><i style="background:var(--faint)"></i>page state 0.5 kB</span></div>
+                    <div class="sec">Blocks <span class="n">2</span></div>
+                    <div class="brow"><span class="mono"><span style="color:var(--purple)">#defer</span> Quote</span><span class="tag g">rendered</span><button class="btn" style="height:24px">Run again</button></div>
+                    <div class="brow"><span class="mono"><span style="color:var(--purple)">#client</span> Clock</span><span class="tag">waiting · visible</span><button class="btn" style="height:24px">Trigger now</button></div>
+                  </section>
+                  <section>
+                    <div class="sec">Environment</div>
+                    <div class="env">
+                      <span class="faint">brumate</span><span>0.6.0</span>
+                      <span class="faint">vite</span><span>8.3.4</span>
+                      <span class="faint">route</span><span>/ <span class="faint">src/routes/index.brm</span></span>
+                      <span class="faint">layouts</span><span>_layout.brm, @aside/_default.brm</span>
+                      <span class="faint">render</span><span>server, resumed</span>
+                    </div>
+                    <div class="acts"><button class="btn" data-go="issues">2 issues</button><button class="btn" data-go="activity">Activity</button></div>
+                  </section>
+                </div>
+              </div>`;
+            }
 
-      /* command palette */
-      const items = [
-        ...tree.filter(x => !x.block).map(x => ({ g: 'Components', label: x.name, hint: x.file, run: () => { sel = x.name; open('inspect'); } })),
-        ...Object.entries(slots).flatMap(([c, s]) => s.filter(r => r[1] !== 'handler').map(r => ({ g: 'Values', label: `${c}.${r[0]}`, hint: r[2].slice(0, 30), run: () => { sel = c; open('inspect'); } }))),
-        ...['save1', 'fail1'].map(k => ({ g: 'Server calls', label: calls[k].fn + '()', hint: String(calls[k].status), run: () => { selCall = k; open('activity'); } })),
-        { g: 'Actions', label: 'Pick an element', hint: '', run: () => { open('inspect'); togglePick(); } },
-        { g: 'Actions', label: 'Dock to the right', hint: '', run: () => { if (!isOpen()) open(); $('#side').click(); } },
-        { g: 'Actions', label: 'Clear activity', hint: '', run: () => { log = []; open('activity'); } },
-      ];
-      let hit = 0, found = [];
-      function pal() {
-        const q = $('#q').value.toLowerCase();
-        found = items.filter(i => i.label.toLowerCase().includes(q)).slice(0, 10);
-        hit = Math.max(0, Math.min(hit, found.length - 1));
-        let g = '';
-        $('#res').innerHTML = found.map((i, n) => (i.g !== g ? `<div class="grp">${g = i.g}</div>` : '') +
-          `<div class="it" data-n="${n}" aria-selected="${n === hit}"><span>${i.label}</span><span class="h">${i.hint || ''}</span></div>`).join('') || '<div class="faint" style="padding:14px 10px">No match.</div>';
-        for (const el of $('#res').querySelectorAll('.it')) { el.onclick = () => { found[+el.dataset.n].run(); closePal(); }; el.onmousemove = () => { if (hit !== +el.dataset.n) { hit = +el.dataset.n; pal(); } }; }
-      }
-      function openPal() { $('#scrim').classList.add('open'); $('#q').value = ''; hit = 0; pal(); $('#q').focus(); }
-      function closePal() { $('#scrim').classList.remove('open'); }
-      $('#cmd-btn').onclick = openPal;
-      $('#q').oninput = () => { hit = 0; pal(); };
-      $('#scrim').onclick = e => { if (e.target.id === 'scrim') closePal(); };
-      document.addEventListener('keydown', e => {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openPal(); return; }
-        if (e.altKey && e.shiftKey && e.code === 'KeyD') { e.preventDefault(); isOpen() ? close() : open(); return; }
-        if ($('#scrim').classList.contains('open')) {
-          if (e.key === 'Escape') closePal();
-          if (e.key === 'ArrowDown') { hit = Math.min(hit + 1, found.length - 1); pal(); e.preventDefault(); }
-          if (e.key === 'ArrowUp') { hit = Math.max(hit - 1, 0); pal(); e.preventDefault(); }
-          if (e.key === 'Enter' && found[hit]) { found[hit].run(); closePal(); }
-          return;
-        }
-        if (e.key === 'Escape') { if (picking) togglePick(); else if (isOpen()) close(); }
-      });
-      setInterval(() => { $('#up').textContent = Math.round((performance.now() - t0) / 1000) + ' s'; }, 1000);
-      addEventListener('resize', () => { if (isOpen()) { render(); pad(); } });
-      if (saved.dock) { if (saved.dock.h) panel.style.setProperty('--h', saved.dock.h); if (saved.dock.w) panel.style.setProperty('--w', saved.dock.w); }
-      if (saved.side) { side = true; panel.classList.add('right'); panel.classList.remove('bottom'); $('#side').setAttribute('aria-pressed', 'true'); }
-      render();
+            /* open, close, resize, dock side */
+            const isOpen = () => !panel.classList.contains('closed');
+            function open(w) { if (w) ws = w; panel.classList.remove('closed'); grip.classList.add('hidden'); render(); pad(); }
+            function close() { panel.classList.add('closed'); grip.classList.remove('hidden'); if (picking) togglePick(); pad(); grip.focus(); }
+            /* resizable panels: one handle between the two columns of a workspace.
+               The column that does not grow is the one that keeps its size. Sizes are
+               kept per workspace and side, with the dock's size, for the next open. */
+            const saved = JSON.parse(localStorage.getItem('dock-sizes') || '{}');
+            function save() { localStorage.setItem('dock-sizes', JSON.stringify(saved)); }
+            function addSplit() {
+              const cols = [...body.children].filter(c => c.classList.contains('col'));
+              if (cols.length !== 2) return;
+              const vertical = !side;
+              const fixedIndex = getComputedStyle(cols[0]).flexGrow === '0' ? 0 : 1;
+              const fixed = cols[fixedIndex];
+              const key = ws + (selCall && ws === 'activity' ? '-call' : '') + (side ? '-right' : '-bottom');
+              const dim = vertical ? 'width' : 'height';
+              const min = vertical ? 200 : 110;
+              function limit(n) { const total = vertical ? body.clientWidth : body.clientHeight; return Math.round(Math.max(min, Math.min(total - min, n))); }
+              function apply(n) { fixed.style[dim] = limit(n) + 'px'; place(); }
+              const handle = document.createElement('div');
+              handle.className = 'split ' + (vertical ? 'v' : 'h');
+              handle.tabIndex = 0; handle.setAttribute('role', 'separator');
+              handle.setAttribute('aria-orientation', vertical ? 'vertical' : 'horizontal');
+              handle.setAttribute('aria-label', 'Resize the panels'); handle.title = 'Drag, or use the arrow keys. Double-click to reset.';
+              handle.innerHTML = '<span class="grab"></span>';
+              body.append(handle);
+              function place() {
+                const r = cols[1].getBoundingClientRect(), b = body.getBoundingClientRect();
+                if (vertical) handle.style.left = (r.left - b.left) + 'px'; else handle.style.top = (r.top - b.top) + 'px';
+                handle.setAttribute('aria-valuenow', Math.round(fixed.getBoundingClientRect()[dim]));
+              }
+              if (saved[key]) apply(saved[key]); else place();
+              handle.onpointerdown = e => {
+                e.preventDefault(); handle.setPointerCapture(e.pointerId); handle.classList.add('on'); document.body.classList.add('resizing');
+                const b = body.getBoundingClientRect();
+                handle.onpointermove = ev => {
+                  const at = vertical ? ev.clientX - b.left : ev.clientY - b.top;
+                  const total = vertical ? b.width : b.height;
+                  apply(fixedIndex === 0 ? at : total - at);
+                };
+                handle.onpointerup = () => {
+                  handle.onpointermove = handle.onpointerup = null; handle.classList.remove('on'); document.body.classList.remove('resizing');
+                  saved[key] = Math.round(fixed.getBoundingClientRect()[dim]); save();
+                };
+              };
+              handle.ondblclick = () => { delete saved[key]; save(); fixed.style[dim] = ''; place(); };
+              handle.onkeydown = e => {
+                const grow = vertical ? { ArrowRight: 1, ArrowLeft: -1 } : { ArrowDown: 1, ArrowUp: -1 };
+                const d = grow[e.key]; if (!d) return;
+                e.preventDefault();
+                const step = (e.shiftKey ? 64 : 16) * d * (fixedIndex === 0 ? 1 : -1);
+                apply(fixed.getBoundingClientRect()[dim] + step);
+                saved[key] = Math.round(fixed.getBoundingClientRect()[dim]); save();
+              };
+            }
+
+            function pad() {
+              const s = $('#site');
+              s.style.paddingBottom = isOpen() && !side ? (panel.offsetHeight + 40) + 'px' : '';
+              s.style.marginRight = isOpen() && side ? (panel.offsetWidth + 16) + 'px' : '';
+            }
+            $('#edge').onpointerdown = e => {
+              e.preventDefault(); panel.classList.add('dragging'); $('#edge').setPointerCapture(e.pointerId);
+              const move = ev => {
+                if (side) panel.style.setProperty('--w', Math.min(innerWidth * .7, Math.max(340, innerWidth - ev.clientX)) + 'px');
+                else panel.style.setProperty('--h', Math.min(innerHeight * .85, Math.max(200, innerHeight - ev.clientY)) + 'px');
+                pad();
+              };
+              const up = () => { saved.dock = { h: panel.style.getPropertyValue('--h'), w: panel.style.getPropertyValue('--w') }; save(); panel.classList.remove('dragging'); removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+              addEventListener('pointermove', move); addEventListener('pointerup', up);
+            };
+            $('#side').onclick = () => { side = !side; saved.side = side; save(); panel.classList.toggle('right', side); panel.classList.toggle('bottom', !side); $('#side').setAttribute('aria-pressed', side); $('#side').title = side ? 'Dock to the bottom' : 'Dock to the right'; render(); pad(); };
+            grip.onclick = () => open();
+            grip.onpointerdown = e => { const y = e.clientY; const up = ev => { removeEventListener('pointerup', up); if (y - ev.clientY > 20) open(); }; addEventListener('pointerup', up); };
+            $('#close').onclick = close;
+            $('#ws').onclick = e => { const b = e.target.closest('button'); if (b) { ws = b.dataset.ws; render(); } };
+
+            /* the page and picking */
+            function highlight(id) { for (const e of document.querySelectorAll('.hl')) e.classList.remove('hl'); if (id) $('#' + id).classList.add('hl'); }
+            function flashEl(id) { const e = $('#' + id); e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash'); }
+            function push(kind, text, d = '', child = false, sub = '') {
+              if (paused) return;
+              log.push({ t: ((performance.now() - t0) / 1000) % 6, kind, text, d, child, sub, fresh: true });
+              $('#act-c').textContent = log.length;
+              if (ws === 'activity' && isOpen()) render();
+            }
+            function togglePick() { picking = !picking; $('#pick').setAttribute('aria-pressed', picking); document.body.style.cursor = picking ? 'crosshair' : ''; if (!picking) highlight(null); }
+            $('#pick').onclick = togglePick;
+            for (const c of document.querySelectorAll('.cardx')) {
+              c.onmouseenter = () => picking && highlight(c.id);
+              c.onmouseleave = () => picking && highlight(null);
+              c.onclick = e => { if (!picking) return; e.preventDefault(); e.stopPropagation(); sel = tree.find(x => x.el === c.id).name; togglePick(); open('inspect'); };
+            }
+            let upd = false;
+            $('#upd').onclick = () => { upd = !upd; $('#upd').setAttribute('aria-pressed', upd); };
+            $('#draft').oninput = () => { const v = JSON.stringify($('#draft').value); setValue('Index', 'draft', v); setValue('Index', 'input', v); setValue('Index', 'add', String(!$('#draft').value)); markGraph('Index', 'draft'); };
+            $('#add').onclick = () => {
+              const v = $('#draft').value.trim() || 'New todo';
+              $('#list').insertAdjacentHTML('beforeend', `<div class="todo"><i></i><span>${v}</span></div>`);
+              const n = $('#list').querySelectorAll('.todo:not(.done)').length; $('#left').textContent = n + ' left'; $('#draft').value = '';
+              if (upd) flashEl('c-index');
+              push('handler', 'Index · add()', '0.3 ms'); push('write', `todos.push("${v}")`, '', true); push('effect', `left ${n - 1} → ${n} · #for +1 item`, '', true);
+              const id = 'save' + nextSave++;
+              calls[id] = { ...calls.save1, from: 'Index · add()', args: [['todos', [...calls.save1.args[0][1], [String(n), { text: `"${v}"`, done: 'false' }]]]],
+                timing: [['module', 0, 'var(--faint)'], ['network', 4, 'var(--blue)'], ['server', 11, 'var(--pink)'], ['decode', 1, 'var(--green)']] };
+              push('server', 'saveTodos()', '16 ms', true, '200'); if (!paused) log.at(-1).call = id; if (ws === 'activity' && isOpen()) render();
+              const all = $('#list').children.length; setValue('Index', 'todos', `Array(${all})`); setValue('Index', 'left', String(n)); setValue('Index', 'label', `"${n} left"`); setValue('Index', 'small', `"${n} left"`); setValue('Index', 'progress', `${all - n} of ${all}`);
+              setValue('Index', 'for', `${$('#list').children.length} items`); setValue('Index', 'save', `ran ${++saves} times`); markGraph('Index', 'todos');
+              const h = $('#heat-Index'); if (h) { h.classList.remove('on'); void h.offsetWidth; h.classList.add('on'); }
+            };
+
+            /* command palette */
+            const items = [
+              ...tree.filter(x => !x.block).map(x => ({ g: 'Components', label: x.name, hint: x.file, run: () => { sel = x.name; open('inspect'); } })),
+              ...Object.entries(slots).flatMap(([c, s]) => s.filter(r => r[1] !== 'handler').map(r => ({ g: 'Values', label: `${c}.${r[0]}`, hint: r[2].slice(0, 30), run: () => { sel = c; open('inspect'); } }))),
+              ...['save1', 'fail1'].map(k => ({ g: 'Server calls', label: calls[k].fn + '()', hint: String(calls[k].status), run: () => { selCall = k; open('activity'); } })),
+              { g: 'Actions', label: 'Pick an element', hint: '', run: () => { open('inspect'); togglePick(); } },
+              { g: 'Actions', label: 'Dock to the right', hint: '', run: () => { if (!isOpen()) open(); $('#side').click(); } },
+              { g: 'Actions', label: 'Clear activity', hint: '', run: () => { log = []; open('activity'); } },
+            ];
+            let hit = 0, found = [];
+            function pal() {
+              const q = $('#q').value.toLowerCase();
+              found = items.filter(i => i.label.toLowerCase().includes(q)).slice(0, 10);
+              hit = Math.max(0, Math.min(hit, found.length - 1));
+              let g = '';
+              $('#res').innerHTML = found.map((i, n) => (i.g !== g ? `<div class="grp">${g = i.g}</div>` : '') +
+                `<div class="it" data-n="${n}" aria-selected="${n === hit}"><span>${i.label}</span><span class="h">${i.hint || ''}</span></div>`).join('') || '<div class="faint" style="padding:14px 10px">No match.</div>';
+              for (const el of $('#res').querySelectorAll('.it')) { el.onclick = () => { found[+el.dataset.n].run(); closePal(); }; el.onmousemove = () => { if (hit !== +el.dataset.n) { hit = +el.dataset.n; pal(); } }; }
+            }
+            function openPal() { $('#scrim').classList.add('open'); $('#q').value = ''; hit = 0; pal(); $('#q').focus(); }
+            function closePal() { $('#scrim').classList.remove('open'); }
+            $('#cmd-btn').onclick = openPal;
+            $('#q').oninput = () => { hit = 0; pal(); };
+            $('#scrim').onclick = e => { if (e.target.id === 'scrim') closePal(); };
+            document.addEventListener('keydown', e => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openPal(); return; }
+              if (e.altKey && e.shiftKey && e.code === 'KeyD') { e.preventDefault(); isOpen() ? close() : open(); return; }
+              if ($('#scrim').classList.contains('open')) {
+                if (e.key === 'Escape') closePal();
+                if (e.key === 'ArrowDown') { hit = Math.min(hit + 1, found.length - 1); pal(); e.preventDefault(); }
+                if (e.key === 'ArrowUp') { hit = Math.max(hit - 1, 0); pal(); e.preventDefault(); }
+                if (e.key === 'Enter' && found[hit]) { found[hit].run(); closePal(); }
+                return;
+              }
+              if (e.key === 'Escape') { if (picking) togglePick(); else if (isOpen()) close(); }
+            });
+            setInterval(() => { $('#up').textContent = Math.round((performance.now() - t0) / 1000) + ' s'; }, 1000);
+            addEventListener('resize', () => { if (isOpen()) { render(); pad(); } });
+            if (saved.dock) { if (saved.dock.h) panel.style.setProperty('--h', saved.dock.h); if (saved.dock.w) panel.style.setProperty('--w', saved.dock.w); }
+            if (saved.side) { side = true; panel.classList.add('right'); panel.classList.remove('bottom'); $('#side').setAttribute('aria-pressed', 'true'); }
+            render();
     </script>
   </body>
 </html>
