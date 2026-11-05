@@ -319,7 +319,7 @@
     state: $toStore(pickerState),
     select,
     // Reads the prop when called, so a later change of it applies.
-    isDateUnavailable: (date) => isDateUnavailable?.(date),
+    isDateUnavailable: (date) => isDateUnavailable?.(date) ?? false,
   });
 </script>
 
