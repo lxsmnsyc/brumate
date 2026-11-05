@@ -23,7 +23,10 @@ shared:
   - website/docs/inspect.md
 reserves: []
 provides: []
-depends_on: []
+depends_on:
+  - on: graph-node-locations
+    kind: soft
+    why: each graph node links to its place in the file
 ---
 
 # Redesign of the dev dock
