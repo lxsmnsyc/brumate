@@ -44,13 +44,15 @@
     $client,
     $effect,
     $getContext,
-    $isPassed,
     $handler,
     $id,
+    $isPassed,
     $memo,
     $props,
     $setContext,
     $signal,
+    $store,
+    $toStore,
     $untrack,
   } from 'brumate/signals';
   import { prevent } from 'brumate/events';
@@ -137,7 +139,7 @@
   const held = $memo(picker && !passed ? picker.value : value);
 
   const locale = $getContext(LocaleContext);
-  const form = $getContext(FormContext);
+  const form = $store(FormContext);
   const inputId = $id();
   const labelId = $id();
   const descriptionId = $id();
@@ -520,14 +522,16 @@
     ariaLabel ?? (channel && !hasLabel && !ariaLabelledBy ? channelName(channel) : undefined),
   );
 
-  $setContext(LabelContext, { id: labelId, for: inputId });
-  $setContext(GroupContext, {
+  const labelGiven = $memo({ id: labelId, for: inputId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const groupGiven = $memo({
     role: 'presentation',
     isDisabled,
     isInvalid: invalid,
     'aria-disabled': isDisabled ? 'true' : undefined,
   });
-  $setContext(InputContext, {
+  $setContext(GroupContext, $toStore(groupGiven));
+  const inputProps = $memo({
     id: inputId,
     type: 'text',
     value: text,
@@ -543,13 +547,17 @@
     'aria-labelledby': ariaLabelledBy && hasLabel ? `${labelId} ${ariaLabelledBy}` : ariaLabelledBy,
     'aria-invalid': invalid ? 'true' : undefined,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
+  });
+  $setContext(InputContext, {
+    props: $toStore(inputProps),
     onChange: changed,
     onInvalid: invalidated,
     onFocus: focused,
     onBlur: blurred,
   });
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
 </script>
 
 <{as}

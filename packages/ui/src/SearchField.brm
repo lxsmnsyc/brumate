@@ -31,8 +31,9 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import { ButtonContext, InputContext, LabelContext, TextContext } from './contexts.ts';
+  import type { InputContextProps } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, onFormReset } from './fields.ts';
 
@@ -111,8 +112,9 @@
     }
   }
 
-  $setContext(LabelContext, { id: labelId, for: inputId });
-  $setContext(InputContext, {
+  const labelGiven = $memo({ id: labelId, for: inputId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const inputProps = $memo<InputContextProps>({
     id: inputId,
     name,
     type: 'search',
@@ -121,10 +123,13 @@
     readonly: isReadOnly || undefined,
     placeholder,
     'aria-describedby': describedBy(hasDescription && descriptionId),
-    onChange: change,
-    onKeyDown: keyDown,
     isEnterPrevented: true,
     isEscapePrevented: !empty && !isDisabled && !isReadOnly,
+  });
+  $setContext(InputContext, {
+    props: $toStore(inputProps),
+    onChange: change,
+    onKeyDown: keyDown,
   });
   // The button that clears the field stays out of the order of Tab.
   $setContext(ButtonContext, {

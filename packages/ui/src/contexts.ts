@@ -1,9 +1,11 @@
 // The contexts of the part types. A part that holds other parts provides their props here, and
 // each part reads its own with `slotProps`.
 import { createContext } from 'brumate/context';
+import { store } from 'brumate/store';
 import type { Color } from './color.ts';
 import type { Placement } from './position.ts';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 import type { HoverEvent, PressEvent } from './events.ts';
 import type { ContextValue } from './slots.ts';
 
@@ -44,8 +46,9 @@ export const TextContext: Context<ContextValue<AttributeProps> | null> =
   createContext<ContextValue<AttributeProps> | null>('brumate-ui:text', null);
 
 /** A field gives its Label an `id` and the `for` of its input. */
-export const LabelContext: Context<ContextValue<AttributeProps> | null> =
-  createContext<ContextValue<AttributeProps> | null>('brumate-ui:label', null);
+export const LabelContext: Context<StoreLike<ContextValue<AttributeProps> | null>> = createContext<
+  StoreLike<ContextValue<AttributeProps> | null>
+>('brumate-ui:label', store(null));
 
 export interface SeparatorContextProps extends AttributeProps {
   orientation?: 'horizontal' | 'vertical';
@@ -59,8 +62,8 @@ export interface GroupContextProps extends AttributeProps {
   isInvalid?: boolean;
 }
 
-export const GroupContext: Context<ContextValue<GroupContextProps> | null> =
-  createContext<ContextValue<GroupContextProps> | null>('brumate-ui:group', null);
+export const GroupContext: Context<StoreLike<ContextValue<GroupContextProps> | null>> =
+  createContext<StoreLike<ContextValue<GroupContextProps> | null>>('brumate-ui:group', store(null));
 
 /** The props of a Link that a context can give, such as Breadcrumbs for the current page. */
 export interface LinkContextProps extends AttributeProps {
@@ -88,27 +91,39 @@ export interface ToggleButtonContextProps extends ButtonContextProps {
 export const ToggleButtonContext: Context<ContextValue<ToggleButtonContextProps> | null> =
   createContext<ContextValue<ToggleButtonContextProps> | null>('brumate-ui:toggle-button', null);
 
-/**
- * The props of an Input or a TextArea that a field gives: its attributes, such as `id`, `name`
- * and `aria-describedby`, and handlers that the field runs.
- */
+/** The attributes of an Input or a TextArea that a field gives, such as `id`, `name` and `aria-describedby`. */
 export interface InputContextProps extends AttributeProps {
-  onChange?: (value: string) => void;
-  onInvalid?: (message: string, first: boolean) => void;
-  onKeyDown?: (key: string, event: KeyboardEvent) => void;
-  onFocus?: () => void;
-  onBlur?: () => void;
   /** Enter keeps no default, so it sends no form, as in a search field. */
   isEnterPrevented?: boolean;
   /** Escape keeps no default, so it closes no dialog, as in a search field with text. */
   isEscapePrevented?: boolean;
 }
 
-export const InputContext: Context<ContextValue<InputContextProps> | null> =
-  createContext<ContextValue<InputContextProps> | null>('brumate-ui:input', null);
+/** The handlers that a field runs for its Input or TextArea. They never change. */
+export interface InputHandlers {
+  onChange?: (value: string) => void;
+  onInvalid?: (message: string, first: boolean) => void;
+  onKeyDown?: (key: string, event: KeyboardEvent) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+}
 
-export const TextAreaContext: Context<ContextValue<InputContextProps> | null> =
-  createContext<ContextValue<InputContextProps> | null>('brumate-ui:textarea', null);
+/** What a field gives its Input or TextArea: the store of its attributes, and its handlers. */
+export interface InputField extends InputHandlers {
+  props: StoreLike<ContextValue<InputContextProps> | null>;
+}
+
+const noInput: InputField = { props: store(null) };
+
+export const InputContext: Context<InputField> = createContext<InputField>(
+  'brumate-ui:input',
+  noInput,
+);
+
+export const TextAreaContext: Context<InputField> = createContext<InputField>(
+  'brumate-ui:textarea',
+  noInput,
+);
 
 /**
  * Attributes that a part around a field gives the input of the field, such as an Autocomplete
@@ -129,8 +144,9 @@ export interface FieldErrorState {
   attributes?: Record<string, unknown>;
 }
 
-export const FieldErrorContext: Context<FieldErrorState | null> =
-  createContext<FieldErrorState | null>('brumate-ui:field-error', null);
+export const FieldErrorContext: Context<StoreLike<FieldErrorState | null>> = createContext<
+  StoreLike<FieldErrorState | null>
+>('brumate-ui:field-error', store(null));
 
 /** How the fields of a form validate, and the errors of the server by the name of a field. */
 export interface FormState {
@@ -138,10 +154,9 @@ export interface FormState {
   validationErrors: Record<string, string | string[]>;
 }
 
-export const FormContext: Context<FormState | null> = createContext<FormState | null>(
-  'brumate-ui:form',
-  null,
-);
+export const FormContext: Context<StoreLike<FormState | null>> = createContext<
+  StoreLike<FormState | null>
+>('brumate-ui:form', store(null));
 
 /** What a CheckboxGroup gives its Checkboxes: its values, and a function that toggles one. */
 export interface CheckboxGroupState {

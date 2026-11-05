@@ -1,5 +1,5 @@
 <script>
-  import { $bind, $setContext, $signal } from 'brumate/signals';
+  import { $bind, $memo, $setContext, $signal, $toStore } from 'brumate/signals';
   import Group from '../../src/Group.brm';
   import Heading from '../../src/Heading.brm';
   import Label from '../../src/Label.brm';
@@ -12,7 +12,8 @@
 
   let bold = $signal(false);
   $setContext(HeadingContext, { level: 2 });
-  $setContext(LabelContext, { id: 'name-label', for: 'name' });
+  const label = $memo({ id: 'name-label', for: 'name' });
+  $setContext(LabelContext, $toStore(label));
   $setContext(TextContext, { slots: { description: { id: 'name-description' } } });
 </script>
 

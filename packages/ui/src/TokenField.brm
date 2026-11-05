@@ -28,7 +28,7 @@
 </script>
 
 <script>
-  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import { LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { onFormReset } from './fields.ts';
@@ -99,7 +99,8 @@
   );
 
   // The box of the field is no element that a label can point at, so the label names it by ID.
-  $setContext(LabelContext, { id: labelId });
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
   $setContext(TokenFieldContext, {
     value,

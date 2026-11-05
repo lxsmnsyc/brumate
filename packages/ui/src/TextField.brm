@@ -57,7 +57,17 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import {
     FieldErrorContext,
     FormContext,
@@ -118,7 +128,7 @@
   // The value that a reset of the form gives back.
   let initial = $signal(value);
 
-  const form = $getContext(FormContext);
+  const form = $store(FormContext);
   const behavior = $memo(validationBehavior ?? form?.validationBehavior ?? 'native');
   const inputId = $id();
   const labelId = $id();
@@ -254,27 +264,29 @@
     placeholder,
   });
 
-  $setContext(LabelContext, { id: labelId, for: id });
+  const labelGiven = $memo({ id: labelId, for: id });
+  $setContext(LabelContext, $toStore(labelGiven));
   $setContext(InputContext, {
-    ...inputProps,
+    props: $toStore(inputProps),
     onChange: changed,
     onInvalid: invalidated,
     onBlur: blurred,
   });
+  const textAreaProps = $memo({ ...inputProps, type: undefined });
   $setContext(TextAreaContext, {
-    ...inputProps,
-    type: undefined,
+    props: $toStore(textAreaProps),
     onChange: changed,
     onInvalid: invalidated,
     onBlur: blurred,
   });
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, {
+  const errorGiven = $memo({
     id: errorId,
     isInvalid: invalid,
     errors,
     attributes: errorAttributes,
   });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
 </script>
 
 <{as}

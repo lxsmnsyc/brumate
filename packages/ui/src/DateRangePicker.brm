@@ -30,7 +30,18 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import {
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+    $untrack,
+  } from 'brumate/signals';
   import { DatePickerContext, constrain, outOfRange, toDate, todayString } from './calendar.ts';
   import {
     ButtonContext,
@@ -86,7 +97,7 @@
   let { isOpen = false } = $props<DateRangePickerProps<T>>();
 
   const locale = $getContext(LocaleContext);
-  const form = $getContext(FormContext);
+  const form = $store(FormContext);
   const triggerId = $id();
   const overlayId = $id();
   const labelId = $id();
@@ -229,9 +240,11 @@
     }
   }
 
-  $setContext(LabelContext, { id: labelId });
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
   $setContext(DateRangeFieldContext, {
     start: {
       segments: startSegments,
@@ -278,12 +291,13 @@
     isDisabled: isDisabled || isReadOnly,
     onPress: () => setOpen(true),
   });
-  $setContext(GroupContext, {
+  const groupGiven = $memo({
     isDisabled,
     'aria-disabled': isDisabled ? 'true' : undefined,
     'aria-labelledby': labelId,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
   });
+  $setContext(GroupContext, $toStore(groupGiven));
   $setContext(OverlayTriggerContext, {
     isOpen,
     triggerId,

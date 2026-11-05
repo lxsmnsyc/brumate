@@ -32,7 +32,7 @@
 </script>
 
 <script>
-  import { $bind, $getContext, $id, $props, $setContext } from 'brumate/signals';
+  import { $bind, $getContext, $id, $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { DatePickerContext } from './calendar.ts';
   import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
   import { DateStringsContext } from './date-strings.ts';
@@ -109,11 +109,12 @@
     isDisabled: isDisabled || isReadOnly,
     onPress: () => setOpen(true),
   });
-  $setContext(GroupContext, {
+  const groupGiven = $memo({
     isDisabled,
     'aria-disabled': isDisabled ? 'true' : undefined,
     'aria-labelledby': labelId,
   });
+  $setContext(GroupContext, $toStore(groupGiven));
   $setContext(OverlayTriggerContext, {
     isOpen,
     triggerId,

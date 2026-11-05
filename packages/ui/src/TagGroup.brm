@@ -28,7 +28,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $id, $isPassed, $props, $setContext } from 'brumate/signals';
+  import { $id, $isPassed, $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { nextSelection, sameKeys } from './collection.ts';
   import { LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
@@ -83,7 +83,8 @@
     onRemove?.(keys);
   }
 
-  $setContext(LabelContext, { id: labelId });
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
   $setContext(TagGroupContext, {
     selectionMode,

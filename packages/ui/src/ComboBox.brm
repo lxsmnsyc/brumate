@@ -50,7 +50,16 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import {
+    $client,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     CollectionFocusContext,
@@ -115,7 +124,7 @@
   let initialKey = $signal(selectedKey);
   let initialText = $signal(inputValue);
 
-  const form = $getContext(FormContext);
+  const form = $store(FormContext);
   const rootId = $id();
   const inputId = $id();
   const buttonId = $id();
@@ -414,8 +423,9 @@
     }
   }
 
-  $setContext(LabelContext, { id: labelId, for: inputId });
-  $setContext(InputContext, {
+  const labelGiven = $memo({ id: labelId, for: inputId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const inputProps = $memo({
     id: inputId,
     role: 'combobox',
     autocomplete: 'off',
@@ -429,6 +439,9 @@
     'aria-required': isRequired ? 'true' : undefined,
     required: isRequired || undefined,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
+  });
+  $setContext(InputContext, {
+    props: $toStore(inputProps),
     onChange: typed,
     onInvalid: invalidated,
     onBlur: blurred,
@@ -480,7 +493,8 @@
     filtered,
   });
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
 </script>
 
 <{as}

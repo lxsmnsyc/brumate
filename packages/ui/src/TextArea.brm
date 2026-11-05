@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { FieldInputContext, TextAreaContext } from './contexts.ts';
   import { focusRing } from './focus.brm.ts';
@@ -23,7 +23,8 @@
    */
   const { slot, ...rest } = $props<TextAreaProps>();
 
-  const context = $getContext(TextAreaContext);
+  const handlers = $getContext(TextAreaContext);
+  const context = $store(handlers.props);
   // The attributes of a part around the field, such as an Autocomplete.
   const outer = $getContext(FieldInputContext);
   const outerAttributes = $memo(outer ?? {});
@@ -31,32 +32,28 @@
   const disabled = $memo(Boolean(attributes.disabled ?? rest.disabled));
   const invalid = $memo(attributes['aria-invalid'] === 'true' || attributes['aria-invalid'] === true);
 
-  function given() {
-    return slotProps(context, slot);
-  }
-
   const { hovered, onPointerEnter, onPointerLeave } = hover(disabled, undefined, undefined, undefined);
   const { focused, focusVisible, onFocus, onBlur: ringBlur, onKeyDown: ringKeyDown, onPointerDown } =
     focusRing(undefined, undefined, undefined);
 
   function input(event: Event & { currentTarget: HTMLTextAreaElement }) {
-    given().onChange?.(event.currentTarget.value);
+    handlers.onChange?.(event.currentTarget.value);
   }
 
   // The browser shows no message of its own. The field shows it in its FieldError.
   function invalidated(event: Event & { currentTarget: HTMLTextAreaElement }) {
     const field = event.currentTarget;
-    given().onInvalid?.(field.validationMessage, isFirstInvalid(field));
+    handlers.onInvalid?.(field.validationMessage, isFirstInvalid(field));
   }
 
   function keyDown(event: KeyboardEvent) {
     ringKeyDown(event);
-    given().onKeyDown?.(event.key, event);
+    handlers.onKeyDown?.(event.key, event);
   }
 
   function blur(event: FocusEvent) {
     ringBlur(event);
-    given().onBlur?.();
+    handlers.onBlur?.();
   }
 </script>
 

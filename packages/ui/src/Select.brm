@@ -41,12 +41,13 @@
   import {
     $client,
     $effect,
-    $getContext,
     $id,
     $memo,
     $props,
     $setContext,
     $signal,
+    $store,
+    $toStore,
   } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
@@ -100,7 +101,7 @@
   let { selectedKey = null } = $props<SelectProps<T>>();
   let { isOpen = false } = $props<SelectProps<T>>();
 
-  const form = $getContext(FormContext);
+  const form = $store(FormContext);
   const triggerId = $id();
   const overlayId = $id();
   const labelId = $id();
@@ -258,7 +259,8 @@
     );
   }, 'load');
 
-  $setContext(LabelContext, { id: labelId });
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
   $setContext(ButtonContext, {
     id: triggerId,
     isDisabled,
@@ -302,7 +304,8 @@
     placeholder,
   });
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
 </script>
 
 <{as}
