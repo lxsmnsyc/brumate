@@ -106,12 +106,14 @@ export function callable(value: unknown, seen: Set<object>): unknown {
     // The code of the components on the page loads with the page, and handlers and updates wait
     // for it. So the function runs at once and returns its result, as on the server.
     // An arrow, to keep the narrowing of `value`.
+    // The scope is kept once found, as `handlerProp` keeps its scope, so a context value that a
+    // reader holds still works after the provider's scope goes while the reader's markup stays.
+    let kept = scopes.get(value.scope);
     const handler = (...args: unknown[]): unknown => {
+      kept ??= scopes.get(value.scope);
       const fn = loadedFunction(value.ref);
       const all = [...(value.args ?? []), ...args];
-      return fn
-        ? fn(scopes.get(value.scope), ...all)
-        : call(value.ref, scopes.get(value.scope), all);
+      return fn ? fn(kept, ...all) : call(value.ref, kept, all);
     };
     handlerReferences.set(handler, value);
     return handler;

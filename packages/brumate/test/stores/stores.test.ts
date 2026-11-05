@@ -440,7 +440,7 @@ describe('a context value is read once', () => {
     "import { $props, $setContext, $signal, $toStore, $untrack } from 'brumate/signals';\nimport { Ctx } from './ctx.ts';\n";
   function build(script: string, markup = '<button onClick=(() => n++)>Up</button>'): string {
     const source = `<script>\n${head}let n = $signal(0);\n${script}\n</script>\n${markup}`;
-    return compile(source, { filename: 'Test.brm' }).code;
+    return compile(source, { filename: 'Test.brm' }).server;
   }
 
   it('reports a signal, a memo and a prop that change, with BRM196', () => {
@@ -470,7 +470,6 @@ describe('a context value is read once', () => {
     }
   });
 });
-
 
 describe('compile checks', () => {
   const head =
