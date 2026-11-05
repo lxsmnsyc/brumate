@@ -36,23 +36,23 @@ A context passes a value from a component to every component inside it, without 
 ```ts live theme.ts
 import { createContext } from 'brumate/context';
 
-export const Theme = createContext<'light' | 'dark'>('theme', 'light');
+export const Theme = createContext<'light' | 'dark'>('theme');
 ```
 
 `Badge` reads the theme two components down, and `Toolbar` in between knows nothing about it.
 
 ## Creating a context
 
-`createContext(key, defaultValue)` from `brumate/context` creates a context. Put it in a `.ts` file, so the components that provide and read it can import it.
+`createContext(key)` from `brumate/context` creates a context. Put it in a `.ts` file, so the components that provide and read it can import it.
 
 ```ts
 import { createContext } from 'brumate/context';
 
-export const Locale = createContext<string>('locale', 'en');
+export const Locale = createContext<string>('locale');
 ```
 
 - The key names the context in the page, so it must be unique in the app.
-- The default value is what a component reads when no component above it provides the context.
+- A context has no default value. A default would be one object in the module, shared by every request on the server, and a context is meant to be local. A component that reads a context needs a provider above it, or asks first with [`$hasContext`](#reading-without-a-provider).
 
 ## Providing a value
 
@@ -78,12 +78,12 @@ const locale = $getContext(Locale);
 ```
 
 - Declare it with `const`. It reads like any value, once.
-- Without a provider above, it is the default value of the context.
+- Without a provider above, it throws: `The context "locale" has no provider above this component. Provide it with $setContext, or in a parent that does`. This happens on the server and in the browser. To read a context that may be missing, see [below](#reading-without-a-provider).
 - Components that the browser renders later, such as a new item of a `#for`, read the value of their provider at that time.
 
 ## Reading without a provider
 
-A part that works on its own, such as a button outside any group, asks first. `$hasContext(context)` is `true` when a component above provides the context, and `false` when none does:
+A part that works on its own, such as a button outside any group, asks first, since a read without a provider throws. `$hasContext(context)` is `true` when a component above provides the context, and `false` when none does:
 
 ```ts
 const grouped = $hasContext(ButtonGroup);
@@ -140,10 +140,9 @@ A component cannot assign to a value that it reads from a context. The component
 ```ts live counter.ts
 import { createContext } from 'brumate/context';
 
-export const Counter = createContext('counter', {
-  add: (_step: number) => {},
-  reset: () => {},
-});
+export const Counter = createContext<{ add: (step: number) => void; reset: () => void }>(
+  'counter',
+);
 ```
 
 - A provided function can be the value itself, the value of a key, or an item of a list, also inside other objects and lists of the value, such as `{ slots: { increment: { onPress } } }` or `{ items: [{ run }] }`. It is a function of the component, an arrow, or a method, written in the value. A list that code builds, such as with `map`, holds functions that the compiler cannot see, so it cannot send them.
@@ -186,13 +185,9 @@ The provider makes a store of a memo or a signal with `$toStore`, and the reader
 
 ```ts live level.ts
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Store } from 'brumate/store';
 
-export const Level = createContext<{ level: Store<number>; reset: () => void }>('level', {
-  level: store(0),
-  reset: () => {},
-});
+export const Level = createContext<{ level: Store<number>; reset: () => void }>('level');
 ```
 
 - `$store(source)` takes a context that holds a store, `$store(Level)`, a key of its value, `$store(field.level)`, or a store that the file imports, `$store(theme)`. Nothing else, since the browser finds the store again when the page resumes.

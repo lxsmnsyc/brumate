@@ -30,6 +30,7 @@ import { $memo, $signal } from 'brumate/signals';
 | `$produce(signal, recipe)`    | `void`                     | Where a signal can be written                                            | [State](./state.md)                                        |
 | `$setContext(context, value)` | `void`                     | Statement at the top level of a script                                   | [Context](./context.md)                                    |
 | `$getContext(context)`        | the value                  | `const` at the top level of a script                                     | [Context](./context.md)                                    |
+| `$hasContext(context)`        | `boolean`                  | `const` at the top level of a script, or the guard of a read             | [Context](./context.md)                                    |
 | `$store(source)`              | the value of the store     | `const` or `let` at the top level of a script                            | [Context](./context.md#live-values-with-stores)            |
 | `$toStore(value)`             | `Store<T>`                 | A value of `$setContext`                                                 | [Context](./context.md#live-values-with-stores)            |
 | `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)                    |
@@ -218,7 +219,15 @@ Provides a value of a context to the components inside this one. A statement at 
 function $getContext<T>(context: Context<T>): T;
 ```
 
-Reads a context from the nearest component above that provides it, or its default value. Assign it to a `const` at the top level of a script.
+Reads a context from the nearest component above that provides it, and throws when none does. Assign it to a `const` at the top level of a script. See [Context](./context.md#reading-without-a-provider) for reads that may miss.
+
+## `$hasContext`
+
+```ts
+function $hasContext<T>(context: Context<T>): boolean;
+```
+
+`true` when a component above provides the context, `false` when none does. The answer is fixed when the component renders, and is the same on the server and in the browser. It is `true` for `$route` and `$navigation`. Declare it with `const` at the top level of a script, or use it as the guard of a read of the same context: `const state = $hasContext(Field) ? $store(Field) : undefined`. Without a provider that variable is `undefined`. Another shape is [BRM197](./errors.md#brm197).
 
 ## `$store`
 
