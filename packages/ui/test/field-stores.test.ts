@@ -136,6 +136,24 @@ const COLLECTION_SHAPED = [
   'TreeContext',
 ];
 
+/** True for the text of an arrow function or a bound function. */
+function isFunctionText(value: string): boolean {
+  return /^\s*(async\s+)?(\([\s\S]*?\)|\w+)\s*=>/.test(value) || /^\s*[\w$.]+\.bind\(/.test(value);
+}
+
+/** The keys inside a `handlers` object, down the slots, that are no function and read state. */
+function changingHandlers(value: string): string[] {
+  const found: string[] = [];
+  for (const [key, inner] of providedKeys(`x(${value.trim()})`)) {
+    if (inner.trim().startsWith('{')) {
+      found.push(...changingHandlers(inner));
+    } else if (!isFunctionText(inner) && inner.includes('$$b.get(')) {
+      found.push(key);
+    }
+  }
+  return found;
+}
+
 /**
  * The keys of the object that an update gives the context, with their values as text. It splits
  * at the commas of the first level of the braces.
@@ -198,7 +216,7 @@ function scan(parts: string[], contexts: string[], shapedContexts: string[]) {
         shaped++;
         for (const [key, value] of providedKeys(update)) {
           // A function reads state when it runs, which is the live path of a handler.
-          const isFunction = value.includes('=>') || value.includes('.bind(');
+          const isFunction = isFunctionText(value);
           if (!isFunction && value.includes('$$b.get(') && !FORWARDED.get(name)?.has(key)) {
             problems.push(`${name} gives ${context} the changing value ${key} without a store`);
           }
@@ -287,7 +305,15 @@ it('passes no context of any part a changing value through the live context path
         }
         for (const [key, value] of providedKeys(update)) {
           // A function reads state when it runs, which is the live path of a handler.
-          const isFunction = value.includes('=>') || value.includes('.bind(');
+          if (key === 'handlers') {
+            for (const inner of changingHandlers(value)) {
+              problems.push(
+                `${name} gives ${context} the changing handler key ${inner} without a store`,
+              );
+            }
+            continue;
+          }
+          const isFunction = isFunctionText(value);
           if (!isFunction && value.includes('$$b.get(') && !FORWARDED.get(name)?.has(key)) {
             problems.push(`${name} gives ${context} the changing value ${key} without a store`);
           }
@@ -317,4 +343,28 @@ it('compiles no part of the library with a warning that a context value reads a 
   }
   expect(compiled).toBeGreaterThan(100);
   expect(found).toEqual([]);
+});
+
+it('gives a function that reads the prop when called for a forwarded prop', () => {
+  const cases: [string, string, string][] = [
+    ['Autocomplete', 'CollectionFocusContext', 'filter'],
+    ['DatePicker', 'DatePickerContext', 'isDateUnavailable'],
+    ['DateRangePicker', 'DatePickerContext', 'isDateUnavailable'],
+  ];
+  for (const [name, context, key] of cases) {
+    const path = join(import.meta.dirname, `../src/${name}.brm`);
+    const { parts, client } = compile(readFileSync(path, 'utf8'), {
+      filename: `${name}.brm`,
+      path,
+    });
+    const text = [client, ...Object.values(parts)].join('\n');
+    const updates = liveUpdates(text, context);
+    expect(updates.length).toBeGreaterThan(0);
+    for (const update of updates) {
+      const value = providedKeys(update).find(([found]) => found.endsWith(key))?.[1] ?? '';
+      // The arrow reads the prop each time it runs, so a later change of the prop applies.
+      expect([name, value, isFunctionText(value)]).toEqual([name, value, true]);
+      expect(value).toContain('$$b.get(');
+    }
+  }
 });

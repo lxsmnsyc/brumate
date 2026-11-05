@@ -17,7 +17,7 @@
 <script>
   import { $effect, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { CollectionFocusContext, enabledItems, readItemKey, moveFrom } from './collection.ts';
+  import { CollectionFocusContext, contains, enabledItems, readItemKey, moveFrom } from './collection.ts';
   import { FieldInputContext } from './contexts.ts';
   import { MENU_ITEMS } from './menu.ts';
 
@@ -178,7 +178,8 @@
   $setContext(CollectionFocusContext, {
     state: $toStore(focusGiven),
     setActive: (key: Key) => activate(key),
-    filter,
+    // Reads the prop when called, so a later change of it applies.
+    filter: (text: string, input: string) => (filter ?? contains)(text, input),
     filtered,
   });
 </script>

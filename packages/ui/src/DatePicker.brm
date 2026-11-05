@@ -138,7 +138,12 @@
     isDisabled,
     isReadOnly,
   });
-  $setContext(DatePickerContext, { state: $toStore(pickerState), select, isDateUnavailable });
+  $setContext(DatePickerContext, {
+    state: $toStore(pickerState),
+    select,
+    // Reads the prop when called, so a later change of it applies.
+    isDateUnavailable: (date) => isDateUnavailable?.(date),
+  });
 </script>
 
 <DateField
