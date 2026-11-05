@@ -23,7 +23,7 @@ shared:
   - packages/brumate/test/**
   - .changeset/*.md
   - website/docs/context.md
-reserves: []
+reserves: [code BRM196]
 provides: []
 depends_on:
   - on: ui-stores-fields
