@@ -1,0 +1,14 @@
+# Log: ui-stores-rest
+
+## 2026-11-05
+
+- Base 1739a254. The ui build (`vite build` of `examples/ui`) printed 66 unique "context value reads" warnings; the example JS (gzip -9 per `.js` file under `dist`, summed) was 203,136 B.
+- The compiler warns only for a local `$signal`, `$memo` or `let`. A prop or a `$bind` value that changes gives no warning, so the warnings undercount the live path. I compiled every part and listed each `updateContext` whose value reads state outside a function (script kept in the test, see below). The base had 80 such contexts in about 60 parts, which is the list I worked from, not only the 66 warnings.
+- Order: `LocaleContext` and `DateStringsContext` (a store per `I18nProvider`, readers keep the name `locale` and `strings` with `$store(LocaleContext)`, so 28 readers changed one line each), `SelectionIndicatorContext`, `TextContext` (20 providers, one reader), the group contexts, `OverlayTriggerContext`, `DialogContext`, `TransitionContext`, `SliderContext`, `TagGroupContext`, `TokenFieldContext`, `TabsContext`, `TooltipTriggerContext`, `ButtonContext` and `LinkContext`, then `ColumnContext`, `TreeRowContext`, `VirtualizerContext` and `ToastRegionContext`.
+- Probe before `ButtonContext`: a provider with `{ state: $toStore(memo), slots: { inc: { onPress: () => count++ } } }` works, a reader calls `given.slots?.[which]?.onPress?.()` and the store updates the disabled state. So a nested object of handlers beside a store is fine here. The earlier note that a nested object fails does not hold for a nested literal of arrow functions.
+- `ButtonContext` is `{ state, handlers }`. Both name the same slots. Putting the handlers of a slot inside the store is not possible, and flat keys per slot do not fit user slot names. `slotHandlers` is lenient, so a slot with state and no handler gives `{}`.
+- TooltipTrigger and PreviewTrigger spread the props of the trigger around them. They now spread the state, and forward the four handlers they do not own (`onPress`, `onPressUp`, `onPressChange`, `onHoverChange`) by calling the parent's.
+- A mistake: I converted `SliderOutput` with the one-line reader. A context with handlers needs `$getContext` then `$store(given.state)`; the slider tests caught it.
+- Edits to the 66 providers and readers were scripted in Python (a splitter of the object literal into state and handlers); I read the diff of each file kind.
+- Result: the build prints 0 warnings, the example JS is 206,670 B (+3,534 B).
+- field-stores test: two new tests, one scans every part for a `updateContext` that passes a changing value (more than 40 updates, more than 20 contexts, more than 5 of `ButtonContext`), one compiles every part and asserts no "context value reads" warning (more than 100 parts). Both fail on 1739a254 (checked by `git checkout 1739a254 -- packages/ui/src`, then restored) and pass here.
