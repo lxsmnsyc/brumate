@@ -35,6 +35,9 @@ depends_on:
   - on: ui-stores-collections
     kind: hard
     why: every part reads live values from stores first
+  - on: ui-stores-rest
+    kind: hard
+    why: every part reads live values from stores first
 ---
 
 # Every context is static: delete the live-context path

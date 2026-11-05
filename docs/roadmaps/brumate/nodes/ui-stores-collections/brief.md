@@ -40,6 +40,8 @@ A wave of step 3 of the approved context-stores debate (docs/debates/context-sto
 
 The API is the one store-contract shipped (read its outcome on `feat/context-stores`: docs/roadmaps/brumate/nodes/store-contract/outcome.md). A provider builds a store with `$toStore(signalOrMemo)` as a leaf or key of its `$setContext` value; a reader uses `$store(Ctx)` or, for a context that holds handlers and stores, `$store(field.state)` on a `$getContext` value. A reader that writes back uses `let` (the store must come from `$toStore(signal)`). The compiler now warns when a `$setContext` value reads a local `$signal`, `$memo` or `let`; every such warning in these parts should be gone when the node is done.
 
+`FieldInputContext` is yours: Autocomplete provides a changing value, ComboBox, ListBox and Menu provide `null`, and Input and TextArea read it. Convert the providers and the two readers together (ui-stores-fields left it).
+
 ## Acceptance
 
 - [ ] Every reader of a changing value in these parts reads it from a store; the live-context path is no longer needed by them (a test or a dev check shows no `updateContext` call from these parts).
