@@ -83,6 +83,41 @@ const TO_STORE_ARGUMENT =
 const STORE_SOURCE =
   'The source of $store gives its store at once, so it cannot await or call a server function';
 const STORE_PATTERN = '$store gives one name, not a pattern such as { a }';
+/** The kinds of names whose values the page sends when browser code reads them. */
+const SENT_KINDS = new Set<DeclarationKind>([
+  'prop',
+  'props-rest',
+  'const',
+  'let',
+  'signal',
+  'memo',
+  'async-memo',
+  'context',
+  'item',
+  'index',
+]);
+
+/**
+ * The name whose value holds the store of a `$store` source, such as `s` of `s`, `s.state` or
+ * `s?.state`, when the page sends that value. A call makes its value in the browser.
+ */
+function findSentRoot(source: oxc.Node, scope: Scope): Declaration | undefined {
+  let node = source;
+  for (;;) {
+    if (node.type === 'ChainExpression') {
+      node = node.expression as oxc.Node;
+    } else if (node.type === 'MemberExpression') {
+      node = node.object as oxc.Node;
+    } else {
+      break;
+    }
+  }
+  if (node.type !== 'Identifier') {
+    return undefined;
+  }
+  const found = lookup(scope, node.name);
+  return found && SENT_KINDS.has(found.kind) ? found : undefined;
+}
 const HAS_CONTEXT_FORM =
   'Keep the answer of $hasContext with "const name = $hasContext(Context)", or guard a read of the same context with "const name = $hasContext(Context) ? $store(Context) : undefined", with const and no other test';
 
@@ -469,6 +504,11 @@ class Analyzer {
       } else {
         // Code that gives the store, which the browser runs again with the resumed values.
         store.link = this.storeSources.push(store.site) - 1;
+        const held = findSentRoot(store.source, declaration.scope);
+        if (held) {
+          const prop = held.kind === 'prop' || held.kind === 'props-rest';
+          store.sent = `${prop ? 'the prop' : 'the value'} "${held.name}"`;
+        }
       }
       const guard = declaration.guard;
       if (

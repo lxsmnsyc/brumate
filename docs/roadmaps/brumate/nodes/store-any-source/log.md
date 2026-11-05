@@ -31,3 +31,9 @@
 - Sizes after: todos 80,086 B raw, 28,415 B gzip; ui example 677,604 B raw, 203,043 B gzip.
 - Checks: brumate 2840 tests, tsc 3, ui 774 (+1 expected fail), e2e ui, todos, tracker, nitro, kit
   pass. browser-async e2e not run: its example has no node_modules here.
+- Review fixes (30667f46): BRM199 and the server error for a store of another library in a sent
+  value (BRM199 dropped again at the maintainer's word: only the server error stays, its message in
+  `sentForeignStore`); `it.fails` for module-script-shared; docs for `let` with an optional source and for a
+  source that runs on resume with the server's values; approved limits in decisions.md.
+- Todos on clean builds (dist, `.vite` removed): 80,085 B raw both. Gzip 28,427 B before and
+  28,418 to 28,419 B after; the earlier figures came from builds that were not clean.

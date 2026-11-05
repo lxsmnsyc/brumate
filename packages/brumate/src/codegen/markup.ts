@@ -1572,12 +1572,15 @@ export class Emitter {
       if (call === '$store' && declaration?.store && declarator.id.type === 'Identifier') {
         // `$store(source)`: the source is a context, a store, or an object that holds the store at
         // `path`. `link` is the place of its import among the exports `z` of the update part.
-        const { source, path, link, write } = declaration.store;
+        const { source, path, link, write, sent } = declaration.store;
         const slot = slotIndex(this.plan, declaration);
+        // The server names a sent value that holds a store of another library.
+        const named = this.options.mode === 'server' && sent ? JSON.stringify(sent) : undefined;
         const rest = [
           path === undefined ? undefined : JSON.stringify(path),
           link === undefined ? undefined : String(link),
           write ? 'true' : undefined,
+          named,
         ];
         while (rest.length > 0 && rest.at(-1) === undefined) {
           rest.pop();

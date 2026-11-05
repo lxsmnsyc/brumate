@@ -124,7 +124,18 @@ export interface Declaration {
    * holds the store, the index of the source that the browser runs again to find the store (see
    * `SemanticModel.storeSources`), and whether `let` writes it.
    */
-  store?: { source: oxc.Node; site: Site; path?: string; link?: number; write: boolean };
+  store?: {
+    source: oxc.Node;
+    site: Site;
+    path?: string;
+    link?: number;
+    write: boolean;
+    /**
+     * For a source that reads its store from a value that the page sends, such as a prop, what
+     * that value is, as `the prop "s"`. The server refuses a store of another library there.
+     */
+    sent?: string;
+  };
   /** Elements whose `ref` targets this declaration. */
   refs: { attribute: RefAttribute; element: ElementNode | DynamicTagNode; scope: Scope }[];
 }

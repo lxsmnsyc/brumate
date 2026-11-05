@@ -55,6 +55,16 @@ export function findStored(
   return found;
 }
 
+/**
+ * The error of `$store` for a store of another library in a value that the page sends, such as a
+ * prop: only the value of a store of `brumate/store` crosses. The fix is said here only.
+ */
+export function sentForeignStore(component: string, value: string): Error {
+  return new Error(
+    `$store in ${component} reads a store of another library from ${value}, which the page sends, and only a store of brumate/store crosses. Read the store from an import, <script module> or a call in this component`,
+  );
+}
+
 /** Where `$toStore` made a store: its scope, the ID of its site, and the slot of its signal. */
 export type StoreOrigin = [scope: number | string, site: number, slot?: number];
 

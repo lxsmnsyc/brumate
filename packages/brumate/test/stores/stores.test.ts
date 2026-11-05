@@ -440,12 +440,38 @@ describe('a store from any expression', () => {
     click(document.querySelector('.second .prop-up')!);
     await waitFor(() => expect(text('.first .prop')).toBe('12 12'));
     expect(text('.second .prop')).toBe('12 12');
-    // The render module of a component holds its own copy of the module script, so the
-    // reader that the browser renders has its own store there (a gap of the core).
     click(document.querySelector('.second .module-up')!);
     await waitFor(() => expect(text('.second .module')).toBe('m! m!'));
     click(document.querySelector('.second .space-up')!);
     await waitFor(() => expect(text('.held .space')).toBe('n+ n+'));
+  });
+
+  // Fails until node module-script-shared: the render module of a component copies its
+  // `<script module>`, so a reader that the browser renders has a store apart from the resumed ones.
+  it.fails('shares the store of <script module> between resumed and browser-rendered readers (module-script-shared)', async () => {
+    await resume('storeAny');
+    click(document.querySelector('.later')!);
+    await waitFor(() => expect(document.querySelector('.second .module')).not.toBeNull());
+    click(document.querySelector('.second .module-up')!);
+    await waitFor(() => expect(text('.first .module')).toBe('m! m!'));
+  });
+
+  it('refuses a store of another library in a prop or a script value, naming $store and the value', async () => {
+    const prop = await import(file('storeForeignProp.brm.ts'));
+    await expect(renderParts(prop.default, {})).rejects.toThrow(
+      /^\$store in StoreForeignPropReader_\w+ reads a store of another library from the prop "s", which the page sends, and only a store of brumate\/store crosses\. Read the store from an import, <script module> or a call in this component$/,
+    );
+    const value = await import(file('storeForeignValue.brm.ts'));
+    await expect(renderParts(value.default, {})).rejects.toThrow(
+      /^\$store in StoreForeignValue_\w+ reads a store of another library from the value "held"/,
+    );
+    // A prop that no `$store` reads keeps the error of the page state.
+    const raw = await import(file('storeForeignRaw.brm.ts'));
+    await expect(renderParts(raw.default, {})).rejects.toThrow(/cannot be sent to the browser/);
+    // A call in the reader makes the store there, so it works.
+    const made = await import(file('storeForeignCall.brm.ts'));
+    const { html } = await renderParts(made.default, {});
+    expect(html).toContain('>3</p>');
   });
 
   it('throws for let on a source that gives no store, when the variable registers', async () => {

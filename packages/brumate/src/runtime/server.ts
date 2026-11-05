@@ -69,7 +69,14 @@ import type {
   TraceEntry,
 } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
-import { Store, findStored, isContext, isForeignStore, isStore } from './store.ts';
+import {
+  Store,
+  findStored,
+  isContext,
+  isForeignStore,
+  isStore,
+  sentForeignStore,
+} from './store.ts';
 
 /**
  * Refuses a store that is not of `brumate/store` in a provided value, or in a key of it: the page
@@ -748,7 +755,9 @@ export class Context {
    * `$store(source)`: the value of the store, and a record of its slot, so the browser subscribes
    * the slot when the scope resumes. The browser finds the store again from the key of a context,
    * with `path` for a key of its value, or by running the source `link` of the component's
-   * exports `z`. A source that gives `undefined` records nothing.
+   * exports `z`. A source that gives `undefined` records nothing. `sent` names the value that
+   * holds the store when the page sends it, such as a prop, where only a store of
+   * `brumate/store` crosses.
    */
   consumeStore<T>(
     source: unknown,
@@ -757,10 +766,18 @@ export class Context {
     path?: string,
     link?: number,
     write?: boolean,
+    sent?: string,
   ): T | undefined {
     const found = findStored(source, path, write, (context) => this.consume(context, scope));
     if (!found) {
       return undefined;
+    }
+    if (sent && isForeignStore(found)) {
+      let owner: ScopeState | undefined = this.record(scope);
+      while (owner && owner.m === undefined && owner.p !== undefined) {
+        owner = this.ownRecord(owner.p);
+      }
+      throw sentForeignStore(owner?.m ?? 'a component', sent);
     }
     if (slot >= 0) {
       const ref = isContext(source) ? source.key : link;

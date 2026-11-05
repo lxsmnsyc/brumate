@@ -35,6 +35,7 @@
 - **Tests** (`packages/brumate/test/stores/stores.test.ts`):
   - "a store from any expression": server render of every source; resume with no `set` (every browser `Store.prototype.set` counted, and the namespace store counts its own); updates through `const` and `let`; the prop store is the parent's (one identity across records); a repair writes each reader's binding once; a browser render of every source; `let` on no store throws.
   - "`$store(field?.state)` for a guarded `$getContext` value": with a provider (server, resume, browser render) and without; BRM197 for `let` and for no `?.`.
+  - a store of another library in a prop and in a script value is refused at server render with the message above, and one made by a call in the reader works and a prop that no `$store` reads keeps the serializer's error (fixtures `storeForeignProp.brm`, `StoreForeignPropReader.brm`, `storeForeignValue.brm`, `storeForeignCall.brm`, `storeForeignRaw.brm`, `StoreForeignRawReader.brm`);
   - compile checks: BRM198 for `await` and a server function; every other source compiles and lands in `z`.
   - Fixtures: `storeAny.brm`, `StoreAnyReader.brm`, `storeSpace.ts`, `storeLetNone.brm`, `hasOptional.brm`, `hasOptionalAlone.brm`, `HasOptionalReader.brm`.
 
@@ -42,26 +43,29 @@
 
 Not an experiment node.
 
-Client JS, gzip -9 summed over every `.js` file of `dist/client` (`vite build --outDir dist/client`, then the `--ssr` build), brumate dist rebuilt first:
+Todos client JS, measured again after the review on clean builds. Method (`todos-clean.sh`, kept in the session scratchpad): put `packages/brumate/src` of the commit in place (`git checkout <commit> -- packages/brumate/src`), `rm -rf packages/brumate/dist` and `npx tsdown`, then in `benchmarks/brumate` `rm -rf dist node_modules/.vite`, `npx vite build --outDir dist/client` and `npx vite build --ssr src/server.ts --outDir dist/server`. Sum `wc -c` and `gzip -9 -c | wc -c` over every `.js` under `dist/client` (8 files). Two runs each:
 
-|                   | todos raw | todos gzip | ui example raw | ui example gzip |
-| ----------------- | --------- | ---------- | -------------- | --------------- |
-| before (e87e290e) | 80,085 B  | 28,423 B   | 677,928 B      | 203,374 B       |
-| after             | 80,086 B  | 28,415 B   | 677,604 B      | 203,043 B       |
+|                   | todos raw | todos gzip -9      |
+| ----------------- | --------- | ------------------ |
+| before (e87e290e) | 80,085 B  | 28,427 B, 28,427 B |
+| after (30667f46)  | 80,085 B  | 28,419 B, 28,418 B |
 
-Todos: +1 B raw, -8 B gzip (it has no `$store`; the runtime changes are tree-shaken or a few bytes). The ui example: -324 B raw, -331 B gzip. The key form (`$store(given.state)`) no longer imports the context into `z`, which pays for the `($$s) => (…)` wrappers of the context imports (`$store(LocaleContext)` and the like) and the new resume code.
+The raw size is the same. The gzip sum moves by about 1 B between runs because of the hashed chunk names. The first figures (28,423 B before, 28,415 B after) came from builds without the `node_modules/.vite` and `packages/brumate/dist` cleanup and should not be used.
+
+The ui example (`examples/ui`, the same two builds, gzip -9 summed over `dist/client` JS): 677,928 B raw and 203,374 B gzip before, 677,603 B raw and 203,041 B gzip after (clean build, `dist` and `node_modules/.vite` removed). The key form (`$store(given.state)`) no longer imports the context into `z`. That saving outweighs the `($$s) => (…)` wrappers of the context imports (`$store(LocaleContext)` and the like) and the new resume code.
 
 ## Deviations
 
 - `packages/tsc/test/tsc.test.ts` and `packages/tsc/test/fixture-has/src/Has.brm` changed (outside the shared paths) for the typing criterion: two lines, `$store(field?.state)` typed `{ count: number } | undefined`, and a wrong one. `packages/language-core` and `packages/tsc` source did not change.
 - `packages/brumate/skills/brumate/references/errors.md`, `website/docs/errors.md` and `packages/brumate/test/error-codes.json` are generated from the catalog (as in store-contract).
+- A store of another library in a prop or a sent script value is refused by the server's `$store`, not by a compile check (the maintainer, 2026-11-05; no new code). The compiler marks a source-form store whose root name is a sent value (`Declaration.store.sent`, `findSentRoot` in `analyze.ts`). It passes that name (`the prop "s"` or `the value "held"`) as a seventh argument of `$$ctx.consumeStore`, on the server only, so the browser code is unchanged. When the value is a contract that is not a `brumate/store` store, `consumeStore` throws `sentForeignStore(component, value)` (`runtime/store.ts`), the one place that holds the message: `$store in <component ID> reads a store of another library from the prop "s", which the page sends, and only a store of brumate/store crosses. Read the store from an import, <script module> or a call in this component`. Node store-bridge changes the fix there to point to `bridge()`. A foreign store in a prop that no `$store` reads keeps the serializer's error.
 - BRM198 is a new code that the brief did not reserve (`reserves: []`). BRM194 could not take the new meaning, since `check-command.test.ts` pins each code to its message, and `skill.test.ts` needs a catalog entry for every compiler message.
-- Limits kept, each needs the maintainer's approval:
+- Limits kept, approved by the maintainer on 2026-11-05 and recorded in `docs/decisions.md`:
   - A source that awaits or calls a server function is BRM198. The browser links the store in the pass of the resume, and a promise is no store. silmaril and Svelte take no promise either.
   - `let` on a source that gives no store throws a `TypeError` when the variable registers, as `let` on a store without `set` does: a write would have nowhere to go.
   - A store that reaches the browser inside a sent value (a prop, a script value, a `$getContext` value read through a deeper path) must be of `brumate/store`. Only its value crosses, and the page state cannot carry a foreign store's functions. A foreign store works from an import, `<script module>`, a call or a namespace.
   - `$store(g?.state)` under `let` stays BRM197, like the explicit guarded `let`.
-- The brief says the slot of a store that the expression makes "keeps the server value until the first change". Built as the general rule instead: the slot keeps the server value, and is written once at resume if the new store's first value differs (`store(Date.now())`). For `store(5)` the values agree, so nothing is written. The test checks that.
+- The brief says the slot of a store that the expression makes "keeps the server value until the first change". The maintainer approved the general rule instead: the slot keeps the server value, and is written once at resume if the new store's first value differs (`store(Date.now())`). For `store(5)` the values agree, so nothing is written. The test checks that.
 
 ## Stubs left
 
@@ -69,7 +73,8 @@ Todos: +1 B raw, -8 B gzip (it has no `$store`; the runtime changes are tree-sha
 
 ## Gotchas
 
-- A core bug found, not fixed (not a store bug, and on main): the render module (`codegen/render.ts`, `clientModuleScript`) copies `<script module>` instead of importing the shared part. A component that the browser renders gets its own module state, apart from the instances that resumed. So a `<script module>` store is two stores in the browser once a page both resumes and renders that component. The test "reads each source in a browser render" notes it and checks the browser-rendered reader alone. It needs a fix from main.
+- A core bug found, not fixed here. It is node module-script-shared in the 0.6.1 patch. The render module (`codegen/render.ts`, `clientModuleScript`) copies `<script module>` instead of importing the shared part. A component that the browser renders gets its own module state, apart from the instances that resumed. So a `<script module>` store is two stores in the browser once a page both resumes and renders that component. The test "shares the store of <script module> between resumed and browser-rendered readers (module-script-shared)" is an `it.fails`, so it fails once that fix lands. Until then, `website/docs/context.md` says a `<script module>` store is two stores.
+- A source runs once on resume, with the values the server sent. A signal that a handler changed before the reader's code loaded is not seen by the source (documented in context.md and the skill).
 - Every source-form reader puts its source in `z` and gives slots to what the source reads, even if the reader's variable has no read in the browser.
 - A store made by the source runs again on resume: a server-side `set` on it before the render is lost in the browser, except through the repair of the slot's value.
 - `scope.stops` counts one entry per subscribed read. A reader whose source gave `undefined` has none for it.
@@ -81,13 +86,15 @@ Todos: +1 B raw, -8 B gzip (it has no `$store`; the runtime changes are tree-sha
 
 ## Verification
 
+After the review fixes:
+
 - `npx oxlint`: exit 0, 0 errors (warnings only). Root `npx oxfmt --check`: pass.
 - `npx tsc --noEmit -p .` in `packages/brumate`: pass.
-- `npx vitest run` in `packages/brumate` (dist built with `npx tsdown`): 79 files, 2840 tests pass, the store tests 46 of them.
+- `npx vitest run` in `packages/brumate` (dist built with `npx tsdown`): 78 of 79 files pass in the full run. `test/resume.test.ts` failed at file level under load. Run alone it passes, 614 tests. The `it.fails` of module-script-shared counts as an expected fail.
 - `npx vitest run` in `packages/tsc` (language-core and tsc built with `npx tsdown`): 3 pass, including the `$store(field?.state)` typing.
-- `npx vitest run` in `packages/ui`: 75 files, 774 pass, 1 expected fail.
-- `node e2e/run.mjs --only ui --no-build` (ui example built with its two `vite build` steps): pass.
-- There is no `brumate` e2e suite. `node e2e/run.mjs --only todos,tracker,nitro,kit,browser-async --no-build`: todos, tracker, nitro and kit pass (each example built with its `npm run build`). browser-async not run: `examples/browser-async` has no node_modules in this worktree, so it does not build.
+- `npx vitest run` in `packages/ui`: 773 pass, 1 expected fail. `test/bind-kept-writes.test.ts` (the Switch setter test) failed under load. Run alone it passes, 2 tests.
+- `node e2e/run.mjs --only ui --no-build` (ui example built clean with its two `vite build` steps): pass.
+- Before the review fixes: `node e2e/run.mjs --only todos,tracker,nitro,kit,browser-async --no-build` passed todos, tracker, nitro and kit. browser-async was not run, because `examples/browser-async` has no node_modules in this worktree. There is no `brumate` e2e suite.
 - `UPDATE_SKILL=1 npx vitest run test/skill.test.ts test/check-command.test.ts` regenerated the error docs and pins.
 
 ## Size
