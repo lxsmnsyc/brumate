@@ -10,7 +10,7 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $hasContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { LinkContext } from './contexts.ts';
   import { slotProps } from './slots.ts';
 
@@ -23,8 +23,8 @@
    */
   const { isCurrent = false, children, ...rest } = $props<BreadcrumbProps>();
 
-  const trailGiven = $getContext(LinkContext);
-  const trail = $store(trailGiven.state);
+  const trailGiven = $hasContext(LinkContext) ? $getContext(LinkContext) : undefined;
+  const trail = $hasContext(LinkContext) ? $store(trailGiven.state) : undefined;
   const disabled = $memo(Boolean(slotProps(trail, undefined).isDisabled || isCurrent));
   const linkState = $memo({ isCurrent, isDisabled: disabled });
   $setContext(LinkContext, { state: $toStore(linkState) });

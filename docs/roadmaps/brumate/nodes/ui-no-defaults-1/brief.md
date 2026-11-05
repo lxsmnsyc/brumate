@@ -1,0 +1,50 @@
+---
+id: ui-no-defaults-1
+title: "ui contexts without defaults, group 1"
+status: active
+priority: must
+type: refactor
+story: context-stores
+outline: false
+milestone: 0.7.0
+target:
+from:
+size: M
+spike: false
+verify:
+exclusive: []
+fulfilled_by:
+gate: false
+added: 2026-11-05
+spent:
+owns: []
+shared:
+  - packages/ui/src/**
+  - packages/ui/test/**
+  - packages/ui/e2e/**
+  - .changeset/*.md
+reserves: []
+provides: []
+depends_on:
+  - on: has-context
+    kind: hard
+    why: the parts need $hasContext and the guarded $store
+---
+
+# ui contexts without defaults, group 1
+
+## Goal
+
+From the approved debate docs/debates/context-no-defaults/debate.md: packages/ui has about 40 contexts with a default (`null`, `store(null)`, `{ state: store(null) }`, `noInput`, `false`), read through 129 `$store` and 76 `$getContext` calls in about 80 files. This node moves group 1: Button, Link, ToggleButton, Toolbar, ToggleGroup, Group, Text, Label, Heading, Separator and the parts that read contexts.ts first. Pick the files at the start and list them in the outcome, so the next group knows what is left.
+
+Each `createContext` loses its default. A part that must work without a provider reads with `$hasContext(C) ? $store(C) : undefined` or the `$getContext` form (see has-context's outcome). A fallback value is built in the reader, never at module scope.
+
+## Acceptance
+
+- [ ] No `createContext` in this group's files passes a default; every part that rendered alone still renders alone (ui tests that mount it with no provider).
+- [ ] ui tests and `node e2e/run.mjs --only ui` pass.
+- [ ] The ui example's client JS (gzip -9 summed over examples/ui dist JS) before and after.
+
+## Sizing
+
+M: about 20 files of mechanical changes.

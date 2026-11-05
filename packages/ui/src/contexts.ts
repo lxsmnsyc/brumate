@@ -41,9 +41,7 @@ export interface ButtonGiven {
   handlers?: ContextValue<ButtonHandlers> | null;
 }
 
-export const ButtonContext: Context<ButtonGiven> = createContext<ButtonGiven>('brumate-ui:button', {
-  state: store(null),
-});
+export const ButtonContext: Context<ButtonGiven> = createContext<ButtonGiven>('brumate-ui:button');
 
 /** The attributes of a part that a context can give, such as `id` or `aria-label`. */
 export interface AttributeProps {
@@ -56,24 +54,22 @@ export interface HeadingContextProps extends AttributeProps {
 }
 
 export const HeadingContext: Context<ContextValue<HeadingContextProps> | null> =
-  createContext<ContextValue<HeadingContextProps> | null>('brumate-ui:heading', null);
+  createContext<ContextValue<HeadingContextProps> | null>('brumate-ui:heading');
 
 /** A Text gets its slot from its parent, such as "description" or "errorMessage". */
-export const TextContext: Context<StoreLike<ContextValue<AttributeProps> | null>> = createContext<
-  StoreLike<ContextValue<AttributeProps> | null>
->('brumate-ui:text', store(null));
+export const TextContext: Context<StoreLike<ContextValue<AttributeProps> | null>> =
+  createContext<StoreLike<ContextValue<AttributeProps> | null>>('brumate-ui:text');
 
 /** A field gives its Label an `id` and the `for` of its input. */
-export const LabelContext: Context<StoreLike<ContextValue<AttributeProps> | null>> = createContext<
-  StoreLike<ContextValue<AttributeProps> | null>
->('brumate-ui:label', store(null));
+export const LabelContext: Context<StoreLike<ContextValue<AttributeProps> | null>> =
+  createContext<StoreLike<ContextValue<AttributeProps> | null>>('brumate-ui:label');
 
 export interface SeparatorContextProps extends AttributeProps {
   orientation?: 'horizontal' | 'vertical';
 }
 
 export const SeparatorContext: Context<ContextValue<SeparatorContextProps> | null> =
-  createContext<ContextValue<SeparatorContextProps> | null>('brumate-ui:separator', null);
+  createContext<ContextValue<SeparatorContextProps> | null>('brumate-ui:separator');
 
 export interface GroupContextProps extends AttributeProps {
   isDisabled?: boolean;
@@ -81,7 +77,7 @@ export interface GroupContextProps extends AttributeProps {
 }
 
 export const GroupContext: Context<StoreLike<ContextValue<GroupContextProps> | null>> =
-  createContext<StoreLike<ContextValue<GroupContextProps> | null>>('brumate-ui:group', store(null));
+  createContext<StoreLike<ContextValue<GroupContextProps> | null>>('brumate-ui:group');
 
 /** The handlers of a Link that a context can give. They are not in the store of the context. */
 export type LinkHandlers = ButtonHandlers;
@@ -101,9 +97,7 @@ export interface LinkGiven {
   handlers?: ContextValue<LinkHandlers> | null;
 }
 
-export const LinkContext: Context<LinkGiven> = createContext<LinkGiven>('brumate-ui:link', {
-  state: store(null),
-});
+export const LinkContext: Context<LinkGiven> = createContext<LinkGiven>('brumate-ui:link');
 
 export interface ToggleButtonContextProps extends ButtonContextProps {
   isSelected?: boolean;
@@ -111,7 +105,7 @@ export interface ToggleButtonContextProps extends ButtonContextProps {
 }
 
 export const ToggleButtonContext: Context<ContextValue<ToggleButtonContextProps> | null> =
-  createContext<ContextValue<ToggleButtonContextProps> | null>('brumate-ui:toggle-button', null);
+  createContext<ContextValue<ToggleButtonContextProps> | null>('brumate-ui:toggle-button');
 
 /** The attributes of an Input or a TextArea that a field gives, such as `id`, `name` and `aria-describedby`. */
 export interface InputContextProps extends AttributeProps {
@@ -255,12 +249,10 @@ export interface ToggleGroupGiven extends Partial<ToggleGroupHandlers> {
 }
 
 /** True inside a Toolbar, so a toolbar inside it is a group. */
-export const ToolbarContext: Context<boolean> = createContext<boolean>('brumate-ui:toolbar', false);
+export const ToolbarContext: Context<boolean> = createContext<boolean>('brumate-ui:toolbar');
 
-export const ToggleGroupContext: Context<ToggleGroupGiven> = createContext<ToggleGroupGiven>(
-  'brumate-ui:toggle-group',
-  { state: store(null) },
-);
+export const ToggleGroupContext: Context<ToggleGroupGiven> =
+  createContext<ToggleGroupGiven>('brumate-ui:toggle-group');
 
 /** What a Disclosure gives its DisclosurePanel. */
 export interface DisclosurePanelState {

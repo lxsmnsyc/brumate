@@ -27,7 +27,7 @@
 </script>
 
 <script>
-  import { $client, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $hasContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
@@ -87,18 +87,18 @@
   );
   const labelId = $id();
   const { present: hasLabel } = described(labelId, false);
-  const groupLabel = $store(LabelContext);
-  const groupText = $store(TextContext);
+  const groupLabel = $hasContext(LabelContext) ? $store(LabelContext) : undefined;
+  const groupText = $hasContext(TextContext) ? $store(TextContext) : undefined;
   const groupError = $store(FieldErrorContext);
   // A Label in the children (`as="span"`) names the input, so the description and the error stay
   // out of its name. Without one, they sit in the text of the label, and aria-hidden keeps them
   // out of the name. The server cannot see the Label, so a box starts without one: the name is right
   // before any script runs, and the browser turns the Label on when it finds it. The input still names them in aria-describedby, which reads hidden elements.
   const hidden = $memo(hasLabel ? undefined : 'true');
-  const labelGiven = $memo(group ? groupLabel : { id: labelId });
+  const labelGiven = $memo(group ? (groupLabel ?? null) : { id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
   const textGiven = $memo(
-    group ? groupText : { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } },
+    group ? (groupText ?? null) : { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } },
   );
   $setContext(TextContext, $toStore(textGiven));
   const errorGiven = $memo(

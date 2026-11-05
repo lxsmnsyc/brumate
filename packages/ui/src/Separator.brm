@@ -16,7 +16,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'hr'">
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $getContext, $hasContext, $memo, $props } from 'brumate/signals';
   import { SeparatorContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
 
@@ -28,7 +28,7 @@
   // The props of the target of `as`, for the type of the component.
   const { as } = $props<SeparatorProps<T>>();
 
-  const context = $getContext(SeparatorContext);
+  const context = $hasContext(SeparatorContext) ? $getContext(SeparatorContext) : undefined;
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const direction = $memo(orientation ?? slotProps(context, slot).orientation ?? 'horizontal');
   const element = $memo((as ?? (direction === 'vertical' ? 'div' : 'hr')) as AsTarget);

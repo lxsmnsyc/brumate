@@ -19,7 +19,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $getContext, $memo, $props, $setContext, $store } from 'brumate/signals';
+  import { $client, $hasContext, $memo, $props, $setContext, $store } from 'brumate/signals';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { ToolbarContext } from './contexts.ts';
   import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
@@ -35,7 +35,7 @@
 
   const localeStore = $store(LocaleContext);
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
-  const nested = $getContext(ToolbarContext);
+  const nested = $hasContext(ToolbarContext);
   $setContext(ToolbarContext, true);
 
   $client(() => {

@@ -24,7 +24,7 @@
 </script>
 
 <script>
-  import { $client, $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
   import { isFocusVisible } from './interactions.ts';
   import { TooltipTriggerContext, pressedTriggers, tooltips } from './tooltip.ts';
@@ -51,14 +51,14 @@
   } = $props<TooltipTriggerProps>();
   let { isOpen = false } = $props<TooltipTriggerProps>();
 
-  const parentGiven = $getContext(ButtonContext);
-  const parent = $store(parentGiven.state);
+  const parentGiven = $hasContext(ButtonContext) ? $getContext(ButtonContext) : undefined;
+  const parent = $hasContext(ButtonContext) ? $store(parentGiven.state) : undefined;
   const ownId = $id();
   const tooltipId = $id();
   // A DialogTrigger around it names the button already, and finds its popover by that ID.
   const triggerId = $memo(getId(parent) ?? ownId);
 
-  function getId(value: ContextValue<ButtonStateProps> | null) {
+  function getId(value: ContextValue<ButtonStateProps> | null | undefined) {
     return value && !('slots' in value) && typeof value.id === 'string' ? value.id : undefined;
   }
 
@@ -130,7 +130,7 @@
 
   /** The props of the context around it, when it gives one Button its props. */
   function plain() {
-    const handlers = parentGiven.handlers;
+    const handlers = parentGiven?.handlers;
     return handlers && !('slots' in handlers) ? handlers : undefined;
   }
 

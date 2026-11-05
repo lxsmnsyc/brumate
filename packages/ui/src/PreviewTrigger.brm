@@ -21,7 +21,7 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
   import type { OverlayTriggerState } from './contexts.ts';
   import { isFocusVisible } from './interactions.ts';
@@ -51,15 +51,15 @@
   } = $props<PreviewTriggerProps>();
   let { isOpen = false } = $props<PreviewTriggerProps>();
 
-  const buttonGiven = $getContext(ButtonContext);
-  const button = $store(buttonGiven.state);
-  const linkGiven = $getContext(LinkContext);
-  const link = $store(linkGiven.state);
+  const buttonGiven = $hasContext(ButtonContext) ? $getContext(ButtonContext) : undefined;
+  const button = $hasContext(ButtonContext) ? $store(buttonGiven.state) : undefined;
+  const linkGiven = $hasContext(LinkContext) ? $getContext(LinkContext) : undefined;
+  const link = $hasContext(LinkContext) ? $store(linkGiven.state) : undefined;
   const ownId = $id();
   const overlayId = $id();
   const triggerId = $memo(getId(button) ?? getId(link) ?? ownId);
 
-  function getId(value: ContextValue<ButtonStateProps | LinkStateProps> | null) {
+  function getId(value: ContextValue<ButtonStateProps | LinkStateProps> | null | undefined) {
     return value && !('slots' in value) && typeof value.id === 'string' ? value.id : undefined;
   }
 
@@ -86,15 +86,15 @@
   }
 
   function hoverStarted(event: HoverEvent) {
-    given(buttonGiven.handlers)?.onHoverStart?.(event);
-    given(linkGiven.handlers)?.onHoverStart?.(event);
+    given(buttonGiven?.handlers)?.onHoverStart?.(event);
+    given(linkGiven?.handlers)?.onHoverStart?.(event);
     dismissed.delete(triggerId);
     open(false);
   }
 
   function hoverEnded(event: HoverEvent) {
-    given(buttonGiven.handlers)?.onHoverEnd?.(event);
-    given(linkGiven.handlers)?.onHoverEnd?.(event);
+    given(buttonGiven?.handlers)?.onHoverEnd?.(event);
+    given(linkGiven?.handlers)?.onHoverEnd?.(event);
     pressForgets.get(triggerId)?.();
     if (!isOpen) {
       close(false);
@@ -102,8 +102,8 @@
   }
 
   function focusChanged(focused: boolean) {
-    given(buttonGiven.handlers)?.onFocusChange?.(focused);
-    given(linkGiven.handlers)?.onFocusChange?.(focused);
+    given(buttonGiven?.handlers)?.onFocusChange?.(focused);
+    given(linkGiven?.handlers)?.onFocusChange?.(focused);
     const active = document.activeElement;
     if (!focused) {
       dismissed.delete(triggerId);
@@ -116,8 +116,8 @@
   }
 
   function pressStarted(event: PressEvent) {
-    given(buttonGiven.handlers)?.onPressStart?.(event);
-    given(linkGiven.handlers)?.onPressStart?.(event);
+    given(buttonGiven?.handlers)?.onPressStart?.(event);
+    given(linkGiven?.handlers)?.onPressStart?.(event);
     if (event.pointerType === 'touch') {
       startLongPress(triggerId, event.pointerId, () => open(true));
     } else {
@@ -140,8 +140,8 @@
   }
 
   function pressEnded(event: PressEvent) {
-    given(buttonGiven.handlers)?.onPressEnd?.(event);
-    given(linkGiven.handlers)?.onPressEnd?.(event);
+    given(buttonGiven?.handlers)?.onPressEnd?.(event);
+    given(linkGiven?.handlers)?.onPressEnd?.(event);
     cancelLongPress(triggerId);
   }
 
@@ -198,10 +198,10 @@
   $setContext(ButtonContext, {
     state: $toStore(buttonState),
     handlers: {
-      onPress: (event: PressEvent) => given(buttonGiven.handlers)?.onPress?.(event),
-      onPressUp: (event: PressEvent) => given(buttonGiven.handlers)?.onPressUp?.(event),
-      onPressChange: (pressed: boolean) => given(buttonGiven.handlers)?.onPressChange?.(pressed),
-      onHoverChange: (hovered: boolean) => given(buttonGiven.handlers)?.onHoverChange?.(hovered),
+      onPress: (event: PressEvent) => given(buttonGiven?.handlers)?.onPress?.(event),
+      onPressUp: (event: PressEvent) => given(buttonGiven?.handlers)?.onPressUp?.(event),
+      onPressChange: (pressed: boolean) => given(buttonGiven?.handlers)?.onPressChange?.(pressed),
+      onHoverChange: (hovered: boolean) => given(buttonGiven?.handlers)?.onHoverChange?.(hovered),
       onHoverStart: hoverStarted,
       onHoverEnd: hoverEnded,
       onFocusChange: focusChanged,
@@ -218,10 +218,10 @@
   $setContext(LinkContext, {
     state: $toStore(linkState),
     handlers: {
-      onPress: (event: PressEvent) => given(linkGiven.handlers)?.onPress?.(event),
-      onPressUp: (event: PressEvent) => given(linkGiven.handlers)?.onPressUp?.(event),
-      onPressChange: (pressed: boolean) => given(linkGiven.handlers)?.onPressChange?.(pressed),
-      onHoverChange: (hovered: boolean) => given(linkGiven.handlers)?.onHoverChange?.(hovered),
+      onPress: (event: PressEvent) => given(linkGiven?.handlers)?.onPress?.(event),
+      onPressUp: (event: PressEvent) => given(linkGiven?.handlers)?.onPressUp?.(event),
+      onPressChange: (pressed: boolean) => given(linkGiven?.handlers)?.onPressChange?.(pressed),
+      onHoverChange: (hovered: boolean) => given(linkGiven?.handlers)?.onHoverChange?.(hovered),
       onHoverStart: hoverStarted,
       onHoverEnd: hoverEnded,
       onFocusChange: focusChanged,

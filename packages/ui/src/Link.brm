@@ -44,7 +44,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'a'">
-  import { $getContext, $memo, $props, $store } from 'brumate/signals';
+  import { $getContext, $hasContext, $memo, $props, $store } from 'brumate/signals';
   import { LinkContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { contextAttributes, slotHandlers, slotProps } from './slots.ts';
@@ -79,8 +79,8 @@
   const { as } = $props<LinkProps<T>>();
   let { ref } = $props<LinkOwnProps<T>>();
 
-  const linkGiven = $getContext(LinkContext);
-  const context = $store(linkGiven.state);
+  const linkGiven = $hasContext(LinkContext) ? $getContext(LinkContext) : undefined;
+  const context = $hasContext(LinkContext) ? $store(linkGiven.state) : undefined;
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
   const current = $memo(Boolean(isCurrent ?? slotProps(context, slot).isCurrent));
@@ -89,7 +89,7 @@
   const native = $memo(element === 'a' && linked);
 
   function given() {
-    return slotHandlers(linkGiven.handlers, slot);
+    return slotHandlers(linkGiven?.handlers, slot);
   }
   // The handlers of the context run first, then the link's own, as Button's do.
   function pressed(event: PressEvent) {

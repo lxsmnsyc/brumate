@@ -30,7 +30,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $client, $hasContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
   import type { ToggleGroupState } from './contexts.ts';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
@@ -60,7 +60,7 @@
 
   const localeStore = $store(LocaleContext);
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
-  const nested = $getContext(ToolbarContext);
+  const nested = $hasContext(ToolbarContext);
 
   $client(() => {
     if (!ref) {

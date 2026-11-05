@@ -21,7 +21,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'h3'">
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $getContext, $hasContext, $memo, $props } from 'brumate/signals';
   import { HeadingContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
 
@@ -31,7 +31,7 @@
   const { as } = $props<HeadingProps<T>>();
   let { ref } = $props<HeadingOwnProps<T>>();
 
-  const context = $getContext(HeadingContext);
+  const context = $hasContext(HeadingContext) ? $getContext(HeadingContext) : undefined;
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const element = $memo((as ?? `h${level ?? slotProps(context, slot).level ?? 3}`) as AsTarget);
 </script>

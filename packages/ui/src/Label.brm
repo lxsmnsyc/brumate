@@ -16,7 +16,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'label'">
-  import { $memo, $props, $store } from 'brumate/signals';
+  import { $hasContext, $memo, $props, $store } from 'brumate/signals';
   import { LabelContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
 
@@ -26,7 +26,7 @@
    */
   const { as = 'label', slot, children, ...rest } = $props<LabelProps<T>>();
 
-  const context = $store(LabelContext);
+  const context = $hasContext(LabelContext) ? $store(LabelContext) : undefined;
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
 </script>
 
