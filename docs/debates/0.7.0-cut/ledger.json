@@ -180,9 +180,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P1"
-      ],
+      "answers": ["P1"],
       "text": "render-memos is an M runtime refactor; in a patch it can regress users, and it shares runtime files with clone-remaining-bodies on next",
       "evidence": {
         "type": "source",
@@ -198,9 +196,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P2"
-      ],
+      "answers": ["P2"],
       "text": "dev-dock-redesign is an L outline with a gate; it may not finish in 0.7.0",
       "evidence": {
         "type": "source",
@@ -239,9 +235,7 @@
       "id": "O4",
       "by": "opponent",
       "kind": "rebuttal",
-      "answers": [
-        "P2"
-      ],
+      "answers": ["P2"],
       "text": "mathml-elements and missing-attributes are type-only additions to Elements; counting them as two pads the count. Count them as one",
       "evidence": {
         "type": "source",
@@ -255,10 +249,7 @@
       "by": "opponent",
       "kind": "cut",
       "action": "park",
-      "nodes": [
-        "fieldset",
-        "split-ui-examples"
-      ],
+      "nodes": ["fieldset", "split-ui-examples"],
       "text": "fieldset costs two M nodes (split-ui-examples first); popover-sizing alone covers ui",
       "evidence": {
         "type": "source",
@@ -273,9 +264,7 @@
       "by": "opponent",
       "kind": "cut",
       "action": "park",
-      "nodes": [
-        "dev-setup-in-plugin"
-      ],
+      "nodes": ["dev-setup-in-plugin"],
       "text": "Park to 0.8.0: it moved out of 0.6.0 already and helps only the website",
       "evidence": {
         "type": "source",
@@ -289,9 +278,7 @@
       "by": "opponent",
       "kind": "cut",
       "action": "park",
-      "nodes": [
-        "tsc-check-api"
-      ],
+      "nodes": ["tsc-check-api"],
       "text": "Park to 0.8.0: an uncounted M refactor that shares check-command.ts with store-contract",
       "evidence": {
         "type": "source",
@@ -306,9 +293,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "low",
-      "answers": [
-        "P1"
-      ],
+      "answers": ["P1"],
       "text": "dom-content-loaded allows a new handler name; a rename is an API change, not a patch",
       "evidence": {
         "type": "source",
