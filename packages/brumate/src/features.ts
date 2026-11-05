@@ -38,6 +38,8 @@ export interface Features {
   rootWait: boolean;
   /** `$searchParam`, whose changes of the URL the loader leaves to the page. */
   searchParams: boolean;
+  /** Stores of `brumate/store`: `$toStore`, `$store`, or a store that the page state holds. */
+  stores: boolean;
 }
 
 /** No feature at all, which a build that has no component uses. */
@@ -60,6 +62,7 @@ export function noFeatures(): Features {
     loading: false,
     rootWait: false,
     searchParams: false,
+    stores: false,
   };
 }
 
@@ -102,6 +105,7 @@ export function getFeatures(result: CompileResult): Features {
     loading: /\$\$b\.loading\(/.test(client),
     rootWait: /\$\$b\.wait\(/.test(client),
     searchParams: /\$\$b\.(?:searchParam|paramEffect)\(/.test(all),
+    stores: /\$\$(?:b|ctx)\.(?:toStore|consumeStore)\(|['"]brumate\/store['"]/.test(all),
   };
 }
 
@@ -126,6 +130,7 @@ export function joinFeatures(all: Features[]): Features {
     joined.loading ||= features.loading;
     joined.rootWait ||= features.rootWait;
     joined.searchParams ||= features.searchParams;
+    joined.stores ||= features.stores;
   }
   return joined;
 }
@@ -149,6 +154,7 @@ const GLOBALS: Record<keyof Features, string> = {
   loading: '__BRUMATE_HAS_LOADING__',
   rootWait: '__BRUMATE_HAS_ROOT_WAIT__',
   searchParams: '__BRUMATE_HAS_SEARCH_PARAMS__',
+  stores: '__BRUMATE_HAS_STORES__',
 };
 
 /** True for code that reads a feature, such as the core. */

@@ -4,6 +4,7 @@
 
 import type { Context, NavigationState, Route } from './context.ts';
 import type { RoutePath, RouteParams } from './routes.ts';
+import type { Store } from './store.ts';
 
 function compileTimeOnly(name: string): never {
   throw new Error(`${name} works only in .brm files, which the brumate compiler compiles`);
@@ -161,6 +162,24 @@ export function $setContext<T>(_context: Context<T>, _value: T): void {
 /** Reads a context from the nearest component above that provides it, or its default value. */
 export function $getContext<T>(_context: Context<T>): T {
   return compileTimeOnly('$getContext');
+}
+
+/**
+ * Reads a store in a context and gives its value, which changes when the store does: the context
+ * holds the store, as `$store(FieldContext)`, or a key of the context value does, as
+ * `$store(field.state)` for `const field = $getContext(FieldContext)`.
+ */
+export function $store<T>(_source: Context<Store<T>> | Store<T>): T {
+  return compileTimeOnly('$store');
+}
+
+/**
+ * The store of a memo, a signal or a prop, for a value of `$setContext`. It adds no reactive
+ * value: the provider's update writes it. A store of a signal has a `set` that writes the
+ * signal; a store of a memo or a prop is read-only.
+ */
+export function $toStore<T>(_value: T): Store<T> {
+  return compileTimeOnly('$toStore');
 }
 
 /**

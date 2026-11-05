@@ -1,0 +1,9 @@
+<script>
+  import { $props, $setContext, $toStore } from 'brumate/signals';
+  import { Level } from './contexts.ts';
+
+  const { size, children } = $props<{ size: number; children?: unknown }>();
+  $setContext(Level, $toStore(size));
+</script>
+
+<div class="wrap">{children}</div>

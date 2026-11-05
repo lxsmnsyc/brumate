@@ -1,0 +1,10 @@
+<script>
+  import { $setContext } from 'brumate/signals';
+  import { Level } from './contexts.ts';
+
+  // A store of another library, which the page state cannot send.
+  const foreign = { subscribe: (run: (value: number) => void) => (run(1), () => {}) };
+  $setContext(Level, foreign as never);
+</script>
+
+<p>Foreign</p>

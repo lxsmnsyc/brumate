@@ -30,6 +30,7 @@ function fullRecord(): Required<ScopeState> {
     l: 13,
     v: { key: new ChildrenReference('Card_x1#n0', 5) },
     x: { key: 0 },
+    z: [['key', 0]],
     s: [new SlotReference(6, 1), [new ElementReference('7.0', 1)], Promise.resolve(1)],
     c: { 0: 8, 1: '9.1' },
     b: { 0: new SlotReference(10, 2), 1: new FunctionReference('Card_x1#h1', '11.0') },

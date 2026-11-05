@@ -1,0 +1,11 @@
+<script>
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
+  import { Grid } from './grid.ts';
+
+  const { day } = $props<{ day: number }>();
+  const grid = $getContext(Grid);
+  const state = $store(grid.state);
+  const isSelected = $memo(state.selected === day);
+</script>
+
+<button aria-selected=(String(isSelected)) tabindex=(state.focused === day ? 0 : -1) onClick=(() => grid.select(day))>{day}</button>

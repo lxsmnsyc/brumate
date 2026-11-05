@@ -1,14 +1,16 @@
 // Contexts that components provide and read, and the values that the runtime provides to the
 // whole page.
 
-import { HAS_ROUTES } from '../features.ts';
-import { ROUTE_KEY } from '../context.ts';
+import { HAS_ROUTES, HAS_STORES } from '../features.ts';
+import { CONTEXT_ADDED, ROUTE_KEY } from '../context.ts';
 import type { Context as ContextValue, Route } from '../context.ts';
-import type { ScopeId } from '../shared.ts';
+import { madeStores } from '../shared.ts';
+import type { ScopeId, StoreRead } from '../shared.ts';
+import { Store, isStore, sendStore } from '../store.ts';
 import { resolveScope } from './scopes.ts';
 import { scopes } from './state.ts';
 import type { Scope } from './state.ts';
-import { sendContext, set } from './updates.ts';
+import { pass, sendContext, set } from './updates.ts';
 
 /** The scope that provides a context to `scope`: itself or the nearest one above it. */
 function findProvider(scope: Scope, key: string): Scope | undefined {
@@ -100,4 +102,163 @@ export function setGlobal(key: string, value: unknown): void {
 /** Reads the route of the page again, after navigation changed it. */
 export function updateRoute(): void {
   setGlobal(ROUTE_KEY, currentRoute());
+}
+
+// Stores in contexts: `$toStore` in a provided value, and `$store` in a reader.
+
+/** The reads of `$store` whose context has no provider and whose module has not run yet, by key. */
+const waitingReads = new Map<string, [Scope, number, string | undefined][]>();
+
+/** The contexts that the modules of the page made, by key, for the stores of their default values. */
+const madeContexts = new Map<string, ContextValue<unknown>>();
+
+if (HAS_STORES) {
+  (globalThis as { [key: symbol]: unknown })[CONTEXT_ADDED] = (context: ContextValue<unknown>) => {
+    madeContexts.set(context.key, context);
+    const reads = waitingReads.get(context.key);
+    if (reads) {
+      waitingReads.delete(context.key);
+      pass(() => {
+        for (const [scope, slot, path] of reads) {
+          linkRead(scope, context.key, slot, path, true);
+        }
+      });
+    }
+  };
+}
+
+/** The store that a read of `$store` finds from `scope`, or undefined while its module loads. */
+function findStore(
+  scope: Scope,
+  key: string,
+  path: string | undefined,
+): Store<unknown> | undefined {
+  const provider = findProvider(scope, key);
+  let value: unknown;
+  if (provider) {
+    value = provider.v![key];
+  } else if (madeContexts.has(key)) {
+    value = madeContexts.get(key)!.defaultValue;
+  } else {
+    return undefined;
+  }
+  const found = path === undefined ? value : (value as Record<string, unknown>)?.[path];
+  if (!isStore(found)) {
+    throw new Error(`$store reads the context "${key}", which holds no store of brumate/store`);
+  }
+  return found;
+}
+
+/**
+ * Subscribes a slot to a store, so a new value of the store writes the slot through the queued
+ * send of contexts. With `repair`, a value that changed since the server render is written now.
+ */
+function subscribeSlot(scope: Scope, slot: number, found: Store<unknown>, repair: boolean): void {
+  const stop = found.subscribe((value) => {
+    // A reader that left the page stops reading. Its cleanups would also run while an
+    // `#offscreen` body hides, which must keep reading.
+    if (scopes.get(scope.id) !== scope) {
+      stop();
+      return;
+    }
+    sendContext(() => set(scope, slot, value));
+  });
+  if (repair && !Object.is(found.get(), scope.s[slot])) {
+    sendContext(() => set(scope, slot, found.get()));
+  }
+}
+
+/** Links a read of `$store` that a scope resumed with, now or once the module of its context runs. */
+function linkRead(
+  scope: Scope,
+  key: string,
+  slot: number,
+  path: string | undefined,
+  repair: boolean,
+): void {
+  const found = findStore(scope, key, path);
+  if (found) {
+    subscribeSlot(scope, slot, found, repair);
+    return;
+  }
+  const reads = waitingReads.get(key) ?? [];
+  reads.push([scope, slot, path]);
+  waitingReads.set(key, reads);
+}
+
+/**
+ * Subscribes the reads of `$store` of scopes that the page state added, and writes the value of
+ * each store that changed since the server render, in one pass.
+ */
+export function resumeStoreReads(
+  added: Scope[],
+  reads: (scope: Scope) => StoreRead[] | undefined,
+): void {
+  pass(() => {
+    for (const scope of added) {
+      for (const [key, slot, path] of reads(scope) ?? []) {
+        linkRead(scope, key, slot, path, true);
+      }
+    }
+  });
+}
+
+/** Links the stores of providers that the page state made to their scopes. See `madeStores`. */
+export function linkMadeStores(): void {
+  for (const made of madeStores) {
+    const [id, site, slot] = made.o!;
+    const scope = scopes.get(id);
+    if (!scope) {
+      continue;
+    }
+    (scope.st ??= {})[site] = made;
+    if (slot === undefined) {
+      made.r = true;
+    } else {
+      made.w = (value) => set(scope, slot, value);
+    }
+  }
+  madeStores.length = 0;
+}
+
+/** `$store(context)` in a component that the browser renders: the value, with its slot subscribed. */
+export function consumeStore<T>(
+  context: ContextValue<unknown>,
+  scope: Scope | ScopeId,
+  slot: number,
+  path?: string,
+): T {
+  const target = resolveScope(scope)!;
+  madeContexts.set(context.key, context);
+  const found = findStore(target, context.key, path)!;
+  if (slot >= 0) {
+    subscribeSlot(target, slot, found, false);
+  }
+  return found.get() as T;
+}
+
+/** `$toStore(value)` in a provided value of a component that the browser renders. */
+export function toStore<T>(
+  value: T,
+  scope: Scope | ScopeId,
+  site: number,
+  slot?: number,
+): Store<T> {
+  const target = resolveScope(scope)!;
+  const made = new Store(value);
+  (target.st ??= {})[site] = made as Store<unknown>;
+  if (slot === undefined) {
+    made.r = true;
+  } else {
+    made.w = (next) => set(target, slot, next);
+  }
+  return made;
+}
+
+/** The update of `$toStore(value)`, in the binding stage: sends the new value to the readers. */
+export function storeUpdate(scope: Scope, site: number, value: unknown): void {
+  const found = scope.st?.[site];
+  if (found) {
+    sendStore(found, value);
+  }
 }

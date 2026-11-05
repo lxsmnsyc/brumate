@@ -554,9 +554,36 @@ class ClientGenerator {
     return result;
   }
 
+  /**
+   * The imported contexts that `$store` reads, which the update part imports so their modules
+   * run in the browser: a store in the default value of a context links its readers then.
+   */
+  private storeSources(): string[] {
+    const names: string[] = [];
+    for (const site of this.model.sites) {
+      if (
+        site.kind === 'setup' &&
+        site.label.startsWith('store ') &&
+        site.node.type === 'Identifier'
+      ) {
+        const declaration =
+          site.scope.declarations.get(site.node.name) ??
+          this.model.module.declarations.get(site.node.name);
+        if (declaration?.kind === 'import' && !names.includes(site.node.name)) {
+          names.push(site.node.name);
+        }
+      }
+    }
+    return names;
+  }
+
   private assemble(name: string): string {
     const reads = this.reads(this.partSites(name));
     const names = new Set<string>();
+    const stores = name === 'update' ? this.storeSources() : [];
+    for (const store of stores) {
+      names.add(store);
+    }
     const shared: string[] = [];
     for (const item of reads) {
       if (item.kind === 'import') {
@@ -578,7 +605,11 @@ class ClientGenerator {
         `import { ${[...new Set(shared)].join(', ')} } from ${JSON.stringify(this.partPath('shared'))};`,
       );
     }
-    lines.push('', ...this.serverStubs([name]), ...(this.out.get(name) ?? []), '');
+    lines.push('', ...this.serverStubs([name]), ...(this.out.get(name) ?? []));
+    if (stores.length > 0) {
+      lines.push(`export const z = [${stores.join(', ')}];`);
+    }
+    lines.push('');
     return lines.join('\n');
   }
 
@@ -596,6 +627,10 @@ class ClientGenerator {
     for (const name of names) {
       scopes.push(...this.templateScopes(name));
     }
+    const stores = names.includes('update') ? this.storeSources() : [];
+    for (const store of stores) {
+      imports.add(store);
+    }
     const lines = [
       "import * as $$b from 'brumate/client';",
       ...this.importsFor(imports, scopes, names.includes('update')),
@@ -604,6 +639,9 @@ class ClientGenerator {
     ];
     for (const name of names) {
       lines.push('', ...(this.out.get(name) ?? []));
+    }
+    if (stores.length > 0) {
+      lines.push(`export const z = [${stores.join(', ')}];`);
     }
     lines.push('');
     return lines.join('\n');
@@ -1102,6 +1140,16 @@ class ClientGenerator {
     }
     if (site.kind === 'title') {
       this.emit(`export function ${name('u')}($$s) {\n  $$b.title(${expression()});\n}`);
+      return;
+    }
+    if (site.kind === 'provide' && site.store) {
+      this.emit(
+        `export function ${name('u')}($$s) {\n  $$b.storeUpdate($$s, ${site.id}, ${expression()});\n}`,
+      );
+      return;
+    }
+    if (site.kind === 'provide' && site.holdsStores) {
+      // A value with stores is static: the update of each store sends its new values.
       return;
     }
     if (site.kind === 'provide') {

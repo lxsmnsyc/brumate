@@ -69,6 +69,28 @@ import type {
   TraceEntry,
 } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
+import { Store, isForeignStore, isStore } from './store.ts';
+
+/**
+ * Refuses a store that is not of `brumate/store` in a provided value, or in a key of it: the page
+ * state cannot send it, and the browser would not know when it changes. At module level it works.
+ */
+function refuseForeignStore(key: string, value: unknown): void {
+  let foreign = isForeignStore(value);
+  if (!foreign && typeof value === 'object' && value !== null && !isStore(value)) {
+    for (const item of Object.values(value)) {
+      if (isForeignStore(item)) {
+        foreign = true;
+        break;
+      }
+    }
+  }
+  if (foreign) {
+    throw new Error(
+      `The context "${key}" holds a store that is not of brumate/store. Make it with $toStore or store(), or read it at module level with $store`,
+    );
+  }
+}
 
 export {
   affix,
@@ -702,12 +724,45 @@ export class Context {
 
   /** Provides a value of a context to the scopes inside `scope`. */
   provide<T>(context: ContextValue<T>, value: T, scope: ScopeId): void {
+    refuseForeignStore(context.key, value);
     const node = this.find(scope)!;
     node.values ??= new Map();
     node.values.set(context.key, value);
     const record = this.record(scope);
     record.v ??= {};
     record.v[context.key] = value;
+  }
+
+  /**
+   * `$toStore(value)` in a provided value: a store of the value, which the page state sends with
+   * the scope and the site that made it, and the slot of the signal that its `set` writes.
+   */
+  toStore<T>(value: T, scope: ScopeId, site: number, slot?: number): Store<T> {
+    const made = new Store(value);
+    made.o = slot === undefined ? [scope, site] : [scope, site, slot];
+    made.r = slot === undefined;
+    return made;
+  }
+
+  /**
+   * `$store(context)`, or `$store(value.key)` of a context value: the value of the store, and a
+   * record of its slot, so the browser subscribes the slot when the scope resumes.
+   */
+  consumeStore<T>(context: ContextValue<unknown>, scope: ScopeId, slot: number, path?: string): T {
+    const value = this.consume(context, scope);
+    const found = path === undefined ? value : (value as Record<string, unknown>)?.[path];
+    if (!isStore(found)) {
+      throw new Error(
+        `$store reads the context "${context.key}"${path === undefined ? '' : ` at "${path}"`}, which holds no store of brumate/store`,
+      );
+    }
+    if (slot < 0) {
+      return found.get() as T;
+    }
+    const record = this.record(scope);
+    record.z ??= [];
+    record.z.push(path === undefined ? [context.key, slot] : [context.key, slot, path]);
+    return found.get() as T;
   }
 
   /**

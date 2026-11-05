@@ -82,6 +82,7 @@ const MISPLACED: Record<string, string> = {
     'Check a prop with "const name = $isPassed(prop)" at the top level of the component script',
   $getContext:
     'Read a context with "const name = $getContext(Context)" at the top level of a script',
+  $store: 'Read a store with "const name = $store(Context)" at the top level of a script',
   $route: 'Read the route with "const name = $route()" at the top level of a script',
   $navigation: 'Read the navigation with "const name = $navigation()" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
@@ -1135,6 +1136,23 @@ class Analyzer {
       return;
     }
 
+    if (name === '$store') {
+      if (kind !== 'const' || id.type !== 'Identifier') {
+        this.report('error', 'Read a store with "const name = $store(Context)"', declarator);
+        return;
+      }
+      if (call.arguments.length !== 1) {
+        this.report('error', '$store takes one argument, the context or a key of its value', call);
+      }
+      // The slot holds the value of the store, which the store's sends write.
+      this.addDeclaration(scope, id.name, 'context', id);
+      const argument = call.arguments[0];
+      if (argument) {
+        this.createSite('setup', scope, argument, `store ${id.name}`);
+      }
+      return;
+    }
+
     if (name === '$getContext') {
       if (kind !== 'const' || id.type !== 'Identifier') {
         this.report('error', 'Read a context with "const name = $getContext(Context)"', declarator);
@@ -1307,7 +1325,7 @@ class Analyzer {
    */
   private addProvidedFunctions(): void {
     for (const site of this.sites) {
-      if (site.kind !== 'provide') {
+      if (site.kind !== 'provide' || site.store) {
         continue;
       }
       for (const part of readProvidedValues(site.node)) {
@@ -1455,7 +1473,30 @@ class Analyzer {
       this.report('error', '$setContext takes two arguments, the context and the value', call);
       return;
     }
-    this.createSite('provide', scope, value, 'provide', { extra: [context] });
+    const provided = this.createSite('provide', scope, value, 'provide', { extra: [context] });
+    // Each `$toStore(value)` is a site of its own, whose update writes the store. The provided
+    // value does not read it, so a context whose live values are all stores is static.
+    for (const part of readProvidedValues(value)) {
+      if (
+        part.type === 'CallExpression' &&
+        part.callee.type === 'Identifier' &&
+        part.callee.name === '$toStore'
+      ) {
+        const argument = part.arguments[0];
+        if (!argument || part.arguments.length !== 1 || argument.type === 'SpreadElement') {
+          this.report('error', '$toStore takes one argument, a memo, a signal or a prop', part);
+          continue;
+        }
+        this.createSite('provide', scope, argument, 'store', { extra: [context], store: part });
+        provided.holdsStores = true;
+        // The `set` of a store of a signal writes the signal, as a binding does.
+        const declaration =
+          argument.type === 'Identifier' ? lookup(scope, argument.name) : undefined;
+        if (declaration?.kind === 'signal') {
+          declaration.bound = true;
+        }
+      }
+    }
   }
 
   private declareEffect(call: oxc.CallExpression, name: '$effect' | '$client', scope: Scope): void {
@@ -2364,7 +2405,8 @@ class Resolver {
         }
         const name = node.callee.type === 'Identifier' ? node.callee.name : undefined;
         if (name && !this.isLocal(name) && !lookup(this.site.scope, name)) {
-          if (name === '$untrack') {
+          if (name === '$untrack' || name === '$toStore') {
+            // The value of `$toStore` is read by a site of its own, which writes the store.
             this.untracked++;
             for (const argument of node.arguments) {
               this.visit(argument);
