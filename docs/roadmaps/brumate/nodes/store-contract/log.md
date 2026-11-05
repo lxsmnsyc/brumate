@@ -7,3 +7,4 @@
 - `Store.set` and `sendStore` skip equal values; the provider update forces the send because a signal's `set` stores the value first.
 - Outer update of a context with stores is back: `$toStore(x)` is rewritten to `$$b.madeStore($$s, site)`.
 - Store origin in the page state moves with `b-offset` (client-routes.ts, in place, by mark `k`).
+- Review fixes: guard parked key reads against removed scopes; module variable and bare namespace are BRM194; tests for both, for BRM191 to BRM195 and the warning, and for a get/subscribe store read with const.

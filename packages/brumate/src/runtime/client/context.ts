@@ -122,7 +122,10 @@ if (HAS_STORES) {
       waitingReads.delete(context.key);
       pass(() => {
         for (const [scope, read] of reads) {
-          linkRead(scope, read);
+          // A scope that went before the module ran reads nothing.
+          if (scopes.get(scope.id) === scope) {
+            linkRead(scope, read);
+          }
         }
       });
     }

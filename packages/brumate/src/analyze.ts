@@ -444,10 +444,10 @@ class Analyzer {
         argument.type === 'Identifier' ? lookup(declaration.scope, argument.name) : undefined;
       let source: oxc.Node | undefined;
       let import_: string | undefined;
-      if (root?.kind === 'import' || root?.kind === 'module') {
-        // A context or a store of another file, or of the module script.
+      if (root?.kind === 'import' && (path !== undefined || root.imported)) {
+        // A context or a store of another file. A namespace import is a source only with a key.
         source = argument;
-        import_ = root.kind === 'import' ? root.name : undefined;
+        import_ = root.name;
       } else if (root?.kind === 'context' && root.contextSource) {
         // A value of `$getContext`: the context, and a key of its value.
         source = root.contextSource;

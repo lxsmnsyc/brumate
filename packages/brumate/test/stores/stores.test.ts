@@ -373,6 +373,52 @@ describe('a context with a store and a live value', () => {
   });
 });
 
+describe('a foreign store with only get and subscribe', () => {
+  it('renders, repairs a changed value on resume, and updates, read with const', async () => {
+    const server = await import(file('storeReadOnlyRead.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    expect(html).toContain('>1</p>');
+    (globalThis as { savedReadOnly?: number }).savedReadOnly = 5;
+    show(html + state);
+    await startLoader();
+    await waitFor(() => expect(text('.read-only')).toBe('5'));
+    const { readOnly } = (await import(file('contexts.ts'))) as {
+      readOnly: { emit(value: number): void };
+    };
+    readOnly.emit(8);
+    await waitFor(() => expect(text('.read-only')).toBe('8'));
+    delete (globalThis as { savedReadOnly?: number }).savedReadOnly;
+  });
+});
+
+describe('a read that waits for the module of its context', () => {
+  it('does not subscribe a scope that went before the module ran', async () => {
+    await resume('storeKeyDefault');
+    await waitFor(async () => expect(await scopesOf('StoreMixedReader_')).toHaveLength(1));
+    const [reader] = await scopesOf('StoreMixedReader_');
+    const client = await import('../../src/runtime/client.ts');
+    const { resumeStoreReads } = await import('../../src/runtime/client/context.ts');
+    let listeners = 0;
+    const late = {
+      get: () => ({ count: 0 }),
+      subscribe: () => {
+        listeners++;
+        return () => {
+          listeners--;
+        };
+      },
+    };
+    // The context is not known yet, so the read waits for its module.
+    resumeStoreReads([reader!], () => [['store-late', 1, 'state']]);
+    client.removeScope(reader!);
+    const added = (globalThis as { [key: symbol]: unknown })[
+      Symbol.for('brumate.contextAdded')
+    ] as (context: unknown) => void;
+    added({ key: 'store-late', defaultValue: { state: late } });
+    expect(listeners).toBe(0);
+  });
+});
+
 describe('the Store class', () => {
   it('calls the listeners for a changed value only', async () => {
     const { store } = await import('../../src/runtime/store.ts');
@@ -423,6 +469,23 @@ describe('compile checks', () => {
     expect(() => build('const a = $store(make());\nfunction make() { return 1; }')).toThrow(
       /BRM194/,
     );
+  });
+
+  it('reports a script variable and a bare namespace import as sources', () => {
+    expect(() => build('const s = { get() {}, subscribe() {} };\nconst a = $store(s);')).toThrow(
+      /BRM194/,
+    );
+    expect(() => build("import * as ns from './s.ts';\nconst a = $store(ns);")).toThrow(/BRM194/);
+    // A key of a namespace import is found again.
+    expect(build("import * as ns from './s.ts';\nconst a = $store(ns.theme);").warnings).toEqual(
+      [],
+    );
+  });
+
+  it('reports $store used as an expression with BRM191', () => {
+    expect(() =>
+      build("import { s } from './s.ts';\nfunction f() {\n  return $store(s);\n}"),
+    ).toThrow(/BRM191/);
   });
 
   it('reports $toStore with a wrong argument or in a wrong place', () => {

@@ -48,10 +48,21 @@ export const foreignTheme: StoreLike<string> = foreignStore(
   (globalThis as { savedForeign?: string }).savedForeign ?? 'light',
 );
 
-/** A foreign store with only `get` and `subscribe`. */
-export const readOnly: StoreLike<number> = {
-  get: () => 1,
-  subscribe: () => () => {},
+/** A foreign store with only `get` and `subscribe`, which a test changes with `emit`. */
+const readOnlyListeners = new Set<(value: number) => void>();
+let readOnlyValue = (globalThis as { savedReadOnly?: number }).savedReadOnly ?? 1;
+export const readOnly: StoreLike<number> & { emit(value: number): void } = {
+  get: () => readOnlyValue,
+  subscribe(listener) {
+    readOnlyListeners.add(listener);
+    return () => readOnlyListeners.delete(listener);
+  },
+  emit(value) {
+    readOnlyValue = value;
+    for (const listener of readOnlyListeners) {
+      listener(value);
+    }
+  },
 };
 
 /** A context of handlers, which has a `subscribe` function and no store. */
