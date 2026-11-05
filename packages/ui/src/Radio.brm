@@ -14,7 +14,7 @@
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $client, $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
@@ -28,8 +28,8 @@
    */
   const { value, isDisabled, children, ...rest } = $props<RadioProps>();
 
-  const groupGiven = $getContext(RadioGroupContext);
-  const group = $store(groupGiven.state);
+  const groupGiven = $hasContext(RadioGroupContext) ? $getContext(RadioGroupContext) : undefined;
+  const group = $hasContext(RadioGroupContext) ? $store(groupGiven.state) : undefined;
   const inputId = $id();
   const selected = $memo(group?.value === value);
   const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
@@ -80,7 +80,7 @@
       return;
     }
     try {
-      groupGiven.select?.(value);
+      groupGiven?.select?.(value);
     } finally {
       // A setter that refuses or throws leaves the old choice, so the inputs go back to it.
       if (!selected) {
@@ -103,7 +103,7 @@
   // The first invalid field of the form gets focus, as the browser does with its own message.
   function invalidated(event: Event & { currentTarget: HTMLInputElement }) {
     const input = event.currentTarget;
-    groupGiven.onInvalid?.(input.validationMessage);
+    groupGiven?.onInvalid?.(input.validationMessage);
     if (isFirstInvalid(input)) {
       input.focus();
     }

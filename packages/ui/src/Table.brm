@@ -50,7 +50,7 @@
 </script>
 
 <script generics="V extends { id: Key }">
-  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $hasContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -119,7 +119,7 @@
   let { selectedKeys = [] } = $props<TableProps<V>>();
   let { sortDescriptor = null } = $props<TableProps<V>>();
 
-  const localeStore = $store(LocaleContext);
+  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const virtualizer = $store(VirtualizerContext);
   // Only a table with its items as data can window, since the rows are then made from the data.

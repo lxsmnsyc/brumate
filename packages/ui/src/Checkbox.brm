@@ -62,8 +62,8 @@
   let initial = $signal(isSelected);
   const inputId = $id();
 
-  const groupGiven = $getContext(CheckboxGroupContext);
-  const group = $store(groupGiven.state);
+  const groupGiven = $hasContext(CheckboxGroupContext) ? $getContext(CheckboxGroupContext) : undefined;
+  const group = $hasContext(CheckboxGroupContext) ? $store(groupGiven.state) : undefined;
   const selected = $memo(group ? group.value.includes(value ?? '') : isSelected);
   const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
   const readOnly = $memo(Boolean(isReadOnly || group?.isReadOnly));
@@ -89,7 +89,7 @@
   const { present: hasLabel } = described(labelId, false);
   const groupLabel = $hasContext(LabelContext) ? $store(LabelContext) : undefined;
   const groupText = $hasContext(TextContext) ? $store(TextContext) : undefined;
-  const groupError = $store(FieldErrorContext);
+  const groupError = $hasContext(FieldErrorContext) ? $store(FieldErrorContext) : undefined;
   // A Label in the children (`as="span"`) names the input, so the description and the error stay
   // out of its name. Without one, they sit in the text of the label, and aria-hidden keeps them
   // out of the name. The server cannot see the Label, so a box starts without one: the name is right
@@ -103,7 +103,7 @@
   $setContext(TextContext, $toStore(textGiven));
   const errorGiven = $memo(
     group
-      ? groupError
+      ? (groupError ?? null)
       : { id: errorId, isInvalid: invalid, errors, attributes: { 'aria-hidden': hidden } },
   );
   $setContext(FieldErrorContext, $toStore(errorGiven));
@@ -161,7 +161,7 @@
     const before = selected;
     try {
       if (group) {
-        groupGiven.toggle!(value ?? '', input.checked);
+        groupGiven!.toggle!(value ?? '', input.checked);
       } else {
         isSelected = input.checked;
       }
@@ -181,7 +181,7 @@
     failed = true;
     message = input.validationMessage;
     if (group) {
-      groupGiven.onInvalid!(input.validationMessage);
+      groupGiven!.onInvalid!(input.validationMessage);
     }
     if (isFirstInvalid(input)) {
       input.focus();

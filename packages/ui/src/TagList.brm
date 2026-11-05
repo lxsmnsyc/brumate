@@ -18,7 +18,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $memo, $props, $store } from 'brumate/signals';
+  import { $getContext, $hasContext, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     enabledItems,
@@ -45,7 +45,7 @@
 
   const groupGiven = $getContext(TagGroupContext);
   const group = $store(groupGiven.state);
-  const localeStore = $store(LocaleContext);
+  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
 
   /** The movement of a key: Left and Right follow the direction, Up and Down do not. */

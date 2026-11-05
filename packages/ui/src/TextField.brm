@@ -57,7 +57,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $effect, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { $hasContext, $client, $effect, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import {
     FieldErrorContext,
     FormContext,
@@ -118,7 +118,7 @@
   // The value that a reset of the form gives back.
   let initial = $signal(value);
 
-  const form = $store(FormContext);
+  const form = $hasContext(FormContext) ? $store(FormContext) : undefined;
   const behavior = $memo(validationBehavior ?? form?.validationBehavior ?? 'native');
   const inputId = $id();
   const labelId = $id();

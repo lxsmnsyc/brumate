@@ -16,7 +16,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $handler, $memo, $props, $store } from 'brumate/signals';
+  import { $getContext, $hasContext, $handler, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { enabledItems, focusItem, readItemKey, getKeyMovement, moveFrom } from './collection.ts';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
@@ -37,7 +37,7 @@
 
   const tabsGiven = $getContext(TabsContext);
   const tabs = $store(tabsGiven.state);
-  const localeStore = $store(LocaleContext);
+  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const orientation = $memo(tabs?.orientation ?? 'horizontal');
 

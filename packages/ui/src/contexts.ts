@@ -129,26 +129,18 @@ export interface InputField extends InputHandlers {
   props: StoreLike<ContextValue<InputContextProps> | null>;
 }
 
-const noInput: InputField = { props: store(null) };
+export const InputContext: Context<InputField> = createContext<InputField>('brumate-ui:input');
 
-export const InputContext: Context<InputField> = createContext<InputField>(
-  'brumate-ui:input',
-  noInput,
-);
-
-export const TextAreaContext: Context<InputField> = createContext<InputField>(
-  'brumate-ui:textarea',
-  noInput,
-);
+export const TextAreaContext: Context<InputField> =
+  createContext<InputField>('brumate-ui:textarea');
 
 /**
  * Attributes that a part around a field gives the input of the field, such as an Autocomplete
  * that names its collection. A TextField or a SearchField passes them on, and the Input or the
  * TextArea renders them under those of the field.
  */
-export const FieldInputContext: Context<StoreLike<Record<string, unknown> | null>> = createContext<
-  StoreLike<Record<string, unknown> | null>
->('brumate-ui:field-input', store(null));
+export const FieldInputContext: Context<StoreLike<Record<string, unknown> | null>> =
+  createContext<StoreLike<Record<string, unknown> | null>>('brumate-ui:field-input');
 
 /** The state of the validation of a field, which its FieldError shows. */
 export interface FieldErrorState {
@@ -159,9 +151,8 @@ export interface FieldErrorState {
   attributes?: Record<string, unknown>;
 }
 
-export const FieldErrorContext: Context<StoreLike<FieldErrorState | null>> = createContext<
-  StoreLike<FieldErrorState | null>
->('brumate-ui:field-error', store(null));
+export const FieldErrorContext: Context<StoreLike<FieldErrorState | null>> =
+  createContext<StoreLike<FieldErrorState | null>>('brumate-ui:field-error');
 
 /** How the fields of a form validate, and the errors of the server by the name of a field. */
 export interface FormState {
@@ -169,9 +160,8 @@ export interface FormState {
   validationErrors: Record<string, string | string[]>;
 }
 
-export const FormContext: Context<StoreLike<FormState | null>> = createContext<
-  StoreLike<FormState | null>
->('brumate-ui:form', store(null));
+export const FormContext: Context<StoreLike<FormState | null>> =
+  createContext<StoreLike<FormState | null>>('brumate-ui:form');
 
 /** What a CheckboxGroup gives its Checkboxes: its values. */
 export interface CheckboxGroupState {
@@ -201,7 +191,6 @@ export interface CheckboxGroupGiven extends Partial<CheckboxGroupHandlers> {
 
 export const CheckboxGroupContext: Context<CheckboxGroupGiven> = createContext<CheckboxGroupGiven>(
   'brumate-ui:checkbox-group',
-  { state: store(null) },
 );
 
 /** What a RadioGroup gives its Radios: its choice and states. */
@@ -226,10 +215,8 @@ export interface RadioGroupGiven extends Partial<RadioGroupHandlers> {
   state: StoreLike<RadioGroupState | null>;
 }
 
-export const RadioGroupContext: Context<RadioGroupGiven> = createContext<RadioGroupGiven>(
-  'brumate-ui:radio-group',
-  { state: store(null) },
-);
+export const RadioGroupContext: Context<RadioGroupGiven> =
+  createContext<RadioGroupGiven>('brumate-ui:radio-group');
 
 /** What a ToggleButtonGroup gives its ToggleButtons, which name themselves with `id`. */
 export interface ToggleGroupState {

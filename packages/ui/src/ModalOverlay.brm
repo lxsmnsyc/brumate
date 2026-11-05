@@ -20,7 +20,7 @@
 
 <script>
   import { store } from 'brumate/store';
-  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $hasContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, ModalOverlayContext, OverlayTriggerContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
@@ -67,7 +67,7 @@
 
   const triggerGiven = $getContext(OverlayTriggerContext);
   const trigger = $store(triggerGiven.state);
-  const parentLayer = $getContext(LayerContext);
+  const parentLayer = $hasContext(LayerContext) ? $getContext(LayerContext) : undefined;
   const own = $isPassed(isOpen);
   const layerId = $id();
   const ownId = $id();

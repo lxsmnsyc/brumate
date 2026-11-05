@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $getContext, $handler, $memo, $props, $store } from 'brumate/signals';
+  import { $getContext, $hasContext, $handler, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { FieldInputContext, InputContext } from './contexts.ts';
   import { focusRing } from './focus.brm.ts';
@@ -23,10 +23,10 @@
    */
   const { slot, ...rest } = $props<InputProps>();
 
-  const handlers = $getContext(InputContext);
-  const context = $store(handlers.props);
+  const handlers = $hasContext(InputContext) ? $getContext(InputContext) : undefined;
+  const context = $hasContext(InputContext) ? $store(handlers.props) : undefined;
   // The attributes of a part around the field, such as an Autocomplete.
-  const outer = $store(FieldInputContext);
+  const outer = $hasContext(FieldInputContext) ? $store(FieldInputContext) : undefined;
   const outerAttributes = $memo(outer ?? {});
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(attributes.disabled ?? rest.disabled));
@@ -40,18 +40,18 @@
     focusRing(undefined, undefined, undefined);
 
   function input(event: Event & { currentTarget: HTMLInputElement }) {
-    handlers.onChange?.(event.currentTarget.value);
+    handlers?.onChange?.(event.currentTarget.value);
   }
 
   // The browser shows no message of its own. The field shows it in its FieldError.
   function invalidated(event: Event & { currentTarget: HTMLInputElement }) {
     const field = event.currentTarget;
-    handlers.onInvalid?.(field.validationMessage, isFirstInvalid(field));
+    handlers?.onInvalid?.(field.validationMessage, isFirstInvalid(field));
   }
 
   function keyDown(event: KeyboardEvent) {
     ringKeyDown(event);
-    handlers.onKeyDown?.(event.key, event);
+    handlers?.onKeyDown?.(event.key, event);
   }
 
   // The loader prevents these keys before the code loads, so the wrapper names them. The markup
@@ -68,12 +68,12 @@
 
   function focus(event: FocusEvent & { currentTarget: Element }) {
     onFocus(event);
-    handlers.onFocus?.();
+    handlers?.onFocus?.();
   }
 
   function blur(event: FocusEvent) {
     ringBlur(event);
-    handlers.onBlur?.();
+    handlers?.onBlur?.();
   }
 </script>
 

@@ -44,7 +44,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $effect, $handler, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $hasContext, $client, $effect, $handler, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { NumberFormatter, NumberParser } from '@internationalized/number';
   import {
@@ -111,9 +111,9 @@
   const { as = 'div' } = $props<NumberFieldProps<T>>();
   let { value = Number.NaN } = $props<NumberFieldProps<T>>();
 
-  const localeStore = $store(LocaleContext);
+  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
-  const form = $store(FormContext);
+  const form = $hasContext(FormContext) ? $store(FormContext) : undefined;
   const inputId = $id();
   const labelId = $id();
   const incrementId = $id();

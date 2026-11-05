@@ -26,7 +26,7 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $hasContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import {
     channelGradient,
     channelName,
@@ -137,7 +137,7 @@
     }
   }
 
-  const localeStore = $store(LocaleContext);
+  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   // The color that a reset of the form gives back.
   let initialValue = $signal(held);

@@ -58,7 +58,7 @@
   let { selectedKeys = [] } = $props<ToggleButtonGroupOwnProps<T>>();
   let { ref } = $props<ToggleButtonGroupOwnProps<T>>();
 
-  const localeStore = $store(LocaleContext);
+  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const nested = $hasContext(ToolbarContext);
 
