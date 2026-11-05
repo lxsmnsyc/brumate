@@ -1,5 +1,23 @@
 # brumate
 
+## 0.6.0
+
+### Minor Changes
+
+- 6e1fcb3: Add `checkAccessibility(options)` to what `mount` and `visit` return. It runs axe-core on the rendered page and throws with each violation, its element and its fix. Rules about a whole page are off for a mounted component, and the landmark rules are off for a visited page while an element with `inert` or `aria-modal="true"` is in it, and rules that need layout are off. axe-core is an optional peer dependency.
+- e9dd2f9: Type the ARIA attributes. Each `aria-*` attribute of WAI-ARIA 1.2 has its value type in `brumate/elements`: a boolean (`true`, `false` or the words), a tristate, an enumeration, a number or an ID list. `role` takes `AriaRole`, the roles of WAI-ARIA 1.2 and `doc-*`. `aria-${string}` still takes any other name. New exports: `AriaAttributes` and `AriaRole`.
+
+  A caller that keeps `role` in a `string` variable has to narrow it to `AriaRole`. `String(flag)` for an ARIA boolean can become the boolean. A number for an attribute that takes text, such as `aria-label=(1)`, is now a type error; pass a string.
+
+- 5bf701f: Event modifiers in the attribute name are removed. `onSubmit:prevent=save` is a compile error (BRM022) on elements, `<window>`, `<document>` and components, and the error names the wrapper of `brumate/events` to write: `onSubmit=(prevent(save))`. For `:passive`, write a plain handler, since listeners are passive unless a handler prevents. BRM023 is gone, since BRM022 covers components.
+- e40ba94: Add `$searchParam(name, options)` to `brumate/signals`. It gives a signal bound to one parameter of the query string: the server renders the value of the URL, a write in the browser changes the URL with `replaceState` (or `pushState` with `{ history: 'push' }`) and asks the server nothing, and back and forward write the signal. `parse`, `serialize` and `default` convert the value, and `{ server: true }` asks the server for the page again.
+- fcfe216: `src/middleware.ts` can export `onError(error, info)`. The server calls it, in place of `console.error`, with each error that is not a `ServerError`: a page, an endpoint, a server function call or form post, a `#defer` body, and a `#loading` body after the response started. `info` has the `event` and the `kind`, and `ServerErrorInfo` comes from `brumate/server`.
+- d61aa37: Add `<style global>`: a block of rules with no scope attribute, so a stylesheet of unscoped selectors needs no `:global(…)` around each one. A plain `<style>` stays scoped and both can sit in one component. It works with `lang="scss"` and `lang="less"`. A `<style>` with an attribute other than `lang` and `global`, such as `scoped` or `media`, is now a compile error (BRM189), where it was ignored before, and so is `global` with a value (BRM190).
+
+### Patch Changes
+
+- 1d03636: A memo that no code reads does not run in the browser, as on the server. The browser render leaves out its declaration and its compute, and so does a memo that only such a memo reads. A memo with a side effect in its compute, such as a server function call, no longer runs there. A memo that only an `await` reads still runs and still reports its rejection to the nearest `#try`; `$$b.unreadMemo` stays for that case.
+
 ## 0.5.2
 
 ### Patch Changes

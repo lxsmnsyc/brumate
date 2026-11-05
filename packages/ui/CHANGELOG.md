@@ -1,5 +1,18 @@
 # @brumate/ui
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [6e1fcb3]
+- Updated dependencies [e9dd2f9]
+- Updated dependencies [5bf701f]
+- Updated dependencies [1d03636]
+- Updated dependencies [e40ba94]
+- Updated dependencies [fcfe216]
+- Updated dependencies [d61aa37]
+  - brumate@0.6.0
+
 ## 0.1.1
 
 ### Patch Changes
