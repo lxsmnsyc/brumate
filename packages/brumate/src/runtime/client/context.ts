@@ -35,26 +35,13 @@ function findProvider(scope: Scope, key: string): Scope | undefined {
 export function provideValue<T>(context: ContextValue<T>, value: T, scope: Scope | ScopeId): void {
   const target = resolveScope(scope)!;
   target.v ??= {};
-  if (DEV && context.key in target.v && !Object.is(target.v[context.key], value)) {
-    warnChanged(context.key);
-  }
   target.v[context.key] = value;
 }
 
-/** The contexts whose provided value changed, which development logged once. */
-const changedContexts = new Set<string>();
-
-/** Logs once per context: a context value is read once, so readers keep the first value. */
-function warnChanged(key: string): void {
-  if (!changedContexts.has(key)) {
-    changedContexts.add(key);
-    console.warn(
-      `The value of context "${key}" changed, but a context value is read once, so its readers keep the first. Put a value that changes in a store with $toStore`,
-    );
-  }
-}
-
-/** Reads a context, and records its slot so that changes to the provided value reach it. */
+/**
+ * Reads a context. With `slot`, which only `$route()` and `$navigation()` pass, it records the
+ * slot so that `setGlobal` can write it. A provided value is read once.
+ */
 export function consumeContext<T>(
   context: ContextValue<T>,
   scope: Scope | ScopeId,

@@ -11,7 +11,7 @@
   - It fires when the value reads, outside a function, a signal, a memo, a prop or a `$bind` value that the graph says changes in the browser. A prop that no parent changes is fine; a single-file compile treats every prop as changing, as the graph already did. The client codegen reports it when the binding node of the provide site is live.
   - Allowed: a read inside a function (arrow, method, `.bind`), a function named in the value, `$untrack(...)`, `$toStore(...)`, a signal that nothing writes in the browser.
   - Not covered: a value that calls a function which reads a changing name (`$setContext(C, compute())`). The old warning did not cover it either.
-- Development logs once per context when `provideValue` gets a different value for a key that the scope already provides (`warnChanged`).
+- No development log for a changed value. I first added `warnChanged` in `provideValue`, then removed it: a resumed scope gets `v` from the page state and a browser-rendered provider calls `provideValue` once per scope, so it could not fire for a real change (a `#template` called twice on one scope would warn falsely, since each `$toStore` makes a new store). A changed value shows at compile time as BRM196. The brief's "development logs once" is not met, by this choice.
 - `callable` (`runtime/client/handlers.ts`) keeps the scope it finds for a `FunctionReference`, as `handlerProp` does. Needed, see Gotchas.
 - Docs: `website/docs/context.md`, `website/docs/reference-signals.md`, `docs/decisions.md` (new entry), skill `references/signals.md`. `.changeset/static-contexts-final.md` (brumate, minor).
 - Tests:
@@ -29,6 +29,13 @@ Not an experiment node.
 - `x` stays in `ScopeState`, in the page state record and in `consumeContext`'s slot record. Only `$route` and `$navigation` use it now. The brief listed it for removal, but `setGlobal` needs it.
 - A bare function reference in a provided value is not a dependency of the provide site. Before, `{ toggle }` made the provide site depend on what `toggle` reads, which would be BRM196 for every handler.
 
+## Review fixes
+
+- `warnChanged` removed (see Built). BRM196 tests added for a `$bind` value, `$route()` and `$store()` read in the value, and for the call and immediately invoked function that are not reported; the catalog entry and decisions.md say so.
+- BRM196 surfaces in `brumate check` and in the editor: both call `compile` (`check-command.ts`, `language-server/src/diagnostics.ts`), and the error carries code and range (test added). The editor compiles one file without project props, so every prop counts as changing there; `brumate check` passes the project's live props.
+- `website/src/live/run.ts` now has `'brumate/store'` in `RUNTIME`, since the context docs teach it. This is outside the brief's shared paths.
+- Stale doc text fixed in `website/docs/components.md` and in the comments of `consume` (server.ts) and `consumeContext`.
+
 ## Stubs left
 
 - `runtime/client/context.ts` still has what `store-repair-compare` edits: `subscribeSlot` with its `repair` compare (`!Object.is(found.get(), scope.s[slot])`), `linkRead`, `resumeStoreReads`, `consumeStore`, `toStore`, `storeUpdate`, `linkMadeStores`, `waitingReads`/`madeContexts` and the `CONTEXT_ADDED` hook (kept for default stores). The `LocaleContext` workaround (null default plus `?? DEFAULT_LOCALE` in 28 readers) is untouched.
@@ -37,7 +44,7 @@ Not an experiment node.
 ## Gotchas
 
 - Moved children keep a stale provider. `Popover` with a trigger that `keepsContent` (Select) renders its children in a hidden div first. When it opens, the `#if` swap shows the portal body and `destroyRange` destroys the old ListBox scopes, while the resumed items stay in the page. The items hold the server's `FunctionReference` of `select`, and `scopes.get(value.scope)` was undefined at the click (`change-handlers` test, "does not call the handler when a setter refuses"). On a9557034 the live update had given the readers `handlerProp` handlers that keep the scope object, which hid it. The fix keeps the scope in `callable`. The destroy of scopes whose markup moved is still there; I did not change it.
-- A browser-rendered memo of an object that feeds `$toStore` recomputes when the component's code loads (`refresh` in `runtime/client/insert.ts`), and that sends the store again (`storeUpdate` forces). In the `spikeTemplate` differential the item scopes of a template were then created twice in the browser path. I avoided it by giving the fixture two stores of primitives. Not diagnosed further.
+- The `spikeTemplate` and `spikeTemplateState` differentials (`npx vitest run test/differential-3.test.ts -t spikeTemplate`) failed once on commit 8204c1c6, where `SpikeSelect.brm` had `const view = $memo({ open, value }); $setContext(SelectViewContext, $toStore(view))` and the readers did `$store(SelectViewContext)`: the browser path listed `2: ["Cat",false]` and `2: ["Dog",false]` twice in `slots`. The trace showed `memo` (insert.ts refresh) calling `set`, then a forced `storeUpdate`. I can no longer reproduce it: the same fixtures, restored from 8204c1c6, pass on this branch with and without the `callable` change (checked at the review fix). It may have been load or the earlier state of the branch. No code was changed for it; the fixture uses two stores of primitives.
 - `$store(source)` with a context declared in a `<script module>` is BRM194. Put the context in a `.ts` file.
 - A fixture that read a context function to get a live value (`ctx.read()`, `shown()`) no longer updates. Give a store.
 - Under load (load average above 12), many ui tests fail with timeouts, also on a9557034. Run the files alone. `bind-kept-writes` and `token-field-sync` failed on the base too in a loaded run.
@@ -57,13 +64,15 @@ Not an experiment node.
 - `node e2e/run.mjs` (full, one run): todos 10, tracker 14, nitro 2, kit 5, ui 55, browser-async 6 pass; website 70 pass, 1 fail: `/docs/context: 3 live samples render`, sample 3 ("Live values with stores") imports `brumate/store`, which `website/src/live/run.ts` refuses ("A sample can import brumate and its own files"). The sample comes from store-contract; this node only changed bullets of that page. I did not run e2e on a9557034 to confirm. Left for the orchestrator: allow `brumate/store` in the live runner, or change the sample.
 - `pnpm bench --only brumate --scenario todos`, the machine at load average 27 (timings are noise):
 
-| | a9557034 | here |
-| --- | --- | --- |
-| JS before `load` (todos), gzip | 13.7 kB | 13.7 kB |
-| Client JS emitted in dist, gzip | 27.6 kB | 27.6 kB |
+|                                 | a9557034 | here    |
+| ------------------------------- | -------- | ------- |
+| JS before `load` (todos), gzip  | 13.7 kB  | 13.7 kB |
+| Client JS emitted in dist, gzip | 27.6 kB  | 27.6 kB |
 
 - Ui example (`vite build` in examples/ui, `gzip -9` of each `.js` under dist, summed): a9557034 207,263 B, here 203,185 B (-4,078 B, -2.0%). Not a measure of `load`.
 
 ## Size
 
 - Estimated M, actual M. The fixtures of the live path and the moved-children bug took most of the time.
+
+- Review fix run: `node e2e/run.mjs --only website`: 72 passed, 0 failed (the live sample failure is fixed). resume, feature-flags, clone-bodies: 1237 tests pass.

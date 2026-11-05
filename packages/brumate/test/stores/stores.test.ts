@@ -459,6 +459,34 @@ describe('a context value is read once', () => {
     expect(() => build('$setContext(Ctx, { n });', '<p>{n}</p>')).not.toThrow();
   });
 
+  it('reports a $bind value, $route() and $store() read in the value', () => {
+    const bound = `<script>\nimport { $bind, $setContext, $signal } from 'brumate/signals';\nimport Child from './Child.brm';\nimport { Ctx } from './ctx.ts';\nlet n = $signal(0);\n$setContext(Ctx, { n });\n</script>\n<Child value=$bind(n) />`;
+    expect(() => compile(bound, { filename: 'Test.brm' })).toThrow(/BRM196/);
+    const route = `<script>\nimport { $route, $setContext } from 'brumate/signals';\nimport { Ctx } from './ctx.ts';\nconst route = $route();\n$setContext(Ctx, { path: route.url.pathname });\n</script>\n<p></p>`;
+    expect(() => compile(route, { filename: 'Test.brm' })).toThrow(/BRM196/);
+    const read = `<script>\nimport { $setContext, $store } from 'brumate/signals';\nimport { Ctx, Other } from './ctx.ts';\nconst other = $store(Other);\n$setContext(Ctx, { other });\n</script>\n<p></p>`;
+    expect(() => compile(read, { filename: 'Test.brm' })).toThrow(/BRM196/);
+  });
+
+  it('does not report a call or an immediately invoked function that reads a changing name', () => {
+    expect(() =>
+      build('function compute() { return n; }\n$setContext(Ctx, compute());'),
+    ).not.toThrow();
+    expect(() => build('$setContext(Ctx, (() => n)());')).not.toThrow();
+  });
+
+  it('gives the error a code and a range for brumate check and the editor', () => {
+    let thrown: unknown;
+    try {
+      build('$setContext(Ctx, { n });');
+    } catch (error) {
+      thrown = error;
+    }
+    const diagnostics = (thrown as { diagnostics?: { message: string }[] }).diagnostics;
+    expect(diagnostics?.[0]?.message).toContain('"n"');
+    expect((thrown as Error).message).toContain('[BRM196]');
+  });
+
   it('never calls updateContext', () => {
     const code = compile(
       `<script>\n${head}let n = $signal(0);\n$setContext(Ctx, { get: () => n });\n</script>\n<button onClick=(() => n++)>Up</button>`,

@@ -778,8 +778,9 @@ export class Context {
 
   /**
    * Reads a context from the nearest scope above `scope` that provides it.
-   * With `slot`, records which slot holds it, so the client can update it
-   * when the provided value changes.
+   * With `slot`, records which slot holds it, which only `$route()` and
+   * `$navigation()` pass, so the client can update them when navigation
+   * changes them. A provided value is read once.
    */
   consume<T>(context: ContextValue<T>, scope: ScopeId, slot?: number): T {
     if (slot !== undefined) {

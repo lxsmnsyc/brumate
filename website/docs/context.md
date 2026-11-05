@@ -63,7 +63,7 @@ $setContext(Locale, 'fr');
 ```
 
 - Call it at the top level of a script. A `<script>` of a block, such as the body of a `#for`, provides to the markup of that block.
-- Every context is static: the value is read once, when the component renders, and readers keep it. A value that changes goes in a store, as [below](#live-values-with-stores). The compiler refuses a value that reads a signal, a memo, a prop or a `$bind` value that changes in the browser ([BRM196](./errors.md#brm196)). A read inside a function is fine, since it runs when the function is called, and so are `$untrack` and `$toStore`. In development, the console warns once when a provider gives a context a different value.
+- Every context is static: the value is read once, when the component renders, and readers keep it. A value that changes goes in a store, as [below](#live-values-with-stores). The compiler refuses a value that reads a signal, a memo, a prop or a `$bind` value that changes in the browser ([BRM196](./errors.md#brm196)). A read inside a function is fine, since it runs when the function is called, and so are `$untrack` and `$toStore`.
 - `$route()` and `$navigation()` are the exception. The runtime provides them to the page and updates their readers when navigation changes them.
 - A component further down can provide the same context again for its own part of the page. A component reads the nearest one.
 - A component can read a context and provide it again, such as a value of its own built on the one above. It reads the one above, and the components inside it read its own.

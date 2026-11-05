@@ -1,4 +1,3 @@
-
 ## 2026-11-05 worker notes
 
 - Removed: `updateContext` and `madeStore` (runtime/client/context.ts, runtime/client.ts), the `provide` update in `codegen/client.ts` `emitBinding` (it now reports BRM196), the `madeStore` rewrite and `storeSites` in `codegen/rewrite.ts`, `holdsStores` (model.ts, analyze.ts), `Analyzer.warnProvidedReads`. graph.ts: a `$getContext` declaration is no longer live (`$route`, `$navigation` and `$store` still are); a plain `$setContext` site depends only on the reads outside a function and does not follow function references (a bare `toggle` in the value is not a read).
