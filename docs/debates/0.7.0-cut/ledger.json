@@ -1,0 +1,337 @@
+{
+  "goal": "Re-cut 0.7.0 to ship 8 to 12 new features, moving bug fixes to 0.6.x patches and the rest to 0.8.0+",
+  "research": false,
+  "max_rounds": 1,
+  "roadmap": "docs/roadmaps/brumate",
+  "supersedes": null,
+  "extra_axes": [],
+  "claims": [
+    {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "0.7.0 holds 41 open nodes: 19 feature, 9 refactor, 5 spike, 3 fix, 3 chore, 1 docs, 1 story; 6 are outlines",
+      "evidence": {
+        "type": "measured",
+        "source": "brief.md frontmatter of docs/roadmaps/brumate/nodes/*",
+        "detail": "evidence/nodes.txt"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Every dependency of a 0.7.0 node outside 0.7.0 is done, and origin/next has 0 commits that origin/main lacks, so a fix of today's code can target main",
+      "evidence": {
+        "type": "measured",
+        "source": "git rev-list --left-right --count origin/main...origin/next = 12 0; status of 22 dependency briefs"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "A patch milestone takes fixes of shipped behavior that add no API; anything new is minor",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/GOAL.md:57 (0.4.1 rule, the maintainer 2026-10-31); changesets skill",
+        "detail": "applies the 0.4.1 rule to 0.6.1"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "0.6.0 was cut on 2026-11-03 with 8 must features plus phase 1 of the client restructure and released 2026-11-05",
+      "evidence": {
+        "type": "calibration",
+        "source": "GOAL.md:65; memory release-0-6-plan",
+        "detail": "12 features is about one to two 0.6.0 cycles; time does not bind the cut"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "A feature is a node that adds user-visible API or capability (a minor changeset). A story counts once. Refactors, spikes, fixes, chores and docs ride along uncounted",
+      "evidence": {
+        "type": "inferred",
+        "source": "the user's goal 'ship 8-12 new features'; changesets bump rule"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "No 0.8.0 milestone exists; 0.8.0+ means a new 0.8.0 milestone for parked nodes, with backlog after it",
+      "evidence": {
+        "type": "inferred",
+        "source": "GOAL.md:2 milestones list"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Value is weighed against the outcome: core correct, agents write .brm with the skill, @brumate/ui ready to publish, the client keeps shrinking; size comes first",
+      "evidence": {
+        "type": "source",
+        "source": "GOAL.md:34, GOAL.md:71"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The dev dock prototype is approved and graph-node-locations is its hard dependency",
+      "evidence": {
+        "type": "source",
+        "source": "commits c197a12f, afb192db"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "GOAL.md says only the website needs a custom client entry, so dev-setup-in-plugin helps no user app today",
+      "evidence": {
+        "type": "source",
+        "source": "GOAL.md:65"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P1",
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "New patch milestone 0.6.1 with target main: client-fixes, render-memos, dom-content-loaded, text-field-refused-edit. Each fixes wrong output of shipped code (differential-test divergences, an event that never fires, a refused edit that keeps typed text)",
+      "evidence": {
+        "type": "source",
+        "source": "briefs of the four nodes; J2, J3"
+      },
+      "ruling": "upheld",
+      "round": 1
+    },
+    {
+      "id": "P2",
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "0.7.0 features: context-stores ($store, static contexts), memo-guard ($gate), conditional-rest-spread, control-target, mathml-elements, missing-attributes, graph-node-locations, dev-dock-redesign, dev-setup-in-plugin, skill-command-packages, popover-sizing, fieldset (12)",
+      "evidence": {
+        "type": "source",
+        "source": "evidence/goals.txt; J7, J8"
+      },
+      "ruling": "upheld",
+      "round": 1
+    },
+    {
+      "id": "P3",
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Uncounted 0.7.0 work stays: the context-stores children, clone-remaining-bodies, no-client-html, cold-paths-spike (size first), split-ui-examples (fieldset needs it), coverage-script, skill-tasks, skill-blocks-typecheck, part-guides",
+      "evidence": {
+        "type": "source",
+        "source": "GOAL.md:71, GOAL.md:76; depends_on of fieldset"
+      },
+      "ruling": "upheld",
+      "round": 1
+    },
+    {
+      "id": "P4",
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Pull is-pending-many (S) from backlog into 0.7.0: one guard for several async memos rounds off the 0.5.0 async work",
+      "evidence": {
+        "type": "source",
+        "source": "nodes/is-pending-many/brief.md"
+      },
+      "ruling": "upheld",
+      "round": 1
+    },
+    {
+      "id": "O1",
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P1"
+      ],
+      "text": "render-memos is an M runtime refactor; in a patch it can regress users, and it shares runtime files with clone-remaining-bodies on next",
+      "evidence": {
+        "type": "source",
+        "source": "nodes/render-memos/brief.md shared paths"
+      },
+      "ruling": "rejected",
+      "ruling_why": "It fixes 7 pages of wrong browser output, the J3 rule is about API not size, the differential test and full check guard it, and main syncs into next directly",
+      "round": 1
+    },
+    {
+      "id": "O2",
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P2"
+      ],
+      "text": "dev-dock-redesign is an L outline with a gate; it may not finish in 0.7.0",
+      "evidence": {
+        "type": "source",
+        "source": "nodes/dev-dock-redesign/brief.md outline: true"
+      },
+      "ruling": "open",
+      "ruling_why": "The prototype is approved (J8), so it stays; if it slips, 0.7.0 still has 10 features",
+      "round": 1
+    },
+    {
+      "id": "O3",
+      "by": "opponent",
+      "kind": "cut",
+      "action": "park",
+      "nodes": [
+        "devtools-copy",
+        "editor-sizes",
+        "head-rerun-scripts",
+        "partial-route-responses",
+        "color-scheme",
+        "context-menu",
+        "popover-group-alert",
+        "inlining-spike",
+        "loader-preload-spike",
+        "store-lens-spike"
+      ],
+      "text": "Park to 0.8.0: past the cap; two are unrefined outlines (one L); devtools-copy waits on the dock; three ui parts wait on split-ui-examples; the spikes feed builds that are already backlog, and store-lens-spike should follow the shipped store API",
+      "evidence": {
+        "type": "source",
+        "source": "evidence/goals.txt depends_on; J1"
+      },
+      "ruling": "upheld",
+      "round": 1
+    },
+    {
+      "id": "O4",
+      "by": "opponent",
+      "kind": "rebuttal",
+      "answers": [
+        "P2"
+      ],
+      "text": "mathml-elements and missing-attributes are type-only additions to Elements; counting them as two pads the count. Count them as one",
+      "evidence": {
+        "type": "source",
+        "source": "their briefs: both add entries to elements.d.ts"
+      },
+      "ruling": "upheld",
+      "round": 1
+    },
+    {
+      "id": "O5",
+      "by": "opponent",
+      "kind": "cut",
+      "action": "park",
+      "nodes": [
+        "fieldset",
+        "split-ui-examples"
+      ],
+      "text": "fieldset costs two M nodes (split-ui-examples first); popover-sizing alone covers ui",
+      "evidence": {
+        "type": "source",
+        "source": "nodes/fieldset/brief.md depends_on"
+      },
+      "ruling": "rejected",
+      "ruling_why": "split-ui-examples unblocks four parts and parallel ui work in 0.8.0, and forms are core to the ui outcome (J7)",
+      "round": 1
+    },
+    {
+      "id": "O6",
+      "by": "opponent",
+      "kind": "cut",
+      "action": "park",
+      "nodes": [
+        "dev-setup-in-plugin"
+      ],
+      "text": "Park to 0.8.0: it moved out of 0.6.0 already and helps only the website",
+      "evidence": {
+        "type": "source",
+        "source": "J9"
+      },
+      "ruling": "upheld",
+      "round": 1
+    },
+    {
+      "id": "O7",
+      "by": "opponent",
+      "kind": "cut",
+      "action": "park",
+      "nodes": [
+        "tsc-check-api"
+      ],
+      "text": "Park to 0.8.0: an uncounted M refactor that shares check-command.ts with store-contract",
+      "evidence": {
+        "type": "source",
+        "source": "plan.py waves shared-file note, wave 2"
+      },
+      "ruling": "upheld",
+      "round": 1
+    },
+    {
+      "id": "O8",
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "low",
+      "answers": [
+        "P1"
+      ],
+      "text": "dom-content-loaded allows a new handler name; a rename is an API change, not a patch",
+      "evidence": {
+        "type": "source",
+        "source": "nodes/dom-content-loaded/brief.md 'or the name the node settles on'"
+      },
+      "ruling": "upheld",
+      "round": 1
+    },
+    {
+      "id": "O9",
+      "by": "opponent",
+      "kind": "alternative",
+      "text": "Reserve from backlog if a feature slips: block-styles (M). Rejected now: defer-reveal, external-scripts (open design: inline scripts), view-transitions (build when an app needs it)",
+      "evidence": {
+        "type": "source",
+        "source": "their briefs"
+      },
+      "ruling": "upheld",
+      "round": 1
+    }
+  ],
+  "questions": [],
+  "proofs": [],
+  "hypothesis": null,
+  "spend": []
+}

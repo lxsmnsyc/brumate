@@ -2,7 +2,7 @@
 id: context-stores
 title: Static contexts, with live values through $store
 status: todo
-priority: should
+priority: must
 type: story
 outline: false
 milestone: 0.7.0

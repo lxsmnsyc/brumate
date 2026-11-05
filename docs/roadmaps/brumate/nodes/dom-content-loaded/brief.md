@@ -2,11 +2,11 @@
 id: dom-content-loaded
 title: A DOMContentLoaded handler listens to the right event
 status: todo
-priority: could
+priority: must
 type: fix
 outline: false
-milestone: 0.7.0
-target:
+milestone: 0.6.1
+target: main
 from:
 size: S
 spike: false

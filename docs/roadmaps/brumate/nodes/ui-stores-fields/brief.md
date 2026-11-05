@@ -2,7 +2,7 @@
 id: ui-stores-fields
 title: The field and form parts read live context values from stores
 status: todo
-priority: should
+priority: must
 type: refactor
 story: context-stores
 outline: false

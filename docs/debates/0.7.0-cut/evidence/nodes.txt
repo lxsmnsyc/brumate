@@ -1,0 +1,67 @@
+0.7.0|client-fixes|todo|fix|S|should|Ref setters after the render, and three small divergence fixes
+0.7.0|clone-remaining-bodies|todo|refactor|M|should|The bodies that still render from an HTML string clone their template
+0.7.0|cold-paths-spike|todo|spike|S|should|"Spike: drop the cold runtime paths that usage-pruning-spike did not check"
+0.7.0|color-scheme|todo|feature|M|could|A color scheme part without a first-paint flash
+0.7.0|conditional-rest-spread|todo|feature|S|should|A conditional spread of the rest props in markup
+0.7.0|context-menu|todo|feature|M|could|A context menu, and a shortcut that opens a dialog
+0.7.0|context-stores-spike|todo|spike|M|should|Spike: a store per provider, built far enough to measure and resume
+0.7.0|context-stores|todo|story|L|should|Static contexts, with live values through $store
+0.7.0|control-target|todo|feature|S|should|A typed target for the events of form controls
+0.7.0|coverage-script|todo|chore|S|should|A coverage script for the brumate tests
+0.7.0|dev-dock-redesign|todo|feature|L|should|Redesign of the dev dock
+0.7.0|dev-setup-in-plugin|todo|feature|M|could|The plugin sets up hot updates and the devtools for every client entry
+0.7.0|devtools-copy|todo|feature|M|could|Copy for an agent in the devtools
+0.7.0|dom-content-loaded|todo|fix|S|could|A DOMContentLoaded handler listens to the right event
+0.7.0|editor-sizes|todo|feature|M|could|What ships, in the editor
+0.7.0|fieldset|todo|feature|M|could|Fieldset and Legend, with disabled that flows down
+0.7.0|graph-node-locations|todo|feature|S|should|File locations for each node of the reactivity graph
+0.7.0|head-rerun-scripts|todo|feature|S|could|A head script can ask to run again after each client navigation
+0.7.0|inlining-spike|todo|spike|M|could|Spike: component inlining and constant folding
+0.7.0|loader-preload-spike|todo|spike|S|could|"Spike: fold the loader into the core"
+0.7.0|mathml-elements|todo|feature|S|should|MathML elements and their currentTarget
+0.7.0|memo-guard|todo|feature|M|could|"$gate: a memo with a guard on its new value"
+0.7.0|missing-attributes|todo|feature|S|should|The HTML attributes that the element types lack
+0.7.0|no-client-html|todo|refactor|M|should|Drop the HTML-string machinery from the client
+0.7.0|part-guides|todo|docs|M|could|Guides for building a part, keyboard and focus, and async content
+0.7.0|partial-route-responses|todo|feature|L|could|A client navigation fetches only the routes that change
+0.7.0|popover-group-alert|todo|feature|S|could|PopoverGroup and Alert
+0.7.0|popover-sizing|todo|feature|S|could|Popovers size and place themselves from CSS
+0.7.0|render-memos|todo|refactor|M|should|The browser render runs each memo once, with no refresh after the render
+0.7.0|skill-blocks-typecheck|todo|chore|S|could|The brumate skill's code blocks are typechecked
+0.7.0|skill-command-packages|todo|feature|S|could|brumate skill also installs the skills of @brumate packages
+0.7.0|skill-tasks|todo|chore|S|should|Tasks that check what an agent writes with the skill
+0.7.0|split-ui-examples|todo|refactor|M|could|One file for each part in the ui example page and its e2e suite
+0.7.0|static-contexts-final|todo|refactor|S|should|Every context is static: delete the live-context path
+0.7.0|store-contract|todo|feature|M|should|The store contract and $store
+0.7.0|store-lens-spike|todo|spike|M|could|"Spike: a path-tracked store and lens utilities"
+0.7.0|text-field-refused-edit|todo|fix|S|should|TextField and SearchField show the kept text after a refused edit
+0.7.0|tsc-check-api|todo|refactor|M|should|brumate check runs the type checker in process
+0.7.0|ui-stores-calendar|todo|refactor|M|should|The calendar, date and color parts read live context values from stores
+0.7.0|ui-stores-collections|todo|refactor|M|should|The collection, menu, select and combobox parts read live context values from stores
+0.7.0|ui-stores-fields|todo|refactor|M|should|The field and form parts read live context values from stores
+backlog|block-styles|todo|feature|M|later|Styles in blocks
+backlog|call-keys|todo|feature|S|later|Keys on calls that are sent again
+backlog|content-mapper|todo|feature|M|later|Content mappers for TypeScript 7
+backlog|defer-reveal|todo|feature|S|later|"Reveal order of #defer blocks"
+backlog|devtools-history|todo|story|L|later|Devtools: history and a browser extension
+backlog|drop-marker-index|todo|refactor|L|later|Remove the marker index and the HTML string path
+backlog|embedding|todo|story|XL|later|Embedding in other sites
+backlog|external-scripts|todo|feature|S|later|External scripts
+backlog|feed|todo|feature|M|later|Feed
+backlog|fixed-walks|todo|feature|M|later|Fixed walks
+backlog|for-leave|todo|feature|M|later|"Leave animations for #for items"
+backlog|i18n|todo|story|XL|later|Internationalization
+backlog|images|todo|story|L|later|Images
+backlog|inlining-build|todo|story|L|later|Component inlining and constant folding
+backlog|is-pending-many|todo|feature|S|later|$isPending takes several memos
+backlog|markdown-plugin|todo|story|L|later|Markdown with components, for apps
+backlog|mcp-server|todo|story|L|later|An MCP server in the dev server
+backlog|observability|todo|feature|M|later|Observability
+backlog|offline-pages|todo|story|XL|later|Offline pages
+backlog|realtime|todo|story|XL|later|Two-way realtime
+backlog|server-components-spike|todo|spike|M|later|Spike: server components
+backlog|server-components|todo|story|XL|later|"Server components and #server"
+backlog|streaming-lists|todo|story|L|later|Streaming lists
+backlog|view-transitions|todo|feature|M|later|Named view transitions
+backlog|workbench-stories|todo|feature|M|later|Workbench: stories with server answers
+backlog|worker-functions|todo|story|L|later|Worker functions

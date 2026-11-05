@@ -2,7 +2,7 @@
 id: context-stores-spike
 title: Spike: a store per provider, built far enough to measure and resume
 status: todo
-priority: should
+priority: must
 type: spike
 story: context-stores
 outline: false

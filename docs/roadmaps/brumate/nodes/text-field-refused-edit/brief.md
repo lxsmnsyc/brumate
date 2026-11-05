@@ -2,11 +2,11 @@
 id: text-field-refused-edit
 title: TextField and SearchField show the kept text after a refused edit
 status: todo
-priority: should
+priority: must
 type: fix
 outline: true
-milestone: 0.7.0
-target:
+milestone: 0.6.1
+target: main
 from:
 size: S
 spike: false

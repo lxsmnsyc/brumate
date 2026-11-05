@@ -2,7 +2,7 @@
 id: skill-command-packages
 title: brumate skill also installs the skills of @brumate packages
 status: todo
-priority: could
+priority: must
 type: feature
 outline: true
 milestone: 0.7.0

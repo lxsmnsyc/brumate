@@ -2,7 +2,7 @@
 id: conditional-rest-spread
 title: A conditional spread of the rest props in markup
 status: todo
-priority: should
+priority: must
 type: feature
 outline: false
 milestone: 0.7.0

@@ -2,11 +2,11 @@
 id: render-memos
 title: The browser render runs each memo once, with no refresh after the render
 status: todo
-priority: should
+priority: must
 type: refactor
 outline: false
-milestone: 0.7.0
-target:
+milestone: 0.6.1
+target: main
 from:
 size: M
 spike: false

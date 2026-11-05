@@ -2,7 +2,7 @@
 id: split-ui-examples
 title: One file for each part in the ui example page and its e2e suite
 status: todo
-priority: could
+priority: must
 type: refactor
 outline: false
 milestone: 0.7.0

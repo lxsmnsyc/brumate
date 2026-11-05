@@ -2,7 +2,7 @@
 id: fieldset
 title: Fieldset and Legend, with disabled that flows down
 status: todo
-priority: could
+priority: must
 type: feature
 outline: false
 milestone: 0.7.0

@@ -2,12 +2,12 @@
 id: is-pending-many
 title: $isPending takes several memos
 status: todo
-priority: later
+priority: must
 type: feature
 story:
 early: false
 outline: true
-milestone: backlog
+milestone: 0.7.0
 target:
 ship: auto
 from:

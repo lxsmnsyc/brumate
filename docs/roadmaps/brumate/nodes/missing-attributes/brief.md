@@ -2,7 +2,7 @@
 id: missing-attributes
 title: The HTML attributes that the element types lack
 status: todo
-priority: should
+priority: must
 type: feature
 outline: false
 milestone: 0.7.0
