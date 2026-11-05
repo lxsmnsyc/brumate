@@ -393,6 +393,8 @@ export function clientState(
           // A binding writes the slot of its name, and a bound prop writes the parent's
           // through its own, so they need slots without a read in the browser.
           declaration.bound === true ||
+          // A `let` of `$store` keeps the setter that writes the store in its slot.
+          declaration.store?.write === true ||
           // A prop forwards its element to the parent through its slot, and a dynamic tag
           // passes the slot of its signal to a component.
           hasDynamicRef(declaration) ||

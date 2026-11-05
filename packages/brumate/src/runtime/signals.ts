@@ -4,7 +4,7 @@
 
 import type { Context, NavigationState, Route } from './context.ts';
 import type { RoutePath, RouteParams } from './routes.ts';
-import type { Store } from './store.ts';
+import type { Store, StoreLike } from './store.ts';
 
 function compileTimeOnly(name: string): never {
   throw new Error(`${name} works only in .brm files, which the brumate compiler compiles`);
@@ -165,11 +165,18 @@ export function $getContext<T>(_context: Context<T>): T {
 }
 
 /**
- * Reads a store in a context and gives its value, which changes when the store does: the context
- * holds the store, as `$store(FieldContext)`, or a key of the context value does, as
- * `$store(field.state)` for `const field = $getContext(FieldContext)`.
+ * Binds a store to a variable. The store is any value with the functions `get`, `subscribe`
+ * (which returns a function that stops it) and, optionally, `set`. The source is a context that
+ * holds the store, `$store(FieldContext)`, a key of the value of a context,
+ * `$store(field.state)` for `const field = $getContext(FieldContext)`, or a store that the file
+ * imports, `$store(theme)`. It runs once and is not tracked, and the subscription ends with the
+ * scope.
+ *
+ * `const x = $store(source)` is one-way: the store writes the variable. `let x = $store(source)`
+ * is two-way: a write to the variable, such as `x = next` or `x++`, calls `set` of the store, and
+ * a store without `set` throws a `TypeError` when the variable registers.
  */
-export function $store<T>(_source: Context<Store<T>> | Store<T>): T {
+export function $store<T>(_source: Context<StoreLike<T>> | StoreLike<T>): T {
   return compileTimeOnly('$store');
 }
 

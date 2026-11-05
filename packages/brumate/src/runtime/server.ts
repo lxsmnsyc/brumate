@@ -47,7 +47,7 @@ import {
 } from './shared.ts';
 import { functionReferences } from './calls.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
-import type { PackedState, PageState, PropSink, ScopeId, ScopeState } from './shared.ts';
+import type { PackedState, PageState, PropSink, ScopeId, ScopeState, StoreRead } from './shared.ts';
 import {
   Redirect,
   RequestEvent,
@@ -69,7 +69,7 @@ import type {
   TraceEntry,
 } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
-import { Store, isForeignStore, isStore } from './store.ts';
+import { Store, findStored, isContext, isForeignStore, isStore } from './store.ts';
 
 /**
  * Refuses a store that is not of `brumate/store` in a provided value, or in a key of it: the page
@@ -745,23 +745,34 @@ export class Context {
   }
 
   /**
-   * `$store(context)`, or `$store(value.key)` of a context value: the value of the store, and a
-   * record of its slot, so the browser subscribes the slot when the scope resumes.
+   * `$store(source)`: the value of the store, and a record of its slot, so the browser subscribes
+   * the slot when the scope resumes. The browser finds the store again from the key of a context,
+   * or from the export `link` of an import, with `path` for a key of the value.
    */
-  consumeStore<T>(context: ContextValue<unknown>, scope: ScopeId, slot: number, path?: string): T {
-    const value = this.consume(context, scope);
-    const found = path === undefined ? value : (value as Record<string, unknown>)?.[path];
-    if (!isStore(found)) {
-      throw new Error(
-        `$store reads the context "${context.key}"${path === undefined ? '' : ` at "${path}"`}, which holds no store of brumate/store`,
-      );
+  consumeStore<T>(
+    source: unknown,
+    scope: ScopeId,
+    slot: number,
+    path?: string,
+    link?: number,
+    write?: boolean,
+  ): T {
+    const found = findStored(source, path, write, (context) => this.consume(context, scope));
+    if (slot >= 0) {
+      const ref = isContext(source) ? source.key : link;
+      if (ref === undefined) {
+        throw new Error(
+          'The browser cannot find the store of $store again. Read a context, or a store that the file imports',
+        );
+      }
+      let entry: StoreRead = [ref, slot];
+      if (write) {
+        entry = [ref, slot, path, 1];
+      } else if (path !== undefined) {
+        entry = [ref, slot, path];
+      }
+      (this.record(scope).z ??= []).push(entry);
     }
-    if (slot < 0) {
-      return found.get() as T;
-    }
-    const record = this.record(scope);
-    record.z ??= [];
-    record.z.push(path === undefined ? [context.key, slot] : [context.key, slot, path]);
     return found.get() as T;
   }
 

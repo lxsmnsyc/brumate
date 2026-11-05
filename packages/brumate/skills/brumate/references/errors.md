@@ -1713,14 +1713,57 @@ $effect(() => {
 });
 ```
 
-## BRM143: $store is not supported yet
+## BRM191: Read a store with "const name = $store(source)" or "let name = $store(source)" at the top level of a script
 
-`$store` does not exist.
+`$store` is not the whole value of a `const` or `let` at the top level of a script.
 
-https://brumate-docs.vercel.app/docs/errors#brm143
+https://brumate-docs.vercel.app/docs/errors#brm191
 
 ```brm fragment
-let todos = $signal([]);
+import { theme } from './theme';
+const value = $store(theme);
+```
+
+## BRM192: $store takes one argument, a context, a store or a key of one
+
+`$store` has no argument, or more than one.
+
+https://brumate-docs.vercel.app/docs/errors#brm192
+
+```brm fragment
+const field = $getContext(Field);
+const state = $store(field.state);
+```
+
+## BRM193: $toStore takes one argument, a memo, a signal or a prop, as a value of $setContext
+
+`$toStore` has no argument or more than one, or it is not a value of `$setContext`, alone or as a key of an object or an item of a list.
+
+https://brumate-docs.vercel.app/docs/errors#brm193
+
+```brm fragment
+$setContext(Field, { state: $toStore(state), pick });
+```
+
+## BRM194: The browser finds the store of $store again from a context, from a store that the file imports, or from a key of one
+
+The source of `$store` is a local value, a call or another expression, which the browser cannot find again when the page resumes.
+
+https://brumate-docs.vercel.app/docs/errors#brm194
+
+```brm fragment
+import { theme } from './theme';
+const value = $store(theme);
+```
+
+## BRM195: $store gives one name, not a pattern such as { a }
+
+`$store` initializes a pattern.
+
+https://brumate-docs.vercel.app/docs/errors#brm195
+
+```brm fragment
+const value = $store(source);
 ```
 
 ## BRM144: $get is not supported. Signals cannot leave the file

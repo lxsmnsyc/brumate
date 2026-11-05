@@ -22,6 +22,8 @@ export interface ClientModule {
    * prop. The state holds only their IDs, so `dynamic` finds them here.
    */
   components?: (Component & { brumateId: string })[];
+  /** The imports that `$store` reads, which the update part exports. See `StoreRead`. */
+  z?: unknown[];
   /** Server function ID to the memos that call it, as scope kind and update, for `refresh`. */
   refresh?: Record<string, Update[]>;
   /**
@@ -72,6 +74,8 @@ export interface Scope {
   x?: Record<string, number>;
   /** The stores that `$toStore` made in the scope, by the ID of the site. */
   st?: Record<number, Store<unknown>>;
+  /** The functions that stop the scope's reads of stores, which run when the scope goes. */
+  stops?: (() => void)[];
   /** The slots of a parent that the bound props of a component write, by the slot of the prop. */
   /**
    * What the bound props write, by the slot of the prop: a slot of a parent,

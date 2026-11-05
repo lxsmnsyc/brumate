@@ -1,0 +1,14 @@
+<script>
+  import { $memo, $setContext, $signal, $toStore } from 'brumate/signals';
+  import StoreMixedReader from './StoreMixedReader.brm';
+  import { Mixed } from './contexts.ts';
+
+  let count = $signal(0);
+  let label = $signal('a');
+  const state = $memo({ count });
+  $setContext(Mixed, { state: $toStore(state), label });
+</script>
+
+<button class="count" onClick=(() => count++)>Count</button>
+<button class="label" onClick=(() => (label = `${label}!`))>Label</button>
+<StoreMixedReader />

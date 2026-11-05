@@ -1,0 +1,8 @@
+<script>
+  import { $store } from 'brumate/signals';
+  import { foreignTheme } from './contexts.ts';
+
+  let value = $store(foreignTheme);
+</script>
+
+<button class="foreign" onClick=(() => (value = `${value}!`))>{value}</button>

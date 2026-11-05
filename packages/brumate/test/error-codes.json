@@ -187,5 +187,10 @@
   "BRM187": "The {kind} {name} of {component} did not settle: it writes a value that it reads, and runs again without end. Wrap the read or the write in $untrack, or write only when the value changes",
   "BRM188": "\"{name}\" gives a promise, and {place} cannot wait for one. Await it in the code that runs, or read its value with $memo",
   "BRM189": "Unknown <style> attribute \"{name}\"",
-  "BRM190": "global takes no value, as in <style global>"
+  "BRM190": "global takes no value, as in <style global>",
+  "BRM191": "Read a store with \"const name = $store(source)\" or \"let name = $store(source)\" at the top level of a script",
+  "BRM192": "$store takes one argument, a context, a store or a key of one",
+  "BRM193": "$toStore takes one argument, a memo, a signal or a prop, as a value of $setContext",
+  "BRM194": "The browser finds the store of $store again from a context, from a store that the file imports, or from a key of one",
+  "BRM195": "$store gives one name, not a pattern such as { a }"
 }

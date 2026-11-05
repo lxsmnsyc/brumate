@@ -555,26 +555,12 @@ class ClientGenerator {
   }
 
   /**
-   * The imported contexts that `$store` reads, which the update part imports so their modules
-   * run in the browser: a store in the default value of a context links its readers then.
+   * The imports that `$store` reads, which the update part exports as `z`: their modules run in
+   * the browser, which links the readers of a store in the default value of a context, and a
+   * reader of an imported store finds it there.
    */
   private storeSources(): string[] {
-    const names: string[] = [];
-    for (const site of this.model.sites) {
-      if (
-        site.kind === 'setup' &&
-        site.label.startsWith('store ') &&
-        site.node.type === 'Identifier'
-      ) {
-        const declaration =
-          site.scope.declarations.get(site.node.name) ??
-          this.model.module.declarations.get(site.node.name);
-        if (declaration?.kind === 'import' && !names.includes(site.node.name)) {
-          names.push(site.node.name);
-        }
-      }
-    }
-    return names;
+    return this.model.storeImports;
   }
 
   private assemble(name: string): string {
@@ -1146,10 +1132,6 @@ class ClientGenerator {
       this.emit(
         `export function ${name('u')}($$s) {\n  $$b.storeUpdate($$s, ${site.id}, ${expression()});\n}`,
       );
-      return;
-    }
-    if (site.kind === 'provide' && site.holdsStores) {
-      // A value with stores is static: the update of each store sends its new values.
       return;
     }
     if (site.kind === 'provide') {

@@ -48,6 +48,8 @@ export class Rewriter {
   private readonly handlers = new Map<oxc.Node, Site>();
   /** The signals of `$searchParam` calls, by call. */
   private readonly searches = new Map<oxc.Node, Declaration>();
+  /** The sites of `$toStore` calls, by call. */
+  private readonly storeSites = new Map<oxc.Node, Site>();
   /** The declarations of the names of `$bind` calls, by call. */
   private readonly bindings = new Map<oxc.Node, SemanticModel['bindings'][number]>();
 
@@ -59,6 +61,9 @@ export class Rewriter {
     for (const site of plan.graph.model.sites) {
       if (site.handler) {
         this.handlers.set(site.handler, site);
+      }
+      if (site.store) {
+        this.storeSites.set(site.store, site);
       }
     }
     for (const declaration of plan.graph.model.declarations) {
@@ -400,6 +405,13 @@ export class Rewriter {
               patch.replace(name.end, node.end, `), ${path}, ${slot})`);
             }
             visit(name);
+            return;
+          }
+          // The value of a context that holds stores keeps them: `$toStore(x)` is the store that
+          // the provider made, when the update of the other values provides the value again.
+          const made = this.storeSites.get(node);
+          if (made) {
+            patch.replace(node.start, node.end, `$$b.madeStore(${scopeVar}, ${made.id})`);
             return;
           }
           const handler = this.handlers.get(node);

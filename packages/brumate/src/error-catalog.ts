@@ -930,10 +930,34 @@ const SCRIPT: ErrorEntry[] = [
     '$effect(() => {\n  const timer = setInterval(tick, 1000);\n  return () => clearInterval(timer);\n});',
   ),
   entry(
-    'BRM143',
-    '$store is not supported yet',
-    '`$store` does not exist.',
-    'let todos = $signal([]);',
+    'BRM191',
+    'Read a store with "const name = $store(source)" or "let name = $store(source)" at the top level of a script',
+    '`$store` is not the whole value of a `const` or `let` at the top level of a script.',
+    "import { theme } from './theme';\nconst value = $store(theme);",
+  ),
+  entry(
+    'BRM192',
+    '$store takes one argument, a context, a store or a key of one',
+    '`$store` has no argument, or more than one.',
+    'const field = $getContext(Field);\nconst state = $store(field.state);',
+  ),
+  entry(
+    'BRM193',
+    '$toStore takes one argument, a memo, a signal or a prop, as a value of $setContext',
+    '`$toStore` has no argument or more than one, or it is not a value of `$setContext`, alone or as a key of an object or an item of a list.',
+    '$setContext(Field, { state: $toStore(state), pick });',
+  ),
+  entry(
+    'BRM194',
+    'The browser finds the store of $store again from a context, from a store that the file imports, or from a key of one',
+    'The source of `$store` is a local value, a call or another expression, which the browser cannot find again when the page resumes.',
+    "import { theme } from './theme';\nconst value = $store(theme);",
+  ),
+  entry(
+    'BRM195',
+    '$store gives one name, not a pattern such as { a }',
+    '`$store` initializes a pattern.',
+    'const value = $store(source);',
   ),
   entry(
     'BRM144',

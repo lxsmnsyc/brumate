@@ -57,6 +57,8 @@ afterEach(() => {
   stop?.();
   document.body.innerHTML = '';
   delete (globalThis as { savedTheme?: string }).savedTheme;
+  delete (globalThis as { savedForeign?: string }).savedForeign;
+  (globalThis as { runs?: string[] }).runs = [];
 });
 
 /** Runs an inline script, as a browser does, with the script as `document.currentScript`. */
@@ -180,11 +182,14 @@ describe('resume gates', () => {
   });
 
   it('repairs a module-level store that changed since the server render', async () => {
-    await resume('storeTheme', () => {
-      // The browser starts from a saved choice, which the server did not know.
-      (globalThis as { savedTheme?: string }).savedTheme = 'dark';
-    });
+    const server = await import(file('storeTheme.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
     // The server rendered the default.
+    expect(html).toContain('>light</p>');
+    // The browser starts from a saved choice, which the server did not know.
+    (globalThis as { savedTheme?: string }).savedTheme = 'dark';
+    show(html + state);
+    await startLoader();
     await waitFor(() => expect(text('.theme')).toBe('dark'));
     const { theme } = (await import(file('contexts.ts'))) as { theme: Store<string> };
     theme.set('blue');
@@ -272,5 +277,176 @@ describe('server checks', () => {
     await expect(renderParts(server.default, {})).rejects.toThrow(
       'The context "store-level" holds a store that is not of brumate/store',
     );
+  });
+
+  it('treats only a value with get and subscribe as a store', async () => {
+    // A context of handlers with a `subscribe` function is not a store.
+    await resume('storeBus');
+    click(document.querySelector('.publish')!);
+    await waitFor(() => expect(text('.log')).toBe('x'));
+  });
+
+  it('refuses let on a store without set, when the variable registers', async () => {
+    const memo = await import(file('storeLetNoSet.brm.ts'));
+    await expect(renderParts(memo.default, {})).rejects.toThrow(TypeError);
+    const readOnly = await import(file('storeReadOnly.brm.ts'));
+    await expect(renderParts(readOnly.default, {})).rejects.toThrow(
+      /writes the store, but the store has no set/,
+    );
+  });
+});
+
+describe('let writes through set', () => {
+  it('writes the signal of a provider from a reader, and the readers update in one pass', async () => {
+    await resume('storeLet');
+    expect(text('.chosen')).toBe('a');
+    expect(text('.label-a')).toBe('a');
+    clearRuns();
+    click(document.querySelector('.option-b')!);
+    await waitFor(() => expect(text('.chosen')).toBe('b'));
+    await waitFor(() => expect(text('.label-a')).toBe('b'));
+    expect(text('.label-b')).toBe('b');
+    // Each reader computed once.
+    expect(runsOf('label-a')).toEqual(['label-a b']);
+    expect(runsOf('label-b')).toEqual(['label-b b']);
+  });
+});
+
+describe('a store that a file imports', () => {
+  it('renders, resumes with a module store that changed, and updates', async () => {
+    const server = await import(file('storeImport.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    expect(html).toContain('>light</p>');
+    expect(html).toContain('>light</button>');
+    (globalThis as { savedTheme?: string }).savedTheme = 'dark';
+    (globalThis as { savedForeign?: string }).savedForeign = 'night';
+    show(html + state);
+    await startLoader();
+    await waitFor(() => expect(text('.module')).toBe('dark'));
+    await waitFor(() => expect(text('.foreign')).toBe('night'));
+    const { theme, foreignTheme } = (await import(file('contexts.ts'))) as {
+      theme: Store<string>;
+      foreignTheme: { get(): string; set(value: string): void };
+    };
+    theme.set('blue');
+    await waitFor(() => expect(text('.module')).toBe('blue'));
+    foreignTheme.set('day');
+    await waitFor(() => expect(text('.foreign')).toBe('day'));
+    // `let` writes through the set of the foreign store.
+    click(document.querySelector('.foreign')!);
+    await waitFor(() => expect(text('.foreign')).toBe('day!'));
+    expect(foreignTheme.get()).toBe('day!');
+  });
+
+  it('reads a store of a context default through the key of its value, with no provider', async () => {
+    await resume('storeKeyDefault');
+    const { Mixed } = (await import(file('contexts.ts'))) as {
+      Mixed: { defaultValue: { state: Store<{ count: number }> } };
+    };
+    Mixed.defaultValue.state.set({ count: 7 });
+    await waitFor(() => expect(text('.read')).toBe(':7'));
+  });
+
+  it('stops reading when the scope goes', async () => {
+    await resume('storeToggle');
+    const { theme } = (await import(file('contexts.ts'))) as { theme: Store<string> };
+    await waitFor(() => expect(theme.l.size).toBe(1));
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(document.querySelector('.module')).toBeNull());
+    expect(theme.l.size).toBe(0);
+    click(document.querySelector('.toggle')!);
+    await waitFor(() => expect(theme.l.size).toBe(1));
+    expect(text('.module')).toBe('light');
+  });
+});
+
+describe('a context with a store and a live value', () => {
+  it('updates the value beside the store, and the store beside the value', async () => {
+    await resume('storeMixed');
+    expect(text('.read')).toBe('a:0');
+    click(document.querySelector('.label')!);
+    await waitFor(() => expect(text('.read')).toBe('a!:0'));
+    click(document.querySelector('.count')!);
+    await waitFor(() => expect(text('.read')).toBe('a!:1'));
+    click(document.querySelector('.label')!);
+    await waitFor(() => expect(text('.read')).toBe('a!!:1'));
+  });
+});
+
+describe('the Store class', () => {
+  it('calls the listeners for a changed value only', async () => {
+    const { store } = await import('../../src/runtime/store.ts');
+    const made = store(1);
+    const seen: number[] = [];
+    const stop = made.subscribe((value) => seen.push(value));
+    made.set(1);
+    made.set(2);
+    made.set(2);
+    stop();
+    made.set(3);
+    expect(seen).toEqual([2]);
+    expect(made.get()).toBe(3);
+  });
+
+  it('warns in development for a store whose scope is missing', async () => {
+    const { linkMadeStores } = await import('../../src/runtime/client/context.ts');
+    const { madeStores } = await import('../../src/runtime/shared.ts');
+    const { store } = await import('../../src/runtime/store.ts');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    onTestFinished(() => warn.mockRestore());
+    const made = store(1);
+    made.o = [987654, 0];
+    madeStores.push(made as Store<unknown>);
+    linkMadeStores();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('987654'));
+  });
+});
+
+describe('compile checks', () => {
+  const head =
+    "import { $getContext, $memo, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';\n";
+  function build(script: string): ReturnType<typeof compile> {
+    return compile(`<script>\n${head}${script}\n</script>\n<p></p>`, { filename: 'Test.brm' });
+  }
+
+  it('reports the forms that $store refuses, with their codes', () => {
+    expect(() => build('var a = $store(x);')).toThrow(/BRM191/);
+    expect(() => build("import { s } from './s.ts';\nconst { a } = $store(s);")).toThrow(/BRM195/);
+    expect(() => build("import { s } from './s.ts';\nconst a = $store(s, s);")).toThrow(/BRM192/);
+    expect(() => build('function f() {\n  const a = $store(1);\n}')).toThrow(/BRM191/);
+  });
+
+  it('reports a source that the browser cannot find again', () => {
+    expect(() => build('const box = { inner: 1 };\nconst a = $store(box.inner);')).toThrow(
+      /BRM194/,
+    );
+    expect(() => build('const a = $store(make());\nfunction make() { return 1; }')).toThrow(
+      /BRM194/,
+    );
+  });
+
+  it('reports $toStore with a wrong argument or in a wrong place', () => {
+    expect(() =>
+      build("import { C } from './c.ts';\nlet a = $signal(1);\n$setContext(C, $toStore(a, a));"),
+    ).toThrow(/BRM193/);
+    expect(() => build('let a = $signal(1);\nconst b = $toStore(a);')).toThrow(/BRM193/);
+  });
+
+  it('accepts the sources that resume can find', () => {
+    const output = build(
+      "import { s, C } from './s.ts';\nconst a = $store(s);\nlet b = $store(C);\nconst f = $getContext(C);\nconst c = $store(f.k);",
+    );
+    expect(output.warnings).toEqual([]);
+  });
+
+  it('warns for a signal or memo in a $setContext value, until $untrack or $toStore', () => {
+    const warn = (value: string): string[] =>
+      build(
+        `import { C } from './c.ts';\nlet a = $signal(1);\nconst m = $memo(a + 1);\n$setContext(C, ${value});`,
+      ).warnings.map((warning) => warning.message);
+    expect(warn('{ a, m }')).toHaveLength(2);
+    expect(warn('{ a: $untrack(a) }')).toEqual([]);
+    expect(warn('$toStore(m)')).toEqual([]);
+    expect(warn('{ run() { return a; } }')).toEqual([]);
   });
 });
