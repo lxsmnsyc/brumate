@@ -38,7 +38,7 @@ depends_on:
 
 ## Goal
 
-Step 2 of the approved context-stores debate (docs/debates/context-stores/debate.md): ship `brumate/store` (`Store` with `get`, `subscribe`, `set`, and a `store()` helper), `$store(ctx)` to read a store held in a context, and the seroval plugin, with the API and compile shape from context-stores-spike's outcome. One store per provider. A foreign store inside a context is refused on the server with an error that names the context. The live-context path still works; nothing in packages/ui changes yet.
+Step 2 of the approved context-stores debate (docs/debates/context-stores/debate.md): ship `brumate/store` (`Store` with `get`, `subscribe`, `set`, and a `store()` helper), `$store(ctx)` to read a store held in a context, `$toStore(memoOrSignal)` to build a provider's store, and the seroval plugin, with the API and compile shape from context-stores-spike's outcome. One store per provider. A foreign store inside a context is refused on the server with an error that names the context. The live-context path still works; nothing in packages/ui changes yet.
 
 ## Acceptance
 

@@ -32,12 +32,20 @@ depends_on: []
 
 ## Goal
 
-Step 1 of the approved context-stores debate (docs/debates/context-stores/debate.md). Build `brumate/store` (`Store` with `get`, `subscribe`, `set`), `$store(ctx)` and a seroval plugin for `Store` just far enough to compile one provider with 42 readers both ways: today's live context, and one store per provider. Nothing merges as a feature; the outcome reports the gates for the maintainer's go or no-go.
+Step 1 of the approved context-stores debate (docs/debates/context-stores/debate.md). Build `brumate/store` (`Store` with `get`, `subscribe`, `set`), `$store(ctx)`, `$toStore(memoOrSignal)` and a seroval plugin for `Store` just far enough to compile one provider with 42 readers both ways: today's live context, and one store per provider. Nothing merges as a feature; the outcome reports the gates for the maintainer's go or no-go.
+
+`$toStore` (the maintainer, 2026-11-05) is the computed store of a provider, in place of the debate's open `store.derive` (P13). It is a compile-time function, like `$memo`: it takes a memo or a signal and adds no new reactive node. The compiler emits the store's update in the binding stage, where `updateContext` sits today. A store from a memo is read-only; a store from a signal has a `set` that writes the signal. On the server `get()` returns the current value, and the store crosses through the plugin as its value only. Svelte 5's `toStore` and `fromStore` are the prior art; `$store(ctx)` is the `fromStore` side.
+
+```ts
+const state = $memo({ isInvalid, errors, value });
+$setContext(FieldCtx, $toStore(state));
+$setContext(PickerCtx, $toStore(value)); // value is a $signal
+```
 
 ## Acceptance (gates)
 
 - [ ] Resume: a handler field in a store's context crosses as a function reference; one store keeps one identity across a streamed `#loading` chunk; a module-level store changed since the server render is repaired on resume; a reader that resumes after a `set` reads the current value.
-- [ ] The diamond cases of ordered-updates (nodes/ordered-updates/outcome.md) pass with a provider store derived from props and memos, and a user `store().set` writes through the queued context send.
+- [ ] The diamond cases of ordered-updates (nodes/ordered-updates/outcome.md) pass with a provider store built by `$toStore` from props and memos, and a user `store().set` writes through the queued context send.
 - [ ] The gzip of the fixture both ways is recorded in the outcome (reported, not a gate).
 - [ ] The outcome proposes the exact API and compile shape for store-contract.
 
