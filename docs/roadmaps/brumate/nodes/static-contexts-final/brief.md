@@ -1,7 +1,7 @@
 ---
 id: static-contexts-final
 title: Every context is static: delete the live-context path
-status: active
+status: done
 priority: must
 type: refactor
 story: context-stores
@@ -16,7 +16,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-03
-spent:
+spent: 639758
 owns: []
 shared:
   - packages/brumate/src/**
