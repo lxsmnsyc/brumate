@@ -21,5 +21,7 @@
   </SpikePopover>
 </SpikeSelect>
 
-<SpikeButton class="alone" onClick=(() => alone++)>Alone {alone}</SpikeButton>
-<SpikeButton as=SpikeLink href="/away" onClick=(prevent(() => linked++))>Linked {linked}</SpikeButton>
+<SpikeSelect>
+  <SpikeButton class="alone" onClick=(() => alone++)>Alone {alone}</SpikeButton>
+  <SpikeButton as=SpikeLink href="/away" onClick=(prevent(() => linked++))>Linked {linked}</SpikeButton>
+</SpikeSelect>

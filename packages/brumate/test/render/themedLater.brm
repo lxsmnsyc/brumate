@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Themed from './Themed.brm';
+
+  let shown = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (shown = true))>Show</button>
+#if (shown) {
+  <Themed />
+}

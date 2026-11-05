@@ -181,21 +181,6 @@ describe('resume gates', () => {
     expect(text('.read-outer')).toBe('a!!');
   });
 
-  it('repairs a module-level store that changed since the server render', async () => {
-    const server = await import(file('storeTheme.brm.ts'));
-    const { html, state } = await renderParts(server.default, {});
-    // The server rendered the default.
-    expect(html).toContain('>light</p>');
-    // The browser starts from a saved choice, which the server did not know.
-    (globalThis as { savedTheme?: string }).savedTheme = 'dark';
-    show(html + state);
-    await startLoader();
-    await waitFor(() => expect(text('.theme')).toBe('dark'));
-    const { theme } = (await import(file('contexts.ts'))) as { theme: Store<string> };
-    theme.set('blue');
-    await waitFor(() => expect(text('.theme')).toBe('blue'));
-  });
-
   it('writes the signal of a provider through the set of its store', async () => {
     await resume('storePicker');
     expect(text('.chosen')).toBe('a');
@@ -338,15 +323,6 @@ describe('a store that a file imports', () => {
     expect(foreignTheme.get()).toBe('day!');
   });
 
-  it('reads a store of a context default through the key of its value, with no provider', async () => {
-    await resume('storeKeyDefault');
-    const { Mixed } = (await import(file('contexts.ts'))) as {
-      Mixed: { defaultValue: { state: Store<{ count: number }> } };
-    };
-    Mixed.defaultValue.state.set({ count: 7 });
-    await waitFor(() => expect(text('.read')).toBe(':7'));
-  });
-
   it('stops reading when the scope goes', async () => {
     await resume('storeToggle');
     const { theme } = (await import(file('contexts.ts'))) as { theme: Store<string> };
@@ -378,31 +354,15 @@ describe('a foreign store with only get and subscribe', () => {
   });
 });
 
-describe('a read that waits for the module of its context', () => {
-  it('does not subscribe a scope that went before the module ran', async () => {
-    await resume('storeKeyDefault');
-    await waitFor(async () => expect(await scopesOf('StoreMixedReader_')).toHaveLength(1));
-    const [reader] = await scopesOf('StoreMixedReader_');
-    const client = await import('../../src/runtime/client.ts');
+describe('a read of a resumed scope with no provider', () => {
+  it('throws an error that names the key', async () => {
+    await resume('storeField');
+    await waitFor(async () => expect(await scopesOf('StoreFieldReader_')).toHaveLength(1));
+    const [reader] = await scopesOf('StoreFieldReader_');
     const { resumeStoreReads } = await import('../../src/runtime/client/context.ts');
-    let listeners = 0;
-    const late = {
-      get: () => ({ count: 0 }),
-      subscribe: () => {
-        listeners++;
-        return () => {
-          listeners--;
-        };
-      },
-    };
-    // The context is not known yet, so the read waits for its module.
-    resumeStoreReads([reader!], () => [['store-late', 1, 'state']]);
-    client.removeScope(reader!);
-    const added = (globalThis as { [key: symbol]: unknown })[
-      Symbol.for('brumate.contextAdded')
-    ] as (context: unknown) => void;
-    added({ key: 'store-late', defaultValue: { state: late } });
-    expect(listeners).toBe(0);
+    expect(() => resumeStoreReads([reader!], () => [['store-none', 1, 'state']])).toThrow(
+      'The context "store-none" has no provider above this component',
+    );
   });
 });
 

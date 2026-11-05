@@ -13,7 +13,7 @@ export function isContext(value: unknown): value is Context<unknown> {
     typeof value === 'object' &&
     value !== null &&
     typeof (value as { key?: unknown }).key === 'string' &&
-    'defaultValue' in value &&
+    Object.keys(value).length === 1 &&
     !isContract(value)
   );
 }

@@ -12,5 +12,4 @@ export interface CounterValue {
 
 export const Counter: Context<CounterValue | undefined> = createContext<CounterValue | undefined>(
   'counter',
-  undefined,
 );

@@ -1700,14 +1700,6 @@ describe('resume', () => {
       await waitFor(() => expect(text('.value')).toBe('Cat'));
     });
 
-    it('gives a part on its own the default value of the context', async () => {
-      await resume('spikePage', {});
-      const alone = document.querySelector('.alone')!;
-      expect(alone.hasAttribute('aria-expanded')).toBe(false);
-      click(alone);
-      await waitFor(() => expect(text('.alone')).toBe('Alone 1'));
-    });
-
     it('renders a #template prop with the values of the component that wrote it', async () => {
       await resume('spikeTemplateState', {});
       expect(text('.option:nth-child(1) .choice')).toBe('Pet Cat');
@@ -10463,5 +10455,21 @@ describe('a promise in markup', () => {
     await waitFor(() => expect(markupLoads()).toHaveLength(1));
     await settle('user', 'Ada');
     await waitFor(() => expect(text('.user')).toBe('Ada'));
+  });
+});
+
+describe('a context without a provider in markup that the browser renders', () => {
+  it.each([
+    ['themedLater', 'theme'],
+    ['themedStoreLater', 'theme-store'],
+  ])('throws an error that names the key, for %s', async (name, key) => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await resume(name, {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => {
+      const seen = errors.mock.calls.map((call) => call.map(String).join(' ')).join('\n');
+      expect(seen).toContain(`The context "${key}" has no provider above this component`);
+    });
   });
 });

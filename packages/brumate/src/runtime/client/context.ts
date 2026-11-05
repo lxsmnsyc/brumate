@@ -1,12 +1,12 @@
 // Contexts that components provide and read, and the values that the runtime provides to the
 // whole page.
 
-import { HAS_ROUTES, HAS_STORES } from '../features.ts';
-import { CONTEXT_ADDED, ROUTE_KEY } from '../context.ts';
+import { HAS_ROUTES } from '../features.ts';
+import { NAVIGATION_KEY, ROUTE_KEY, missingContext } from '../context.ts';
 import type { Context as ContextValue, Route } from '../context.ts';
 import { madeStores } from '../shared.ts';
 import type { ScopeId, StoreRead } from '../shared.ts';
-import { Store, findStored, isContext, sendStore } from '../store.ts';
+import { Store, findStored, sendStore } from '../store.ts';
 import type { StoreLike } from '../store.ts';
 import { loadModule } from './code.ts';
 import { findRoot, resolveScope } from './scopes.ts';
@@ -59,7 +59,13 @@ export function consumeContext<T>(
   if (HAS_ROUTES && context.key === ROUTE_KEY && !globals.has(ROUTE_KEY)) {
     globals.set(ROUTE_KEY, currentRoute());
   }
-  return (globals.has(context.key) ? globals.get(context.key) : context.defaultValue) as T;
+  if (HAS_ROUTES && context.key === NAVIGATION_KEY && !globals.has(NAVIGATION_KEY)) {
+    globals.set(NAVIGATION_KEY, { pending: false });
+  }
+  if (!globals.has(context.key)) {
+    throw missingContext(context.key);
+  }
+  return globals.get(context.key) as T;
 }
 
 /** The values of the contexts that the runtime provides to the whole page, by key. */
@@ -94,40 +100,14 @@ export function updateRoute(): void {
 
 // Stores in contexts: `$toStore` in a provided value, and `$store` in a reader.
 
-/** The reads of `$store` whose context has no provider and whose module has not run yet, by key. */
-const waitingReads = new Map<string, [Scope, StoreRead][]>();
-
-/** The contexts that the modules of the page made, by key, for the stores of their default values. */
-const madeContexts = new Map<string, ContextValue<unknown>>();
-
-if (HAS_STORES) {
-  (globalThis as { [key: symbol]: unknown })[CONTEXT_ADDED] = (context: ContextValue<unknown>) => {
-    madeContexts.set(context.key, context);
-    const reads = waitingReads.get(context.key);
-    if (reads) {
-      waitingReads.delete(context.key);
-      pass(() => {
-        for (const [scope, read] of reads) {
-          // A scope that went before the module ran reads nothing.
-          if (scopes.get(scope.id) === scope) {
-            linkRead(scope, read);
-          }
-        }
-      });
-    }
-  };
-}
-
-/** The store that a read finds from `scope` by the key of its context, or undefined while its module loads. */
-function findStore(scope: Scope, read: StoreRead): StoreLike<unknown> | undefined {
+/** The store that a read finds from `scope` by the key of its context. */
+function findStore(scope: Scope, read: StoreRead): StoreLike<unknown> {
   const [key, , path, write] = read as [string, number, string | undefined, 1 | undefined];
   const provider = findProvider(scope, key);
-  if (!provider && !madeContexts.has(key)) {
-    return undefined;
+  if (!provider) {
+    throw missingContext(key);
   }
-  return findStored(madeContexts.get(key) ?? { key, defaultValue: undefined }, path, !!write, () =>
-    provider ? provider.v![key] : madeContexts.get(key)!.defaultValue,
-  );
+  return findStored({ key }, path, !!write, () => provider.v![key]);
 }
 
 /**
@@ -154,16 +134,9 @@ function subscribeSlot(
   }
 }
 
-/** Links a read of `$store` that a scope resumed with, now or once the module of its context runs. */
+/** Links a read of `$store` that a scope resumed with. */
 function linkRead(scope: Scope, read: StoreRead): void {
-  const found = findStore(scope, read);
-  if (found) {
-    subscribeSlot(scope, read[1], found, true, read[3]);
-    return;
-  }
-  const reads = waitingReads.get(read[0] as string) ?? [];
-  reads.push([scope, read]);
-  waitingReads.set(read[0] as string, reads);
+  subscribeSlot(scope, read[1], findStore(scope, read), true, read[3]);
 }
 
 /**
@@ -229,12 +202,12 @@ export function consumeStore<T>(
   write?: boolean,
 ): T {
   const target = resolveScope(scope)!;
-  if (isContext(source)) {
-    madeContexts.set(source.key, source);
-  }
   const found = findStored(source, path, write, (context) => {
     const provider = findProvider(target, context.key);
-    return provider ? provider.v![context.key] : context.defaultValue;
+    if (!provider) {
+      throw missingContext(context.key);
+    }
+    return provider.v![context.key];
   });
   if (slot >= 0) {
     subscribeSlot(target, slot, found, false, write);

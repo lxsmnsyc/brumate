@@ -1,9 +1,0 @@
-<script>
-  import { $getContext, $store } from 'brumate/signals';
-  import { Mixed } from './contexts.ts';
-
-  const field = $getContext(Mixed);
-  const state = $store(field.state);
-</script>
-
-<p class="read">{field.label}:{state.count}</p>

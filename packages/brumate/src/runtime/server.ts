@@ -107,7 +107,7 @@ export { produce } from './produce.ts';
 export { searchParam } from './search-params.ts';
 export { createContext, navigationContext, routeContext } from './context.ts';
 export type { NavigationState, Route } from './context.ts';
-import { ROUTE_KEY } from './context.ts';
+import { NAVIGATION_KEY, ROUTE_KEY, missingContext } from './context.ts';
 import { matchRoute, missingPage, notFound } from './router.ts';
 import type { MiddlewareLoader, RouteMatch, RouteNode, RouteView } from './router.ts';
 export { matchRoute } from './router.ts';
@@ -802,7 +802,11 @@ export class Context {
       const url = new URL(this.root.event?.request.url ?? 'http://localhost/');
       return { url, search: url.searchParams, params: this.root.params } as T;
     }
-    return context.defaultValue;
+    // No navigation pends while a page renders on the server.
+    if (context.key === NAVIGATION_KEY) {
+      return { pending: false } as T;
+    }
+    throw missingContext(context.key);
   }
 
   /** The ID that the next call to `scope()` returns. */

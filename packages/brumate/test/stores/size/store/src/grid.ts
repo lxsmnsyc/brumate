@@ -1,6 +1,5 @@
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Store } from 'brumate/store';
 
 export interface GridState {
@@ -13,7 +12,4 @@ export interface GridValue {
   select: (day: number) => void;
 }
 
-export const Grid: Context<GridValue> = createContext<GridValue>('grid', {
-  state: store({ selected: 0, focused: 0 }),
-  select: () => {},
-});
+export const Grid: Context<GridValue> = createContext<GridValue>('grid');
