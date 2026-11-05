@@ -4,7 +4,7 @@
 
 Every context in `packages/ui` that carried a changing value now carries it in a store. The ui build (`vite build` of `examples/ui`) prints 0 "context value reads" warnings; it printed 66 on 1739a254.
 
-- `packages/ui/src/locale.ts`, `date-strings.ts`: `LocaleContext` and `DateStringsContext` are `StoreLike`, with a store default. `I18nProvider` gives one store per context (`$toStore` of its memos). The 28 readers use `$store(LocaleContext)` or `$store(DateStringsContext)` and keep the names `locale` and `strings`.
+- `packages/ui/src/locale.ts`, `date-strings.ts`: `LocaleContext` is a `StoreLike<Locale | null>` and `DateStringsContext` a `StoreLike<DateStrings | null>`, both with `store(null)` as default. `I18nProvider` gives one store per context (`$toStore` of its memos). The 28 readers of the locale do `const localeStore = $store(LocaleContext); const locale = $memo(localeStore ?? DEFAULT_LOCALE)` (`DEFAULT_LOCALE` is `en-US`, exported from `locale.ts`), so the rest of each part still reads `locale.locale`. The 4 readers of the strings use `$store(DateStringsContext)` and keep the name `strings`.
 - `packages/ui/src/contexts.ts`:
   - `ButtonContext` is `ButtonGiven` (`state` store of `ContextValue<ButtonStateProps>`, `handlers` of `ContextValue<ButtonHandlers>`, same slot names). `LinkContext` is `LinkGiven` the same way (`LinkStateProps`, `LinkHandlers`). `ButtonContextProps` and `LinkContextProps` stay as the union of both.
   - `TextContext` is a store of `ContextValue<AttributeProps>`; all 20 providers give it with `$toStore`.
@@ -35,6 +35,8 @@ Contexts still on the live path, and why each is safe for static-contexts-final:
 
 ## Gotchas
 
+- A context default store must hold `null` (or another value that is identical in the browser), not an object. The resume of a reader writes its slot when `found.get()` is not `Object.is` the value sent by the server (`subscribeSlot` with `repair`, `packages/brumate/src/runtime/client/context.ts`). A default `store(createLocale('en-US'))` is a new object in the browser, so every reader of the locale wrote its slot at load. That write ran a context pass that changed the skip link of the ui example: `<VisuallyHidden as="a" class="skip" focusable>` lost `visually-hidden focusable` from its `class` (the e2e step "the skip link shows on focus" failed: 137 px wide before focus). With the `null` default the e2e passes. I did not reproduce the lost class with a vitest mount (a click and a default object store did not do it), so I make no claim about a core bug; a later node that uses a non-null default store should run the ui e2e.
+
 - Read a store from a context in two statements: `const given = $getContext(Ctx); const value = $store(given.state);`. A context that is a store alone is `$store(Ctx)`. Mixing them up fails at render with "gives no store".
 - `.brm` files are not formatted by `oxfmt`. Keep a long import on one line only if the file already does; the formatter will not wrap it.
 - `slotProps` throws for a slot the value lacks. `ButtonContext` reads the state with `slotProps` and the handlers with `slotHandlers`, which gives `{}`, so a slot with state and no handler is fine.
@@ -51,8 +53,8 @@ Contexts still on the live path, and why each is safe for static-contexts-final:
 - `pnpm lint` (exit 0, warnings only), `pnpm format:check` (pass), `pnpm typecheck` (pass, all packages).
 - `npx vitest run` in packages/ui, 73 files in four groups, all pass (1 expected fail), excluding `bind-kept-writes` and `token-field-sync`, which pass alone (2 and 5 tests). Includes `i18n-locale-change`, `date-i18n` and `I18nProvider`.
 - field-stores on 1739a254 `packages/ui/src`: the two new tests fail; here: pass.
-- Ui example JS (vite build of `examples/ui`, gzip -9 per `.js` file under `dist`, summed): base 1739a254 203,136 B, now SIZE_AFTER B. Not a measure of `load`.
-- ui e2e (`node e2e/run.mjs --only ui`): E2E_RESULT.
+- Ui example JS (vite build of `examples/ui`, gzip -9 per `.js` file under `dist`, summed): base 1739a254 203,136 B, now 207,214 (+4,078 B, +2.0%) B. Not a measure of `load`.
+- ui e2e (`node e2e/run.mjs --only ui`): 55 passed, 0 failed (after the locale fix below; the first two runs failed the VisuallyHidden skip link step).
 
 ## Size
 
