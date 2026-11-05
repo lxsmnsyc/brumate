@@ -1,7 +1,7 @@
 ---
 id: static-contexts-final
 title: Every context is static: delete the live-context path
-status: todo
+status: active
 priority: must
 type: refactor
 story: context-stores
