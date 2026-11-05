@@ -10,7 +10,10 @@ export interface SelectionIndicatorState {
 }
 
 export const SelectionIndicatorContext: Context<StoreLike<SelectionIndicatorState | null>> =
-  createContext<StoreLike<SelectionIndicatorState | null>>('brumate-ui:selection-indicator', store(null));
+  createContext<StoreLike<SelectionIndicatorState | null>>(
+    'brumate-ui:selection-indicator',
+    store(null),
+  );
 
 /** The element that the indicators of one selection move in: the collection or the group. */
 const CONTAINER = '[data-collection], [role=radiogroup], [role=toolbar]';

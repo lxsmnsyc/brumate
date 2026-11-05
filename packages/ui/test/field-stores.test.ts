@@ -1,6 +1,6 @@
-// The field, form, calendar, date, color and collection parts give changing values through stores. Their handlers still go through
+// The parts of the library give changing values through stores. Their handlers still go through
 // the context, and the compiler keeps an update of the context for them until the live path is gone.
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { compile } from 'brumate';
 import { expect, it } from 'vitest';
@@ -232,4 +232,89 @@ it('passes the collection, menu, select and combobox contexts no changing value 
   // finds none is broken.
   expect(shaped).toBeGreaterThan(10);
   expect(problems).toEqual([]);
+});
+
+/** The `.brm` parts of the library. */
+function partNames(): string[] {
+  const names: string[] = [];
+  for (const file of readdirSync(join(import.meta.dirname, '../src'))) {
+    if (file.endsWith('.brm')) {
+      names.push(file.slice(0, -'.brm'.length));
+    }
+  }
+  return names;
+}
+
+/** The contexts that the compiled code of a part updates. */
+function updatedContexts(text: string): Set<string> {
+  const found = new Set<string>();
+  for (const match of text.matchAll(/updateContext\(\$\$s, (\w+)/g)) {
+    found.add(match[1]!);
+  }
+  return found;
+}
+
+it('passes no context of any part a changing value through the live context path', () => {
+  const problems: string[] = [];
+  let updates = 0;
+  let buttons = 0;
+  const contexts = new Set<string>();
+  for (const name of partNames()) {
+    const path = join(import.meta.dirname, `../src/${name}.brm`);
+    const { parts, client } = compile(readFileSync(path, 'utf8'), {
+      filename: `${name}.brm`,
+      path,
+    });
+    const text = [client, ...Object.values(parts)].join('\n');
+    for (const context of updatedContexts(text)) {
+      contexts.add(context);
+      for (const update of liveUpdates(text, context)) {
+        updates++;
+        if (context === 'ButtonContext') {
+          buttons++;
+        }
+        if (
+          !update
+            .slice(update.indexOf(`${context},`) + context.length + 1)
+            .trimStart()
+            .startsWith('{')
+        ) {
+          // A store, or a value that is no object.
+          if (update.includes('$$b.get(')) {
+            problems.push(`${name} gives ${context} a changing value without a store`);
+          }
+          continue;
+        }
+        for (const [key, value] of providedKeys(update)) {
+          // A function reads state when it runs, which is the live path of a handler.
+          const isFunction = value.includes('=>') || value.includes('.bind(');
+          if (!isFunction && value.includes('$$b.get(') && !FORWARDED.get(name)?.has(key)) {
+            problems.push(`${name} gives ${context} the changing value ${key} without a store`);
+          }
+        }
+      }
+    }
+  }
+  // The providers of handlers keep an update of their context, so a scan that finds few is broken.
+  expect(updates).toBeGreaterThan(40);
+  expect(contexts.size).toBeGreaterThan(20);
+  expect(buttons).toBeGreaterThan(5);
+  expect(problems).toEqual([]);
+});
+
+it('compiles no part of the library with a warning that a context value reads a changing name', () => {
+  const found: string[] = [];
+  let compiled = 0;
+  for (const name of partNames()) {
+    const path = join(import.meta.dirname, `../src/${name}.brm`);
+    const { warnings } = compile(readFileSync(path, 'utf8'), { filename: `${name}.brm`, path });
+    compiled++;
+    for (const warning of warnings) {
+      if (warning.message.includes('context value reads')) {
+        found.push(`${name}: ${warning.message}`);
+      }
+    }
+  }
+  expect(compiled).toBeGreaterThan(100);
+  expect(found).toEqual([]);
 });

@@ -41,10 +41,9 @@ export interface ButtonGiven {
   handlers?: ContextValue<ButtonHandlers> | null;
 }
 
-export const ButtonContext: Context<ButtonGiven> = createContext<ButtonGiven>(
-  'brumate-ui:button',
-  { state: store(null) },
-);
+export const ButtonContext: Context<ButtonGiven> = createContext<ButtonGiven>('brumate-ui:button', {
+  state: store(null),
+});
 
 /** The attributes of a part that a context can give, such as `id` or `aria-label`. */
 export interface AttributeProps {
