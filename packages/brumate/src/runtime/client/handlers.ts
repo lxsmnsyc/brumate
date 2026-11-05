@@ -1,7 +1,8 @@
 // Handlers of events: the handler of an element, the handlers that one event merges from spreads
 // and props, and the calls of server functions from forms and `rpc`.
 
-import { HAS_BINDINGS, HAS_CHILDREN, HAS_TEMPLATES } from '../features.ts';
+import { HAS_BINDINGS, HAS_CHILDREN, HAS_STORES, HAS_TEMPLATES } from '../features.ts';
+import { isStore } from '../store.ts';
 import {
   actionAttributes,
   bindEntry,
@@ -117,6 +118,11 @@ export function callable(value: unknown, seen: Set<object>): unknown {
   }
   if (typeof value === 'object' && value !== null && !seen.has(value)) {
     seen.add(value);
+    // The value of a store can hold handlers too.
+    if (HAS_STORES && isStore(value)) {
+      value.v = callable(value.v, seen);
+      return value;
+    }
     const prototype = Object.getPrototypeOf(value);
     if (Array.isArray(value) || prototype === Object.prototype || prototype === null) {
       const record = value as Record<string, unknown>;

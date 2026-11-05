@@ -2,9 +2,10 @@
 // seroval, so the core, which reads the page state without it, stays small.
 // The plugins that write and read these values are in `serial.ts`.
 
-import { HAS_BINDINGS, HAS_CHILDREN } from './features.ts';
+import { HAS_BINDINGS, HAS_CHILDREN, HAS_STORES } from './features.ts';
 import { Internal, ownValue, raw } from './html.ts';
 import type { Raw } from './html.ts';
+import { Store } from './store.ts';
 import type { SerialEntry, ValuePlugin } from './values.ts';
 
 /** The plugins of values of the app, by tag, which the entry `src/serial.ts` exports. */
@@ -360,6 +361,8 @@ export const stateValues: {
   x: (error: unknown) => MemoError;
   /** A value of the app, which a plugin of the entry makes from its data. */
   u: (tag: string, data: unknown) => unknown;
+  /** A store, with its value, and where `$toStore` made it. See `madeStores`. */
+  s: (value: unknown, scope?: ScopeId, site?: number, slot?: number) => Store<unknown>;
 } = {
   e: (scope, anchor) => new ElementReference(scope, anchor),
   f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
@@ -385,7 +388,23 @@ export const stateValues: {
     }
     return plugin.fromData(data);
   },
+  s: HAS_STORES
+    ? (value, scope, site, slot) => {
+        const made = new Store(value);
+        if (scope !== undefined) {
+          made.o = slot === undefined ? [scope, site!] : [scope, site!, slot];
+          madeStores.push(made);
+        }
+        return made;
+      }
+    : unused,
 };
+
+/**
+ * The stores of providers that the page state made, until the core links them to their scopes:
+ * a store of `$toStore(signal)` writes the signal of its provider.
+ */
+export const madeStores: Store<unknown>[] = [];
 
 /** True for a value that `for await` reads, such as the result of an async generator. */
 export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
@@ -395,6 +414,9 @@ export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown>
     typeof (value as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'
   );
 }
+
+/** A read of `$store`: the key of the context, the slot, and the key of the store in the value. */
+export type StoreRead = [key: string, slot: number, path?: string];
 
 /** The state of one scope in the page. */
 export interface ScopeState {
@@ -421,6 +443,11 @@ export interface ScopeState {
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */
   x?: Record<string, number>;
+  /**
+   * The slots that hold the values of stores that `$store` reads: the key of the context, the
+   * slot, and the key of the context value that holds the store, when it is not the value.
+   */
+  z?: StoreRead[];
   /** Slot values, in the order of the scope's layout. */
   s?: unknown[];
   /** The scope IDs of child components, by anchor index. */
@@ -512,6 +539,7 @@ export const SCOPE_IDS: {
     l: 'id',
     v: 'map',
     x: 'none',
+    z: 'none',
     s: 'values',
     c: 'ids',
     b: 'map',

@@ -1,3 +1,5 @@
+import { HAS_STORES } from './features.ts';
+
 /** A value that a component provides to the components inside it. */
 export interface Context<T> {
   /** The same on the server and the client, so the page state can name the context. */
@@ -11,8 +13,20 @@ export interface Context<T> {
  * in the app and the same on the server and the client.
  */
 export function createContext<T>(key: string, defaultValue: T): Context<T> {
-  return { key, defaultValue };
+  const context = { key, defaultValue };
+  if (!HAS_STORES) {
+    return context;
+  }
+  // The browser links readers of a store in the default value once the module of the context runs.
+  const added = (
+    globalThis as { [key: symbol]: ((context: Context<unknown>) => void) | undefined }
+  )[CONTEXT_ADDED];
+  added?.(context);
+  return context;
 }
+
+/** The function that the browser calls with each context that a module makes. */
+export const CONTEXT_ADDED: unique symbol = Symbol.for('brumate.contextAdded') as never;
 
 /** The route of the page, for `$route`. */
 export interface Route<P = Record<string, string>> {

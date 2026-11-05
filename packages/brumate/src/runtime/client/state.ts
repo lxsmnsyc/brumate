@@ -3,6 +3,7 @@
 
 import type { NavigationReport } from '../navigate.ts';
 import type { PageState, ScopeId } from '../shared.ts';
+import type { Store } from '../store.ts';
 import type { SerialEntry } from '../values.ts';
 import type { HiddenBody, Hiding } from './branches.ts';
 import type { Component } from './components.ts';
@@ -69,6 +70,8 @@ export interface Scope {
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */
   x?: Record<string, number>;
+  /** The stores that `$toStore` made in the scope, by the ID of the site. */
+  st?: Record<number, Store<unknown>>;
   /** The slots of a parent that the bound props of a component write, by the slot of the prop. */
   /**
    * What the bound props write, by the slot of the prop: a slot of a parent,

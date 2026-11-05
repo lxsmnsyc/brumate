@@ -1,0 +1,8 @@
+<script>
+  import { $store } from 'brumate/signals';
+  import { Theme } from './contexts.ts';
+
+  const theme = $store(Theme);
+</script>
+
+<p class="theme">{theme}</p>

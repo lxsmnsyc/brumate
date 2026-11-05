@@ -1,7 +1,7 @@
 // Reads the state of the page and starts the core: the state records, the scopes they hold, and
 // what leaving a page or some routes drops.
 
-import { HAS_BINDINGS, HAS_FIELDS, HAS_LATE_MARKUP, HAS_TRIES } from '../features.ts';
+import { HAS_BINDINGS, HAS_FIELDS, HAS_LATE_MARKUP, HAS_STORES, HAS_TRIES } from '../features.ts';
 import {
   CHILDREN,
   ElementReference,
@@ -27,6 +27,7 @@ import {
   unindexed,
 } from './blocks.ts';
 import { loadComponent, pageComponents } from './code.ts';
+import { linkMadeStores, resumeStoreReads } from './context.ts';
 import { leaveGuesses, settled } from './guesses.ts';
 import { failBoundary, replaceTry } from './errors.ts';
 import { callable, handle, isBox, resetHandler } from './handlers.ts';
@@ -276,6 +277,12 @@ function addScopes(state: PageState, root: string): Scope[] {
         }
       }
     }
+  }
+  if (HAS_STORES) {
+    // The stores of providers write their signals, and each reader of a store subscribes and
+    // reads the value that the store has now, which can be newer than the server's.
+    linkMadeStores();
+    resumeStoreReads(added, (scope) => state[scope.id]!.z);
   }
   hooks.added?.(added);
   return added;

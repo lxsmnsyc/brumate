@@ -1,0 +1,11 @@
+<script>
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
+  import { Picker } from './contexts.ts';
+
+  const { name } = $props<{ name: string }>();
+  const picker = $getContext(Picker);
+  const value = $store(Picker);
+  const selected = $memo(value === name);
+</script>
+
+<button class=(`option-${name}`) aria-pressed=(String(selected)) onClick=(() => picker.set(name))>{name}</button>

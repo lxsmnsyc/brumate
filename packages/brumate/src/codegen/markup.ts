@@ -177,13 +177,14 @@ function callsTemplate(site: Site | undefined): boolean {
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
 function specialCall(
   declarator: oxc.VariableDeclarator,
-): '$getContext' | '$id' | '$isPassed' | '$route' | '$navigation' | undefined {
+): '$getContext' | '$store' | '$id' | '$isPassed' | '$route' | '$navigation' | undefined {
   const init = declarator.init;
   if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') {
     return undefined;
   }
   const name = init.callee.name;
   return name === '$getContext' ||
+    name === '$store' ||
     name === '$id' ||
     name === '$isPassed' ||
     name === '$route' ||
@@ -261,6 +262,8 @@ const CLIENT_HELPERS: Record<string, string> = {
   own: 'setOwner',
   provide: 'provideValue',
   consume: 'consumeContext',
+  consumeStore: 'consumeStore',
+  toStore: 'toStore',
   head: 'addHead',
   portal: 'addPortal',
   style: 'addStyle',
@@ -383,6 +386,8 @@ export class Emitter {
   private readonly patch: Patch;
   private readonly options: EmitterOptions;
   private readonly sitesByNode = new Map<object, Site>();
+  /** The context of each `$getContext` declaration, by name, for `$store(name.key)`. */
+  private readonly contextSources = new Map<string, string>();
   private readonly refTargets = new Map<object, Declaration>();
   /** The components inside a `<p>`, which the server checks in development. */
   private readonly inParagraph: Set<object>;
@@ -1539,11 +1544,35 @@ export class Emitter {
         );
         continue;
       }
+      if (call === '$store' && init.arguments[0] && declarator.id.type === 'Identifier') {
+        // `$store(Context)`, or `$store(field.state)` of `const field = $getContext(Context)`.
+        const argument = init.arguments[0];
+        let source = this.source(argument);
+        let path = '';
+        if (
+          argument.type === 'MemberExpression' &&
+          !argument.computed &&
+          argument.object.type === 'Identifier' &&
+          argument.property.type === 'Identifier' &&
+          this.contextSources.has(argument.object.name)
+        ) {
+          source = this.contextSources.get(argument.object.name)!;
+          path = `, ${JSON.stringify(argument.property.name)}`;
+        }
+        const slot = declaration ? slotIndex(this.plan, declaration) : -1;
+        this.line(
+          `const ${declarator.id.name} = ${this.helper('consumeStore')}(${source}, ${target}, ${slot}${path});`,
+        );
+        continue;
+      }
       let context: string | undefined;
       if (call && BUILT_IN_CONTEXTS[call]) {
         context = BUILT_IN_CONTEXTS[call];
       } else if (call === '$getContext' && init.arguments[0]) {
         context = this.source(init.arguments[0]);
+        if (declarator.id.type === 'Identifier') {
+          this.contextSources.set(declarator.id.name, context);
+        }
       }
       if (!context || declarator.id.type !== 'Identifier') {
         this.line(`${statement.kind} ${this.source(declarator)};`);
@@ -2557,6 +2586,21 @@ export class Emitter {
   private providedValue(value: oxc.Node, scope: Scope): string {
     const instance = this.scopeVar(instanceScope(this.plan, scope));
     const mark = (part: oxc.Node, method = false): string | undefined => {
+      // `$toStore(value)`: a store that the page state sends with its scope and site, and the
+      // slot of a signal, which its `set` writes.
+      if (
+        part.type === 'CallExpression' &&
+        part.callee.type === 'Identifier' &&
+        part.callee.name === '$toStore' &&
+        part.arguments[0]
+      ) {
+        const argument = part.arguments[0];
+        const store = this.sitesByNode.get(argument);
+        const declaration =
+          argument.type === 'Identifier' ? lookup(scope, argument.name) : undefined;
+        const slot = declaration?.kind === 'signal' ? `, ${slotIndex(this.plan, declaration)}` : '';
+        return `${this.helper('toStore')}(${this.source(argument)}, ${instance}, ${store?.id ?? -1}${slot})`;
+      }
       const site = this.sitesByNode.get(part);
       const symbol = site?.kind === 'prop' ? this.plan.symbols.get(site) : undefined;
       // A method, such as `toggle() {}`, is a function expression without the keyword.

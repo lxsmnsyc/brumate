@@ -42,6 +42,8 @@ import {
 } from './shared.ts';
 import type { ChildrenReference, MemoError, PropPromise, ScopeId } from './shared.ts';
 import type { ValuePlugin } from './values.ts';
+import { isStore } from './store.ts';
+import type { Store } from './store.ts';
 import type { Binding, SlotReference } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
 
@@ -270,6 +272,35 @@ const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
 });
 
 /**
+ * A store of `brumate/store`: only its value crosses, and where `$toStore` made it, so the
+ * browser makes a new store that the provider writes. Readers subscribe as their scopes resume.
+ */
+const StorePlugin = createPlugin<Store<unknown>, ReferenceNode>({
+  tag: 'brumate/store',
+  skipPlainObjects: true,
+  test: isStore,
+  parse: parsers((value) => {
+    const node: Record<string, unknown> = { a: value.v };
+    if (value.o) {
+      node.b = value.o[0];
+      node.c = value.o[1];
+      if (value.o[2] !== undefined) {
+        node.d = value.o[2];
+      }
+    }
+    return node as Record<'a' | 'b' | 'c' | 'd', unknown>;
+  }),
+  serialize: (node, ctx) => `$b.s(${serializeParts([node.a, node.b, node.c, node.d], ctx)})`,
+  deserialize: (node, ctx) =>
+    stateValues.s(
+      ctx.deserialize(node.a),
+      node.b === undefined ? undefined : ctx.deserialize<ScopeId>(node.b),
+      node.c === undefined ? undefined : ctx.deserialize<number>(node.c),
+      node.d === undefined ? undefined : ctx.deserialize<number>(node.d),
+    ),
+});
+
+/**
  * The index of a file or a blob, and what a part of multipart form data does
  * not keep: the type (an empty one arrives as `application/octet-stream`),
  * whether the value was a blob or a file (every part arrives as a file), and
@@ -384,6 +415,7 @@ const valuePlugins: Plugin<any, any>[] = [
   ChildrenPlugin,
   RawPlugin,
   ComponentPlugin,
+  StorePlugin,
   // The web values of seroval-plugins. Requests and responses need the async or stream modes,
   // so a page state or a call result that holds one streams. The plugin of uploads takes files
   // and blobs, so those of seroval-plugins, which would put their bytes in the JSON, are left out.
