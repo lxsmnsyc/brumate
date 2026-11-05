@@ -1,0 +1,630 @@
+{
+  "round": 2,
+  "claims": {
+    "J1": {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Motivation from the user: a default value is module-global, so it can leak global state, which contradicts a context API that is meant to be local.",
+      "evidence": {
+        "type": "source",
+        "source": "user's request, 2026-11-05",
+        "detail": "\"a default value can leak a potential global state, which is kinda oxymoron since the context api itself is meant to be local\""
+      }
+    },
+    "J2": {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "On feat/context-stores (4ea04dbe), packages/ui/src makes about 40 contexts and nearly all have a default: `null`, `store(null)`, `{ state: store(null) }`, `noInput` or `false`. Parts read them so they work without a provider (a Button outside any group, a Text outside a field).",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep createContext origin/feat/context-stores -- packages/ui/src",
+        "detail": "evidence/ui-create-context.txt"
+      }
+    },
+    "J3": {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "$getContext call sites on feat/context-stores across packages/ui/src, website, examples and packages/brumate/test are listed in evidence/get-context-calls.txt (76 in packages/ui/src alone).",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep '$getContext(' origin/feat/context-stores",
+        "detail": "evidence/get-context-calls.txt"
+      }
+    },
+    "J4": {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "tokens",
+      "text": "Default values carry runtime code on the story branch: createContext calls a global CONTEXT_ADDED hook, and client/context.ts keeps madeContexts and waitingReads so a $store read with no provider links to the store in the default once the context's module runs. server.ts:805 and client/context.ts:62,129,237 fall back to defaultValue.",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep CONTEXT_ADDED/defaultValue origin/feat/context-stores -- packages/brumate/src"
+      }
+    },
+    "J5": {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "A store in a default (`store(null)`) is one object per module on the server, so every request that reads the context without a provider shares it; a write through `let x = $store(...)` in such a reader would cross requests.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/server.ts:805 on feat/context-stores (returns context.defaultValue, the module's object)"
+      }
+    },
+    "J6": {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "State: context-stores story (0.7.0 must) has every node done except store-repair-compare (todo), which plans to restore a LocaleContext en-US default store; the story PR feat/context-stores -> next is not opened. Every context is static since #469 (decisions.md:162).",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/context-stores, memory context-stores-progress, decisions.md on feat/context-stores"
+      }
+    },
+    "J7": {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Project rules: brumate is 0.x, breaking changes are a minor bump and are removed outright with no deprecation period.",
+      "evidence": {
+        "type": "inferred",
+        "source": "memory zero-x-minor-bump and syntax-proposals (user: deprecation is no concern)",
+        "detail": "no deprecation phase or warning release"
+      }
+    },
+    "J8": {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "routeContext and navigationContext have defaults in runtime/context.ts, but the runtime provides both to every page ($route, $navigation), and the server special-cases ROUTE_KEY before the default.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/context.ts:43-52, server.ts:800-804"
+      }
+    },
+    "J9": {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Docs: website/docs/context.md teaches createContext(key, defaultValue) and says a reader without a provider gets the default (lines 46-81).",
+      "evidence": {
+        "type": "source",
+        "source": "website/docs/context.md on feat/context-stores"
+      }
+    },
+    "P1": {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Core change, one node: createContext takes only a key and Context has only key. $getContext throws a named error that carries the context key when no provider above set it, on the server and in the browser. Delete the defaultValue fallbacks (server.ts:805, client/context.ts:62,129,237), the CONTEXT_ADDED hook and the madeContexts and waitingReads maps. routeContext and navigationContext lose their defaults because the runtime already provides both to every page.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/{context.ts,server.ts,client/context.ts} on origin/feat/context-stores; J4, J8",
+        "detail": "net deletion: the story's own link-on-module-run machinery goes away, since a read with no provider no longer needs a store to link to"
+      },
+      "estimate": {
+        "value": 1,
+        "unit": "M node, about 400 lines touched, net negative"
+      }
+    },
+    "P2": {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Optional reads get one explicit, local primitive: a compile-time $hasContext(Context) that returns whether a provider above set it. Contexts are static since #469, so the answer is fixed when the scope is made and keeps the graph static. A part that works with no provider writes `$hasContext(C) ? $getContext(C) : fallback`, and the fallback is built per reader, so it is never module-global and cannot cross requests (J5). It mirrors the `has` of Svelte 5's createContext triplet.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://svelte.dev/docs/svelte/context",
+        "detail": "Svelte 5.40 createContext() returns [get, set, has]; get throws if set was not called in an ancestor; has is the optional read"
+      },
+      "estimate": {
+        "value": 1,
+        "unit": "compiler fn plus runtime check, S-M"
+      }
+    },
+    "P3": {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Ship order after P1 and P2: (a) the 50 `store(null)` defaults in packages/ui/src, where the part already tests `state` for null, become $hasContext checks; (b) the 7 `null`/`false` defaults and the 2 `noInput` defaults. Both are mechanical per site: delete the default argument, replace the read. 61 createContext sites and 76 $getContext calls in ui. One node per batch so each reviews alone.",
+      "evidence": {
+        "type": "measured",
+        "source": "grep over evidence/ui-create-context.txt and evidence/get-context-calls.txt (J2, J3)",
+        "detail": "61 createContext lines, 50 store(null), 7 null/false, 2 noInput; 76 ui calls"
+      },
+      "estimate": {
+        "value": 2,
+        "unit": "M nodes, about 61 sites and 76 calls"
+      }
+    },
+    "P4": {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Landing: build it inside the context-stores story, as a node before store-repair-compare, on feat/context-stores, so the CONTEXT_ADDED, madeContexts and waitingReads code the story added never reaches next. store-repair-compare then no longer restores an en-US LocaleContext default store: LocaleContext reads optionally with $hasContext and falls back to en-US per reader. This removes the one remaining planned default and keeps one story PR to next.",
+      "evidence": {
+        "type": "source",
+        "source": "J6, J4, docs/roadmaps/brumate/nodes/context-stores on feat/context-stores",
+        "detail": "all story nodes done but store-repair-compare; story PR not opened, so there is no released API to break (J7 says 0.x breaks are minor and need no deprecation)"
+      },
+      "estimate": {
+        "value": 0,
+        "unit": "extra PRs to next; one story PR as planned"
+      }
+    },
+    "P5": {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Last node: tests, docs and release text. Update the 24 packages/brumate test calls, 12 website/docs calls and 4 examples/tracker calls, rewrite the default section of website/docs/context.md, change decisions.md, add a test that a missing provider throws with the key in the message, and write the changeset as a minor bump.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/get-context-calls.txt (J3, J9)",
+        "detail": "24 + 12 + 4 non-ui call sites besides the 76 in ui"
+      },
+      "estimate": {
+        "value": 1,
+        "unit": "S-M node"
+      }
+    },
+    "P6": {
+      "id": "P6",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Premise check to record: Solid 1.x has optional defaults and returns undefined with none, and Solid 2.0 keeps an optional default too, but createContext<T>() with none makes useContext throw ContextNotFoundError, and it recommends an explicit null context for optional reads. So brumate going further (no default argument at all) is stricter than Solid and relies on P2 for the optional case, as Svelte does.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "https://docs.solidjs.com/reference/component-apis/create-context and Solid 2.0 MIGRATION.md (github.com/solidjs/solid, next branch)",
+        "detail": "1.x: defaultValue? returns undefined; 2.0: no default means useContext throws ContextNotFoundError, a default falls back, value={undefined} counts as no provider"
+      }
+    },
+    "P7": {
+      "id": "P7",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "answers": [
+        "P2"
+      ],
+      "text": "Cheaper variant with no new compiler function: optional reads take a per-call fallback, `$getContext(C, () => fallback)`. The thunk runs per reader, so it is local and not module-global, but createContext and the throw (P1) stay as proposed. Saves the $hasContext function but the 61 sites each carry a thunk, and the compiler must check the thunk for static reads. Solid 2.0's own advice (a null default) is not usable here, since the null object is the module-global value the goal removes.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "Solid 2.0 MIGRATION.md (github.com/solidjs/solid, next branch)",
+        "detail": "optional context is createContext<T | null>(null), an explicit default; brumate would move that choice to the call site"
+      },
+      "estimate": {
+        "value": 0,
+        "unit": "new compiler fns, 61 fallback thunks"
+      }
+    },
+    "P8": {
+      "id": "P8",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "answers": [
+        "P1"
+      ],
+      "text": "Cheapest variant: keep the default argument but make it a factory, createContext(key, () => value), run per reader, and ban store defaults by type. Needs no ui migration of reads, but keeps defaultValue paths, CONTEXT_ADDED machinery and the stale idea of a context with a hidden value, so it does not reach the goal of key-only createContext. Listed as the floor to beat.",
+      "evidence": {
+        "type": "estimate",
+        "source": "reasoned from J4 and J2"
+      },
+      "estimate": {
+        "value": 1,
+        "unit": "S node"
+      }
+    },
+    "O1": {
+      "id": "O1",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "high",
+      "answers": [
+        "P2",
+        "P3"
+      ],
+      "text": "P2 does not fit $store. Readers bind a store at the top level with `const x = $store(given.state)` or `$store(LabelContext)`, and $store accepts only a context or one key of a $getContext value (BRM194 otherwise). `$hasContext(C) ? $getContext(C) : fallback` gives no store to bind, so the 50 store(null) readers cannot be migrated until $store gains an optional or conditional form. That is a third compiler change that P2 and P3 do not cost.",
+      "estimate": {
+        "value": 1,
+        "unit": "extra M node (optional $store form)"
+      },
+      "evidence": {
+        "type": "source",
+        "source": "git grep '$store(' origin/feat/context-stores -- packages/ui/src (80 files); decisions.md:40 on that branch",
+        "detail": "$store source must be a context or a key of a $getContext value so the browser can find the store again on resume"
+      }
+    },
+    "O2": {
+      "id": "O2",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "high",
+      "answers": [
+        "P1",
+        "P2"
+      ],
+      "text": "Throwing on a missing provider breaks standalone use of ui parts and the resume path. The browser must learn on resume whether a provider existed for $hasContext, so scope state gains a field for it (or the answer is recomputed in every browser render), and the 'static graph' claim of P2 is untested. P1 and P2 give no proof that a Button outside a group still renders on the server and resumes.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/ui/src/Button.brm:83 and J2 (a Button outside any group, a Text outside a field)",
+        "detail": "the story spike needed a resume spike for z records of $store; $hasContext needs the same, and it is not in P2's estimate of S-M"
+      }
+    },
+    "O3": {
+      "id": "O3",
+      "round": 1,
+      "by": "opponent",
+      "kind": "cost",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P3"
+      ],
+      "text": "P3 counts 61 createContext sites and 76 getContext calls but not the readers that use $store(Context) directly, nor each part's test and docs demo that renders a part alone. Each part with a default now needs a provider wrapper in its tests, or a hasContext branch. Two M nodes for about 140 touched sites is low; the story has already needed fix rounds per phase (phase 3 to 6 each had five or more review-fix PRs).",
+      "estimate": {
+        "value": 4,
+        "unit": "M nodes realistic, not 2"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "memory phase3-review-fixes, phase4-review-fixes, phase6-review",
+        "detail": "ui phases took review-fix stacks of 3 to 8 PRs each after the first pass"
+      }
+    },
+    "O4": {
+      "id": "O4",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P4"
+      ],
+      "text": "P4 puts the change inside the open context-stores story, which holds a 0.7.0 must and is one node from its PR. A change that touches 61 ui sites and the compiler delays the story PR and mixes a breaking API change with the store work in one review. Landing it after the story, as a stacked follow-up, keeps the story shippable.",
+      "evidence": {
+        "type": "inferred",
+        "source": "memory no-landing-prs and release-0-7-plan",
+        "detail": "each PR merges itself and the story is a 0.7.0 must; removing the dead machinery after merge costs one small deletion node"
+      }
+    },
+    "O5": {
+      "id": "O5",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "tokens",
+      "answers": [
+        "P1"
+      ],
+      "text": "P1 says the net is a deletion, but the throw needs a named error on server and browser, plus a way for $route and $navigation readers in tests and in non-page roots to still resolve. J8 is true for pages only; tests that mount a component with createContext defaults at packages/brumate/test (24 calls) rely on defaults. The deletion is about 3 sites in src (server.ts:805, client/context.ts:62,129,237, context.ts), small, so the gain is not the argument; the cost sits in the 140 call sites.",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep -n 'defaultValue\\|CONTEXT_ADDED\\|waitingReads' origin/feat/context-stores -- packages/brumate/src",
+        "detail": "runtime src has about 20 lines to delete, so the saving in code is small next to the migration cost"
+      }
+    },
+    "O6": {
+      "id": "O6",
+      "round": 1,
+      "by": "opponent",
+      "kind": "alternative",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P1",
+        "P2",
+        "P8"
+      ],
+      "text": "Cheaper way to the stated motivation (no module-global leaked state): keep a default argument but forbid object and store defaults at the type level and in a compiler check, allowing only primitives (null, false, a string). Primitives cannot leak state. Then only the 50 store(null) sites and the noInput objects change, createContext(key, default) stays, and the CONTEXT_ADDED link code is deleted since store defaults are gone. It misses 'key only', so it is a fallback if O1 and O2 hold.",
+      "estimate": {
+        "value": 1,
+        "unit": "M node"
+      },
+      "evidence": {
+        "type": "inferred",
+        "source": "J1 (motivation: a default leaks global state)",
+        "detail": "a null, false or string default has no mutable state to share between requests"
+      }
+    },
+    "O7": {
+      "id": "O7",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "device",
+      "severity": "low",
+      "answers": [
+        "P2"
+      ],
+      "text": "$hasContext adds a name to every ui part that reads optionally, plus a resume flag per reader in page state. 50 readers per page of a form-heavy app would add bytes to the page and to client code. Unmeasured, so low severity.",
+      "evidence": {
+        "type": "estimate",
+        "source": "reasoned from J4 and the z records of $store",
+        "detail": "one boolean per reader scope, small; needs a measure on the website build"
+      }
+    },
+    "J10": {
+      "id": "J10",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "packages/ui/src has 129 $store calls on feat/context-stores. A $store source must be a context, a key of a $getContext value, or an imported store; any other source is BRM194 (decisions.md:40). So `const g = $hasContext(C) ? $getContext(C) : {state: store(null)}; $store(g.state)` is BRM194, while a fallback given to $getContext itself keeps g a $getContext value.",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep '$store(' origin/feat/context-stores -- packages/ui/src; decisions.md:40",
+        "detail": "evidence/ui-store-calls.txt"
+      }
+    },
+    "J11": {
+      "id": "J11",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "The browser already finds the provider of a context from the page state (client/context.ts findProvider; decisions.md:53), so whether a provider exists is known on resume without a new value in the page state.",
+      "evidence": {
+        "type": "source",
+        "source": "origin/feat/context-stores:packages/brumate/src/runtime/client/context.ts findProvider; docs/decisions.md:53"
+      }
+    },
+    "J12": {
+      "id": "J12",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Solid 2.0 (solid next branch f6b6737, 2.0.0-rc.21) keeps an optional default: createContext<T>() is the canonical form and useContext throws ContextNotFoundError with no Provider; createContext<T>(defaultValue) still falls back, but the docs reserve it for primitive fallbacks (theme, locale, frozen config) because module scope is shared by every request. undefined means not provided; optional contexts use createContext<T | null>(null). There is no hasContext; MIGRATION.md suggests a default or try/catch. The primitive-only rule is advice, not enforced.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "github.com/solidjs/solid next: packages/solid/src/client/core.ts:58-145, packages/signals/src/core/context.ts:20-60, documentation/solid-2.0/MIGRATION.md:726-748",
+        "detail": "read from a shallow clone in the session scratchpad"
+      }
+    },
+    "J13": {
+      "id": "J13",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Svelte 5.40+ (checked on 5.57.3): createContext() takes no key or default and returns [get, set, has]; get throws when no set ran in the component or an ancestor, has returns a boolean. The older getContext(key) returns undefined silently.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "github.com/sveltejs/svelte main: packages/svelte/src/internal/client/context.js:74-106",
+        "detail": "read from a shallow clone in the session scratchpad"
+      }
+    },
+    "P9": {
+      "id": "P9",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "answers": [
+        "P2",
+        "O1"
+      ],
+      "text": "$hasContext is a compile-time `$` function exported from brumate/signals beside $getContext, and is added to the list at decisions.md:7. Call: `$hasContext(Context)` returns a boolean. Server: it runs the same walk up the scope parents that $getContext uses, and returns true when a node above holds the key or the key is ROUTE_KEY. Browser: it calls findProvider on the page state (J11), so no new resume data and no new flag. Providers are static (#469), so the answer is fixed when the scope is made and never changes while the page lives.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md:7 and :53 on feat/context-stores; server.ts:790-805; client/context.ts findProvider (J11)",
+        "detail": "the server walk and findProvider already exist; $hasContext reuses them and returns before the throw"
+      },
+      "estimate": {
+        "value": 1,
+        "unit": "part of the M node N2, about 60 lines"
+      }
+    },
+    "P10": {
+      "id": "P10",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "answers": [
+        "O1",
+        "P2"
+      ],
+      "text": "Answer to O1, exact optional form: a second argument, the literal `true`, on $getContext and on $store. `$getContext(C, true)` returns undefined when no provider is above. `$store(source, true)` takes the same sources as today (a context, or a key of a $getContext value, BRM194 otherwise) and gives undefined when the provider is missing. Ui readers write `const g = $getContext(C, true); const x = $store(g?.state, true)` or `const x = $store(C, true)`; the compiler accepts `g?.state` only when g came from `$getContext(C, true)`. The variable x is undefined without a provider, and the optional form allows only const, so a new BRM error covers `let` and no write reaches a missing store. Server: the read finds no value and records no store link in the page state. Browser: findStore finds no provider on resume (J11), so linkRead and waitingReads are not used and x stays undefined. The compiler checks the literal, so the graph stays static.",
+      "evidence": {
+        "type": "source",
+        "source": "J10, J11, error-catalog.ts BRM194 and client/context.ts findStore/linkRead on feat/context-stores",
+        "detail": "this adds one optional argument to $getContext and to $store, not a new function; ui readers that today test `state` for null test the variable for undefined instead"
+      },
+      "estimate": {
+        "value": 1,
+        "unit": "M node N2 with P9: two flags, one new BRM code for let, compiler, server and client tests"
+      }
+    },
+    "P11": {
+      "id": "P11",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "answers": [
+        "P3",
+        "P5",
+        "O3"
+      ],
+      "text": "Node split, replacing the 2 M nodes of P3 and the S-M node of P5 (O3 asks for realistic sizing). N1 core throw and deletions (P1): M. N2 $hasContext plus the optional flag of $getContext and $store, with BRM codes, server and client resume tests (P9, P10): M. N3 ui batch a, the 50 store(null) readers and the tests that render a part alone, using `$store(C, true)` or `$getContext(C, true)`: M, maybe split by file group if review fixes pile up. N4 ui batch b, the 7 null/false defaults, 2 noInput, the 24 packages/brumate test calls and the Locale reader: M. N5 docs, 4 examples, decisions.md, changeset: S. Total 4 M plus 1 S, with N2 gating N3 and N4, and N1 independent of N2 so it can run first.",
+      "evidence": {
+        "type": "measured",
+        "source": "evidence/ui-create-context.txt, evidence/get-context-calls.txt, J10 (129 $store calls in ui)",
+        "detail": "61 createContext sites, 76 ui $getContext calls, 129 $store calls, 24 test calls; phases 3 to 6 each had 5 or more review-fix PRs per memory phase3-review-fixes, so sizes are M not S"
+      },
+      "estimate": {
+        "value": 5,
+        "unit": "nodes: 4 M and 1 S"
+      }
+    },
+    "P12": {
+      "id": "P12",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "answers": [
+        "P4"
+      ],
+      "text": "Placement against the story: the nodes sit inside the context-stores story, N1 and N2 first, then N3 and N4, all before store-repair-compare. store-repair-compare's LocaleContext en-US default store item is replaced by N4: the Locale reader uses `$getContext(LocaleContext, true)` and falls back to en-US per reader, so no module-global store is restored. The rest of store-repair-compare (the object-memo store test) stays. The story PR to next waits for N5, which is the cost of the user's choice to follow Svelte.",
+      "evidence": {
+        "type": "source",
+        "source": "J6, docs/roadmaps/brumate/nodes/context-stores on feat/context-stores",
+        "detail": "store-repair-compare is the only todo node; the story PR is not opened, so waiting adds no public API break (J7)"
+      },
+      "estimate": {
+        "value": 5,
+        "unit": "added nodes before the story PR; store-repair-compare loses one item"
+      }
+    },
+    "P13": {
+      "id": "P13",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "answers": [
+        "P1",
+        "O5"
+      ],
+      "text": "Answer to O5: the src deletion is small (about 5 sites), so the argument for P1 is correctness, not size: the leak of J1 and J5 goes away and the story's CONTEXT_ADDED, madeContexts and waitingReads code is not shipped. Tests that mount a part alone get a provider or the optional form in N4. Page roots keep $route and $navigation because the runtime provides both (J8); a non-page root in a test provides them or does not read them.",
+      "evidence": {
+        "type": "source",
+        "source": "J4, J5, J8; O5",
+        "detail": "concedes net size is not the case; the case is the global-state leak the user named in J1"
+      },
+      "estimate": {
+        "value": 5,
+        "unit": "src sites changed in N1"
+      }
+    },
+    "O8": {
+      "id": "O8",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "high",
+      "answers": [
+        "P10"
+      ],
+      "text": "P10 gives two optional-read forms, `$hasContext(C)` and the `true` flag, but the user chose $hasContext alone (Q1, Svelte's get/set/has). Svelte has no optional get, so the flag goes past the answer. It also adds a second meaning to the return of $getContext and $store (value or undefined), a rule that `g?.state` is accepted only when g came from a flagged read, and a new BRM code for `let`. That is more compiler surface than the guard it replaces.",
+      "evidence": {
+        "type": "source",
+        "source": "Q1 answer; J13; P10 text",
+        "detail": "Svelte exposes has beside a throwing get; nothing returns undefined for a missing provider"
+      }
+    },
+    "O9": {
+      "id": "O9",
+      "round": 2,
+      "by": "opponent",
+      "kind": "alternative",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P10",
+        "P11"
+      ],
+      "text": "Use $hasContext alone and narrow $store to a guarded form: the compiler accepts `const x = $hasContext(C) ? $store(C) : undefined` (and the same with `$store(g.state)` where g is `$hasContext(C) ? $getContext(C) : undefined`) as one recognised shape. The guard is the user's own primitive, the branch is a compile-time fact (P9, static providers), and no flag, no second return type and no `?.` rule are added. N2 shrinks to $hasContext plus one pattern check in the $store analysis, and readers keep one idiom.",
+      "estimate": {
+        "value": 0,
+        "unit": "new call-signature arguments (P10 adds 2)"
+      },
+      "evidence": {
+        "type": "inferred",
+        "source": "Q1 answer and J10",
+        "detail": "J10 shows the BRM194 rule is about the source, so a source guarded by $hasContext can be allowed without a new call signature"
+      }
+    },
+    "O10": {
+      "id": "O10",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": [
+        "P11",
+        "P12"
+      ],
+      "text": "N3 touches 80 ui files with 129 $store calls, and N2 gates N3 and N4, so the ui work cannot start until the compiler node merges. Placing all five nodes before the story PR means the 0.7.0 must waits for the longest chain (N2, then N3, then N5). Earlier stacks show review-fix rounds after each ui node. The story PR could go first with store-repair-compare's en-US item left out, and the removal follow after, at the cost of shipping CONTEXT_ADDED for one release step.",
+      "estimate": {
+        "value": 3,
+        "unit": "sequential merge stages before the story PR"
+      },
+      "evidence": {
+        "type": "prior-art",
+        "source": "memory phase3-review-fixes, phase4-review-fixes, ui-roadmap-fixes",
+        "detail": "ui batches needed fix PRs on top; 129 call sites in one node is larger than those batches"
+      }
+    },
+    "O11": {
+      "id": "O11",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "tokens",
+      "severity": "medium",
+      "answers": [
+        "P11"
+      ],
+      "text": "N3 as one M node over 80 files is a large agent task, so a worker will re-read many parts and likely need the split P11 mentions (maybe) plus review-fix rounds. Planning it as 3 or 4 file groups up front costs less than splitting after a failed worker run.",
+      "estimate": {
+        "value": 4,
+        "unit": "ui nodes by file group instead of 1 plus 1"
+      },
+      "evidence": {
+        "type": "estimate",
+        "source": "J10 and P11 N3 line",
+        "detail": "129 sites over 80 files; a worker per group of about 20 files fits one context"
+      }
+    },
+    "O12": {
+      "id": "O12",
+      "round": 2,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "low",
+      "answers": [
+        "P9"
+      ],
+      "text": "P9 says the browser answers $hasContext from findProvider (J11), but a provider rendered in the browser after resume and a reader in a scope the page state has not yet recorded are separate paths. P9 needs a test for a provider created by a browser render and for a reader inside a streamed #loading chunk, or the answer can differ between server and browser.",
+      "evidence": {
+        "type": "source",
+        "source": "decisions.md:53 and context-stores-spike outcome (a streamed #loading chunk case)",
+        "detail": "the spike found chunk identity cases that needed their own tests"
+      }
+    }
+  }
+}

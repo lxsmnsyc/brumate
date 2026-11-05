@@ -1,0 +1,293 @@
+origin/feat/context-stores:packages/ui/src/calendar.ts:136:export const DatePickerContext: Context<DatePickerGiven> = createContext<DatePickerGiven>(
+origin/feat/context-stores:packages/ui/src/calendar.ts-137-  'brumate-ui:date-picker',
+origin/feat/context-stores:packages/ui/src/calendar.ts-138-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/calendar.ts-139-);
+--
+origin/feat/context-stores:packages/ui/src/calendar.ts:141:export const CalendarContext: Context<CalendarGiven> = createContext<CalendarGiven>(
+origin/feat/context-stores:packages/ui/src/calendar.ts-142-  'brumate-ui:calendar',
+origin/feat/context-stores:packages/ui/src/calendar.ts-143-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/calendar.ts-144-);
+--
+origin/feat/context-stores:packages/ui/src/calendar.ts:147:export const CalendarGridContext: Context<StoreLike<{ start: DateString } | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/calendar.ts-148-  StoreLike<{ start: DateString } | null>
+origin/feat/context-stores:packages/ui/src/calendar.ts-149->('brumate-ui:calendar-grid', store(null));
+origin/feat/context-stores:packages/ui/src/calendar.ts-150-
+--
+origin/feat/context-stores:packages/ui/src/collection.ts:530:export const ListBoxContext: Context<ListBoxProvided> = createContext<ListBoxProvided>(
+origin/feat/context-stores:packages/ui/src/collection.ts-531-  'brumate-ui:list-box',
+origin/feat/context-stores:packages/ui/src/collection.ts-532-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/collection.ts-533-);
+--
+origin/feat/context-stores:packages/ui/src/collection.ts:561:  createContext<ListBoxGivenProvided>('brumate-ui:list-box-given', { state: store(null) });
+origin/feat/context-stores:packages/ui/src/collection.ts-562-
+origin/feat/context-stores:packages/ui/src/collection.ts-563-/**
+origin/feat/context-stores:packages/ui/src/collection.ts-564- * What a field around a collection gives it, such as the input of a ComboBox or an Autocomplete:
+--
+origin/feat/context-stores:packages/ui/src/collection.ts:594:  createContext<CollectionFocusProvided>('brumate-ui:collection-focus', { state: store(null) });
+origin/feat/context-stores:packages/ui/src/collection.ts-595-
+origin/feat/context-stores:packages/ui/src/collection.ts-596-/** What a section gives its Header: its ID, which names the section. */
+origin/feat/context-stores:packages/ui/src/collection.ts:597:export const SectionContext: Context<{ headerId: string } | null> = createContext<{
+origin/feat/context-stores:packages/ui/src/collection.ts-598-  headerId: string;
+origin/feat/context-stores:packages/ui/src/collection.ts-599-} | null>('brumate-ui:section', null);
+origin/feat/context-stores:packages/ui/src/collection.ts-600-
+--
+origin/feat/context-stores:packages/ui/src/collection.ts:610:export const SelectValueContext: Context<StoreLike<SelectValueState | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/collection.ts-611-  StoreLike<SelectValueState | null>
+origin/feat/context-stores:packages/ui/src/collection.ts-612->('brumate-ui:select-value', store(null));
+origin/feat/context-stores:packages/ui/src/collection.ts-613-
+--
+origin/feat/context-stores:packages/ui/src/color-thumb.ts:108:export const ColorThumbContext: Context<ColorThumbGiven> = createContext<ColorThumbGiven>(
+origin/feat/context-stores:packages/ui/src/color-thumb.ts-109-  'brumate-ui:color-thumb',
+origin/feat/context-stores:packages/ui/src/color-thumb.ts-110-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/color-thumb.ts-111-);
+--
+origin/feat/context-stores:packages/ui/src/color-wheel.ts:23:export const ColorWheelContext: Context<ColorWheelGiven> = createContext<ColorWheelGiven>(
+origin/feat/context-stores:packages/ui/src/color-wheel.ts-24-  'brumate-ui:color-wheel',
+origin/feat/context-stores:packages/ui/src/color-wheel.ts-25-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/color-wheel.ts-26-);
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:44:export const ButtonContext: Context<ButtonGiven> = createContext<ButtonGiven>('brumate-ui:button', {
+origin/feat/context-stores:packages/ui/src/contexts.ts-45-  state: store(null),
+origin/feat/context-stores:packages/ui/src/contexts.ts-46-});
+origin/feat/context-stores:packages/ui/src/contexts.ts-47-
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:59:  createContext<ContextValue<HeadingContextProps> | null>('brumate-ui:heading', null);
+origin/feat/context-stores:packages/ui/src/contexts.ts-60-
+origin/feat/context-stores:packages/ui/src/contexts.ts-61-/** A Text gets its slot from its parent, such as "description" or "errorMessage". */
+origin/feat/context-stores:packages/ui/src/contexts.ts:62:export const TextContext: Context<StoreLike<ContextValue<AttributeProps> | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/contexts.ts-63-  StoreLike<ContextValue<AttributeProps> | null>
+origin/feat/context-stores:packages/ui/src/contexts.ts-64->('brumate-ui:text', store(null));
+origin/feat/context-stores:packages/ui/src/contexts.ts-65-
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:67:export const LabelContext: Context<StoreLike<ContextValue<AttributeProps> | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/contexts.ts-68-  StoreLike<ContextValue<AttributeProps> | null>
+origin/feat/context-stores:packages/ui/src/contexts.ts-69->('brumate-ui:label', store(null));
+origin/feat/context-stores:packages/ui/src/contexts.ts-70-
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:76:  createContext<ContextValue<SeparatorContextProps> | null>('brumate-ui:separator', null);
+origin/feat/context-stores:packages/ui/src/contexts.ts-77-
+origin/feat/context-stores:packages/ui/src/contexts.ts-78-export interface GroupContextProps extends AttributeProps {
+origin/feat/context-stores:packages/ui/src/contexts.ts-79-  isDisabled?: boolean;
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:84:  createContext<StoreLike<ContextValue<GroupContextProps> | null>>('brumate-ui:group', store(null));
+origin/feat/context-stores:packages/ui/src/contexts.ts-85-
+origin/feat/context-stores:packages/ui/src/contexts.ts-86-/** The handlers of a Link that a context can give. They are not in the store of the context. */
+origin/feat/context-stores:packages/ui/src/contexts.ts-87-export type LinkHandlers = ButtonHandlers;
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:104:export const LinkContext: Context<LinkGiven> = createContext<LinkGiven>('brumate-ui:link', {
+origin/feat/context-stores:packages/ui/src/contexts.ts-105-  state: store(null),
+origin/feat/context-stores:packages/ui/src/contexts.ts-106-});
+origin/feat/context-stores:packages/ui/src/contexts.ts-107-
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:114:  createContext<ContextValue<ToggleButtonContextProps> | null>('brumate-ui:toggle-button', null);
+origin/feat/context-stores:packages/ui/src/contexts.ts-115-
+origin/feat/context-stores:packages/ui/src/contexts.ts-116-/** The attributes of an Input or a TextArea that a field gives, such as `id`, `name` and `aria-describedby`. */
+origin/feat/context-stores:packages/ui/src/contexts.ts-117-export interface InputContextProps extends AttributeProps {
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:140:export const InputContext: Context<InputField> = createContext<InputField>(
+origin/feat/context-stores:packages/ui/src/contexts.ts-141-  'brumate-ui:input',
+origin/feat/context-stores:packages/ui/src/contexts.ts-142-  noInput,
+origin/feat/context-stores:packages/ui/src/contexts.ts-143-);
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:145:export const TextAreaContext: Context<InputField> = createContext<InputField>(
+origin/feat/context-stores:packages/ui/src/contexts.ts-146-  'brumate-ui:textarea',
+origin/feat/context-stores:packages/ui/src/contexts.ts-147-  noInput,
+origin/feat/context-stores:packages/ui/src/contexts.ts-148-);
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:155:export const FieldInputContext: Context<StoreLike<Record<string, unknown> | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/contexts.ts-156-  StoreLike<Record<string, unknown> | null>
+origin/feat/context-stores:packages/ui/src/contexts.ts-157->('brumate-ui:field-input', store(null));
+origin/feat/context-stores:packages/ui/src/contexts.ts-158-
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:168:export const FieldErrorContext: Context<StoreLike<FieldErrorState | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/contexts.ts-169-  StoreLike<FieldErrorState | null>
+origin/feat/context-stores:packages/ui/src/contexts.ts-170->('brumate-ui:field-error', store(null));
+origin/feat/context-stores:packages/ui/src/contexts.ts-171-
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:178:export const FormContext: Context<StoreLike<FormState | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/contexts.ts-179-  StoreLike<FormState | null>
+origin/feat/context-stores:packages/ui/src/contexts.ts-180->('brumate-ui:form', store(null));
+origin/feat/context-stores:packages/ui/src/contexts.ts-181-
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:208:export const CheckboxGroupContext: Context<CheckboxGroupGiven> = createContext<CheckboxGroupGiven>(
+origin/feat/context-stores:packages/ui/src/contexts.ts-209-  'brumate-ui:checkbox-group',
+origin/feat/context-stores:packages/ui/src/contexts.ts-210-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/contexts.ts-211-);
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:235:export const RadioGroupContext: Context<RadioGroupGiven> = createContext<RadioGroupGiven>(
+origin/feat/context-stores:packages/ui/src/contexts.ts-236-  'brumate-ui:radio-group',
+origin/feat/context-stores:packages/ui/src/contexts.ts-237-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/contexts.ts-238-);
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:258:export const ToolbarContext: Context<boolean> = createContext<boolean>('brumate-ui:toolbar', false);
+origin/feat/context-stores:packages/ui/src/contexts.ts-259-
+origin/feat/context-stores:packages/ui/src/contexts.ts:260:export const ToggleGroupContext: Context<ToggleGroupGiven> = createContext<ToggleGroupGiven>(
+origin/feat/context-stores:packages/ui/src/contexts.ts-261-  'brumate-ui:toggle-group',
+origin/feat/context-stores:packages/ui/src/contexts.ts-262-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/contexts.ts-263-);
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:285:  createContext<DisclosurePanelGiven>('brumate-ui:disclosure-panel', { state: store(null) });
+origin/feat/context-stores:packages/ui/src/contexts.ts-286-
+origin/feat/context-stores:packages/ui/src/contexts.ts-287-/** What a DisclosureGroup gives its Disclosures, which name themselves with `id`. */
+origin/feat/context-stores:packages/ui/src/contexts.ts-288-export interface DisclosureGroupState {
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:304:  createContext<DisclosureGroupGiven>('brumate-ui:disclosure-group', { state: store(null) });
+origin/feat/context-stores:packages/ui/src/contexts.ts-305-
+origin/feat/context-stores:packages/ui/src/contexts.ts-306-/** What a DialogTrigger gives its overlay: whether it is open, and the IDs that link them. */
+origin/feat/context-stores:packages/ui/src/contexts.ts-307-export interface OverlayTriggerState {
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:343:  createContext<OverlayTriggerGiven>('brumate-ui:overlay-trigger', { state: store(null) });
+origin/feat/context-stores:packages/ui/src/contexts.ts-344-
+origin/feat/context-stores:packages/ui/src/contexts.ts-345-/** What an overlay gives the Dialog inside it: the IDs that name it. */
+origin/feat/context-stores:packages/ui/src/contexts.ts-346-export interface DialogState {
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:361:export const DialogContext: Context<DialogGiven> = createContext<DialogGiven>('brumate-ui:dialog', {
+origin/feat/context-stores:packages/ui/src/contexts.ts-362-  state: store(null),
+origin/feat/context-stores:packages/ui/src/contexts.ts-363-});
+origin/feat/context-stores:packages/ui/src/contexts.ts-364-
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:371:  createContext<ModalOverlayState | null>('brumate-ui:modal-overlay', null);
+origin/feat/context-stores:packages/ui/src/contexts.ts-372-
+origin/feat/context-stores:packages/ui/src/contexts.ts-373-/** What a ColorSwatchPickerItem gives the ColorSwatch inside it: the color of the item. */
+origin/feat/context-stores:packages/ui/src/contexts.ts-374-export interface ColorSwatchState {
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:378:export const ColorSwatchContext: Context<StoreLike<ColorSwatchState | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/contexts.ts-379-  StoreLike<ColorSwatchState | null>
+origin/feat/context-stores:packages/ui/src/contexts.ts-380->('brumate-ui:color-swatch', store(null));
+origin/feat/context-stores:packages/ui/src/contexts.ts-381-
+--
+origin/feat/context-stores:packages/ui/src/contexts.ts:406:export const ColorPickerContext: Context<ColorPickerGiven> = createContext<ColorPickerGiven>(
+origin/feat/context-stores:packages/ui/src/contexts.ts-407-  'brumate-ui:color-picker',
+origin/feat/context-stores:packages/ui/src/contexts.ts-408-  noPicker,
+origin/feat/context-stores:packages/ui/src/contexts.ts-409-);
+--
+origin/feat/context-stores:packages/ui/src/date-strings.ts:193:export const DateStringsContext: Context<StoreLike<DateStrings | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/date-strings.ts-194-  StoreLike<DateStrings | null>
+origin/feat/context-stores:packages/ui/src/date-strings.ts-195->('brumate-ui:date-strings', store(null));
+--
+origin/feat/context-stores:packages/ui/src/layer.ts:13:export const LayerContext: Context<Layer | null> = createContext<Layer | null>(
+origin/feat/context-stores:packages/ui/src/layer.ts-14-  'brumate-ui:layer',
+origin/feat/context-stores:packages/ui/src/layer.ts-15-  null,
+origin/feat/context-stores:packages/ui/src/layer.ts-16-);
+--
+origin/feat/context-stores:packages/ui/src/locale.ts:75:export const LocaleContext: Context<StoreLike<Locale | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/locale.ts-76-  StoreLike<Locale | null>
+origin/feat/context-stores:packages/ui/src/locale.ts-77->('brumate-ui:locale', store(null));
+origin/feat/context-stores:packages/ui/src/locale.ts-78-
+--
+origin/feat/context-stores:packages/ui/src/menu.ts:33:export const MenuTriggerContext: Context<MenuTriggerGiven> = createContext<MenuTriggerGiven>(
+origin/feat/context-stores:packages/ui/src/menu.ts-34-  'brumate-ui:menu-trigger',
+origin/feat/context-stores:packages/ui/src/menu.ts-35-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/menu.ts-36-);
+--
+origin/feat/context-stores:packages/ui/src/menu.ts:60:export const MenuContext: Context<MenuGiven> = createContext<MenuGiven>('brumate-ui:menu', {
+origin/feat/context-stores:packages/ui/src/menu.ts-61-  state: store(null),
+origin/feat/context-stores:packages/ui/src/menu.ts-62-});
+origin/feat/context-stores:packages/ui/src/menu.ts-63-
+--
+origin/feat/context-stores:packages/ui/src/menu.ts:83:export const SubmenuContext: Context<SubmenuGiven> = createContext<SubmenuGiven>(
+origin/feat/context-stores:packages/ui/src/menu.ts-84-  'brumate-ui:submenu',
+origin/feat/context-stores:packages/ui/src/menu.ts-85-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/menu.ts-86-);
+--
+origin/feat/context-stores:packages/ui/src/navigation-tree.ts:22:export const NavigationTreeContext: Context<StoreLike<NavigationTreeState | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/navigation-tree.ts-23-  StoreLike<NavigationTreeState | null>
+origin/feat/context-stores:packages/ui/src/navigation-tree.ts-24->('brumate-ui:navigation-tree', store(null));
+origin/feat/context-stores:packages/ui/src/navigation-tree.ts-25-
+--
+origin/feat/context-stores:packages/ui/src/navigation-tree.ts:34:export const NavigationLinkContext: Context<StoreLike<NavigationLinkState | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/navigation-tree.ts-35-  StoreLike<NavigationLinkState | null>
+origin/feat/context-stores:packages/ui/src/navigation-tree.ts-36->('brumate-ui:navigation-link', store(null));
+origin/feat/context-stores:packages/ui/src/navigation-tree.ts-37-
+--
+origin/feat/context-stores:packages/ui/src/segments.ts:84:export const DateFieldContext: Context<DateFieldGiven> = createContext<DateFieldGiven>(
+origin/feat/context-stores:packages/ui/src/segments.ts-85-  'brumate-ui:date-field',
+origin/feat/context-stores:packages/ui/src/segments.ts-86-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/segments.ts-87-);
+--
+origin/feat/context-stores:packages/ui/src/segments.ts:109:  createContext<DateRangeFieldGiven>('brumate-ui:date-range-field', {
+origin/feat/context-stores:packages/ui/src/segments.ts-110-    startState: store(null),
+origin/feat/context-stores:packages/ui/src/segments.ts-111-    endState: store(null),
+origin/feat/context-stores:packages/ui/src/segments.ts-112-  });
+--
+origin/feat/context-stores:packages/ui/src/selection-indicator.ts:13:  createContext<StoreLike<SelectionIndicatorState | null>>(
+origin/feat/context-stores:packages/ui/src/selection-indicator.ts-14-    'brumate-ui:selection-indicator',
+origin/feat/context-stores:packages/ui/src/selection-indicator.ts-15-    store(null),
+origin/feat/context-stores:packages/ui/src/selection-indicator.ts-16-  );
+--
+origin/feat/context-stores:packages/ui/src/slider.ts:41:export const SliderContext: Context<SliderGiven> = createContext<SliderGiven>('brumate-ui:slider', {
+origin/feat/context-stores:packages/ui/src/slider.ts-42-  state: store(null),
+origin/feat/context-stores:packages/ui/src/slider.ts-43-});
+origin/feat/context-stores:packages/ui/src/slider.ts-44-
+--
+origin/feat/context-stores:packages/ui/src/table.ts:41:export const TableContext: Context<TableGiven> = createContext<TableGiven>('brumate-ui:table', {
+origin/feat/context-stores:packages/ui/src/table.ts-42-  state: store(null),
+origin/feat/context-stores:packages/ui/src/table.ts-43-});
+origin/feat/context-stores:packages/ui/src/table.ts-44-
+--
+origin/feat/context-stores:packages/ui/src/table.ts:50:export const TableRowContext: Context<TableRowState | null> = createContext<TableRowState | null>(
+origin/feat/context-stores:packages/ui/src/table.ts-51-  'brumate-ui:table-row',
+origin/feat/context-stores:packages/ui/src/table.ts-52-  null,
+origin/feat/context-stores:packages/ui/src/table.ts-53-);
+--
+origin/feat/context-stores:packages/ui/src/table.ts:83:export const TableResizeContext: Context<TableResizeGiven> = createContext<TableResizeGiven>(
+origin/feat/context-stores:packages/ui/src/table.ts-84-  'brumate-ui:table-resize',
+origin/feat/context-stores:packages/ui/src/table.ts-85-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/table.ts-86-);
+--
+origin/feat/context-stores:packages/ui/src/table.ts:111:export const ColumnContext: Context<StoreLike<ColumnState | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/table.ts-112-  StoreLike<ColumnState | null>
+origin/feat/context-stores:packages/ui/src/table.ts-113->('brumate-ui:column', store(null));
+--
+origin/feat/context-stores:packages/ui/src/tabs.ts:34:export const TabsContext: Context<TabsGiven> = createContext<TabsGiven>('brumate-ui:tabs', {
+origin/feat/context-stores:packages/ui/src/tabs.ts-35-  state: store(null),
+origin/feat/context-stores:packages/ui/src/tabs.ts-36-});
+origin/feat/context-stores:packages/ui/src/tabs.ts-37-
+--
+origin/feat/context-stores:packages/ui/src/tags.ts:33:export const TagGroupContext: Context<TagGroupGiven> = createContext<TagGroupGiven>(
+origin/feat/context-stores:packages/ui/src/tags.ts-34-  'brumate-ui:tag-group',
+origin/feat/context-stores:packages/ui/src/tags.ts-35-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/tags.ts-36-);
+--
+origin/feat/context-stores:packages/ui/src/toast.ts:191:export const ToastRegionContext: Context<StoreLike<{ queue: string } | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/toast.ts-192-  StoreLike<{ queue: string } | null>
+origin/feat/context-stores:packages/ui/src/toast.ts-193->('brumate-ui:toast-region', store(null));
+origin/feat/context-stores:packages/ui/src/toast.ts-194-
+--
+origin/feat/context-stores:packages/ui/src/toast.ts:197:  createContext<{ titleId: string; descriptionId: string } | null>('brumate-ui:toast', null);
+origin/feat/context-stores:packages/ui/src/toast.ts-198-
+origin/feat/context-stores:packages/ui/src/toast.ts-199-/** The element that had focus before focus moved into the toasts of a queue, by its name. */
+origin/feat/context-stores:packages/ui/src/toast.ts-200-const before = new Map<string, Element>();
+--
+origin/feat/context-stores:packages/ui/src/token-field.ts:113:export const TokenFieldContext: Context<TokenFieldGiven> = createContext<TokenFieldGiven>(
+origin/feat/context-stores:packages/ui/src/token-field.ts-114-  'brumate-ui:token-field',
+origin/feat/context-stores:packages/ui/src/token-field.ts-115-  { state: store(null) },
+origin/feat/context-stores:packages/ui/src/token-field.ts-116-);
+--
+origin/feat/context-stores:packages/ui/src/token-field.ts:119:export const TokenContext: Context<StoreLike<{ isDisabled: boolean } | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/token-field.ts-120-  StoreLike<{ isDisabled: boolean } | null>
+origin/feat/context-stores:packages/ui/src/token-field.ts-121->('brumate-ui:token', store(null));
+origin/feat/context-stores:packages/ui/src/token-field.ts-122-
+--
+origin/feat/context-stores:packages/ui/src/tooltip.ts:29:  createContext<TooltipTriggerGiven>('brumate-ui:tooltip-trigger', { state: store(null) });
+origin/feat/context-stores:packages/ui/src/tooltip.ts-30-
+origin/feat/context-stores:packages/ui/src/tooltip.ts-31-/** How long the others show at once after one hides, in milliseconds. */
+origin/feat/context-stores:packages/ui/src/tooltip.ts-32-const COOLDOWN = 500;
+--
+origin/feat/context-stores:packages/ui/src/transition.ts:20:export const TransitionContext: Context<StoreLike<TransitionParent | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/transition.ts-21-  StoreLike<TransitionParent | null>
+origin/feat/context-stores:packages/ui/src/transition.ts-22->('brumate-ui:transition', store(null));
+origin/feat/context-stores:packages/ui/src/transition.ts-23-
+--
+origin/feat/context-stores:packages/ui/src/tree.ts:71:export const TreeRowContext: Context<StoreLike<TreeRowState | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/tree.ts-72-  StoreLike<TreeRowState | null>
+origin/feat/context-stores:packages/ui/src/tree.ts-73->('brumate-ui:tree-row', store(null));
+origin/feat/context-stores:packages/ui/src/tree.ts-74-
+--
+origin/feat/context-stores:packages/ui/src/tree.ts:87:export const TreeContext: Context<TreeGiven> = createContext<TreeGiven>('brumate-ui:tree', {
+origin/feat/context-stores:packages/ui/src/tree.ts-88-  state: store(null),
+origin/feat/context-stores:packages/ui/src/tree.ts-89-});
+--
+origin/feat/context-stores:packages/ui/src/virtualizer.ts:12:export const VirtualizerContext: Context<StoreLike<VirtualizerState | null>> = createContext<
+origin/feat/context-stores:packages/ui/src/virtualizer.ts-13-  StoreLike<VirtualizerState | null>
+origin/feat/context-stores:packages/ui/src/virtualizer.ts-14->('brumate-ui:virtualizer', store(null));
