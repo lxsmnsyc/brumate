@@ -1,7 +1,7 @@
 ---
 id: ui-stores-calendar
 title: The calendar, date and color parts read live context values from stores
-status: todo
+status: active
 priority: must
 type: refactor
 story: context-stores
