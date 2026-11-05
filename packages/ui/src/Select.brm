@@ -57,6 +57,7 @@
     OverlayTriggerContext,
     TextContext,
   } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, isFirstInvalid, parseMessages, onFormReset } from './fields.ts';
 
@@ -271,15 +272,14 @@
       }
     },
   });
-  $setContext(OverlayTriggerContext, {
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId,
     overlayId,
-    open: () => open(),
-    close,
     placement: 'bottom start',
     keepsContent: true,
   });
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => open(), close });
   const listGiven = $memo<ListBoxGiven>({
     selectedKeys: selectedKey === null ? [] : [selectedKey],
     labelledBy: labelId,

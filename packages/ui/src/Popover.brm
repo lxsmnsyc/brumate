@@ -36,6 +36,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
+  import { store } from 'brumate/store';
   import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
@@ -95,7 +96,8 @@
   let { isOpen } = $props<PopoverOwnProps<T>>();
   let { ref } = $props<PopoverOwnProps<T>>();
 
-  const trigger = $getContext(OverlayTriggerContext);
+  const triggerGiven = $getContext(OverlayTriggerContext);
+  const trigger = $store(triggerGiven.state);
   const parentLayer = $getContext(LayerContext);
   const locale = $store(LocaleContext);
   const own = $isPassed(isOpen);
@@ -119,7 +121,7 @@
   $setContext(DialogContext, { close, labelledBy: trigger?.labelledBy });
   $setContext(TransitionContext, { show: wanted, entered: rested });
   // An overlay inside opens from a DialogTrigger of its own, not from the one of this popover.
-  $setContext(OverlayTriggerContext, null);
+  $setContext(OverlayTriggerContext, { state: store(null) });
   // The buttons and links inside are not the trigger, which gets these contexts.
   $setContext(ButtonContext, null);
   $setContext(LinkContext, null);
@@ -133,7 +135,7 @@
       isOpen = false;
       onOpenChange?.(false);
     } else {
-      trigger?.close();
+      triggerGiven.close?.();
     }
   }
 

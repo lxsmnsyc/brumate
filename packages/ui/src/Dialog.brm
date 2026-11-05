@@ -21,7 +21,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'section'">
-  import { $getContext, $id, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $id, $props, $setContext, $store } from 'brumate/signals';
   import { ButtonContext, DialogContext, HeadingContext, OverlayTriggerContext } from './contexts.ts';
   import { described } from './description.brm.ts';
 
@@ -42,7 +42,8 @@
   let { ref } = $props<DialogOwnProps<T>>();
 
   const overlay = $getContext(DialogContext);
-  const trigger = $getContext(OverlayTriggerContext);
+  const triggerGiven = $getContext(OverlayTriggerContext);
+  const trigger = $store(triggerGiven.state);
   const titleId = $id();
   const { present: titled } = described(titleId);
 
@@ -50,7 +51,7 @@
     if (overlay) {
       overlay.close();
     } else {
-      trigger?.close();
+      triggerGiven.close?.();
     }
   }
 

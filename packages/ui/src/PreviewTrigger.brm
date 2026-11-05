@@ -21,8 +21,9 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $toStore, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { isFocusVisible } from './interactions.ts';
   import { cancelLongPress, dismissed, followPreview, pressForgets, startLongPress, startedOpen } from './preview.ts';
   import { previews } from './tooltip.ts';
@@ -208,10 +209,9 @@
     onPressStart: pressStarted,
     onPressEnd: pressEnded,
   });
+  const overlayState = $memo<OverlayTriggerState>({ isOpen, triggerId, overlayId, isPreview: true });
   $setContext(OverlayTriggerContext, {
-    isOpen,
-    triggerId,
-    overlayId,
+    state: $toStore(overlayState),
     open: () => open(true),
     // The popover closes it, such as on Escape, and gives focus back, which does not open it again.
     // A press outside gives no focus back, so the trigger opens it again on its next focus.
@@ -223,7 +223,6 @@
       }
       close(true);
     },
-    isPreview: true,
   });
 </script>
 

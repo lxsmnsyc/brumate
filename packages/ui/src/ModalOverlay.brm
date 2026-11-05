@@ -19,18 +19,8 @@
 </script>
 
 <script>
-  import {
-    $client,
-    $effect,
-    $getContext,
-    $id,
-    $isPassed,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $untrack,
-  } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, ModalOverlayContext, OverlayTriggerContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
@@ -74,7 +64,8 @@
   // It takes a binding of a value that can be undefined, so a part can pass its own `isOpen` on.
   let { isOpen } = $props<ModalOverlayProps>();
 
-  const trigger = $getContext(OverlayTriggerContext);
+  const triggerGiven = $getContext(OverlayTriggerContext);
+  const trigger = $store(triggerGiven.state);
   const parentLayer = $getContext(LayerContext);
   const own = $isPassed(isOpen);
   const layerId = $id();
@@ -98,7 +89,7 @@
   $setContext(ModalOverlayContext, { close });
   $setContext(TransitionContext, { show: wanted, entered: rested });
   // An overlay inside opens from a DialogTrigger of its own, not from the one of this overlay.
-  $setContext(OverlayTriggerContext, null);
+  $setContext(OverlayTriggerContext, { state: store(null) });
   // The buttons and links inside are not the trigger, which gets these contexts.
   $setContext(ButtonContext, null);
   $setContext(LinkContext, null);
@@ -112,7 +103,7 @@
       isOpen = false;
       onOpenChange?.(false);
     } else {
-      trigger?.close();
+      triggerGiven.close?.();
     }
   }
 

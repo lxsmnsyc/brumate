@@ -42,6 +42,7 @@
     OverlayTriggerContext,
     TextContext,
   } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { dateSegments, formField } from './date-field.brm.ts';
   import { prevent } from 'brumate/events';
   import { described } from './description.brm.ts';
@@ -292,15 +293,14 @@
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
   });
   $setContext(GroupContext, $toStore(groupGiven));
-  $setContext(OverlayTriggerContext, {
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId,
     overlayId,
-    open: () => setOpen(true),
-    close: () => setOpen(false),
     placement: 'bottom start',
     labelledBy: `${triggerId} ${labelId}`,
   });
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => setOpen(true), close: () => setOpen(false) });
   const pickerState = $memo<DatePickerState>({
     value,
     minValue,

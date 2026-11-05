@@ -287,8 +287,6 @@ export interface OverlayTriggerState {
   isOpen: boolean;
   triggerId: string;
   overlayId: string;
-  open: () => void;
-  close: () => void;
   /**
    * A preview, such as of a PreviewTrigger: the overlay is not modal, and focus stays where it
    * is when it opens.
@@ -309,8 +307,19 @@ export interface OverlayTriggerState {
   labelledBy?: string;
 }
 
-export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
-  createContext<OverlayTriggerState | null>('brumate-ui:overlay-trigger', null);
+/** What an overlay calls on its trigger. */
+export interface OverlayTriggerHandlers {
+  open: () => void;
+  close: () => void;
+}
+
+/** What a trigger gives: the store of its state, and its handlers. Outside a trigger there is no handler. */
+export interface OverlayTriggerGiven extends Partial<OverlayTriggerHandlers> {
+  state: StoreLike<OverlayTriggerState | null>;
+}
+
+export const OverlayTriggerContext: Context<OverlayTriggerGiven> =
+  createContext<OverlayTriggerGiven>('brumate-ui:overlay-trigger', { state: store(null) });
 
 /** What an overlay gives the Dialog inside it: the function that closes the overlay. */
 export interface DialogState {

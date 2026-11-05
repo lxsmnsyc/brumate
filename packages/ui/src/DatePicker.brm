@@ -36,6 +36,7 @@
   import { DatePickerContext } from './calendar.ts';
   import type { DatePickerState } from './calendar.ts';
   import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { DateStringsContext } from './date-strings.ts';
   import DateField from './DateField.brm';
 
@@ -116,15 +117,14 @@
     'aria-labelledby': labelId,
   });
   $setContext(GroupContext, $toStore(groupGiven));
-  $setContext(OverlayTriggerContext, {
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId,
     overlayId,
-    open: () => setOpen(true),
-    close: () => setOpen(false),
     placement: 'bottom start',
     labelledBy: `${triggerId} ${labelId}`,
   });
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => setOpen(true), close: () => setOpen(false) });
   const pickerState = $memo<DatePickerState>({
     value,
     minValue,
