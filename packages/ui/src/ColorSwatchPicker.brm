@@ -16,19 +16,7 @@
 </script>
 
 <script>
-  import {
-    $client,
-    $getContext,
-    $isPassed,
-    $handler,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-  } from 'brumate/signals';
+  import { $client, $getContext, $handler, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -81,7 +69,7 @@
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   let root = $signal<HTMLElement>();
   const listId = $id();
 

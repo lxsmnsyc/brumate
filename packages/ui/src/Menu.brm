@@ -38,19 +38,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import {
-    $client,
-    $effect,
-    $getContext,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-    $untrack,
-  } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
@@ -109,7 +97,7 @@
   const fieldGiven = $getContext(CollectionFocusContext);
   const field = $store(fieldGiven.state);
   const dialog = $getContext(DialogContext);
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   const menuId = $id();
   let focusedId = $signal<string>();
 

@@ -32,7 +32,7 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     areaChannels,
@@ -143,7 +143,7 @@
     }
   }
 
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   // The color that a reset of the form gives back.
   let initialValue = $signal(held);
   let dragging = $signal(false);

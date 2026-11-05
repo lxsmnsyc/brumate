@@ -30,7 +30,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $effect, $getContext, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $props, $setContext, $signal, $store, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
@@ -68,7 +68,7 @@
 
   const trigger = $getContext(TooltipTriggerContext);
   const parentLayer = $getContext(LayerContext);
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   const layerId = $id();
   const target = $untrack(parentLayer ? `#${parentLayer.id}` : 'body');
 

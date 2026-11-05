@@ -32,7 +32,7 @@
   const column = $getContext(ColumnContext);
   const sizesGiven = $getContext(TableResizeContext);
   const sizes = $store(sizesGiven.state);
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   if (!column || !sizes) {
     throw new Error('A ColumnResizer goes in a Column of a Table in a ResizableTableContainer.');
   }

@@ -112,7 +112,7 @@
   // apply when the Calendar has none of its own.
   const pickerGiven = $getContext(DatePickerContext);
   const picker = $store(pickerGiven.state);
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   const timeZone = ownTimeZone ?? locale.timeZone;
   const minValue = $memo(ownMinValue ?? picker?.minValue);
   const maxValue = $memo(ownMaxValue ?? picker?.maxValue);
@@ -136,7 +136,7 @@
   // Focus is in a grid of this calendar.
   let isFocused = $signal(false);
 
-  const strings = $getContext(DateStringsContext);
+  const strings = $store(DateStringsContext);
   // The server writes its date, so the first render of the browser matches the HTML. The browser
   // then takes its own, and keeps it up to date.
   let today = $signal(todayString(timeZone));

@@ -15,7 +15,7 @@
 </script>
 
 <script>
-  import { $bind, $getContext, $isPassed, $memo, $props } from 'brumate/signals';
+  import { $bind, $isPassed, $memo, $props, $store } from 'brumate/signals';
   import { LocaleContext } from './locale.ts';
   import Modal from './Modal.brm';
 
@@ -30,7 +30,7 @@
   const { side = 'start', isDismissable = true, children, ...rest } = $props<SheetProps>();
   let { isOpen } = $props<SheetProps>();
 
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   const passed = $isPassed(isOpen);
   const physical = $memo(edge(side, locale.direction));
 

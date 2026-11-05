@@ -119,7 +119,7 @@
   let { selectedKeys = [] } = $props<TableProps<V>>();
   let { sortDescriptor = null } = $props<TableProps<V>>();
 
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   const virtualizer = $getContext(VirtualizerContext);
   // Only a table with its items as data can window, since the rows are then made from the data.
   const windowHeight = $memo(items ? (rowHeight ?? virtualizer?.rowHeight) : undefined);

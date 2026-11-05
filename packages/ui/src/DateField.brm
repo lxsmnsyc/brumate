@@ -40,18 +40,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import {
-    $effect,
-    $getContext,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-    $untrack,
-  } from 'brumate/signals';
+  import { $effect, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { constrain, outOfRange, toDate, todayString } from './calendar.ts';
   import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
@@ -97,7 +86,7 @@
   } = $props<DateFieldProps<T>>();
   let { value = null } = $props<DateFieldProps<T>>();
 
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   const form = $store(FormContext);
   const ownLabelId = $id();
   const labelId = $memo(givenLabelId ?? ownLabelId);
@@ -105,7 +94,7 @@
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
   // The date that a segment starts at, in the range.
-  const strings = $getContext(DateStringsContext);
+  const strings = $store(DateStringsContext);
   const placeholder = $memo(
     constrain(toDate(placeholderValue ?? todayString(locale.timeZone)), minValue, maxValue).toString(),
   );

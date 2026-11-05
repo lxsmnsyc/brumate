@@ -16,7 +16,7 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props, $signal } from 'brumate/signals';
+  import { $getContext, $memo, $props, $signal, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { LocaleContext } from './locale.ts';
   import { SliderContext, getPercent, pointAt, startDrag, thumbId, thumbRange, valueAt } from './slider.ts';
@@ -43,7 +43,7 @@
   } = $props<SliderThumbProps>();
 
   const slider = $getContext(SliderContext);
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   let focused = $signal(false);
   let focusVisible = $signal(false);
   const value = $memo(slider?.values[index] ?? 0);

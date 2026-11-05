@@ -55,21 +55,7 @@
 </script>
 
 <script generics="V extends { id: Key }, T extends AsTarget = 'div'">
-  import {
-    $client,
-    $effect,
-    $getContext,
-    $handler,
-    $id,
-    $isPassed,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-    $untrack,
-  } from 'brumate/signals';
+  import { $client, $effect, $getContext, $handler, $id, $isPassed, $memo, $props, $setContext, $store, $toStore, $untrack } from 'brumate/signals';
   import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
@@ -141,7 +127,7 @@
   let { selectedKeys = [] } = $props<ListBoxOwnProps<V, T>>();
   let { ref } = $props<ListBoxOwnProps<V, T>>();
 
-  const locale = $getContext(LocaleContext);
+  const locale = $store(LocaleContext);
   // A Select around the list keeps the selection, with one item at most.
   const givenState = $getContext(ListBoxGivenContext);
   const given = $store(givenState.state);
