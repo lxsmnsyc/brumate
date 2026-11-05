@@ -181,6 +181,46 @@
       .flow .n i { width: 6px; height: 6px; border-radius: 2px; }
       .flow .ar { color: var(--faint); }
 
+      /* values | graph switch */
+      .seg { display: inline-flex; gap: 2px; padding: 2px; margin-left: auto; border-radius: 8px; background: var(--bg2); box-shadow: inset 0 0 0 1px var(--line); }
+      .seg button { height: 24px; padding: 0 10px; border-radius: 6px; color: var(--dim); font-size: 11.5px; font-weight: 500; transition: background .12s, color .12s; }
+      .seg button:hover { color: var(--text); }
+      .seg button[aria-pressed="true"] { background: var(--hover); color: var(--text); box-shadow: inset 0 0 0 1px var(--line2); }
+      .col.main.gmode { display: flex; flex-direction: column; padding-bottom: 0; }
+
+      /* graph */
+      .gwrap { position: relative; flex: 1; min-height: 160px; margin: 14px -20px 0; border-top: 1px solid var(--line); overflow: hidden; cursor: grab;
+        background: radial-gradient(circle, #ffffff0d 1px, transparent 1.2px) 0 0 / 18px 18px; }
+      .gwrap.panning { cursor: grabbing; }
+      .gwrap > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .gcol { font: 10.5px system-ui; fill: var(--faint); font-weight: 600; }
+      .gn { cursor: pointer; }
+      .gn rect.box { fill: var(--raised); stroke: var(--line2); stroke-width: 1; transition: fill .2s, stroke .2s; }
+      .gn:hover rect.box { stroke: #4a464f; }
+      .gn .kd { font: 10px var(--mono); fill: var(--faint); }
+      .gn .nm { font: 500 12px var(--mono); fill: var(--text); }
+      .gn .vl { font: 11px var(--mono); }
+      .gn.sel rect.box { fill: #ee7a3e14; stroke: #ee7a3e80; }
+      .gn.mark rect.box { fill: #ffd16624; stroke: #ffd166; }
+      .gn.dim { opacity: .35; }
+      .ge { fill: none; stroke: #4a464f; stroke-width: 1.2; transition: stroke .2s, opacity .2s; }
+      .ge.hot { stroke: #ee7a3e; stroke-width: 1.6; }
+      .ge.mark { stroke: #ffd166; stroke-width: 1.6; }
+      .ge.dim { opacity: .25; }
+      .gtools { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 2px; padding: 3px; border-radius: 9px; background: var(--bg); box-shadow: 0 0 0 1px var(--line2), 0 8px 20px #0007; }
+      .gtools .icon { width: 26px; height: 26px; }
+      .gtools .z { font: 10.5px/26px var(--mono); color: var(--faint); min-width: 40px; text-align: center; }
+      .glegend { position: absolute; right: 14px; top: 10px; display: flex; gap: 12px; font-size: 11px; color: var(--faint); pointer-events: none; }
+      .glegend i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 5px; }
+      .gside { position: absolute; top: 10px; right: 10px; bottom: 10px; width: 250px; overflow: auto; padding: 14px 16px; border-radius: 10px; background: var(--bg); box-shadow: 0 0 0 1px var(--line2), 0 12px 32px #0009; cursor: default; animation: rise .2s var(--ease); }
+      .gside h4 { margin: 0; font: 600 13px var(--mono); display: flex; align-items: center; gap: 8px; }
+      .gside .icon { margin-left: auto; width: 24px; height: 24px; }
+      .gside .gv { margin-top: 10px; }
+      .gside .sec { margin: 16px 0 6px; }
+      .gside .lk { display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 8px; margin: 0 -8px; border-radius: 6px; font: 11.5px var(--mono); cursor: pointer; }
+      .gside .lk:hover { background: var(--hover); }
+      .gside .lk i { width: 7px; height: 7px; border-radius: 2px; }
+
       /* activity */
       .act { flex: 1; display: flex; flex-direction: column; min-width: 0; }
       .tools { display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 10px; border-bottom: 1px solid var(--line); flex: none; }
@@ -356,6 +396,12 @@
         <li>
           Resizable panels: drag the line between two columns, or focus it and use the arrow keys
           (Shift for bigger steps). Double-click resets. Sizes are kept for the next open.
+        </li>
+        <li>
+          <b>Graph</b> is back, in Inspect: Values | Graph. Every signal, prop, memo, markup read
+          and effect of a component, with its value. A write marks its node and every node after it
+          in yellow. Click a node for what it reads and what reads it. Drag to pan, scroll or the
+          buttons to zoom.
         </li>
         <li>4 workspaces, ⌘K, server call details as in v1.</li>
       </ol>
@@ -651,6 +697,144 @@
         addSplit();
       }
 
+      /* the graph of each component, from the compiler: sources, memos, then what reads them */
+      const kinds = {
+        signal: { label: 'signal', color: '#ffc28f', col: 0 },
+        prop: { label: 'prop', color: '#ffc28f', col: 0 },
+        memo: { label: '$memo', color: 'var(--purple)', col: 1 },
+        markup: { label: 'markup', color: 'var(--blue)', col: 2 },
+        effect: { label: '$effect', color: 'var(--green)', col: 2 },
+      };
+      const graphs = {
+        Index: [
+          { id: 'todos', kind: 'signal', name: 'todos', value: 'Array(2)', line: 4, reads: [] },
+          { id: 'draft', kind: 'signal', name: 'draft', value: '""', line: 5, reads: [] },
+          { id: 'left', kind: 'memo', name: 'left', value: '1', line: 7, reads: ['todos'] },
+          { id: 'empty', kind: 'memo', name: 'empty', value: 'false', line: 8, reads: ['todos'] },
+          { id: 'small', kind: 'markup', name: '<small> text', value: '"1 left"', line: 31, reads: ['left'] },
+          { id: 'for', kind: 'markup', name: '#for todos', value: '2 items', line: 45, reads: ['todos'] },
+          { id: 'input', kind: 'markup', name: '<input> value', value: '""', line: 34, reads: ['draft'] },
+          { id: 'add', kind: 'markup', name: '<button> disabled', value: 'false', line: 35, reads: ['draft'] },
+          { id: 'hint', kind: 'markup', name: '#if empty', value: 'closed', line: 52, reads: ['empty'] },
+          { id: 'save', kind: 'effect', name: 'save', value: 'ran 1 time', line: 11, reads: ['todos'] },
+        ],
+        Layout: [
+          { id: 'wide', kind: 'signal', name: 'wide', value: 'false', line: 3, reads: [] },
+          { id: 'cls', kind: 'markup', name: 'class:wide', value: 'false', line: 9, reads: ['wide'] },
+        ],
+        App: [
+          { id: 'title', kind: 'prop', name: 'title', value: '"Todos"', line: 2, reads: [] },
+          { id: 'head', kind: 'markup', name: '#head <title>', value: '"Todos"', line: 6, reads: ['title'] },
+        ],
+        Quote: [
+          { id: 'quote', kind: 'signal', name: 'quote', value: '"Ship less code…"', line: 3, reads: [] },
+          { id: 'em', kind: 'markup', name: '<em> text', value: '"Ship less code…"', line: 8, reads: ['quote'] },
+        ],
+        Default: [], Counter: [],
+      };
+      let mode = 'values', gsel = null, gview = null, saves = 1;
+      const NW = 168, NH = 46, CX = 230, RY = 62;
+      function layout(nodes) {
+        const rows = [0, 0, 0], pos = {};
+        // Sources and memos keep their order; the third column follows the rows of what it reads, so fewer lines cross.
+        for (const n of nodes) { const c = kinds[n.kind].col; if (c < 2) pos[n.id] = { x: 30 + c * CX, y: 46 + rows[c]++ * RY }; }
+        const last = nodes.filter(n => kinds[n.kind].col === 2).map(n => ({ n, key: Math.min(...n.reads.map(r => pos[r].y + (kinds[nodes.find(x => x.id === r).kind].col === 1 ? 1 : 0))) }));
+        last.sort((a, b) => a.key - b.key);
+        for (const { n } of last) pos[n.id] = { x: 30 + 2 * CX, y: 46 + rows[2]++ * RY };
+        return pos;
+      }
+      function downstream(nodes, id) {
+        const out = new Map([[id, 0]]), queue = [id];
+        while (queue.length) { const cur = queue.shift(); for (const n of nodes) if (n.reads.includes(cur) && !out.has(n.id)) { out.set(n.id, out.get(cur) + 1); queue.push(n.id); } }
+        return out;
+      }
+      function valueClass(v) { return v.startsWith('"') ? 'str' : /^(true|false)$/.test(v) ? 'bool' : /^\d/.test(v) ? 'num' : 'dim'; }
+      function drawGraph() {
+        const wrap = $('#gwrap', body); if (!wrap) return;
+        const nodes = graphs[sel] || [];
+        if (!nodes.length) { wrap.innerHTML = '<div class="faint" style="padding:20px">Nothing in this component changes in the browser.</div>'; return; }
+        const pos = layout(nodes);
+        const fresh = !gview || gview.of !== sel;
+        if (fresh) gview = { of: sel, x: 0, y: 0, k: 1 };
+        const related = gsel ? new Set([gsel, ...nodes.find(n => n.id === gsel).reads, ...nodes.filter(n => n.reads.includes(gsel)).map(n => n.id)]) : null;
+        const edges = nodes.flatMap(n => n.reads.map(r => {
+          const a = pos[r], b = pos[n.id], x1 = a.x + NW, y1 = a.y + NH / 2, x2 = b.x, y2 = b.y + NH / 2, m = (x1 + x2) / 2;
+          const hot = gsel && (r === gsel || n.id === gsel);
+          return `<path class="ge ${hot ? 'hot' : related ? 'dim' : ''}" data-from="${r}" data-to="${n.id}" d="M${x1},${y1} C${m},${y1} ${m},${y2} ${x2},${y2}"/>`;
+        })).join('');
+        const heads = ['Signals and props', 'Memos', 'Markup and effects'].map((h, i) => `<text class="gcol" x="${30 + i * CX}" y="30">${h}</text>`).join('');
+        const boxes = nodes.map(n => {
+          const p = pos[n.id], k = kinds[n.kind];
+          return `<g class="gn ${n.id === gsel ? 'sel' : ''} ${related && !related.has(n.id) ? 'dim' : ''}" data-g="${n.id}" transform="translate(${p.x},${p.y})" tabindex="0">
+            <rect class="box" width="${NW}" height="${NH}" rx="8"/>
+            <rect x="10" y="12" width="7" height="7" rx="2" fill="${k.color}"/>
+            <text class="kd" x="23" y="19">${k.label}</text>
+            <text class="nm" x="10" y="36">${n.name.replace(/</g, '&lt;')}</text>
+            <text class="vl ${valueClass(n.value)}" x="${NW - 10}" y="19" text-anchor="end" fill="currentColor">${n.value}</text>
+          </g>`;
+        }).join('');
+        const g = gsel && nodes.find(n => n.id === gsel);
+        wrap.innerHTML = `
+          <svg><g id="gview" transform="translate(${gview.x},${gview.y}) scale(${gview.k})">${heads}${edges}${boxes}</g></svg>
+          <div class="glegend">${['signal', 'memo', 'markup', 'effect'].map(k => `<span><i style="background:${kinds[k].color}"></i>${kinds[k].label}</span>`).join('')}</div>
+          <div class="gtools">
+            <button class="icon" data-z="-1" title="Zoom out"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+            <span class="z">${Math.round(gview.k * 100)}%</span>
+            <button class="icon" data-z="1" title="Zoom in"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button>
+            <button class="icon" data-z="0" title="Fit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+          </div>
+          ${g ? `<aside class="gside">
+            <h4><i style="width:8px;height:8px;border-radius:2px;background:${kinds[g.kind].color}"></i>${g.name.replace(/</g, '&lt;')}<button class="icon" id="gx" title="Close">${ico.x}</button></h4>
+            <div class="faint mono" style="margin-top:2px">${kinds[g.kind].label}</div>
+            <div class="val gv"><span class="${valueClass(g.value)}">${g.value}</span></div>
+            <div class="sec">Reads <span class="n">${g.reads.length}</span></div>
+            ${g.reads.map(r => nodes.find(n => n.id === r)).map(n => `<div class="lk" data-to="${n.id}"><i style="background:${kinds[n.kind].color}"></i>${n.name.replace(/</g, '&lt;')}</div>`).join('') || '<div class="faint">Nothing. It is a source.</div>'}
+            <div class="sec">Read by <span class="n">${nodes.filter(n => n.reads.includes(g.id)).length}</span></div>
+            ${nodes.filter(n => n.reads.includes(g.id)).map(n => `<div class="lk" data-to="${n.id}"><i style="background:${kinds[n.kind].color}"></i>${n.name.replace(/</g, '&lt;')}</div>`).join('') || '<div class="faint">Nothing reads it.</div>'}
+            <div class="sec">In the file</div>
+            <a class="path">${tree.find(t => t.name === sel).file}:${g.line}${ico.ext}</a>
+          </aside>` : ''}`;
+        bindGraph(wrap, nodes, pos);
+        if (fresh) fit(wrap, pos);
+      }
+      function setView() { const v = $('#gview', body); if (v) v.setAttribute('transform', `translate(${gview.x},${gview.y}) scale(${gview.k})`); const z = $('.gtools .z', body); if (z) z.textContent = Math.round(gview.k * 100) + '%'; }
+      function fit(wrap, pos) {
+        const xs = Object.values(pos), w = Math.max(...xs.map(p => p.x)) + NW + 30, h = Math.max(...xs.map(p => p.y)) + NH + 20;
+        const r = wrap.getBoundingClientRect(), room = r.width - (gsel ? 270 : 0);
+        gview.k = Math.max(.4, Math.min(1.2, room / w, r.height / h)); gview.x = 0; gview.y = 0; setView();
+      }
+      function zoomAt(k, cx, cy) { k = Math.max(.4, Math.min(2, k)); gview.x = cx - (cx - gview.x) * (k / gview.k); gview.y = cy - (cy - gview.y) * (k / gview.k); gview.k = k; setView(); }
+      function bindGraph(wrap, nodes, pos) {
+        for (const el of wrap.querySelectorAll('.gn')) {
+          el.onclick = e => { e.stopPropagation(); gsel = gsel === el.dataset.g ? null : el.dataset.g; drawGraph(); };
+          el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.onclick(e); } };
+        }
+        for (const el of wrap.querySelectorAll('.lk')) el.onclick = () => { gsel = el.dataset.to; drawGraph(); };
+        const gx = $('#gx', wrap); if (gx) gx.onclick = () => { gsel = null; drawGraph(); };
+        for (const b of wrap.querySelectorAll('[data-z]')) b.onclick = e => {
+          e.stopPropagation(); const r = wrap.getBoundingClientRect();
+          if (b.dataset.z === '0') fit(wrap, pos); else zoomAt(gview.k * (b.dataset.z === '1' ? 1.2 : 1 / 1.2), r.width / 2, r.height / 2);
+        };
+        wrap.onwheel = e => { e.preventDefault(); const r = wrap.getBoundingClientRect(); zoomAt(gview.k * Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top); };
+        wrap.onpointerdown = e => {
+          if (e.target.closest('.gn, .gtools, .gside')) return;
+          const sx = e.clientX - gview.x, sy = e.clientY - gview.y; let moved = false;
+          wrap.setPointerCapture(e.pointerId); wrap.classList.add('panning');
+          wrap.onpointermove = ev => { moved = true; gview.x = ev.clientX - sx; gview.y = ev.clientY - sy; setView(); };
+          wrap.onpointerup = () => { wrap.onpointermove = wrap.onpointerup = null; wrap.classList.remove('panning'); if (!moved && gsel) { gsel = null; drawGraph(); } };
+        };
+      }
+      /* a write marks its node and every node after it, in order, for a moment */
+      function markGraph(of, id) {
+        if (sel !== of || mode !== 'graph' || ws !== 'inspect' || !isOpen()) return;
+        const order = downstream(graphs[of], id);
+        for (const [nid, depth] of order) setTimeout(() => {
+          const el = body.querySelector(`.gn[data-g="${nid}"]`); if (el) { el.classList.add('mark'); setTimeout(() => el.classList.remove('mark'), 900); }
+          for (const e of body.querySelectorAll(`.ge[data-to="${nid}"]`)) if (order.has(e.dataset.from)) { e.classList.add('mark'); setTimeout(() => e.classList.remove('mark'), 900); }
+        }, depth * 140);
+      }
+      function setValue(of, id, v) { const n = (graphs[of] || []).find(x => x.id === id); if (n) n.value = v; const t = body.querySelector(`.gn[data-g="${id}"] .vl`); if (t) { t.textContent = v; } }
+
       /* inspect */
       function inspect() {
         const c = tree.find(t => t.name === sel), s = slots[sel] || [];
@@ -666,16 +850,18 @@
               <span class="meta">${t.meta || (t.off ? 'not on page' : t.scopes + (t.scopes === 1 ? ' scope' : ' scopes'))}</span>
             </div>`).join('')}
         </div>
-        <div class="col main">
-          <div class="title"><h3>${c.name}</h3><a class="path">${c.file}${ico.ext}</a></div>
+        <div class="col main ${mode === 'graph' ? 'gmode' : ''}">
+          <div class="title"><h3>${c.name}</h3><a class="path">${c.file}${ico.ext}</a>
+            <span class="seg" role="group" aria-label="View"><button data-mode="values" aria-pressed="${mode === 'values'}">Values</button><button data-mode="graph" aria-pressed="${mode === 'graph'}">Graph</button></span></div>
           <div class="tags"><span class="tag">${c.scopes} ${c.scopes === 1 ? 'scope' : 'scopes'}</span>${c.defer ? '<span class="tag p">#defer</span>' : ''}${sel === 'Index' ? '<span class="tag g">resumed</span><span class="tag">code loaded on first click</span>' : '<span class="tag g">resumed</span>'}</div>
+          ${mode === 'graph' ? '<div class="gwrap" id="gwrap"></div>' : `
           <div class="sec">Values <span class="n">${s.length}</span></div>
           ${s.length ? `<div class="kv">${s.map(r => `
             <div class="k">${r[0]}</div><div class="ty">${r[1]}</div>
             <div class="v">${r[1] === 'handler' ? `<span class="faint mono">${r[2]}</span>` : `<input data-k="${r[0]}" value='${r[2]}' class="${r[1] === 'string' ? 'str' : r[1] === 'number' ? 'num' : r[1] === 'boolean' ? 'bool' : ''}" spellcheck="false" />`}</div>
             <div class="rd">${r[3]}</div>`).join('')}</div>` : '<div class="faint">No values in this component.</div>'}
           ${sel === 'Index' ? `
-          <div class="sec">What reads todos</div>
+          <div class="sec">What reads todos <button class="chip" data-mode="graph" style="margin-left:auto">Open the graph</button></div>
           <div class="flow">
             <span class="n"><i style="background:#ffc28f"></i>todos</span><span class="ar">→</span>
             <span class="n"><i style="background:var(--purple)"></i>$memo left</span><span class="ar">→</span>
@@ -683,7 +869,7 @@
             <span class="ar" style="margin-left:8px">and</span>
             <span class="n"><i style="background:var(--purple)"></i>#for todos</span><span class="ar">→</span>
             <span class="n"><i style="background:var(--blue)"></i>2 &lt;div&gt;</span>
-          </div>` : ''}
+          </div>` : ''}`}
         </div>`;
       }
       function bindInspect() {
@@ -697,6 +883,8 @@
           if (inp.dataset.k === 'left') $('#left').textContent = inp.value + ' left';
           flashEl('c-index'); push('write', `${inp.dataset.k} ← ${inp.value}`, '', true, 'edited in the dock');
         };
+        for (const b of body.querySelectorAll('[data-mode]')) b.onclick = () => { mode = b.dataset.mode; gsel = null; render(); };
+        drawGraph();
       }
 
       /* activity */
@@ -931,6 +1119,7 @@
       }
       let upd = false;
       $('#upd').onclick = () => { upd = !upd; $('#upd').setAttribute('aria-pressed', upd); };
+      $('#draft').oninput = () => { const v = JSON.stringify($('#draft').value); setValue('Index', 'draft', v); setValue('Index', 'input', v); setValue('Index', 'add', String(!$('#draft').value)); markGraph('Index', 'draft'); };
       $('#add').onclick = () => {
         const v = $('#draft').value.trim() || 'New todo';
         $('#list').insertAdjacentHTML('beforeend', `<div class="todo"><i></i><span>${v}</span></div>`);
@@ -941,6 +1130,8 @@
         calls[id] = { ...calls.save1, from: 'Index · add()', args: [['todos', [...calls.save1.args[0][1], [String(n), { text: `"${v}"`, done: 'false' }]]]],
           timing: [['module', 0, 'var(--faint)'], ['network', 4, 'var(--blue)'], ['server', 11, 'var(--pink)'], ['decode', 1, 'var(--green)']] };
         push('server', 'saveTodos()', '16 ms', true, '200'); if (!paused) log.at(-1).call = id; if (ws === 'activity' && isOpen()) render();
+        setValue('Index', 'todos', `Array(${$('#list').children.length})`); setValue('Index', 'left', String(n)); setValue('Index', 'small', `"${n} left"`);
+        setValue('Index', 'for', `${$('#list').children.length} items`); setValue('Index', 'save', `ran ${++saves} times`); markGraph('Index', 'todos');
         const h = $('#heat-Index'); if (h) { h.classList.remove('on'); void h.offsetWidth; h.classList.add('on'); }
       };
 
