@@ -45,12 +45,12 @@ Not an experiment node.
 
 Todos client JS, measured again after the review on clean builds. Method (`todos-clean.sh`, kept in the session scratchpad): put `packages/brumate/src` of the commit in place (`git checkout <commit> -- packages/brumate/src`), `rm -rf packages/brumate/dist` and `npx tsdown`, then in `benchmarks/brumate` `rm -rf dist node_modules/.vite`, `npx vite build --outDir dist/client` and `npx vite build --ssr src/server.ts --outDir dist/server`. Sum `wc -c` and `gzip -9 -c | wc -c` over every `.js` under `dist/client` (8 files). Two runs each:
 
-|                   | todos raw | todos gzip -9      |
-| ----------------- | --------- | ------------------ |
-| before (e87e290e) | 80,085 B  | 28,427 B, 28,427 B |
-| after (30667f46)  | 80,085 B  | 28,419 B, 28,418 B |
+|                   | todos raw          | todos gzip -9      |
+| ----------------- | ------------------ | ------------------ |
+| before (e87e290e) | 80,085 B, 80,085 B | 28,427 B, 28,427 B |
+| after (f0e7f9d8)  | 80,086 B, 80,085 B | 28,418 B, 28,422 B |
 
-The raw size is the same. The gzip sum moves by about 1 B between runs because of the hashed chunk names. The first figures (28,423 B before, 28,415 B after) came from builds without the `node_modules/.vite` and `packages/brumate/dist` cleanup and should not be used.
+Both sums move by a few bytes between runs because of the hashed chunk names: raw is the same within 1 B, and gzip is 5 to 9 B smaller. The first figures (28,423 B before, 28,415 B after) came from builds without the `node_modules/.vite` and `packages/brumate/dist` cleanup and should not be used.
 
 The ui example (`examples/ui`, the same two builds, gzip -9 summed over `dist/client` JS): 677,928 B raw and 203,374 B gzip before, 677,603 B raw and 203,041 B gzip after (clean build, `dist` and `node_modules/.vite` removed). The key form (`$store(given.state)`) no longer imports the context into `z`. That saving outweighs the `($$s) => (…)` wrappers of the context imports (`$store(LocaleContext)` and the like) and the new resume code.
 
