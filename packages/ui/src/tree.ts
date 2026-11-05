@@ -68,10 +68,9 @@ export interface TreeRowState {
   row: TreeRow;
 }
 
-export const TreeRowContext: Context<TreeRowState | null> = createContext<TreeRowState | null>(
-  'brumate-ui:tree-row',
-  null,
-);
+export const TreeRowContext: Context<StoreLike<TreeRowState | null>> = createContext<
+  StoreLike<TreeRowState | null>
+>('brumate-ui:tree-row', store(null));
 
 /** What a Tree gives its rows. It changes, so it is in a store. */
 export interface TreeState {

@@ -20,7 +20,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $id, $memo, $props, $setContext, $toStore } from 'brumate/signals';
+  import { $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { ToastContext, ToastRegionContext, toastQueue } from './toast.ts';
@@ -36,7 +36,7 @@
   const { as, toast, children, ...rest } = $props<ToastProps<T>>();
   let { ref } = $props<ToastOwnProps<T>>();
 
-  const region = $getContext(ToastRegionContext);
+  const region = $store(ToastRegionContext);
   const titleId = $id();
   const descriptionId = $id();
   // A toast without a description leaves out aria-describedby once the browser is idle.

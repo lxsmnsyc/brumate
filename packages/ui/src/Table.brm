@@ -120,7 +120,7 @@
   let { sortDescriptor = null } = $props<TableProps<V>>();
 
   const locale = $store(LocaleContext);
-  const virtualizer = $getContext(VirtualizerContext);
+  const virtualizer = $store(VirtualizerContext);
   // Only a table with its items as data can window, since the rows are then made from the data.
   const windowHeight = $memo(items ? (rowHeight ?? virtualizer?.rowHeight) : undefined);
   const sizesGiven = $getContext(TableResizeContext);

@@ -134,7 +134,7 @@
   // A field around the list, such as of a ComboBox, keeps focus and can filter the items.
   const fieldGiven = $getContext(CollectionFocusContext);
   const field = $store(fieldGiven.state);
-  const virtualizer = $getContext(VirtualizerContext);
+  const virtualizer = $store(VirtualizerContext);
   // A list windows when its options are made from data. A field around it filters the options in
   // the page, and a horizontal list has no window.
   const windowHeight = $memo(

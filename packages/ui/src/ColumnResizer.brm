@@ -29,7 +29,7 @@
    */
   const { 'aria-label': label = 'Resizer', ...rest } = $props<ColumnResizerProps>();
 
-  const column = $getContext(ColumnContext);
+  const column = $store(ColumnContext);
   const sizesGiven = $getContext(TableResizeContext);
   const sizes = $store(sizesGiven.state);
   const locale = $store(LocaleContext);

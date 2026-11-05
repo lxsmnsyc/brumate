@@ -54,7 +54,7 @@
   } = $props<TreeItemProps<T>>();
   let { ref } = $props<TreeItemOwnProps<T>>();
 
-  const tree = $getContext(TreeRowContext);
+  const tree = $store(TreeRowContext);
   const treeGiven = $getContext(TreeContext);
   const state = $store(treeGiven.state);
   const listGiven = $getContext(ListBoxContext);
