@@ -18,7 +18,8 @@
 
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $memo, $props, $setContext, $store } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
   import { CheckboxGroupContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
@@ -123,7 +124,8 @@
     }
   }
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
   // Each Cell takes the next place, so it knows its column.
   $setContext(TableRowContext, { cells: { count: 0 } });
 </script>

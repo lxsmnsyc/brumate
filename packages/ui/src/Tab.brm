@@ -23,7 +23,8 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import { interact } from './interact.brm.ts';
   import { TabsContext, getSelectedKey, tabId } from './tabs.ts';
@@ -90,7 +91,8 @@
     () => {},
   );
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <{as ?? 'div'}

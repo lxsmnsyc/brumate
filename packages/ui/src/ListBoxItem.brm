@@ -32,7 +32,8 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $store } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { ListBoxContext, keyAttribute } from './collection.ts';
@@ -126,7 +127,8 @@
     () => {},
   );
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <{as ?? 'div'}

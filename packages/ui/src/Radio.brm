@@ -13,7 +13,8 @@
 
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $client, $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
@@ -107,7 +108,8 @@
     }
   }
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <label

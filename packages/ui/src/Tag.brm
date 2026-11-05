@@ -25,7 +25,8 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $id, $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { enabledItems, focusItem, keyAttribute } from './collection.ts';
   import { ButtonContext } from './contexts.ts';
@@ -153,7 +154,8 @@
     keyDown(event);
   }
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <{as ?? 'div'}
