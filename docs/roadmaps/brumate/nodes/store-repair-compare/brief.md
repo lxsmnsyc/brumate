@@ -46,9 +46,12 @@ Compare plain data structurally for the repair (the `savedTheme` test, where the
 
 Second, unexplained: with the object default, the ui e2e skip link (`<VisuallyHidden as="a" class="skip" focusable>`) lost its `visually-hidden focusable` classes at load in a real browser; no vitest probe reproduced it. With the compare fixed and the object default back, run the e2e; if the classes still drop, trace `attr(class)` in the VisuallyHidden update and fix or report it as its own node.
 
+Third, from static-contexts-final: its worker saw a browser-rendered object memo feeding `$toStore` re-send its store after its code loaded, and a template's item scopes created twice, in the `spikeTemplate` differential; it changed the fixture to two stores of primitives. The review could not reproduce it. Read static-contexts-final's outcome (Gotchas) for the original fixture, and add a test that counts reader writes and item scopes for an object memo feeding `$toStore`, rendered by the server and by the browser.
+
 ## Acceptance
 
 - [ ] A test: a context whose default is a store of an object does not rewrite its readers on resume; a browser value that really differs still repairs.
+- [ ] A test counts reader writes and item scopes for an object memo feeding `$toStore` (server and browser render): one write each, no doubled scopes.
 - [ ] LocaleContext defaults to a store of the en-US locale; readers use `$store(LocaleContext)` only; ui tests and `node e2e/run.mjs --only ui` pass.
 - [ ] The ui example's client JS (gzip -9 summed over examples/ui dist JS) before and after.
 - [ ] The changeset of ui-stores-rest's `DEFAULT_LOCALE` note is updated or a new one says the null default is gone.
