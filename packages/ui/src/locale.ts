@@ -66,11 +66,15 @@ export function createLocale(locale: string): Locale {
 }
 
 /**
- * The locale of the parts inside an I18nProvider, as a store, since the locale can change. The
- * default is `en-US`, so the server and the browser format the same way. A language of the browser
- * would differ from the server, which does not know it.
+ * The locale of the parts inside an I18nProvider, as a store, since the locale can change. It holds
+ * null outside one, where the parts use `DEFAULT_LOCALE`, `en-US`, so the server and the browser
+ * format the same way. A language of the browser would differ from the server, which does not know
+ * it. The store holds null and not that locale, because a default store with an object makes every
+ * reader write its slot when the page resumes: the browser makes a new object.
  */
-export const LocaleContext: Context<StoreLike<Locale>> = createContext<StoreLike<Locale>>(
-  'brumate-ui:locale',
-  store(createLocale('en-US')),
-);
+export const LocaleContext: Context<StoreLike<Locale | null>> = createContext<
+  StoreLike<Locale | null>
+>('brumate-ui:locale', store(null));
+
+/** The locale of a part outside an I18nProvider. */
+export const DEFAULT_LOCALE: Locale = createLocale('en-US');

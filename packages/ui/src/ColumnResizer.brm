@@ -10,7 +10,7 @@
 <script>
   import { $getContext, $id, $memo, $props, $signal, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { startDrag } from './drag.ts';
   import { focusRing } from './focus.brm.ts';
   import { ColumnContext, TableResizeContext } from './table.ts';
@@ -32,7 +32,8 @@
   const column = $store(ColumnContext);
   const sizesGiven = $getContext(TableResizeContext);
   const sizes = $store(sizesGiven.state);
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   if (!column || !sizes) {
     throw new Error('A ColumnResizer goes in a Column of a Table in a ResizableTableContainer.');
   }

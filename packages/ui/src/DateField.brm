@@ -47,7 +47,7 @@
   import { described } from './description.brm.ts';
   import { describedBy, parseMessages } from './fields.ts';
   import { DateStringsContext } from './date-strings.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { dateSegments, formField } from './date-field.brm.ts';
   import { DateFieldContext } from './segments.ts';
   import type { DateFieldState } from './segments.ts';
@@ -86,7 +86,8 @@
   } = $props<DateFieldProps<T>>();
   let { value = null } = $props<DateFieldProps<T>>();
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const form = $store(FormContext);
   const ownLabelId = $id();
   const labelId = $memo(givenLabelId ?? ownLabelId);

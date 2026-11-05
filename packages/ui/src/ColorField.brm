@@ -67,7 +67,7 @@
   } from './color.ts';
   import { described } from './description.brm.ts';
   import { describedBy, parseMessages, onFormReset } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { addStep, clamp, listenToWheel, snapToStep, stopWheel } from './numbers.ts';
 
   /**
@@ -125,7 +125,8 @@
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const form = $store(FormContext);
   const inputId = $id();
   const labelId = $id();

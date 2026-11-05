@@ -58,7 +58,7 @@
   } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, parseMessages, onFormReset } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import {
     addStep,
     clamp,
@@ -111,7 +111,8 @@
   const { as = 'div' } = $props<NumberFieldProps<T>>();
   let { value = Number.NaN } = $props<NumberFieldProps<T>>();
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const form = $store(FormContext);
   const inputId = $id();
   const labelId = $id();

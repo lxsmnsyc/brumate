@@ -49,7 +49,7 @@
   import type { ColorThumbState } from './color-thumb.ts';
   import { LabelContext } from './contexts.ts';
   import { onFormReset } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { clamp, snapToStep } from './numbers.ts';
   import { SliderContext, pointAt, startDrag, thumbId, valueAt } from './slider.ts';
   import type { SliderState } from './slider.ts';
@@ -137,7 +137,8 @@
     }
   }
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   // The color that a reset of the form gives back.
   let initialValue = $signal(held);
   let dragging = $signal(false);

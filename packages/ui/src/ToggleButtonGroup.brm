@@ -33,7 +33,7 @@
   import { $client, $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
   import type { ToggleGroupState } from './contexts.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
 
   /**
@@ -58,7 +58,8 @@
   let { selectedKeys = [] } = $props<ToggleButtonGroupOwnProps<T>>();
   let { ref } = $props<ToggleButtonGroupOwnProps<T>>();
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const nested = $getContext(ToolbarContext);
 
   $client(() => {

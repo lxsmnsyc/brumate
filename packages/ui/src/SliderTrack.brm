@@ -8,9 +8,9 @@
 </script>
 
 <script>
-  import { $getContext, $props, $store } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { SliderContext, closestThumb, startDrag, thumbId, valueAt } from './slider.ts';
 
   /**
@@ -22,7 +22,8 @@
 
   const sliderGiven = $getContext(SliderContext);
   const slider = $store(sliderGiven.state);
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
 
   function pressed(event: PointerEvent & { currentTarget: HTMLElement }) {
     const track = event.currentTarget;

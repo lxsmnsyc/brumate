@@ -31,10 +31,10 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { store } from 'brumate/store';
-  import { $client, $effect, $getContext, $id, $props, $setContext, $signal, $store, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { followTrigger, keepArrows } from './position.ts';
   import { mergeStyle } from './style.ts';
   import { TooltipTriggerContext, keepStops, runStops } from './tooltip.ts';
@@ -70,7 +70,8 @@
   const triggerGiven = $getContext(TooltipTriggerContext);
   const trigger = $store(triggerGiven.state);
   const parentLayer = $getContext(LayerContext);
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const layerId = $id();
   const target = $untrack(parentLayer ? `#${parentLayer.id}` : 'body');
 

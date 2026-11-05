@@ -51,7 +51,7 @@
   import { onFormReset } from './fields.ts';
   import type { ColorWheelState } from './color-wheel.ts';
   import { ColorWheelContext, hueDown, hueToPoint, hueUp, pointToHue, wrapHue } from './color-wheel.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { startDrag } from './drag.ts';
   import { thumbId } from './slider.ts';
 
@@ -123,7 +123,8 @@
     }
   }
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   // The color that a reset of the form gives back.
   let initialValue = $signal(held);
   let dragging = $signal(false);

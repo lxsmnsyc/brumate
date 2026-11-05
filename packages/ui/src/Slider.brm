@@ -31,7 +31,7 @@
   import { NumberFormatter } from '@internationalized/number';
   import { LabelContext } from './contexts.ts';
   import { onFormReset } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { snapToStep } from './numbers.ts';
   import { SliderContext, thumbId } from './slider.ts';
   import type { SliderState } from './slider.ts';
@@ -63,7 +63,8 @@
   } = $props<SliderProps>();
   let { value = minValue } = $props<SliderProps>();
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   // The values that a reset of the form gives back.
   let initialValue = $signal(value);
   // The thumbs that a drag moves now.

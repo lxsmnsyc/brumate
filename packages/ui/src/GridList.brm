@@ -76,7 +76,7 @@
     textOfItem,
     typeahead,
   } from './collection.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
   import { VirtualizerContext } from './virtualizer.ts';
   import { findEnabledKeys, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
@@ -125,7 +125,8 @@
   let { selectedKeys = [] } = $props<GridListOwnProps<V, T>>();
   let { ref } = $props<GridListOwnProps<V, T>>();
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const virtualizer = $store(VirtualizerContext);
   // Only a list with its items as data can window, since the rows are then made from the data.
   const windowHeight = $memo(items ? (rowHeight ?? virtualizer?.rowHeight) : undefined);

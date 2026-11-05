@@ -48,7 +48,7 @@
   import { described } from './description.brm.ts';
   import { describedBy, parseMessages } from './fields.ts';
   import { DateStringsContext } from './date-strings.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { DateRangeFieldContext } from './segments.ts';
   import type { DateFieldState } from './segments.ts';
 
@@ -88,7 +88,8 @@
   let { value = null } = $props<DateRangePickerProps<T>>();
   let { isOpen = false } = $props<DateRangePickerProps<T>>();
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const form = $store(FormContext);
   const triggerId = $id();
   const overlayId = $id();

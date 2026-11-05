@@ -82,7 +82,7 @@
     typeahead,
   } from './collection.ts';
   import { FieldInputContext } from './contexts.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { VirtualizerContext } from './virtualizer.ts';
   import { findEnabledKeys, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
 
@@ -127,7 +127,8 @@
   let { selectedKeys = [] } = $props<ListBoxOwnProps<V, T>>();
   let { ref } = $props<ListBoxOwnProps<V, T>>();
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   // A Select around the list keeps the selection, with one item at most.
   const givenState = $getContext(ListBoxGivenContext);
   const given = $store(givenState.state);

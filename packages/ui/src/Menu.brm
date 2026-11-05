@@ -55,7 +55,7 @@
     typeahead,
   } from './collection.ts';
   import { DialogContext, FieldInputContext } from './contexts.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { MENU_ITEMS, MenuContext, MenuTriggerContext, SubmenuContext } from './menu.ts';
   import type { MenuState } from './menu.ts';
 
@@ -97,7 +97,8 @@
   const fieldGiven = $getContext(CollectionFocusContext);
   const field = $store(fieldGiven.state);
   const dialog = $getContext(DialogContext);
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const menuId = $id();
   let focusedId = $signal<string>();
 

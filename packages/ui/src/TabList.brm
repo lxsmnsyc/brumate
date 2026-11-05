@@ -19,7 +19,7 @@
   import { $getContext, $handler, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { enabledItems, focusItem, readItemKey, getKeyMovement, moveFrom } from './collection.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { TabsContext } from './tabs.ts';
 
   /**
@@ -37,7 +37,8 @@
 
   const tabsGiven = $getContext(TabsContext);
   const tabs = $store(tabsGiven.state);
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const orientation = $memo(tabs?.orientation ?? 'horizontal');
 
   function keyDown(event: KeyboardEvent) {

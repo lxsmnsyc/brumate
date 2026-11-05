@@ -75,7 +75,7 @@
     setRange,
     typeahead,
   } from './collection.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
   import { TreeContext, visibleRows } from './tree.ts';
   import { VirtualizerContext } from './virtualizer.ts';
@@ -164,7 +164,8 @@
     return keys;
   }
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const virtualizer = $store(VirtualizerContext);
   const windowHeight = $memo(rowHeight ?? virtualizer?.rowHeight);
   const treeState = $memo<TreeState>({ windowed: Boolean(windowHeight) });

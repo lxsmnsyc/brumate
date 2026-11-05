@@ -42,7 +42,7 @@
   import { ButtonContext, DialogContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
   import type { DialogState } from './contexts.ts';
   import { LayerContext } from './layer.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import {
     blurOutside,
     containTab,
@@ -101,7 +101,8 @@
   const triggerGiven = $getContext(OverlayTriggerContext);
   const trigger = $store(triggerGiven.state);
   const parentLayer = $getContext(LayerContext);
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const own = $isPassed(isOpen);
   const placementPassed = $isPassed(placement);
   const layerId = $id();

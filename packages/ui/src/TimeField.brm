@@ -47,7 +47,7 @@
   import { prevent } from 'brumate/events';
   import { DateStringsContext } from './date-strings.ts';
   import { describedBy, parseMessages } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import {
     DateFieldContext,
     erasePart,
@@ -98,7 +98,8 @@
   } = $props<TimeFieldProps<T>>();
   let { value = null } = $props<TimeFieldProps<T>>();
 
-  const locale = $store(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const form = $store(FormContext);
   const labelId = $id();
   const descriptionId = $id();
