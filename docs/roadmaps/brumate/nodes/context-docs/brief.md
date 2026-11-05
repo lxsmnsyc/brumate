@@ -1,7 +1,7 @@
 ---
 id: context-docs
 title: Docs, examples and decisions for contexts without defaults
-status: todo
+status: active
 priority: must
 type: docs
 story: context-stores
@@ -35,7 +35,7 @@ depends_on:
 
 ## Goal
 
-The last node of docs/debates/context-no-defaults/debate.md. Rewrite the default sections of website/docs/context.md (lines 37 to 81 on the story branch) for `createContext(key)`, the throw and `$hasContext`; update the 12 website docs calls and the 4 examples/tracker calls. Add a decisions.md entry in its own format, linking the debate: contexts have no default, a read without a provider throws, `$hasContext` and the guarded `$store` are the optional read, and why (a default is module-global). Set the debate's `decision:` field to the entry.
+The last node of docs/debates/context-no-defaults/debate.md. Rewrite the default sections of website/docs/context.md (lines 37 to 81 on the story branch) for `createContext(key)`, the throw and `$hasContext`; update the 12 website docs calls and the 4 examples/tracker calls (examples/tracker/src/user.ts still passes a default: TS2554), and skills/brumate/references/state.md, which still shows `createContext('light')`. Add a decisions.md entry in its own format, linking the debate: contexts have no default, a read without a provider throws, `$hasContext` and the guarded `$store` are the optional read, and why (a default is module-global). Set the debate's `decision:` field to the entry.
 
 ## Acceptance
 
