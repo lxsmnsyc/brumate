@@ -1,0 +1,18 @@
+<script>
+  import { $setContext, $signal } from 'brumate/signals';
+  import StoreBusReader from './StoreBusReader.brm';
+  import { Bus } from './contexts.ts';
+
+  let log = $signal('');
+
+  function subscribe() {}
+
+  function publish() {
+    log = `${log}x`;
+  }
+
+  $setContext(Bus, { subscribe, publish });
+</script>
+
+<p class="log">{log}</p>
+<StoreBusReader />

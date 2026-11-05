@@ -3,7 +3,7 @@
   import { Level } from './contexts.ts';
 
   // A store of another library, which the page state cannot send.
-  const foreign = { subscribe: (run: (value: number) => void) => (run(1), () => {}) };
+  const foreign = { get: () => 1, subscribe: (run: (value: number) => void) => (run(1), () => {}) };
   $setContext(Level, foreign as never);
 </script>
 

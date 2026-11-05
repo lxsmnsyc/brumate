@@ -30,6 +30,8 @@ import { $memo, $signal } from 'brumate/signals';
 | `$produce(signal, recipe)`    | `void`                     | Where a signal can be written                                            | [State](./state.md)                                        |
 | `$setContext(context, value)` | `void`                     | Statement at the top level of a script                                   | [Context](./context.md)                                    |
 | `$getContext(context)`        | the value                  | `const` at the top level of a script                                     | [Context](./context.md)                                    |
+| `$store(source)`              | the value of the store     | `const` or `let` at the top level of a script                            | [Context](./context.md#live-values-with-stores)            |
+| `$toStore(value)`             | `Store<T>`                 | A value of `$setContext`                                                 | [Context](./context.md#live-values-with-stores)            |
 | `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)                    |
 | `$navigation()`               | `{ pending, from, to }`    | `const` at the top level of a script                                     | [Navigation](./navigation.md#while-a-page-loads)           |
 | `$id()`                       | `string`                   | `const` at the top level of a script                                     | [Page metadata](./page-metadata.md)                        |
@@ -208,7 +210,7 @@ Changes an object or array in a signal through a draft, and writes the signal wi
 function $setContext<T>(context: Context<T>, value: T): void;
 ```
 
-Provides a value of a context to the components inside this one. A statement at the top level of a script. When `value` changes in the browser, every component that reads it updates. Create the context with `createContext` from `brumate/context`.
+Provides a value of a context to the components inside this one. A statement at the top level of a script. A value that changes belongs in a store made with [`$toStore`](#tostore). The compiler warns when `value` reads a signal, a memo or a `let`, and `$untrack` silences the warning. Create the context with `createContext` from `brumate/context`.
 
 ## `$getContext`
 
@@ -217,6 +219,28 @@ function $getContext<T>(context: Context<T>): T;
 ```
 
 Reads a context from the nearest component above that provides it, or its default value. Assign it to a `const` at the top level of a script.
+
+## `$store`
+
+```ts
+function $store<T>(source: Context<StoreLike<T>> | StoreLike<T>): T;
+```
+
+Binds a store to a variable that holds its value. A store is any value with `get()`, `subscribe(listener)`, which returns the function that stops it, and optionally `set(value)`. See [Live values with stores](./context.md#live-values-with-stores).
+
+- The source is a context that holds the store, a key of the value of a `$getContext`, as in `$store(field.state)`, or a store that the file imports. Anything else is a compile error (BRM194), since the browser must find the store again when the page resumes.
+- It runs once and is not tracked. The subscription ends with the scope.
+- `const x = $store(source)`: the store writes the variable.
+- `let x = $store(source)`: a write to the variable, such as `x = next` or `x++`, also calls `set(next)` of the store. A store without `set` throws a `TypeError` when the variable registers.
+- The variable is a name, not a pattern.
+
+## `$toStore`
+
+```ts
+function $toStore<T>(value: T): Store<T>;
+```
+
+The store of a memo, a signal or a prop, for a value of `$setContext`: the value itself, or the value of a key of an object or an item of a list. The provider writes it when its source changes, so a change reaches every reader in one ordered update. A store of a signal has a `set` that writes the signal. A store of a memo or a prop has none.
 
 ## `$id`
 

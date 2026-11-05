@@ -1,0 +1,12 @@
+<script>
+  import { $setContext, $signal, $toStore } from 'brumate/signals';
+  import StoreLetOption from './StoreLetOption.brm';
+  import { Picker } from './contexts.ts';
+
+  let value = $signal('a');
+  $setContext(Picker, $toStore(value));
+</script>
+
+<p class="chosen">{value}</p>
+<StoreLetOption name="a" />
+<StoreLetOption name="b" />

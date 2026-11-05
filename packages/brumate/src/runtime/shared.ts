@@ -415,8 +415,11 @@ export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown>
   );
 }
 
-/** A read of `$store`: the key of the context, the slot, and the key of the store in the value. */
-export type StoreRead = [key: string, slot: number, path?: string];
+/**
+ * A read of `$store`: the key of the context, or the index of the import in the exports `z` of
+ * the component; the slot; the key of the store in the value; and 1 when `let` writes the store.
+ */
+export type StoreRead = [from: string | number, slot: number, path?: string, write?: 1];
 
 /** The state of one scope in the page. */
 export interface ScopeState {

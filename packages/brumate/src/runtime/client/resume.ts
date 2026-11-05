@@ -425,6 +425,9 @@ export function leavePage(): void {
     for (const cleanup of scope.cleanups?.values() ?? []) {
       cleanup();
     }
+    for (const stop of scope.stops ?? []) {
+      stop();
+    }
   }
   scopes.clear();
   comments.clear();

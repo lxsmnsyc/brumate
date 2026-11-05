@@ -74,6 +74,16 @@ const KEY_EVENTS = new Set(['keydown', 'keyup', 'keypress']);
 
 const COMPILE_TIME_FUNCTIONS = MACROS;
 
+/** The messages of BRM191 to BRM195. */
+const STORE_FORM =
+  'Read a store with "const name = $store(source)" or "let name = $store(source)" at the top level of a script';
+const STORE_ARGUMENT = '$store takes one argument, a context, a store or a key of one';
+const TO_STORE_ARGUMENT =
+  '$toStore takes one argument, a memo, a signal or a prop, as a value of $setContext';
+const STORE_SOURCE =
+  'The browser finds the store of $store again from a context, from a store that the file imports, or from a key of one';
+const STORE_PATTERN = '$store gives one name, not a pattern such as { a }';
+
 const MISPLACED: Record<string, string> = {
   $setContext: 'Call $setContext at the top level of a script',
   $title: 'Call $title at the top level of a script',
@@ -82,7 +92,7 @@ const MISPLACED: Record<string, string> = {
     'Check a prop with "const name = $isPassed(prop)" at the top level of the component script',
   $getContext:
     'Read a context with "const name = $getContext(Context)" at the top level of a script',
-  $store: 'Read a store with "const name = $store(Context)" at the top level of a script',
+  $store: STORE_FORM,
   $route: 'Read the route with "const name = $route()" at the top level of a script',
   $navigation: 'Read the navigation with "const name = $navigation()" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
@@ -105,7 +115,6 @@ const REMOVED: Record<string, string> = {
   $watch: '$watch is not supported. Use $effect',
   $settled: '$settled is not supported. Use $client',
   $cleanup: '$cleanup is not supported. Return a cleanup function from $effect or $client',
-  $store: '$store is not supported yet',
   $get: '$get is not supported. Signals cannot leave the file',
   $set: '$set is not supported. Signals cannot leave the file',
 };
@@ -343,6 +352,12 @@ class Analyzer {
   private readonly declarations: Declaration[] = [];
   private readonly sites: Site[] = [];
   readonly bindings: SemanticModel['bindings'] = [];
+  /** The declarations of `$store`, which `resolveStores` completes. */
+  private readonly storeReaders: Declaration[] = [];
+  /** The names of the imports that `$store` reads. See `SemanticModel.storeImports`. */
+  private readonly storeImports: string[] = [];
+  /** The `$toStore` calls that a `$setContext` value holds. */
+  readonly storeCalls = new Set<oxc.Node>();
   private readonly diagnostics: Diagnostic[] = [];
   private readonly refs: {
     attribute: RefAttribute;
@@ -380,6 +395,7 @@ class Analyzer {
     this.visitNodes(this.file.children, this.component);
     checkNesting(this.file, (message, at) => this.report('error', message, at));
     this.addProvidedFunctions();
+    this.resolveStores();
     this.checkBindableProps();
     this.markPromiseProps();
 
@@ -400,9 +416,59 @@ class Analyzer {
       declarations: this.declarations,
       sites: this.sites,
       bindings: this.bindings,
+      storeImports: this.storeImports,
       diagnostics: this.diagnostics,
       pendingCalls: this.pendingCalls,
     };
+  }
+
+  /**
+   * Finds where the browser gets the store of each `$store`: the context, a key of its value, or
+   * a store that the file imports. The browser finds a store again from only those.
+   */
+  private resolveStores(): void {
+    for (const declaration of this.storeReaders) {
+      const store = declaration.store!;
+      let argument = store.source;
+      let path: string | undefined;
+      if (
+        argument.type === 'MemberExpression' &&
+        !argument.computed &&
+        argument.object.type === 'Identifier' &&
+        argument.property.type === 'Identifier'
+      ) {
+        path = argument.property.name;
+        argument = argument.object;
+      }
+      const root =
+        argument.type === 'Identifier' ? lookup(declaration.scope, argument.name) : undefined;
+      let source: oxc.Node | undefined;
+      let import_: string | undefined;
+      if (root?.kind === 'import' && (path !== undefined || root.imported)) {
+        // A context or a store of another file. A namespace import is a source only with a key.
+        source = argument;
+        import_ = root.name;
+      } else if (root?.kind === 'context' && root.contextSource) {
+        // A value of `$getContext`: the context, and a key of its value.
+        source = root.contextSource;
+        const named =
+          source.type === 'Identifier' ? lookup(declaration.scope, source.name) : undefined;
+        import_ = named?.kind === 'import' ? named.name : undefined;
+      }
+      if (!source) {
+        this.report('error', STORE_SOURCE, store.source);
+        continue;
+      }
+      store.source = source;
+      store.path = path;
+      if (import_ !== undefined) {
+        let link = this.storeImports.indexOf(import_);
+        if (link === -1) {
+          link = this.storeImports.push(import_) - 1;
+        }
+        store.link = link;
+      }
+    }
   }
 
   /**
@@ -1137,19 +1203,25 @@ class Analyzer {
     }
 
     if (name === '$store') {
-      if (kind !== 'const' || id.type !== 'Identifier') {
-        this.report('error', 'Read a store with "const name = $store(Context)"', declarator);
+      if (kind !== 'const' && kind !== 'let') {
+        this.report('error', STORE_FORM, declarator);
         return;
       }
-      if (call.arguments.length !== 1) {
-        this.report('error', '$store takes one argument, the context or a key of its value', call);
+      if (id.type !== 'Identifier') {
+        this.report('error', STORE_PATTERN, id);
+        return;
       }
-      // The slot holds the value of the store, which the store's sends write.
-      this.addDeclaration(scope, id.name, 'context', id);
       const argument = call.arguments[0];
-      if (argument) {
-        this.createSite('setup', scope, argument, `store ${id.name}`);
+      if (!argument || call.arguments.length !== 1 || argument.type === 'SpreadElement') {
+        this.report('error', STORE_ARGUMENT, call);
+        return;
       }
+      // The slot holds the value of the store, which the store's sends write. `let` writes the
+      // store back: a write of the variable calls the `set` of the store.
+      const declaration = this.addDeclaration(scope, id.name, 'context', id);
+      declaration.store = { source: argument, write: kind === 'let' };
+      this.storeReaders.push(declaration);
+      this.createSite('setup', scope, argument, `store ${id.name}`);
       return;
     }
 
@@ -1161,9 +1233,10 @@ class Analyzer {
       if (call.arguments.length !== 1) {
         this.report('error', '$getContext takes one argument, the context', call);
       }
-      this.addDeclaration(scope, id.name, 'context', id);
+      const declaration = this.addDeclaration(scope, id.name, 'context', id);
       const argument = call.arguments[0];
       if (argument) {
+        declaration.contextSource = argument;
         this.createSite('setup', scope, argument, `context ${id.name}`);
       }
       return;
@@ -1484,9 +1557,10 @@ class Analyzer {
       ) {
         const argument = part.arguments[0];
         if (!argument || part.arguments.length !== 1 || argument.type === 'SpreadElement') {
-          this.report('error', '$toStore takes one argument, a memo, a signal or a prop', part);
+          this.report('error', TO_STORE_ARGUMENT, part);
           continue;
         }
+        this.storeCalls.add(part);
         this.createSite('provide', scope, argument, 'store', { extra: [context], store: part });
         provided.holdsStores = true;
         // The `set` of a store of a signal writes the signal, as a binding does.
@@ -1898,6 +1972,35 @@ class Analyzer {
     }
   }
 
+  /**
+   * A context is meant to be static: a value that changes reaches readers through a store. Warns
+   * for each signal, memo or `let` that the value reads, which `$untrack` or `$toStore` silences.
+   */
+  private warnProvidedReads(site: Site): void {
+    const warned = new Set<Declaration>();
+    for (const read of site.reads) {
+      const declaration = read.declaration;
+      if (
+        !read.tracked ||
+        read.inFunction ||
+        warned.has(declaration) ||
+        !(
+          WRITABLE.has(declaration.kind) ||
+          declaration.kind === 'memo' ||
+          declaration.kind === 'async-memo'
+        )
+      ) {
+        continue;
+      }
+      warned.add(declaration);
+      this.report(
+        'warning',
+        `The context value reads "${declaration.name}", which changes, but a context value is read once. Put it in a store with $toStore, or read it with $untrack`,
+        read.range,
+      );
+    }
+  }
+
   private check(): void {
     for (const declaration of this.declarations) {
       if (declaration.kind === 'action') {
@@ -1912,16 +2015,19 @@ class Analyzer {
       }
     }
     for (const site of this.sites) {
+      if (site.kind === 'provide' && !site.store) {
+        this.warnProvidedReads(site);
+      }
       for (const write of site.writes) {
         const declaration = write.declaration;
-        if (!WRITABLE.has(declaration.kind) && !declaration.writable) {
+        if (!WRITABLE.has(declaration.kind) && !declaration.writable && !declaration.store?.write) {
           this.report(
             'error',
             `Cannot assign to ${declaration.kind} "${declaration.name}"`,
             write.range,
           );
         } else if (
-          (declaration.kind === 'signal' || declaration.writable) &&
+          (declaration.kind === 'signal' || declaration.writable || declaration.store?.write) &&
           !write.inFunction &&
           !WRITING_SITES.has(site.kind)
         ) {
@@ -2405,6 +2511,9 @@ class Resolver {
         }
         const name = node.callee.type === 'Identifier' ? node.callee.name : undefined;
         if (name && !this.isLocal(name) && !lookup(this.site.scope, name)) {
+          if (name === '$toStore' && !this.analyzer.storeCalls.has(node)) {
+            this.analyzer.report('error', TO_STORE_ARGUMENT, node);
+          }
           if (name === '$untrack' || name === '$toStore') {
             // The value of `$toStore` is read by a site of its own, which writes the store.
             this.untracked++;

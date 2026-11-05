@@ -1,0 +1,5 @@
+<script>
+  import StoreMixedReader from './StoreMixedReader.brm';
+</script>
+
+<StoreMixedReader />

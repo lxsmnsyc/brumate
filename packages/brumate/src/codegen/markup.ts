@@ -386,8 +386,6 @@ export class Emitter {
   private readonly patch: Patch;
   private readonly options: EmitterOptions;
   private readonly sitesByNode = new Map<object, Site>();
-  /** The context of each `$getContext` declaration, by name, for `$store(name.key)`. */
-  private readonly contextSources = new Map<string, string>();
   private readonly refTargets = new Map<object, Declaration>();
   /** The components inside a `<p>`, which the server checks in development. */
   private readonly inParagraph: Set<object>;
@@ -1544,24 +1542,22 @@ export class Emitter {
         );
         continue;
       }
-      if (call === '$store' && init.arguments[0] && declarator.id.type === 'Identifier') {
-        // `$store(Context)`, or `$store(field.state)` of `const field = $getContext(Context)`.
-        const argument = init.arguments[0];
-        let source = this.source(argument);
-        let path = '';
-        if (
-          argument.type === 'MemberExpression' &&
-          !argument.computed &&
-          argument.object.type === 'Identifier' &&
-          argument.property.type === 'Identifier' &&
-          this.contextSources.has(argument.object.name)
-        ) {
-          source = this.contextSources.get(argument.object.name)!;
-          path = `, ${JSON.stringify(argument.property.name)}`;
+      if (call === '$store' && declaration?.store && declarator.id.type === 'Identifier') {
+        // `$store(source)`: the source is a context, a store, or an object that holds the store at
+        // `path`. `link` is the place of its import among the exports `z` of the update part.
+        const { source, path, link, write } = declaration.store;
+        const slot = slotIndex(this.plan, declaration);
+        const rest = [
+          path === undefined ? undefined : JSON.stringify(path),
+          link === undefined ? undefined : String(link),
+          write ? 'true' : undefined,
+        ];
+        while (rest.length > 0 && rest.at(-1) === undefined) {
+          rest.pop();
         }
-        const slot = declaration ? slotIndex(this.plan, declaration) : -1;
+        const more = rest.map((item) => `, ${item ?? 'undefined'}`).join('');
         this.line(
-          `const ${declarator.id.name} = ${this.helper('consumeStore')}(${source}, ${target}, ${slot}${path});`,
+          `const ${declarator.id.name} = ${this.helper('consumeStore')}(${this.source(source)}, ${target}, ${slot}${more});`,
         );
         continue;
       }
@@ -1570,9 +1566,6 @@ export class Emitter {
         context = BUILT_IN_CONTEXTS[call];
       } else if (call === '$getContext' && init.arguments[0]) {
         context = this.source(init.arguments[0]);
-        if (declarator.id.type === 'Identifier') {
-          this.contextSources.set(declarator.id.name, context);
-        }
       }
       if (!context || declarator.id.type !== 'Identifier') {
         this.line(`${statement.kind} ${this.source(declarator)};`);

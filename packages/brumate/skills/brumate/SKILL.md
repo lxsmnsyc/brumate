@@ -38,7 +38,7 @@ A `.brm` file is a component: scripts for its state, an optional `<style>`, and 
 - Markup is never a value in code or in an attribute. Use `#template name(parameters) { … }` and call it as `{name(arguments)}`.
 - Browser wrappers of a handler come from `brumate/events`: `prevent`, `stop`, `once`, `capture`, `transition`. Write them in the attribute, with keys as string literals. `prevent(handler, 'Enter')` prevents only Enter with Ctrl, Meta and Alt up. `'Mod+ArrowDown'` names Ctrl or Meta. Calling `event.preventDefault()` in a handler is too late.
 - A server function is an `async` function with `'use server'` on its first line. It reads no variable of the instance script. Pass values as arguments.
-- Do not use `$ref`, `$watch`, `$settled`, `$cleanup`, `$store`, `$get`, `$set`, or modifiers such as `onSubmit:prevent`.
+- Do not use `$ref`, `$watch`, `$settled`, `$cleanup`, `$get`, `$set`, or modifiers such as `onSubmit:prevent`.
 
 ## References
 

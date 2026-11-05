@@ -100,6 +100,9 @@ export function removeScope(scope: Scope): void {
       cleanup();
     }
   }
+  for (const stop of scope.stops ?? []) {
+    stop();
+  }
   // The state of the slots that load or wait, which most scopes, such as rows of a list, have not.
   const waiting =
     memoControllers.size + timers.size + loads.size + loadingSlots.size + (guesses?.map.size ?? 0);

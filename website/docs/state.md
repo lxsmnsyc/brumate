@@ -221,7 +221,7 @@ A handler is one update pass. The page changes when the handler returns, not at 
 - Changing a value in place does not update anything, because the signal still holds the same object. `todos.push(todo)` and `todo.done = true` are compile warnings, such as `This changes the value of todos in place, so nothing that reads it updates`. Assign a new value, or use `$produce`.
 - A signal never leaves its file. A function receives the value of a signal, not the signal, so the compiler can see every read and write. To let another component change a value, pass it a function, such as `onChange=((value) => (count = value))`. See [Components](./components.md).
 - Functions imported from other modules work with values. `format(count)` gets a number, and cannot write `count`.
-- Each signal holds one value. There are no stores: an object or array changes by assigning a new value, or with `$produce`.
+- Each signal holds one value. An object or array changes by assigning a new value, or with `$produce`. A value that other code changes, such as a store of another library, comes in with [`$store`](./context.md#live-values-with-stores).
 - Declare signals and memos at the top level of a `<script>`, or of the script of a block. A declaration inside a function is a compile error.
 
 ## What the browser gets
