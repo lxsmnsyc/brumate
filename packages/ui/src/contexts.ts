@@ -337,9 +337,7 @@ export interface DialogGiven extends Partial<DialogHandlers> {
   state: StoreLike<DialogState | null>;
 }
 
-export const DialogContext: Context<DialogGiven> = createContext<DialogGiven>('brumate-ui:dialog', {
-  state: store(null),
-});
+export const DialogContext: Context<DialogGiven> = createContext<DialogGiven>('brumate-ui:dialog');
 
 /** Set inside a ModalOverlay, so the Modal inside renders only its box. */
 export interface ModalOverlayState {

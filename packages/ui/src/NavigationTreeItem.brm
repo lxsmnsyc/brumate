@@ -15,7 +15,7 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $hasContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext } from './collection.ts';
   import { NavigationLinkContext, NavigationTreeContext } from './navigation-tree.ts';
   import type { NavigationLinkState } from './navigation-tree.ts';
@@ -33,10 +33,10 @@
    */
   const { href, textValue, isDisabled, onAction, children, ...rest } = $props<NavigationTreeItemProps>();
 
-  const tree = $store(NavigationTreeContext);
-  const place = $store(TreeRowContext);
-  const listGiven = $getContext(ListBoxContext);
-  const list = $store(listGiven.state);
+  const tree = $hasContext(NavigationTreeContext) ? $store(NavigationTreeContext) : undefined;
+  const place = $hasContext(TreeRowContext) ? $store(TreeRowContext) : undefined;
+  const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
+  const list = $hasContext(ListBoxContext) ? $store(listGiven.state) : undefined;
   const disabled = $memo(
     Boolean(isDisabled || (place && list?.disabledKeys.includes(place.row.key))),
   );

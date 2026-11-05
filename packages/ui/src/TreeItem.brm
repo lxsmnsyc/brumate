@@ -24,7 +24,7 @@
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, focusItem, keyAttribute } from './collection.ts';
   import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
   import type { CheckboxGroupState } from './contexts.ts';
@@ -54,11 +54,11 @@
   } = $props<TreeItemProps<T>>();
   let { ref } = $props<TreeItemOwnProps<T>>();
 
-  const tree = $store(TreeRowContext);
-  const treeGiven = $getContext(TreeContext);
-  const state = $store(treeGiven.state);
-  const listGiven = $getContext(ListBoxContext);
-  const list = $store(listGiven.state);
+  const tree = $hasContext(TreeRowContext) ? $store(TreeRowContext) : undefined;
+  const treeGiven = $hasContext(TreeContext) ? $getContext(TreeContext) : undefined;
+  const state = $hasContext(TreeContext) ? $store(treeGiven.state) : undefined;
+  const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
+  const list = $hasContext(ListBoxContext) ? $store(listGiven.state) : undefined;
   if (!tree) {
     throw new Error('A TreeItem goes in the `item` template of a Tree.');
   }
@@ -72,7 +72,7 @@
 
   function toggle() {
     if (!disabled && row.hasChildItems) {
-      treeGiven.toggle?.(id);
+      treeGiven?.toggle?.(id);
     }
   }
 
@@ -86,7 +86,7 @@
   });
   $setContext(CheckboxGroupContext, {
     state: $toStore(checkState),
-    toggle: () => listGiven.select?.(id, { shift: false, toggle: true }),
+    toggle: () => listGiven?.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
 
@@ -126,13 +126,13 @@
     if (mode === 'none') {
       onAction?.();
       if (list.hasAction) {
-        listGiven.action!(id);
+        listGiven?.action!(id);
       } else {
         toggle();
       }
       return;
     }
-    listGiven.select!(id, {
+    listGiven?.select!(id, {
       shift: event.shiftKey,
       toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
     });

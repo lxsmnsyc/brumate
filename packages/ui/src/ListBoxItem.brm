@@ -33,7 +33,7 @@
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $hasContext, $id, $isPassed, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { ListBoxContext, keyAttribute } from './collection.ts';
@@ -61,8 +61,8 @@
   } = $props<ListBoxItemProps<T>>();
   let { ref } = $props<ListBoxItemOwnProps<T>>();
 
-  const listGiven = $getContext(ListBoxContext);
-  const list = $store(listGiven.state);
+  const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
+  const list = $hasContext(ListBoxContext) ? $store(listGiven.state) : undefined;
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.
   const acts = $isPassed(onAction);
   const optionId = $id();
@@ -89,10 +89,10 @@
     }
     if (mode === 'none') {
       onAction?.();
-      listGiven.action!(id);
+      listGiven?.action!(id);
       return;
     }
-    listGiven.select!(id, {
+    listGiven?.select!(id, {
       shift: event.shiftKey,
       toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
     });
@@ -122,7 +122,7 @@
     () => {},
     () => {},
     () => {},
-    () => listGiven.setActive?.(id),
+    () => listGiven?.setActive?.(id),
     () => {},
     () => {},
     () => {},

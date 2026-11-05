@@ -1,7 +1,6 @@
 // The state that a NavigationTree gives its items: the route of the page, and the items that hold
 // the item of that route.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 import type { Key } from './collection.ts';
@@ -21,7 +20,7 @@ export interface NavigationTreeState {
 
 export const NavigationTreeContext: Context<StoreLike<NavigationTreeState | null>> = createContext<
   StoreLike<NavigationTreeState | null>
->('brumate-ui:navigation-tree', store(null));
+>('brumate-ui:navigation-tree');
 
 /** What a NavigationTreeItem gives its link. */
 export interface NavigationLinkState {
@@ -33,7 +32,7 @@ export interface NavigationLinkState {
 
 export const NavigationLinkContext: Context<StoreLike<NavigationLinkState | null>> = createContext<
   StoreLike<NavigationLinkState | null>
->('brumate-ui:navigation-link', store(null));
+>('brumate-ui:navigation-link');
 
 /** The keys of the items that hold the item whose `href` is the route, outermost first. */
 export function findAncestors(items: readonly NavigationNode[], route: string | null): Key[] {

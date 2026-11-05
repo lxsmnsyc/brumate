@@ -91,12 +91,12 @@
   let { selectedKeys = [] } = $props<MenuOwnProps<T>>();
   let { ref } = $props<MenuOwnProps<T>>();
 
-  const triggerGiven = $getContext(MenuTriggerContext);
-  const trigger = $store(triggerGiven.state);
+  const triggerGiven = $hasContext(MenuTriggerContext) ? $getContext(MenuTriggerContext) : undefined;
+  const trigger = $hasContext(MenuTriggerContext) ? $store(triggerGiven.state) : undefined;
   // A field around the menu, such as of an Autocomplete, keeps focus and can filter the items.
-  const fieldGiven = $getContext(CollectionFocusContext);
-  const field = $store(fieldGiven.state);
-  const dialog = $getContext(DialogContext);
+  const fieldGiven = $hasContext(CollectionFocusContext) ? $getContext(CollectionFocusContext) : undefined;
+  const field = $hasContext(CollectionFocusContext) ? $store(fieldGiven.state) : undefined;
+  const dialog = $hasContext(DialogContext) ? $getContext(DialogContext) : undefined;
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const menuId = $id();
@@ -132,7 +132,7 @@
   function closeAll() {
     onClose?.();
     if (trigger) {
-      triggerGiven.closeAll!();
+      triggerGiven?.closeAll!();
     }
   }
 
@@ -147,7 +147,7 @@
     state: $toStore(menuState),
     action,
     closeAll,
-    setActive: fieldGiven.setActive,
+    setActive: fieldGiven?.setActive,
   });
   // The collections inside, such as of a submenu, have fields of their own.
   $setContext(CollectionFocusContext, { state: store(null) });
@@ -159,7 +159,7 @@
     const text = field?.filterText;
     const element = ref as HTMLElement | undefined;
     if (text !== undefined && element) {
-      fieldGiven.filtered?.(filterItems(element, text, fieldGiven.filter, MENU_ITEMS));
+      fieldGiven?.filtered?.(filterItems(element, text, fieldGiven?.filter, MENU_ITEMS));
     }
   }
   $client(() => applyFilter(), 'idle');
@@ -227,7 +227,7 @@
       return;
     }
     if (event.key === back && trigger?.isSubmenu) {
-      dialog.close?.();
+      dialog?.close?.();
       return;
     }
     if (event.key === 'Tab' && trigger) {

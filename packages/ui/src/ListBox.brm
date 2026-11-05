@@ -130,12 +130,12 @@
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   // A Select around the list keeps the selection, with one item at most.
-  const givenState = $getContext(ListBoxGivenContext);
-  const given = $store(givenState.state);
+  const givenState = $hasContext(ListBoxGivenContext) ? $getContext(ListBoxGivenContext) : undefined;
+  const given = $hasContext(ListBoxGivenContext) ? $store(givenState.state) : undefined;
   // A field around the list, such as of a ComboBox, keeps focus and can filter the items.
-  const fieldGiven = $getContext(CollectionFocusContext);
-  const field = $store(fieldGiven.state);
-  const virtualizer = $store(VirtualizerContext);
+  const fieldGiven = $hasContext(CollectionFocusContext) ? $getContext(CollectionFocusContext) : undefined;
+  const field = $hasContext(CollectionFocusContext) ? $store(fieldGiven.state) : undefined;
+  const virtualizer = $hasContext(VirtualizerContext) ? $store(VirtualizerContext) : undefined;
   // A list windows when its options are made from data. A field around it filters the options in
   // the page, and a horizontal list has no window.
   const windowHeight = $memo(
@@ -195,7 +195,7 @@
 
   function select(key: Key, request: SelectionRequest) {
     if (given) {
-      givenState.select!(key);
+      givenState?.select!(key);
       return;
     }
     const element = ref as HTMLElement | undefined;
@@ -234,7 +234,7 @@
     state: $toStore(listState),
     select,
     action,
-    setActive: fieldGiven.setActive,
+    setActive: fieldGiven?.setActive,
   });
   // The lists inside, such as in an item, have fields of their own.
   $setContext(CollectionFocusContext, { state: store(null) });
@@ -246,7 +246,7 @@
     const text = field?.filterText;
     const element = ref as HTMLElement | undefined;
     if (text !== undefined && element) {
-      fieldGiven.filtered?.(filterItems(element, text, fieldGiven.filter));
+      fieldGiven?.filtered?.(filterItems(element, text, fieldGiven?.filter));
     }
   }
   $client(() => applyFilter(), 'idle');
@@ -336,7 +336,7 @@
       }
       return;
     }
-    if (event.key === 'Tab' && givenState.tab) {
+    if (event.key === 'Tab' && givenState?.tab) {
       givenState.tab();
       return;
     }

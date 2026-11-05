@@ -10,7 +10,7 @@
 </script>
 
 <script>
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $effect, $getContext, $hasContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { OverlayTriggerContext } from './contexts.ts';
   import type { OverlayTriggerState } from './contexts.ts';
   import {
@@ -36,9 +36,9 @@
    */
   const { delay = 200, children } = $props<SubmenuTriggerProps>();
 
-  const parentGiven = $getContext(MenuContext);
-  const parent = $store(parentGiven.state);
-  const parentTrigger = $getContext(MenuTriggerContext);
+  const parentGiven = $hasContext(MenuContext) ? $getContext(MenuContext) : undefined;
+  const parent = $hasContext(MenuContext) ? $store(parentGiven.state) : undefined;
+  const parentTrigger = $hasContext(MenuTriggerContext) ? $getContext(MenuTriggerContext) : undefined;
   const triggerId = $id();
   const overlayId = $id();
   let isOpen = $signal(false);
@@ -71,10 +71,10 @@
   // The parent menu closes too, with its `onClose`, and the menus around it.
   function closeAll() {
     close();
-    if (parentGiven.closeAll) {
-      parentGiven.closeAll();
+    if (parentGiven?.closeAll) {
+      parentGiven?.closeAll();
     } else {
-      parentTrigger.closeAll?.();
+      parentTrigger?.closeAll?.();
     }
   }
 

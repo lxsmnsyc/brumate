@@ -9,7 +9,7 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $hasContext, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import Token from './Token.brm';
   import {
@@ -37,8 +37,8 @@
    */
   const { token, ...rest } = $props<TokenInputProps>();
 
-  const fieldGiven = $getContext(TokenFieldContext);
-  const field = $store(fieldGiven.state);
+  const fieldGiven = $hasContext(TokenFieldContext) ? $getContext(TokenFieldContext) : undefined;
+  const field = $hasContext(TokenFieldContext) ? $store(fieldGiven.state) : undefined;
   if (!field) {
     throw new Error('A TokenInput goes in a TokenField.');
   }
@@ -168,7 +168,7 @@
     const offset = caretOffset(element);
     caret = offset;
     // Text that the browser wrote is in the box already. A new token needs the box written.
-    fieldGiven.setValue!(next);
+    fieldGiven?.setValue!(next);
     // A caret in the space around a token goes back to where the value has it, so a Backspace
     // after the text next to a token removes the token, not that space.
     const at = getSelection()?.anchorNode;

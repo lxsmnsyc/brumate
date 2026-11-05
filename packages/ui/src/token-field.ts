@@ -1,7 +1,6 @@
 // The value of a TokenField: text and tokens in order. It is
 // an array of plain objects, so the page state holds it.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 
@@ -110,15 +109,12 @@ export interface TokenFieldGiven extends Partial<TokenFieldHandlers> {
   state: StoreLike<TokenFieldState | null>;
 }
 
-export const TokenFieldContext: Context<TokenFieldGiven> = createContext<TokenFieldGiven>(
-  'brumate-ui:token-field',
-  { state: store(null) },
-);
+export const TokenFieldContext: Context<TokenFieldGiven> =
+  createContext<TokenFieldGiven>('brumate-ui:token-field');
 
 /** What a TokenInput gives a Token: whether the selection covers it. */
-export const TokenContext: Context<StoreLike<{ isDisabled: boolean } | null>> = createContext<
-  StoreLike<{ isDisabled: boolean } | null>
->('brumate-ui:token', store(null));
+export const TokenContext: Context<StoreLike<{ isDisabled: boolean } | null>> =
+  createContext<StoreLike<{ isDisabled: boolean } | null>>('brumate-ui:token');
 
 /** The zero-width space that a TokenInput puts around each token, so the caret can sit there. */
 export const EDGE = '​';

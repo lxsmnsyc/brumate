@@ -31,7 +31,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import { TextContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
@@ -64,10 +64,10 @@
   } = $props<MenuItemProps<T>>();
   let { ref } = $props<MenuItemOwnProps<T>>();
 
-  const menuGiven = $getContext(MenuContext);
-  const menu = $store(menuGiven.state);
-  const submenuGiven = $getContext(SubmenuContext);
-  const submenu = $store(submenuGiven.state);
+  const menuGiven = $hasContext(MenuContext) ? $getContext(MenuContext) : undefined;
+  const menu = $hasContext(MenuContext) ? $store(menuGiven.state) : undefined;
+  const submenuGiven = $hasContext(SubmenuContext) ? $getContext(SubmenuContext) : undefined;
+  const submenu = $hasContext(SubmenuContext) ? $store(submenuGiven.state) : undefined;
   const ownId = $id();
   const labelId = $id();
   const descriptionId = $id();
@@ -92,26 +92,26 @@
   function pressed(event: PressEvent) {
     if (submenu) {
       // A key or a screen reader moves focus into the submenu, and a pointer leaves it here.
-      submenuGiven.open!('first', event.pointerType === 'keyboard' || event.pointerType === 'virtual');
+      submenuGiven?.open!('first', event.pointerType === 'keyboard' || event.pointerType === 'virtual');
       return;
     }
     onAction?.();
-    menuGiven.action?.(id);
+    menuGiven?.action?.(id);
   }
 
   function hoverStarted(event: HoverEvent) {
     // The pointer moves focus, as in a menu of the system, or makes the item active while focus
     // stays in a field around the menu.
-    if (menuGiven.setActive) {
-      menuGiven.setActive(id);
+    if (menuGiven?.setActive) {
+      menuGiven?.setActive(id);
     } else {
       (event.target as HTMLElement).focus({ preventScroll: true });
     }
-    submenuGiven.hoverStart?.();
+    submenuGiven?.hoverStart?.();
   }
 
   function hoverEnded() {
-    submenuGiven.hoverEnd?.();
+    submenuGiven?.hoverEnd?.();
   }
 
   // The keys of an item are the Menu's, so the item takes the pointer, the focus and the hover,

@@ -1,6 +1,5 @@
 // The state that the parts of a Table share: its columns, its sort, and the cells of each row.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 import type { Key } from './collection.ts';
@@ -38,9 +37,7 @@ export interface TableGiven {
   toggleAll?: () => void;
 }
 
-export const TableContext: Context<TableGiven> = createContext<TableGiven>('brumate-ui:table', {
-  state: store(null),
-});
+export const TableContext: Context<TableGiven> = createContext<TableGiven>('brumate-ui:table');
 
 /** What a Row gives its Cells: the place of the next cell. */
 export interface TableRowState {
@@ -49,7 +46,6 @@ export interface TableRowState {
 
 export const TableRowContext: Context<TableRowState | null> = createContext<TableRowState | null>(
   'brumate-ui:table-row',
-  null,
 );
 
 /** The next sort for a press of a column. */
@@ -80,10 +76,8 @@ export interface TableResizeGiven {
   end?: () => void;
 }
 
-export const TableResizeContext: Context<TableResizeGiven> = createContext<TableResizeGiven>(
-  'brumate-ui:table-resize',
-  { state: store(null) },
-);
+export const TableResizeContext: Context<TableResizeGiven> =
+  createContext<TableResizeGiven>('brumate-ui:table-resize');
 
 /** The CSS width of a column size. A fraction leaves the column to share the rest. */
 export function cssWidth(size: ColumnSize | null | undefined): string | undefined {
@@ -108,6 +102,5 @@ export interface ColumnState {
   width: number | undefined;
 }
 
-export const ColumnContext: Context<StoreLike<ColumnState | null>> = createContext<
-  StoreLike<ColumnState | null>
->('brumate-ui:column', store(null));
+export const ColumnContext: Context<StoreLike<ColumnState | null>> =
+  createContext<StoreLike<ColumnState | null>>('brumate-ui:column');

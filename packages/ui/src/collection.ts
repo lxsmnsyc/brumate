@@ -4,7 +4,6 @@
 // movement, ranges and typeahead work on these elements, so they work for items of any markup:
 // written out, from a `#for`, or in sections.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 
@@ -527,10 +526,8 @@ export interface ListBoxProvided extends Partial<ListBoxHandlers> {
   state: StoreLike<ListBoxState | null>;
 }
 
-export const ListBoxContext: Context<ListBoxProvided> = createContext<ListBoxProvided>(
-  'brumate-ui:list-box',
-  { state: store(null) },
-);
+export const ListBoxContext: Context<ListBoxProvided> =
+  createContext<ListBoxProvided>('brumate-ui:list-box');
 
 /**
  * What a part around a ListBox gives it, such as a Select: the selection that the part keeps, and
@@ -558,7 +555,7 @@ export interface ListBoxGivenProvided extends Partial<ListBoxGivenHandlers> {
 }
 
 export const ListBoxGivenContext: Context<ListBoxGivenProvided> =
-  createContext<ListBoxGivenProvided>('brumate-ui:list-box-given', { state: store(null) });
+  createContext<ListBoxGivenProvided>('brumate-ui:list-box-given');
 
 /**
  * What a field around a collection gives it, such as the input of a ComboBox or an Autocomplete:
@@ -591,12 +588,12 @@ export interface CollectionFocusProvided extends CollectionFocusHandlers {
 }
 
 export const CollectionFocusContext: Context<CollectionFocusProvided> =
-  createContext<CollectionFocusProvided>('brumate-ui:collection-focus', { state: store(null) });
+  createContext<CollectionFocusProvided>('brumate-ui:collection-focus');
 
 /** What a section gives its Header: its ID, which names the section. */
 export const SectionContext: Context<{ headerId: string } | null> = createContext<{
   headerId: string;
-} | null>('brumate-ui:section', null);
+} | null>('brumate-ui:section');
 
 /** What a Select gives its SelectValue: what to show in its Button. */
 export interface SelectValueState {
@@ -607,9 +604,8 @@ export interface SelectValueState {
   placeholder: string;
 }
 
-export const SelectValueContext: Context<StoreLike<SelectValueState | null>> = createContext<
-  StoreLike<SelectValueState | null>
->('brumate-ui:select-value', store(null));
+export const SelectValueContext: Context<StoreLike<SelectValueState | null>> =
+  createContext<StoreLike<SelectValueState | null>>('brumate-ui:select-value');
 
 /** The text of an item: its `data-text-value`, or its text. */
 export function textOfItem(item: HTMLElement): string {

@@ -1,6 +1,5 @@
 // The state that a Menu shares with its trigger, its items and its submenus.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 import type { Key, SelectionMode } from './collection.ts';
@@ -30,10 +29,8 @@ export interface MenuTriggerGiven {
   closeAll?: () => void;
 }
 
-export const MenuTriggerContext: Context<MenuTriggerGiven> = createContext<MenuTriggerGiven>(
-  'brumate-ui:menu-trigger',
-  { state: store(null) },
-);
+export const MenuTriggerContext: Context<MenuTriggerGiven> =
+  createContext<MenuTriggerGiven>('brumate-ui:menu-trigger');
 
 /** What a Menu gives its items. It changes, so it is in a store. */
 export interface MenuState {
@@ -57,9 +54,7 @@ export interface MenuGiven {
   setActive?: (key: Key) => void;
 }
 
-export const MenuContext: Context<MenuGiven> = createContext<MenuGiven>('brumate-ui:menu', {
-  state: store(null),
-});
+export const MenuContext: Context<MenuGiven> = createContext<MenuGiven>('brumate-ui:menu');
 
 /** What a SubmenuTrigger gives the MenuItem that opens it. It changes, so it is in a store. */
 export interface SubmenuState {
@@ -80,10 +75,8 @@ export interface SubmenuGiven {
   hoverEnd?: () => void;
 }
 
-export const SubmenuContext: Context<SubmenuGiven> = createContext<SubmenuGiven>(
-  'brumate-ui:submenu',
-  { state: store(null) },
-);
+export const SubmenuContext: Context<SubmenuGiven> =
+  createContext<SubmenuGiven>('brumate-ui:submenu');
 
 /** The timer of the pointer that rests on a submenu item, by the ID of the item. */
 const hoverTimers = new Map<string, ReturnType<typeof setTimeout>>();

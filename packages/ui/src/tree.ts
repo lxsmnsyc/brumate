@@ -1,6 +1,5 @@
 // The rows of a Tree: the items that show, in order, with their place in the tree.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 import type { Key } from './collection.ts';
@@ -68,9 +67,8 @@ export interface TreeRowState {
   row: TreeRow;
 }
 
-export const TreeRowContext: Context<StoreLike<TreeRowState | null>> = createContext<
-  StoreLike<TreeRowState | null>
->('brumate-ui:tree-row', store(null));
+export const TreeRowContext: Context<StoreLike<TreeRowState | null>> =
+  createContext<StoreLike<TreeRowState | null>>('brumate-ui:tree-row');
 
 /** What a Tree gives its rows. It changes, so it is in a store. */
 export interface TreeState {
@@ -84,6 +82,4 @@ export interface TreeGiven {
   toggle?: (key: Key) => void;
 }
 
-export const TreeContext: Context<TreeGiven> = createContext<TreeGiven>('brumate-ui:tree', {
-  state: store(null),
-});
+export const TreeContext: Context<TreeGiven> = createContext<TreeGiven>('brumate-ui:tree');

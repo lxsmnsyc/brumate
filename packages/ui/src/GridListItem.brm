@@ -28,7 +28,7 @@
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $getContext, $isPassed, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $hasContext, $isPassed, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
   import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
   import type { CheckboxGroupState } from './contexts.ts';
@@ -60,8 +60,8 @@
   } = $props<GridListItemProps<T>>();
   let { ref } = $props<GridListItemOwnProps<T>>();
 
-  const listGiven = $getContext(ListBoxContext);
-  const list = $store(listGiven.state);
+  const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
+  const list = $hasContext(ListBoxContext) ? $store(listGiven.state) : undefined;
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.
   const acts = $isPassed(onAction);
   const mode = $memo(list?.selectionMode ?? 'none');
@@ -78,7 +78,7 @@
   });
   $setContext(CheckboxGroupContext, {
     state: $toStore(checkState),
-    toggle: () => listGiven.select?.(id, { shift: false, toggle: true }),
+    toggle: () => listGiven?.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
 
@@ -88,10 +88,10 @@
     }
     if (mode === 'none') {
       onAction?.();
-      listGiven.action!(id);
+      listGiven?.action!(id);
       return;
     }
-    listGiven.select!(id, {
+    listGiven?.select!(id, {
       shift: event.shiftKey,
       toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
     });
@@ -164,7 +164,7 @@
     handlers: {
       slots: {
         drag: {
-          onPress: () => listGiven.startDrag?.(id),
+          onPress: () => listGiven?.startDrag?.(id),
         },
       },
     },
