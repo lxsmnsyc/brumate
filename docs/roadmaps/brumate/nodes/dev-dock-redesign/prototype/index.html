@@ -105,7 +105,21 @@
       .panel.right .cmd .t, .panel.right .cmd kbd, .panel.right .ws .l { display: none; }
       .panel.right .brand b { display: none; }
 
-      .body { flex: 1; min-height: 0; display: flex; }
+      .body { position: relative; flex: 1; min-height: 0; display: flex; }
+      /* split handles between the columns of a workspace */
+      .split { position: absolute; z-index: 3; touch-action: none; outline: none; }
+      .split.v { top: 0; bottom: 0; width: 9px; margin-left: -4px; cursor: col-resize; }
+      .split.h { left: 0; right: 0; height: 9px; margin-top: -4px; cursor: row-resize; }
+      .split::after { content: ""; position: absolute; background: var(--accent); opacity: 0; transition: opacity .15s; border-radius: 2px; }
+      .split.v::after { top: 0; bottom: 0; left: 4px; width: 1px; }
+      .split.h::after { left: 0; right: 0; top: 4px; height: 1px; }
+      .split:hover::after, .split.on::after { opacity: .7; }
+      .split:focus-visible::after { opacity: 1; width: 2px; }
+      .split.h:focus-visible::after { width: auto; height: 2px; }
+      .split .grab { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 4px; height: 28px; border-radius: 3px; background: var(--line2); opacity: 0; transition: opacity .15s; }
+      .split.h .grab { width: 28px; height: 4px; }
+      .split:hover .grab, .split.on .grab, .split:focus-visible .grab { opacity: 1; background: var(--accent); }
+      body.resizing, body.resizing * { user-select: none; }
       .panel.right .body { flex-direction: column; }
       .col { overflow: auto; min-width: 0; min-height: 0; }
       .col + .col { border-left: 1px solid var(--line); }
@@ -115,6 +129,9 @@
       .col.main { flex: 1; padding: 16px 20px 20px; }
 
       .foot { display: flex; align-items: center; gap: 16px; height: 26px; padding: 0 14px; border-top: 1px solid var(--line); color: var(--faint); font: 11px var(--mono); flex: none; }
+      .foot { overflow: hidden; white-space: nowrap; }
+      .panel.right .foot span:nth-child(n+4):not(:last-child) { display: none; }
+      .tools { overflow-x: auto; scrollbar-width: none; }
       .foot b { color: var(--dim); font-weight: 400; }
       .live { display: inline-flex; align-items: center; gap: 6px; }
       .live i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
@@ -335,6 +352,10 @@
         <li>
           Splits with hairlines in place of cards in cards. A status line shows the route and live
           numbers.
+        </li>
+        <li>
+          Resizable panels: drag the line between two columns, or focus it and use the arrow keys
+          (Shift for bigger steps). Double-click resets. Sizes are kept for the next open.
         </li>
         <li>4 workspaces, ⌘K, server call details as in v1.</li>
       </ol>
@@ -627,6 +648,7 @@
         if (ws === 'activity') bindActivity();
         if (ws === 'issues') for (const el of body.querySelectorAll('.iss')) el.onclick = () => { issue = +el.dataset.i; render(); };
         if (ws === 'page') for (const b of body.querySelectorAll('[data-go]')) b.onclick = () => { ws = b.dataset.go; render(); };
+        addSplit();
       }
 
       /* inspect */
@@ -817,6 +839,59 @@
       const isOpen = () => !panel.classList.contains('closed');
       function open(w) { if (w) ws = w; panel.classList.remove('closed'); grip.classList.add('hidden'); render(); pad(); }
       function close() { panel.classList.add('closed'); grip.classList.remove('hidden'); if (picking) togglePick(); pad(); grip.focus(); }
+      /* resizable panels: one handle between the two columns of a workspace.
+         The column that does not grow is the one that keeps its size. Sizes are
+         kept per workspace and side, with the dock's size, for the next open. */
+      const saved = JSON.parse(localStorage.getItem('dock-sizes') || '{}');
+      function save() { localStorage.setItem('dock-sizes', JSON.stringify(saved)); }
+      function addSplit() {
+        const cols = [...body.children].filter(c => c.classList.contains('col'));
+        if (cols.length !== 2) return;
+        const vertical = !side;
+        const fixedIndex = getComputedStyle(cols[0]).flexGrow === '0' ? 0 : 1;
+        const fixed = cols[fixedIndex];
+        const key = ws + (selCall && ws === 'activity' ? '-call' : '') + (side ? '-right' : '-bottom');
+        const dim = vertical ? 'width' : 'height';
+        const min = vertical ? 200 : 110;
+        function limit(n) { const total = vertical ? body.clientWidth : body.clientHeight; return Math.round(Math.max(min, Math.min(total - min, n))); }
+        function apply(n) { fixed.style[dim] = limit(n) + 'px'; place(); }
+        const handle = document.createElement('div');
+        handle.className = 'split ' + (vertical ? 'v' : 'h');
+        handle.tabIndex = 0; handle.setAttribute('role', 'separator');
+        handle.setAttribute('aria-orientation', vertical ? 'vertical' : 'horizontal');
+        handle.setAttribute('aria-label', 'Resize the panels'); handle.title = 'Drag, or use the arrow keys. Double-click to reset.';
+        handle.innerHTML = '<span class="grab"></span>';
+        body.append(handle);
+        function place() {
+          const r = cols[1].getBoundingClientRect(), b = body.getBoundingClientRect();
+          if (vertical) handle.style.left = (r.left - b.left) + 'px'; else handle.style.top = (r.top - b.top) + 'px';
+          handle.setAttribute('aria-valuenow', Math.round(fixed.getBoundingClientRect()[dim]));
+        }
+        if (saved[key]) apply(saved[key]); else place();
+        handle.onpointerdown = e => {
+          e.preventDefault(); handle.setPointerCapture(e.pointerId); handle.classList.add('on'); document.body.classList.add('resizing');
+          const b = body.getBoundingClientRect();
+          handle.onpointermove = ev => {
+            const at = vertical ? ev.clientX - b.left : ev.clientY - b.top;
+            const total = vertical ? b.width : b.height;
+            apply(fixedIndex === 0 ? at : total - at);
+          };
+          handle.onpointerup = () => {
+            handle.onpointermove = handle.onpointerup = null; handle.classList.remove('on'); document.body.classList.remove('resizing');
+            saved[key] = Math.round(fixed.getBoundingClientRect()[dim]); save();
+          };
+        };
+        handle.ondblclick = () => { delete saved[key]; save(); fixed.style[dim] = ''; place(); };
+        handle.onkeydown = e => {
+          const grow = vertical ? { ArrowRight: 1, ArrowLeft: -1 } : { ArrowDown: 1, ArrowUp: -1 };
+          const d = grow[e.key]; if (!d) return;
+          e.preventDefault();
+          const step = (e.shiftKey ? 64 : 16) * d * (fixedIndex === 0 ? 1 : -1);
+          apply(fixed.getBoundingClientRect()[dim] + step);
+          saved[key] = Math.round(fixed.getBoundingClientRect()[dim]); save();
+        };
+      }
+
       function pad() {
         const s = $('#site');
         s.style.paddingBottom = isOpen() && !side ? (panel.offsetHeight + 40) + 'px' : '';
@@ -829,10 +904,10 @@
           else panel.style.setProperty('--h', Math.min(innerHeight * .85, Math.max(200, innerHeight - ev.clientY)) + 'px');
           pad();
         };
-        const up = () => { panel.classList.remove('dragging'); removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+        const up = () => { saved.dock = { h: panel.style.getPropertyValue('--h'), w: panel.style.getPropertyValue('--w') }; save(); panel.classList.remove('dragging'); removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
         addEventListener('pointermove', move); addEventListener('pointerup', up);
       };
-      $('#side').onclick = () => { side = !side; panel.classList.toggle('right', side); panel.classList.toggle('bottom', !side); $('#side').setAttribute('aria-pressed', side); $('#side').title = side ? 'Dock to the bottom' : 'Dock to the right'; render(); pad(); };
+      $('#side').onclick = () => { side = !side; saved.side = side; save(); panel.classList.toggle('right', side); panel.classList.toggle('bottom', !side); $('#side').setAttribute('aria-pressed', side); $('#side').title = side ? 'Dock to the bottom' : 'Dock to the right'; render(); pad(); };
       grip.onclick = () => open();
       grip.onpointerdown = e => { const y = e.clientY; const up = ev => { removeEventListener('pointerup', up); if (y - ev.clientY > 20) open(); }; addEventListener('pointerup', up); };
       $('#close').onclick = close;
@@ -907,6 +982,8 @@
       });
       setInterval(() => { $('#up').textContent = Math.round((performance.now() - t0) / 1000) + ' s'; }, 1000);
       addEventListener('resize', () => { if (isOpen()) { render(); pad(); } });
+      if (saved.dock) { if (saved.dock.h) panel.style.setProperty('--h', saved.dock.h); if (saved.dock.w) panel.style.setProperty('--w', saved.dock.w); }
+      if (saved.side) { side = true; panel.classList.add('right'); panel.classList.remove('bottom'); $('#side').setAttribute('aria-pressed', 'true'); }
       render();
     </script>
   </body>
