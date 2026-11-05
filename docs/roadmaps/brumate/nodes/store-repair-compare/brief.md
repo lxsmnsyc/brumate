@@ -34,6 +34,9 @@ depends_on:
   - on: static-contexts-final
     kind: hard
     why: both edit runtime/client/context.ts; static-contexts-final goes first so the story is not held
+  - on: store-bridge
+    kind: hard
+    why: bridged stores resume through the same repair
   - on: ui-store-guards
     kind: hard
     why: store-any-source changes how the browser finds stores on resume, which this node repairs
