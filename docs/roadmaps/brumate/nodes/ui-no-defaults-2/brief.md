@@ -1,7 +1,7 @@
 ---
 id: ui-no-defaults-2
 title: "ui contexts without defaults, group 2"
-status: todo
+status: active
 priority: must
 type: refactor
 story: context-stores
