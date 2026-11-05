@@ -26,7 +26,7 @@
 </script>
 
 <script>
-  import { $getContext, $id, $memo, $props, $setContext, $store } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import { interact } from './interact.brm.ts';
   import { ColumnContext, TableContext, TableResizeContext, cssWidth } from './table.ts';
@@ -71,13 +71,14 @@
     resized !== undefined ? `${resized}px` : sizes ? cssWidth(width ?? defaultWidth) : undefined,
   );
   const resizing = $memo(sizes?.resizing === key);
-  $setContext(ColumnContext, {
+  const columnState = $memo({
     key,
     headerId,
     minWidth: minWidth ?? 0,
     maxWidth: maxWidth ?? Number.MAX_SAFE_INTEGER,
     width: typeof (width ?? defaultWidth) === 'number' ? (width ?? defaultWidth) as number : undefined,
   });
+  $setContext(ColumnContext, $toStore(columnState));
   // The Table learns its columns from them, in order, before its rows render.
   table?.columns.push({ id, isRowHeader });
   const direction = $memo(

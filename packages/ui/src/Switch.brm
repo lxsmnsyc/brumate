@@ -73,7 +73,8 @@
   const hidden = $memo(hasLabel ? undefined : 'true');
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(TextContext, { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } });
+  const textGiven = $memo({ slots: { description: { id: descriptionId, 'aria-hidden': hidden } } });
+  $setContext(TextContext, $toStore(textGiven));
   const errorGiven = $memo({
     id: errorId,
     isInvalid,

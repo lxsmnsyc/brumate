@@ -32,10 +32,11 @@
 </script>
 
 <script>
-  import { $bind, $getContext, $id, $memo, $props, $setContext, $toStore } from 'brumate/signals';
+  import { $bind, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { DatePickerContext } from './calendar.ts';
   import type { DatePickerState } from './calendar.ts';
   import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { DateStringsContext } from './date-strings.ts';
   import DateField from './DateField.brm';
 
@@ -71,7 +72,7 @@
   let { value = null } = $props<DatePickerProps>();
   let { isOpen = false } = $props<DatePickerProps>();
 
-  const strings = $getContext(DateStringsContext);
+  const strings = $store(DateStringsContext);
   const triggerId = $id();
   const overlayId = $id();
   const labelId = $id();
@@ -100,7 +101,7 @@
     }
   }
 
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     id: triggerId,
     'aria-label': strings?.calendar ?? 'Calendar',
     'aria-labelledby': `${triggerId} ${labelId}`,
@@ -108,7 +109,12 @@
     'aria-expanded': isOpen ? 'true' : 'false',
     'aria-controls': isOpen ? overlayId : undefined,
     isDisabled: isDisabled || isReadOnly,
-    onPress: () => setOpen(true),
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: () => setOpen(true),
+    },
   });
   const groupGiven = $memo({
     isDisabled,
@@ -116,15 +122,14 @@
     'aria-labelledby': labelId,
   });
   $setContext(GroupContext, $toStore(groupGiven));
-  $setContext(OverlayTriggerContext, {
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId,
     overlayId,
-    open: () => setOpen(true),
-    close: () => setOpen(false),
     placement: 'bottom start',
     labelledBy: `${triggerId} ${labelId}`,
   });
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => setOpen(true), close: () => setOpen(false) });
   const pickerState = $memo<DatePickerState>({
     value,
     minValue,
@@ -133,7 +138,12 @@
     isDisabled,
     isReadOnly,
   });
-  $setContext(DatePickerContext, { state: $toStore(pickerState), select, isDateUnavailable });
+  $setContext(DatePickerContext, {
+    state: $toStore(pickerState),
+    select,
+    // Reads the prop when called, so a later change of it applies.
+    isDateUnavailable: (date) => isDateUnavailable?.(date) ?? false,
+  });
 </script>
 
 <DateField

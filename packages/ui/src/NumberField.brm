@@ -44,20 +44,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import {
-    $client,
-    $effect,
-    $getContext,
-    $handler,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-    $untrack,
-  } from 'brumate/signals';
+  import { $client, $effect, $handler, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { NumberFormatter, NumberParser } from '@internationalized/number';
   import {
@@ -71,7 +58,7 @@
   } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, parseMessages, onFormReset } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import {
     addStep,
     clamp,
@@ -124,7 +111,8 @@
   const { as = 'div' } = $props<NumberFieldProps<T>>();
   let { value = Number.NaN } = $props<NumberFieldProps<T>>();
 
-  const locale = $getContext(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const form = $store(FormContext);
   const inputId = $id();
   const labelId = $id();
@@ -447,7 +435,7 @@
     onFocus: focused,
     onBlur: blurred,
   });
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       increment: {
         id: incrementId,
@@ -456,8 +444,6 @@
         'aria-controls': inputId,
         tabindex: '-1',
         isDisabled: !canIncrement,
-        onPressStart: (event: PressEvent) => held(1, event),
-        onPressEnd: released,
       },
       decrement: {
         id: decrementId,
@@ -466,12 +452,26 @@
         'aria-controls': inputId,
         tabindex: '-1',
         isDisabled: !canDecrement,
-        onPressStart: (event: PressEvent) => held(-1, event),
-        onPressEnd: released,
       },
     },
   });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        increment: {
+          onPressStart: (event: PressEvent) => held(1, event),
+          onPressEnd: released,
+        },
+        decrement: {
+          onPressStart: (event: PressEvent) => held(-1, event),
+          onPressEnd: released,
+        },
+      },
+    },
+  });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
   const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
   $setContext(FieldErrorContext, $toStore(errorGiven));
 </script>

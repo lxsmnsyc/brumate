@@ -25,7 +25,8 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { enabledItems, focusItem, keyAttribute } from './collection.ts';
   import { ButtonContext } from './contexts.ts';
@@ -52,7 +53,8 @@
   } = $props<TagProps<T>>();
   let { ref } = $props<TagOwnProps<T>>();
 
-  const group = $getContext(TagGroupContext);
+  const groupGiven = $getContext(TagGroupContext);
+  const group = $store(groupGiven.state);
   const rowId = $id();
   const mode = $memo(group?.selectionMode ?? 'none');
   const selected = $memo(Boolean(group?.selectedKeys.includes(id)));
@@ -61,7 +63,7 @@
 
   function pressed() {
     if (mode !== 'none') {
-      group?.select(id);
+      groupGiven.select?.(id);
     }
   }
 
@@ -89,7 +91,7 @@
         break;
       }
     }
-    group.remove(keys);
+    groupGiven.remove!(keys);
     // The tag leaves once the caller's list updates, so focus moves after that. With no tag
     // left, the list takes focus.
     setTimeout(() => (next ? focusItem(next) : (list as HTMLElement | null)?.focus()), 0);
@@ -104,7 +106,7 @@
     }
   }
 
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       remove: {
         'aria-label': 'Remove',
@@ -112,7 +114,16 @@
         id: `${rowId}-remove`,
         tabindex: '-1',
         isDisabled: disabled,
-        onPress: () => remove(false),
+      },
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        remove: {
+          onPress: () => remove(false),
+        },
       },
     },
   });
@@ -153,7 +164,8 @@
     keyDown(event);
   }
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <{as ?? 'div'}

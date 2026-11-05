@@ -132,13 +132,19 @@
     onKeyDown: keyDown,
   });
   // The button that clears the field stays out of the order of Tab.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     'aria-label': 'Clear search',
     tabindex: -1,
     isDisabled: isDisabled || isReadOnly,
-    onPress: clear,
   });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: clear,
+    },
+  });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
 </script>
 
 <{as}

@@ -36,22 +36,13 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import {
-    $client,
-    $effect,
-    $getContext,
-    $id,
-    $isPassed,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $untrack,
-  } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
+  import type { DialogState } from './contexts.ts';
   import { LayerContext } from './layer.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import {
     blurOutside,
     containTab,
@@ -69,6 +60,7 @@
   import { followTrigger, keepArrows } from './position.ts';
   import { mergeStyle } from './style.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
+  import type { TransitionParent } from './transition.ts';
 
   /**
    * An overlay next to its trigger. It opens from a
@@ -106,9 +98,11 @@
   let { isOpen } = $props<PopoverOwnProps<T>>();
   let { ref } = $props<PopoverOwnProps<T>>();
 
-  const trigger = $getContext(OverlayTriggerContext);
+  const triggerGiven = $getContext(OverlayTriggerContext);
+  const trigger = $store(triggerGiven.state);
   const parentLayer = $getContext(LayerContext);
-  const locale = $getContext(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const own = $isPassed(isOpen);
   const placementPassed = $isPassed(placement);
   const layerId = $id();
@@ -127,13 +121,15 @@
   let layer = $signal<HTMLElement>();
 
   $setContext(LayerContext, { id: layerId });
-  $setContext(DialogContext, { close, labelledBy: trigger?.labelledBy });
-  $setContext(TransitionContext, { show: wanted, entered: rested });
+  const dialogState = $memo<DialogState>({ labelledBy: trigger?.labelledBy });
+  $setContext(DialogContext, { state: $toStore(dialogState), close });
+  const transitionGiven = $memo<TransitionParent>({ show: wanted, entered: rested });
+  $setContext(TransitionContext, $toStore(transitionGiven));
   // An overlay inside opens from a DialogTrigger of its own, not from the one of this popover.
-  $setContext(OverlayTriggerContext, null);
+  $setContext(OverlayTriggerContext, { state: store(null) });
   // The buttons and links inside are not the trigger, which gets these contexts.
-  $setContext(ButtonContext, null);
-  $setContext(LinkContext, null);
+  $setContext(ButtonContext, { state: store(null) });
+  $setContext(LinkContext, { state: store(null) });
 
   function close() {
     if (own) {
@@ -144,7 +140,7 @@
       isOpen = false;
       onOpenChange?.(false);
     } else {
-      trigger?.close();
+      triggerGiven.close?.();
     }
   }
 

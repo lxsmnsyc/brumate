@@ -9,7 +9,7 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import Token from './Token.brm';
   import {
@@ -37,7 +37,8 @@
    */
   const { token, ...rest } = $props<TokenInputProps>();
 
-  const field = $getContext(TokenFieldContext);
+  const fieldGiven = $getContext(TokenFieldContext);
+  const field = $store(fieldGiven.state);
   if (!field) {
     throw new Error('A TokenInput goes in a TokenField.');
   }
@@ -61,7 +62,8 @@
   // The tokens of the value, each with a key of its text and its place among the same text, so a
   // new token gets a new stamp, and a stamp is not reused for other text.
   const marks = $memo(getStamps(field.value));
-  $setContext(TokenContext, { isDisabled: disabled });
+  const tokenState = $memo({ isDisabled: disabled });
+  $setContext(TokenContext, $toStore(tokenState));
 
   function getStamps(value: TokenSegment[]) {
     const seen: Record<string, number> = {};
@@ -166,7 +168,7 @@
     const offset = caretOffset(element);
     caret = offset;
     // Text that the browser wrote is in the box already. A new token needs the box written.
-    field!.setValue(next);
+    fieldGiven.setValue!(next);
     // A caret in the space around a token goes back to where the value has it, so a Backspace
     // after the text next to a token removes the token, not that space.
     const at = getSelection()?.anchorNode;

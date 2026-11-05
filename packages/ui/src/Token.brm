@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $getContext, $props } from 'brumate/signals';
+  import { $props, $store } from 'brumate/signals';
   import { TokenContext } from './token-field.ts';
 
   /**
@@ -18,7 +18,7 @@
    */
   const { children, ...rest } = $props<TokenProps>();
 
-  const token = $getContext(TokenContext);
+  const token = $store(TokenContext);
 </script>
 
 <span data-token-part data-disabled=(token?.isDisabled || undefined) {...rest}>{children}</span>

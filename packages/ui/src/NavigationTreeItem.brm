@@ -34,7 +34,7 @@
   const { href, textValue, isDisabled, onAction, children, ...rest } = $props<NavigationTreeItemProps>();
 
   const tree = $store(NavigationTreeContext);
-  const place = $getContext(TreeRowContext);
+  const place = $store(TreeRowContext);
   const listGiven = $getContext(ListBoxContext);
   const list = $store(listGiven.state);
   const disabled = $memo(

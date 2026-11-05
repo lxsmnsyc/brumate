@@ -18,9 +18,11 @@
 
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $memo, $props, $setContext, $store } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
   import { CheckboxGroupContext } from './contexts.ts';
+  import type { CheckboxGroupState } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { TableRowContext } from './table.ts';
 
@@ -49,12 +51,15 @@
   const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));
 
   // The Checkbox of the selection is checked while the row is selected, and toggles it.
-  $setContext(CheckboxGroupContext, {
+  const checkState = $memo<CheckboxGroupState>({
     value: selected ? [''] : [],
     isDisabled: disabled || mode === 'none',
     isReadOnly: false,
     isInvalid: false,
     isRequired: false,
+  });
+  $setContext(CheckboxGroupContext, {
+    state: $toStore(checkState),
     toggle: () => listGiven.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
@@ -123,7 +128,8 @@
     }
   }
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
   // Each Cell takes the next place, so it knows its column.
   $setContext(TableRowContext, { cells: { count: 0 } });
 </script>

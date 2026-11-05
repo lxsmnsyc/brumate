@@ -31,7 +31,8 @@
 
 <script generics="T extends AsTarget = 'button'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $bind, $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $bind, $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import Button from './Button.brm';
   import { ToggleButtonContext, ToggleGroupContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
@@ -48,7 +49,8 @@
   let { ref } = $props<ToggleButtonOwnProps<T>>();
 
   const context = $getContext(ToggleButtonContext);
-  const group = $getContext(ToggleGroupContext);
+  const groupGiven = $getContext(ToggleGroupContext);
+  const group = $store(groupGiven.state);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   // A disabled group disables every button, even one with isDisabled=(false).
   const disabled = $memo(
@@ -70,7 +72,7 @@
     // The new state, before the write changes `selected`.
     const next = !selected;
     if (group && id !== undefined) {
-      group.toggle(id);
+      groupGiven.toggle!(id);
     } else {
       isSelected = next;
     }
@@ -80,7 +82,8 @@
     onPress?.(event);
   }
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <!-- The Button reads no ButtonContext, since this button has a context of its own. -->

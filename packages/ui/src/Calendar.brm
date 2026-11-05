@@ -65,7 +65,7 @@
   import type { CalendarState } from './calendar.ts';
   import { DateStringsContext } from './date-strings.ts';
   import { ButtonContext, TextContext } from './contexts.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
 
   /**
@@ -112,7 +112,8 @@
   // apply when the Calendar has none of its own.
   const pickerGiven = $getContext(DatePickerContext);
   const picker = $store(pickerGiven.state);
-  const locale = $getContext(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const timeZone = ownTimeZone ?? locale.timeZone;
   const minValue = $memo(ownMinValue ?? picker?.minValue);
   const maxValue = $memo(ownMaxValue ?? picker?.maxValue);
@@ -136,7 +137,7 @@
   // Focus is in a grid of this calendar.
   let isFocused = $signal(false);
 
-  const strings = $getContext(DateStringsContext);
+  const strings = $store(DateStringsContext);
   // The server writes its date, so the first render of the browser matches the HTML. The browser
   // then takes its own, and keeps it up to date.
   let today = $signal(todayString(timeZone));
@@ -477,13 +478,33 @@
       }
     },
   });
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
-      previous: { 'aria-label': strings?.previous ?? 'Previous', isDisabled: previousDisabled, onPress: () => pressed(-1) },
-      next: { 'aria-label': strings?.next ?? 'Next', isDisabled: nextDisabled, onPress: () => pressed(1) },
+      previous: {
+        'aria-label': strings?.previous ?? 'Previous',
+        isDisabled: previousDisabled,
+      },
+      next: {
+        'aria-label': strings?.next ?? 'Next',
+        isDisabled: nextDisabled,
+      },
     },
   });
-  $setContext(TextContext, { slots: { errorMessage: { id: errorId } } });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        previous: {
+          onPress: () => pressed(-1),
+        },
+        next: {
+          onPress: () => pressed(1),
+        },
+      },
+    },
+  });
+  const textGiven = $memo({ slots: { errorMessage: { id: errorId } } });
+  $setContext(TextContext, $toStore(textGiven));
 
   function focusIn() {
     isFocused = true;

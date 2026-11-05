@@ -38,19 +38,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import {
-    $client,
-    $effect,
-    $getContext,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-    $untrack,
-  } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
@@ -67,7 +55,7 @@
     typeahead,
   } from './collection.ts';
   import { DialogContext, FieldInputContext } from './contexts.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { MENU_ITEMS, MenuContext, MenuTriggerContext, SubmenuContext } from './menu.ts';
   import type { MenuState } from './menu.ts';
 
@@ -109,7 +97,8 @@
   const fieldGiven = $getContext(CollectionFocusContext);
   const field = $store(fieldGiven.state);
   const dialog = $getContext(DialogContext);
-  const locale = $getContext(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const menuId = $id();
   let focusedId = $signal<string>();
 
@@ -238,7 +227,7 @@
       return;
     }
     if (event.key === back && trigger?.isSubmenu) {
-      dialog?.close();
+      dialog.close?.();
       return;
     }
     if (event.key === 'Tab' && trigger) {

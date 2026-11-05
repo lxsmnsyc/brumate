@@ -108,7 +108,6 @@ export interface ColumnState {
   width: number | undefined;
 }
 
-export const ColumnContext: Context<ColumnState | null> = createContext<ColumnState | null>(
-  'brumate-ui:column',
-  null,
-);
+export const ColumnContext: Context<StoreLike<ColumnState | null>> = createContext<
+  StoreLike<ColumnState | null>
+>('brumate-ui:column', store(null));

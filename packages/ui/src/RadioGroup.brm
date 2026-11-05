@@ -35,6 +35,7 @@
 <script generics="T extends AsTarget = 'div'">
   import { $client, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import { FieldErrorContext, LabelContext, RadioGroupContext, TextContext } from './contexts.ts';
+  import type { RadioGroupState } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, onFormReset } from './fields.ts';
 
@@ -99,10 +100,11 @@
 
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
   const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
   $setContext(FieldErrorContext, $toStore(errorGiven));
-  $setContext(RadioGroupContext, {
+  const radioState = $memo<RadioGroupState>({
     name: name ?? ownName,
     value,
     isDisabled,
@@ -110,9 +112,8 @@
     isRequired,
     isInvalid: invalid,
     describedBy: describedBy(invalid && errorId),
-    select,
-    onInvalid: invalidated,
   });
+  $setContext(RadioGroupContext, { state: $toStore(radioState), select, onInvalid: invalidated });
 </script>
 
 <{as ?? 'div'}

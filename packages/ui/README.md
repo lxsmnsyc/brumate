@@ -77,10 +77,13 @@ There is no `defaultPressed`. See [Controlled and uncontrolled](../../docs/propo
 
 ### Contexts and slots
 
-A part that holds other parts provides their props in the context of each part type, in `src/contexts.ts`. A context value is the props, or `{ slots: { name: props } }`.
+A part that holds other parts provides their props in the context of each part type, in `src/contexts.ts`. A context value is static. What changes goes in a store, and the functions go beside it as literal keys, since a store cannot hold a function.
 
-- Read the props with `slotProps($getContext(ButtonContext), slot)`.
-- A memo cannot hold handlers. Read the context in a function when a handler runs, and call the context's handler before the part's own.
+- A context that changes gives `{ state: $toStore(memo), ...handlers }`. A part reads it with `const given = $getContext(Ctx); const value = $store(given.state);` and calls `given.handler?.()`. A context with no handler is the store alone, read with `$store(Ctx)`.
+- `ButtonContext` and `LinkContext` give `{ state, handlers }`. Each is a props value, or `{ slots: { name: props } }`, with the same slot names in both. `state` holds the attributes and states, `handlers` the `on...` functions. Read them with `slotProps($store(given.state), slot)` and `slotHandlers(given.handlers, slot)`.
+- The default of a context holds no function, so a handler is optional and a part calls it with `?.`, or with `!` where a provider always gives it.
+- `LocaleContext` and `DateStringsContext` are stores. Read the locale with `$store(LocaleContext)`.
+- A memo cannot hold handlers. Read them from the context in a function when a handler runs, and call the context's handler before the part's own.
 - Spread the attributes of the context, from `contextAttributes`, before `{...rest}`, so the caller wins.
 
 ### Interactions

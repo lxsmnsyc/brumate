@@ -18,7 +18,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $props } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     enabledItems,
@@ -29,7 +29,7 @@
     moveFrom,
     setLastFocused,
   } from './collection.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { TagGroupContext } from './tags.ts';
 
   /**
@@ -43,8 +43,10 @@
   const { as, children, ...rest } = $props<TagListProps<T>>();
   let { ref } = $props<TagListOwnProps<T>>();
 
-  const group = $getContext(TagGroupContext);
-  const locale = $getContext(LocaleContext);
+  const groupGiven = $getContext(TagGroupContext);
+  const group = $store(groupGiven.state);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
 
   /** The movement of a key: Left and Right follow the direction, Up and Down do not. */
   function getMovement(key: string): Movement | undefined {

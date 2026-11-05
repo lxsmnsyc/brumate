@@ -27,22 +27,14 @@
 </script>
 
 <script>
-  import {
-    $client,
-    $getContext,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $toStore,
-  } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { NumberFormatter } from '@internationalized/number';
   import { LabelContext } from './contexts.ts';
   import { onFormReset } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { snapToStep } from './numbers.ts';
   import { SliderContext, thumbId } from './slider.ts';
+  import type { SliderState } from './slider.ts';
 
   /**
    * A slider with one thumb or several. It holds a Label, a
@@ -71,7 +63,8 @@
   } = $props<SliderProps>();
   let { value = minValue } = $props<SliderProps>();
 
-  const locale = $getContext(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   // The values that a reset of the form gives back.
   let initialValue = $signal(value);
   // The thumbs that a drag moves now.
@@ -196,7 +189,7 @@
 
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(SliderContext, {
+  const sliderState = $memo<SliderState>({
     values,
     minValue,
     maxValue,
@@ -209,9 +202,8 @@
     label,
     labels,
     dragging,
-    setThumb,
-    setDragging,
   });
+  $setContext(SliderContext, { state: $toStore(sliderState), setThumb, setDragging });
 </script>
 
 <div

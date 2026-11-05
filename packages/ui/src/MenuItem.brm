@@ -31,7 +31,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $id, $memo, $props, $setContext, $store } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import { TextContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
@@ -80,13 +80,14 @@
     submenu || mode === 'none' ? 'menuitem' : mode === 'single' ? 'menuitemradio' : 'menuitemcheckbox',
   );
 
-  $setContext(TextContext, {
+  const textGiven = $memo({
     slots: {
       default: {},
       label: { id: labelId },
       description: { id: descriptionId },
     },
   });
+  $setContext(TextContext, $toStore(textGiven));
 
   function pressed(event: PressEvent) {
     if (submenu) {

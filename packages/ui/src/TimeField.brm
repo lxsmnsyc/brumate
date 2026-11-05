@@ -40,25 +40,14 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import {
-    $effect,
-    $getContext,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-    $untrack,
-  } from 'brumate/signals';
+  import { $effect, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { formField } from './date-field.brm.ts';
   import { prevent } from 'brumate/events';
   import { DateStringsContext } from './date-strings.ts';
   import { describedBy, parseMessages } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import {
     DateFieldContext,
     erasePart,
@@ -109,13 +98,14 @@
   } = $props<TimeFieldProps<T>>();
   let { value = null } = $props<TimeFieldProps<T>>();
 
-  const locale = $getContext(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const form = $store(FormContext);
   const labelId = $id();
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
-  const strings = $getContext(DateStringsContext);
+  const strings = $store(DateStringsContext);
   const twelve = $memo(usesDayPeriod(locale.locale, hourCycle));
   const inputId = $id();
   let parts = $signal<DateParts>(parseTimeParts(value));
@@ -181,7 +171,8 @@
 
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
   const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
   $setContext(FieldErrorContext, $toStore(errorGiven));
   const fieldState = $memo<DateFieldState>({

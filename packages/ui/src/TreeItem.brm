@@ -23,9 +23,11 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $id, $memo, $props, $setContext, $store } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, focusItem, keyAttribute } from './collection.ts';
   import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
+  import type { CheckboxGroupState } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { TreeContext, TreeRowContext } from './tree.ts';
 
@@ -52,7 +54,7 @@
   } = $props<TreeItemProps<T>>();
   let { ref } = $props<TreeItemOwnProps<T>>();
 
-  const tree = $getContext(TreeRowContext);
+  const tree = $store(TreeRowContext);
   const treeGiven = $getContext(TreeContext);
   const state = $store(treeGiven.state);
   const listGiven = $getContext(ListBoxContext);
@@ -75,18 +77,21 @@
   }
 
   // The Checkbox of the selection is checked while the row is selected, and toggles it.
-  $setContext(CheckboxGroupContext, {
+  const checkState = $memo<CheckboxGroupState>({
     value: selected ? [''] : [],
     isDisabled: disabled || mode === 'none',
     isReadOnly: false,
     isInvalid: false,
     isRequired: false,
+  });
+  $setContext(CheckboxGroupContext, {
+    state: $toStore(checkState),
     toggle: () => listGiven.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
 
   // The chevron opens and closes the row, and focus stays on the row.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       default: {},
       chevron: {
@@ -95,11 +100,20 @@
         'aria-label': row.isExpanded ? 'Collapse' : 'Expand',
         'aria-labelledby': `${chevronId} ${rowId}`,
         isDisabled: disabled,
-        onPress: (event: { target: EventTarget | null }) => {
-          toggle();
-          focusItem(
-            ((event.target as Element | null)?.closest('[role=row]') as HTMLElement) ?? undefined,
-          );
+      },
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        chevron: {
+          onPress: (event: { target: EventTarget | null }) => {
+            toggle();
+            focusItem(
+              ((event.target as Element | null)?.closest('[role=row]') as HTMLElement) ?? undefined,
+            );
+          },
         },
       },
     },
@@ -172,7 +186,8 @@
     }
   }
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <{as ?? 'div'}

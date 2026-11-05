@@ -1,14 +1,23 @@
 <script>
-  import { $setContext, $signal } from 'brumate/signals';
+  import { $memo, $setContext, $signal, $toStore } from 'brumate/signals';
   import Button from '../../src/Button.brm';
   import { ButtonContext } from '../../src/contexts.ts';
 
   let count = $signal(0);
   let own = $signal(0);
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
-      increment: { 'aria-label': 'Increment', onPress: () => count++ },
-      decrement: { 'aria-label': 'Decrement', onPress: () => count--, isDisabled: count <= 0 },
+      increment: { 'aria-label': 'Increment' },
+      decrement: { 'aria-label': 'Decrement', isDisabled: count <= 0 },
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        increment: { onPress: () => count++ },
+        decrement: { onPress: () => count-- },
+      },
     },
   });
 </script>

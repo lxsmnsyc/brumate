@@ -14,7 +14,8 @@
   $setContext(HeadingContext, { level: 2 });
   const label = $memo({ id: 'name-label', for: 'name' });
   $setContext(LabelContext, $toStore(label));
-  $setContext(TextContext, { slots: { description: { id: 'name-description' } } });
+  const text = $memo({ slots: { description: { id: 'name-description' } } });
+  $setContext(TextContext, $toStore(text));
 </script>
 
 <Separator class="horizontal" />

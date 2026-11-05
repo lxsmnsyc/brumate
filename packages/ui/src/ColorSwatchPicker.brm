@@ -16,19 +16,7 @@
 </script>
 
 <script>
-  import {
-    $client,
-    $getContext,
-    $isPassed,
-    $handler,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-  } from 'brumate/signals';
+  import { $client, $getContext, $handler, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -46,7 +34,7 @@
   } from './collection.ts';
   import { formatColor, parseColor, tryParseColor } from './color.ts';
   import { ColorPickerContext } from './contexts.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
 
   /**
    * A list of color swatches that the user picks one from. Its items are ColorSwatchPickerItem
@@ -81,7 +69,8 @@
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
-  const locale = $getContext(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   let root = $signal<HTMLElement>();
   const listId = $id();
 

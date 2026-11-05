@@ -39,6 +39,7 @@
     LabelContext,
     TextContext,
   } from './contexts.ts';
+  import type { CheckboxGroupState } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, onFormReset } from './fields.ts';
 
@@ -122,10 +123,11 @@
 
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
   const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
   $setContext(FieldErrorContext, $toStore(errorGiven));
-  $setContext(CheckboxGroupContext, {
+  const groupState = $memo<CheckboxGroupState>({
     name,
     value,
     isDisabled,
@@ -134,9 +136,8 @@
     // Each box is required while none is checked, so the browser checks the group on a submit.
     isRequired: isRequired && running && value.length === 0,
     describedBy: describedBy(invalid && errorId),
-    toggle,
-    onInvalid: invalidated,
   });
+  $setContext(CheckboxGroupContext, { state: $toStore(groupState), toggle, onInvalid: invalidated });
 </script>
 
 <{as ?? 'div'}

@@ -2,7 +2,9 @@
 // step go on the element directly, and each step waits for the animations of the element.
 
 import { createContext } from 'brumate/context';
+import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 
 /** The flags of a transition on its element, for CSS without classes. */
 export type Flag = 'closed' | 'enter' | 'leave' | 'transition';
@@ -15,8 +17,9 @@ export interface TransitionParent {
   entered: boolean;
 }
 
-export const TransitionContext: Context<TransitionParent | null> =
-  createContext<TransitionParent | null>('brumate-ui:transition', null);
+export const TransitionContext: Context<StoreLike<TransitionParent | null>> = createContext<
+  StoreLike<TransitionParent | null>
+>('brumate-ui:transition', store(null));
 
 /** The classes of a class prop: a space-separated list, without the empty ones. */
 export function parseClasses(value: string | undefined): string[] {

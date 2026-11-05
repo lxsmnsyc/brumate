@@ -9,10 +9,8 @@ import type { StoreLike } from 'brumate/store';
 import type { HoverEvent, PressEvent } from './events.ts';
 import type { ContextValue } from './slots.ts';
 
-/** The props of a Button that a context can give. */
-export interface ButtonContextProps {
-  isDisabled?: boolean;
-  isPending?: boolean;
+/** The handlers of a Button that a context can give. They are not in the store of the context. */
+export interface ButtonHandlers {
   onPress?: (event: PressEvent) => void;
   onPressStart?: (event: PressEvent) => void;
   onPressEnd?: (event: PressEvent) => void;
@@ -22,11 +20,30 @@ export interface ButtonContextProps {
   onHoverEnd?: (event: HoverEvent) => void;
   onHoverChange?: (hovered: boolean) => void;
   onFocusChange?: (focused: boolean) => void;
+}
+
+/** The attributes and states of a Button that a context can give, which can change. */
+export interface ButtonStateProps {
+  isDisabled?: boolean;
+  isPending?: boolean;
   [attribute: string]: unknown;
 }
 
-export const ButtonContext: Context<ContextValue<ButtonContextProps> | null> =
-  createContext<ContextValue<ButtonContextProps> | null>('brumate-ui:button', null);
+/** The props of a Button that a context can give: its state and its handlers. */
+export interface ButtonContextProps extends ButtonStateProps, ButtonHandlers {}
+
+/**
+ * What a part gives its Buttons: the store of their attributes and states, and their handlers. Both
+ * name the same slots. A part outside any gives no handler.
+ */
+export interface ButtonGiven {
+  state: StoreLike<ContextValue<ButtonStateProps> | null>;
+  handlers?: ContextValue<ButtonHandlers> | null;
+}
+
+export const ButtonContext: Context<ButtonGiven> = createContext<ButtonGiven>('brumate-ui:button', {
+  state: store(null),
+});
 
 /** The attributes of a part that a context can give, such as `id` or `aria-label`. */
 export interface AttributeProps {
@@ -42,8 +59,9 @@ export const HeadingContext: Context<ContextValue<HeadingContextProps> | null> =
   createContext<ContextValue<HeadingContextProps> | null>('brumate-ui:heading', null);
 
 /** A Text gets its slot from its parent, such as "description" or "errorMessage". */
-export const TextContext: Context<ContextValue<AttributeProps> | null> =
-  createContext<ContextValue<AttributeProps> | null>('brumate-ui:text', null);
+export const TextContext: Context<StoreLike<ContextValue<AttributeProps> | null>> = createContext<
+  StoreLike<ContextValue<AttributeProps> | null>
+>('brumate-ui:text', store(null));
 
 /** A field gives its Label an `id` and the `for` of its input. */
 export const LabelContext: Context<StoreLike<ContextValue<AttributeProps> | null>> = createContext<
@@ -65,23 +83,27 @@ export interface GroupContextProps extends AttributeProps {
 export const GroupContext: Context<StoreLike<ContextValue<GroupContextProps> | null>> =
   createContext<StoreLike<ContextValue<GroupContextProps> | null>>('brumate-ui:group', store(null));
 
-/** The props of a Link that a context can give, such as Breadcrumbs for the current page. */
-export interface LinkContextProps extends AttributeProps {
+/** The handlers of a Link that a context can give. They are not in the store of the context. */
+export type LinkHandlers = ButtonHandlers;
+
+/** The attributes and states of a Link that a context can give, which can change. */
+export interface LinkStateProps extends AttributeProps {
   isDisabled?: boolean;
   isCurrent?: boolean;
-  onPress?: (event: PressEvent) => void;
-  onPressStart?: (event: PressEvent) => void;
-  onPressEnd?: (event: PressEvent) => void;
-  onPressUp?: (event: PressEvent) => void;
-  onPressChange?: (pressed: boolean) => void;
-  onHoverStart?: (event: HoverEvent) => void;
-  onHoverEnd?: (event: HoverEvent) => void;
-  onHoverChange?: (hovered: boolean) => void;
-  onFocusChange?: (focused: boolean) => void;
 }
 
-export const LinkContext: Context<ContextValue<LinkContextProps> | null> =
-  createContext<ContextValue<LinkContextProps> | null>('brumate-ui:link', null);
+/** The props of a Link that a context can give, such as Breadcrumbs for the current page. */
+export interface LinkContextProps extends LinkStateProps, LinkHandlers {}
+
+/** What a part gives its Links: the store of their attributes and states, and their handlers. */
+export interface LinkGiven {
+  state: StoreLike<ContextValue<LinkStateProps> | null>;
+  handlers?: ContextValue<LinkHandlers> | null;
+}
+
+export const LinkContext: Context<LinkGiven> = createContext<LinkGiven>('brumate-ui:link', {
+  state: store(null),
+});
 
 export interface ToggleButtonContextProps extends ButtonContextProps {
   isSelected?: boolean;
@@ -157,7 +179,7 @@ export const FormContext: Context<StoreLike<FormState | null>> = createContext<
   StoreLike<FormState | null>
 >('brumate-ui:form', store(null));
 
-/** What a CheckboxGroup gives its Checkboxes: its values, and a function that toggles one. */
+/** What a CheckboxGroup gives its Checkboxes: its values. */
 export interface CheckboxGroupState {
   name?: string;
   value: string[];
@@ -170,14 +192,25 @@ export interface CheckboxGroupState {
   describedBy?: string;
   /** True while a box shows a mixed state, such as the box that selects all rows of a Table. */
   isIndeterminate?: boolean;
+}
+
+/** What a Checkbox calls on its group. */
+export interface CheckboxGroupHandlers {
   toggle: (value: string, checked: boolean) => void;
   onInvalid: (message: string) => void;
 }
 
-export const CheckboxGroupContext: Context<CheckboxGroupState | null> =
-  createContext<CheckboxGroupState | null>('brumate-ui:checkbox-group', null);
+/** What a CheckboxGroup gives: the store of its state, and its handlers. Outside a group there is no handler. */
+export interface CheckboxGroupGiven extends Partial<CheckboxGroupHandlers> {
+  state: StoreLike<CheckboxGroupState | null>;
+}
 
-/** What a RadioGroup gives its Radios. */
+export const CheckboxGroupContext: Context<CheckboxGroupGiven> = createContext<CheckboxGroupGiven>(
+  'brumate-ui:checkbox-group',
+  { state: store(null) },
+);
+
+/** What a RadioGroup gives its Radios: its choice and states. */
 export interface RadioGroupState {
   name: string;
   value: string | null;
@@ -186,26 +219,48 @@ export interface RadioGroupState {
   isRequired: boolean;
   isInvalid: boolean;
   describedBy?: string;
+}
+
+/** What a Radio calls on its group. */
+export interface RadioGroupHandlers {
   select: (value: string) => void;
   onInvalid: (message: string) => void;
 }
 
-export const RadioGroupContext: Context<RadioGroupState | null> =
-  createContext<RadioGroupState | null>('brumate-ui:radio-group', null);
+/** What a RadioGroup gives: the store of its state, and its handlers. Outside a group there is no handler. */
+export interface RadioGroupGiven extends Partial<RadioGroupHandlers> {
+  state: StoreLike<RadioGroupState | null>;
+}
+
+export const RadioGroupContext: Context<RadioGroupGiven> = createContext<RadioGroupGiven>(
+  'brumate-ui:radio-group',
+  { state: store(null) },
+);
 
 /** What a ToggleButtonGroup gives its ToggleButtons, which name themselves with `id`. */
 export interface ToggleGroupState {
   selectionMode: 'single' | 'multiple';
   selectedKeys: string[];
   isDisabled: boolean;
+}
+
+/** What a ToggleButton calls on its group. */
+export interface ToggleGroupHandlers {
   toggle: (id: string) => void;
+}
+
+/** What a ToggleButtonGroup gives: the store of its state, and its handler. Outside a group there is no handler. */
+export interface ToggleGroupGiven extends Partial<ToggleGroupHandlers> {
+  state: StoreLike<ToggleGroupState | null>;
 }
 
 /** True inside a Toolbar, so a toolbar inside it is a group. */
 export const ToolbarContext: Context<boolean> = createContext<boolean>('brumate-ui:toolbar', false);
 
-export const ToggleGroupContext: Context<ToggleGroupState | null> =
-  createContext<ToggleGroupState | null>('brumate-ui:toggle-group', null);
+export const ToggleGroupContext: Context<ToggleGroupGiven> = createContext<ToggleGroupGiven>(
+  'brumate-ui:toggle-group',
+  { state: store(null) },
+);
 
 /** What a Disclosure gives its DisclosurePanel. */
 export interface DisclosurePanelState {
@@ -214,29 +269,45 @@ export interface DisclosurePanelState {
   isExpanded: boolean;
   /** A disabled disclosure keeps its panel closed, also for find in page. */
   isDisabled: boolean;
+}
+
+/** What a DisclosurePanel calls on its disclosure. */
+export interface DisclosurePanelHandlers {
   expand: () => void;
 }
 
-export const DisclosurePanelContext: Context<DisclosurePanelState | null> =
-  createContext<DisclosurePanelState | null>('brumate-ui:disclosure-panel', null);
+/** What a Disclosure gives: the store of its state, and its handler. Outside a disclosure there is no handler. */
+export interface DisclosurePanelGiven extends Partial<DisclosurePanelHandlers> {
+  state: StoreLike<DisclosurePanelState | null>;
+}
+
+export const DisclosurePanelContext: Context<DisclosurePanelGiven> =
+  createContext<DisclosurePanelGiven>('brumate-ui:disclosure-panel', { state: store(null) });
 
 /** What a DisclosureGroup gives its Disclosures, which name themselves with `id`. */
 export interface DisclosureGroupState {
   expandedKeys: string[];
   isDisabled: boolean;
+}
+
+/** What a Disclosure calls on its group. */
+export interface DisclosureGroupHandlers {
   toggle: (id: string) => void;
 }
 
-export const DisclosureGroupContext: Context<DisclosureGroupState | null> =
-  createContext<DisclosureGroupState | null>('brumate-ui:disclosure-group', null);
+/** What a DisclosureGroup gives: the store of its state, and its handler. Outside a group there is no handler. */
+export interface DisclosureGroupGiven extends Partial<DisclosureGroupHandlers> {
+  state: StoreLike<DisclosureGroupState | null>;
+}
+
+export const DisclosureGroupContext: Context<DisclosureGroupGiven> =
+  createContext<DisclosureGroupGiven>('brumate-ui:disclosure-group', { state: store(null) });
 
 /** What a DialogTrigger gives its overlay: whether it is open, and the IDs that link them. */
 export interface OverlayTriggerState {
   isOpen: boolean;
   triggerId: string;
   overlayId: string;
-  open: () => void;
-  close: () => void;
   /**
    * A preview, such as of a PreviewTrigger: the overlay is not modal, and focus stays where it
    * is when it opens.
@@ -257,20 +328,39 @@ export interface OverlayTriggerState {
   labelledBy?: string;
 }
 
-export const OverlayTriggerContext: Context<OverlayTriggerState | null> =
-  createContext<OverlayTriggerState | null>('brumate-ui:overlay-trigger', null);
-
-/** What an overlay gives the Dialog inside it: the function that closes the overlay. */
-export interface DialogState {
+/** What an overlay calls on its trigger. */
+export interface OverlayTriggerHandlers {
+  open: () => void;
   close: () => void;
+}
+
+/** What a trigger gives: the store of its state, and its handlers. Outside a trigger there is no handler. */
+export interface OverlayTriggerGiven extends Partial<OverlayTriggerHandlers> {
+  state: StoreLike<OverlayTriggerState | null>;
+}
+
+export const OverlayTriggerContext: Context<OverlayTriggerGiven> =
+  createContext<OverlayTriggerGiven>('brumate-ui:overlay-trigger', { state: store(null) });
+
+/** What an overlay gives the Dialog inside it: the IDs that name it. */
+export interface DialogState {
   /** The IDs that name the Dialog when it has no Heading, from the trigger of the overlay. */
   labelledBy?: string;
 }
 
-export const DialogContext: Context<DialogState | null> = createContext<DialogState | null>(
-  'brumate-ui:dialog',
-  null,
-);
+/** What a Dialog calls on its overlay. */
+export interface DialogHandlers {
+  close: () => void;
+}
+
+/** What an overlay gives: the store of its state, and its handler. Outside an overlay there is no handler. */
+export interface DialogGiven extends Partial<DialogHandlers> {
+  state: StoreLike<DialogState | null>;
+}
+
+export const DialogContext: Context<DialogGiven> = createContext<DialogGiven>('brumate-ui:dialog', {
+  state: store(null),
+});
 
 /** Set inside a ModalOverlay, so the Modal inside renders only its box. */
 export interface ModalOverlayState {

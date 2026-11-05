@@ -50,16 +50,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import {
-    $client,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-  } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
@@ -80,6 +71,7 @@
     OverlayTriggerContext,
     TextContext,
   } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, parseMessages, onFormReset } from './fields.ts';
 
@@ -448,7 +440,7 @@
     onBlur: blurred,
     onFocus: focused,
   });
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     id: buttonId,
     isDisabled,
     // The Button is out of the order of Tab, since the keys of the input open the list.
@@ -457,28 +449,32 @@
     'aria-labelledby': `${buttonId} ${labelId}`,
     'aria-haspopup': 'listbox',
     'aria-expanded': isOpen ? 'true' : 'false',
-    onPress: () => {
-      if (isOpen) {
-        setOpen(false);
-      } else {
-        open('keep', true);
-      }
-      if (document.activeElement?.id !== inputId) {
-        refocused = true;
-        input()?.focus();
-      }
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: () => {
+        if (isOpen) {
+          setOpen(false);
+        } else {
+          open('keep', true);
+        }
+        if (document.activeElement?.id !== inputId) {
+          refocused = true;
+          input()?.focus();
+        }
+      },
     },
   });
-  $setContext(OverlayTriggerContext, {
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId: rootId,
     overlayId,
-    open: () => open('keep', true),
-    close: () => setOpen(false),
     placement: 'bottom start',
     isNonModal: true,
     autoFocus: false,
   });
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => open('keep', true), close: () => setOpen(false) });
   const listGiven = $memo<ListBoxGiven>({
     selectedKeys: selectedKey === null ? [] : [selectedKey],
     labelledBy: labelId,
@@ -496,7 +492,8 @@
     setActive: (key: Key) => activate(key),
     filtered,
   });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
   const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
   $setContext(FieldErrorContext, $toStore(errorGiven));
 </script>

@@ -30,18 +30,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import {
-    $effect,
-    $getContext,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-    $untrack,
-  } from 'brumate/signals';
+  import { $effect, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { DatePickerContext, constrain, outOfRange, toDate, todayString } from './calendar.ts';
   import type { DatePickerState } from './calendar.ts';
   import {
@@ -53,12 +42,13 @@
     OverlayTriggerContext,
     TextContext,
   } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { dateSegments, formField } from './date-field.brm.ts';
   import { prevent } from 'brumate/events';
   import { described } from './description.brm.ts';
   import { describedBy, parseMessages } from './fields.ts';
   import { DateStringsContext } from './date-strings.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { DateRangeFieldContext } from './segments.ts';
   import type { DateFieldState } from './segments.ts';
 
@@ -98,7 +88,8 @@
   let { value = null } = $props<DateRangePickerProps<T>>();
   let { isOpen = false } = $props<DateRangePickerProps<T>>();
 
-  const locale = $getContext(LocaleContext);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const form = $store(FormContext);
   const triggerId = $id();
   const overlayId = $id();
@@ -110,7 +101,7 @@
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
-  const strings = $getContext(DateStringsContext);
+  const strings = $store(DateStringsContext);
   const placeholder = $memo(
     constrain(toDate(placeholderValue ?? todayString(locale.timeZone)), minValue, maxValue).toString(),
   );
@@ -244,7 +235,8 @@
 
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
   const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
   $setContext(FieldErrorContext, $toStore(errorGiven));
   const startFieldState = $memo<DateFieldState>({
@@ -285,7 +277,7 @@
     endErase,
     endSettle,
   });
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     id: triggerId,
     'aria-label': strings?.calendar ?? 'Calendar',
     'aria-labelledby': `${triggerId} ${labelId}`,
@@ -293,7 +285,12 @@
     'aria-expanded': isOpen ? 'true' : 'false',
     'aria-controls': isOpen ? overlayId : undefined,
     isDisabled: isDisabled || isReadOnly,
-    onPress: () => setOpen(true),
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: () => setOpen(true),
+    },
   });
   const groupGiven = $memo({
     isDisabled,
@@ -302,15 +299,14 @@
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
   });
   $setContext(GroupContext, $toStore(groupGiven));
-  $setContext(OverlayTriggerContext, {
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId,
     overlayId,
-    open: () => setOpen(true),
-    close: () => setOpen(false),
     placement: 'bottom start',
     labelledBy: `${triggerId} ${labelId}`,
   });
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => setOpen(true), close: () => setOpen(false) });
   const pickerState = $memo<DatePickerState>({
     value,
     minValue,
@@ -319,7 +315,12 @@
     isDisabled,
     isReadOnly,
   });
-  $setContext(DatePickerContext, { state: $toStore(pickerState), select, isDateUnavailable });
+  $setContext(DatePickerContext, {
+    state: $toStore(pickerState),
+    select,
+    // Reads the prop when called, so a later change of it applies.
+    isDateUnavailable: (date) => isDateUnavailable?.(date) ?? false,
+  });
 </script>
 
 <{as}

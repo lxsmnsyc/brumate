@@ -33,6 +33,7 @@
   import { described } from './description.brm.ts';
   import { onFormReset } from './fields.ts';
   import { TokenFieldContext, sameSegments, segmentsText } from './token-field.ts';
+  import type { TokenFieldState } from './token-field.ts';
 
   /**
    * A field of text with tokens in it, such as tags, mentions or commands. It holds a Label, a
@@ -101,10 +102,10 @@
   // The box of the field is no element that a label can point at, so the label names it by ID.
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(TokenFieldContext, {
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
+  const fieldState = $memo<TokenFieldState>({
     value,
-    setValue,
     revision,
     pattern,
     placeholder,
@@ -116,6 +117,7 @@
     labelId,
     descriptionId: hasDescription ? descriptionId : undefined,
   });
+  $setContext(TokenFieldContext, { state: $toStore(fieldState), setValue });
 </script>
 
 <div ref=$bind(ref) data-disabled=(isDisabled || undefined) data-readonly=(isReadOnly || undefined) {...rest}>

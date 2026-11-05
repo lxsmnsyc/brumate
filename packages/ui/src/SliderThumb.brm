@@ -16,9 +16,9 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props, $signal } from 'brumate/signals';
+  import { $getContext, $memo, $props, $signal, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { SliderContext, getPercent, pointAt, startDrag, thumbId, thumbRange, valueAt } from './slider.ts';
 
   /**
@@ -42,8 +42,10 @@
     ...rest
   } = $props<SliderThumbProps>();
 
-  const slider = $getContext(SliderContext);
-  const locale = $getContext(LocaleContext);
+  const sliderGiven = $getContext(SliderContext);
+  const slider = $store(sliderGiven.state);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   let focused = $signal(false);
   let focusVisible = $signal(false);
   const value = $memo(slider?.values[index] ?? 0);
@@ -60,7 +62,7 @@
       return;
     }
     try {
-      slider?.setThumb(index, Number(event.currentTarget.value));
+      sliderGiven.setThumb?.(index, Number(event.currentTarget.value));
     } finally {
       // A setter that refuses or throws leaves the old value, so the input goes back to it.
       event.currentTarget.value = String(value);
@@ -68,7 +70,7 @@
   }
 
   function changed() {
-    slider?.setDragging(index, false);
+    sliderGiven.setDragging?.(index, false);
   }
 
   // PageUp and PageDown move by a page, which the range input does not know.
@@ -76,8 +78,8 @@
     if (!slider || disabled || (event.key !== 'PageUp' && event.key !== 'PageDown')) {
       return;
     }
-    slider.setThumb(index, value + (event.key === 'PageUp' ? slider.pageSize : -slider.pageSize));
-    slider.setDragging(index, false);
+    sliderGiven.setThumb!(index, value + (event.key === 'PageUp' ? slider.pageSize : -slider.pageSize));
+    sliderGiven.setDragging!(index, false);
   }
 
   function pressed(event: PointerEvent & { currentTarget: Element }) {
@@ -91,11 +93,11 @@
     }
     // The thumb keeps the distance to the pointer.
     const offset = pointAt(slider, track, event.clientX, event.clientY, rtl) - getPercent(slider, value);
-    slider.setDragging(index, true);
+    sliderGiven.setDragging!(index, true);
     startDrag(
       event.pointerId,
-      (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl, offset)),
-      () => slider.setDragging(index, false),
+      (move) => sliderGiven.setThumb!(index, valueAt(slider, track, move.clientX, move.clientY, rtl, offset)),
+      () => sliderGiven.setDragging!(index, false),
       event.currentTarget,
     );
   }

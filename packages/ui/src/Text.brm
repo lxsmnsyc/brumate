@@ -16,7 +16,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'span'">
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $memo, $props, $store } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
 
@@ -26,7 +26,7 @@
    */
   const { as = 'span', slot, children, ...rest } = $props<TextProps<T>>();
 
-  const context = $getContext(TextContext);
+  const context = $store(TextContext);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
 </script>
 

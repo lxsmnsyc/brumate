@@ -25,8 +25,9 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ButtonContext, DisclosureGroupContext, DisclosurePanelContext } from './contexts.ts';
+  import type { DisclosurePanelState } from './contexts.ts';
 
   /**
    * Content that the user expands and collapses, such as a section of an FAQ. It holds a Button
@@ -41,7 +42,8 @@
   let { isExpanded = false } = $props<DisclosureOwnProps<T>>();
   let { ref } = $props<DisclosureOwnProps<T>>();
 
-  const group = $getContext(DisclosureGroupContext);
+  const groupGiven = $getContext(DisclosureGroupContext);
+  const group = $store(groupGiven.state);
   const triggerId = $id();
   const panelId = $id();
   const ownKey = $id();
@@ -54,7 +56,7 @@
       return;
     }
     if (group) {
-      group.toggle(key);
+      groupGiven.toggle!(key);
     } else {
       isExpanded = next;
     }
@@ -73,7 +75,7 @@
   }
 
   // A Button without a slot, such as one in the panel, gets nothing from the disclosure.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       default: {},
       trigger: {
@@ -81,17 +83,26 @@
         'aria-expanded': expanded ? 'true' : 'false',
         'aria-controls': panelId,
         isDisabled: disabled,
-        onPress: toggle,
       },
     },
   });
-  $setContext(DisclosurePanelContext, {
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        trigger: {
+          onPress: toggle,
+        },
+      },
+    },
+  });
+  const panelState = $memo<DisclosurePanelState>({
     id: panelId,
     triggerId,
     isExpanded: expanded,
     isDisabled: disabled,
-    expand,
   });
+  $setContext(DisclosurePanelContext, { state: $toStore(panelState), expand });
 </script>
 
 <{as ?? 'div'}

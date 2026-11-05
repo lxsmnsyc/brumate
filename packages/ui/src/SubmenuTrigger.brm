@@ -10,19 +10,9 @@
 </script>
 
 <script>
-  import {
-    $effect,
-    $getContext,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-    $untrack,
-  } from 'brumate/signals';
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { OverlayTriggerContext } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import {
     MenuContext,
     MenuTriggerContext,
@@ -98,16 +88,15 @@
 
   const submenuState = $memo<SubmenuState>({ triggerId, overlayId, isOpen });
   $setContext(SubmenuContext, { state: $toStore(submenuState), open, hoverStart, hoverEnd });
-  $setContext(OverlayTriggerContext, {
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId,
     overlayId,
-    open: () => open('first', true),
-    close,
     isNonModal: true,
     placement: 'end top',
     autoFocus,
   });
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => open('first', true), close });
   const menuTrigger = $memo<MenuTriggerState>({ triggerId, focusStrategy, isSubmenu: true });
   $setContext(MenuTriggerContext, { state: $toStore(menuTrigger), closeAll });
 </script>

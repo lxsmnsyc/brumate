@@ -8,9 +8,9 @@
 </script>
 
 <script>
-  import { $getContext, $props } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { SliderContext, closestThumb, startDrag, thumbId, valueAt } from './slider.ts';
 
   /**
@@ -20,8 +20,10 @@
    */
   const { children, ...rest } = $props<SliderTrackProps>();
 
-  const slider = $getContext(SliderContext);
-  const locale = $getContext(LocaleContext);
+  const sliderGiven = $getContext(SliderContext);
+  const slider = $store(sliderGiven.state);
+  const localeStore = $store(LocaleContext);
+  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
 
   function pressed(event: PointerEvent & { currentTarget: HTMLElement }) {
     const track = event.currentTarget;
@@ -48,12 +50,12 @@
       return;
     }
     thumb?.focus({ preventScroll: true });
-    slider.setThumb(index, value);
-    slider.setDragging(index, true);
+    sliderGiven.setThumb!(index, value);
+    sliderGiven.setDragging!(index, true);
     startDrag(
       event.pointerId,
-      (move) => slider.setThumb(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
-      () => slider.setDragging(index, false),
+      (move) => sliderGiven.setThumb!(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
+      () => sliderGiven.setDragging!(index, false),
       event.currentTarget,
     );
   }
