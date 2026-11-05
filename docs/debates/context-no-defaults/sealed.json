@@ -210,9 +210,7 @@
       "round": 1,
       "by": "proponent",
       "kind": "alternative",
-      "answers": [
-        "P2"
-      ],
+      "answers": ["P2"],
       "text": "Cheaper variant with no new compiler function: optional reads take a per-call fallback, `$getContext(C, () => fallback)`. The thunk runs per reader, so it is local and not module-global, but createContext and the throw (P1) stay as proposed. Saves the $hasContext function but the 61 sites each carry a thunk, and the compiler must check the thunk for static reads. Solid 2.0's own advice (a null default) is not usable here, since the null object is the module-global value the goal removes.",
       "evidence": {
         "type": "prior-art",
@@ -229,9 +227,7 @@
       "round": 1,
       "by": "proponent",
       "kind": "alternative",
-      "answers": [
-        "P1"
-      ],
+      "answers": ["P1"],
       "text": "Cheapest variant: keep the default argument but make it a factory, createContext(key, () => value), run per reader, and ban store defaults by type. Needs no ui migration of reads, but keeps defaultValue paths, CONTEXT_ADDED machinery and the stale idea of a context with a hidden value, so it does not reach the goal of key-only createContext. Listed as the floor to beat.",
       "evidence": {
         "type": "estimate",
@@ -249,10 +245,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "high",
-      "answers": [
-        "P2",
-        "P3"
-      ],
+      "answers": ["P2", "P3"],
       "text": "P2 does not fit $store. Readers bind a store at the top level with `const x = $store(given.state)` or `$store(LabelContext)`, and $store accepts only a context or one key of a $getContext value (BRM194 otherwise). `$hasContext(C) ? $getContext(C) : fallback` gives no store to bind, so the 50 store(null) readers cannot be migrated until $store gains an optional or conditional form. That is a third compiler change that P2 and P3 do not cost.",
       "estimate": {
         "value": 1,
@@ -271,10 +264,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "high",
-      "answers": [
-        "P1",
-        "P2"
-      ],
+      "answers": ["P1", "P2"],
       "text": "Throwing on a missing provider breaks standalone use of ui parts and the resume path. The browser must learn on resume whether a provider existed for $hasContext, so scope state gains a field for it (or the answer is recomputed in every browser render), and the 'static graph' claim of P2 is untested. P1 and P2 give no proof that a Button outside a group still renders on the server and resumes.",
       "evidence": {
         "type": "source",
@@ -289,9 +279,7 @@
       "kind": "cost",
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P3"
-      ],
+      "answers": ["P3"],
       "text": "P3 counts 61 createContext sites and 76 getContext calls but not the readers that use $store(Context) directly, nor each part's test and docs demo that renders a part alone. Each part with a default now needs a provider wrapper in its tests, or a hasContext branch. Two M nodes for about 140 touched sites is low; the story has already needed fix rounds per phase (phase 3 to 6 each had five or more review-fix PRs).",
       "estimate": {
         "value": 4,
@@ -310,9 +298,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P4"
-      ],
+      "answers": ["P4"],
       "text": "P4 puts the change inside the open context-stores story, which holds a 0.7.0 must and is one node from its PR. A change that touches 61 ui sites and the compiler delays the story PR and mixes a breaking API change with the store work in one review. Landing it after the story, as a stacked follow-up, keeps the story shippable.",
       "evidence": {
         "type": "inferred",
@@ -326,9 +312,7 @@
       "by": "opponent",
       "kind": "rebuttal",
       "axis": "tokens",
-      "answers": [
-        "P1"
-      ],
+      "answers": ["P1"],
       "text": "P1 says the net is a deletion, but the throw needs a named error on server and browser, plus a way for $route and $navigation readers in tests and in non-page roots to still resolve. J8 is true for pages only; tests that mount a component with createContext defaults at packages/brumate/test (24 calls) rely on defaults. The deletion is about 3 sites in src (server.ts:805, client/context.ts:62,129,237, context.ts), small, so the gain is not the argument; the cost sits in the 140 call sites.",
       "evidence": {
         "type": "measured",
@@ -343,11 +327,7 @@
       "kind": "alternative",
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P1",
-        "P2",
-        "P8"
-      ],
+      "answers": ["P1", "P2", "P8"],
       "text": "Cheaper way to the stated motivation (no module-global leaked state): keep a default argument but forbid object and store defaults at the type level and in a compiler check, allowing only primitives (null, false, a string). Primitives cannot leak state. Then only the 50 store(null) sites and the noInput objects change, createContext(key, default) stays, and the CONTEXT_ADDED link code is deleted since store defaults are gone. It misses 'key only', so it is a fallback if O1 and O2 hold.",
       "estimate": {
         "value": 1,
@@ -366,9 +346,7 @@
       "kind": "risk",
       "axis": "device",
       "severity": "low",
-      "answers": [
-        "P2"
-      ],
+      "answers": ["P2"],
       "text": "$hasContext adds a name to every ui part that reads optionally, plus a resume flag per reader in page state. 50 readers per page of a form-heavy app would add bytes to the page and to client code. Unmeasured, so low severity.",
       "evidence": {
         "type": "estimate",
@@ -432,10 +410,7 @@
       "round": 2,
       "by": "proponent",
       "kind": "proposal",
-      "answers": [
-        "P2",
-        "O1"
-      ],
+      "answers": ["P2", "O1"],
       "text": "$hasContext is a compile-time `$` function exported from brumate/signals beside $getContext, and is added to the list at decisions.md:7. Call: `$hasContext(Context)` returns a boolean. Server: it runs the same walk up the scope parents that $getContext uses, and returns true when a node above holds the key or the key is ROUTE_KEY. Browser: it calls findProvider on the page state (J11), so no new resume data and no new flag. Providers are static (#469), so the answer is fixed when the scope is made and never changes while the page lives.",
       "evidence": {
         "type": "source",
@@ -452,10 +427,7 @@
       "round": 2,
       "by": "proponent",
       "kind": "proposal",
-      "answers": [
-        "O1",
-        "P2"
-      ],
+      "answers": ["O1", "P2"],
       "text": "Answer to O1, exact optional form: a second argument, the literal `true`, on $getContext and on $store. `$getContext(C, true)` returns undefined when no provider is above. `$store(source, true)` takes the same sources as today (a context, or a key of a $getContext value, BRM194 otherwise) and gives undefined when the provider is missing. Ui readers write `const g = $getContext(C, true); const x = $store(g?.state, true)` or `const x = $store(C, true)`; the compiler accepts `g?.state` only when g came from `$getContext(C, true)`. The variable x is undefined without a provider, and the optional form allows only const, so a new BRM error covers `let` and no write reaches a missing store. Server: the read finds no value and records no store link in the page state. Browser: findStore finds no provider on resume (J11), so linkRead and waitingReads are not used and x stays undefined. The compiler checks the literal, so the graph stays static.",
       "evidence": {
         "type": "source",
@@ -472,11 +444,7 @@
       "round": 2,
       "by": "proponent",
       "kind": "proposal",
-      "answers": [
-        "P3",
-        "P5",
-        "O3"
-      ],
+      "answers": ["P3", "P5", "O3"],
       "text": "Node split, replacing the 2 M nodes of P3 and the S-M node of P5 (O3 asks for realistic sizing). N1 core throw and deletions (P1): M. N2 $hasContext plus the optional flag of $getContext and $store, with BRM codes, server and client resume tests (P9, P10): M. N3 ui batch a, the 50 store(null) readers and the tests that render a part alone, using `$store(C, true)` or `$getContext(C, true)`: M, maybe split by file group if review fixes pile up. N4 ui batch b, the 7 null/false defaults, 2 noInput, the 24 packages/brumate test calls and the Locale reader: M. N5 docs, 4 examples, decisions.md, changeset: S. Total 4 M plus 1 S, with N2 gating N3 and N4, and N1 independent of N2 so it can run first.",
       "evidence": {
         "type": "measured",
@@ -493,9 +461,7 @@
       "round": 2,
       "by": "proponent",
       "kind": "proposal",
-      "answers": [
-        "P4"
-      ],
+      "answers": ["P4"],
       "text": "Placement against the story: the nodes sit inside the context-stores story, N1 and N2 first, then N3 and N4, all before store-repair-compare. store-repair-compare's LocaleContext en-US default store item is replaced by N4: the Locale reader uses `$getContext(LocaleContext, true)` and falls back to en-US per reader, so no module-global store is restored. The rest of store-repair-compare (the object-memo store test) stays. The story PR to next waits for N5, which is the cost of the user's choice to follow Svelte.",
       "evidence": {
         "type": "source",
@@ -512,10 +478,7 @@
       "round": 2,
       "by": "proponent",
       "kind": "proposal",
-      "answers": [
-        "P1",
-        "O5"
-      ],
+      "answers": ["P1", "O5"],
       "text": "Answer to O5: the src deletion is small (about 5 sites), so the argument for P1 is correctness, not size: the leak of J1 and J5 goes away and the story's CONTEXT_ADDED, madeContexts and waitingReads code is not shipped. Tests that mount a part alone get a provider or the optional form in N4. Page roots keep $route and $navigation because the runtime provides both (J8); a non-page root in a test provides them or does not read them.",
       "evidence": {
         "type": "source",
@@ -534,9 +497,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "high",
-      "answers": [
-        "P10"
-      ],
+      "answers": ["P10"],
       "text": "P10 gives two optional-read forms, `$hasContext(C)` and the `true` flag, but the user chose $hasContext alone (Q1, Svelte's get/set/has). Svelte has no optional get, so the flag goes past the answer. It also adds a second meaning to the return of $getContext and $store (value or undefined), a rule that `g?.state` is accepted only when g came from a flagged read, and a new BRM code for `let`. That is more compiler surface than the guard it replaces.",
       "evidence": {
         "type": "source",
@@ -551,10 +512,7 @@
       "kind": "alternative",
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P10",
-        "P11"
-      ],
+      "answers": ["P10", "P11"],
       "text": "Use $hasContext alone and narrow $store to a guarded form: the compiler accepts `const x = $hasContext(C) ? $store(C) : undefined` (and the same with `$store(g.state)` where g is `$hasContext(C) ? $getContext(C) : undefined`) as one recognised shape. The guard is the user's own primitive, the branch is a compile-time fact (P9, static providers), and no flag, no second return type and no `?.` rule are added. N2 shrinks to $hasContext plus one pattern check in the $store analysis, and readers keep one idiom.",
       "estimate": {
         "value": 0,
@@ -573,10 +531,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "medium",
-      "answers": [
-        "P11",
-        "P12"
-      ],
+      "answers": ["P11", "P12"],
       "text": "N3 touches 80 ui files with 129 $store calls, and N2 gates N3 and N4, so the ui work cannot start until the compiler node merges. Placing all five nodes before the story PR means the 0.7.0 must waits for the longest chain (N2, then N3, then N5). Earlier stacks show review-fix rounds after each ui node. The story PR could go first with store-repair-compare's en-US item left out, and the removal follow after, at the cost of shipping CONTEXT_ADDED for one release step.",
       "estimate": {
         "value": 3,
@@ -595,9 +550,7 @@
       "kind": "risk",
       "axis": "tokens",
       "severity": "medium",
-      "answers": [
-        "P11"
-      ],
+      "answers": ["P11"],
       "text": "N3 as one M node over 80 files is a large agent task, so a worker will re-read many parts and likely need the split P11 mentions (maybe) plus review-fix rounds. Planning it as 3 or 4 file groups up front costs less than splitting after a failed worker run.",
       "estimate": {
         "value": 4,
@@ -616,9 +569,7 @@
       "kind": "risk",
       "axis": "time",
       "severity": "low",
-      "answers": [
-        "P9"
-      ],
+      "answers": ["P9"],
       "text": "P9 says the browser answers $hasContext from findProvider (J11), but a provider rendered in the browser after resume and a reader in a scope the page state has not yet recorded are separate paths. P9 needs a test for a provider created by a browser render and for a reader inside a streamed #loading chunk, or the answer can differ between server and browser.",
       "evidence": {
         "type": "source",

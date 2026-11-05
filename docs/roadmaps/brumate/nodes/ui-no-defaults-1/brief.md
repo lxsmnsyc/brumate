@@ -45,7 +45,6 @@ Each `createContext` loses its default. A part that must work without a provider
 - [ ] ui tests and `node e2e/run.mjs --only ui` pass.
 - [ ] The ui example's client JS (gzip -9 summed over examples/ui dist JS) before and after.
 
-
 ## Sizing
 
 M: about 20 files of mechanical changes.

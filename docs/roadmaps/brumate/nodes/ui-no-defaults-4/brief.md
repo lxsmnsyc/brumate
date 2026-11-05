@@ -35,9 +35,9 @@ depends_on:
 
 ## Goal
 
-From the approved debate docs/debates/context-no-defaults/debate.md: packages/ui has about 40 contexts with a default (`null`, `store(null)`, `{ state: store(null) }`, `noInput`, `false`), read through 129 `$store` and 76 `$getContext` calls in about 80 files. This node moves group 4: the rest: Calendar, DatePicker, color parts, Disclosure, Dialog, overlays, Breadcrumb, and LocaleContext with its readers. Pick the files at the start and list them in the outcome, so the next group knows what is left.
+From the approved debate docs/debates/context-no-defaults/debate.md: packages/ui has about 40 contexts with a default (`null`, `store(null)`, `{ state: store(null) }`, `noInput`, `false`), read through 129 `$store` and 76 `$getContext` calls in about 80 files. This node moves group 4: the rest: Calendar, DatePicker, color parts, Disclosure, Dialog, overlays, Breadcrumb (LocaleContext and the layer context moved to group 2 on 2026-11-05). Pick the files at the start and list them in the outcome, so the next group knows what is left.
 
-Each `createContext` loses its default. A part that must work without a provider reads with `$hasContext(C) ? $store(C) : undefined` or the `$getContext` form (see has-context's outcome). A fallback value is built in the reader, never at module scope. LocaleContext gets no default: its readers fall back to the en-US locale per reader, replacing store-repair-compare's plan to restore a default store.
+Each `createContext` loses its default. A part that must work without a provider reads with `$hasContext(C) ? $store(C) : undefined` or the `$getContext` form (see has-context's outcome). A fallback value is built in the reader, never at module scope.
 
 ## Acceptance
 
