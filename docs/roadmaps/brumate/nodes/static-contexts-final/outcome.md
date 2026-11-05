@@ -54,7 +54,7 @@ Not an experiment node.
 - packages/ui: all files pass in small groups or alone, including `change-handlers`, `field-stores`, `bind-kept-writes` and `token-field-sync` (the last two flake under load, as on the base).
 - `pnpm --filter website check:samples`: 67 samples, 0 problems.
 - Every `.brm` file of the repo compiles with no BRM196 (scan of the whole tree, packages/ui and the examples included).
-- `node e2e/run.mjs`: see the report of the worker (appended below when it ended).
+- `node e2e/run.mjs` (full, one run): todos 10, tracker 14, nitro 2, kit 5, ui 55, browser-async 6 pass; website 70 pass, 1 fail: `/docs/context: 3 live samples render`, sample 3 ("Live values with stores") imports `brumate/store`, which `website/src/live/run.ts` refuses ("A sample can import brumate and its own files"). The sample comes from store-contract; this node only changed bullets of that page. I did not run e2e on a9557034 to confirm. Left for the orchestrator: allow `brumate/store` in the live runner, or change the sample.
 - `pnpm bench --only brumate --scenario todos`, the machine at load average 27 (timings are noise):
 
 | | a9557034 | here |
