@@ -189,7 +189,7 @@ export const CheckboxGroupContext: Context<CheckboxGroupGiven> = createContext<C
   { state: store(null) },
 );
 
-/** What a RadioGroup gives its Radios. */
+/** What a RadioGroup gives its Radios: its choice and states. */
 export interface RadioGroupState {
   name: string;
   value: string | null;
@@ -198,26 +198,48 @@ export interface RadioGroupState {
   isRequired: boolean;
   isInvalid: boolean;
   describedBy?: string;
+}
+
+/** What a Radio calls on its group. */
+export interface RadioGroupHandlers {
   select: (value: string) => void;
   onInvalid: (message: string) => void;
 }
 
-export const RadioGroupContext: Context<RadioGroupState | null> =
-  createContext<RadioGroupState | null>('brumate-ui:radio-group', null);
+/** What a RadioGroup gives: the store of its state, and its handlers. Outside a group there is no handler. */
+export interface RadioGroupGiven extends Partial<RadioGroupHandlers> {
+  state: StoreLike<RadioGroupState | null>;
+}
+
+export const RadioGroupContext: Context<RadioGroupGiven> = createContext<RadioGroupGiven>(
+  'brumate-ui:radio-group',
+  { state: store(null) },
+);
 
 /** What a ToggleButtonGroup gives its ToggleButtons, which name themselves with `id`. */
 export interface ToggleGroupState {
   selectionMode: 'single' | 'multiple';
   selectedKeys: string[];
   isDisabled: boolean;
+}
+
+/** What a ToggleButton calls on its group. */
+export interface ToggleGroupHandlers {
   toggle: (id: string) => void;
+}
+
+/** What a ToggleButtonGroup gives: the store of its state, and its handler. Outside a group there is no handler. */
+export interface ToggleGroupGiven extends Partial<ToggleGroupHandlers> {
+  state: StoreLike<ToggleGroupState | null>;
 }
 
 /** True inside a Toolbar, so a toolbar inside it is a group. */
 export const ToolbarContext: Context<boolean> = createContext<boolean>('brumate-ui:toolbar', false);
 
-export const ToggleGroupContext: Context<ToggleGroupState | null> =
-  createContext<ToggleGroupState | null>('brumate-ui:toggle-group', null);
+export const ToggleGroupContext: Context<ToggleGroupGiven> = createContext<ToggleGroupGiven>(
+  'brumate-ui:toggle-group',
+  { state: store(null) },
+);
 
 /** What a Disclosure gives its DisclosurePanel. */
 export interface DisclosurePanelState {
@@ -226,21 +248,39 @@ export interface DisclosurePanelState {
   isExpanded: boolean;
   /** A disabled disclosure keeps its panel closed, also for find in page. */
   isDisabled: boolean;
+}
+
+/** What a DisclosurePanel calls on its disclosure. */
+export interface DisclosurePanelHandlers {
   expand: () => void;
 }
 
-export const DisclosurePanelContext: Context<DisclosurePanelState | null> =
-  createContext<DisclosurePanelState | null>('brumate-ui:disclosure-panel', null);
+/** What a Disclosure gives: the store of its state, and its handler. Outside a disclosure there is no handler. */
+export interface DisclosurePanelGiven extends Partial<DisclosurePanelHandlers> {
+  state: StoreLike<DisclosurePanelState | null>;
+}
+
+export const DisclosurePanelContext: Context<DisclosurePanelGiven> =
+  createContext<DisclosurePanelGiven>('brumate-ui:disclosure-panel', { state: store(null) });
 
 /** What a DisclosureGroup gives its Disclosures, which name themselves with `id`. */
 export interface DisclosureGroupState {
   expandedKeys: string[];
   isDisabled: boolean;
+}
+
+/** What a Disclosure calls on its group. */
+export interface DisclosureGroupHandlers {
   toggle: (id: string) => void;
 }
 
-export const DisclosureGroupContext: Context<DisclosureGroupState | null> =
-  createContext<DisclosureGroupState | null>('brumate-ui:disclosure-group', null);
+/** What a DisclosureGroup gives: the store of its state, and its handler. Outside a group there is no handler. */
+export interface DisclosureGroupGiven extends Partial<DisclosureGroupHandlers> {
+  state: StoreLike<DisclosureGroupState | null>;
+}
+
+export const DisclosureGroupContext: Context<DisclosureGroupGiven> =
+  createContext<DisclosureGroupGiven>('brumate-ui:disclosure-group', { state: store(null) });
 
 /** What a DialogTrigger gives its overlay: whether it is open, and the IDs that link them. */
 export interface OverlayTriggerState {

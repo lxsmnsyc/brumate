@@ -30,8 +30,9 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $getContext, $props, $setContext, $store } from 'brumate/signals';
+  import { $client, $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
+  import type { ToggleGroupState } from './contexts.ts';
   import { LocaleContext } from './locale.ts';
   import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
 
@@ -118,7 +119,8 @@
   // preventEdges prevents Home and End, and Up and Down of a vertical group, unless a text field
   // or area has the keys for its caret.
 
-  $setContext(ToggleGroupContext, { selectionMode, selectedKeys, isDisabled, toggle });
+  const groupState = $memo<ToggleGroupState>({ selectionMode, selectedKeys, isDisabled });
+  $setContext(ToggleGroupContext, { state: $toStore(groupState), toggle });
 </script>
 
 <{as ?? 'div'}

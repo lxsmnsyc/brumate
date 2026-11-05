@@ -23,7 +23,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $effect, $getContext, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $effect, $getContext, $props, $setContext, $signal, $store, $untrack } from 'brumate/signals';
   import { DisclosurePanelContext } from './contexts.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
 
@@ -51,7 +51,8 @@
   } = $props<DisclosurePanelProps<T>>();
   let { ref } = $props<DisclosurePanelOwnProps<T>>();
 
-  const state = $getContext(DisclosurePanelContext);
+  const panelGiven = $getContext(DisclosurePanelContext);
+  const state = $store(panelGiven.state);
   const expanded = $untrack(Boolean(state?.isExpanded));
 
   // The panel is shown: open, or closing with `transition`.
@@ -117,7 +118,7 @@
   }
 
   function found() {
-    state?.expand();
+    panelGiven.expand?.();
   }
 
   // A closed panel that stays in the page is hidden until find in page finds something in it.
