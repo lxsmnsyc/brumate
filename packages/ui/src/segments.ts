@@ -3,7 +3,6 @@
 // is set or empty. The field has a value once every segment is set. Dates and times are ISO
 // strings, such as `2026-10-15` and `14:30`.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 import { CalendarDate, DateFormatter, endOfMonth } from '@internationalized/date';
@@ -81,10 +80,8 @@ export interface DateFieldGiven extends Partial<DateFieldHandlers> {
   state: StoreLike<DateFieldState | null>;
 }
 
-export const DateFieldContext: Context<DateFieldGiven> = createContext<DateFieldGiven>(
-  'brumate-ui:date-field',
-  { state: store(null) },
-);
+export const DateFieldContext: Context<DateFieldGiven> =
+  createContext<DateFieldGiven>('brumate-ui:date-field');
 
 /**
  * What a DateRangePicker gives its two DateInputs, by their `slot`: a store of the state of each
@@ -106,10 +103,7 @@ export interface DateRangeFieldGiven {
 }
 
 export const DateRangeFieldContext: Context<DateRangeFieldGiven> =
-  createContext<DateRangeFieldGiven>('brumate-ui:date-range-field', {
-    startState: store(null),
-    endState: store(null),
-  });
+  createContext<DateRangeFieldGiven>('brumate-ui:date-range-field');
 
 /** The number of days in the month of a date. */
 function getDaysInMonth(date: CalendarDate): number {

@@ -1,7 +1,6 @@
 // The contexts of the part types. A part that holds other parts provides their props here, and
 // each part reads its own with `slotProps`.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Color } from './color.ts';
 import type { Placement } from './position.ts';
 import type { Context } from 'brumate/context';
@@ -261,7 +260,7 @@ export interface DisclosurePanelGiven extends Partial<DisclosurePanelHandlers> {
 }
 
 export const DisclosurePanelContext: Context<DisclosurePanelGiven> =
-  createContext<DisclosurePanelGiven>('brumate-ui:disclosure-panel', { state: store(null) });
+  createContext<DisclosurePanelGiven>('brumate-ui:disclosure-panel');
 
 /** What a DisclosureGroup gives its Disclosures, which name themselves with `id`. */
 export interface DisclosureGroupState {
@@ -280,7 +279,7 @@ export interface DisclosureGroupGiven extends Partial<DisclosureGroupHandlers> {
 }
 
 export const DisclosureGroupContext: Context<DisclosureGroupGiven> =
-  createContext<DisclosureGroupGiven>('brumate-ui:disclosure-group', { state: store(null) });
+  createContext<DisclosureGroupGiven>('brumate-ui:disclosure-group');
 
 /** What a DialogTrigger gives its overlay: whether it is open, and the IDs that link them. */
 export interface OverlayTriggerState {
@@ -319,7 +318,7 @@ export interface OverlayTriggerGiven extends Partial<OverlayTriggerHandlers> {
 }
 
 export const OverlayTriggerContext: Context<OverlayTriggerGiven> =
-  createContext<OverlayTriggerGiven>('brumate-ui:overlay-trigger', { state: store(null) });
+  createContext<OverlayTriggerGiven>('brumate-ui:overlay-trigger');
 
 /** What an overlay gives the Dialog inside it: the IDs that name it. */
 export interface DialogState {
@@ -345,16 +344,15 @@ export interface ModalOverlayState {
 }
 
 export const ModalOverlayContext: Context<ModalOverlayState | null> =
-  createContext<ModalOverlayState | null>('brumate-ui:modal-overlay', null);
+  createContext<ModalOverlayState | null>('brumate-ui:modal-overlay');
 
 /** What a ColorSwatchPickerItem gives the ColorSwatch inside it: the color of the item. */
 export interface ColorSwatchState {
   color: string;
 }
 
-export const ColorSwatchContext: Context<StoreLike<ColorSwatchState | null>> = createContext<
-  StoreLike<ColorSwatchState | null>
->('brumate-ui:color-swatch', store(null));
+export const ColorSwatchContext: Context<StoreLike<ColorSwatchState | null>> =
+  createContext<StoreLike<ColorSwatchState | null>>('brumate-ui:color-swatch');
 
 /**
  * What a ColorPicker gives the color parts inside it: its color. A part that the caller gave a
@@ -378,9 +376,5 @@ export interface ColorPickerGiven {
   setValue?: (color: Color, text?: string) => Color;
 }
 
-const noPicker: ColorPickerGiven = { state: store(null) };
-
-export const ColorPickerContext: Context<ColorPickerGiven> = createContext<ColorPickerGiven>(
-  'brumate-ui:color-picker',
-  noPicker,
-);
+export const ColorPickerContext: Context<ColorPickerGiven> =
+  createContext<ColorPickerGiven>('brumate-ui:color-picker');

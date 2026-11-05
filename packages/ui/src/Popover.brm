@@ -98,8 +98,8 @@
   let { isOpen } = $props<PopoverOwnProps<T>>();
   let { ref } = $props<PopoverOwnProps<T>>();
 
-  const triggerGiven = $getContext(OverlayTriggerContext);
-  const trigger = $store(triggerGiven.state);
+  const triggerGiven = $hasContext(OverlayTriggerContext) ? $getContext(OverlayTriggerContext) : undefined;
+  const trigger = $hasContext(OverlayTriggerContext) ? $store(triggerGiven.state) : undefined;
   const parentLayer = $hasContext(LayerContext) ? $getContext(LayerContext) : undefined;
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
@@ -140,7 +140,7 @@
       isOpen = false;
       onOpenChange?.(false);
     } else {
-      triggerGiven.close?.();
+      triggerGiven?.close?.();
     }
   }
 

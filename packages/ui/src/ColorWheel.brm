@@ -97,15 +97,15 @@
   let { value = 'hsl(0, 100%, 50%)' } = $props<ColorWheelProps>();
 
   // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
-  const given = $getContext(ColorPickerContext);
-  const picker = $store(given.state);
+  const given = $hasContext(ColorPickerContext) ? $getContext(ColorPickerContext) : undefined;
+  const picker = $hasContext(ColorPickerContext) ? $store(given.state) : undefined;
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
   /** Writes the color, and returns the text that the part keeps. */
   function write(next: Color, text: string): string {
     if (picker && !passed) {
-      given.setValue!(next, text);
+      given?.setValue!(next, text);
       return text;
     } else {
       const before = value;

@@ -12,7 +12,6 @@
 //
 // The ColorThumb is the same for all of them, so it knows nothing of channels, tracks or wheels.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 
@@ -105,7 +104,5 @@ export interface ColorThumbGiven extends Partial<ColorThumbHandlers> {
   state: StoreLike<ColorThumbState | null>;
 }
 
-export const ColorThumbContext: Context<ColorThumbGiven> = createContext<ColorThumbGiven>(
-  'brumate-ui:color-thumb',
-  { state: store(null) },
-);
+export const ColorThumbContext: Context<ColorThumbGiven> =
+  createContext<ColorThumbGiven>('brumate-ui:color-thumb');

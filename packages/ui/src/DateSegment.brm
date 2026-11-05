@@ -9,7 +9,7 @@
 </script>
 
 <script>
-  import { $getContext, $id, $props, $store } from 'brumate/signals';
+  import { $getContext, $hasContext, $id, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { DateFieldContext, PAGE_STEP, SEGMENT_NAMES, focusSegment } from './segments.ts';
 
@@ -29,8 +29,8 @@
    */
   const { segment, ...rest } = $props<DateSegmentProps>();
 
-  const given = $getContext(DateFieldContext);
-  const field = $store(given.state);
+  const given = $hasContext(DateFieldContext) ? $getContext(DateFieldContext) : undefined;
+  const field = $hasContext(DateFieldContext) ? $store(given.state) : undefined;
   const id = $id();
 
   /** The part that this segment edits. */
@@ -55,22 +55,22 @@
     }
     switch (event.key) {
       case 'ArrowUp':
-        given.step?.(type, 1);
+        given?.step?.(type, 1);
         return;
       case 'ArrowDown':
-        given.step?.(type, -1);
+        given?.step?.(type, -1);
         return;
       case 'PageUp':
-        given.step?.(type, PAGE_STEP[type]);
+        given?.step?.(type, PAGE_STEP[type]);
         return;
       case 'PageDown':
-        given.step?.(type, -PAGE_STEP[type]);
+        given?.step?.(type, -PAGE_STEP[type]);
         return;
       case 'Home':
-        given.jump?.(type, 'min');
+        given?.jump?.(type, 'min');
         return;
       case 'End':
-        given.jump?.(type, 'max');
+        given?.jump?.(type, 'max');
         return;
       default:
         return;
@@ -85,13 +85,13 @@
       return;
     }
     if (event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward') {
-      if (given.erase?.(type)) {
+      if (given?.erase?.(type)) {
         move(element, -1);
       }
       return;
     }
     for (const char of event.data ?? '') {
-      if (given.type?.(type, char)) {
+      if (given?.type?.(type, char)) {
         move(element, 1);
         return;
       }
@@ -107,7 +107,7 @@
   function focusOut(event: FocusEvent & { currentTarget: HTMLElement }) {
     event.currentTarget.removeAttribute('data-focused');
     event.currentTarget.removeAttribute('data-focus-visible');
-    given.settle?.();
+    given?.settle?.();
   }
 
   // Only a mouse or a pen hovers: a finger that taps is no hover.

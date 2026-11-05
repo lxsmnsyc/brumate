@@ -1,6 +1,5 @@
 // The state that a TagGroup shares with its TagList and its Tags.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 import type { Key, SelectionMode } from './collection.ts';
@@ -30,7 +29,5 @@ export interface TagGroupGiven extends Partial<TagGroupHandlers> {
   state: StoreLike<TagGroupState | null>;
 }
 
-export const TagGroupContext: Context<TagGroupGiven> = createContext<TagGroupGiven>(
-  'brumate-ui:tag-group',
-  { state: store(null) },
-);
+export const TagGroupContext: Context<TagGroupGiven> =
+  createContext<TagGroupGiven>('brumate-ui:tag-group');

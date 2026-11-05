@@ -1,7 +1,6 @@
 // The state that a Slider shares with its output, its track and its thumbs, and the drag of a
 // thumb.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 import { clamp, snapToStep } from './numbers.ts';
@@ -38,9 +37,7 @@ export interface SliderGiven extends Partial<SliderHandlers> {
   state: StoreLike<SliderState | null>;
 }
 
-export const SliderContext: Context<SliderGiven> = createContext<SliderGiven>('brumate-ui:slider', {
-  state: store(null),
-});
+export const SliderContext: Context<SliderGiven> = createContext<SliderGiven>('brumate-ui:slider');
 
 /** The ID of the input of a thumb. */
 export function thumbId(slider: { id: string }, index: number): string {

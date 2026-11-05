@@ -19,7 +19,7 @@
 </script>
 
 <script>
-  import { $bind, $getContext, $isPassed, $props, $setContext } from 'brumate/signals';
+  import { $bind, $getContext, $hasContext, $isPassed, $props, $setContext } from 'brumate/signals';
   import { ModalOverlayContext } from './contexts.ts';
   import ModalContent from './ModalContent.brm';
   import ModalOverlay from './ModalOverlay.brm';
@@ -41,7 +41,7 @@
   // It takes a binding of a value that can be undefined, so a part can pass its own `isOpen` on.
   let { isOpen } = $props<ModalProps>();
 
-  const overlay = $getContext(ModalOverlayContext);
+  const overlay = $hasContext(ModalOverlayContext) ? $getContext(ModalOverlayContext) : undefined;
   const passed = $isPassed(isOpen);
   // A Modal inside this one is not its box, so it opens an overlay of its own.
   $setContext(ModalOverlayContext, null);

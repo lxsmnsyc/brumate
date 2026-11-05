@@ -30,7 +30,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $hasContext, $effect, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $effect, $hasContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { DatePickerContext, constrain, outOfRange, toDate, todayString } from './calendar.ts';
   import type { DatePickerState } from './calendar.ts';
   import {
@@ -101,7 +101,7 @@
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
-  const strings = $store(DateStringsContext);
+  const strings = $hasContext(DateStringsContext) ? $store(DateStringsContext) : undefined;
   const placeholder = $memo(
     constrain(toDate(placeholderValue ?? todayString(locale.timeZone)), minValue, maxValue).toString(),
   );

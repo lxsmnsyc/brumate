@@ -1,6 +1,5 @@
 // The move of a SelectionIndicator from the item that was selected to the one that is.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 
@@ -10,10 +9,7 @@ export interface SelectionIndicatorState {
 }
 
 export const SelectionIndicatorContext: Context<StoreLike<SelectionIndicatorState | null>> =
-  createContext<StoreLike<SelectionIndicatorState | null>>(
-    'brumate-ui:selection-indicator',
-    store(null),
-  );
+  createContext<StoreLike<SelectionIndicatorState | null>>('brumate-ui:selection-indicator');
 
 /** The element that the indicators of one selection move in: the collection or the group. */
 const CONTAINER = '[data-collection], [role=radiogroup], [role=toolbar]';

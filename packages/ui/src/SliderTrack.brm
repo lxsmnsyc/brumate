@@ -20,8 +20,8 @@
    */
   const { children, ...rest } = $props<SliderTrackProps>();
 
-  const sliderGiven = $getContext(SliderContext);
-  const slider = $store(sliderGiven.state);
+  const sliderGiven = $hasContext(SliderContext) ? $getContext(SliderContext) : undefined;
+  const slider = $hasContext(SliderContext) ? $store(sliderGiven.state) : undefined;
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
 
@@ -50,12 +50,12 @@
       return;
     }
     thumb?.focus({ preventScroll: true });
-    sliderGiven.setThumb!(index, value);
-    sliderGiven.setDragging!(index, true);
+    sliderGiven?.setThumb!(index, value);
+    sliderGiven?.setDragging!(index, true);
     startDrag(
       event.pointerId,
-      (move) => sliderGiven.setThumb!(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
-      () => sliderGiven.setDragging!(index, false),
+      (move) => sliderGiven?.setThumb!(index, valueAt(slider, track, move.clientX, move.clientY, rtl)),
+      () => sliderGiven?.setDragging!(index, false),
       event.currentTarget,
     );
   }

@@ -67,8 +67,8 @@
   } = $props<TooltipProps<T>>();
   let { ref } = $props<TooltipOwnProps<T>>();
 
-  const triggerGiven = $getContext(TooltipTriggerContext);
-  const trigger = $store(triggerGiven.state);
+  const triggerGiven = $hasContext(TooltipTriggerContext) ? $getContext(TooltipTriggerContext) : undefined;
+  const trigger = $hasContext(TooltipTriggerContext) ? $store(triggerGiven.state) : undefined;
   const parentLayer = $hasContext(LayerContext) ? $getContext(LayerContext) : undefined;
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
@@ -102,7 +102,7 @@
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
-        triggerGiven.close?.(true);
+        triggerGiven?.close?.(true);
       }
     }
     document.addEventListener('keydown', escape, true);
@@ -189,11 +189,11 @@
   }
 
   function entered() {
-    triggerGiven.keep?.();
+    triggerGiven?.keep?.();
   }
 
   function left() {
-    triggerGiven.close?.(false);
+    triggerGiven?.close?.(false);
   }
 </script>
 

@@ -40,7 +40,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $hasContext, $effect, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $effect, $hasContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { formField } from './date-field.brm.ts';
@@ -105,7 +105,7 @@
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
-  const strings = $store(DateStringsContext);
+  const strings = $hasContext(DateStringsContext) ? $store(DateStringsContext) : undefined;
   const twelve = $memo(usesDayPeriod(locale.locale, hourCycle));
   const inputId = $id();
   let parts = $signal<DateParts>(parseTimeParts(value));

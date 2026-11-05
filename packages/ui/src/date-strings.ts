@@ -5,7 +5,6 @@
 // context, never `getDateStrings`. Outside an I18nProvider the context holds null, and the parts use
 // their English words.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 import { PLACEHOLDERS, SEGMENT_NAMES } from './segments.ts';
@@ -190,6 +189,5 @@ export function getDateStrings(locale: string): DateStrings {
  * The strings of the parts inside an I18nProvider, as a store. It holds null outside one, where the
  * parts use English.
  */
-export const DateStringsContext: Context<StoreLike<DateStrings | null>> = createContext<
-  StoreLike<DateStrings | null>
->('brumate-ui:date-strings', store(null));
+export const DateStringsContext: Context<StoreLike<DateStrings | null>> =
+  createContext<StoreLike<DateStrings | null>>('brumate-ui:date-strings');

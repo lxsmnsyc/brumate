@@ -1,7 +1,6 @@
 // The state that a ColorWheel shares with its ColorWheelTrack, and the math of the circle. The
 // thumb is a ColorThumb, which the wheel feeds through `ColorThumbContext`.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 
@@ -20,10 +19,8 @@ export interface ColorWheelGiven {
   onTrackPress?: (event: PointerEvent & { currentTarget: Element }) => void;
 }
 
-export const ColorWheelContext: Context<ColorWheelGiven> = createContext<ColorWheelGiven>(
-  'brumate-ui:color-wheel',
-  { state: store(null) },
-);
+export const ColorWheelContext: Context<ColorWheelGiven> =
+  createContext<ColorWheelGiven>('brumate-ui:color-wheel');
 
 /** A hue is kept in 0 to 359, and rounded to the step. A hue past 360 starts over at 0. */
 export function wrapHue(hue: number, step: number): number {

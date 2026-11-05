@@ -16,7 +16,7 @@
 </script>
 
 <script>
-  import { $client, $getContext, $hasContext, $handler, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $handler, $hasContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -64,8 +64,8 @@
   let { value = '' } = $props<ColorSwatchPickerProps>();
 
   // Inside a ColorPicker, a list without a `value` shows the color of the picker and writes it.
-  const given = $getContext(ColorPickerContext);
-  const picker = $store(given.state);
+  const given = $hasContext(ColorPickerContext) ? $getContext(ColorPickerContext) : undefined;
+  const picker = $hasContext(ColorPickerContext) ? $store(given.state) : undefined;
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
@@ -99,7 +99,7 @@
     // A disabled item is never selected.
     if (item?.getAttribute('aria-disabled') !== 'true' && text && tryParseColor(text)) {
       if (picker && !passed) {
-        given.setValue!(parseColor(text), text);
+        given?.setValue!(parseColor(text), text);
       } else {
         value = text;
       }

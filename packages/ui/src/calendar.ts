@@ -2,7 +2,6 @@
 // Dates are ISO strings, such as `2026-10-25`, since the page state
 // cannot hold the classes of `@internationalized/date`.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 import {
@@ -133,20 +132,16 @@ export interface DatePickerGiven {
   isDateUnavailable?: (date: DateString, anchor?: DateString | null) => boolean;
 }
 
-export const DatePickerContext: Context<DatePickerGiven> = createContext<DatePickerGiven>(
-  'brumate-ui:date-picker',
-  { state: store(null) },
-);
+export const DatePickerContext: Context<DatePickerGiven> =
+  createContext<DatePickerGiven>('brumate-ui:date-picker');
 
-export const CalendarContext: Context<CalendarGiven> = createContext<CalendarGiven>(
-  'brumate-ui:calendar',
-  { state: store(null) },
-);
+export const CalendarContext: Context<CalendarGiven> =
+  createContext<CalendarGiven>('brumate-ui:calendar');
 
 /** The month that a CalendarGrid shows, so its cells know the dates outside it. */
 export const CalendarGridContext: Context<StoreLike<{ start: DateString } | null>> = createContext<
   StoreLike<{ start: DateString } | null>
->('brumate-ui:calendar-grid', store(null));
+>('brumate-ui:calendar-grid');
 
 export function toDate(value: DateString): CalendarDate {
   return parseDate(value);

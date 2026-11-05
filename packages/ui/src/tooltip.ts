@@ -1,7 +1,6 @@
 // The timing of tooltips and previews, and the
 // context of a TooltipTrigger.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 
@@ -26,7 +25,7 @@ export interface TooltipTriggerGiven extends Partial<TooltipTriggerHandlers> {
 }
 
 export const TooltipTriggerContext: Context<TooltipTriggerGiven> =
-  createContext<TooltipTriggerGiven>('brumate-ui:tooltip-trigger', { state: store(null) });
+  createContext<TooltipTriggerGiven>('brumate-ui:tooltip-trigger');
 
 /** How long the others show at once after one hides, in milliseconds. */
 const COOLDOWN = 500;

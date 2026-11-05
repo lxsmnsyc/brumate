@@ -43,8 +43,8 @@
 
   const overlayGiven = $hasContext(DialogContext) ? $getContext(DialogContext) : undefined;
   const overlay = $hasContext(DialogContext) ? $store(overlayGiven.state) : undefined;
-  const triggerGiven = $getContext(OverlayTriggerContext);
-  const trigger = $store(triggerGiven.state);
+  const triggerGiven = $hasContext(OverlayTriggerContext) ? $getContext(OverlayTriggerContext) : undefined;
+  const trigger = $hasContext(OverlayTriggerContext) ? $store(triggerGiven.state) : undefined;
   const titleId = $id();
   const { present: titled } = described(titleId);
 
@@ -52,7 +52,7 @@
     if (overlayGiven?.close) {
       overlayGiven.close();
     } else {
-      triggerGiven.close?.();
+      triggerGiven?.close?.();
     }
   }
 

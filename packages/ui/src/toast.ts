@@ -2,7 +2,6 @@
 // its name, so any handler can add a toast. Each change sends a `toastchange` event to the
 // ToastRegion elements of the queue, so the code of a region loads with its first toast.
 import { createContext } from 'brumate/context';
-import { store } from 'brumate/store';
 import type { Context } from 'brumate/context';
 import type { StoreLike } from 'brumate/store';
 
@@ -188,13 +187,12 @@ export function toastQueue<T = unknown>(
 }
 
 /** What a ToastRegion gives its toasts: the name of its queue. */
-export const ToastRegionContext: Context<StoreLike<{ queue: string } | null>> = createContext<
-  StoreLike<{ queue: string } | null>
->('brumate-ui:toast-region', store(null));
+export const ToastRegionContext: Context<StoreLike<{ queue: string } | null>> =
+  createContext<StoreLike<{ queue: string } | null>>('brumate-ui:toast-region');
 
 /** What a Toast gives its ToastContent: the IDs of its title and its description. */
 export const ToastContext: Context<{ titleId: string; descriptionId: string } | null> =
-  createContext<{ titleId: string; descriptionId: string } | null>('brumate-ui:toast', null);
+  createContext<{ titleId: string; descriptionId: string } | null>('brumate-ui:toast');
 
 /** The element that had focus before focus moved into the toasts of a queue, by its name. */
 const before = new Map<string, Element>();

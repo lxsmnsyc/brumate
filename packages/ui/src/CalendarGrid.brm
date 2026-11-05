@@ -12,7 +12,7 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $hasContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     CalendarContext,
@@ -40,8 +40,8 @@
    */
   const { offset, cell, ...rest } = $props<CalendarGridProps>();
 
-  const given = $getContext(CalendarContext);
-  const calendar = $store(given.state);
+  const given = $hasContext(CalendarContext) ? $getContext(CalendarContext) : undefined;
+  const calendar = $hasContext(CalendarContext) ? $store(given.state) : undefined;
   const start = $memo(
     calendar ? (offset ? toDate(calendar.start).add(offset) : toDate(calendar.start)).toString() : '',
   );
@@ -70,36 +70,36 @@
     const back = calendar.direction === 'rtl' ? 1 : -1;
     switch (event.key) {
       case 'ArrowLeft':
-        given.moveFocus?.((date) => date.add({ days: back }));
+        given?.moveFocus?.((date) => date.add({ days: back }));
         return;
       case 'ArrowRight':
-        given.moveFocus?.((date) => date.add({ days: -back }));
+        given?.moveFocus?.((date) => date.add({ days: -back }));
         return;
       case 'ArrowUp':
-        given.moveFocus?.((date) => date.subtract({ weeks: 1 }));
+        given?.moveFocus?.((date) => date.subtract({ weeks: 1 }));
         return;
       case 'ArrowDown':
-        given.moveFocus?.((date) => date.add({ weeks: 1 }));
+        given?.moveFocus?.((date) => date.add({ weeks: 1 }));
         return;
       case 'PageUp':
-        given.moveFocus?.((date) => date.subtract(event.shiftKey ? { years: 1 } : unit));
+        given?.moveFocus?.((date) => date.subtract(event.shiftKey ? { years: 1 } : unit));
         return;
       case 'PageDown':
-        given.moveFocus?.((date) => date.add(event.shiftKey ? { years: 1 } : unit));
+        given?.moveFocus?.((date) => date.add(event.shiftKey ? { years: 1 } : unit));
         return;
       case 'Home':
-        given.moveFocus?.((date) => startOfMonth(date));
+        given?.moveFocus?.((date) => startOfMonth(date));
         return;
       case 'End':
-        given.moveFocus?.((date) => endOfMonth(date));
+        given?.moveFocus?.((date) => endOfMonth(date));
         return;
       case 'Enter':
       case ' ':
-        given.selectFocused?.();
+        given?.selectFocused?.();
         return;
       case 'Escape':
         // A range that is not done is dropped. Escape is not prevented, so a popover around closes.
-        given.cancel?.();
+        given?.cancel?.();
         return;
       default:
         return;

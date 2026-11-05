@@ -11,7 +11,7 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $hasContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { DateFieldContext, DateRangeFieldContext, focusSegment } from './segments.ts';
   import type { SegmentType } from './segments.ts';
   import DateSegment from './DateSegment.brm';
@@ -29,14 +29,14 @@
    */
   const { segment, slot, ...rest } = $props<DateInputProps>();
 
-  const range = $getContext(DateRangeFieldContext);
-  const single = $getContext(DateFieldContext);
-  const startState = $store(range.startState);
-  const endState = $store(range.endState);
-  const singleState = $store(single.state);
+  const range = $hasContext(DateRangeFieldContext) ? $getContext(DateRangeFieldContext) : undefined;
+  const single = $hasContext(DateFieldContext) ? $getContext(DateFieldContext) : undefined;
+  const startState = $hasContext(DateRangeFieldContext) ? $store(range.startState) : undefined;
+  const endState = $hasContext(DateRangeFieldContext) ? $store(range.endState) : undefined;
+  const singleState = $hasContext(DateFieldContext) ? $store(single.state) : undefined;
   /** The date that this input edits: its slot of a DateRangePicker, or the DateField's. */
   const field = $memo(
-    slot && startState ? (slot === 'start' ? startState : endState) : singleState,
+    (slot && startState ? (slot === 'start' ? startState : endState) : singleState) ?? null,
   );
 
   /** True when this input edits a date of a DateRangePicker. */
@@ -48,14 +48,14 @@
   $setContext(DateFieldContext, {
     state: $toStore(field),
     step: (type: SegmentType, delta: number) =>
-      ranged() ? (slot === 'start' ? range.startStep : range.endStep)?.(type, delta) : single.step?.(type, delta),
+      ranged() ? (slot === 'start' ? range?.startStep : range?.endStep)?.(type, delta) : single?.step?.(type, delta),
     jump: (type: SegmentType, to: 'min' | 'max') =>
-      ranged() ? (slot === 'start' ? range.startJump : range.endJump)?.(type, to) : single.jump?.(type, to),
+      ranged() ? (slot === 'start' ? range?.startJump : range?.endJump)?.(type, to) : single?.jump?.(type, to),
     type: (type: SegmentType, char: string) =>
-      (ranged() ? (slot === 'start' ? range.startType : range.endType)?.(type, char) : single.type?.(type, char)) ?? false,
+      (ranged() ? (slot === 'start' ? range?.startType : range?.endType)?.(type, char) : single?.type?.(type, char)) ?? false,
     erase: (type: SegmentType) =>
-      (ranged() ? (slot === 'start' ? range.startErase : range.endErase)?.(type) : single.erase?.(type)) ?? false,
-    settle: () => (ranged() ? (slot === 'start' ? range.startSettle : range.endSettle)?.() : single.settle?.()),
+      (ranged() ? (slot === 'start' ? range?.startErase : range?.endErase)?.(type) : single?.erase?.(type)) ?? false,
+    settle: () => (ranged() ? (slot === 'start' ? range?.startSettle : range?.endSettle)?.() : single?.settle?.()),
   });
 
   function keyDown(event: KeyboardEvent & { currentTarget: HTMLElement }) {

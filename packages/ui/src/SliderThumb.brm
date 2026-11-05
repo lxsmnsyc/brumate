@@ -42,8 +42,8 @@
     ...rest
   } = $props<SliderThumbProps>();
 
-  const sliderGiven = $getContext(SliderContext);
-  const slider = $store(sliderGiven.state);
+  const sliderGiven = $hasContext(SliderContext) ? $getContext(SliderContext) : undefined;
+  const slider = $hasContext(SliderContext) ? $store(sliderGiven.state) : undefined;
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   let focused = $signal(false);
@@ -62,7 +62,7 @@
       return;
     }
     try {
-      sliderGiven.setThumb?.(index, Number(event.currentTarget.value));
+      sliderGiven?.setThumb?.(index, Number(event.currentTarget.value));
     } finally {
       // A setter that refuses or throws leaves the old value, so the input goes back to it.
       event.currentTarget.value = String(value);
@@ -70,7 +70,7 @@
   }
 
   function changed() {
-    sliderGiven.setDragging?.(index, false);
+    sliderGiven?.setDragging?.(index, false);
   }
 
   // PageUp and PageDown move by a page, which the range input does not know.
@@ -78,8 +78,8 @@
     if (!slider || disabled || (event.key !== 'PageUp' && event.key !== 'PageDown')) {
       return;
     }
-    sliderGiven.setThumb!(index, value + (event.key === 'PageUp' ? slider.pageSize : -slider.pageSize));
-    sliderGiven.setDragging!(index, false);
+    sliderGiven?.setThumb!(index, value + (event.key === 'PageUp' ? slider.pageSize : -slider.pageSize));
+    sliderGiven?.setDragging!(index, false);
   }
 
   function pressed(event: PointerEvent & { currentTarget: Element }) {
@@ -93,11 +93,11 @@
     }
     // The thumb keeps the distance to the pointer.
     const offset = pointAt(slider, track, event.clientX, event.clientY, rtl) - getPercent(slider, value);
-    sliderGiven.setDragging!(index, true);
+    sliderGiven?.setDragging!(index, true);
     startDrag(
       event.pointerId,
-      (move) => sliderGiven.setThumb!(index, valueAt(slider, track, move.clientX, move.clientY, rtl, offset)),
-      () => sliderGiven.setDragging!(index, false),
+      (move) => sliderGiven?.setThumb!(index, valueAt(slider, track, move.clientX, move.clientY, rtl, offset)),
+      () => sliderGiven?.setDragging!(index, false),
       event.currentTarget,
     );
   }

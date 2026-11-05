@@ -40,7 +40,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $effect, $getContext, $hasContext, $handler, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $handler, $hasContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { NumberFormatter, NumberParser } from '@internationalized/number';
   import {
@@ -120,8 +120,8 @@
   let { value = null } = $props<ColorFieldProps<T>>();
 
   // Inside a ColorPicker, a field without a `value` shows the color of the picker and writes it.
-  const given = $getContext(ColorPickerContext);
-  const picker = $store(given.state);
+  const given = $hasContext(ColorPickerContext) ? $getContext(ColorPickerContext) : undefined;
+  const picker = $hasContext(ColorPickerContext) ? $store(given.state) : undefined;
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
@@ -242,7 +242,7 @@
     const same = next === null || held === null ? next === held : sameColor(next, held);
     let shown = nextColor;
     if (picker && !passed) {
-      const pc = given.setValue!(nextColor!, same ? held! : next!);
+      const pc = given!.setValue!(nextColor!, same ? held! : next!);
       // The field shows the color that the picker keeps.
       shown = channel ? toSpace(pc, colorSpace ?? editSpace(pc, channel)) : pc;
     } else {

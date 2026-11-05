@@ -65,8 +65,8 @@
   // It takes a binding of a value that can be undefined, so a part can pass its own `isOpen` on.
   let { isOpen } = $props<ModalOverlayProps>();
 
-  const triggerGiven = $getContext(OverlayTriggerContext);
-  const trigger = $store(triggerGiven.state);
+  const triggerGiven = $hasContext(OverlayTriggerContext) ? $getContext(OverlayTriggerContext) : undefined;
+  const trigger = $hasContext(OverlayTriggerContext) ? $store(triggerGiven.state) : undefined;
   const parentLayer = $hasContext(LayerContext) ? $getContext(LayerContext) : undefined;
   const own = $isPassed(isOpen);
   const layerId = $id();
@@ -105,7 +105,7 @@
       isOpen = false;
       onOpenChange?.(false);
     } else {
-      triggerGiven.close?.();
+      triggerGiven?.close?.();
     }
   }
 
