@@ -1,7 +1,7 @@
 ---
 id: store-any-source
 title: $store takes any expression that gives a store
-status: todo
+status: active
 priority: must
 type: feature
 story: context-stores
