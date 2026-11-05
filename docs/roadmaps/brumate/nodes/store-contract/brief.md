@@ -1,7 +1,7 @@
 ---
 id: store-contract
 title: The store contract and $store
-status: active
+status: done
 priority: must
 type: feature
 story: context-stores
