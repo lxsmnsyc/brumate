@@ -127,8 +127,8 @@
   // An overlay inside opens from a DialogTrigger of its own, not from the one of this popover.
   $setContext(OverlayTriggerContext, { state: store(null) });
   // The buttons and links inside are not the trigger, which gets these contexts.
-  $setContext(ButtonContext, null);
-  $setContext(LinkContext, null);
+  $setContext(ButtonContext, { state: store(null) });
+  $setContext(LinkContext, { state: store(null) });
 
   function close() {
     if (own) {

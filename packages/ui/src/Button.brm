@@ -46,11 +46,11 @@
 </script>
 
 <script generics="T extends AsTarget = 'button'">
-  import { $bind, $getContext, $handler, $memo, $props } from 'brumate/signals';
+  import { $bind, $getContext, $handler, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
-  import { contextAttributes, slotProps } from './slots.ts';
+  import { contextAttributes, slotHandlers, slotProps } from './slots.ts';
   import SubmitGuard from './SubmitGuard.brm';
 
   /**
@@ -79,7 +79,8 @@
   } = $props<ButtonProps<T>>();
   let { ref } = $props<ButtonOwnProps<T>>();
 
-  const context = $getContext(ButtonContext);
+  const buttonGiven = $getContext(ButtonContext);
+  const context = $store(buttonGiven.state);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
   const pending = $memo(Boolean(isPending ?? slotProps(context, slot).isPending));
@@ -89,7 +90,7 @@
   // The props that the context gives this button. A memo cannot hold its handlers, which only
   // the browser calls, so they are read when they run.
   function given() {
-    return slotProps(context, slot);
+    return slotHandlers(buttonGiven.handlers, slot);
   }
 
   // The handlers of the context run first, then the button's own.

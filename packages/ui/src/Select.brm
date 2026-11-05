@@ -252,7 +252,7 @@
 
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     id: triggerId,
     isDisabled,
     'aria-haspopup': 'listbox',
@@ -260,16 +260,21 @@
     'aria-controls': isOpen ? overlayId : undefined,
     'aria-labelledby': `${valueId} ${labelId}`,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
-    onPress: (event: PressEvent) => {
-      // Space adds to a typeahead that has text, so it does not open the list then.
-      if (event.pointerType === 'keyboard' && isTyping(event.target)) {
-        return;
-      }
-      if (isOpen) {
-        close();
-      } else {
-        open();
-      }
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: (event: PressEvent) => {
+        // Space adds to a typeahead that has text, so it does not open the list then.
+        if (event.pointerType === 'keyboard' && isTyping(event.target)) {
+          return;
+        }
+        if (isOpen) {
+          close();
+        } else {
+          open();
+        }
+      },
     },
   });
   const overlayState = $memo<OverlayTriggerState>({

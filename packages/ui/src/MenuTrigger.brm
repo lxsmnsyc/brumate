@@ -70,12 +70,17 @@
     }
   }
 
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     id: triggerId,
     'aria-expanded': isOpen ? 'true' : 'false',
     'aria-haspopup': 'menu',
     'aria-controls': isOpen ? overlayId : undefined,
-    onPress: pressed,
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: pressed,
+    },
   });
   const overlayState = $memo<OverlayTriggerState>({
     isOpen,

@@ -440,7 +440,7 @@
     onBlur: blurred,
     onFocus: focused,
   });
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     id: buttonId,
     isDisabled,
     // The Button is out of the order of Tab, since the keys of the input open the list.
@@ -449,16 +449,21 @@
     'aria-labelledby': `${buttonId} ${labelId}`,
     'aria-haspopup': 'listbox',
     'aria-expanded': isOpen ? 'true' : 'false',
-    onPress: () => {
-      if (isOpen) {
-        setOpen(false);
-      } else {
-        open('keep', true);
-      }
-      if (document.activeElement?.id !== inputId) {
-        refocused = true;
-        input()?.focus();
-      }
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: () => {
+        if (isOpen) {
+          setOpen(false);
+        } else {
+          open('keep', true);
+        }
+        if (document.activeElement?.id !== inputId) {
+          refocused = true;
+          input()?.focus();
+        }
+      },
     },
   });
   const overlayState = $memo<OverlayTriggerState>({

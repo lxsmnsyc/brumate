@@ -91,7 +91,7 @@
   });
 
   // The chevron opens and closes the row, and focus stays on the row.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       default: {},
       chevron: {
@@ -100,11 +100,20 @@
         'aria-label': row.isExpanded ? 'Collapse' : 'Expand',
         'aria-labelledby': `${chevronId} ${rowId}`,
         isDisabled: disabled,
-        onPress: (event: { target: EventTarget | null }) => {
-          toggle();
-          focusItem(
-            ((event.target as Element | null)?.closest('[role=row]') as HTMLElement) ?? undefined,
-          );
+      },
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        chevron: {
+          onPress: (event: { target: EventTarget | null }) => {
+            toggle();
+            focusItem(
+              ((event.target as Element | null)?.closest('[role=row]') as HTMLElement) ?? undefined,
+            );
+          },
         },
       },
     },

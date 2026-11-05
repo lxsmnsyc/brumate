@@ -21,7 +21,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'section'">
-  import { $getContext, $id, $props, $setContext, $store } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ButtonContext, DialogContext, HeadingContext, OverlayTriggerContext } from './contexts.ts';
   import { described } from './description.brm.ts';
 
@@ -58,7 +58,22 @@
 
   // A Heading or a Button without a slot gets nothing of the dialog.
   $setContext(HeadingContext, { slots: { default: {}, title: { id: titleId } } });
-  $setContext(ButtonContext, { slots: { default: {}, close: { onPress: close } } });
+  const buttonState = $memo({
+    slots: {
+      default: {},
+      close: {},
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        close: {
+          onPress: close,
+        },
+      },
+    },
+  });
 </script>
 
 <{as ?? 'section'}

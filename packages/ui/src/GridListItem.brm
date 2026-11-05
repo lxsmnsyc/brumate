@@ -150,13 +150,22 @@
 
   // A Button with `slot="drag"` starts a drag from the keys, in a list with `onReorder`. Other
   // buttons get nothing.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       [DEFAULT_SLOT]: {},
       drag: {
         'aria-label': textValue ? `Drag ${textValue}` : 'Drag',
         isDisabled: disabled || !list?.isReorderable,
-        onPress: () => listGiven.startDrag?.(id),
+      },
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        drag: {
+          onPress: () => listGiven.startDrag?.(id),
+        },
       },
     },
   });

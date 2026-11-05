@@ -9,10 +9,8 @@ import type { StoreLike } from 'brumate/store';
 import type { HoverEvent, PressEvent } from './events.ts';
 import type { ContextValue } from './slots.ts';
 
-/** The props of a Button that a context can give. */
-export interface ButtonContextProps {
-  isDisabled?: boolean;
-  isPending?: boolean;
+/** The handlers of a Button that a context can give. They are not in the store of the context. */
+export interface ButtonHandlers {
   onPress?: (event: PressEvent) => void;
   onPressStart?: (event: PressEvent) => void;
   onPressEnd?: (event: PressEvent) => void;
@@ -22,11 +20,31 @@ export interface ButtonContextProps {
   onHoverEnd?: (event: HoverEvent) => void;
   onHoverChange?: (hovered: boolean) => void;
   onFocusChange?: (focused: boolean) => void;
+}
+
+/** The attributes and states of a Button that a context can give, which can change. */
+export interface ButtonStateProps {
+  isDisabled?: boolean;
+  isPending?: boolean;
   [attribute: string]: unknown;
 }
 
-export const ButtonContext: Context<ContextValue<ButtonContextProps> | null> =
-  createContext<ContextValue<ButtonContextProps> | null>('brumate-ui:button', null);
+/** The props of a Button that a context can give: its state and its handlers. */
+export interface ButtonContextProps extends ButtonStateProps, ButtonHandlers {}
+
+/**
+ * What a part gives its Buttons: the store of their attributes and states, and their handlers. Both
+ * name the same slots. A part outside any gives no handler.
+ */
+export interface ButtonGiven {
+  state: StoreLike<ContextValue<ButtonStateProps> | null>;
+  handlers?: ContextValue<ButtonHandlers> | null;
+}
+
+export const ButtonContext: Context<ButtonGiven> = createContext<ButtonGiven>(
+  'brumate-ui:button',
+  { state: store(null) },
+);
 
 /** The attributes of a part that a context can give, such as `id` or `aria-label`. */
 export interface AttributeProps {
@@ -66,23 +84,27 @@ export interface GroupContextProps extends AttributeProps {
 export const GroupContext: Context<StoreLike<ContextValue<GroupContextProps> | null>> =
   createContext<StoreLike<ContextValue<GroupContextProps> | null>>('brumate-ui:group', store(null));
 
-/** The props of a Link that a context can give, such as Breadcrumbs for the current page. */
-export interface LinkContextProps extends AttributeProps {
+/** The handlers of a Link that a context can give. They are not in the store of the context. */
+export type LinkHandlers = ButtonHandlers;
+
+/** The attributes and states of a Link that a context can give, which can change. */
+export interface LinkStateProps extends AttributeProps {
   isDisabled?: boolean;
   isCurrent?: boolean;
-  onPress?: (event: PressEvent) => void;
-  onPressStart?: (event: PressEvent) => void;
-  onPressEnd?: (event: PressEvent) => void;
-  onPressUp?: (event: PressEvent) => void;
-  onPressChange?: (pressed: boolean) => void;
-  onHoverStart?: (event: HoverEvent) => void;
-  onHoverEnd?: (event: HoverEvent) => void;
-  onHoverChange?: (hovered: boolean) => void;
-  onFocusChange?: (focused: boolean) => void;
 }
 
-export const LinkContext: Context<ContextValue<LinkContextProps> | null> =
-  createContext<ContextValue<LinkContextProps> | null>('brumate-ui:link', null);
+/** The props of a Link that a context can give, such as Breadcrumbs for the current page. */
+export interface LinkContextProps extends LinkStateProps, LinkHandlers {}
+
+/** What a part gives its Links: the store of their attributes and states, and their handlers. */
+export interface LinkGiven {
+  state: StoreLike<ContextValue<LinkStateProps> | null>;
+  handlers?: ContextValue<LinkHandlers> | null;
+}
+
+export const LinkContext: Context<LinkGiven> = createContext<LinkGiven>('brumate-ui:link', {
+  state: store(null),
+});
 
 export interface ToggleButtonContextProps extends ButtonContextProps {
   isSelected?: boolean;

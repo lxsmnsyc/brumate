@@ -434,7 +434,7 @@
     onFocus: focused,
     onBlur: blurred,
   });
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       increment: {
         id: incrementId,
@@ -443,8 +443,6 @@
         'aria-controls': inputId,
         tabindex: '-1',
         isDisabled: !canIncrement,
-        onPressStart: (event: PressEvent) => held(1, event),
-        onPressEnd: released,
       },
       decrement: {
         id: decrementId,
@@ -453,8 +451,21 @@
         'aria-controls': inputId,
         tabindex: '-1',
         isDisabled: !canDecrement,
-        onPressStart: (event: PressEvent) => held(-1, event),
-        onPressEnd: released,
+      },
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        increment: {
+          onPressStart: (event: PressEvent) => held(1, event),
+          onPressEnd: released,
+        },
+        decrement: {
+          onPressStart: (event: PressEvent) => held(-1, event),
+          onPressEnd: released,
+        },
       },
     },
   });

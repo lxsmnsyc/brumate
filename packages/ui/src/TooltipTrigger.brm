@@ -1,6 +1,7 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { ButtonContextProps } from './contexts.ts';
+  import type { ButtonStateProps } from './contexts.ts';
+  import type { TooltipTriggerState } from './tooltip.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
   import type { ContextValue } from './slots.ts';
 
@@ -23,7 +24,7 @@
 </script>
 
 <script>
-  import { $client, $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
   import { isFocusVisible } from './interactions.ts';
   import { TooltipTriggerContext, pressedTriggers, tooltips } from './tooltip.ts';
@@ -50,13 +51,14 @@
   } = $props<TooltipTriggerProps>();
   let { isOpen = false } = $props<TooltipTriggerProps>();
 
-  const parent = $getContext(ButtonContext);
+  const parentGiven = $getContext(ButtonContext);
+  const parent = $store(parentGiven.state);
   const ownId = $id();
   const tooltipId = $id();
   // A DialogTrigger around it names the button already, and finds its popover by that ID.
   const triggerId = $memo(getId(parent) ?? ownId);
 
-  function getId(value: ContextValue<ButtonContextProps> | null) {
+  function getId(value: ContextValue<ButtonStateProps> | null) {
     return value && !('slots' in value) && typeof value.id === 'string' ? value.id : undefined;
   }
 
@@ -128,21 +130,32 @@
 
   /** The props of the context around it, when it gives one Button its props. */
   function plain() {
-    return parent && !('slots' in parent) ? parent : undefined;
+    const handlers = parentGiven.handlers;
+    return handlers && !('slots' in handlers) ? handlers : undefined;
   }
 
   // The props of the DialogTrigger around it come first, and the handlers of both run.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     ...(parent && !('slots' in parent) ? parent : {}),
     id: triggerId,
     'aria-describedby': isOpen ? tooltipId : undefined,
-    onHoverStart: hoverStarted,
-    onHoverEnd: hoverEnded,
-    onFocusChange: focusChanged,
-    onPressStart: pressStarted,
-    onPressEnd: pressEnded,
   });
-  $setContext(TooltipTriggerContext, { isOpen, triggerId, tooltipId, keep, close });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: (event: PressEvent) => plain()?.onPress?.(event),
+      onPressUp: (event: PressEvent) => plain()?.onPressUp?.(event),
+      onPressChange: (pressed: boolean) => plain()?.onPressChange?.(pressed),
+      onHoverChange: (hovered: boolean) => plain()?.onHoverChange?.(hovered),
+      onHoverStart: hoverStarted,
+      onHoverEnd: hoverEnded,
+      onFocusChange: focusChanged,
+      onPressStart: pressStarted,
+      onPressEnd: pressEnded,
+    },
+  });
+  const triggerState = $memo<TooltipTriggerState>({ isOpen, triggerId, tooltipId });
+  $setContext(TooltipTriggerContext, { state: $toStore(triggerState), keep, close });
 </script>
 
 {children}

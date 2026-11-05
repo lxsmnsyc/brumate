@@ -75,7 +75,7 @@
   }
 
   // A Button without a slot, such as one in the panel, gets nothing from the disclosure.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       default: {},
       trigger: {
@@ -83,7 +83,16 @@
         'aria-expanded': expanded ? 'true' : 'false',
         'aria-controls': panelId,
         isDisabled: disabled,
-        onPress: toggle,
+      },
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        trigger: {
+          onPress: toggle,
+        },
       },
     },
   });

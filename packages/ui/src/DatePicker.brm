@@ -101,7 +101,7 @@
     }
   }
 
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     id: triggerId,
     'aria-label': strings?.calendar ?? 'Calendar',
     'aria-labelledby': `${triggerId} ${labelId}`,
@@ -109,7 +109,12 @@
     'aria-expanded': isOpen ? 'true' : 'false',
     'aria-controls': isOpen ? overlayId : undefined,
     isDisabled: isDisabled || isReadOnly,
-    onPress: () => setOpen(true),
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: () => setOpen(true),
+    },
   });
   const groupGiven = $memo({
     isDisabled,

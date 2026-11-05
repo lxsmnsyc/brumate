@@ -106,7 +106,7 @@
     }
   }
 
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       remove: {
         'aria-label': 'Remove',
@@ -114,7 +114,16 @@
         id: `${rowId}-remove`,
         tabindex: '-1',
         isDisabled: disabled,
-        onPress: () => remove(false),
+      },
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        remove: {
+          onPress: () => remove(false),
+        },
       },
     },
   });
