@@ -1,7 +1,7 @@
 ---
 id: has-context
 title: $hasContext, and a guarded $store for contexts that may be missing
-status: active
+status: done
 priority: must
 type: feature
 story: context-stores
@@ -16,7 +16,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-05
-spent:
+spent: 327000
 owns: []
 shared:
   - packages/brumate/src/**
