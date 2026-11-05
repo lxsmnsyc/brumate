@@ -1766,6 +1766,16 @@ https://brumate-docs.vercel.app/docs/errors#brm195
 const value = $store(source);
 ```
 
+## BRM196: The context value reads "{name}", which changes, but a context value is read once. Put it in a store with $toStore, or read it inside a function
+
+The value of `$setContext` reads a signal, a memo, a prop or a `$bind` value that changes in the browser, and a context is read once, so readers would keep the first value.
+
+https://brumate-docs.vercel.app/docs/errors#brm196
+
+```brm fragment
+$setContext(Field, { state: $toStore(state), pick: () => value });
+```
+
 ## BRM144: $get is not supported. Signals cannot leave the file
 
 `$get` was removed. A signal never leaves its file.

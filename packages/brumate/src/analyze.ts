@@ -1546,7 +1546,7 @@ class Analyzer {
       this.report('error', '$setContext takes two arguments, the context and the value', call);
       return;
     }
-    const provided = this.createSite('provide', scope, value, 'provide', { extra: [context] });
+    this.createSite('provide', scope, value, 'provide', { extra: [context] });
     // Each `$toStore(value)` is a site of its own, whose update writes the store. The provided
     // value does not read it, so a context whose live values are all stores is static.
     for (const part of readProvidedValues(value)) {
@@ -1562,7 +1562,6 @@ class Analyzer {
         }
         this.storeCalls.add(part);
         this.createSite('provide', scope, argument, 'store', { extra: [context], store: part });
-        provided.holdsStores = true;
         // The `set` of a store of a signal writes the signal, as a binding does.
         const declaration =
           argument.type === 'Identifier' ? lookup(scope, argument.name) : undefined;
@@ -1972,35 +1971,6 @@ class Analyzer {
     }
   }
 
-  /**
-   * A context is meant to be static: a value that changes reaches readers through a store. Warns
-   * for each signal, memo or `let` that the value reads, which `$untrack` or `$toStore` silences.
-   */
-  private warnProvidedReads(site: Site): void {
-    const warned = new Set<Declaration>();
-    for (const read of site.reads) {
-      const declaration = read.declaration;
-      if (
-        !read.tracked ||
-        read.inFunction ||
-        warned.has(declaration) ||
-        !(
-          WRITABLE.has(declaration.kind) ||
-          declaration.kind === 'memo' ||
-          declaration.kind === 'async-memo'
-        )
-      ) {
-        continue;
-      }
-      warned.add(declaration);
-      this.report(
-        'warning',
-        `The context value reads "${declaration.name}", which changes, but a context value is read once. Put it in a store with $toStore, or read it with $untrack`,
-        read.range,
-      );
-    }
-  }
-
   private check(): void {
     for (const declaration of this.declarations) {
       if (declaration.kind === 'action') {
@@ -2015,9 +1985,6 @@ class Analyzer {
       }
     }
     for (const site of this.sites) {
-      if (site.kind === 'provide' && !site.store) {
-        this.warnProvidedReads(site);
-      }
       for (const write of site.writes) {
         const declaration = write.declaration;
         if (!WRITABLE.has(declaration.kind) && !declaration.writable && !declaration.store?.write) {

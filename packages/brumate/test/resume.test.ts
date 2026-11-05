@@ -4504,7 +4504,7 @@ describe('memos that read state through a function prop', () => {
     expect(text('.total')).toBe('1');
   });
 
-  it('keeps markup, a memo and an effect on a reading function of a context live', async () => {
+  it('keeps markup, a memo and an effect on a store of a context live', async () => {
     await resume('ctxReader', {});
     await waitFor(() => expect(text('.markup')).toBe('0'));
     click(document.querySelector('.inc')!);

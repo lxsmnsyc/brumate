@@ -1,8 +1,8 @@
 <script>
-  import { $getContext } from 'brumate/signals';
-  import { SelectContext } from './selectContext.ts';
+  import { $store } from 'brumate/signals';
+  import { SelectValueContext } from './selectContext.ts';
 
-  const select = $getContext(SelectContext);
+  const value = $store(SelectValueContext);
 </script>
 
-<span class="value">{select?.value ?? 'Choose'}</span>
+<span class="value">{value ?? 'Choose'}</span>

@@ -1135,10 +1135,29 @@ class ClientGenerator {
       return;
     }
     if (site.kind === 'provide') {
-      const context = site.extra![0]!;
-      this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.updateContext($$s, ${copy(this.file.source, context.start, context.end)}, ${expression()});\n}`,
-      );
+      // A context value is read once, so a value that changes on the client never reaches it.
+      // A store, or a read inside a function, is how a reader sees the change.
+      const named = new Set<Declaration>();
+      for (const edge of this.plan.graph.edges) {
+        const from = edge.from;
+        if (edge.to !== node || !this.plan.graph.live.has(from)) {
+          continue;
+        }
+        if ((from.kind === 'source' || from.kind === 'memo') && !named.has(from.declaration)) {
+          named.add(from.declaration);
+          let range = site.range;
+          for (const read of site.reads) {
+            if (read.declaration === from.declaration) {
+              range = read.range;
+              break;
+            }
+          }
+          this.error(
+            `The context value reads "${from.declaration.name}", which changes, but a context value is read once. Put it in a store with $toStore, or read it inside a function`,
+            range,
+          );
+        }
+      }
       return;
     }
     if (site.kind === 'style') {

@@ -31,28 +31,27 @@ function findProvider(scope: Scope, key: string): Scope | undefined {
   return undefined;
 }
 
-/**
- * Writes a provided value, and the slot of every scope that reads it from this provider. The
- * provider can read the same context from above, which this does not write.
- */
-export function updateContext(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
-  scope.v ??= {};
-  scope.v[context.key] = value;
-  sendContext(() => {
-    for (const target of scopes.values()) {
-      const slot = target.x?.[context.key];
-      if (slot !== undefined && findProvider(target, context.key) === scope) {
-        set(target, slot, value);
-      }
-    }
-  });
-}
-
 /** Provides a value of a context to the scopes inside `scope`. */
 export function provideValue<T>(context: ContextValue<T>, value: T, scope: Scope | ScopeId): void {
   const target = resolveScope(scope)!;
   target.v ??= {};
+  if (DEV && context.key in target.v && !Object.is(target.v[context.key], value)) {
+    warnChanged(context.key);
+  }
   target.v[context.key] = value;
+}
+
+/** The contexts whose provided value changed, which development logged once. */
+const changedContexts = new Set<string>();
+
+/** Logs once per context: a context value is read once, so readers keep the first value. */
+function warnChanged(key: string): void {
+  if (!changedContexts.has(key)) {
+    changedContexts.add(key);
+    console.warn(
+      `The value of context "${key}" changed, but a context value is read once, so its readers keep the first. Put a value that changes in a store with $toStore`,
+    );
+  }
 }
 
 /** Reads a context, and records its slot so that changes to the provided value reach it. */
@@ -272,11 +271,6 @@ export function toStore<T>(
     made.w = (next) => set(target, slot, next);
   }
   return made;
-}
-
-/** The store that `$toStore` made at a site of the scope. */
-export function madeStore(scope: Scope, site: number): Store<unknown> | undefined {
-  return scope.st?.[site];
 }
 
 /** The update of `$toStore(value)`, in the binding stage: sends the new value to the readers. */

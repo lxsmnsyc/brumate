@@ -1,12 +1,13 @@
 <script>
-  import { $getContext, $props } from 'brumate/signals';
-  import { SelectContext } from './selectContext.ts';
+  import { $getContext, $props, $store } from 'brumate/signals';
+  import { SelectContext, SelectValueContext } from './selectContext.ts';
 
   const { items, item } = $props<{
     items: string[];
     item?: (state: { option: string; selected: boolean }) => unknown;
   }>();
   const select = $getContext(SelectContext);
+  const value = $store(SelectValueContext);
 </script>
 
 <ul role="listbox">
@@ -14,8 +15,8 @@
     <li
       class="option"
       role="option"
-      aria-selected=(select?.value === option)
+      aria-selected=(value === option)
       onClick=(() => select?.choose(option))
-    >{item ? item({ option, selected: select?.value === option }) : option}</li>
+    >{item ? item({ option, selected: value === option }) : option}</li>
   }
 </ul>

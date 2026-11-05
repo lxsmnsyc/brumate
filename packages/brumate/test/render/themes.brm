@@ -1,11 +1,11 @@
 <script>
-  import { $setContext, $signal } from 'brumate/signals';
-  import Themed from './Themed.brm';
-  import { Theme } from './theme';
+  import { $setContext, $signal, $toStore } from 'brumate/signals';
+  import Themed from './ThemedLive.brm';
+  import { ThemeStore } from './theme';
 
   let theme = $signal('dark');
   let show = $signal(false);
-  $setContext(Theme, theme);
+  $setContext(ThemeStore, $toStore(theme));
 </script>
 
 <button class="toggle" onClick=(() => (theme = theme === 'dark' ? 'light' : 'dark'))>Toggle</button>

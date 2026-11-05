@@ -1,14 +1,15 @@
 <script>
-  import { $getContext, $props } from 'brumate/signals';
-  import { SelectContext } from './selectContext.ts';
+  import { $getContext, $props, $store } from 'brumate/signals';
+  import { SelectContext, SelectOpenContext } from './selectContext.ts';
 
   const { as, children, ...rest } = $props();
   const select = $getContext(SelectContext);
+  const open = $store(SelectOpenContext);
 </script>
 
 <{as ?? 'button'}
   class="trigger"
-  aria-expanded=(select ? String(select.open) : undefined)
+  aria-expanded=(open === null ? undefined : String(open))
   aria-labelledby=(select?.labelId)
   onClick=(() => select?.toggle())
   {...rest}

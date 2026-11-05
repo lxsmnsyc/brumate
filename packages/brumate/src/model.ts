@@ -197,8 +197,6 @@ export interface Site {
   extra?: oxc.Node[];
   /** For the value of `$toStore(value)` in `$setContext`, the call: its update writes the store. */
   store?: oxc.CallExpression;
-  /** For `$setContext`, true when its value holds `$toStore`: the value is static, its stores live. */
-  holdsStores?: boolean;
   /**
    * For the function of `$handler(fn, ...args)`, the call, which the server
    * turns into a reference that a spread can pass on, with its arguments.

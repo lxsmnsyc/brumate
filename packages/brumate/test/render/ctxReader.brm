@@ -1,11 +1,10 @@
 <script>
-  import { $setContext, $signal } from 'brumate/signals';
+  import { $setContext, $signal, $toStore } from 'brumate/signals';
   import { ReaderTotal } from './ctxReader.ts';
   import CtxReaderMid from './CtxReaderMid.brm';
   let total = $signal(0);
   function addTotal(n: number) { total += n; }
-  function readTotal() { return total; }
-  $setContext(ReaderTotal, { add: addTotal, read: readTotal });
+  $setContext(ReaderTotal, { total: $toStore(total), add: addTotal });
 </script>
 <p class="total">{total}</p>
 <CtxReaderMid />
