@@ -255,7 +255,7 @@
     const same = next === null || held === null ? next === held : sameColor(next, held);
     let shown = nextColor;
     if (picker && !passed) {
-      const pc = (given.setValue?.(nextColor!, same ? held! : next!) ?? nextColor!);
+      const pc = given.setValue!(nextColor!, same ? held! : next!);
       // The field shows the color that the picker keeps.
       shown = channel ? toSpace(pc, colorSpace ?? editSpace(pc, channel)) : pc;
     } else {

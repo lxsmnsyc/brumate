@@ -125,7 +125,7 @@
   /** Writes the color, and returns the text that the part keeps. */
   function write(next: Color, text: string): string {
     if (picker && !passed) {
-      given.setValue?.(next, text);
+      given.setValue!(next, text);
       return text;
     } else {
       const before = value;

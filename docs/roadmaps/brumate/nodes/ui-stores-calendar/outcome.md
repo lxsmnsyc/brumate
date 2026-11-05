@@ -33,8 +33,9 @@ Not an experiment node.
 - A default value of a context must hold no function: the server reads the default through the slot and names "holds a Function". Make the handlers optional and call them with `?.`. Stores in defaults are fine.
 - A nested object of handlers in a `$setContext` value fails like a spread. Use flat keys.
 - `$store(a.b.c)` is not a source. Give each store its own key.
-- A handler that reads a `$getContext` value, called while a browser-rendered component mounts (a CalendarCell asking `isDateUnavailable` of the Calendar), finds the slot empty and throws on `pickerGiven.isDateUnavailable`. On the base the same slot was empty and `picker?.isDateUnavailable` hid it, so the `isDateUnavailable` of a DatePicker did not reach a Calendar created in the browser at mount. I kept the `?.` and did not file a core fix; static-contexts-final should check the slot for `$getContext`.
-- The scan of the test for the new contexts only flags a key whose value reads state directly, since the handlers read state in their body.
+- `pickerGiven?.isDateUnavailable` in Calendar: a first try without the `?.` threw `Cannot read properties of undefined` in two datepicker tests while a browser-rendered Calendar mounted (the slot of the `$getContext` value was not set when CalendarCell called the handler). A reviewer could not reproduce an effect on the picker's unavailable dates, and I have no repro of one, so this is only the reason for the `?.`.
+- The pickers' `setValue` is optional in the type (the default has none). The parts call `given.setValue!(...)` only under `picker && !passed`, where a provider exists and always gives it, so a missing handler there throws instead of dropping the write.
+- The scan of the test for the new contexts splits the provided object into keys and flags a key whose value reads state outside a function, since the handlers read state in their body. It counts the scanned updates apart from the field contexts.
 
 ## Proposed learnings
 

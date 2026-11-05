@@ -109,7 +109,7 @@
     // A disabled item is never selected.
     if (item?.getAttribute('aria-disabled') !== 'true' && text && tryParseColor(text)) {
       if (picker && !passed) {
-        given.setValue?.(parseColor(text), text);
+        given.setValue!(parseColor(text), text);
       } else {
         value = text;
       }
