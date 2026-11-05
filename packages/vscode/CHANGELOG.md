@@ -1,5 +1,11 @@
 # brumate-vscode
 
+## 0.1.1
+
+### Patch Changes
+
+- 5bf701f: The grammar no longer scopes a `:modifier` after an event name.
+
 ## 0.1.0
 
 ### Minor Changes
