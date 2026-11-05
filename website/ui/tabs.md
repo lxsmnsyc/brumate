@@ -1,3 +1,7 @@
+---
+summary: Tabs that show one panel at a time.
+---
+
 # Tabs
 
 Tabs that show one panel at a time.
@@ -6,7 +10,7 @@ Tabs that show one panel at a time.
 
 ```
 
-```html
+```brm
 <Tabs selectedKey=$bind(section)>
   <TabList aria-label="Sections">
     <Tab id="intro">Intro</Tab>
@@ -32,7 +36,7 @@ Tabs that show one panel at a time.
 `TabPanel`: The content of one tab, with the `id` of that tab. Only the selected one renders.
 ```
 
-```html
+```brm
 <Tabs>
   <TabList>
     <Tab>

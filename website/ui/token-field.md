@@ -1,3 +1,7 @@
+---
+summary: Text with mentions and tags that the user types.
+---
+
 # TokenField
 
 A field of text with tokens in it, such as mentions, tags or commands, which the user types and the field turns into tokens.
@@ -6,7 +10,7 @@ A field of text with tokens in it, such as mentions, tags or commands, which the
 
 ```
 
-```html
+```brm
 <TokenField pattern="[#@]\S+" placeholder="Write a message" value=$bind(message)>
   <Label>Message</Label>
   <TokenInput token=chip />
@@ -35,7 +39,7 @@ A field of text with tokens in it, such as mentions, tags or commands, which the
 `Text`: Describes the box, with `slot="description"`.
 ```
 
-```html
+```brm
 <TokenField>
   <Label />
   <TokenInput>

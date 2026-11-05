@@ -172,6 +172,35 @@ export function $route<P extends RoutePath = RoutePath>(_path?: P): Route<RouteP
   return compileTimeOnly('$route');
 }
 
+/** The options of `$searchParam`. */
+export interface SearchParamOptions<T> {
+  /** The value while the parameter is not in the URL. A write of this value leaves the parameter out. */
+  default?: T;
+  /** Converts the text of the parameter to a value. Defaults to the text. */
+  parse?: (text: string) => T;
+  /** Converts a value to the text of the parameter. Defaults to `String`. */
+  serialize?: (value: T) => string;
+  /** `'push'` adds an entry to the history for each change, and `'replace'` (the default) changes the entry. */
+  history?: 'push' | 'replace';
+  /** True asks the server for the page again when the parameter changes, as a link to the new URL does. */
+  server?: boolean;
+}
+
+/**
+ * A signal bound to one parameter of the query string. The server reads the URL of the request.
+ * A write in the browser changes the URL with `history.replaceState`, or `pushState` with
+ * `{ history: 'push' }`, and asks the server nothing. Back and forward write the signal.
+ */
+export function $searchParam(name: string, options?: SearchParamOptions<string>): string | null;
+export function $searchParam<T>(name: string, options: SearchParamOptions<T> & { default: T }): T;
+export function $searchParam<T>(
+  name: string,
+  options: SearchParamOptions<T> & { parse: (text: string) => T },
+): T | null;
+export function $searchParam(): never {
+  return compileTimeOnly('$searchParam');
+}
+
 /** The navigation that loads, with `pending` false when none does. Always `{ pending: false }` on the server. */
 export function $navigation(): NavigationState {
   return compileTimeOnly('$navigation');

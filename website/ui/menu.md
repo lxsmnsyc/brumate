@@ -1,3 +1,7 @@
+---
+summary: Actions and options that open from a button, with submenus.
+---
+
 # Menu
 
 A list of actions or options that opens from a button, with the keyboard, a pointer or a screen reader.
@@ -6,7 +10,7 @@ A list of actions or options that opens from a button, with the keyboard, a poin
 
 ```
 
-```html
+```brm
 <MenuTrigger>
   <Button>Edit</Button>
   <Popover>
@@ -41,7 +45,7 @@ A list of actions or options that opens from a button, with the keyboard, a poin
 `Menu`: The menu of the submenu.
 ```
 
-```html
+```brm
 <MenuTrigger>
   <Button />
   <Popover>
@@ -200,7 +204,7 @@ A Menu with `selectionMode="multiple"` keeps the menu open after a press, so sev
 
 A `SubmenuTrigger` holds a `MenuItem` and a `Popover` with the Menu of the submenu.
 
-```html
+```brm
 <SubmenuTrigger>
   <MenuItem id="share">Share</MenuItem>
   <Popover>

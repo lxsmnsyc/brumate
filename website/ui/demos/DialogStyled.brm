@@ -21,10 +21,10 @@
   </DialogTrigger>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
-  :global(.dialog-styled-root),
-  :global(.dialog-styled-popover) {
+  .dialog-styled-root,
+  .dialog-styled-popover {
     --dialog-styled-bg: Canvas;
     --dialog-styled-text: CanvasText;
     --dialog-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
@@ -36,7 +36,7 @@
     color: var(--dialog-styled-text);
   }
 
-  :global(.dialog-styled-trigger) {
+  .dialog-styled-trigger {
     padding: 0.45rem 0.9rem;
     border: 1px solid var(--dialog-styled-border);
     border-radius: var(--dialog-styled-radius);
@@ -47,31 +47,31 @@
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
 
-  :global(.dialog-styled-trigger)[data-hovered] {
+  .dialog-styled-trigger[data-hovered] {
     border-color: var(--dialog-styled-accent);
   }
 
-  :global(.dialog-styled-trigger)[data-pressed] {
+  .dialog-styled-trigger[data-pressed] {
     background: color-mix(in srgb, var(--dialog-styled-accent) 14%, var(--dialog-styled-bg));
   }
 
-  :global(.dialog-styled-trigger)[aria-expanded='true'] {
+  .dialog-styled-trigger[aria-expanded='true'] {
     border-color: var(--dialog-styled-accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--dialog-styled-accent) 25%, transparent);
   }
 
   /* Two bands, so the ring shows on the page and on a fill. */
-  :global(.dialog-styled-trigger)[data-focus-visible] {
+  .dialog-styled-trigger[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--dialog-styled-bg), 0 0 0 4px var(--dialog-styled-accent);
   }
 
-  :global(.dialog-styled-trigger)[data-disabled] {
+  .dialog-styled-trigger[data-disabled] {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  :global(.dialog-styled-close) {
+  .dialog-styled-close {
     padding: 0.45rem 0.9rem;
     border: 1px solid transparent;
     border-radius: var(--dialog-styled-radius);
@@ -83,21 +83,21 @@
     transition: background 0.15s, box-shadow 0.15s;
   }
 
-  :global(.dialog-styled-close)[data-hovered] {
+  .dialog-styled-close[data-hovered] {
     background: color-mix(in srgb, var(--dialog-styled-accent) 85%, CanvasText);
   }
 
-  :global(.dialog-styled-close)[data-pressed] {
+  .dialog-styled-close[data-pressed] {
     background: color-mix(in srgb, var(--dialog-styled-accent) 70%, CanvasText);
   }
 
-  :global(.dialog-styled-close)[data-focus-visible] {
+  .dialog-styled-close[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--dialog-styled-bg), 0 0 0 4px var(--dialog-styled-accent);
   }
 
   /* The popover is a layer outside the root: z-index puts it above the header of the page. */
-  :global(.dialog-styled-popover) {
+  .dialog-styled-popover {
     z-index: 20;
     box-sizing: border-box;
     max-width: 20rem;
@@ -109,41 +109,41 @@
     transition: opacity 0.18s, translate 0.18s;
   }
 
-  :global(.dialog-styled-popover[data-closed]) {
+  .dialog-styled-popover[data-closed] {
     opacity: 0;
     translate: 0 -4px;
   }
 
-  :global(.dialog-styled-popover[data-placement='top'][data-closed]) {
+  .dialog-styled-popover[data-placement='top'][data-closed] {
     translate: 0 4px;
   }
 
   /* The dialog takes focus when it opens, so it draws no ring of its own. */
-  :global(.dialog-styled-dialog) {
+  .dialog-styled-dialog {
     display: grid;
     gap: 0.75rem;
     outline: none;
   }
 
-  :global(.dialog-styled-title) {
+  .dialog-styled-title {
     margin: 0;
     font-size: 1.05rem;
   }
 
-  :global(.dialog-styled-text) {
+  .dialog-styled-text {
     margin: 0;
     color: var(--dialog-styled-muted);
   }
 
-  :global(.dialog-styled-actions) {
+  .dialog-styled-actions {
     display: flex;
     justify-content: flex-end;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.dialog-styled-trigger),
-    :global(.dialog-styled-close),
-    :global(.dialog-styled-popover) {
+    .dialog-styled-trigger,
+    .dialog-styled-close,
+    .dialog-styled-popover {
       transition: none;
     }
   }

@@ -1,3 +1,7 @@
+---
+summary: An area that takes drops and pastes of text and files.
+---
+
 # DropZone
 
 An area that takes drops of text and files, and pastes from keyboard users.
@@ -23,7 +27,7 @@ An area that takes drops of text and files, and pastes from keyboard users.
 
 The FileTrigger draws no element, so it has no number. The hidden button of the area is out of sight, so it has none either.
 
-```html
+```brm
 <DropZone>
   <Text slot="label" />
   <FileTrigger>

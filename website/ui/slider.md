@@ -1,3 +1,7 @@
+---
+summary: A value, or a range of values, on a track.
+---
+
 # Slider
 
 A value, or a range of values, that thumbs move on a track.
@@ -6,7 +10,7 @@ A value, or a range of values, that thumbs move on a track.
 
 ```
 
-```html
+```brm
 <Slider value=$bind(price) maxValue=(1000)>
   <Label>Price</Label>
   <SliderOutput />
@@ -33,7 +37,7 @@ A value, or a range of values, that thumbs move on a track.
 `SliderThumb`: One value. It holds a range input out of sight.
 ```
 
-```html
+```brm
 <Slider>
   <Label />
   <SliderOutput />

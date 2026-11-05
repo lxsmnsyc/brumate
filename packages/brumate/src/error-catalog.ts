@@ -152,9 +152,9 @@ const SYNTAX: ErrorEntry[] = [
   ),
   entry(
     'BRM022',
-    'Unknown event modifier ":{modifier}"',
-    'The modifier after an event name is not one of the known ones.',
-    '<form onSubmit=(prevent(send))></form>',
+    'Event modifiers in the attribute name were removed. Write {fix}',
+    'A modifier follows the event name, as in `onSubmit:prevent=send`. Wrappers of `brumate/events` write modifiers now, and `:passive` is the default, since listeners are passive unless a handler prevents.',
+    "import { prevent } from 'brumate/events';\n\n<form onSubmit=(prevent(send))></form>",
   ),
   entry(
     'BRM180',
@@ -203,12 +203,6 @@ const SYNTAX: ErrorEntry[] = [
     '"{name}" gives a promise, and {place} cannot wait for one. Await it in the code that runs, or read its value with $memo',
     'Markup waits for a promise in text and in attribute values only. An event handler, the key of a `#for`, a `ref` and a `$bind` need the value at once, and the compiler sees that this expression gives a promise: `new Promise(…)`, a call of a server function or of an async function, or a prop typed as a promise.',
     '<button onClick=(() => save(draft))>Save</button>\n#for (user of users by user.id) {\n  <p>{user.name}</p>\n}',
-  ),
-  entry(
-    'BRM023',
-    'Modifiers apply to elements. Put ":{modifier}" on the element that the component renders',
-    'An event modifier is on a component, which only passes the handler on.',
-    '<form onSubmit=(prevent(send))></form>',
   ),
   entry(
     'BRM024',
@@ -299,6 +293,18 @@ const SYNTAX: ErrorEntry[] = [
     'lang must be "css", "scss" or "less"',
     'A `<style>` names another language.',
     '<style lang="scss">\n  p {\n    a {\n      color: red;\n    }\n  }\n</style>',
+  ),
+  entry(
+    'BRM189',
+    'Unknown <style> attribute "{name}"',
+    'A `<style>` has an attribute other than `lang` and `global`.',
+    '<style scoped>\n  p {\n    color: red;\n  }\n</style>',
+  ),
+  entry(
+    'BRM190',
+    'global takes no value, as in <style global>',
+    'A `<style global>` gives `global` a value.',
+    '<style global="true">\n  p {\n    color: red;\n  }\n</style>',
   ),
   entry(
     'BRM039',

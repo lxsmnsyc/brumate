@@ -27,9 +27,9 @@
   </SearchField>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.searchfield-styled-stack) {
+  .searchfield-styled-stack {
     --searchfield-styled-field: light-dark(#fff, #0f0d0b);
     --searchfield-styled-border: light-dark(#76706a, #8d857b);
     --searchfield-styled-muted: light-dark(#5a544d, #b3aaa0);
@@ -42,16 +42,16 @@
     color: CanvasText;
   }
 
-  :global(.searchfield-styled) {
+  .searchfield-styled {
     display: grid;
     gap: 0.3rem;
   }
 
-  :global(.searchfield-styled-label) {
+  .searchfield-styled-label {
     font-weight: 600;
   }
 
-  :global(.searchfield-styled-box) {
+  .searchfield-styled-box {
     display: flex;
     align-items: center;
     gap: 0.25rem;
@@ -62,24 +62,24 @@
     transition: border-color 0.15s, box-shadow 0.15s;
   }
 
-  :global(.searchfield-styled-box:hover) {
+  .searchfield-styled-box:hover {
     border-color: var(--searchfield-styled-accent);
   }
 
   /* Two bands, an accent one and an inner one in the color of the field. */
-  :global(.searchfield-styled-box:has([data-focus-visible])) {
+  .searchfield-styled-box:has([data-focus-visible]) {
     border-color: var(--searchfield-styled-accent);
     box-shadow:
       0 0 0 2px var(--searchfield-styled-accent),
       inset 0 0 0 2px var(--searchfield-styled-field);
   }
 
-  :global(.searchfield-styled-glass) {
+  .searchfield-styled-glass {
     flex: none;
     color: var(--searchfield-styled-muted);
   }
 
-  :global(.searchfield-styled-input) {
+  .searchfield-styled-input {
     flex: 1;
     min-width: 0;
     padding: 0.45rem 0.25rem;
@@ -90,11 +90,11 @@
     font: inherit;
   }
 
-  :global(.searchfield-styled-input::placeholder) {
+  .searchfield-styled-input::placeholder {
     color: var(--searchfield-styled-muted);
   }
 
-  :global(.searchfield-styled-clear) {
+  .searchfield-styled-clear {
     display: inline-flex;
     padding: 0.3rem;
     border: 0;
@@ -104,34 +104,34 @@
     cursor: pointer;
   }
 
-  :global(.searchfield-styled-clear[data-hovered]) {
+  .searchfield-styled-clear[data-hovered] {
     background: var(--searchfield-styled-hover);
   }
 
-  :global(.searchfield-styled-clear[data-pressed]) {
+  .searchfield-styled-clear[data-pressed] {
     background: var(--searchfield-styled-press);
   }
 
-  :global(.searchfield-styled-clear[data-focus-visible]) {
+  .searchfield-styled-clear[data-focus-visible] {
     outline: 2px solid var(--searchfield-styled-accent);
   }
 
-  :global(.searchfield-styled[data-empty] .searchfield-styled-clear) {
+  .searchfield-styled[data-empty] .searchfield-styled-clear {
     visibility: hidden;
   }
 
-  :global(.searchfield-styled[data-disabled]) {
+  .searchfield-styled[data-disabled] {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  :global(.searchfield-styled-help) {
+  .searchfield-styled-help {
     color: var(--searchfield-styled-muted);
     font-size: 0.875rem;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.searchfield-styled-box) {
+    .searchfield-styled-box {
       transition: none;
     }
   }

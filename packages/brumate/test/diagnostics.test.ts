@@ -212,10 +212,9 @@ describe('wrappers of event handlers', () => {
     );
   });
 
-  it('warns about a modifier in the attribute name', () => {
-    const { warnings: found } = compileMarkup('<form onSubmit:prevent=save></form>');
-    expect(found.map((warning) => warning.message)).toContain(
-      'onSubmit:prevent is replaced by onSubmit=(prevent(handler)) from brumate/events',
+  it('rejects a modifier in the attribute name and names the wrapper', () => {
+    expect(() => compileMarkup('<form onSubmit:prevent=save></form>')).toThrow(
+      'Event modifiers in the attribute name were removed. Write onSubmit=(prevent(handler)) with prevent from brumate/events',
     );
   });
 });

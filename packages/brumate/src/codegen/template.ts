@@ -1,7 +1,64 @@
 // Cloned templates of the markup that the browser renders. A render whose markup is one string
 // of static HTML, attributes, the content of elements, and anchors compiles to a `<template>`
 // that it clones, and writes the elements that it marks. The rest renders HTML.
+import type { Markup, SFCFile } from '../ast.ts';
+import { blockBodies } from '../plan.ts';
 import type { Emitter, Level, Part, Settled } from './markup.ts';
+
+const contexts = new WeakMap<SFCFile, Map<object, string | undefined>>();
+
+/**
+ * `svg` or `math` when the elements around a body, or around the children of a component, put
+ * its markup in SVG or MathML, which HTML that the browser parses there would find at run time.
+ * `owner` is the body, or the component or dynamic tag that the children belong to.
+ */
+export function foreignContext(file: SFCFile, owner: object | undefined): string | undefined {
+  if (!owner) {
+    return undefined;
+  }
+  let found = contexts.get(file);
+  if (!found) {
+    found = new Map();
+    contexts.set(file, found);
+    const map = found;
+    const walk = (nodes: Markup[], around: string | undefined): void => {
+      for (const node of nodes) {
+        switch (node.kind) {
+          case 'element': {
+            const tag = node.tag.toLowerCase();
+            let inside = around;
+            if (tag === 'svg' || tag === 'math') {
+              inside = tag;
+            } else if (tag === 'foreignobject') {
+              inside = undefined;
+            }
+            walk(node.children, inside);
+            break;
+          }
+          case 'component':
+          case 'dynamic':
+            map.set(node, around);
+            walk(node.children, around);
+            break;
+          case 'fragment':
+            walk(node.children, around);
+            break;
+          case 'text':
+          case 'insert':
+          case 'listener':
+            break;
+          default:
+            for (const body of blockBodies(node)) {
+              map.set(body, around);
+              walk(body.children, around);
+            }
+        }
+      }
+    };
+    walk(file.children, undefined);
+  }
+  return found.get(owner);
+}
 
 /** What a render writes on an element of its clone. */
 export type Write =
@@ -36,6 +93,8 @@ export interface ClonedTemplate {
    * a comment, `<!--x` and its index, which the clone replaces with a text node.
    */
   html: string;
+  /** Whether the insert of a clone indexes its markers and starts its `<template>` elements. */
+  indexed?: true;
   /** The writes on the marked elements, by their index. */
   writes: Write[][];
 }
@@ -295,8 +354,13 @@ class Reader {
 }
 
 /** The template of a render's parts, or undefined when its markup needs HTML. */
-export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefined {
+export function clonedTemplate(
+  parts: readonly Part[],
+  filled?: (scope: string, anchor: number) => boolean,
+  around?: string,
+): ClonedTemplate | undefined {
   const reader = new Reader();
+  reader.foreign = around;
   const writes: Write[][] = [];
   /** The index of each marked element, by its number in the order of the markup. */
   const marks = new Map<number, number>();
@@ -450,7 +514,14 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     }
     // A nested block with nothing in it yet: `<!--b`, the scope, `:anchor-->`, `<!--/b-->`.
     const blockEnd = nextStatic === undefined ? null : BLOCK_END.exec(nextStatic);
-    if (SCOPE.test(code) && reader.html.endsWith(BLOCK_START) && blockEnd) {
+    // A block that no call fills, such as a `#client`, keeps its markers, which are not empty
+    // once it renders.
+    if (
+      SCOPE.test(code) &&
+      reader.html.endsWith(BLOCK_START) &&
+      blockEnd &&
+      (!filled || filled(code, Number(blockEnd[1])))
+    ) {
       reader.takeBack(BLOCK_START, 'text');
       const mark = writes.length;
       writes.push([{ kind: 'block', scope: code, anchor: Number(blockEnd[1]) }]);
@@ -570,13 +641,11 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
     }
     return undefined;
   }
-  // Other comments, such as markers that a write does not name, need the HTML of a render. The
-  // loader starts each `<template>` of a block once, such as of a `$client` callback, so a clone
-  // of one would start nothing. Markup with no writes clones too, which is faster than a parse.
+  // Other comments, such as markers that a write does not name, and `<template>` elements, such
+  // as of a `$client` callback, are indexed and started when the clone is inserted, which the
+  // template asks for. The core starts the `<template>` elements of a clone, not of its template.
   const comments = reader.html.replace(/<!--x\d+-->|<!--\/[biP]-->/g, '');
-  if (comments.includes('<!--') || /<template\b/i.test(reader.html)) {
-    return undefined;
-  }
+  const indexed = comments.includes('<!--') || /<template\b/i.test(reader.html) || undefined;
   // An element with handlers and no anchor finds its scope with `closest`, from the anchor of an
   // element around it. The clone writes `b-b` only where it is asked to.
   function getAnchor(element: number): Write | undefined {
@@ -601,7 +670,7 @@ export function clonedTemplate(parts: readonly Part[]): ClonedTemplate | undefin
       around = reader.parents.get(around);
     }
   }
-  return { html: reader.html, writes, foreign: reader.foreign };
+  return { html: reader.html, writes, foreign: reader.foreign, indexed };
 }
 
 /**
@@ -627,7 +696,12 @@ function promised(
  * The lines between the first and the last `$$html +=` can only declare the values of the
  * writes, which run after them. Plain `{` blocks around them go, so the writes see them.
  */
-export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn = 0): boolean {
+export function cloneLines(
+  emitter: Emitter,
+  hoist: (code: string) => string,
+  fn = 0,
+  owner?: object,
+): boolean {
   const { lines: source, levels } = emitter;
   // Lines of the function, and lines in its branches and loops. Others are in functions inside.
   function isTop(at: number): boolean {
@@ -702,15 +776,23 @@ export function cloneLines(emitter: Emitter, hoist: (code: string) => string, fn
       }
     }
   }
-  const found = clonedTemplate(parts);
+  const found = clonedTemplate(
+    parts,
+    (scope, anchor) => emitter.fills?.has(`${scope}:${anchor}`) ?? false,
+    emitter.foreignAround(owner),
+  );
   if (!found) {
     return false;
   }
   const flush = tops[0];
   const indent = /^ */.exec(emitter.lines[flush!.line]!)![0];
-  const foreign = found.foreign ? `, ${JSON.stringify(found.foreign)}` : '';
+  // The arguments after the count: the foreign element, then 1 for markup that its insert indexes.
+  let options = found.foreign ? `, ${JSON.stringify(found.foreign)}` : '';
+  if (found.indexed) {
+    options += `${found.foreign ? '' : ', undefined'}, 1`;
+  }
   const name = hoist(
-    `$$b.template(${JSON.stringify(found.html)}, ${found.writes.length}${foreign})`,
+    `$$b.template(${JSON.stringify(found.html)}, ${found.writes.length}${options})`,
   );
   // The clone gives its marked nodes, then its fragment.
   const lines = [`${indent}const $$e = $$b.clone(${name}), $$f = $$e[${found.writes.length}];`];

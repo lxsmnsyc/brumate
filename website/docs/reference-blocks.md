@@ -86,7 +86,7 @@ Expressions cannot contain markup. Use a block or a `#template` instead.
 
 `cancelWhen(element, type, check)` from `brumate/events` is not a wrapper. It cancels a `click` or a `submit` of an element while `check` returns true. See [Cancel an event from a part](./markup.md#cancel-an-event-from-a-part).
 
-Wrappers apply while the event dispatches, so they work before the code of the page has loaded. See [Events](./markup.md#before-the-handler-loads). A modifier after the event name, such as `onSubmit:prevent=save`, still works, with a warning.
+Wrappers apply while the event dispatches, so they work before the code of the page has loaded. See [Events](./markup.md#before-the-handler-loads). A modifier after the event name, such as `onSubmit:prevent=save`, is a compile error.
 
 ## Reserved attributes
 

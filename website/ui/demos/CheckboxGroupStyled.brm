@@ -34,9 +34,9 @@
   <p role="status" class="checkgroup-styled-status">{sent}</p>
 </Form>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.checkgroup-styled-form) {
+  .checkgroup-styled-form {
     --checkgroup-styled-page: Canvas;
     --checkgroup-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
     --checkgroup-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
@@ -49,22 +49,22 @@
     color: CanvasText;
   }
 
-  :global(.checkgroup-styled) {
+  .checkgroup-styled {
     display: grid;
     gap: 0.4rem;
   }
 
-  :global(.checkgroup-styled-label) {
+  .checkgroup-styled-label {
     font-weight: 600;
   }
 
-  :global(.checkgroup-styled-chips) {
+  .checkgroup-styled-chips {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
   }
 
-  :global(.checkgroup-styled-chip) {
+  .checkgroup-styled-chip {
     padding: 0.3rem 0.8rem;
     border: 1px solid var(--checkgroup-styled-border);
     border-radius: 999px;
@@ -72,57 +72,57 @@
     transition: background-color 0.15s, border-color 0.15s, color 0.15s;
   }
 
-  :global(.checkgroup-styled-chip[data-hovered]) {
+  .checkgroup-styled-chip[data-hovered] {
     border-color: var(--checkgroup-styled-accent);
     background: color-mix(in srgb, var(--checkgroup-styled-accent) 14%, transparent);
   }
 
-  :global(.checkgroup-styled-chip[data-pressed]) {
+  .checkgroup-styled-chip[data-pressed] {
     background: color-mix(in srgb, var(--checkgroup-styled-accent) 28%, transparent);
   }
 
-  :global(.checkgroup-styled-chip[data-selected]) {
+  .checkgroup-styled-chip[data-selected] {
     border-color: var(--checkgroup-styled-accent);
     background: var(--checkgroup-styled-accent);
     color: var(--checkgroup-styled-on-accent);
   }
 
-  :global(.checkgroup-styled-chip[data-selected][data-hovered]) {
+  .checkgroup-styled-chip[data-selected][data-hovered] {
     background: color-mix(in srgb, var(--checkgroup-styled-accent), CanvasText 15%);
   }
 
-  :global(.checkgroup-styled-chip[data-selected][data-pressed]) {
+  .checkgroup-styled-chip[data-selected][data-pressed] {
     background: color-mix(in srgb, var(--checkgroup-styled-accent), CanvasText 28%);
   }
 
   /* Two inner bands, so the ring shows on the page and on the fill. */
-  :global(.checkgroup-styled-chip[data-focus-visible]) {
+  .checkgroup-styled-chip[data-focus-visible] {
     outline: none;
     box-shadow:
       0 0 0 2px var(--checkgroup-styled-accent),
       inset 0 0 0 2px var(--checkgroup-styled-page);
   }
 
-  :global(.checkgroup-styled-chip[data-invalid]) {
+  .checkgroup-styled-chip[data-invalid] {
     border-color: var(--checkgroup-styled-danger);
   }
 
-  :global(.checkgroup-styled-chip[data-disabled]) {
+  .checkgroup-styled-chip[data-disabled] {
     opacity: 0.45;
     cursor: not-allowed;
   }
 
-  :global(.checkgroup-styled-help) {
+  .checkgroup-styled-help {
     color: var(--checkgroup-styled-muted);
     font-size: 0.875rem;
   }
 
-  :global(.checkgroup-styled-error) {
+  .checkgroup-styled-error {
     color: var(--checkgroup-styled-danger);
     font-size: 0.875rem;
   }
 
-  :global(.checkgroup-styled-submit) {
+  .checkgroup-styled-submit {
     padding: 0.4rem 1rem;
     border: 0;
     border-radius: 8px;
@@ -132,27 +132,27 @@
     cursor: pointer;
   }
 
-  :global(.checkgroup-styled-submit[data-hovered]) {
+  .checkgroup-styled-submit[data-hovered] {
     background: color-mix(in srgb, var(--checkgroup-styled-accent), CanvasText 15%);
   }
 
-  :global(.checkgroup-styled-submit[data-pressed]) {
+  .checkgroup-styled-submit[data-pressed] {
     background: color-mix(in srgb, var(--checkgroup-styled-accent), CanvasText 28%);
   }
 
-  :global(.checkgroup-styled-submit[data-focus-visible]) {
+  .checkgroup-styled-submit[data-focus-visible] {
     outline: 2px solid var(--checkgroup-styled-accent);
     outline-offset: 2px;
   }
 
-  :global(.checkgroup-styled-status) {
+  .checkgroup-styled-status {
     margin: 0;
     color: var(--checkgroup-styled-muted);
     font-size: 0.875rem;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.checkgroup-styled-chip) {
+    .checkgroup-styled-chip {
       transition: none;
     }
   }

@@ -1,3 +1,7 @@
+---
+summary: A sample of a color, named for screen readers.
+---
+
 # ColorSwatch
 
 A sample of a color, named for screen readers.
@@ -6,7 +10,7 @@ A sample of a color, named for screen readers.
 
 ```
 
-```html
+```brm
 <ColorSwatch color="#e2445a" />
 <ColorSwatch color="hsl(210, 50%, 40%)" colorName="Ocean" />
 ```

@@ -4,31 +4,32 @@ The compiler replaces each call and removes the import, so none of them ship. Im
 
 "Top level of a script" means a statement of the component's `<script>`, or of a `<script>` at the start of a block body. It is not inside a function or another statement.
 
-| Function                      | Returns                    | Where                                                 |
-| ----------------------------- | -------------------------- | ----------------------------------------------------- |
-| `$props<T>()`                 | `T`                        | `const` or `let` in the component script              |
-| `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script                    |
-| `$memo<T>(value)`             | the value, never a promise | `const` at the top level of a script                  |
-| `$debounced(value, ms)`       | the value, as a memo       | `const` at the top level of a script                  |
-| `$throttled(value, ms)`       | the value, as a memo       | `const` at the top level of a script                  |
-| `$isPending(memo)`            | `boolean`                  | Any expression                                        |
-| `$resolve(memo, options?)`    | `Promise<T>`               | A handler, an effect or a `$client` callback          |
-| `$isPassed(prop)`             | `boolean`                  | `const` in the component script                       |
-| `$isBound(prop)`              | `boolean`                  | Any expression                                        |
-| `$effect(callback)`           | `void`                     | Statement at the top level of a script                |
-| `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script                |
-| `$untrack(value)`             | the value                  | Any expression                                        |
-| `$produce(signal, recipe)`    | `void`                     | Where a signal can be written                         |
-| `$setContext(context, value)` | `void`                     | Statement at the top level of a script                |
-| `$getContext(context)`        | the value                  | `const` at the top level of a script                  |
-| `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script                  |
-| `$navigation()`               | `{ pending, from, to }`    | `const` at the top level of a script                  |
-| `$id()`                       | `string`                   | `const` at the top level of a script                  |
-| `$title(value)`               | `void`                     | Statement at the top level of a script                |
-| `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script                  |
-| `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script                    |
-| `$handler(fn, ...args)`       | a handler                  | Any expression of a script or a module function       |
-| `$bind(value, set?)`          | a binding                  | The whole value of a prop, or of `value` or `checked` |
+| Function                       | Returns                    | Where                                                 |
+| ------------------------------ | -------------------------- | ----------------------------------------------------- |
+| `$props<T>()`                  | `T`                        | `const` or `let` in the component script              |
+| `$signal<T>(value?)`           | `T`                        | `let` at the top level of a script                    |
+| `$memo<T>(value)`              | the value, never a promise | `const` at the top level of a script                  |
+| `$debounced(value, ms)`        | the value, as a memo       | `const` at the top level of a script                  |
+| `$throttled(value, ms)`        | the value, as a memo       | `const` at the top level of a script                  |
+| `$isPending(memo)`             | `boolean`                  | Any expression                                        |
+| `$resolve(memo, options?)`     | `Promise<T>`               | A handler, an effect or a `$client` callback          |
+| `$isPassed(prop)`              | `boolean`                  | `const` in the component script                       |
+| `$isBound(prop)`               | `boolean`                  | Any expression                                        |
+| `$effect(callback)`            | `void`                     | Statement at the top level of a script                |
+| `$client(callback, trigger?)`  | `void`                     | Statement at the top level of a script                |
+| `$untrack(value)`              | the value                  | Any expression                                        |
+| `$produce(signal, recipe)`     | `void`                     | Where a signal can be written                         |
+| `$setContext(context, value)`  | `void`                     | Statement at the top level of a script                |
+| `$getContext(context)`         | the value                  | `const` at the top level of a script                  |
+| `$route(path?)`                | `{ url, search, params }`  | `const` at the top level of a script                  |
+| `$searchParam(name, options?)` | the value of the parameter | `let` at the top level of a script                    |
+| `$navigation()`                | `{ pending, from, to }`    | `const` at the top level of a script                  |
+| `$id()`                        | `string`                   | `const` at the top level of a script                  |
+| `$title(value)`                | `void`                     | Statement at the top level of a script                |
+| `$action(fn)`                  | the result, or `undefined` | `const` at the top level of a script                  |
+| `$optimistic(source)`          | the value of `source`      | `let` at the top level of a script                    |
+| `$handler(fn, ...args)`        | a handler                  | Any expression of a script or a module function       |
+| `$bind(value, set?)`           | a binding                  | The whole value of a prop, or of `value` or `checked` |
 
 ## What each one does
 
@@ -48,6 +49,7 @@ The compiler replaces each call and removes the import, so none of them ship. Im
 - `$setContext(context, value)`: gives a value of a context to the components inside. Create the context with `createContext` from `brumate/context`.
 - `$getContext(context)`: reads a context from the nearest component above that provides it, or its default.
 - `$route(path?)`: the current route, as `{ url, search, params }`. The path is the route, such as `'/posts/[id]'`, and takes at most one argument.
+- `$searchParam(name, options?)`: a signal bound to one parameter of the query string. The server reads the URL, and a write in the browser changes it with `replaceState` (`{ history: 'push' }` for `pushState`) and asks the server nothing. Back and forward write the signal. Options: `default` (left out of the URL), `parse`, `serialize`, `history`, `server` (a write navigates). The name is a string literal.
 - `$navigation()`: the state of a navigation, as `{ pending, from, to }`. It takes no arguments.
 - `$id()`: an ID that is unique in the page and the same on the server and in the browser. It takes no arguments.
 - `$title(value)`: sets the title of the page. The compiler warns about it, and it will be removed: use `<title>` in `#head`. It takes one argument.

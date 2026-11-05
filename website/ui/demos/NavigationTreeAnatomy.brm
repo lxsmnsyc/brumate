@@ -36,13 +36,13 @@
   }
 }
 
-<style>
-  :global(.nav-anatomy-box) {
+<style global>
+  .nav-anatomy-box {
     padding: 0.8rem 0.8rem 1.2rem;
     width: min(24rem, 100%);
   }
 
-  :global(.nav-anatomy-self) {
+  .nav-anatomy-self {
     display: inline-grid;
   }
 </style>

@@ -11,7 +11,7 @@ interface Block {
   kind: 'anatomy' | 'styled';
   name: string;
   lines: string[];
-  /** The tags of the first `html` block after `## Anatomy`, in order. */
+  /** The tags of the first `brm` block after `## Anatomy`, in order. */
   tree: string[];
   text: string;
 }
@@ -26,7 +26,7 @@ function blocks(): Block[] {
     const anatomy = text.indexOf('\n## Anatomy');
     const tree: string[] = [];
     if (anatomy !== -1) {
-      const html = /```html\n([\s\S]*?)```/.exec(text.slice(anatomy));
+      const html = /```brm\n([\s\S]*?)```/.exec(text.slice(anatomy));
       for (const match of (html?.[1] ?? '').matchAll(/<([A-Z]\w*)/g)) {
         tree.push(match[1]!);
       }
@@ -98,7 +98,7 @@ describe('anatomy and styled blocks', () => {
   for (const block of all.filter((item) => item.kind === 'styled')) {
     describe(`${block.page}: styled ${block.name}`, () => {
       it('has its demo file, with a stylesheet of its own', () => {
-        expect(readFileSync(demo(block.name), 'utf8')).toContain('<style>');
+        expect(readFileSync(demo(block.name), 'utf8')).toMatch(/<style( global)?>/);
       });
     });
   }

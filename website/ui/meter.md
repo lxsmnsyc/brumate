@@ -1,3 +1,7 @@
+---
+summary: A value in a known range, in the locale.
+---
+
 # Meter
 
 A value that stays in a known range, such as the space used on a disk.
@@ -18,7 +22,7 @@ A value that stays in a known range, such as the space used on a disk.
 `Label`: Names the meter.
 ```
 
-```html
+```brm
 <Meter>
   <Label />
 </>
@@ -48,10 +52,6 @@ This stylesheet draws a track and a fill in a `content` template, and the fill c
 
 ```
 
-## State
-
-A meter has no state of its own. It draws the `value` that you pass, so the page keeps the number, such as in a signal. A form reset leaves it as it is, and the server renders the value it gets.
-
 ## Use cases
 
 ### Units and words
@@ -69,3 +69,7 @@ The page keeps the charge in a signal. The meter follows it, and the note under 
 ```brm demo MeterBatteryDemo
 
 ```
+
+## State
+
+A meter has no state of its own. It draws the `value` that you pass, so the page keeps the number, such as in a signal. A form reset leaves it as it is, and the server renders the value it gets.

@@ -1,3 +1,7 @@
+---
+summary: A field for a color, as hex or as one channel.
+---
+
 # ColorField
 
 A field for a color, as hex or as one channel.
@@ -6,7 +10,7 @@ A field for a color, as hex or as one channel.
 
 ```
 
-```html
+```brm
 <ColorField value=$bind(accent)>
   <Label>Accent</Label>
   <Input />
@@ -36,7 +40,7 @@ A field for a color, as hex or as one channel.
 `FieldError`: Shows the message of an invalid field. Optional.
 ```
 
-```html
+```brm
 <ColorField>
   <Label />
   <Input />

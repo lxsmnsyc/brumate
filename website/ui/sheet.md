@@ -1,3 +1,7 @@
+---
+summary: A modal along an edge of the window.
+---
+
 # Sheet
 
 A [Modal](./modal.md) along an edge of the window, such as a menu or a panel of filters.
@@ -22,7 +26,7 @@ A [Modal](./modal.md) along an edge of the window, such as a menu or a panel of 
 
 The picture draws the window, dimmed, with the Sheet in it, open and in place, so that the pieces can carry numbers. The real Sheet opens in a layer at the end of the page, along the edge of the whole window, and the rest of the page is inert while it is open. The dim area is the overlay that the Sheet renders around itself.
 
-```html
+```brm
 <DialogTrigger>
   <Button />
   <Sheet>

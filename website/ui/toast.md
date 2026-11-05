@@ -1,3 +1,7 @@
+---
+summary: A notice that comes and goes, in a landmark.
+---
+
 # Toast
 
 A notice that comes and goes, such as "Draft saved".
@@ -19,7 +23,7 @@ A notice that comes and goes, such as "Draft saved".
 
 The picture draws the region in place with one toast. The real region renders at the end of the page, and CSS places it in a corner.
 
-```html
+```brm
 <ToastRegion>
   <Toast>
     <ToastContent>

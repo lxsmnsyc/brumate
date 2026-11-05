@@ -1276,7 +1276,7 @@ class ClientGenerator {
         }
       }
       if (attribute.kind === 'event' && site) {
-        const all = [...new Set([...attribute.modifiers, ...(site.modifiers ?? [])])];
+        const all = [...new Set(site.modifiers ?? [])];
         const entry = `${[attribute.event, ...all].join(':')}=${this.plan.id}#${this.plan.symbols.get(site)}@`;
         entries.push(`${JSON.stringify(entry)} + $$s.id`);
       }
@@ -1654,8 +1654,8 @@ class ClientGenerator {
    * Replaces the one `$$html +=` line of a render with a clone of a template and the writes on
    * its elements. Returns false when the markup needs HTML.
    */
-  private cloneRender(emitter: Emitter): boolean {
-    return cloneLines(emitter, (code) => this.hoist(code));
+  private cloneRender(emitter: Emitter, body: Body): boolean {
+    return cloneLines(emitter, (code) => this.hoist(code), 0, body);
   }
 
   /**
@@ -1710,10 +1710,7 @@ class ClientGenerator {
         emitter.flush();
         // The body of an `#if` or a `#for`, and the fallback of a `#loading`, whose markup is one
         // string clones a template.
-        cloned =
-          block.kind === 'if' || block.kind === 'for' || block.kind === 'loading'
-            ? this.cloneRender(emitter)
-            : false;
+        cloned = this.cloneRender(emitter, body);
         emitter.line(emitter.returnLine(0, cloned));
       },
     );
@@ -1894,7 +1891,7 @@ class ClientGenerator {
       }
       emitter.emitChildrenBody(node, scope);
       emitter.flush();
-      const cloned = cloneLines(emitter, (code) => this.hoist(code));
+      const cloned = cloneLines(emitter, (code) => this.hoist(code), 0, node);
       emitter.line(emitter.returnLine(0, cloned));
       emitter.close();
       this.emit(emitter.lines.join('\n'));

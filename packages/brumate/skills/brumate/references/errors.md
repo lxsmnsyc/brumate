@@ -237,13 +237,15 @@ https://brumate-docs.vercel.app/docs/errors#brm021
 <input disabled>
 ```
 
-## BRM022: Unknown event modifier ":{modifier}"
+## BRM022: Event modifiers in the attribute name were removed. Write {fix}
 
-The modifier after an event name is not one of the known ones.
+A modifier follows the event name, as in `onSubmit:prevent=send`. Wrappers of `brumate/events` write modifiers now, and `:passive` is the default, since listeners are passive unless a handler prevents.
 
 https://brumate-docs.vercel.app/docs/errors#brm022
 
 ```brm fragment
+import { prevent } from 'brumate/events';
+
 <form onSubmit=(prevent(send))></form>
 ```
 
@@ -356,16 +358,6 @@ https://brumate-docs.vercel.app/docs/errors#brm188
 #for (user of users by user.id) {
   <p>{user.name}</p>
 }
-```
-
-## BRM023: Modifiers apply to elements. Put ":{modifier}" on the element that the component renders
-
-An event modifier is on a component, which only passes the handler on.
-
-https://brumate-docs.vercel.app/docs/errors#brm023
-
-```brm fragment
-<form onSubmit=(prevent(send))></form>
 ```
 
 ## BRM024: Expected an event handler
@@ -534,6 +526,34 @@ https://brumate-docs.vercel.app/docs/errors#brm038
     a {
       color: red;
     }
+  }
+</style>
+```
+
+## BRM189: Unknown <style> attribute "{name}"
+
+A `<style>` has an attribute other than `lang` and `global`.
+
+https://brumate-docs.vercel.app/docs/errors#brm189
+
+```brm fragment
+<style scoped>
+  p {
+    color: red;
+  }
+</style>
+```
+
+## BRM190: global takes no value, as in <style global>
+
+A `<style global>` gives `global` a value.
+
+https://brumate-docs.vercel.app/docs/errors#brm190
+
+```brm fragment
+<style global="true">
+  p {
+    color: red;
   }
 </style>
 ```

@@ -1,3 +1,7 @@
+---
+summary: An overlay beside its trigger, with layers inside.
+---
+
 # Popover
 
 An overlay beside its trigger, such as a menu of settings.
@@ -24,7 +28,7 @@ An overlay beside its trigger, such as a menu of settings.
 
 The picture draws the Popover in place, open, as a block of its own under the trigger, so that each layer can carry a number. The real Popover opens in a layer at the end of the page, next to the trigger, and the rest of the page is inert while it is open.
 
-```html
+```brm
 <DialogTrigger>
   <Button />
   <Popover>

@@ -39,9 +39,9 @@
   <Token class=(segment.text.startsWith('@') ? 'tokenfield-styled-token tokenfield-styled-mention' : 'tokenfield-styled-token')>{segment.text}</Token>
 }
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.tokenfield-styled-stack) {
+  .tokenfield-styled-stack {
     --tokenfield-styled-field: light-dark(#fff, #0f0d0b);
     --tokenfield-styled-border: light-dark(#76706a, #8d857b);
     --tokenfield-styled-muted: light-dark(#5a544d, #b3aaa0);
@@ -58,16 +58,16 @@
     color: CanvasText;
   }
 
-  :global(.tokenfield-styled) {
+  .tokenfield-styled {
     display: grid;
     gap: 0.3rem;
   }
 
-  :global(.tokenfield-styled-label) {
+  .tokenfield-styled-label {
     font-weight: 600;
   }
 
-  :global(.tokenfield-styled-input) {
+  .tokenfield-styled-input {
     min-height: 2.5rem;
     padding: 0.35rem 0.65rem;
     border: 1px solid var(--tokenfield-styled-border);
@@ -77,12 +77,12 @@
     transition: border-color 0.15s, box-shadow 0.15s;
   }
 
-  :global(.tokenfield-styled-input:hover) {
+  .tokenfield-styled-input:hover {
     border-color: var(--tokenfield-styled-accent);
   }
 
   /* Two bands, an accent one and an inner one in the color of the field. */
-  :global(.tokenfield-styled-input[data-focus-visible]) {
+  .tokenfield-styled-input[data-focus-visible] {
     outline: none;
     border-color: var(--tokenfield-styled-accent);
     box-shadow:
@@ -90,49 +90,49 @@
       inset 0 0 0 2px var(--tokenfield-styled-field);
   }
 
-  :global(.tokenfield-styled-input[data-empty]::before) {
+  .tokenfield-styled-input[data-empty]::before {
     color: var(--tokenfield-styled-muted);
   }
 
-  :global(.tokenfield-styled-input[data-readonly]) {
+  .tokenfield-styled-input[data-readonly] {
     border-style: dashed;
   }
 
-  :global(.tokenfield-styled-input[data-disabled]) {
+  .tokenfield-styled-input[data-disabled] {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  :global(.tokenfield-styled-token) {
+  .tokenfield-styled-token {
     padding: 0.05rem 0.5rem;
     border: 1px solid var(--tokenfield-styled-chip-border);
     border-radius: 999px;
     background: var(--tokenfield-styled-chip);
   }
 
-  :global(.tokenfield-styled-mention) {
+  .tokenfield-styled-mention {
     border-color: var(--tokenfield-styled-mention-border);
     background: var(--tokenfield-styled-mention);
     font-weight: 600;
   }
 
-  :global(.tokenfield-styled-token[data-selected]) {
+  .tokenfield-styled-token[data-selected] {
     border-color: var(--tokenfield-styled-selected);
     background: var(--tokenfield-styled-selected);
     color: var(--tokenfield-styled-on-selected);
   }
 
-  :global(.tokenfield-styled-token[data-disabled]) {
+  .tokenfield-styled-token[data-disabled] {
     opacity: 0.8;
   }
 
-  :global(.tokenfield-styled-help) {
+  .tokenfield-styled-help {
     color: var(--tokenfield-styled-muted);
     font-size: 0.875rem;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.tokenfield-styled-input) {
+    .tokenfield-styled-input {
       transition: none;
     }
   }

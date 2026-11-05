@@ -13,9 +13,9 @@
   </span>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. The swatch sets --color, the color it shows. */
-  :global(.color-swatch-styled-row) {
+  .color-swatch-styled-row {
     --color-swatch-styled-edge: color-mix(in srgb, CanvasText 55%, Canvas);
     display: flex;
     flex-wrap: wrap;
@@ -24,29 +24,29 @@
     color: CanvasText;
   }
 
-  :global(.color-swatch-styled) {
+  .color-swatch-styled {
     box-shadow: 0 0 0 1px var(--color-swatch-styled-edge);
   }
 
-  :global(.color-swatch-styled-square) {
+  .color-swatch-styled-square {
     width: 3.5rem;
     height: 3.5rem;
     border-radius: 0.5rem;
   }
 
-  :global(.color-swatch-styled-circle) {
+  .color-swatch-styled-circle {
     width: 3.5rem;
     height: 3.5rem;
     border-radius: 50%;
   }
 
-  :global(.color-swatch-styled-small) {
+  .color-swatch-styled-small {
     width: 1.25rem;
     height: 1.25rem;
     border-radius: 50%;
   }
 
-  :global(.color-swatch-styled-chip) {
+  .color-swatch-styled-chip {
     display: inline-flex;
     gap: 0.5rem;
     align-items: center;

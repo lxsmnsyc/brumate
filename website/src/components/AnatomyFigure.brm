@@ -29,7 +29,7 @@
 
   .anatomy-stage {
     display: grid;
-    justify-items: start;
+    justify-items: safe center;
     gap: 1.25rem;
     padding: 2rem 2rem 1.75rem;
     background: var(--surface);
@@ -105,7 +105,7 @@
 
   /* A label and a description are as wide as their text, so the badge sits at their end. */
   .anatomy-stage :global(:is(label, .ui-help)[data-mark]) {
-    justify-self: start;
+    justify-self: center;
   }
 
   /* After the text, for the value inside the Button. */

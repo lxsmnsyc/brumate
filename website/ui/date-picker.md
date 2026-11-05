@@ -1,3 +1,7 @@
+---
+summary: A date field with a button that opens a calendar.
+---
+
 # DatePicker
 
 A DateField with a button that opens a Calendar.
@@ -6,7 +10,7 @@ A DateField with a button that opens a Calendar.
 
 ```
 
-```html
+```brm
 <DatePicker value=$bind(departure)>
   <Label>Departure</Label>
   <Group>
@@ -51,7 +55,7 @@ A DateField with a button that opens a Calendar.
 
 The picture draws the Popover in place, open, as a block of its own under the field, so that each layer can carry a number. The real Popover opens in a layer at the end of the page.
 
-```html
+```brm
 <DatePicker>
   <Label />
   <Group>
@@ -123,16 +127,6 @@ The Popover is a layer outside the form, so put the custom properties of the exa
 
 ```
 
-## The Calendar
-
-- The Button opens the Popover. The Calendar shows the date of the field, or `placeholderValue` when the field is empty, and that date takes focus.
-- A Dialog with no Heading is named by the Button and the Label. The Group is named by the Label.
-- The Calendar follows `isDisabled` and `isReadOnly` of the DatePicker, unless it has its own.
-- A pick sets the date and closes the Popover, and focus goes back to the Button. `shouldCloseOnSelect={false}` keeps it open.
-- The Calendar follows `minValue`, `maxValue` and `isDateUnavailable` of the DatePicker, unless it has its own.
-- Escape closes the Popover.
-- `isOpen` is whether the Popover shows. It starts its own state, or binds with `$bind`, and `onOpenChange` gets each change.
-
 ## Use cases
 
 ### A date in a booking form
@@ -150,3 +144,13 @@ An [I18nProvider](./i18n-provider.md) gives the order and the placeholders of th
 ```brm demo DatePickerLocaleDemo
 
 ```
+
+## The Calendar
+
+- The Button opens the Popover. The Calendar shows the date of the field, or `placeholderValue` when the field is empty, and that date takes focus.
+- A Dialog with no Heading is named by the Button and the Label. The Group is named by the Label.
+- The Calendar follows `isDisabled` and `isReadOnly` of the DatePicker, unless it has its own.
+- A pick sets the date and closes the Popover, and focus goes back to the Button. `shouldCloseOnSelect={false}` keeps it open.
+- The Calendar follows `minValue`, `maxValue` and `isDateUnavailable` of the DatePicker, unless it has its own.
+- Escape closes the Popover.
+- `isOpen` is whether the Popover shows. It starts its own state, or binds with `$bind`, and `onOpenChange` gets each change.

@@ -1,3 +1,7 @@
+---
+summary: Native radios that the arrow keys move.
+---
+
 # RadioGroup
 
 Native radios with one name, from which the user picks one.
@@ -20,7 +24,7 @@ Native radios with one name, from which the user picks one.
 `FieldError`: Shows while the group is invalid. The picture forces it with `isInvalid`.
 ```
 
-```html
+```brm
 <RadioGroup>
   <Label />
   <Radio value="a" />

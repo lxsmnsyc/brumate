@@ -1,6 +1,7 @@
 import type * as Routes from './client-routes.ts';
 import { boot, importCore } from './boot.ts';
 import { NAVIGATION_KEY, ROUTE_KEY } from './context.ts';
+import { HAS_SEARCH_PARAMS } from './features.ts';
 import type { Core, LoaderOptions, Navigation } from './boot.ts';
 
 export type { LoaderOptions, NavigateOptions } from './boot.ts';
@@ -210,10 +211,27 @@ function navigation({
   // A hot update whose markup changed loads the page again, in place. With `init`, the whole
   // page is replaced, as for a form, so layouts render again too, and it keeps the scroll.
   listen(document, 'brumate:reload', () => void go(location.href, { method: 'GET' }, false));
+  // The query string moved by `$searchParam` stays on the page, so the next change is told from it.
+  if (HAS_SEARCH_PARAMS) {
+    listen(document, 'brumate:search', () => {
+      page = location.href.split('#')[0]!;
+    });
+  }
   listen(window, 'popstate', () => {
     // A change of the hash only stays on the page.
-    if (location.href.split('#')[0] !== page) {
-      void go(location.href, undefined, false);
+    const target = location.href.split('#')[0]!;
+    if (target !== page) {
+      // `$searchParam` follows the history itself when only its parameters changed.
+      const follow = HAS_SEARCH_PARAMS
+        ? (globalThis as Record<symbol, ((from: string) => boolean) | undefined>)[
+            Symbol.for('brumate.search')
+          ]
+        : undefined;
+      if (follow?.(page)) {
+        page = target;
+      } else {
+        void go(location.href, undefined, false);
+      }
     }
   });
   return () =>

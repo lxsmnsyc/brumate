@@ -17,8 +17,8 @@
   <Button type="submit" class="ui-button" data-mark="6">Sign up</Button>
 </Form>
 
-<style>
-  :global(.form-anatomy-input) {
+<style global>
+  .form-anatomy-input {
     display: grid;
   }
 </style>

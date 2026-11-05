@@ -1,3 +1,7 @@
+---
+summary: A list of color swatches, to pick one.
+---
+
 # ColorSwatchPicker
 
 A list of color swatches, to pick one.
@@ -6,7 +10,7 @@ A list of color swatches, to pick one.
 
 ```
 
-```html
+```brm
 <ColorSwatchPicker aria-label="Color" value=$bind(color)>
   <ColorSwatchPickerItem color="#e2445a"><ColorSwatch /></ColorSwatchPickerItem>
   <ColorSwatchPickerItem color="#2563eb"><ColorSwatch /></ColorSwatchPickerItem>
@@ -28,7 +32,7 @@ A list of color swatches, to pick one.
 `ColorSwatch`: Shows the color of the item. Optional.
 ```
 
-```html
+```brm
 <ColorSwatchPicker>
   <ColorSwatchPickerItem>
     <ColorSwatch />

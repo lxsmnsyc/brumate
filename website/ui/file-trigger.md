@@ -1,3 +1,7 @@
+---
+summary: Opens the file picker from a button.
+---
+
 # FileTrigger
 
 Opens the file picker of the browser from a `Button` inside it.
@@ -12,7 +16,7 @@ Opens the file picker of the browser from a `Button` inside it.
 
 ## Anatomy
 
-```html
+```brm
 <FileTrigger>
   <Button />
 </>

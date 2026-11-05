@@ -20,17 +20,17 @@
   <Text slot="description" class="ui-help" data-mark="4" data-mark-side="after">Press Escape to clear.</Text>
 </SearchField>
 
-<style>
-  :global(.searchfield-anatomy-input) {
+<style global>
+  .searchfield-anatomy-input {
     display: flex;
     flex: 1;
   }
 
-  :global(.searchfield-anatomy-input .ui-input) {
+  .searchfield-anatomy-input .ui-input {
     flex: 1;
   }
 
-  :global(.searchfield-anatomy-button) {
+  .searchfield-anatomy-button {
     display: inline-flex;
   }
 </style>

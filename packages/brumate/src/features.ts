@@ -36,6 +36,8 @@ export interface Features {
   loading: boolean;
   /** A browser render that waits at `await $memo`, so blocks hold a new body until it settles. */
   rootWait: boolean;
+  /** `$searchParam`, whose changes of the URL the loader leaves to the page. */
+  searchParams: boolean;
 }
 
 /** No feature at all, which a build that has no component uses. */
@@ -57,6 +59,7 @@ export function noFeatures(): Features {
     routes: false,
     loading: false,
     rootWait: false,
+    searchParams: false,
   };
 }
 
@@ -98,6 +101,7 @@ export function getFeatures(result: CompileResult): Features {
     routes: /\b(?:routeContext|navigationContext)\b/.test(all),
     loading: /\$\$b\.loading\(/.test(client),
     rootWait: /\$\$b\.wait\(/.test(client),
+    searchParams: /\$\$b\.(?:searchParam|paramEffect)\(/.test(all),
   };
 }
 
@@ -121,6 +125,7 @@ export function joinFeatures(all: Features[]): Features {
     joined.routes ||= features.routes;
     joined.loading ||= features.loading;
     joined.rootWait ||= features.rootWait;
+    joined.searchParams ||= features.searchParams;
   }
   return joined;
 }
@@ -143,6 +148,7 @@ const GLOBALS: Record<keyof Features, string> = {
   routes: '__BRUMATE_HAS_ROUTES__',
   loading: '__BRUMATE_HAS_LOADING__',
   rootWait: '__BRUMATE_HAS_ROOT_WAIT__',
+  searchParams: '__BRUMATE_HAS_SEARCH_PARAMS__',
 };
 
 /** True for code that reads a feature, such as the core. */

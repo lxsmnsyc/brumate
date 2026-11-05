@@ -42,25 +42,25 @@
   </div>
 </div>
 
-<style>
-  :global(.slidermixer-bands) {
+<style global>
+  .slidermixer-bands {
     display: flex;
     gap: 2rem;
   }
 
-  :global(.slidermixer-band) {
+  .slidermixer-band {
     display: grid;
     justify-items: center;
     gap: 0.5rem;
   }
 
-  :global(.slidermixer-track) {
+  .slidermixer-track {
     position: relative;
     width: 1.25rem;
     height: 9rem;
   }
 
-  :global(.slidermixer-track::before) {
+  .slidermixer-track::before {
     content: '';
     position: absolute;
     top: 0;
@@ -72,7 +72,7 @@
     background: var(--border);
   }
 
-  :global(.slidermixer-thumb) {
+  .slidermixer-thumb {
     top: auto;
     margin-top: 0;
   }

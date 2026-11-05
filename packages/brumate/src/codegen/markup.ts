@@ -21,7 +21,7 @@ import type { Declaration, Scope, Site } from '../model.ts';
 import type { oxc } from '../oxc.ts';
 import { holdsStream, serverFunctionId } from '../plan.ts';
 import { findLoadStarts, hasAwait } from './starts.ts';
-import { cloneLines } from './template.ts';
+import { cloneLines, foreignContext } from './template.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
 import type { Patch } from './patch.ts';
@@ -570,6 +570,11 @@ export class Emitter {
       this.depth++;
       this.braces.push({ kind: 'control' });
     }
+  }
+
+  /** `svg` or `math` when the elements around `owner`, a body or children, put its markup there. */
+  foreignAround(owner: object | undefined): string | undefined {
+    return foreignContext(this.file, owner);
   }
 
   /**
@@ -1232,9 +1237,35 @@ export class Emitter {
         }
       }
       let code = this.patch.slice(statement.start, statement.end);
+      let partial = false;
+      if (this.options.mode === 'client' && statement.type === 'VariableDeclaration') {
+        // The browser follows the server: a memo that no browser code reads is not computed.
+        const kept: string[] = [];
+        for (const declarator of statement.declarations) {
+          const declaration =
+            declarator.id.type === 'Identifier'
+              ? scope.declarations.get(declarator.id.name)
+              : undefined;
+          if (!declaration || !this.plan.graph.unread.has(declaration)) {
+            kept.push(this.patch.slice(declarator.start, declarator.end));
+          }
+        }
+        if (kept.length === 0) {
+          continue;
+        }
+        if (kept.length < statement.declarations.length) {
+          // The kept slices of the patch carry their source markers, which map the line. `raw`
+          // takes the offset only to strip the indent of later lines.
+          code = `${statement.kind} ${kept.join(', ')};`;
+          partial = true;
+        }
+      }
       if (index < lastAwait && statement.type === 'VariableDeclaration') {
         if (statement.kind === 'const') {
-          code = `let${this.patch.slice(statement.start + 'const'.length, statement.end)}`;
+          // The patch can rewrite the keyword, so a statement that is whole starts at its offset.
+          code = partial
+            ? `let${code.slice('const'.length)}`
+            : `let${this.patch.slice(statement.start + 'const'.length, statement.end)}`;
         }
         for (const declaration of scope.declarations.values()) {
           if (
@@ -1426,12 +1457,13 @@ export class Emitter {
   }
 
   /**
-   * In the browser, a memo that nothing reads has no slot, so no load takes its promise. Its
-   * rejection goes to the nearest `#try`, which is where a memo that throws sends its error. A
-   * memo that always gives a primitive, such as `count * 2`, is never a promise, unless it has
-   * `await` inside. `await memo` compiles to a plain read of the promise, which drops it, unless
-   * the read is the whole value of another memo, as in `$memo(await memo)`, which then holds the
-   * same promise.
+   * In the browser, a memo that only `await` reads has no slot, so no load takes its promise.
+   * The server waits at the `await` and throws the error there, so the rejection goes to the
+   * nearest `#try`, which is where a memo that throws sends its error. A memo that always gives a
+   * primitive, such as `count * 2`, is never a promise, unless it has `await` inside. `await memo`
+   * compiles to a plain read of the promise, which drops it, unless the read is the whole value of
+   * another memo, as in `$memo(await memo)`, which then holds the same promise. A memo that
+   * nothing reads is not declared (`Graph.unread`), and neither is one that only such a memo reads.
    */
   private watchUnreadMemos(
     statement: oxc.VariableDeclaration,
@@ -1449,12 +1481,14 @@ export class Emitter {
         declaration &&
         !awaited.includes(declaration) &&
         (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
+        !this.plan.graph.unread.has(declaration) &&
         declaration.reads.every(
           (read) =>
-            read.await &&
-            (read.site.kind !== 'memo' ||
-              read.site.node.start !== read.await.start ||
-              read.site.node.end !== read.await.end),
+            (read.site.kind === 'memo' && this.plan.graph.unread.has(read.site.declaration!)) ||
+            (read.await &&
+              (read.site.kind !== 'memo' ||
+                read.site.node.start !== read.await.start ||
+                read.site.node.end !== read.await.end)),
         ) &&
         slotIndex(this.plan, declaration) === -1 &&
         !isNeverPromise(declaration)
@@ -1952,10 +1986,10 @@ export class Emitter {
     return `${event}=$bind#${hops}.${slotIndex(this.plan, binding.declaration)}`;
   }
 
-  private eventEntry({ event, modifiers, handler }: EventAttribute): string {
+  private eventEntry({ event, handler }: EventAttribute): string {
     const site = this.sitesByNode.get(handler.ast)!;
-    // The modifiers of the attribute name, and those of the wrappers of `brumate/events`.
-    const all = [...new Set([...modifiers, ...(site.modifiers ?? [])])];
+    // The modifiers of the wrappers of `brumate/events`.
+    const all = [...new Set(site.modifiers ?? [])];
     return `${[event, ...all].join(':')}=${this.plan.id}#${this.plan.symbols.get(site)}`;
   }
 
@@ -2443,7 +2477,8 @@ export class Emitter {
     this.atTopLevel(() => this.emitNodes(nodes, scope));
     this.flush();
     // Children whose markup can clone give the clone, which the insert puts in place.
-    const cloned = this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn);
+    const cloned =
+      this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn, node);
     this.line(this.returnLine(fn, cloned));
     this.close('});');
     return name;
@@ -2764,7 +2799,7 @@ export class Emitter {
     const cloned =
       this.options.mode === 'client' &&
       this.options.hoist !== undefined &&
-      cloneLines(this, this.options.hoist, fn);
+      cloneLines(this, this.options.hoist, fn, block.body);
     this.line(cloned ? 'return $$f;' : 'return $$html;');
     this.close('})();');
     // `#head` content goes to the document's head, and portal content to the end of the page.
@@ -3002,7 +3037,8 @@ export class Emitter {
     this.splitBody(scope, content, () => {
       this.flush();
       // The functions of children render HTML.
-      const cloned = this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn);
+      const cloned =
+        this.options.hoist !== undefined && cloneLines(this, this.options.hoist, fn, scope?.body);
       this.line(this.returnLine(fn, cloned));
     });
     this.close('};');

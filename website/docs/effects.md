@@ -251,6 +251,45 @@ A preference such as the theme, a dismissed banner or the width of a panel belon
 
 A `$client` callback is a handler for reads of a memo that has no value yet: the read is a compile error unless `$isPending` guards it or the code waits with `await $resolve(memo)`. See [reads while a memo is pending](./async-data.md#reads-while-a-memo-is-pending).
 
+### A component that the browser renders
+
+A component can enter the page after it loads, such as in an `#if` that opens or a new item of a `#for`. Its `$client` callback follows the same rules as one of the first render:
+
+```brm live
+<script>
+  import { $signal } from 'brumate/signals';
+  import Chart from './Chart.brm';
+
+  let open = $signal(false);
+</script>
+
+<button onClick=(() => (open = !open))>{open ? 'Hide' : 'Show'} the chart</button>
+#if (open) {
+  <Chart />
+}
+```
+
+```brm live Chart.brm
+<script>
+  import { $client, $signal } from 'brumate/signals';
+
+  let drawn = $signal('Drawing');
+
+  $client(() => {
+    drawn = `Drawn next to ${document.querySelectorAll('.chart').length} chart`;
+    return () => console.log('The chart left the page');
+  }, 'idle');
+</script>
+
+<p class="chart">{drawn}</p>
+```
+
+- The callback runs after the markup of the component is in the page, so it can read the elements of that markup. It does not run before the browser has rendered it.
+- The trigger counts from that moment. `'idle'` waits for the browser to be idle, and `'visible'` waits for the element to enter the viewport.
+- Each component that opens runs its callback once. Components that open together run their callbacks in the order of the markup.
+- When the `#if` closes, the cleanup of each callback runs, in the order of the markup. When it opens again, the browser renders new components, and their callbacks run again.
+- The callback of the parent runs once, when the page loads. An opening `#if` does not run it again.
+
 ## `#client` blocks
 
 A `#client` block skips its body on the server. The browser renders it when the trigger fires, with the same triggers as `$client`:

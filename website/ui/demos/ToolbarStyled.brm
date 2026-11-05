@@ -23,9 +23,9 @@
   </Toolbar>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.toolbar-styled-stage) {
+  .toolbar-styled-stage {
     --toolbar-styled-bg: color-mix(in srgb, CanvasText 6%, Canvas);
     --toolbar-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
     --toolbar-styled-accent: light-dark(#2a76b2, #6fb2e6);
@@ -38,7 +38,7 @@
     color: CanvasText;
   }
 
-  :global(.toolbar-styled) {
+  .toolbar-styled {
     display: flex;
     gap: 0.25rem;
     align-items: center;
@@ -48,17 +48,17 @@
     background: var(--toolbar-styled-bg);
   }
 
-  :global(.toolbar-styled[data-orientation='vertical']) {
+  .toolbar-styled[data-orientation='vertical'] {
     flex-direction: column;
     align-items: stretch;
   }
 
-  :global(.toolbar-styled-group) {
+  .toolbar-styled-group {
     display: flex;
     gap: 0.25rem;
   }
 
-  :global(.toolbar-styled-separator) {
+  .toolbar-styled-separator {
     align-self: stretch;
     width: 1px;
     margin: 0.2rem;
@@ -67,7 +67,7 @@
   }
 
   /* Rest, hover, press, keyboard focus, on and disabled. */
-  :global(.toolbar-styled-button) {
+  .toolbar-styled-button {
     padding: 0.35rem 0.75rem;
     border: 0;
     border-radius: 7px;
@@ -78,43 +78,43 @@
     transition: background-color 0.15s, color 0.15s;
   }
 
-  :global(.toolbar-styled-button[data-hovered]) {
+  .toolbar-styled-button[data-hovered] {
     background: color-mix(in srgb, CanvasText 12%, transparent);
   }
 
-  :global(.toolbar-styled-button[data-pressed]) {
+  .toolbar-styled-button[data-pressed] {
     background: color-mix(in srgb, CanvasText 22%, transparent);
   }
 
-  :global(.toolbar-styled-button[data-selected]) {
+  .toolbar-styled-button[data-selected] {
     background: var(--toolbar-styled-accent);
     color: var(--toolbar-styled-on-accent);
     font-weight: 700;
   }
 
-  :global(.toolbar-styled-button[data-selected][data-hovered]) {
+  .toolbar-styled-button[data-selected][data-hovered] {
     background: color-mix(in srgb, var(--toolbar-styled-accent), CanvasText 15%);
   }
 
-  :global(.toolbar-styled-button[data-selected][data-pressed]) {
+  .toolbar-styled-button[data-selected][data-pressed] {
     background: color-mix(in srgb, var(--toolbar-styled-accent), CanvasText 28%);
   }
 
   /* Two bands, so the ring shows on the toolbar and on the accent fill. */
-  :global(.toolbar-styled-button[data-focus-visible]) {
+  .toolbar-styled-button[data-focus-visible] {
     outline: none;
     box-shadow:
       0 0 0 2px var(--toolbar-styled-page),
       0 0 0 4px var(--toolbar-styled-accent);
   }
 
-  :global(.toolbar-styled-button[data-disabled]) {
+  .toolbar-styled-button[data-disabled] {
     color: color-mix(in srgb, CanvasText 62%, Canvas);
     cursor: not-allowed;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.toolbar-styled-button) {
+    .toolbar-styled-button {
       transition: none;
     }
   }

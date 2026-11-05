@@ -1,3 +1,7 @@
+---
+summary: Two date fields and a button that opens a range calendar.
+---
+
 # DateRangePicker
 
 Two date fields and a button that opens a RangeCalendar.
@@ -6,7 +10,7 @@ Two date fields and a button that opens a RangeCalendar.
 
 ```
 
-```html
+```brm
 <DateRangePicker value=$bind(stay)>
   <Label>Stay</Label>
   <Group>
@@ -51,7 +55,7 @@ Two date fields and a button that opens a RangeCalendar.
 
 The picture draws the Popover in place, open, as a block of its own under the field, so that each layer can carry a number. The real Popover opens in a layer at the end of the page.
 
-```html
+```brm
 <DateRangePicker>
   <Label />
   <Group>
@@ -123,20 +127,6 @@ The Popover is a layer outside the form, so put the custom properties of the exa
 
 ```
 
-## The RangeCalendar
-
-- The Button opens the Popover. The RangeCalendar shows the range, and its start takes focus, or `placeholderValue` when there is no range.
-- A Dialog with no Heading is named by the Button and the Label. The Group is named by the Label and described as the field is.
-- A range picked there sets both dates and closes the Popover, and focus goes back to the Button. `shouldCloseOnSelect={false}` keeps it open.
-- The RangeCalendar follows `minValue`, `maxValue` and `isDateUnavailable` of the picker, unless it has its own.
-- `isOpen` is whether the Popover shows. It starts its own state, or binds with `$bind`, and `onOpenChange` gets each change.
-
-## Validation
-
-- A start after the end makes the range invalid.
-- So do `minValue`, `maxValue` and `isDateUnavailable`, for either date, as in a DateField.
-- The errors of a [Form](./form.md) for `startName` or `endName` show in the FieldError.
-
 ## Use cases
 
 ### A stay in a booking form
@@ -154,3 +144,17 @@ An [I18nProvider](./i18n-provider.md) gives the order and the placeholders of th
 ```brm demo DateRangePickerLocaleDemo
 
 ```
+
+## The RangeCalendar
+
+- The Button opens the Popover. The RangeCalendar shows the range, and its start takes focus, or `placeholderValue` when there is no range.
+- A Dialog with no Heading is named by the Button and the Label. The Group is named by the Label and described as the field is.
+- A range picked there sets both dates and closes the Popover, and focus goes back to the Button. `shouldCloseOnSelect={false}` keeps it open.
+- The RangeCalendar follows `minValue`, `maxValue` and `isDateUnavailable` of the picker, unless it has its own.
+- `isOpen` is whether the Popover shows. It starts its own state, or binds with `$bind`, and `onOpenChange` gets each change.
+
+## Validation
+
+- A start after the end makes the range invalid.
+- So do `minValue`, `maxValue` and `isDateUnavailable`, for either date, as in a DateField.
+- The errors of a [Form](./form.md) for `startName` or `endName` show in the FieldError.

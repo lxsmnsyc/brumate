@@ -1,3 +1,7 @@
+---
+summary: The days of a month, to pick a range of dates.
+---
+
 # RangeCalendar
 
 A grid of the days of a month, to pick a range of dates.
@@ -6,7 +10,7 @@ A grid of the days of a month, to pick a range of dates.
 
 ```
 
-```html
+```brm
 <RangeCalendar aria-label="Stay" value=$bind(stay)>
   <header>
     <Button slot="previous">‹</Button>
@@ -33,7 +37,7 @@ A grid of the days of a month, to pick a range of dates.
 `CalendarCell`: One date. It shows `data-selected`, and `data-selection-start` or `data-selection-end` at the ends of the range. Optional.
 ```
 
-```html
+```brm
 <RangeCalendar>
   <CalendarHeading />
   <Button slot="previous" />
@@ -105,19 +109,6 @@ A cell shows `data-hovered` under a mouse or a pen. This stylesheet draws the ra
 
 ```
 
-## Picking a range
-
-- A first press, or Enter or Space, starts a range at a date. A second one ends it, before or after the first.
-- A press of the pointer on a date and a release on another one select the range between them.
-- In between, the dates show the range to the date under the pointer, or to the date that has focus. The date under the pointer takes the focus.
-- The range reaches up to the nearest dates that cannot be picked. The dates past them show `data-invalid` and cannot be picked or focused, and the Calendar is not invalid until the range is done. `isDateUnavailable` gets the first date of the range as its second argument.
-- A range cannot hold a date that `isDateUnavailable` marks. `allowsNonContiguousRanges` lets it, and those dates do not show as selected.
-
-## Cells
-
-- A date in the range shows `data-selected`. The first date shows `data-selection-start`, and the last `data-selection-end`.
-- The cells show the other states of a Calendar cell. See [Cells](./calendar.md#cells).
-
 ## Use cases
 
 ### A stay over two months
@@ -135,3 +126,16 @@ An [I18nProvider](./i18n-provider.md) gives the names, the first day of the week
 ```brm demo RangeCalendarLocaleDemo
 
 ```
+
+## Picking a range
+
+- A first press, or Enter or Space, starts a range at a date. A second one ends it, before or after the first.
+- A press of the pointer on a date and a release on another one select the range between them.
+- In between, the dates show the range to the date under the pointer, or to the date that has focus. The date under the pointer takes the focus.
+- The range reaches up to the nearest dates that cannot be picked. The dates past them show `data-invalid` and cannot be picked or focused, and the Calendar is not invalid until the range is done. `isDateUnavailable` gets the first date of the range as its second argument.
+- A range cannot hold a date that `isDateUnavailable` marks. `allowsNonContiguousRanges` lets it, and those dates do not show as selected.
+
+## Cells
+
+- A date in the range shows `data-selected`. The first date shows `data-selection-start`, and the last `data-selection-end`.
+- The cells show the other states of a Calendar cell. See [Cells](./calendar.md#cells).

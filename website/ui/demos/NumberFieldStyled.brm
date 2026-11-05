@@ -41,9 +41,9 @@
   <p role="status" class="numberfield-styled-status">{sent}</p>
 </Form>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.numberfield-styled-form) {
+  .numberfield-styled-form {
     --numberfield-styled-field: light-dark(#fff, #0f0d0b);
     --numberfield-styled-border: light-dark(#76706a, #8d857b);
     --numberfield-styled-muted: light-dark(#5a544d, #b3aaa0);
@@ -59,17 +59,17 @@
     color: CanvasText;
   }
 
-  :global(.numberfield-styled) {
+  .numberfield-styled {
     display: grid;
     gap: 0.3rem;
     width: 100%;
   }
 
-  :global(.numberfield-styled-label) {
+  .numberfield-styled-label {
     font-weight: 600;
   }
 
-  :global(.numberfield-styled-group) {
+  .numberfield-styled-group {
     display: flex;
     overflow: hidden;
     border: 1px solid var(--numberfield-styled-border);
@@ -78,23 +78,23 @@
     transition: border-color 0.15s, box-shadow 0.15s;
   }
 
-  :global(.numberfield-styled-group:hover) {
+  .numberfield-styled-group:hover {
     border-color: var(--numberfield-styled-accent);
   }
 
   /* Two bands, an accent one and an inner one in the color of the field. */
-  :global(.numberfield-styled-group:has([data-focus-visible])) {
+  .numberfield-styled-group:has([data-focus-visible]) {
     border-color: var(--numberfield-styled-accent);
     box-shadow:
       0 0 0 2px var(--numberfield-styled-accent),
       inset 0 0 0 2px var(--numberfield-styled-field);
   }
 
-  :global(.numberfield-styled[data-invalid] .numberfield-styled-group) {
+  .numberfield-styled[data-invalid] .numberfield-styled-group {
     border-color: var(--numberfield-styled-danger);
   }
 
-  :global(.numberfield-styled-input) {
+  .numberfield-styled-input {
     flex: 1;
     min-width: 0;
     padding: 0.45rem 0.25rem;
@@ -107,7 +107,7 @@
     text-align: center;
   }
 
-  :global(.numberfield-styled-step) {
+  .numberfield-styled-step {
     width: 2.5rem;
     border: 0;
     background: transparent;
@@ -118,36 +118,36 @@
     transition: background-color 0.15s;
   }
 
-  :global(.numberfield-styled-step[data-hovered]) {
+  .numberfield-styled-step[data-hovered] {
     background: var(--numberfield-styled-hover);
   }
 
-  :global(.numberfield-styled-step[data-pressed]) {
+  .numberfield-styled-step[data-pressed] {
     background: var(--numberfield-styled-press);
   }
 
-  :global(.numberfield-styled-step[data-disabled]) {
+  .numberfield-styled-step[data-disabled] {
     color: var(--numberfield-styled-muted);
     opacity: 0.6;
     cursor: not-allowed;
   }
 
-  :global(.numberfield-styled[data-disabled] .numberfield-styled-group) {
+  .numberfield-styled[data-disabled] .numberfield-styled-group {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  :global(.numberfield-styled-help) {
+  .numberfield-styled-help {
     color: var(--numberfield-styled-muted);
     font-size: 0.875rem;
   }
 
-  :global(.numberfield-styled-error) {
+  .numberfield-styled-error {
     color: var(--numberfield-styled-danger);
     font-size: 0.875rem;
   }
 
-  :global(.numberfield-styled-submit) {
+  .numberfield-styled-submit {
     padding: 0.4rem 1rem;
     border: 0;
     border-radius: 8px;
@@ -157,28 +157,28 @@
     cursor: pointer;
   }
 
-  :global(.numberfield-styled-submit[data-hovered]) {
+  .numberfield-styled-submit[data-hovered] {
     background: color-mix(in srgb, var(--numberfield-styled-accent), CanvasText 15%);
   }
 
-  :global(.numberfield-styled-submit[data-pressed]) {
+  .numberfield-styled-submit[data-pressed] {
     background: color-mix(in srgb, var(--numberfield-styled-accent), CanvasText 28%);
   }
 
-  :global(.numberfield-styled-submit[data-focus-visible]) {
+  .numberfield-styled-submit[data-focus-visible] {
     outline: 2px solid var(--numberfield-styled-accent);
     outline-offset: 2px;
   }
 
-  :global(.numberfield-styled-status) {
+  .numberfield-styled-status {
     margin: 0;
     color: var(--numberfield-styled-muted);
     font-size: 0.875rem;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.numberfield-styled-group),
-    :global(.numberfield-styled-step) {
+    .numberfield-styled-group,
+    .numberfield-styled-step {
       transition: none;
     }
   }

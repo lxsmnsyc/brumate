@@ -4,6 +4,7 @@
   import type { Page } from '../docs.ts';
   import * as ui from '../ui.ts';
   import AnatomyFigure from './AnatomyFigure.brm';
+  import CopyMarkdown from './CopyMarkdown.brm';
   import LiveSample from './LiveSample.brm';
   import Meta from './Meta.brm';
   import StyledExample from './StyledExample.brm';
@@ -118,24 +119,11 @@
 }
 <article class="prose" onClick=(copyCode)>
   #if (page) {
+    <CopyMarkdown path=(`${base}${section}/${slug || 'index'}.md`) />
     <p class="eyebrow">{group}</p>
     #for (part, index of page.parts by index) {
       #if ('files' in part) {
         <LiveSample files=part.files />
-      } #else if ('gallery' in part) {
-        <!--
-          The home of @brumate/ui: a card with a preview of each part. The preview is inert, so it
-          is a picture, and the link of the title covers the whole card.
-        -->
-        <ul class="ui-gallery">
-          #for (card of ui.gallery by card.title) {
-            <li class="ui-card">
-              <div class="ui-demo-stage" inert><div class="ui-fit"><{ui.demos[card.demo]} /></div></div>
-              <a class="ui-card-title" href=(link(card.href))>{card.title}</a>
-              <p>{card.summary}</p>
-            </li>
-          }
-        </ul>
       } #else if ('demo' in part && part.variant === 'anatomy') {
         <AnatomyFigure label=(part.label ?? "") demo=ui.demos[part.demo]>{part.source}</AnatomyFigure>
       } #else if ('demo' in part && part.variant === 'styled') {

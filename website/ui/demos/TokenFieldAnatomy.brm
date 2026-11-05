@@ -25,14 +25,14 @@
   <Token class="ui-token ui-mention tokenfield-anatomy-token" data-mark="4">{segment.text}</Token>
 }
 
-<style>
+<style global>
   /* The badge of a token sits above its corner, so it does not cover the text. */
-  :global(.anatomy-stage .tokenfield-anatomy-token[data-mark]::before) {
+  .anatomy-stage .tokenfield-anatomy-token[data-mark]::before {
     top: -1.1rem;
     inset-inline-end: -0.4rem;
   }
 
-  :global(.tokenfield-anatomy-input) {
+  .tokenfield-anatomy-input {
     display: block;
   }
 </style>

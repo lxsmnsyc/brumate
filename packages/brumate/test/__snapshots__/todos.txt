@@ -2,7 +2,7 @@
 script
 element <h1>
   text "Todos"
-element <form onSubmit:prevent=(add)>
+element <form onSubmit=(prevent(add))>
   element <input value=(draft) onInput=((event) => (draft = event.currentTarget.value))>
 element <ul>
   for (todo of todos by  todo.id)
@@ -21,6 +21,7 @@ element <p>
 
 # Semantic model
 scope 0 module
+  import prevent
   import format
 scope 1 component
   prop initial
@@ -29,55 +30,51 @@ scope 1 component
   memo left
   server-function persist
   function add
-scope 2 body (for 35:3)
+scope 2 body (for 36:3)
   item todo
   function toggle
 sites
-  signal todos (13:23) reads initial
-  signal draft (14:23)
-  memo left (15:22) reads todos
-  server function persist (17:18)
-  function add (22:18) reads todos, draft, persist writes todos, draft calls persist
-  event form.submit (30:24) reads add calls add
-  attribute input.value (31:16) reads draft
-  event input.input (31:31) writes draft
-  for (35:16) reads todos
-  for key (35:25) reads todo
-  function toggle (37:16) reads todos, todo writes todos
-  attribute li.class (41:15) reads todo
-  event li.click (41:43) reads toggle calls toggle
-  insert (42:8) reads todo
-  insert (42:27) reads format, todo
-  insert (48:5) reads left
-diagnostics
-  warning onSubmit:prevent is replaced by onSubmit=(prevent(handler)) from brumate/events (30:7)
+  signal todos (14:23) reads initial
+  signal draft (15:23)
+  memo left (16:22) reads todos
+  server function persist (18:18)
+  function add (23:18) reads todos, draft, persist writes todos, draft calls persist
+  event form.submit (31:17) reads prevent, add calls add
+  attribute input.value (32:16) reads draft
+  event input.input (32:31) writes draft
+  for (36:16) reads todos
+  for key (36:25) reads todo
+  function toggle (38:16) reads todos, todo writes todos
+  attribute li.class (42:15) reads todo
+  event li.click (42:43) reads toggle calls toggle
+  insert (43:8) reads todo
+  insert (43:27) reads format, todo
+  insert (49:5) reads left
 
 # Graph
 nodes
   prop initial live
   signal todos live
   signal draft live
-  item todo live <- for (35:16)
+  item todo live <- for (36:16)
   memo left live <- signal todos
-  attribute input.value (31:16) live <- signal draft
-  for (35:16) live <- signal todos
-  for key (35:25) live <- item todo
-  attribute li.class (41:15) live <- item todo
-  insert (42:8) live <- item todo
-  insert (42:27) live <- item todo
-  insert (48:5) live <- memo left
+  attribute input.value (32:16) live <- signal draft
+  for (36:16) live <- signal todos
+  for key (36:25) live <- item todo
+  attribute li.class (42:15) live <- item todo
+  insert (43:8) live <- item todo
+  insert (43:27) live <- item todo
+  insert (49:5) live <- memo left
 client
-  server function persist (17:18) (stub)
-  function add (22:18)
-  event form.submit (30:24)
-  event input.input (31:31)
-  for key (35:25)
-  function toggle (37:16)
-  attribute li.class (41:15)
-  event li.click (41:43)
-  insert (42:8)
-  insert (42:27)
+  server function persist (18:18) (stub)
+  function add (23:18)
+  event form.submit (31:17)
+  event input.input (32:31)
+  for key (36:25)
+  function toggle (38:16)
+  attribute li.class (42:15)
+  event li.click (42:43)
+  insert (43:8)
+  insert (43:27)
 created
-  2 body (for 35:3)
-diagnostics
-  warning onSubmit:prevent is replaced by onSubmit=(prevent(handler)) from brumate/events (30:7)
+  2 body (for 36:3)

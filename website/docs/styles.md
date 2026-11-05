@@ -42,6 +42,35 @@ Every selector in a `<style>` block matches only elements that the component its
 }
 ```
 
+### Global blocks
+
+A `<style global>` block holds rules that are not scoped, so a stylesheet of many unscoped selectors needs no `:global(…)` around each one:
+
+```brm
+<style global>
+  body {
+    margin: 0;
+  }
+
+  .toolbar button {
+    border-radius: 4px;
+  }
+</style>
+
+<style>
+  /* Still scoped. */
+  .card {
+    padding: 1rem;
+  }
+</style>
+```
+
+- A component can have both kinds of block. Only the plain `<style>` blocks get the scope attribute.
+- A global block travels with its component, like any other style: the page carries it once, before the first instance, and a page that does not render the component does not carry it.
+- It works with `lang="scss"` and `lang="less"`, as in `<style global lang="scss">`, and with `${expression}`.
+- `:global(…)` inside it is allowed and means nothing more than its content.
+- Like `<style>`, it is only allowed at the top level of the file.
+
 ## Dynamic values
 
 `${expression}` in CSS reads a value of the component. When the value changes in the browser, the style changes with it.
@@ -145,7 +174,7 @@ Styles that apply to the whole site, such as a reset or fonts, go in the root la
 <link rel="stylesheet" href="/site.css">
 ```
 
-A `<style>` block in the root layout with `:global(…)` rules works too, for a few rules.
+A `<style global>` block in the root layout works too.
 
 ## On the page
 

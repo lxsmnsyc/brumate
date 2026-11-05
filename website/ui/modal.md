@@ -1,3 +1,7 @@
+---
+summary: A dialog over the page, which it locks.
+---
+
 # Modal
 
 A dialog over the page, which the user deals with before they go on, such as a confirmation.
@@ -29,7 +33,7 @@ A dialog over the page, which the user deals with before they go on, such as a c
 
 The picture draws the trigger, the ModalOverlay, the Modal and the Dialog in place, open, each as a block of its own, so that each layer can carry a number. The real overlay opens in a layer at the end of the page, over the whole window, and the rest of the page is inert while it is open.
 
-```html
+```brm
 <DialogTrigger>
   <Button />
   <ModalOverlay>

@@ -22,10 +22,10 @@
   </DialogTrigger>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
-  :global(.popover-styled-root),
-  :global(.popover-styled-popover) {
+  .popover-styled-root,
+  .popover-styled-popover {
     --popover-styled-bg: Canvas;
     --popover-styled-text: CanvasText;
     --popover-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
@@ -37,7 +37,7 @@
     color: var(--popover-styled-text);
   }
 
-  :global(.popover-styled-trigger) {
+  .popover-styled-trigger {
     padding: 0.45rem 0.9rem;
     border: 1px solid var(--popover-styled-border);
     border-radius: var(--popover-styled-radius);
@@ -48,32 +48,32 @@
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
 
-  :global(.popover-styled-trigger)[data-hovered] {
+  .popover-styled-trigger[data-hovered] {
     border-color: var(--popover-styled-accent);
   }
 
-  :global(.popover-styled-trigger)[data-pressed] {
+  .popover-styled-trigger[data-pressed] {
     background: color-mix(in srgb, var(--popover-styled-accent) 14%, var(--popover-styled-bg));
   }
 
-  :global(.popover-styled-trigger)[aria-expanded='true'] {
+  .popover-styled-trigger[aria-expanded='true'] {
     border-color: var(--popover-styled-accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--popover-styled-accent) 25%, transparent);
   }
 
   /* Two bands, so the ring shows on the page and on a fill. */
-  :global(.popover-styled-trigger)[data-focus-visible] {
+  .popover-styled-trigger[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--popover-styled-bg), 0 0 0 4px var(--popover-styled-accent);
   }
 
-  :global(.popover-styled-trigger)[data-disabled] {
+  .popover-styled-trigger[data-disabled] {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
   /* The popover is as wide as its trigger at least: --trigger-width is set by the popover. */
-  :global(.popover-styled-popover) {
+  .popover-styled-popover {
     z-index: 20;
     box-sizing: border-box;
     min-width: max(var(--trigger-width), 12rem);
@@ -87,17 +87,17 @@
   }
 
   /* It rises from the side of its trigger, and data-placement says which side it took. */
-  :global(.popover-styled-popover[data-closed]) {
+  .popover-styled-popover[data-closed] {
     opacity: 0;
     translate: 0 4px;
   }
 
-  :global(.popover-styled-popover[data-closed][data-placement='top']) {
+  .popover-styled-popover[data-closed][data-placement='top'] {
     translate: 0 -4px;
   }
 
   /* The popover sets left or top of the arrow along the side, and CSS points it. */
-  :global(.popover-styled-arrow) {
+  .popover-styled-arrow {
     width: 12px;
     height: 12px;
     margin-left: -6px;
@@ -107,23 +107,23 @@
     background: var(--popover-styled-bg);
   }
 
-  :global(.popover-styled-arrow[data-placement='bottom']) {
+  .popover-styled-arrow[data-placement='bottom'] {
     top: -7px;
     rotate: 45deg;
   }
 
-  :global(.popover-styled-arrow[data-placement='top']) {
+  .popover-styled-arrow[data-placement='top'] {
     bottom: -7px;
     rotate: 225deg;
   }
 
-  :global(.popover-styled-dialog) {
+  .popover-styled-dialog {
     display: grid;
     outline: none;
   }
 
   /* The items: rest, hover, press and keyboard focus. */
-  :global(.popover-styled-item) {
+  .popover-styled-item {
     padding: 0.45rem 0.65rem;
     border: 0;
     border-radius: 6px;
@@ -134,15 +134,15 @@
     cursor: pointer;
   }
 
-  :global(.popover-styled-item[data-hovered]) {
+  .popover-styled-item[data-hovered] {
     background: color-mix(in srgb, var(--popover-styled-accent) 14%, var(--popover-styled-bg));
   }
 
-  :global(.popover-styled-item[data-pressed]) {
+  .popover-styled-item[data-pressed] {
     background: color-mix(in srgb, var(--popover-styled-accent) 26%, var(--popover-styled-bg));
   }
 
-  :global(.popover-styled-item[data-focus-visible]) {
+  .popover-styled-item[data-focus-visible] {
     outline: none;
     box-shadow:
       inset 0 0 0 2px var(--popover-styled-accent),
@@ -150,8 +150,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.popover-styled-trigger),
-    :global(.popover-styled-popover) {
+    .popover-styled-trigger,
+    .popover-styled-popover {
       transition: none;
     }
   }

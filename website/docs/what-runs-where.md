@@ -62,6 +62,8 @@ Open the Compiled tab of the sample: the browser code updates `label`, and has n
 
 A signal that no browser code writes keeps its server value. The page shows it as HTML, and the browser never gets it.
 
+A memo runs only when something reads it, on the server and in the browser. A memo that no code reads, and one that only such a memo reads, never runs, so a server function call or a write in its compute does not happen. A memo that only an `await` reads does run, because the server waits there.
+
 The code of the page loads when it starts, in one bundle for each route and layout. See [Client modules](./client-modules.md) for how the code is split.
 
 ## Values that browser code reads

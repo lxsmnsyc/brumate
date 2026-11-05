@@ -1,0 +1,21 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let open = $signal(false);
+</script>
+
+<button class="open" onClick=(() => (open = !open))>Open</button>
+#if (open) {
+  <svg class="try">
+    #try {
+      <a class="in-try"><circle r="3" cx="5" cy="5" /></a>
+    } #catch (error) {
+      <a class="caught">{String(error)}</a>
+    }
+  </svg>
+  <svg class="branch">
+    #if (open) {
+      <a class="in-if"><circle r="3" cx="5" cy="5" /></a>
+    }
+  </svg>
+}

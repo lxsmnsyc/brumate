@@ -1,3 +1,7 @@
+---
+summary: A tree of links that shows the page that the user is on.
+---
+
 # NavigationTree
 
 A tree of links, such as the pages of a site or of a guide, which shows the page that the user is on.
@@ -6,7 +10,7 @@ A tree of links, such as the pages of a site or of a guide, which shows the page
 
 ```
 
-```html
+```brm
 <nav aria-label="Guide">
   <NavigationTree aria-label="Guide" items=pages item=page selectedRoute=(route.url.hash) />
 </nav>
@@ -34,7 +38,7 @@ A tree of links, such as the pages of a site or of a guide, which shows the page
 `NavigationTreeItemLink`: The link of the row, to the `href` of its item. It has `aria-current="page"` for the current page.
 ```
 
-```html
+```brm
 <NavigationTree>
   <NavigationTreeItem>
     <Button slot="chevron" />

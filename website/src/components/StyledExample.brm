@@ -25,7 +25,8 @@
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: safe center;
     min-height: 9rem;
     padding: 1.5rem;
     background: var(--surface);

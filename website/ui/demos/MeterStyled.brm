@@ -24,9 +24,9 @@
   }
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.meter-styled-list) {
+  .meter-styled-list {
     --meter-styled-track: color-mix(in srgb, CanvasText 18%, Canvas);
     --meter-styled-low: light-dark(#1d7a4a, #5fcf92);
     --meter-styled-high: light-dark(#a15c00, #f0b04a);
@@ -39,23 +39,23 @@
   }
 
   /* The meter lays out the label, the bar and the value in a row of three. */
-  :global(.meter-styled) {
+  .meter-styled {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0.3rem 1rem;
   }
 
-  :global(.meter-styled-label) {
+  .meter-styled-label {
     font-weight: 600;
   }
 
-  :global(.meter-styled-value) {
+  .meter-styled-value {
     font-variant-numeric: tabular-nums;
     grid-row: 1;
     grid-column: 2;
   }
 
-  :global(.meter-styled-track) {
+  .meter-styled-track {
     grid-column: 1 / -1;
     height: 0.6rem;
     overflow: hidden;
@@ -64,7 +64,7 @@
   }
 
   /* The fill reads the width from --percentage, which the meter sets. */
-  :global(.meter-styled-fill) {
+  .meter-styled-fill {
     display: block;
     width: var(--percentage);
     height: 100%;
@@ -72,20 +72,20 @@
     transition: width 0.3s, background-color 0.3s;
   }
 
-  :global(.meter-styled-fill[data-level='low']) {
+  .meter-styled-fill[data-level='low'] {
     background: var(--meter-styled-low);
   }
 
-  :global(.meter-styled-fill[data-level='high']) {
+  .meter-styled-fill[data-level='high'] {
     background: var(--meter-styled-high);
   }
 
-  :global(.meter-styled-fill[data-level='full']) {
+  .meter-styled-fill[data-level='full'] {
     background: var(--meter-styled-full);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.meter-styled-fill) {
+    .meter-styled-fill {
       transition: none;
     }
   }

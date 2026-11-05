@@ -1,3 +1,7 @@
+---
+summary: Presses with a pointer, a key or a screen reader.
+---
+
 # Button
 
 A button that presses with a mouse, a touch, a pen, Enter, Space, or a screen reader. Each way calls the same handlers.

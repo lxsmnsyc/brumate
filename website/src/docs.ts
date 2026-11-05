@@ -32,15 +32,18 @@ const labels: Record<string, string> = {
 
 const groups = [
   { title: 'Start', pages: ['', 'getting-started', 'tutorial'] },
-  { title: 'Components', pages: ['components', 'markup', 'styles'] },
+  { title: 'Components', pages: ['components', 'what-runs-where', 'markup', 'styles'] },
   {
     title: 'Reactivity',
-    pages: ['state', 'control-flow', 'effects', 'what-runs-where', 'context', 'reactive-modules'],
+    pages: ['state', 'control-flow', 'effects', 'context', 'reactive-modules'],
   },
-  { title: 'Data', pages: ['server-functions', 'async-data', 'forms'] },
   { title: 'Pages', pages: ['routing', 'navigation', 'page-metadata'] },
-  { title: 'Production', pages: ['security', 'environment', 'testing', 'deploying', 'packages'] },
-  { title: 'Tools', pages: ['typescript', 'editor', 'inspect', 'errors'] },
+  { title: 'Data', pages: ['server-functions', 'async-data', 'forms'] },
+  { title: 'Production', pages: ['security', 'environment', 'deploying', 'packages'] },
+  {
+    title: 'Tools',
+    pages: ['testing', 'testing-server', 'typescript', 'editor', 'inspect', 'errors'],
+  },
   {
     title: 'Reference',
     pages: [

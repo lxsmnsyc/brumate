@@ -239,11 +239,13 @@ A tag has a character where an attribute name belongs.
 
 ## BRM022
 
-`Unknown event modifier ":{modifier}"`
+`Event modifiers in the attribute name were removed. Write {fix}`
 
-The modifier after an event name is not one of the known ones.
+A modifier follows the event name, as in `onSubmit:prevent=send`. Wrappers of `brumate/events` write modifiers now, and `:passive` is the default, since listeners are passive unless a handler prevents.
 
 ```brm
+import { prevent } from 'brumate/events';
+
 <form onSubmit=(prevent(send))></form>
 ```
 
@@ -356,16 +358,6 @@ Markup waits for a promise in text and in attribute values only. An event handle
 #for (user of users by user.id) {
   <p>{user.name}</p>
 }
-```
-
-## BRM023
-
-`Modifiers apply to elements. Put ":{modifier}" on the element that the component renders`
-
-An event modifier is on a component, which only passes the handler on.
-
-```brm
-<form onSubmit=(prevent(send))></form>
 ```
 
 ## BRM024
@@ -534,6 +526,34 @@ A `<style>` names another language.
     a {
       color: red;
     }
+  }
+</style>
+```
+
+## BRM189
+
+`Unknown <style> attribute "{name}"`
+
+A `<style>` has an attribute other than `lang` and `global`.
+
+```brm
+<style scoped>
+  p {
+    color: red;
+  }
+</style>
+```
+
+## BRM190
+
+`global takes no value, as in <style global>`
+
+A `<style global>` gives `global` a value.
+
+```brm
+<style global="true">
+  p {
+    color: red;
   }
 </style>
 ```

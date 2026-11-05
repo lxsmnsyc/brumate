@@ -1,3 +1,7 @@
+---
+summary: The content of an overlay, named by its title.
+---
+
 # Dialog
 
 The content of an overlay that people act on, such as a [Popover](./popover.md) or a [Modal](./modal.md).
@@ -22,7 +26,7 @@ The content of an overlay that people act on, such as a [Popover](./popover.md) 
 
 The picture draws the Popover in place, open, as a block of its own under the trigger, so that each layer can carry a number. The real Popover opens in a layer at the end of the page, and the rest of the page is inert while it is open.
 
-```html
+```brm
 <DialogTrigger>
   <Button />
   <Popover>

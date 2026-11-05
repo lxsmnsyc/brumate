@@ -141,6 +141,7 @@ For `/about`, `@aside` has no match, so `aside` renders `@aside/_default.brm`. A
 - A `ServerError` from `brumate/server` gives its message and status. Any other error gives status 500 and a generic message, and the server logs it.
 - A path that no route matches renders the `_error.brm` of the root, with status 404.
 - An error file that throws hands the error to the next one outside it.
+- `onError` of `src/middleware.ts` gets each error that is not a `ServerError` before `_error.brm` renders. See [Errors of the server](#errors-of-the-server).
 
 A catch-all page can answer with a 404 status itself, with `setStatus` on the event of the page:
 
@@ -215,6 +216,29 @@ export default defineMiddleware(async (event, next) => {
 - `event.locals` holds what the middleware finds, such as the user, for the components, server functions and endpoints of the request. See [Request locals](#request-locals).
 - It runs first, before the `_middleware.ts` of the folders. A call from a page of another site is refused before it runs. See [Security](./reference-security.md).
 - The `middleware` option of the plugin names another file. `false` runs none.
+
+### Errors of the server
+
+`src/middleware.ts` can export `onError(error, info)` next to its default, so the app can send the errors of the server to a service such as Sentry:
+
+```ts
+// src/middleware.ts
+import { defineMiddleware, type ServerErrorInfo } from 'brumate/server';
+
+export default defineMiddleware((event, next) => next());
+
+export function onError(error: unknown, info: ServerErrorInfo): void {
+  report(error, { url: info.event?.request.url, kind: info.kind });
+}
+```
+
+- It gets each error that the server would log: a page that throws, an endpoint, a server function call or a form post, a `#defer` body, and a `#loading` body or a route that fails after the response started. It runs before `_error.brm` renders.
+- `info.kind` is `'page'`, `'endpoint'`, `'call'`, `'defer'`, or `'stream'` for an error after the response started. `info.event` is the `RequestEvent` of the request, when there is one.
+- A `ServerError` is an answer, not a failure, so it does not reach `onError`. An error that the server reads in two places reaches it once.
+- With `onError`, the server does not call `console.error` for these errors. The app logs what it wants. When `onError` throws, or returns a promise that rejects, the server logs its error and the first one with `console.error`, and the request goes on.
+- The response does not change: `_error.brm`, the statuses and the messages are the same. The hook runs in development too, and the dev server shows the same error page.
+- A file can export `onError` alone, with no default middleware.
+- `virtual:brumate/testing` passes `onError` to `visit` and `answerCalls`, so a test sees the errors of a page.
 
 A `'use server'` file can export `middleware` too, with the same shape. It runs before each function of the file, after the middleware of the entry, for a group of functions with the same rule. The browser gets no stub for it.
 

@@ -1,6 +1,6 @@
 // The code samples and the measured sizes of the landing page of @brumate/ui.
 import { highlight } from './repl/highlight.ts';
-import { gallery, sections } from './ui.ts';
+import { sections } from './ui.ts';
 
 export const unstyled = highlight(
   `.button[data-pressed] {
@@ -73,16 +73,12 @@ for (const section of sections) {
   }
   const cards: Kind['cards'] = [];
   for (const entry of section.pages) {
-    for (const card of gallery) {
-      if (card.href === entry.slug) {
-        cards.push({
-          title: card.title,
-          summary: card.summary,
-          href: card.href,
-          size: sizeLabel(card.title),
-        });
-      }
-    }
+    cards.push({
+      title: entry.title,
+      summary: entry.summary,
+      href: entry.slug,
+      size: sizeLabel(entry.title),
+    });
   }
   if (cards.length > 0) {
     kinds.push({ title: section.title, cards });

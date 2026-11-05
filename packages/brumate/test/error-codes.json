@@ -20,7 +20,7 @@
   "BRM019": "Only event handlers are allowed here",
   "BRM020": "Expected a spread or a shorthand attribute",
   "BRM021": "Expected an attribute name",
-  "BRM022": "Unknown event modifier \":{modifier}\"",
+  "BRM022": "Event modifiers in the attribute name were removed. Write {fix}",
   "BRM023": "Modifiers apply to elements. Put \":{modifier}\" on the element that the component renders",
   "BRM024": "Expected an event handler",
   "BRM025": "An event handler must be an expression, not a string",
@@ -185,5 +185,7 @@
   "BRM185": "<{tag}> cannot be inside <{parent}>: the HTML parser closes or moves it before the page runs. Move it out of the <{parent}>, or use a <span> or as=\"span\"",
   "BRM186": "\"{name}\" in the #loading header is not a memo that markup in the body reads. Name a $memo of the component or of a block script around the block",
   "BRM187": "The {kind} {name} of {component} did not settle: it writes a value that it reads, and runs again without end. Wrap the read or the write in $untrack, or write only when the value changes",
-  "BRM188": "\"{name}\" gives a promise, and {place} cannot wait for one. Await it in the code that runs, or read its value with $memo"
+  "BRM188": "\"{name}\" gives a promise, and {place} cannot wait for one. Await it in the code that runs, or read its value with $memo",
+  "BRM189": "Unknown <style> attribute \"{name}\"",
+  "BRM190": "global takes no value, as in <style global>"
 }

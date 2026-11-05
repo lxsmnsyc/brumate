@@ -118,6 +118,41 @@ export async function run({ browser, url, runner }) {
     await page.click('main form button');
     await page.locator('p.error', { hasText: 'Enter a name' }).waitFor({ timeout: TIMEOUT });
   });
+  await step(
+    '/tabs: writes push history entries, and back and forward move the signal',
+    async () => {
+      await page.goto(`${url}/tabs`);
+      await page.waitForSelector('p.tab', { timeout: TIMEOUT });
+      // The core loads with the page, since the page follows the history.
+      await page.waitForLoadState('networkidle');
+      const requests = [];
+      page.on('request', (request) => requests.push(request.url()));
+      const tab = async (expected, search) => {
+        await page.waitForFunction(
+          (value) => document.querySelector('p.tab').textContent === value,
+          expected,
+          { timeout: TIMEOUT },
+        );
+        assert(
+          new URL(page.url()).search === search,
+          `the URL has "${new URL(page.url()).search}", not "${search}"`,
+        );
+      };
+      assert((await text(page, 'p.tab')) === 'one', 'the tab does not start at the default');
+      await page.click('button.tab-two');
+      await tab('two', '?tab=two');
+      await page.click('button.tab-three');
+      await tab('three', '?tab=three');
+      await page.goBack();
+      await tab('two', '?tab=two');
+      await page.goBack();
+      await tab('one', '');
+      await page.goForward();
+      await tab('two', '?tab=two');
+      assert(requests.length === 0, `the page asked the server: ${requests.join(', ')}`);
+    },
+  );
+
   await page.close();
 
   // A link clicked before the core loads: the loader keeps the click and navigates.

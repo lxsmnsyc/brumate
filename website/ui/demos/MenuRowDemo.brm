@@ -48,8 +48,8 @@
   <p aria-live="polite">{message}</p>
 </div>
 
-<style>
-  :global(.menu-row-list) {
+<style global>
+  .menu-row-list {
     display: grid;
     gap: 0.25rem;
     width: min(100%, 20rem);
@@ -58,7 +58,7 @@
     list-style: none;
   }
 
-  :global(.menu-row) {
+  .menu-row {
     display: flex;
     gap: 0.5rem;
     align-items: center;

@@ -1,3 +1,7 @@
+---
+summary: Items that an app adds, moves and removes, with their selection.
+---
+
 # List and tree data
 
 State for the items of a collection that an app changes: the items, a selection, and the changes that add, move and remove them. They hold the items of a list or a tree in a signal.

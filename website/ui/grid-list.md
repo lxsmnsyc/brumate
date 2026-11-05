@@ -1,3 +1,7 @@
+---
+summary: Rows with buttons and checkboxes, to select and act on.
+---
+
 # GridList
 
 A list of rows that can hold buttons, checkboxes and links, which the user can select and act on.
@@ -6,7 +10,7 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 
 ```
 
-```html
+```brm
 <GridList aria-label="Files" selectionMode="multiple" selectedKeys=$bind(picked)>
   #for (file of files by file) {
     <GridListItem id=file textValue=file>
@@ -34,7 +38,7 @@ A list of rows that can hold buttons, checkboxes and links, which the user can s
 `Button`: Any other control in the row. Its press is its own and does not select the row.
 ```
 
-```html
+```brm
 <GridList>
   <GridListItem>
     <Checkbox slot="selection" />
@@ -96,16 +100,6 @@ The Checkbox with `slot="selection"` and the Button with `slot="drag"` are optio
 | `Escape`                    | Clears the selection, also from a control in a row.                                                       |
 | `a` to `z`                  | Moves focus to the row whose text starts with what was typed.                                             |
 
-## Drag from the keys
-
-With `onReorder`, the Button with `slot="drag"` starts a drag from the keys. Then the keys act on the drag.
-
-| Key                      | Action                                                |
-| ------------------------ | ----------------------------------------------------- |
-| `ArrowDown` or `ArrowUp` | Moves the drop place to the next or the previous one. |
-| `Enter`                  | Drops the rows at the place.                          |
-| `Escape` or `Tab`        | Cancels the drag.                                     |
-
 ## Controlled and uncontrolled
 
 `selectedKeys` holds the keys of the selected rows, as a list. How you pass it picks who keeps it:
@@ -148,11 +142,21 @@ With no `selectionMode`, a press or Enter on a row acts: `onAction` gets its key
 
 ```
 
-## Rows from data
+## Drag from the keys
+
+With `onReorder`, the Button with `slot="drag"` starts a drag from the keys. Then the keys act on the drag.
+
+| Key                      | Action                                                |
+| ------------------------ | ----------------------------------------------------- |
+| `ArrowDown` or `ArrowUp` | Moves the drop place to the next or the previous one. |
+| `Enter`                  | Drops the rows at the place.                          |
+| `Escape` or `Tab`        | Cancels the drag.                                     |
+
+## Items from data
 
 Pass `items` and an `item` template that renders a `GridListItem` for each. The template's parameter takes its type from `items`.
 
-```html
+```brm
 <GridList aria-label="Files" items=files item=row />
 
 #template row(item) {
@@ -170,7 +174,7 @@ Pass `items` and an `item` template that renders a `GridListItem` for each. The 
 - With `items` in a windowed list, Home, End, the page keys, Ctrl+A, ranges with Shift and letters reach rows that are out of view. A move to one scrolls it into view, then focuses it.
 - A text field in a row keeps its own keys, other than Up, Down and Tab.
 
-## Rows
+## Items
 
 The GridList is a grid, and each GridListItem is a row with one cell. A press on a control in a row, such as a Button, is the control's own, and does not select the row. A row shows `data-selected`, `data-disabled`, `data-pressed`, `data-hovered`, `data-focused` and `data-focus-visible`.
 
@@ -178,7 +182,7 @@ The GridList is a grid, and each GridListItem is a row with one cell. A press on
 
 Rows drag to new places with `onReorder`, and out of the list, such as to a [DropZone](./drop-zone.md), with `getItems`.
 
-```html
+```brm
 <GridList aria-label="Files" onReorder=reorder getItems=((keys) => keys.map((key) => ({ 'text/plain': key })))>
   #for (file of files by file) {
     <GridListItem id=file textValue=file>

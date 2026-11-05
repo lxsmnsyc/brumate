@@ -41,9 +41,9 @@
   </TreeItem>
 }
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.tree-styled-demo) {
+  .tree-styled-demo {
     --tree-styled-bg: Canvas;
     --tree-styled-text: CanvasText;
     --tree-styled-muted: color-mix(in srgb, CanvasText 68%, Canvas);
@@ -54,7 +54,7 @@
     color: var(--tree-styled-text);
   }
 
-  :global(.tree-styled) {
+  .tree-styled {
     display: grid;
     width: min(20rem, 100%);
     padding: 0.25rem;
@@ -64,13 +64,13 @@
     outline: none;
   }
 
-  :global(.tree-styled:focus-visible) {
+  .tree-styled:focus-visible {
     outline: 2px solid var(--tree-styled-accent);
     outline-offset: 2px;
   }
 
   /* A row is indented by its level: rest, hover, press, selected, keyboard focus and disabled. */
-  :global(.tree-styled-item) {
+  .tree-styled-item {
     display: flex;
     gap: 0.4rem;
     align-items: center;
@@ -81,34 +81,34 @@
     transition: background-color 0.15s;
   }
 
-  :global(.tree-styled-item[data-hovered]) {
+  .tree-styled-item[data-hovered] {
     background: var(--tree-styled-hover);
   }
 
-  :global(.tree-styled-item[data-pressed]) {
+  .tree-styled-item[data-pressed] {
     background: color-mix(in srgb, var(--tree-styled-accent) 32%, Canvas);
   }
 
-  :global(.tree-styled-item[data-selected]) {
+  .tree-styled-item[data-selected] {
     background: var(--tree-styled-selected);
     font-weight: 600;
   }
 
   /* Two bands, so the ring shows on the page and on a selected row. */
-  :global(.tree-styled-item[data-focus-visible]) {
+  .tree-styled-item[data-focus-visible] {
     box-shadow:
       inset 0 0 0 2px var(--tree-styled-accent),
       inset 0 0 0 4px var(--tree-styled-bg);
   }
 
-  :global(.tree-styled-item[data-disabled]) {
+  .tree-styled-item[data-disabled] {
     color: var(--tree-styled-muted);
     text-decoration: line-through;
   }
 
   /* The chevron points right when the row is closed and down when it is open. */
-  :global(.tree-styled-chevron),
-  :global(.tree-styled-gap) {
+  .tree-styled-chevron,
+  .tree-styled-gap {
     width: 1.25rem;
     height: 1.25rem;
     padding: 0;
@@ -117,28 +117,28 @@
     color: inherit;
   }
 
-  :global(.tree-styled-chevron)::before {
+  .tree-styled-chevron::before {
     display: block;
     content: '▸';
     text-align: center;
     transition: rotate 0.15s;
   }
 
-  :global(.tree-styled-item[data-expanded] .tree-styled-chevron)::before {
+  .tree-styled-item[data-expanded] .tree-styled-chevron::before {
     rotate: 90deg;
   }
 
-  :global(.tree-styled-item:dir(rtl) .tree-styled-chevron)::before {
+  .tree-styled-item:dir(rtl) .tree-styled-chevron::before {
     content: '◂';
   }
 
-  :global(.tree-styled-item[data-expanded]:dir(rtl) .tree-styled-chevron)::before {
+  .tree-styled-item[data-expanded]:dir(rtl) .tree-styled-chevron::before {
     rotate: -90deg;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.tree-styled-item),
-    :global(.tree-styled-chevron)::before {
+    .tree-styled-item,
+    .tree-styled-chevron::before {
       transition: none;
     }
   }

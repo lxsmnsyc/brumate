@@ -20,9 +20,9 @@
   </div>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.color-area-styled-row) {
+  .color-area-styled-row {
     --color-area-styled-page: Canvas;
     --color-area-styled-text: CanvasText;
     --color-area-styled-accent: light-dark(#2a76b2, #6fb2e6);
@@ -34,7 +34,7 @@
   }
 
   /* The part gives the gradient as --area-background, and the blend mode for rgb. */
-  :global(.color-area-styled) {
+  .color-area-styled {
     width: 11rem;
     height: 11rem;
     border-radius: 0.75rem;
@@ -43,7 +43,7 @@
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-area-styled-text) 50%, var(--color-area-styled-page));
   }
 
-  :global(.color-area-styled-thumb) {
+  .color-area-styled-thumb {
     box-sizing: border-box;
     width: 1.5rem;
     height: 1.5rem;
@@ -54,11 +54,11 @@
     transition: scale 0.12s;
   }
 
-  :global(.color-area-styled-thumb[data-dragging]) {
+  .color-area-styled-thumb[data-dragging] {
     scale: 1.2;
   }
 
-  :global(.color-area-styled-thumb[data-focus-visible]) {
+  .color-area-styled-thumb[data-focus-visible] {
     box-shadow:
       0 0 0 1.5px #000,
       0 0 0 3.5px var(--color-area-styled-page),
@@ -66,17 +66,17 @@
       inset 0 0 0 1.5px #000;
   }
 
-  :global(.color-area-styled[data-disabled]) {
+  .color-area-styled[data-disabled] {
     opacity: 0.5;
   }
 
-  :global(.color-area-styled-preview) {
+  .color-area-styled-preview {
     display: grid;
     gap: 0.5rem;
     justify-items: start;
   }
 
-  :global(.color-area-styled-swatch) {
+  .color-area-styled-swatch {
     width: 4rem;
     height: 4rem;
     border-radius: 0.75rem;
@@ -84,7 +84,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.color-area-styled-thumb) {
+    .color-area-styled-thumb {
       transition: none;
     }
   }

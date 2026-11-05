@@ -1,3 +1,7 @@
+---
+summary: A short description of a button, on hover and focus.
+---
+
 # Tooltip
 
 A short description of a button, which shows on hover and on focus from the keyboard.
@@ -25,7 +29,7 @@ A short description of a button, which shows on hover and on focus from the keyb
 
 The picture draws the Tooltip in place, above the Button, shown, so that it can carry a number. The real Tooltip shows in a layer at the end of the page, and takes no space where the button is.
 
-```html
+```brm
 <TooltipTrigger>
   <Button />
   <Tooltip>

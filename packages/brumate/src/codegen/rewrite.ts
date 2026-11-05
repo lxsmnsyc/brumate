@@ -46,6 +46,8 @@ export class Rewriter {
 
   /** The sites of `$handler` calls, by call. */
   private readonly handlers = new Map<oxc.Node, Site>();
+  /** The signals of `$searchParam` calls, by call. */
+  private readonly searches = new Map<oxc.Node, Declaration>();
   /** The declarations of the names of `$bind` calls, by call. */
   private readonly bindings = new Map<oxc.Node, SemanticModel['bindings'][number]>();
 
@@ -57,6 +59,11 @@ export class Rewriter {
     for (const site of plan.graph.model.sites) {
       if (site.handler) {
         this.handlers.set(site.handler, site);
+      }
+    }
+    for (const declaration of plan.graph.model.declarations) {
+      if (declaration.searchParam) {
+        this.searches.set(declaration.searchParam, declaration);
       }
     }
     for (const binding of plan.graph.model.bindings) {
@@ -429,6 +436,20 @@ export class Rewriter {
             const open = this.file.source.indexOf('(', node.typeArguments?.end ?? node.callee.end);
             patch.replace(node.callee.start, node.callee.end, `${fn.name}$`);
             patch.insert(open + 1, node.arguments.length > 0 ? `${owner}, ` : owner);
+            for (const argument of node.arguments) {
+              visit(argument);
+            }
+            return;
+          }
+          const searched = this.searches.get(node);
+          if (searched && node.arguments[0]) {
+            // The effect of a search parameter: it keeps the URL and the signal in step.
+            const slot = slotIndex(this.plan, searched);
+            patch.replace(
+              node.start,
+              node.arguments[0].start,
+              `$$b.paramEffect(${path(searched)}, ${slot}, `,
+            );
             for (const argument of node.arguments) {
               visit(argument);
             }

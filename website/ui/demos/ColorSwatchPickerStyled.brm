@@ -20,9 +20,9 @@
   <p>Picked {color}. The gray one is disabled.</p>
 </div>
 
-<style>
+<style global>
   /* The tokens. Change these and the rest follows. */
-  :global(.swatch-picker-styled-box) {
+  .swatch-picker-styled-box {
     --swatch-picker-styled-page: Canvas;
     --swatch-picker-styled-ring: color-mix(in srgb, CanvasText 55%, Canvas);
     --swatch-picker-styled-accent: light-dark(#2a76b2, #6fb2e6);
@@ -32,12 +32,12 @@
     color: CanvasText;
   }
 
-  :global(.swatch-picker-styled-title) {
+  .swatch-picker-styled-title {
     margin: 0;
     font-weight: 600;
   }
 
-  :global(.swatch-picker-styled) {
+  .swatch-picker-styled {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -45,7 +45,7 @@
   }
 
   /* The item: a ring that grows in steps. Rest has none, hover draws a gray one, selected an accent one. */
-  :global(.swatch-picker-styled-item) {
+  .swatch-picker-styled-item {
     padding: 4px;
     border-radius: 50%;
     outline: none;
@@ -54,42 +54,42 @@
     transition: box-shadow 0.12s, scale 0.12s;
   }
 
-  :global(.swatch-picker-styled-item[data-hovered]) {
+  .swatch-picker-styled-item[data-hovered] {
     box-shadow: 0 0 0 2px var(--swatch-picker-styled-ring);
   }
 
-  :global(.swatch-picker-styled-item[data-selected]) {
+  .swatch-picker-styled-item[data-selected] {
     box-shadow: 0 0 0 3px var(--swatch-picker-styled-accent);
   }
 
   /* Selected and hovered: the ring thickens. */
-  :global(.swatch-picker-styled-item[data-selected][data-hovered]) {
+  .swatch-picker-styled-item[data-selected][data-hovered] {
     box-shadow: 0 0 0 5px var(--swatch-picker-styled-accent);
   }
 
   /* Pressed, selected or not: the item shrinks. */
-  :global(.swatch-picker-styled-item[data-pressed]) {
+  .swatch-picker-styled-item[data-pressed] {
     scale: 0.92;
   }
 
   /* Two bands, so the ring shows on the page and next to a selected ring. */
-  :global(.swatch-picker-styled-item[data-focus-visible]) {
+  .swatch-picker-styled-item[data-focus-visible] {
     box-shadow: 0 0 0 2px var(--swatch-picker-styled-page), 0 0 0 5px var(--swatch-picker-styled-accent);
   }
 
-  :global(.swatch-picker-styled-item[data-selected][data-focus-visible]) {
+  .swatch-picker-styled-item[data-selected][data-focus-visible] {
     box-shadow:
       0 0 0 2px var(--swatch-picker-styled-accent),
       0 0 0 4px var(--swatch-picker-styled-page),
       0 0 0 7px var(--swatch-picker-styled-accent);
   }
 
-  :global(.swatch-picker-styled-item[data-disabled]) {
+  .swatch-picker-styled-item[data-disabled] {
     cursor: not-allowed;
     opacity: 0.4;
   }
 
-  :global(.swatch-picker-styled-swatch) {
+  .swatch-picker-styled-swatch {
     width: 2rem;
     height: 2rem;
     border-radius: 50%;
@@ -97,7 +97,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.swatch-picker-styled-item) {
+    .swatch-picker-styled-item {
       transition: none;
     }
   }

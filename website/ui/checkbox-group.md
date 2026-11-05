@@ -1,3 +1,7 @@
+---
+summary: Checkboxes with one value.
+---
+
 # CheckboxGroup
 
 Checkboxes with one value, the list of the checked ones.
@@ -20,7 +24,7 @@ Checkboxes with one value, the list of the checked ones.
 `FieldError`: Shows while the group is invalid. The picture forces it with `isInvalid`.
 ```
 
-```html
+```brm
 <CheckboxGroup>
   <Label />
   <Checkbox value="a" />

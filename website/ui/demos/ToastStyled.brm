@@ -43,15 +43,15 @@
   </Toast>
 }
 
-<style>
-  :global(.toast-styled-root) {
+<style global>
+  .toast-styled-root {
     display: flex;
     gap: 0.5rem;
   }
 
   /* The tokens. Change these and the rest follows. light-dark() follows the color scheme of the page. */
-  :global(.toast-styled-root),
-  :global(.toast-styled-region) {
+  .toast-styled-root,
+  .toast-styled-region {
     --toast-styled-bg: Canvas;
     --toast-styled-text: CanvasText;
     --toast-styled-muted: color-mix(in srgb, CanvasText 60%, Canvas);
@@ -63,7 +63,7 @@
     color: var(--toast-styled-text);
   }
 
-  :global(.toast-styled-trigger) {
+  .toast-styled-trigger {
     padding: 0.45rem 0.9rem;
     border: 1px solid var(--toast-styled-border);
     border-radius: var(--toast-styled-radius);
@@ -74,32 +74,32 @@
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
 
-  :global(.toast-styled-trigger)[data-hovered] {
+  .toast-styled-trigger[data-hovered] {
     border-color: var(--toast-styled-accent);
   }
 
-  :global(.toast-styled-trigger)[data-pressed] {
+  .toast-styled-trigger[data-pressed] {
     background: color-mix(in srgb, var(--toast-styled-accent) 14%, var(--toast-styled-bg));
   }
 
-  :global(.toast-styled-trigger)[aria-expanded='true'] {
+  .toast-styled-trigger[aria-expanded='true'] {
     border-color: var(--toast-styled-accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--toast-styled-accent) 25%, transparent);
   }
 
   /* Two bands, so the ring shows on the page and on a fill. */
-  :global(.toast-styled-trigger)[data-focus-visible] {
+  .toast-styled-trigger[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--toast-styled-bg), 0 0 0 4px var(--toast-styled-accent);
   }
 
-  :global(.toast-styled-trigger)[data-disabled] {
+  .toast-styled-trigger[data-disabled] {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
   /* The region has no style of its own. Place it in a corner, and stack the toasts. */
-  :global(.toast-styled-region) {
+  .toast-styled-region {
     position: fixed;
     right: 1rem;
     bottom: 1rem;
@@ -111,7 +111,7 @@
   }
 
   /* The toast: rest, hover, keyboard focus, and the closed look it has while it comes and goes. */
-  :global(.toast-styled-toast) {
+  .toast-styled-toast {
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
@@ -124,40 +124,40 @@
     transition: opacity 0.2s, translate 0.2s, border-color 0.15s;
   }
 
-  :global(.toast-styled-toast[data-kind='error']) {
+  .toast-styled-toast[data-kind='error'] {
     border-inline-start-color: var(--toast-styled-danger);
   }
 
-  :global(.toast-styled-toast:hover) {
+  .toast-styled-toast:hover {
     border-color: var(--toast-styled-accent);
   }
 
-  :global(.toast-styled-toast:focus-visible) {
+  .toast-styled-toast:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px var(--toast-styled-bg), 0 0 0 4px var(--toast-styled-accent);
   }
 
-  :global(.toast-styled-toast[data-closed]) {
+  .toast-styled-toast[data-closed] {
     opacity: 0;
     translate: 0 0.5rem;
   }
 
-  :global(.toast-styled-content) {
+  .toast-styled-content {
     display: grid;
     flex: 1;
     gap: 0.125rem;
     font-size: 0.875rem;
   }
 
-  :global(.toast-styled-title) {
+  .toast-styled-title {
     font-weight: 600;
   }
 
-  :global(.toast-styled-text) {
+  .toast-styled-text {
     color: var(--toast-styled-muted);
   }
 
-  :global(.toast-styled-close) {
+  .toast-styled-close {
     display: grid;
     place-items: center;
     width: 1.75rem;
@@ -170,23 +170,23 @@
     cursor: pointer;
   }
 
-  :global(.toast-styled-close[data-hovered]) {
+  .toast-styled-close[data-hovered] {
     background: color-mix(in srgb, var(--toast-styled-accent) 14%, var(--toast-styled-bg));
     color: var(--toast-styled-text);
   }
 
-  :global(.toast-styled-close[data-pressed]) {
+  .toast-styled-close[data-pressed] {
     background: color-mix(in srgb, var(--toast-styled-accent) 26%, var(--toast-styled-bg));
   }
 
-  :global(.toast-styled-close[data-focus-visible]) {
+  .toast-styled-close[data-focus-visible] {
     outline: none;
     box-shadow: 0 0 0 2px var(--toast-styled-bg), 0 0 0 4px var(--toast-styled-accent);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    :global(.toast-styled-trigger),
-    :global(.toast-styled-toast) {
+    .toast-styled-trigger,
+    .toast-styled-toast {
       transition: none;
     }
   }

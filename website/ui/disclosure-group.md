@@ -1,3 +1,7 @@
+---
+summary: Disclosures that open one at a time.
+---
+
 # DisclosureGroup
 
 Disclosures that open one at a time, such as an accordion.
@@ -19,7 +23,7 @@ Disclosures that open one at a time, such as an accordion.
 `DisclosurePanel`: The content of a disclosure.
 ```
 
-```html
+```brm
 <DisclosureGroup>
   <Disclosure>
     <Button slot="trigger" />

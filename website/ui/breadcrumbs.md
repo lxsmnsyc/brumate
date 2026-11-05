@@ -1,3 +1,7 @@
+---
+summary: A trail to the current page.
+---
+
 # Breadcrumbs
 
 A trail of links to the current page.
@@ -18,7 +22,7 @@ A trail of links to the current page.
 `Link`: The link of the step.
 ```
 
-```html
+```brm
 <Breadcrumbs>
   <Breadcrumb>
     <Link />
@@ -76,10 +80,6 @@ This stylesheet draws a `/` before every step but the first with `li + li::befor
 
 ```
 
-## State
-
-Breadcrumbs keep no state. They draw the trail that you give them, so a use case below keeps the path in a signal of its own. A form reset has nothing to reset, and the server renders the trail as it is.
-
 ## Use cases
 
 ### A path that the user walks
@@ -97,3 +97,7 @@ The path is a list in a signal. A Link without `href` is an element with `role="
 ```brm demo BreadcrumbsDirtyDemo
 
 ```
+
+## State
+
+Breadcrumbs keep no state. They draw the trail that you give them, so a use case below keeps the path in a signal of its own. A form reset has nothing to reset, and the server renders the trail as it is.
