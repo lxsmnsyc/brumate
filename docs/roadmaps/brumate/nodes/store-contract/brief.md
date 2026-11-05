@@ -16,7 +16,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-10-30
-spent:
+spent: 618577
 owns: []
 shared:
   - packages/brumate/src/**

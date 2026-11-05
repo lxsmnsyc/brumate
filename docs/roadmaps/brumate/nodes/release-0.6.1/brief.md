@@ -36,6 +36,9 @@ depends_on:
   - on: text-field-refused-edit
     kind: hard
     why: TextField and SearchField keep the typed text after a refused edit on 0.6.0
+  - on: memo-object-cast
+    kind: hard
+    why: a live memo of an object literal with a type cast fails to parse on 0.6.0
 ---
 
 # Release brumate 0.6.1
