@@ -43,6 +43,7 @@
     $untrack,
   } from 'brumate/signals';
   import { DatePickerContext, constrain, outOfRange, toDate, todayString } from './calendar.ts';
+  import type { DatePickerState } from './calendar.ts';
   import {
     ButtonContext,
     FieldErrorContext,
@@ -59,6 +60,7 @@
   import { DateStringsContext } from './date-strings.ts';
   import { LocaleContext } from './locale.ts';
   import { DateRangeFieldContext } from './segments.ts';
+  import type { DateFieldState } from './segments.ts';
 
   /**
    * Two dates that the user types or picks as a range. It holds a Label, a Group with a DateInput
@@ -245,41 +247,43 @@
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
   const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
   $setContext(FieldErrorContext, $toStore(errorGiven));
+  const startFieldState = $memo<DateFieldState>({
+    segments: startSegments,
+    labelId,
+    describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
+    isDisabled,
+    isReadOnly,
+    isRequired,
+    isInvalid: invalid,
+    direction: locale.direction,
+    segmentNames: strings?.segmentNames,
+    empty: strings?.empty,
+  });
+  const endFieldState = $memo<DateFieldState>({
+    segments: endSegments,
+    labelId,
+    describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
+    isDisabled,
+    isReadOnly,
+    isRequired,
+    isInvalid: invalid,
+    direction: locale.direction,
+    segmentNames: strings?.segmentNames,
+    empty: strings?.empty,
+  });
   $setContext(DateRangeFieldContext, {
-    start: {
-      segments: startSegments,
-      labelId,
-      describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
-      isDisabled,
-      isReadOnly,
-      isRequired,
-      isInvalid: invalid,
-      direction: locale.direction,
-      segmentNames: strings?.segmentNames,
-      empty: strings?.empty,
-      step: startStep,
-      jump: startJump,
-      type: startType,
-      erase: startErase,
-      settle: startSettle,
-    },
-    end: {
-      segments: endSegments,
-      labelId,
-      describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
-      isDisabled,
-      isReadOnly,
-      isRequired,
-      isInvalid: invalid,
-      direction: locale.direction,
-      segmentNames: strings?.segmentNames,
-      empty: strings?.empty,
-      step: endStep,
-      jump: endJump,
-      type: endType,
-      erase: endErase,
-      settle: endSettle,
-    },
+    startState: $toStore(startFieldState),
+    endState: $toStore(endFieldState),
+    startStep,
+    startJump,
+    startType,
+    startErase,
+    startSettle,
+    endStep,
+    endJump,
+    endType,
+    endErase,
+    endSettle,
   });
   $setContext(ButtonContext, {
     id: triggerId,
@@ -307,16 +311,15 @@
     placement: 'bottom start',
     labelledBy: `${triggerId} ${labelId}`,
   });
-  $setContext(DatePickerContext, {
+  const pickerState = $memo<DatePickerState>({
     value,
-    select,
     minValue,
     maxValue,
-    isDateUnavailable,
     placeholderValue,
     isDisabled,
     isReadOnly,
   });
+  $setContext(DatePickerContext, { state: $toStore(pickerState), select, isDateUnavailable });
 </script>
 
 <{as}

@@ -134,7 +134,8 @@
   let { value = null } = $props<ColorFieldProps<T>>();
 
   // Inside a ColorPicker, a field without a `value` shows the color of the picker and writes it.
-  const picker = $getContext(ColorPickerContext);
+  const given = $getContext(ColorPickerContext);
+  const picker = $store(given.state);
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
@@ -254,7 +255,7 @@
     const same = next === null || held === null ? next === held : sameColor(next, held);
     let shown = nextColor;
     if (picker && !passed) {
-      const pc = picker.setValue(nextColor!, same ? held! : next!);
+      const pc = given.setValue!(nextColor!, same ? held! : next!);
       // The field shows the color that the picker keeps.
       shown = channel ? toSpace(pc, colorSpace ?? editSpace(pc, channel)) : pc;
     } else {

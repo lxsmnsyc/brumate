@@ -61,6 +61,7 @@
   import { LocaleContext } from './locale.ts';
   import { dateSegments, formField } from './date-field.brm.ts';
   import { DateFieldContext } from './segments.ts';
+  import type { DateFieldState } from './segments.ts';
 
   /**
    * A date that the user edits segment by segment. It
@@ -172,7 +173,7 @@
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
   const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
   $setContext(FieldErrorContext, $toStore(errorGiven));
-  $setContext(DateFieldContext, {
+  const fieldState = $memo<DateFieldState>({
     segments,
     labelId,
     describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
@@ -183,6 +184,9 @@
     direction: locale.direction,
     segmentNames: strings?.segmentNames,
     empty: strings?.empty,
+  });
+  $setContext(DateFieldContext, {
+    state: $toStore(fieldState),
     step,
     jump,
     type,

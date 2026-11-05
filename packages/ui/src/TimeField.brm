@@ -1,7 +1,7 @@
 <script module>
   import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
-  import type { DateParts, SegmentType, TimeGranularity, TimeString } from './segments.ts';
+  import type { DateFieldState, DateParts, SegmentType, TimeGranularity, TimeString } from './segments.ts';
 
   export interface TimeFieldOwnProps {
     /** The name that posts the time with a form, from a hidden input. */
@@ -184,7 +184,7 @@
   $setContext(TextContext, { slots: { description: { id: descriptionId } } });
   const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
   $setContext(FieldErrorContext, $toStore(errorGiven));
-  $setContext(DateFieldContext, {
+  const fieldState = $memo<DateFieldState>({
     segments,
     labelId,
     describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
@@ -195,6 +195,9 @@
     direction: locale.direction,
     segmentNames: strings?.segmentNames,
     empty: strings?.empty,
+  });
+  $setContext(DateFieldContext, {
+    state: $toStore(fieldState),
     step: (type: SegmentType, delta: number) => {
       if (!locked() && isTimePart(type)) {
         typed = '';

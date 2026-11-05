@@ -1,6 +1,6 @@
 <script module>
   import type { ElementProps } from 'brumate/elements';
-  import type { DateFieldState, Segment } from './segments.ts';
+  import type { Segment } from './segments.ts';
 
   export interface DateInputProps extends ElementProps<'div'> {
     /** A `#template` that gets each segment, to render your own DateSegment. */
@@ -11,8 +11,9 @@
 </script>
 
 <script>
-  import { $getContext, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { DateFieldContext, DateRangeFieldContext, focusSegment } from './segments.ts';
+  import type { SegmentType } from './segments.ts';
   import DateSegment from './DateSegment.brm';
 
   /**
@@ -30,16 +31,34 @@
 
   const range = $getContext(DateRangeFieldContext);
   const single = $getContext(DateFieldContext);
+  const startState = $store(range.startState);
+  const endState = $store(range.endState);
+  const singleState = $store(single.state);
   /** The date that this input edits: its slot of a DateRangePicker, or the DateField's. */
-  function picked(): DateFieldState | null {
-    return slot && range ? range[slot] : single;
+  const field = $memo(
+    slot && startState ? (slot === 'start' ? startState : endState) : singleState,
+  );
+
+  /** True when this input edits a date of a DateRangePicker. */
+  function ranged(): boolean {
+    return Boolean(slot && startState);
   }
 
   // The segments edit the date of this input.
-  $setContext(DateFieldContext, picked());
+  $setContext(DateFieldContext, {
+    state: $toStore(field),
+    step: (type: SegmentType, delta: number) =>
+      ranged() ? (slot === 'start' ? range.startStep : range.endStep)?.(type, delta) : single.step?.(type, delta),
+    jump: (type: SegmentType, to: 'min' | 'max') =>
+      ranged() ? (slot === 'start' ? range.startJump : range.endJump)?.(type, to) : single.jump?.(type, to),
+    type: (type: SegmentType, char: string) =>
+      (ranged() ? (slot === 'start' ? range.startType : range.endType)?.(type, char) : single.type?.(type, char)) ?? false,
+    erase: (type: SegmentType) =>
+      (ranged() ? (slot === 'start' ? range.startErase : range.endErase)?.(type) : single.erase?.(type)) ?? false,
+    settle: () => (ranged() ? (slot === 'start' ? range.startSettle : range.endSettle)?.() : single.settle?.()),
+  });
 
   function keyDown(event: KeyboardEvent & { currentTarget: HTMLElement }) {
-    const field = picked();
     if (
       !field ||
       (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') ||
@@ -71,15 +90,15 @@
 
 <div
   role="group"
-  aria-labelledby=(picked()?.labelId)
-  aria-describedby=(picked()?.describedBy)
-  data-disabled=(picked()?.isDisabled || undefined)
-  data-invalid=(picked()?.isInvalid || undefined)
+  aria-labelledby=(field?.labelId)
+  aria-describedby=(field?.describedBy)
+  data-disabled=(field?.isDisabled || undefined)
+  data-invalid=(field?.isInvalid || undefined)
   onKeyDown=keyDown
   onPointerDown=pointerDown
   {...rest}
 >
-  #for (item of picked()?.segments ?? [] by item.index) {
+  #for (item of field?.segments ?? [] by item.index) {
     #if (segment) {
       {segment(item)}
     } #else {
