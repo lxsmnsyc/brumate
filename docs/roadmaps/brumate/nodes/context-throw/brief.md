@@ -1,7 +1,7 @@
 ---
 id: context-throw
 title: createContext takes only a key, and $getContext throws without a provider
-status: todo
+status: active
 priority: must
 type: refactor
 story: context-stores
