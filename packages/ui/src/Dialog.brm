@@ -41,15 +41,16 @@
   } = $props<DialogProps<T>>();
   let { ref } = $props<DialogOwnProps<T>>();
 
-  const overlay = $getContext(DialogContext);
+  const overlayGiven = $getContext(DialogContext);
+  const overlay = $store(overlayGiven.state);
   const triggerGiven = $getContext(OverlayTriggerContext);
   const trigger = $store(triggerGiven.state);
   const titleId = $id();
   const { present: titled } = described(titleId);
 
   function close() {
-    if (overlay) {
-      overlay.close();
+    if (overlayGiven.close) {
+      overlayGiven.close();
     } else {
       triggerGiven.close?.();
     }

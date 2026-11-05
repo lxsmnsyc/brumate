@@ -20,7 +20,7 @@
 
 <script>
   import { store } from 'brumate/store';
-  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, ModalOverlayContext, OverlayTriggerContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
@@ -37,6 +37,7 @@
     release,
   } from './overlay.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
+  import type { TransitionParent } from './transition.ts';
 
   /**
    * The layer under a Modal, which covers the page. It
@@ -85,9 +86,10 @@
   let layer = $signal<HTMLElement>();
 
   $setContext(LayerContext, { id: layerId });
-  $setContext(DialogContext, { close });
+  $setContext(DialogContext, { state: store(null), close });
   $setContext(ModalOverlayContext, { close });
-  $setContext(TransitionContext, { show: wanted, entered: rested });
+  const transitionGiven = $memo<TransitionParent>({ show: wanted, entered: rested });
+  $setContext(TransitionContext, $toStore(transitionGiven));
   // An overlay inside opens from a DialogTrigger of its own, not from the one of this overlay.
   $setContext(OverlayTriggerContext, { state: store(null) });
   // The buttons and links inside are not the trigger, which gets these contexts.

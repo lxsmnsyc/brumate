@@ -226,7 +226,7 @@
       return;
     }
     if (event.key === back && trigger?.isSubmenu) {
-      dialog?.close();
+      dialog.close?.();
       return;
     }
     if (event.key === 'Tab' && trigger) {

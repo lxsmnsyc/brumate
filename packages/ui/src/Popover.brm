@@ -37,9 +37,10 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { store } from 'brumate/store';
-  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
+  import type { DialogState } from './contexts.ts';
   import { LayerContext } from './layer.ts';
   import { LocaleContext } from './locale.ts';
   import {
@@ -59,6 +60,7 @@
   import { followTrigger, keepArrows } from './position.ts';
   import { mergeStyle } from './style.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
+  import type { TransitionParent } from './transition.ts';
 
   /**
    * An overlay next to its trigger. It opens from a
@@ -118,8 +120,10 @@
   let layer = $signal<HTMLElement>();
 
   $setContext(LayerContext, { id: layerId });
-  $setContext(DialogContext, { close, labelledBy: trigger?.labelledBy });
-  $setContext(TransitionContext, { show: wanted, entered: rested });
+  const dialogState = $memo<DialogState>({ labelledBy: trigger?.labelledBy });
+  $setContext(DialogContext, { state: $toStore(dialogState), close });
+  const transitionGiven = $memo<TransitionParent>({ show: wanted, entered: rested });
+  $setContext(TransitionContext, $toStore(transitionGiven));
   // An overlay inside opens from a DialogTrigger of its own, not from the one of this popover.
   $setContext(OverlayTriggerContext, { state: store(null) });
   // The buttons and links inside are not the trigger, which gets these contexts.

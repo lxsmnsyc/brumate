@@ -23,9 +23,10 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $effect, $getContext, $props, $setContext, $signal, $store, $untrack } from 'brumate/signals';
+  import { $effect, $getContext, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { DisclosurePanelContext } from './contexts.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
+  import type { TransitionParent } from './transition.ts';
 
   /**
    * The content of a Disclosure. It is a group that its trigger names.
@@ -62,7 +63,8 @@
   let leaving = $signal(false);
   let run = $signal(0);
 
-  $setContext(TransitionContext, { show: Boolean(state?.isExpanded), entered: rested });
+  const transitionGiven = $memo<TransitionParent>({ show: Boolean(state?.isExpanded), entered: rested });
+  $setContext(TransitionContext, $toStore(transitionGiven));
 
   async function open(token: number) {
     shown = true;

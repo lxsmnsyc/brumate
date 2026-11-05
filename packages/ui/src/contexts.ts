@@ -321,17 +321,25 @@ export interface OverlayTriggerGiven extends Partial<OverlayTriggerHandlers> {
 export const OverlayTriggerContext: Context<OverlayTriggerGiven> =
   createContext<OverlayTriggerGiven>('brumate-ui:overlay-trigger', { state: store(null) });
 
-/** What an overlay gives the Dialog inside it: the function that closes the overlay. */
+/** What an overlay gives the Dialog inside it: the IDs that name it. */
 export interface DialogState {
-  close: () => void;
   /** The IDs that name the Dialog when it has no Heading, from the trigger of the overlay. */
   labelledBy?: string;
 }
 
-export const DialogContext: Context<DialogState | null> = createContext<DialogState | null>(
-  'brumate-ui:dialog',
-  null,
-);
+/** What a Dialog calls on its overlay. */
+export interface DialogHandlers {
+  close: () => void;
+}
+
+/** What an overlay gives: the store of its state, and its handler. Outside an overlay there is no handler. */
+export interface DialogGiven extends Partial<DialogHandlers> {
+  state: StoreLike<DialogState | null>;
+}
+
+export const DialogContext: Context<DialogGiven> = createContext<DialogGiven>('brumate-ui:dialog', {
+  state: store(null),
+});
 
 /** Set inside a ModalOverlay, so the Modal inside renders only its box. */
 export interface ModalOverlayState {
