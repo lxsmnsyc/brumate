@@ -25,7 +25,7 @@ reserves: []
 provides: []
 depends_on:
   - on: graph-node-locations
-    kind: soft
+    kind: behavior
     why: each graph node links to its place in the file
 ---
 
