@@ -1,7 +1,7 @@
 ---
 id: context-throw
 title: createContext takes only a key, and $getContext throws without a provider
-status: active
+status: done
 priority: must
 type: refactor
 story: context-stores
@@ -16,7 +16,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-05
-spent:
+spent: 183800
 owns: []
 shared:
   - packages/brumate/src/runtime/**
