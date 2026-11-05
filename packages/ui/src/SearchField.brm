@@ -138,7 +138,8 @@
     isDisabled: isDisabled || isReadOnly,
     onPress: clear,
   });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
 </script>
 
 <{as}

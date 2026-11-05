@@ -42,8 +42,9 @@ export const HeadingContext: Context<ContextValue<HeadingContextProps> | null> =
   createContext<ContextValue<HeadingContextProps> | null>('brumate-ui:heading', null);
 
 /** A Text gets its slot from its parent, such as "description" or "errorMessage". */
-export const TextContext: Context<ContextValue<AttributeProps> | null> =
-  createContext<ContextValue<AttributeProps> | null>('brumate-ui:text', null);
+export const TextContext: Context<StoreLike<ContextValue<AttributeProps> | null>> = createContext<
+  StoreLike<ContextValue<AttributeProps> | null>
+>('brumate-ui:text', store(null));
 
 /** A field gives its Label an `id` and the `for` of its input. */
 export const LabelContext: Context<StoreLike<ContextValue<AttributeProps> | null>> = createContext<
@@ -157,7 +158,7 @@ export const FormContext: Context<StoreLike<FormState | null>> = createContext<
   StoreLike<FormState | null>
 >('brumate-ui:form', store(null));
 
-/** What a CheckboxGroup gives its Checkboxes: its values, and a function that toggles one. */
+/** What a CheckboxGroup gives its Checkboxes: its values. */
 export interface CheckboxGroupState {
   name?: string;
   value: string[];
@@ -170,12 +171,23 @@ export interface CheckboxGroupState {
   describedBy?: string;
   /** True while a box shows a mixed state, such as the box that selects all rows of a Table. */
   isIndeterminate?: boolean;
+}
+
+/** What a Checkbox calls on its group. */
+export interface CheckboxGroupHandlers {
   toggle: (value: string, checked: boolean) => void;
   onInvalid: (message: string) => void;
 }
 
-export const CheckboxGroupContext: Context<CheckboxGroupState | null> =
-  createContext<CheckboxGroupState | null>('brumate-ui:checkbox-group', null);
+/** What a CheckboxGroup gives: the store of its state, and its handlers. Outside a group there is no handler. */
+export interface CheckboxGroupGiven extends Partial<CheckboxGroupHandlers> {
+  state: StoreLike<CheckboxGroupState | null>;
+}
+
+export const CheckboxGroupContext: Context<CheckboxGroupGiven> = createContext<CheckboxGroupGiven>(
+  'brumate-ui:checkbox-group',
+  { state: store(null) },
+);
 
 /** What a RadioGroup gives its Radios. */
 export interface RadioGroupState {

@@ -101,7 +101,8 @@
   // The box of the field is no element that a label can point at, so the label names it by ID.
   const labelGiven = $memo({ id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
   $setContext(TokenFieldContext, {
     value,
     setValue,

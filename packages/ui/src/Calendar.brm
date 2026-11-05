@@ -483,7 +483,8 @@
       next: { 'aria-label': strings?.next ?? 'Next', isDisabled: nextDisabled, onPress: () => pressed(1) },
     },
   });
-  $setContext(TextContext, { slots: { errorMessage: { id: errorId } } });
+  const textGiven = $memo({ slots: { errorMessage: { id: errorId } } });
+  $setContext(TextContext, $toStore(textGiven));
 
   function focusIn() {
     isFocused = true;

@@ -27,17 +27,7 @@
 </script>
 
 <script>
-  import {
-    $client,
-    $getContext,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $store,
-    $toStore,
-  } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
@@ -72,7 +62,8 @@
   let initial = $signal(isSelected);
   const inputId = $id();
 
-  const group = $getContext(CheckboxGroupContext);
+  const groupGiven = $getContext(CheckboxGroupContext);
+  const group = $store(groupGiven.state);
   const selected = $memo(group ? group.value.includes(value ?? '') : isSelected);
   const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
   const readOnly = $memo(Boolean(isReadOnly || group?.isReadOnly));
@@ -97,7 +88,7 @@
   const labelId = $id();
   const { present: hasLabel } = described(labelId, false);
   const groupLabel = $store(LabelContext);
-  const groupText = $getContext(TextContext);
+  const groupText = $store(TextContext);
   const groupError = $store(FieldErrorContext);
   // A Label in the children (`as="span"`) names the input, so the description and the error stay
   // out of its name. Without one, they sit in the text of the label, and aria-hidden keeps them
@@ -106,10 +97,10 @@
   const hidden = $memo(hasLabel ? undefined : 'true');
   const labelGiven = $memo(group ? groupLabel : { id: labelId });
   $setContext(LabelContext, $toStore(labelGiven));
-  $setContext(
-    TextContext,
+  const textGiven = $memo(
     group ? groupText : { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } },
   );
+  $setContext(TextContext, $toStore(textGiven));
   const errorGiven = $memo(
     group
       ? groupError
@@ -170,7 +161,7 @@
     const before = selected;
     try {
       if (group) {
-        group.toggle(value ?? '', input.checked);
+        groupGiven.toggle!(value ?? '', input.checked);
       } else {
         isSelected = input.checked;
       }
@@ -189,7 +180,9 @@
     const input = event.currentTarget;
     failed = true;
     message = input.validationMessage;
-    group?.onInvalid(input.validationMessage);
+    if (group) {
+      groupGiven.onInvalid!(input.validationMessage);
+    }
     if (isFirstInvalid(input)) {
       input.focus();
     }

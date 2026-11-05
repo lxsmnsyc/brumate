@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $getContext, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
   import { ToastContext } from './toast.ts';
 
@@ -21,13 +21,14 @@
 
   const toast = $getContext(ToastContext);
 
-  $setContext(TextContext, {
+  const textGiven = $memo({
     slots: {
       default: {},
       title: { id: toast?.titleId },
       description: { id: toast?.descriptionId },
     },
   });
+  $setContext(TextContext, $toStore(textGiven));
 </script>
 
 <div role="alert" aria-atomic="true" {...rest}>{children}</div>

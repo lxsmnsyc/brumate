@@ -27,6 +27,7 @@
   import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, focusItem, keyAttribute } from './collection.ts';
   import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
+  import type { CheckboxGroupState } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { TreeContext, TreeRowContext } from './tree.ts';
 
@@ -76,12 +77,15 @@
   }
 
   // The Checkbox of the selection is checked while the row is selected, and toggles it.
-  $setContext(CheckboxGroupContext, {
+  const checkState = $memo<CheckboxGroupState>({
     value: selected ? [''] : [],
     isDisabled: disabled || mode === 'none',
     isReadOnly: false,
     isInvalid: false,
     isRequired: false,
+  });
+  $setContext(CheckboxGroupContext, {
+    state: $toStore(checkState),
     toggle: () => listGiven.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
