@@ -1,7 +1,7 @@
 ---
 id: ui-stores-calendar
 title: The calendar, date and color parts read live context values from stores
-status: active
+status: done
 priority: must
 type: refactor
 story: context-stores
@@ -16,7 +16,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-03
-spent:
+spent: 459218
 owns: []
 shared:
   - packages/ui/src/**

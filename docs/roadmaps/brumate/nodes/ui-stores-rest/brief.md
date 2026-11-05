@@ -1,7 +1,7 @@
 ---
 id: ui-stores-rest
 title: The remaining parts (checkbox, radio, slider, tag, token, toggle, disclosure, number) read live context values from stores
-status: todo
+status: active
 priority: must
 type: refactor
 story: context-stores
