@@ -210,7 +210,7 @@ Changes an object or array in a signal through a draft, and writes the signal wi
 function $setContext<T>(context: Context<T>, value: T): void;
 ```
 
-Provides a value of a context to the components inside this one. A statement at the top level of a script. A value that changes belongs in a store made with [`$toStore`](#tostore). The compiler warns when `value` reads a signal, a memo or a `let`, and `$untrack` silences the warning. Create the context with `createContext` from `brumate/context`.
+Provides a value of a context to the components inside this one. A statement at the top level of a script. The value is read once, so a context is static. A value that changes belongs in a store made with [`$toStore`](#tostore). The compiler reports BRM196 when `value` reads a signal, a memo, a prop or a `$bind` value that changes in the browser, outside a function. A read in a function, `$untrack` and `$toStore` are allowed. Create the context with `createContext` from `brumate/context`.
 
 ## `$getContext`
 

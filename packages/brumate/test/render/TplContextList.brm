@@ -1,11 +1,12 @@
 <script>
-  import { $props, $setContext, $signal } from 'brumate/signals';
-  import { Level } from './tplContext.ts';
+  import { $props, $setContext, $signal, $toStore } from 'brumate/signals';
+  import { LevelStore } from './tplContext.ts';
 
   // Provides a context, and renders a template of its caller in the browser.
   const { item } = $props<{ item: (label: string) => unknown }>();
   let labels = $signal<string[]>(['zero']);
-  $setContext(Level, 7);
+  let seven = $signal(7);
+  $setContext(LevelStore, $toStore(seven));
 </script>
 
 <button class="ctx-add" onClick=(() => (labels = [...labels, 'one']))>Add</button>

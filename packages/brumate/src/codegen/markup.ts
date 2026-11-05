@@ -1572,8 +1572,9 @@ export class Emitter {
         continue;
       }
       const slot = declaration ? slotIndex(this.plan, declaration) : -1;
-      // The slot is recorded, so a change to the provided value reaches it on the client.
-      const record = slot === -1 ? '' : `, ${slot}`;
+      // The slot of `$route` and `$navigation` is recorded, so navigation reaches it on the
+      // client. The value of `$getContext` is read once.
+      const record = slot === -1 || !BUILT_IN_CONTEXTS[call ?? ''] ? '' : `, ${slot}`;
       this.line(
         `const ${declarator.id.name} = ${this.helper('consume')}(${context}, ${target}${record});`,
       );

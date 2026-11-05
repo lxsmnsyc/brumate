@@ -31,23 +31,6 @@ function findProvider(scope: Scope, key: string): Scope | undefined {
   return undefined;
 }
 
-/**
- * Writes a provided value, and the slot of every scope that reads it from this provider. The
- * provider can read the same context from above, which this does not write.
- */
-export function updateContext(scope: Scope, context: ContextValue<unknown>, value: unknown): void {
-  scope.v ??= {};
-  scope.v[context.key] = value;
-  sendContext(() => {
-    for (const target of scopes.values()) {
-      const slot = target.x?.[context.key];
-      if (slot !== undefined && findProvider(target, context.key) === scope) {
-        set(target, slot, value);
-      }
-    }
-  });
-}
-
 /** Provides a value of a context to the scopes inside `scope`. */
 export function provideValue<T>(context: ContextValue<T>, value: T, scope: Scope | ScopeId): void {
   const target = resolveScope(scope)!;
@@ -55,7 +38,10 @@ export function provideValue<T>(context: ContextValue<T>, value: T, scope: Scope
   target.v[context.key] = value;
 }
 
-/** Reads a context, and records its slot so that changes to the provided value reach it. */
+/**
+ * Reads a context. With `slot`, which only `$route()` and `$navigation()` pass, it records the
+ * slot so that `setGlobal` can write it. A provided value is read once.
+ */
 export function consumeContext<T>(
   context: ContextValue<T>,
   scope: Scope | ScopeId,
@@ -272,11 +258,6 @@ export function toStore<T>(
     made.w = (next) => set(target, slot, next);
   }
   return made;
-}
-
-/** The store that `$toStore` made at a site of the scope. */
-export function madeStore(scope: Scope, site: number): Store<unknown> | undefined {
-  return scope.st?.[site];
 }
 
 /** The update of `$toStore(value)`, in the binding stage: sends the new value to the readers. */

@@ -360,19 +360,6 @@ describe('a store that a file imports', () => {
   });
 });
 
-describe('a context with a store and a live value', () => {
-  it('updates the value beside the store, and the store beside the value', async () => {
-    await resume('storeMixed');
-    expect(text('.read')).toBe('a:0');
-    click(document.querySelector('.label')!);
-    await waitFor(() => expect(text('.read')).toBe('a!:0'));
-    click(document.querySelector('.count')!);
-    await waitFor(() => expect(text('.read')).toBe('a!:1'));
-    click(document.querySelector('.label')!);
-    await waitFor(() => expect(text('.read')).toBe('a!!:1'));
-  });
-});
-
 describe('a foreign store with only get and subscribe', () => {
   it('renders, repairs a changed value on resume, and updates, read with const', async () => {
     const server = await import(file('storeReadOnlyRead.brm.ts'));
@@ -448,6 +435,70 @@ describe('the Store class', () => {
   });
 });
 
+describe('a context value is read once', () => {
+  const head =
+    "import { $props, $setContext, $signal, $toStore, $untrack } from 'brumate/signals';\nimport { Ctx } from './ctx.ts';\n";
+  function build(script: string, markup = '<button onClick=(() => n++)>Up</button>'): string {
+    const source = `<script>\n${head}let n = $signal(0);\n${script}\n</script>\n${markup}`;
+    return compile(source, { filename: 'Test.brm' }).server;
+  }
+
+  it('reports a signal, a memo and a prop that change, with BRM196', () => {
+    expect(() => build('$setContext(Ctx, { n });')).toThrow(/BRM196/);
+    expect(() => build('$setContext(Ctx, n + 1);')).toThrow(/BRM196/);
+    expect(() =>
+      build('const { value } = $props<{ value: number }>();\n$setContext(Ctx, { value });'),
+    ).toThrow(/BRM196/);
+  });
+
+  it('allows a read in a function, $untrack, $toStore and a value that never changes', () => {
+    expect(() => build('$setContext(Ctx, { get: () => n });')).not.toThrow();
+    expect(() => build('function get() { return n; }\n$setContext(Ctx, { get });')).not.toThrow();
+    expect(() => build('$setContext(Ctx, $untrack(n));')).not.toThrow();
+    expect(() => build('$setContext(Ctx, { state: $toStore(n) });')).not.toThrow();
+    expect(() => build('$setContext(Ctx, { n });', '<p>{n}</p>')).not.toThrow();
+  });
+
+  it('reports a $bind value, $route() and $store() read in the value', () => {
+    const bound = `<script>\nimport { $bind, $setContext, $signal } from 'brumate/signals';\nimport Child from './Child.brm';\nimport { Ctx } from './ctx.ts';\nlet n = $signal(0);\n$setContext(Ctx, { n });\n</script>\n<Child value=$bind(n) />`;
+    expect(() => compile(bound, { filename: 'Test.brm' })).toThrow(/BRM196/);
+    const route = `<script>\nimport { $route, $setContext } from 'brumate/signals';\nimport { Ctx } from './ctx.ts';\nconst route = $route();\n$setContext(Ctx, { path: route.url.pathname });\n</script>\n<p></p>`;
+    expect(() => compile(route, { filename: 'Test.brm' })).toThrow(/BRM196/);
+    const read = `<script>\nimport { $setContext, $store } from 'brumate/signals';\nimport { Ctx, Other } from './ctx.ts';\nconst other = $store(Other);\n$setContext(Ctx, { other });\n</script>\n<p></p>`;
+    expect(() => compile(read, { filename: 'Test.brm' })).toThrow(/BRM196/);
+  });
+
+  it('does not report a call or an immediately invoked function that reads a changing name', () => {
+    expect(() =>
+      build('function compute() { return n; }\n$setContext(Ctx, compute());'),
+    ).not.toThrow();
+    expect(() => build('$setContext(Ctx, (() => n)());')).not.toThrow();
+  });
+
+  it('gives the error a code and a range for brumate check and the editor', () => {
+    let thrown: unknown;
+    try {
+      build('$setContext(Ctx, { n });');
+    } catch (error) {
+      thrown = error;
+    }
+    const diagnostics = (thrown as { diagnostics?: { message: string }[] }).diagnostics;
+    expect(diagnostics?.[0]?.message).toContain('"n"');
+    expect((thrown as Error).message).toContain('[BRM196]');
+  });
+
+  it('never calls updateContext', () => {
+    const code = compile(
+      `<script>\n${head}let n = $signal(0);\n$setContext(Ctx, { get: () => n });\n</script>\n<button onClick=(() => n++)>Up</button>`,
+      { filename: 'Test.brm' },
+    );
+    expect(code.client).not.toContain('updateContext');
+    for (const part of Object.values(code.parts)) {
+      expect(part).not.toContain('updateContext');
+    }
+  });
+});
+
 describe('compile checks', () => {
   const head =
     "import { $getContext, $memo, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';\n";
@@ -500,16 +551,5 @@ describe('compile checks', () => {
       "import { s, C } from './s.ts';\nconst a = $store(s);\nlet b = $store(C);\nconst f = $getContext(C);\nconst c = $store(f.k);",
     );
     expect(output.warnings).toEqual([]);
-  });
-
-  it('warns for a signal or memo in a $setContext value, until $untrack or $toStore', () => {
-    const warn = (value: string): string[] =>
-      build(
-        `import { C } from './c.ts';\nlet a = $signal(1);\nconst m = $memo(a + 1);\n$setContext(C, ${value});`,
-      ).warnings.map((warning) => warning.message);
-    expect(warn('{ a, m }')).toHaveLength(2);
-    expect(warn('{ a: $untrack(a) }')).toEqual([]);
-    expect(warn('$toStore(m)')).toEqual([]);
-    expect(warn('{ run() { return a; } }')).toEqual([]);
   });
 });
