@@ -43,7 +43,8 @@
   const { as, children, ...rest } = $props<TagListProps<T>>();
   let { ref } = $props<TagListOwnProps<T>>();
 
-  const group = $getContext(TagGroupContext);
+  const groupGiven = $getContext(TagGroupContext);
+  const group = $store(groupGiven.state);
   const locale = $store(LocaleContext);
 
   /** The movement of a key: Left and Right follow the direction, Up and Down do not. */

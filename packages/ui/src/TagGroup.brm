@@ -33,6 +33,7 @@
   import { LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { TagGroupContext } from './tags.ts';
+  import type { TagGroupState } from './tags.ts';
 
   /**
    * A group of tags, which the user can select and remove.
@@ -87,16 +88,15 @@
   $setContext(LabelContext, $toStore(labelGiven));
   const textGiven = $memo({ slots: { description: { id: descriptionId } } });
   $setContext(TextContext, $toStore(textGiven));
-  $setContext(TagGroupContext, {
+  const groupState = $memo<TagGroupState>({
     selectionMode,
     selectedKeys,
     disabledKeys,
-    select,
     canRemove: removable,
-    remove,
     labelId,
     descriptionId: hasDescription ? descriptionId : undefined,
   });
+  $setContext(TagGroupContext, { state: $toStore(groupState), select, remove });
 </script>
 
 <{as} {...rest}>{children}</>
