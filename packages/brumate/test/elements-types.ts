@@ -246,11 +246,16 @@ export const unitlessWidth: ElementProps<'div'> = { style: { width: 12 } };
 // @ts-expect-error A number has no unit for `fontSize` either.
 export const unitlessFontSize: ElementProps<'div'> = { style: { fontSize: 12 } };
 
+// @ts-expect-error `DOMContentLoaded` has no handler: page code loads after the event.
+export const noDomContentLoaded: ElementProps<'div'> = { onDOMContentLoaded: () => {} };
+// @ts-expect-error The browser fires `webkitAnimationEnd`, so there is no `onWebkitanimationend`.
+export const noWebkitAnimationEnd: ElementProps<'div'> = { onWebkitanimationend: () => {} };
+
 // Every event of the DOM is either in `ElementEventNames`, when its name has more than one word,
 // or listed here as a word of its own. A new event in the DOM types fails this line until it is
 // sorted. `DOMContentLoaded` has capitals in its name, which a handler name cannot carry, and the
-// `webkit*` names are old aliases of events that have their own entry, so they keep the
-// lower-case name and the parser does not report them.
+// `webkit*` names are old aliases of events that have their own entry. The parser reports a
+// handler for each of them (BRM201), and `Handlers` has no key for them.
 type OneWord =
   | 'abort'
   | 'blur'
