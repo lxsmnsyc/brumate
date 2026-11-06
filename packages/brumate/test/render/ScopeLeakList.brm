@@ -1,0 +1,21 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let picked = $signal(0);
+  const items = [
+    { name: 'Cat', index: 0 },
+    { name: 'Dog', index: 1 },
+    { name: 'Bird', index: 2 },
+  ];
+</script>
+
+#template row(name: string, on: boolean) {
+  <li class="row">{name}{on ? ' *' : ''}</li>
+}
+
+<button class="pick" onClick=(() => picked++)>Pick</button>
+<ul>
+  #for (item of items by item.name) {
+    {row(item.name, item.index === picked % 3)}
+  }
+</ul>

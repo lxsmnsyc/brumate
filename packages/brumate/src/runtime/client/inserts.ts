@@ -12,7 +12,7 @@ import { loadedFunction } from './code.ts';
 import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
 import { prop, spreadProps } from './props.ts';
-import { afterInsert, disposeKinds, inPlace, nextId } from './scopes.ts';
+import { afterInsert, destroyNodes, disposeKinds, inPlace, nextId } from './scopes.ts';
 import { hiding, options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
 import { give, set } from './updates.ts';
@@ -167,6 +167,11 @@ function write(
       (first as Text).data = data;
     }
     return;
+  }
+  // The scopes of the nodes that go are destroyed, so their cleanups run and they do not pile up.
+  // Only children and templates make scopes here, so other builds leave this out.
+  if (HAS_CHILDREN || HAS_TEMPLATES) {
+    destroyNodes(at, first, end);
   }
   while (first && first !== end) {
     const next = first.nextSibling;
