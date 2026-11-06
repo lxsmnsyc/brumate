@@ -1,7 +1,7 @@
 ---
 id: graph-node-locations
 title: File locations for each node of the reactivity graph
-status: active
+status: done
 priority: must
 type: feature
 outline: false
@@ -50,10 +50,10 @@ Each node of a component's graph carries its place in the file, so the devtools 
 
 ## Acceptance
 
-- [ ] Every node of the graph of each test page has `at`, or the test names why one cannot have it.
-- [ ] Clicking the place of a node in the Graph tab opens the editor at its line and column.
-- [ ] A node from a module function carries the module's file.
-- [ ] `website/docs/inspect.md` says a node links to its place in the file.
+- [x] Every node of the graph of each test page has `at`, or the test names why one cannot have it.
+- [x] Clicking the place of a node in the Graph tab opens the editor at its line and column.
+- [x] A node from a module function carries the module's file.
+- [x] `website/docs/inspect.md` says a node links to its place in the file.
 
 ## Sizing
 
