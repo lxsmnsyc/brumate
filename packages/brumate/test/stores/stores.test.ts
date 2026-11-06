@@ -446,9 +446,7 @@ describe('a store from any expression', () => {
     await waitFor(() => expect(text('.held .space')).toBe('n+ n+'));
   });
 
-  // Fails until node module-script-shared: the render module of a component copies its
-  // `<script module>`, so a reader that the browser renders has a store apart from the resumed ones.
-  it.fails('shares the store of <script module> between resumed and browser-rendered readers (module-script-shared)', async () => {
+  it('shares the store of <script module> between resumed and browser-rendered readers', async () => {
     await resume('storeAny');
     click(document.querySelector('.later')!);
     await waitFor(() => expect(document.querySelector('.second .module')).not.toBeNull());
