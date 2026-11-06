@@ -5,3 +5,4 @@
 - Fix: `partScopes(part)` in client.ts adds, for every site the part holds, the scopes of the templates it calls or passes on (with the templates they call). `assemble` and `assembleAll` use it. It gathers components, other imports and nested templates alike, since `importsFor` already reads the sites of each scope.
 - Cleanup test: effects of a component made in the browser run on change, not on creation, so the test clicks each item first (6 mounts), then picks. A pick calls the template again for all six rows, so six old rows clean up once each. It fails on main for the leak of #472; it passes with #472's three source files copied in (checked by `git show`, not stash). Marked `it.fails` until #472 merges.
 - Sizes (gzip -9 of dist/client/**/*.js): todos 39,236 to 39,238 (+2), ui 199,042 to 199,063 (+21), on clean rebuilds of both refs (the first numbers came from a stale dist).
+- Merged main after #472: the cleanup test is a plain `it` now and passes.

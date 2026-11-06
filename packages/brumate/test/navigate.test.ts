@@ -463,6 +463,26 @@ describe('navigate', () => {
     expect(document.title).toBe('B');
   });
 
+  it('moves the IDs in the head of a page that starts its IDs at 0', async () => {
+    document.head.innerHTML = '<title>A</title>';
+    document.body.innerHTML = page(0, '/a', 2);
+    // A static file renders its IDs from 0, and its `#head` markup holds some, such as the anchor
+    // of a `<title>` that follows a memo.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        const { response, next } = respond([
+          `<!doctype html><html><head><title b-b="1:0" b-t>B</title></head><body>${page(0, '/b', 2)}</body></html>`,
+        ]);
+        next();
+        next();
+        return response;
+      }),
+    );
+    await navigate({ url: '/b', push: true, leave: async () => {}, enter: () => {} });
+    expect(document.head.querySelector('title[b-t]')?.getAttribute('b-b')).toBe('3:0');
+  });
+
   it('keeps the stylesheets of components that kept layouts still show', async () => {
     document.head.innerHTML = '<title>A</title>';
     // The old route holds the stylesheets of Badge, which the layout also shows, and of Card.

@@ -2534,9 +2534,7 @@ describe('resume', () => {
     expect(document.querySelectorAll('.item')).toHaveLength(6);
   });
 
-  // Fails until #472: main does not destroy the scopes of a replaced template call. Change to `it`
-  // when it merges.
-  it.fails('runs the cleanup of a component in a #template once for each replaced row', async () => {
+  it('runs the cleanup of a component in a #template once for each replaced row', async () => {
     const log: string[] = [];
     (globalThis as { tplImportLog?: string[] }).tplImportLog = log;
     onTestFinished(() => {
@@ -2555,6 +2553,24 @@ describe('resume', () => {
     await waitFor(() => expect(text('.row')).toBe('aa'));
     // A pick calls the template again for every row: each old row cleans up once.
     expect(log.toSorted()).toEqual(['a', 'b', 'c', 'd', 'e', 'f'].map((name) => `cleanup ${name}`));
+  });
+
+  it('keeps the scopes flat when a browser-rendered list calls a template of its file again', async () => {
+    await resume('scopeLeak', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(3));
+    const client = await import('../src/runtime/client.ts');
+    const counts = [client.scopes.size];
+    for (let pick = 1; pick <= 4; pick++) {
+      click(document.querySelector('.pick')!);
+      await waitFor(() =>
+        expect(document.querySelectorAll('.row')[pick % 3]!.textContent).toBe(
+          ['Cat', 'Dog', 'Bird'][pick % 3] + ' *',
+        ),
+      );
+      counts.push(client.scopes.size);
+    }
+    expect(new Set(counts).size).toBe(1);
   });
 
   it('calls functions that a context provides', async () => {
