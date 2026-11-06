@@ -56,3 +56,11 @@ See the Review fixes section of outcome.md. Dev note: the `bridges` flag is writ
 - Candidates are the dependencies of the app, by the walk of `findPackages`, that list `brumate` in `dependencies` or `peerDependencies`, scanned without their own `node_modules`. The scan runs in the `config` hook (now async) so `optimizeDeps.exclude` and `ssr.noExternal` name only packages with a bridge.
 - Names use the package name and the path in it. `bridgeId` checks these packages first (with `realpath`, for pnpm links).
 - Test: the page runs in a DOM put on the globals by hand (the plugin cannot load under the happy-dom environment, whose `URL` refuses `file:` URLs), with the loader and the manifest from the Vite server.
+
+## Review of the installed-package fix
+
+- Excluding a bridge package from `optimizeDeps` left its CommonJS dependencies unbundled in dev. The plugin now adds `<package> > <dependency>` to `optimizeDeps.include` for its installed dependencies and peers (not brumate, `@types/*` or excluded packages). Test: a nested CommonJS dependency is served from `.vite/deps`.
+- Two installed copies of one bridge package shared a name, and the second replaced the first. Two versions now get `@<version>` in the name; two copies of one version throw.
+- Docs say the package lists `brumate` in `dependencies` or `peerDependencies`.
+- Left as is: a package with a `brumate` field is scanned only as components, so a bridge outside its `dir` is not found.
+- Full suites under machine load (load average ~31): brumate and ui fail timing tests (differential-1 ResolveGoneChild, resume, ui happy-dom teardown) on ffd26e08 too, with a changing set. Examples, language-server, tsc, vscode and website pass.

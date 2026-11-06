@@ -1881,8 +1881,21 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       const shared = packageConfig(config);
       if (bridgePackages.length > 0) {
-        const names = bridgePackages.map((item) => item.name);
+        // The import names of the packages, not the bridge names, which can carry a version.
+        const names = [...new Set(bridgePackages.map((item) => item.package))];
+        const excluded = new Set([...(shared.optimizeDeps?.exclude ?? []), ...names]);
+        // Vite does not prebundle the dependencies of a package it does not prebundle, so a
+        // CommonJS one would fail in the browser. These entries prebundle them through it.
+        const nested: string[] = [];
+        for (const item of bridgePackages) {
+          for (const dependency of item.dependencies) {
+            if (!excluded.has(dependency)) {
+              nested.push(`${item.package} > ${dependency}`);
+            }
+          }
+        }
         shared.optimizeDeps = {
+          include: [...(shared.optimizeDeps?.include ?? []), ...new Set(nested)],
           exclude: [...(shared.optimizeDeps?.exclude ?? []), ...names],
         };
         shared.ssr = { ...shared.ssr, noExternal: [...toList(shared.ssr?.noExternal), ...names] };

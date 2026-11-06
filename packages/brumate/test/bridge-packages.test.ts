@@ -82,10 +82,16 @@ beforeAll(() => {
       name: 'bear-kit',
       version: '1.0.0',
       type: 'module',
-      dependencies: { brumate: '*' },
+      dependencies: { brumate: '*', 'cjs-count': '1.0.0' },
       exports: { '.': './dist/index.js', './more': './dist/more.js' },
     }),
   );
+  // A CommonJS dependency, which the browser can import only once Vite prebundles it.
+  write(
+    `${kit}/node_modules/cjs-count/package.json`,
+    json({ name: 'cjs-count', version: '1.0.0', main: './index.js' }),
+  );
+  write(`${kit}/node_modules/cjs-count/index.js`, 'module.exports = { start: 0 };\n');
   const source = `{
   create: (snapshot) => {
     globalThis.installedCreates = (globalThis.installedCreates ?? 0) + 1;
@@ -105,7 +111,12 @@ beforeAll(() => {
     return () => source.listeners.delete(listener);
   },
 }`;
-  write(`${kit}/dist/index.js`, BRIDGE(`const a = bridge(${source});\nexport { a as bears };\n`));
+  write(
+    `${kit}/dist/index.js`,
+    BRIDGE(
+      `import counts from 'cjs-count';\nexport const zero = counts.start;\nconst a = bridge(${source});\nexport { a as bears };\n`,
+    ),
+  );
   write(`${kit}/dist/more.js`, BRIDGE(`export const more = bridge(${source});\n`));
   // Depends on brumate and has no bridge: it adds nothing.
   write(
@@ -215,7 +226,43 @@ function browser(): () => void {
 
 describe('findBridgePackages', () => {
   it('finds the packages that depend on brumate, and not the others', () => {
-    expect(findBridgePackages(app).map((item) => item.name)).toEqual(['bear-kit', 'plain-kit']);
+    const found = findBridgePackages(app);
+    expect(found.map((item) => item.name)).toEqual(['bear-kit', 'plain-kit']);
+    expect(found[0]!.dependencies).toEqual(['cjs-count']);
+  });
+
+  /** An app with `dup-kit` at the top and a second copy nested under `holder`. */
+  function duplicates(top: string, nested: string): string {
+    const root = path.join(base, `dup-${top}-${nested}`);
+    const put = (file: string, value: unknown): void => {
+      mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      writeFileSync(path.join(root, file), json(value));
+    };
+    const kit = (version: string) => ({
+      name: 'dup-kit',
+      version,
+      dependencies: { brumate: '*' },
+    });
+    put('package.json', { name: 'app', dependencies: { 'dup-kit': top, holder: '1.0.0' } });
+    put('node_modules/dup-kit/package.json', kit(top));
+    put('node_modules/holder/package.json', {
+      name: 'holder',
+      version: '1.0.0',
+      dependencies: { brumate: '*', 'dup-kit': nested },
+    });
+    put('node_modules/holder/node_modules/dup-kit/package.json', kit(nested));
+    return root;
+  }
+
+  it('names two versions of one package by their versions', () => {
+    const names = findBridgePackages(duplicates('1.0.0', '2.0.0')).map((item) => item.name);
+    expect(names.toSorted()).toEqual(['dup-kit@1.0.0', 'dup-kit@2.0.0', 'holder']);
+  });
+
+  it('throws for two copies of one version, which would share bridge names', () => {
+    expect(() => findBridgePackages(duplicates('1.0.0', '1.0.0'))).toThrow(
+      /two installed copies of dup-kit@1\.0\.0/,
+    );
   });
 });
 
@@ -244,6 +291,14 @@ describe('a bridge of an installed package, in development', () => {
     expect(server.config.optimizeDeps.exclude).not.toContain('plain-kit');
     expect(server.config.ssr.noExternal).toContain('bear-kit');
     expect(server.config.ssr.noExternal).not.toContain('plain-kit');
+    expect(server.config.optimizeDeps.include).toContain('bear-kit > cjs-count');
+  });
+
+  it('serves the CommonJS dependency of the package prebundled', async () => {
+    const result = await server.transformRequest('/node_modules/bear-kit/dist/index.js');
+    expect(result?.code).toMatch(
+      /__vite__cjsImport\w+ from "\/node_modules\/\.vite\/deps\/bear-kit_n_cjs-count\.js/,
+    );
   });
 
   it('names the bridges by package and path, and lists them in the manifest', async () => {
