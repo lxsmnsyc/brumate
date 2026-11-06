@@ -154,7 +154,7 @@ export const CAUSES: Record<string, Cause> = {
   'memo-throw': {
     verdict: 'remove',
     reason:
-      'A $memo that throws in its first run: the server stores the error in the memo and a #try that reads it catches it. The browser render throws out of the component.',
+      'The slot of a $memo that threw in its first run: the resumed page holds none (the server sends the error only when a handler can read it, and then with its properties in another order), and the browser render holds the error. Markup and a #try show the same.',
   },
   'memo-reject': {
     verdict: 'remove',
@@ -176,11 +176,6 @@ export const CAUSES: Record<string, Cause> = {
     reason:
       'The tokens of a class attribute come in another order, such as base off tail on the server and base tail off in the browser. Both name the same classes.',
   },
-  'debounce-start': {
-    verdict: 'remove',
-    reason:
-      '$isPending of a $debounced value is false in the server render and true in the first browser render, which starts the timer.',
-  },
   'template-context': {
     verdict: 'remove',
     reason:
@@ -195,11 +190,6 @@ export const CAUSES: Record<string, Cause> = {
     verdict: 'remove',
     reason:
       'A #try body that fails keeps its #portal content, its title and its #head tags in the browser render. The server render drops them with the body.',
-  },
-  'function-prop-reads': {
-    verdict: 'remove',
-    reason:
-      'A function prop that a child reads runs one more time in the browser render than on the server.',
   },
   'awaited-slot': {
     verdict: 'accepted',
@@ -248,7 +238,6 @@ diverge('ref-setter-relay', [
 ]);
 diverge('ref-loop', ['refLoop']);
 diverge('memo-throw', [
-  'memoErrorResume',
   'memoErrorResumeShown',
   'memoErrorServerOutside',
   'memoErrorServerScript',
@@ -258,11 +247,9 @@ diverge('memo-reject', ['memoErrorAwaitServer']);
 diverge('pending-read', ['fnReadAsync', 'loadingChain', 'loadingOnChain']);
 diverge('await-in-script', ['PromiseLateChild', 'promiseLate']);
 diverge('class-order', ['classes']);
-diverge('debounce-start', ['timing']);
 diverge('template-context', ['tplContextListPage']);
 diverge('defer-template', ['deferredLater']);
 diverge('try-rollback', ['tryRollback']);
-diverge('function-prop-reads', ['fnReadUntrack']);
 diverge('awaited-slot', ['awaitedStream']);
 diverge('loading-scopes', ['RelayLoading', 'sourcedLoading']);
 diverge('error-stack', ['catchLeak']);

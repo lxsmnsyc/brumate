@@ -165,7 +165,7 @@ export function generateRender(
 ): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
-  addValueEdits(patch, file, model.sites, 'client', undefined, undefined, model.component.id);
+  addValueEdits(patch, file, model.sites, 'render', undefined, undefined, model.component.id);
 
   // The names that rendering reads, so server-only imports stay out.
   const names = componentNames(file.children);

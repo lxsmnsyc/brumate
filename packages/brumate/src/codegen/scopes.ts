@@ -3,6 +3,7 @@ import type { Declaration, Reference, Scope, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies } from '../plan.ts';
+import { isPrimitive } from './primitive.ts';
 import type { Plan } from '../plan.ts';
 import { copy } from '../sourcemap.ts';
 
@@ -473,37 +474,6 @@ const UNSAFE_NODES = new Set([
   'ArrowFunctionExpression',
   'ClassExpression',
 ]);
-
-/**
- * True if an expression always gives a primitive, so it is never a promise
- * or an async iterable. A name is a primitive when `plain` says that it reads
- * a declaration that holds one.
- */
-export function isPrimitive(
-  node: oxc.Node,
-  plain: (name: oxc.Node) => boolean = () => false,
-): boolean {
-  switch (node.type) {
-    case 'Identifier':
-      return plain(node);
-    case 'Literal':
-      return !('regex' in node && node.regex);
-    case 'TemplateLiteral':
-    case 'BinaryExpression':
-    case 'UnaryExpression':
-      return true;
-    case 'LogicalExpression':
-      return isPrimitive(node.left, plain) && isPrimitive(node.right, plain);
-    case 'ConditionalExpression':
-      return isPrimitive(node.consequent, plain) && isPrimitive(node.alternate, plain);
-    case 'TSAsExpression':
-    case 'TSSatisfiesExpression':
-    case 'TSNonNullExpression':
-      return isPrimitive(node.expression, plain);
-    default:
-      return false;
-  }
-}
 
 /** True if an expression calls no code and, unless `members`, reads no property. */
 function isSafe(node: oxc.Node, members: boolean): boolean {

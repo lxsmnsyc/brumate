@@ -24,6 +24,7 @@ import { findLoadStarts, hasAwait } from './starts.ts';
 import { cloneLines, foreignContext } from './template.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
+import { isPrimitive, neverPromise } from './primitive.ts';
 import type { Patch } from './patch.ts';
 import {
   awaitedMemos,
@@ -33,7 +34,6 @@ import {
   plainValues,
   instanceScope,
   isMemo,
-  isPrimitive,
   readsPlain,
   scopePath,
   slotIndex,
@@ -83,9 +83,6 @@ export interface Settled {
  */
 export type Part = { static: string } | { code: string; settled?: Settled; promise?: string };
 
-/** Expressions whose value is never a promise, as the memo of a list or a function. */
-const NEVER_PROMISE = new Set(['ArrayExpression', 'ArrowFunctionExpression', 'FunctionExpression']);
-
 /**
  * True for a memo whose value is never a promise in the browser, such as `count * 2`, an array or
  * a function. A memo with `await` inside is an async function, so its value is a promise whatever
@@ -96,11 +93,7 @@ const MARKUP_SITES = new Set(['insert', 'attribute', 'tag', 'spread', 'style', '
 
 function isNeverPromise(declaration: Declaration): boolean {
   const node = declaration.site?.node;
-  return (
-    declaration.kind === 'memo' &&
-    node !== undefined &&
-    (isPrimitive(node) || NEVER_PROMISE.has(node.type))
-  );
+  return declaration.kind === 'memo' && node !== undefined && neverPromise(node);
 }
 
 /**

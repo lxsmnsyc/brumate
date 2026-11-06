@@ -26,13 +26,13 @@ export let refreshing: boolean = false;
  * Updates scopes that the server rendered before values changed on the
  * client, such as the body of a `#loading` block that streams in after an
  * event. Effects do not run: they run only when a value changes. With
- * `memosOnly`, as for scopes that the client just rendered with its values,
- * only the memos run, so the ones that load start. With `onlyWritten`, as for the body of a
+ * `memos` off, as for a body that was held, the memos stay: they compute without the page, so the
+ * writes during the hold reached them. With `onlyWritten`, as for the body of a
  * `#defer` block, which the server rendered for this request, only the updates that read a slot
  * that the browser wrote run, because the other slots of the page can hold the values of a render
  * for no request, such as a context in a prerendered page.
  */
-export function refresh(added: Scope[], memosOnly = false, onlyWritten = false): void {
+export function refresh(added: Scope[], onlyWritten = false, memos = true): void {
   // The scopes of each module, which load it once.
   const byModule = new Map<string, Scope[]>();
   for (const scope of added) {
@@ -54,7 +54,7 @@ export function refresh(added: Scope[], memosOnly = false, onlyWritten = false):
       const byKind = new Map<number, string[]>();
       for (const scope of list) {
         if (!byKind.has(scope.k)) {
-          byKind.set(scope.k, refreshNames(module, id, scope.k, memosOnly, onlyWritten));
+          byKind.set(scope.k, refreshNames(module, id, scope.k, onlyWritten, memos));
         }
       }
       let any = false;
@@ -90,8 +90,8 @@ function refreshNames(
   module: ClientModule,
   id: string,
   kind: number,
-  memosOnly: boolean,
   onlyWritten: boolean,
+  withMemos: boolean,
 ): string[] {
   const memos = new Set<string>();
   const others = new Set<string>();
@@ -105,8 +105,10 @@ function refreshNames(
           continue;
         }
         if (name[0] === 'm') {
-          memos.add(name);
-        } else if (!memosOnly) {
+          if (withMemos) {
+            memos.add(name);
+          }
+        } else {
           others.add(name);
         }
       }
@@ -136,8 +138,8 @@ export function insertHTML(
   if (HAS_LATE_MARKUP && markerObserver) {
     indexAdded(markerObserver.takeRecords());
   }
-  // The scopes that the renders since the last insert made, whose markup this is.
-  const client = rendered.splice(0);
+  // The scopes that the renders since the last insert made are in the page now.
+  rendered.length = 0;
   // Markup from the server, such as `children`, names scopes with IDs that are not negative.
   // Only then are the elements of the insert read for them now.
   const fromServer = !cloned && SERVER_SCOPES.test(html);
@@ -207,16 +209,6 @@ export function insertHTML(
   // HTML from the server, such as `children`, can be older than the values on the client.
   if (server.length > 0) {
     refresh(server);
-  }
-  // Scopes that the client just rendered have its values, but the memos that load start here.
-  const live: Scope[] = [];
-  for (const scope of client) {
-    if (scopes.has(scope.id)) {
-      live.push(scope);
-    }
-  }
-  if (live.length > 0) {
-    refresh(live, true);
   }
 }
 
