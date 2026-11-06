@@ -9,7 +9,7 @@ outline: false
 milestone: 0.7.0
 target:
 from:
-size: M
+size: L
 spike: false
 verify:
 exclusive: []
@@ -84,6 +84,8 @@ Rules:
 - Update the error PR #470 added for a raw foreign store in a prop or a script value so it points to `bridge`.
 
 Prior art: React `useSyncExternalStore` with `getServerSnapshot` (here `create(snapshot)` replaces hydrating the outside store by hand), and Svelte `readable(value, start)`, with a factory that survives resume. Do not narrow them beyond the rules above; any further limit goes to the maintainer.
+
+Changed 2026-11-06 (the maintainer): a bridge may also be a module-level export of `<script module>` in a `.brm` file, named `bridge:<componentId>#<export>` and loaded through the component's module on resume. `export default bridge(...)` and bridges in workspace packages outside the app root work too. Size M -> L.
 
 ## Acceptance
 
