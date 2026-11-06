@@ -45,7 +45,7 @@
   } = $props<RowProps>();
 
   const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
-  const list = $hasContext(ListBoxContext) ? $store(listGiven.state) : undefined;
+  const list = $store(listGiven?.state);
   const mode = $memo(list?.selectionMode ?? 'none');
   const selected = $memo(Boolean(list?.selectedKeys.includes(id)));
   const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));

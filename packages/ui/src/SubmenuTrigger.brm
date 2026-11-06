@@ -37,7 +37,7 @@
   const { delay = 200, children } = $props<SubmenuTriggerProps>();
 
   const parentGiven = $hasContext(MenuContext) ? $getContext(MenuContext) : undefined;
-  const parent = $hasContext(MenuContext) ? $store(parentGiven.state) : undefined;
+  const parent = $store(parentGiven?.state);
   const parentTrigger = $hasContext(MenuTriggerContext) ? $getContext(MenuTriggerContext) : undefined;
   const triggerId = $id();
   const overlayId = $id();

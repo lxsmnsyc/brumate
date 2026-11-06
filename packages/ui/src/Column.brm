@@ -59,9 +59,9 @@
   } = $props<ColumnProps>();
 
   const tableGiven = $hasContext(TableContext) ? $getContext(TableContext) : undefined;
-  const table = $hasContext(TableContext) ? $store(tableGiven.state) : undefined;
+  const table = $store(tableGiven?.state);
   const sizesGiven = $hasContext(TableResizeContext) ? $getContext(TableResizeContext) : undefined;
-  const sizes = $hasContext(TableResizeContext) ? $store(sizesGiven.state) : undefined;
+  const sizes = $store(sizesGiven?.state);
   const headerId = $id();
   // A column without an `id` takes the ID of its header, so a resize keeps its width too.
   const key = keyAttribute(id ?? headerId);

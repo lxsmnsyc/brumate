@@ -32,7 +32,7 @@
 
   const item = $hasContext(ColorSwatchContext) ? $store(ColorSwatchContext) : undefined;
   const pickerGiven = $hasContext(ColorPickerContext) ? $getContext(ColorPickerContext) : undefined;
-  const picker = $hasContext(ColorPickerContext) ? $store(pickerGiven.state) : undefined;
+  const picker = $store(pickerGiven?.state);
   const color = $memo(given ?? item?.color ?? picker?.value ?? '#000000');
   const parsed = $memo(tryParseColor(color));
   const css = $memo(parsed ? formatColor(parsed) : 'transparent');

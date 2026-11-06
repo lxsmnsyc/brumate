@@ -63,7 +63,7 @@
   const inputId = $id();
 
   const groupGiven = $hasContext(CheckboxGroupContext) ? $getContext(CheckboxGroupContext) : undefined;
-  const group = $hasContext(CheckboxGroupContext) ? $store(groupGiven.state) : undefined;
+  const group = $store(groupGiven?.state);
   const selected = $memo(group ? group.value.includes(value ?? '') : isSelected);
   const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
   const readOnly = $memo(Boolean(isReadOnly || group?.isReadOnly));

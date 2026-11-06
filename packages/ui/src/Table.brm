@@ -125,7 +125,7 @@
   // Only a table with its items as data can window, since the rows are then made from the data.
   const windowHeight = $memo(items ? (rowHeight ?? virtualizer?.rowHeight) : undefined);
   const sizesGiven = $hasContext(TableResizeContext) ? $getContext(TableResizeContext) : undefined;
-  const sizes = $hasContext(TableResizeContext) ? $store(sizesGiven.state) : undefined;
+  const sizes = $store(sizesGiven?.state);
   // In a ResizableTableContainer, the table lays out its columns by their widths, and is as wide
   // as they are once a resize gives them all widths.
   const resizedWidth = $memo(

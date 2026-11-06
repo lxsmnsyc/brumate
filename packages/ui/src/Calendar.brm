@@ -111,7 +111,7 @@
   // In a DatePicker, the picker holds the value, and a pick goes to it. The limits of the picker
   // apply when the Calendar has none of its own.
   const pickerGiven = $hasContext(DatePickerContext) ? $getContext(DatePickerContext) : undefined;
-  const picker = $hasContext(DatePickerContext) ? $store(pickerGiven.state) : undefined;
+  const picker = $store(pickerGiven?.state);
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const timeZone = ownTimeZone ?? locale.timeZone;

@@ -52,7 +52,7 @@
   let { isOpen = false } = $props<TooltipTriggerProps>();
 
   const parentGiven = $hasContext(ButtonContext) ? $getContext(ButtonContext) : undefined;
-  const parent = $hasContext(ButtonContext) ? $store(parentGiven.state) : undefined;
+  const parent = $store(parentGiven?.state);
   const ownId = $id();
   const tooltipId = $id();
   // A DialogTrigger around it names the button already, and finds its popover by that ID.

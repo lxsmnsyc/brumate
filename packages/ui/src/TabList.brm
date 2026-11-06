@@ -36,7 +36,7 @@
   let { ref } = $props<TabListOwnProps<T>>();
 
   const tabsGiven = $hasContext(TabsContext) ? $getContext(TabsContext) : undefined;
-  const tabs = $hasContext(TabsContext) ? $store(tabsGiven.state) : undefined;
+  const tabs = $store(tabsGiven?.state);
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   const orientation = $memo(tabs?.orientation ?? 'horizontal');

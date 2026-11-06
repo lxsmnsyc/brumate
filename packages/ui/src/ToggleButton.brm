@@ -50,7 +50,7 @@
 
   const context = $hasContext(ToggleButtonContext) ? $getContext(ToggleButtonContext) : undefined;
   const groupGiven = $hasContext(ToggleGroupContext) ? $getContext(ToggleGroupContext) : undefined;
-  const group = $hasContext(ToggleGroupContext) ? $store(groupGiven.state) : undefined;
+  const group = $store(groupGiven?.state);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   // A disabled group disables every button, even one with isDisabled=(false).
   const disabled = $memo(

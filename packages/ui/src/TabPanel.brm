@@ -43,7 +43,7 @@
   let { ref } = $props<TabPanelOwnProps<T>>();
 
   const tabsGiven = $hasContext(TabsContext) ? $getContext(TabsContext) : undefined;
-  const tabs = $hasContext(TabsContext) ? $store(tabsGiven.state) : undefined;
+  const tabs = $store(tabsGiven?.state);
   const selected = $memo(Boolean(tabs) && getSelectedKey(tabs!) === id);
   // Whether the content takes Tab, which the browser checks. The server renders the panel as one
   // that takes Tab itself.

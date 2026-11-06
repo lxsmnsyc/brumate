@@ -24,7 +24,7 @@
   const { isCurrent = false, children, ...rest } = $props<BreadcrumbProps>();
 
   const trailGiven = $hasContext(LinkContext) ? $getContext(LinkContext) : undefined;
-  const trail = $hasContext(LinkContext) ? $store(trailGiven.state) : undefined;
+  const trail = $store(trailGiven?.state);
   const disabled = $memo(Boolean(slotProps(trail, undefined).isDisabled || isCurrent));
   const linkState = $memo({ isCurrent, isDisabled: disabled });
   $setContext(LinkContext, { state: $toStore(linkState) });

@@ -61,7 +61,7 @@
   let { ref } = $props<GridListItemOwnProps<T>>();
 
   const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
-  const list = $hasContext(ListBoxContext) ? $store(listGiven.state) : undefined;
+  const list = $store(listGiven?.state);
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.
   const acts = $isPassed(onAction);
   const mode = $memo(list?.selectionMode ?? 'none');

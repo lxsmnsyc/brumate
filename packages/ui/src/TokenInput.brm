@@ -38,7 +38,7 @@
   const { token, ...rest } = $props<TokenInputProps>();
 
   const fieldGiven = $hasContext(TokenFieldContext) ? $getContext(TokenFieldContext) : undefined;
-  const field = $hasContext(TokenFieldContext) ? $store(fieldGiven.state) : undefined;
+  const field = $store(fieldGiven?.state);
   if (!field) {
     throw new Error('A TokenInput goes in a TokenField.');
   }

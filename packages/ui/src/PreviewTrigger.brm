@@ -52,9 +52,9 @@
   let { isOpen = false } = $props<PreviewTriggerProps>();
 
   const buttonGiven = $hasContext(ButtonContext) ? $getContext(ButtonContext) : undefined;
-  const button = $hasContext(ButtonContext) ? $store(buttonGiven.state) : undefined;
+  const button = $store(buttonGiven?.state);
   const linkGiven = $hasContext(LinkContext) ? $getContext(LinkContext) : undefined;
-  const link = $hasContext(LinkContext) ? $store(linkGiven.state) : undefined;
+  const link = $store(linkGiven?.state);
   const ownId = $id();
   const overlayId = $id();
   const triggerId = $memo(getId(button) ?? getId(link) ?? ownId);

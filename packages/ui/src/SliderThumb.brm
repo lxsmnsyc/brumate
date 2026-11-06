@@ -43,7 +43,7 @@
   } = $props<SliderThumbProps>();
 
   const sliderGiven = $hasContext(SliderContext) ? $getContext(SliderContext) : undefined;
-  const slider = $hasContext(SliderContext) ? $store(sliderGiven.state) : undefined;
+  const slider = $store(sliderGiven?.state);
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   let focused = $signal(false);

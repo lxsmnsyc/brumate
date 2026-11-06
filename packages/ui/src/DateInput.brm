@@ -31,9 +31,9 @@
 
   const range = $hasContext(DateRangeFieldContext) ? $getContext(DateRangeFieldContext) : undefined;
   const single = $hasContext(DateFieldContext) ? $getContext(DateFieldContext) : undefined;
-  const startState = $hasContext(DateRangeFieldContext) ? $store(range.startState) : undefined;
-  const endState = $hasContext(DateRangeFieldContext) ? $store(range.endState) : undefined;
-  const singleState = $hasContext(DateFieldContext) ? $store(single.state) : undefined;
+  const startState = $store(range?.startState);
+  const endState = $store(range?.endState);
+  const singleState = $store(single?.state);
   /** The date that this input edits: its slot of a DateRangePicker, or the DateField's. */
   const field = $memo(
     (slot && startState ? (slot === 'start' ? startState : endState) : singleState) ?? null,

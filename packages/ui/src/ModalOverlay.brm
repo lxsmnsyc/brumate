@@ -66,7 +66,7 @@
   let { isOpen } = $props<ModalOverlayProps>();
 
   const triggerGiven = $hasContext(OverlayTriggerContext) ? $getContext(OverlayTriggerContext) : undefined;
-  const trigger = $hasContext(OverlayTriggerContext) ? $store(triggerGiven.state) : undefined;
+  const trigger = $store(triggerGiven?.state);
   const parentLayer = $hasContext(LayerContext) ? $getContext(LayerContext) : undefined;
   const own = $isPassed(isOpen);
   const layerId = $id();

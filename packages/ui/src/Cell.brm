@@ -21,7 +21,7 @@
   const { textValue, children, ...rest } = $props<CellProps>();
 
   const tableGiven = $hasContext(TableContext) ? $getContext(TableContext) : undefined;
-  const table = $hasContext(TableContext) ? $store(tableGiven.state) : undefined;
+  const table = $store(tableGiven?.state);
   const row = $hasContext(TableRowContext) ? $getContext(TableRowContext) : undefined;
   // The place of the cell in its row, which is the column that it is in.
   const index = row ? row.cells.count++ : 0;

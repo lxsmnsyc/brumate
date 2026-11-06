@@ -35,7 +35,7 @@
   const { date, children, ...rest } = $props<CalendarCellProps>();
 
   const given = $hasContext(CalendarContext) ? $getContext(CalendarContext) : undefined;
-  const calendar = $hasContext(CalendarContext) ? $store(given.state) : undefined;
+  const calendar = $store(given?.state);
   const grid = $hasContext(CalendarGridContext) ? $store(CalendarGridContext) : undefined;
   // A date is in the month of its grid when they share the year and the month, `YYYY-MM`.
   const outsideMonth = $memo(grid ? date.slice(0, 7) !== grid.start.slice(0, 7) : false);

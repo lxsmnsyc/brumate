@@ -80,7 +80,7 @@
   let { ref } = $props<LinkOwnProps<T>>();
 
   const linkGiven = $hasContext(LinkContext) ? $getContext(LinkContext) : undefined;
-  const context = $hasContext(LinkContext) ? $store(linkGiven.state) : undefined;
+  const context = $store(linkGiven?.state);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
   const current = $memo(Boolean(isCurrent ?? slotProps(context, slot).isCurrent));

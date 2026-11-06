@@ -29,7 +29,7 @@
   const { children, ...rest } = $props<ColorThumbProps>();
 
   const given = $hasContext(ColorThumbContext) ? $getContext(ColorThumbContext) : undefined;
-  const thumb = $hasContext(ColorThumbContext) ? $store(given.state) : undefined;
+  const thumb = $store(given?.state);
 
   function color(css: string | undefined): string {
     const parsed = css ? tryParseColor(css) : undefined;

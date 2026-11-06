@@ -30,7 +30,7 @@
   const { segment, ...rest } = $props<DateSegmentProps>();
 
   const given = $hasContext(DateFieldContext) ? $getContext(DateFieldContext) : undefined;
-  const field = $hasContext(DateFieldContext) ? $store(given.state) : undefined;
+  const field = $store(given?.state);
   const id = $id();
 
   /** The part that this segment edits. */

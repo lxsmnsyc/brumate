@@ -29,7 +29,7 @@
   const { value, isDisabled, children, ...rest } = $props<RadioProps>();
 
   const groupGiven = $hasContext(RadioGroupContext) ? $getContext(RadioGroupContext) : undefined;
-  const group = $hasContext(RadioGroupContext) ? $store(groupGiven.state) : undefined;
+  const group = $store(groupGiven?.state);
   const inputId = $id();
   const selected = $memo(group?.value === value);
   const disabled = $memo(Boolean(isDisabled || group?.isDisabled));

@@ -27,7 +27,7 @@
   const { as = 'h2', children, ...rest } = $props<CalendarHeadingProps<T>>();
 
   const given = $hasContext(CalendarContext) ? $getContext(CalendarContext) : undefined;
-  const calendar = $hasContext(CalendarContext) ? $store(given.state) : undefined;
+  const calendar = $store(given?.state);
 </script>
 
 <{as} aria-hidden="true" {...rest}>{children ?? (calendar ? rangeLabel(toDate(calendar.start), toDate(calendar.end), calendar.locale, false) : '')}</>

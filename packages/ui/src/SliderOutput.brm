@@ -19,7 +19,7 @@
   const { children, ...rest } = $props<SliderOutputProps>();
 
   const sliderGiven = $hasContext(SliderContext) ? $getContext(SliderContext) : undefined;
-  const slider = $hasContext(SliderContext) ? $store(sliderGiven.state) : undefined;
+  const slider = $store(sliderGiven?.state);
   const forIds = $memo(slider ? slider.values.map((_, index) => thumbId(slider, index)).join(' ') : undefined);
 </script>
 

@@ -54,7 +54,7 @@
   let { ref } = $props<TagOwnProps<T>>();
 
   const groupGiven = $hasContext(TagGroupContext) ? $getContext(TagGroupContext) : undefined;
-  const group = $hasContext(TagGroupContext) ? $store(groupGiven.state) : undefined;
+  const group = $store(groupGiven?.state);
   const rowId = $id();
   const mode = $memo(group?.selectionMode ?? 'none');
   const selected = $memo(Boolean(group?.selectedKeys.includes(id)));

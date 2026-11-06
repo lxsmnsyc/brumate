@@ -44,7 +44,7 @@
   let { ref } = $props<TagListOwnProps<T>>();
 
   const groupGiven = $hasContext(TagGroupContext) ? $getContext(TagGroupContext) : undefined;
-  const group = $hasContext(TagGroupContext) ? $store(groupGiven.state) : undefined;
+  const group = $store(groupGiven?.state);
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
 

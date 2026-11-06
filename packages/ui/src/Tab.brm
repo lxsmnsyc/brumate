@@ -47,7 +47,7 @@
   let { ref } = $props<TabOwnProps<T>>();
 
   const tabsGiven = $hasContext(TabsContext) ? $getContext(TabsContext) : undefined;
-  const tabs = $hasContext(TabsContext) ? $store(tabsGiven.state) : undefined;
+  const tabs = $store(tabsGiven?.state);
   // The first tab is the one that is selected when Tabs hold no key.
   if (tabs && tabs.registry.first === undefined && !isDisabled && !tabs.disabledKeys.includes(id)) {
     tabs.registry.first = id;

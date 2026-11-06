@@ -36,7 +36,7 @@
   const tree = $hasContext(NavigationTreeContext) ? $store(NavigationTreeContext) : undefined;
   const place = $hasContext(TreeRowContext) ? $store(TreeRowContext) : undefined;
   const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
-  const list = $hasContext(ListBoxContext) ? $store(listGiven.state) : undefined;
+  const list = $store(listGiven?.state);
   const disabled = $memo(
     Boolean(isDisabled || (place && list?.disabledKeys.includes(place.row.key))),
   );

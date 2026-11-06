@@ -80,7 +80,7 @@
   let { ref } = $props<ButtonOwnProps<T>>();
 
   const buttonGiven = $hasContext(ButtonContext) ? $getContext(ButtonContext) : undefined;
-  const context = $hasContext(ButtonContext) ? $store(buttonGiven.state) : undefined;
+  const context = $store(buttonGiven?.state);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
   const pending = $memo(Boolean(isPending ?? slotProps(context, slot).isPending));

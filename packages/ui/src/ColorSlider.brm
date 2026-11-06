@@ -95,7 +95,7 @@
 
   // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
   const given = $hasContext(ColorPickerContext) ? $getContext(ColorPickerContext) : undefined;
-  const picker = $hasContext(ColorPickerContext) ? $store(given.state) : undefined;
+  const picker = $store(given?.state);
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 

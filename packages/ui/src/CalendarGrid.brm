@@ -41,7 +41,7 @@
   const { offset, cell, ...rest } = $props<CalendarGridProps>();
 
   const given = $hasContext(CalendarContext) ? $getContext(CalendarContext) : undefined;
-  const calendar = $hasContext(CalendarContext) ? $store(given.state) : undefined;
+  const calendar = $store(given?.state);
   const start = $memo(
     calendar ? (offset ? toDate(calendar.start).add(offset) : toDate(calendar.start)).toString() : '',
   );

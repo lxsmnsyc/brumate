@@ -23,7 +23,7 @@
 
   // The cast to `V` is unchecked: `V` must be the type of the `items` of the Table.
   const tableGiven = $hasContext(TableContext) ? $getContext(TableContext) : undefined;
-  const table = $hasContext(TableContext) ? $store(tableGiven.state) : undefined;
+  const table = $store(tableGiven?.state);
 </script>
 
 <tbody role="rowgroup" {...rest}>

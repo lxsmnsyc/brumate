@@ -68,7 +68,7 @@
   let { ref } = $props<TooltipOwnProps<T>>();
 
   const triggerGiven = $hasContext(TooltipTriggerContext) ? $getContext(TooltipTriggerContext) : undefined;
-  const trigger = $hasContext(TooltipTriggerContext) ? $store(triggerGiven.state) : undefined;
+  const trigger = $store(triggerGiven?.state);
   const parentLayer = $hasContext(LayerContext) ? $getContext(LayerContext) : undefined;
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);

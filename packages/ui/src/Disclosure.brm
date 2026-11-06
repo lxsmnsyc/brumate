@@ -43,7 +43,7 @@
   let { ref } = $props<DisclosureOwnProps<T>>();
 
   const groupGiven = $hasContext(DisclosureGroupContext) ? $getContext(DisclosureGroupContext) : undefined;
-  const group = $hasContext(DisclosureGroupContext) ? $store(groupGiven.state) : undefined;
+  const group = $store(groupGiven?.state);
   const triggerId = $id();
   const panelId = $id();
   const ownKey = $id();

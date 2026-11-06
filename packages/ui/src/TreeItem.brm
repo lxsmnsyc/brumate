@@ -56,9 +56,9 @@
 
   const tree = $hasContext(TreeRowContext) ? $store(TreeRowContext) : undefined;
   const treeGiven = $hasContext(TreeContext) ? $getContext(TreeContext) : undefined;
-  const state = $hasContext(TreeContext) ? $store(treeGiven.state) : undefined;
+  const state = $store(treeGiven?.state);
   const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
-  const list = $hasContext(ListBoxContext) ? $store(listGiven.state) : undefined;
+  const list = $store(listGiven?.state);
   if (!tree) {
     throw new Error('A TreeItem goes in the `item` template of a Tree.');
   }

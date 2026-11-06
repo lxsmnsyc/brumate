@@ -24,7 +24,7 @@
   const { slot, ...rest } = $props<InputProps>();
 
   const handlers = $hasContext(InputContext) ? $getContext(InputContext) : undefined;
-  const context = $hasContext(InputContext) ? $store(handlers.props) : undefined;
+  const context = $store(handlers?.props);
   // The attributes of a part around the field, such as an Autocomplete.
   const outer = $hasContext(FieldInputContext) ? $store(FieldInputContext) : undefined;
   const outerAttributes = $memo(outer ?? {});

@@ -131,10 +131,10 @@
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);
   // A Select around the list keeps the selection, with one item at most.
   const givenState = $hasContext(ListBoxGivenContext) ? $getContext(ListBoxGivenContext) : undefined;
-  const given = $hasContext(ListBoxGivenContext) ? $store(givenState.state) : undefined;
+  const given = $store(givenState?.state);
   // A field around the list, such as of a ComboBox, keeps focus and can filter the items.
   const fieldGiven = $hasContext(CollectionFocusContext) ? $getContext(CollectionFocusContext) : undefined;
-  const field = $hasContext(CollectionFocusContext) ? $store(fieldGiven.state) : undefined;
+  const field = $store(fieldGiven?.state);
   const virtualizer = $hasContext(VirtualizerContext) ? $store(VirtualizerContext) : undefined;
   // A list windows when its options are made from data. A field around it filters the options in
   // the page, and a horizontal list has no window.

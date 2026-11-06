@@ -92,10 +92,10 @@
   let { ref } = $props<MenuOwnProps<T>>();
 
   const triggerGiven = $hasContext(MenuTriggerContext) ? $getContext(MenuTriggerContext) : undefined;
-  const trigger = $hasContext(MenuTriggerContext) ? $store(triggerGiven.state) : undefined;
+  const trigger = $store(triggerGiven?.state);
   // A field around the menu, such as of an Autocomplete, keeps focus and can filter the items.
   const fieldGiven = $hasContext(CollectionFocusContext) ? $getContext(CollectionFocusContext) : undefined;
-  const field = $hasContext(CollectionFocusContext) ? $store(fieldGiven.state) : undefined;
+  const field = $store(fieldGiven?.state);
   const dialog = $hasContext(DialogContext) ? $getContext(DialogContext) : undefined;
   const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
   const locale = $memo(localeStore ?? DEFAULT_LOCALE);

@@ -65,9 +65,9 @@
   let { ref } = $props<MenuItemOwnProps<T>>();
 
   const menuGiven = $hasContext(MenuContext) ? $getContext(MenuContext) : undefined;
-  const menu = $hasContext(MenuContext) ? $store(menuGiven.state) : undefined;
+  const menu = $store(menuGiven?.state);
   const submenuGiven = $hasContext(SubmenuContext) ? $getContext(SubmenuContext) : undefined;
-  const submenu = $hasContext(SubmenuContext) ? $store(submenuGiven.state) : undefined;
+  const submenu = $store(submenuGiven?.state);
   const ownId = $id();
   const labelId = $id();
   const descriptionId = $id();
