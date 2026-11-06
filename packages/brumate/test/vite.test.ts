@@ -53,6 +53,11 @@ afterAll(async () => {
   await server.close();
 });
 
+interface GraphNode {
+  label: string;
+  at?: { line: number; column: number; file?: string };
+}
+
 describe('vite plugin', () => {
   it('compiles .brm files for the server', async () => {
     const module = await server.ssrLoadModule('/counter.brm');
@@ -111,6 +116,37 @@ describe('vite plugin', () => {
     expect(info.url).toBe('/counter.brm');
     expect(info.path).toMatch(/\/test\/vite-app\/counter\.brm$/);
     expect(missing.status).toBe(404);
+  });
+
+  it('places each node of the graph in a file, and nodes from a module in the module', async () => {
+    const http = createHTTPServer(server.middlewares);
+    await new Promise<void>((resolve) => http.listen(0, resolve));
+    const { port } = http.address() as AddressInfo;
+    async function get(id: string): Promise<{ graph: { nodes: GraphNode[] } }> {
+      const response = await fetch(`http://localhost:${port}/__brumate/inspect/${id}`);
+      return (await response.json()) as { graph: { nodes: GraphNode[] } };
+    }
+    const counter = await get('Counter_m86gta');
+    const page = await get('UsesCounter_1euyiut');
+    http.close();
+    function place(nodes: GraphNode[], label: string): GraphNode['at'] {
+      return nodes.find((node) => node.label === label)?.at;
+    }
+    // The name of a signal or a memo, and the start of the markup that reads it.
+    expect(place(counter.graph.nodes, 'count')).toEqual({ line: 5, column: 7 });
+    expect(place(counter.graph.nodes, 'double')).toEqual({ line: 6, column: 9 });
+    for (const node of counter.graph.nodes) {
+      expect(node.at).toMatchObject({ line: expect.any(Number) });
+      expect(node.at?.file).toBeUndefined();
+    }
+    // Code from `counting.brm.ts` has its place in that file, not in the component.
+    for (const node of page.graph.nodes) {
+      expect(node.at).toBeDefined();
+    }
+    const fromModule = page.graph.nodes.filter((node) => node.at?.file !== undefined);
+    expect(fromModule.length).toBeGreaterThan(0);
+    expect(fromModule[0]!.at!.file).toMatch(/\/test\/vite-app\/counting\.brm\.ts$/);
+    expect(place(page.graph.nodes, 'base')).toEqual({ line: 5, column: 7 });
   });
 
   it('serves the shared code of a module of reactive logic', async () => {

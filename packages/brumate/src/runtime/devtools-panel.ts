@@ -57,6 +57,8 @@ interface GraphNode {
   label: string;
   scope: number;
   slot?: number;
+  /** Its place in the file, or in the file of the module that gave the code to the component. */
+  at?: { line: number; column: number; file?: string };
 }
 
 const STYLE = `
@@ -646,6 +648,25 @@ function source(info: ComponentInfo | undefined, at = '1:1'): Node | string {
   );
   open.addEventListener('click', () => {
     void fetch(`/__open-in-editor?file=${encodeURIComponent(`${info.path}:${at}`)}`);
+  });
+  return open;
+}
+
+/** A button that opens the place of a graph node in the editor. */
+function place(info: ComponentInfo, at: NonNullable<GraphNode['at']>): Node | string {
+  const label = `line ${at.line}`;
+  const file = at.file ?? info.path;
+  if (!file) {
+    return element('span', { class: 'mono sub' }, label);
+  }
+  const open = element(
+    'button',
+    { class: 'link', title: `Open ${at.file ?? info.file}:${at.line}:${at.column}` },
+    label,
+    icon('open', 12),
+  );
+  open.addEventListener('click', () => {
+    void fetch(`/__open-in-editor?file=${encodeURIComponent(`${file}:${at.line}:${at.column}`)}`);
   });
   return open;
 }
@@ -1966,7 +1987,7 @@ export function togglePanel(
         }
       }
     }
-    // A markup node is named by what it is and its place in the file, such as `insert 9:42`.
+    // Markup nodes share a name, so the box shows the place in the file, such as `9:42`.
     const parts: {
       name: string;
       meta: string;
@@ -1974,18 +1995,18 @@ export function togglePanel(
       at: string | undefined;
     }[] = [];
     for (const node of nodes) {
-      const at = /^(.*) (\d+:\d+)$/.exec(node.label);
+      const at = node.at ? `${node.at.line}:${node.at.column}` : undefined;
       const owner = node.slot === undefined ? undefined : scopeOfNode.get(node.scope);
       const value = owner && node.slot !== undefined ? preview(owner.s[node.slot]) : undefined;
-      let meta = at ? `${node.kind} · ${at[2]}` : node.kind;
+      let meta = at ? `${node.kind} · ${at}` : node.kind;
       if (value !== undefined) {
         meta = `= ${value}`;
       }
       parts.push({
-        name: at ? at[1]! : node.label,
+        name: node.label,
         meta,
         value,
-        at: at?.[2],
+        at,
       });
     }
     function getNodeWidth(index: number): number {
@@ -2067,7 +2088,7 @@ export function togglePanel(
       const meta = svg('text', { class: 'meta', x: x + 23, y: y + 30 });
       meta.textContent = clip(part.meta);
       const title = svg('title', {});
-      title.textContent = `${node.kind} ${node.label}${part.value === undefined ? '' : ` = ${part.value}`}`;
+      title.textContent = `${node.kind} ${node.label}${part.value === undefined ? '' : ` = ${part.value}`}${part.at ? `, line ${node.at!.line}` : ''}`;
       const group = svg(
         'g',
         { class: classes.join(' '), 'data-node': index },
@@ -2196,7 +2217,17 @@ export function togglePanel(
         }
         const labels: HTMLElement[] = [];
         for (const index of indexes) {
-          labels.push(element('div', { class: 'mono' }, nodes[index]!.label));
+          // Markup nodes share a label, so the list names them with their place, such as `insert 9:42`.
+          const { label } = nodes[index]!;
+          const at = parts[index]!.at;
+          let shared = false;
+          for (const [i, other] of nodes.entries()) {
+            if (i !== index && other.label === label) {
+              shared = true;
+              break;
+            }
+          }
+          labels.push(element('div', { class: 'mono' }, shared && at ? `${label} ${at}` : label));
         }
         return element('div', {}, ...labels);
       }
@@ -2218,7 +2249,7 @@ export function togglePanel(
           'div',
           { class: 'toolbar' },
           pill(node.kind, color),
-          part.at ? source(info, part.at) : '',
+          node.at ? place(info, node.at) : '',
         ),
         ...(part.value === undefined
           ? []

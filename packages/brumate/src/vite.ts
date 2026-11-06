@@ -1338,6 +1338,24 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       const where = at.file === undefined ? getLocation(source, at.offset) : undefined;
       return where ? `${site.label} ${where.line}:${where.column}` : site.label;
     }
+    // The line and column of an offset of the compiled source. Code that a module function
+    // gave the component is placed in the file of the module, which `file` names.
+    const moduleSources = new Map<string, string | undefined>();
+    function placeOf(offset: number): { line: number; column: number; file?: string } | undefined {
+      const at = result.locate(offset);
+      if (at.file === undefined) {
+        return getLocation(source, at.offset);
+      }
+      if (!moduleSources.has(at.file)) {
+        try {
+          moduleSources.set(at.file, readFileSync(at.file, 'utf8'));
+        } catch {
+          moduleSources.set(at.file, undefined);
+        }
+      }
+      const text = moduleSources.get(at.file);
+      return text === undefined ? undefined : { ...getLocation(text, at.offset), file: at.file };
+    }
     // Updates of markup and memos run in the browser as nodes of the graph that can change.
     const liveSites = new Set<Site>();
     for (const node of plan.graph.live) {
@@ -1377,22 +1395,23 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     const graphNodes: object[] = [];
     for (const node of nodes) {
       if (node.kind === 'source' || node.kind === 'memo') {
+        // The place of the name, not of the initializer.
+        const at = placeOf(node.declaration.range.start);
         graphNodes.push({
           kind: node.kind === 'memo' ? 'memo' : node.declaration.kind,
           label: node.declaration.name,
           scope: instanceScope(plan, node.declaration.scope).id,
           slot: slotIndex(plan, node.declaration),
+          ...(at ? { at } : {}),
         });
         continue;
       }
-      // Markup has no name, so its place in the file tells nodes apart, such as `insert 9:42`.
-      // Code that a module function gave the component has no place in the component's file.
-      const at = result.locate(node.site.range.start);
-      const where = at.file === undefined ? getLocation(source, at.offset) : undefined;
+      const at = placeOf(node.site.range.start);
       graphNodes.push({
         kind: node.kind,
-        label: where ? `${node.site.label} ${where.line}:${where.column}` : node.site.label,
+        label: node.site.label,
         scope: instanceScope(plan, node.site.scope).id,
+        ...(at ? { at } : {}),
       });
     }
     const graphEdges: number[][] = [];
