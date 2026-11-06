@@ -4,6 +4,14 @@ import { loadOnce } from '../skew.ts';
 import { codeReady, loadModule, loadedFunction } from './code.ts';
 import { build, rpcPrefix, skew } from './state.ts';
 import type { Scope } from './state.ts';
+import type { FunctionReference } from '../shared.ts';
+
+/**
+ * The handlers that the core makes from references, with their references,
+ * so a spread in markup that the browser renders passes them on in `b-on`,
+ * as a spread on the server does.
+ */
+export const handlerReferences: WeakMap<object, FunctionReference> = new WeakMap();
 
 export type Handler = (scope: Scope | undefined, ...args: unknown[]) => unknown;
 
