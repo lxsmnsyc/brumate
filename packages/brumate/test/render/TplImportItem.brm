@@ -1,0 +1,14 @@
+<script>
+  import { $effect, $props, $signal } from 'brumate/signals';
+
+  let { name }: { name: string } = $props();
+  let ready = $signal(1);
+
+  $effect(() => {
+    const log = (globalThis as { tplImportLog?: string[] }).tplImportLog;
+    log?.push(`mount ${name} ${ready}`);
+    return () => log?.push(`cleanup ${name}`);
+  });
+</script>
+
+<b class="item" onClick=(() => ready++)>{name}</b>

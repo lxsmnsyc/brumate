@@ -2523,6 +2523,38 @@ describe('resume', () => {
     expect(document.querySelectorAll('.price')).toHaveLength(1);
   });
 
+  it('renders a component in a same-file #template that updates in the browser', async () => {
+    await resume('tplImportHost', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(6));
+    expect(text('.row')).toBe('a *a');
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.row')).toBe('aa'));
+    expect(document.querySelectorAll('.row')[1]!.textContent).toBe('b *b');
+    expect(document.querySelectorAll('.item')).toHaveLength(6);
+  });
+
+  it('runs the cleanup of a component in a #template once for each replaced row', async () => {
+    const log: string[] = [];
+    (globalThis as { tplImportLog?: string[] }).tplImportLog = log;
+    onTestFinished(() => {
+      delete (globalThis as { tplImportLog?: string[] }).tplImportLog;
+    });
+    await resume('tplImportHost', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(6));
+    // A click on each item runs its effect: an effect never runs before a change (website/docs/effects.md).
+    for (const item of document.querySelectorAll('.item')) {
+      click(item);
+    }
+    await waitFor(() => expect(log.filter((entry) => entry.startsWith('mount'))).toHaveLength(6));
+    log.length = 0;
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.row')).toBe('aa'));
+    // A pick calls the template again for every row: each old row cleans up once.
+    expect(log.toSorted()).toEqual(['a', 'b', 'c', 'd', 'e', 'f'].map((name) => `cleanup ${name}`));
+  });
+
   it('keeps the scopes flat when a browser-rendered list calls a template of its file again', async () => {
     await resume('scopeLeak', {});
     click(document.querySelector('.open')!);
