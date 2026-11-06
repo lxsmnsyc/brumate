@@ -9,3 +9,4 @@
 - Removed ref-setter-relay, memo-reject, class-order from `CAUSES` and `DIVERGENCES`. template-import untouched.
 - Full packages/brumate run: 2 failures under load. refLoop timed out at 5 s (passes alone). "gives the element of a component in as" read '' once (fixed 100 ms sleep); it passed 5 more times alone, on main and with the change, and in a full resume.test.ts run (623 passed).
 - With the old src files restored on top of the new data.ts, 7 differential pages fail (5 setter pages, memoErrorAwaitServer, classes).
+- Review: the docs said onError gets every error, also those a #try catches; effects.md and reference-server.md now say a memo error that a #try catches does not reach it. Handler and effect errors inside a #try still reach onError (resume.test.ts expects it); whether they should follow the memo rule is left to the maintainer.
