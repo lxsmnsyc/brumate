@@ -78,6 +78,7 @@
 
 ## Other derived values
 
+- `const query = $gate(input, (_, next) => next.length >= 2)` takes a new value only when the guard returns true, and the readers do not run otherwise. The first value passes.
 - `const settled = $debounced(query, 300)` takes the value once it stops changing for 300 ms. `$throttled(value, ms)` takes it at most once in `ms`. The wait is a number literal.
 - `$isPending(memo)` is true while an async memo loads.
 - `let shown = $optimistic(source)` follows a memo, an action or a prop, and takes a value in the meantime.

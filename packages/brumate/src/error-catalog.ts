@@ -169,6 +169,18 @@ const SYNTAX: ErrorEntry[] = [
     "<script>\n  $client(() => {\n    start();\n  }, 'load');\n</script>",
   ),
   entry(
+    'BRM202',
+    '$gate takes a value and a function, as in $gate(value, (prev, next) => next > prev)',
+    '`$gate` does not have a value and a guard function as its two arguments. The guard is an arrow function or a function expression.',
+    'const query = $gate(input, (_, next) => next.length >= 2);',
+  ),
+  entry(
+    'BRM203',
+    '$gate takes a value that is ready. Use $memo for a promise or a server function',
+    'The value of `$gate` awaits or calls a server function. A gate holds a value that the guard can compare, so it does not wait for one.',
+    'const query = $gate(input, (_, next) => next.length >= 2);',
+  ),
+  entry(
     'BRM186',
     '"{name}" in the #loading header is not a memo that markup in the body reads. Name a $memo of the component or of a block script around the block',
     'The header of `#loading (…)` names something other than a memo, or a memo that no markup in the body reads, so its loads would not show the fallback for that body.',
@@ -874,6 +886,12 @@ const SCRIPT: ErrorEntry[] = [
     'Declare a memo with "const name = $memo(value)" at the top level of a script',
     '`$memo` is inside a function or a block of code.',
     'const double = $memo(count * 2);',
+  ),
+  entry(
+    'BRM204',
+    'Declare a gated value with "const name = $gate(value, (prev, next) => boolean)" at the top level of a script',
+    '`$gate` is inside a function or a block of code.',
+    'const query = $gate(input, (_, next) => next.length >= 2);',
   ),
   entry(
     'BRM133',

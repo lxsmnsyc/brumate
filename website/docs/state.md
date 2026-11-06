@@ -106,6 +106,30 @@ Compute the starting value in the call instead: `let count = $signal(5)`.
 
 A memo can also hold a promise, such as the result of a server function. [Async data](./async-data.md) covers that.
 
+## `$gate`
+
+`$gate(value, guard)` is a memo that takes its new value only when the guard returns true. Otherwise it keeps its value, and its readers do not run. The guard gets the value the memo holds and the new one.
+
+```brm
+<script>
+  import { $gate, $signal } from 'brumate/signals';
+
+  let input = $signal('');
+  let list = $signal(['a', 'b']);
+  // Search only from two letters on.
+  const query = $gate(input, (_, next) => next.length >= 2);
+  // A new array with the same items changes nothing.
+  const items = $gate(list.slice(), (prev, next) => prev.join() !== next.join());
+</script>
+
+<input value=input onInput=((event) => (input = event.currentTarget.value))>
+<p>{query}: {items.length} items</p>
+```
+
+- The first value always passes, so the page renders with the value as it is, and the browser guards the changes after it resumes.
+- The guard is not tracked. A throw in it is held like the error of a memo, and the nearest `#try` catches it.
+- The value cannot be a promise or a server function call. Use `$memo` for those.
+
 ## `$produce`
 
 A signal changes when you assign a new value. To change one item of an array or one field of an object, `$produce` gives you a draft that you can change in place, and writes the result as a new value:

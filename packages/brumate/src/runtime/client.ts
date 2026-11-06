@@ -127,6 +127,7 @@ export {
   bindings,
   cells,
   effect,
+  gate,
   get,
   isBound,
   memo,

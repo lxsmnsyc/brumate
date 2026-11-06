@@ -54,7 +54,7 @@ function calleeName(node: oxc.CallExpression): string | undefined {
 
 /** The variable that holds a memo on the server, which can be a promise. */
 /** The compile-time functions that declare a memo of their first argument. The others are options. */
-const MEMOS = new Set(['$memo', '$optimistic', '$debounced', '$throttled']);
+const MEMOS = new Set(['$memo', '$gate', '$optimistic', '$debounced', '$throttled']);
 
 /**
  * The code of an arrow function body, given the source offset where the user's expression starts.

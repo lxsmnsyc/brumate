@@ -668,3 +668,32 @@ describe('a promise where markup cannot wait for it', () => {
     ).not.toThrow();
   });
 });
+
+describe('$gate', () => {
+  const gated = (script: string): string =>
+    `<script>\nimport { $gate, $signal } from 'brumate/signals';\nlet n = $signal(0);\nasync function load(id: number) {\n  'use server';\n  return id;\n}\n${script}\n</script>\n\n<p>{value}</p>`;
+
+  it('compiles a value and a guard function', () => {
+    expect(() =>
+      compile(gated('const value = $gate(n, (prev, next) => next > prev);'), {
+        filename: 'Test.brm',
+      }),
+    ).not.toThrow();
+  });
+
+  it('fails for a value that is a promise or a server function [BRM203]', () => {
+    for (const value of ['load(n)', 'await load(n)']) {
+      expect(() =>
+        compile(gated(`const value = $gate(${value}, () => true);`), { filename: 'Test.brm' }),
+      ).toThrow(/\$gate takes a value that is ready\. .* \[BRM203\]/);
+    }
+  });
+
+  it('fails without a guard function [BRM202]', () => {
+    for (const call of ['$gate(n)', '$gate(n, 1)', '$gate(n, () => true, 2)']) {
+      expect(() => compile(gated(`const value = ${call};`), { filename: 'Test.brm' })).toThrow(
+        /\$gate takes a value and a function, as in .* \[BRM202\]/,
+      );
+    }
+  });
+});

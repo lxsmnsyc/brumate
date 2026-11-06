@@ -273,6 +273,26 @@ The event has capitals in its name, or the browser fires another name for it, an
 </script>
 ```
 
+## BRM202
+
+`$gate takes a value and a function, as in $gate(value, (prev, next) => next > prev)`
+
+`$gate` does not have a value and a guard function as its two arguments. The guard is an arrow function or a function expression.
+
+```ts
+const query = $gate(input, (_, next) => next.length >= 2);
+```
+
+## BRM203
+
+`$gate takes a value that is ready. Use $memo for a promise or a server function`
+
+The value of `$gate` awaits or calls a server function. A gate holds a value that the guard can compare, so it does not wait for one.
+
+```ts
+const query = $gate(input, (_, next) => next.length >= 2);
+```
+
 ## BRM186
 
 `"{name}" in the #loading header is not a memo that markup in the body reads. Name a $memo of the component or of a block script around the block`
@@ -1614,6 +1634,16 @@ let count = $signal(0);
 
 ```ts
 const double = $memo(count * 2);
+```
+
+## BRM204
+
+`Declare a gated value with "const name = $gate(value, (prev, next) => boolean)" at the top level of a script`
+
+`$gate` is inside a function or a block of code.
+
+```ts
+const query = $gate(input, (_, next) => next.length >= 2);
 ```
 
 ## BRM133

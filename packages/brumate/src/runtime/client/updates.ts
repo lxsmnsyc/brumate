@@ -549,6 +549,24 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   }
 }
 
+/**
+ * Computes a memo of `$gate`. The new value replaces the old one only when the guard returns
+ * true. Otherwise the memo gives its old value back, which the write skips. The first value
+ * passes, and so does one after a held error.
+ */
+export function gate(
+  scope: Scope,
+  slot: number,
+  guard: (prev: unknown, next: unknown) => boolean,
+  compute: () => unknown,
+): void {
+  memo(scope, slot, () => {
+    const next = compute();
+    const prev = scope.s[slot];
+    return !(slot in scope.s) || prev instanceof MemoError || guard(prev, next) ? next : prev;
+  });
+}
+
 /** True while a new value of a memo loads, or while the server still streams its value. */
 export function pending(scope: Scope, slot: number): boolean {
   return (

@@ -7568,6 +7568,53 @@ describe('batching', () => {
   });
 });
 
+describe('$gate', () => {
+  it('takes the first value without the guard, and holds it while the guard fails', async () => {
+    await resume('gateQuery', {});
+    // The first value passes, though the guard would refuse it.
+    expect(text('.query')).toBe('');
+    clearRuns();
+    click(document.querySelector('.a')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(text('.query')).toBe('');
+    expect(runsOf('query')).toEqual([]);
+    click(document.querySelector('.abc')!);
+    await waitFor(() => expect(text('.query')).toBe('abc'));
+    expect(runsOf('query')).toEqual(['query abc']);
+  });
+
+  it('does not run its readers for a new array with the same items, after resume', async () => {
+    await resume('gateQuery', {});
+    expect(text('.items')).toBe('a,b');
+    clearRuns();
+    click(document.querySelector('.same')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(runsOf('items')).toEqual([]);
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.items')).toBe('a,b,c'));
+    expect(runsOf('items')).toEqual(['items a,b,c']);
+  });
+
+  it('runs a guard that reads state and calls a function, for a memo that the browser renders', async () => {
+    await resume('gateReads', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.value')).toBe('ab'));
+    click(document.querySelector('.short')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(text('.value')).toBe('ab');
+    click(document.querySelector('.long')!);
+    await waitFor(() => expect(text('.value')).toBe('cde'));
+  });
+
+  it('sends the error of a guard that throws to the nearest #try', async () => {
+    await resume('gateThrow', {});
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.value')).toBe('1'));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Guard 2'));
+  });
+});
+
 describe('a handler waits for the module of', () => {
   type Waits = Record<string, number | 'fail'>;
 
