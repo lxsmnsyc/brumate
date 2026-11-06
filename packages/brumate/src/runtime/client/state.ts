@@ -293,14 +293,6 @@ export function setHiding(value: Hiding | undefined): Hiding | undefined {
 export const insertedChildren: { from: Scope | undefined; at: Scope }[] = [];
 
 /**
- * Slots that the render of a component in the browser filled with a promise,
- * by `scope:slot`. The first compute of their memo takes that promise
- * instead of calling again, so a server function is called once per row.
- * A slot that `wait` filled with the settled value keeps it.
- */
-export const renderedLoads: Set<string> = new Set();
-
-/**
  * The promises that the page knows are values still loading: a memo that the server streams, and
  * a memo that the browser rendered. Any other promise in a slot is a plain value.
  */

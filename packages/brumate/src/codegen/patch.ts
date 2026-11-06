@@ -3,6 +3,7 @@ import { copy } from '../sourcemap.ts';
 import type { Declaration, Reference, SemanticModel, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
+import { neverPromise } from './primitive.ts';
 
 interface Edit {
   start: number;
@@ -92,7 +93,7 @@ export function addValueEdits(
   patch: Patch,
   file: SFCFile,
   sites: Site[],
-  mode: 'server' | 'client' = 'server',
+  mode: 'server' | 'client' | 'render' = 'server',
   inline: Set<Declaration> = new Set(),
   lazy: Set<Declaration> = new Set(),
   component?: number,
@@ -216,11 +217,28 @@ export function addValueEdits(
         patch.replace(
           range.start,
           range.end,
-          `${key}$$b.read(${promiseName(read.declaration.name)})`,
+          mode === 'render'
+            ? `${key}$$b.readMemo(${read.declaration.name})`
+            : `${key}$$b.read(${promiseName(read.declaration.name)})`,
         );
         replaced.add(read);
         replacedAt.add(range.start);
       }
+    }
+  }
+  if (mode === 'render') {
+    // The memos that the render runs through `renderMemo`. A read of one throws the error that
+    // it holds, as the server's does.
+    const held = new Set<Declaration>();
+    for (const site of sites) {
+      if (site.kind === 'memo' && site.declaration && !inline.has(site.declaration)) {
+        if (site.awaits || !neverPromise(site.node as oxc.Node)) {
+          held.add(site.declaration);
+        }
+      }
+    }
+    for (const site of sites) {
+      readMemos(site, site.node as oxc.Node, site.declaration, held);
     }
   }
   if (mode === 'server') {
@@ -360,6 +378,15 @@ export function addValueEdits(
           // The render context, so server functions that the memo calls read the event of the page,
           // and the name of the memo, for the trace of the devtools.
           patch.replace(argument.end, node.end, `), $$ctx, ${JSON.stringify(declaration.name)})`);
+        } else if (mode === 'render' && declaration && (site!.awaits || !neverPromise(argument))) {
+          // The render runs the memo through a helper, which holds a throw as a rejected promise
+          // and marks a promise, so `setSlots` starts the load.
+          patch.replace(
+            node.start,
+            argument.start,
+            site!.awaits ? '$$b.renderMemo(async () => (' : '$$b.renderMemo(() => (',
+          );
+          patch.replace(argument.end, node.end, '))');
         } else if (site?.awaits) {
           // `await` needs an async function, and then it does not hold up the code after it.
           patch.replace(node.start, argument.start, '(async () => (');

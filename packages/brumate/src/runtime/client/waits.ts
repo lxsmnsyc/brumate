@@ -12,7 +12,7 @@ import { insertHTML, markCloned, parseHTML, refresh } from './insert.ts';
 import { attr, attrs } from './inserts.ts';
 import { afterInsert, destroy, removeBlock, resolveScope } from './scopes.ts';
 import { appendText, keepText, setAttr, setSpread } from './templates.ts';
-import { loadingValues, renderedLoads, scopes, updating, waiters } from './state.ts';
+import { loadingValues, scopes, updating, waiters } from './state.ts';
 import type { Scope } from './state.ts';
 import { isThenable, noop, pending, updated, writes } from './updates.ts';
 
@@ -37,9 +37,6 @@ export interface Boundary {
   /** The boundary of the render around the body, which takes its work while it holds its own. */
   o?: Boundary;
 }
-
-/** The slots of a scope whose awaits settled, until the insert that shows the scope. */
-const settledSlots: WeakMap<Scope, number[]> = new WeakMap();
 
 /** The boundary of the render that runs, if any. */
 let boundary: Boundary | undefined;
@@ -96,7 +93,7 @@ export function give(own: Boundary): void {
   if (own.c === writes) {
     rendered.push(...made);
   } else {
-    queued.push(() => refresh(made));
+    queued.push(() => refresh(made, false, false));
   }
   afterInsert.push(...queued);
 }
@@ -402,7 +399,10 @@ export function wait(
   // The props stay for the rest's own `setSlots`, which keeps a promise prop a plain promise.
   slots[slot] = undefined;
   const props = scope.props;
+  const queued = afterInsert.length;
   setSlots(id, slots);
+  // The memos load when the rest of the render has put the scope in the page.
+  afterInsert.length = queued;
   scope.props = props;
   scope.s[slot] = promise;
   // Update code that runs during the wait reads the promise, as it reads a memo that loads.
@@ -435,7 +435,6 @@ export function wait(
       return;
     }
     // A rest that waits again at a later `await` takes the scope out of the insert.
-    let shown = false;
     try {
       fillRange(own, end, () => {
         // The scope goes with the markup of the rest.
@@ -444,9 +443,7 @@ export function wait(
         resting = scope;
         try {
           // The rest renders as an update does: it reads a memo that still loads as a promise.
-          const out = updating(() => rest(scope.s));
-          shown = rendered.includes(scope);
-          return out;
+          return updating(() => rest(scope.s));
         } finally {
           resting = outer;
         }
@@ -455,19 +452,6 @@ export function wait(
       fail(scope, error);
       fault(own, error);
       return;
-    }
-    // The memos have their values, so the refresh after the insert that shows the scope does
-    // not load them again.
-    const done = settledSlots.get(scope) ?? [];
-    done.push(slot);
-    settledSlots.set(scope, done);
-    if (shown) {
-      settledSlots.delete(scope);
-      for (const settled of done) {
-        if (settled < scope.s.length) {
-          renderedLoads.add(`${scope.id}:${settled}`);
-        }
-      }
     }
     leave(own);
   }

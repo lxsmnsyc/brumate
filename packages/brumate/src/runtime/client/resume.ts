@@ -47,7 +47,6 @@ import {
   modules,
   refs,
   loadingValues,
-  renderedLoads,
   scopes,
   setHiding,
   timers,
@@ -122,7 +121,7 @@ function readRecord([script, code]: StateRecord): void {
     if (writes > 0) {
       // The body of a `#defer` block has a root of its own (`d` and a number), and the server
       // rendered it for the request.
-      refresh(added, false, isDeferRoot(root));
+      refresh(added, isDeferRoot(root));
     }
   }
 }
@@ -439,7 +438,6 @@ export function leavePage(): void {
     memoController.abort();
   }
   memoControllers.clear();
-  renderedLoads.clear();
   for (const { timer } of timers.values()) {
     clearTimeout(timer);
   }

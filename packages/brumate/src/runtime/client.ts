@@ -43,6 +43,8 @@ export {
   elementAt,
   foreignNodes,
   place,
+  readMemo,
+  renderMemo,
   setItem,
   setSlots,
 } from './client/components.ts';

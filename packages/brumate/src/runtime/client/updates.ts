@@ -30,7 +30,6 @@ import {
   modules,
   exempt,
   loadingValues,
-  renderedLoads,
   scopes,
   timers,
   updating,
@@ -332,7 +331,7 @@ export function unreadMemo(scope: Scope | ScopeId, value: unknown): void {
  * Writes the result of an async memo when it arrives. Until then the slot
  * keeps its value, and `pending` is true. Only the latest load is written.
  */
-export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>): void {
+export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>): number {
   const key = `${scope.id}:${slot}`;
   const load = ++loadCount;
   loads.set(key, load);
@@ -378,6 +377,7 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
       }
     })();
   }, failed);
+  return load;
 }
 
 /** Thrown when a memo reads a value that is still loading. */
@@ -505,15 +505,6 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   const key = `${scope.id}:${slot}`;
   // A guess stays while its source has not changed, such as when a value the server streamed arrives.
   if (guesses?.same(key)) {
-    return;
-  }
-  // The render computed the memo: a promise loads, and a value stays. A key with a value here
-  // comes from `wait`, or from a promise of the render that settled before this first compute.
-  const rendered = scope.s[slot];
-  if (renderedLoads.delete(key)) {
-    if (isThenable(rendered)) {
-      asyncMemo(scope, slot, Promise.resolve(rendered));
-    }
     return;
   }
   let value: unknown;

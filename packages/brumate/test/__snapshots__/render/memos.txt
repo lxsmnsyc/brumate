@@ -174,13 +174,13 @@ export default function Memos($$props: Record<string, never>): string | Document
   const parity = (count % 2 ? 'odd' : 'even');
   const size = (items.length * 1);
   const text = (`${quad} and ${size}`);
-  const named = (label(count));
-  const both = (`${named} ${quad}`);
+  const named = $$b.renderMemo(() => (label(count)));
+  const both = (`${$$b.readMemo(named)} ${quad}`);
   let steps = (0);
   let copy = (count);
   let loaded = (0);
   let typed = ('');
-  const same = (copy);
+  const same = $$b.renderMemo(() => (copy));
   const late = (items.length + double);
   const $$body0 = () => {
     let $$html = '';
@@ -203,13 +203,13 @@ export default function Memos($$props: Record<string, never>): string | Document
   $$b.keepText($$s1, 3, $$e[3], (parity));
   $$b.putText($$e[4], (size));
   $$b.appendText($$s1, 4, $$e[5], (text));
-  $$b.keepText($$s1, 5, $$e[6], (named));
+  $$b.keepText($$s1, 5, $$e[6], ($$b.readMemo(named)));
   $$b.appendText($$s1, 6, $$e[7], (both));
   $$b.keep($$s1, 7, $$e[8]);
   $$b.appendText($$s1, 11, $$e[8], (loaded));
   $$b.keepText($$s1, 8, $$e[9], (steps));
   $$b.keepText($$s1, 9, $$e[10], (copy));
-  $$b.keepText($$s1, 10, $$e[11], (same));
+  $$b.keepText($$s1, 10, $$e[11], ($$b.readMemo(same)));
   $$b.setAttr($$e[12], "value", (typed));
   $$b.keep($$s1, 12, $$e[12]);
   $$b.putText($$e[13], (-1));

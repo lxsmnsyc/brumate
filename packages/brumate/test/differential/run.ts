@@ -195,6 +195,12 @@ function plain(value: unknown, order: Map<unknown, number>, depth = 0): unknown 
   if (value instanceof Promise) {
     return '[promise]';
   }
+  // A memo that threw holds its error. The resumed page holds none when nothing reads the memo,
+  // and the error itself differs in property order, so both count as no value.
+  // The class differs by module copy, since the page loads its own, so it is told by name.
+  if (value && typeof value === 'object' && value.constructor.name === 'MemoError') {
+    return undefined;
+  }
   if (typeof Node !== 'undefined' && value instanceof Node) {
     return '[node]';
   }

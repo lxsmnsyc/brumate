@@ -158,7 +158,7 @@ export default function Todos($$props: { initial: Todo[] }): string | DocumentFr
   const { initial } = $$b.unbind($$props, ["initial"], undefined, $$b.sink($$s1));
   let todos = (initial);
   let draft = ('');
-  const left = (todos.filter((todo) => !todo.done).length);
+  const left = $$b.renderMemo(() => (todos.filter((todo) => !todo.done).length));
   async function add() {
     todos = [...todos, { id: crypto.randomUUID(), title: draft, done: false, at: new Date() }];
     draft = '';
@@ -168,7 +168,7 @@ export default function Todos($$props: { initial: Todo[] }): string | DocumentFr
   $$b.keep($$s1, 0, $$e[0]);
   $$b.setAttr($$e[1], "value", (draft));
   $$b.keep($$s1, 1, $$e[1]);
-  $$b.keepText($$s1, 3, $$e[3], (left));
+  $$b.keepText($$s1, 3, $$e[3], ($$b.readMemo(left)));
   $$b.setSlots($$s1, [todos, draft, left]);
   $$b.countLoads($$s1, [left]);
   $$b.fillList($$e[2], $$s1, 2, $$b.toList(( todos )), $$r2);
