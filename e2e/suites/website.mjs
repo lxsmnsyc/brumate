@@ -758,13 +758,17 @@ export async function run({ browser, url, runner }) {
       };
       const state = () => page.locator('form.ui-stack', { hasText: 'Asks you first' });
       const line = () => state().locator('p').textContent();
-      // TextField: a refused edit leaves the typed text in the input, a reset puts the kept one back.
+      // TextField: a refused edit shows the kept text again, and so does a reset.
       await visit('text-field');
       const asks = state().getByLabel('Asks you first');
       await state().getByRole('button', { name: /^Lock/ }).click();
       await asks.click();
       await page.keyboard.type('xyz');
-      assert((await asks.inputValue()) === 'Adaxyz', 'the input lost the typed text');
+      await settle();
+      assert(
+        (await asks.inputValue()) === 'Ada',
+        `the input kept the refused text: ${await asks.inputValue()}`,
+      );
       assert((await line()).includes('Asks: "Ada"'), `the signal changed: ${await line()}`);
       await state().getByRole('button', { name: 'Reset the form' }).click();
       await settle();
