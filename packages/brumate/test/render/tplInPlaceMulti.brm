@@ -1,0 +1,21 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let tick = $signal(0);
+  let show = $signal(false);
+</script>
+
+#template field(label: string, n: number, hint = '') {
+  <span class="f"><input class="in" />{label}{hint}<i class="n">{n}</i></span>
+}
+
+#template box(opts: { fmt?: (s: string) => string }, n: number) {
+  <span class="box"><input class="in" />{n}</span>
+}
+
+<button class="tick" onClick=(() => tick++)>Tick</button>
+<button class="show" onClick=(() => (show = true))>Show</button>
+<div class="a">{field('A', tick)}</div>
+<div class="b">{show ? field('B', tick) : ''}</div>
+<form class="form">{field('Name', tick, '!')}{field('Email', tick)}</form>
+<p class="unread">{box({}, tick)}</p>

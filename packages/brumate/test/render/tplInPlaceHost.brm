@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TplInPlaceList from './TplInPlaceList.brm';
+
+  let open = $signal(false);
+</script>
+
+<button class="open" onClick=(() => (open = true))>Open</button>
+#if (open) {
+  <TplInPlaceList />
+}

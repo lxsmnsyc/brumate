@@ -37,6 +37,7 @@ import {
   readsPlain,
   scopePath,
   slotIndex,
+  templateArgs,
 } from './scopes.ts';
 import { needsScope } from '../css.ts';
 import { copy, unmarked } from '../sourcemap.ts';
@@ -1798,13 +1799,27 @@ export class Emitter {
     const last = template.params.at(-1);
     const params = first && last ? copy(this.file.source, first.start, last.end) : '';
     const type = this.options.mode === 'server' ? ': Promise<$$b.Raw>' : '';
-    this.line(`${this.async}function ${template.name}(${params})${type} {`);
+    const scope = this.plan.bodyScopes.get(template.body)!;
+    // In the browser, a call of a template that updates in place makes a call that the insert
+    // renders, or updates, with the arguments. The template's code is `name$`.
+    const call = this.options.mode === 'client' && templateArgs(this.plan, this.file.source, scope);
+    const name = call ? `${template.name}$` : template.name;
+    if (call) {
+      // Each argument is passed with the default value that the parameter gives it.
+      const own = call.names ? call.params : '...$$a';
+      const given = call.names ? `[${call.names.join(', ')}]` : '$$a';
+      const owner = this.scopeVar(instanceScope(this.plan, scope.parent!));
+      const ref = JSON.stringify(`${this.plan.id}#T${scope.id}`);
+      this.line(
+        `function ${template.name}(${own}) { return $$b.templateCall(${ref}, ${owner}, ${name}, ${given}); }`,
+      );
+    }
+    this.line(`${this.async}function ${name}(${params})${type} {`);
     this.line(`let $$html = '';`);
     // A template can render anywhere, so its elements get the style variables.
     this.atTopLevel(() => this.emitBody(template.body));
     this.flush();
     // The output names the template's scope, which the insert links to where it is called.
-    const scope = this.plan.bodyScopes.get(template.body)!;
     const at = this.plan.scopes.get(scope)!.needsId ? `, ${this.scopeVar(scope)}` : '';
     this.line(`return $$b.raw($$html${at});`);
     this.close();
