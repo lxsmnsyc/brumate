@@ -1,0 +1,17 @@
+<script>
+  import { $effect, $getContext, $store } from 'brumate/signals';
+  import { Detail, Shape } from './contexts.ts';
+  import { ran } from './runs.ts';
+
+  const shape = $store($getContext(Shape));
+  const detail = $store($getContext(Detail));
+  $effect(() => {
+    ran('shape', shape.name);
+  });
+  $effect(() => {
+    ran('detail', `${detail.name} ${detail.n}`);
+  });
+</script>
+
+<p class="shape">{shape.name}</p>
+<p class="detail">{detail.name} {detail.n}</p>

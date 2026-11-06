@@ -889,6 +889,69 @@ describe('a fallback runs only without a provider', () => {
   });
 });
 
+describe('a provided store of an object', () => {
+  it('does not rewrite its readers on resume, and still updates them', async () => {
+    const server = await import(file('objectProvided.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    clearRuns();
+    show(html + state);
+    await startLoader();
+    await waitFor(() => expect(text('.detail')).toBe('memo 1'));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // The browser made the store again: equal data, so the effects stay at their first run.
+    expect(runsOf('shape')).toEqual([]);
+    expect(runsOf('detail')).toEqual([]);
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.detail')).toBe('memo 2'));
+    expect(runsOf('detail')).toEqual(['detail memo 2']);
+    expect(runsOf('shape')).toEqual([]);
+  });
+});
+
+/** The number of scopes that the core holds. */
+async function scopeCount(): Promise<number> {
+  const client = await import('../../src/runtime/client.ts');
+  return client.scopes.size;
+}
+
+describe('an object memo that feeds $toStore', () => {
+  // The scopes of a list of two items with a template: the page, the select and the list, and two scopes for each
+  // item (its row and its template).
+  const SCOPES = 7;
+
+  it('resumes a page of the server with one write for a pick and no doubled scopes', async () => {
+    const server = await import(file('viewServer.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    clearRuns();
+    show(html + state);
+    await startLoader();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(runsOf('view')).toEqual([]);
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.option:nth-child(2) .choice')).toBe('Dog (picked)'));
+    expect(runsOf('view')).toEqual(['view Dog']);
+    expect(text('.option:nth-child(1) .choice')).toBe('Cat');
+    expect(document.querySelectorAll('.option')).toHaveLength(2);
+    expect(await scopeCount()).toBe(SCOPES);
+  });
+
+  it('renders in the browser with no write at creation and no doubled scopes', async () => {
+    await resume('viewBrowser');
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(document.querySelectorAll('.option')).toHaveLength(2));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    // The memo makes its object again at creation, which is not a change for the reader.
+    expect(runsOf('view')).toEqual([]);
+    expect(text('.option:nth-child(2) .choice')).toBe('Dog');
+    expect(await scopeCount()).toBe(SCOPES);
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.option:nth-child(2) .choice')).toBe('Dog (picked)'));
+    expect(runsOf('view')).toEqual(['view Dog']);
+    expect(text('.option:nth-child(1) .choice')).toBe('Cat');
+    expect(document.querySelectorAll('.option')).toHaveLength(2);
+  });
+});
+
 describe('BRM197 and BRM199', () => {
   const head =
     "import { $getContext, $setContext, $store } from 'brumate/signals';\nimport { store } from 'brumate/store';\nimport { Ctx, Other } from './ctx.ts';\nimport { theme } from './theme.ts';\n";

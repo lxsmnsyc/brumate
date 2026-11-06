@@ -1,0 +1,14 @@
+<script>
+  import { $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
+  import { View } from './contexts.ts';
+
+  const { children } = $props();
+  let open = $signal(false);
+  let value = $signal<string | null>(null);
+  const view = $memo({ open, value });
+
+  $setContext(View, $toStore(view));
+</script>
+
+<button class="pick" onClick=(() => (value = 'Dog'))>Pick</button>
+<div class="select">{children}</div>

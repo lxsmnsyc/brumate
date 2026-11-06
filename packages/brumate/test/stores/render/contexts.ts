@@ -83,3 +83,11 @@ export function madeShape(name: string): Store<{ name: string }> {
   ran('shape', name);
   return store({ name });
 }
+
+/** A context of a store of an object, which a provider fills with its own store. */
+export const Detail: Context<Store<{ name: string; n: number }>> =
+  createContext<Store<{ name: string; n: number }>>('store-detail');
+
+/** A context of a store that holds the choice of a select and its open state in one object. */
+export const View: Context<Store<{ open: boolean; value: string | null }>> =
+  createContext<Store<{ open: boolean; value: string | null }>>('store-view');

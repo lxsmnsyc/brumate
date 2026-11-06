@@ -272,18 +272,22 @@ export function isBridged(value: unknown): value is Bridged<unknown, unknown> {
 /**
  * Whether two values hold the same data: the same value, or arrays and plain objects whose items
  * hold the same data. A store that the browser makes again holds a new object with the content
- * the server sent, which needs no repair.
+ * the server sent, which needs no repair. It stops at a depth of 32, so a cycle ends.
  */
-export function sameData(a: unknown, b: unknown): boolean {
+export function sameData(a: unknown, b: unknown, depth = 0): boolean {
   if (Object.is(a, b)) {
     return true;
+  }
+  // Data nested deeper than this, or a cycle, counts as changed, which writes once more.
+  if (depth > 32) {
+    return false;
   }
   if (Array.isArray(a)) {
     if (!Array.isArray(b) || a.length !== b.length) {
       return false;
     }
     for (let index = 0; index < a.length; index++) {
-      if (!sameData(a[index], b[index])) {
+      if (!sameData(a[index], b[index], depth + 1)) {
         return false;
       }
     }
@@ -297,7 +301,7 @@ export function sameData(a: unknown, b: unknown): boolean {
     return false;
   }
   for (const key of keys) {
-    if (!(key in b) || !sameData(a[key], b[key])) {
+    if (!(key in b) || !sameData(a[key], b[key], depth + 1)) {
       return false;
     }
   }

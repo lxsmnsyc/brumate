@@ -275,7 +275,9 @@ export function toStore<T>(
 /** The update of `$toStore(value)`, in the binding stage: sends the new value to the readers. */
 export function storeUpdate(scope: Scope, site: number, value: unknown): void {
   const found = scope.st?.[site];
-  if (found) {
+  // A memo that makes its object again with the same data is not a change. A `set` of the store
+  // wrote the value itself before this update, so it is the same object and still goes out.
+  if (found && (Object.is(found.v, value) || !sameData(found.v, value))) {
     sendStore(found, value, true);
   }
 }

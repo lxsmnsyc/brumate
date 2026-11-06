@@ -25,6 +25,11 @@ export async function run({ browser, url, runner }) {
     async () => {
       await page.goto(`${url}/`);
       const skip = page.locator('a.skip');
+      const classes = await skip.getAttribute('class');
+      assert(
+        classes?.includes('visually-hidden') && classes.includes('focusable'),
+        `the skip link has the classes "${classes}" at load`,
+      );
       const hidden = await skip.evaluate((element) => element.getBoundingClientRect().width);
       assert(hidden <= 1, `the skip link takes ${hidden} px before it has focus`);
       await page.keyboard.press('Tab');
