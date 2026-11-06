@@ -179,7 +179,7 @@ See [Context](./context.md).
 
 ## `brumate/loader`
 
-`start(options)` takes `onError(error, info)`, which receives every error of client code first, before the nearest `#try` renders its `#catch` body or the page gets a `brumate:error` event. See [Errors in the browser](./effects.md#errors-in-the-browser).
+`start(options)` takes `onError(error, info)`, which receives every error of client code first, before the nearest `#try` renders its `#catch` body or the page gets a `brumate:error` event. A memo error that a `#try` catches does not reach it. See [Errors in the browser](./effects.md#errors-in-the-browser).
 
 ```ts
 import { start } from 'brumate/loader';

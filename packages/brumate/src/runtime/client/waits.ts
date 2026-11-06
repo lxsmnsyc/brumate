@@ -429,7 +429,8 @@ export function wait(
     }
     const value = scope.s[slot];
     if (value instanceof MemoError) {
-      fail(scope, value.error);
+      // A `#try` that catches the error of the memo hides it from `onError`, as on the server.
+      fail(scope, value.error, true);
       fault(own, value.error);
       return;
     }

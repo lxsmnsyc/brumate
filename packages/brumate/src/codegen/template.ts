@@ -105,7 +105,8 @@ const CLASS_TOKEN = /^\(\(([\s\S]*)\) \? " ([^"\\&<>]+)" : ""\)$/;
 
 /**
  * The static classes of a `class` with code in its quotes, and the calls that add the classes
- * that conditions add, when each piece of code is such a condition. `parts` are the parts of
+ * that conditions add, when each piece of code is such a condition and no static class follows
+ * one, so the classes keep their order. `parts` are the parts of
  * the value after its static `prefix`, up to its closing quote.
  */
 function classTokens(parts: Part[], prefix: string): { text: string; calls: string[] } | undefined {
@@ -113,6 +114,10 @@ function classTokens(parts: Part[], prefix: string): { text: string; calls: stri
   const calls: string[] = [];
   for (const part of parts) {
     if ('static' in part) {
+      // `classList.add` puts a class last, so a class after a condition cannot go in the template.
+      if (calls.length > 0 && part.static.trim() !== '') {
+        return undefined;
+      }
       text += part.static;
       continue;
     }
