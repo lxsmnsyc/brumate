@@ -5699,8 +5699,10 @@ describe('refs forwarded through components', () => {
         await new Promise((done) => setTimeout(done, 100));
         return text('.seen');
       };
-      // A component that drops `ref` leaves the signal empty.
-      expect(await read()).toBe('none');
+      // A component that drops `ref` leaves the signal empty. The first click also loads the page
+      // code, which can take longer than the fixed wait of read() on a cold run.
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('none'));
       click(document.querySelector('.article')!);
       await waitFor(() => expect(document.querySelector('article.inner')).not.toBeNull());
       expect(await read()).toBe('ARTICLE');
