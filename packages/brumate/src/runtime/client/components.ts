@@ -232,7 +232,7 @@ export function setSlots(id: ScopeId, values: unknown[]): void {
         }
       });
     }
-    if (isThenable(value) && (made !== undefined || !own.plain?.has(slot))) {
+    if (isThenable(value) && !own.plain?.has(slot)) {
       loadingValues.add(value);
       // The value is written when the promise settles, before the writes of a later load.
       Promise.resolve(value).then((result) => {

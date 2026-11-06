@@ -151,11 +151,6 @@ export const CAUSES: Record<string, Cause> = {
     reason:
       'A ref inside a list whose source reads the signal that the ref writes loops without end in the browser render; the resumed page settles.',
   },
-  'memo-throw': {
-    verdict: 'remove',
-    reason:
-      'The slot of a $memo that threw in its first run: the resumed page holds none (the server sends the error only when a handler can read it, and then with its properties in another order), and the browser render holds the error. Markup and a #try show the same.',
-  },
   'memo-reject': {
     verdict: 'remove',
     reason:
@@ -237,12 +232,6 @@ diverge('ref-setter-relay', [
   'setterRefRestPage',
 ]);
 diverge('ref-loop', ['refLoop']);
-diverge('memo-throw', [
-  'memoErrorResumeShown',
-  'memoErrorServerOutside',
-  'memoErrorServerScript',
-  'memoErrorServerTwo',
-]);
 diverge('memo-reject', ['memoErrorAwaitServer']);
 diverge('pending-read', ['fnReadAsync', 'loadingChain', 'loadingOnChain']);
 diverge('await-in-script', ['PromiseLateChild', 'promiseLate']);

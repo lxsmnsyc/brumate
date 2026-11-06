@@ -10,3 +10,6 @@
 - The `give` refresh ran the memo of an awaited slot again (a prop changed during the hold). Fixed with a `memos` flag, not with `renderedLoads`.
 - Vitest runs hung at about 1% CPU twice while the load average was 17; reruns with `--hookTimeout=120000` finish.
 - Sizes: `scratchpad/size.sh` (brumate `pnpm build`, `rm -rf dist`, `npm run build`, sum of gzip -9). Main files swapped in from `git show origin/main:<path>` and copied back.
+
+- Review fix: the test "lets a child that the browser renders await and chain a promise prop" that I called a flake was a regression. `setSlots` also wrote the settled value into a plain prop slot when a memo aliased the promise (PromisePlainChild), so `value.then` threw. The early write now skips plain slots: `isThenable(value) && !own.plain?.has(slot)`. Resume and render: 677 passed.
+- memo-throw: `plain()` of the differential test counts a MemoError as no value. All 5 pages match, so the cause is removed.
