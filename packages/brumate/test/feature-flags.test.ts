@@ -38,6 +38,18 @@ it('finds the children that the browser renders, the templates that it calls, ti
 <button onClick=(() => count++)>{count}</button>
 `);
   expect(templated.templates).toBe(true);
+  // A template of the file, called in markup that updates: an insert destroys its scopes.
+  const called = use(`<script>
+  import { $signal } from 'brumate/signals';
+  let picked = $signal(0);
+</script>
+#template row(name: string, on: boolean) {
+  <li>{name}{on ? ' *' : ''}</li>
+}
+<button onClick=(() => picked++)>Pick</button>
+<ul>{row('Cat', picked % 2 === 0)}</ul>
+`);
+  expect(called.templates).toBe(true);
   // A `#head` block and a template clone in the browser. A `#try` renders HTML.
   expect(titled.clientHTML).toBe(false);
   expect(templated.clientHTML).toBe(false);
