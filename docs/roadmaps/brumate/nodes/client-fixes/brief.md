@@ -1,7 +1,7 @@
 ---
 id: client-fixes
 title: Ref setters after the render, and three small divergence fixes
-status: todo
+status: active
 priority: must
 type: fix
 outline: false

@@ -1,7 +1,7 @@
 ---
 id: dom-content-loaded
 title: A DOMContentLoaded handler listens to the right event
-status: todo
+status: active
 priority: must
 type: fix
 outline: false
