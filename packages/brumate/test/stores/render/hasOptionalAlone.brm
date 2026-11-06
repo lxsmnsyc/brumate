@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import HasOptionalReader from './HasOptionalReader.brm';
+
+  let later = $signal(false);
+</script>
+
+<button class="later" onClick=(() => (later = true))>Later</button>
+<section class="now"><HasOptionalReader /></section>
+#if (later) {
+  <section class="then"><HasOptionalReader /></section>
+}

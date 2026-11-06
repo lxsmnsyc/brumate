@@ -416,8 +416,9 @@ export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown>
 }
 
 /**
- * A read of `$store`: the key of the context, or the index of the import in the exports `z` of
- * the component; the slot; the key of the store in the value; and 1 when `let` writes the store.
+ * A read of `$store`: the key of the context, or the index of the source in the exports `z` of
+ * the component; the slot; the key of the store in the value of the context; and 1 when `let`
+ * writes the store.
  */
 export type StoreRead = [from: string | number, slot: number, path?: string, write?: 1];
 

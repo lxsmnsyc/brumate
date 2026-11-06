@@ -22,8 +22,11 @@ export interface ClientModule {
    * prop. The state holds only their IDs, so `dynamic` finds them here.
    */
   components?: (Component & { brumateId: string })[];
-  /** The imports that `$store` reads, which the update part exports. See `StoreRead`. */
-  z?: unknown[];
+  /**
+   * The sources of `$store` that are not a context, as functions of the reader's scope, which the
+   * update part exports. See `StoreRead`.
+   */
+  z?: ((scope: Scope) => unknown)[];
   /** Server function ID to the memos that call it, as scope kind and update, for `refresh`. */
   refresh?: Record<string, Update[]>;
   /**

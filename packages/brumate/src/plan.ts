@@ -333,6 +333,10 @@ export function clientState(
       addClientSite(site);
     }
   }
+  // The browser runs a source of `$store` again on resume, with the values it reads.
+  for (const site of model.storeSources) {
+    addClientSite(site);
+  }
   // Children render in the browser each time a component inserts them, so their code is there.
   const ranges: { start: number; end: number }[] = [];
   for (const node of file ? childrenHolders(file) : []) {

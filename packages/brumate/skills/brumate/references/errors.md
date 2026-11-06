@@ -1745,17 +1745,6 @@ https://brumate-docs.vercel.app/docs/errors#brm193
 $setContext(Field, { state: $toStore(state), pick });
 ```
 
-## BRM194: The browser finds the store of $store again from a context, from a store that the file imports, or from a key of one
-
-The source of `$store` is a local value, a call or another expression, which the browser cannot find again when the page resumes.
-
-https://brumate-docs.vercel.app/docs/errors#brm194
-
-```brm fragment
-import { theme } from './theme';
-const value = $store(theme);
-```
-
 ## BRM195: $store gives one name, not a pattern such as { a }
 
 `$store` initializes a pattern.
@@ -1785,6 +1774,17 @@ https://brumate-docs.vercel.app/docs/errors#brm197
 ```brm fragment
 const field = $hasContext(Field) ? $getContext(Field) : undefined;
 const state = $hasContext(Field) ? $store(field.state) : undefined;
+```
+
+## BRM198: The source of $store gives its store at once, so it cannot await or call a server function
+
+The source of `$store` awaits, or calls a server function. The browser runs the source again when the page resumes, and links the store in the same pass, so the source must give the store, not a promise of it.
+
+https://brumate-docs.vercel.app/docs/errors#brm198
+
+```brm fragment
+import { theme } from './theme';
+const value = $store(theme);
 ```
 
 ## BRM144: $get is not supported. Signals cannot leave the file

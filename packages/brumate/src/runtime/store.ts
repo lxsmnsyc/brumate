@@ -20,18 +20,28 @@ export function isContext(value: unknown): value is Context<unknown> {
 
 /**
  * The store that `$store` reads in the value of its source: the source is a context, a store, or an
- * object that holds the store at `path`. `readContext` gives the value of a context. Throws for a
- * value that is no store, and for `write` on a store that has no `set`.
+ * object that holds the store at `path`. `readContext` gives the value of a context. `undefined`
+ * and `null` give no store, so the variable is `undefined` and nothing subscribes. Throws for
+ * another value that is no store, and for `write` on a store that has no `set`.
  */
 export function findStored(
   source: unknown,
   path: string | undefined,
   write: boolean | undefined,
   readContext: (context: Context<unknown>) => unknown,
-): StoreLike<unknown> {
+): StoreLike<unknown> | undefined {
   const context = isContext(source);
   const value = context ? readContext(source) : source;
   const found = path === undefined ? value : (value as Record<string, unknown> | undefined)?.[path];
+  const named = context ? `$store(${source.key})` : '$store(…)';
+  if (found === undefined || found === null) {
+    if (write) {
+      throw new TypeError(
+        `let ${named} writes the store, but its source gives no store. Read it with const`,
+      );
+    }
+    return undefined;
+  }
   if (!isContract(found)) {
     throw new Error(
       `$store reads ${context ? `the context "${source.key}"` : 'a value'}${path === undefined ? '' : ` at "${path}"`}, which gives no store: a store has the functions get and subscribe`,
@@ -39,10 +49,20 @@ export function findStored(
   }
   if (write && !canSet(found)) {
     throw new TypeError(
-      `let ${context ? `$store(${source.key})` : '$store(…)'} writes the store, but the store has no set. Read it with const`,
+      `let ${named} writes the store, but the store has no set. Read it with const`,
     );
   }
   return found;
+}
+
+/**
+ * The error of `$store` for a store of another library in a value that the page sends, such as a
+ * prop: only the value of a store of `brumate/store` crosses. The fix is said here only.
+ */
+export function sentForeignStore(component: string, value: string): Error {
+  return new Error(
+    `$store in ${component} reads a store of another library from ${value}, which the page sends, and only a store of brumate/store crosses. Read the store from an import, <script module> or a call in this component`,
+  );
 }
 
 /** Where `$toStore` made a store: its scope, the ID of its site, and the slot of its signal. */

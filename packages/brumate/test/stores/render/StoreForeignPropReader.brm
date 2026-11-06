@@ -1,0 +1,9 @@
+<script>
+  import { $props, $store } from 'brumate/signals';
+  import type { StoreLike } from 'brumate/store';
+
+  const { s } = $props<{ s: StoreLike<number> }>();
+  const value = $store(s);
+</script>
+
+<p>{value}</p>

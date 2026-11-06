@@ -106,9 +106,11 @@ it('types $hasContext as a boolean and a guarded read as T | undefined', () => {
     .split('\n')
     .filter((line) => line.includes('error TS'))
     .map((line) => line.replace(/^.*src\//, ''));
-  // Only the two wrong lines fail. `field.state` needs no `?.` under its guard.
+  // Only the three wrong lines fail. `field.state` needs no `?.` under its guard, and
+  // `$store(field?.state)` is `T | undefined`.
   expect(errors).toEqual([
-    "Has.brm(13,9): error TS2322: Type 'number | undefined' is not assignable to type 'number'.",
-    "Has.brm(14,9): error TS2322: Type 'boolean' is not assignable to type 'string'.",
+    "Has.brm(15,9): error TS2322: Type 'number | undefined' is not assignable to type 'number'.",
+    "Has.brm(16,9): error TS2322: Type 'boolean' is not assignable to type 'string'.",
+    "Has.brm(17,9): error TS2322: Type '{ count: number; } | undefined' is not assignable to type '{ count: number; }'.",
   ]);
 });

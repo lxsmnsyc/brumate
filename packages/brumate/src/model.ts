@@ -120,10 +120,22 @@ export interface Declaration {
   guard?: oxc.Node;
   /**
    * For `const name = $store(source)` and `let name = $store(source)`: the code that gives the
-   * store or its context, the key of the value that holds the store, the index of the import that
-   * the browser finds the store from (see `SemanticModel.storeImports`), and whether `let` writes it.
+   * store or its context, the site of the argument, the key of the value of `$getContext` that
+   * holds the store, the index of the source that the browser runs again to find the store (see
+   * `SemanticModel.storeSources`), and whether `let` writes it.
    */
-  store?: { source: oxc.Node; path?: string; link?: number; write: boolean };
+  store?: {
+    source: oxc.Node;
+    site: Site;
+    path?: string;
+    link?: number;
+    write: boolean;
+    /**
+     * For a source that reads its store from a value that the page sends, such as a prop, what
+     * that value is, as `the prop "s"`. The server refuses a store of another library there.
+     */
+    sent?: string;
+  };
   /** Elements whose `ref` targets this declaration. */
   refs: { attribute: RefAttribute; element: ElementNode | DynamicTagNode; scope: Scope }[];
 }
@@ -232,10 +244,11 @@ export interface SemanticModel {
   bindings: { call: oxc.CallExpression; declaration: Declaration; setter?: Site }[];
   diagnostics: Diagnostic[];
   /**
-   * The names of the imports that `$store` reads, or that give it a context, which the update
-   * part exports as `z`: the browser runs their modules and finds a store of an import from them.
+   * The sources of `$store` that are not a context or a key of a `$getContext` value. The update
+   * part exports them as functions of the scope, `z`, and the browser runs one on resume to find
+   * the store again.
    */
-  storeImports: string[];
+  storeSources: Site[];
   /** The `$isPending(memo)` and `$resolve(memo)` calls, with the read of their memo. */
   pendingCalls: { reference: Reference; at: Range }[];
 }

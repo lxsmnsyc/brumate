@@ -336,6 +336,152 @@ describe('a store that a file imports', () => {
   });
 });
 
+describe('a store from any expression', () => {
+  afterEach(() => {
+    delete (globalThis as { savedShared?: string }).savedShared;
+    delete (globalThis as { savedSpace?: string }).savedSpace;
+    delete (globalThis as { spaceSets?: number }).spaceSets;
+  });
+
+  /** Starts the loader with `set` of every `Store` of the browser counted. */
+  async function startCounted(): Promise<{ calls: () => number }> {
+    vi.resetModules();
+    const { Store: BrowserStore } = await import('../../src/runtime/store.ts');
+    const set = vi.spyOn(BrowserStore.prototype, 'set');
+    onTestFinished(() => set.mockRestore());
+    const { start } = await import('../../src/runtime/loader.ts');
+    stop = start({ load: async (id) => import(modules.get(id)!) });
+    return { calls: () => set.mock.calls.length };
+  }
+
+  function texts(section: string): string[] {
+    const result: string[] = [];
+    for (const name of ['local', 'prop', 'maybe', 'call', 'module', 'space']) {
+      result.push(text(`${section} .${name}`));
+    }
+    return result;
+  }
+
+  it('renders each source on the server: a local store, a prop, undefined, a call, the module script and a namespace', async () => {
+    const server = await import(file('storeAny.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    show(html);
+    expect(texts('.first')).toEqual(['5 5', '1 1', 'none', '20 20', 'm m', 'n n']);
+    expect(texts('.held')).toEqual(['5 5', '1 1', '7', '30 30', 'm m', 'n n']);
+    // A source that gives no store records nothing; the others name their source in `z`.
+    expect(state).toContain('z:[[0,3],[1,4,void 0,1],[2,5],[3,6,void 0,1],[5,8],');
+  });
+
+  it('resumes each source without a set, and updates through const and let', async () => {
+    const server = await import(file('storeAny.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    show(html + state);
+    const { calls } = await startCounted();
+    await waitFor(async () => expect(await scopesOf('StoreAnyReader_')).toHaveLength(2));
+    // Ten reads subscribe, and the reader that is given a store has one more.
+    await waitFor(async () => {
+      const [first, held] = await scopesOf('StoreAnyReader_');
+      expect(first!.stops?.length).toBe(10);
+      expect(held!.stops?.length).toBe(11);
+    });
+    expect(texts('.first')).toEqual(['5 5', '1 1', 'none', '20 20', 'm m', 'n n']);
+    expect(calls()).toBe(0);
+    expect((globalThis as { spaceSets?: number }).spaceSets).toBeUndefined();
+    // A local store and a call result are made again in the browser, one per reader.
+    click(document.querySelector('.first .local-up')!);
+    await waitFor(() => expect(text('.first .local')).toBe('5 6'));
+    expect(text('.held .local')).toBe('5 5');
+    click(document.querySelector('.held .call-up')!);
+    await waitFor(() => expect(text('.held .call')).toBe('30 31'));
+    // The store of a prop is the parent's: a write of the parent and of a reader reach all.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.first .prop')).toBe('2 2'));
+    expect(text('.held .prop')).toBe('2 2');
+    click(document.querySelector('.held .prop-up')!);
+    await waitFor(() => expect(text('.first .prop')).toBe('12 12'));
+    // The store of the module script and of the namespace is one for the page.
+    click(document.querySelector('.first .module-up')!);
+    await waitFor(() => expect(text('.held .module')).toBe('m! m!'));
+    click(document.querySelector('.held .space-up')!);
+    await waitFor(() => expect(text('.first .space')).toBe('n+ n+'));
+    expect((globalThis as { spaceSets?: number }).spaceSets).toBe(1);
+    expect(text('.held .maybe')).toBe('7');
+  });
+
+  it('repairs a slot once when the browser store starts from another value', async () => {
+    const server = await import(file('storeAny.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    expect(html).toContain('>m m</p>');
+    (globalThis as { savedShared?: string }).savedShared = 'b';
+    (globalThis as { savedSpace?: string }).savedSpace = 'w';
+    show(html + state);
+    clearRuns();
+    const { calls } = await startCounted();
+    await waitFor(() => expect(text('.first .module')).toBe('b b'));
+    await waitFor(() => expect(text('.held .space')).toBe('w w'));
+    expect(text('.held .module')).toBe('b b');
+    // Each reader wrote its text once, for both of its reads.
+    expect(runsOf('module')).toEqual(['module b b', 'module b b']);
+    expect(calls()).toBe(0);
+    expect((globalThis as { spaceSets?: number }).spaceSets).toBeUndefined();
+  });
+
+  it('reads each source in a browser render', async () => {
+    await resume('storeAny');
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.first .prop')).toBe('2 2'));
+    click(document.querySelector('.later')!);
+    await waitFor(() => expect(document.querySelector('.second .local')).not.toBeNull());
+    expect(texts('.second')).toEqual(['5 5', '2 2', '7', '40 40', 'm m', 'n n']);
+    click(document.querySelector('.second .local-up')!);
+    await waitFor(() => expect(text('.second .local')).toBe('5 6'));
+    click(document.querySelector('.second .call-up')!);
+    await waitFor(() => expect(text('.second .call')).toBe('40 41'));
+    click(document.querySelector('.second .prop-up')!);
+    await waitFor(() => expect(text('.first .prop')).toBe('12 12'));
+    expect(text('.second .prop')).toBe('12 12');
+    click(document.querySelector('.second .module-up')!);
+    await waitFor(() => expect(text('.second .module')).toBe('m! m!'));
+    click(document.querySelector('.second .space-up')!);
+    await waitFor(() => expect(text('.held .space')).toBe('n+ n+'));
+  });
+
+  // Fails until node module-script-shared: the render module of a component copies its
+  // `<script module>`, so a reader that the browser renders has a store apart from the resumed ones.
+  it.fails('shares the store of <script module> between resumed and browser-rendered readers (module-script-shared)', async () => {
+    await resume('storeAny');
+    click(document.querySelector('.later')!);
+    await waitFor(() => expect(document.querySelector('.second .module')).not.toBeNull());
+    click(document.querySelector('.second .module-up')!);
+    await waitFor(() => expect(text('.first .module')).toBe('m! m!'));
+  });
+
+  it('refuses a store of another library in a prop or a script value, naming $store and the value', async () => {
+    const prop = await import(file('storeForeignProp.brm.ts'));
+    await expect(renderParts(prop.default, {})).rejects.toThrow(
+      /^\$store in StoreForeignPropReader_\w+ reads a store of another library from the prop "s", which the page sends, and only a store of brumate\/store crosses\. Read the store from an import, <script module> or a call in this component$/,
+    );
+    const value = await import(file('storeForeignValue.brm.ts'));
+    await expect(renderParts(value.default, {})).rejects.toThrow(
+      /^\$store in StoreForeignValue_\w+ reads a store of another library from the value "held"/,
+    );
+    // A prop that no `$store` reads keeps the error of the page state.
+    const raw = await import(file('storeForeignRaw.brm.ts'));
+    await expect(renderParts(raw.default, {})).rejects.toThrow(/cannot be sent to the browser/);
+    // A call in the reader makes the store there, so it works.
+    const made = await import(file('storeForeignCall.brm.ts'));
+    const { html } = await renderParts(made.default, {});
+    expect(html).toContain('>3</p>');
+  });
+
+  it('throws for let on a source that gives no store, when the variable registers', async () => {
+    const server = await import(file('storeLetNone.brm.ts'));
+    await expect(renderParts(server.default, {})).rejects.toThrow(
+      /writes the store, but its source gives no store/,
+    );
+  });
+});
+
 describe('a foreign store with only get and subscribe', () => {
   it('renders, repairs a changed value on resume, and updates, read with const', async () => {
     const server = await import(file('storeReadOnlyRead.brm.ts'));
@@ -461,9 +607,9 @@ describe('a context value is read once', () => {
 
 describe('compile checks', () => {
   const head =
-    "import { $getContext, $memo, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';\n";
-  function build(script: string): ReturnType<typeof compile> {
-    return compile(`<script>\n${head}${script}\n</script>\n<p></p>`, { filename: 'Test.brm' });
+    "import { $getContext, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';\n";
+  function build(script: string, markup = '<p></p>'): ReturnType<typeof compile> {
+    return compile(`<script>\n${head}${script}\n</script>\n${markup}`, { filename: 'Test.brm' });
   }
 
   it('reports the forms that $store refuses, with their codes', () => {
@@ -473,24 +619,42 @@ describe('compile checks', () => {
     expect(() => build('function f() {\n  const a = $store(1);\n}')).toThrow(/BRM191/);
   });
 
-  it('reports a source that the browser cannot find again', () => {
-    expect(() => build('const box = { inner: 1 };\nconst a = $store(box.inner);')).toThrow(
-      /BRM194/,
+  it('reports a source that awaits or calls a server function, with BRM198', () => {
+    expect(() => build("import { load } from './s.ts';\nconst a = $store(await load());")).toThrow(
+      /BRM198/,
     );
-    expect(() => build('const a = $store(make());\nfunction make() { return 1; }')).toThrow(
-      /BRM194/,
-    );
+    expect(() =>
+      build("async function load() {\n  'use server';\n  return 1;\n}\nconst a = $store(load());"),
+    ).toThrow(/BRM198/);
   });
 
-  it('reports a script variable and a bare namespace import as sources', () => {
-    expect(() => build('const s = { get() {}, subscribe() {} };\nconst a = $store(s);')).toThrow(
-      /BRM194/,
+  it('accepts any other expression as a source, and exports it as a function of the scope', () => {
+    const output = build(
+      [
+        "import { store } from 'brumate/store';",
+        "import * as ns from './s.ts';",
+        'const { s, given } = $props<{ s: any; given?: { state: any } }>();',
+        'const local = store(0);',
+        'const box = { inner: store(1) };',
+        'function make() {',
+        '  return store(2);',
+        '}',
+        'const a = $store(store(0));',
+        'let b = $store(s);',
+        'const c = $store(given?.state);',
+        'const d = $store(make());',
+        'const e = $store(ns);',
+        'const f = $store(local);',
+        'const g = $store(box.inner);',
+      ].join('\n'),
+      '<p>{a}{b}{c}{d}{e}{f}{g}</p>',
     );
-    expect(() => build("import * as ns from './s.ts';\nconst a = $store(ns);")).toThrow(/BRM194/);
-    // A key of a namespace import is found again.
-    expect(build("import * as ns from './s.ts';\nconst a = $store(ns.theme);").warnings).toEqual(
-      [],
-    );
+    expect(output.warnings).toEqual([]);
+    const code = Object.values(output.parts).join('\n') + output.client;
+    expect(code).toContain('export const z = [($$s) => (store(0)), ($$s) => ($$b.get($$s, ');
+    expect(code).toContain('?.state)');
+    expect(code).toContain('($$s) => (ns)');
+    expect(code).toContain('($$s) => (make$($$s))');
   });
 
   it('reports $store used as an expression with BRM191', () => {
@@ -609,6 +773,46 @@ describe('$hasContext', () => {
     expect(ctx.has(routeContext, scope)).toBe(true);
     expect(ctx.has(navigationContext, scope)).toBe(true);
     expect(ctx.has({ key: 'nothing' }, scope)).toBe(false);
+  });
+});
+
+describe('$store(field?.state) for a guarded $getContext value', () => {
+  it('reads the key with a provider, on the server, on resume and in a browser render', async () => {
+    const server = await import(file('hasOptional.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    expect(html).toContain('>0</button>');
+    expect(state).toContain('z:[["store-field",1,"state"]]');
+    show(html + state);
+    await startLoader();
+    click(document.querySelector('.now .bump')!);
+    await waitFor(() => expect(text('.now .bump')).toBe('1'));
+    click(document.querySelector('.later')!);
+    await waitFor(() => expect(text('.then .bump')).toBe('1'));
+    click(document.querySelector('.then .bump')!);
+    await waitFor(() => expect(text('.now .bump')).toBe('2'));
+    expect(text('.then .bump')).toBe('2');
+  });
+
+  it('is undefined without a provider and links nothing', async () => {
+    const server = await import(file('hasOptionalAlone.brm.ts'));
+    const { html, state } = await renderParts(server.default, {});
+    expect(html).toContain('>none</button>');
+    expect(state).not.toContain('z:[');
+    show(html + state);
+    await startLoader();
+    click(document.querySelector('.later')!);
+    await waitFor(() => expect(text('.then .bump')).toBe('none'));
+    expect(text('.now .bump')).toBe('none');
+  });
+
+  it('is BRM197 under let, and without ?. as before', () => {
+    const head =
+      "import { $getContext, $hasContext, $store } from 'brumate/signals';\nimport { Ctx } from './ctx.ts';\nconst g = $hasContext(Ctx) ? $getContext(Ctx) : undefined;\n";
+    const build = (line: string) =>
+      compile(`<script>\n${head}${line}\n</script>\n<p></p>`, { filename: 'Test.brm' });
+    expect(() => build('const x = $store(g?.state);')).not.toThrow();
+    expect(() => build('let x = $store(g?.state);')).toThrow(/BRM197/);
+    expect(() => build('const x = $store(g.state);')).toThrow(/BRM197/);
   });
 });
 
