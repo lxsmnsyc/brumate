@@ -1,0 +1,53 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import SearchField from '../../src/SearchField.brm';
+  import TextArea from '../../src/TextArea.brm';
+  import TextField from '../../src/TextField.brm';
+
+  let kept = $signal('abc');
+  let slowKept = $signal('abc');
+  let slowTaken = $signal('abc');
+  let area = $signal('abc');
+  let query = $signal('abc');
+  let slowQuery = $signal('abc');
+
+  // An async check waits here until the test releases it, in the order of the calls.
+  function hold() {
+    return new Promise<void>((done) => {
+      const held = ((globalThis as { held?: (() => void)[] }).held ??= []);
+      held.push(done);
+    });
+  }
+</script>
+
+<main>
+  <!-- A setter that refuses at once. -->
+  <TextField class="sync" value=$bind(kept, () => {})>
+    <Label>Sync</Label>
+    <Input class="sync-input" />
+  </TextField>
+  <!-- An async check that refuses, and one that accepts, both when the test releases them. -->
+  <TextField class="slow-no" value=$bind(slowKept, async () => { await hold(); })>
+    <Label>Slow no</Label>
+    <Input class="slow-no-input" />
+  </TextField>
+  <TextField class="slow-yes" value=$bind(slowTaken, async (next) => { await hold(); slowTaken = next; })>
+    <Label>Slow yes</Label>
+    <Input class="slow-yes-input" />
+  </TextField>
+  <TextField class="area" value=$bind(area, () => {})>
+    <Label>Area</Label>
+    <TextArea class="area-input" />
+  </TextField>
+  <SearchField class="search" value=$bind(query, () => {})>
+    <Label>Search</Label>
+    <Input class="search-input" />
+  </SearchField>
+  <SearchField class="slow-search" value=$bind(slowQuery, async () => { await hold(); })>
+    <Label>Slow search</Label>
+    <Input class="slow-search-input" />
+  </SearchField>
+  <p class="state">{JSON.stringify([kept, slowKept, slowTaken, area, query, slowQuery])}</p>
+</main>

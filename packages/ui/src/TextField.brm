@@ -67,7 +67,14 @@
     TextContext,
   } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, firstErrors, parseMessages, onFormReset } from './fields.ts';
+  import {
+    describedBy,
+    firstErrors,
+    parseMessages,
+    onFormReset,
+    showKept,
+    watchComposition,
+  } from './fields.ts';
 
   /**
    * A text field. It holds a Label, an Input or a
@@ -191,6 +198,7 @@
     if (!element) {
       return undefined;
     }
+    watchComposition(element);
     if (behavior === 'native') {
       element.setCustomValidity(customMessage(value));
     }
@@ -225,6 +233,8 @@
 
   function changed(next: string) {
     change(next);
+    // A setter that refuses leaves the old text, and the input shows it once the setter settled.
+    showKept(document.getElementById(id) as HTMLInputElement | null, next, () => value, recheck);
     recheck();
   }
 

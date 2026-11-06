@@ -34,7 +34,7 @@
   import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { ButtonContext, InputContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, onFormReset } from './fields.ts';
+  import { describedBy, onFormReset, showKept, watchComposition } from './fields.ts';
 
   /**
    * A search field. It holds a Label, an Input and a
@@ -77,6 +77,13 @@
     }
   }
 
+  // The user typed. A setter that refuses leaves the old text, and the input shows it once the
+  // setter settled.
+  function typed(next: string) {
+    change(next);
+    showKept(document.getElementById(inputId) as HTMLInputElement | null, next, () => value);
+  }
+
   function clear() {
     change('');
     onClear?.();
@@ -86,6 +93,7 @@
   // A reset of the form gives back the first text, as it does for a field of the browser.
   $client(() => {
     const input = document.getElementById(inputId) as HTMLInputElement | null;
+    watchComposition(input);
     return onFormReset(
       input,
       () => {
@@ -121,7 +129,7 @@
     readonly: isReadOnly || undefined,
     placeholder,
     'aria-describedby': describedBy(hasDescription && descriptionId),
-    onChange: change,
+    onChange: typed,
     onKeyDown: keyDown,
     isEnterPrevented: true,
     isEscapePrevented: !empty && !isDisabled && !isReadOnly,
