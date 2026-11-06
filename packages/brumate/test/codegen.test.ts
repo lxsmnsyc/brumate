@@ -51,6 +51,45 @@ describe('memos of objects', () => {
   });
 });
 
+describe('memos of an object with a cast', () => {
+  it.each([
+    ['as', '{ a: n, b: 2 } as Record<string, unknown>'],
+    ['satisfies', '{ a: n, b: 2 } satisfies Record<string, unknown>'],
+    ['a plain object', '{ a: n, b: 2 }'],
+    ['a non-null assertion', '{ a: n, b: 2 }!'],
+    ['a parenthesized cast', '({ a: n, b: 2 } as Record<string, unknown>)'],
+    ['a sequence', '({ a: n, b: 2 }, { a: n, b: 3 } as Record<string, unknown>)'],
+    ['a conditional', 'n > 1 ? ({ a: n, b: 2 } as Record<string, unknown>) : { a: 0, b: 1 }'],
+  ])('compiles %s to valid parts', (_, value) => {
+    const { server, parts } = compile(
+      `<script>\n  import { $memo, $signal } from 'brumate/signals';\n  let n = $signal(1);\n  const p = $memo(${value});\n</script>\n<button onClick=(() => n++)>{p.a}</button>`,
+      { filename: 'Cast.brm' },
+    );
+    const client = Object.values(parts).join('\n');
+    expect(client).toMatch(/memo\(\$\$s, \d+, \(\) => /);
+    expect(parseSync('Cast.client.ts', client).errors).toEqual([]);
+    expect(parseSync('Cast.brm.ts', server).errors).toEqual([]);
+  });
+
+  it('wraps an object under a cast in a debounced memo and in an early load', () => {
+    const { parts } = compile(
+      `<script>\n  import { $debounced, $memo, $signal } from 'brumate/signals';\n  let n = $signal(1);\n  const d = $debounced({ a: n } as Record<string, unknown>, 100);\n  const q = $memo({ a: n } satisfies Record<string, unknown>);\n</script>\n<button onClick=(() => n++)>{d.a}{q.a}</button>`,
+      { filename: 'Timed.brm' },
+    );
+    const client = Object.values(parts).join('\n');
+    expect(client).toContain('() => ({');
+    expect(parseSync('Timed.client.ts', client).errors).toEqual([]);
+  });
+
+  it('wraps an awaited object in the browser load', () => {
+    const { parts } = compile(
+      `<script>\n  import { $memo, $signal } from 'brumate/signals';\n  let n = $signal(1);\n  const p = $memo({ a: await load(n) } as Record<string, unknown>);\n</script>\n<button onClick=(() => n++)>{p.a}</button>`,
+      { filename: 'Awaited.brm' },
+    );
+    expect(parseSync('Awaited.client.ts', Object.values(parts).join('\n')).errors).toEqual([]);
+  });
+});
+
 describe('the name of the component function', () => {
   it('does not hide a name that the script imports', () => {
     const { server, render } = compile(
