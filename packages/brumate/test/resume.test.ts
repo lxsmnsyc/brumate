@@ -1218,6 +1218,17 @@ describe('resume', () => {
     await waitFor(() => expect(texts('.box')).toEqual(['0:1', '1:0']));
   });
 
+  it('shares a module script that exports a list, and gives the importer the value', async () => {
+    await resume('moduleListHost', {});
+    expect(text('.imported')).toBe('1');
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.list')).toBe('1:1'));
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(texts('.list')).toEqual(['1:1', '1:0']));
+    click(document.querySelectorAll('.bump')[1]!);
+    await waitFor(() => expect(texts('.list')).toEqual(['1:1', '1:2']));
+  });
+
   it('loads the code of the components on the page when it starts', async () => {
     await resume('disclosure', {});
     const id = 'Disclosure_104dejl';

@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ModuleList, { b } from './ModuleList.brm';
+
+  let show = $signal(false);
+</script>
+
+<ModuleList />
+<button class="show" onClick=(() => (show = true))>Show</button>
+<p class="imported">{b.n}</p>
+#if (show) {
+  <ModuleList />
+}

@@ -116,20 +116,36 @@ export function renderImport(
   return `import ${parts.join(', ')} from ${JSON.stringify(target)};`;
 }
 
-/** The names that the module script exports, which other modules import from the render module. */
-function moduleExports(file: SFCFile, plan: Plan): string[] {
-  const result: string[] = [];
+/** An export of the module script: the name in the script, and the name that others import. */
+export interface ModuleExport {
+  local: string;
+  name: string;
+}
+
+/** The exports of the module script, from its declarations and its export lists. */
+export function moduleExports(file: SFCFile, plan: Plan): ModuleExport[] {
+  const result: ModuleExport[] = [];
   for (const statement of file.moduleScript?.program.body ?? []) {
-    if (statement.type !== 'ExportNamedDeclaration' || !statement.declaration) {
+    if (statement.type !== 'ExportNamedDeclaration' || statement.source) {
       continue;
     }
-    for (const declaration of plan.graph.model.module.declarations.values()) {
-      if (
-        declaration.kind === 'module' &&
-        declaration.range.start >= statement.start &&
-        declaration.range.end <= statement.end
-      ) {
-        result.push(declaration.name);
+    if (statement.declaration) {
+      for (const declaration of plan.graph.model.module.declarations.values()) {
+        if (
+          declaration.kind === 'module' &&
+          declaration.range.start >= statement.start &&
+          declaration.range.end <= statement.end
+        ) {
+          result.push({ local: declaration.name, name: declaration.name });
+        }
+      }
+      continue;
+    }
+    for (const specifier of statement.specifiers) {
+      const local = file.source.slice(specifier.local.start, specifier.local.end);
+      const name = file.source.slice(specifier.exported.start, specifier.exported.end);
+      if (plan.graph.model.module.declarations.get(local)?.kind === 'module') {
+        result.push({ local, name });
       }
     }
   }
@@ -255,7 +271,10 @@ export function generateRender(
   }
   // Other modules import the exports from the render module, as they did from its copy.
   const exported = moduleNames.length > 0 ? moduleExports(file, plan) : [];
-  const imports = new Set([...moduleNames, ...exported]);
+  const imports = new Set(moduleNames);
+  for (const item of exported) {
+    imports.add(item.name);
+  }
   if (imports.size > 0) {
     const base = file.filename.split(/[\\/]/).pop()!;
     header.push(
@@ -263,7 +282,7 @@ export function generateRender(
     );
   }
   if (exported.length > 0) {
-    moduleBody.push(`export { ${exported.join(', ')} };`);
+    moduleBody.push(`export { ${exported.map((item) => item.name).join(', ')} };`);
   }
   for (const name of serverNames) {
     if (model.module.declarations.get(name)?.scope === model.module) {
