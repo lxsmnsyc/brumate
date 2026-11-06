@@ -1,7 +1,7 @@
 ---
 id: context-stores
 title: Static contexts, with live values through $store
-status: active
+status: done
 priority: must
 type: story
 outline: false
@@ -37,7 +37,7 @@ Every context is static: `$getContext` gives the value as it was set, whatever t
 
 ## Acceptance
 
-- [ ] Every child node is done; contexts are static and live values are stores, in packages/ui and the docs.
+- [x] Every child node is done; contexts are static and live values are stores, in packages/ui and the docs.
 
 ## Sizing
 
