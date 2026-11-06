@@ -1,7 +1,7 @@
 ---
 id: context-stores-spike
 title: Spike: a store per provider, built far enough to measure and resume
-status: active
+status: done
 priority: must
 type: spike
 story: context-stores

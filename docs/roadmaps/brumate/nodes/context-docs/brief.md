@@ -1,7 +1,7 @@
 ---
 id: context-docs
 title: Docs, examples and decisions for contexts without defaults
-status: active
+status: done
 priority: must
 type: docs
 story: context-stores
@@ -16,7 +16,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-05
-spent:
+spent: 165000
 owns: []
 shared:
   - website/docs/**

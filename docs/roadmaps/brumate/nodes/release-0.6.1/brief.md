@@ -33,9 +33,18 @@ depends_on:
   - on: dom-content-loaded
     kind: hard
     why: an onDOMContentLoaded handler never runs on 0.6.0
+  - on: module-script-shared
+    kind: hard
+    why: a browser-rendered component gets its own <script module> state on 0.6.0
   - on: text-field-refused-edit
     kind: hard
     why: TextField and SearchField keep the typed text after a refused edit on 0.6.0
+  - on: template-scope-leak
+    kind: hard
+    why: a same-file template in a browser-rendered component leaks its scopes on 0.6.0
+  - on: memo-object-cast
+    kind: hard
+    why: a live memo of an object literal with a type cast fails to parse on 0.6.0
 ---
 
 # Release brumate 0.6.1

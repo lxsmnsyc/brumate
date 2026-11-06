@@ -1,7 +1,7 @@
 ---
 id: ui-no-defaults-4
 title: "ui contexts without defaults, group 4"
-status: active
+status: done
 priority: must
 type: refactor
 story: context-stores
@@ -16,7 +16,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-05
-spent:
+spent: 250000
 owns: []
 shared:
   - packages/ui/src/**

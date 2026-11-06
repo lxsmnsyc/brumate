@@ -1,7 +1,7 @@
 ---
 id: store-any-source
 title: $store takes any expression that gives a store
-status: active
+status: done
 priority: must
 type: feature
 story: context-stores
@@ -43,7 +43,7 @@ The maintainer's rule (2026-11-05): `$store` follows its prior art, which all ta
 
 Prior art, to follow and not narrow:
 
-- silmaril (`~/Documents/GitHub/silmaril/README.md`, "`$store`"): `$store(store)` binds any value with `subscribe(callback): cleanup`, `get()` and optional `set(state)`; `const` is one-way, `let` is two-way.
+- silmaril ([README, "`$store`"](https://github.com/lxsmnsyc/silmaril#store)): `$store(store)` binds any value with `subscribe(callback): cleanup`, `get()` and optional `set(state)`; `const` is one-way, `let` is two-way.
 - Svelte: `$name` subscribes to any store variable declared at the top level of a component (a local `writable`, a prop, an import), and unsubscribes when the component is destroyed.
 - React `useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)`: any external source; the server render and hydration use `getServerSnapshot`, then the client subscribes and re-reads.
 
