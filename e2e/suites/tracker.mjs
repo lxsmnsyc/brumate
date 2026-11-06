@@ -214,6 +214,19 @@ export async function run({ browser, url, runner }) {
     await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
   });
 
+  await step(
+    '/team: browser code on a prerendered page keeps its #defer line for the user',
+    async () => {
+      await page.click('nav a[href="/team"]');
+      await page.waitForFunction(() => document.title === 'Team', null, { timeout: TIMEOUT });
+      await page.locator('.loaded', { hasText: 'loaded' }).waitFor({ timeout: TIMEOUT });
+      await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
+      await page.goto(`${url}/team`);
+      await page.locator('.loaded', { hasText: 'loaded' }).waitFor({ timeout: TIMEOUT });
+      await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
+    },
+  );
+
   await step('/from?from=docs: the prerendered page keeps its query string', async () => {
     await page.goto(`${url}/from?from=docs`);
     await page.locator('.from', { hasText: 'Opened from docs.' }).waitFor({ timeout: TIMEOUT });

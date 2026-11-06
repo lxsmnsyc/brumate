@@ -246,6 +246,9 @@ export const loadingSlots: Set<string> = new Set();
 export const timers: Map<string, { timer?: ReturnType<typeof setTimeout>; last: number }> =
   new Map();
 
+/** The slots that the browser wrote since the page loaded, as `module:kind:slot`. */
+export const written: Set<string> = new Set();
+
 /** Aborts the server function calls of a memo's compute, by memo key. */
 export const memoControllers: Map<string, AbortController> = new Map();
 

@@ -115,7 +115,8 @@ function readRecord([script, code]: StateRecord): void {
     const unpacked = unpackState(decoded as PackedState);
     const added = addScopes(hooks.record ? hooks.record(script, unpacked) : unpacked, root);
     if (writes > 0) {
-      refresh(added);
+      // The body of a `#defer` block has a root of its own, and the server rendered it for the request.
+      refresh(added, false, root.startsWith('d'));
     }
   }
 }

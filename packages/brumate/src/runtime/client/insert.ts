@@ -15,7 +15,7 @@ import {
 } from './blocks.ts';
 import { codeReady, loadModule } from './code.ts';
 import { afterInsert, findRoot } from './scopes.ts';
-import { hiding, options, scopes, updating } from './state.ts';
+import { hiding, options, scopes, updating, written } from './state.ts';
 import type { ClientModule, Scope } from './state.ts';
 import { watchTitles } from './titles.ts';
 
@@ -27,9 +27,12 @@ export let refreshing: boolean = false;
  * client, such as the body of a `#loading` block that streams in after an
  * event. Effects do not run: they run only when a value changes. With
  * `memosOnly`, as for scopes that the client just rendered with its values,
- * only the memos run, so the ones that load start.
+ * only the memos run, so the ones that load start. With `onlyWritten`, as for the body of a
+ * `#defer` block, which the server rendered for this request, only the updates that read a slot
+ * that the browser wrote run, because the other slots of the page can hold the values of a render
+ * for no request, such as a context in a prerendered page.
  */
-export function refresh(added: Scope[], memosOnly = false): void {
+export function refresh(added: Scope[], memosOnly = false, onlyWritten = false): void {
   // The scopes of each module, which load it once.
   const byModule = new Map<string, Scope[]>();
   for (const scope of added) {
@@ -51,7 +54,7 @@ export function refresh(added: Scope[], memosOnly = false): void {
       const byKind = new Map<number, string[]>();
       for (const scope of list) {
         if (!byKind.has(scope.k)) {
-          byKind.set(scope.k, refreshNames(module, scope.k, memosOnly));
+          byKind.set(scope.k, refreshNames(module, id, scope.k, memosOnly, onlyWritten));
         }
       }
       let any = false;
@@ -83,11 +86,20 @@ export function refresh(added: Scope[], memosOnly = false): void {
 }
 
 /** The names of the updates of a kind of scope that `refresh` runs, memos first. */
-function refreshNames(module: ClientModule, kind: number, memosOnly: boolean): string[] {
+function refreshNames(
+  module: ClientModule,
+  id: string,
+  kind: number,
+  memosOnly: boolean,
+  onlyWritten: boolean,
+): string[] {
   const memos = new Set<string>();
   const others = new Set<string>();
-  for (const slots of Object.values(module.g)) {
-    for (const entries of Object.values(slots)) {
+  for (const [source, slots] of Object.entries(module.g)) {
+    for (const [slot, entries] of Object.entries(slots)) {
+      if (onlyWritten && !written.has(`${id}:${source}:${slot}`)) {
+        continue;
+      }
       for (const [entryKind, name] of entries) {
         if (entryKind !== kind || name[0] === 'e') {
           continue;
