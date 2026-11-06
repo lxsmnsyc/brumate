@@ -1,7 +1,7 @@
 ---
 id: head-title-navigation
 title: A title in #head follows its memo after client navigation
-status: active
+status: done
 priority: must
 type: fix
 outline: false

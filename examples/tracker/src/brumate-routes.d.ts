@@ -10,5 +10,7 @@ declare module 'brumate/routes' {
     '/issues/[id]': { id: string };
     '/issues/new': {};
     '/sign-in': {};
+    '/titles': {};
+    '/titles/other': {};
   }
 }

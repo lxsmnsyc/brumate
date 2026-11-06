@@ -1,7 +1,7 @@
 ---
 id: template-scope-leak
 title: A same-file template called from a browser-rendered component frees its old scopes
-status: active
+status: done
 priority: must
 type: fix
 outline: false

@@ -1,0 +1,16 @@
+<script>
+  import { $memo, $signal } from 'brumate/signals';
+
+  let category = $signal<string | null>(null);
+  const title = $memo(category ? `${category} · Titles` : 'Titles');
+</script>
+
+#head {
+  <title>{title}</title>
+}
+
+<section class="card">
+  <h1>Titles</h1>
+  <button class="soups" onClick=(() => (category = 'Soups'))>Soups</button>
+  <a class="other" href="/titles/other">Other</a>
+</section>

@@ -2523,6 +2523,24 @@ describe('resume', () => {
     expect(document.querySelectorAll('.price')).toHaveLength(1);
   });
 
+  it('keeps the scopes flat when a browser-rendered list calls a template of its file again', async () => {
+    await resume('scopeLeak', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(3));
+    const client = await import('../src/runtime/client.ts');
+    const counts = [client.scopes.size];
+    for (let pick = 1; pick <= 4; pick++) {
+      click(document.querySelector('.pick')!);
+      await waitFor(() =>
+        expect(document.querySelectorAll('.row')[pick % 3]!.textContent).toBe(
+          ['Cat', 'Dog', 'Bird'][pick % 3] + ' *',
+        ),
+      );
+      counts.push(client.scopes.size);
+    }
+    expect(new Set(counts).size).toBe(1);
+  });
+
   it('calls functions that a context provides', async () => {
     await resume('provide-functions', {});
     expect(text('.count')).toBe('0');

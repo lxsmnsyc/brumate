@@ -48,6 +48,15 @@ depends_on:
   - on: head-title-navigation
     kind: hard
     why: a #head title stops following its memo after client navigation on 0.6.0 (#467)
+  - on: template-component-import
+    kind: hard
+    why: a same-file template that renders a component throws on update on 0.6.0
+  - on: template-update-in-place
+    kind: hard
+    why: an input in a same-file template loses focus at each update on 0.6.0
+  - on: prerender-defer-context
+    kind: hard
+    why: a prerendered page with browser code shows its #defer body for no user on 0.6.0
   - on: memo-object-cast
     kind: hard
     why: a live memo of an object literal with a type cast fails to parse on 0.6.0
