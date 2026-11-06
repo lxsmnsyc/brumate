@@ -44,23 +44,50 @@ function toFile(code: string): string {
     .replace(/\.brm\?brumate-client"/g, '.brm.client.ts"');
 }
 
-beforeAll(() => {
-  rmSync(output, { recursive: true, force: true });
-  mkdirSync(output, { recursive: true });
+/** Compiles a component into the output folder, and registers its client module. */
+function build(name: string, source: string): void {
   const {
     server,
     client,
     parts,
     render: browser,
     plan,
-  } = compile(FILTER, { filename: 'Filter.brm' });
+  } = compile(source, { filename: `${name}.brm` });
   for (const [part, code] of Object.entries(parts)) {
-    writeFileSync(join(output, `Filter.brm.client.${part}.ts`), toFile(code));
+    writeFileSync(join(output, `${name}.brm.client.${part}.ts`), toFile(code));
   }
-  writeFileSync(join(output, 'Filter.brm.ts'), server.replace(/\.brm'/g, ".brm.ts'"));
-  writeFileSync(join(output, 'Filter.brm.client.ts'), toFile(client));
-  writeFileSync(join(output, 'Filter.brm.render.ts'), toFile(browser));
-  modules.set(plan.id, file('Filter.brm.client.ts'));
+  writeFileSync(join(output, `${name}.brm.ts`), server.replace(/\.brm'/g, ".brm.ts'"));
+  writeFileSync(join(output, `${name}.brm.client.ts`), toFile(client));
+  writeFileSync(join(output, `${name}.brm.render.ts`), toFile(browser));
+  modules.set(plan.id, file(`${name}.brm.client.ts`));
+}
+
+const INNER = `<script>
+  import { $searchParam } from 'brumate/signals';
+
+  let zone = $searchParam('z');
+</script>
+
+<p class="zone">{zone ?? 'none'}</p>`;
+
+const OUTER = `<script>
+  import { $signal } from 'brumate/signals';
+  import Inner from './Inner.brm';
+
+  let open = $signal(true);
+</script>
+
+<button class="toggle" onClick=(() => (open = !open))>Toggle</button>
+#if (open) {
+  <Inner />
+}`;
+
+beforeAll(() => {
+  rmSync(output, { recursive: true, force: true });
+  mkdirSync(output, { recursive: true });
+  build('Filter', FILTER);
+  build('Inner', INNER);
+  build('Outer', OUTER);
 });
 
 let stop: (() => void) | undefined;
@@ -77,8 +104,8 @@ function text(selector: string): string {
 }
 
 /** Renders the page for a URL, shows it and starts the loader. */
-async function resume(url: string, rendered = url): Promise<void> {
-  const server = await import(file('Filter.brm.ts'));
+async function resume(url: string, rendered = url, page = 'Filter'): Promise<void> {
+  const server = await import(file(`${page}.brm.ts`));
   const { html, state } = await render(
     server.default,
     {},
@@ -245,6 +272,20 @@ describe('$searchParam at load and in the URL', () => {
     expect(text('.note')).toBe('hi');
     expect(document.querySelector<HTMLInputElement>('.query')!.value).toBe('cats');
     expect(location.search).toBe('?q=cats&page=4&tab=b&note=hi');
+    expect(history.length).toBe(entries);
+  });
+
+  it('reads the URL again when a block closes and opens on a resumed page', async () => {
+    await resume('/p?z=a', '/p?z=a', 'Outer');
+    await loaded();
+    expect(text('.zone')).toBe('a');
+    click('.toggle');
+    await vi.waitFor(() => expect(document.querySelector('.zone')).toBeNull(), { timeout: 5000 });
+    history.replaceState(null, '', '/p?z=b');
+    const entries = history.length;
+    click('.toggle');
+    await vi.waitFor(() => expect(text('.zone')).toBe('b'), { timeout: 5000 });
+    expect(location.search).toBe('?z=b');
     expect(history.length).toBe(entries);
   });
 

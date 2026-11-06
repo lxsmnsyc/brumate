@@ -179,7 +179,8 @@ function callsRefreshed(declaration: Declaration): boolean {
 
 /**
  * True for a `$searchParam` that the browser can change without a request: the URL is the source
- * when the page loads, and the history writes it. One with `server: true` navigates instead.
+ * when the page loads, and the history writes it. One with `server: true` navigates instead. A spread in the options may hold `server`, and
+ * such a signal stays live, which costs a slot and breaks nothing.
  */
 function followsUrl(declaration: Declaration): boolean {
   const options = declaration.searchParam?.arguments[1];
