@@ -1,7 +1,7 @@
 ---
 id: ui-store-guards
 title: ui readers drop the guards that $store no longer needs
-status: todo
+status: active
 priority: must
 type: refactor
 story: context-stores
