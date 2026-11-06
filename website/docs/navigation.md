@@ -143,6 +143,7 @@ A filter, a tab or a page of results belongs in the URL, so it survives a reload
 - The server reads the URL of the request, so the first render shows the right state.
 - A write in the browser changes the URL with `history.replaceState`, or with `history.pushState` for `{ history: 'push' }`, and asks the server nothing. The updates run in the browser, as for any signal.
 - Back and forward write the signal from the URL. A change of another parameter, or of the path, loads the page as before.
+- When the page loads, the URL is the source. A prerendered page has no query string in its file, so its signal takes the value of the URL once the code loads, the readers update, and the URL stays as written with no entry added to the history.
 - Two writes in one handler make one change of the URL.
 - `parse` converts the text of the parameter to a value, and `serialize` converts a value to text. Both default to the text. Without `default`, a parameter that is not in the URL gives `null`.
 - A value equal to `default` leaves the parameter out of the URL.

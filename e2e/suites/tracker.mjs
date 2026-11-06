@@ -214,6 +214,13 @@ export async function run({ browser, url, runner }) {
     await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
   });
 
+  await step('/from?from=docs: the prerendered page keeps its query string', async () => {
+    await page.goto(`${url}/from?from=docs`);
+    await page.locator('.from', { hasText: 'Opened from docs.' }).waitFor({ timeout: TIMEOUT });
+    const search = await page.evaluate(() => location.search);
+    assert(search === '?from=docs', `the URL became ${search}`);
+  });
+
   await step('320 px: no page scrolls sideways', async () => {
     await page.setViewportSize({ width: 320, height: 640 });
     for (const pathname of ['/', '/issues/3', '/issues/new', '/about']) {

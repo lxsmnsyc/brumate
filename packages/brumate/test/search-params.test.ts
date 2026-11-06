@@ -17,6 +17,7 @@ const FILTER = `<script>
   let query = $searchParam('q', { default: '' });
   let page = $searchParam('page', { default: 1, parse: Number });
   let tab = $searchParam('tab', { history: 'push' });
+  let note = $searchParam('note');
   let sort = $searchParam('sort', { default: 'new', server: true });
   const route = $route();
 
@@ -29,6 +30,7 @@ const FILTER = `<script>
 <input class="query" value=$bind(query)>
 <p class="page">{page}</p>
 <p class="tab">{tab ?? 'none'}</p>
+<p class="note">{note ?? 'none'}</p>
 <p class="search">{route.search.toString()}</p>
 <button class="more" onClick=more>More</button>
 <button class="sort" onClick=(() => (sort = 'old'))>Old</button>
@@ -75,12 +77,12 @@ function text(selector: string): string {
 }
 
 /** Renders the page for a URL, shows it and starts the loader. */
-async function resume(url: string): Promise<void> {
+async function resume(url: string, rendered = url): Promise<void> {
   const server = await import(file('Filter.brm.ts'));
   const { html, state } = await render(
     server.default,
     {},
-    { request: new Request(`http://localhost${url}`) },
+    { request: new Request(`http://localhost${rendered}`) },
   );
   history.replaceState(null, '', url);
   document.body.innerHTML = html + state;
@@ -230,6 +232,20 @@ describe('$searchParam at load and in the URL', () => {
     await resume(url);
     await loaded();
     expect(location.pathname + location.search).toBe(url);
+  });
+
+  it('reads the URL on a page rendered without its query string', async () => {
+    const entries = history.length;
+    await resume('/list?q=cats&page=4&tab=b&note=hi', '/list');
+    expect(text('.page')).toBe('1');
+    await loaded();
+    await vi.waitFor(() => expect(text('.page')).toBe('4'), { timeout: 5000 });
+    expect(text('.tab')).toBe('b');
+    // No handler writes `note`, and its readers still follow the URL.
+    expect(text('.note')).toBe('hi');
+    expect(document.querySelector<HTMLInputElement>('.query')!.value).toBe('cats');
+    expect(location.search).toBe('?q=cats&page=4&tab=b&note=hi');
+    expect(history.length).toBe(entries);
   });
 
   it('keeps the other parameters as they are written', async () => {
