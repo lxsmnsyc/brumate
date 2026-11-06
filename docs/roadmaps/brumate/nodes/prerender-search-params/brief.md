@@ -1,7 +1,7 @@
 ---
 id: prerender-search-params
 title: A prerendered page keeps its query string, and $searchParam reads it on load
-status: active
+status: done
 priority: must
 type: fix
 outline: false

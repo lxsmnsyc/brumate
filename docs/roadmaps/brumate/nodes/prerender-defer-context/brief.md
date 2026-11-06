@@ -1,7 +1,7 @@
 ---
 id: prerender-defer-context
 title: A prerendered page with browser code still renders its #defer body for the request
-status: active
+status: done
 priority: must
 type: fix
 outline: false

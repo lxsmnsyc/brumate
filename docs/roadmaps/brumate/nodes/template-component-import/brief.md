@@ -1,7 +1,7 @@
 ---
 id: template-component-import
 title: A template of the file that renders a component works in the browser's update code
-status: active
+status: done
 priority: must
 type: fix
 outline: false
