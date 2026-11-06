@@ -26,7 +26,7 @@ reserves: []
 provides: []
 depends_on:
   - on: prerender-search-params
-    kind: soft
+    kind: hard
     why: both add pages or steps to examples/tracker and e2e/suites/tracker.mjs
 ---
 

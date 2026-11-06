@@ -1,7 +1,7 @@
 ---
 id: memo-guard
 title: "$gate: a memo with a guard on its new value"
-status: todo
+status: done
 priority: must
 type: feature
 outline: false
@@ -66,10 +66,10 @@ const items = $gate(list.filter(done), (prev, next) => !sameItems(prev, next));
 
 ## Acceptance
 
-- [ ] Tests: a gate that holds its value while the guard fails and its readers do not run; a custom equality on a new array with the same items does not run its readers; the first value passes on the server and after resume; a throwing guard reaches the nearest `#try`; an async value is a compile error.
-- [ ] docs/decisions.md lists the new compile-time function; website/docs documents it next to `$memo`.
-- [ ] The gzip size of the eager core grows by at most 0.1 kB; todos does not change.
-- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+- [x] Tests: a gate that holds its value while the guard fails and its readers do not run; a custom equality on a new array with the same items does not run its readers; the first value passes on the server and after resume; a throwing guard reaches the nearest `#try`; an async value is a compile error.
+- [x] docs/decisions.md lists the new compile-time function; website/docs documents it next to `$memo`.
+- [x] The gzip size of the eager core grows by at most 0.1 kB; todos does not change.
+- [x] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 

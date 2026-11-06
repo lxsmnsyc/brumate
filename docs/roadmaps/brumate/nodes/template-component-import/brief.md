@@ -24,7 +24,7 @@ reserves: []
 provides: []
 depends_on:
   - on: template-scope-leak
-    kind: soft
+    kind: hard
     why: its fixtures (scopeLeak.brm, ScopeLeakList.brm) are the base of the cleanup test here
 ---
 
