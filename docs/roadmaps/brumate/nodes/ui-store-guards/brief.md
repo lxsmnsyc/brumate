@@ -1,7 +1,7 @@
 ---
 id: ui-store-guards
 title: ui readers drop the guards that $store no longer needs
-status: active
+status: done
 priority: must
 type: refactor
 story: context-stores
@@ -16,7 +16,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-05
-spent:
+spent: 122417
 owns: []
 shared:
   - packages/ui/src/**
