@@ -2,11 +2,11 @@
 id: template-update-in-place
 title: A template of the file updates its markup in place, so focus and input state stay
 status: todo
-priority: should
+priority: must
 type: fix
 outline: false
-milestone: 0.7.0
-target:
+milestone: 0.6.1
+target: main
 from:
 size: M
 spike: false
