@@ -52,13 +52,14 @@ import {
 import type { Features } from './features.ts';
 import { BUILD_FILE, clientBuildDirectory, pruneBuilds, readBuildId } from './builds.ts';
 import {
+  findBridgePackages,
   findPackages,
   packageFileName,
   findPackage,
   reachableFiles,
   resolveComponentPackage,
 } from './packages.ts';
-import type { BrumatePackage } from './packages.ts';
+import type { BridgePackage, BrumatePackage } from './packages.ts';
 import type { NavigateOptions } from './runtime/boot.ts';
 import { anchorLabel, formatReport, report, scopeLabel } from './inspect.ts';
 import { instanceScope, slotIndex } from './codegen/scopes.ts';
@@ -300,6 +301,11 @@ function packagesKey(list: BrumatePackage[]): string {
   return JSON.stringify(rows);
 }
 
+/** The names of a `noExternal` setting as a list. */
+function toList(value: unknown): string[] {
+  return Array.isArray(value) ? (value as string[]) : [];
+}
+
 /** Skips the `node_modules` and hidden directories of a package of components. */
 function packageExclude(directory: string): boolean {
   return directory === 'node_modules' || directory.startsWith('.');
@@ -538,6 +544,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
 
   /** The dependencies of the app that ship `.brm` files. See `packages.ts`. */
   let packages: BrumatePackage[] = [];
+  /** Installed packages with a `bridge`, which are not packages of components, and their files. */
+  let bridgePackages: (BridgePackage & { files: string[] })[] = [];
 
   // The ID is computed from the path relative to the root, so it is the same on every machine.
   function relative(file: string): string {
@@ -590,7 +598,21 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   }
 
   function bridgeId(file: string): string {
-    // The name of the file as the components have it, with no path of this machine.
+    // The name of the file as the components have it, with no path of this machine. An installed
+    // package that is not a package of components is named by its name and the path in it.
+    let normalized = normalizePath(file);
+    if (
+      bridgePackages.length > 0 &&
+      normalized.includes('/node_modules/') &&
+      existsSync(normalized)
+    ) {
+      normalized = normalizePath(realpathSync(normalized));
+    }
+    for (const item of bridgePackages) {
+      if (normalized.startsWith(`${item.root}/`)) {
+        return bridgeModuleId(`${item.name}/${normalized.slice(item.root.length + 1)}`);
+      }
+    }
     return bridgeModuleId(getFileName(file));
   }
   function serverFileId(file: string): string {
@@ -643,6 +665,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     bridgeFiles.clear();
     for (const list of await bridged) {
       for (const file of list) {
+        bridgeFiles.set(bridgeId(file), file);
+      }
+    }
+    for (const item of bridgePackages) {
+      for (const file of item.files) {
         bridgeFiles.set(bridgeId(file), file);
       }
     }
@@ -1840,9 +1867,27 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     name: 'brumate',
     enforce: 'pre',
 
-    config(config, env) {
-      packages = findPackages(path.resolve(config.root ?? process.cwd()));
+    async config(config, env) {
+      const appRoot = path.resolve(config.root ?? process.cwd());
+      packages = findPackages(appRoot);
+      // Installed packages that depend on brumate and export a bridge: their files must reach
+      // this plugin, so the naming runs. Packages without a bridge change nothing.
+      bridgePackages = [];
+      for (const item of findBridgePackages(appRoot)) {
+        const files = await findBridgeFiles(item.root, packageExclude);
+        if (files.length > 0) {
+          bridgePackages.push({ ...item, files });
+        }
+      }
       const shared = packageConfig(config);
+      if (bridgePackages.length > 0) {
+        const names = bridgePackages.map((item) => item.name);
+        shared.optimizeDeps = {
+          exclude: [...(shared.optimizeDeps?.exclude ?? []), ...names],
+        };
+        shared.ssr = { ...shared.ssr, noExternal: [...toList(shared.ssr?.noExternal), ...names] };
+        shared.resolve = { ...shared.resolve, dedupe: ['brumate'] };
+      }
       // The devtools show the errors of Vite, so its overlay does not cover them.
       const hmr = config.server?.hmr;
       if (

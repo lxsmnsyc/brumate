@@ -161,6 +161,60 @@ export function findPackages(root: string): BrumatePackage[] {
   return result;
 }
 
+/** An installed package that can export a bridge. */
+export interface BridgePackage {
+  name: string;
+  /** The real directory of the package. */
+  root: string;
+}
+
+/**
+ * Finds the dependencies of the app, by the walk of `findPackages`, that can export a `bridge`
+ * without shipping `.brm` files: those that list `brumate` in `dependencies` or
+ * `peerDependencies`. A package with the `brumate` field is a package of components, which
+ * `findPackages` returns. The walk goes on into both kinds, never into other packages.
+ */
+export function findBridgePackages(root: string): BridgePackage[] {
+  const app = packageRoot(path.resolve(root));
+  if (!app) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const found: BridgePackage[] = [];
+  function visit(directory: string, json: PackageJson, own: boolean): void {
+    const names = new Set([
+      ...Object.keys(json.dependencies ?? {}),
+      ...Object.keys(json.optionalDependencies ?? {}),
+      ...Object.keys(json.peerDependencies ?? {}),
+      ...(own ? Object.keys(json.devDependencies ?? {}) : []),
+    ]);
+    for (const name of [...names].toSorted()) {
+      const real = findPackageDirectory(name, directory);
+      if (!real || seen.has(real) || name === 'brumate') {
+        continue;
+      }
+      seen.add(real);
+      const dependency = readJson(`${real}/package.json`);
+      if (!dependency) {
+        continue;
+      }
+      const components = readDirectories(real, dependency.brumate, name) !== undefined;
+      const wants =
+        'brumate' in (dependency.dependencies ?? {}) ||
+        'brumate' in (dependency.peerDependencies ?? {});
+      if (!components && !wants) {
+        continue;
+      }
+      if (!components) {
+        found.push({ name: dependency.name ?? name, root: real });
+      }
+      visit(real, dependency, false);
+    }
+  }
+  visit(app, readJson(path.join(app, 'package.json')) ?? {}, true);
+  return found;
+}
+
 /** The package that a file belongs to, or undefined for a file of the app. */
 export function findPackage(packages: BrumatePackage[], file: string): BrumatePackage | undefined {
   for (const item of packages) {

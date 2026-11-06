@@ -48,5 +48,11 @@ See the Review fixes section of outcome.md. Dev note: the `bridges` flag is writ
 - Names come from `getFileName`, with no path of the machine.
 - `export default` in `<script module>` reports only its own error (BRM066).
 - Docs example imports `Context`.
-- A bridge in `node_modules` is not collected (see outcome.md); stopped there.
+- A bridge in `node_modules` was not collected; built in the follow-up commit (see below).
 - Vite tests: dev and build for `<script module>`, and a package page in `packages.test.ts`.
+
+## Installed packages
+
+- Candidates are the dependencies of the app, by the walk of `findPackages`, that list `brumate` in `dependencies` or `peerDependencies`, scanned without their own `node_modules`. The scan runs in the `config` hook (now async) so `optimizeDeps.exclude` and `ssr.noExternal` name only packages with a bridge.
+- Names use the package name and the path in it. `bridgeId` checks these packages first (with `realpath`, for pnpm links).
+- Test: the page runs in a DOM put on the globals by hand (the plugin cannot load under the happy-dom environment, whose `URL` refuses `file:` URLs), with the loader and the manifest from the Vite server.

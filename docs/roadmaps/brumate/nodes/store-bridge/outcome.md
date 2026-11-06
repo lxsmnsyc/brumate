@@ -27,8 +27,8 @@ Client JS, `npx vite build --outDir dist/client`, `gzip -9c` summed over every `
 
 |                | before (f4e951f6)          | after                      |
 | -------------- | -------------------------- | -------------------------- |
-| examples/todos | 106,192 raw / 39,479 gzip  | 106,276 raw / 39,489 gzip  |
-| examples/ui    | 676,665 raw / 202,813 gzip | 676,844 raw / 202,901 gzip |
+| examples/todos | 106,192 raw / 39,479 gzip  | 106,275 raw / 39,498 gzip  |
+| examples/ui    | 676,665 raw / 202,813 gzip | 676,845 raw / 202,916 gzip |
 
 Before the `bridges` flag the same builds were 39,816 (todos) and 203,563 (ui) gzip. The flag keeps the class and the plugin out of apps without a bridge.
 
@@ -40,7 +40,7 @@ Checks: oxlint, `oxfmt --check .`, `pnpm typecheck`, `pnpm test` (brumate 2862, 
 - The registry of bridges is on `globalThis` (`Symbol.for('brumate.bridges')`), so any copy of the runtime sees it. The tests clear it before the loader starts, so the browser path that loads the module is the one tested.
 - `Bridged.subscribe` compares with the value the subscriber saw when it subscribed, not with the server's, so a second subscriber of a late store is repaired too.
 - The browser render module copies `<script module>` (`codegen/render.ts`, `clientModuleScript`) and has no naming call. A bridge made by that copy is never sent, since a browser-made store is not in the page state, so this is harmless. The naming calls are in the server module and the `shared` part only.
-- A bridge in a prebuilt package in `node_modules` is named by the transform but is not in `bridgeFiles`, so the manifest and the `bridges` flag miss it. The manifest is written before the transform sees the file, so it needs a scan of `node_modules` or a deferred manifest. Not built; the cost goes to the maintainer.
+- Installed packages (follow-up commit `find bridges in installed packages`): `findBridgePackages` walks the dependencies of the app as `findPackages` does and returns those that list `brumate` in `dependencies` or `peerDependencies` and are not packages of components. The plugin scans only those (prefilter plus parse, skipping their `node_modules`). A package with a bridge goes into `optimizeDeps.exclude`, `ssr.noExternal` and `resolve.dedupe: ['brumate']`, so the transform names it in dev, SSR and build; a package without one changes nothing. Names are `bridge:<pkg>/<path in package>#<export>`, and the files join the manifest table and the `bridges` flag. `test/bridge-packages.test.ts` has a real copy in `node_modules` with compiled `.js` and `export { a as bears }`: dev (config, manifest, names, resume with one source for each bridge) and build.
 - Names: a bridge of a script file is `bridge:<name of the file>#<export>`, where the name is the one components use (`src/bears.ts`, or `@acme/ui/src/bears.ts` in a package), so the page state holds no path of the machine. A script outside the root that is not in a package is named by its path from the root but is not in the manifest.
 - Gate: `isBridged`, the `bridge:` strip of `bundles.ts` and the repair baseline in `subscribeSlot` are behind `HAS_BRIDGES`. The `bridge:` strip of the generated non-bundle manifest is dev only.
 - Dev: features are not written in the dev server (`!isServe`), so the `bridges` flag is a build matter only; a first bridge file added in dev needs no restart for the flag.

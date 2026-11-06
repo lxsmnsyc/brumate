@@ -75,7 +75,7 @@ beforeAll(() => {
     writeFileSync(join(output, `${name}.render.ts`), toRender(render));
     modules.set(plan.id, file(`${name}.client.ts`));
   }
-});
+}, 60_000); // The compile of the fixtures runs beside other test files, which can slow it.
 
 let stop: (() => void) | undefined;
 
