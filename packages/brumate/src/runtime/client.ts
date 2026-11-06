@@ -119,6 +119,7 @@ export {
   setSpread,
   template,
 } from './client/templates.ts';
+export { gateValue } from './shared.ts';
 export { paramEffect, searchParam } from './client/search.ts';
 export { title } from './client/titles.ts';
 export {
@@ -127,6 +128,7 @@ export {
   bindings,
   cells,
   effect,
+  gate,
   get,
   isBound,
   memo,

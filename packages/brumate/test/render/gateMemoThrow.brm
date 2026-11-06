@@ -1,0 +1,28 @@
+<script>
+  import { $gate, $memo, $props, $signal } from 'brumate/signals';
+  import { ran } from './runs.ts';
+
+  const { start = 0 } = $props<{ start?: number }>();
+  let count = $signal(start);
+
+  function double(n: number): number {
+    if (n === 1) {
+      throw new Error(`Inner ${n}`);
+    }
+    return n * 2;
+  }
+
+  const inner = $memo(double(count));
+  const value = $gate(inner, (prev, next) => {
+    ran('guard', `${prev}>${next}`);
+    return true;
+  });
+</script>
+
+<button class="bump" onClick=(() => count++)>Bump</button>
+#try {
+  <p class="value">{value}</p>
+} #catch (error, reset) {
+  <p class="caught">{String(error)}</p>
+  <button class="reset" onClick=(() => reset())>Reset</button>
+}

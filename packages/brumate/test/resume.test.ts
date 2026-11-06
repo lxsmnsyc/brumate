@@ -7568,6 +7568,110 @@ describe('batching', () => {
   });
 });
 
+describe('$gate', () => {
+  it('takes the first value without the guard, and holds it while the guard fails', async () => {
+    await resume('gateQuery', {});
+    // The first value passes, though the guard would refuse it.
+    expect(text('.query')).toBe('');
+    clearRuns();
+    click(document.querySelector('.a')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(text('.query')).toBe('');
+    expect(runsOf('query')).toEqual([]);
+    click(document.querySelector('.abc')!);
+    await waitFor(() => expect(text('.query')).toBe('abc'));
+    expect(runsOf('query')).toEqual(['query abc']);
+  });
+
+  it('does not run its readers for a new array with the same items, after resume', async () => {
+    await resume('gateQuery', {});
+    expect(text('.items')).toBe('a,b');
+    clearRuns();
+    click(document.querySelector('.same')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(runsOf('items')).toEqual([]);
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.items')).toBe('a,b,c'));
+    expect(runsOf('items')).toEqual(['items a,b,c']);
+  });
+
+  it('runs a guard that reads state and calls a function, for a memo that the browser renders', async () => {
+    await resume('gateReads', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.value')).toBe('ab'));
+    click(document.querySelector('.short')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(text('.value')).toBe('ab');
+    click(document.querySelector('.long')!);
+    await waitFor(() => expect(text('.value')).toBe('cde'));
+  });
+
+  it('does not track the signals that only the guard reads', async () => {
+    await resume('gateReads', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.value')).toBe('ab'));
+    click(document.querySelector('.short')!);
+    click(document.querySelector('.min')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(text('.value')).toBe('ab');
+  });
+
+  it('throws into the nearest #try for a value that is a promise, on the server and in the browser', async () => {
+    const server = await import(file('gatePromise.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    // The server hides the message of an error, and shows the #catch body.
+    expect(html).toContain('class="caught"');
+    expect(html).not.toContain('class="value"');
+  });
+
+  it('throws for a promise that an update gives', async () => {
+    await resume('gatePromiseUpdate', {});
+    expect(text('.value')).toBe('0');
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toContain('The value of $gate is a promise'));
+  });
+
+  it('throws for a promise in a component that the browser renders', async () => {
+    await resume('gatePromiseLate', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toContain('The value of $gate is a promise'));
+  });
+
+  it('sends the error of a guard that throws to the nearest #try', async () => {
+    await resume('gateThrow', {});
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.value')).toBe('1'));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Guard 2'));
+  });
+
+  it('holds the error of a memo it reads, without its guard, and guards again after the memo recovers', async () => {
+    await resume('gateMemoThrow', {}, {}, undefined, { dev: true });
+    expect(text('.value')).toBe('0');
+    clearRuns();
+    // The memo throws: the gate holds its error, which reaches the #try around the read.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Inner 1'));
+    expect(runsOf('guard')).toEqual([]);
+    // After a held error, the next value passes without the guard. The #catch stays until reset.
+    click(document.querySelector('.bump')!);
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.value')).toBe('4'));
+    expect(runsOf('guard')).toEqual([]);
+    // The guard calls an import, which the update part of the gate imports.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.value')).toBe('6'));
+    expect(runsOf('guard')).toEqual(['guard 4>6']);
+  });
+
+  it('throws the error of a memo it reads at the read, on the server', async () => {
+    const server = await import(file('gateMemoThrow.brm.ts'));
+    const { html } = await renderParts(server.default, { start: 1 });
+    expect(html).toContain('class="caught"');
+    expect(html).not.toContain('class="value"');
+  });
+});
+
 describe('a handler waits for the module of', () => {
   type Waits = Record<string, number | 'fail'>;
 

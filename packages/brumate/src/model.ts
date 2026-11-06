@@ -87,6 +87,8 @@ export interface Declaration {
    * writes the memo: after the value stops changing for `ms`, or at most once every `ms`.
    */
   timing?: { kind: 'debounced' | 'throttled'; ms: number };
+  /** For `$gate(value, guard)`, the site of the guard function. */
+  gate?: Site;
   /** For `let name = $searchParam(name, options)`, the call. */
   searchParam?: oxc.CallExpression;
   /** For `let name = $signal(value)`, the value. */

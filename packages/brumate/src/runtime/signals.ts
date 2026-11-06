@@ -69,6 +69,18 @@ export function $memo<T>(_value: T): MemoValue<T> {
 }
 
 /**
+ * Declares a memo that takes a new value only when the guard returns true.
+ * Otherwise it keeps its value and its readers do not run. The first value
+ * passes without the guard, and the server has no history, so it renders the
+ * value. The guard runs in the browser, on changes only, with the value the
+ * memo holds and the new one. A throw in the guard is held like a throw in
+ * a memo. The value cannot be a promise.
+ */
+export function $gate<T>(_value: T, _guard: (prev: T, next: T) => boolean): T {
+  return compileTimeOnly('$gate');
+}
+
+/**
  * Declares a memo that takes the value once it stops changing for `ms`
  * milliseconds, such as a search query while the user types. On the server,
  * and until the value first changes, it is the value.

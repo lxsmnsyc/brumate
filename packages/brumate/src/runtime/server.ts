@@ -103,6 +103,7 @@ export {
   vars,
 } from './html.ts';
 export type { Raw } from './html.ts';
+export { gateValue } from './shared.ts';
 export { produce } from './produce.ts';
 export { searchParam } from './search-params.ts';
 export { createContext, navigationContext, routeContext } from './context.ts';

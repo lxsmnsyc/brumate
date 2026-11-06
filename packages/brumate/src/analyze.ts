@@ -75,6 +75,11 @@ const KEY_EVENTS = new Set(['keydown', 'keyup', 'keypress']);
 
 const COMPILE_TIME_FUNCTIONS = MACROS;
 
+const GATE_FORM =
+  '$gate takes a value and a function, as in $gate(value, (prev, next) => next > prev)';
+const GATE_ASYNC =
+  '$gate takes a value that is ready. Use $memo for a promise or a server function';
+
 /** The messages of BRM191 to BRM193, BRM195 and BRM197 to BRM199. */
 const STORE_FORM =
   'Read a store with "const name = $store(source)" or "let name = $store(source)" at the top level of a script';
@@ -148,6 +153,8 @@ const MISPLACED: Record<string, string> = {
   $props: 'Call $props() as the value of a const in the component script',
   $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
   $memo: 'Declare a memo with "const name = $memo(value)" at the top level of a script',
+  $gate:
+    'Declare a gated value with "const name = $gate(value, (prev, next) => boolean)" at the top level of a script',
   $debounced:
     'Declare a debounced value with "const name = $debounced(value, ms)" at the top level of a script',
   $throttled:
@@ -1485,6 +1492,35 @@ class Analyzer {
       return;
     }
 
+    if (name === '$gate') {
+      if (kind !== 'const') {
+        this.report('error', `Declare ${name} with const`, declarator);
+      }
+      if (id.type !== 'Identifier') {
+        this.report('error', `${name} cannot be destructured`, id);
+        return;
+      }
+      const [argument, guardFunction] = call.arguments;
+      const declaration = this.addDeclaration(scope, id.name, 'memo', id);
+      if (
+        !argument ||
+        argument.type === 'SpreadElement' ||
+        call.arguments.length !== 2 ||
+        !guardFunction ||
+        (guardFunction.type !== 'ArrowFunctionExpression' &&
+          guardFunction.type !== 'FunctionExpression')
+      ) {
+        this.report('error', GATE_FORM, call);
+        return;
+      }
+      declaration.site = this.createSite('memo', scope, argument, `memo ${id.name}`, {
+        declaration,
+      });
+      // The guard runs only in the browser, on a change, and does not track what it reads.
+      declaration.gate = this.createSite('function', scope, guardFunction, `gate ${id.name}`);
+      return;
+    }
+
     if (name === '$signal' || name === '$memo' || name === '$optimistic') {
       const expected = name === '$memo' ? 'const' : 'let';
       if (kind !== expected) {
@@ -2230,6 +2266,9 @@ class Analyzer {
         }
         if (callsServer || importsServer || site.awaits) {
           site.declaration.kind = 'async-memo';
+          if (site.declaration.gate) {
+            this.report('error', GATE_ASYNC, site.node);
+          }
         }
       }
     }

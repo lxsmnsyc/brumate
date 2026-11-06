@@ -18,6 +18,7 @@ import { $memo, $signal } from 'brumate/signals';
 | `$props<T>()`                     | `T`                        | `const` in the component script                                          | [Components](./components.md)                              |
 | `$signal<T>(value?)`              | `T`                        | `let` at the top level of a script                                       | [State](./state.md)                                        |
 | `$memo<T>(value)`                 | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md)         |
+| `$gate(value, guard)`             | `T`                        | `const` at the top level of a script                                     | [State](./state.md#gate)                                   |
 | `$debounced(value, ms)`           | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
 | `$throttled(value, ms)`           | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
 | `$resolve(memo, options?)`        | `Promise<T>`               | A handler, an effect or a `$client` callback                             | [Async data](./async-data.md)                              |
@@ -88,6 +89,27 @@ Declares a read-only value computed from other values.
 - Assigning to it is a compile error.
 - Server: computed when first read. Markup outside every `#loading` body waits for a promise. A `#loading` body that reads it renders in place when it is ready, and after the rest of the page otherwise.
 - Client: computed again when the values it reads change. While a new promise loads, the memo keeps its old value. Only the latest run is written.
+
+## `$gate`
+
+```ts
+function $gate<T>(value: T, guard: (prev: T, next: T) => boolean): T;
+```
+
+A memo that takes its new value only when the guard returns true. Otherwise it keeps its value, and its readers do not run. A plain `$memo` is `$gate(x, (a, b) => !Object.is(a, b))`.
+
+```ts
+const query = $gate(input, (_, next) => next.length >= 2);
+const items = $gate(list.filter(done), (prev, next) => !sameItems(prev, next));
+```
+
+- Declare it with `const`, as a single name. It needs two arguments, a value and an arrow function or function expression.
+- The value is any expression, tracked like the value of `$memo`.
+- The first value always passes and skips the guard. The server has no history, so it renders the value. After the page resumes, the browser guards from the value the server rendered.
+- The guard runs in the browser, on changes, with the value the memo holds and the new one. It is not tracked: a signal that only the guard reads does not run the memo again.
+- A guard that throws makes the memo hold the error, as a memo whose value throws does. Each read throws it, and the error goes to the nearest `#try`.
+- The next value after a held error passes without the guard.
+- The value cannot be a promise. `await` and a call of a server function are a compile error (BRM203), and any other promise or stream throws when the value is computed, on the server and in the browser. Use `$memo` for loading.
 
 ## `$isPending`
 

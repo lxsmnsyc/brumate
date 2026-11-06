@@ -9,6 +9,7 @@ The compiler replaces each call and removes the import, so none of them ship. Im
 | `$props<T>()`                     | `T`                        | `const` or `let` in the component script              |
 | `$signal<T>(value?)`              | `T`                        | `let` at the top level of a script                    |
 | `$memo<T>(value)`                 | the value, never a promise | `const` at the top level of a script                  |
+| `$gate(value, guard)`             | the value, as a memo       | `const` at the top level of a script                  |
 | `$debounced(value, ms)`           | the value, as a memo       | `const` at the top level of a script                  |
 | `$throttled(value, ms)`           | the value, as a memo       | `const` at the top level of a script                  |
 | `$isPending(memo)`                | `boolean`                  | Any expression                                        |
@@ -38,6 +39,7 @@ The compiler replaces each call and removes the import, so none of them ship. Im
 - `$props<T>()`: the props of the component. Destructure it: `const { title, size = 'm', ...rest } = $props<Props>()`. With `let`, the component writes the props, and `Bindable<T>` in the type marks one that a parent can bind. Not in a block script.
 - `$signal(value)`: writable state. Read it and assign to it as a variable. The start value is computed once, on the server.
 - `$memo(expression)`: a read-only value that follows the values it reads. It can hold a promise, such as a server function call, and gives the settled value.
+- `$gate(value, (prev, next) => boolean)`: a memo that takes the new value only when the guard returns true, and keeps its value otherwise. The first value passes. The value cannot be a promise: `await` and server calls are compile errors, other promises throw.
 - `$debounced(value, ms)`: a memo that takes the value once it stops changing for `ms` milliseconds. `ms` is a number literal.
 - `$throttled(value, ms)`: a memo that takes the value at most once every `ms` milliseconds.
 - `$isPending(memo)`: true while a new value of the memo loads in the browser. Always false on the server.

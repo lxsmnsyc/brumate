@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import GatePromiseChild from './GatePromiseChild.brm';
+
+  let shown = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (shown = true))>Show</button>
+#if (shown) {
+  <GatePromiseChild n=1 />
+}

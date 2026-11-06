@@ -449,6 +449,10 @@ class ClientGenerator {
         }
       } else {
         result.push(site);
+        // The guard of a `$gate` runs in the same part as its value, so the part imports its names.
+        if (site.kind === 'memo' && declaration?.gate) {
+          result.push(declaration.gate);
+        }
       }
     }
     if (name === 'shared') {
@@ -1110,9 +1114,15 @@ class ClientGenerator {
             const value = arrowBody(code, this.file.source, site.node.start);
             const timing = node.declaration.timing;
             // A debounced or throttled memo computes after its wait, with the values of then.
-            const call = timing
-              ? `$$b.timed($$s, ${slot}, ${timing.ms}, ${timing.kind === 'throttled'}, () => ${value})`
-              : `$$b.memo($$s, ${slot}, () => ${value})`;
+            const guard = node.declaration.gate;
+            let call = `$$b.memo($$s, ${slot}, () => ${value})`;
+            if (timing) {
+              call = `$$b.timed($$s, ${slot}, ${timing.ms}, ${timing.kind === 'throttled'}, () => ${value})`;
+            } else if (guard) {
+              // The guard decides whether the new value replaces the old one.
+              const code = this.withTemplates(guard, this.rewriter.rewrite(guard, '$$s', base));
+              call = `$$b.gate($$s, ${slot}, ${code}, () => ${value})`;
+            }
             this.emit(`export function ${name('m')}($$s) {\n  ${call};\n}`);
           }
           break;
