@@ -35,3 +35,8 @@
 
 - Client gzip -9 of dist/client/**/*.js, before and after: examples/todos 39293 B to 39349 B (+56 B); examples/ui 199049 B to 199100 B (+51 B).
 - Estimated S, actual S.
+
+## Review notes
+
+- The `written` key has no instance (`module:kind:slot`). A write in one instance of a component marks the slot in every instance, so a `#defer` body can still be refreshed with stale page state when another instance of the same component was written in the browser. This errs toward the old behavior; per-instance keys would need each scope's source scope found at refresh. Not done.
+- The review probed a `#defer` body with spread children, a loading memo, and a text that reads both the written signal and the stale context: all correct on the branch. The server renders everything inside a `#defer` body, so it has no browser-only inserts for the limit to skip.
