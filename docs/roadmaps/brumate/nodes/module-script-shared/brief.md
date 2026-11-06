@@ -1,7 +1,7 @@
 ---
 id: module-script-shared
 title: A component rendered in the browser shares its <script module> with the resumed ones
-status: active
+status: done
 priority: must
 type: fix
 outline: false
