@@ -2545,7 +2545,7 @@ describe('resume', () => {
     await resume('tplImportHost', {});
     click(document.querySelector('.open')!);
     await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(6));
-    // A click on each item runs its effect, which the browser does not run when it creates the item.
+    // A click on each item runs its effect: an effect never runs before a change (website/docs/effects.md).
     for (const item of document.querySelectorAll('.item')) {
       click(item);
     }

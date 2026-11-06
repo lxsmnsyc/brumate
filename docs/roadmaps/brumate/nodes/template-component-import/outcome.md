@@ -31,4 +31,4 @@
 ## Size
 
 - Estimated S, actual S.
-- Client gzip (sum of dist/client/**/*.js, gzip -9): todos 39246 to 39229 bytes, ui 199059 to 199052 bytes.
+- Client gzip (sum of dist/client/**/*.js, gzip -9): todos 39,236 to 39,238 B (+2), ui 199,042 to 199,063 B (+21), on clean rebuilds of both refs. ui grows because parts that call templates now import what the templates use.
