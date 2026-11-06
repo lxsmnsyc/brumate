@@ -571,7 +571,7 @@ class ClientGenerator {
     }
     const lines = [
       "import * as $$b from 'brumate/client';",
-      ...this.importsFor(names, name === 'update' || this.templateScopes(name)),
+      ...this.importsFor(names, this.partScopes(name), name === 'update'),
     ];
     if (shared.length > 0) {
       lines.push(
@@ -594,7 +594,11 @@ class ClientGenerator {
     }
     const scopes = [...this.renderedScopes()];
     for (const name of names) {
-      scopes.push(...this.templateScopes(name));
+      for (const scope of this.partScopes(name)) {
+        if (!scopes.includes(scope)) {
+          scopes.push(scope);
+        }
+      }
     }
     const lines = [
       "import * as $$b from 'brumate/client';",
@@ -734,6 +738,30 @@ class ClientGenerator {
         const template = callee.kind === 'template' ? this.findTemplateScope(callee) : undefined;
         if (template) {
           result.push(...this.inside(template));
+        }
+      }
+    }
+    return result;
+  }
+
+  /**
+   * The scopes whose components and imports a part needs: the scopes that the update part
+   * renders, the templates of a template part, and the templates that the code of the part
+   * copies into itself, such as a call `row(item)` in an update.
+   */
+  private partScopes(part: string): Scope[] {
+    const result = part === 'update' ? this.renderedScopes() : this.templateScopes(part);
+    for (const site of this.partSites(part)) {
+      const used: Declaration[] = [...site.calls];
+      for (const read of site.reads) {
+        used.push(read.declaration);
+      }
+      for (const callee of used) {
+        const template = callee.kind === 'template' ? this.findTemplateScope(callee) : undefined;
+        for (const item of template ? this.inside(template) : []) {
+          if (!result.includes(item)) {
+            result.push(item);
+          }
         }
       }
     }

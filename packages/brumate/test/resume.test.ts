@@ -2523,6 +2523,40 @@ describe('resume', () => {
     expect(document.querySelectorAll('.price')).toHaveLength(1);
   });
 
+  it('renders a component in a same-file #template that updates in the browser', async () => {
+    await resume('tplImportHost', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(6));
+    expect(text('.row')).toBe('a *a');
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.row')).toBe('aa'));
+    expect(document.querySelectorAll('.row')[1]!.textContent).toBe('b *b');
+    expect(document.querySelectorAll('.item')).toHaveLength(6);
+  });
+
+  // Fails until #472: main does not destroy the scopes of a replaced template call. Change to `it`
+  // when it merges.
+  it.fails('runs the cleanup of a component in a #template once for each replaced row', async () => {
+    const log: string[] = [];
+    (globalThis as { tplImportLog?: string[] }).tplImportLog = log;
+    onTestFinished(() => {
+      delete (globalThis as { tplImportLog?: string[] }).tplImportLog;
+    });
+    await resume('tplImportHost', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('.row')).toHaveLength(6));
+    // A click on each item runs its effect, which the browser does not run when it creates the item.
+    for (const item of document.querySelectorAll('.item')) {
+      click(item);
+    }
+    await waitFor(() => expect(log.filter((entry) => entry.startsWith('mount'))).toHaveLength(6));
+    log.length = 0;
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.row')).toBe('aa'));
+    // A pick calls the template again for every row: each old row cleans up once.
+    expect(log.toSorted()).toEqual(['a', 'b', 'c', 'd', 'e', 'f'].map((name) => `cleanup ${name}`));
+  });
+
   it('calls functions that a context provides', async () => {
     await resume('provide-functions', {});
     expect(text('.count')).toBe('0');
