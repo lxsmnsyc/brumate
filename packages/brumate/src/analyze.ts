@@ -1,3 +1,4 @@
+import { BRIDGE_EXPORT, findBridgeCalls } from './bridges.ts';
 import { checkNesting } from './nesting.ts';
 import {
   MACROS,
@@ -430,6 +431,20 @@ class Analyzer {
   run(): SemanticModel {
     const { imported, diagnostics } = resolveMacros(this.file);
     this.diagnostics.push(...diagnostics, ...checkMacroImports(this.file, imported));
+    // A bridge belongs to a module-level export, of a script file or of `<script module>`.
+    for (const { call, exported, statement } of this.file.moduleScript
+      ? findBridgeCalls(this.file.moduleScript.program)
+      : []) {
+      // `export default` in `<script module>` has its own error.
+      if (exported === undefined && !statement) {
+        this.report('error', BRIDGE_EXPORT, call);
+      }
+    }
+    for (const { call } of this.file.instanceScript
+      ? findBridgeCalls(this.file.instanceScript.program)
+      : []) {
+      this.report('error', BRIDGE_EXPORT, call);
+    }
     if (this.file.moduleScript) {
       this.declareModuleScript(this.file.moduleScript.program);
     }

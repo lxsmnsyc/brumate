@@ -1799,6 +1799,18 @@ const level = $store($getContext(LevelContext));
 const locale = $store($getContext(LocaleContext, store('en-US')));
 ```
 
+## BRM200: The value of bridge() must be a module-level export of a script file or of <script module>, as "export const name = bridge({ … })"
+
+A call of `bridge` from `brumate/store` is in the script of a component, or in a function, or is not the value of an exported `const`. The page state names a bridge by its module and its export, so the browser can load it.
+
+https://brumate-docs.vercel.app/docs/errors#brm200
+
+```brm fragment
+// bears.ts, or the <script module> of a component
+import { bridge } from 'brumate/store';
+export const bearStore = bridge({ create, get, subscribe });
+```
+
 ## BRM144: $get is not supported. Signals cannot leave the file
 
 `$get` was removed. A signal never leaves its file.

@@ -459,7 +459,7 @@ describe('a store from any expression', () => {
   it('refuses a store of another library in a prop or a script value, naming $store and the value', async () => {
     const prop = await import(file('storeForeignProp.brm.ts'));
     await expect(renderParts(prop.default, {})).rejects.toThrow(
-      /^\$store in StoreForeignPropReader_\w+ reads a store of another library from the prop "s", which the page sends, and only a store of brumate\/store crosses\. Read the store from an import, <script module> or a call in this component$/,
+      /^\$store in StoreForeignPropReader_\w+ reads a store of another library from the prop "s", which the page sends, and only a store of brumate\/store crosses\. Wrap the library's store with bridge\(\) in a module, or read it from an import, <script module> or a call in this component$/,
     );
     const value = await import(file('storeForeignValue.brm.ts'));
     await expect(renderParts(value.default, {})).rejects.toThrow(

@@ -1,3 +1,4 @@
+import { NAME_BRIDGE_IMPORT, moduleBridgeNames } from '../bridges.ts';
 import { importSource, isMacroImport } from '../macros.ts';
 import type { SFCFile } from '../ast.ts';
 import type { Declaration } from '../model.ts';
@@ -88,6 +89,12 @@ export function generateServer(file: SFCFile, plan: Plan): string {
       } else {
         moduleBody.push(source(statement));
       }
+    }
+    // The page state names a bridge of `<script module>` by the ID of the component.
+    const naming = moduleBridgeNames(file.moduleScript.program, plan.id);
+    if (naming.length > 0) {
+      header.push(NAME_BRIDGE_IMPORT);
+      moduleBody.push(...naming);
     }
   }
 

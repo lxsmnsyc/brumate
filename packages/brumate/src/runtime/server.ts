@@ -20,7 +20,7 @@ import {
 import { MODIFIERS } from './events.ts';
 import { closesParagraph, firstTag } from '../nesting.ts';
 import type { Raw } from './html.ts';
-import { callPlugins, serialOptions, plugins, syncPlugins } from './serial.ts';
+import { BridgeDataError, callPlugins, serialOptions, plugins, syncPlugins } from './serial.ts';
 import { serverSecrets } from './secrets.ts';
 import {
   Binding,
@@ -87,7 +87,7 @@ function refuseForeignStore(key: string, value: unknown): void {
   }
   if (foreign) {
     throw new Error(
-      `The context "${key}" holds a store that is not of brumate/store. Make it with $toStore or store(), or read it at module level with $store`,
+      `The context "${key}" holds a store that is not of brumate/store. Make it with $toStore or store(), wrap it with bridge(), or read it at module level with $store`,
     );
   }
 }
@@ -1999,6 +1999,9 @@ function holds(value: unknown, target: unknown, seen = new Set<unknown>()): bool
  * browser, which names the value and its component.
  */
 function unsendable(error: unknown, ctx: Context): Error {
+  if (error instanceof BridgeDataError) {
+    return bridgeDataError(error, ctx);
+  }
   const secret = secretErrors.get(error as Error);
   const target = secret ?? (error as { value?: unknown }).value;
   if (target === undefined) {
@@ -2032,6 +2035,48 @@ function unsendable(error: unknown, ctx: Context): Error {
     );
   }
   return error instanceof Error ? error : new Error(String(error));
+}
+
+/**
+ * The error of a store of `bridge()` whose `get` gives data that cannot be sent: it names the
+ * store, and the context or the prop that gives it to the browser.
+ */
+function bridgeDataError(error: BridgeDataError, ctx: Context): Error {
+  const id = error.value.id;
+  const hash = id?.lastIndexOf('#') ?? -1;
+  const name =
+    id === undefined
+      ? 'a bridge'
+      : `"${id.slice(hash + 1)}" of bridge() in ${id.slice('bridge:'.length, hash)}`;
+  // The serializer's message goes on with advice that does not apply to a store's data.
+  const reason = (error.cause instanceof Error ? error.cause.message : String(error.cause))
+    .split('\n')[0]!
+    .replace(/\.$/, '');
+  return new Error(
+    `The store ${name} gives data from get that cannot be sent to the browser (${reason}), and ${bridgeSite(error, ctx)} sends it. Return plain data from get, such as numbers, strings, arrays and objects`,
+    { cause: error },
+  );
+}
+
+/** Where a bridged store is given to the browser: a context, or the prop or value of a component. */
+function bridgeSite(error: BridgeDataError, ctx: Context): string {
+  for (const { record, names } of ctx.scopes) {
+    for (const [key, value] of Object.entries(record.v ?? {})) {
+      if (holds(value, error.value)) {
+        return `the context "${key}"`;
+      }
+    }
+    for (const [slot, value] of (record.s ?? []).entries()) {
+      if (holds(value, error.value)) {
+        let owner: ScopeState | undefined = record;
+        while (owner && owner.m === undefined && owner.p !== undefined) {
+          owner = ctx.ownRecord(owner.p);
+        }
+        return `the prop or value "${names?.[slot] ?? `slot ${slot}`}" in ${owner?.m ?? 'a component'}`;
+      }
+    }
+  }
+  return 'the page state';
 }
 
 /** The secret that each error of `secretError` found. The error does not hold it, so a log does not show it. */

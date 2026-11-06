@@ -21,6 +21,7 @@ import { cloneLines } from './template.ts';
 import type { Fill } from './markup.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
+import { NAME_BRIDGE_IMPORT, moduleBridgeNames } from '../bridges.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
@@ -263,13 +264,17 @@ class ClientGenerator {
     }
     const registered =
       values.length > 0 ? [...renamed, `export const components = [${sent.join(', ')}];`] : [];
-    const clientCode = names.length > 0 || values.length > 0;
+    // The names of the bridges of `<script module>` are written by the shared part, which the
+    // entry imports even if no other part reads the module script.
+    const bridged = this.bridgeNames().length > 0;
+    const sharedImport = bridged ? [`import ${JSON.stringify(this.partPath('shared'))};`] : [];
+    const clientCode = names.length > 0 || values.length > 0 || bridged;
     if (merged || names.length === 0) {
       // The entry holds the code itself, so the first event loads one module.
       const code = parts.all ?? '';
       delete parts.all;
       return {
-        code: [code, ...registered, ...table, ''].join('\n'),
+        code: [...sharedImport, code, ...registered, ...table, ''].join('\n'),
         table: table.join('\n'),
         parts,
         clientCode,
@@ -283,7 +288,7 @@ class ClientGenerator {
     for (const name of names) {
       reexports.push(`export * from ${JSON.stringify(this.partPath(name))};`);
     }
-    const entry = [...reexports, ...registered, ...table, ''];
+    const entry = [...sharedImport, ...reexports, ...registered, ...table, ''];
     return {
       code: entry.join('\n'),
       table: table.join('\n'),
@@ -652,6 +657,10 @@ class ClientGenerator {
         }
       }
       lines.push(...clientModuleScript(this.file, this.plan));
+      const naming = this.bridgeNames();
+      if (naming.length > 0) {
+        lines.push(NAME_BRIDGE_IMPORT, ...naming);
+      }
       const exported = new Set<string>();
       for (const statement of this.file.moduleScript!.program.body) {
         if (statement.type === 'ExportNamedDeclaration' && statement.declaration) {
@@ -735,7 +744,15 @@ class ClientGenerator {
     return reads;
   }
 
+  /** The calls that name the bridges of `<script module>`. */
+  private bridgeNames(): string[] {
+    return moduleBridgeNames(this.file.moduleScript?.program, this.plan.id);
+  }
+
   private usesModuleScript(): boolean {
+    if (this.bridgeNames().length > 0) {
+      return true;
+    }
     for (const declaration of this.clientReads()) {
       if (declaration.kind === 'module') {
         return true;

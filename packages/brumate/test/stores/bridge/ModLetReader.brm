@@ -1,0 +1,8 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { ModContext } from './modContext.ts';
+
+  let state = $store($getContext(ModContext));
+</script>
+
+<button class="mreset" onClick=(() => (state = { bears: 40 }))>{state.bears}</button>

@@ -1,12 +1,12 @@
 // Contexts that components provide and read, and the values that the runtime provides to the
 // whole page.
 
-import { HAS_ROUTES } from '../features.ts';
+import { HAS_BRIDGES, HAS_ROUTES } from '../features.ts';
 import { NAVIGATION_KEY, ROUTE_KEY, missingContext } from '../context.ts';
 import type { Context as ContextValue, Route } from '../context.ts';
 import { madeStores } from '../shared.ts';
 import type { ScopeId, StoreRead } from '../shared.ts';
-import { Store, findStored, sendStore } from '../store.ts';
+import { Store, findStored, isBridged, sameData, sendStore } from '../store.ts';
 import type { StoreLike } from '../store.ts';
 import { loadModule } from './code.ts';
 import { findRoot, resolveScope } from './scopes.ts';
@@ -130,60 +130,26 @@ function subscribeSlot(
   repair: boolean,
   write?: unknown,
 ): void {
-  const stop = found.subscribe((value) => {
+  const listener = (value: unknown): void => {
     sendContext(() => writeSlot(scope, slot, value));
-  });
+  };
+  // A bridged store repairs the slot itself, against what the server sent, since its source
+  // starts at the first subscriber.
+  let bridged = false;
+  let stop: () => void;
+  if (HAS_BRIDGES && repair && isBridged(found)) {
+    bridged = true;
+    stop = found.subscribe(listener, scope.s[slot]);
+  } else {
+    stop = found.subscribe(listener);
+  }
   (scope.stops ??= []).push(stop);
   if (write) {
     (scope.b ??= {})[slot] = (value: unknown) => found.set!(value);
   }
-  if (repair && !sameData(found.get(), scope.s[slot])) {
+  if (repair && !bridged && !sameData(found.get(), scope.s[slot])) {
     sendContext(() => writeSlot(scope, slot, found.get()));
   }
-}
-
-/**
- * Whether two values hold the same data: the same value, or arrays and plain objects whose items
- * hold the same data. A store that the browser makes again, such as the fallback of a context,
- * holds a new object with the content the server sent, which needs no repair.
- */
-function sameData(a: unknown, b: unknown): boolean {
-  if (Object.is(a, b)) {
-    return true;
-  }
-  if (Array.isArray(a)) {
-    if (!Array.isArray(b) || a.length !== b.length) {
-      return false;
-    }
-    for (let index = 0; index < a.length; index++) {
-      if (!sameData(a[index], b[index])) {
-        return false;
-      }
-    }
-    return true;
-  }
-  if (!isPlain(a) || !isPlain(b)) {
-    return false;
-  }
-  const keys = Object.keys(a);
-  if (keys.length !== Object.keys(b).length) {
-    return false;
-  }
-  for (const key of keys) {
-    if (!(key in b) || !sameData(a[key], b[key])) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/** Whether a value is an object of `Object` or of no prototype, as page state holds. */
-function isPlain(value: unknown): value is Record<string, unknown> {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
 }
 
 /** Links a read of `$store` that a scope resumed with. */

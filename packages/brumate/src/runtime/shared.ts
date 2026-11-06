@@ -2,10 +2,10 @@
 // seroval, so the core, which reads the page state without it, stays small.
 // The plugins that write and read these values are in `serial.ts`.
 
-import { HAS_BINDINGS, HAS_CHILDREN, HAS_STORES } from './features.ts';
+import { HAS_BINDINGS, HAS_BRIDGES, HAS_CHILDREN, HAS_STORES } from './features.ts';
 import { Internal, ownValue, raw } from './html.ts';
 import type { Raw } from './html.ts';
-import { Store } from './store.ts';
+import { Bridged, Store } from './store.ts';
 import type { SerialEntry, ValuePlugin } from './values.ts';
 
 /** The plugins of values of the app, by tag, which the entry `src/serial.ts` exports. */
@@ -363,6 +363,8 @@ export const stateValues: {
   u: (tag: string, data: unknown) => unknown;
   /** A store, with its value, and where `$toStore` made it. See `madeStores`. */
   s: (value: unknown, scope?: ScopeId, site?: number, slot?: number) => Store<unknown>;
+  /** A store of `bridge()`, with the data of the server and the name of its bridge. */
+  g: (snapshot: unknown, id: string, writable?: number) => Bridged<unknown, unknown>;
 } = {
   e: (scope, anchor) => new ElementReference(scope, anchor),
   f: (ref, scope, args, modifiers) => new FunctionReference(ref, scope, args, modifiers),
@@ -397,6 +399,10 @@ export const stateValues: {
         }
         return made;
       }
+    : unused,
+  g: HAS_BRIDGES
+    ? (snapshot, id, writable) =>
+        new Bridged<unknown, unknown>(undefined, undefined, id, snapshot, writable === 1)
     : unused,
 };
 

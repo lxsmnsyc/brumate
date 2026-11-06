@@ -196,5 +196,6 @@
   "BRM196": "The context value reads \"{name}\", which changes, but a context value is read once. Put it in a store with $toStore, or read it inside a function",
   "BRM197": "Read a context that may have no provider with \"const name = $getContext(Context, undefined)\", and a store in it with \"const state = name ? $store(name.key) : undefined\", with const and no other test",
   "BRM198": "The source of $store gives its store at once, so it cannot await or call a server function",
-  "BRM199": "$store takes a store. Read the store of a context with \"$store($getContext(Context))\", or give a store as the fallback, \"$store($getContext(Context, store(value)))\""
+  "BRM199": "$store takes a store. Read the store of a context with \"$store($getContext(Context))\", or give a store as the fallback, \"$store($getContext(Context, store(value)))\"",
+  "BRM200": "The value of bridge() must be a module-level export of a script file or of <script module>, as \"export const name = bridge({ … })\""
 }

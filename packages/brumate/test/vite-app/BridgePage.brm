@@ -1,0 +1,19 @@
+<script module>
+  import { bridge } from 'brumate/store';
+  import type { Bridge } from 'brumate/store';
+
+  export const modCounter: Bridge<{ value: number }, number> = bridge({
+    create: (snapshot?: number) => ({ value: snapshot ?? 0 }),
+    get: (source) => source.value,
+    subscribe: () => () => {},
+  });
+</script>
+
+<script>
+  import { $store } from 'brumate/signals';
+
+  const mod = modCounter(4);
+  const a = $store(mod);
+</script>
+
+<p>{a}</p>

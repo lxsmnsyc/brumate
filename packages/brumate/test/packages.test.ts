@@ -9,6 +9,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 import type { ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -23,7 +24,11 @@ import {
   resolvePackageImport,
   splitSpecifier,
 } from '../src/packages.ts';
+import { render } from '../src/runtime/server.ts';
 import brumate from '../src/vite.ts';
+
+const runtime = (name: string): string =>
+  fileURLToPath(new URL(`../src/runtime/${name}.ts`, import.meta.url));
 
 let base: string;
 const write = (file: string, content: string): void => {
@@ -54,6 +59,7 @@ beforeAll(() => {
         '.': './src/index.ts',
         './*.brm': { types: './types/*.d.ts', import: './src/*.brm' },
         './greeting': './src/greeting.ts',
+        './bears': './src/bears.ts',
       },
       dependencies: { 'base-kit': '1.0.0' },
     }),
@@ -70,6 +76,14 @@ beforeAll(() => {
   write(
     'ui/src/greeting.ts',
     "'use server';\n\nexport async function greet() {\n  return 'hi';\n}\n",
+  );
+  write(
+    'ui/src/bears.ts',
+    "import { bridge } from 'brumate/store';\nexport const bears = bridge({ create: (snapshot?: number) => ({ value: snapshot ?? 0 }), get: (source) => source.value, subscribe: () => () => {} });\n",
+  );
+  write(
+    'app/src/BearsPage.brm',
+    "<script>\n  import { $store } from 'brumate/signals';\n  import { bears } from '@acme/ui/bears';\n\n  const held = bears(3);\n  const value = $store(held);\n</script>\n\n<p>{value}</p>\n",
   );
   write('ui/test/Broken.brm', '<p>{</p>');
   write('base/package.json', json({ name: 'base-kit', version: '1.0.0', brumate: true }));
@@ -190,6 +204,15 @@ describe('vite plugin with packages', () => {
       configFile: false,
       logLevel: 'silent',
       plugins: [brumate()],
+      resolve: {
+        alias: {
+          'brumate/server': runtime('server'),
+          'brumate/client': runtime('client'),
+          'brumate/signals': runtime('signals'),
+          'brumate/store': runtime('store'),
+          'brumate/context': runtime('context'),
+        },
+      },
       appType: 'custom',
       server: { middlewareMode: true, watch: null },
     });
@@ -215,6 +238,24 @@ describe('vite plugin with packages', () => {
     expect(code).toContain(`"Base_${hash('base-kit/Base.brm')}"`);
     // `dir` keeps the test files of the package out.
     expect(code).not.toContain('Broken');
+  });
+
+  it('loads the module of a bridge in a package by its name', async () => {
+    const manifest = await server.transformRequest('virtual:brumate/manifest');
+    expect(manifest?.code).toContain('"bridge:@acme/ui/src/bears.ts"');
+    // The name that the page state sends holds no path of this machine.
+    const named = await server.transformRequest(`${base}/ui/src/bears.ts`, { ssr: true });
+    expect(named?.code).toContain('"bridge:@acme/ui/src/bears.ts#bears"');
+    expect(named?.code).not.toContain(base);
+
+    // A page that holds the store sends the same name, and the manifest loads it.
+    const page = await server.ssrLoadModule('/src/BearsPage.brm');
+    const { state } = await render(page.default, {});
+    expect(state).toContain('bridge:@acme/ui/src/bears.ts#bears');
+    expect(state).not.toContain(base);
+    const { load } = await server.ssrLoadModule('virtual:brumate/manifest');
+    const loaded = await load('bridge:@acme/ui/src/bears.ts');
+    expect(loaded.bears.i).toBe('bridge:@acme/ui/src/bears.ts#bears');
   });
 
   it('registers the server functions of packages that the app reaches', async () => {

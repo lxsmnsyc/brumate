@@ -1,7 +1,14 @@
 // Reads the state of the page and starts the core: the state records, the scopes they hold, and
 // what leaving a page or some routes drops.
 
-import { HAS_BINDINGS, HAS_FIELDS, HAS_LATE_MARKUP, HAS_STORES, HAS_TRIES } from '../features.ts';
+import {
+  HAS_BINDINGS,
+  HAS_BRIDGES,
+  HAS_FIELDS,
+  HAS_LATE_MARKUP,
+  HAS_STORES,
+  HAS_TRIES,
+} from '../features.ts';
 import {
   CHILDREN,
   ElementReference,
@@ -26,7 +33,7 @@ import {
   stopObserving,
   unindexed,
 } from './blocks.ts';
-import { loadComponent, pageComponents } from './code.ts';
+import { loadComponent, loadModule, pageComponents } from './code.ts';
 import { linkMadeStores, resumeStoreReads } from './context.ts';
 import { leaveGuesses, settled } from './guesses.ts';
 import { failBoundary, replaceTry } from './errors.ts';
@@ -54,6 +61,7 @@ import {
   timers,
 } from './state.ts';
 import type { CoreOptions, Scope } from './state.ts';
+import { setBridgeLoader } from '../store.ts';
 import { watchTitles } from './titles.ts';
 import { give, pendingEffects, resetWrites, send, set, writes } from './updates.ts';
 
@@ -514,6 +522,10 @@ function readFields(): void {
 /** Reads the page state. The loader calls it once, before the first handler. */
 export function init(value: CoreOptions): void {
   configure(value);
+  if (HAS_BRIDGES) {
+    // A bridged store loads the module of its bridge when it gets its first subscriber.
+    setBridgeLoader(loadModule, failBoundary);
+  }
   if (value.serial) {
     useSerialEntry(value.serial);
   }

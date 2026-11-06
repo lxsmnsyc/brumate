@@ -210,11 +210,82 @@ export const Level = createContext<{ level: Store<number>; reset: () => void }>(
 - On resume the browser keeps the value that the server rendered. It finds the store of a context again from its provider, and runs any other source once, with the values the page resumed, when the component's code loads. Then it subscribes, and writes the variable once if the store's value differs from the server's. It never calls `set`.
 - A store that the source makes, such as `$store(store(0))` or a call that returns a new store, is made again in the browser and starts from its first value there. A store of an import is one for the page in the browser, as it is one for each server process.
 - The source runs once on resume, with the values that the server sent. A signal that a handler changed before the reader's code loaded is not seen by the source: it gives the store of the server's values.
-- A store that reaches the browser in a value the page sends, such as a prop or a value of the script, must be a store of `brumate/store`, since only its value crosses. A store of another library works from an import, `<script module>` or a call in the reader. In a prop or a script value that `$store` reads, it makes the server render throw an error that names `$store`, the component and the value.
+- A store that reaches the browser in a value the page sends, such as a prop or a value of the script, must be a store of `brumate/store`, since only its value crosses. A store of another library works from an import, `<script module>` or a call in the reader. To send it in a prop, a script value or a context, wrap it with [`bridge()`](#outside-stores). In a prop or a script value that `$store` reads, a store that is not bridged makes the server render throw an error that names `$store`, the component and the value.
 - Until a fix of the core, the code that the browser renders a component with has its own copy of `<script module>`. A `<script module>` store is then two stores once a page resumes and the browser also renders that component: the resumed readers share one, and the readers that the browser rendered share the other.
 - The source gives its store at once. A source that awaits is [BRM198](./errors.md#brm198).
 - `const x = $store(source)` follows the store. `let x = $store(source)` also writes it: `x = next` calls `set(next)`. A store without `set`, such as one from a memo, throws a `TypeError` when the variable registers. The guard on a value is `const` only ([BRM197](./errors.md#brm197)).
 - The provider has one store for each `$toStore`, and a reader updates in the same ordered pass as the props and memos around it.
-- The page sends only the value of a store from `brumate/store`. The server refuses a store of another library inside a provided value, with an error that names the context.
+- The page sends only the value of a store from `brumate/store`. The server refuses a store of another library inside a provided value, with an error that names the context. [`bridge()`](#outside-stores) makes a store of another library that the page can send.
 - `import { store } from 'brumate/store'` makes a store for a module: `export const theme = store('light')`. `Store` calls its listeners only when the value changes (`Object.is`).
 - Keep functions for handlers. A reader renders from the store, not from a function that reads a signal.
+
+## Outside stores
+
+A store of another library, such as zustand, has its own functions to read and to listen. `$store` reads it from an import, `<script module>` or a call. To give it to the readers in a context or a prop, wrap it with `bridge()` from `brumate/store`. The page then sends the data of the store and the name of the bridge, and the browser makes the library's store again from that data.
+
+```ts
+// bears.ts
+import { createContext } from 'brumate/context';
+import type { Context } from 'brumate/context';
+import { bridge } from 'brumate/store';
+import type { Bridge, BridgedStore } from 'brumate/store';
+import { createStore } from 'zustand/vanilla';
+import type { StoreApi } from 'zustand/vanilla';
+
+interface Bears {
+  bears: number;
+  add: () => void;
+}
+
+export const bearStore: Bridge<StoreApi<Bears>, { bears: number }> = bridge({
+  create: (snapshot?: { bears: number }) =>
+    createStore<Bears>()((set) => ({
+      bears: snapshot?.bears ?? 0,
+      add: () => set((state) => ({ bears: state.bears + 1 })),
+    })),
+  get: (source) => ({ bears: source.getState().bears }),
+  subscribe: (source, listener) => source.subscribe(listener),
+  set: (source, value) => source.setState(value),
+});
+
+export const BearContext: Context<BridgedStore<StoreApi<Bears>, { bears: number }>> =
+  createContext('bears');
+```
+
+A provider makes the store with the first data, and a reader binds it with `$store` and calls the actions of the library through `.source`:
+
+```brm
+<script>
+  import { $setContext } from 'brumate/signals';
+  import BearCount from './BearCount.brm';
+  import { BearContext, bearStore } from './bears.ts';
+
+  $setContext(BearContext, bearStore({ bears: 2 }));
+</script>
+
+<BearCount />
+```
+
+```brm BearCount.brm
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { BearContext } from './bears.ts';
+
+  const bear = $getContext(BearContext);
+  const state = $store(bear);
+</script>
+
+<button onClick=(() => bear.source?.getState().add())>{state.bears} bears</button>
+```
+
+A child that gets the store in a prop reads and writes the same live store.
+
+- `create(snapshot)` makes the library's store. On the server it runs once for each call of `bearStore(...)`, so a store made in a provider belongs to its request and no request shares it with another. In the browser it runs once, when the store gets its first subscriber, with the data that the server sent. All readers and prop holders share that one store.
+- `get(source)` gives the data of the store. It goes in the page state, so it must be data that the page can send: numbers, strings, arrays and objects of them. If it gives something else, the server render throws an error that names the store and the context or prop that sends it.
+- `subscribe(source, listener)` calls `listener` on each change and returns the function that stops it. The reader updates when `get` gives other data.
+- `set(source, value)` is optional. `let state = $store(bear)` calls it when the variable is assigned, and a bridge without `set` throws a `TypeError` for `let`. Resume never calls `set`.
+- If the first data of the browser's store differs from the server's, the readers are updated once.
+- `.source` is the library's store. In the browser it is `undefined` until the store has a subscriber and the module of the bridge has loaded, since the browser makes the store at the first subscriber. A reader that binds the store with `$store` subscribes when the page resumes, but a handler that runs before the module has loaded sees `undefined`, so write `bear.source?.getState().add()` there.
+- The value of `bridge()` must be a module-level export: of a script file, as in `export const bearStore = bridge({ … })`, `export { bearStore }` or `export default bridge({ … })`, or of the `<script module>` of a component, with `export const`. A script in a package of components works too. A bridge of `<script module>` is named by its component (`bridge:<component>#<export>`), and the browser loads the component's code with it, even if no other part of the component reads the bridge. The page state names the bridge by its module and its export, and the browser loads the module by that name. Any other place, such as the script of a component or a function, is a compile error ([BRM200](./errors.md#brm200)), and `brumate check` reports it. The module must also be one that the browser can load: it imports nothing that needs the server.
+- A bridge exported by an installed package in `node_modules` is not found yet: the browser cannot make its store on resume. Keep the bridge in the app or in a workspace package.
+- With `isolatedDeclarations`, annotate the export, as `Bridge<StoreApi<Bears>, { bears: number }>` above.

@@ -20,7 +20,14 @@ import { entryClasses } from './captures.ts';
 import { refreshedNames } from './refreshes.ts';
 import { compile } from './compile.ts';
 import { DEFAULT_MERGE } from './codegen/client.ts';
-import { defaultExclude, findFiles, findScripts, findServerFiles } from './files.ts';
+import { bridgeModuleId, hasBridge, mayHaveBridge, nameBridges } from './bridges.ts';
+import {
+  defaultExclude,
+  findBridgeFiles,
+  findFiles,
+  findScripts,
+  findServerFiles,
+} from './files.ts';
 import { clientEnvModule, parseEnvFile } from './env-file.ts';
 import {
   findPackageServerFile,
@@ -552,6 +559,8 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   }
   /** Files of server functions: scripts whose first statement is `'use server'`, by ID. */
   const serverFiles = new Map<string, string>();
+  /** The script files with a `bridge`, by the ID of their module. The browser loads them by it. */
+  const bridgeFiles = new Map<string, string>();
   /** The scripts of the app, when it uses packages of components. */
   let appScripts: string[] = [];
   /** The ID of a function that a component imports from a 'use server' file, by a relative path. */
@@ -580,6 +589,10 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     return found && functionId(serverFileId(normalizePath(found)), name, !isServe);
   }
 
+  function bridgeId(file: string): string {
+    // The name of the file as the components have it, with no path of this machine.
+    return bridgeModuleId(getFileName(file));
+  }
   function serverFileId(file: string): string {
     return `${path.basename(file).replace(/\.[^.]+$/, '')}_${hash(getFileName(file))}`;
   }
@@ -602,6 +615,11 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       return !findPackage(packages, file);
     }
     const searches = [findFiles(root, exclude), findServerFiles(root, exclude)];
+    // Bridges of the app, and of packages that are outside the root.
+    const bridged = Promise.all([
+      findBridgeFiles(root, exclude),
+      ...directories.map((directory) => findBridgeFiles(directory, packageExclude)),
+    ]);
     for (const directory of directories) {
       searches.push(
         findFiles(directory, packageExclude),
@@ -622,6 +640,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     appScripts = scripts;
     files.clear();
     serverFiles.clear();
+    bridgeFiles.clear();
+    for (const list of await bridged) {
+      for (const file of list) {
+        bridgeFiles.set(bridgeId(file), file);
+      }
+    }
     for (const file of own!) {
       if (ownFile(file)) {
         files.set(componentId(file), file);
@@ -742,6 +766,9 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         }
       }
       features.lateMarkup ||= options.navigate !== false || loading;
+      // The page state holds a bridged store, which is a store.
+      features.bridges ||= bridgeFiles.size > 0;
+      features.stores ||= features.bridges;
       // Client navigation writes the route and its own state into the page.
       features.routes ||= options.navigate !== false;
       // A script can pass a route context on under another name, which the compiled output of
@@ -984,6 +1011,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
   /** The IDs of the components in each bundle of the client build, by root, for `hints.json`. */
   const bundleMembers = new Map<string, string[]>();
 
+  /** `bridges`: the loaders of the modules with a `bridge`, by module ID. */
+  function bridgeLoaders(): string {
+    const lines: string[] = ['const bridges = {'];
+    for (const [id, file] of bridgeFiles) {
+      lines.push(`  ${JSON.stringify(id)}: () => import(${JSON.stringify(file)}),`);
+    }
+    lines.push('};');
+    return lines.join('\n');
+  }
+
   async function manifest(): Promise<string> {
     const list = [...files];
     // A build leaves out the components that have no client code. The core treats a
@@ -1020,6 +1057,17 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       }
       // The server names the bundles of each page in its state records, as `b-load`, so the
       // entry has no table of them.
+      if (bridgeFiles.size > 0) {
+        // A bridge's module loads by its own ID, as a bundle does by a component's.
+        return [
+          "import { load as loadBundle } from 'brumate/bundles';",
+          bridgeLoaders(),
+          'export function load(id) {',
+          '  return bridges[id] ? bridges[id]() : loadBundle(id);',
+          '}',
+          `load.all = () => import(${JSON.stringify(BUNDLES)});`,
+        ].join('\n');
+      }
       return [
         "import { load } from 'brumate/bundles';",
         // The `import()` of each bundle is in a chunk that nothing loads, so the build makes a
@@ -1037,10 +1085,16 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
       );
     }
     return [
+      ...(bridgeFiles.size > 0 ? [bridgeLoaders()] : []),
       'const modules = {',
       ...entries,
       '};',
       'export function load(id) {',
+      // A bridge of `<script module>` is named by its component, which holds its code.
+      ...(bridgeFiles.size > 0 ? ['  if (bridges[id]) {', '    return bridges[id]();', '  }'] : []),
+      "  if (id.startsWith('bridge:')) {",
+      '    id = id.slice(7);',
+      '  }',
       ...(isServe
         ? [
             '  const module = modules[id];',
@@ -2427,6 +2481,17 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           this.error((error as Error).message);
         }
       }
+      // A script with `bridge()` gets the name of each bridge, which the page state sends.
+      if (file && isScriptFile(file) && mayHaveBridge(code)) {
+        try {
+          const named = nameBridges(code, file, bridgeId(file));
+          if (named) {
+            return { code: named, map: null };
+          }
+        } catch (error) {
+          this.error((error as Error).message);
+        }
+      }
       // The shared module of a module of reactive logic is TypeScript too, under a query
       // that Vite does not strip types for.
       const shared = isReactiveModule(file ?? '') && id.endsWith(SHARED_QUERY);
@@ -2502,6 +2567,23 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
             appScripts = rest;
             if (event !== 'unlink') {
               appScripts.push(normalized);
+            }
+          }
+          // A file that gains, or loses, its `bridge` changes the loaders of the manifest.
+          const bridged = bridgeId(normalized);
+          const hadBridge = bridgeFiles.has(bridged);
+          const nowBridge =
+            event !== 'unlink' && existsSync(file) && hasBridge(readFileSync(file, 'utf8'), file);
+          if (nowBridge) {
+            bridgeFiles.set(bridged, normalized);
+          } else {
+            bridgeFiles.delete(bridged);
+          }
+          if (hadBridge !== nowBridge) {
+            for (const module of server.moduleGraph.idToModuleMap.values()) {
+              if (module.id === `\0${MANIFEST}`) {
+                server.moduleGraph.invalidateModule(module);
+              }
             }
           }
           const id = serverFileId(normalized);

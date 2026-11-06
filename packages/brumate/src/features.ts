@@ -40,6 +40,8 @@ export interface Features {
   searchParams: boolean;
   /** Stores of `brumate/store`: `$toStore`, `$store`, or a store that the page state holds. */
   stores: boolean;
+  /** Stores of `bridge()`, which the page state holds and the browser makes again. */
+  bridges: boolean;
 }
 
 /** No feature at all, which a build that has no component uses. */
@@ -63,6 +65,7 @@ export function noFeatures(): Features {
     rootWait: false,
     searchParams: false,
     stores: false,
+    bridges: false,
   };
 }
 
@@ -106,6 +109,9 @@ export function getFeatures(result: CompileResult): Features {
     rootWait: /\$\$b\.wait\(/.test(client),
     searchParams: /\$\$b\.(?:searchParam|paramEffect)\(/.test(all),
     stores: /\$\$(?:b|ctx)\.(?:toStore|consumeStore)\(|['"]brumate\/store['"]/.test(all),
+    // A bridge of `<script module>` is named in the compiled component. A bridge in a script
+    // file is found by the Vite plugin.
+    bridges: /\$\$nameBridge\(/.test(all),
   };
 }
 
@@ -131,6 +137,7 @@ export function joinFeatures(all: Features[]): Features {
     joined.rootWait ||= features.rootWait;
     joined.searchParams ||= features.searchParams;
     joined.stores ||= features.stores;
+    joined.bridges ||= features.bridges;
   }
   return joined;
 }
@@ -155,6 +162,7 @@ const GLOBALS: Record<keyof Features, string> = {
   rootWait: '__BRUMATE_HAS_ROOT_WAIT__',
   searchParams: '__BRUMATE_HAS_SEARCH_PARAMS__',
   stores: '__BRUMATE_HAS_STORES__',
+  bridges: '__BRUMATE_HAS_BRIDGES__',
 };
 
 /** True for code that reads a feature, such as the core. */

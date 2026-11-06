@@ -3,6 +3,7 @@
 // sends only the value of a store; the browser makes a new store for it.
 
 import type { Context } from './context.ts';
+import { HAS_BRIDGES } from './features.ts';
 
 /** The pass of the core, which the browser sets, so a store's readers update in one pass. */
 const PASS = Symbol.for('brumate.pass');
@@ -55,7 +56,7 @@ export function findStored(
  */
 export function sentForeignStore(component: string, value: string): Error {
   return new Error(
-    `$store in ${component} reads a store of another library from ${value}, which the page sends, and only a store of brumate/store crosses. Read the store from an import, <script module> or a call in this component`,
+    `$store in ${component} reads a store of another library from ${value}, which the page sends, and only a store of brumate/store crosses. Wrap the library's store with bridge() in a module, or read it from an import, <script module> or a call in this component`,
   );
 }
 
@@ -146,7 +147,7 @@ export function isContract(value: unknown): value is StoreLike<unknown> {
 
 /** True for a value of the store contract that is not a store of brumate. */
 export function isForeignStore(value: unknown): boolean {
-  return isContract(value) && !isStore(value);
+  return isContract(value) && !isStore(value) && !(HAS_BRIDGES && isBridged(value));
 }
 
 /** True when `$store` can write the store: it has `set`, and is not the store of a memo. */
@@ -177,5 +178,301 @@ export function sendStore<T>(target: Store<T>, value: T, force?: boolean): void 
     pass(listeners);
   } else {
     listeners();
+  }
+}
+
+// Bridges: a store of another library that can cross the page state. `bridge()` names how to make
+// the library's store, read it and listen to it, and the page state sends the data that `get`
+// reads, with the name of the bridge. The browser makes the library's store again, once, from
+// that data.
+
+/** What `bridge` takes. */
+export interface BridgeOptions<S, T> {
+  /**
+   * Makes the library's store. On the server it runs once for each call of the bridge. In the
+   * browser it runs once, when the store gets its first subscriber, with the data that the server
+   * sent. It must be in a module that the browser can load.
+   */
+  create: (snapshot: T | undefined) => S;
+  /** The data of the store: plain data that the page state can send. */
+  get: (source: S) => T;
+  /** Calls `listener` when the store changes. Returns the function that stops it. */
+  subscribe: (source: S, listener: () => void) => () => void;
+  /** Writes the store. The browser never calls it when the page resumes. */
+  set?: (source: S, value: T) => void;
+}
+
+/** A store of `bridge()`: the contract of a store, and the store of the library. */
+export interface BridgedStore<S, T> extends StoreLike<T> {
+  /**
+   * The store of the library. In the browser it is undefined until the store has a subscriber,
+   * since the browser makes it at the first subscriber.
+   */
+  readonly source: S | undefined;
+}
+
+/** What `bridge` returns: makes a store, from the data of the server in the browser. */
+export interface Bridge<S, T> {
+  (snapshot?: T): BridgedStore<S, T>;
+  /** The options. */
+  b: BridgeOptions<S, T>;
+  /** The name that the compiler gave, `bridge:<file>#<export>`. */
+  i?: string;
+}
+
+const BRIDGES = Symbol.for('brumate.bridges');
+const BRIDGE_LOAD = Symbol.for('brumate.bridge-load');
+
+type Global = { [BRIDGES]?: Map<string, Bridge<never, never>>; [BRIDGE_LOAD]?: Loader };
+type Loader = [load: (module: string) => Promise<unknown>, report: (error: unknown) => void];
+
+/** The bridges by name, which any copy of the runtime shares. */
+function bridges(): Map<string, Bridge<never, never>> {
+  return ((globalThis as Global)[BRIDGES] ??= new Map());
+}
+
+/**
+ * Sets how the browser loads the module of a bridge, and where a failed load is reported. The
+ * core calls it when it starts.
+ */
+export function setBridgeLoader(...loader: Loader): void {
+  (globalThis as Global)[BRIDGE_LOAD] = loader;
+}
+
+/** The module of a bridge, from its name. */
+function bridgeModule(id: string): string {
+  return id.slice(0, id.lastIndexOf('#'));
+}
+
+/**
+ * Makes a bridge. Keep its value in a module-level export, so the page state can name it:
+ * `export const bears = bridge({ … })`. The compiler gives it its name.
+ */
+export function bridge<S, T>(options: BridgeOptions<S, T>): Bridge<S, T> {
+  const made = Object.assign(
+    (snapshot?: T): BridgedStore<S, T> => new Bridged(made, options.create(snapshot)),
+    { b: options },
+  ) as Bridge<S, T>;
+  return made;
+}
+
+/** Gives a bridge its name, which the compiler writes at the end of its module. */
+export function nameBridge(made: Bridge<never, never>, id: string): void {
+  made.i = id;
+  bridges().set(id, made);
+}
+
+/** True for a store of `bridge()`, of any copy of the runtime. */
+export function isBridged(value: unknown): value is Bridged<unknown, unknown> {
+  return (
+    typeof value === 'object' && value !== null && (value as { k?: unknown }).k === 'brumate.bridge'
+  );
+}
+
+/**
+ * Whether two values hold the same data: the same value, or arrays and plain objects whose items
+ * hold the same data. A store that the browser makes again holds a new object with the content
+ * the server sent, which needs no repair.
+ */
+export function sameData(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) {
+    return true;
+  }
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) {
+      return false;
+    }
+    for (let index = 0; index < a.length; index++) {
+      if (!sameData(a[index], b[index])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (!isPlain(a) || !isPlain(b)) {
+    return false;
+  }
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) {
+    return false;
+  }
+  for (const key of keys) {
+    if (!(key in b) || !sameData(a[key], b[key])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Whether a value is an object of `Object` or of no prototype, as page state holds. */
+function isPlain(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+/**
+ * The store that a bridge makes. On the server it holds the library's store from the start. In
+ * the browser the page state makes it with the name of the bridge and the data of the server, and
+ * it makes the library's store at its first subscriber.
+ */
+export class Bridged<S, T> implements BridgedStore<S, T> {
+  /** The mark of a bridged store, which `isBridged` reads in every copy of the runtime. */
+  k = 'brumate.bridge' as const;
+  /** The bridge. Undefined for a store of the page state until the module of the bridge loads. */
+  f?: Bridge<S, T>;
+  /** The name of the bridge, for a store of the page state. */
+  i?: string;
+  /** The library's store. */
+  s?: S;
+  /** True once the library's store exists. */
+  m = false;
+  /** The data that the server sent, until the library's store exists. */
+  v?: T;
+  /** Whether the bridge has `set`, as the server sent it, until the module loads. */
+  w?: boolean;
+
+  constructor(
+    made: Bridge<S, T> | undefined,
+    source: S | undefined,
+    id?: string,
+    snapshot?: T,
+    writable?: boolean,
+  ) {
+    this.f = made;
+    this.i = id;
+    this.v = snapshot;
+    this.w = writable;
+    if (made) {
+      this.s = source;
+      this.m = true;
+    }
+  }
+
+  /**
+   * The library's store. In the browser it is undefined until the store has a subscriber and the
+   * module of the bridge has loaded.
+   */
+  get source(): S | undefined {
+    return this.s;
+  }
+
+  /** The name of the bridge. */
+  get id(): string | undefined {
+    return this.f?.i ?? this.i;
+  }
+
+  /** The data of the store: what `get` reads, or what the server sent before the first subscriber. */
+  get(): T {
+    return this.m ? this.f!.b.get(this.s as S) : (this.v as T);
+  }
+
+  /**
+   * Calls `listener` with the data when it changes. The first subscriber makes the library's
+   * store in the browser. When the module of the bridge has not loaded, the subscription starts
+   * when it has.
+   */
+  subscribe(listener: (value: T) => void, ...seen: [value?: T]): () => void {
+    let stopped = false;
+    let stop: (() => void) | undefined;
+    // What this subscriber has seen, which `seen` can name: a source that starts later compares
+    // with it.
+    let last = seen.length > 0 ? (seen[0] as T) : this.get();
+    const start = (): void => {
+      if (stopped) {
+        return;
+      }
+      const options = this.f!.b;
+      const source = this.make();
+      stop = options.subscribe(source, () => {
+        const next = options.get(source);
+        if (!sameData(next, last)) {
+          last = next;
+          listener(next);
+        }
+      });
+      // A source that starts from other data than this subscriber saw, such as one that keeps its
+      // own state, is written once.
+      const first = options.get(source);
+      if (!sameData(first, last)) {
+        last = first;
+        listener(first);
+      }
+    };
+    if (this.find()) {
+      start();
+    } else {
+      void this.load().then((loaded) => loaded && start());
+    }
+    return () => {
+      stopped = true;
+      stop?.();
+    };
+  }
+
+  /** Writes the library's store, when the bridge has `set`. */
+  get set(): ((value: T) => void) | undefined {
+    // Before the module loads, the server's word is all there is, so `let` checks the same.
+    const writable = this.find() ? !!this.f!.b.set : this.w !== false;
+    return writable ? (value) => this.write(value) : undefined;
+  }
+
+  /** Writes the library's store, after the module of the bridge has loaded. */
+  private write(value: T): void {
+    if (this.find()) {
+      this.f!.b.set!(this.make(), value);
+    } else {
+      void this.load().then((loaded) => loaded && this.write(value));
+    }
+  }
+
+  /** The bridge, once its module has loaded. */
+  private find(): Bridge<S, T> | undefined {
+    if (!this.f && this.i !== undefined) {
+      this.f = bridges().get(this.i) as Bridge<S, T> | undefined;
+    }
+    return this.f;
+  }
+
+  /** Loads the module of the bridge. A failure goes to the core's error path; it gives false. */
+  private load(): Promise<boolean> {
+    const [load, report] = (globalThis as Global)[BRIDGE_LOAD] ?? [];
+    return Promise.resolve(load?.(bridgeModule(this.i!))).then(
+      () => {
+        if (this.find()) {
+          return true;
+        }
+        this.fail(
+          report,
+          new Error(
+            `The bridge "${this.i}" is not in its module. Keep bridge() in a module-level export, as "export const name = bridge({ … })"`,
+          ),
+        );
+        return false;
+      },
+      (error: unknown) => {
+        this.fail(report, error);
+        return false;
+      },
+    );
+  }
+
+  private fail(report: ((error: unknown) => void) | undefined, error: unknown): void {
+    if (report) {
+      report(error);
+    } else {
+      console.error(error);
+    }
+  }
+
+  /** Makes the library's store once, with the data of the server. */
+  private make(): S {
+    if (!this.m) {
+      this.s = this.f!.b.create(this.v);
+      this.m = true;
+    }
+    return this.s as S;
   }
 }

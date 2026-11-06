@@ -227,7 +227,7 @@ Reads a context from the nearest component above that provides it, and throws wh
 function $store<T>(source: StoreLike<T>): T;
 ```
 
-Binds a store to a variable that holds its value. A store is any value with `get()`, `subscribe(listener)`, which returns the function that stops it, and optionally `set(value)`. See [Live values with stores](./context.md#live-values-with-stores).
+Binds a store to a variable that holds its value. A store is any value with `get()`, `subscribe(listener)`, which returns the function that stops it, and optionally `set(value)`. See [Live values with stores](./context.md#live-values-with-stores). A store of another library crosses the page state only through [`bridge`](#bridge).
 
 - The source is any expression that gives a store: a key of the value of a `$getContext`, as in `$store(field.state)`, `$store($getContext(Level))` for a context that holds a store, an import, a prop, a value of `<script module>`, a call or `store(0)`. A context, `undefined` or `null` is a compile error ([BRM199](./errors.md#brm199)), and a source that gives no store when the page renders throws a `TypeError`. A source that awaits is a compile error ([BRM198](./errors.md#brm198)).
 - A context that may have no provider: `const field = $getContext(Field, undefined); const state = field ? $store(field.state) : undefined;`, or a store as the fallback, `$store($getContext(Locale, store('en-US')))`. Another guard is [BRM197](./errors.md#brm197).
@@ -244,6 +244,20 @@ function $toStore<T>(value: T): Store<T>;
 ```
 
 The store of a memo, a signal or a prop, for a value of `$setContext`: the value itself, or the value of a key of an object or an item of a list. The provider writes it when its source changes, so a change reaches every reader in one ordered update. A store of a signal has a `set` that writes the signal. A store of a memo or a prop has none.
+
+## `bridge`
+
+```ts
+// brumate/store
+function bridge<S, T>(options: {
+  create: (snapshot: T | undefined) => S;
+  get: (source: S) => T;
+  subscribe: (source: S, listener: () => void) => () => void;
+  set?: (source: S, value: T) => void;
+}): (snapshot?: T) => BridgedStore<S, T>;
+```
+
+Makes a store of another library that crosses the page state in a context, a prop or a script value. `$store` reads it like any store. The page sends the data from `get` and the name of the bridge, and the browser runs `create(snapshot)` once, at the first subscriber. `BridgedStore<S, T>` has `get`, `subscribe`, an optional `set` and `.source`, the library's store, which is `undefined` in the browser until the store has a subscriber and its module has loaded. Resume never calls `set`. `get` must give data that the page can send. The value must be a module-level export of a script file or of `<script module>` ([BRM200](./errors.md#brm200)). See [Outside stores](./context.md#outside-stores).
 
 ## `$id`
 

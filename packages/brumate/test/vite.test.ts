@@ -38,6 +38,7 @@ const config: InlineConfig = {
       'brumate/events': runtime('events'),
       'brumate/serial': runtime('values'),
       'brumate/stream': runtime('gather'),
+      'brumate/store': runtime('store'),
     },
   },
 };
@@ -124,6 +125,32 @@ describe('vite plugin', () => {
     const module = await load('Counter_m86gta');
     expect(module.id).toBe('Counter_m86gta');
     expect(typeof module.h4).toBe('function');
+  });
+
+  it('names a bridge by its module and loads the module by that name', async () => {
+    const module = await server.ssrLoadModule('/bridged.ts');
+    expect(module.counter.i).toBe('bridge:bridged.ts#counter');
+    const { load } = await server.ssrLoadModule('virtual:brumate/manifest');
+    const loaded = await load('bridge:bridged.ts');
+    expect(loaded.counter.i).toBe('bridge:bridged.ts#counter');
+  });
+
+  it('names a bridge of <script module> by its component, and loads the component by it', async () => {
+    const page = await server.ssrLoadModule('/BridgePage.brm');
+    const { state } = await render(page.default, {});
+    expect(state).toMatch(/bridge:BridgePage_\w+#modCounter/);
+    expect(state).not.toContain(root);
+    // The browser resolves the name with the loader of the manifest.
+    const registry = Symbol.for('brumate.bridges');
+    delete (globalThis as { [key: symbol]: unknown })[registry];
+    const { load } = await server.ssrLoadModule('virtual:brumate/manifest');
+    const id = /bridge:(BridgePage_\w+)#modCounter/.exec(state)![1]!;
+    await load(`bridge:${id}`);
+    const names = [...(globalThis as { [key: symbol]: Map<string, unknown> })[registry]!.keys()];
+    expect(names).toContain(`bridge:${id}#modCounter`);
+    // The shared part holds the naming call once.
+    const shared = await server.transformRequest('/BridgePage.brm?brumate-client&part=shared');
+    expect(shared!.code.split('modCounter"').length - 1).toBe(1);
   });
 
   it('answers server function calls in development', async () => {
@@ -789,6 +816,41 @@ describe('prerendering', () => {
     expect(assets.join('')).not.toContain('installDevtools');
     // A page that no link leads to is not rendered.
     expect(() => read('hidden/index.html')).toThrow('ENOENT');
+  });
+});
+
+describe('bridge in a build', () => {
+  it('loads the module of a bridge by its name, from the client entry', async () => {
+    const app = fileURLToPath(new URL('./.output/bridge-app/', import.meta.url));
+    rmSync(app, { recursive: true, force: true });
+    mkdirSync(`${app}src/routes`, { recursive: true });
+    writeFileSync(`${app}src/client.ts`, "import 'virtual:brumate/start';\n");
+    writeFileSync(`${app}src/server.ts`, "export { handle } from 'virtual:brumate/routes';\n");
+    writeFileSync(
+      `${app}src/bears.ts`,
+      "import { bridge } from 'brumate/store';\nexport const bears = bridge({ create: (snapshot?: number) => ({ value: snapshot ?? 0 }), get: (source) => source.value, subscribe: () => () => {} });\n",
+    );
+    writeFileSync(
+      `${app}src/routes/index.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(0);\n</script>\n<button onClick=(() => count++)>{count}</button>\n",
+    );
+    const shared: InlineConfig = { ...config, root: app, plugins: [brumate({})] };
+    writeFileSync(
+      `${app}src/routes/index.brm`,
+      "<script module>\n  import { bridge } from 'brumate/store';\n  export const modCounter = bridge({ create: (snapshot?: number) => ({ value: snapshot ?? 0 }), get: (source) => source.value, subscribe: () => () => {} });\n</script>\n<script>\n  import { $signal, $store } from 'brumate/signals';\n  let count = $signal(0);\n  const held = modCounter(2);\n  const value = $store(held);\n</script>\n<button onClick=(() => count++)>{count} {value}</button>\n",
+    );
+    await build({
+      ...shared,
+      build: { outDir: 'dist/client', manifest: true, rolldownOptions: { input: 'src/client.ts' } },
+    });
+    const code = readdirSync(`${app}dist/client/assets`)
+      .map((file) => readFileSync(`${app}dist/client/assets/${file}`, 'utf8'))
+      .join('\n');
+    // The module has its own chunk, and the bridge has the name that the page state sends.
+    expect(code).toContain('bridge:src/bears.ts#bears');
+    expect(code).toContain('bridge:src/bears.ts');
+    // The shared part of the component with a bridge in `<script module>` names it once.
+    expect(code.match(/#modCounter[`"']/g)).toHaveLength(1);
   });
 });
 

@@ -1,0 +1,9 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { ModContext } from './modContext.ts';
+
+  const bear = $getContext(ModContext);
+  const state = $store(bear);
+</script>
+
+<button class="madd" onClick=(() => bear.source?.getState().add())>{state.bears}</button>

@@ -1,0 +1,13 @@
+<script>
+  import { $setContext, $signal } from 'brumate/signals';
+  import BearReader from './BearReader.brm';
+  import { BearContext, bearStore } from './bears.ts';
+
+  let shown = $signal(false);
+  $setContext(BearContext, bearStore({ bears: 7 }));
+</script>
+
+<button class="show" onClick=(() => (shown = true))>Show</button>
+#if (shown) {
+  <BearReader />
+}

@@ -1,0 +1,9 @@
+<script>
+  import { $setContext } from 'brumate/signals';
+  import BadReader from './BadReader.brm';
+  import { BadContext, badStore } from './bears.ts';
+
+  $setContext(BadContext, badStore());
+</script>
+
+<BadReader />
