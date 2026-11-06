@@ -17,7 +17,7 @@ import { findElement } from './blocks.ts';
 import { childrenReady } from './children.ts';
 import { codeAbove, loadModule } from './code.ts';
 import { fail, reportOnce } from './errors.ts';
-import { call, callNow, setPass } from './references.ts';
+import { call, callNow, setPass, track, whenSettled } from './references.ts';
 import { afterInsert, descendants, findRoot, resolveScope } from './scopes.ts';
 import {
   DEV,
@@ -152,10 +152,10 @@ export function send(bound: unknown, value: unknown): void {
     const args = [...(bound.args ?? []), value];
     // A loaded setter runs at once, so the writer reads what it kept.
     if (!callNow(bound.ref, scopes.get(bound.scope), args)) {
-      void call(bound.ref, scopes.get(bound.scope), args);
+      track(call(bound.ref, scopes.get(bound.scope), args));
     }
   } else if (typeof bound === 'function') {
-    void bound(value);
+    track(bound(value));
   }
 }
 
@@ -778,6 +778,9 @@ export function flush(): void {
 }
 
 (globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.flush')] = flush;
+if (HAS_BINDINGS) {
+  (globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.settled')] = whenSettled;
+}
 
 /**
  * Queues the updates that read a slot, on the scope and on its descendants of

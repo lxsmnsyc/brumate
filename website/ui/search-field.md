@@ -72,8 +72,8 @@ A disabled or read-only field does neither.
 
 - `value` alone, or nothing, makes the field keep its own text. `value="tabs"` is where that text starts, and a new value from you replaces it.
 - `value=$bind(signal)` writes your signal. Change the signal and the input follows. The first button writes "menu" to the third field.
-- `value=$bind(signal, (next) => ...)` asks you first. Press Lock and type in the last field: the signal keeps the old text, and the input still shows what was typed. Escape and the button also leave that text, since the field does not read the kept value back after a write. A reset of the form puts the kept text back. The core node `bind-read-your-writes` closes this gap.
-- `onChange` gets the text in every shape, each time the user changes it, also when a clear empties it and also when your request refuses it.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock and type in the last field: the signal keeps the old text, and the input shows it again. A request that decides later, such as after a check on the server, leaves the typed text in place until it settles, and puts the kept text back only if it refused. The caret stays where it still fits. Escape and the button write an empty text through the request too.
+- `onChange` gets the text that the field keeps in every shape, each time the user changes it, also when a clear empties it. A request that refuses gets no call.
 - A reset of the form gives back the text that the field started with, as a write: with `$bind(signal, request)`, your request can refuse it.
 - The server renders the text it starts with. See [State](./state.md).
 

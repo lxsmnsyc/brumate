@@ -165,6 +165,32 @@ export async function run({ browser, url, runner }) {
     },
   );
 
+  await step('TextField: a setter that refuses a letter shows the kept digits', async () => {
+    await page.goto(`${url}/`);
+    const digits = page.locator('.digits-field input');
+    await digits.click();
+    // The first key waits for the code of the page, then the refused letter goes.
+    await page.keyboard.type('a');
+    await page.waitForFunction(
+      () => document.querySelector('.digits-field input').value === '12',
+      undefined,
+      { timeout: 10000 },
+    );
+    // A letter typed before the digits is refused, and the caret stays at the start.
+    await digits.press('ArrowLeft');
+    await digits.press('ArrowLeft');
+    await digits.press('ArrowLeft');
+    await page.keyboard.type('x');
+    await page.waitForFunction(() => document.querySelector('.digits-field input').value === '12');
+    const caret = await digits.evaluate((input) => input.selectionStart);
+    assert(caret === 0, `the caret is at ${caret}`);
+    await page.keyboard.type('7');
+    await page.waitForFunction(
+      () => document.querySelector('.digits')?.textContent === 'Kept 712.',
+    );
+    assert((await digits.inputValue()) === '712', `the field holds ${await digits.inputValue()}`);
+  });
+
   await step(
     'TextField with createForm: the errors of the reply, then a post that passes',
     async () => {

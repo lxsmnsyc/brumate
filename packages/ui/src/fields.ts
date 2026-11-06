@@ -1,5 +1,13 @@
 // Helpers of the fields, which the parts call in the browser.
 
+// The runtime registers this under a symbol, as it does for `flush`. It is missing in an older
+// runtime and in an app that passes no `$bind`, and then no setter waits.
+function whenSettled(): Promise<void> | undefined {
+  return (globalThis as { [key: symbol]: (() => Promise<void> | undefined) | undefined })[
+    Symbol.for('brumate.settled')
+  ]?.();
+}
+
 /** True when the field is the first invalid field of its form, which gets focus on a submit. */
 export function isFirstInvalid(field: HTMLInputElement | HTMLTextAreaElement): boolean {
   const form = field.form;
@@ -85,4 +93,79 @@ export function onFormReset(
     }
     timers.clear();
   };
+}
+
+// The latest edit of each input, so only the check of the newest one touches it.
+const edits = new WeakMap<Element, number>();
+
+/** Maps a caret of the typed text to the kept text: the same place from the start or from the end. */
+function fitCaret(typed: string, kept: string, caret: number): number {
+  const most = Math.min(typed.length, kept.length);
+  let head = 0;
+  while (head < most && typed[head] === kept[head]) {
+    head++;
+  }
+  let tail = 0;
+  while (tail < most - head && typed[typed.length - 1 - tail] === kept[kept.length - 1 - tail]) {
+    tail++;
+  }
+  if (caret <= head) {
+    return caret;
+  }
+  if (caret >= typed.length - tail) {
+    return kept.length - (typed.length - caret);
+  }
+  // Inside the text that the setter replaced: the end of the kept replacement.
+  return kept.length - tail;
+}
+
+/**
+ * Shows the text that a bound setter kept, once it has refused the text that the user typed.
+ * `kept` reads the value of the part. A refusal at once puts the kept text back at once. A setter
+ * that is still running, such as an async check, leaves the input alone until it settles, and
+ * then puts the kept text back only if the value did not take what was typed. A later edit
+ * cancels the check of an earlier one, since the later one waits for the same setters. The caret and
+ * the selection stay where they still fit. `restored` runs after the text went back.
+ */
+export function showKept(
+  input: HTMLInputElement | HTMLTextAreaElement | null | undefined,
+  typed: string,
+  kept: () => string,
+  restored?: () => void,
+): void {
+  if (!input) {
+    return;
+  }
+  const field = input;
+  const edit = (edits.get(field) ?? 0) + 1;
+  edits.set(field, edit);
+  function restore() {
+    const text = kept();
+    // The input shows something else when a later edit or a value from the caller changed it.
+    if (edits.get(field) !== edit || field.value !== typed || text === typed) {
+      return;
+    }
+    const start = field.selectionStart;
+    const end = field.selectionEnd;
+    field.value = text;
+    // Some types, such as email, have no caret to set.
+    if (start !== null && end !== null && field.ownerDocument.activeElement === field) {
+      try {
+        field.setSelectionRange(
+          fitCaret(typed, text, start),
+          fitCaret(typed, text, end),
+          field.selectionDirection ?? undefined,
+        );
+      } catch {
+        // The caret stays at the end.
+      }
+    }
+    restored?.();
+  }
+  const pending = whenSettled();
+  if (pending) {
+    void pending.then(restore);
+  } else {
+    restore();
+  }
 }

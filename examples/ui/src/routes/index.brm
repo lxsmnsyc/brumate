@@ -128,6 +128,7 @@
   let sent = $signal(0);
   let pinned = $signal(false);
   let query = $signal('');
+  let code = $signal('12');
   let searched = $signal('');
   let size = $signal<string | null>(null);
   let toppings = $signal<string[]>([]);
@@ -333,6 +334,15 @@
     <Button class="press" type="submit">Sign up</Button>
     <Button class="press" type="reset">Start again</Button>
   </Form>
+</section>
+
+<section aria-labelledby="digits">
+  <h2 id="digits">TextField that refuses letters</h2>
+  <TextField class="digits-field" value=$bind(code, (next) => { if (/^\d*$/.test(next)) code = next; })>
+    <Label>Digits only</Label>
+    <Input class="field" />
+  </TextField>
+  <p class="digits">Kept {code}.</p>
 </section>
 
 <section aria-labelledby="create-form">
