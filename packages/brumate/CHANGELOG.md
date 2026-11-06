@@ -1,5 +1,22 @@
 # brumate
 
+## 0.6.1
+
+### Patch Changes
+
+- c9f505b: Three fixes that make the browser render match the server render. A ref setter (`$bind(signal, fn)`) called after the render now calls the exported function of its component, not a copy of the render that wrote stale values. A memo that rejects inside a `#try` with a `#catch` no longer reaches `onError`, as on the server. A `class` with conditional classes before a static class keeps the order of the server.
+- d4a108d: The `#defer` body of a prerendered page that has browser code shows the request's data, such as a context, not the data of the build.
+- 749e1d1: A `$memo` or `$debounced` of an object literal with `as`, `satisfies` or `!` compiles for the browser instead of failing with `PARSE_ERROR`.
+- ea40983: A component that the browser renders shares its `<script module>` state with the instances that resumed. The render module imported a copy of the module script, so each copy had its own state.
+- d1296f4: `<document onDOMContentLoaded>` is a compile error ([BRM201](https://brumate-docs.vercel.app/docs/errors#brm201)). The compiler lower-cased the name, so the handler listened to `domcontentloaded`, which the browser never fires, and page code loads after the HTML. The same holds for the `webkit*` animation and transition names, the `DOM*` mutation events and `DOMMouseScroll`; the error names what to write instead, such as `$client(fn, 'load')` or `onAnimationEnd`.
+- 16d9787: A prerendered page keeps its query string, and `$searchParam` reads the URL when the page loads. A signal that no handler writes also follows the URL now.
+- 11b1f41: A component that the browser renders runs each `$memo` once, as the server does. A memo that throws holds its error until it is read, so a `#try` around the read catches it. A `$debounced` value is not pending, and a function prop does not run again, right after the render.
+- 51eb398: The browser runtime keeps the promises of the setters of `$bind(signal, setter)` until they settle, in an app that passes `$bind` to a component, so `@brumate/ui` can tell a refused write from one that a setter has not decided yet.
+- 2c6662d: A `#template` of the same file that renders a component, or reads an import, now works when markup that calls it updates in the browser. The update part of the client code copied the template but did not import what it uses, so the first update threw `ReferenceError: <Component> is not defined`.
+- 87700cd: An update in the browser that replaces the markup of an insert now destroys the scopes of the removed nodes. A component rendered in the browser with a `#for` that calls a `#template` of the same file made new scopes at each update and never freed them, so the page leaked memory and their cleanups never ran.
+- 4dc4d6d: A `#template` of the same file that markup calls, such as `{row(item)}` in a `#for`, now updates its elements in place when the same template renders again at the same insert. Before, each update replaced them, so an `<input>` in the template lost its focus, caret and typed value. A different template, or a value that is not a template, still replaces the markup.
+- 7b500e2: A `<title>` in `#head` that reads a signal or memo follows it after the client router loads a prerendered page.
+
 ## 0.6.0
 
 ### Minor Changes
