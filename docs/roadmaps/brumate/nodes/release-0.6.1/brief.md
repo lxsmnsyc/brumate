@@ -42,6 +42,12 @@ depends_on:
   - on: template-scope-leak
     kind: hard
     why: a same-file template in a browser-rendered component leaks its scopes on 0.6.0
+  - on: prerender-search-params
+    kind: hard
+    why: a prerendered page drops its query string on 0.6.0 (#466)
+  - on: head-title-navigation
+    kind: hard
+    why: a #head title stops following its memo after client navigation on 0.6.0 (#467)
   - on: memo-object-cast
     kind: hard
     why: a live memo of an object literal with a type cast fails to parse on 0.6.0
