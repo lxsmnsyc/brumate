@@ -159,41 +159,36 @@ export function $setContext<T>(_context: Context<T>, _value: T): void {
   compileTimeOnly('$setContext');
 }
 
-/** Reads a context from the nearest component above that provides it, or its default value. */
-export function $getContext<T>(_context: Context<T>): T {
+/**
+ * Reads a context from the nearest component above that provides it. Without a provider it throws,
+ * or, with a second argument, gives `fallback`: `$getContext(Field, undefined)` is a read that may
+ * have no provider. A fallback that is not a literal runs only when no provider is above, once per
+ * read.
+ */
+export function $getContext<T>(_context: Context<T>): T;
+export function $getContext<T, F>(_context: Context<T>, _fallback: F): T | F;
+export function $getContext<T, F>(_context: Context<T>, _fallback?: F): T | F {
   return compileTimeOnly('$getContext');
 }
 
 /**
- * True when a component above provides the context, or the runtime does. Providers are static, so
- * the answer is fixed when the component renders. Use it as the value of a const, or as the guard
- * of a read that has no provider, `$hasContext(Field) ? $store(Field) : undefined`.
- */
-export function $hasContext<T>(_context: Context<T>): boolean {
-  return compileTimeOnly('$hasContext');
-}
-
-/**
  * Binds a store to a variable. The store is any value with the functions `get`, `subscribe`
- * (which returns a function that stops it) and, optionally, `set`. The source is any expression
- * that gives a store or a context that holds one: `$store(FieldContext)`, `$store(field.state)`
- * for `const field = $getContext(FieldContext)`, an import, a prop, a local `store(0)` or a call.
- * A source that gives `undefined` or `null` gives `undefined`, as `$store(field?.state)`. It runs
- * once and is not tracked, and the subscription ends with the scope. On resume the browser keeps
- * the value that the server rendered, runs the source again when it is not a context, and writes
- * the variable once if the store's value differs.
+ * (which returns a function that stops it) and, optionally, `set`. The source gives a store:
+ * `$store(field.state)` for `const field = $getContext(FieldContext)`,
+ * `$store($getContext(FieldContext))` for a context that holds a store, an import, a prop, a local
+ * `store(0)` or a call. A source that gives no store throws a `TypeError`. For a context that may
+ * have no provider, guard on its value, `const s = field ? $store(field.state) : undefined` with
+ * `const field = $getContext(FieldContext, undefined)`, or give a store as the fallback,
+ * `$store($getContext(LocaleContext, store('en-US')))`. It runs once and is not tracked, and the
+ * subscription ends with the scope. On resume the browser keeps the value that the server
+ * rendered, runs the source again when it is not a context, and writes the variable once if the
+ * store's value differs.
  *
  * `const x = $store(source)` is one-way: the store writes the variable. `let x = $store(source)`
  * is two-way: a write to the variable, such as `x = next` or `x++`, calls `set` of the store, and
- * a store without `set`, or no store, throws a `TypeError` when the variable registers.
+ * a store without `set` throws a `TypeError` when the variable registers.
  */
-export function $store<T>(_source: Context<StoreLike<T>> | StoreLike<T>): T;
-export function $store<T>(
-  _source: Context<StoreLike<T>> | StoreLike<T> | undefined | null,
-): T | undefined;
-export function $store<T>(
-  _source: Context<StoreLike<T>> | StoreLike<T> | undefined | null,
-): T | undefined {
+export function $store<T>(_source: StoreLike<T>): T {
   return compileTimeOnly('$store');
 }
 

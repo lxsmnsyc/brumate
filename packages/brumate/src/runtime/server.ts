@@ -69,14 +69,7 @@ import type {
   TraceEntry,
 } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
-import {
-  Store,
-  findStored,
-  isContext,
-  isForeignStore,
-  isStore,
-  sentForeignStore,
-} from './store.ts';
+import { Store, findStored, isForeignStore, isStore, sentForeignStore } from './store.ts';
 
 /**
  * Refuses a store that is not of `brumate/store` in a provided value, or in a key of it: the page
@@ -753,11 +746,12 @@ export class Context {
 
   /**
    * `$store(source)`: the value of the store, and a record of its slot, so the browser subscribes
-   * the slot when the scope resumes. The browser finds the store again from the key of a context,
-   * with `path` for a key of its value, or by running the source `link` of the component's
-   * exports `z`. A source that gives `undefined` records nothing. `sent` names the value that
-   * holds the store when the page sends it, such as a prop, where only a store of
-   * `brumate/store` crosses.
+   * the slot when the scope resumes. With no `link`, or with a `fallback`, the source is a context:
+   * the browser finds its store again by the key of the context, with `path` for a key of its
+   * value. Otherwise, and when the fallback gave the store, the browser runs the source `link` of
+   * the component's exports `z`. `sent` names the value that holds the store when the page sends
+   * it, such as a prop, where only a store of `brumate/store` crosses. The last argument is
+   * `sent` for a source and the fallback for a context, which never come together.
    */
   consumeStore<T>(
     source: unknown,
@@ -766,29 +760,42 @@ export class Context {
     path?: string,
     link?: number,
     write?: boolean,
-    sent?: string,
-  ): T | undefined {
-    const found = findStored(source, path, write, (context) => this.consume(context, scope));
-    if (!found) {
-      return undefined;
+    last?: string | (() => unknown),
+  ): T {
+    // A context gives the value of its provider, or of the fallback when none is above.
+    let ref: string | number | undefined = link;
+    let value = source;
+    let key: string | undefined;
+    if (link === undefined || typeof last === 'function') {
+      key = (source as ContextValue<unknown>).key;
+      const provider = this.findProvider(key, scope);
+      if (provider) {
+        ref = key;
+        value = provider.values!.get(key);
+      } else if (typeof last === 'function') {
+        value = last();
+      } else {
+        throw missingContext(key);
+      }
     }
-    if (sent && isForeignStore(found)) {
+    const found = findStored(value, path, write, key);
+
+    // Only a store of brumate crosses in a value that the page sends.
+    if (typeof last === 'string' && isForeignStore(found)) {
       let owner: ScopeState | undefined = this.record(scope);
       while (owner && owner.m === undefined && owner.p !== undefined) {
         owner = this.ownRecord(owner.p);
       }
-      throw sentForeignStore(owner?.m ?? 'a component', sent);
+      throw sentForeignStore(owner?.m ?? 'a component', last);
     }
+
+    // The record that the browser links the slot with.
     if (slot >= 0) {
-      const ref = isContext(source) ? source.key : link;
-      if (ref === undefined) {
-        throw new Error('The browser cannot find the store of $store again');
-      }
-      let entry: StoreRead = [ref, slot];
+      let entry: StoreRead = [ref!, slot];
       if (write) {
-        entry = [ref, slot, path, 1];
+        entry = [ref!, slot, path, 1];
       } else if (path !== undefined) {
-        entry = [ref, slot, path];
+        entry = [ref!, slot, path];
       }
       (this.record(scope).z ??= []).push(entry);
     }
@@ -796,12 +803,18 @@ export class Context {
   }
 
   /**
-   * Reads a context from the nearest scope above `scope` that provides it.
-   * With `slot`, records which slot holds it, which only `$route()` and
-   * `$navigation()` pass, so the client can update them when navigation
-   * changes them. A provided value is read once.
+   * Reads a context from the nearest scope above `scope` that provides it. With a fallback, a
+   * read without a provider gives the fallback, or what it returns when it is a function, in
+   * place of the error. With `slot`, records which slot holds it, which only `$route()` and
+   * `$navigation()` pass, so the client can update them when navigation changes them. A provided
+   * value is read once.
    */
-  consume<T>(context: ContextValue<T>, scope: ScopeId, slot?: number): T {
+  consume<T>(
+    context: ContextValue<T>,
+    scope: ScopeId,
+    ...rest: [fallback?: unknown, slot?: number]
+  ): T {
+    const [fallback, slot] = rest;
     if (slot !== undefined) {
       const record = this.record(scope);
       record.x ??= {};
@@ -820,19 +833,12 @@ export class Context {
     if (context.key === NAVIGATION_KEY) {
       return { pending: false } as T;
     }
-    throw missingContext(context.key);
-  }
-
-  /**
-   * True when a scope above `scope` provides the context, or the runtime does, as it does for
-   * `$route` and `$navigation`. Providers are static, so the answer never changes.
-   */
-  has(context: ContextValue<unknown>, scope: ScopeId): boolean {
-    return (
-      this.findProvider(context.key, scope) !== undefined ||
-      context.key === ROUTE_KEY ||
-      context.key === NAVIGATION_KEY
-    );
+    // Only `$getContext(C, fallback)` passes one argument after the scope: `$route()` and
+    // `$navigation()` pass the slot after an empty fallback, and still throw without a provider.
+    if (rest.length !== 1) {
+      throw missingContext(context.key);
+    }
+    return (typeof fallback === 'function' ? fallback() : fallback) as T;
   }
 
   /**

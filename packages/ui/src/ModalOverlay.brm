@@ -20,7 +20,7 @@
 
 <script>
   import { store } from 'brumate/store';
-  import { $client, $effect, $getContext, $hasContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, ModalOverlayContext, OverlayTriggerContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
@@ -65,9 +65,9 @@
   // It takes a binding of a value that can be undefined, so a part can pass its own `isOpen` on.
   let { isOpen } = $props<ModalOverlayProps>();
 
-  const triggerGiven = $hasContext(OverlayTriggerContext) ? $getContext(OverlayTriggerContext) : undefined;
-  const trigger = $store(triggerGiven?.state);
-  const parentLayer = $hasContext(LayerContext) ? $getContext(LayerContext) : undefined;
+  const triggerGiven = $getContext(OverlayTriggerContext, undefined);
+  const trigger = triggerGiven ? $store(triggerGiven.state) : undefined;
+  const parentLayer = $getContext(LayerContext, undefined);
   const own = $isPassed(isOpen);
   const layerId = $id();
   const ownId = $id();

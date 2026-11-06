@@ -39,14 +39,17 @@ export function provideValue<T>(context: ContextValue<T>, value: T, scope: Scope
 }
 
 /**
- * Reads a context. With `slot`, which only `$route()` and `$navigation()` pass, it records the
- * slot so that `setGlobal` can write it. A provided value is read once.
+ * Reads a context. With a fallback, a read without a provider gives the fallback, or what it
+ * returns when it is a function, in place of the error. With `slot`, which only `$route()` and
+ * `$navigation()` pass, it records the slot so that `setGlobal` can write it. A provided value is
+ * read once.
  */
 export function consumeContext<T>(
   context: ContextValue<T>,
   scope: Scope | ScopeId,
-  slot?: number,
+  ...rest: [fallback?: unknown, slot?: number]
 ): T {
+  const [fallback, slot] = rest;
   const target = resolveScope(scope)!;
   if (slot !== undefined) {
     target.x ??= {};
@@ -62,22 +65,15 @@ export function consumeContext<T>(
   if (HAS_ROUTES && context.key === NAVIGATION_KEY && !globals.has(NAVIGATION_KEY)) {
     globals.set(NAVIGATION_KEY, { pending: false });
   }
-  if (!globals.has(context.key)) {
+  if (globals.has(context.key)) {
+    return globals.get(context.key) as T;
+  }
+  // Only `$getContext(C, fallback)` passes one argument after the scope: `$route()` and
+  // `$navigation()` pass the slot after an empty fallback, and still throw without a provider.
+  if (rest.length !== 1) {
     throw missingContext(context.key);
   }
-  return globals.get(context.key) as T;
-}
-
-/**
- * True when a scope above `scope` provides the context, or the runtime does. Providers are
- * static, so the answer is fixed when the scope is made.
- */
-export function hasContext(context: ContextValue<unknown>, scope: Scope | ScopeId): boolean {
-  return (
-    findProvider(resolveScope(scope)!, context.key) !== undefined ||
-    (HAS_ROUTES && (context.key === ROUTE_KEY || context.key === NAVIGATION_KEY)) ||
-    globals.has(context.key)
-  );
+  return (typeof fallback === 'function' ? fallback() : fallback) as T;
 }
 
 /** The values of the contexts that the runtime provides to the whole page, by key. */
@@ -113,13 +109,13 @@ export function updateRoute(): void {
 // Stores in contexts: `$toStore` in a provided value, and `$store` in a reader.
 
 /** The store that a read finds from `scope` by the key of its context. */
-function findStore(scope: Scope, read: StoreRead): StoreLike<unknown> | undefined {
+function findStore(scope: Scope, read: StoreRead): StoreLike<unknown> {
   const [key, , path, write] = read as [string, number, string | undefined, 1 | undefined];
   const provider = findProvider(scope, key);
   if (!provider) {
     throw missingContext(key);
   }
-  return findStored({ key }, path, !!write, () => provider.v![key]);
+  return findStored(provider.v![key], path, !!write, key);
 }
 
 /**
@@ -141,17 +137,58 @@ function subscribeSlot(
   if (write) {
     (scope.b ??= {})[slot] = (value: unknown) => found.set!(value);
   }
-  if (repair && !Object.is(found.get(), scope.s[slot])) {
+  if (repair && !sameData(found.get(), scope.s[slot])) {
     sendContext(() => writeSlot(scope, slot, found.get()));
   }
 }
 
+/**
+ * Whether two values hold the same data: the same value, or arrays and plain objects whose items
+ * hold the same data. A store that the browser makes again, such as the fallback of a context,
+ * holds a new object with the content the server sent, which needs no repair.
+ */
+function sameData(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) {
+    return true;
+  }
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) {
+      return false;
+    }
+    for (let index = 0; index < a.length; index++) {
+      if (!sameData(a[index], b[index])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (!isPlain(a) || !isPlain(b)) {
+    return false;
+  }
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) {
+    return false;
+  }
+  for (const key of keys) {
+    if (!(key in b) || !sameData(a[key], b[key])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Whether a value is an object of `Object` or of no prototype, as page state holds. */
+function isPlain(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
 /** Links a read of `$store` that a scope resumed with. */
 function linkRead(scope: Scope, read: StoreRead): void {
-  const found = findStore(scope, read);
-  if (found) {
-    subscribeSlot(scope, read[1], found, true, read[3]);
-  }
+  subscribeSlot(scope, read[1], findStore(scope, read), true, read[3]);
 }
 
 /**
@@ -184,11 +221,8 @@ export function resumeStoreReads(
         }
         pass(() => {
           for (const [link, slot, path, write] of sourced) {
-            const source = module.z![link as number]!(scope);
-            const found = findStored(source, path, !!write, () => undefined);
-            if (found) {
-              subscribeSlot(scope, slot, found, true, write);
-            }
+            const found = findStored(module.z![link as number]!(scope), path, !!write);
+            subscribeSlot(scope, slot, found, true, write);
           }
         });
       });
@@ -219,26 +253,35 @@ export function linkMadeStores(): void {
   madeStores.length = 0;
 }
 
-/** `$store(source)` in a component that the browser renders: the value, with its slot subscribed. */
+/**
+ * `$store(source)` in a component that the browser renders: the value, with its slot subscribed.
+ * With no `link`, or with a `fallback`, the source is a context, whose provider gives the store, or
+ * the fallback when none is above.
+ */
 export function consumeStore<T>(
   source: unknown,
   scope: Scope | ScopeId,
   slot: number,
   path?: string,
-  _link?: number,
+  link?: number,
   write?: boolean,
+  fallback?: () => unknown,
 ): T {
   const target = resolveScope(scope)!;
-  const found = findStored(source, path, write, (context) => {
-    const provider = findProvider(target, context.key);
-    if (!provider) {
-      throw missingContext(context.key);
+  let value = source;
+  let key: string | undefined;
+  if (link === undefined || fallback) {
+    key = (source as ContextValue<unknown>).key;
+    const provider = findProvider(target, key);
+    if (provider) {
+      value = provider.v![key];
+    } else if (fallback) {
+      value = fallback();
+    } else {
+      throw missingContext(key);
     }
-    return provider.v![context.key];
-  });
-  if (!found) {
-    return undefined as T;
   }
+  const found = findStored(value, path, write, key);
   if (slot >= 0) {
     subscribeSlot(target, slot, found, false, write);
   }

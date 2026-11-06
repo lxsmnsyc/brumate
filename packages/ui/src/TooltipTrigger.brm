@@ -24,7 +24,7 @@
 </script>
 
 <script>
-  import { $client, $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
   import { isFocusVisible } from './interactions.ts';
   import { TooltipTriggerContext, pressedTriggers, tooltips } from './tooltip.ts';
@@ -51,8 +51,8 @@
   } = $props<TooltipTriggerProps>();
   let { isOpen = false } = $props<TooltipTriggerProps>();
 
-  const parentGiven = $hasContext(ButtonContext) ? $getContext(ButtonContext) : undefined;
-  const parent = $store(parentGiven?.state);
+  const parentGiven = $getContext(ButtonContext, undefined);
+  const parent = parentGiven ? $store(parentGiven.state) : undefined;
   const ownId = $id();
   const tooltipId = $id();
   // A DialogTrigger around it names the button already, and finds its popover by that ID.

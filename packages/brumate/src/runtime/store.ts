@@ -19,37 +19,31 @@ export function isContext(value: unknown): value is Context<unknown> {
 }
 
 /**
- * The store that `$store` reads in the value of its source: the source is a context, a store, or an
- * object that holds the store at `path`. `readContext` gives the value of a context. `undefined`
- * and `null` give no store, so the variable is `undefined` and nothing subscribes. Throws for
- * another value that is no store, and for `write` on a store that has no `set`.
+ * The store that `$store` reads: `value` is the store, or for `path` an object that holds it there.
+ * `key` names the context that gave `value`, for the message. Throws a `TypeError` for a value that
+ * is no store, such as `undefined` or a context, and for `write` on a store that has no `set`.
  */
 export function findStored(
-  source: unknown,
+  value: unknown,
   path: string | undefined,
   write: boolean | undefined,
-  readContext: (context: Context<unknown>) => unknown,
-): StoreLike<unknown> | undefined {
-  const context = isContext(source);
-  const value = context ? readContext(source) : source;
+  key?: string,
+): StoreLike<unknown> {
   const found = path === undefined ? value : (value as Record<string, unknown> | undefined)?.[path];
-  const named = context ? `$store(${source.key})` : '$store(…)';
-  if (found === undefined || found === null) {
-    if (write) {
+  if (!isContract(found)) {
+    // A context is the most likely mistake, so its message names the read that gives its store.
+    if (isContext(found)) {
       throw new TypeError(
-        `let ${named} writes the store, but its source gives no store. Read it with const`,
+        `$store reads the context "${found.key}", which is no store. Read the store in it with $store($getContext(Context))`,
       );
     }
-    return undefined;
-  }
-  if (!isContract(found)) {
-    throw new Error(
-      `$store reads ${context ? `the context "${source.key}"` : 'a value'}${path === undefined ? '' : ` at "${path}"`}, which gives no store: a store has the functions get and subscribe`,
+    throw new TypeError(
+      `$store reads ${key === undefined ? 'a value' : `the context "${key}"`}${path === undefined ? '' : ` at "${path}"`}, which gives no store: a store has the functions get and subscribe`,
     );
   }
   if (write && !canSet(found)) {
     throw new TypeError(
-      `let ${named} writes the store, but the store has no set. Read it with const`,
+      `let $store(${key ?? '…'}) writes the store, but the store has no set. Read it with const`,
     );
   }
   return found;

@@ -13,7 +13,7 @@
 </script>
 
 <script>
-  import { $hasContext, $memo, $props, $store } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import { SelectValueContext } from './collection.ts';
 
   /**
@@ -26,7 +26,8 @@
    */
   const { render, ...rest } = $props<SelectValueProps>();
 
-  const select = $hasContext(SelectValueContext) ? $store(SelectValueContext) : undefined;
+  const selectGiven = $getContext(SelectValueContext, undefined);
+  const select = selectGiven ? $store(selectGiven) : undefined;
   const selectedKey = $memo(select?.selectedKey ?? null);
   const isPlaceholder = $memo(selectedKey === null);
   const selectedText = $memo(select?.selectedText);

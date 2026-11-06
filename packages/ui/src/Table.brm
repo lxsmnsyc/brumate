@@ -50,7 +50,8 @@
 </script>
 
 <script generics="V extends { id: Key }">
-  import { $client, $getContext, $hasContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -119,13 +120,14 @@
   let { selectedKeys = [] } = $props<TableProps<V>>();
   let { sortDescriptor = null } = $props<TableProps<V>>();
 
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
-  const virtualizer = $hasContext(VirtualizerContext) ? $store(VirtualizerContext) : undefined;
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  const virtualizerGiven = $getContext(VirtualizerContext, undefined);
+  const virtualizer = virtualizerGiven ? $store(virtualizerGiven) : undefined;
   // Only a table with its items as data can window, since the rows are then made from the data.
   const windowHeight = $memo(items ? (rowHeight ?? virtualizer?.rowHeight) : undefined);
-  const sizesGiven = $hasContext(TableResizeContext) ? $getContext(TableResizeContext) : undefined;
-  const sizes = $store(sizesGiven?.state);
+  const sizesGiven = $getContext(TableResizeContext, undefined);
+  const sizes = sizesGiven ? $store(sizesGiven.state) : undefined;
   // In a ResizableTableContainer, the table lays out its columns by their widths, and is as wide
   // as they are once a resize gives them all widths.
   const resizedWidth = $memo(

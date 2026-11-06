@@ -632,7 +632,7 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
           anyReached(declaration.writes, reached)) ||
         // The runtime changes `$route` and `$navigation`, and a store writes the slot of `$store`.
         // The value of `$getContext` is read once.
-        (declaration.kind === 'context' && !declaration.contextSource && !declaration.hasSource) ||
+        (declaration.kind === 'context' && !declaration.contextSource) ||
         // A form writes the result of its server function.
         declaration.kind === 'action' ||
         // A server function can ask the client to load the memo again.

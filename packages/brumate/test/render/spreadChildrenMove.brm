@@ -1,11 +1,11 @@
 <script>
-  import { $props, $store } from 'brumate/signals';
+  import { $props, $getContext, $store } from 'brumate/signals';
   import { Shown } from './spreadChildrenShown.ts';
 
   // Moves its children from the first insert to the second when the context says so. Both
   // inserts are in the same scope.
   const { children } = $props<{ children?: unknown }>();
-  const shown = $store(Shown);
+  const shown = $store($getContext(Shown));
 </script>
 
 <div class="sc-move-1">{shown ? 'none' : children}</div>

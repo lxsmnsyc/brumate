@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $getContext, $hasContext, $memo, $props, $store } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import { SliderContext, thumbId } from './slider.ts';
 
   /**
@@ -18,8 +18,8 @@
    */
   const { children, ...rest } = $props<SliderOutputProps>();
 
-  const sliderGiven = $hasContext(SliderContext) ? $getContext(SliderContext) : undefined;
-  const slider = $store(sliderGiven?.state);
+  const sliderGiven = $getContext(SliderContext, undefined);
+  const slider = sliderGiven ? $store(sliderGiven.state) : undefined;
   const forIds = $memo(slider ? slider.values.map((_, index) => thumbId(slider, index)).join(' ') : undefined);
 </script>
 

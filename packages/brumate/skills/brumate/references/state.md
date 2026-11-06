@@ -232,4 +232,4 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 <p>{parent}</p>
 ```
 
-`createContext` comes from `brumate/context`: `export const Theme = createContext<'light' | 'dark'>('theme');` in a `.ts` file. It takes only a key and has no default. A component reads the context of the nearest component above it, children included, and `$getContext` throws when none provides it. Ask first with `$hasContext(Theme)`.
+`createContext` comes from `brumate/context`: `export const Theme = createContext<'light' | 'dark'>('theme');` in a `.ts` file. It takes only a key and has no default. A component reads the context of the nearest component above it, children included, and `$getContext` throws when none provides it. Give a fallback for a read that may have no provider: `$getContext(Theme, 'light')`.

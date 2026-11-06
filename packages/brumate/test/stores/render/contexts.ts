@@ -2,6 +2,7 @@ import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
 import { store } from 'brumate/store';
 import type { Store, StoreLike } from 'brumate/store';
+import { ran } from './runs.ts';
 
 /** A provider store of a number. */
 export const Level: Context<Store<number>> = createContext<Store<number>>('store-level');
@@ -61,3 +62,24 @@ export const readOnly: StoreLike<number> & { emit(value: number): void } = {
 /** A context of handlers, which has a `subscribe` function and no store. */
 export const Bus: Context<{ subscribe: () => void; publish: () => void }> =
   createContext('store-bus');
+
+/** A context of a plain string, which `FallbackReader` reads with a fallback. */
+export const Label: Context<string> = createContext<string>('store-label');
+
+/** Makes a store and records it, so a test counts the stores that fallbacks made. */
+export function madeStore(value: string): Store<string> {
+  ran('store', value);
+  const made = store(value);
+  ((globalThis as { madeStores?: Store<string>[] }).madeStores ??= []).push(made);
+  return made;
+}
+
+/** A context of a store of an object, which `objectFallback` reads with a store as the fallback. */
+export const Shape: Context<Store<{ name: string }>> =
+  createContext<Store<{ name: string }>>('store-shape');
+
+/** Makes a store of an object and records the run, so a test sees the browser make it again. */
+export function madeShape(name: string): Store<{ name: string }> {
+  ran('shape', name);
+  return store({ name });
+}

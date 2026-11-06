@@ -31,7 +31,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import { TextContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
@@ -64,10 +64,10 @@
   } = $props<MenuItemProps<T>>();
   let { ref } = $props<MenuItemOwnProps<T>>();
 
-  const menuGiven = $hasContext(MenuContext) ? $getContext(MenuContext) : undefined;
-  const menu = $store(menuGiven?.state);
-  const submenuGiven = $hasContext(SubmenuContext) ? $getContext(SubmenuContext) : undefined;
-  const submenu = $store(submenuGiven?.state);
+  const menuGiven = $getContext(MenuContext, undefined);
+  const menu = menuGiven ? $store(menuGiven.state) : undefined;
+  const submenuGiven = $getContext(SubmenuContext, undefined);
+  const submenu = submenuGiven ? $store(submenuGiven.state) : undefined;
   const ownId = $id();
   const labelId = $id();
   const descriptionId = $id();

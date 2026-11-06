@@ -11,7 +11,7 @@
 </script>
 
 <script>
-  import { $getContext, $hasContext, $memo, $props, $store } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import {
     CalendarContext,
     CalendarGridContext,
@@ -34,9 +34,10 @@
    */
   const { date, children, ...rest } = $props<CalendarCellProps>();
 
-  const given = $hasContext(CalendarContext) ? $getContext(CalendarContext) : undefined;
-  const calendar = $store(given?.state);
-  const grid = $hasContext(CalendarGridContext) ? $store(CalendarGridContext) : undefined;
+  const given = $getContext(CalendarContext, undefined);
+  const calendar = given ? $store(given.state) : undefined;
+  const gridGiven = $getContext(CalendarGridContext, undefined);
+  const grid = gridGiven ? $store(gridGiven) : undefined;
   // A date is in the month of its grid when they share the year and the month, `YYYY-MM`.
   const outsideMonth = $memo(grid ? date.slice(0, 7) !== grid.start.slice(0, 7) : false);
   const outsideRange = $memo(

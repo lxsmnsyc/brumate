@@ -25,7 +25,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ButtonContext, DisclosureGroupContext, DisclosurePanelContext } from './contexts.ts';
   import type { DisclosurePanelState } from './contexts.ts';
 
@@ -42,8 +42,8 @@
   let { isExpanded = false } = $props<DisclosureOwnProps<T>>();
   let { ref } = $props<DisclosureOwnProps<T>>();
 
-  const groupGiven = $hasContext(DisclosureGroupContext) ? $getContext(DisclosureGroupContext) : undefined;
-  const group = $store(groupGiven?.state);
+  const groupGiven = $getContext(DisclosureGroupContext, undefined);
+  const group = groupGiven ? $store(groupGiven.state) : undefined;
   const triggerId = $id();
   const panelId = $id();
   const ownKey = $id();

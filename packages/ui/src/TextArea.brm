@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $getContext, $hasContext, $memo, $props, $store } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { FieldInputContext, TextAreaContext } from './contexts.ts';
   import { focusRing } from './focus.brm.ts';
@@ -23,10 +23,11 @@
    */
   const { slot, ...rest } = $props<TextAreaProps>();
 
-  const handlers = $hasContext(TextAreaContext) ? $getContext(TextAreaContext) : undefined;
-  const context = $store(handlers?.props);
+  const handlers = $getContext(TextAreaContext, undefined);
+  const context = handlers ? $store(handlers.props) : undefined;
   // The attributes of a part around the field, such as an Autocomplete.
-  const outer = $hasContext(FieldInputContext) ? $store(FieldInputContext) : undefined;
+  const outerGiven = $getContext(FieldInputContext, undefined);
+  const outer = outerGiven ? $store(outerGiven) : undefined;
   const outerAttributes = $memo(outer ?? {});
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(attributes.disabled ?? rest.disabled));

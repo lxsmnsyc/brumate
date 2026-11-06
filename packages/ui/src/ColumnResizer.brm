@@ -8,7 +8,8 @@
 </script>
 
 <script>
-  import { $getContext, $hasContext, $id, $memo, $props, $signal, $store } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $signal, $store } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { startDrag } from './drag.ts';
@@ -29,11 +30,12 @@
    */
   const { 'aria-label': label = 'Resizer', ...rest } = $props<ColumnResizerProps>();
 
-  const column = $hasContext(ColumnContext) ? $store(ColumnContext) : undefined;
-  const sizesGiven = $hasContext(TableResizeContext) ? $getContext(TableResizeContext) : undefined;
-  const sizes = $store(sizesGiven?.state);
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
+  const columnGiven = $getContext(ColumnContext, undefined);
+  const column = columnGiven ? $store(columnGiven) : undefined;
+  const sizesGiven = $getContext(TableResizeContext, undefined);
+  const sizes = sizesGiven ? $store(sizesGiven.state) : undefined;
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   if (!column || !sizes) {
     throw new Error('A ColumnResizer goes in a Column of a Table in a ResizableTableContainer.');
   }

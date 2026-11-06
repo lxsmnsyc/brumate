@@ -9,7 +9,7 @@
 </script>
 
 <script>
-  import { $getContext, $hasContext, $id, $props, $store } from 'brumate/signals';
+  import { $getContext, $id, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { DateFieldContext, PAGE_STEP, SEGMENT_NAMES, focusSegment } from './segments.ts';
 
@@ -29,8 +29,8 @@
    */
   const { segment, ...rest } = $props<DateSegmentProps>();
 
-  const given = $hasContext(DateFieldContext) ? $getContext(DateFieldContext) : undefined;
-  const field = $store(given?.state);
+  const given = $getContext(DateFieldContext, undefined);
+  const field = given ? $store(given.state) : undefined;
   const id = $id();
 
   /** The part that this segment edits. */

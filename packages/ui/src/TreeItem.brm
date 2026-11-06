@@ -24,7 +24,7 @@
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, focusItem, keyAttribute } from './collection.ts';
   import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
   import type { CheckboxGroupState } from './contexts.ts';
@@ -54,11 +54,12 @@
   } = $props<TreeItemProps<T>>();
   let { ref } = $props<TreeItemOwnProps<T>>();
 
-  const tree = $hasContext(TreeRowContext) ? $store(TreeRowContext) : undefined;
-  const treeGiven = $hasContext(TreeContext) ? $getContext(TreeContext) : undefined;
-  const state = $store(treeGiven?.state);
-  const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
-  const list = $store(listGiven?.state);
+  const rowGiven = $getContext(TreeRowContext, undefined);
+  const tree = rowGiven ? $store(rowGiven) : undefined;
+  const treeGiven = $getContext(TreeContext, undefined);
+  const state = treeGiven ? $store(treeGiven.state) : undefined;
+  const listGiven = $getContext(ListBoxContext, undefined);
+  const list = listGiven ? $store(listGiven.state) : undefined;
   if (!tree) {
     throw new Error('A TreeItem goes in the `item` template of a Tree.');
   }

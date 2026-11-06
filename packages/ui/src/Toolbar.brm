@@ -19,7 +19,8 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $hasContext, $memo, $props, $setContext, $store } from 'brumate/signals';
+  import { $client, $getContext, $memo, $props, $setContext, $store } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { ToolbarContext } from './contexts.ts';
   import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
@@ -33,9 +34,10 @@
   const { as, orientation = 'horizontal', children, ...rest } = $props<ToolbarProps<T>>();
   let { ref } = $props<ToolbarOwnProps<T>>();
 
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
-  const nested = $hasContext(ToolbarContext);
+  // A store of the default locale stands in for a missing provider. A provider's store can hold null.
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  const nested = $getContext(ToolbarContext, false);
   $setContext(ToolbarContext, true);
 
   $client(() => {

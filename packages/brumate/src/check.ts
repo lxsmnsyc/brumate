@@ -340,37 +340,6 @@ function walk(node: unknown, visit: (node: Record<string, unknown>) => boolean):
   }
 }
 
-/**
- * The places after `field` in `$hasContext(Context) ? $store(field.key) : undefined`. The guard
- * says that `field`, a guarded `$getContext`, is not `undefined` there, so `!` is written to type
- * the read. The compiler reports a guard that names another context (BRM197).
- */
-function guardedKeys(statement: oxc.Node): number[] {
-  const places: number[] = [];
-  walk(statement, (node) => {
-    if (node.type !== 'ConditionalExpression') {
-      return true;
-    }
-    const test = node.test as oxc.Node;
-    const read = node.consequent as oxc.Node;
-    if (
-      test.type === 'CallExpression' &&
-      test.callee.type === 'Identifier' &&
-      test.callee.name === '$hasContext' &&
-      read.type === 'CallExpression' &&
-      read.callee.type === 'Identifier' &&
-      read.callee.name === '$store'
-    ) {
-      const source = read.arguments[0];
-      if (source?.type === 'MemberExpression' && source.object.type === 'Identifier') {
-        places.push(source.object.end);
-      }
-    }
-    return true;
-  });
-  return places;
-}
-
 /** The names that a node reads or declares, as identifiers and component tags. */
 function namesIn(node: unknown): Set<string> {
   const found = new Set<string>();
@@ -534,25 +503,12 @@ class Generator {
   /** Copies a statement, and checks the values it declares that the client receives. */
   private statement(statement: oxc.Node): void {
     const { out } = this;
-    const bangs = guardedKeys(statement);
-    // Copies a range, with `!` after each object that a guard makes certain.
-    const copy = (range: Range): void => {
-      let from = range.start;
-      for (const at of bangs) {
-        if (at >= range.start && at <= range.end) {
-          out.copy({ start: from, end: at });
-          out.text('!');
-          from = at;
-        }
-      }
-      out.copy({ start: from, end: range.end });
-    };
     let start = statement.start;
     for (const [type, names] of this.omits) {
       if (type.start >= statement.start && type.end <= statement.end) {
-        copy({ start, end: type.start });
+        out.copy({ start, end: type.start });
         out.text('$$Omit<');
-        copy(type);
+        out.copy(type);
         const quoted: string[] = [];
         for (const name of names) {
           quoted.push(JSON.stringify(name));
@@ -561,7 +517,7 @@ class Generator {
         start = type.end;
       }
     }
-    copy({ start, end: statement.end });
+    out.copy({ start, end: statement.end });
     out.text('\n');
     for (const declaration of this.sent) {
       if (declaration.range.start >= statement.start && declaration.range.end <= statement.end) {

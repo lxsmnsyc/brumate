@@ -553,9 +553,9 @@ const SCRIPT: ErrorEntry[] = [
   ),
   entry(
     'BRM080',
-    '$getContext takes one argument, the context',
-    '`$getContext` has no argument or more than one.',
-    'const theme = $getContext(ThemeContext);',
+    '$getContext takes the context, and a fallback for a read without a provider',
+    '`$getContext` has no argument or more than two.',
+    'const theme = $getContext(ThemeContext);\nconst locale = $getContext(LocaleContext, undefined);',
   ),
   entry(
     'BRM081',
@@ -937,7 +937,7 @@ const SCRIPT: ErrorEntry[] = [
   ),
   entry(
     'BRM192',
-    '$store takes one argument, a context, a store or a key of one',
+    '$store takes one argument, a store',
     '`$store` has no argument, or more than one.',
     'const field = $getContext(Field);\nconst state = $store(field.state);',
   ),
@@ -961,15 +961,21 @@ const SCRIPT: ErrorEntry[] = [
   ),
   entry(
     'BRM197',
-    'Keep the answer of $hasContext with "const name = $hasContext(Context)", or guard a read of the same context with "const name = $hasContext(Context) ? $store(Context) : undefined", with const and no other test',
-    '`$hasContext` is used in another shape: in a `let`, in a test with another condition, around another call than `$store` or `$getContext`, with an `else` that is not `undefined`, or with a context other than the one that the guarded `$store` reads.',
-    'const field = $hasContext(Field) ? $getContext(Field) : undefined;\nconst state = $hasContext(Field) ? $store(field.state) : undefined;',
+    'Read a context that may have no provider with "const name = $getContext(Context, undefined)", and a store in it with "const state = name ? $store(name.key) : undefined", with const and no other test',
+    'A read of a context that may have no provider has another shape: `$hasContext`, which is removed, `$store(name?.key)`, a `let` or another test in the guard, an `else` that is not `undefined`, a guard on a name that is not the optional value of `$getContext(Context, undefined)`, or a key of that value read without the guard.',
+    'const field = $getContext(Field, undefined);\nconst state = field ? $store(field.state) : undefined;',
   ),
   entry(
     'BRM198',
     'The source of $store gives its store at once, so it cannot await or call a server function',
     'The source of `$store` awaits, or calls a server function. The browser runs the source again when the page resumes, and links the store in the same pass, so the source must give the store, not a promise of it.',
     "import { theme } from './theme';\nconst value = $store(theme);",
+  ),
+  entry(
+    'BRM199',
+    '$store takes a store. Read the store of a context with "$store($getContext(Context))", or give a store as the fallback, "$store($getContext(Context, store(value)))"',
+    '`$store` reads a context that the file names in `$getContext` or `$setContext`, `undefined`, `null`, or `$getContext` with a literal fallback, which is no store. A context that the file only imports is found when the page renders, as a `TypeError`.',
+    "const level = $store($getContext(LevelContext));\nconst locale = $store($getContext(LocaleContext, store('en-US')));",
   ),
   entry(
     'BRM144',

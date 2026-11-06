@@ -1,11 +1,11 @@
 <script>
-  import { $props, $store } from 'brumate/signals';
+  import { $props, $getContext, $store } from 'brumate/signals';
   import { Shown } from './spreadChildrenShown.ts';
 
   // Renders its children only when the context says so, so the server can render other text in
   // their place. It reads the store directly, with no memo in between.
   const { children } = $props<{ children?: unknown }>();
-  const shown = $store(Shown);
+  const shown = $store($getContext(Shown));
 </script>
 
 <div class="sc-pick">{shown ? children : 'none'}</div>

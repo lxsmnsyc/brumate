@@ -111,11 +111,11 @@ export interface Declaration {
   passedKey?: string;
   /** For `const field = $getContext(Context)`, the context. */
   contextSource?: oxc.Node;
-  /** For `const name = $hasContext(Context)`, the context. */
-  hasSource?: oxc.Node;
+  /** For `const field = $getContext(Context, fallback)`, the value without a provider. */
+  contextFallback?: oxc.Node;
   /**
-   * For a read in `$hasContext(Context) ? $store(Context) : undefined`, the context in the guard.
-   * The variable is `undefined` when no provider exists.
+   * For `const state = field ? $store(field.key) : undefined`, the name `field` in the test. The
+   * variable is `undefined` when `field` is.
    */
   guard?: oxc.Node;
   /**
@@ -135,6 +135,13 @@ export interface Declaration {
      * that value is, as `the prop "s"`. The server refuses a store of another library there.
      */
     sent?: string;
+    /**
+     * True for `$store($getContext(Context, fallback))`, whose source is the context. The site is
+     * then the fallback's, when there is one, which the browser runs again without a provider.
+     */
+    read?: boolean;
+    /** The fallback of `$store($getContext(Context, fallback))`. */
+    fallback?: oxc.Node;
   };
   /** Elements whose `ref` targets this declaration. */
   refs: { attribute: RefAttribute; element: ElementNode | DynamicTagNode; scope: Scope }[];

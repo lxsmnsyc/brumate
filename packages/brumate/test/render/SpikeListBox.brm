@@ -7,7 +7,7 @@
     item?: (state: { option: string; selected: boolean }) => unknown;
   }>();
   const select = $getContext(SelectContext);
-  const value = $store(SelectValueContext);
+  const value = $store($getContext(SelectValueContext));
 </script>
 
 <ul role="listbox">

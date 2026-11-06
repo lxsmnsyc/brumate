@@ -1,10 +1,10 @@
 <script>
-  import { $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $memo, $props, $setContext, $getContext, $store, $toStore } from 'brumate/signals';
   import { LevelStore } from './tplContext.ts';
 
   // Reads a context from above, and provides it again, one more, to its children.
   const { children } = $props<{ children?: unknown }>();
-  const level = $store(LevelStore);
+  const level = $store($getContext(LevelStore));
   const next = $memo(level + 10);
   $setContext(LevelStore, $toStore(next));
 </script>

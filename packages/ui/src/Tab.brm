@@ -24,7 +24,7 @@
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $getContext, $hasContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import { interact } from './interact.brm.ts';
   import { TabsContext, getSelectedKey, tabId } from './tabs.ts';
@@ -46,8 +46,8 @@
   } = $props<TabProps<T>>();
   let { ref } = $props<TabOwnProps<T>>();
 
-  const tabsGiven = $hasContext(TabsContext) ? $getContext(TabsContext) : undefined;
-  const tabs = $store(tabsGiven?.state);
+  const tabsGiven = $getContext(TabsContext, undefined);
+  const tabs = tabsGiven ? $store(tabsGiven.state) : undefined;
   // The first tab is the one that is selected when Tabs hold no key.
   if (tabs && tabs.registry.first === undefined && !isDisabled && !tabs.disabledKeys.includes(id)) {
     tabs.registry.first = id;

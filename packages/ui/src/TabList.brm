@@ -16,7 +16,8 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $handler, $hasContext, $memo, $props, $store } from 'brumate/signals';
+  import { $getContext, $handler, $memo, $props, $store } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import { enabledItems, focusItem, readItemKey, getKeyMovement, moveFrom } from './collection.ts';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
@@ -35,10 +36,10 @@
   const { as, children, ...rest } = $props<TabListProps<T>>();
   let { ref } = $props<TabListOwnProps<T>>();
 
-  const tabsGiven = $hasContext(TabsContext) ? $getContext(TabsContext) : undefined;
-  const tabs = $store(tabsGiven?.state);
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
+  const tabsGiven = $getContext(TabsContext, undefined);
+  const tabs = tabsGiven ? $store(tabsGiven.state) : undefined;
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   const orientation = $memo(tabs?.orientation ?? 'horizontal');
 
   function keyDown(event: KeyboardEvent) {

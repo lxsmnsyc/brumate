@@ -55,7 +55,7 @@
 </script>
 
 <script generics="V extends { id: Key }, T extends AsTarget = 'div'">
-  import { $client, $effect, $getContext, $hasContext, $handler, $id, $isPassed, $memo, $props, $setContext, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $handler, $id, $isPassed, $memo, $props, $setContext, $store, $toStore, $untrack } from 'brumate/signals';
   import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
@@ -127,15 +127,16 @@
   let { selectedKeys = [] } = $props<ListBoxOwnProps<V, T>>();
   let { ref } = $props<ListBoxOwnProps<V, T>>();
 
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   // A Select around the list keeps the selection, with one item at most.
-  const givenState = $hasContext(ListBoxGivenContext) ? $getContext(ListBoxGivenContext) : undefined;
-  const given = $store(givenState?.state);
+  const givenState = $getContext(ListBoxGivenContext, undefined);
+  const given = givenState ? $store(givenState.state) : undefined;
   // A field around the list, such as of a ComboBox, keeps focus and can filter the items.
-  const fieldGiven = $hasContext(CollectionFocusContext) ? $getContext(CollectionFocusContext) : undefined;
-  const field = $store(fieldGiven?.state);
-  const virtualizer = $hasContext(VirtualizerContext) ? $store(VirtualizerContext) : undefined;
+  const fieldGiven = $getContext(CollectionFocusContext, undefined);
+  const field = fieldGiven ? $store(fieldGiven.state) : undefined;
+  const virtualizerGiven = $getContext(VirtualizerContext, undefined);
+  const virtualizer = virtualizerGiven ? $store(virtualizerGiven) : undefined;
   // A list windows when its options are made from data. A field around it filters the options in
   // the page, and a horizontal list has no window.
   const windowHeight = $memo(

@@ -52,7 +52,7 @@ export const Locale = createContext<string>('locale');
 ```
 
 - The key names the context in the page, so it must be unique in the app.
-- A context has no default value. A default would be one object in the module, shared by every request on the server, and a context is meant to be local. A component that reads a context needs a provider above it, or asks first with [`$hasContext`](#reading-without-a-provider).
+- A context has no default value. A default would be one object in the module, shared by every request on the server, and a context is meant to be local. A component that reads a context needs a provider above it, or gives the read a [fallback](#reading-without-a-provider).
 
 ## Providing a value
 
@@ -83,24 +83,39 @@ const locale = $getContext(Locale);
 
 ## Reading without a provider
 
-A part that works on its own, such as a button outside any group, asks first, since a read without a provider throws. `$hasContext(context)` is `true` when a component above provides the context, and `false` when none does:
+A part that works on its own, such as a button outside any group, reads with a fallback, since a read without a provider throws. `$getContext(context, fallback)` gives the provided value, or the fallback when no component above provides the context:
 
 ```ts
-const grouped = $hasContext(ButtonGroup);
+const group = $getContext(ButtonGroup, undefined);
+const size = $getContext(Size, 'm');
 ```
 
-- Declare it with `const`. The answer is fixed when the component renders, since providers are static. It is the same on the server and in the browser.
-- `$route()` and `$navigation()` have a provider on every page, so it is `true` for them.
-- To read only when there is a provider, guard the read with the same context. Without a provider the variable is `undefined`, and nothing links to a store:
+- The second argument decides, so `$getContext(ButtonGroup, undefined)` is a read that may have no provider. A provided `undefined` is a value, not a missing provider.
+- The fallback is lazy. A literal, such as `undefined`, `false` or `'m'`, is passed as it is. Other code runs only when no provider is above, once for each read, in the reader. Nothing is stored on the context, so nothing is shared between requests.
+- The browser does not run the fallback when the page resumes: a value that browser code reads comes with the page, as other values do. A component that the browser renders runs the fallback again, so a fallback that makes a new object gives that component a new object.
+- `$route()` and `$navigation()` have a provider on every page, so they never give the fallback.
+
+A store in a context that may be missing has two forms. Without a constant default, guard on the value, and the variable is `undefined` without a provider:
 
 ```ts
-const group = $hasContext(ButtonGroup) ? $getContext(ButtonGroup) : undefined;
-const state = $hasContext(ButtonGroup) ? $store(group.state) : undefined;
-const level = $hasContext(Level) ? $store(Level) : undefined;
+const group = $getContext(ButtonGroup, undefined);
+const state = group ? $store(group.state) : undefined;
+const level = $getContext(Level, undefined);
+const value = level ? $store(level) : undefined;
 ```
 
-- `$store(group?.state)` guards a key of a guarded value the same way, and is `undefined` without a provider.
-- The guarded read is `const`, not `let`, and the guard and the read name the same context. Another form is [BRM197](./errors.md#brm197).
+- The guard is the name of the value, read with `$getContext(Context, undefined)`, and the read is `const`. Providers are static, so the guard never changes. Another form, such as `$store(group?.state)`, a `let` or another test, is [BRM197](./errors.md#brm197).
+
+When a constant default exists, give a store as the fallback, and no guard is needed:
+
+```ts
+import { store } from 'brumate/store';
+
+const locale = $store($getContext(LocaleContext, store('en-US')));
+```
+
+- With a provider, the reader binds the provider's store, and the fallback never runs, on the server, on resume or in a browser render.
+- Without one, the fallback makes a store for this reader, so two readers or two requests never share it. The browser runs the fallback again on resume, as it runs the [source of a store](#live-values-with-stores), and the new store starts from its first value.
 
 ## Changing a provided value
 
@@ -191,14 +206,14 @@ import type { Store } from 'brumate/store';
 export const Level = createContext<{ level: Store<number>; reset: () => void }>('level');
 ```
 
-- `$store(source)` takes any expression at the top level of a script that gives a store or a context that holds one: a context, `$store(Level)`, a key of its value, `$store(field.level)`, an import, `$store(theme)`, a prop, a value of `<script module>`, a call, or a store made there, `$store(store(0))`. A source that gives `undefined` or `null`, such as `$store(field?.level)`, gives `undefined` and subscribes to nothing.
+- `$store(source)` takes any expression at the top level of a script that gives a store: a key of the value of `$getContext`, `$store(field.level)`, the value itself, `$store($getContext(Level))` for a context that holds a store, an import, `$store(theme)`, a prop, a value of `<script module>`, a call, or a store made there, `$store(store(0))`. A context, `undefined` or `null` is no store: the compiler refuses one that it can see ([BRM199](./errors.md#brm199)), and the render throws a `TypeError` that names `$store` for any other source that gives no store. A context that may be missing is read as [above](#reading-without-a-provider).
 - On resume the browser keeps the value that the server rendered. It finds the store of a context again from its provider, and runs any other source once, with the values the page resumed, when the component's code loads. Then it subscribes, and writes the variable once if the store's value differs from the server's. It never calls `set`.
 - A store that the source makes, such as `$store(store(0))` or a call that returns a new store, is made again in the browser and starts from its first value there. A store of an import is one for the page in the browser, as it is one for each server process.
 - The source runs once on resume, with the values that the server sent. A signal that a handler changed before the reader's code loaded is not seen by the source: it gives the store of the server's values.
 - A store that reaches the browser in a value the page sends, such as a prop or a value of the script, must be a store of `brumate/store`, since only its value crosses. A store of another library works from an import, `<script module>` or a call in the reader. In a prop or a script value that `$store` reads, it makes the server render throw an error that names `$store`, the component and the value.
 - Until a fix of the core, the code that the browser renders a component with has its own copy of `<script module>`. A `<script module>` store is then two stores once a page resumes and the browser also renders that component: the resumed readers share one, and the readers that the browser rendered share the other.
 - The source gives its store at once. A source that awaits is [BRM198](./errors.md#brm198).
-- `const x = $store(source)` follows the store. `let x = $store(source)` also writes it: `x = next` calls `set(next)`. A store without `set`, such as one from a memo, or a source that gives no store, such as `let x = $store(field?.level)` without a provider, throws a `TypeError` when the variable registers. For a guarded `$getContext` value, `let x = $store(field?.level)` is [BRM197](./errors.md#brm197).
+- `const x = $store(source)` follows the store. `let x = $store(source)` also writes it: `x = next` calls `set(next)`. A store without `set`, such as one from a memo, throws a `TypeError` when the variable registers. The guard on a value is `const` only ([BRM197](./errors.md#brm197)).
 - The provider has one store for each `$toStore`, and a reader updates in the same ordered pass as the props and memos around it.
 - The page sends only the value of a store from `brumate/store`. The server refuses a store of another library inside a provided value, with an error that names the context.
 - `import { store } from 'brumate/store'` makes a store for a module: `export const theme = store('light')`. `Store` calls its listeners only when the value changes (`Object.is`).

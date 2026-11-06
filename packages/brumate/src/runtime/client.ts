@@ -49,7 +49,6 @@ export {
 export type { Component } from './client/components.ts';
 export {
   consumeContext,
-  hasContext,
   consumeStore,
   provideValue,
   setGlobal,

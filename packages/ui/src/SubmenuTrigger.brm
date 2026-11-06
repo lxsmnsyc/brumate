@@ -10,7 +10,7 @@
 </script>
 
 <script>
-  import { $effect, $getContext, $hasContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { OverlayTriggerContext } from './contexts.ts';
   import type { OverlayTriggerState } from './contexts.ts';
   import {
@@ -36,9 +36,9 @@
    */
   const { delay = 200, children } = $props<SubmenuTriggerProps>();
 
-  const parentGiven = $hasContext(MenuContext) ? $getContext(MenuContext) : undefined;
-  const parent = $store(parentGiven?.state);
-  const parentTrigger = $hasContext(MenuTriggerContext) ? $getContext(MenuTriggerContext) : undefined;
+  const parentGiven = $getContext(MenuContext, undefined);
+  const parent = parentGiven ? $store(parentGiven.state) : undefined;
+  const parentTrigger = $getContext(MenuTriggerContext, undefined);
   const triggerId = $id();
   const overlayId = $id();
   let isOpen = $signal(false);

@@ -449,9 +449,13 @@ describe('$route and $navigation', () => {
       { filename: 'T.brm' },
     );
     // Each has a slot, so the browser updates what reads it when navigation changes it.
-    expect(server).toContain('const route = $$ctx.consume($$b.routeContext, $$s1, 0);');
-    expect(server).toContain('const navigation = $$ctx.consume($$b.navigationContext, $$s1, 1);');
-    expect(render).toContain('const route = $$b.consumeContext($$b.routeContext, $$s1, 0);');
+    expect(server).toContain('const route = $$ctx.consume($$b.routeContext, $$s1, undefined, 0);');
+    expect(server).toContain(
+      'const navigation = $$ctx.consume($$b.navigationContext, $$s1, undefined, 1);',
+    );
+    expect(render).toContain(
+      'const route = $$b.consumeContext($$b.routeContext, $$s1, undefined, 0);',
+    );
   });
 
   it.each([

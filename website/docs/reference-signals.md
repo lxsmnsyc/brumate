@@ -13,35 +13,34 @@ import { $memo, $signal } from 'brumate/signals';
 
 ## Summary
 
-| Function                      | Returns                    | Where                                                                    | Guide                                                      |
-| ----------------------------- | -------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| `$props<T>()`                 | `T`                        | `const` in the component script                                          | [Components](./components.md)                              |
-| `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script                                       | [State](./state.md)                                        |
-| `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md)         |
-| `$debounced(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
-| `$throttled(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
-| `$resolve(memo, options?)`    | `Promise<T>`               | A handler, an effect or a `$client` callback                             | [Async data](./async-data.md)                              |
-| `$isPending(memo)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                              |
-| `$isPassed(prop)`             | `boolean`                  | `const` in the component script                                          | [Components](./components.md#controlled-and-uncontrolled)  |
-| `$isBound(prop)`              | `boolean`                  | Any expression                                                           | [Components](./components.md#controlled-and-uncontrolled)  |
-| `$effect(callback)`           | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
-| `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
-| `$untrack(value)`             | the value                  | Any expression                                                           | [State](./state.md)                                        |
-| `$produce(signal, recipe)`    | `void`                     | Where a signal can be written                                            | [State](./state.md)                                        |
-| `$setContext(context, value)` | `void`                     | Statement at the top level of a script                                   | [Context](./context.md)                                    |
-| `$getContext(context)`        | the value                  | `const` at the top level of a script                                     | [Context](./context.md)                                    |
-| `$hasContext(context)`        | `boolean`                  | `const` at the top level of a script, or the guard of a read             | [Context](./context.md)                                    |
-| `$store(source)`              | the value of the store     | `const` or `let` at the top level of a script                            | [Context](./context.md#live-values-with-stores)            |
-| `$toStore(value)`             | `Store<T>`                 | A value of `$setContext`                                                 | [Context](./context.md#live-values-with-stores)            |
-| `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)                    |
-| `$navigation()`               | `{ pending, from, to }`    | `const` at the top level of a script                                     | [Navigation](./navigation.md#while-a-page-loads)           |
-| `$id()`                       | `string`                   | `const` at the top level of a script                                     | [Page metadata](./page-metadata.md)                        |
-| `$title(value)`               | `void`                     | Statement at the top level of a script. Replaced by `<title>` in `#head` | [Page metadata](./page-metadata.md)                        |
-| `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script                                     | [Forms](./forms.md)                                        |
-| `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script                                       | [Forms](./forms.md#showing-a-guess-while-it-posts)         |
-| `$bind(value, set?)`          | a binding                  | The whole value of a prop, `value`, `checked` or `ref`                   | [Components](./components.md)                              |
-| `flush()`                     | `void`                     | A handler, an effect or a `$client` callback                             | [State](./state.md#when-bindings-run)                      |
-| `$handler(fn, ...args)`       | a handler                  | Any expression of a script or a module function                          | [Components](./components.md#handlers-that-a-script-makes) |
+| Function                          | Returns                    | Where                                                                    | Guide                                                      |
+| --------------------------------- | -------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `$props<T>()`                     | `T`                        | `const` in the component script                                          | [Components](./components.md)                              |
+| `$signal<T>(value?)`              | `T`                        | `let` at the top level of a script                                       | [State](./state.md)                                        |
+| `$memo<T>(value)`                 | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md)         |
+| `$debounced(value, ms)`           | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
+| `$throttled(value, ms)`           | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
+| `$resolve(memo, options?)`        | `Promise<T>`               | A handler, an effect or a `$client` callback                             | [Async data](./async-data.md)                              |
+| `$isPending(memo)`                | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                              |
+| `$isPassed(prop)`                 | `boolean`                  | `const` in the component script                                          | [Components](./components.md#controlled-and-uncontrolled)  |
+| `$isBound(prop)`                  | `boolean`                  | Any expression                                                           | [Components](./components.md#controlled-and-uncontrolled)  |
+| `$effect(callback)`               | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
+| `$client(callback, trigger?)`     | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
+| `$untrack(value)`                 | the value                  | Any expression                                                           | [State](./state.md)                                        |
+| `$produce(signal, recipe)`        | `void`                     | Where a signal can be written                                            | [State](./state.md)                                        |
+| `$setContext(context, value)`     | `void`                     | Statement at the top level of a script                                   | [Context](./context.md)                                    |
+| `$getContext(context, fallback?)` | the value, or the fallback | `const` at the top level of a script                                     | [Context](./context.md)                                    |
+| `$store(source)`                  | the value of the store     | `const` or `let` at the top level of a script                            | [Context](./context.md#live-values-with-stores)            |
+| `$toStore(value)`                 | `Store<T>`                 | A value of `$setContext`                                                 | [Context](./context.md#live-values-with-stores)            |
+| `$route(path?)`                   | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)                    |
+| `$navigation()`                   | `{ pending, from, to }`    | `const` at the top level of a script                                     | [Navigation](./navigation.md#while-a-page-loads)           |
+| `$id()`                           | `string`                   | `const` at the top level of a script                                     | [Page metadata](./page-metadata.md)                        |
+| `$title(value)`                   | `void`                     | Statement at the top level of a script. Replaced by `<title>` in `#head` | [Page metadata](./page-metadata.md)                        |
+| `$action(fn)`                     | the result, or `undefined` | `const` at the top level of a script                                     | [Forms](./forms.md)                                        |
+| `$optimistic(source)`             | the value of `source`      | `let` at the top level of a script                                       | [Forms](./forms.md#showing-a-guess-while-it-posts)         |
+| `$bind(value, set?)`              | a binding                  | The whole value of a prop, `value`, `checked` or `ref`                   | [Components](./components.md)                              |
+| `flush()`                         | `void`                     | A handler, an effect or a `$client` callback                             | [State](./state.md#when-bindings-run)                      |
+| `$handler(fn, ...args)`           | a handler                  | Any expression of a script or a module function                          | [Components](./components.md#handlers-that-a-script-makes) |
 
 ## `$props`
 
@@ -217,32 +216,25 @@ Provides a value of a context to the components inside this one. A statement at 
 
 ```ts
 function $getContext<T>(context: Context<T>): T;
+function $getContext<T, F>(context: Context<T>, fallback: F): T | F;
 ```
 
-Reads a context from the nearest component above that provides it, and throws when none does. Assign it to a `const` at the top level of a script. See [Context](./context.md#reading-without-a-provider) for reads that may miss.
-
-## `$hasContext`
-
-```ts
-function $hasContext<T>(context: Context<T>): boolean;
-```
-
-`true` when a component above provides the context, `false` when none does. The answer is fixed when the component renders, and is the same on the server and in the browser. It is `true` for `$route` and `$navigation`. Declare it with `const` at the top level of a script, or use it as the guard of a read of the same context: `const state = $hasContext(Field) ? $store(Field) : undefined`. Without a provider that variable is `undefined`. Another shape is [BRM197](./errors.md#brm197).
+Reads a context from the nearest component above that provides it, and throws when none does. With a second argument, a read without a provider gives `fallback` instead, so `$getContext(Field, undefined)` is a read that may have no provider. A literal fallback is passed as it is, and other code runs only without a provider, once per read. Assign it to a `const` at the top level of a script. See [Context](./context.md#reading-without-a-provider).
 
 ## `$store`
 
 ```ts
-function $store<T>(source: Context<StoreLike<T>> | StoreLike<T>): T;
-function $store<T>(source: Context<StoreLike<T>> | StoreLike<T> | undefined | null): T | undefined;
+function $store<T>(source: StoreLike<T>): T;
 ```
 
 Binds a store to a variable that holds its value. A store is any value with `get()`, `subscribe(listener)`, which returns the function that stops it, and optionally `set(value)`. See [Live values with stores](./context.md#live-values-with-stores).
 
-- The source is any expression that gives a store or a context that holds one: a context, a key of the value of a `$getContext`, as in `$store(field.state)`, an import, a prop, a value of `<script module>`, a call or `store(0)`. `undefined` or `null` gives `undefined`, as in `$store(field?.state)`. A source that awaits is a compile error ([BRM198](./errors.md#brm198)).
+- The source is any expression that gives a store: a key of the value of a `$getContext`, as in `$store(field.state)`, `$store($getContext(Level))` for a context that holds a store, an import, a prop, a value of `<script module>`, a call or `store(0)`. A context, `undefined` or `null` is a compile error ([BRM199](./errors.md#brm199)), and a source that gives no store when the page renders throws a `TypeError`. A source that awaits is a compile error ([BRM198](./errors.md#brm198)).
+- A context that may have no provider: `const field = $getContext(Field, undefined); const state = field ? $store(field.state) : undefined;`, or a store as the fallback, `$store($getContext(Locale, store('en-US')))`. Another guard is [BRM197](./errors.md#brm197).
 - It runs once and is not tracked. The subscription ends with the scope.
-- On resume the variable keeps the server's value. The browser finds a store of a context from its provider, and runs any other source once with the resumed values. It subscribes, and writes the variable once if the store's value differs. It never calls `set`. A store that the source makes starts from its first value in the browser.
+- On resume the variable keeps the server's value. The browser finds a store of a context from its provider, and runs any other source, or the fallback without a provider, once with the resumed values. It subscribes, and writes the variable once if the store's value differs. It never calls `set`. A store that the source makes starts from its first value in the browser.
 - `const x = $store(source)`: the store writes the variable.
-- `let x = $store(source)`: a write to the variable, such as `x = next` or `x++`, also calls `set(next)` of the store. A store without `set`, or a source that gives no store, throws a `TypeError` when the variable registers.
+- `let x = $store(source)`: a write to the variable, such as `x = next` or `x++`, also calls `set(next)` of the store. A store without `set` throws a `TypeError` when the variable registers.
 - The variable is a name, not a pattern.
 
 ## `$toStore`

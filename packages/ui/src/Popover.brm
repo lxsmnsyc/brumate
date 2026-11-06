@@ -37,7 +37,7 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { store } from 'brumate/store';
-  import { $client, $effect, $getContext, $hasContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext, DialogContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
   import type { DialogState } from './contexts.ts';
@@ -98,11 +98,11 @@
   let { isOpen } = $props<PopoverOwnProps<T>>();
   let { ref } = $props<PopoverOwnProps<T>>();
 
-  const triggerGiven = $hasContext(OverlayTriggerContext) ? $getContext(OverlayTriggerContext) : undefined;
-  const trigger = $store(triggerGiven?.state);
-  const parentLayer = $hasContext(LayerContext) ? $getContext(LayerContext) : undefined;
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
+  const triggerGiven = $getContext(OverlayTriggerContext, undefined);
+  const trigger = triggerGiven ? $store(triggerGiven.state) : undefined;
+  const parentLayer = $getContext(LayerContext, undefined);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   const own = $isPassed(isOpen);
   const placementPassed = $isPassed(placement);
   const layerId = $id();

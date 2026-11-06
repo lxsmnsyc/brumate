@@ -32,7 +32,8 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $hasContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
     areaChannels,
@@ -117,8 +118,8 @@
   let { value = '#ffffff' } = $props<ColorAreaProps>();
 
   // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
-  const given = $hasContext(ColorPickerContext) ? $getContext(ColorPickerContext) : undefined;
-  const picker = $store(given?.state);
+  const given = $getContext(ColorPickerContext, undefined);
+  const picker = given ? $store(given.state) : undefined;
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
@@ -143,8 +144,8 @@
     }
   }
 
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   // The color that a reset of the form gives back.
   let initialValue = $signal(held);
   let dragging = $signal(false);

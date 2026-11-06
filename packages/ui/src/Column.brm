@@ -26,7 +26,7 @@
 </script>
 
 <script>
-  import { $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import { interact } from './interact.brm.ts';
   import { ColumnContext, TableContext, TableResizeContext, cssWidth } from './table.ts';
@@ -58,10 +58,10 @@
     ...rest
   } = $props<ColumnProps>();
 
-  const tableGiven = $hasContext(TableContext) ? $getContext(TableContext) : undefined;
-  const table = $store(tableGiven?.state);
-  const sizesGiven = $hasContext(TableResizeContext) ? $getContext(TableResizeContext) : undefined;
-  const sizes = $store(sizesGiven?.state);
+  const tableGiven = $getContext(TableContext, undefined);
+  const table = tableGiven ? $store(tableGiven.state) : undefined;
+  const sizesGiven = $getContext(TableResizeContext, undefined);
+  const sizes = sizesGiven ? $store(sizesGiven.state) : undefined;
   const headerId = $id();
   // A column without an `id` takes the ID of its header, so a resize keeps its width too.
   const key = keyAttribute(id ?? headerId);

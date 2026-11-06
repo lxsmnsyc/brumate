@@ -21,7 +21,7 @@
   let localTwo = $store(store(5));
   const propOne = $store(s);
   let propTwo = $store(s);
-  const maybe = $store(given?.state);
+  const maybe = $store(given?.state ?? store(0));
   const callOne = $store(make());
   let callTwo = $store(make());
   const moduleOne = $store(shared);

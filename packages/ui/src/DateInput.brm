@@ -11,7 +11,7 @@
 </script>
 
 <script>
-  import { $getContext, $hasContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { DateFieldContext, DateRangeFieldContext, focusSegment } from './segments.ts';
   import type { SegmentType } from './segments.ts';
   import DateSegment from './DateSegment.brm';
@@ -29,11 +29,11 @@
    */
   const { segment, slot, ...rest } = $props<DateInputProps>();
 
-  const range = $hasContext(DateRangeFieldContext) ? $getContext(DateRangeFieldContext) : undefined;
-  const single = $hasContext(DateFieldContext) ? $getContext(DateFieldContext) : undefined;
-  const startState = $store(range?.startState);
-  const endState = $store(range?.endState);
-  const singleState = $store(single?.state);
+  const range = $getContext(DateRangeFieldContext, undefined);
+  const single = $getContext(DateFieldContext, undefined);
+  const startState = range ? $store(range.startState) : undefined;
+  const endState = range ? $store(range.endState) : undefined;
+  const singleState = single ? $store(single.state) : undefined;
   /** The date that this input edits: its slot of a DateRangePicker, or the DateField's. */
   const field = $memo(
     (slot && startState ? (slot === 'start' ? startState : endState) : singleState) ?? null,

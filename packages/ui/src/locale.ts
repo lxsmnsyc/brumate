@@ -68,7 +68,8 @@ export function createLocale(locale: string): Locale {
  * The locale of the parts inside an I18nProvider, as a store, since the locale can change. It holds
  * no value outside one, where the parts use `DEFAULT_LOCALE`, `en-US`, so the server and the browser
  * format the same way. A language of the browser would differ from the server, which does not know
- * it. A reader outside one asks `$hasContext` and falls back to `DEFAULT_LOCALE` itself.
+ * it. A reader passes a store of `DEFAULT_LOCALE` as the fallback:
+ * `$store($getContext(LocaleContext, store(DEFAULT_LOCALE)))`.
  */
 export const LocaleContext: Context<StoreLike<Locale | null>> =
   createContext<StoreLike<Locale | null>>('brumate-ui:locale');

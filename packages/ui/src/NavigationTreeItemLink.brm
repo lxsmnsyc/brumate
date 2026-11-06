@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $hasContext, $props, $store } from 'brumate/signals';
+  import { $getContext, $props, $store } from 'brumate/signals';
   import { NavigationLinkContext } from './navigation-tree.ts';
 
   /**
@@ -20,7 +20,8 @@
    */
   const { children, ...rest } = $props<NavigationTreeItemLinkProps>();
 
-  const link = $hasContext(NavigationLinkContext) ? $store(NavigationLinkContext) : undefined;
+  const linkGiven = $getContext(NavigationLinkContext, undefined);
+  const link = linkGiven ? $store(linkGiven) : undefined;
 </script>
 
 #if (link?.href && !link.isDisabled) {

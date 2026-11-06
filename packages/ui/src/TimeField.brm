@@ -40,7 +40,8 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $effect, $hasContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { formField } from './date-field.brm.ts';
@@ -98,14 +99,16 @@
   } = $props<TimeFieldProps<T>>();
   let { value = null } = $props<TimeFieldProps<T>>();
 
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
-  const form = $hasContext(FormContext) ? $store(FormContext) : undefined;
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  const formGiven = $getContext(FormContext, undefined);
+  const form = formGiven ? $store(formGiven) : undefined;
   const labelId = $id();
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
-  const strings = $hasContext(DateStringsContext) ? $store(DateStringsContext) : undefined;
+  const stringsGiven = $getContext(DateStringsContext, undefined);
+  const strings = stringsGiven ? $store(stringsGiven) : undefined;
   const twelve = $memo(usesDayPeriod(locale.locale, hourCycle));
   const inputId = $id();
   let parts = $signal<DateParts>(parseTimeParts(value));

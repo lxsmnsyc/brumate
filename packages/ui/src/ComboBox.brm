@@ -50,7 +50,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $hasContext, $client, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
@@ -117,7 +117,8 @@
   let initialKey = $signal(selectedKey);
   let initialText = $signal(inputValue);
 
-  const form = $hasContext(FormContext) ? $store(FormContext) : undefined;
+  const formGiven = $getContext(FormContext, undefined);
+  const form = formGiven ? $store(formGiven) : undefined;
   const rootId = $id();
   const inputId = $id();
   const buttonId = $id();

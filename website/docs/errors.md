@@ -1039,12 +1039,13 @@ const theme = $getContext(ThemeContext);
 
 ## BRM080
 
-`$getContext takes one argument, the context`
+`$getContext takes the context, and a fallback for a read without a provider`
 
-`$getContext` has no argument or more than one.
+`$getContext` has no argument or more than two.
 
 ```ts
 const theme = $getContext(ThemeContext);
+const locale = $getContext(LocaleContext, undefined);
 ```
 
 ## BRM081
@@ -1726,7 +1727,7 @@ const value = $store(theme);
 
 ## BRM192
 
-`$store takes one argument, a context, a store or a key of one`
+`$store takes one argument, a store`
 
 `$store` has no argument, or more than one.
 
@@ -1767,13 +1768,13 @@ $setContext(Field, { state: $toStore(state), pick: () => value });
 
 ## BRM197
 
-`Keep the answer of $hasContext with "const name = $hasContext(Context)", or guard a read of the same context with "const name = $hasContext(Context) ? $store(Context) : undefined", with const and no other test`
+`Read a context that may have no provider with "const name = $getContext(Context, undefined)", and a store in it with "const state = name ? $store(name.key) : undefined", with const and no other test`
 
-`$hasContext` is used in another shape: in a `let`, in a test with another condition, around another call than `$store` or `$getContext`, with an `else` that is not `undefined`, or with a context other than the one that the guarded `$store` reads.
+A read of a context that may have no provider has another shape: `$hasContext`, which is removed, `$store(name?.key)`, a `let` or another test in the guard, an `else` that is not `undefined`, a guard on a name that is not the optional value of `$getContext(Context, undefined)`, or a key of that value read without the guard.
 
 ```ts
-const field = $hasContext(Field) ? $getContext(Field) : undefined;
-const state = $hasContext(Field) ? $store(field.state) : undefined;
+const field = $getContext(Field, undefined);
+const state = field ? $store(field.state) : undefined;
 ```
 
 ## BRM198
@@ -1785,6 +1786,17 @@ The source of `$store` awaits, or calls a server function. The browser runs the 
 ```ts
 import { theme } from './theme';
 const value = $store(theme);
+```
+
+## BRM199
+
+`$store takes a store. Read the store of a context with "$store($getContext(Context))", or give a store as the fallback, "$store($getContext(Context, store(value)))"`
+
+`$store` reads a context that the file names in `$getContext` or `$setContext`, `undefined`, `null`, or `$getContext` with a literal fallback, which is no store. A context that the file only imports is found when the page renders, as a `TypeError`.
+
+```ts
+const level = $store($getContext(LevelContext));
+const locale = $store($getContext(LocaleContext, store('en-US')));
 ```
 
 ## BRM144

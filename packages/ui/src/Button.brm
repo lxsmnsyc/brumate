@@ -46,7 +46,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'button'">
-  import { $bind, $getContext, $handler, $hasContext, $memo, $props, $store } from 'brumate/signals';
+  import { $bind, $getContext, $handler, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ButtonContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
@@ -79,8 +79,8 @@
   } = $props<ButtonProps<T>>();
   let { ref } = $props<ButtonOwnProps<T>>();
 
-  const buttonGiven = $hasContext(ButtonContext) ? $getContext(ButtonContext) : undefined;
-  const context = $store(buttonGiven?.state);
+  const buttonGiven = $getContext(ButtonContext, undefined);
+  const context = buttonGiven ? $store(buttonGiven.state) : undefined;
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
   const pending = $memo(Boolean(isPending ?? slotProps(context, slot).isPending));

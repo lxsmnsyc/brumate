@@ -19,7 +19,7 @@
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $getContext, $hasContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
   import { CheckboxGroupContext } from './contexts.ts';
   import type { CheckboxGroupState } from './contexts.ts';
@@ -44,8 +44,8 @@
     ...rest
   } = $props<RowProps>();
 
-  const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
-  const list = $store(listGiven?.state);
+  const listGiven = $getContext(ListBoxContext, undefined);
+  const list = listGiven ? $store(listGiven.state) : undefined;
   const mode = $memo(list?.selectionMode ?? 'none');
   const selected = $memo(Boolean(list?.selectedKeys.includes(id)));
   const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));

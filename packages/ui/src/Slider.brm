@@ -27,7 +27,8 @@
 </script>
 
 <script>
-  import { $hasContext, $client, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { NumberFormatter } from '@internationalized/number';
   import { LabelContext } from './contexts.ts';
   import { onFormReset } from './fields.ts';
@@ -63,8 +64,8 @@
   } = $props<SliderProps>();
   let { value = minValue } = $props<SliderProps>();
 
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   // The values that a reset of the form gives back.
   let initialValue = $signal(value);
   // The thumbs that a drag moves now.

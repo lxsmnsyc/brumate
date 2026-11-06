@@ -27,7 +27,7 @@
 </script>
 
 <script>
-  import { $client, $getContext, $hasContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
@@ -62,8 +62,8 @@
   let initial = $signal(isSelected);
   const inputId = $id();
 
-  const groupGiven = $hasContext(CheckboxGroupContext) ? $getContext(CheckboxGroupContext) : undefined;
-  const group = $store(groupGiven?.state);
+  const groupGiven = $getContext(CheckboxGroupContext, undefined);
+  const group = groupGiven ? $store(groupGiven.state) : undefined;
   const selected = $memo(group ? group.value.includes(value ?? '') : isSelected);
   const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
   const readOnly = $memo(Boolean(isReadOnly || group?.isReadOnly));
@@ -87,9 +87,12 @@
   );
   const labelId = $id();
   const { present: hasLabel } = described(labelId, false);
-  const groupLabel = $hasContext(LabelContext) ? $store(LabelContext) : undefined;
-  const groupText = $hasContext(TextContext) ? $store(TextContext) : undefined;
-  const groupError = $hasContext(FieldErrorContext) ? $store(FieldErrorContext) : undefined;
+  const groupLabelGiven = $getContext(LabelContext, undefined);
+  const groupLabel = groupLabelGiven ? $store(groupLabelGiven) : undefined;
+  const groupTextGiven = $getContext(TextContext, undefined);
+  const groupText = groupTextGiven ? $store(groupTextGiven) : undefined;
+  const groupErrorGiven = $getContext(FieldErrorContext, undefined);
+  const groupError = groupErrorGiven ? $store(groupErrorGiven) : undefined;
   // A Label in the children (`as="span"`) names the input, so the description and the error stay
   // out of its name. Without one, they sit in the text of the label, and aria-hidden keeps them
   // out of the name. The server cannot see the Label, so a box starts without one: the name is right

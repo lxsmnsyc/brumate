@@ -53,7 +53,8 @@
 </script>
 
 <script generics="V extends { id: Key }, T extends AsTarget = 'div'">
-  import { $hasContext, $client, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import { ROWS_TYPE, setDragData } from './drop.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
@@ -125,9 +126,10 @@
   let { selectedKeys = [] } = $props<GridListOwnProps<V, T>>();
   let { ref } = $props<GridListOwnProps<V, T>>();
 
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
-  const virtualizer = $hasContext(VirtualizerContext) ? $store(VirtualizerContext) : undefined;
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  const virtualizerGiven = $getContext(VirtualizerContext, undefined);
+  const virtualizer = virtualizerGiven ? $store(virtualizerGiven) : undefined;
   // Only a list with its items as data can window, since the rows are then made from the data.
   const windowHeight = $memo(items ? (rowHeight ?? virtualizer?.rowHeight) : undefined);
   const hasAction = $isPassed(onAction);

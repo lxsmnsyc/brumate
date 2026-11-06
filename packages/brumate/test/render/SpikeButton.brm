@@ -4,7 +4,7 @@
 
   const { as, children, ...rest } = $props();
   const select = $getContext(SelectContext);
-  const open = $store(SelectOpenContext);
+  const open = $store($getContext(SelectOpenContext));
 </script>
 
 <{as ?? 'button'}

@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $getContext, $hasContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { CheckboxGroupContext } from './contexts.ts';
   import type { CheckboxGroupState } from './contexts.ts';
   import { TableContext } from './table.ts';
@@ -20,8 +20,8 @@
    */
   const { children, ...rest } = $props<TableHeaderProps>();
 
-  const tableGiven = $hasContext(TableContext) ? $getContext(TableContext) : undefined;
-  const table = $store(tableGiven?.state);
+  const tableGiven = $getContext(TableContext, undefined);
+  const table = tableGiven ? $store(tableGiven.state) : undefined;
 
   const checkState = $memo<CheckboxGroupState>({
     value: table?.selectAll.all ? [''] : [],

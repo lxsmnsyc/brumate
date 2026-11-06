@@ -38,7 +38,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $hasContext, $client, $effect, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxGivenContext,
@@ -92,7 +92,8 @@
   let { selectedKey = null } = $props<SelectProps<T>>();
   let { isOpen = false } = $props<SelectProps<T>>();
 
-  const form = $hasContext(FormContext) ? $store(FormContext) : undefined;
+  const formGiven = $getContext(FormContext, undefined);
+  const form = formGiven ? $store(formGiven) : undefined;
   const triggerId = $id();
   const overlayId = $id();
   const labelId = $id();

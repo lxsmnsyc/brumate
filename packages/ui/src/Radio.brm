@@ -14,7 +14,7 @@
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $client, $getContext, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
@@ -28,8 +28,8 @@
    */
   const { value, isDisabled, children, ...rest } = $props<RadioProps>();
 
-  const groupGiven = $hasContext(RadioGroupContext) ? $getContext(RadioGroupContext) : undefined;
-  const group = $store(groupGiven?.state);
+  const groupGiven = $getContext(RadioGroupContext, undefined);
+  const group = groupGiven ? $store(groupGiven.state) : undefined;
   const inputId = $id();
   const selected = $memo(group?.value === value);
   const disabled = $memo(Boolean(isDisabled || group?.isDisabled));

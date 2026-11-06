@@ -99,18 +99,17 @@ it('prints the code of a syntax error in place of BRM', () => {
   expect(result.status).not.toBe(0);
 });
 
-it('types $hasContext as a boolean and a guarded read as T | undefined', () => {
+it('types a fallback of $getContext as T | F, and $store as taking a store only', () => {
   const project = fileURLToPath(new URL('./fixture-has/tsconfig.json', import.meta.url));
   const result = spawnSync(process.execPath, [bin, '-p', project], { encoding: 'utf8' });
   const errors = result.stdout
     .split('\n')
     .filter((line) => line.includes('error TS'))
     .map((line) => line.replace(/^.*src\//, ''));
-  // Only the three wrong lines fail. `field.state` needs no `?.` under its guard, and
-  // `$store(field?.state)` is `T | undefined`.
+  // Only the three wrong lines fail.
   expect(errors).toEqual([
-    "Has.brm(15,9): error TS2322: Type 'number | undefined' is not assignable to type 'number'.",
-    "Has.brm(16,9): error TS2322: Type 'boolean' is not assignable to type 'string'.",
-    "Has.brm(17,9): error TS2322: Type '{ count: number; } | undefined' is not assignable to type '{ count: number; }'.",
+    "Has.brm(12,9): error TS2322: Type 'Field | undefined' is not assignable to type '{ state: unknown; }'.",
+    "Has.brm(13,9): error TS2322: Type '{ count: number; } | undefined' is not assignable to type '{ count: number; }'.",
+    "Has.brm(14,29): error TS2345: Argument of type 'Context<Store<number>>' is not assignable to parameter of type 'StoreLike<unknown>'.",
   ]);
 });

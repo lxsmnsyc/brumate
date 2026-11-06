@@ -32,7 +32,7 @@
 </script>
 
 <script>
-  import { $bind, $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $bind, $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { DatePickerContext } from './calendar.ts';
   import type { DatePickerState } from './calendar.ts';
   import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
@@ -72,7 +72,8 @@
   let { value = null } = $props<DatePickerProps>();
   let { isOpen = false } = $props<DatePickerProps>();
 
-  const strings = $hasContext(DateStringsContext) ? $store(DateStringsContext) : undefined;
+  const stringsGiven = $getContext(DateStringsContext, undefined);
+  const strings = stringsGiven ? $store(stringsGiven) : undefined;
   const triggerId = $id();
   const overlayId = $id();
   const labelId = $id();

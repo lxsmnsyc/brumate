@@ -1,10 +1,10 @@
 <script>
-  import { $memo, $props, $store } from 'brumate/signals';
+  import { $memo, $props, $getContext, $store } from 'brumate/signals';
   import { ran } from './runs.ts';
   import { Picker } from './contexts.ts';
 
   const { name } = $props<{ name: string }>();
-  let chosen = $store(Picker);
+  let chosen = $store($getContext(Picker));
   const label = $memo(ran(`label-${name}`, chosen));
 </script>
 

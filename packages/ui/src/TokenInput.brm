@@ -9,7 +9,7 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $hasContext, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import Token from './Token.brm';
   import {
@@ -37,8 +37,8 @@
    */
   const { token, ...rest } = $props<TokenInputProps>();
 
-  const fieldGiven = $hasContext(TokenFieldContext) ? $getContext(TokenFieldContext) : undefined;
-  const field = $store(fieldGiven?.state);
+  const fieldGiven = $getContext(TokenFieldContext, undefined);
+  const field = fieldGiven ? $store(fieldGiven.state) : undefined;
   if (!field) {
     throw new Error('A TokenInput goes in a TokenField.');
   }

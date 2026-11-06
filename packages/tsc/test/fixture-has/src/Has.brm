@@ -1,20 +1,17 @@
 <script>
-  import { $getContext, $hasContext, $store } from 'brumate/signals';
+  import { $getContext, $store } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { FieldCtx, Level } from './ctx';
 
-  // Plain, and both guarded shapes, type-check with no error.
-  const found: boolean = $hasContext(FieldCtx);
-  const level: number | undefined = $hasContext(Level) ? $store(Level) : undefined;
-  const field = $hasContext(FieldCtx) ? $getContext(FieldCtx) : undefined;
-  const state: { count: number } | undefined = $hasContext(FieldCtx)
-    ? $store(field.state)
-    : undefined;
-  // `?.` on the guarded value gives `T | undefined`.
-  const again: { count: number } | undefined = $store(field?.state);
-  // The guarded types are not the bare ones.
-  const wrongLevel: number = $hasContext(Level) ? $store(Level) : undefined;
-  const wrongFound: string = $hasContext(Level);
-  const wrongAgain: { count: number } = $store(field?.state);
+  // A fallback, the guard on the value and a store as the fallback type-check with no error.
+  const field = $getContext(FieldCtx, undefined);
+  const state: { count: number } | undefined = field ? $store(field.state) : undefined;
+  const level: number = $store($getContext(Level, store(0)));
+  const flag: boolean = $getContext(Level, false) !== false;
+  // The optional types are not the bare ones, and a context is no store.
+  const wrongField: { state: unknown } = $getContext(FieldCtx, undefined);
+  const wrongState: { count: number } = field ? $store(field.state) : undefined;
+  const wrongStore = $store(Level);
 </script>
 
-<p>{found} {level} {state?.count} {again?.count} {wrongLevel} {wrongFound} {wrongAgain}</p>
+<p>{state?.count} {level} {flag} {wrongField.state} {wrongState.count} {wrongStore}</p>

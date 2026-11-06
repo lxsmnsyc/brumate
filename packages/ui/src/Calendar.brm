@@ -45,7 +45,8 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $hasContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import {
     CalendarContext,
     DatePickerContext,
@@ -110,10 +111,10 @@
   let { value = null } = $props<CalendarProps>();
   // In a DatePicker, the picker holds the value, and a pick goes to it. The limits of the picker
   // apply when the Calendar has none of its own.
-  const pickerGiven = $hasContext(DatePickerContext) ? $getContext(DatePickerContext) : undefined;
-  const picker = $store(pickerGiven?.state);
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
+  const pickerGiven = $getContext(DatePickerContext, undefined);
+  const picker = pickerGiven ? $store(pickerGiven.state) : undefined;
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   const timeZone = ownTimeZone ?? locale.timeZone;
   const minValue = $memo(ownMinValue ?? picker?.minValue);
   const maxValue = $memo(ownMaxValue ?? picker?.maxValue);
@@ -137,7 +138,8 @@
   // Focus is in a grid of this calendar.
   let isFocused = $signal(false);
 
-  const strings = $hasContext(DateStringsContext) ? $store(DateStringsContext) : undefined;
+  const stringsGiven = $getContext(DateStringsContext, undefined);
+  const strings = stringsGiven ? $store(stringsGiven) : undefined;
   // The server writes its date, so the first render of the browser matches the HTML. The browser
   // then takes its own, and keeps it up to date.
   let today = $signal(todayString(timeZone));

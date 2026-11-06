@@ -1,10 +1,10 @@
 <script>
-  import { $memo, $props, $store } from 'brumate/signals';
+  import { $memo, $props, $getContext, $store } from 'brumate/signals';
   import { ran } from './runs.ts';
   import { Level } from './contexts.ts';
 
   const { list } = $props<{ list: string[] }>();
-  const last = $store(Level);
+  const last = $store($getContext(Level));
   // It throws when it reads an index past the end of the list.
   const kidPick = $memo(ran('kidPick', `${list.length} ${last}`) && list[last]!.toUpperCase());
 </script>

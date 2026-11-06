@@ -33,7 +33,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $hasContext, $memo, $props, $signal, $store } from 'brumate/signals';
+  import { $getContext, $memo, $props, $signal, $store } from 'brumate/signals';
   import { GroupContext } from './contexts.ts';
   import { hover } from './hover.brm.ts';
   import { isFocusVisible } from './interactions.ts';
@@ -57,7 +57,8 @@
   // The props of the target of `as`, for the type of the component.
   const { as = 'div' } = $props<GroupProps<T>>();
 
-  const context = $hasContext(GroupContext) ? $store(GroupContext) : undefined;
+  const contextGiven = $getContext(GroupContext, undefined);
+  const context = contextGiven ? $store(contextGiven) : undefined;
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   // aria-disabled and aria-invalid of the caller give the state too.
   const disabled = $memo(

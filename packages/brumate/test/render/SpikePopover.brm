@@ -1,9 +1,9 @@
 <script>
-  import { $props, $store } from 'brumate/signals';
+  import { $props, $getContext, $store } from 'brumate/signals';
   import { SelectOpenContext } from './selectContext.ts';
 
   const { children } = $props();
-  const open = $store(SelectOpenContext);
+  const open = $store($getContext(SelectOpenContext));
 </script>
 
 #if (open) {

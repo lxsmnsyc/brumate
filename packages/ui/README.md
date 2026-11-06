@@ -79,10 +79,10 @@ There is no `defaultPressed`. See [Controlled and uncontrolled](../../docs/propo
 
 A part that holds other parts provides their props in the context of each part type, in `src/contexts.ts`. A context value is static. What changes goes in a store, and the functions go beside it as literal keys, since a store cannot hold a function.
 
-- A context that changes gives `{ state: $toStore(memo), ...handlers }`. A part reads it with `const given = $getContext(Ctx); const value = $store(given.state);` and calls `given.handler?.()`. A context with no handler is the store alone, read with `$store(Ctx)`.
+- A context that changes gives `{ state: $toStore(memo), ...handlers }`. A part reads it with `const given = $getContext(Ctx); const value = $store(given.state);` and calls `given.handler?.()`. A context with no handler is the store alone, read with `$store($getContext(Ctx))`.
 - `ButtonContext` and `LinkContext` give `{ state, handlers }`. Each is a props value, or `{ slots: { name: props } }`, with the same slot names in both. `state` holds the attributes and states, `handlers` the `on...` functions. Read them with `slotProps($store(given.state), slot)` and `slotHandlers(given.handlers, slot)`.
-- A part that works without a provider reads the context behind `$hasContext`, so a handler from it may be missing: the part calls it with `?.`, or with `!` where a provider always gives it.
-- `LocaleContext` and `DateStringsContext` are stores. Read the locale with `$store(LocaleContext)`.
+- A part that works without a provider reads the context with `const given = $getContext(Context, undefined)` and its store with `given ? $store(given.state) : undefined`, so a handler from it may be missing: the part calls it with `?.`, or with `!` where a provider always gives it.
+- `LocaleContext` and `DateStringsContext` are stores. Read the locale with `$store($getContext(LocaleContext, store(DEFAULT_LOCALE)))`, which falls back to `en-US` without an `I18nProvider`, and `?? DEFAULT_LOCALE` for a provider's `null`.
 - A memo cannot hold handlers. Read them from the context in a function when a handler runs, and call the context's handler before the part's own.
 - Spread the attributes of the context, from `contextAttributes`, before `{...rest}`, so the caller wins.
 

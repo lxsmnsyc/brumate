@@ -4,7 +4,7 @@
 
   const { name } = $props<{ name: string }>();
   const picker = $getContext(Picker);
-  const value = $store(Picker);
+  const value = $store($getContext(Picker));
   const selected = $memo(value === name);
 </script>
 

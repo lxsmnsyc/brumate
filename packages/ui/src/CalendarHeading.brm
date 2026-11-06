@@ -17,7 +17,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'h2'">
-  import { $getContext, $hasContext, $props, $store } from 'brumate/signals';
+  import { $getContext, $props, $store } from 'brumate/signals';
   import { CalendarContext, rangeLabel, toDate } from './calendar.ts';
 
   /**
@@ -26,8 +26,8 @@
    */
   const { as = 'h2', children, ...rest } = $props<CalendarHeadingProps<T>>();
 
-  const given = $hasContext(CalendarContext) ? $getContext(CalendarContext) : undefined;
-  const calendar = $store(given?.state);
+  const given = $getContext(CalendarContext, undefined);
+  const calendar = given ? $store(given.state) : undefined;
 </script>
 
 <{as} aria-hidden="true" {...rest}>{children ?? (calendar ? rangeLabel(toDate(calendar.start), toDate(calendar.end), calendar.locale, false) : '')}</>

@@ -33,7 +33,7 @@
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $getContext, $hasContext, $id, $isPassed, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $id, $isPassed, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { TextContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { ListBoxContext, keyAttribute } from './collection.ts';
@@ -61,8 +61,8 @@
   } = $props<ListBoxItemProps<T>>();
   let { ref } = $props<ListBoxItemOwnProps<T>>();
 
-  const listGiven = $hasContext(ListBoxContext) ? $getContext(ListBoxContext) : undefined;
-  const list = $store(listGiven?.state);
+  const listGiven = $getContext(ListBoxContext, undefined);
+  const list = listGiven ? $store(listGiven.state) : undefined;
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.
   const acts = $isPassed(onAction);
   const optionId = $id();

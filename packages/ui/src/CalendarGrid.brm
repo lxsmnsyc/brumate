@@ -12,7 +12,7 @@
 </script>
 
 <script>
-  import { $getContext, $hasContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     CalendarContext,
@@ -40,8 +40,8 @@
    */
   const { offset, cell, ...rest } = $props<CalendarGridProps>();
 
-  const given = $hasContext(CalendarContext) ? $getContext(CalendarContext) : undefined;
-  const calendar = $store(given?.state);
+  const given = $getContext(CalendarContext, undefined);
+  const calendar = given ? $store(given.state) : undefined;
   const start = $memo(
     calendar ? (offset ? toDate(calendar.start).add(offset) : toDate(calendar.start)).toString() : '',
   );

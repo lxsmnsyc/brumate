@@ -2,8 +2,8 @@
   import { $props, $store } from 'brumate/signals';
   import type { Store } from 'brumate/store';
 
-  const { given } = $props<{ given?: { state: Store<number> } }>();
-  let value = $store(given?.state);
+  const { given } = $props<{ given?: Store<number> }>();
+  let value = $store(given as Store<number>);
 </script>
 
 <p>{value}</p>

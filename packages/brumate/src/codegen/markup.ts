@@ -18,6 +18,7 @@ import { forEachNode } from '../ast.ts';
 import { tryCatchesClient } from '../graph.ts';
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
+import { isFallbackLiteral } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { holdsStream, serverFunctionId } from '../plan.ts';
 import { findLoadStarts, hasAwait } from './starts.ts';
@@ -174,9 +175,9 @@ function callsTemplate(site: Site | undefined): boolean {
   return false;
 }
 
-/** The read of `$hasContext(Context) ? read : undefined`, or the node itself. */
+/** The read of `field ? $store(field.key) : undefined`, or the node itself. */
 function guardedRead(node: oxc.Node | null | undefined): oxc.Node | null | undefined {
-  return node?.type === 'ConditionalExpression' && node.test.type === 'CallExpression'
+  return node?.type === 'ConditionalExpression' && node.test.type === 'Identifier'
     ? node.consequent
     : node;
 }
@@ -184,22 +185,13 @@ function guardedRead(node: oxc.Node | null | undefined): oxc.Node | null | undef
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
 function specialCall(
   declarator: oxc.VariableDeclarator,
-):
-  | '$getContext'
-  | '$hasContext'
-  | '$store'
-  | '$id'
-  | '$isPassed'
-  | '$route'
-  | '$navigation'
-  | undefined {
+): '$getContext' | '$store' | '$id' | '$isPassed' | '$route' | '$navigation' | undefined {
   const init = guardedRead(declarator.init);
   if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') {
     return undefined;
   }
   const name = init.callee.name;
   return name === '$getContext' ||
-    name === '$hasContext' ||
     name === '$store' ||
     name === '$id' ||
     name === '$isPassed' ||
@@ -278,7 +270,6 @@ const CLIENT_HELPERS: Record<string, string> = {
   own: 'setOwner',
   provide: 'provideValue',
   consume: 'consumeContext',
-  has: 'hasContext',
   consumeStore: 'consumeStore',
   toStore: 'toStore',
   head: 'addHead',
@@ -1524,6 +1515,15 @@ export class Emitter {
   }
 
   /**
+   * The fallback of a context read, which the runtime uses only when no provider is above. A
+   * literal is passed as it is, and other code as a function, so it runs only then.
+   */
+  private fallback(node: oxc.Node): string {
+    const code = this.source(node);
+    return isFallbackLiteral(node) ? code : `() => (${code})`;
+  }
+
+  /**
    * Writes the declarations of a statement that reads contexts or creates
    * IDs, one per line. Returns false if the statement does neither.
    */
@@ -1546,16 +1546,10 @@ export class Emitter {
         declarator.id.type === 'Identifier'
           ? scope.declarations.get(declarator.id.name)
           : undefined;
-      // A guarded read asks first, and is `undefined` when no provider exists.
+      // A guarded read of a store is `undefined` when the optional value in its test is.
       const guard = declaration?.guard;
-      const ask = guard ? `${this.helper('has')}(${this.source(guard)}, ${target}) ? ` : '';
+      const ask = guard ? `${this.source(guard)} ? ` : '';
       const otherwise = guard ? ' : undefined' : '';
-      if (call === '$hasContext' && declaration?.hasSource) {
-        this.line(
-          `const ${declaration.name} = ${this.helper('has')}(${this.source(declaration.hasSource)}, ${target});`,
-        );
-        continue;
-      }
       if (call === '$id' && declaration?.idIndex !== undefined) {
         this.line(
           `const ${declaration.name} = ${this.helper('id')}(${target}, ${declaration.idIndex});`,
@@ -1572,7 +1566,7 @@ export class Emitter {
       if (call === '$store' && declaration?.store && declarator.id.type === 'Identifier') {
         // `$store(source)`: the source is a context, a store, or an object that holds the store at
         // `path`. `link` is the place of its import among the exports `z` of the update part.
-        const { source, path, link, write, sent } = declaration.store;
+        const { source, path, link, write, sent, fallback } = declaration.store;
         const slot = slotIndex(this.plan, declaration);
         // The server names a sent value that holds a store of another library.
         const named = this.options.mode === 'server' && sent ? JSON.stringify(sent) : undefined;
@@ -1580,7 +1574,7 @@ export class Emitter {
           path === undefined ? undefined : JSON.stringify(path),
           link === undefined ? undefined : String(link),
           write ? 'true' : undefined,
-          named,
+          fallback ? this.fallback(fallback) : named,
         ];
         while (rest.length > 0 && rest.at(-1) === undefined) {
           rest.pop();
@@ -1603,10 +1597,15 @@ export class Emitter {
       }
       const slot = declaration ? slotIndex(this.plan, declaration) : -1;
       // The slot of `$route` and `$navigation` is recorded, so navigation reaches it on the
-      // client. The value of `$getContext` is read once.
-      const record = slot === -1 || !BUILT_IN_CONTEXTS[call ?? ''] ? '' : `, ${slot}`;
+      // client. The value of `$getContext` is read once, and a fallback is the third argument.
+      let more = '';
+      if (slot !== -1 && BUILT_IN_CONTEXTS[call ?? '']) {
+        more = `, undefined, ${slot}`;
+      } else if (call === '$getContext' && init.arguments.length > 1) {
+        more = `, ${this.fallback(init.arguments[1]!)}`;
+      }
       this.line(
-        `const ${declarator.id.name} = ${ask}${this.helper('consume')}(${context}, ${target}${record})${otherwise};`,
+        `const ${declarator.id.name} = ${ask}${this.helper('consume')}(${context}, ${target}${more})${otherwise};`,
       );
     }
     return true;

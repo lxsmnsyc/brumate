@@ -56,7 +56,8 @@
 </script>
 
 <script generics="V extends TreeNode, T extends AsTarget = 'div'">
-  import { $hasContext, $client, $id, $isPassed, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -164,9 +165,10 @@
     return keys;
   }
 
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
-  const virtualizer = $hasContext(VirtualizerContext) ? $store(VirtualizerContext) : undefined;
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  const virtualizerGiven = $getContext(VirtualizerContext, undefined);
+  const virtualizer = virtualizerGiven ? $store(virtualizerGiven) : undefined;
   const windowHeight = $memo(rowHeight ?? virtualizer?.rowHeight);
   const treeState = $memo<TreeState>({ windowed: Boolean(windowHeight) });
   $setContext(TreeContext, { state: $toStore(treeState), toggle: toggleExpanded });

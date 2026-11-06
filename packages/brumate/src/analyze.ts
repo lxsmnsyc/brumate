@@ -34,7 +34,7 @@ import type {
   Site,
   SiteKind,
 } from './model.ts';
-import { children, getPatternNames } from './oxc.ts';
+import { children, getPatternNames, isFallbackLiteral } from './oxc.ts';
 import type { oxc } from './oxc.ts';
 
 /** Methods that change an array, a `Map` or a `Set` in place. */
@@ -74,10 +74,10 @@ const KEY_EVENTS = new Set(['keydown', 'keyup', 'keypress']);
 
 const COMPILE_TIME_FUNCTIONS = MACROS;
 
-/** The messages of BRM191 to BRM193, BRM195, BRM197 and BRM198. */
+/** The messages of BRM191 to BRM193, BRM195 and BRM197 to BRM199. */
 const STORE_FORM =
   'Read a store with "const name = $store(source)" or "let name = $store(source)" at the top level of a script';
-const STORE_ARGUMENT = '$store takes one argument, a context, a store or a key of one';
+const STORE_ARGUMENT = '$store takes one argument, a store';
 const TO_STORE_ARGUMENT =
   '$toStore takes one argument, a memo, a signal or a prop, as a value of $setContext';
 const STORE_SOURCE =
@@ -118,8 +118,20 @@ function findSentRoot(source: oxc.Node, scope: Scope): Declaration | undefined {
   const found = lookup(scope, node.name);
   return found && SENT_KINDS.has(found.kind) ? found : undefined;
 }
-const HAS_CONTEXT_FORM =
-  'Keep the answer of $hasContext with "const name = $hasContext(Context)", or guard a read of the same context with "const name = $hasContext(Context) ? $store(Context) : undefined", with const and no other test';
+const OPTIONAL_FORM =
+  'Read a context that may have no provider with "const name = $getContext(Context, undefined)", and a store in it with "const state = name ? $store(name.key) : undefined", with const and no other test';
+const STORE_ONLY =
+  '$store takes a store. Read the store of a context with "$store($getContext(Context))", or give a store as the fallback, "$store($getContext(Context, store(value)))"';
+const GET_CONTEXT_ARGUMENTS =
+  '$getContext takes the context, and a fallback for a read without a provider';
+
+/** True for `undefined` or `null`, which give no store. */
+function isNullish(node: oxc.Node): boolean {
+  return (
+    (node.type === 'Identifier' && node.name === 'undefined') ||
+    (node.type === 'Literal' && node.value === null && !('regex' in node && node.regex))
+  );
+}
 
 const MISPLACED: Record<string, string> = {
   $setContext: 'Call $setContext at the top level of a script',
@@ -130,7 +142,6 @@ const MISPLACED: Record<string, string> = {
   $getContext:
     'Read a context with "const name = $getContext(Context)" at the top level of a script',
   $store: STORE_FORM,
-  $hasContext: HAS_CONTEXT_FORM,
   $route: 'Read the route with "const name = $route()" at the top level of a script',
   $navigation: 'Read the navigation with "const name = $navigation()" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
@@ -155,6 +166,7 @@ const REMOVED: Record<string, string> = {
   $cleanup: '$cleanup is not supported. Return a cleanup function from $effect or $client',
   $get: '$get is not supported. Signals cannot leave the file',
   $set: '$set is not supported. Signals cannot leave the file',
+  $hasContext: OPTIONAL_FORM,
 };
 
 const CLIENT_TRIGGERS = new Set(['visible', 'idle', 'load']);
@@ -392,6 +404,8 @@ class Analyzer {
   readonly bindings: SemanticModel['bindings'] = [];
   /** The declarations of `$store`, which `resolveStores` completes. */
   private readonly storeReaders: Declaration[] = [];
+  /** The names that the file passes to `$getContext` or `$setContext` as the context. */
+  private readonly contextNames = new Set<string>();
   /** The sources of `$store` that the browser runs again. See `SemanticModel.storeSources`. */
   private readonly storeSources: Site[] = [];
   /** The `$toStore` calls that a `$setContext` value holds. */
@@ -463,18 +477,30 @@ class Analyzer {
 
   /**
    * Finds where the browser gets the store of each `$store`. A context, or a key of the value of
-   * `$getContext`, is found again from its provider. Any other source is code that the browser
-   * runs again on resume, from the exports `z` of the update part.
+   * `$getContext`, is found again from its provider. Any other source, and the fallback of
+   * `$store($getContext(Context, fallback))`, is code that the browser runs again on resume, from
+   * the exports `z` of the update part.
    */
   private resolveStores(): void {
     for (const declaration of this.storeReaders) {
       const store = declaration.store!;
-      // `g?.state` reads the same key as `g.state`, and is `undefined` when `g` is.
-      let argument = store.source;
-      const optional = argument.type === 'ChainExpression';
-      if (argument.type === 'ChainExpression') {
-        argument = argument.expression as oxc.Node;
+      const guard = declaration.guard;
+
+      // `$store($getContext(Context, fallback))`: the server records the key with a provider, and
+      // the index of the fallback without one.
+      if (store.read) {
+        if (guard) {
+          this.report('error', OPTIONAL_FORM, guard);
+          continue;
+        }
+        if (store.fallback) {
+          store.link = this.storeSources.push(store.site) - 1;
+        }
+        continue;
       }
+
+      // `g.key` for a value `g` of `$getContext`: the context, and the key of its value.
+      let argument = store.source;
       let path: string | undefined;
       if (
         argument.type === 'MemberExpression' &&
@@ -487,39 +513,42 @@ class Analyzer {
       }
       const root =
         argument.type === 'Identifier' ? lookup(declaration.scope, argument.name) : undefined;
-      let source = store.source;
-      if (root?.kind === 'context' && root.contextSource && (path !== undefined || !optional)) {
-        // A value of `$getContext`: the context, and a key of its value. A guarded one is
-        // `undefined` without a provider, so the read needs the guard too, or `?.`, which
-        // guards it the same way.
-        if (root.guard && !declaration.guard) {
-          if (!optional || store.write) {
-            this.report('error', HAS_CONTEXT_FORM, store.source);
-            continue;
-          }
-          declaration.guard = root.guard;
+      if (root?.kind === 'context' && root.contextSource) {
+        // A value with a fallback is read only in the guard form, with the fallback `undefined`,
+        // since a guarded store re-reads the provider. A guard needs a value that may be missing.
+        const optional = root.contextFallback !== undefined;
+        const guarded =
+          guard?.type === 'Identifier' && lookup(declaration.scope, guard.name) === root;
+        if (
+          optional !== (guard !== undefined) ||
+          (guard && (!guarded || store.write)) ||
+          (optional && !isNullish(root.contextFallback!))
+        ) {
+          this.report('error', OPTIONAL_FORM, guard ?? store.source);
+          continue;
         }
-        source = root.contextSource;
+        store.source = root.contextSource;
         store.path = path;
-      } else {
-        // Code that gives the store, which the browser runs again with the resumed values.
-        store.link = this.storeSources.push(store.site) - 1;
-        const held = findSentRoot(store.source, declaration.scope);
-        if (held) {
-          const prop = held.kind === 'prop' || held.kind === 'props-rest';
-          store.sent = `${prop ? 'the prop' : 'the value'} "${held.name}"`;
-        }
-      }
-      const guard = declaration.guard;
-      if (
-        guard &&
-        this.file.source.slice(guard.start, guard.end) !==
-          this.file.source.slice(source.start, source.end)
-      ) {
-        this.report('error', HAS_CONTEXT_FORM, guard);
         continue;
       }
-      store.source = source;
+      if (guard) {
+        this.report('error', OPTIONAL_FORM, guard);
+        continue;
+      }
+
+      // A context is no store. The file names its contexts in `$getContext` and `$setContext`.
+      if (store.source.type === 'Identifier' && this.contextNames.has(store.source.name)) {
+        this.report('error', STORE_ONLY, store.source);
+        continue;
+      }
+
+      // Code that gives the store, which the browser runs again with the resumed values.
+      store.link = this.storeSources.push(store.site) - 1;
+      const held = findSentRoot(store.source, declaration.scope);
+      if (held) {
+        const prop = held.kind === 'prop' || held.kind === 'props-rest';
+        store.sent = `${prop ? 'the prop' : 'the value'} "${held.name}"`;
+      }
     }
   }
 
@@ -1127,25 +1156,21 @@ class Analyzer {
       this.report('error', `await works with $memo, not ${awaitedName}`, awaited);
     }
     let init = awaitedName === '$memo' ? awaited!.argument : declarator.init;
-    // `$hasContext(Context) ? $store(Context) : undefined` reads only when a provider exists.
+    // `name ? $store(name.key) : undefined` reads a store only when the optional value `name` of
+    // `$getContext(Context, undefined)` is there. `resolveStores` checks what `name` is.
     let guard: oxc.Node | undefined;
-    if (init?.type === 'ConditionalExpression' && calleeName(init.test) === '$hasContext') {
-      const test = init.test as oxc.CallExpression;
-      const readName = calleeName(init.consequent);
-      const argument = test.arguments[0];
+    if (init?.type === 'ConditionalExpression' && calleeName(init.consequent) === '$store') {
       if (
         kind !== 'const' ||
         id.type !== 'Identifier' ||
-        test.arguments.length !== 1 ||
-        argument?.type === 'SpreadElement' ||
-        (readName !== '$store' && readName !== '$getContext') ||
+        init.test.type !== 'Identifier' ||
         init.alternate.type !== 'Identifier' ||
         init.alternate.name !== 'undefined'
       ) {
-        this.report('error', HAS_CONTEXT_FORM, declarator);
+        this.report('error', OPTIONAL_FORM, declarator);
         return;
       }
-      guard = argument;
+      guard = init.test;
       init = init.consequent;
     }
     const name = calleeName(init);
@@ -1309,33 +1334,54 @@ class Analyzer {
         this.report('error', STORE_ARGUMENT, call);
         return;
       }
+      // `undefined` and `null` give no store. `?.` gives `undefined` when its value is missing,
+      // which the guard on the value says instead.
+      if (isNullish(argument)) {
+        this.report('error', STORE_ONLY, argument);
+        return;
+      }
+      if (argument.type === 'ChainExpression') {
+        this.report('error', OPTIONAL_FORM, argument);
+        return;
+      }
       // The slot holds the value of the store, which the store's sends write. `let` writes the
       // store back: a write of the variable calls the `set` of the store.
       const declaration = this.addDeclaration(scope, id.name, 'context', id);
-      const site = this.createSite('setup', scope, argument, `store ${id.name}`);
-      declaration.store = { source: argument, site, write: kind === 'let' };
       declaration.guard = guard;
+      if (calleeName(argument) === '$getContext') {
+        // `$store($getContext(Context, fallback))`: the store of the provider, found again by the
+        // key of the context, or the store that the fallback makes when no provider is above.
+        const read = argument as oxc.CallExpression;
+        const [context, fallback] = read.arguments;
+        if (
+          !context ||
+          read.arguments.length > 2 ||
+          context.type === 'SpreadElement' ||
+          fallback?.type === 'SpreadElement'
+        ) {
+          this.report('error', GET_CONTEXT_ARGUMENTS, read);
+          return;
+        }
+        if (fallback && isFallbackLiteral(fallback)) {
+          this.report('error', STORE_ONLY, fallback);
+          return;
+        }
+        if (context.type === 'Identifier') {
+          this.contextNames.add(context.name);
+        }
+        const site = this.createSite('setup', scope, context, `store ${id.name}`);
+        declaration.store = { source: context, site, write: kind === 'let', read: true, fallback };
+        if (fallback) {
+          declaration.store.site = this.createSite('setup', scope, fallback, `fallback ${id.name}`);
+        }
+      } else {
+        const site = this.createSite('setup', scope, argument, `store ${id.name}`);
+        declaration.store = { source: argument, site, write: kind === 'let' };
+      }
       this.storeReaders.push(declaration);
       if (guard) {
         this.createSite('setup', scope, guard, `guard ${id.name}`);
       }
-      return;
-    }
-
-    if (name === '$hasContext') {
-      if (kind !== 'const' || id.type !== 'Identifier' || call.arguments.length !== 1) {
-        this.report('error', HAS_CONTEXT_FORM, declarator);
-        return;
-      }
-      const argument = call.arguments[0]!;
-      if (argument.type === 'SpreadElement') {
-        this.report('error', HAS_CONTEXT_FORM, call);
-        return;
-      }
-      // The answer is fixed when the scope is made, so it never changes in the browser.
-      const declaration = this.addDeclaration(scope, id.name, 'context', id);
-      declaration.hasSource = argument;
-      this.createSite('setup', scope, argument, `has ${id.name}`);
       return;
     }
 
@@ -1344,17 +1390,28 @@ class Analyzer {
         this.report('error', 'Read a context with "const name = $getContext(Context)"', declarator);
         return;
       }
-      if (call.arguments.length !== 1) {
-        this.report('error', '$getContext takes one argument, the context', call);
+      const [argument, fallback] = call.arguments;
+      if (
+        call.arguments.length < 1 ||
+        call.arguments.length > 2 ||
+        argument?.type === 'SpreadElement' ||
+        fallback?.type === 'SpreadElement'
+      ) {
+        this.report('error', GET_CONTEXT_ARGUMENTS, call);
       }
       const declaration = this.addDeclaration(scope, id.name, 'context', id);
-      const argument = call.arguments[0];
-      if (argument) {
+      if (argument && argument.type !== 'SpreadElement') {
         declaration.contextSource = argument;
-        declaration.guard = guard;
+        if (argument.type === 'Identifier') {
+          this.contextNames.add(argument.name);
+        }
         this.createSite('setup', scope, argument, `context ${id.name}`);
-        if (guard) {
-          this.createSite('setup', scope, guard, `guard ${id.name}`);
+      }
+      // A fallback that is not a literal is code, which runs only when no provider is above.
+      if (fallback && fallback.type !== 'SpreadElement') {
+        declaration.contextFallback = fallback;
+        if (!isFallbackLiteral(fallback)) {
+          this.createSite('setup', scope, fallback, `fallback ${id.name}`);
         }
       }
       return;
@@ -1663,6 +1720,9 @@ class Analyzer {
     if (!context || !value || call.arguments.length !== 2) {
       this.report('error', '$setContext takes two arguments, the context and the value', call);
       return;
+    }
+    if (context.type === 'Identifier') {
+      this.contextNames.add(context.name);
     }
     this.createSite('provide', scope, value, 'provide', { extra: [context] });
     // Each `$toStore(value)` is a site of its own, whose update writes the store. The provided

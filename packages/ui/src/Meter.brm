@@ -30,7 +30,8 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $hasContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { LabelContext } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
@@ -57,8 +58,8 @@
   } = $props<MeterProps<T>>();
   let { ref } = $props<MeterOwnProps<T>>();
 
-  const localeStore = $hasContext(LocaleContext) ? $store(LocaleContext) : undefined;
-  const locale = $memo(localeStore ?? DEFAULT_LOCALE);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   const labelId = $id();
   // A Label inside names it. Without one, aria-label does, and the ID goes.
   const { present: labelled } = described(labelId);
