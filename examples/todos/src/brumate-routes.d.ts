@@ -9,7 +9,5 @@ declare module 'brumate/routes' {
     '/counter/[start]': { start: string };
     '/guestbook': {};
     '/tabs': {};
-    '/titles': {};
-    '/titles/other': {};
   }
 }

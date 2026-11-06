@@ -4,7 +4,7 @@
 
 - `navigate()` in `packages/brumate/src/runtime/navigate.ts` now shifts the scope IDs in `next.head` as well as `next.body`. A `<title>` of `#head` that reads a memo keeps its binding when the client router loads a prerendered page.
 - Unit test in `packages/brumate/test/navigate.test.ts`.
-- e2e step in `e2e/suites/todos.mjs` with the routes `/titles` and `/titles/other` in `examples/todos`, which prerender both. Changeset `.changeset/title-head-prerendered-navigation.md` (patch).
+- e2e step in `e2e/suites/tracker.mjs` with the routes `/titles` and `/titles/other` in `examples/tracker`, which prerenders both. Changeset `.changeset/title-head-prerendered-navigation.md` (patch).
 
 ## Cause
 
@@ -13,7 +13,7 @@
 ## Deviations
 
 - The brief names `titles.ts`, `page.ts` and `insert.ts`. The cause is in `navigate.ts`, which the brief did not list.
-- `examples/todos` gains two routes and a `prerender` option, for the e2e step.
+- `examples/tracker` gains two routes and two prerender paths, for the e2e step. `examples/todos` is unchanged.
 
 ## Stubs left
 
@@ -31,8 +31,8 @@
 ## Verification
 
 - Unit test fails on main (`expected '1:0' to be '3:0'`), passes on the branch.
-- `node e2e/run.mjs --only todos --no-build`: the new step fails on main with prerender, passes on the branch.
-- Client gzip -9 of `dist/client/**/*.js`: todos 39233 B on main, 39582 B on the branch (23 B from the fix, 326 B from the two example routes). ui 199061 B before and after.
+- `node e2e/run.mjs --only tracker --no-build`: the new step fails with `navigate.ts` of main, passes on the branch (15 passed).
+- Client gzip -9 of `dist/client/**/*.js`: todos 39233 B on main, 39256 B on the branch (23 B from the fix, measured with the example routes in todos; the routes are now in tracker). ui 199061 B before and after.
 
 ## Size
 

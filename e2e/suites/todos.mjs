@@ -118,28 +118,6 @@ export async function run({ browser, url, runner }) {
     await page.click('main form button');
     await page.locator('p.error', { hasText: 'Enter a name' }).waitFor({ timeout: TIMEOUT });
   });
-  await step('/titles: a title in #head follows its memo after a client navigation', async () => {
-    await page.goto(`${url}/titles`);
-    await page.waitForLoadState('networkidle');
-    await page.click('button.soups');
-    await page.waitForFunction(() => document.title === 'Soups · Titles', null, {
-      timeout: TIMEOUT,
-    });
-    await page.evaluate(() => (window.__e2eTitles = true));
-    await page.click('a.other');
-    await page.waitForURL('**/titles/other', { timeout: TIMEOUT });
-    await page.waitForFunction(() => document.querySelector('a.home'), null, { timeout: TIMEOUT });
-    await page.click('a.home');
-    await page.waitForURL('**/titles', { timeout: TIMEOUT });
-    await page.waitForSelector('button.soups', { timeout: TIMEOUT });
-    assert(await page.evaluate(() => window.__e2eTitles === true), 'a link loaded a new page');
-    await page.waitForFunction(() => document.title === 'Titles', null, { timeout: TIMEOUT });
-    await page.click('button.soups');
-    await page.waitForFunction(() => document.title === 'Soups · Titles', null, {
-      timeout: TIMEOUT,
-    });
-  });
-
   await step(
     '/tabs: writes push history entries, and back and forward move the signal',
     async () => {
