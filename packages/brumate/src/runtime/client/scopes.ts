@@ -145,9 +145,14 @@ export function removeBlock(scope: Scope, kinds: number[], start: Node, end: Nod
  * closes, but not the scope of the block or those around it.
  */
 function destroyRange(scope: Scope, start: Node, end: Node): void {
-  if (scopes.size > 0 && start.nextSibling !== end) {
+  destroyNodes(scope, start.nextSibling, end);
+}
+
+/** Destroys the scopes whose markup is from `first` up to `end`, or to the last sibling. */
+export function destroyNodes(scope: Scope | undefined, first: Node | null, end: Node | null): void {
+  if (scopes.size > 0 && first !== end) {
     const above = new Set<Scope>();
-    for (let current: Scope | undefined = scope; current; current = current.p ?? current.o) {
+    for (let current = scope; current; current = current.p ?? current.o) {
       above.add(current);
     }
     const inside = new Set<Scope>();
@@ -157,7 +162,7 @@ function destroyRange(scope: Scope, start: Node, end: Node): void {
         inside.add(found);
       }
     }
-    for (let node = start.nextSibling; node && node !== end; node = node.nextSibling) {
+    for (let node = first; node && node !== end; node = node.nextSibling) {
       const walker = document.createTreeWalker(
         node,
         NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_COMMENT,

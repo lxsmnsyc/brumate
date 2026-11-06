@@ -11,5 +11,7 @@ declare module 'brumate/routes' {
     '/issues/new': {};
     '/sign-in': {};
     '/team': {};
+    '/titles': {};
+    '/titles/other': {};
   }
 }

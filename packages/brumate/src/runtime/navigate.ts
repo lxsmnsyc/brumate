@@ -796,6 +796,8 @@ export async function navigate(visit: Visit): Promise<void> {
   }
   const shift = visit.init ? undefined : shiftFor(state, requested);
   if (shift) {
+    // The head holds markup of the page too, such as a `<title>` of `#head` with its anchor.
+    shiftIds(next.head, shift);
     shiftIds(next.body, shift);
   }
   // A link keeps the layouts that stay the same. A form, or a redirect from a server
