@@ -1,7 +1,7 @@
 ---
 id: template-update-in-place
 title: A template of the file updates its markup in place, so focus and input state stay
-status: active
+status: done
 priority: must
 type: fix
 outline: false
