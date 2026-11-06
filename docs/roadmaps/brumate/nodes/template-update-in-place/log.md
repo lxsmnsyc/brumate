@@ -1,0 +1,14 @@
+# Log: template-update-in-place
+
+- Probe: `tplInPlace.brm` (server-rendered rows) with an `<input>` in the `row` template. On the base (b5fdff93) the input node is replaced at each update; focus and the typed value go.
+- Compiled update code showed the cause: `row(...)` returns `raw(html, scope)`, the scope has its arguments in slots (`setSlots`), and the `g` table already has updates for them. Only the insert did not know the call.
+- Design: in the browser, a template of the file whose scope has an ID and whose arguments all have slots compiles to `function row(...$$a) { return $$b.templateCall(ref, owner, row$, $$a) }` plus the old body as `row$`. The call stays a function, so call sites and hoisting do not change. `templateCall` makes a `TemplateCall`, which `write()` already updates in place.
+- The compiler emits `T<scope id>a` and `T<scope id>k` in the update part, with the code that `emitTemplateArgs` made for a template prop (now one function, `templateArgs`, in codegen/scopes.ts). A template with a default value in its parameters is not updated in place (the export would not see what the default reads).
+- A call of a template of the file is not children of its owner (`lexical`): its scope finds contexts where the template is written, as the output of a template did.
+- `renderedTemplate` finds the scope that the server rendered by the insert: `scope.t` for children; for a template of the file `scope.l` (the server links it with the insert) and an anchor of the scope (`t<id>:` comment, `b-b` element or kept node) inside the range of the insert. Two calls at one scope, or a call that the server did not render, each find their own.
+- The list of calls, `{[row(a), row(b)]}`, was a list of `raw`. It is now a list of `TemplateCall`, so `insert()` and `write()` render each item.
+- Old test `runs the cleanup of a component in a #template once for each replaced row` described a replace. Rows now update in place, so it expects no cleanup and the same `.item` nodes.
+- Review: `write()` destroys the scope of the template that it replaces (`templateInserts`), because a template that only renders a component has no node that names its scope. The swap test leaked one scope per round on b5fdff93 too. A server-rendered template of that kind, replaced at its first write, is still not found.
+- A list of calls renders each one but is replaced at an update, not updated in place.
+- Sizes (gzip -9 of dist/client/**/*.js, clean rebuilds): todos 39,239 to 39,222, ui 199,070 to 199,303.
+- Size round: tried no `a` export for templates with no slots, a numeric template id with the ref built in the runtime, and a one-pass `inRange`. Each measured larger or equal (todos 39,235 to 39,274, ui 199,303 to 199,336) because the runtime code outweighs the strings, which gzip already shares. None kept. The wrapper helper (c) was not tried: a helper needs `const`, which breaks the hoisting of the template function.

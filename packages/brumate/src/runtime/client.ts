@@ -33,7 +33,7 @@ export { createContext } from './context.ts';
 export { nameComment } from './client/blocks.ts';
 export { branch, fill, held, offscreen, rekey, reset, retag } from './client/branches.ts';
 export type { HiddenBody } from './client/branches.ts';
-export { children, insert } from './client/children.ts';
+export { children, insert, templateCall } from './client/children.ts';
 export { loadModule } from './client/code.ts';
 export {
   component,

@@ -97,6 +97,8 @@ export const h14 = ($$s, value) => console.log(value);
 import * as $$b from 'brumate/client';
 import Child from "./Child.brm?brumate-render";
 
+export const T2a = (index: number) => [[0, index]];
+export const T2k = 2;
 export function u5($$s) {
   $$b.text($$s, 0, $$b.get($$s, 0) + 1);
 }
@@ -114,7 +116,8 @@ export function a3($$s, $$item, $$index) {
 export function u9($$s) {
   $$b.fillValue($$s, 1, (($$p) => {
 let label = $$b.get($$p, 2);
-function row(index: number) {
+function row(...$$a) { return $$b.templateCall("List_12rwm68#T2", $$p, row$, $$a); }
+function row$(index: number) {
   let $$html = '';
   const $$s2 = $$b.createScope(2, $$p);
   $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
@@ -140,7 +143,8 @@ export function r3($$p, $$item, $$index) {
   let $$html = '';
   let label = $$b.get($$p, 2);
   let counts = $$b.get($$p, 0);
-  function row(index: number) {
+  function row(...$$a) { return $$b.templateCall("List_12rwm68#T2", $$p, row$, $$a); }
+  function row$(index: number) {
     let $$html = '';
     const $$s2 = $$b.createScope(2, $$p);
     $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";
@@ -198,7 +202,8 @@ export default function List($$props: Record<string, never>): string | DocumentF
   function add() {
     counts = [...counts, counts.length + 1];
   }
-  function row(index: number) {
+  function row(...$$a) { return $$b.templateCall("List_12rwm68#T2", $$s1, row$, $$a); }
+  function row$(index: number) {
     let $$html = '';
     const $$s2 = $$b.createScope(2, $$s1);
     $$html += "<span>" + $$b.insert((label)) + " <!--t" + $$s2 + ":0-->" + $$b.insert((index + 1)) + "<!--/t--></span>";

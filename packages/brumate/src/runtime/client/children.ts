@@ -29,11 +29,34 @@ export function templateReference(
     });
 }
 
+/**
+ * A call of a `#template` of the file, which an insert can update in place. `render` is the
+ * template's code, and `owner` the scope that holds the template. The call finds its contexts
+ * where the template is written, as the output of a template does, so it does not render as
+ * children of the owner.
+ */
+export function templateCall(
+  ref: string,
+  owner: Scope | undefined,
+  render: (...args: unknown[]) => unknown,
+  args: unknown[],
+): TemplateCall {
+  return new TemplateCall(ref, owner, args, (at) => insert(render(...args), undefined, at), true);
+}
+
 // Rendering on the client
 
 /** Renders a value inserted in markup. Children render here, at `scope`, for their contexts. */
 export function insert(value: unknown, _ctx?: unknown, scope?: Scope | ScopeId): string {
   linkCalls(value, scope);
+  // The calls of templates in a list render each.
+  if (HAS_TEMPLATES && Array.isArray(value)) {
+    let out = '';
+    for (const item of value) {
+      out += insert(item, undefined, scope);
+    }
+    return out;
+  }
   if (!((HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children)) {
     return insertValue(value);
   }
@@ -118,8 +141,10 @@ export class TemplateCall extends Children {
     owner: Scope | undefined,
     args: unknown[],
     html: (at?: Scope) => string,
+    lexical = false,
   ) {
-    super(owner, html);
+    // A call of a template of the file is not children of its owner.
+    super(lexical ? undefined : owner, html);
     this.ref = ref;
     this.owner = owner;
     this.args = args;

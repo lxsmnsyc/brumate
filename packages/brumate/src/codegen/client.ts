@@ -24,7 +24,7 @@ import { Patch, addValueEdits } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
-import { instanceScope, mayBePromise, scopePath, slotIndex } from './scopes.ts';
+import { instanceScope, mayBePromise, scopePath, slotIndex, templateArgs } from './scopes.ts';
 import { copy, unmarked } from '../sourcemap.ts';
 
 export interface ClientOutput {
@@ -194,6 +194,7 @@ class ClientGenerator {
     this.emitFunctions();
     this.emitRoots();
     this.part = 'update';
+    this.emitTemplateExports();
     this.emitUpdates();
     this.emitWindowStarts();
     this.emitRenders();
@@ -1944,28 +1945,33 @@ class ClientGenerator {
       }
     }
     const scope = callee && this.findTemplateScope(callee);
-    const template = scope?.template;
-    if (!scope || !template) {
+    if (scope) {
+      this.emitArgsExports(symbol, scope);
+    }
+  }
+
+  /** The `a` and `k` exports of a template, which `symbol` names. */
+  private emitArgsExports(symbol: string, scope: Scope): void {
+    const args = templateArgs(this.plan, this.file.source, scope);
+    if (!args) {
       return;
     }
-    const first = template.params[0];
-    const last = template.params.at(-1);
-    const params = first && last ? copy(this.file.source, first.start, last.end) : '';
-    const pairs: string[] = [];
-    for (const declaration of scope.declarations.values()) {
-      if (declaration.kind !== 'template-param') {
-        continue;
-      }
-      const slot = slotIndex(this.plan, declaration);
-      // An argument without a slot is not in the scope, so the template renders again instead.
-      if (slot === -1) {
-        return;
-      }
-      pairs.push(`[${slot}, ${declaration.name}]`);
-    }
-    this.emit(`export const ${symbol}a = (${params}) => [${pairs.join(', ')}];`);
+    this.emit(`export const ${symbol}a = (${args.exported}) => [${args.pairs.join(', ')}];`);
     // The ID of the template's scope, so an insert updates in place only a scope of this template.
     this.emit(`export const ${symbol}k = ${scope.id};`);
+  }
+
+  /**
+   * The exports of the templates of the file that a call in markup can update in place: the
+   * template is `T` and its scope ID, as `templateCall` of the template's code names it.
+   */
+  private emitTemplateExports(): void {
+    this.part = 'update';
+    for (const scope of this.model.scopes) {
+      if (scope.template) {
+        this.emitArgsExports(`T${scope.id}`, scope);
+      }
+    }
   }
 
   private withTemplates(site: Site, code: string): string {

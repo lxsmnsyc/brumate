@@ -2534,7 +2534,7 @@ describe('resume', () => {
     expect(document.querySelectorAll('.item')).toHaveLength(6);
   });
 
-  it('runs the cleanup of a component in a #template once for each replaced row', async () => {
+  it('keeps the component of a #template when the template updates in place, with no cleanup', async () => {
     const log: string[] = [];
     (globalThis as { tplImportLog?: string[] }).tplImportLog = log;
     onTestFinished(() => {
@@ -2549,10 +2549,12 @@ describe('resume', () => {
     }
     await waitFor(() => expect(log.filter((entry) => entry.startsWith('mount'))).toHaveLength(6));
     log.length = 0;
+    const items = [...document.querySelectorAll('.item')];
     click(document.querySelector('.pick')!);
     await waitFor(() => expect(text('.row')).toBe('aa'));
-    // A pick calls the template again for every row: each old row cleans up once.
-    expect(log.toSorted()).toEqual(['a', 'b', 'c', 'd', 'e', 'f'].map((name) => `cleanup ${name}`));
+    // A pick calls the template again for every row, which updates in place: no row is replaced.
+    expect(log).toEqual([]);
+    expect([...document.querySelectorAll('.item')]).toEqual(items);
   });
 
   it('keeps the scopes flat when a browser-rendered list calls a template of its file again', async () => {
@@ -2568,6 +2570,138 @@ describe('resume', () => {
           ['Cat', 'Dog', 'Bird'][pick % 3] + ' *',
         ),
       );
+      counts.push(client.scopes.size);
+    }
+    expect(new Set(counts).size).toBe(1);
+  });
+
+  it('updates a template of the file in place, so an input keeps focus and its value', async () => {
+    await resume('tplInPlace', {});
+    const input = document.querySelector<HTMLInputElement>('.row .field')!;
+    input.focus();
+    input.value = 'typed';
+    const client = await import('../src/runtime/client.ts');
+    const counts: number[] = [];
+    for (let pick = 1; pick <= 4; pick++) {
+      click(document.querySelector('.pick')!);
+      await waitFor(() =>
+        expect(document.querySelectorAll('.row')[pick % 3]!.textContent).toContain('*'),
+      );
+      click(document.querySelector('.tick')!);
+      await waitFor(() => expect(document.querySelector('.row .n')!.textContent).toBe(`${pick}`));
+      // The row keeps its input: the node, the focus and what was typed.
+      expect(document.querySelector('.row .field')).toBe(input);
+      expect(document.activeElement).toBe(input);
+      expect(input.value).toBe('typed');
+      counts.push(client.scopes.size);
+    }
+    expect(new Set(counts).size).toBe(1);
+  });
+
+  it('updates a template of the file in place in a browser-rendered keyed list', async () => {
+    await resume('tplInPlaceHost', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelectorAll('ul .row')).toHaveLength(3));
+    const client = await import('../src/runtime/client.ts');
+    const rows = () => [...document.querySelectorAll<HTMLElement>('ul .row')];
+    const inputs = rows().map((row) => row.querySelector('input')!);
+    inputs[0]!.focus();
+    inputs[0]!.value = 'typed';
+    const count = client.scopes.size;
+    click(document.querySelector('.tick')!);
+    await waitFor(() => expect(rows()[0]!.textContent).toBe('a1'));
+    expect(rows().map((row) => row.querySelector('input'))).toEqual(inputs);
+    expect(document.activeElement).toBe(inputs[0]);
+    expect(inputs[0]!.value).toBe('typed');
+    // A keyed move keeps each row with its input, and the arguments of the next update.
+    click(document.querySelector('.reverse')!);
+    await waitFor(() => expect(rows().map((row) => row.textContent)).toEqual(['c1', 'b1', 'a1']));
+    click(document.querySelector('.tick')!);
+    await waitFor(() => expect(rows().map((row) => row.textContent)).toEqual(['c2', 'b2', 'a2']));
+    expect(rows()[2]!.querySelector('input')).toBe(inputs[0]);
+    expect(inputs[0]!.value).toBe('typed');
+    // The list of calls renders each one, and again at an update.
+    expect(document.querySelector('.pair')!.textContent).toBe('p2q2');
+    expect(client.scopes.size).toBe(count);
+  });
+
+  it('replaces a template of the file with another template at the same insert', async () => {
+    await resume('tplInPlaceHost', {});
+    click(document.querySelector('.open')!);
+    await waitFor(() => expect(document.querySelector('.one .row')).not.toBeNull());
+    const client = await import('../src/runtime/client.ts');
+    const count = client.scopes.size;
+    click(document.querySelector('.swap')!);
+    await waitFor(() => expect(document.querySelector('.one .tag')).not.toBeNull());
+    expect(document.querySelector('.one .row')).toBeNull();
+    click(document.querySelector('.swap')!);
+    await waitFor(() => expect(document.querySelector('.one .row')).not.toBeNull());
+    expect(document.querySelector('.one .tag')).toBeNull();
+    click(document.querySelector('.tick')!);
+    await waitFor(() => expect(text('.one .n')).toBe('1'));
+    expect(client.scopes.size).toBe(count);
+  });
+
+  it('updates each call of one template in its own scope, also one that shows later', async () => {
+    await resume('tplInPlaceMulti', {});
+    const field = (selector: string) => document.querySelector<HTMLInputElement>(selector)!;
+    const first = field('.a .in');
+    const [name, email] = document.querySelectorAll<HTMLInputElement>('.form .in');
+    first.value = 'one';
+    name!.focus();
+    name!.value = 'two';
+    email!.value = 'three';
+    // A call that the server did not render takes none of the scopes of the others.
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.b')).toBe('B0'));
+    expect(text('.a')).toBe('A0');
+    click(document.querySelector('.tick')!);
+    await waitFor(() => expect(text('.b')).toBe('B1'));
+    expect(text('.a')).toBe('A1');
+    expect(text('.form')).toBe('Name!1Email1');
+    // Calls at one scope, with a default value, keep their inputs.
+    expect(field('.a .in')).toBe(first);
+    expect(document.querySelectorAll('.form .in')[0]).toBe(name);
+    expect(document.querySelectorAll('.form .in')[1]).toBe(email);
+    expect(document.activeElement).toBe(name);
+    expect([first.value, name!.value, email!.value]).toEqual(['one', 'two', 'three']);
+    // A parameter that nothing reads, with an arrow in its type, does not stop it.
+    expect(text('.unread')).toBe('1');
+  });
+
+  it('keeps the input of a template with a parameter that nothing reads', async () => {
+    await resume('tplInPlaceMulti', {});
+    const input = document.querySelector<HTMLInputElement>('.unread .in')!;
+    input.value = 'kept';
+    click(document.querySelector('.tick')!);
+    await waitFor(() => expect(text('.unread')).toBe('1'));
+    expect(document.querySelector('.unread .in')).toBe(input);
+    expect(input.value).toBe('kept');
+  });
+
+  it('runs the cleanups of a template that another template replaces, and keeps the scopes flat', async () => {
+    const log: string[] = [];
+    (globalThis as { tplImportLog?: string[] }).tplImportLog = log;
+    onTestFinished(() => {
+      delete (globalThis as { tplImportLog?: string[] }).tplImportLog;
+    });
+    await resume('tplReplace', {});
+    const client = await import('../src/runtime/client.ts');
+    const swap = async (to: string) => {
+      click(document.querySelector('.swap')!);
+      await waitFor(() => expect(document.querySelector(`.slot .${to}`)).not.toBeNull());
+    };
+    // A click starts the effect, as an effect never runs before a change.
+    click(document.querySelector('.item')!);
+    await waitFor(() => expect(log).toContain('mount x 2'));
+    log.length = 0;
+    await swap('two');
+    expect(log).toEqual(['cleanup x']);
+    // The rounds after it make the same scopes.
+    const counts: number[] = [];
+    for (let round = 0; round < 3; round++) {
+      await swap('one');
+      await swap('two');
       counts.push(client.scopes.size);
     }
     expect(new Set(counts).size).toBe(1);
