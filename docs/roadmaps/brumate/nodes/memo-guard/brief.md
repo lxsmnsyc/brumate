@@ -1,7 +1,7 @@
 ---
 id: memo-guard
 title: "$gate: a memo with a guard on its new value"
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
