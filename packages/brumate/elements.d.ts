@@ -253,9 +253,15 @@ type EventWord<K extends string> = K extends keyof ElementEventNames
   ? ElementEventNames[K]
   : Capitalize<K>;
 
-/** The handlers of an element: `onClick` for `click`, and `onKeyDown` for `keydown`. */
+/**
+ * The handlers of an element: `onClick` for `click`, and `onKeyDown` for `keydown`. The `webkit*`
+ * names are left out: the browser fires them as `webkitAnimationEnd` and the like, and the
+ * compiler lower-cases a handler name. Use `onAnimationEnd` and `onTransitionEnd`.
+ */
 export type Handlers<E> = {
-  [K in keyof ElementEvents & string as `on${EventWord<K>}`]?: Handler<ElementEvents[K], E>;
+  [
+    K in keyof ElementEvents & string as K extends `webkit${string}` ? never : `on${EventWord<K>}`
+  ]?: Handler<ElementEvents[K], E>;
 };
 
 /** A value of an ARIA attribute that is `true` or `false`. The runtime writes both as words. */

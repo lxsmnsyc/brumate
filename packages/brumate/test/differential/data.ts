@@ -141,11 +141,6 @@ export const CAUSES: Record<string, Cause> = {
     reason:
       'A ref slot of a resumed page holds the scope and anchor of its element, and the core reads the element when it needs it. The browser render holds the element.',
   },
-  'ref-setter-relay': {
-    verdict: 'remove',
-    reason:
-      'A setter ref ($bind(signal, fn)) on a component: the resumed page calls fn with the element of the component, and the browser render does not call it.',
-  },
   'ref-loop': {
     verdict: 'remove',
     reason:
@@ -156,11 +151,6 @@ export const CAUSES: Record<string, Cause> = {
     reason:
       'A $memo that throws in its first run: the server stores the error in the memo and a #try that reads it catches it. The browser render throws out of the component.',
   },
-  'memo-reject': {
-    verdict: 'remove',
-    reason:
-      'A memo awaited where it is declared, in a #try, whose promise rejects: both renders show the #catch body, and only the browser render also reports the error to onError.',
-  },
   'pending-read': {
     verdict: 'remove',
     reason:
@@ -170,11 +160,6 @@ export const CAUSES: Record<string, Cause> = {
     verdict: 'accepted',
     reason:
       'A component with an await in its script or markup in a child that the browser renders: the browser reports that only the server can render it.',
-  },
-  'class-order': {
-    verdict: 'remove',
-    reason:
-      'The tokens of a class attribute come in another order, such as base off tail on the server and base tail off in the browser. Both name the same classes.',
   },
   'debounce-start': {
     verdict: 'remove',
@@ -239,13 +224,6 @@ diverge('lazy-ref', [
   'restRefTagPage',
   'restRefTagPageSwap',
 ]);
-diverge('ref-setter-relay', [
-  'setterRefChangePage',
-  'setterRefPage',
-  'setterRefRelay3Page',
-  'setterRefRelayPage',
-  'setterRefRestPage',
-]);
 diverge('ref-loop', ['refLoop']);
 diverge('memo-throw', [
   'memoErrorResume',
@@ -254,10 +232,8 @@ diverge('memo-throw', [
   'memoErrorServerScript',
   'memoErrorServerTwo',
 ]);
-diverge('memo-reject', ['memoErrorAwaitServer']);
 diverge('pending-read', ['fnReadAsync', 'loadingChain', 'loadingOnChain']);
 diverge('await-in-script', ['PromiseLateChild', 'promiseLate']);
-diverge('class-order', ['classes']);
 diverge('debounce-start', ['timing']);
 diverge('template-context', ['tplContextListPage']);
 diverge('defer-template', ['deferredLater']);
