@@ -1,7 +1,7 @@
 ---
 id: store-repair-compare
 title: A store whose value only looks new does not rewrite its readers on resume
-status: todo
+status: active
 priority: must
 type: fix
 story: context-stores
