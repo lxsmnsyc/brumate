@@ -57,6 +57,8 @@ Second, unexplained: with the object default (now gone), the ui e2e skip link (`
 
 Third, from static-contexts-final: its worker saw a browser-rendered object memo feeding `$toStore` re-send its store after its code loaded, and a template's item scopes created twice, in the `spikeTemplate` differential; it changed the fixture to two stores of primitives. The review could not reproduce it. Read static-contexts-final's outcome (Gotchas) for the original fixture, and add a test that counts reader writes and item scopes for an object memo feeding `$toStore`, rendered by the server and by the browser.
 
+Changed 2026-11-06: context-read-fallback (f4e951f6 on feat/context-stores) did the first part. `subscribeSlot` now compares arrays and plain objects by content (`sameData`), with a test (`objectFallback.brm` in the stores tests) that fails on `Object.is`. The locale store fallback needed it. Still open here: the `$toStore` object-memo test (third part), the skip-link check (second part), and the review nits on `sameData` (no cycle guard, a full compare on each resumed read).
+
 ## Acceptance
 
 - [ ] A test: a provided store of an object does not rewrite its readers on resume; a browser value that really differs still repairs.

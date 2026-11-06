@@ -1,7 +1,7 @@
 ---
 id: context-read-fallback
 title: $getContext takes a fallback, $hasContext goes, $store takes a store only
-status: active
+status: done
 priority: must
 type: refactor
 story: context-stores
