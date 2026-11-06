@@ -1,0 +1,27 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ColorPicker from '@brumate/ui/ColorPicker.brm';
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+  import ColorField from '@brumate/ui/ColorField.brm';
+  import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+
+  let mix = $signal('hsb(210, 50%, 80%)');
+</script>
+
+<section aria-labelledby="color-picker">
+  <h2 id="color-picker">ColorPicker</h2>
+  <ColorPicker value=$bind(mix)>
+    <ColorArea class="mix-area" xChannel="saturation" yChannel="brightness" style="width: 200px; height: 100px; background: var(--area-background)">
+      <ColorThumb style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+    </ColorArea>
+    <ColorField class="mix-field">
+      <Label>Mix</Label>
+      <Input class="mix-input" />
+    </ColorField>
+    <ColorSwatch class="mix-swatch" style="width: 2rem; height: 2rem" />
+  </ColorPicker>
+  <p class="mix-state">{mix}</p>
+</section>

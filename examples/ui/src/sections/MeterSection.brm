@@ -1,0 +1,11 @@
+<script>
+  import Label from '@brumate/ui/Label.brm';
+  import Meter from '@brumate/ui/Meter.brm';
+  import ProgressBar from '@brumate/ui/ProgressBar.brm';
+</script>
+
+<section aria-labelledby="meter">
+  <h2 id="meter">Meter and ProgressBar</h2>
+  <Meter class="bar" value=(40)><Label>Disk space</Label></Meter>
+  <ProgressBar class="bar" value=(3) maxValue=(4)><Label>Upload</Label></ProgressBar>
+</section>

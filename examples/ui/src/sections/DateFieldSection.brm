@@ -1,0 +1,17 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import DateField from '@brumate/ui/DateField.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+
+  let birthday = $signal<string | null>('2026-10-15');
+</script>
+
+<section aria-labelledby="date-field">
+  <h2 id="date-field">DateField</h2>
+  <DateField class="birthday" name="birthday" value=$bind(birthday)>
+    <Label>Birthday</Label>
+    <DateInput class="birthday-input" />
+  </DateField>
+  <p class="birthday-state">{birthday ?? 'none'}</p>
+</section>

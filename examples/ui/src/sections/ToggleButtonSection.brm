@@ -1,0 +1,13 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+
+  let pinned = $signal(false);
+</script>
+
+<section aria-labelledby="toggle-button">
+  <h2 id="toggle-button">ToggleButton</h2>
+  <p>It stays pressed, and the page binds its state.</p>
+  <ToggleButton class="press pin" isSelected=$bind(pinned)>Pin</ToggleButton>
+  <p class="pinned">The note is {pinned ? 'pinned' : 'not pinned'}.</p>
+</section>

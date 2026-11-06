@@ -1,0 +1,28 @@
+<script>
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import TextArea from '@brumate/ui/TextArea.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<section aria-labelledby="text-field">
+  <h2 id="text-field">TextField, TextArea and FieldError</h2>
+  <Form class="signup">
+    <TextField class="name-field" name="name" isRequired>
+      <Label>Name</Label>
+      <Input class="field" />
+      <Text slot="description" class="help">As it is on your card.</Text>
+      <FieldError class="error" />
+    </TextField>
+    <TextField class="bio-field" name="bio">
+      <Label>About you</Label>
+      <TextArea class="field" rows="3" />
+    </TextField>
+    <Button class="press" type="submit">Sign up</Button>
+    <Button class="press" type="reset">Start again</Button>
+  </Form>
+</section>

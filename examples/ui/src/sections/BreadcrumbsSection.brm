@@ -1,0 +1,16 @@
+<script>
+  import Breadcrumb from '@brumate/ui/Breadcrumb.brm';
+  import Breadcrumbs from '@brumate/ui/Breadcrumbs.brm';
+  import Link from '@brumate/ui/Link.brm';
+</script>
+
+<section aria-labelledby="breadcrumbs">
+  <h2 id="breadcrumbs">Breadcrumbs</h2>
+  <nav aria-label="Trail">
+    <Breadcrumbs class="trail">
+      <Breadcrumb><Link class="link" href="#main">Home</Link></Breadcrumb>
+      <Breadcrumb><Link class="link" href="#breadcrumbs">Parts</Link></Breadcrumb>
+      <Breadcrumb isCurrent><Link class="link" href="#breadcrumbs">Breadcrumbs</Link></Breadcrumb>
+    </Breadcrumbs>
+  </nav>
+</section>

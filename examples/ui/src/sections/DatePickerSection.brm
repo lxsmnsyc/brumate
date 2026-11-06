@@ -1,0 +1,35 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DatePicker from '@brumate/ui/DatePicker.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+
+  let departure = $signal<string | null>('2026-10-15');
+</script>
+
+<section aria-labelledby="date-picker">
+  <h2 id="date-picker">DatePicker</h2>
+  <DatePicker class="departure" name="departure" value=$bind(departure) minValue="2026-10-05">
+    <Label>Departure</Label>
+    <Group class="departure-group">
+      <DateInput class="departure-input" />
+      <Button class="press departure-button">▾</Button>
+    </Group>
+    <Popover class="popover departure-popover">
+      <Dialog>
+        <Calendar class="departure-calendar">
+          <CalendarHeading class="departure-heading" />
+          <CalendarGrid class="departure-grid" />
+        </Calendar>
+      </Dialog>
+    </Popover>
+  </DatePicker>
+  <p class="departure-state">{departure ?? 'none'}</p>
+</section>

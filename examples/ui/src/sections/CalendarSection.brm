@@ -1,0 +1,25 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Calendar from '@brumate/ui/Calendar.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+
+  let delivery = $signal<string | null>('2026-10-15');
+
+  // The shop is closed on Sundays.
+  function closed(date: string) {
+    return new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
+  }
+</script>
+
+<section aria-labelledby="calendar">
+  <h2 id="calendar">Calendar</h2>
+  <Calendar class="delivery" aria-label="Delivery" value=$bind(delivery) minValue="2026-10-05" isDateUnavailable=closed>
+    <Button slot="previous" class="press delivery-previous">‹</Button>
+    <CalendarHeading class="delivery-heading" />
+    <Button slot="next" class="press delivery-next">›</Button>
+    <CalendarGrid class="delivery-grid" />
+  </Calendar>
+  <p class="delivery-state">{delivery ?? 'none'}</p>
+</section>

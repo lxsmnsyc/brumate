@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import FileTrigger from '@brumate/ui/FileTrigger.brm';
+  import Button from '@brumate/ui/Button.brm';
+
+  let files = $signal('No files picked.');
+</script>
+
+<section aria-labelledby="file-trigger">
+  <h2 id="file-trigger">FileTrigger</h2>
+  <FileTrigger allowsMultiple onSelect=((list) => (files = `${list?.length ?? 0} files picked.`))>
+    <Button class="press">Pick files</Button>
+  </FileTrigger>
+  <p class="files">{files}</p>
+</section>

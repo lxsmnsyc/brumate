@@ -1,0 +1,17 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorWheel from '@brumate/ui/ColorWheel.brm';
+  import ColorWheelTrack from '@brumate/ui/ColorWheelTrack.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+
+  let dial = $signal('hsl(210, 100%, 50%)');
+</script>
+
+<section aria-labelledby="color-wheel">
+  <h2 id="color-wheel">ColorWheel</h2>
+  <ColorWheel class="dial" value=$bind(dial) outerRadius=(100) innerRadius=(70)>
+    <ColorWheelTrack class="dial-track" />
+    <ColorThumb class="dial-thumb" style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+  </ColorWheel>
+  <p class="dial-state">{dial}</p>
+</section>

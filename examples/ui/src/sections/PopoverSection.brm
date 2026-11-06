@@ -1,0 +1,34 @@
+<script>
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import OverlayArrow from '@brumate/ui/OverlayArrow.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+</script>
+
+<section aria-labelledby="popover">
+  <h2 id="popover">Popover and Dialog</h2>
+  <DialogTrigger>
+    <Button class="press settings-trigger">Settings</Button>
+    <Popover class="popover" placement="bottom start" transition>
+      <OverlayArrow class="arrow" />
+      <Dialog class="settings">
+        <Heading slot="title" level=(3)>Settings</Heading>
+        <TextField class="name-setting"><Label>Display name</Label><Input class="field" /></TextField>
+        <DialogTrigger>
+          <Button class="press more-trigger">More</Button>
+          <Popover class="popover more" placement="end">
+            <Dialog class="more-dialog" aria-label="More settings">
+              <Button class="press deep">A setting inside</Button>
+            </Dialog>
+          </Popover>
+        </DialogTrigger>
+        <Button slot="close" class="press done">Done</Button>
+      </Dialog>
+    </Popover>
+  </DialogTrigger>
+</section>

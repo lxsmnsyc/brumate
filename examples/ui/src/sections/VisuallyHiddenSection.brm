@@ -1,0 +1,12 @@
+<script>
+  import VisuallyHidden from '@brumate/ui/VisuallyHidden.brm';
+</script>
+
+<section aria-labelledby="visually-hidden">
+  <h2 id="visually-hidden">VisuallyHidden</h2>
+  <p>The button shows only a mark, and its name is hidden from sight.</p>
+  <button type="button" class="close">
+    <span aria-hidden="true">×</span>
+    <VisuallyHidden>Close</VisuallyHidden>
+  </button>
+</section>
