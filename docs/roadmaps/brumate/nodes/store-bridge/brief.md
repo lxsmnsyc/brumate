@@ -1,7 +1,7 @@
 ---
 id: store-bridge
 title: bridge() makes a brumate store from an outside store, so it can cross the page state
-status: active
+status: done
 priority: must
 type: feature
 story: context-stores
