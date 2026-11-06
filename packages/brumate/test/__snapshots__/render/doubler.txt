@@ -72,10 +72,9 @@ export function double(value: number): Promise<number> {
 
 # Render module
 import * as $$b from 'brumate/client';
+import { double } from "./doubler.brm?brumate-client&part=shared";
 import { r2 as $$r2 } from "./doubler.brm?brumate-client";
-export function double(value: number): Promise<number> {
-    return new Promise((done) => setTimeout(() => done(value * 2), 150));
-  }
+export { double };
 const $$t0 = $$b.template("<button b-x=\"0\" b-on=\"click=Doubler_1bxsryb#h2\"></button><p b-x=\"1\"></p><!--x2--><!--/b-->", 3);
 
 export default function Doubler($$props: Record<string, never>): string | DocumentFragment {

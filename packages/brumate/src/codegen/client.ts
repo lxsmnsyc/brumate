@@ -21,7 +21,13 @@ import { cloneLines } from './template.ts';
 import type { Fill } from './markup.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits, arrowBody } from './patch.ts';
-import { clientModuleScript, componentNames, renderImport } from './render.ts';
+import {
+  clientModuleScript,
+  componentNames,
+  moduleExports,
+  renderImport,
+  rendersModule,
+} from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
 import { instanceScope, mayBePromise, scopePath, slotIndex, templateArgs } from './scopes.ts';
@@ -633,17 +639,11 @@ class ClientGenerator {
         }
       }
       lines.push(...clientModuleScript(this.file, this.plan));
+      // The shared part exports each name that is not exported under its own name already.
       const exported = new Set<string>();
-      for (const statement of this.file.moduleScript!.program.body) {
-        if (statement.type === 'ExportNamedDeclaration' && statement.declaration) {
-          for (const declaration of this.model.module.declarations.values()) {
-            if (
-              declaration.range.start >= statement.start &&
-              declaration.range.end <= statement.end
-            ) {
-              exported.add(declaration.name);
-            }
-          }
+      for (const item of moduleExports(this.file, this.plan)) {
+        if (item.local === item.name) {
+          exported.add(item.name);
         }
       }
       const rest: string[] = [];
@@ -717,6 +717,10 @@ class ClientGenerator {
   }
 
   private usesModuleScript(): boolean {
+    // The render module imports what the markup reads from the shared part.
+    if (rendersModule(this.plan)) {
+      return true;
+    }
     for (const declaration of this.clientReads()) {
       if (declaration.kind === 'module') {
         return true;
