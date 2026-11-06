@@ -1,0 +1,239 @@
+{
+  "goal": "Replace the $hasContext guard with a fallback at the read, $getContext(C, fallback) as Qwik and Vue have it, so an optional context read is one call and one lookup, with $store taking a store only",
+  "research": false,
+  "max_rounds": 1,
+  "roadmap": "docs/roadmaps/brumate",
+  "supersedes": "../context-api",
+  "extra_axes": [
+    {
+      "name": "api",
+      "by": "proponent",
+      "why": "the goal is the form of the read; prior-art fit decides between forms",
+      "status": "accepted",
+      "ruling_why": "the user picked design A for its form and one lookup"
+    }
+  ],
+  "claims": [
+    {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "text": "The user picked design A on 2026-11-06 from four designs (A fallback at the read, B never throws, C provider components, D keep the API and fuse in the runtime), after asking for a redesign because $hasContext and $getContext are two lookups.",
+      "evidence": {
+        "type": "source",
+        "source": "session 2026-11-06",
+        "detail": "design list with prior-art table"
+      },
+      "ruling": "upheld",
+      "axis": "api"
+    },
+    {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "text": "Today a guarded read walks the scope parents twice: server has() and consume() each call findProvider (server.ts:804-836), and the browser's hasContext and consumeContext each call findProvider (client/context.ts:20-81). Presence is `key in scope.v`, so a provided undefined counts as provided.",
+      "evidence": {
+        "type": "source",
+        "source": "git show origin/feat/context-stores (eecf9882):packages/brumate/src/runtime/server.ts, runtime/client/context.ts",
+        "detail": ""
+      },
+      "ruling": "upheld",
+      "axis": "device"
+    },
+    {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "text": "Prior art for a fallback at the read: Qwik v2 useContext(ctx, default) returns the found value, else the default, else throws QError.notFoundContext, one walk up the hosts (QwikDev/qwik@d5ee7405 packages/qwik/src/core/use/use-context.ts:259-282); Vue inject(key, default) uses `arguments.length > 1` to tell a given default from none (vuejs/core@8b479a89 packages/runtime-core/src/apiInject.ts:72-81); Angular inject(T, {optional: true}) returns null in one call (angular@4491b39c injector_compatibility.ts:177-238). None stores a default in module scope.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "pinned sources above",
+        "detail": "research report of 2026-11-06 in this session"
+      },
+      "ruling": "upheld",
+      "axis": "api"
+    },
+    {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "text": "packages/ui on the story branch: 142 $hasContext calls; all but 2 guard a $getContext or $store read; the 2 standalone ones read ToolbarContext, a Context<boolean> (contexts.ts:238; Toolbar.brm:38, ToggleButtonGroup.brm:63). 63 readers use $store(g?.state). No `let x = $store(` in packages/ui/src.",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep on origin/feat/context-stores (eecf9882) -- packages/ui/src",
+        "detail": ""
+      },
+      "ruling": "upheld",
+      "axis": "time"
+    },
+    {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "text": "Rulings that stand: contexts are static; no default in module scope (context-no-defaults); $store takes a store only and `let` writes at the assignment (2026-11-06); $store(Ctx) goes (context-api debate).",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md on the story branch; docs/debates/context-api/debate.md",
+        "detail": ""
+      },
+      "ruling": "upheld",
+      "axis": "api"
+    },
+    {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "API: `$getContext(C)` reads the nearest provider and throws without one, as today. `$getContext(C, fallback)` returns the provided value, or `fallback` when no provider is above. Whether a fallback was given is decided by the argument count at compile time, as Vue's arguments.length, so `$getContext(C, undefined)` is the optional read. Types: `$getContext<T>(c: Context<T>): T` and `$getContext<T, F>(c: Context<T>, fallback: F): T | F`. A provided undefined is a value (presence is `key in v`, J2).",
+      "evidence": {
+        "type": "prior-art",
+        "source": "J3",
+        "detail": "Qwik and Vue shape; Vue's presence rule"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "The fallback is an expression evaluated in the reader's scope, only when no provider is found (like `??`), once per read. Nothing is stored on the context, so no value is shared across requests. A module value passed as a fallback is the app's own choice, as with any import.",
+      "evidence": {
+        "type": "source",
+        "source": "J5; docs/debates/context-no-defaults/debate.md",
+        "detail": "the leak came from a value stored on the context object"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Runtime: one walk per read. The compiled guarded read `has(C, scope) ? consume(C, scope) : undefined` becomes `consume(C, scope, fallback)` on the server and in the browser, with the fallback compiled as a function only when it is not a literal. `has()` and `hasContext()` are deleted.",
+      "evidence": {
+        "type": "source",
+        "source": "J2; store-any-source outcome 'Compile shape'",
+        "detail": "guarded reads compile to has ? consume : undefined"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "`$hasContext` is removed. The 2 standalone reads become `$getContext(ToolbarContext, false)`, which is the boolean they want. A context is then read one way.",
+      "evidence": {
+        "type": "measured",
+        "source": "J4",
+        "detail": "ToolbarContext is Context<boolean>"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "$store stays store only. A store in an optional context is read with a guard on the value: `const g = $getContext(C, undefined); const s = g ? $store(g.state) : undefined;`. The compiler accepts that one guarded form for a const g read with a fallback (the guard is fixed since contexts are static) and reports any other as BRM197 with the new form in its message.",
+      "evidence": {
+        "type": "source",
+        "source": "J5; analyze.ts:122 (BRM197 message), 492-519 (guard handling)",
+        "detail": "the guard machinery moves from $hasContext to the fallback read"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "P6",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Work: node store-only-source is rewritten as context-read-fallback (L): compiler, runtime, types, BRM197 text, tests, docs and decisions.md, plus a scripted rewrite of the about 140 guarded and 63 g?.state ui readers. Split the ui rewrite into its own M node only if the core node's diff passes 60 files.",
+      "evidence": {
+        "type": "calibration",
+        "source": "ui-store-guards outcome",
+        "detail": "63 readers in 54 files rewritten by a script in one M node"
+      },
+      "ruling": "upheld"
+    },
+    {
+      "id": "O1",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "text": "A non-literal fallback runs again in the browser on resume, with the resumed values, as a store-any-source source does; a fallback that makes a new object gives the browser a different object from the one the server rendered with.",
+      "evidence": {
+        "type": "source",
+        "source": "store-any-source outcome, Gotchas",
+        "detail": "a source runs once on resume with the values the server sent"
+      },
+      "ruling": "upheld",
+      "axis": "device",
+      "severity": "medium",
+      "answers": ["P2", "P3"]
+    },
+    {
+      "id": "O2",
+      "round": 1,
+      "by": "opponent",
+      "kind": "cost",
+      "text": "The 66 `$hasContext(C) ? $store(C) : undefined` readers grow to two lines (`const c = $getContext(C, undefined); const s = c ? $store(c) : undefined;`), since $store(Ctx) is gone.",
+      "evidence": {
+        "type": "measured",
+        "source": "J4 and context-api J2",
+        "detail": "66 guarded $store(C) reads"
+      },
+      "ruling": "upheld",
+      "axis": "api",
+      "severity": "low",
+      "answers": ["P5"]
+    },
+    {
+      "id": "O3",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "text": "Removing $hasContext drops a presence check that does not read the value; a context whose provided value may itself be undefined cannot be tested with a fallback.",
+      "evidence": {
+        "type": "measured",
+        "source": "J4",
+        "detail": "only 2 standalone uses, both a boolean context"
+      },
+      "ruling": "upheld",
+      "axis": "api",
+      "severity": "low",
+      "answers": ["P4"]
+    },
+    {
+      "id": "O4",
+      "round": 1,
+      "by": "opponent",
+      "kind": "alternative",
+      "text": "Keep $hasContext as a boolean only (no longer a guard), next to the fallback read.",
+      "evidence": {
+        "type": "estimate",
+        "source": "O3",
+        "detail": "one extra function kept for a case with no user in the repo"
+      },
+      "ruling": "rejected",
+      "axis": "api",
+      "answers": ["P4"],
+      "ruling_why": "J4: no reader needs presence without the value; P4's boolean fallback covers both uses, and one read form is the point of J1"
+    }
+  ],
+  "questions": [],
+  "proofs": [],
+  "hypothesis": null,
+  "spend": [
+    {
+      "round": 1,
+      "tokens": 15000
+    }
+  ]
+}

@@ -33,9 +33,9 @@ depends_on:
   - on: ui-store-guards
     kind: hard
     why: same runtime and docs files; one worker at a time
-  - on: store-only-source
+  - on: context-read-fallback
     kind: hard
-    why: same compiler, runtime and docs files; store-only-source sets the $store signature bridge() is read through
+    why: same compiler, runtime and docs files; context-read-fallback sets the $store signature bridge() is read through
 ---
 
 # bridge() makes a brumate store from an outside store, so it can cross the page state

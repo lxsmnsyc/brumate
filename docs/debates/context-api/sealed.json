@@ -1,0 +1,490 @@
+{
+  "round": 2,
+  "claims": {
+    "J1": {
+      "id": "J1",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Current API on the story branch: createContext(key) only; $getContext(C) and $store(C) throw without a provider; $hasContext(C) is the optional read; the compiler accepts guarded reads `$hasContext(C) ? $getContext(C) : undefined` and `$hasContext(C) ? $store(C) : undefined`; anything else is BRM197. Landed as context-throw 846e25f1, has-context 1ee9a613, ui-no-defaults-1..4, context-docs e87e290e. Not released: the story PR to next is not open.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md 'Contexts have no default value' on origin/feat/context-stores (eecf9882); docs/debates/context-no-defaults/debate.md",
+        "detail": ""
+      }
+    },
+    "J2": {
+      "id": "J2",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "packages/ui/src on the story branch: 66 reads `$hasContext(C) ? $store(C) : undefined`, 74 reads `$hasContext(C) ? $getContext(C) : undefined`, 63 reads `$store(g?.state)` (ui-store-guards), 129 `$store(` and 142 `$hasContext(` calls in 86 files; about 40 contexts. website and examples have 60 context or $store calls.",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep -oE on origin/feat/context-stores (eecf9882) -- packages/ui/src, website, examples",
+        "detail": ""
+      }
+    },
+    "J3": {
+      "id": "J3",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "User's motivation for removing defaults on 2026-11-05: a default value is module-global, so it can leak global state; on the server a store(null) default is one object shared by every request that reads the context without a provider, and a `let` write through it crosses requests.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/debates/context-no-defaults ledger J1, J5",
+        "detail": ""
+      }
+    },
+    "J4": {
+      "id": "J4",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "Defaults carried runtime code before context-throw: createContext called a global CONTEXT_ADDED hook, client/context.ts kept madeContexts and waitingReads so a $store read with no provider links to the default's store once the context's module runs; server.ts and client/context.ts fell back to defaultValue in 4 places. ui-no-defaults added 241 B gzip to the ui example; ui-store-guards gave back 32 B.",
+      "evidence": {
+        "type": "measured",
+        "source": "docs/debates/context-no-defaults ledger J4; ui-no-defaults and ui-store-guards outcomes on the story branch",
+        "detail": ""
+      }
+    },
+    "J5": {
+      "id": "J5",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Solid 2.0 (solid next f6b6737, 2.0.0-rc.21): createContext<T>() with no default makes useContext throw ContextNotFoundError without a Provider; createContext<T>(defaultValue) still falls back, and the docs reserve defaults for primitive fallbacks (theme, locale, frozen config) because module scope is shared by every request. Optional contexts use null. Solid has no `has`.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "github.com/solidjs/solid next: packages/solid/src/client/core.ts:58-145, packages/signals/src/core/context.ts:20-60, documentation/solid-2.0/MIGRATION (from context-no-defaults J12)",
+        "detail": ""
+      }
+    },
+    "J6": {
+      "id": "J6",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Svelte 5.40+ (5.57.3): createContext() returns [get, set, has]; get throws when no ancestor set; has returns a boolean; no default. A store is read from a context as `const s = getContext(K)` then `$s`; `$s` of a nullish store gives undefined and subscribes to nothing (store_get, subscribe_to_store).",
+      "evidence": {
+        "type": "prior-art",
+        "source": "github.com/sveltejs/svelte@7775f73b packages/svelte/src/internal/client/context.js:74-106, internal/client/reactivity/store.js:52, store/utils.js:13",
+        "detail": ""
+      }
+    },
+    "J7": {
+      "id": "J7",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "silmaril's `$store: <T>(store: Store<T>) => T`; $$store calls store.get() with no nullish check and takes no context (silmaril has no contexts). `let` writes back to the store at registration and after each change.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "github.com/lxsmnsyc/silmaril@992c6f57 packages/silmaril/src/index.ts:425-485, README Stores",
+        "detail": ""
+      }
+    },
+    "J8": {
+      "id": "J8",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "React: createContext(defaultValue) always has a default, used without a Provider (one module object, same sharing as J3); `use(Context)` reads a context and `use(promise)` a promise; stores are read by useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot), which takes no context. Vue: inject(key, default, treatDefaultAsFactory) returns undefined with a warning without a provider, and a factory default makes a fresh value per read.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "react.dev/reference/react/createContext, /use, /useSyncExternalStore; vuejs.org/api/composition-api-dependency-injection#inject",
+        "detail": ""
+      }
+    },
+    "J9": {
+      "id": "J9",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Maintainer rulings on 2026-11-06 in this session: $store should follow silmaril's interface; $store of undefined or null is not allowed (store only), with Svelte's nullish rule shown; `let` keeps the write at the assignment. Node store-only-source (todo, L, not started) removes $store(Ctx) and $store(g?.state) on that basis; store-bridge waits on it. The user then opened this debate before the story settles.",
+      "evidence": {
+        "type": "source",
+        "source": "session 2026-11-06; docs/roadmaps/brumate/nodes/store-only-source/brief.md on main eecb5908",
+        "detail": ""
+      }
+    },
+    "J10": {
+      "id": "J10",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "time",
+      "text": "Project rules: brumate is 0.x; breaking changes are a minor bump with no deprecation period. Contexts are static: a provided value is read once, live values go through stores ($toStore in the provider). $route and $navigation are runtime contexts provided to every page.",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/decisions.md entries 'Every context is static' and $store; memory zero-x-minor-bump",
+        "detail": ""
+      }
+    },
+    "P1": {
+      "id": "P1",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "[api axis, proposed] createContext<T>(key, default?) where default is a literal value or a factory `() => T`. No default: a read without a provider throws, as today. A factory default is not called at module scope: the first read without a provider in a page calls it and keeps the result as a provided value on that page's root scope (per request on the server, per page in the browser), so nothing lives in module scope and no CONTEXT_ADDED hook or madeContexts map is needed. A literal default is stored on the Context object and must be immutable (checked by the compiler, new BRM code). A non-factory object or store(...) default is a compile error.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "vuejs.org/api/composition-api-dependency-injection#inject (treatDefaultAsFactory); Solid 2.0 rc.21 packages/solid/src/client/core.ts:58-145 (J5)",
+        "detail": "Vue builds a fresh default per read for factories; Solid keeps value defaults and advises primitives only. Neither stores the factory result per request root; that part is new here."
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 1,
+        "unit": "new compiler check, about 20 lines in runtime fallbacks"
+      }
+    },
+    "P2": {
+      "id": "P2",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Server and client fallback is one branch in the existing read: no provider found, then `context.d` literal or `root.v[key] ??= context.f()`, else throw missingContext. Because the factory result sits in root scope `v` like a provided value, the page state already serialises it and the client finds it with findProvider, so waitingReads, madeContexts and CONTEXT_ADDED (J4) are not restored. $hasContext(C) is true for a context with a default. Cost target: at most the 241 B gz that ui-no-defaults added in reverse, with the 32 B back from ui-store-guards, so under 250 B gz on the ui example.",
+      "evidence": {
+        "type": "source",
+        "source": "packages/brumate/src/runtime/client/context.ts and runtime/context.ts on origin/feat/context-stores (eecf9882): consumeContext, findProvider, provideValue, hasContext",
+        "detail": "findProvider already walks scope.v for a key; a root-scope write needs no new lookup path. The byte target is from J4, not measured for this design."
+      },
+      "axis": "device",
+      "estimate": {
+        "value": 250,
+        "unit": "B gzip upper bound on the ui example (J4)"
+      }
+    },
+    "P3": {
+      "id": "P3",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "[safety axis, proposed] Safety: the leak in J3 needs a module-level mutable object read by many requests. Under P1 that cannot be written: `createContext(k, store(null))` and `createContext(k, {\u2026})` are compile errors, a factory runs once per request root, and a literal is immutable. 49 of the 61 ui contexts had a default holding store(...) (the kind that leaked), 7 a bare null or false, 5 another object; all 49 become factories, so each request gets its own store.",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep createContext at 846e25f1^ -- packages/ui/src, counted with a script",
+        "detail": "evidence/p-ui-defaults.txt"
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 49,
+        "unit": "of 61 ui defaults were stores; become per-request factories"
+      }
+    },
+    "P4": {
+      "id": "P4",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "[api axis, proposed] $store(Ctx) stays as sugar: the analyzer rewrites `$store(Ctx)` to the key form it already emits for `$store($getContext(Ctx))`, so there is one runtime path and the signature is `$store<T>(source: StoreLike<T> | Context<StoreLike<T>>): T`, a superset of silmaril's `$store(store)`. With P1 a context that has a factory default needs no `$hasContext ? \u2026 : undefined` guard, so the 66 guarded $store(C) readers become plain `$store(C)` for contexts with a default, and stay guarded for the rest. Nullish sources stay an error (J9 ruling kept).",
+      "evidence": {
+        "type": "inferred",
+        "source": "docs/roadmaps/brumate/nodes/store-only-source/brief.md on main: '$store($getContext(C)) and its guarded form compile to the key form'",
+        "detail": "The brief itself says the explicit form compiles to the key form, so $store(Ctx) is a desugar of 3 lines in the analyzer, not a second runtime path. silmaril and Svelte take no context (J7, J6), so this is a brumate extension, which the maintainer ruled against on 2026-11-06 (J9)."
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 3,
+        "unit": "lines in the analyzer"
+      }
+    },
+    "P5": {
+      "id": "P5",
+      "round": 1,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Order of work inside the story, before the story PR: (1) context-default node (M): createContext signature, BRM code for non-immutable defaults, factory-at-root fallback on server and client, tests for two requests with no provider reading different stores; (2) ui-defaults (M x 2 or 3): give the 49 store contexts a factory and drop the 66 guards where the part can always read; (3) context-docs (S) and decisions.md rewrite of the 'no default' entry. store-only-source (L, 80 ui readers) is cancelled, or shrinks to the nullish rule. Estimate 3 to 5 worker runs against 6 for store-only-source plus the reverts already needed.",
+      "evidence": {
+        "type": "calibration",
+        "source": "docs/debates/context-no-defaults/debate.md: 7 nodes (6 M, 1 S) for removing defaults; store-only-source brief size L",
+        "detail": "Removal took 7 nodes; re-adding touches the same files, so a similar order of M nodes is the honest estimate, not a saving."
+      },
+      "axis": "time",
+      "estimate": {
+        "value": "4 to 6",
+        "unit": "worker runs"
+      }
+    },
+    "P6": {
+      "id": "P6",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "Question 1, narrower: createContext(key, default?) where default is a literal only (string, number, boolean, null, frozen object), no factory. Stores and objects still need a provider or a guard. Smallest runtime (one `context.d` read in 4 places, no root-scope write). Helps 12 of the 61 ui contexts only; the 49 store contexts keep their guards.",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep createContext at 846e25f1^ -- packages/ui/src",
+        "detail": "evidence/p-ui-defaults.txt"
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 12,
+        "unit": "of 61 ui contexts benefit"
+      }
+    },
+    "P7": {
+      "id": "P7",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "[api axis, proposed] Question 1, status quo: keep createContext(key) and $hasContext (Svelte 5.40 shape, J6). Zero new work, no leak, no default code (J1, J4). Cost already paid: 66+74 guards and a UI where every optional part repeats the guard.",
+      "evidence": {
+        "type": "source",
+        "source": "J1, J2 in this ledger; docs/decisions.md 'Contexts have no default value'",
+        "detail": "No change; ui keeps 140 guarded reads."
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 140,
+        "unit": "guarded ui reads stay"
+      }
+    },
+    "P8": {
+      "id": "P8",
+      "round": 1,
+      "by": "proponent",
+      "kind": "alternative",
+      "text": "[api axis, proposed] Question 2, store only: $store(source) takes a store expression, `$store($getContext(C))` for a context's store (the maintainer's 2026-11-06 ruling, silmaril and Svelte shape, J7, J6). No context overload; node store-only-source rewrites about 80 ui readers and 63 `g?.state` readers (L). Clean signature, longer reads.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/store-only-source/brief.md on main (eecb5908)",
+        "detail": "Prior art checked in the brief: no store binder takes a context."
+      },
+      "axis": "time",
+      "estimate": {
+        "value": 143,
+        "unit": "ui readers rewritten (80 + 63)"
+      }
+    },
+    "O1": {
+      "id": "O1",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "device",
+      "severity": "high",
+      "answers": ["P1", "P2"],
+      "text": "A factory store written to root.v has no owner. Only stores made by $toStore in a provider carry [scope, site, slot] (shared.ts s(), server.ts toStore 747-751); the browser relinks them from that owner through madeStores/linkMadeStores. A factory result has no compiler site, so P2's 'the page state already serialises it' needs a new site allocator for factories, which P2 does not count. The client also cannot find the factory when no server read happened (a client-only first read): context.f lives in the context's module, which is the waitingReads/CONTEXT_ADDED problem of J4 again, since resume only loads a module when a scope needs it.",
+      "evidence": {
+        "type": "source",
+        "source": "git show origin/feat/context-stores:packages/brumate/src/runtime/shared.ts (madeStores, s) and server.ts:736-751, client/context.ts linkMadeStores",
+        "detail": "Stores cross the page only through owner [scope, site, slot]; defaults had to be linked by module run (J4)."
+      }
+    },
+    "O2": {
+      "id": "O2",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "device",
+      "severity": "medium",
+      "answers": ["P1", "P2"],
+      "text": "'First read without a provider writes root.v' depends on read order and on streaming. The server writes provider values into the provider's record (record.v, server.ts:739-740). A first default read inside a streamed #loading chunk would write the root record after the root record went out in the first chunk, so the browser has no value and must run the factory itself, giving a second store that differs from the server's. P2 and P3 give no test or design for this. $hasContext 'static, fixed when the scope is made' (client/context.ts doc) also stops being true: true for a defaulted context before any write, and the value appears later.",
+      "evidence": {
+        "type": "source",
+        "source": "server.ts:728-745 (provide) and the record flush at 636-680 on origin/feat/context-stores; client/context.ts hasContext doc comment",
+        "detail": "Streaming order is not covered by P2's evidence, which only cites findProvider."
+      }
+    },
+    "O3": {
+      "id": "O3",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "device",
+      "severity": "medium",
+      "answers": ["P3"],
+      "text": "P3 turns 49 constant store(null) defaults into per-request stores. Without a provider nothing writes them (no writer exists outside a provider), so each is a store that stays null: an allocation, a root.v entry and page-state bytes per request per context read, to carry a constant. The $hasContext guard (J1) costs zero state and zero runtime. Safety is reached by deleting the object, not by making it per request.",
+      "evidence": {
+        "type": "source",
+        "source": "evidence/p-ui-defaults.txt (49 of 61 defaults held store(); readers test state for null per J2 of context-no-defaults); server.ts:739-740 record.v serialises each root value",
+        "detail": "Per-request cost is paid on every page that reads a defaulted context, including the common case of a part used standalone."
+      }
+    },
+    "O4": {
+      "id": "O4",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "device",
+      "severity": "medium",
+      "answers": ["P2"],
+      "text": "P2's 250 B gz ceiling is J4's number turned around, not a measurement of this design. J4's 241 B bought deleting four defaultValue fallbacks and the hook; this design adds a factory call, a root-scope write, a literal branch, the compiler immutability check and a changed hasContext on both server.ts and client/context.ts, plus the O1 site allocator. The ceiling is plausible only if O1 needs nothing; it is a target, not an estimate.",
+      "evidence": {
+        "type": "calibration",
+        "source": "docs/debates/context-no-defaults ledger J4 (241 B added, 32 B returned); P2 detail 'not measured for this design'",
+        "detail": "No code of P1 exists to measure."
+      },
+      "estimate": {
+        "value": "unmeasured",
+        "unit": "B gz"
+      }
+    },
+    "O5": {
+      "id": "O5",
+      "round": 1,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "time",
+      "severity": "medium",
+      "answers": ["P5"],
+      "text": "P5's 4 to 6 runs ignores the calibration it cites. Removing defaults took 7 nodes (ui-no-defaults-1..4 alone were 4) and phases 3 to 6 each needed five or more review-fix PRs. Re-adding touches the same 86 files. P5 also cancels store-only-source while P4 keeps $store(Ctx) against the 2026-11-06 ruling (J9), so the node that removes the 63 g?.state readers is not cancelled but only moved. Realistic: 2 core nodes (default + factory site) and 3 ui nodes plus fixes, about 8 runs, and the story PR waits for all of them.",
+      "evidence": {
+        "type": "calibration",
+        "source": "docs/debates/context-no-defaults ledger P11/O10/O11; J1 landed nodes (ui-no-defaults-1..4, context-throw, has-context); memory phase3-6 review fixes",
+        "detail": "Past ui batches over 80 files needed splits and fix rounds."
+      },
+      "estimate": {
+        "value": 8,
+        "unit": "worker runs"
+      }
+    },
+    "O6": {
+      "id": "O6",
+      "round": 1,
+      "by": "opponent",
+      "kind": "risk",
+      "axis": "time",
+      "severity": "medium",
+      "answers": ["P4"],
+      "text": "P4 keeps $store(Ctx) as a superset of silmaril, which the maintainer ruled against on 2026-11-06 (J9). It also keeps two spellings of one read ($store(C) and $store($getContext(C))) and a compiler rule that the unguarded form is valid only for contexts that have a factory default, a fact that the analyzer must know across modules (a context imported from another package). The 3-line estimate counts only the desugar, not that cross-module check. No prior art (silmaril J7, Svelte J6, React J8) takes a context.",
+      "evidence": {
+        "type": "prior-art",
+        "source": "github.com/lxsmnsyc/silmaril@992c6f57 packages/silmaril/src/index.ts:425-485; J9",
+        "detail": "No store binder reads a context; the cross-module default check is uncosted in P4."
+      }
+    },
+    "O7": {
+      "id": "O7",
+      "round": 1,
+      "by": "opponent",
+      "kind": "alternative",
+      "axis": "time",
+      "severity": "medium",
+      "answers": ["P7", "P8"],
+      "text": "Cheaper way to the whole goal: take P7 (keep key-only createContext, $hasContext) and P8 (store only) together and size them as one reordering of the 143 reader sites, which is already node store-only-source (L). Device cost is zero (nothing added to the runtime, J4 gives back 32 B more), safety is complete (no default exists), and the compiler already accepts the guarded ternary (J1), so nothing new is built. The 140 guards are text, not runtime. If the guards hurt, a later ui-only fix (a part that always receives its context from a Root provider, such as the group's Root) removes them without a core change. This is the structure with no unmeasured item.",
+      "evidence": {
+        "type": "source",
+        "source": "J1, J2, J4, J9; docs/decisions.md 'Contexts have no default value' on origin/feat/context-stores",
+        "detail": "Only cost is reader churn that P5 also pays for the ui-defaults nodes."
+      },
+      "estimate": {
+        "value": 143,
+        "unit": "reader sites, one node (L)"
+      }
+    },
+    "J11": {
+      "id": "J11",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "device",
+      "text": "A brumate store can cross the page state without an owner: the page-state plugin's s(value, scope?, site?, slot?) makes a value-only Store when no scope is given, and only $toStore stores get [scope, site, slot] and join madeStores. A reader the browser renders runs its own compiled code, which imports the context it names.",
+      "evidence": {
+        "type": "source",
+        "source": "git show origin/feat/context-stores:packages/brumate/src/runtime/shared.ts:362-407; server.ts:733-751",
+        "detail": "s() pushes to madeStores only when scope !== undefined"
+      }
+    },
+    "J12": {
+      "id": "J12",
+      "round": 1,
+      "by": "judge",
+      "kind": "fact",
+      "axis": "api",
+      "text": "Unguarded $store(C) and $getContext(C) are valid today and throw at run time without a provider; only optional reads need the $hasContext ternary. So a context with a default needs no compile-time knowledge of the default: the read falls back at run time instead of throwing.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/decisions.md 'Contexts have no default value' on origin/feat/context-stores",
+        "detail": "$getContext(C) and $store(C) throw ... when no provider above set the context"
+      }
+    },
+    "P9": {
+      "id": "P9",
+      "round": 2,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "Dropped: the factory default written to the root scope (P1 factory part, P2, P3), and the per-request store defaults.",
+      "why": "O2 shows a first default read in a streamed #loading chunk writes the root record after it went out, and O3 shows 49 store(null) defaults would become per-request stores that only carry null, which the $hasContext guard does at zero cost",
+      "answers": ["P1", "P2", "P3"]
+    },
+    "P10": {
+      "id": "P10",
+      "round": 2,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "Dropped: $store(Ctx) as sugar (P4) and the 4 to 6 run estimate (P5).",
+      "why": "O6 (upheld): no store binder takes a context, it gives two spellings of one read and goes against J9; O5 (upheld): the 63 g?.state readers move rather than vanish and the realistic cost is about 8 runs",
+      "answers": ["P4", "P5"]
+    },
+    "P11": {
+      "id": "P11",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Question 2: adopt P8, store only, with `$store($getContext(C))` and the guarded form. J12 shows the unguarded read already throws at run time, and the brief says the explicit form compiles to the key form, so nothing new is built in the runtime. It is store-only-source (L) as written.",
+      "evidence": {
+        "type": "source",
+        "source": "docs/roadmaps/brumate/nodes/store-only-source/brief.md on main; J9, J12",
+        "detail": "I withdraw the context overload; the maintainer's ruling and prior art (J6, J7, J8, O6) agree."
+      },
+      "axis": "api"
+    },
+    "P12": {
+      "id": "P12",
+      "round": 2,
+      "by": "proponent",
+      "kind": "proposal",
+      "text": "Question 1, the only default still worth its cost: literal defaults only (P6, no factory). The default lives on the Context object, which the browser already imports (J11), so nothing is written to a record, nothing is serialised and no order problem exists (answers O2); no allocation per request (answers O3); an immutable literal cannot leak across requests (axis safety). It is Solid 2.0's own advice (primitives only, J5). But I measured the benefit as small: the number of ui contexts whose old default was a bare null, false or true and that are read with a guard is under 10 by a rough count (my regex may miss some), out of 140 guarded reads. On that count a literal default does not pay for 4 fallback sites and a new BRM code, and P7 plus P11 (O7) is the better value.",
+      "evidence": {
+        "type": "measured",
+        "source": "git grep at 846e25f1^ and origin/feat/context-stores -- packages/ui/src, rough regex",
+        "detail": "evidence/p-literal-default-readers.txt"
+      },
+      "axis": "safety",
+      "estimate": {
+        "value": "under 10",
+        "unit": "guarded ui reads a literal default would remove, of 140 (rough)"
+      }
+    },
+    "P13": {
+      "id": "P13",
+      "round": 2,
+      "by": "proponent",
+      "kind": "concession",
+      "text": "Recommendation: adopt O7, that is P7 (keep createContext(key) and $hasContext) with P11 (store only). Keep P12 only if the user wants Solid-style primitive defaults for new contexts, and then as a later, separate node.",
+      "why": "P12's measured benefit is under 10 of 140 reads, so no default design here beats O7 on cost; a later ui change where a part always receives its context from a Root provider removes guards without a core change (O7)",
+      "answers": ["P6", "P12"]
+    },
+    "O8": {
+      "id": "O8",
+      "round": 2,
+      "by": "opponent",
+      "kind": "rebuttal",
+      "axis": "time",
+      "severity": "low",
+      "answers": ["P12"],
+      "text": "P12's list is wrong but its size is right. Its 7 contexts (DatePicker, SelectValue, Text, Group, Input, ToggleGroup, ColorSwatch) are mostly store or object typed, not bare literals. Parsing every createContext at 846e25f1^ gives 9 contexts whose last argument is a literal null or false (Heading, Separator, ToggleButton, Toolbar, ModalOverlay, TableRow, Toast, Layer, Section) with 12 guarded reads on the story branch, about 9% of 140. The order of magnitude and the recommendation (O7) hold; a literal default would add the 4 fallback sites of J4 for 12 reads.",
+      "evidence": {
+        "type": "measured",
+        "source": "python parse of createContext calls in git archive 846e25f1^ packages/ui/src, then git grep 'hasContext(<name>)' on origin/feat/context-stores",
+        "detail": "evidence/o-literal-defaults.txt"
+      },
+      "estimate": {
+        "value": 12,
+        "unit": "guarded ui reads of literal-default contexts, of 140"
+      }
+    }
+  }
+}
