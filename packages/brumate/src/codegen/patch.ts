@@ -56,6 +56,17 @@ function calleeName(node: oxc.CallExpression): string | undefined {
 /** The compile-time functions that declare a memo of their first argument. The others are options. */
 const MEMOS = new Set(['$memo', '$optimistic', '$debounced', '$throttled']);
 
+/**
+ * The code of an arrow function body, given the source offset where the user's expression starts.
+ * An expression that starts with `{` is wrapped in parentheses, or the arrow reads it as a block.
+ * This covers an object literal under `as`, `satisfies`, `!` and a `<T>` cast, and a sequence or
+ * member access that starts with one. The source is checked, not the code, because the code can
+ * start with a marker of the compiler.
+ */
+export function arrowBody(code: string, source: string, start: number): string {
+  return source[start] === '{' ? `(${code})` : code;
+}
+
 export function promiseName(name: string): string {
   return `$$p_${name}`;
 }

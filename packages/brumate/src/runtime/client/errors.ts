@@ -16,10 +16,13 @@ import type { ClientModule, Scope } from './state.ts';
  * `#try` around the scope of the code, through the parents and the owners of
  * scopes. A template's scope goes on from the scope where it was called.
  * Without a `#try`, the page gets a `brumate:error` event on `window`, with
- * the error and the scope, and the error is logged.
+ * the error and the scope, and the error is logged. `onError` hears it first. With `uncaught`,
+ * it hears only an error that no `#try` catches, as on the server.
  */
-export function fail(scope: Scope | undefined, error: unknown): void {
-  options.onError?.(error, { scope: scope?.id });
+export function fail(scope: Scope | undefined, error: unknown, uncaught?: boolean): void {
+  if (!uncaught || !HAS_TRIES) {
+    options.onError?.(error, { scope: scope?.id });
+  }
   if (!HAS_TRIES) {
     unhandled(error, scope);
     return;
@@ -51,6 +54,9 @@ export function fail(scope: Scope | undefined, error: unknown): void {
         await catchInto(owner, body, module!, entry, error);
         return;
       }
+    }
+    if (uncaught) {
+      options.onError?.(error, { scope: scope?.id });
     }
     unhandled(error, scope);
   })();
@@ -86,7 +92,7 @@ export function replaceTry(key: string): void {
  */
 const reported = new WeakMap<object, Scope | undefined>();
 
-/** `fail`, once per error and scope. */
+/** `fail`, once per error and scope, for the rejection of a memo that a wait or an `await` reads. */
 export function reportOnce(scope: Scope | undefined, error: unknown): void {
   if (typeof error === 'object' && error !== null) {
     if (reported.has(error) && reported.get(error) === scope) {
@@ -94,7 +100,7 @@ export function reportOnce(scope: Scope | undefined, error: unknown): void {
     }
     reported.set(error, scope);
   }
-  fail(scope, error);
+  fail(scope, error, true);
 }
 
 /** Reports the error of a `#loading` body that failed on the server, with no `#try` around it. */

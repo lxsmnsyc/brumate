@@ -17,7 +17,7 @@ import { findElement } from './blocks.ts';
 import { childrenReady } from './children.ts';
 import { codeAbove, loadModule } from './code.ts';
 import { fail, reportOnce } from './errors.ts';
-import { call, callNow, setPass } from './references.ts';
+import { call, callNow, handlerReferences, setPass } from './references.ts';
 import { afterInsert, descendants, findRoot, resolveScope } from './scopes.ts';
 import {
   DEV,
@@ -147,14 +147,19 @@ export function send(bound: unknown, value: unknown): void {
         send(bound, element);
       }
     });
-  } else if (bound instanceof FunctionReference) {
-    const args = [...(bound.args ?? []), value];
-    // A loaded setter runs at once, so the writer reads what it kept.
-    if (!callNow(bound.ref, scopes.get(bound.scope), args)) {
-      void call(bound.ref, scopes.get(bound.scope), args);
+  } else if (bound instanceof FunctionReference || typeof bound === 'function') {
+    // The handler of a function prop calls the closure of the render when the export is not
+    // loaded, and that closure writes locals that went stale. The reference waits for the export.
+    const reference = bound instanceof FunctionReference ? bound : handlerReferences.get(bound);
+    if (reference) {
+      const args = [...(reference.args ?? []), value];
+      // A loaded setter runs at once, so the writer reads what it kept.
+      if (!callNow(reference.ref, scopes.get(reference.scope), args)) {
+        void call(reference.ref, scopes.get(reference.scope), args);
+      }
+    } else if (typeof bound === 'function') {
+      void bound(value);
     }
-  } else if (typeof bound === 'function') {
-    void bound(value);
   }
 }
 

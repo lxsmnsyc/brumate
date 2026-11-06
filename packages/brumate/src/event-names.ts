@@ -106,3 +106,44 @@ export function camelEventName(attribute: string): string | undefined {
   const camel = BY_LOWER.get(attribute.toLowerCase());
   return camel === attribute ? undefined : camel;
 }
+
+// Events of the DOM whose name has capitals, or whose lower-case form the browser never fires. A
+// handler name is lower-cased to the event (`onDOMContentLoaded` listens to `domcontentloaded`),
+// so none of these can be written as a handler. The value is what to write instead.
+const NO_HANDLER = new Map<string, string>([
+  [
+    'domcontentloaded',
+    "The page code loads after the HTML, mostly after this event, and a client navigation never fires it. Run code at load with $client(fn, 'load')",
+  ],
+  ['domactivate', 'The event is deprecated. Write onClick'],
+  ['domfocusin', 'The event is deprecated. Write onFocusIn'],
+  ['domfocusout', 'The event is deprecated. Write onFocusOut'],
+  ['dommousescroll', 'The event is not standard. Write onWheel'],
+  ['mozmousepixelscroll', 'The event is not standard. Write onWheel'],
+  ['webkitanimationstart', 'The browser fires the prefixed name only. Write onAnimationStart'],
+  [
+    'webkitanimationiteration',
+    'The browser fires the prefixed name only. Write onAnimationIteration',
+  ],
+  ['webkitanimationend', 'The browser fires the prefixed name only. Write onAnimationEnd'],
+  ['webkittransitionend', 'The browser fires the prefixed name only. Write onTransitionEnd'],
+]);
+for (const mutation of [
+  'DOMAttrModified',
+  'DOMCharacterDataModified',
+  'DOMNodeInserted',
+  'DOMNodeInsertedIntoDocument',
+  'DOMNodeRemoved',
+  'DOMNodeRemovedFromDocument',
+  'DOMSubtreeModified',
+]) {
+  NO_HANDLER.set(
+    mutation.toLowerCase(),
+    'The event is removed. Observe the DOM with a MutationObserver',
+  );
+}
+
+/** What to write instead of a handler for an event that has none, such as `onDOMContentLoaded`. */
+export function noHandlerFix(attribute: string): string | undefined {
+  return NO_HANDLER.get(attribute.slice(2).toLowerCase());
+}

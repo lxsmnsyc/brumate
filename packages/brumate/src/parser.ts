@@ -19,7 +19,7 @@ import type {
   TemplateDecl,
 } from './ast.ts';
 import { createFail } from './error.ts';
-import { camelEventName } from './event-names.ts';
+import { camelEventName, noHandlerFix } from './event-names.ts';
 import type { Fail } from './error.ts';
 import { parseExpression, parseParameters, parsePattern, parseScript } from './oxc.ts';
 import type { oxc } from './oxc.ts';
@@ -421,9 +421,16 @@ class Parser {
     owner: 'element' | 'component' | 'dynamic' | 'listener',
     start: number,
   ): void {
-    const camel = owner === 'component' || owner === 'dynamic' ? undefined : camelEventName(name);
+    if (owner === 'component' || owner === 'dynamic') {
+      return;
+    }
+    const camel = camelEventName(name);
     if (camel) {
       this.fail(`"${name}" is not an event name. Write "${camel}"`, start);
+    }
+    const fix = noHandlerFix(name);
+    if (fix) {
+      this.fail(`"${name}" cannot be a handler. ${fix}`, start);
     }
   }
 

@@ -20,7 +20,7 @@ import type { Plan } from '../plan.ts';
 import { cloneLines } from './template.ts';
 import type { Fill } from './markup.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
-import { Patch, addValueEdits } from './patch.ts';
+import { Patch, addValueEdits, arrowBody } from './patch.ts';
 import { clientModuleScript, componentNames, renderImport } from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
@@ -1065,8 +1065,7 @@ class ClientGenerator {
           if (slot !== -1) {
             // A promise is loaded with the old value kept until it settles. `await` needs an async function.
             const code = site.awaits ? `(async () => (${expression()}))()` : expression();
-            // An object literal needs parentheses, or the arrow reads it as a block.
-            const value = site.node.type === 'ObjectExpression' ? `(${code})` : code;
+            const value = arrowBody(code, this.file.source, site.node.start);
             const timing = node.declaration.timing;
             // A debounced or throttled memo computes after its wait, with the values of then.
             const call = timing

@@ -1,7 +1,7 @@
 ---
 id: memo-object-cast
 title: A memo of an object literal with a type cast compiles
-status: active
+status: done
 priority: must
 type: fix
 outline: false
