@@ -1,7 +1,7 @@
 ---
 id: release-0.6.1
 title: Release brumate 0.6.1
-status: todo
+status: done
 priority: must
 type: release
 outline: false
@@ -76,8 +76,8 @@ Publish brumate 0.6.1 with the patch fixes of the 0.6.1 milestone, then sync `ne
 
 ## Acceptance
 
-- [ ] Checks on `main` pass; the results are in the outcome.
-- [ ] brumate 0.6.1 is on npm, and `next` holds `main`.
+- [x] Checks on `main` pass; the results are in the outcome.
+- [x] brumate 0.6.1 is on npm, and `next` holds `main`.
 
 ## Sizing
 
