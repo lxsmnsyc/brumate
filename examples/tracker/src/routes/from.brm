@@ -1,0 +1,12 @@
+<script>
+  import { $searchParam } from 'brumate/signals';
+
+  let from = $searchParam('from');
+</script>
+
+#head {
+  <title>From</title>
+}
+
+<h1>From</h1>
+<p class="from">{from ? `Opened from ${from}.` : 'Opened directly.'}</p>

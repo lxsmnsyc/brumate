@@ -3360,6 +3360,27 @@ describe('#defer', () => {
     });
   });
 
+  it('renders the body for the request when the browser wrote another value of the page', async () => {
+    await withRoute('deferredWritten', async () => {
+      const server = await import(file('deferredWritten.brm.ts'));
+      const tree = { page: async () => server };
+      // The page was prerendered for no user, and the request for the body is for Ada.
+      vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+        // The body arrives after the browser wrote a value of the page.
+        await waitFor(() => expect(text('.loaded')).toBe('loaded'));
+        return (await handleRoute(tree, new Request(new URL(url, 'http://localhost/'), init)))!;
+      });
+      const prerendered = await renderParts(server.default, { user: 'guest' });
+      show(prerendered.html + prerendered.state);
+      await startLoader();
+      await waitFor(() => expect(text('.loaded')).toBe('loaded'));
+      await waitFor(() => expect(text('.greeting')).toBe('Hello Ada'));
+      // The write of the browser does not run the body again over the state of the page.
+      await new Promise((done) => setTimeout(done, 50));
+      expect(text('.greeting')).toBe('Hello Ada');
+    });
+  });
+
   it('keeps the fallback of a block that the browser renders, and asks for nothing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await withRoute('deferredClient', async (fetch) => {

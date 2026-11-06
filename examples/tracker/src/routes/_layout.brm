@@ -31,6 +31,7 @@
         <a href="/">Issues</a>
         <a href="/issues/new">New issue</a>
         <a href="/about">About</a>
+        <a href="/team">Team</a>
       </nav>
       #if (user) {
         <form class="user" action=signOut>

@@ -246,6 +246,13 @@ export const loadingSlots: Set<string> = new Set();
 export const timers: Map<string, { timer?: ReturnType<typeof setTimeout>; last: number }> =
   new Map();
 
+/**
+ * The slots that the browser wrote since the page loaded, as `module:kind:slot`. The key has no
+ * instance: a write in one instance of a component marks the slot in all of them, so `refresh`
+ * runs more updates than it needs, never fewer.
+ */
+export const written: Set<string> = new Set();
+
 /** Aborts the server function calls of a memo's compute, by memo key. */
 export const memoControllers: Map<string, AbortController> = new Map();
 

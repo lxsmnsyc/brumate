@@ -35,6 +35,7 @@ import {
   timers,
   updating,
   waiters,
+  written,
 } from './state.ts';
 import type { Scope } from './state.ts';
 
@@ -102,6 +103,7 @@ export let writes: number = 0;
 /** Starts the count of writes again. */
 export function resetWrites(): void {
   writes = 0;
+  written.clear();
 }
 
 /**
@@ -175,6 +177,7 @@ export function give(bound: unknown, element: Element): void {
 export function writeSlot(scope: Scope, slot: number, value: unknown): void {
   if (!Object.is(scope.s[slot], value)) {
     writes++;
+    written.add(`${findRoot(scope).m}:${scope.k}:${slot}`);
     scope.s[slot] = value;
     if (DEV) {
       devtools()?.write?.(scope, slot, value);

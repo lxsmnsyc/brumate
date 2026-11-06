@@ -1,0 +1,11 @@
+<script>
+  import { $props, $setContext } from 'brumate/signals';
+  import { DeferredUser } from './deferredUser.ts';
+  import DeferredWrittenBody from './DeferredWrittenBody.brm';
+
+  // The page was prerendered with "guest". A request for the body renders with the default.
+  let { user = 'Ada' } = $props<{ user?: string }>();
+  $setContext(DeferredUser, user);
+</script>
+
+<DeferredWrittenBody />

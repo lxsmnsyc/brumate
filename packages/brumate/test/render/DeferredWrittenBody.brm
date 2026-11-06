@@ -1,0 +1,17 @@
+<script>
+  import { $client, $getContext, $signal } from 'brumate/signals';
+  import { DeferredUser } from './deferredUser.ts';
+
+  const user = $getContext(DeferredUser);
+  let loaded = $signal(false);
+  $client(() => {
+    loaded = true;
+  }, 'idle');
+</script>
+
+<p class="loaded">{loaded ? 'loaded' : 'not loaded'}</p>
+#defer ('idle') {
+  <p class="greeting">Hello {user}</p>
+} #else {
+  <p class="fallback">Loading</p>
+}

@@ -96,6 +96,11 @@ skip('Reads the request with `getEvent`, which a render in the browser does not 
   'deferredParent',
 ]);
 
+skip('Holds a `#defer` block, which only the server renders, so the browser shows its fallback.', [
+  'DeferredWrittenBody',
+  'deferredWritten',
+]);
+
 skip('Needs a prop that holds a record of promises, which the test does not make.', [
   'RevealPart',
   'revealBackwards',
