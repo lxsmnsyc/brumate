@@ -412,6 +412,21 @@ export const stateValues: {
  */
 export const madeStores: Store<unknown>[] = [];
 
+/** The value of a `$gate`, which cannot be a promise or a stream. A throw is held like a memo error. */
+export function gateValue<T>(value: T): T {
+  if (
+    (value !== null &&
+      typeof value === 'object' &&
+      typeof (value as { then?: unknown }).then === 'function') ||
+    isAsyncIterable(value)
+  ) {
+    throw new TypeError(
+      'The value of $gate is a promise or a stream. Use $memo for a value that loads',
+    );
+  }
+  return value;
+}
+
 /** True for a value that `for await` reads, such as the result of an async generator. */
 export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
   return (

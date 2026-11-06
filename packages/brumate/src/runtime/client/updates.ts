@@ -8,6 +8,7 @@ import {
   MemoError,
   FunctionReference,
   SlotReference,
+  gateValue,
   isAsyncIterable,
   isBinding,
   isSlotReference,
@@ -561,8 +562,9 @@ export function gate(
   compute: () => unknown,
 ): void {
   memo(scope, slot, () => {
-    const next = compute();
+    const next = gateValue(compute());
     const prev = scope.s[slot];
+    // A slot that was never written has no history: a memo the server did not compute.
     return !(slot in scope.s) || prev instanceof MemoError || guard(prev, next) ? next : prev;
   });
 }

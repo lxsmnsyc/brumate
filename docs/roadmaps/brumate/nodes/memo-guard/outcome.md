@@ -14,7 +14,8 @@
 - Also edited `docs/decisions.md` and the skill files (`packages/brumate/skills/**`, which a catalog test pins to the error catalog), `test/error-codes.json` and `test/diagnostics.test.ts`. `analyze.ts` and `model.ts` hold the declaration; `model.ts` is not in the brief's shared list.
 - The brief cites the outcome of memo-errors-at-read, which has no folder. Rule 5 follows decisions.md (a throwing memo holds its error, and each read throws), which `hold()` does today.
 - Rule 2 on the server needed no code: server and render output take the value. Since render-memos, a memo that nothing reads has no server value; the first browser compute then passes without the guard (`slot in scope.s`).
-- BRM203 catches an `await` and a server function call (where the analyzer already makes an `async-memo`), not a local `async` function call, as for any memo.
+- BRM203 catches an `await` and a server function call (where the analyzer already makes an `async-memo`). Any other promise or stream (a local `async` function) throws a `TypeError` from `gateValue` (`runtime/shared.ts`), always on, held like a memo error: on the server (`$$b.memo(() => $$b.gateValue(…))`), in a browser render (`renderMemo`) and in an update (`gate()`). Review fix.
+- After a held error the next value passes without the guard; the test for the untracked guard clicks `.min` in `gateReads`.
 
 ## Stubs left
 
@@ -38,11 +39,11 @@
 
 ## Size
 
+- Decided bound (coordinator): an app without `$gate` pays 0 B; with `$gate`, about 0.1 kB minified gzip. Measured after the review fixes: benchmarks/brumate with the `$memo` of Counter.brm replaced by a `$gate` (guard included) goes 28576 -> 28673 B (+97 B), minified gzip -9 of dist/client; the committed state is the first number.
 - `pnpm bench --only brumate --scenario todos`, both refs rebuilt clean: JS before `load` 13.8 kB gzip -> 13.8 kB; client JS emitted 27.7 kB -> 27.7 kB; the sum of gzip -9 of every JS file in the todos dist 91486 B -> 91486 B. The app pays nothing because `gate` is not imported.
-- The unshaken package chunk `dist/client-*.js` (all of the client runtime): 48000 B -> 48157 B gzip (+157 B), runtime/client.js 1473 -> 1474 B. This is above 0.1 kB when counted as the whole chunk, and 0 for any app that does not call `$gate`.
+- Before the review fixes, the unshaken package chunk `dist/client-*.js` (all of the client runtime): 48000 B -> 48157 B gzip (+157 B), runtime/client.js 1473 -> 1474 B. This is above 0.1 kB when counted as the whole chunk, and 0 for any app that does not call `$gate`.
 - Estimated M, actual M.
 
 ## For the maintainer
 
-- The acceptance says the eager core grows by at most 0.1 kB. Counted as the whole unshaken chunk it is +157 B gzip, since `gate` is a new export; no built app that does not use `$gate` changes. Decide whether the measure is the app or the chunk.
 - The guard is untracked by choice (rule 2: it runs only on changes). Tracking it would make a changed `min` rerun the memo.

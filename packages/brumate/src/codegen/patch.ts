@@ -370,14 +370,19 @@ export function addValueEdits(
           // The server computes a memo when it is read. Memos that it reads are read as memos,
           // so a value that is still loading stops it until the load settles.
           readMemos(site!, argument, declaration);
-          patch.replace(
-            node.start,
-            argument.start,
-            site!.awaits ? '$$b.memo(async () => (' : '$$b.memo(() => (',
-          );
+          let open = site!.awaits ? '$$b.memo(async () => (' : '$$b.memo(() => (';
+          if (declaration.gate) {
+            // A promise is an error here, held until a read.
+            open = '$$b.memo(() => $$b.gateValue(';
+          }
+          patch.replace(node.start, argument.start, open);
           // The render context, so server functions that the memo calls read the event of the page,
           // and the name of the memo, for the trace of the devtools.
           patch.replace(argument.end, node.end, `), $$ctx, ${JSON.stringify(declaration.name)})`);
+        } else if (mode === 'render' && declaration?.gate) {
+          // A promise is an error here, held until a read.
+          patch.replace(node.start, argument.start, '$$b.renderMemo(() => $$b.gateValue(');
+          patch.replace(argument.end, node.end, '))');
         } else if (mode === 'render' && declaration && (site!.awaits || !neverPromise(argument))) {
           // The render runs the memo through a helper, which holds a throw as a rejected promise
           // and marks a promise, so `setSlots` starts the load.

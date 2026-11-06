@@ -8,3 +8,5 @@
 - Rule 4: BRM203 when the value awaits or calls a server function, found where the analyzer already turns a memo into an `async-memo`. `await $gate(…)` was already an error ("await works with $memo"). A local `async` function call is not detected, as for any memo that is not a server call.
 - BRM202 for any form other than a value and a function.
 - Probe: a guard that calls a local function and reads a signal in a component rendered by the browser works (test `gateReads`).
+- Review fixes: `gateValue` throws for a promise or stream (server, render, update); BRM203 text; test for the untracked guard; held-error sentence in docs; comment on `slot in scope.s`; BRM202/BRM203 moved next to BRM204 in the catalog.
+- Full `pnpm -r --no-bail test` after the fixes: brumate 2981 pass; packages/ui had load-dependent failures (token-field-sync fails on origin/next too, tooltip failed there in one run, the others passed alone), so they are not from this change.

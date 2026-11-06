@@ -127,8 +127,8 @@ A memo can also hold a promise, such as the result of a server function. [Async 
 ```
 
 - The first value always passes, so the page renders with the value as it is, and the browser guards the changes after it resumes.
-- The guard is not tracked. A throw in it is held like the error of a memo, and the nearest `#try` catches it.
-- The value cannot be a promise or a server function call. Use `$memo` for those.
+- The guard is not tracked. A throw in it is held like the error of a memo, and the nearest `#try` catches it. The next value after a held error passes without the guard.
+- The value cannot be a promise. The compiler rejects `await` and server function calls, and any other promise or stream throws when the value is computed. Use `$memo` for those.
 
 ## `$produce`
 

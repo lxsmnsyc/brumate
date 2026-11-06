@@ -108,7 +108,8 @@ const items = $gate(list.filter(done), (prev, next) => !sameItems(prev, next));
 - The first value always passes and skips the guard. The server has no history, so it renders the value. After the page resumes, the browser guards from the value the server rendered.
 - The guard runs in the browser, on changes, with the value the memo holds and the new one. It is not tracked: a signal that only the guard reads does not run the memo again.
 - A guard that throws makes the memo hold the error, as a memo whose value throws does. Each read throws it, and the error goes to the nearest `#try`.
-- The value cannot be a promise, an `await` or a call of a server function. Each is a compile error (BRM203). Use `$memo` for loading.
+- The next value after a held error passes without the guard.
+- The value cannot be a promise. `await` and a call of a server function are a compile error (BRM203), and any other promise or stream throws when the value is computed, on the server and in the browser. Use `$memo` for loading.
 
 ## `$isPending`
 
