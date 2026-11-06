@@ -57,8 +57,8 @@ export function bump$($$s, by: number) {
 
 # Render module
 import * as $$b from 'brumate/client';
-export const STEP = 2;
-const label = 'Count';
+import { STEP, label } from "./shared.brm?brumate-client&part=shared";
+export { STEP };
 const $$t0 = $$b.template("<button b-x=\"0\" class=\"one\" b-on=\"click=Shared_1xpln25#h2\">One</button><button b-x=\"1\" class=\"two\" b-on=\"click=Shared_1xpln25#h3\">Two</button><p b-x=\"3\"><!--x2-->: </p>", 4);
 
 export default function Shared($$props: Record<string, never>): string | DocumentFragment {

@@ -21,7 +21,7 @@ import { cloneLines } from './template.ts';
 import type { Fill } from './markup.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits } from './patch.ts';
-import { clientModuleScript, componentNames, renderImport } from './render.ts';
+import { clientModuleScript, componentNames, renderImport, rendersModule } from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
 import { instanceScope, mayBePromise, scopePath, slotIndex, templateArgs } from './scopes.ts';
@@ -717,6 +717,10 @@ class ClientGenerator {
   }
 
   private usesModuleScript(): boolean {
+    // The render module imports what the markup reads from the shared part.
+    if (rendersModule(this.plan)) {
+      return true;
+    }
     for (const declaration of this.clientReads()) {
       if (declaration.kind === 'module') {
         return true;

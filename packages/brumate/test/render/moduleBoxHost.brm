@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ModuleBox from './ModuleBox.brm';
+
+  let show = $signal(false);
+</script>
+
+<ModuleBox />
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <ModuleBox />
+}

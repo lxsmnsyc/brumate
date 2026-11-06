@@ -71,7 +71,7 @@ export function u6($$s) {
   $$b.content($$s, 0, $$b.get($$s.p, 0));
 }
 
-# Render module
+# Client part: shared
 import * as $$b from 'brumate/client';
 let open: (value: string) => void = () => {};
 export const ready = new Promise<string>((resolve) => {
@@ -80,6 +80,13 @@ export const ready = new Promise<string>((resolve) => {
 export function release(value: string): void {
     open(value);
   }
+export { open };
+
+
+# Render module
+import * as $$b from 'brumate/client';
+import { ready, release } from "./loading.brm?brumate-client&part=shared";
+export { ready, release };
 const $$t0 = $$b.template("<p b-x=\"0\" class=\"greeting\"></p><button b-x=\"1\" class=\"inner\" b-on=\"click=Loading_1sx8r1u#h5\"></button>", 2);
 const $$t1 = $$b.template("<p class=\"fallback\">Loading</p>", 0);
 const $$t2 = $$b.template("<button b-x=\"0\" class=\"outer\" b-on=\"click=Loading_1sx8r1u#h2\"></button><!--x1-->", 2);

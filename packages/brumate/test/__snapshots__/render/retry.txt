@@ -94,16 +94,8 @@ export { failing };
 
 # Render module
 import * as $$b from 'brumate/client';
-let failing = true;
-export function heal(): void {
-    failing = false;
-  }
-export function check(): string {
-    if (failing) {
-      throw new Error('Not ready');
-    }
-    return 'Ready';
-  }
+import { check, heal } from "./retry.brm?brumate-client&part=shared";
+export { heal, check };
 
 export default function Retry($$props: Record<string, never>): string | DocumentFragment {
   let $$html = '';

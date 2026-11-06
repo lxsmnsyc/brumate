@@ -1,0 +1,12 @@
+<script module>
+  const box = { n: 0 };
+</script>
+
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let t = $signal(0);
+</script>
+
+<p class="box">{box.n}:{t}</p>
+<button class="inc" onClick=(() => (t = ++box.n))>Inc</button>

@@ -24,4 +24,23 @@ describe('imports of a shared client part', () => {
     expect(shared).toContain('helper(');
     expect(shared).toMatch(/import \{ helper \} from ["']\.\/helper\.ts["']/);
   });
+
+  it('imports the module script into the render module from the shared part', () => {
+    const { render, parts } = compile(
+      [
+        '<script module>',
+        '  export const box = { n: 0 };',
+        '  const hidden = { m: 1 };',
+        '</script>',
+        '<p>{box.n}:{hidden.m}</p>',
+      ].join('\n'),
+      { filename: 'T.brm' },
+    );
+    expect(render).toMatch(
+      /import \{ box, hidden \} from ["']\.\/T\.brm\?brumate-client&part=shared["']/,
+    );
+    expect(render).not.toContain('{ n: 0 }');
+    expect(parts.shared).toContain('{ n: 0 }');
+    expect(parts.shared).toMatch(/export \{ hidden \}/);
+  });
 });

@@ -1,0 +1,16 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ModuleBox from './ModuleBox.brm';
+
+  let first = $signal(false);
+  let second = $signal(false);
+</script>
+
+<button class="first" onClick=(() => (first = true))>First</button>
+<button class="second" onClick=(() => (second = true))>Second</button>
+#if (first) {
+  <ModuleBox />
+}
+#if (second) {
+  <ModuleBox />
+}

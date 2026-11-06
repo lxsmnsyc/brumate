@@ -1198,6 +1198,26 @@ describe('resume', () => {
     });
   });
 
+  it('shares the module script between a resumed component and one that the browser renders', async () => {
+    await resume('moduleBoxHost', {});
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(text('.box')).toBe('0:1'));
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(texts('.box')).toEqual(['0:1', '1:0']));
+    click(document.querySelectorAll('.inc')[1]!);
+    await waitFor(() => expect(texts('.box')).toEqual(['0:1', '1:2']));
+  });
+
+  it('shares the module script between components that only the browser renders', async () => {
+    await resume('moduleBoxLateHost', {});
+    click(document.querySelector('.first')!);
+    await waitFor(() => expect(texts('.box')).toEqual(['0:0']));
+    click(document.querySelector('.inc')!);
+    await waitFor(() => expect(texts('.box')).toEqual(['0:1']));
+    click(document.querySelector('.second')!);
+    await waitFor(() => expect(texts('.box')).toEqual(['0:1', '1:0']));
+  });
+
   it('loads the code of the components on the page when it starts', async () => {
     await resume('disclosure', {});
     const id = 'Disclosure_104dejl';
