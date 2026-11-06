@@ -50,6 +50,8 @@ The maintainer asked for `$store` to follow silmaril's interface (https://github
 
 Every other source that store-any-source allows stays: a key of a `$getContext` value, an import, a prop, a `<script module>` value, a call, `store(0)`. The server and resume rules stay as `docs/decisions.md` records them (BRM198, the foreign-store refusal in the page state, the one repair at resume).
 
+Prior art checked on 2026-11-06: no store binder takes a context (silmaril `$$store`, Svelte 5 `$s` after `getContext`, Solid `from` after `useContext`, React `useSyncExternalStore`). Svelte 5 gives `undefined` for a nullish store (`store_get`, `subscribe_to_store`); the maintainer kept silmaril's strict shape instead. `let` keeps the write at the assignment, not silmaril's write-back at registration and after each change: the maintainer approved this on 2026-11-06, so `docs/decisions.md` should say so in the `$store` entry.
+
 ## Work
 
 - Compiler: a source that is a context (`$store(Ctx)`, guarded or not) is a compile error, BRM199, whose message names the fix `$store($getContext(Ctx))`. A source written with `?.`, or a literal `undefined` or `null`, is a compile error too (BRM197 or BRM199, pick the one whose message fits and say why in the outcome). `$store($getContext(C))` and its guarded form compile to the key form (the context node, no path), so the browser links it from the provider and nothing runs again at resume.
