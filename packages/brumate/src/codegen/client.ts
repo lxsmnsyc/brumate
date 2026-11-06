@@ -449,6 +449,10 @@ class ClientGenerator {
         }
       } else {
         result.push(site);
+        // The guard of a `$gate` runs in the same part as its value, so the part imports its names.
+        if (site.kind === 'memo' && declaration?.gate) {
+          result.push(declaration.gate);
+        }
       }
     }
     if (name === 'shared') {

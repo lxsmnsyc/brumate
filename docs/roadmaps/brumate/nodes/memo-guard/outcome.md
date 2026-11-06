@@ -27,6 +27,8 @@
 - `pnpm test` stops at the first failing package; use `pnpm -r --no-bail test`. The catalog test (`skill.test.ts`) needs each new message in the catalog and `UPDATE_SKILL=1 npx vitest run test/skill.test.ts test/check-command.test.ts` to regenerate errors.md.
 - `resume.test.ts > stops updates that keep writing what they read` failed once in a full `pnpm test` run (guard-free test). It passed alone three times, in its whole file, and in a second full run.
 
+- A guard that called an imported function threw `ReferenceError` in the browser update: the update part imported only the names that the value reads, since the guard is its own site. `partSites` in `codegen/client.ts` now adds the guard site next to its memo. Found by the `gateMemoThrow` test (a `$gate` reading a `$memo` that throws), added after the review.
+
 ## Proposed learnings
 
 - A compile-time function with extra arguments keeps the first as the memo site and puts the rest in a `function` site with no graph node | the memo paths of the server, render and graph stay unchanged | packages/brumate/src | no
