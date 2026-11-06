@@ -94,6 +94,26 @@ describe('syntax errors', () => {
       '"onPointerdown" is not an event name. Write "onPointerDown" (Test.brm:1:9)',
     ],
     [
+      '<document onDOMContentLoaded=go />',
+      '"onDOMContentLoaded" cannot be a handler. The page code loads after the HTML, mostly after this event, and a client navigation never fires it. Run code at load with $client(fn, \'load\') (Test.brm:1:11)',
+    ],
+    [
+      '<window {onDOMContentLoaded} />',
+      '"onDOMContentLoaded" cannot be a handler. The page code loads after the HTML, mostly after this event, and a client navigation never fires it. Run code at load with $client(fn, \'load\') (Test.brm:1:9)',
+    ],
+    [
+      '<div onDomContentLoaded=go></div>',
+      '"onDomContentLoaded" cannot be a handler. The page code loads after the HTML, mostly after this event, and a client navigation never fires it. Run code at load with $client(fn, \'load\') (Test.brm:1:6)',
+    ],
+    [
+      '<div onWebkitAnimationEnd=go></div>',
+      '"onWebkitAnimationEnd" cannot be a handler. The browser fires the prefixed name only. Write onAnimationEnd (Test.brm:1:6)',
+    ],
+    [
+      '<window onDOMNodeInserted=go />',
+      '"onDOMNodeInserted" cannot be a handler. The event is removed. Observe the DOM with a MutationObserver (Test.brm:1:9)',
+    ],
+    [
       '<button onClick="go()">x</button>',
       'An event handler must be an expression, not a string (Test.brm:1:9)',
     ],
