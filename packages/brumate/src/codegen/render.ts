@@ -116,6 +116,56 @@ export function renderImport(
   return `import ${parts.join(', ')} from ${JSON.stringify(target)};`;
 }
 
+/** An export of the module script: the name in the script, and the name that others import. */
+export interface ModuleExport {
+  local: string;
+  name: string;
+}
+
+/** The exports of the module script, from its declarations and its export lists. */
+export function moduleExports(file: SFCFile, plan: Plan): ModuleExport[] {
+  const result: ModuleExport[] = [];
+  for (const statement of file.moduleScript?.program.body ?? []) {
+    if (statement.type !== 'ExportNamedDeclaration' || statement.source) {
+      continue;
+    }
+    if (statement.declaration) {
+      for (const declaration of plan.graph.model.module.declarations.values()) {
+        if (
+          declaration.kind === 'module' &&
+          declaration.range.start >= statement.start &&
+          declaration.range.end <= statement.end
+        ) {
+          result.push({ local: declaration.name, name: declaration.name });
+        }
+      }
+      continue;
+    }
+    for (const specifier of statement.specifiers) {
+      const local = file.source.slice(specifier.local.start, specifier.local.end);
+      const name = file.source.slice(specifier.exported.start, specifier.exported.end);
+      if (plan.graph.model.module.declarations.get(local)?.kind === 'module') {
+        result.push({ local, name });
+      }
+    }
+  }
+  return result;
+}
+
+/** True if the render module imports names of the module script from the shared part. */
+export function rendersModule(plan: Plan): boolean {
+  for (const site of plan.graph.model.sites) {
+    if (!SKIPPED_SITES.has(site.kind)) {
+      for (const read of site.reads) {
+        if (read.declaration.kind === 'module') {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 /** Returns the module script for client code. Server functions become `rpc` stubs. */
 export function clientModuleScript(file: SFCFile, plan: Plan): string[] {
   const result: string[] = [];
@@ -165,7 +215,7 @@ export function generateRender(
 ): string {
   const model = plan.graph.model;
   const patch = new Patch(file.source);
-  addValueEdits(patch, file, model.sites, 'client', undefined, undefined, model.component.id);
+  addValueEdits(patch, file, model.sites, 'render', undefined, undefined, model.component.id);
 
   // The names that rendering reads, so server-only imports stay out.
   const names = componentNames(file.children);
@@ -179,11 +229,16 @@ export function generateRender(
       }
     }
   }
-  let usesModule = false;
+  // The module script runs once, in the shared part of the client entry, so a component that the
+  // browser renders shares its state with the ones that resumed.
+  const moduleNames: string[] = [];
+  const serverNames: string[] = [];
   for (const name of names) {
-    if (model.module.declarations.get(name)?.kind === 'module') {
-      usesModule = true;
-      break;
+    const found = model.module.declarations.get(name);
+    if (found?.kind === 'module') {
+      moduleNames.push(name);
+    } else if (found?.kind === 'server-function') {
+      serverNames.push(name);
     }
   }
 
@@ -205,16 +260,7 @@ export function generateRender(
     const isModule = program === file.moduleScript?.program;
     for (const statement of program.body) {
       if (statement.type === 'ImportDeclaration') {
-        let code: string | undefined;
-        if (isModule && usesModule) {
-          const own = new Set<string>();
-          for (const specifier of statement.specifiers) {
-            own.add(specifier.local.name);
-          }
-          code = renderImport(file, statement, own);
-        } else {
-          code = renderImport(file, statement, names);
-        }
+        const code = renderImport(file, statement, names);
         if (code) {
           header.push(code);
         }
@@ -223,8 +269,27 @@ export function generateRender(
       }
     }
   }
-  if (usesModule) {
-    moduleBody.push(...clientModuleScript(file, plan));
+  // Other modules import the exports from the render module, as they did from its copy.
+  const exported = moduleNames.length > 0 ? moduleExports(file, plan) : [];
+  const imports = new Set(moduleNames);
+  for (const item of exported) {
+    imports.add(item.name);
+  }
+  if (imports.size > 0) {
+    const base = file.filename.split(/[\\/]/).pop()!;
+    header.push(
+      `import { ${[...imports].join(', ')} } from ${JSON.stringify(`./${base}?brumate-client&part=shared`)};`,
+    );
+  }
+  if (exported.length > 0) {
+    moduleBody.push(`export { ${exported.map((item) => item.name).join(', ')} };`);
+  }
+  for (const name of serverNames) {
+    if (model.module.declarations.get(name)?.scope === model.module) {
+      moduleBody.push(
+        `const ${name} = (...$$a) => $$b.rpc(${JSON.stringify(serverFunctionId(plan, name))}, $$a);`,
+      );
+    }
   }
   for (const declaration of model.declarations) {
     if (declaration.kind === 'server-function' && declaration.scope !== model.module) {

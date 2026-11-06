@@ -20,12 +20,18 @@ import type { Plan } from '../plan.ts';
 import { cloneLines } from './template.ts';
 import type { Fill } from './markup.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
-import { Patch, addValueEdits } from './patch.ts';
+import { Patch, addValueEdits, arrowBody } from './patch.ts';
 import { NAME_BRIDGE_IMPORT, moduleBridgeNames } from '../bridges.ts';
-import { clientModuleScript, componentNames, renderImport } from './render.ts';
+import {
+  clientModuleScript,
+  componentNames,
+  moduleExports,
+  renderImport,
+  rendersModule,
+} from './render.ts';
 import type { SharedContext } from '../shared-module.ts';
 import { Rewriter } from './rewrite.ts';
-import { instanceScope, mayBePromise, scopePath, slotIndex } from './scopes.ts';
+import { instanceScope, mayBePromise, scopePath, slotIndex, templateArgs } from './scopes.ts';
 import { copy, unmarked } from '../sourcemap.ts';
 
 export interface ClientOutput {
@@ -195,6 +201,7 @@ class ClientGenerator {
     this.emitFunctions();
     this.emitRoots();
     this.part = 'update';
+    this.emitTemplateExports();
     this.emitUpdates();
     this.emitWindowStarts();
     this.emitRenders();
@@ -592,7 +599,7 @@ class ClientGenerator {
     }
     const lines = [
       "import * as $$b from 'brumate/client';",
-      ...this.importsFor(names, name === 'update' || this.templateScopes(name)),
+      ...this.importsFor(names, this.partScopes(name), name === 'update'),
     ];
     if (shared.length > 0) {
       lines.push(
@@ -619,7 +626,11 @@ class ClientGenerator {
     }
     const scopes = [...this.renderedScopes()];
     for (const name of names) {
-      scopes.push(...this.templateScopes(name));
+      for (const scope of this.partScopes(name)) {
+        if (!scopes.includes(scope)) {
+          scopes.push(scope);
+        }
+      }
     }
     const stores = names.includes('update') ? this.storeSources() : [];
     const lines = [
@@ -661,17 +672,11 @@ class ClientGenerator {
       if (naming.length > 0) {
         lines.push(NAME_BRIDGE_IMPORT, ...naming);
       }
+      // The shared part exports each name that is not exported under its own name already.
       const exported = new Set<string>();
-      for (const statement of this.file.moduleScript!.program.body) {
-        if (statement.type === 'ExportNamedDeclaration' && statement.declaration) {
-          for (const declaration of this.model.module.declarations.values()) {
-            if (
-              declaration.range.start >= statement.start &&
-              declaration.range.end <= statement.end
-            ) {
-              exported.add(declaration.name);
-            }
-          }
+      for (const item of moduleExports(this.file, this.plan)) {
+        if (item.local === item.name) {
+          exported.add(item.name);
         }
       }
       const rest: string[] = [];
@@ -750,7 +755,8 @@ class ClientGenerator {
   }
 
   private usesModuleScript(): boolean {
-    if (this.bridgeNames().length > 0) {
+    // The render module imports what the markup reads from the shared part, and names its bridges.
+    if (rendersModule(this.plan) || this.bridgeNames().length > 0) {
       return true;
     }
     for (const declaration of this.clientReads()) {
@@ -775,6 +781,30 @@ class ClientGenerator {
         const template = callee.kind === 'template' ? this.findTemplateScope(callee) : undefined;
         if (template) {
           result.push(...this.inside(template));
+        }
+      }
+    }
+    return result;
+  }
+
+  /**
+   * The scopes whose components and imports a part needs: the scopes that the update part
+   * renders, the templates of a template part, and the templates that the code of the part
+   * copies into itself, such as a call `row(item)` in an update.
+   */
+  private partScopes(part: string): Scope[] {
+    const result = part === 'update' ? this.renderedScopes() : this.templateScopes(part);
+    for (const site of this.partSites(part)) {
+      const used: Declaration[] = [...site.calls];
+      for (const read of site.reads) {
+        used.push(read.declaration);
+      }
+      for (const callee of used) {
+        const template = callee.kind === 'template' ? this.findTemplateScope(callee) : undefined;
+        for (const item of template ? this.inside(template) : []) {
+          if (!result.includes(item)) {
+            result.push(item);
+          }
         }
       }
     }
@@ -1077,8 +1107,7 @@ class ClientGenerator {
           if (slot !== -1) {
             // A promise is loaded with the old value kept until it settles. `await` needs an async function.
             const code = site.awaits ? `(async () => (${expression()}))()` : expression();
-            // An object literal needs parentheses, or the arrow reads it as a block.
-            const value = site.node.type === 'ObjectExpression' ? `(${code})` : code;
+            const value = arrowBody(code, this.file.source, site.node.start);
             const timing = node.declaration.timing;
             // A debounced or throttled memo computes after its wait, with the values of then.
             const call = timing
@@ -1982,28 +2011,33 @@ class ClientGenerator {
       }
     }
     const scope = callee && this.findTemplateScope(callee);
-    const template = scope?.template;
-    if (!scope || !template) {
+    if (scope) {
+      this.emitArgsExports(symbol, scope);
+    }
+  }
+
+  /** The `a` and `k` exports of a template, which `symbol` names. */
+  private emitArgsExports(symbol: string, scope: Scope): void {
+    const args = templateArgs(this.plan, this.file.source, scope);
+    if (!args) {
       return;
     }
-    const first = template.params[0];
-    const last = template.params.at(-1);
-    const params = first && last ? copy(this.file.source, first.start, last.end) : '';
-    const pairs: string[] = [];
-    for (const declaration of scope.declarations.values()) {
-      if (declaration.kind !== 'template-param') {
-        continue;
-      }
-      const slot = slotIndex(this.plan, declaration);
-      // An argument without a slot is not in the scope, so the template renders again instead.
-      if (slot === -1) {
-        return;
-      }
-      pairs.push(`[${slot}, ${declaration.name}]`);
-    }
-    this.emit(`export const ${symbol}a = (${params}) => [${pairs.join(', ')}];`);
+    this.emit(`export const ${symbol}a = (${args.exported}) => [${args.pairs.join(', ')}];`);
     // The ID of the template's scope, so an insert updates in place only a scope of this template.
     this.emit(`export const ${symbol}k = ${scope.id};`);
+  }
+
+  /**
+   * The exports of the templates of the file that a call in markup can update in place: the
+   * template is `T` and its scope ID, as `templateCall` of the template's code names it.
+   */
+  private emitTemplateExports(): void {
+    this.part = 'update';
+    for (const scope of this.model.scopes) {
+      if (scope.template) {
+        this.emitArgsExports(`T${scope.id}`, scope);
+      }
+    }
   }
 
   private withTemplates(site: Site, code: string): string {

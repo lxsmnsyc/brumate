@@ -55,7 +55,6 @@ import {
   modules,
   refs,
   loadingValues,
-  renderedLoads,
   scopes,
   setHiding,
   timers,
@@ -93,6 +92,11 @@ function pushRecords(...added: StateRecord[]): number {
   return 0;
 }
 
+/** True for the root of a `#defer` body, which the server names `d` and a number. */
+function isDeferRoot(root: string): boolean {
+  return root[0] === 'd';
+}
+
 /**
  * Reads a state record. The first record holds the page state, and later
  * records settle the promises in it.
@@ -124,7 +128,9 @@ function readRecord([script, code]: StateRecord): void {
     const unpacked = unpackState(decoded as PackedState);
     const added = addScopes(hooks.record ? hooks.record(script, unpacked) : unpacked, root);
     if (writes > 0) {
-      refresh(added);
+      // The body of a `#defer` block has a root of its own (`d` and a number), and the server
+      // rendered it for the request.
+      refresh(added, isDeferRoot(root));
     }
   }
 }
@@ -450,7 +456,6 @@ export function leavePage(): void {
     memoController.abort();
   }
   memoControllers.clear();
-  renderedLoads.clear();
   for (const { timer } of timers.values()) {
     clearTimeout(timer);
   }

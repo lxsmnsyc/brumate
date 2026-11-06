@@ -17,7 +17,7 @@ import { findElement } from './blocks.ts';
 import { childrenReady } from './children.ts';
 import { codeAbove, loadModule } from './code.ts';
 import { fail, reportOnce } from './errors.ts';
-import { call, callNow, setPass } from './references.ts';
+import { call, callNow, handlerReferences, setPass, track, whenSettled } from './references.ts';
 import { afterInsert, descendants, findRoot, resolveScope } from './scopes.ts';
 import {
   DEV,
@@ -30,11 +30,11 @@ import {
   modules,
   exempt,
   loadingValues,
-  renderedLoads,
   scopes,
   timers,
   updating,
   waiters,
+  written,
 } from './state.ts';
 import type { Scope } from './state.ts';
 
@@ -102,6 +102,7 @@ export let writes: number = 0;
 /** Starts the count of writes again. */
 export function resetWrites(): void {
   writes = 0;
+  written.clear();
 }
 
 /**
@@ -146,14 +147,19 @@ export function send(bound: unknown, value: unknown): void {
         send(bound, element);
       }
     });
-  } else if (bound instanceof FunctionReference) {
-    const args = [...(bound.args ?? []), value];
-    // A loaded setter runs at once, so the writer reads what it kept.
-    if (!callNow(bound.ref, scopes.get(bound.scope), args)) {
-      void call(bound.ref, scopes.get(bound.scope), args);
+  } else if (bound instanceof FunctionReference || typeof bound === 'function') {
+    // The handler of a function prop calls the closure of the render when the export is not
+    // loaded, and that closure writes locals that went stale. The reference waits for the export.
+    const reference = bound instanceof FunctionReference ? bound : handlerReferences.get(bound);
+    if (reference) {
+      const args = [...(reference.args ?? []), value];
+      // A loaded setter runs at once, so the writer reads what it kept.
+      if (!callNow(reference.ref, scopes.get(reference.scope), args)) {
+        track(call(reference.ref, scopes.get(reference.scope), args));
+      }
+    } else if (typeof bound === 'function') {
+      track(bound(value));
     }
-  } else if (typeof bound === 'function') {
-    void bound(value);
   }
 }
 
@@ -175,6 +181,7 @@ export function give(bound: unknown, element: Element): void {
 export function writeSlot(scope: Scope, slot: number, value: unknown): void {
   if (!Object.is(scope.s[slot], value)) {
     writes++;
+    written.add(`${findRoot(scope).m}:${scope.k}:${slot}`);
     scope.s[slot] = value;
     if (DEV) {
       devtools()?.write?.(scope, slot, value);
@@ -324,7 +331,7 @@ export function unreadMemo(scope: Scope | ScopeId, value: unknown): void {
  * Writes the result of an async memo when it arrives. Until then the slot
  * keeps its value, and `pending` is true. Only the latest load is written.
  */
-export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>): void {
+export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>): number {
   const key = `${scope.id}:${slot}`;
   const load = ++loadCount;
   loads.set(key, load);
@@ -370,6 +377,7 @@ export function asyncMemo(scope: Scope, slot: number, promise: Promise<unknown>)
       }
     })();
   }, failed);
+  return load;
 }
 
 /** Thrown when a memo reads a value that is still loading. */
@@ -497,15 +505,6 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   const key = `${scope.id}:${slot}`;
   // A guess stays while its source has not changed, such as when a value the server streamed arrives.
   if (guesses?.same(key)) {
-    return;
-  }
-  // The render computed the memo: a promise loads, and a value stays. A key with a value here
-  // comes from `wait`, or from a promise of the render that settled before this first compute.
-  const rendered = scope.s[slot];
-  if (renderedLoads.delete(key)) {
-    if (isThenable(rendered)) {
-      asyncMemo(scope, slot, Promise.resolve(rendered));
-    }
     return;
   }
   let value: unknown;
@@ -780,6 +779,9 @@ export function flush(): void {
 }
 
 (globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.flush')] = flush;
+if (HAS_BINDINGS) {
+  (globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.settled')] = whenSettled;
+}
 
 /**
  * Queues the updates that read a slot, on the scope and on its descendants of

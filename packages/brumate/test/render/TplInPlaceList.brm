@@ -1,0 +1,26 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let tick = $signal(0);
+  let items = $signal(['a', 'b', 'c']);
+  let tagged = $signal(false);
+</script>
+
+#template row(name: string, n: number) {
+  <li class="row"><input class="field" />{name}<i class="n">{n}</i></li>
+}
+
+#template tag(name: string) {
+  <u class="tag">{name}</u>
+}
+
+<button class="tick" onClick=(() => tick++)>Tick</button>
+<button class="reverse" onClick=(() => (items = items.toReversed()))>Reverse</button>
+<button class="swap" onClick=(() => (tagged = !tagged))>Swap</button>
+<ul>
+  #for (item of items by item) {
+    {row(item, tick)}
+  }
+</ul>
+<p class="one">{tagged ? tag('t') : row('x', tick)}</p>
+<p class="pair">{[row('p', tick), row('q', tick)]}</p>

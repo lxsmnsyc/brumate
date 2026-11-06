@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TplImportItem from './TplImportItem.brm';
+
+  let picked = $signal(0);
+  const items = ['a', 'b', 'c', 'd', 'e', 'f'].map((name, index) => ({ name, index }));
+</script>
+
+#template row(name: string, on: boolean) {
+  <li class="row">{name}{on ? ' *' : ''}<TplImportItem name=(name) /></li>
+}
+
+<button class="pick" onClick=(() => picked++)>Pick</button>
+<ul>
+  #for (item of items by item.name) {
+    {row(item.name, item.index === picked % 3)}
+  }
+</ul>

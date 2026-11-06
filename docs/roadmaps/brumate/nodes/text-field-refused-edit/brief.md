@@ -1,7 +1,7 @@
 ---
 id: text-field-refused-edit
 title: TextField and SearchField show the kept text after a refused edit
-status: todo
+status: done
 priority: must
 type: fix
 outline: true

@@ -23,18 +23,11 @@ import { RenderedChildren, childrenReady, templateReference } from './children.t
 import { codeReady, isTemplate, loadedFunction } from './code.ts';
 import { fail } from './errors.ts';
 import { track } from './guesses.ts';
-import { call, resolve } from './references.ts';
+import { call, handlerReferences, resolve } from './references.ts';
 import { resolveScope } from './scopes.ts';
 import { DEV, build, devtools, hiding, rpcPrefix, scopes } from './state.ts';
 import type { Scope } from './state.ts';
 import { isThenable, memoSignal, pass, set } from './updates.ts';
-
-/**
- * The handlers that the core makes from references, with their references,
- * so a spread in markup that the browser renders passes them on in `b-on`,
- * as a spread on the server does.
- */
-const handlerReferences = new WeakMap<object, FunctionReference>();
 
 /** The modifiers that the wrappers of `brumate/events` put on a handler. */
 const MODIFIERS = Symbol.for('brumate.modifiers');

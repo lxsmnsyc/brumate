@@ -51,6 +51,45 @@ describe('memos of objects', () => {
   });
 });
 
+describe('memos of an object with a cast', () => {
+  it.each([
+    ['as', '{ a: n, b: 2 } as Record<string, unknown>'],
+    ['satisfies', '{ a: n, b: 2 } satisfies Record<string, unknown>'],
+    ['a plain object', '{ a: n, b: 2 }'],
+    ['a non-null assertion', '{ a: n, b: 2 }!'],
+    ['a parenthesized cast', '({ a: n, b: 2 } as Record<string, unknown>)'],
+    ['a sequence', '({ a: n, b: 2 }, { a: n, b: 3 } as Record<string, unknown>)'],
+    ['a conditional', 'n > 1 ? ({ a: n, b: 2 } as Record<string, unknown>) : { a: 0, b: 1 }'],
+  ])('compiles %s to valid parts', (_, value) => {
+    const { server, parts } = compile(
+      `<script>\n  import { $memo, $signal } from 'brumate/signals';\n  let n = $signal(1);\n  const p = $memo(${value});\n</script>\n<button onClick=(() => n++)>{p.a}</button>`,
+      { filename: 'Cast.brm' },
+    );
+    const client = Object.values(parts).join('\n');
+    expect(client).toMatch(/memo\(\$\$s, \d+, \(\) => /);
+    expect(parseSync('Cast.client.ts', client).errors).toEqual([]);
+    expect(parseSync('Cast.brm.ts', server).errors).toEqual([]);
+  });
+
+  it('wraps an object under a cast in a debounced memo and in an early load', () => {
+    const { parts } = compile(
+      `<script>\n  import { $debounced, $memo, $signal } from 'brumate/signals';\n  let n = $signal(1);\n  const d = $debounced({ a: n } as Record<string, unknown>, 100);\n  const q = $memo({ a: n } satisfies Record<string, unknown>);\n</script>\n<button onClick=(() => n++)>{d.a}{q.a}</button>`,
+      { filename: 'Timed.brm' },
+    );
+    const client = Object.values(parts).join('\n');
+    expect(client).toContain('() => ({');
+    expect(parseSync('Timed.client.ts', client).errors).toEqual([]);
+  });
+
+  it('wraps an awaited object in the browser load', () => {
+    const { parts } = compile(
+      `<script>\n  import { $memo, $signal } from 'brumate/signals';\n  let n = $signal(1);\n  const p = $memo({ a: await load(n) } as Record<string, unknown>);\n</script>\n<button onClick=(() => n++)>{p.a}</button>`,
+      { filename: 'Awaited.brm' },
+    );
+    expect(parseSync('Awaited.client.ts', Object.values(parts).join('\n')).errors).toEqual([]);
+  });
+});
+
 describe('the name of the component function', () => {
   it('does not hide a name that the script imports', () => {
     const { server, render } = compile(
@@ -623,7 +662,7 @@ describe('await', () => {
     expect(modules.h5).toContain(
       'console.log(($$b.get($$s, 1)).name, $$b.update($$s, 0, 1, false))',
     );
-    expect(render).toContain('$$b.keepText($$s1, 0, $$e[0], ((user).name));');
+    expect(render).toContain('$$b.keepText($$s1, 0, $$e[0], (($$b.readMemo(user)).name));');
     for (const code of [...Object.values(modules), render]) {
       expect(parseSync('code.ts', code).errors).toEqual([]);
     }
@@ -702,13 +741,23 @@ describe('await', () => {
     expect(parseSync('render.ts', render).errors).toEqual([]);
   });
 
+  it('runs the memos of a render through renderMemo, except the ones that never give a promise', () => {
+    const { render } = compile(
+      `${header}  const user = $memo(load(id));\n  const twice = $memo(id * 2);\n</script>\n<p>{user.name} {twice}</p>`,
+      { filename: 'T.brm' },
+    );
+    expect(render).toContain('const user = $$b.renderMemo(() => (load(id)));');
+    expect(render).toContain('const twice = (id * 2);');
+    expect(render).toContain('$$b.readMemo(user)');
+  });
+
   it('renders a component whose memos await promises, and whose handlers await', () => {
     const { render } = compile(
       `${header}  const user = $memo(await load(id));\n</script>\n<p>{user.name}</p>\n<button onClick=(async () => { await load(id); id++; })>+</button>`,
       { filename: 'T.brm' },
     );
     expect(render).not.toContain('throw new Error');
-    expect(render).toContain('const user = (async () => (await load(id)))();');
+    expect(render).toContain('const user = $$b.renderMemo(async () => (await load(id)));');
   });
 
   it.each([

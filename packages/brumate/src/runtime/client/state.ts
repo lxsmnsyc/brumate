@@ -256,6 +256,13 @@ export const loadingSlots: Set<string> = new Set();
 export const timers: Map<string, { timer?: ReturnType<typeof setTimeout>; last: number }> =
   new Map();
 
+/**
+ * The slots that the browser wrote since the page loaded, as `module:kind:slot`. The key has no
+ * instance: a write in one instance of a component marks the slot in all of them, so `refresh`
+ * runs more updates than it needs, never fewer.
+ */
+export const written: Set<string> = new Set();
+
 /** Aborts the server function calls of a memo's compute, by memo key. */
 export const memoControllers: Map<string, AbortController> = new Map();
 
@@ -294,14 +301,6 @@ export function setHiding(value: Hiding | undefined): Hiding | undefined {
 
 /** Children that render where they are inserted, and the scopes that they find contexts from. */
 export const insertedChildren: { from: Scope | undefined; at: Scope }[] = [];
-
-/**
- * Slots that the render of a component in the browser filled with a promise,
- * by `scope:slot`. The first compute of their memo takes that promise
- * instead of calling again, so a server function is called once per row.
- * A slot that `wait` filled with the settled value keeps it.
- */
-export const renderedLoads: Set<string> = new Set();
 
 /**
  * The promises that the page knows are values still loading: a memo that the server streams, and

@@ -197,5 +197,6 @@
   "BRM197": "Read a context that may have no provider with \"const name = $getContext(Context, undefined)\", and a store in it with \"const state = name ? $store(name.key) : undefined\", with const and no other test",
   "BRM198": "The source of $store gives its store at once, so it cannot await or call a server function",
   "BRM199": "$store takes a store. Read the store of a context with \"$store($getContext(Context))\", or give a store as the fallback, \"$store($getContext(Context, store(value)))\"",
-  "BRM200": "The value of bridge() must be a module-level export of a script file or of <script module>, as \"export const name = bridge({ … })\""
+  "BRM200": "The value of bridge() must be a module-level export of a script file or of <script module>, as \"export const name = bridge({ … })\"",
+  "BRM201": "\"{name}\" cannot be a handler. {fix}"
 }

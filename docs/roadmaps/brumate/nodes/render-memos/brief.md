@@ -1,7 +1,7 @@
 ---
 id: render-memos
 title: The browser render runs each memo once, with no refresh after the render
-status: todo
+status: done
 priority: must
 type: refactor
 outline: false

@@ -1,0 +1,24 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let picked = $signal(0);
+  let tick = $signal(0);
+  const items = ['a', 'b', 'c'].map((name, index) => ({ name, index }));
+</script>
+
+#template row(name: string, on: boolean, n: number) {
+  <li class="row"><input class="field" />{name}{on ? ' *' : ''}<i class="n">{n}</i></li>
+}
+
+#template tag(name: string) {
+  <u class="tag">{name}</u>
+}
+
+<button class="pick" onClick=(() => picked++)>Pick</button>
+<button class="tick" onClick=(() => tick++)>Tick</button>
+<ul>
+  #for (item of items by item.name) {
+    {row(item.name, item.index === picked % 3, tick)}
+  }
+</ul>
+<p class="one">{picked % 2 === 0 ? row('x', false, tick) : tag('y')}</p>

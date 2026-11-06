@@ -1,0 +1,17 @@
+<script module>
+  const a = { n: 1 };
+  let c = 0;
+  export { a as b };
+  export function bump(): number {
+    return ++c;
+  }
+</script>
+
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let t = $signal(0);
+</script>
+
+<p class="list">{a.n}:{t}</p>
+<button class="bump" onClick=(() => (t = bump()))>Bump</button>

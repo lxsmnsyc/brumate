@@ -6,9 +6,9 @@ export default defineConfig({
     brumate({
       // Pages change inside a view transition, where the browser supports them.
       navigate: { transition: true },
-      // /about has no data, so the build writes it to dist/client/about/index.html.
-      // The other pages render on each request.
-      prerender: { paths: ['/about'], crawl: false },
+      // /about, /from, /team and the pages of /titles have no data, so the build writes them to
+      // dist/client/<path>/index.html. The other pages render on each request.
+      prerender: { paths: ['/about', '/from', '/team', '/titles', '/titles/other'], crawl: false },
     }),
   ],
   build: {

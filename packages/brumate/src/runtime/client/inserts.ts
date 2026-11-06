@@ -2,17 +2,17 @@
 // `#portal` bodies.
 
 import { HAS_BINDINGS, HAS_CHILDREN, HAS_DYNAMIC, HAS_TEMPLATES } from '../features.ts';
-import { attributeText, insertValue, onValue, textValue } from '../html.ts';
+import { attributeText, onValue, textValue } from '../html.ts';
 import { isBinding, isSlotReference } from '../shared.ts';
 import type { ScopeId } from '../shared.ts';
 import { findComment, findElement, nameComment, rangeEnd } from './blocks.ts';
 import type { Render } from './branches.ts';
-import { Children, RenderedChildren, TemplateCall, linkCalls } from './children.ts';
+import { Children, RenderedChildren, TemplateCall, insert, linkCalls } from './children.ts';
 import { loadedFunction } from './code.ts';
 import { spreadEntries } from './handlers.ts';
 import { insertHTML, refreshing } from './insert.ts';
 import { prop, spreadProps } from './props.ts';
-import { afterInsert, disposeKinds, inPlace, nextId } from './scopes.ts';
+import { afterInsert, destroy, destroyNodes, disposeKinds, inPlace, nextId } from './scopes.ts';
 import { hiding, options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
 import { give, set } from './updates.ts';
@@ -134,11 +134,21 @@ function write(
   if (key) {
     writtenInserts.add(key);
   }
+  // The scope of the template that this write replaces. No node of its markup may name it, as
+  // for a template that only renders a component, so the nodes do not find it.
+  const replaced: Scope | undefined =
+    HAS_TEMPLATES && key ? templateInserts.get(key)?.scope : undefined;
   if (HAS_TEMPLATES && key && value instanceof TemplateCall) {
     const known =
       templateInserts.get(key) ??
       (firstWrite
-        ? renderedTemplate(value, at, loadedFunction(`${value.ref}k`) as unknown as number)
+        ? renderedTemplate(
+            value,
+            at,
+            loadedFunction(`${value.ref}k`) as unknown as number,
+            first,
+            end,
+          )
         : undefined);
     // The template's `a` export gives the slots of its arguments, also of destructured ones.
     const getSlots = loadedFunction(`${value.ref}a`) as
@@ -168,6 +178,14 @@ function write(
     }
     return;
   }
+  // The scopes of the nodes that go are destroyed, so their cleanups run and they do not pile up.
+  // Only children and templates make scopes here, so other builds leave this out.
+  if (HAS_CHILDREN || HAS_TEMPLATES) {
+    if (replaced) {
+      destroy(replaced);
+    }
+    destroyNodes(at, first, end);
+  }
   while (first && first !== end) {
     const next = first.nextSibling;
     first.remove();
@@ -181,7 +199,7 @@ function write(
     end ?? { parent },
     (HAS_CHILDREN || HAS_TEMPLATES) && value instanceof Children
       ? value.render(at)
-      : insertValue(value),
+      : insert(value, undefined, at),
   );
   if (HAS_TEMPLATES && key) {
     const scope = value instanceof TemplateCall ? scopes.get(made) : undefined;
@@ -207,14 +225,23 @@ function renderedTemplate(
   call: TemplateCall,
   at: Scope | undefined,
   k: number | undefined,
+  first: ChildNode | null,
+  end: Node | null,
 ): { ref: string; scope: Scope } | undefined {
   if (k === undefined) {
     return undefined;
   }
   let found: Scope | undefined;
   for (const scope of scopes.values()) {
-    // The scope is of this template, not of another template of the same component.
-    if (call.owner && scope.p === call.owner && scope.t === at && scope.k === k) {
+    // The scope is of this template, not of another template of the same component. It is of the
+    // insert: the children that it renders, or a template that it calls, whose markup is in the
+    // range of the insert, as a scope of another call at the same scope is not.
+    if (
+      call.owner &&
+      scope.p === call.owner &&
+      scope.k === k &&
+      (scope.t === at || (scope.l === at && inRange(scope, first, end)))
+    ) {
       // Two templates of the same component at one insert cannot be told apart.
       if (found) {
         return undefined;
@@ -223,6 +250,31 @@ function renderedTemplate(
     }
   }
   return found && { ref: call.ref, scope: found };
+}
+
+/** True if an anchor of the scope, a comment, an element or a kept node, is in the range. */
+function inRange(scope: Scope, first: ChildNode | null, end: Node | null): boolean {
+  const comment = `t${scope.id}:`;
+  const element = `${scope.id}:`;
+  for (let node = first; node && node !== end; node = node.nextSibling) {
+    // The node and what it holds, elements and comments.
+    const walker = document.createTreeWalker(node, 129);
+    for (let item: Node | null = node; item; item = walker.nextNode()) {
+      const text =
+        item.nodeType === 8
+          ? (item as Comment).data.startsWith(comment)
+          : item.nodeType === 1 && (item as Element).getAttribute('b-b')?.startsWith(element);
+      if (text) {
+        return true;
+      }
+    }
+    for (const kept of scope.n ?? []) {
+      if (kept && (kept === node || node.contains(kept))) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 /** The `value` and `checked` that updates last wrote to each field. */

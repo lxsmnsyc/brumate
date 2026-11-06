@@ -1,7 +1,7 @@
 ---
 id: release-0.6.1
 title: Release brumate 0.6.1
-status: todo
+status: done
 priority: must
 type: release
 outline: false
@@ -42,6 +42,21 @@ depends_on:
   - on: template-scope-leak
     kind: hard
     why: a same-file template in a browser-rendered component leaks its scopes on 0.6.0
+  - on: prerender-search-params
+    kind: hard
+    why: a prerendered page drops its query string on 0.6.0 (#466)
+  - on: head-title-navigation
+    kind: hard
+    why: a #head title stops following its memo after client navigation on 0.6.0 (#467)
+  - on: template-component-import
+    kind: hard
+    why: a same-file template that renders a component throws on update on 0.6.0
+  - on: template-update-in-place
+    kind: hard
+    why: an input in a same-file template loses focus at each update on 0.6.0
+  - on: prerender-defer-context
+    kind: hard
+    why: a prerendered page with browser code shows its #defer body for no user on 0.6.0
   - on: memo-object-cast
     kind: hard
     why: a live memo of an object literal with a type cast fails to parse on 0.6.0
@@ -61,8 +76,8 @@ Publish brumate 0.6.1 with the patch fixes of the 0.6.1 milestone, then sync `ne
 
 ## Acceptance
 
-- [ ] Checks on `main` pass; the results are in the outcome.
-- [ ] brumate 0.6.1 is on npm, and `next` holds `main`.
+- [x] Checks on `main` pass; the results are in the outcome.
+- [x] brumate 0.6.1 is on npm, and `next` holds `main`.
 
 ## Sizing
 

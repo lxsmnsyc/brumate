@@ -3,7 +3,9 @@ import type { Declaration, Reference, Scope, Site } from '../model.ts';
 import { children } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { blockBodies } from '../plan.ts';
+import { isPrimitive } from './primitive.ts';
 import type { Plan } from '../plan.ts';
+import { copy } from '../sourcemap.ts';
 
 /** Returns the nearest scope, from `scope` outwards, that gets an ID at render time. */
 export function instanceScope(plan: Plan, scope: Scope): Scope {
@@ -32,6 +34,74 @@ export function scopePath(plan: Plan, base: string, from: Scope, target: Scope):
     current = instanceScope(plan, current.parent);
   }
   return expression;
+}
+
+/**
+ * The parameters of a template of the file, and the `[slot, value]` pairs of its arguments, so a
+ * call that comes again writes its new arguments into the scope that it rendered. `params` are
+ * the parameters as written, `exported` have no default values (the call passes the values with
+ * them), and `names` are the arguments when each parameter is a name and one has a default.
+ * Nothing if the template has no scope of its own, or a destructured parameter has a default
+ * value: it then renders again. An argument that no slot holds is never read in the browser.
+ */
+export function templateArgs(
+  plan: Plan,
+  source: string,
+  scope: Scope,
+): { params: string; exported: string; names?: string[]; pairs: string[] } | undefined {
+  const template = scope.template;
+  if (!template || !plan.scopes.get(scope)?.needsId) {
+    return undefined;
+  }
+  const first = template.params[0];
+  const last = template.params.at(-1);
+  const params = first && last ? copy(source, first.start, last.end) : '';
+  const exported: string[] = [];
+  const names: string[] = [];
+  let simple = true;
+  let defaults = false;
+  for (const param of template.params) {
+    const target = param.type === 'AssignmentPattern' ? param.left : param;
+    defaults ||= target !== param;
+    if (target.type === 'Identifier') {
+      names.push(target.name);
+    } else {
+      simple = false;
+    }
+    // A default value of a destructured parameter can read what the export does not have.
+    if (target.type !== 'Identifier' && hasDefault(target)) {
+      return undefined;
+    }
+    exported.push(copy(source, target.start, target.end));
+  }
+  const pairs: string[] = [];
+  for (const declaration of scope.declarations.values()) {
+    if (declaration.kind !== 'template-param') {
+      continue;
+    }
+    const slot = slotIndex(plan, declaration);
+    if (slot !== -1) {
+      pairs.push(`[${slot}, ${declaration.name}]`);
+    }
+  }
+  return {
+    params,
+    exported: exported.join(', '),
+    names: simple && defaults ? names : undefined,
+    pairs,
+  };
+}
+
+function hasDefault(node: oxc.Node): boolean {
+  if (node.type === 'AssignmentPattern') {
+    return true;
+  }
+  for (const [, child] of children(node)) {
+    if (hasDefault(child)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** Returns the slot index of a declaration, or -1. */
@@ -404,37 +474,6 @@ const UNSAFE_NODES = new Set([
   'ArrowFunctionExpression',
   'ClassExpression',
 ]);
-
-/**
- * True if an expression always gives a primitive, so it is never a promise
- * or an async iterable. A name is a primitive when `plain` says that it reads
- * a declaration that holds one.
- */
-export function isPrimitive(
-  node: oxc.Node,
-  plain: (name: oxc.Node) => boolean = () => false,
-): boolean {
-  switch (node.type) {
-    case 'Identifier':
-      return plain(node);
-    case 'Literal':
-      return !('regex' in node && node.regex);
-    case 'TemplateLiteral':
-    case 'BinaryExpression':
-    case 'UnaryExpression':
-      return true;
-    case 'LogicalExpression':
-      return isPrimitive(node.left, plain) && isPrimitive(node.right, plain);
-    case 'ConditionalExpression':
-      return isPrimitive(node.consequent, plain) && isPrimitive(node.alternate, plain);
-    case 'TSAsExpression':
-    case 'TSSatisfiesExpression':
-    case 'TSNonNullExpression':
-      return isPrimitive(node.expression, plain);
-    default:
-      return false;
-  }
-}
 
 /** True if an expression calls no code and, unless `members`, reads no property. */
 function isSafe(node: oxc.Node, members: boolean): boolean {

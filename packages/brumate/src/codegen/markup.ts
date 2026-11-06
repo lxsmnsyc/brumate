@@ -25,6 +25,7 @@ import { findLoadStarts, hasAwait } from './starts.ts';
 import { cloneLines, foreignContext } from './template.ts';
 import type { Plan } from '../plan.ts';
 import { cleanText, promiseName } from './patch.ts';
+import { isPrimitive, neverPromise } from './primitive.ts';
 import type { Patch } from './patch.ts';
 import {
   awaitedMemos,
@@ -34,10 +35,10 @@ import {
   plainValues,
   instanceScope,
   isMemo,
-  isPrimitive,
   readsPlain,
   scopePath,
   slotIndex,
+  templateArgs,
 } from './scopes.ts';
 import { needsScope } from '../css.ts';
 import { copy, unmarked } from '../sourcemap.ts';
@@ -83,9 +84,6 @@ export interface Settled {
  */
 export type Part = { static: string } | { code: string; settled?: Settled; promise?: string };
 
-/** Expressions whose value is never a promise, as the memo of a list or a function. */
-const NEVER_PROMISE = new Set(['ArrayExpression', 'ArrowFunctionExpression', 'FunctionExpression']);
-
 /**
  * True for a memo whose value is never a promise in the browser, such as `count * 2`, an array or
  * a function. A memo with `await` inside is an async function, so its value is a promise whatever
@@ -96,11 +94,7 @@ const MARKUP_SITES = new Set(['insert', 'attribute', 'tag', 'spread', 'style', '
 
 function isNeverPromise(declaration: Declaration): boolean {
   const node = declaration.site?.node;
-  return (
-    declaration.kind === 'memo' &&
-    node !== undefined &&
-    (isPrimitive(node) || NEVER_PROMISE.has(node.type))
-  );
+  return declaration.kind === 'memo' && node !== undefined && neverPromise(node);
 }
 
 /**
@@ -1850,13 +1844,27 @@ export class Emitter {
     const last = template.params.at(-1);
     const params = first && last ? copy(this.file.source, first.start, last.end) : '';
     const type = this.options.mode === 'server' ? ': Promise<$$b.Raw>' : '';
-    this.line(`${this.async}function ${template.name}(${params})${type} {`);
+    const scope = this.plan.bodyScopes.get(template.body)!;
+    // In the browser, a call of a template that updates in place makes a call that the insert
+    // renders, or updates, with the arguments. The template's code is `name$`.
+    const call = this.options.mode === 'client' && templateArgs(this.plan, this.file.source, scope);
+    const name = call ? `${template.name}$` : template.name;
+    if (call) {
+      // Each argument is passed with the default value that the parameter gives it.
+      const own = call.names ? call.params : '...$$a';
+      const given = call.names ? `[${call.names.join(', ')}]` : '$$a';
+      const owner = this.scopeVar(instanceScope(this.plan, scope.parent!));
+      const ref = JSON.stringify(`${this.plan.id}#T${scope.id}`);
+      this.line(
+        `function ${template.name}(${own}) { return $$b.templateCall(${ref}, ${owner}, ${name}, ${given}); }`,
+      );
+    }
+    this.line(`${this.async}function ${name}(${params})${type} {`);
     this.line(`let $$html = '';`);
     // A template can render anywhere, so its elements get the style variables.
     this.atTopLevel(() => this.emitBody(template.body));
     this.flush();
     // The output names the template's scope, which the insert links to where it is called.
-    const scope = this.plan.bodyScopes.get(template.body)!;
     const at = this.plan.scopes.get(scope)!.needsId ? `, ${this.scopeVar(scope)}` : '';
     this.line(`return $$b.raw($$html${at});`);
     this.close();

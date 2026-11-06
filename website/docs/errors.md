@@ -259,6 +259,20 @@ An event of more than one word is written in camel case. The lower-case form is 
 <input onKeyDown=(handle) onFocusOut=(handle) />
 ```
 
+## BRM201
+
+`"{name}" cannot be a handler. {fix}`
+
+The event has capitals in its name, or the browser fires another name for it, and a handler name is lower-cased to the event. `onDOMContentLoaded` would listen to `domcontentloaded`, which the browser never fires, and page code loads after the HTML, mostly after `DOMContentLoaded`. Use the event that the message names, or `$client(fn, 'load')` to run code at load.
+
+```brm
+<script>
+  $client(() => {
+    start();
+  }, 'load');
+</script>
+```
+
 ## BRM186
 
 `"{name}" in the #loading header is not a memo that markup in the body reads. Name a $memo of the component or of a block script around the block`

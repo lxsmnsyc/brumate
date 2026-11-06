@@ -163,6 +163,12 @@ const SYNTAX: ErrorEntry[] = [
     '<input onKeyDown=(handle) onFocusOut=(handle) />',
   ),
   entry(
+    'BRM201',
+    '"{name}" cannot be a handler. {fix}',
+    "The event has capitals in its name, or the browser fires another name for it, and a handler name is lower-cased to the event. `onDOMContentLoaded` would listen to `domcontentloaded`, which the browser never fires, and page code loads after the HTML, mostly after `DOMContentLoaded`. Use the event that the message names, or `$client(fn, 'load')` to run code at load.",
+    "<script>\n  $client(() => {\n    start();\n  }, 'load');\n</script>",
+  ),
+  entry(
     'BRM186',
     '"{name}" in the #loading header is not a memo that markup in the body reads. Name a $memo of the component or of a block script around the block',
     'The header of `#loading (…)` names something other than a memo, or a memo that no markup in the body reads, so its loads would not show the fallback for that body.',

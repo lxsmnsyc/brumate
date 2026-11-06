@@ -17,6 +17,8 @@ interface Bound {
 
 /** The signals of the page that follow a parameter, by scope and slot. */
 const bound = new Map<string, Bound>();
+/** The slots whose effect ran once. The first run is the load of the page. */
+const loaded = new WeakMap<Scope, Set<number>>();
 /** The changes of the URL that wait for the end of the writes of one pass. */
 const waiting = new Map<string, { text: string | null; options?: SearchParamOptions<unknown> }>();
 
@@ -42,11 +44,23 @@ export function paramEffect(
       bound.set(key, { scope, slot, name, options });
       (globalThis as Record<symbol, unknown>)[HOOK] = follow;
     }
-    // The URL changes only when the signal differs from it, never when the page loads: a
-    // parameter such as `?page=1` or `?page=abc` stays as the user wrote it.
+    // The URL never changes when the page loads: a parameter such as `?page=1` or `?page=abc`
+    // stays as the user wrote it. A page rendered without the query string (a prerendered one)
+    // holds another value, so the signal takes the value of the URL.
+    let started = loaded.get(scope);
+    if (!started) {
+      started = new Set();
+      loaded.set(scope, started);
+    }
+    const first = !started.has(slot);
+    started.add(slot);
     const text = writeParam(get(scope, slot), options);
     const current = readParam(new URLSearchParams(location.search), name, options);
     if (writeParam(current, options) !== text) {
+      if (first && !options?.server) {
+        set(scope, slot, current);
+        return () => void bound.delete(key);
+      }
       if (waiting.size === 0) {
         queueMicrotask(commit);
       }

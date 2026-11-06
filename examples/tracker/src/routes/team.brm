@@ -1,0 +1,22 @@
+<script>
+  import { $client, $getContext, $signal } from 'brumate/signals';
+  import { CurrentUser } from '../user.ts';
+
+  const user = $getContext(CurrentUser);
+  let loaded = $signal(false);
+  $client(() => {
+    loaded = true;
+  }, 'load');
+</script>
+
+#head {
+  <title>Team</title>
+}
+
+<h1>Team</h1>
+<p class="loaded">{loaded ? 'loaded' : 'not loaded'}</p>
+#defer ('load') {
+  <p class="who">{user ? `You are signed in as ${user}.` : 'You are not signed in.'}</p>
+} #else {
+  <p class="who">Checking who you are…</p>
+}

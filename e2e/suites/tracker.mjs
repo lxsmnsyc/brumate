@@ -1,5 +1,5 @@
 // The production build of examples/tracker, under the same strict content
-// security policy as the todos suite. /about is a prerendered file.
+// security policy as the todos suite. /about and /titles are prerendered files.
 import path from 'node:path';
 import { assert, repo, serveBuild, watch, watchPolicy } from '../lib.mjs';
 
@@ -213,6 +213,51 @@ export async function run({ browser, url, runner }) {
     await page.locator('h1', { hasText: 'About' }).waitFor({ timeout: TIMEOUT });
     await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
   });
+
+  await step(
+    '/team: browser code on a prerendered page keeps its #defer line for the user',
+    async () => {
+      await page.click('nav a[href="/team"]');
+      await page.waitForFunction(() => document.title === 'Team', null, { timeout: TIMEOUT });
+      await page.locator('.loaded', { hasText: 'loaded' }).waitFor({ timeout: TIMEOUT });
+      await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
+      await page.goto(`${url}/team`);
+      await page.locator('.loaded', { hasText: 'loaded' }).waitFor({ timeout: TIMEOUT });
+      await page.locator('.who', { hasText: 'You are signed in as' }).waitFor({ timeout: TIMEOUT });
+    },
+  );
+
+  await step('/from?from=docs: the prerendered page keeps its query string', async () => {
+    await page.goto(`${url}/from?from=docs`);
+    await page.locator('.from', { hasText: 'Opened from docs.' }).waitFor({ timeout: TIMEOUT });
+    const search = await page.evaluate(() => location.search);
+    assert(search === '?from=docs', `the URL became ${search}`);
+  });
+
+  await step(
+    '/titles: a title in #head follows its memo after links between prerendered pages',
+    async () => {
+      await page.goto(`${url}/titles`);
+      await page.waitForLoadState('networkidle');
+      await page.click('button.soups');
+      await page.waitForFunction(() => document.title === 'Soups · Titles', null, {
+        timeout: TIMEOUT,
+      });
+      await page.evaluate(() => (window.__e2eTitles = true));
+      await page.click('a.other');
+      await page.waitForURL('**/titles/other', { timeout: TIMEOUT });
+      await page.locator('a.home').waitFor({ timeout: TIMEOUT });
+      await page.click('a.home');
+      await page.waitForURL('**/titles', { timeout: TIMEOUT });
+      await page.locator('button.soups').waitFor({ timeout: TIMEOUT });
+      assert(await page.evaluate(() => window.__e2eTitles === true), 'a link loaded a new page');
+      await page.waitForFunction(() => document.title === 'Titles', null, { timeout: TIMEOUT });
+      await page.click('button.soups');
+      await page.waitForFunction(() => document.title === 'Soups · Titles', null, {
+        timeout: TIMEOUT,
+      });
+    },
+  );
 
   await step('320 px: no page scrolls sideways', async () => {
     await page.setViewportSize({ width: 320, height: 640 });

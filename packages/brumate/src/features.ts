@@ -87,8 +87,10 @@ export function getFeatures(result: CompileResult): Features {
   return {
     // The server sends a reference to the export that renders them, or the browser makes them.
     children: result.plan.childrenRenders.size > 0 || /\$\$b\.children\(/.test(client),
-    // A template that the browser can call has an export of its own, `t` and a number.
-    templates: /\bexport (?:const|function) t\d+\b/.test(client),
+    // A template that the browser can call has an export of its own, `t` and a number. A
+    // template of the file that renders in the browser with a scope makes `raw` with that scope,
+    // which an insert must destroy when it replaces the markup.
+    templates: /\bexport (?:const|function) t\d+\b|\$\$b\.raw\(\$\$html, /.test(client),
     titles: /\bb-t\b/.test(all),
     bindings: /\$\$b\.binding\(/.test(all),
     lateMarkup: /\$\$ctx\.(?:boundary|defer|deferBlock)\(|\bgather\(/.test(result.server),

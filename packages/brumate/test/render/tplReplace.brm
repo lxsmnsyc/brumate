@@ -1,0 +1,17 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import TplImportItem from './TplImportItem.brm';
+
+  let swapped = $signal(false);
+</script>
+
+#template one(name: string) {
+  <p class="one"><TplImportItem name=(name) /></p>
+}
+
+#template two(name: string) {
+  <p class="two">{name}</p>
+}
+
+<button class="swap" onClick=(() => (swapped = !swapped))>Swap</button>
+<div class="slot">{swapped ? two('x') : one('x')}</div>

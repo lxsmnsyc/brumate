@@ -177,6 +177,31 @@ function callsRefreshed(declaration: Declaration): boolean {
   return false;
 }
 
+/**
+ * True for a `$searchParam` that the browser can change without a request: the URL is the source
+ * when the page loads, and the history writes it. One with `server: true` navigates instead. A spread in the options may hold `server`, and
+ * such a signal stays live, which costs a slot and breaks nothing.
+ */
+function followsUrl(declaration: Declaration): boolean {
+  const options = declaration.searchParam?.arguments[1];
+  if (!declaration.searchParam) {
+    return false;
+  }
+  if (options?.type !== 'ObjectExpression') {
+    return true;
+  }
+  for (const property of options.properties) {
+    if (
+      property.type === 'Property' &&
+      property.key.type === 'Identifier' &&
+      property.key.name === 'server'
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /** True if the declaration is referenced from one of the scopes. */
 function hasRefIn(declaration: Declaration, scopes: Set<Scope>): boolean {
   for (const ref of declaration.refs) {
@@ -643,7 +668,9 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         // Handlers write an optimistic value.
         (declaration.optimistic !== undefined && anyReached(declaration.writes, reached)) ||
         (declaration.kind === 'signal' &&
-          (anyReached(declaration.writes, reached) || hasRefIn(declaration, created))) ||
+          (anyReached(declaration.writes, reached) ||
+            hasRefIn(declaration, created) ||
+            followsUrl(declaration))) ||
         (declaration.kind === 'error' &&
           declaration.block?.kind === 'try' &&
           tryChanges(declaration.block)) ||

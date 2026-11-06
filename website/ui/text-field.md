@@ -120,8 +120,8 @@ An `Input` or a `TextArea` takes the attributes of its element, and those that y
 
 - `value` alone, or nothing, makes the field keep its own text. `value="Ada"` is where that text starts, and a new value from you replaces it.
 - `value=$bind(signal)` writes your signal. Change the signal and the input follows. The button above writes "Grace" to the third field.
-- `value=$bind(signal, (next) => ...)` asks you first. Press Lock, type in the last field, and the signal keeps the old text. The input still shows what was typed, until the form resets. This is a known gap: the field does not read the kept value back after a write. The core node `bind-read-your-writes` closes it.
-- `onChange` gets the text that the user typed in every shape, also when your request refuses it.
+- `value=$bind(signal, (next) => ...)` asks you first. Press Lock, type in the last field, and the signal keeps the old text. The input shows the kept text again. A request that decides later, such as after a check on the server, leaves the typed text in place until it settles, and puts the kept text back only if it refused. The caret stays where it still fits.
+- `onChange` gets the text that the field keeps in every shape. A request that refuses gets no call, as for any part.
 - A reset of the form gives back the text that the field started with, as a write: with `$bind(signal, request)`, your request can refuse it. Press Reset after a locked edit, and the input shows the kept text again.
 - The server renders the text it starts with. See [State](./state.md).
 

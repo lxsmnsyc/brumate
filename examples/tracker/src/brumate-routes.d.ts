@@ -6,8 +6,12 @@ declare module 'brumate/routes' {
     '/': {};
     '/about': {};
     '/api/issues.json': {};
+    '/from': {};
     '/issues/[id]': { id: string };
     '/issues/new': {};
     '/sign-in': {};
+    '/team': {};
+    '/titles': {};
+    '/titles/other': {};
   }
 }
