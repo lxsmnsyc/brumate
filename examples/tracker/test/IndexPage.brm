@@ -1,0 +1,9 @@
+<script>
+  import Layout from '../src/routes/_layout.brm';
+  import Index from '../src/routes/index.brm';
+</script>
+
+<!-- The list page inside its layout, which provides CurrentUser, as the router renders it. -->
+<Layout>
+  <Index />
+</Layout>

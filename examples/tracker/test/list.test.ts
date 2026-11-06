@@ -1,9 +1,10 @@
 import { beforeEach, expect, it } from 'vitest';
 import { answerCalls, mount } from 'virtual:brumate/testing';
-import Index from '../src/routes/index.brm?brumate-server';
+import IndexPage from './IndexPage.brm?brumate-server';
 import { resetStore } from '../src/store.ts';
 
-// The list page renders on the server and resumes in happy-dom. `answerCalls`
+// The list page renders inside its layout, which provides CurrentUser, on the
+// server and resumes in happy-dom. `answerCalls`
 // answers the calls of the page with the server code of src/issues.ts, which
 // changes the same store as the test. The function that it returns restores
 // `fetch`, and Vitest calls it after each test.
@@ -20,7 +21,7 @@ const titles = (page: { container: HTMLElement }) =>
   [...page.container.querySelectorAll('.issues li a')].map((link) => link.textContent);
 
 it('filters the list as the user types and picks a status', async () => {
-  const page = await mount(Index, {}, { request: request() });
+  const page = await mount(IndexPage, {}, { request: request() });
   expect(titles(page)).toEqual([
     'Document the keyboard shortcuts',
     'Add a dark theme',
@@ -38,7 +39,7 @@ it('filters the list as the user types and picks a status', async () => {
 });
 
 it('stars an issue, then loads the list again', async () => {
-  const page = await mount(Index, {}, { request: request() });
+  const page = await mount(IndexPage, {}, { request: request() });
   const star = () => page.get('button[aria-label="Star #2"]');
   expect(star().getAttribute('aria-pressed')).toBe('false');
   calls = [];
