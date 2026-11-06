@@ -97,6 +97,31 @@ export function onFormReset(
 
 // The latest edit of each input, so only the check of the newest one touches it.
 const edits = new WeakMap<Element, number>();
+// The inputs where an input method composes, and the check that waits for the composition to end.
+const composing = new WeakSet<Element>();
+const waiting = new WeakMap<Element, () => void>();
+const watched = new WeakSet<Element>();
+
+/**
+ * Follows the composition of an input method on an input. A text that is put back during a
+ * composition ends it, so `showKept` waits for `compositionend` and checks again then. The page
+ * calls it when it loads, and `showKept` calls it too, which does nothing the second time.
+ */
+export function watchComposition(input: Element | null | undefined): void {
+  if (!input || watched.has(input)) {
+    return;
+  }
+  watched.add(input);
+  input.addEventListener('compositionstart', () => {
+    composing.add(input);
+  });
+  input.addEventListener('compositionend', () => {
+    composing.delete(input);
+    const check = waiting.get(input);
+    waiting.delete(input);
+    check?.();
+  });
+}
 
 /** Maps a caret of the typed text to the kept text: the same place from the start or from the end. */
 function fitCaret(typed: string, kept: string, caret: number): number {
@@ -137,12 +162,20 @@ export function showKept(
     return;
   }
   const field = input;
+  watchComposition(field);
   const edit = (edits.get(field) ?? 0) + 1;
   edits.set(field, edit);
   function restore() {
     const text = kept();
     // The input shows something else when a later edit or a value from the caller changed it.
     if (edits.get(field) !== edit || field.value !== typed || text === typed) {
+      return;
+    }
+    // The composition goes on. Its end checks the text it leaves.
+    if (composing.has(field)) {
+      waiting.set(field, () => {
+        showKept(field, field.value, kept, restored);
+      });
       return;
     }
     const start = field.selectionStart;

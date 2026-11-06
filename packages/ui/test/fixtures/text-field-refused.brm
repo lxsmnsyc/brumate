@@ -13,8 +13,12 @@
   let query = $signal('abc');
   let slowQuery = $signal('abc');
 
-  function pause(ms: number) {
-    return new Promise<void>((done) => setTimeout(done, ms));
+  // An async check waits here until the test releases it, in the order of the calls.
+  function hold() {
+    return new Promise<void>((done) => {
+      const held = ((globalThis as { held?: (() => void)[] }).held ??= []);
+      held.push(done);
+    });
   }
 </script>
 
@@ -24,12 +28,12 @@
     <Label>Sync</Label>
     <Input class="sync-input" />
   </TextField>
-  <!-- An async check that refuses, and one that accepts, both after 150 ms. -->
-  <TextField class="slow-no" value=$bind(slowKept, async () => { await pause(150); })>
+  <!-- An async check that refuses, and one that accepts, both when the test releases them. -->
+  <TextField class="slow-no" value=$bind(slowKept, async () => { await hold(); })>
     <Label>Slow no</Label>
     <Input class="slow-no-input" />
   </TextField>
-  <TextField class="slow-yes" value=$bind(slowTaken, async (next) => { await pause(150); slowTaken = next; })>
+  <TextField class="slow-yes" value=$bind(slowTaken, async (next) => { await hold(); slowTaken = next; })>
     <Label>Slow yes</Label>
     <Input class="slow-yes-input" />
   </TextField>
@@ -41,7 +45,7 @@
     <Label>Search</Label>
     <Input class="search-input" />
   </SearchField>
-  <SearchField class="slow-search" value=$bind(slowQuery, async () => { await pause(150); })>
+  <SearchField class="slow-search" value=$bind(slowQuery, async () => { await hold(); })>
     <Label>Slow search</Label>
     <Input class="slow-search-input" />
   </SearchField>

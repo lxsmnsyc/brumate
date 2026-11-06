@@ -34,7 +34,7 @@
   import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import { ButtonContext, InputContext, LabelContext, TextContext } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { describedBy, onFormReset, showKept } from './fields.ts';
+  import { describedBy, onFormReset, showKept, watchComposition } from './fields.ts';
 
   /**
    * A search field. It holds a Label, an Input and a
@@ -93,6 +93,7 @@
   // A reset of the form gives back the first text, as it does for a field of the browser.
   $client(() => {
     const input = document.getElementById(inputId) as HTMLInputElement | null;
+    watchComposition(input);
     return onFormReset(
       input,
       () => {

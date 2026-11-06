@@ -9,9 +9,10 @@
   - Each input counts its edits. A check acts only if no later edit started, so a keystroke that comes while a check runs is never overwritten. The later keystroke waits for the same setters, so its own check follows.
   - The input is touched only when it still shows the typed text, so a value from the caller, a reset or a form-reset hook is not overwritten.
   - Caret: read at the restore, so it is where the user moved it. `fitCaret` maps it to the kept text: the same place from the start when it is before the first changed character, the same distance from the end when it is after the last, and the end of the replaced part when it is inside. Set only when the input has focus and the type has a caret (email has none). The selection start and end map alike, and the direction stays.
+  - A composition of an input method is not interrupted: `watchComposition` follows `compositionstart` and `compositionend` on the input (set at load and by `showKept`). A restore that falls in a composition waits, and `showKept` checks again at `compositionend`.
   - TextField runs `recheck` after the restore, so the native message follows the shown text.
 - Other parts need no change: they put the state back at once (`finally` after the write). Only a text input holds text of its own that the user typed, so only these two need to wait.
-- Tests: `packages/ui/test/text-field-refused.test.ts` (sync refusal on TextField, TextArea and SearchField; caret; async refusal for TextField and SearchField; async accept; typing during a pending check). On main 4 of 5 fail; the async-accept test passes on main and guards the restore from dropping typing. `packages/brumate/test/call-now.test.ts` covers `whenSettled`. E2E step `TextField: a setter that refuses a letter shows the kept digits` in the ui suite, with a digits-only field on the example page (`examples/ui/src/routes/index.brm`); it fails on main.
+- Tests: `packages/ui/test/text-field-refused.test.ts` (sync refusal on TextField, TextArea and SearchField; caret; async refusal for TextField and SearchField; async accept; typing during a pending check; composition). The async setters of the fixture wait on promises that the test releases, and the test waits on conditions, not on timers. On main 4 of 5 fail; the async-accept test passes on main and guards the restore from dropping typing. `packages/brumate/test/call-now.test.ts` covers `whenSettled`. E2E step `TextField: a setter that refuses a letter shows the kept digits` in the ui suite, with a digits-only field on the example page (`examples/ui/src/routes/index.brm`); it fails on main.
 - Docs: `website/ui/state.md` (exception removed), `website/ui/text-field.md`, `website/ui/search-field.md` (the known-gap text and the stale `onChange` line), `docs/decisions.md`. Changesets: `text-field-refused-edit.md` (@brumate/ui, patch) and `settled-setters.md` (brumate, patch).
 
 ## Deviations
@@ -38,6 +39,7 @@
 See `log.md`.
 
 - Client gzip -9, clean rebuilds, main vs this branch: examples/ui 199354 B to 199931 B (+577 B, with the added example section), examples/todos 39361 B to 39360 B (-1 B).
+- Cost of the ui library alone (example section removed, branch src vs main src, rebuilt together): examples/ui 199369 B to 199928 B (+559 B), examples/todos 39360 B to 39363 B (+3 B, noise).
 
 ## Size
 
