@@ -78,6 +78,20 @@ export function shiftState(ids: Core['scopeIds'], state: PageState, by: number):
         );
       }
     }
+    // A store keeps its identity, so it moves in place: its origin, and its value, which can
+    // hold references.
+    // The mark is the one of `isStore` in `store.ts`, which this module does not import.
+    if ((value as { k?: unknown } | null)?.k === 'brumate.store') {
+      const store = value as { o?: [ScopeId, ...number[]]; v: unknown };
+      if (!seen.has(store)) {
+        seen.add(store);
+        if (store.o) {
+          store.o = [shiftId(store.o[0], by), ...store.o.slice(1)] as [ScopeId, ...number[]];
+        }
+        store.v = shiftValue(store.v);
+      }
+      return value;
+    }
     // A later record settles it, with a value whose IDs move too.
     if (value instanceof Promise) {
       return value.then(shiftValue);

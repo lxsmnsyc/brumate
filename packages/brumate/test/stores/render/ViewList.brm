@@ -1,0 +1,20 @@
+<script>
+  import { $effect, $getContext, $props, $store } from 'brumate/signals';
+  import { View } from './contexts.ts';
+  import { ran } from './runs.ts';
+
+  const { items, item } = $props<{
+    items: string[];
+    item: (state: { option: string; selected: boolean }) => unknown;
+  }>();
+  const view = $store($getContext(View));
+  $effect(() => {
+    ran('view', `${view.value}`);
+  });
+</script>
+
+<ul>
+  #for (option of items by option) {
+    <li class="option">{item({ option, selected: view.value === option })}</li>
+  }
+</ul>

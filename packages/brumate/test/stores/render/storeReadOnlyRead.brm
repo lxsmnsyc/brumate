@@ -1,0 +1,8 @@
+<script>
+  import { $store } from 'brumate/signals';
+  import { readOnly } from './contexts.ts';
+
+  const value = $store(readOnly);
+</script>
+
+<p class="read-only">{value}</p>

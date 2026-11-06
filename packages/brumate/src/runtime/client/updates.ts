@@ -1,7 +1,7 @@
 // Slots and what reads them: reads and writes of a slot, memos, effects, and the updates that a
 // write runs.
 
-import { HAS_BINDINGS } from '../features.ts';
+import { HAS_BINDINGS, HAS_STORES } from '../features.ts';
 import {
   Binding,
   ElementReference,
@@ -743,6 +743,11 @@ export function pass<T>(write: () => T): T {
 }
 
 setPass(pass);
+
+// A store of `brumate/store` sends a value to its readers in one pass.
+if (HAS_STORES) {
+  (globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.pass')] = pass;
+}
 
 // The scopes with memos that wait in the pass, so a read computes the ones of its scope.
 const dirty: Set<Scope> = new Set();

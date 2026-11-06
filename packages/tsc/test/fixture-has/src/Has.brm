@@ -1,0 +1,17 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import { FieldCtx, Level } from './ctx';
+
+  // A fallback, the guard on the value and a store as the fallback type-check with no error.
+  const field = $getContext(FieldCtx, undefined);
+  const state: { count: number } | undefined = field ? $store(field.state) : undefined;
+  const level: number = $store($getContext(Level, store(0)));
+  const flag: boolean = $getContext(Level, false) !== false;
+  // The optional types are not the bare ones, and a context is no store.
+  const wrongField: { state: unknown } = $getContext(FieldCtx, undefined);
+  const wrongState: { count: number } = field ? $store(field.state) : undefined;
+  const wrongStore = $store(Level);
+</script>
+
+<p>{state?.count} {level} {flag} {wrongField.state} {wrongState.count} {wrongStore}</p>

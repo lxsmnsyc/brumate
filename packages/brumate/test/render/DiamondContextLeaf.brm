@@ -1,10 +1,10 @@
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $memo, $props, $getContext, $store } from 'brumate/signals';
   import { ran } from './runs.ts';
-  import { Level } from './tplContext.ts';
+  import { LevelStore } from './tplContext.ts';
 
   const { list } = $props<{ list: string[] }>();
-  const last = $getContext(Level);
+  const last = $store($getContext(LevelStore));
   // It throws when it reads an index past the end of the list.
   const pick = $memo(ran('pick', `${list.length} ${last}`) && list[last]!.toLowerCase());
 </script>

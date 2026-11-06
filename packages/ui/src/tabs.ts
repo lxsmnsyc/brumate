@@ -1,6 +1,7 @@
 // The state that Tabs share with their TabList, Tabs and TabPanels.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 import type { Key } from './collection.ts';
 
 export interface TabsState {
@@ -17,13 +18,19 @@ export interface TabsState {
   keyboardActivation: 'automatic' | 'manual';
   /** The ID that the IDs of the tabs and the panels start with. */
   id: string;
+}
+
+/** What a Tab and a TabList call on their Tabs. */
+export interface TabsHandlers {
   select: (key: Key) => void;
 }
 
-export const TabsContext: Context<TabsState | null> = createContext<TabsState | null>(
-  'brumate-ui:tabs',
-  null,
-);
+/** What Tabs gives: the store of its state, and its handler. Outside Tabs there is no handler. */
+export interface TabsGiven extends Partial<TabsHandlers> {
+  state: StoreLike<TabsState | null>;
+}
+
+export const TabsContext: Context<TabsGiven> = createContext<TabsGiven>('brumate-ui:tabs');
 
 /** The key of the selected tab: the one that Tabs hold, or the first one. */
 export function getSelectedKey(tabs: TabsState): Key | undefined {

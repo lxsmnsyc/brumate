@@ -19,7 +19,8 @@
     "paths": {
       "brumate/context": ["./src/runtime/context.ts"],
       "brumate/serial": ["./src/runtime/values.ts"],
-      "brumate/stream": ["./src/runtime/gather.ts"]
+      "brumate/stream": ["./src/runtime/gather.ts"],
+      "brumate/store": ["./src/runtime/store.ts"]
     }
   },
   "include": ["src", "test", "types.d.ts"]

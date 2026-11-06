@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { hasBridge, mayHaveBridge } from './bridges.ts';
 import { hasUseServer, isScriptFile } from './server-files.ts';
 
 /** Skips `node_modules`, `dist` and hidden directories when looking for `.brm` files. */
@@ -52,6 +53,37 @@ export async function findServerFiles(
         pending.push(
           readFile(file, 'utf8').then((source) => {
             if (hasUseServer(source)) {
+              result.push(file.split(path.sep).join('/'));
+            }
+          }),
+        );
+      }
+    }
+    await Promise.all(pending);
+  }
+  await visit(root);
+  return result.toSorted();
+}
+
+/** Finds every script file under a directory that can hold a call of `bridge`. */
+export async function findBridgeFiles(
+  root: string,
+  exclude: (directory: string) => boolean,
+): Promise<string[]> {
+  const result: string[] = [];
+  async function visit(directory: string): Promise<void> {
+    const pending: Promise<void>[] = [];
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!exclude(entry.name)) {
+          pending.push(visit(file));
+        }
+      } else if (isScriptFile(entry.name)) {
+        pending.push(
+          readFile(file, 'utf8').then((source) => {
+            // The text test is a cheap filter; the parse confirms a bridge that is exported.
+            if (mayHaveBridge(source) && hasBridge(source, file)) {
               result.push(file.split(path.sep).join('/'));
             }
           }),

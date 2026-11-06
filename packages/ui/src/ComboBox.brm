@@ -1,7 +1,7 @@
 <script module>
   import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
-  import type { Key } from './collection.ts';
+  import type { CollectionFocus, Key, ListBoxGiven } from './collection.ts';
 
   export interface ComboBoxOwnProps {
     /** The name that sends the value with the form. */
@@ -50,7 +50,8 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
     CollectionFocusContext,
@@ -70,6 +71,7 @@
     OverlayTriggerContext,
     TextContext,
   } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, parseMessages, onFormReset } from './fields.ts';
 
@@ -115,7 +117,8 @@
   let initialKey = $signal(selectedKey);
   let initialText = $signal(inputValue);
 
-  const form = $getContext(FormContext);
+  const formGiven = $getContext(FormContext, undefined);
+  const form = formGiven ? $store(formGiven) : undefined;
   const rootId = $id();
   const inputId = $id();
   const buttonId = $id();
@@ -414,8 +417,9 @@
     }
   }
 
-  $setContext(LabelContext, { id: labelId, for: inputId });
-  $setContext(InputContext, {
+  const labelGiven = $memo({ id: labelId, for: inputId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const inputProps = $memo({
     id: inputId,
     role: 'combobox',
     autocomplete: 'off',
@@ -429,12 +433,15 @@
     'aria-required': isRequired ? 'true' : undefined,
     required: isRequired || undefined,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
+  });
+  $setContext(InputContext, {
+    props: $toStore(inputProps),
     onChange: typed,
     onInvalid: invalidated,
     onBlur: blurred,
     onFocus: focused,
   });
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     id: buttonId,
     isDisabled,
     // The Button is out of the order of Tab, since the keys of the input open the list.
@@ -443,44 +450,53 @@
     'aria-labelledby': `${buttonId} ${labelId}`,
     'aria-haspopup': 'listbox',
     'aria-expanded': isOpen ? 'true' : 'false',
-    onPress: () => {
-      if (isOpen) {
-        setOpen(false);
-      } else {
-        open('keep', true);
-      }
-      if (document.activeElement?.id !== inputId) {
-        refocused = true;
-        input()?.focus();
-      }
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: () => {
+        if (isOpen) {
+          setOpen(false);
+        } else {
+          open('keep', true);
+        }
+        if (document.activeElement?.id !== inputId) {
+          refocused = true;
+          input()?.focus();
+        }
+      },
     },
   });
-  $setContext(OverlayTriggerContext, {
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId: rootId,
     overlayId,
-    open: () => open('keep', true),
-    close: () => setOpen(false),
     placement: 'bottom start',
     isNonModal: true,
     autoFocus: false,
   });
-  $setContext(ListBoxGivenContext, {
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => open('keep', true), close: () => setOpen(false) });
+  const listGiven = $memo<ListBoxGiven>({
     selectedKeys: selectedKey === null ? [] : [selectedKey],
     labelledBy: labelId,
-    select,
   });
+  $setContext(ListBoxGivenContext, { state: $toStore(listGiven), select });
   // An Autocomplete around names its own collection, not the list of the ComboBox.
-  $setContext(FieldInputContext, null);
-  $setContext(CollectionFocusContext, {
+  $setContext(FieldInputContext, store(null));
+  const focusGiven = $memo<CollectionFocus>({
     id: listId,
     activeKey,
-    setActive: (key: Key) => activate(key),
     filterText: isOpen ? filterText : undefined,
+  });
+  $setContext(CollectionFocusContext, {
+    state: $toStore(focusGiven),
+    setActive: (key: Key) => activate(key),
     filtered,
   });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
 </script>
 
 <{as}

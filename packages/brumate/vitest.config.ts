@@ -20,6 +20,7 @@ export default defineConfig({
       'brumate/stream': fileURLToPath(new URL('./src/runtime/gather.ts', import.meta.url)),
       'brumate/forms/core': fileURLToPath(new URL('./src/runtime/forms.ts', import.meta.url)),
       'brumate/env': fileURLToPath(new URL('./src/runtime/env.ts', import.meta.url)),
+      'brumate/store': fileURLToPath(new URL('./src/runtime/store.ts', import.meta.url)),
     },
   },
 });

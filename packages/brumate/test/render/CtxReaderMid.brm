@@ -1,14 +1,15 @@
 <script>
-  import { $effect, $getContext, $memo, $signal } from 'brumate/signals';
+  import { $effect, $getContext, $memo, $signal, $store } from 'brumate/signals';
   import { ReaderTotal } from './ctxReader.ts';
   const ctx = $getContext(ReaderTotal);
+  const total = $store(ctx.total);
   let seen = $signal(-1);
-  const doubled = $memo(ctx!.read() * 2);
+  const doubled = $memo(total * 2);
   $effect(() => {
-    seen = ctx!.read();
+    seen = total;
   });
 </script>
-<button class="inc" onClick=(() => ctx!.add(1))>Inc</button>
-<p class="markup">{ctx!.read()}</p>
+<button class="inc" onClick=(() => ctx.add(1))>Inc</button>
+<p class="markup">{total}</p>
 <p class="memo">{doubled}</p>
 <p class="effect">{seen}</p>

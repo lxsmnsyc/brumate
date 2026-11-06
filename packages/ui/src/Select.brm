@@ -1,7 +1,7 @@
 <script module>
   import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
-  import type { Key } from './collection.ts';
+  import type { Key, ListBoxGiven, SelectValueState } from './collection.ts';
   import type { PressEvent } from './events.ts';
 
   export interface SelectOwnProps {
@@ -38,16 +38,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import {
-    $client,
-    $effect,
-    $getContext,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-  } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxGivenContext,
@@ -66,6 +57,7 @@
     OverlayTriggerContext,
     TextContext,
   } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, isFirstInvalid, parseMessages, onFormReset } from './fields.ts';
 
@@ -100,7 +92,8 @@
   let { selectedKey = null } = $props<SelectProps<T>>();
   let { isOpen = false } = $props<SelectProps<T>>();
 
-  const form = $getContext(FormContext);
+  const formGiven = $getContext(FormContext, undefined);
+  const form = formGiven ? $store(formGiven) : undefined;
   const triggerId = $id();
   const overlayId = $id();
   const labelId = $id();
@@ -258,8 +251,9 @@
     );
   }, 'load');
 
-  $setContext(LabelContext, { id: labelId });
-  $setContext(ButtonContext, {
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const buttonState = $memo({
     id: triggerId,
     isDisabled,
     'aria-haspopup': 'listbox',
@@ -267,42 +261,48 @@
     'aria-controls': isOpen ? overlayId : undefined,
     'aria-labelledby': `${valueId} ${labelId}`,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
-    onPress: (event: PressEvent) => {
-      // Space adds to a typeahead that has text, so it does not open the list then.
-      if (event.pointerType === 'keyboard' && isTyping(event.target)) {
-        return;
-      }
-      if (isOpen) {
-        close();
-      } else {
-        open();
-      }
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: (event: PressEvent) => {
+        // Space adds to a typeahead that has text, so it does not open the list then.
+        if (event.pointerType === 'keyboard' && isTyping(event.target)) {
+          return;
+        }
+        if (isOpen) {
+          close();
+        } else {
+          open();
+        }
+      },
     },
   });
-  $setContext(OverlayTriggerContext, {
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId,
     overlayId,
-    open: () => open(),
-    close,
     placement: 'bottom start',
     keepsContent: true,
   });
-  $setContext(ListBoxGivenContext, {
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => open(), close });
+  const listGiven = $memo<ListBoxGiven>({
     selectedKeys: selectedKey === null ? [] : [selectedKey],
     labelledBy: labelId,
-    select,
-    tab: close,
     focusStrategy,
   });
-  $setContext(SelectValueContext, {
+  $setContext(ListBoxGivenContext, { state: $toStore(listGiven), select, tab: close });
+  const valueGiven = $memo<SelectValueState>({
     id: valueId,
     selectedKey,
     selectedText: textKey === selectedKey ? selectedText : undefined,
     placeholder,
   });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  $setContext(SelectValueContext, $toStore(valueGiven));
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
 </script>
 
 <{as}

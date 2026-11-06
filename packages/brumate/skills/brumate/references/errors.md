@@ -1051,14 +1051,15 @@ https://brumate-docs.vercel.app/docs/errors#brm079
 const theme = $getContext(ThemeContext);
 ```
 
-## BRM080: $getContext takes one argument, the context
+## BRM080: $getContext takes the context, and a fallback for a read without a provider
 
-`$getContext` has no argument or more than one.
+`$getContext` has no argument or more than two.
 
 https://brumate-docs.vercel.app/docs/errors#brm080
 
 ```brm fragment
 const theme = $getContext(ThemeContext);
+const locale = $getContext(LocaleContext, undefined);
 ```
 
 ## BRM081: $setContext takes two arguments, the context and the value
@@ -1727,14 +1728,101 @@ $effect(() => {
 });
 ```
 
-## BRM143: $store is not supported yet
+## BRM191: Read a store with "const name = $store(source)" or "let name = $store(source)" at the top level of a script
 
-`$store` does not exist.
+`$store` is not the whole value of a `const` or `let` at the top level of a script.
 
-https://brumate-docs.vercel.app/docs/errors#brm143
+https://brumate-docs.vercel.app/docs/errors#brm191
 
 ```brm fragment
-let todos = $signal([]);
+import { theme } from './theme';
+const value = $store(theme);
+```
+
+## BRM192: $store takes one argument, a store
+
+`$store` has no argument, or more than one.
+
+https://brumate-docs.vercel.app/docs/errors#brm192
+
+```brm fragment
+const field = $getContext(Field);
+const state = $store(field.state);
+```
+
+## BRM193: $toStore takes one argument, a memo, a signal or a prop, as a value of $setContext
+
+`$toStore` has no argument or more than one, or it is not a value of `$setContext`, alone or as a key of an object or an item of a list.
+
+https://brumate-docs.vercel.app/docs/errors#brm193
+
+```brm fragment
+$setContext(Field, { state: $toStore(state), pick });
+```
+
+## BRM195: $store gives one name, not a pattern such as { a }
+
+`$store` initializes a pattern.
+
+https://brumate-docs.vercel.app/docs/errors#brm195
+
+```brm fragment
+const value = $store(source);
+```
+
+## BRM196: The context value reads "{name}", which changes, but a context value is read once. Put it in a store with $toStore, or read it inside a function
+
+The value of `$setContext` reads a signal, a memo, a prop or a `$bind` value that changes in the browser, and a context is read once, so readers would keep the first value. A call or an immediately invoked function in the value that reads such a name is not reported, and freezes the same way.
+
+https://brumate-docs.vercel.app/docs/errors#brm196
+
+```brm fragment
+$setContext(Field, { state: $toStore(state), pick: () => value });
+```
+
+## BRM197: Read a context that may have no provider with "const name = $getContext(Context, undefined)", and a store in it with "const state = name ? $store(name.key) : undefined", with const and no other test
+
+A read of a context that may have no provider has another shape: `$hasContext`, which is removed, `$store(name?.key)`, a `let` or another test in the guard, an `else` that is not `undefined`, a guard on a name that is not the optional value of `$getContext(Context, undefined)`, or a key of that value read without the guard.
+
+https://brumate-docs.vercel.app/docs/errors#brm197
+
+```brm fragment
+const field = $getContext(Field, undefined);
+const state = field ? $store(field.state) : undefined;
+```
+
+## BRM198: The source of $store gives its store at once, so it cannot await or call a server function
+
+The source of `$store` awaits, or calls a server function. The browser runs the source again when the page resumes, and links the store in the same pass, so the source must give the store, not a promise of it.
+
+https://brumate-docs.vercel.app/docs/errors#brm198
+
+```brm fragment
+import { theme } from './theme';
+const value = $store(theme);
+```
+
+## BRM199: $store takes a store. Read the store of a context with "$store($getContext(Context))", or give a store as the fallback, "$store($getContext(Context, store(value)))"
+
+`$store` reads a context that the file names in `$getContext` or `$setContext`, `undefined`, `null`, or `$getContext` with a literal fallback, which is no store. A context that the file only imports is found when the page renders, as a `TypeError`.
+
+https://brumate-docs.vercel.app/docs/errors#brm199
+
+```brm fragment
+const level = $store($getContext(LevelContext));
+const locale = $store($getContext(LocaleContext, store('en-US')));
+```
+
+## BRM200: The value of bridge() must be a module-level export of a script file or of <script module>, as "export const name = bridge({ … })"
+
+A call of `bridge` from `brumate/store` is in the script of a component, or in a function, or is not the value of an exported `const`. The page state names a bridge by its module and its export, so the browser can load it.
+
+https://brumate-docs.vercel.app/docs/errors#brm200
+
+```brm fragment
+// bears.ts, or the <script module> of a component
+import { bridge } from 'brumate/store';
+export const bearStore = bridge({ create, get, subscribe });
 ```
 
 ## BRM144: $get is not supported. Signals cannot leave the file

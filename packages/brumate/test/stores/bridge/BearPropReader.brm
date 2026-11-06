@@ -1,0 +1,9 @@
+<script>
+  import { $props, $store } from 'brumate/signals';
+  import type { bearStore } from './bears.ts';
+
+  const { given } = $props<{ given: ReturnType<typeof bearStore> }>();
+  const state = $store(given);
+</script>
+
+<button class="prop" onClick=(() => given.source!.getState().add())>{state.bears}</button>

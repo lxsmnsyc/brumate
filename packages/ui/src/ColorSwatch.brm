@@ -12,7 +12,7 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import { ColorPickerContext, ColorSwatchContext } from './contexts.ts';
   import { colorName, formatColor, swatchBackground, tryParseColor } from './color.ts';
 
@@ -30,8 +30,10 @@
    */
   const { color: given, colorName: name, 'aria-label': ariaLabel, ...rest } = $props<ColorSwatchProps>();
 
-  const item = $getContext(ColorSwatchContext);
-  const picker = $getContext(ColorPickerContext);
+  const itemGiven = $getContext(ColorSwatchContext, undefined);
+  const item = itemGiven ? $store(itemGiven) : undefined;
+  const pickerGiven = $getContext(ColorPickerContext, undefined);
+  const picker = pickerGiven ? $store(pickerGiven.state) : undefined;
   const color = $memo(given ?? item?.color ?? picker?.value ?? '#000000');
   const parsed = $memo(tryParseColor(color));
   const css = $memo(parsed ? formatColor(parsed) : 'transparent');

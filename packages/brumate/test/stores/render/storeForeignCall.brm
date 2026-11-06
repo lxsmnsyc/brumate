@@ -1,0 +1,8 @@
+<script>
+  import { $store } from 'brumate/signals';
+  import { foreignStore } from './contexts.ts';
+
+  const value = $store(foreignStore(3));
+</script>
+
+<p>{value}</p>

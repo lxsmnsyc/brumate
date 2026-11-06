@@ -1,0 +1,6 @@
+<script>
+  import StoreForeignPropReader from './StoreForeignPropReader.brm';
+  import { foreignStore } from './contexts.ts';
+</script>
+
+<StoreForeignPropReader s=(foreignStore(1)) />

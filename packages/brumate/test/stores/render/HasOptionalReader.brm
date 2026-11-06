@@ -1,0 +1,10 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { Field } from './contexts.ts';
+
+  const field = $getContext(Field, undefined);
+  // The guard on the value reads the store only when a provider gave the value.
+  const state = field ? $store(field.state) : undefined;
+</script>
+
+<button class="bump" onClick=(() => field?.bump())>{state ? state.count : 'none'}</button>

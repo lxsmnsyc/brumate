@@ -1,0 +1,12 @@
+<script>
+  import { $memo, $props, $getContext, $store } from 'brumate/signals';
+  import { ran } from './runs.ts';
+  import { Picker } from './contexts.ts';
+
+  const { name } = $props<{ name: string }>();
+  let chosen = $store($getContext(Picker));
+  const label = $memo(ran(`label-${name}`, chosen));
+</script>
+
+<button class=(`option-${name}`) onClick=(() => (chosen = name))>{name}</button>
+<span class=(`label-${name}`)>{label}</span>

@@ -29,7 +29,6 @@ const props: Record<string, unknown> = {
   search: {},
   doubler: {},
   themes: {},
-  Themed: {},
   fields: {},
   'uses-counter': {},
   'template-update': {},
@@ -99,6 +98,26 @@ describe('server render', () => {
       '',
     ].join('\n');
     await expect(text).toMatchFileSnapshot(`./__snapshots__/render/${name}.txt`);
+  });
+});
+
+describe('a context without a provider', () => {
+  it('throws an error that names the key, for $getContext', async () => {
+    const module = await import(new URL('Themed.brm.ts', output).href);
+    await expect(renderParts(module.default, {})).rejects.toThrow(
+      'The context "theme" has no provider above this component. Provide it with $setContext, or in a parent that does',
+    );
+  });
+
+  it('throws an error that names the key, for $store', async () => {
+    const module = await import(new URL('ThemedLive.brm.ts', output).href);
+    await expect(renderParts(module.default, {})).rejects.toThrow('The context "theme-store" ');
+  });
+
+  it('makes a context from a key alone', async () => {
+    const { createContext } = await import('../src/runtime/context.ts');
+    expect(createContext.length).toBe(1);
+    expect(createContext('one')).toEqual({ key: 'one' });
   });
 });
 

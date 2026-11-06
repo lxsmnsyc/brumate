@@ -12,7 +12,7 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     CalendarContext,
@@ -40,7 +40,8 @@
    */
   const { offset, cell, ...rest } = $props<CalendarGridProps>();
 
-  const calendar = $getContext(CalendarContext);
+  const given = $getContext(CalendarContext, undefined);
+  const calendar = given ? $store(given.state) : undefined;
   const start = $memo(
     calendar ? (offset ? toDate(calendar.start).add(offset) : toDate(calendar.start)).toString() : '',
   );
@@ -69,43 +70,44 @@
     const back = calendar.direction === 'rtl' ? 1 : -1;
     switch (event.key) {
       case 'ArrowLeft':
-        calendar.moveFocus((date) => date.add({ days: back }));
+        given?.moveFocus?.((date) => date.add({ days: back }));
         return;
       case 'ArrowRight':
-        calendar.moveFocus((date) => date.add({ days: -back }));
+        given?.moveFocus?.((date) => date.add({ days: -back }));
         return;
       case 'ArrowUp':
-        calendar.moveFocus((date) => date.subtract({ weeks: 1 }));
+        given?.moveFocus?.((date) => date.subtract({ weeks: 1 }));
         return;
       case 'ArrowDown':
-        calendar.moveFocus((date) => date.add({ weeks: 1 }));
+        given?.moveFocus?.((date) => date.add({ weeks: 1 }));
         return;
       case 'PageUp':
-        calendar.moveFocus((date) => date.subtract(event.shiftKey ? { years: 1 } : unit));
+        given?.moveFocus?.((date) => date.subtract(event.shiftKey ? { years: 1 } : unit));
         return;
       case 'PageDown':
-        calendar.moveFocus((date) => date.add(event.shiftKey ? { years: 1 } : unit));
+        given?.moveFocus?.((date) => date.add(event.shiftKey ? { years: 1 } : unit));
         return;
       case 'Home':
-        calendar.moveFocus((date) => startOfMonth(date));
+        given?.moveFocus?.((date) => startOfMonth(date));
         return;
       case 'End':
-        calendar.moveFocus((date) => endOfMonth(date));
+        given?.moveFocus?.((date) => endOfMonth(date));
         return;
       case 'Enter':
       case ' ':
-        calendar.selectFocused();
+        given?.selectFocused?.();
         return;
       case 'Escape':
         // A range that is not done is dropped. Escape is not prevented, so a popover around closes.
-        calendar.cancel();
+        given?.cancel?.();
         return;
       default:
         return;
     }
   }
 
-  $setContext(CalendarGridContext, { start });
+  const gridGiven = $memo({ start });
+  $setContext(CalendarGridContext, $toStore(gridGiven));
 </script>
 
 <table

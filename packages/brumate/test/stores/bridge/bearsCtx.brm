@@ -1,0 +1,12 @@
+<script>
+  import { $setContext } from 'brumate/signals';
+  import BearReader from './BearReader.brm';
+  import BearLetReader from './BearLetReader.brm';
+  import { BearContext, bearStore } from './bears.ts';
+
+  $setContext(BearContext, bearStore({ bears: 2 }));
+</script>
+
+<BearReader />
+<BearReader />
+<BearLetReader />

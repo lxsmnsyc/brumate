@@ -1,15 +1,15 @@
 <script>
-  import { $id, $props, $setContext, $signal } from 'brumate/signals';
-  import { SelectContext } from './selectContext.ts';
+  import { $id, $props, $setContext, $signal, $toStore } from 'brumate/signals';
+  import { SelectContext, SelectOpenContext, SelectValueContext } from './selectContext.ts';
 
   const { children } = $props();
   let open = $signal(false);
   let value = $signal<string | null>(null);
   const labelId = $id();
 
+  $setContext(SelectOpenContext, $toStore(open));
+  $setContext(SelectValueContext, $toStore(value));
   $setContext(SelectContext, {
-    open,
-    value,
     labelId,
     toggle: () => (open = !open),
     choose: (next: string) => {

@@ -32,13 +32,14 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import {
     CheckboxGroupContext,
     FieldErrorContext,
     LabelContext,
     TextContext,
   } from './contexts.ts';
+  import type { CheckboxGroupState } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, onFormReset } from './fields.ts';
 
@@ -120,10 +121,13 @@
     running = true;
   }, 'load');
 
-  $setContext(LabelContext, { id: labelId });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
-  $setContext(CheckboxGroupContext, {
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
+  const groupState = $memo<CheckboxGroupState>({
     name,
     value,
     isDisabled,
@@ -132,9 +136,8 @@
     // Each box is required while none is checked, so the browser checks the group on a submit.
     isRequired: isRequired && running && value.length === 0,
     describedBy: describedBy(invalid && errorId),
-    toggle,
-    onInvalid: invalidated,
   });
+  $setContext(CheckboxGroupContext, { state: $toStore(groupState), toggle, onInvalid: invalidated });
 </script>
 
 <{as ?? 'div'}

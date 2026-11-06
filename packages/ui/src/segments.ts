@@ -4,6 +4,7 @@
 // strings, such as `2026-10-15` and `14:30`.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 import { CalendarDate, DateFormatter, endOfMonth } from '@internationalized/date';
 import type { DateString } from './calendar.ts';
 import { toDate } from './calendar.ts';
@@ -55,6 +56,10 @@ export interface DateFieldState {
   segmentNames?: Record<SegmentType, string>;
   /** The spoken value of a segment that is not set. `Empty` without. */
   empty?: string;
+}
+
+/** What a DateField runs for its segments. The handlers never change. */
+export interface DateFieldHandlers {
   /** Steps a part by `delta`, around its range. A part that is not set starts at the placeholder. */
   step: (type: SegmentType, delta: number) => void;
   /** Sets a part to the lowest or the highest number of its range, as Home and End do. */
@@ -70,15 +75,35 @@ export interface DateFieldState {
   settle: () => void;
 }
 
-export const DateFieldContext: Context<DateFieldState | null> =
-  createContext<DateFieldState | null>('brumate-ui:date-field', null);
+/** What a DateField gives: the store of its state, and its handlers. */
+export interface DateFieldGiven extends Partial<DateFieldHandlers> {
+  state: StoreLike<DateFieldState | null>;
+}
 
-/** What a DateRangePicker gives its two DateInputs, by their `slot`. */
-export const DateRangeFieldContext: Context<{ start: DateFieldState; end: DateFieldState } | null> =
-  createContext<{ start: DateFieldState; end: DateFieldState } | null>(
-    'brumate-ui:date-range-field',
-    null,
-  );
+export const DateFieldContext: Context<DateFieldGiven> =
+  createContext<DateFieldGiven>('brumate-ui:date-field');
+
+/**
+ * What a DateRangePicker gives its two DateInputs, by their `slot`: a store of the state of each
+ * date, and the handlers of each, as flat keys: a handler reaches the browser only as a literal key.
+ */
+export interface DateRangeFieldGiven {
+  startState: StoreLike<DateFieldState | null>;
+  endState: StoreLike<DateFieldState | null>;
+  startStep?: DateFieldHandlers['step'];
+  startJump?: DateFieldHandlers['jump'];
+  startType?: DateFieldHandlers['type'];
+  startErase?: DateFieldHandlers['erase'];
+  startSettle?: DateFieldHandlers['settle'];
+  endStep?: DateFieldHandlers['step'];
+  endJump?: DateFieldHandlers['jump'];
+  endType?: DateFieldHandlers['type'];
+  endErase?: DateFieldHandlers['erase'];
+  endSettle?: DateFieldHandlers['settle'];
+}
+
+export const DateRangeFieldContext: Context<DateRangeFieldGiven> =
+  createContext<DateRangeFieldGiven>('brumate-ui:date-range-field');
 
 /** The number of days in the month of a date. */
 function getDaysInMonth(date: CalendarDate): number {

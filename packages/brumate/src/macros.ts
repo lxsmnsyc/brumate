@@ -27,6 +27,8 @@ export const MACROS: Set<string> = new Set([
   '$isPassed',
   '$setContext',
   '$getContext',
+  '$store',
+  '$toStore',
   '$route',
   '$searchParam',
   '$navigation',

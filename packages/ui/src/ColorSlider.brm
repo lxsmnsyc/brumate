@@ -26,7 +26,8 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import {
     channelGradient,
     channelName,
@@ -46,11 +47,13 @@
   } from './color.ts';
   import { ColorPickerContext } from './contexts.ts';
   import { ColorThumbContext } from './color-thumb.ts';
+  import type { ColorThumbState } from './color-thumb.ts';
   import { LabelContext } from './contexts.ts';
   import { onFormReset } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { clamp, snapToStep } from './numbers.ts';
   import { SliderContext, pointAt, startDrag, thumbId, valueAt } from './slider.ts';
+  import type { SliderState } from './slider.ts';
 
   /**
    * A slider for one channel of a color. It holds a Label,
@@ -92,7 +95,8 @@
   let { value = '#000000' } = $props<ColorSliderProps>();
 
   // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
-  const picker = $getContext(ColorPickerContext);
+  const given = $getContext(ColorPickerContext, undefined);
+  const picker = given ? $store(given.state) : undefined;
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
@@ -116,7 +120,7 @@
   /** Writes the color, and returns the text that the part keeps. */
   function write(next: Color, text: string): string {
     if (picker && !passed) {
-      picker.setValue(next, text);
+      given?.setValue!(next, text);
       return text;
     } else {
       const before = value;
@@ -134,7 +138,8 @@
     }
   }
 
-  const locale = $getContext(LocaleContext);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   // The color that a reset of the form gives back.
   let initialValue = $signal(held);
   let dragging = $signal(false);
@@ -279,8 +284,9 @@
     );
   }, 'load');
 
-  $setContext(LabelContext, { id: labelId });
-  $setContext(SliderContext, {
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const sliderState = $memo<SliderState>({
     values: [current],
     minValue: range.minValue,
     maxValue: range.maxValue,
@@ -293,10 +299,9 @@
     label,
     labels: [valueText],
     dragging: dragging ? [0] : [],
-    setThumb,
-    setDragging,
   });
-  $setContext(ColorThumbContext, {
+  $setContext(SliderContext, { state: $toStore(sliderState), setThumb, setDragging });
+  const thumbState = $memo<ColorThumbState>({
     color: formatColor(displayColor(color, channel)),
     left: vertical ? 50 : rtl ? 100 - percent : percent,
     top: vertical ? 100 - percent : 50,
@@ -318,12 +323,15 @@
     isFocused: focused,
     isFocusVisible: focusVisible,
     isDisabled,
+    direction: locale.direction,
+  });
+  $setContext(ColorThumbContext, {
+    state: $toStore(thumbState),
     onInputChange: inputChange,
     onInputKey: inputKey,
     onPress: press,
     onFocusChange: focusChange,
     onChangeEnd: end,
-    direction: locale.direction,
   });
 </script>
 

@@ -173,11 +173,16 @@ A ColorThumb has no page of its own, since it works only inside a ColorSlider, a
 
 ### Building on ColorThumb
 
-A part that has a thumb of color provides a `ColorThumbState` in `ColorThumbContext`, from `@brumate/ui/color-thumb.ts`:
+A part that has a thumb of color provides `ColorThumbContext`, from `@brumate/ui/color-thumb.ts`, with `$setContext(ColorThumbContext, { state: $toStore(thumbState), onInputChange, onInputKey, onPress, onFocusChange, onChangeEnd })`. `thumbState` is a `$memo<ColorThumbState>` of the data below, and the handlers are literal keys beside `state`: a function cannot be in a store. The handlers are optional in the type, since the default of the context has none.
+
+The state holds:
 
 - `color` is the color to show, as a color of CSS.
 - `left` and `top` are the position of the center of the thumb, in percents of its parent. The part computes them, and flips them for a track that grows upward or right to left.
 - `inputs` lists the hidden inputs as data: `id`, `name`, `min`, `max`, `step`, `value`, `valueText`, `label`, `labelledBy`, `orientation`, `roleDescription`, `tabIndex` and `hidden`.
 - `isDragging`, `isFocused`, `isFocusVisible` and `isDisabled` are the states.
+
+The handlers:
+
 - `onInputChange(index, value)` gets a value that a screen reader sets on an input. `onInputKey(index, key, shiftKey)` gets the arrows, PageUp, PageDown, Home and End, and the range input does not move by itself. A [ColorArea](./color-area.md) needs it, since Up on the input of x moves y. `onPress(event)` gets the press on the thumb, to start a drag. `onFocusChange(focused, focusVisible, index)` and `onChangeEnd()` follow the focus and the end of a change.
-- The functions are declared in the part and not inside the lists, since the state of the page can hold a function only where the compiler can name it.
+- The functions are declared in the part and not inside the lists or the store, since the state of the page can hold a function only where the compiler can name it.

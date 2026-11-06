@@ -29,6 +29,7 @@ import { type Internal, isInternal, isRaw, rawHTML } from './html.ts';
 import type { Raw } from './html.ts';
 import { functionReferences, isBlob } from './calls.ts';
 import { MODIFIERS } from './events.ts';
+import { HAS_BRIDGES } from './features.ts';
 import {
   CHILDREN_REF,
   ElementReference,
@@ -42,6 +43,8 @@ import {
 } from './shared.ts';
 import type { ChildrenReference, MemoError, PropPromise, ScopeId } from './shared.ts';
 import type { ValuePlugin } from './values.ts';
+import { isBridged, isStore } from './store.ts';
+import type { Bridged, Store } from './store.ts';
 import type { Binding, SlotReference } from './shared.ts';
 import type { ComponentValue } from './shared.ts';
 
@@ -270,6 +273,35 @@ const ComponentPlugin = createPlugin<ComponentValue, { c: SerovalNode }>({
 });
 
 /**
+ * A store of `brumate/store`: only its value crosses, and where `$toStore` made it, so the
+ * browser makes a new store that the provider writes. Readers subscribe as their scopes resume.
+ */
+const StorePlugin = createPlugin<Store<unknown>, ReferenceNode>({
+  tag: 'brumate/store',
+  skipPlainObjects: true,
+  test: isStore,
+  parse: parsers((value) => {
+    const node: Record<string, unknown> = { a: value.v };
+    if (value.o) {
+      node.b = value.o[0];
+      node.c = value.o[1];
+      if (value.o[2] !== undefined) {
+        node.d = value.o[2];
+      }
+    }
+    return node as Record<'a' | 'b' | 'c' | 'd', unknown>;
+  }),
+  serialize: (node, ctx) => `$b.s(${serializeParts([node.a, node.b, node.c, node.d], ctx)})`,
+  deserialize: (node, ctx) =>
+    stateValues.s(
+      ctx.deserialize(node.a),
+      node.b === undefined ? undefined : ctx.deserialize<ScopeId>(node.b),
+      node.c === undefined ? undefined : ctx.deserialize<number>(node.c),
+      node.d === undefined ? undefined : ctx.deserialize<number>(node.d),
+    ),
+});
+
+/**
  * The index of a file or a blob, and what a part of multipart form data does
  * not keep: the type (an empty one arrives as `application/octet-stream`),
  * whether the value was a blob or a file (every part arrives as a file), and
@@ -370,6 +402,80 @@ const BodyRequestPlugin: typeof RequestPlugin = {
     ),
 };
 
+/**
+ * The error of a store of `bridge()` whose data the page state cannot send. It holds the store as
+ * `value`, so the server finds the context or the prop that sends it.
+ */
+export class BridgeDataError extends Error {
+  value: Bridged<unknown, unknown>;
+
+  constructor(value: Bridged<unknown, unknown>, cause: unknown) {
+    super(`get of the bridge "${value.id}" gives data that cannot be sent`, { cause });
+    this.value = value;
+  }
+}
+
+/** Reads the data of a bridged store for the page state. */
+function bridgeData(value: Bridged<unknown, unknown>): unknown {
+  if (value.id === undefined) {
+    throw new BridgeDataError(
+      value,
+      new Error(
+        'The bridge has no name. Keep bridge() in a module-level export of a script file, as "export const name = bridge({ … })", so the compiler names it',
+      ),
+    );
+  }
+  return value.get();
+}
+
+/** The node of a bridged store: its data and its name. An error of the data names the store. */
+function bridgeNode(
+  value: Bridged<unknown, unknown>,
+  parse: (data: unknown) => SerovalNode,
+): ReferenceNode {
+  try {
+    return { a: parse(bridgeData(value)), b: parse(value.id), c: parse(value.set ? 1 : 0) };
+  } catch (error) {
+    throw error instanceof BridgeDataError ? error : new BridgeDataError(value, error);
+  }
+}
+
+/**
+ * A store of `bridge()`: only the data that `get` reads crosses, and the name of the bridge, so
+ * the browser makes the library's store again from the data at the first subscriber.
+ */
+function makeBridgePlugin(): Plugin<Bridged<unknown, unknown>, ReferenceNode> {
+  return createPlugin<Bridged<unknown, unknown>, ReferenceNode>({
+    tag: 'brumate/bridge',
+    skipPlainObjects: true,
+    test: isBridged,
+    parse: {
+      sync: (value, ctx) => bridgeNode(value, (data) => ctx.parse(data)),
+      stream: (value, ctx) => bridgeNode(value, (data) => ctx.parse(data)),
+      async: async (value, ctx) => {
+        try {
+          const data = bridgeData(value);
+          return {
+            a: await ctx.parse(data),
+            b: await ctx.parse(value.id),
+            c: await ctx.parse(value.set ? 1 : 0),
+          };
+        } catch (error) {
+          throw error instanceof BridgeDataError ? error : new BridgeDataError(value, error);
+        }
+      },
+    },
+    serialize: (node, ctx) =>
+      `$b.g(${ctx.serialize(node.a)},${ctx.serialize(node.b)},${ctx.serialize(node.c!)})`,
+    deserialize: (node, ctx) =>
+      stateValues.g(
+        ctx.deserialize(node.a),
+        ctx.deserialize<string>(node.b),
+        ctx.deserialize<number>(node.c!),
+      ),
+  });
+}
+
 /** The plugins after the plugin of uploads, which a call makes for its files. */
 // oxlint-disable-next-line typescript/no-explicit-any -- Plugin is invariant, so any is needed to hold every plugin.
 const valuePlugins: Plugin<any, any>[] = [
@@ -384,6 +490,8 @@ const valuePlugins: Plugin<any, any>[] = [
   ChildrenPlugin,
   RawPlugin,
   ComponentPlugin,
+  StorePlugin,
+  ...(HAS_BRIDGES ? [makeBridgePlugin()] : []),
   // The web values of seroval-plugins. Requests and responses need the async or stream modes,
   // so a page state or a call result that holds one streams. The plugin of uploads takes files
   // and blobs, so those of seroval-plugins, which would put their bytes in the JSON, are left out.

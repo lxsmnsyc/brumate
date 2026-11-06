@@ -1,0 +1,7 @@
+<script>
+  import StoreForeignReader from './StoreForeignReader.brm';
+  import StoreModuleReader from './StoreModuleReader.brm';
+</script>
+
+<StoreModuleReader />
+<StoreForeignReader />

@@ -8,7 +8,7 @@
 </script>
 
 <script generics="V extends TreeNode">
-  import { $props, $setContext } from 'brumate/signals';
+  import { $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { TreeRowContext } from './tree.ts';
 
   /**
@@ -17,7 +17,8 @@
    */
   const { row, item } = $props<TreeRowProps<V>>();
 
-  $setContext(TreeRowContext, { row });
+  const rowState = $memo({ row });
+  $setContext(TreeRowContext, $toStore(rowState));
 </script>
 
 {item(row.item as V)}

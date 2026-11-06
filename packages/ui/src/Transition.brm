@@ -42,17 +42,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import {
-    $client,
-    $effect,
-    $getContext,
-    $isPassed,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-    $untrack,
-  } from 'brumate/signals';
+  import { $client, $effect, $getContext, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import {
     TransitionContext,
     parseClasses,
@@ -61,6 +51,7 @@
     nextFrame,
     stepClasses,
   } from './transition.ts';
+  import type { TransitionParent } from './transition.ts';
 
   /**
    * Animates content in and out, as Transition of Terracotta does. It keeps the content in the
@@ -103,7 +94,8 @@
 
   // A Transition with `show`, or a TransitionChild of the one around it.
   const own = $isPassed(show);
-  const parent = $getContext(TransitionContext);
+  const parentGiven = $getContext(TransitionContext, undefined);
+  const parent = parentGiven ? $store(parentGiven) : undefined;
   const wanted = $memo(
     own
       ? Boolean(show)
@@ -126,7 +118,8 @@
   let element = $signal<HTMLElement>();
 
   // The TransitionChild elements inside read this one as their parent.
-  $setContext(TransitionContext, { show: wanted, entered: rested });
+  const transitionGiven = $memo<TransitionParent>({ show: wanted, entered: rested });
+  $setContext(TransitionContext, $toStore(transitionGiven));
 
   // The content renders closed before an enter, at rest when shown, and closed when hidden. The
   // steps after that set its classes and flags on the element itself.

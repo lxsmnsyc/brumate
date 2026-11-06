@@ -1,6 +1,6 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
-  import type { ButtonContextProps, LinkContextProps } from './contexts.ts';
+  import type { ButtonStateProps, LinkStateProps } from './contexts.ts';
   import type { HoverEvent, PressEvent } from './events.ts';
   import type { ContextValue } from './slots.ts';
 
@@ -21,8 +21,9 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $store, $toStore, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext, OverlayTriggerContext } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { isFocusVisible } from './interactions.ts';
   import { cancelLongPress, dismissed, followPreview, pressForgets, startLongPress, startedOpen } from './preview.ts';
   import { previews } from './tooltip.ts';
@@ -50,13 +51,15 @@
   } = $props<PreviewTriggerProps>();
   let { isOpen = false } = $props<PreviewTriggerProps>();
 
-  const button = $getContext(ButtonContext);
-  const link = $getContext(LinkContext);
+  const buttonGiven = $getContext(ButtonContext, undefined);
+  const button = buttonGiven ? $store(buttonGiven.state) : undefined;
+  const linkGiven = $getContext(LinkContext, undefined);
+  const link = linkGiven ? $store(linkGiven.state) : undefined;
   const ownId = $id();
   const overlayId = $id();
   const triggerId = $memo(getId(button) ?? getId(link) ?? ownId);
 
-  function getId(value: ContextValue<ButtonContextProps | LinkContextProps> | null) {
+  function getId(value: ContextValue<ButtonStateProps | LinkStateProps> | null | undefined) {
     return value && !('slots' in value) && typeof value.id === 'string' ? value.id : undefined;
   }
 
@@ -83,15 +86,15 @@
   }
 
   function hoverStarted(event: HoverEvent) {
-    given(button)?.onHoverStart?.(event);
-    given(link)?.onHoverStart?.(event);
+    given(buttonGiven?.handlers)?.onHoverStart?.(event);
+    given(linkGiven?.handlers)?.onHoverStart?.(event);
     dismissed.delete(triggerId);
     open(false);
   }
 
   function hoverEnded(event: HoverEvent) {
-    given(button)?.onHoverEnd?.(event);
-    given(link)?.onHoverEnd?.(event);
+    given(buttonGiven?.handlers)?.onHoverEnd?.(event);
+    given(linkGiven?.handlers)?.onHoverEnd?.(event);
     pressForgets.get(triggerId)?.();
     if (!isOpen) {
       close(false);
@@ -99,8 +102,8 @@
   }
 
   function focusChanged(focused: boolean) {
-    given(button)?.onFocusChange?.(focused);
-    given(link)?.onFocusChange?.(focused);
+    given(buttonGiven?.handlers)?.onFocusChange?.(focused);
+    given(linkGiven?.handlers)?.onFocusChange?.(focused);
     const active = document.activeElement;
     if (!focused) {
       dismissed.delete(triggerId);
@@ -113,8 +116,8 @@
   }
 
   function pressStarted(event: PressEvent) {
-    given(button)?.onPressStart?.(event);
-    given(link)?.onPressStart?.(event);
+    given(buttonGiven?.handlers)?.onPressStart?.(event);
+    given(linkGiven?.handlers)?.onPressStart?.(event);
     if (event.pointerType === 'touch') {
       startLongPress(triggerId, event.pointerId, () => open(true));
     } else {
@@ -137,13 +140,13 @@
   }
 
   function pressEnded(event: PressEvent) {
-    given(button)?.onPressEnd?.(event);
-    given(link)?.onPressEnd?.(event);
+    given(buttonGiven?.handlers)?.onPressEnd?.(event);
+    given(linkGiven?.handlers)?.onPressEnd?.(event);
     cancelLongPress(triggerId);
   }
 
   /** The props of a context around it, when it gives one part its props. */
-  function given<T extends object>(value: ContextValue<T> | null): T | undefined {
+  function given<T extends object>(value: ContextValue<T> | null | undefined): T | undefined {
     return value && !('slots' in value) ? value : undefined;
   }
 
@@ -186,32 +189,49 @@
   });
 
   // The props of a trigger around it come first, and the handlers of both run.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     ...given(button),
     id: triggerId,
     'aria-expanded': isOpen ? 'true' : 'false',
     'aria-controls': isOpen ? overlayId : undefined,
-    onHoverStart: hoverStarted,
-    onHoverEnd: hoverEnded,
-    onFocusChange: focusChanged,
-    onPressStart: pressStarted,
-    onPressEnd: pressEnded,
   });
-  $setContext(LinkContext, {
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: (event: PressEvent) => given(buttonGiven?.handlers)?.onPress?.(event),
+      onPressUp: (event: PressEvent) => given(buttonGiven?.handlers)?.onPressUp?.(event),
+      onPressChange: (pressed: boolean) => given(buttonGiven?.handlers)?.onPressChange?.(pressed),
+      onHoverChange: (hovered: boolean) => given(buttonGiven?.handlers)?.onHoverChange?.(hovered),
+      onHoverStart: hoverStarted,
+      onHoverEnd: hoverEnded,
+      onFocusChange: focusChanged,
+      onPressStart: pressStarted,
+      onPressEnd: pressEnded,
+    },
+  });
+  const linkState = $memo({
     ...given(link),
     id: triggerId,
     'aria-expanded': isOpen ? 'true' : 'false',
     'aria-controls': isOpen ? overlayId : undefined,
-    onHoverStart: hoverStarted,
-    onHoverEnd: hoverEnded,
-    onFocusChange: focusChanged,
-    onPressStart: pressStarted,
-    onPressEnd: pressEnded,
   });
+  $setContext(LinkContext, {
+    state: $toStore(linkState),
+    handlers: {
+      onPress: (event: PressEvent) => given(linkGiven?.handlers)?.onPress?.(event),
+      onPressUp: (event: PressEvent) => given(linkGiven?.handlers)?.onPressUp?.(event),
+      onPressChange: (pressed: boolean) => given(linkGiven?.handlers)?.onPressChange?.(pressed),
+      onHoverChange: (hovered: boolean) => given(linkGiven?.handlers)?.onHoverChange?.(hovered),
+      onHoverStart: hoverStarted,
+      onHoverEnd: hoverEnded,
+      onFocusChange: focusChanged,
+      onPressStart: pressStarted,
+      onPressEnd: pressEnded,
+    },
+  });
+  const overlayState = $memo<OverlayTriggerState>({ isOpen, triggerId, overlayId, isPreview: true });
   $setContext(OverlayTriggerContext, {
-    isOpen,
-    triggerId,
-    overlayId,
+    state: $toStore(overlayState),
     open: () => open(true),
     // The popover closes it, such as on Escape, and gives focus back, which does not open it again.
     // A press outside gives no focus back, so the trigger opens it again on its next focus.
@@ -223,7 +243,6 @@
       }
       close(true);
     },
-    isPreview: true,
   });
 </script>
 

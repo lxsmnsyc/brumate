@@ -18,6 +18,7 @@ import { forEachNode } from '../ast.ts';
 import { tryCatchesClient } from '../graph.ts';
 import { isWithin, lookup } from '../model.ts';
 import type { Declaration, Scope, Site } from '../model.ts';
+import { isFallbackLiteral } from '../oxc.ts';
 import type { oxc } from '../oxc.ts';
 import { holdsStream, serverFunctionId } from '../plan.ts';
 import { findLoadStarts, hasAwait } from './starts.ts';
@@ -168,16 +169,24 @@ function callsTemplate(site: Site | undefined): boolean {
   return false;
 }
 
+/** The read of `field ? $store(field.key) : undefined`, or the node itself. */
+function guardedRead(node: oxc.Node | null | undefined): oxc.Node | null | undefined {
+  return node?.type === 'ConditionalExpression' && node.test.type === 'Identifier'
+    ? node.consequent
+    : node;
+}
+
 /** The name of the compile-time function that a declarator calls, for `$getContext` and `$id`. */
 function specialCall(
   declarator: oxc.VariableDeclarator,
-): '$getContext' | '$id' | '$isPassed' | '$route' | '$navigation' | undefined {
-  const init = declarator.init;
+): '$getContext' | '$store' | '$id' | '$isPassed' | '$route' | '$navigation' | undefined {
+  const init = guardedRead(declarator.init);
   if (init?.type !== 'CallExpression' || init.callee.type !== 'Identifier') {
     return undefined;
   }
   const name = init.callee.name;
   return name === '$getContext' ||
+    name === '$store' ||
     name === '$id' ||
     name === '$isPassed' ||
     name === '$route' ||
@@ -255,6 +264,8 @@ const CLIENT_HELPERS: Record<string, string> = {
   own: 'setOwner',
   provide: 'provideValue',
   consume: 'consumeContext',
+  consumeStore: 'consumeStore',
+  toStore: 'toStore',
   head: 'addHead',
   portal: 'addPortal',
   style: 'addStyle',
@@ -1498,6 +1509,15 @@ export class Emitter {
   }
 
   /**
+   * The fallback of a context read, which the runtime uses only when no provider is above. A
+   * literal is passed as it is, and other code as a function, so it runs only then.
+   */
+  private fallback(node: oxc.Node): string {
+    const code = this.source(node);
+    return isFallbackLiteral(node) ? code : `() => (${code})`;
+  }
+
+  /**
    * Writes the declarations of a statement that reads contexts or creates
    * IDs, one per line. Returns false if the statement does neither.
    */
@@ -1514,12 +1534,16 @@ export class Emitter {
     }
     const target = this.scopeVar(instanceScope(this.plan, scope));
     for (const declarator of statement.declarations) {
-      const init = declarator.init as oxc.CallExpression;
+      const init = guardedRead(declarator.init) as oxc.CallExpression;
       const call = specialCall(declarator);
       const declaration =
         declarator.id.type === 'Identifier'
           ? scope.declarations.get(declarator.id.name)
           : undefined;
+      // A guarded read of a store is `undefined` when the optional value in its test is.
+      const guard = declaration?.guard;
+      const ask = guard ? `${this.source(guard)} ? ` : '';
+      const otherwise = guard ? ' : undefined' : '';
       if (call === '$id' && declaration?.idIndex !== undefined) {
         this.line(
           `const ${declaration.name} = ${this.helper('id')}(${target}, ${declaration.idIndex});`,
@@ -1530,6 +1554,28 @@ export class Emitter {
         // The props as the caller passed them, before defaults apply.
         this.line(
           `const ${declaration.name} = ${JSON.stringify(declaration.passedKey)} in $$props;`,
+        );
+        continue;
+      }
+      if (call === '$store' && declaration?.store && declarator.id.type === 'Identifier') {
+        // `$store(source)`: the source is a context, a store, or an object that holds the store at
+        // `path`. `link` is the place of its import among the exports `z` of the update part.
+        const { source, path, link, write, sent, fallback } = declaration.store;
+        const slot = slotIndex(this.plan, declaration);
+        // The server names a sent value that holds a store of another library.
+        const named = this.options.mode === 'server' && sent ? JSON.stringify(sent) : undefined;
+        const rest = [
+          path === undefined ? undefined : JSON.stringify(path),
+          link === undefined ? undefined : String(link),
+          write ? 'true' : undefined,
+          fallback ? this.fallback(fallback) : named,
+        ];
+        while (rest.length > 0 && rest.at(-1) === undefined) {
+          rest.pop();
+        }
+        const more = rest.map((item) => `, ${item ?? 'undefined'}`).join('');
+        this.line(
+          `const ${declarator.id.name} = ${ask}${this.helper('consumeStore')}(${this.source(source)}, ${target}, ${slot}${more})${otherwise};`,
         );
         continue;
       }
@@ -1544,10 +1590,16 @@ export class Emitter {
         continue;
       }
       const slot = declaration ? slotIndex(this.plan, declaration) : -1;
-      // The slot is recorded, so a change to the provided value reaches it on the client.
-      const record = slot === -1 ? '' : `, ${slot}`;
+      // The slot of `$route` and `$navigation` is recorded, so navigation reaches it on the
+      // client. The value of `$getContext` is read once, and a fallback is the third argument.
+      let more = '';
+      if (slot !== -1 && BUILT_IN_CONTEXTS[call ?? '']) {
+        more = `, undefined, ${slot}`;
+      } else if (call === '$getContext' && init.arguments.length > 1) {
+        more = `, ${this.fallback(init.arguments[1]!)}`;
+      }
       this.line(
-        `const ${declarator.id.name} = ${this.helper('consume')}(${context}, ${target}${record});`,
+        `const ${declarator.id.name} = ${ask}${this.helper('consume')}(${context}, ${target}${more})${otherwise};`,
       );
     }
     return true;
@@ -2565,6 +2617,21 @@ export class Emitter {
   private providedValue(value: oxc.Node, scope: Scope): string {
     const instance = this.scopeVar(instanceScope(this.plan, scope));
     const mark = (part: oxc.Node, method = false): string | undefined => {
+      // `$toStore(value)`: a store that the page state sends with its scope and site, and the
+      // slot of a signal, which its `set` writes.
+      if (
+        part.type === 'CallExpression' &&
+        part.callee.type === 'Identifier' &&
+        part.callee.name === '$toStore' &&
+        part.arguments[0]
+      ) {
+        const argument = part.arguments[0];
+        const store = this.sitesByNode.get(argument);
+        const declaration =
+          argument.type === 'Identifier' ? lookup(scope, argument.name) : undefined;
+        const slot = declaration?.kind === 'signal' ? `, ${slotIndex(this.plan, declaration)}` : '';
+        return `${this.helper('toStore')}(${this.source(argument)}, ${instance}, ${store?.id ?? -1}${slot})`;
+      }
       const site = this.sitesByNode.get(part);
       const symbol = site?.kind === 'prop' ? this.plan.symbols.get(site) : undefined;
       // A method, such as `toggle() {}`, is a function expression without the keyword.

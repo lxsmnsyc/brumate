@@ -10,7 +10,6 @@
   }
 
   $setContext(Counter, {
-    count,
     increment,
     add: (step: number) => (count += step),
     reset() {

@@ -1,0 +1,10 @@
+<script>
+  import { $setContext } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import Label from '../../src/Label.brm';
+  import { LabelContext } from '../../src/contexts.ts';
+
+  $setContext(LabelContext, store({ id: 'given-id', for: 'given-input' }));
+</script>
+
+<Label class="given">Given</Label>

@@ -75,7 +75,7 @@ beforeAll(() => {
     writeFileSync(join(output, `${name}.render.ts`), toRender(render));
     modules.set(plan.id, file(`${name}.client.ts`));
   }
-});
+}, 60_000); // The compile of the fixtures runs beside other test files, which can slow it.
 
 let stop: (() => void) | undefined;
 
@@ -1729,14 +1729,6 @@ describe('resume', () => {
       await waitFor(() => expect(document.querySelector('.popover')).not.toBeNull());
       click(document.querySelectorAll('.option')[0]!);
       await waitFor(() => expect(text('.value')).toBe('Cat'));
-    });
-
-    it('gives a part on its own the default value of the context', async () => {
-      await resume('spikePage', {});
-      const alone = document.querySelector('.alone')!;
-      expect(alone.hasAttribute('aria-expanded')).toBe(false);
-      click(alone);
-      await waitFor(() => expect(text('.alone')).toBe('Alone 1'));
     });
 
     it('renders a #template prop with the values of the component that wrote it', async () => {
@@ -4740,7 +4732,7 @@ describe('memos that read state through a function prop', () => {
     expect(text('.total')).toBe('1');
   });
 
-  it('keeps markup, a memo and an effect on a reading function of a context live', async () => {
+  it('keeps markup, a memo and an effect on a store of a context live', async () => {
     await resume('ctxReader', {});
     await waitFor(() => expect(text('.markup')).toBe('0'));
     click(document.querySelector('.inc')!);
@@ -10701,5 +10693,21 @@ describe('a promise in markup', () => {
     await waitFor(() => expect(markupLoads()).toHaveLength(1));
     await settle('user', 'Ada');
     await waitFor(() => expect(text('.user')).toBe('Ada'));
+  });
+});
+
+describe('a context without a provider in markup that the browser renders', () => {
+  it.each([
+    ['themedLater', 'theme'],
+    ['themedStoreLater', 'theme-store'],
+  ])('throws an error that names the key, for %s', async (name, key) => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await resume(name, {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => {
+      const seen = errors.mock.calls.map((call) => call.map(String).join(' ')).join('\n');
+      expect(seen).toContain(`The context "${key}" has no provider above this component`);
+    });
   });
 });

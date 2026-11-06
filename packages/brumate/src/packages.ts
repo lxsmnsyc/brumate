@@ -161,6 +161,123 @@ export function findPackages(root: string): BrumatePackage[] {
   return result;
 }
 
+/** An installed package that can export a bridge. */
+export interface BridgePackage {
+  /** The name in bridge names: the package name, with `@<version>` when two copies share it. */
+  name: string;
+  /** The package name. */
+  package: string;
+  /** The real directory of the package. */
+  root: string;
+  /**
+   * The installed dependencies and peers it imports, other than brumate. The package is not
+   * prebundled, so Vite prebundles these through it (`<package> > <dependency>`), which turns
+   * CommonJS into ESM.
+   */
+  dependencies: string[];
+}
+
+/**
+ * Finds the dependencies of the app, by the walk of `findPackages`, that can export a `bridge`
+ * without shipping `.brm` files: those that list `brumate` in `dependencies` or
+ * `peerDependencies`. A package with the `brumate` field is a package of components, which
+ * `findPackages` returns. The walk goes on into both kinds, never into other packages.
+ */
+export function findBridgePackages(root: string): BridgePackage[] {
+  const app = packageRoot(path.resolve(root));
+  if (!app) {
+    return [];
+  }
+  const seen = new Set<string>();
+  function visit(directory: string, json: PackageJson, own: boolean): void {
+    const names = new Set([
+      ...Object.keys(json.dependencies ?? {}),
+      ...Object.keys(json.optionalDependencies ?? {}),
+      ...Object.keys(json.peerDependencies ?? {}),
+      ...(own ? Object.keys(json.devDependencies ?? {}) : []),
+    ]);
+    for (const name of [...names].toSorted()) {
+      const real = findPackageDirectory(name, directory);
+      if (!real || seen.has(real) || name === 'brumate') {
+        continue;
+      }
+      seen.add(real);
+      const dependency = readJson(`${real}/package.json`);
+      if (!dependency) {
+        continue;
+      }
+      const components = readDirectories(real, dependency.brumate, name) !== undefined;
+      const wants =
+        'brumate' in (dependency.dependencies ?? {}) ||
+        'brumate' in (dependency.peerDependencies ?? {});
+      if (!components && !wants) {
+        continue;
+      }
+      if (!components) {
+        const imports: string[] = [];
+        const listed = new Set([
+          ...Object.keys(dependency.dependencies ?? {}),
+          ...Object.keys(dependency.optionalDependencies ?? {}),
+          ...Object.keys(dependency.peerDependencies ?? {}),
+        ]);
+        for (const item of [...listed].toSorted()) {
+          // Type packages have no code to prebundle.
+          if (
+            item !== 'brumate' &&
+            !item.startsWith('@types/') &&
+            findPackageDirectory(item, real)
+          ) {
+            imports.push(item);
+          }
+        }
+        found.push({
+          name: dependency.name ?? name,
+          package: name,
+          version: dependency.version,
+          root: real,
+          dependencies: imports,
+        });
+      }
+      visit(real, dependency, false);
+    }
+  }
+  const found: (BridgePackage & { version?: string })[] = [];
+  visit(app, readJson(path.join(app, 'package.json')) ?? {}, true);
+  return nameBridgePackages(found);
+}
+
+/**
+ * Gives each package a name of its own. Two installed copies of one package, such as two
+ * versions in nested `node_modules`, get `@<version>`. Two copies of one version cannot be told
+ * apart on every machine, so they throw, since their bridges would share one page state.
+ */
+function nameBridgePackages(found: (BridgePackage & { version?: string })[]): BridgePackage[] {
+  const counts = new Map<string, number>();
+  for (const item of found) {
+    counts.set(item.name, (counts.get(item.name) ?? 0) + 1);
+  }
+  const result: BridgePackage[] = [];
+  const roots = new Map<string, string>();
+  for (const item of found) {
+    const name = counts.get(item.name)! > 1 ? `${item.name}@${item.version ?? ''}` : item.name;
+    const other = roots.get(name);
+    if (other !== undefined) {
+      throw new Error(
+        `brumate: two installed copies of ${name} export bridges, at ${other} and ${item.root}. ` +
+          'Their bridges would share one name in the page state. Dedupe the package.',
+      );
+    }
+    roots.set(name, item.root);
+    result.push({
+      name,
+      package: item.package,
+      root: item.root,
+      dependencies: item.dependencies,
+    });
+  }
+  return result;
+}
+
 /** The package that a file belongs to, or undefined for a file of the app. */
 export function findPackage(packages: BrumatePackage[], file: string): BrumatePackage | undefined {
   for (const item of packages) {

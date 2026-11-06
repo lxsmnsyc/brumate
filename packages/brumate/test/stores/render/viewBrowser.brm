@@ -1,0 +1,18 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import ViewList from './ViewList.brm';
+  import ViewSelect from './ViewSelect.brm';
+
+  let show = $signal(false);
+</script>
+
+<button class="show" onClick=(() => (show = true))>Show</button>
+#if (show) {
+  <ViewSelect>
+    <ViewList items=(['Cat', 'Dog']) item=option />
+  </ViewSelect>
+}
+
+#template option({ option, selected }: { option: string; selected: boolean }) {
+  <b class="choice">{option}{selected ? ' (picked)' : ''}</b>
+}

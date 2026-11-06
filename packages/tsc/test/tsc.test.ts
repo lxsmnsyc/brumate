@@ -98,3 +98,18 @@ it('prints the code of a syntax error in place of BRM', () => {
   expect(line).toMatch(/Broken\.brm\(1,\d+\): error BRM\d{3}: [^[]+$/);
   expect(result.status).not.toBe(0);
 });
+
+it('types a fallback of $getContext as T | F, and $store as taking a store only', () => {
+  const project = fileURLToPath(new URL('./fixture-has/tsconfig.json', import.meta.url));
+  const result = spawnSync(process.execPath, [bin, '-p', project], { encoding: 'utf8' });
+  const errors = result.stdout
+    .split('\n')
+    .filter((line) => line.includes('error TS'))
+    .map((line) => line.replace(/^.*src\//, ''));
+  // Only the three wrong lines fail.
+  expect(errors).toEqual([
+    "Has.brm(12,9): error TS2322: Type 'Field | undefined' is not assignable to type '{ state: unknown; }'.",
+    "Has.brm(13,9): error TS2322: Type '{ count: number; } | undefined' is not assignable to type '{ count: number; }'.",
+    "Has.brm(14,29): error TS2345: Argument of type 'Context<Store<number>>' is not assignable to parameter of type 'StoreLike<unknown>'.",
+  ]);
+});

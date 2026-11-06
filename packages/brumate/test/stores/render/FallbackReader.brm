@@ -1,0 +1,16 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { Label, Picker, madeStore } from './contexts.ts';
+  import { ran } from './runs.ts';
+
+  // A fallback that is code runs only without a provider, once per read. A literal is passed as it is.
+  const label = $getContext(Label, ran('fallback', 'none'));
+  const fixed = $getContext(Label, 'literal');
+  // A store as the fallback: the provider's store, or one made for this reader without a provider.
+  let value = $store($getContext(Picker, madeStore('default')));
+</script>
+
+<p class="label">{label}</p>
+<p class="fixed">{fixed}</p>
+<p class="value">{value}</p>
+<button class="up" onClick=(() => (value = `${value}!`))>Up</button>

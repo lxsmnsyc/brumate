@@ -1,0 +1,10 @@
+# Log: ui-stores-fields
+
+- Scope read as the contexts of the field parts: Label, Input, TextArea, FieldError, Group, Form. Every provider and reader of those six contexts changed, also in files of the sibling nodes (one-line edits at the `$setContext` and `$getContext` lines, see outcome Deviations), since a reader that calls `$store(Ctx)` needs every provider to give a store.
+- Warnings of the ui build before: 203 distinct `$setContext` warnings. After: 152. The field contexts have none left.
+- First try: `$toStore($memo(...))` inline in `$setContext`. BRM132: a memo must be declared at the top level. Fixed with a named memo above the call.
+- Second try: handlers inside the memo that the store holds. The server refuses to send a function in a store value ("holds a Function"). Fixed: the store holds the attributes, the handlers stay as plain keys beside it.
+- Third try: handlers through `...handlers` spread in the `$setContext` object. Same refusal for `changed`: a function reaches the browser as a reference only when it is a literal key of the `$setContext` value. Fixed with literal keys.
+- SearchField typecheck: `$memo({...})` of an object with generic props gives a `$$Sendable` mismatch. `$memo<Record<string, unknown>>({...})` fixes it. `$memo({...} as Record<string, unknown>)` breaks the compile (PARSE_ERROR in `SearchField.brm.ts`: the `as` cast in the argument of `$memo` is not rewritten as an object). Reported as a compiler gap.
+- The compiler still emits `updateContext` for a provider whose value holds a store and handlers (the handler read is still a live `$getContext` slot). So the acceptance "no updateContext call" cannot hold literally; `test/field-stores.test.ts` checks that no `updateContext` of a field context reads state (`$$b.get`). The base fails it (TextField updates InputContext with `...$$b.get(...)`).
+- ui example size, all client chunks of `examples/ui` (vite build, gzip -9 per file, summed): base 199,153 B, after 200,682 B (+1,529 B). The Index chunk: 154,106 to 154,652 B (+546 B).

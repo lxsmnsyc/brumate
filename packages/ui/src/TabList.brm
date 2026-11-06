@@ -16,10 +16,11 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $handler, $memo, $props } from 'brumate/signals';
+  import { $getContext, $handler, $memo, $props, $store } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import { enabledItems, focusItem, readItemKey, getKeyMovement, moveFrom } from './collection.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { TabsContext } from './tabs.ts';
 
   /**
@@ -35,8 +36,10 @@
   const { as, children, ...rest } = $props<TabListProps<T>>();
   let { ref } = $props<TabListOwnProps<T>>();
 
-  const tabs = $getContext(TabsContext);
-  const locale = $getContext(LocaleContext);
+  const tabsGiven = $getContext(TabsContext, undefined);
+  const tabs = tabsGiven ? $store(tabsGiven.state) : undefined;
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   const orientation = $memo(tabs?.orientation ?? 'horizontal');
 
   function keyDown(event: KeyboardEvent) {
@@ -61,7 +64,7 @@
     focusItem(target);
     const key = target ? readItemKey(target) : undefined;
     if (key !== undefined && tabs?.keyboardActivation !== 'manual') {
-      tabs?.select(key);
+      tabsGiven?.select?.(key);
     }
   }
 

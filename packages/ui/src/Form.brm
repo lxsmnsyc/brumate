@@ -12,7 +12,7 @@
 </script>
 
 <script>
-  import { $memo, $props, $setContext } from 'brumate/signals';
+  import { $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { FormContext } from './contexts.ts';
 
   /**
@@ -26,7 +26,7 @@
   const { validationBehavior = 'native', validationErrors = {}, children, ...rest } = $props<FormProps>();
 
   const state = $memo({ validationBehavior, validationErrors });
-  $setContext(FormContext, state);
+  $setContext(FormContext, $toStore(state));
 </script>
 
 <form novalidate=(validationBehavior === 'aria' || undefined) {...rest}>{children}</form>

@@ -11,7 +11,7 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import {
     CalendarContext,
     CalendarGridContext,
@@ -34,8 +34,10 @@
    */
   const { date, children, ...rest } = $props<CalendarCellProps>();
 
-  const calendar = $getContext(CalendarContext);
-  const grid = $getContext(CalendarGridContext);
+  const given = $getContext(CalendarContext, undefined);
+  const calendar = given ? $store(given.state) : undefined;
+  const gridGiven = $getContext(CalendarGridContext, undefined);
+  const grid = gridGiven ? $store(gridGiven) : undefined;
   // A date is in the month of its grid when they share the year and the month, `YYYY-MM`.
   const outsideMonth = $memo(grid ? date.slice(0, 7) !== grid.start.slice(0, 7) : false);
   const outsideRange = $memo(
@@ -48,7 +50,7 @@
       outOfRange(toDate(date), calendar.minValue, calendar.maxValue),
   );
   const unavailable = $memo(
-    !disabled && (calendar?.isDateUnavailable?.(date) ?? false),
+    !disabled && (given?.isDateUnavailable?.(date) ?? false),
   );
   // After the first date of a range, a date past the nearest one that cannot be picked is out of
   // reach invalid.
@@ -80,15 +82,15 @@
       return;
     }
     // The press of the pointer that started a range already selected this date.
-    if (calendar.startedBy(date)) {
+    if (given?.startedBy?.(date)) {
       event.currentTarget.focus({ preventScroll: true });
       return;
     }
     if (calendar.isReadOnly) {
-      calendar.focusDate(date);
+      given?.focusDate?.(date);
       return;
     }
-    calendar.selectDate(date);
+    given?.selectDate?.(date);
     event.currentTarget.focus({ preventScroll: true });
   }
 
@@ -101,7 +103,7 @@
     }
     target.toggleAttribute('data-focus-visible', target.matches(':focus-visible'));
     if (calendar && !disabled) {
-      calendar.cellFocused(date);
+      given?.cellFocused?.(date);
     }
   }
 
@@ -116,7 +118,7 @@
       event.currentTarget.setAttribute('data-hovered', '');
     }
     if (calendar && selectable) {
-      calendar.highlight(date);
+      given?.highlight?.(date);
     }
   }
 
@@ -124,7 +126,7 @@
     const target = event.currentTarget;
     target.setAttribute('data-pressed', '');
     if (calendar && selectable) {
-      calendar.pressStart(date, event);
+      given?.pressStart?.(date, event);
     }
   }
 
@@ -141,7 +143,7 @@
   function released(event: PointerEvent & { currentTarget: HTMLElement }) {
     pointerUp(event);
     if (calendar && selectable) {
-      calendar.pressEnd(date);
+      given?.pressEnd?.(date);
     }
   }
 </script>

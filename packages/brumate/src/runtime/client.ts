@@ -51,9 +51,11 @@ export {
 export type { Component } from './client/components.ts';
 export {
   consumeContext,
+  consumeStore,
   provideValue,
   setGlobal,
-  updateContext,
+  storeUpdate,
+  toStore,
   updateRoute,
 } from './client/context.ts';
 export { fail } from './client/errors.ts';

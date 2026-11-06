@@ -1,0 +1,7 @@
+---
+'brumate': minor
+---
+
+Breaking. A context has no default value. `createContext(key)` takes only a key, and `$getContext(Ctx)` and `$store($getContext(Ctx))` throw when no provider above the reader set the context, on the server and in the browser: `The context "key" has no provider above this component. Provide it with $setContext, or in a parent that does`. A default was one object for every request on the server, which made a context a global. `$route()` and `$navigation()` still read on every page. To migrate, delete the second argument of `createContext` and provide the value with `$setContext` in a component above the readers.
+
+`$getContext(Context, fallback)` reads a context that may have no provider. It gives the provided value, or the fallback when no component above provides the context. The second argument decides, so `$getContext(Field, undefined)` is the optional read, and a provided `undefined` is a value. A literal fallback is passed as it is, and other code runs only without a provider, once per read. `$route()` and `$navigation()` always have a provider. A store in a context that may be missing is read with the guard on the value, `const field = $getContext(Field, undefined); const state = field ? $store(field.state) : undefined;`, or with a store as the fallback, `$store($getContext(Locale, store('en-US')))`, which makes a store for each reader only without a provider. A `let` in the guarded form, another test or another shape is the compile error BRM197.

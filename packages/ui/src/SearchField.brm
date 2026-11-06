@@ -31,8 +31,9 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import { ButtonContext, InputContext, LabelContext, TextContext } from './contexts.ts';
+  import type { InputContextProps } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, onFormReset, showKept, watchComposition } from './fields.ts';
 
@@ -119,8 +120,9 @@
     }
   }
 
-  $setContext(LabelContext, { id: labelId, for: inputId });
-  $setContext(InputContext, {
+  const labelGiven = $memo({ id: labelId, for: inputId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const inputProps = $memo<InputContextProps>({
     id: inputId,
     name,
     type: 'search',
@@ -129,19 +131,28 @@
     readonly: isReadOnly || undefined,
     placeholder,
     'aria-describedby': describedBy(hasDescription && descriptionId),
-    onChange: typed,
-    onKeyDown: keyDown,
     isEnterPrevented: true,
     isEscapePrevented: !empty && !isDisabled && !isReadOnly,
   });
+  $setContext(InputContext, {
+    props: $toStore(inputProps),
+    onChange: typed,
+    onKeyDown: keyDown,
+  });
   // The button that clears the field stays out of the order of Tab.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     'aria-label': 'Clear search',
     tabindex: -1,
     isDisabled: isDisabled || isReadOnly,
-    onPress: clear,
   });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: clear,
+    },
+  });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
 </script>
 
 <{as}

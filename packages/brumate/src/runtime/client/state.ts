@@ -3,6 +3,7 @@
 
 import type { NavigationReport } from '../navigate.ts';
 import type { PageState, ScopeId } from '../shared.ts';
+import type { Store } from '../store.ts';
 import type { SerialEntry } from '../values.ts';
 import type { HiddenBody, Hiding } from './branches.ts';
 import type { Component } from './components.ts';
@@ -21,6 +22,11 @@ export interface ClientModule {
    * prop. The state holds only their IDs, so `dynamic` finds them here.
    */
   components?: (Component & { brumateId: string })[];
+  /**
+   * The sources of `$store` that are not a context, as functions of the reader's scope, which the
+   * update part exports. See `StoreRead`.
+   */
+  z?: ((scope: Scope) => unknown)[];
   /** Server function ID to the memos that call it, as scope kind and update, for `refresh`. */
   refresh?: Record<string, Update[]>;
   /**
@@ -69,6 +75,10 @@ export interface Scope {
   v?: Record<string, unknown>;
   /** The slots that hold the contexts that the scope reads, by context key. */
   x?: Record<string, number>;
+  /** The stores that `$toStore` made in the scope, by the ID of the site. */
+  st?: Record<number, Store<unknown>>;
+  /** The functions that stop the scope's reads of stores, which run when the scope goes. */
+  stops?: (() => void)[];
   /** The slots of a parent that the bound props of a component write, by the slot of the prop. */
   /**
    * What the bound props write, by the slot of the prop: a slot of a parent,

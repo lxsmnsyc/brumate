@@ -11,7 +11,7 @@
 </script>
 
 <script generics="V extends { id: Key }">
-  import { $getContext, $props } from 'brumate/signals';
+  import { $getContext, $props, $store } from 'brumate/signals';
   import { TableContext } from './table.ts';
 
   /**
@@ -22,7 +22,8 @@
   const { item, children, ...rest } = $props<TableBodyProps<V>>();
 
   // The cast to `V` is unchecked: `V` must be the type of the `items` of the Table.
-  const table = $getContext(TableContext);
+  const tableGiven = $getContext(TableContext, undefined);
+  const table = tableGiven ? $store(tableGiven.state) : undefined;
 </script>
 
 <tbody role="rowgroup" {...rest}>

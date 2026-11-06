@@ -8,7 +8,7 @@
 </script>
 
 <script>
-  import { $getContext, $memo, $props } from 'brumate/signals';
+  import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { ColorWheelContext } from './color-wheel.ts';
 
@@ -25,7 +25,8 @@
    */
   const { children, ...rest } = $props<ColorWheelTrackProps>();
 
-  const wheel = $getContext(ColorWheelContext);
+  const given = $getContext(ColorWheelContext, undefined);
+  const wheel = given ? $store(given.state) : undefined;
 
   const size = $memo((wheel?.outerRadius ?? 0) * 2);
 
@@ -38,9 +39,9 @@
     `path(evenodd, "${circle(wheel?.outerRadius ?? 0)} ${circle(wheel?.innerRadius ?? 0)}")`,
   );
 
-  function pressed(event: PointerEvent) {
+  function pressed(event: PointerEvent & { currentTarget: Element }) {
     if (wheel && !wheel.isDisabled) {
-      wheel.onTrackPress(event);
+      given?.onTrackPress?.(event);
     }
   }
 </script>

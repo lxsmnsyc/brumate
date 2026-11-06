@@ -21,6 +21,7 @@ import { cloneLines } from './template.ts';
 import type { Fill } from './markup.ts';
 import { Emitter, classText, decodeAttribute, literalClasses, variableValue } from './markup.ts';
 import { Patch, addValueEdits, arrowBody } from './patch.ts';
+import { NAME_BRIDGE_IMPORT, moduleBridgeNames } from '../bridges.ts';
 import {
   clientModuleScript,
   componentNames,
@@ -208,8 +209,10 @@ class ClientGenerator {
 
     const parts: Record<string, string> = {};
     for (const name of new Set([...this.out.keys(), ...this.reach.keys()])) {
-      // A component whose updates are all on the server has no `update` part.
-      if (name !== 'shared' && (this.out.get(name)?.length ?? 0) > 0) {
+      // A component whose updates are all on the server has no `update` part, unless it holds
+      // the sources of `$store` that the browser runs again.
+      const stores = name === 'update' && this.model.storeSources.length > 0;
+      if (name !== 'shared' && ((this.out.get(name)?.length ?? 0) > 0 || stores)) {
         parts[name] = this.assemble(name);
       }
     }
@@ -268,13 +271,17 @@ class ClientGenerator {
     }
     const registered =
       values.length > 0 ? [...renamed, `export const components = [${sent.join(', ')}];`] : [];
-    const clientCode = names.length > 0 || values.length > 0;
+    // The names of the bridges of `<script module>` are written by the shared part, which the
+    // entry imports even if no other part reads the module script.
+    const bridged = this.bridgeNames().length > 0;
+    const sharedImport = bridged ? [`import ${JSON.stringify(this.partPath('shared'))};`] : [];
+    const clientCode = names.length > 0 || values.length > 0 || bridged;
     if (merged || names.length === 0) {
       // The entry holds the code itself, so the first event loads one module.
       const code = parts.all ?? '';
       delete parts.all;
       return {
-        code: [code, ...registered, ...table, ''].join('\n'),
+        code: [...sharedImport, code, ...registered, ...table, ''].join('\n'),
         table: table.join('\n'),
         parts,
         clientCode,
@@ -288,7 +295,7 @@ class ClientGenerator {
     for (const name of names) {
       reexports.push(`export * from ${JSON.stringify(this.partPath(name))};`);
     }
-    const entry = [...reexports, ...registered, ...table, ''];
+    const entry = [...sharedImport, ...reexports, ...registered, ...table, ''];
     return {
       code: entry.join('\n'),
       table: table.join('\n'),
@@ -561,9 +568,23 @@ class ClientGenerator {
     return result;
   }
 
+  /**
+   * The sources of `$store` that the browser runs again on resume, as functions of the reader's
+   * scope, which the update part exports as `z`. A reader whose store is not a context finds it
+   * there by its index.
+   */
+  private storeSources(): string[] {
+    const result: string[] = [];
+    for (const site of this.model.storeSources) {
+      result.push(`($$s) => (${this.rewrittenCode(site)})`);
+    }
+    return result;
+  }
+
   private assemble(name: string): string {
     const reads = this.reads(this.partSites(name));
     const names = new Set<string>();
+    const stores = name === 'update' ? this.storeSources() : [];
     const shared: string[] = [];
     for (const item of reads) {
       if (item.kind === 'import') {
@@ -585,7 +606,11 @@ class ClientGenerator {
         `import { ${[...new Set(shared)].join(', ')} } from ${JSON.stringify(this.partPath('shared'))};`,
       );
     }
-    lines.push('', ...this.serverStubs([name]), ...(this.out.get(name) ?? []), '');
+    lines.push('', ...this.serverStubs([name]), ...(this.out.get(name) ?? []));
+    if (stores.length > 0) {
+      lines.push(`export const z = [${stores.join(', ')}];`);
+    }
+    lines.push('');
     return lines.join('\n');
   }
 
@@ -607,6 +632,7 @@ class ClientGenerator {
         }
       }
     }
+    const stores = names.includes('update') ? this.storeSources() : [];
     const lines = [
       "import * as $$b from 'brumate/client';",
       ...this.importsFor(imports, scopes, names.includes('update')),
@@ -615,6 +641,9 @@ class ClientGenerator {
     ];
     for (const name of names) {
       lines.push('', ...(this.out.get(name) ?? []));
+    }
+    if (stores.length > 0) {
+      lines.push(`export const z = [${stores.join(', ')}];`);
     }
     lines.push('');
     return lines.join('\n');
@@ -639,6 +668,10 @@ class ClientGenerator {
         }
       }
       lines.push(...clientModuleScript(this.file, this.plan));
+      const naming = this.bridgeNames();
+      if (naming.length > 0) {
+        lines.push(NAME_BRIDGE_IMPORT, ...naming);
+      }
       // The shared part exports each name that is not exported under its own name already.
       const exported = new Set<string>();
       for (const item of moduleExports(this.file, this.plan)) {
@@ -716,9 +749,14 @@ class ClientGenerator {
     return reads;
   }
 
+  /** The calls that name the bridges of `<script module>`. */
+  private bridgeNames(): string[] {
+    return moduleBridgeNames(this.file.moduleScript?.program, this.plan.id);
+  }
+
   private usesModuleScript(): boolean {
-    // The render module imports what the markup reads from the shared part.
-    if (rendersModule(this.plan)) {
+    // The render module imports what the markup reads from the shared part, and names its bridges.
+    if (rendersModule(this.plan) || this.bridgeNames().length > 0) {
       return true;
     }
     for (const declaration of this.clientReads()) {
@@ -1136,11 +1174,36 @@ class ClientGenerator {
       this.emit(`export function ${name('u')}($$s) {\n  $$b.title(${expression()});\n}`);
       return;
     }
-    if (site.kind === 'provide') {
-      const context = site.extra![0]!;
+    if (site.kind === 'provide' && site.store) {
       this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.updateContext($$s, ${copy(this.file.source, context.start, context.end)}, ${expression()});\n}`,
+        `export function ${name('u')}($$s) {\n  $$b.storeUpdate($$s, ${site.id}, ${expression()});\n}`,
       );
+      return;
+    }
+    if (site.kind === 'provide') {
+      // A context value is read once, so a value that changes on the client never reaches it.
+      // A store, or a read inside a function, is how a reader sees the change.
+      const named = new Set<Declaration>();
+      for (const edge of this.plan.graph.edges) {
+        const from = edge.from;
+        if (edge.to !== node || !this.plan.graph.live.has(from)) {
+          continue;
+        }
+        if ((from.kind === 'source' || from.kind === 'memo') && !named.has(from.declaration)) {
+          named.add(from.declaration);
+          let range = site.range;
+          for (const read of site.reads) {
+            if (read.declaration === from.declaration) {
+              range = read.range;
+              break;
+            }
+          }
+          this.error(
+            `The context value reads "${from.declaration.name}", which changes, but a context value is read once. Put it in a store with $toStore, or read it inside a function`,
+            range,
+          );
+        }
+      }
       return;
     }
     if (site.kind === 'style') {
