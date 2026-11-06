@@ -85,6 +85,8 @@ export class Store<T> implements StoreLike<T> {
   r?: boolean;
   /** Where `$toStore` made it, for the page state. */
   o?: StoreOrigin;
+  /** True for a store of `$toStore` in the browser until its first update. */
+  f?: boolean;
   /**
    * The mark of a store, which `isStore` reads in every copy of the runtime. A field, so a build
    * without stores drops the class.
@@ -272,36 +274,35 @@ export function isBridged(value: unknown): value is Bridged<unknown, unknown> {
 /**
  * Whether two values hold the same data: the same value, or arrays and plain objects whose items
  * hold the same data. A store that the browser makes again holds a new object with the content
- * the server sent, which needs no repair. It stops at a depth of 32, so a cycle ends.
+ * the server sent, which needs no repair.
  */
-export function sameData(a: unknown, b: unknown, depth = 0): boolean {
+export function sameData(a: unknown, b: unknown, open?: Map<object, Set<unknown>>): boolean {
   if (Object.is(a, b)) {
     return true;
   }
-  // Data nested deeper than this, or a cycle, counts as changed, which writes once more.
-  if (depth > 32) {
+  const array = Array.isArray(a);
+  if (array ? !Array.isArray(b) || a.length !== b.length : !isPlain(a) || !isPlain(b)) {
     return false;
   }
-  if (Array.isArray(a)) {
-    if (!Array.isArray(b) || a.length !== b.length) {
-      return false;
-    }
-    for (let index = 0; index < a.length; index++) {
-      if (!sameData(a[index], b[index], depth + 1)) {
-        return false;
-      }
-    }
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  // A pair already under compare is a cycle: it counts as the same, so each pair is compared once.
+  open ??= new Map();
+  let pairs = open.get(left);
+  if (pairs?.has(right)) {
     return true;
   }
-  if (!isPlain(a) || !isPlain(b)) {
-    return false;
+  if (!pairs) {
+    pairs = new Set();
+    open.set(left, pairs);
   }
-  const keys = Object.keys(a);
-  if (keys.length !== Object.keys(b).length) {
+  pairs.add(right);
+  const keys = Object.keys(left);
+  if (!array && keys.length !== Object.keys(right).length) {
     return false;
   }
   for (const key of keys) {
-    if (!(key in b) || !sameData(a[key], b[key], depth + 1)) {
+    if (!(key in right) || !sameData(left[key], right[key], open)) {
       return false;
     }
   }

@@ -263,6 +263,7 @@ export function toStore<T>(
 ): Store<T> {
   const target = resolveScope(scope)!;
   const made = new Store(value);
+  made.f = true;
   (target.st ??= {})[site] = made as Store<unknown>;
   if (slot === undefined) {
     made.r = true;
@@ -275,9 +276,15 @@ export function toStore<T>(
 /** The update of `$toStore(value)`, in the binding stage: sends the new value to the readers. */
 export function storeUpdate(scope: Scope, site: number, value: unknown): void {
   const found = scope.st?.[site];
-  // A memo that makes its object again with the same data is not a change. A `set` of the store
-  // wrote the value itself before this update, so it is the same object and still goes out.
-  if (found && (Object.is(found.v, value) || !sameData(found.v, value))) {
+  if (!found) {
+    return;
+  }
+  // The first update after the store is made can be a memo that makes its object again with the
+  // same data, which is not a change. Later updates always go out: a reader can hold an edit
+  // that the same data must undo.
+  const first = found.f;
+  found.f = undefined;
+  if (!first || Object.is(found.v, value) || !sameData(found.v, value)) {
     sendStore(found, value, true);
   }
 }
