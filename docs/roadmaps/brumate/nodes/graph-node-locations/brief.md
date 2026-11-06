@@ -1,7 +1,7 @@
 ---
 id: graph-node-locations
 title: File locations for each node of the reactivity graph
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
