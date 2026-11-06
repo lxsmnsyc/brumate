@@ -1,5 +1,24 @@
 # @brumate/ui
 
+## 0.1.3
+
+### Patch Changes
+
+- 51eb398: `TextField` and `SearchField` now show the kept text when the setter of `$bind(signal, setter)` refuses an edit. Before, the input kept the typed text until a reset. A setter that returns refuses at once. A setter that decides later, such as after an async check, leaves the typed text in place until its promise settles, and the field puts the kept text back only if the value did not take what was typed. A later keystroke cancels the check of an earlier one, and the caret stays where it still fits.
+- Updated dependencies [c9f505b]
+- Updated dependencies [d4a108d]
+- Updated dependencies [749e1d1]
+- Updated dependencies [ea40983]
+- Updated dependencies [d1296f4]
+- Updated dependencies [16d9787]
+- Updated dependencies [11b1f41]
+- Updated dependencies [51eb398]
+- Updated dependencies [2c6662d]
+- Updated dependencies [87700cd]
+- Updated dependencies [4dc4d6d]
+- Updated dependencies [7b500e2]
+  - brumate@0.6.1
+
 ## 0.1.2
 
 ### Patch Changes
