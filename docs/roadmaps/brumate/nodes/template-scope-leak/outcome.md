@@ -30,4 +30,4 @@
 ## Size
 
 - Estimated S, actual S.
-- Client gzip (sum of dist/client/**/*.js, gzip -9): todos 39256 to 39256 bytes, ui 199058 to 199050 bytes.
+- Client gzip (sum of dist/client/**/*.js, gzip -9): todos 39256 to 39237 bytes, ui 199058 to 199046 bytes.
