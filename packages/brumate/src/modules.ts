@@ -273,6 +273,151 @@ export function parseModule(module: ReactiveModule): ModuleInfo {
   return { module, program, imports, declarations, functions };
 }
 
+/**
+ * True when the export `name` of the module at `specifier` can be a function: a function that
+ * the module exports, or an export of a module that the compiler cannot read, such as one of a
+ * package. A value that the module declares, a component, a module of reactive logic and a
+ * module that does not parse are not.
+ */
+export function mayExportFunction(
+  specifier: string,
+  name: string,
+  importer: string,
+  resolve: ResolveModule,
+  seen: Set<string> = new Set(),
+): boolean {
+  if (/\.brm($|\?)/.test(specifier) || isReactiveModule(specifier)) {
+    return false;
+  }
+  const module = resolve(specifier, importer);
+  if (!module) {
+    return true;
+  }
+  if (seen.has(module.path)) {
+    return false;
+  }
+  seen.add(module.path);
+  const result = parseSync(module.path, module.source, { lang: 'ts', preserveParens: false });
+  if (result.errors.length > 0) {
+    return false;
+  }
+  // The top-level names: functions, other values, and imports.
+  const functions = new Set<string>();
+  const values = new Set<string>();
+  const imports = new Map<string, { specifier: string; imported: string }>();
+  const declare = (node: oxc.Node): void => {
+    if (node.type === 'FunctionDeclaration' && node.id) {
+      functions.add(node.id.name);
+    } else if (node.type === 'VariableDeclaration') {
+      for (const declarator of node.declarations) {
+        const init = declarator.init;
+        const isFunction =
+          init?.type === 'ArrowFunctionExpression' || init?.type === 'FunctionExpression';
+        for (const id of getPatternNames(declarator.id)) {
+          (isFunction && declarator.id.type === 'Identifier' ? functions : values).add(id.name);
+        }
+      }
+    }
+  };
+  for (const statement of result.program.body) {
+    if (statement.type === 'ImportDeclaration') {
+      for (const specifier of statement.specifiers) {
+        let imported = '*';
+        if (specifier.type === 'ImportDefaultSpecifier') {
+          imported = 'default';
+        } else if (specifier.type === 'ImportSpecifier') {
+          imported =
+            specifier.imported.type === 'Identifier'
+              ? specifier.imported.name
+              : specifier.imported.value;
+        }
+        imports.set(specifier.local.name, { specifier: statement.source.value, imported });
+      }
+    } else if (
+      (statement.type === 'ExportNamedDeclaration' ||
+        statement.type === 'ExportDefaultDeclaration') &&
+      statement.declaration
+    ) {
+      declare(statement.declaration);
+    } else {
+      declare(statement);
+    }
+  }
+  // A local name that the module exports.
+  const local = (localName: string): boolean => {
+    if (functions.has(localName)) {
+      return true;
+    }
+    const found = imports.get(localName);
+    if (found && found.imported !== '*') {
+      return mayExportFunction(found.specifier, found.imported, module.path, resolve, seen);
+    }
+    return false;
+  };
+  const stars: string[] = [];
+  for (const statement of result.program.body) {
+    if (statement.type === 'ExportDefaultDeclaration') {
+      if (name !== 'default') {
+        continue;
+      }
+      const declaration = statement.declaration;
+      if (
+        declaration.type === 'FunctionDeclaration' ||
+        declaration.type === 'ArrowFunctionExpression' ||
+        declaration.type === 'FunctionExpression'
+      ) {
+        return true;
+      }
+      return declaration.type === 'Identifier' && local(declaration.name);
+    }
+    if (statement.type === 'ExportAllDeclaration') {
+      if (!statement.exported) {
+        stars.push(statement.source.value);
+      }
+      continue;
+    }
+    if (statement.type !== 'ExportNamedDeclaration') {
+      continue;
+    }
+    if (statement.declaration) {
+      const declaration = statement.declaration;
+      if (declaration.type === 'FunctionDeclaration' && declaration.id?.name === name) {
+        return true;
+      }
+      if (declaration.type === 'VariableDeclaration') {
+        for (const declarator of declaration.declarations) {
+          for (const id of getPatternNames(declarator.id)) {
+            if (id.name === name) {
+              return functions.has(name);
+            }
+          }
+        }
+      }
+      continue;
+    }
+    for (const specifier of statement.specifiers) {
+      const exported =
+        specifier.exported.type === 'Identifier'
+          ? specifier.exported.name
+          : specifier.exported.value;
+      if (exported !== name) {
+        continue;
+      }
+      const localName =
+        specifier.local.type === 'Identifier' ? specifier.local.name : specifier.local.value;
+      return statement.source
+        ? mayExportFunction(statement.source.value, localName, module.path, resolve, seen)
+        : local(localName);
+    }
+  }
+  for (const star of stars) {
+    if (mayExportFunction(star, name, module.path, resolve, seen)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Joins and normalizes paths with `/`. */
 function normalize(path: string): string {
   const parts: string[] = [];
