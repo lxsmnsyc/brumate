@@ -1,7 +1,7 @@
 ---
 id: imported-function-prop
 title: An imported function can be a prop of a component
-status: todo
+status: active
 priority: must
 type: fix
 outline: false
