@@ -1,7 +1,7 @@
 ---
 id: control-target
 title: A typed target for the events of form controls
-status: todo
+status: active
 priority: must
 type: feature
 outline: false

@@ -1,7 +1,7 @@
 ---
 id: popover-sizing
 title: Popovers size and place themselves from CSS
-status: todo
+status: active
 priority: must
 type: feature
 outline: false
