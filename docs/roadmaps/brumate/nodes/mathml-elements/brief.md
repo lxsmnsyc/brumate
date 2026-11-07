@@ -1,7 +1,7 @@
 ---
 id: mathml-elements
 title: MathML elements and their currentTarget
-status: todo
+status: done
 priority: must
 type: feature
 outline: false

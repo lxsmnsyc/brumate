@@ -1,7 +1,7 @@
 ---
 id: conditional-rest-spread
 title: A conditional spread of the rest props in markup
-status: todo
+status: done
 priority: must
 type: feature
 outline: false
