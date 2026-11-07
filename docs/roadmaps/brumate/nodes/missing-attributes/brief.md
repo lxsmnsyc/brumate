@@ -1,7 +1,7 @@
 ---
 id: missing-attributes
 title: The HTML attributes that the element types lack
-status: active
+status: done
 priority: must
 type: feature
 outline: false
