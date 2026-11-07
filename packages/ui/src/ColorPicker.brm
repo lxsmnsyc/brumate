@@ -13,8 +13,9 @@
 </script>
 
 <script>
-  import { $effect, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $effect, $memo, $props, $setContext, $signal, $toStore, $untrack } from 'brumate/signals';
   import { ColorPickerContext } from './contexts.ts';
+  import type { ColorPickerState } from './contexts.ts';
   import { formatLike, parseColor, sameColor, toSpace, tryParseColor } from './color.ts';
 
   /**
@@ -72,7 +73,8 @@
     return color;
   }
 
-  $setContext(ColorPickerContext, { value, color, setValue });
+  const pickerState = $memo<ColorPickerState>({ value, color });
+  $setContext(ColorPickerContext, { state: $toStore(pickerState), setValue });
 </script>
 
 {children}

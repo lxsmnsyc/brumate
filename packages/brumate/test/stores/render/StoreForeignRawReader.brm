@@ -1,0 +1,9 @@
+<script>
+  import { $props, $signal } from 'brumate/signals';
+  import type { StoreLike } from 'brumate/store';
+
+  const { s } = $props<{ s: StoreLike<number> }>();
+  let shown = $signal(0);
+</script>
+
+<button onClick=(() => (shown = s.get()))>{shown}</button>

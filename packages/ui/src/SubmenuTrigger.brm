@@ -1,5 +1,5 @@
 <script module>
-  import type { FocusStrategy } from './menu.ts';
+  import type { FocusStrategy, MenuTriggerState, SubmenuState } from './menu.ts';
 
   export interface SubmenuTriggerProps {
     /** The time in milliseconds that the pointer rests on the item before the submenu opens. */
@@ -10,8 +10,9 @@
 </script>
 
 <script>
-  import { $effect, $getContext, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
   import { OverlayTriggerContext } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import {
     MenuContext,
     MenuTriggerContext,
@@ -35,8 +36,9 @@
    */
   const { delay = 200, children } = $props<SubmenuTriggerProps>();
 
-  const parent = $getContext(MenuContext);
-  const parentTrigger = $getContext(MenuTriggerContext);
+  const parentGiven = $getContext(MenuContext, undefined);
+  const parent = parentGiven ? $store(parentGiven.state) : undefined;
+  const parentTrigger = $getContext(MenuTriggerContext, undefined);
   const triggerId = $id();
   const overlayId = $id();
   let isOpen = $signal(false);
@@ -69,10 +71,10 @@
   // The parent menu closes too, with its `onClose`, and the menus around it.
   function closeAll() {
     close();
-    if (parent?.closeAll) {
-      parent.closeAll();
+    if (parentGiven?.closeAll) {
+      parentGiven?.closeAll();
     } else {
-      parentTrigger?.closeAll();
+      parentTrigger?.closeAll?.();
     }
   }
 
@@ -84,18 +86,19 @@
     }
   });
 
-  $setContext(SubmenuContext, { triggerId, overlayId, isOpen, open, hoverStart, hoverEnd });
-  $setContext(OverlayTriggerContext, {
+  const submenuState = $memo<SubmenuState>({ triggerId, overlayId, isOpen });
+  $setContext(SubmenuContext, { state: $toStore(submenuState), open, hoverStart, hoverEnd });
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId,
     overlayId,
-    open: () => open('first', true),
-    close,
     isNonModal: true,
     placement: 'end top',
     autoFocus,
   });
-  $setContext(MenuTriggerContext, { triggerId, focusStrategy, closeAll, isSubmenu: true });
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => open('first', true), close });
+  const menuTrigger = $memo<MenuTriggerState>({ triggerId, focusStrategy, isSubmenu: true });
+  $setContext(MenuTriggerContext, { state: $toStore(menuTrigger), closeAll });
 </script>
 
 {children}

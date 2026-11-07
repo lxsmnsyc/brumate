@@ -1,0 +1,8 @@
+<script>
+  import Keyboard from '@brumate/ui/Keyboard.brm';
+</script>
+
+<section aria-labelledby="keyboard">
+  <h2 id="keyboard">Keyboard</h2>
+  <p>Paste with <Keyboard>⌘V</Keyboard>.</p>
+</section>

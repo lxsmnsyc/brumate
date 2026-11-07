@@ -1,0 +1,21 @@
+<script>
+  import { $gate, $signal } from 'brumate/signals';
+
+  let min = $signal(2);
+  let text = $signal('ab');
+  let shown = $signal(false);
+
+  function longEnough(next: string): boolean {
+    return next.length >= min;
+  }
+
+  const value = $gate(text.trim(), (prev, next) => prev !== next && longEnough(next));
+</script>
+
+<button class="show" onClick=(() => (shown = true))>Show</button>
+<button class="short" onClick=(() => (text = 'c'))>Short</button>
+<button class="long" onClick=(() => (text = 'cde'))>Long</button>
+<button class="min" onClick=(() => (min = 1))>Min</button>
+#if (shown) {
+  <p class="value">{value}</p>
+}

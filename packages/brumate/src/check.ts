@@ -91,8 +91,8 @@ declare function $$handler<T extends string>(tag: T): import('brumate/check').Dy
 declare function $$handler(tag: $$Component<never>): <H>(event: string, handler: H) => H;
 declare function $$handler(tag: $$AnyTag): import('brumate/check').DynamicHandle<HTMLElement | SVGElement>;
 type $$Events = import('brumate/elements').ElementEvents;
-type $$Element<T> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : HTMLElement;
-declare function $$on<T extends string, K extends keyof $$Events & string>(tag: T, event: K, handler: (event: $$Events[K] & { currentTarget: $$Element<T> }) => unknown): void;
+type $$Element<T> = T extends keyof HTMLElementTagNameMap ? HTMLElementTagNameMap[T] : T extends keyof SVGElementTagNameMap ? SVGElementTagNameMap[T] : T extends keyof MathMLElementTagNameMap ? MathMLElementTagNameMap[T] : HTMLElement;
+declare function $$on<T extends string, K extends keyof $$Events & string>(tag: T, event: K, handler: (event: import('brumate/elements').ElementEvent<K, $$Element<T>>) => unknown): void;
 declare function $$onWindow<K extends keyof WindowEventMap & string>(event: K, handler: (event: WindowEventMap[K] & { currentTarget: Window }) => unknown): void;
 declare function $$onDocument<K extends keyof DocumentEventMap & string>(event: K, handler: (event: DocumentEventMap[K] & { currentTarget: Document }) => unknown): void;
 declare function $$use(...values: unknown[]): void;

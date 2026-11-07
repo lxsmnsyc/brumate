@@ -1,0 +1,34 @@
+<script module>
+  import { bridge } from 'brumate/store';
+  import type { Bridge } from 'brumate/store';
+  import { createStore } from './zustand.ts';
+  import type { StoreApi } from './zustand.ts';
+  import type { ModBears } from './modContext.ts';
+
+  export const laterStore: Bridge<StoreApi<ModBears>, { bears: number }> = bridge({
+    create: (snapshot?: { bears: number }) => {
+      const counts = ((globalThis as { bridgeCounts?: Record<string, number> }).bridgeCounts ??= {});
+      counts.create = (counts.create ?? 0) + 1;
+      return createStore<ModBears>()((set) => ({
+        bears: (globalThis as { bearsStart?: number }).bearsStart ?? snapshot?.bears ?? 0,
+        add: () => set((state) => ({ bears: state.bears + 1 })),
+      }));
+    },
+    get: (source) => ({ bears: source.getState().bears }),
+    subscribe: (source, listener) => source.subscribe(listener),
+  });
+</script>
+
+<script>
+  import { $setContext, $signal } from 'brumate/signals';
+  import ModReader from './ModReader.brm';
+  import { ModContext } from './modContext.ts';
+
+  let shown = $signal(false);
+  $setContext(ModContext, laterStore({ bears: 7 }));
+</script>
+
+<button class="show" onClick=(() => (shown = true))>Show</button>
+#if (shown) {
+  <ModReader />
+}

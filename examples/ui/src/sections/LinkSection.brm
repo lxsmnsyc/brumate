@@ -1,0 +1,12 @@
+<script>
+  import Link from '@brumate/ui/Link.brm';
+</script>
+
+<section aria-labelledby="link">
+  <h2 id="link">Link</h2>
+  <p>
+    <Link class="link" href="#link">This section</Link>,
+    <Link class="link" href="#main" isCurrent>the current page</Link> and
+    <Link class="link" href="#main" isDisabled>a disabled link</Link>.
+  </p>
+</section>

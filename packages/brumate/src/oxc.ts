@@ -136,3 +136,25 @@ export function getPatternNames(
   }
   return names;
 }
+
+/**
+ * True for a fallback of `$getContext` that the code passes as it is, such as `undefined`, `false`
+ * or `'en'`. Other code becomes a function, which runs only when no provider is above.
+ */
+export function isFallbackLiteral(node: oxc.Node): boolean {
+  if (node.type === 'Identifier') {
+    return node.name === 'undefined';
+  }
+  if (node.type === 'Literal') {
+    return !('regex' in node && node.regex);
+  }
+  if (node.type === 'TemplateLiteral') {
+    return node.expressions.length === 0;
+  }
+  return (
+    node.type === 'UnaryExpression' &&
+    (node.operator === '-' || node.operator === '+') &&
+    node.argument.type === 'Literal' &&
+    typeof node.argument.value === 'number'
+  );
+}

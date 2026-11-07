@@ -1,0 +1,11 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { Field } from './contexts.ts';
+
+  const field = $getContext(Field, undefined);
+  const found = field !== undefined;
+  const state = field ? $store(field.state) : undefined;
+</script>
+
+<p class="found">{found ? 'yes' : 'no'}</p>
+<button class="bump" onClick=(() => field?.bump())>{state ? state.count : 'none'}</button>

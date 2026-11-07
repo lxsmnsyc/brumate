@@ -1,0 +1,9 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { Field } from './contexts.ts';
+
+  const field = $getContext(Field);
+  const state = $store(field.state);
+</script>
+
+<button class="bump" onClick=(() => field.bump())>{state.count}</button>

@@ -1,0 +1,16 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ConditionalRestBox from './conditionalRestBox.brm';
+
+  let on = $signal(true);
+  let root = $signal<HTMLElement>();
+  let calls = $signal('');
+
+  function take(element: HTMLElement | undefined) {
+    calls = `${calls}${element?.tagName ?? 'none'};`;
+  }
+</script>
+
+<button class="flip" onClick=(() => (on = !on))>Flip</button>
+<ConditionalRestBox ref=$bind(root, take) title="one" {on} />
+<p class="calls">{calls}</p>

@@ -63,6 +63,10 @@
       "types": "./dist/runtime/signals.d.ts",
       "default": "./dist/runtime/signals.js"
     },
+    "./store": {
+      "types": "./dist/runtime/store.d.ts",
+      "default": "./dist/runtime/store.js"
+    },
     "./routes": {
       "types": "./dist/runtime/routes.d.ts",
       "default": "./dist/runtime/routes.js"

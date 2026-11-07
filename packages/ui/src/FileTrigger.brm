@@ -18,7 +18,7 @@
 </script>
 
 <script>
-  import { $id, $props, $setContext } from 'brumate/signals';
+  import { $id, $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { ButtonContext } from './contexts.ts';
 
   /**
@@ -52,7 +52,13 @@
     onSelect?.(event.currentTarget.files);
   }
 
-  $setContext(ButtonContext, { onPress: open });
+  const buttonState = $memo({});
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: open,
+    },
+  });
 </script>
 
 {children}

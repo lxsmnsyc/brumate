@@ -1,0 +1,11 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import StoreModuleReader from './StoreModuleReader.brm';
+
+  let show = $signal(true);
+</script>
+
+<button class="toggle" onClick=(() => (show = !show))>Toggle</button>
+#if (show) {
+  <StoreModuleReader />
+}

@@ -1,0 +1,43 @@
+<script module>
+  import { store } from 'brumate/store';
+
+  // One store for the module. The browser can start from another value than the server.
+  const shared = store((globalThis as { savedShared?: string }).savedShared ?? 'm');
+</script>
+
+<script>
+  import { $props, $store } from 'brumate/signals';
+  import type { Store } from 'brumate/store';
+  import { ran } from './runs.ts';
+  import * as space from './storeSpace.ts';
+
+  const { s, given, n } = $props<{ s: Store<number>; given?: { state: Store<number> }; n: number }>();
+
+  function make(): Store<number> {
+    return store(n * 10);
+  }
+
+  const localOne = $store(store(5));
+  let localTwo = $store(store(5));
+  const propOne = $store(s);
+  let propTwo = $store(s);
+  const maybe = $store(given?.state ?? store(0));
+  const callOne = $store(make());
+  let callTwo = $store(make());
+  const moduleOne = $store(shared);
+  let moduleTwo = $store(shared);
+  const spaceOne = $store(space);
+  let spaceTwo = $store(space);
+</script>
+
+<p class="local">{localOne} {localTwo}</p>
+<button class="local-up" onClick=(() => localTwo++)>local</button>
+<p class="prop">{propOne} {propTwo}</p>
+<button class="prop-up" onClick=(() => (propTwo = propTwo + 10))>prop</button>
+<p class="maybe">{maybe ?? 'none'}</p>
+<p class="call">{callOne} {callTwo}</p>
+<button class="call-up" onClick=(() => callTwo++)>call</button>
+<p class="module">{ran('module', `${moduleOne} ${moduleTwo}`)}</p>
+<button class="module-up" onClick=(() => (moduleTwo = `${moduleTwo}!`))>module</button>
+<p class="space">{spaceOne} {spaceTwo}</p>
+<button class="space-up" onClick=(() => (spaceTwo = `${spaceTwo}+`))>space</button>

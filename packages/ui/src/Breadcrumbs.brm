@@ -10,7 +10,7 @@
 </script>
 
 <script>
-  import { $props, $setContext } from 'brumate/signals';
+  import { $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { LinkContext } from './contexts.ts';
 
   /**
@@ -19,7 +19,8 @@
    */
   const { isDisabled = false, children, ...rest } = $props<BreadcrumbsProps>();
 
-  $setContext(LinkContext, { isDisabled });
+  const linkState = $memo({ isDisabled });
+  $setContext(LinkContext, { state: $toStore(linkState) });
 </script>
 
 <ol data-disabled=(isDisabled || undefined) {...rest}>{children}</ol>

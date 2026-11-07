@@ -11,8 +11,9 @@
 </script>
 
 <script>
-  import { $memo, $props, $setContext } from 'brumate/signals';
+  import { $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { ColorSwatchContext } from './contexts.ts';
+  import type { ColorSwatchState } from './contexts.ts';
   import ListBoxItem from './ListBoxItem.brm';
   import { colorName, formatColor, tryParseColor } from './color.ts';
 
@@ -37,7 +38,8 @@
   const key = $memo(parsed ? formatColor(parsed, 'hexa') : color);
   const name = $memo(parsed ? colorName(parsed) : color);
 
-  $setContext(ColorSwatchContext, { color });
+  const swatchGiven = $memo<ColorSwatchState>({ color });
+  $setContext(ColorSwatchContext, $toStore(swatchGiven));
 </script>
 
 <ListBoxItem id=key textValue=name {isDisabled} data-color=color {...rest}>{children}</ListBoxItem>

@@ -38,6 +38,8 @@ export interface PositionOptions {
   /** The space that the overlay keeps from the edges of the viewport, in pixels. */
   containerPadding: number;
   direction: 'ltr' | 'rtl';
+  /** Sets `max-height` to the room that is left, unless the author's CSS sets one. */
+  fitHeight?: boolean;
 }
 
 export interface Position {
@@ -74,6 +76,20 @@ export function parsePlacement(placement: Placement, direction: 'ltr' | 'rtl'): 
     align = value === 'left' || value === 'top' ? 'start' : 'end';
   }
   return [side, align];
+}
+
+/** A length in pixels from a CSS value such as `8` or `8px`, or undefined for anything else. */
+export function parseLength(value: string): number | undefined {
+  const text = value.trim();
+  if (!/^-?(\d+\.?\d*|\.\d+)(px)?$/.test(text)) {
+    return undefined;
+  }
+  return Number.parseFloat(text);
+}
+
+/** The length in pixels of a custom property of the element, such as `--anchor-gap`. */
+export function readLength(element: Element, name: string): number | undefined {
+  return parseLength(getComputedStyle(element).getPropertyValue(name));
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -154,6 +170,34 @@ export function followTrigger(
 ): () => void {
   let frame = 0;
   const { put, stop } = keepStyle(overlay);
+  // What the author's CSS sets, read once before the first write: a stylesheet rule wins over ours.
+  // A rule of the browser or of a library counts as the author's.
+  let fitted = '';
+  let capped: boolean | undefined;
+  let scrolls = false;
+  function fit(element: HTMLElement, room: number): void {
+    if (capped === undefined) {
+      const computed = getComputedStyle(element);
+      const height = element.style.maxHeight;
+      capped = (height !== '' || computed.maxHeight !== 'none') && computed.maxHeight !== '';
+      scrolls = element.style.overflow === '' && element.style.overflowY === '';
+      scrolls = scrolls && ['', 'visible'].includes(computed.overflowY);
+    }
+    const value = `${room}px`;
+    // An inline value that is not ours is the author's too.
+    if (
+      capped ||
+      value === fitted ||
+      (element.style.maxHeight && element.style.maxHeight !== fitted)
+    ) {
+      return;
+    }
+    put('max-height', value);
+    if (scrolls) {
+      put('overflow-y', 'auto');
+    }
+    fitted = value;
+  }
   function update(): void {
     cancelAnimationFrame(frame);
     frame = requestAnimationFrame(() => {
@@ -170,6 +214,9 @@ export function followTrigger(
       put('left', `${position.left}px`);
       put('--trigger-width', `${trigger.getBoundingClientRect().width}px`);
       put('--available-height', `${position.maxHeight}px`);
+      if (options.fitHeight) {
+        fit(overlay, position.maxHeight);
+      }
       placed(position);
     });
   }

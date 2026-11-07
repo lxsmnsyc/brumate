@@ -27,11 +27,27 @@
 </script>
 
 <script>
-  import { $client, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import {
+    $client,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { CheckboxGroupContext, FieldErrorContext, LabelContext, TextContext } from './contexts.ts';
+  import {
+    CheckboxGroupContext,
+    DisabledContext,
+    FieldErrorContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, isFirstInvalid, onFormReset } from './fields.ts';
 
@@ -62,9 +78,13 @@
   let initial = $signal(isSelected);
   const inputId = $id();
 
-  const group = $getContext(CheckboxGroupContext);
+  const groupGiven = $getContext(CheckboxGroupContext, undefined);
+  const group = groupGiven ? $store(groupGiven.state) : undefined;
   const selected = $memo(group ? group.value.includes(value ?? '') : isSelected);
-  const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const disabled = $memo(Boolean(isDisabled || group?.isDisabled || inheritedDisabled));
   const readOnly = $memo(Boolean(isReadOnly || group?.isReadOnly));
   const required = $memo(Boolean(isRequired || group?.isRequired));
   const mixed = $memo(Boolean(isIndeterminate || group?.isIndeterminate));
@@ -86,25 +106,29 @@
   );
   const labelId = $id();
   const { present: hasLabel } = described(labelId, false);
-  const groupLabel = $getContext(LabelContext);
-  const groupText = $getContext(TextContext);
-  const groupError = $getContext(FieldErrorContext);
+  const groupLabelGiven = $getContext(LabelContext, undefined);
+  const groupLabel = groupLabelGiven ? $store(groupLabelGiven) : undefined;
+  const groupTextGiven = $getContext(TextContext, undefined);
+  const groupText = groupTextGiven ? $store(groupTextGiven) : undefined;
+  const groupErrorGiven = $getContext(FieldErrorContext, undefined);
+  const groupError = groupErrorGiven ? $store(groupErrorGiven) : undefined;
   // A Label in the children (`as="span"`) names the input, so the description and the error stay
   // out of its name. Without one, they sit in the text of the label, and aria-hidden keeps them
   // out of the name. The server cannot see the Label, so a box starts without one: the name is right
   // before any script runs, and the browser turns the Label on when it finds it. The input still names them in aria-describedby, which reads hidden elements.
   const hidden = $memo(hasLabel ? undefined : 'true');
-  $setContext(LabelContext, group ? groupLabel : { id: labelId });
-  $setContext(
-    TextContext,
-    group ? groupText : { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } },
+  const labelGiven = $memo(group ? (groupLabel ?? null) : { id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const textGiven = $memo(
+    group ? (groupText ?? null) : { slots: { description: { id: descriptionId, 'aria-hidden': hidden } } },
   );
-  $setContext(
-    FieldErrorContext,
+  $setContext(TextContext, $toStore(textGiven));
+  const errorGiven = $memo(
     group
-      ? groupError
+      ? (groupError ?? null)
       : { id: errorId, isInvalid: invalid, errors, attributes: { 'aria-hidden': hidden } },
   );
+  $setContext(FieldErrorContext, $toStore(errorGiven));
 
   const {
     hovered,
@@ -159,7 +183,7 @@
     const before = selected;
     try {
       if (group) {
-        group.toggle(value ?? '', input.checked);
+        groupGiven!.toggle!(value ?? '', input.checked);
       } else {
         isSelected = input.checked;
       }
@@ -178,7 +202,9 @@
     const input = event.currentTarget;
     failed = true;
     message = input.validationMessage;
-    group?.onInvalid(input.validationMessage);
+    if (group) {
+      groupGiven!.onInvalid!(input.validationMessage);
+    }
     if (isFirstInvalid(input)) {
       input.focus();
     }

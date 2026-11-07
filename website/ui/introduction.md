@@ -39,11 +39,13 @@ Import a part from `@brumate/ui`, and use it as any component:
 
 ## A skill for agents
 
-The package ships a skill in the Agent Skills format, for agents that write pages with the parts. Copy it into the skills of your project:
+The package ships a skill in the Agent Skills format, for agents that write pages with the parts. Install it with one command. It also installs the skill of brumate:
 
 ```sh
-cp -r node_modules/@brumate/ui/skills/brumate-ui .claude/skills/
+npx brumate skill
 ```
+
+The command copies the skills of every installed `@brumate` package to `.claude/skills`, so they match the versions you use. Yarn PnP has no `node_modules`, so only the skill of brumate is copied there.
 
 ## How the parts work together
 

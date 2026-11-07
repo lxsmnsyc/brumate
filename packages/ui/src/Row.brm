@@ -18,9 +18,11 @@
 
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
   import { CheckboxGroupContext } from './contexts.ts';
+  import type { CheckboxGroupState } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { TableRowContext } from './table.ts';
 
@@ -42,19 +44,25 @@
     ...rest
   } = $props<RowProps>();
 
-  const list = $getContext(ListBoxContext);
+  const listGiven = $getContext(ListBoxContext, undefined);
+  const list = listGiven ? $store(listGiven.state) : undefined;
   const mode = $memo(list?.selectionMode ?? 'none');
   const selected = $memo(Boolean(list?.selectedKeys.includes(id)));
-  const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));
+  const disabled = $memo(
+    isDisabled || Boolean(list?.isDisabled) || Boolean(list?.disabledKeys.includes(id)),
+  );
 
   // The Checkbox of the selection is checked while the row is selected, and toggles it.
-  $setContext(CheckboxGroupContext, {
+  const checkState = $memo<CheckboxGroupState>({
     value: selected ? [''] : [],
     isDisabled: disabled || mode === 'none',
     isReadOnly: false,
     isInvalid: false,
     isRequired: false,
-    toggle: () => list?.select(id, { shift: false, toggle: true }),
+  });
+  $setContext(CheckboxGroupContext, {
+    state: $toStore(checkState),
+    toggle: () => listGiven?.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
 
@@ -64,10 +72,10 @@
     }
     if (mode === 'none') {
       onAction?.();
-      list.action(id);
+      listGiven?.action!(id);
       return;
     }
-    list.select(id, {
+    listGiven?.select!(id, {
       shift: event.shiftKey,
       toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
     });
@@ -122,7 +130,8 @@
     }
   }
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
   // Each Cell takes the next place, so it knows its column.
   $setContext(TableRowContext, { cells: { count: 0 } });
 </script>

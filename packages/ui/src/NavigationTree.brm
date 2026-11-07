@@ -1,7 +1,7 @@
 <script module>
   import type { Bindable } from 'brumate/signals';
   import type { Key } from './collection.ts';
-  import type { NavigationNode } from './navigation-tree.ts';
+  import type { NavigationNode, NavigationTreeState } from './navigation-tree.ts';
 
   export interface NavigationTreeProps<V extends NavigationNode = NavigationNode> {
     /** The route of the page that shows. The item whose `href` is that route is the current one. */
@@ -19,7 +19,7 @@
 </script>
 
 <script generics="V extends NavigationNode">
-  import { $memo, $props, $setContext } from 'brumate/signals';
+  import { $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { NavigationTreeContext, findAncestors } from './navigation-tree.ts';
   import Tree from './Tree.brm';
 
@@ -39,7 +39,8 @@
   let { expandedKeys = [] } = $props<NavigationTreeProps<V>>();
 
   const ancestors = $memo(findAncestors(items, selectedRoute));
-  $setContext(NavigationTreeContext, { selectedRoute, ancestors });
+  const treeGiven = $memo<NavigationTreeState>({ selectedRoute, ancestors });
+  $setContext(NavigationTreeContext, $toStore(treeGiven));
 
   function expanded(keys: Key[]) {
     expandedKeys = keys;

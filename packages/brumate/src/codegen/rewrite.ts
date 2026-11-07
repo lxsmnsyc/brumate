@@ -477,12 +477,18 @@ export class Rewriter {
           ) {
             const memo = node.arguments[0];
             const declaration = memo && references.get(memo.start)?.declaration;
-            // A memo is pending while it or a memo that it reads loads.
+            // A memo is pending while it or a memo that it reads loads. `$resolve` takes one memo.
             const checks: string[] = [];
-            for (const item of declaration ? [declaration, ...upstreamMemos(declaration)] : []) {
-              const slot = slotIndex(this.plan, item);
-              if (slot !== -1) {
-                checks.push(`$$b.pending(${path(item)}, ${slot})`);
+            const seen = new Set<Declaration>();
+            const targets = node.callee.name === '$isPending' ? node.arguments : [memo];
+            for (const target of targets) {
+              const found = target && references.get(target.start)?.declaration;
+              for (const item of found ? [found, ...upstreamMemos(found)] : []) {
+                const slot = slotIndex(this.plan, item);
+                if (slot !== -1 && !seen.has(item)) {
+                  seen.add(item);
+                  checks.push(`$$b.pending(${path(item)}, ${slot})`);
+                }
               }
             }
             let value: string;

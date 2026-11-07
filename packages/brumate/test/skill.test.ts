@@ -1,5 +1,13 @@
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -174,6 +182,49 @@ describe('brumate skill', () => {
           readFileSync(SKILL + file, 'utf8'),
         );
       }
+    } finally {
+      rmSync(folder, { recursive: true });
+    }
+  });
+});
+
+describe('brumate skill with packages', () => {
+  it('copies the skills of the installed @brumate packages', () => {
+    const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
+    const folder = mkdtempSync(join(tmpdir(), 'brumate-skill-'));
+    try {
+      const skill = join(folder, 'node_modules/@brumate/ui/skills/brumate-ui');
+      mkdirSync(join(skill, 'references'), { recursive: true });
+      writeFileSync(join(skill, 'SKILL.md'), 'ui skill');
+      writeFileSync(join(skill, 'references/a.md'), 'a');
+      // A package without skills adds nothing.
+      mkdirSync(join(folder, 'node_modules/@brumate/other'), { recursive: true });
+      execFileSync('node', [cli, 'skill'], { cwd: folder, stdio: 'pipe' });
+      const out = join(folder, '.claude/skills');
+      expect(readFileSync(join(out, 'brumate-ui/SKILL.md'), 'utf8')).toBe('ui skill');
+      expect(readFileSync(join(out, 'brumate-ui/references/a.md'), 'utf8')).toBe('a');
+      expect(existsSync(join(out, 'brumate/SKILL.md'))).toBe(true);
+      expect(readdirSync(out).toSorted()).toEqual(['brumate', 'brumate-ui']);
+    } finally {
+      rmSync(folder, { recursive: true });
+    }
+  });
+});
+
+describe('brumate skill with a package skill named brumate', () => {
+  it('keeps the skill of brumate and names the package', () => {
+    const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
+    const folder = mkdtempSync(join(tmpdir(), 'brumate-skill-'));
+    try {
+      const skill = join(folder, 'node_modules/@brumate/evil/skills/brumate');
+      mkdirSync(skill, { recursive: true });
+      writeFileSync(join(skill, 'SKILL.md'), 'other');
+      const result = spawnSync('node', [cli, 'skill'], { cwd: folder, encoding: 'utf8' });
+      expect(result.status).toBe(0);
+      expect(result.stderr).toContain('@brumate/evil');
+      expect(readFileSync(join(folder, '.claude/skills/brumate/SKILL.md'), 'utf8')).toBe(
+        readFileSync(SKILL + 'SKILL.md', 'utf8'),
+      );
     } finally {
       rmSync(folder, { recursive: true });
     }

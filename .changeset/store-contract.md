@@ -1,0 +1,7 @@
+---
+'brumate': minor
+---
+
+Add `$store` and `$toStore`, and `brumate/store`. `$store(source)` binds any store, a value with `get`, `subscribe` and optionally `set`, to a variable, and `let x = $store(source)` writes the store with `set` when the variable is assigned. The source is any expression that gives a store: a key of a `$getContext` value, `$getContext` of a context that holds the store, an import, a prop, a value of `<script module>`, a call, or a store made there, as `$store(store(0))`. `$store` is typed `$store<T>(source: StoreLike<T>): T`. `$toStore(value)` makes the store of a memo, a signal or a prop in a `$setContext` value. `Store` calls its listeners only when the value changes.
+
+A context, `undefined`, `null` and `$store(field?.state)` as the source are compile errors that name the fix (BRM199 and BRM197). A source that awaits or calls a server function is BRM198. A source that gives no store when the page renders throws a `TypeError` that names `$store`, and a store of another library in a prop or a script value that `$store` reads makes the server render throw an error that names the component and the value. On resume the browser runs a source that is not a context once, with the values the page resumed. It subscribes, and writes the variable once if the store's value differs from the server's. It never calls `set`. A store that the source makes starts from its first value in the browser.

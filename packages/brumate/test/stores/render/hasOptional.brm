@@ -1,0 +1,22 @@
+<script>
+  import { $memo, $setContext, $signal, $toStore } from 'brumate/signals';
+  import HasOptionalReader from './HasOptionalReader.brm';
+  import { Field } from './contexts.ts';
+
+  let count = $signal(0);
+  const state = $memo({ count });
+  let later = $signal(false);
+
+  function bump() {
+    count++;
+  }
+
+  $setContext(Field, { state: $toStore(state), bump });
+</script>
+
+<p class="count">{count}</p>
+<button class="later" onClick=(() => (later = true))>Later</button>
+<section class="now"><HasOptionalReader /></section>
+#if (later) {
+  <section class="then"><HasOptionalReader /></section>
+}

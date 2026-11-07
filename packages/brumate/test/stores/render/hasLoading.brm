@@ -1,0 +1,38 @@
+<script module>
+  let open: (value: string) => void = () => {};
+
+  function arm(): Promise<string> {
+    return new Promise<string>((resolve) => {
+      open = resolve;
+    });
+  }
+
+  export let ready = arm();
+
+  /** A new promise for the next test. */
+  export function reset(): void {
+    ready = arm();
+  }
+
+  export function release(value: string): void {
+    open(value);
+  }
+</script>
+
+<script>
+  import { $memo, $setContext, $signal, $toStore } from 'brumate/signals';
+  import HasLoadingReader from './HasLoadingReader.brm';
+  import { Picker } from './contexts.ts';
+
+  let value = $signal('a');
+  const data = $memo(await ready);
+  $setContext(Picker, $toStore(value));
+</script>
+
+<HasLoadingReader where="outer" />
+#loading {
+  <p class="data">{data}</p>
+  <HasLoadingReader where="inner" />
+} #else {
+  <p class="fallback">Loading</p>
+}

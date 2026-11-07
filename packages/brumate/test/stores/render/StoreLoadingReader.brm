@@ -1,0 +1,11 @@
+<script>
+  import { $getContext, $props, $store } from 'brumate/signals';
+  import { Picker } from './contexts.ts';
+
+  const { where } = $props<{ where: string }>();
+  // The store itself, which a handler reads, and its value.
+  const picker = $getContext(Picker);
+  const value = $store($getContext(Picker));
+</script>
+
+<p class=(`read-${where}`) onClick=(() => ((globalThis as { seen?: unknown[] }).seen ??= []).push(picker))>{value}</p>

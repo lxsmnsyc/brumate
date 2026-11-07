@@ -1,0 +1,23 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import Slider from '@brumate/ui/Slider.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderThumb from '@brumate/ui/SliderThumb.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let span = $signal([20, 60]);
+</script>
+
+<section aria-labelledby="slider">
+  <h2 id="slider">Slider</h2>
+  <Slider class="span" step=(10) value=$bind(span)>
+    <Label>Span</Label>
+    <SliderOutput class="span-output" />
+    <SliderTrack class="span-track" style="width: 200px; height: 20px; background: #ddd">
+      <SliderThumb class="span-low" index=(0) aria-label="Start" style="top: 0; width: 20px; height: 20px; background: #333" />
+      <SliderThumb class="span-high" index=(1) aria-label="End" style="top: 0; width: 20px; height: 20px; background: #333" />
+    </SliderTrack>
+  </Slider>
+  <p class="span-state">{span.join(' ')}</p>
+</section>

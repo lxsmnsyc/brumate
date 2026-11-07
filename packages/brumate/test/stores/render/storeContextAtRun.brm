@@ -1,0 +1,10 @@
+<script>
+  import { $store } from 'brumate/signals';
+  import type { Store } from 'brumate/store';
+  import { Level } from './contexts.ts';
+
+  // The file never names Level as a context, so only the run finds that it is no store.
+  const level = $store(Level as unknown as Store<number>);
+</script>
+
+<p>{level}</p>

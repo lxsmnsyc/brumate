@@ -51,7 +51,8 @@ type Num = number | `${number}`;
 
 /**
  * A handler of the event `Ev` on the element `E`, which is `event.currentTarget`. Use it to type
- * a function that a handler prop takes: `EventHandler<HTMLButtonElement, MouseEvent>`.
+ * a function that a handler prop takes: `EventHandler<HTMLButtonElement, MouseEvent>`. Its
+ * `target` stays `EventTarget`; for the typed target of a form control, use `ElementEvent`.
  */
 export type EventHandler<E, Ev = Event> = (event: Ev & { currentTarget: E }) => unknown;
 
@@ -145,7 +146,28 @@ type BoundValue = BindableMark<unknown> & WritableMark<string>;
 /** What `checked=$bind(name)` takes: a binding that can hold the boolean the field writes. */
 type BoundChecked = BindableMark<unknown> & WritableMark<boolean>;
 
-type Handler<Ev, E> = EventHandler<E, Ev>;
+/** The events that a form control fires at itself, as Solid types them: `target` is the control. */
+type ControlEventName =
+  | 'input'
+  | 'change'
+  | 'beforeinput'
+  | 'focus'
+  | 'blur'
+  | 'focusin'
+  | 'focusout';
+
+type ControlElement = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+/**
+ * The event `K` on the element `E`. `currentTarget` is `E`. `target` is `E` for the events of
+ * `ControlEventName` on an `input`, a `select` or a `textarea`, and `Element` for the others.
+ */
+export type ElementEvent<K extends keyof ElementEvents, E> = ElementEvents[K] & {
+  currentTarget: E;
+  target: [E] extends [ControlElement] ? (K extends ControlEventName ? E : Element) : Element;
+};
+
+type Handler<K extends keyof ElementEvents, E> = (event: ElementEvent<K, E>) => unknown;
 
 /**
  * The camel-case name of each event whose name has more than one word, by the name of the event:
@@ -261,7 +283,7 @@ type EventWord<K extends string> = K extends keyof ElementEventNames
 export type Handlers<E> = {
   [
     K in keyof ElementEvents & string as K extends `webkit${string}` ? never : `on${EventWord<K>}`
-  ]?: Handler<ElementEvents[K], E>;
+  ]?: Handler<K, E>;
 };
 
 /** A value of an ARIA attribute that is `true` or `false`. The runtime writes both as words. */
@@ -496,6 +518,12 @@ export type GlobalAttributes<E> = Handlers<E> &
     translate?: Attr<'yes' | 'no'>;
     writingsuggestions?: Attr<boolean | 'true' | 'false'>;
     autocorrect?: Attr<boolean | 'on' | 'off'>;
+    exportparts?: Attr<string>;
+    itemid?: Attr<string>;
+    itemprop?: Attr<string>;
+    itemref?: Attr<string>;
+    itemscope?: Attr<boolean>;
+    itemtype?: Attr<string>;
     [attribute: `data-${string}`]: unknown;
     [attribute: `aria-${string}`]: Attr<string | number | boolean>;
   };
@@ -511,6 +539,112 @@ type Referrer =
   | 'unsafe-url';
 type CrossOrigin = boolean | 'anonymous' | 'use-credentials';
 type Size = number | string;
+
+// A value of a list of tokens: one token or more, with other text after it.
+type Tokens<T extends string> = T | `${T} ${string}`;
+
+// The tokens of `autocomplete` that fill a field (HTML, "autofill field names"). A value can start
+// with `section-*`, `shipping` or `billing`, and end with `webauthn`, so a string stays valid.
+type AutofillField =
+  | 'name'
+  | 'honorific-prefix'
+  | 'given-name'
+  | 'additional-name'
+  | 'family-name'
+  | 'honorific-suffix'
+  | 'nickname'
+  | 'username'
+  | 'new-password'
+  | 'current-password'
+  | 'one-time-code'
+  | 'organization-title'
+  | 'organization'
+  | 'street-address'
+  | 'address-line1'
+  | 'address-line2'
+  | 'address-line3'
+  | 'address-level4'
+  | 'address-level3'
+  | 'address-level2'
+  | 'address-level1'
+  | 'country'
+  | 'country-name'
+  | 'postal-code'
+  | 'cc-name'
+  | 'cc-given-name'
+  | 'cc-additional-name'
+  | 'cc-family-name'
+  | 'cc-number'
+  | 'cc-exp'
+  | 'cc-exp-month'
+  | 'cc-exp-year'
+  | 'cc-csc'
+  | 'cc-type'
+  | 'transaction-currency'
+  | 'transaction-amount'
+  | 'language'
+  | 'bday'
+  | 'bday-day'
+  | 'bday-month'
+  | 'bday-year'
+  | 'sex'
+  | 'url'
+  | 'photo'
+  | 'tel'
+  | 'tel-country-code'
+  | 'tel-national'
+  | 'tel-area-code'
+  | 'tel-local'
+  | 'tel-local-prefix'
+  | 'tel-local-suffix'
+  | 'tel-extension'
+  | 'email'
+  | 'impp';
+type Autocomplete = boolean | 'on' | 'off' | AutofillField | (string & {});
+
+// The tokens of `sandbox` (HTML, "sandboxing flag set").
+type SandboxToken =
+  | 'allow-downloads'
+  | 'allow-forms'
+  | 'allow-modals'
+  | 'allow-orientation-lock'
+  | 'allow-pointer-lock'
+  | 'allow-popups'
+  | 'allow-popups-to-escape-sandbox'
+  | 'allow-storage-access-by-user-activation'
+  | 'allow-presentation'
+  | 'allow-same-origin'
+  | 'allow-scripts'
+  | 'allow-top-navigation'
+  | 'allow-top-navigation-by-user-activation'
+  | 'allow-top-navigation-to-custom-protocols';
+
+// The destinations that `link as` takes for `rel=preload` and `rel=modulepreload` (the fetch
+// destinations that HTML lists).
+type LinkDestination =
+  | 'audio'
+  | 'document'
+  | 'embed'
+  | 'fetch'
+  | 'font'
+  | 'image'
+  | 'object'
+  | 'script'
+  | 'style'
+  | 'track'
+  | 'video'
+  | 'worker'
+  | 'audioworklet'
+  | 'paintworklet'
+  | 'serviceworker'
+  | 'sharedworker'
+  | 'json'
+  | 'manifest'
+  | 'frame'
+  | 'iframe'
+  | 'report'
+  | 'xslt'
+  | (string & {});
 
 /** An HTML element `E` with the attributes of its own. */
 type Html<E extends keyof HTMLElementTagNameMap, Own = {}> = GlobalAttributes<
@@ -559,7 +693,16 @@ interface ButtonOwn extends FormControlOwn {
   formtarget?: Attr<string>;
   popovertarget?: Attr<string>;
   popovertargetaction?: Attr<'show' | 'hide' | 'toggle'>;
-  command?: Attr<string>;
+  command?: Attr<
+    | 'show-modal'
+    | 'close'
+    | 'request-close'
+    | 'show-popover'
+    | 'hide-popover'
+    | 'toggle-popover'
+    | `--${string}`
+    | (string & {})
+  >;
   commandfor?: Attr<string>;
 }
 
@@ -592,7 +735,7 @@ interface InputOwn extends FormControlOwn {
   checked?: Attr<boolean | BoundChecked>;
   accept?: Attr<string>;
   alt?: Attr<string>;
-  autocomplete?: Attr<boolean | string>;
+  autocomplete?: Attr<Autocomplete>;
   capture?: Attr<boolean | 'user' | 'environment'>;
   dirname?: Attr<string>;
   webkitdirectory?: Attr<boolean>;
@@ -621,7 +764,7 @@ interface InputOwn extends FormControlOwn {
 }
 
 interface TextareaOwn extends FormControlOwn {
-  autocomplete?: Attr<boolean | string>;
+  autocomplete?: Attr<Autocomplete>;
   cols?: Attr<Num>;
   dirname?: Attr<string>;
   maxlength?: Attr<Num>;
@@ -789,14 +932,54 @@ type SvgAttributeNames =
   | 'accumulate'
   | 'restart'
   | 'crossorigin';
-type SvgPresentation = { [K in SvgAttributeNames]?: SvgValue };
+type SvgPresentation = { [K in SvgAttributeNames]?: SvgValue } & {
+  'xlink:href'?: SvgValue;
+  'xml:lang'?: SvgValue;
+};
 type Svg<E extends keyof SVGElementTagNameMap> = GlobalAttributes<SVGElementTagNameMap[E]> &
   SvgPresentation;
 
+// The attributes of MathML Core. The global ones apply to every MathML element.
+type MathLength = Attr<string | number>;
+interface MathGlobal {
+  displaystyle?: Attr<boolean>;
+  scriptlevel?: Attr<number | `${number}` | `+${number}` | `-${number}`>;
+  mathbackground?: Attr<string>;
+  mathcolor?: Attr<string>;
+  mathsize?: MathLength;
+  mathvariant?: Attr<'normal'>;
+  // A legacy attribute of MathML Core, which browsers still follow on any MathML element.
+  href?: Attr<string>;
+}
+/** A MathML element `E` with the global MathML attributes and the attributes of its own. */
+type MathAttrs<E extends keyof MathMLElementTagNameMap, Own = {}> = GlobalAttributes<
+  MathMLElementTagNameMap[E]
+> &
+  MathGlobal &
+  Own;
+interface MathOperatorOwn {
+  fence?: Attr<boolean>;
+  form?: Attr<'prefix' | 'infix' | 'postfix'>;
+  largeop?: Attr<boolean>;
+  lspace?: MathLength;
+  rspace?: MathLength;
+  maxsize?: MathLength;
+  minsize?: MathLength;
+  movablelimits?: Attr<boolean>;
+  separator?: Attr<boolean>;
+  stretchy?: Attr<boolean>;
+  symmetric?: Attr<boolean>;
+}
+interface MathSizeOwn {
+  width?: MathLength;
+  height?: MathLength;
+  depth?: MathLength;
+}
+
 /**
- * The attributes of each element, by tag. HTML elements have the attributes of HTML, and SVG
- * elements the shared attributes of SVG. An app adds the tag of a custom element by merging into
- * this interface.
+ * The attributes of each element, by tag. HTML elements have the attributes of HTML, SVG
+ * elements the shared attributes of SVG, and MathML elements those of MathML Core. An app
+ * adds the tag of a custom element by merging into this interface.
  */
 export interface Elements {
   a: Html<'a', AnchorOwn>;
@@ -833,7 +1016,10 @@ export interface Elements {
   del: Html<'del', { cite?: Attr<string>; datetime?: Attr<string> }>;
   details: Html<'details', { open?: Attr<boolean>; name?: Attr<string> }>;
   dfn: Html<'dfn'>;
-  dialog: Html<'dialog', { open?: Attr<boolean> }>;
+  dialog: Html<
+    'dialog',
+    { open?: Attr<boolean>; closedby?: Attr<'any' | 'closerequest' | 'none'> }
+  >;
   div: Html<'div'>;
   dl: Html<'dl'>;
   dt: Html<'dt'>;
@@ -884,7 +1070,7 @@ export interface Elements {
       allowfullscreen?: Attr<boolean>;
       loading?: Attr<'eager' | 'lazy'>;
       referrerpolicy?: Attr<Referrer>;
-      sandbox?: Attr<string>;
+      sandbox?: Attr<'' | Tokens<SandboxToken> | (string & {})>;
     }
   >;
   img: Html<
@@ -916,7 +1102,7 @@ export interface Elements {
     {
       href?: Attr<string>;
       rel?: Attr<string>;
-      as?: Attr<string>;
+      as?: Attr<LinkDestination>;
       type?: Attr<string>;
       media?: Attr<string>;
       crossorigin?: Attr<CrossOrigin>;
@@ -928,7 +1114,7 @@ export interface Elements {
       referrerpolicy?: Attr<Referrer>;
       fetchpriority?: Attr<'high' | 'low' | 'auto'>;
       disabled?: Attr<boolean>;
-      blocking?: Attr<string>;
+      blocking?: Attr<'render' | (string & {})>;
     }
   >;
   main: Html<'main'>;
@@ -943,7 +1129,14 @@ export interface Elements {
       charset?: Attr<string>;
       property?: Attr<string>;
       media?: Attr<string>;
-      'http-equiv'?: Attr<string>;
+      'http-equiv'?: Attr<
+        | 'content-security-policy'
+        | 'content-type'
+        | 'default-style'
+        | 'refresh'
+        | 'x-ua-compatible'
+        | (string & {})
+      >;
     }
   >;
   meter: Html<
@@ -955,6 +1148,7 @@ export interface Elements {
       low?: Attr<Num>;
       high?: Attr<Num>;
       optimum?: Attr<Num>;
+      form?: Attr<string>;
     }
   >;
   nav: Html<'nav'>;
@@ -999,7 +1193,7 @@ export interface Elements {
     'script',
     {
       src?: Attr<string>;
-      type?: Attr<string>;
+      type?: Attr<'importmap' | 'module' | 'speculationrules' | (string & {})>;
       async?: Attr<boolean>;
       defer?: Attr<boolean>;
       nomodule?: Attr<boolean>;
@@ -1007,7 +1201,7 @@ export interface Elements {
       integrity?: Attr<string>;
       referrerpolicy?: Attr<Referrer>;
       fetchpriority?: Attr<'high' | 'low' | 'auto'>;
-      blocking?: Attr<string>;
+      blocking?: Attr<'render' | (string & {})>;
     }
   >;
   search: Html<'search'>;
@@ -1015,7 +1209,7 @@ export interface Elements {
   select: Html<
     'select',
     FormControlOwn & {
-      autocomplete?: Attr<boolean | string>;
+      autocomplete?: Attr<Autocomplete>;
       multiple?: Attr<boolean>;
       required?: Attr<boolean>;
       size?: Attr<Num>;
@@ -1038,14 +1232,30 @@ export interface Elements {
   >;
   span: Html<'span'>;
   strong: Html<'strong'>;
-  style: Html<'style', { media?: Attr<string>; blocking?: Attr<string> }>;
+  style: Html<
+    'style',
+    {
+      type?: Attr<'text/css' | (string & {})>;
+      media?: Attr<string>;
+      blocking?: Attr<'render' | (string & {})>;
+    }
+  >;
   sub: Html<'sub'>;
   summary: Html<'summary'>;
   sup: Html<'sup'>;
   table: Html<'table'>;
   tbody: Html<'tbody'>;
   td: Html<'td', TableCellOwn>;
-  template: Html<'template', { shadowrootmode?: Attr<'open' | 'closed'> }>;
+  template: Html<
+    'template',
+    {
+      shadowrootmode?: Attr<'open' | 'closed'>;
+      shadowrootclonable?: Attr<boolean>;
+      shadowrootdelegatesfocus?: Attr<boolean>;
+      shadowrootserializable?: Attr<boolean>;
+      shadowrootcustomelementregistry?: Attr<boolean>;
+    }
+  >;
   textarea: Html<'textarea', TextareaOwn>;
   tfoot: Html<'tfoot'>;
   th: Html<
@@ -1140,6 +1350,41 @@ export interface Elements {
   tspan: Svg<'tspan'>;
   use: Svg<'use'>;
   view: Svg<'view'>;
+
+  // MathML elements. `a` is the HTML one, which MathML shares.
+  annotation: MathAttrs<'annotation', { encoding?: Attr<string> }>;
+  'annotation-xml': MathAttrs<'annotation-xml', { encoding?: Attr<string> }>;
+  maction: MathAttrs<
+    'maction',
+    { actiontype?: Attr<string>; selection?: Attr<number | `${number}`> }
+  >;
+  math: MathAttrs<'math', { display?: Attr<'block' | 'inline'>; xmlns?: Attr<string> }>;
+  merror: MathAttrs<'merror'>;
+  mfrac: MathAttrs<'mfrac', { linethickness?: MathLength }>;
+  mi: MathAttrs<'mi'>;
+  mmultiscripts: MathAttrs<'mmultiscripts'>;
+  mn: MathAttrs<'mn'>;
+  mo: MathAttrs<'mo', MathOperatorOwn>;
+  mover: MathAttrs<'mover', { accent?: Attr<boolean> }>;
+  mpadded: MathAttrs<'mpadded', MathSizeOwn & { lspace?: MathLength; voffset?: MathLength }>;
+  mphantom: MathAttrs<'mphantom'>;
+  mprescripts: MathAttrs<'mprescripts'>;
+  mroot: MathAttrs<'mroot'>;
+  mrow: MathAttrs<'mrow'>;
+  ms: MathAttrs<'ms'>;
+  mspace: MathAttrs<'mspace', MathSizeOwn>;
+  msqrt: MathAttrs<'msqrt'>;
+  mstyle: MathAttrs<'mstyle'>;
+  msub: MathAttrs<'msub'>;
+  msubsup: MathAttrs<'msubsup'>;
+  msup: MathAttrs<'msup'>;
+  mtable: MathAttrs<'mtable'>;
+  mtd: MathAttrs<'mtd', { columnspan?: Attr<Num>; rowspan?: Attr<Num> }>;
+  mtext: MathAttrs<'mtext'>;
+  mtr: MathAttrs<'mtr'>;
+  munder: MathAttrs<'munder', { accentunder?: Attr<boolean> }>;
+  munderover: MathAttrs<'munderover', { accent?: Attr<boolean>; accentunder?: Attr<boolean> }>;
+  semantics: MathAttrs<'semantics'>;
 }
 
 /** The attributes of an element by its tag. */
@@ -1150,4 +1395,6 @@ export type ElementOf<T extends keyof Elements> = T extends keyof HTMLElementTag
   ? HTMLElementTagNameMap[T]
   : T extends keyof SVGElementTagNameMap
     ? SVGElementTagNameMap[T]
-    : HTMLElement;
+    : T extends keyof MathMLElementTagNameMap
+      ? MathMLElementTagNameMap[T]
+      : HTMLElement;

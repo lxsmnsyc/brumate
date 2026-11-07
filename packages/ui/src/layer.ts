@@ -10,7 +10,4 @@ export interface Layer {
 }
 
 /** The layer of the nearest floating part. `null` is the root layer, at the end of <body>. */
-export const LayerContext: Context<Layer | null> = createContext<Layer | null>(
-  'brumate-ui:layer',
-  null,
-);
+export const LayerContext: Context<Layer | null> = createContext<Layer | null>('brumate-ui:layer');

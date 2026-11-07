@@ -1,0 +1,6 @@
+<script>
+  import StoreForeignRawReader from './StoreForeignRawReader.brm';
+  import { foreignStore } from './contexts.ts';
+</script>
+
+<StoreForeignRawReader s=(foreignStore(1)) />

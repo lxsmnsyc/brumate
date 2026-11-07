@@ -20,7 +20,7 @@ import {
 import { MODIFIERS } from './events.ts';
 import { closesParagraph, firstTag } from '../nesting.ts';
 import type { Raw } from './html.ts';
-import { callPlugins, serialOptions, plugins, syncPlugins } from './serial.ts';
+import { BridgeDataError, callPlugins, serialOptions, plugins, syncPlugins } from './serial.ts';
 import { serverSecrets } from './secrets.ts';
 import {
   Binding,
@@ -47,7 +47,7 @@ import {
 } from './shared.ts';
 import { functionReferences } from './calls.ts';
 import { STREAM_TYPE, toChunkStream } from './stream.ts';
-import type { PackedState, PageState, PropSink, ScopeId, ScopeState } from './shared.ts';
+import type { PackedState, PageState, PropSink, ScopeId, ScopeState, StoreRead } from './shared.ts';
 import {
   Redirect,
   RequestEvent,
@@ -69,6 +69,28 @@ import type {
   TraceEntry,
 } from './request.ts';
 import type { Context as ContextValue } from './context.ts';
+import { Store, findStored, isForeignStore, isStore, sentForeignStore } from './store.ts';
+
+/**
+ * Refuses a store that is not of `brumate/store` in a provided value, or in a key of it: the page
+ * state cannot send it, and the browser would not know when it changes. At module level it works.
+ */
+function refuseForeignStore(key: string, value: unknown): void {
+  let foreign = isForeignStore(value);
+  if (!foreign && typeof value === 'object' && value !== null && !isStore(value)) {
+    for (const item of Object.values(value)) {
+      if (isForeignStore(item)) {
+        foreign = true;
+        break;
+      }
+    }
+  }
+  if (foreign) {
+    throw new Error(
+      `The context "${key}" holds a store that is not of brumate/store. Make it with $toStore or store(), wrap it with bridge(), or read it at module level with $store`,
+    );
+  }
+}
 
 export {
   affix,
@@ -81,11 +103,12 @@ export {
   vars,
 } from './html.ts';
 export type { Raw } from './html.ts';
+export { gateValue } from './shared.ts';
 export { produce } from './produce.ts';
 export { searchParam } from './search-params.ts';
 export { createContext, navigationContext, routeContext } from './context.ts';
 export type { NavigationState, Route } from './context.ts';
-import { ROUTE_KEY } from './context.ts';
+import { NAVIGATION_KEY, ROUTE_KEY, missingContext } from './context.ts';
 import { matchRoute, missingPage, notFound } from './router.ts';
 import type { MiddlewareLoader, RouteMatch, RouteNode, RouteView } from './router.ts';
 export { matchRoute } from './router.ts';
@@ -702,6 +725,7 @@ export class Context {
 
   /** Provides a value of a context to the scopes inside `scope`. */
   provide<T>(context: ContextValue<T>, value: T, scope: ScopeId): void {
+    refuseForeignStore(context.key, value);
     const node = this.find(scope)!;
     node.values ??= new Map();
     node.values.set(context.key, value);
@@ -711,31 +735,127 @@ export class Context {
   }
 
   /**
-   * Reads a context from the nearest scope above `scope` that provides it.
-   * With `slot`, records which slot holds it, so the client can update it
-   * when the provided value changes.
+   * `$toStore(value)` in a provided value: a store of the value, which the page state sends with
+   * the scope and the site that made it, and the slot of the signal that its `set` writes.
    */
-  consume<T>(context: ContextValue<T>, scope: ScopeId, slot?: number): T {
+  toStore<T>(value: T, scope: ScopeId, site: number, slot?: number): Store<T> {
+    const made = new Store(value);
+    made.o = slot === undefined ? [scope, site] : [scope, site, slot];
+    made.r = slot === undefined;
+    return made;
+  }
+
+  /**
+   * `$store(source)`: the value of the store, and a record of its slot, so the browser subscribes
+   * the slot when the scope resumes. With no `link`, or with a `fallback`, the source is a context:
+   * the browser finds its store again by the key of the context, with `path` for a key of its
+   * value. Otherwise, and when the fallback gave the store, the browser runs the source `link` of
+   * the component's exports `z`. `sent` names the value that holds the store when the page sends
+   * it, such as a prop, where only a store of `brumate/store` crosses. The last argument is
+   * `sent` for a source and the fallback for a context, which never come together.
+   */
+  consumeStore<T>(
+    source: unknown,
+    scope: ScopeId,
+    slot: number,
+    path?: string,
+    link?: number,
+    write?: boolean,
+    last?: string | (() => unknown),
+  ): T {
+    // A context gives the value of its provider, or of the fallback when none is above.
+    let ref: string | number | undefined = link;
+    let value = source;
+    let key: string | undefined;
+    if (link === undefined || typeof last === 'function') {
+      key = (source as ContextValue<unknown>).key;
+      const provider = this.findProvider(key, scope);
+      if (provider) {
+        ref = key;
+        value = provider.values!.get(key);
+      } else if (typeof last === 'function') {
+        value = last();
+      } else {
+        throw missingContext(key);
+      }
+    }
+    const found = findStored(value, path, write, key);
+
+    // Only a store of brumate crosses in a value that the page sends.
+    if (typeof last === 'string' && isForeignStore(found)) {
+      let owner: ScopeState | undefined = this.record(scope);
+      while (owner && owner.m === undefined && owner.p !== undefined) {
+        owner = this.ownRecord(owner.p);
+      }
+      throw sentForeignStore(owner?.m ?? 'a component', last);
+    }
+
+    // The record that the browser links the slot with.
+    if (slot >= 0) {
+      let entry: StoreRead = [ref!, slot];
+      if (write) {
+        entry = [ref!, slot, path, 1];
+      } else if (path !== undefined) {
+        entry = [ref!, slot, path];
+      }
+      (this.record(scope).z ??= []).push(entry);
+    }
+    return found.get() as T;
+  }
+
+  /**
+   * Reads a context from the nearest scope above `scope` that provides it. With a fallback, a
+   * read without a provider gives the fallback, or what it returns when it is a function, in
+   * place of the error. With `slot`, records which slot holds it, which only `$route()` and
+   * `$navigation()` pass, so the client can update them when navigation changes them. A provided
+   * value is read once.
+   */
+  consume<T>(
+    context: ContextValue<T>,
+    scope: ScopeId,
+    ...rest: [fallback?: unknown, slot?: number]
+  ): T {
+    const [fallback, slot] = rest;
     if (slot !== undefined) {
       const record = this.record(scope);
       record.x ??= {};
       record.x[context.key] = slot;
     }
-    // A scope reads the contexts of the scopes above it, not its own, so a component can read a
-    // context and provide it again to the scopes inside it.
-    for (let id: ScopeId | undefined = this.find(scope)?.parent; id !== undefined;) {
-      const node = this.find(id);
-      if (node?.values?.has(context.key)) {
-        return node.values.get(context.key) as T;
-      }
-      id = node?.parent;
+    const provider = this.findProvider(context.key, scope);
+    if (provider) {
+      return provider.values!.get(context.key) as T;
     }
     // The route of the page comes from its request and the params of its route.
     if (context.key === ROUTE_KEY) {
       const url = new URL(this.root.event?.request.url ?? 'http://localhost/');
       return { url, search: url.searchParams, params: this.root.params } as T;
     }
-    return context.defaultValue;
+    // No navigation pends while a page renders on the server.
+    if (context.key === NAVIGATION_KEY) {
+      return { pending: false } as T;
+    }
+    // Only `$getContext(C, fallback)` passes one argument after the scope: `$route()` and
+    // `$navigation()` pass the slot after an empty fallback, and still throw without a provider.
+    if (rest.length !== 1) {
+      throw missingContext(context.key);
+    }
+    return (typeof fallback === 'function' ? fallback() : fallback) as T;
+  }
+
+  /**
+   * The nearest scope above `scope` that provides the key. A scope reads the contexts of the
+   * scopes above it, not its own, so a component can read a context and provide it again to the
+   * scopes inside it.
+   */
+  private findProvider(key: string, scope: ScopeId): ScopeEntry | undefined {
+    for (let id: ScopeId | undefined = this.find(scope)?.parent; id !== undefined;) {
+      const node = this.find(id);
+      if (node?.values?.has(key)) {
+        return node;
+      }
+      id = node?.parent;
+    }
+    return undefined;
   }
 
   /** The ID that the next call to `scope()` returns. */
@@ -1880,6 +2000,9 @@ function holds(value: unknown, target: unknown, seen = new Set<unknown>()): bool
  * browser, which names the value and its component.
  */
 function unsendable(error: unknown, ctx: Context): Error {
+  if (error instanceof BridgeDataError) {
+    return bridgeDataError(error, ctx);
+  }
   const secret = secretErrors.get(error as Error);
   const target = secret ?? (error as { value?: unknown }).value;
   if (target === undefined) {
@@ -1913,6 +2036,48 @@ function unsendable(error: unknown, ctx: Context): Error {
     );
   }
   return error instanceof Error ? error : new Error(String(error));
+}
+
+/**
+ * The error of a store of `bridge()` whose `get` gives data that cannot be sent: it names the
+ * store, and the context or the prop that gives it to the browser.
+ */
+function bridgeDataError(error: BridgeDataError, ctx: Context): Error {
+  const id = error.value.id;
+  const hash = id?.lastIndexOf('#') ?? -1;
+  const name =
+    id === undefined
+      ? 'a bridge'
+      : `"${id.slice(hash + 1)}" of bridge() in ${id.slice('bridge:'.length, hash)}`;
+  // The serializer's message goes on with advice that does not apply to a store's data.
+  const reason = (error.cause instanceof Error ? error.cause.message : String(error.cause))
+    .split('\n')[0]!
+    .replace(/\.$/, '');
+  return new Error(
+    `The store ${name} gives data from get that cannot be sent to the browser (${reason}), and ${bridgeSite(error, ctx)} sends it. Return plain data from get, such as numbers, strings, arrays and objects`,
+    { cause: error },
+  );
+}
+
+/** Where a bridged store is given to the browser: a context, or the prop or value of a component. */
+function bridgeSite(error: BridgeDataError, ctx: Context): string {
+  for (const { record, names } of ctx.scopes) {
+    for (const [key, value] of Object.entries(record.v ?? {})) {
+      if (holds(value, error.value)) {
+        return `the context "${key}"`;
+      }
+    }
+    for (const [slot, value] of (record.s ?? []).entries()) {
+      if (holds(value, error.value)) {
+        let owner: ScopeState | undefined = record;
+        while (owner && owner.m === undefined && owner.p !== undefined) {
+          owner = ctx.ownRecord(owner.p);
+        }
+        return `the prop or value "${names?.[slot] ?? `slot ${slot}`}" in ${owner?.m ?? 'a component'}`;
+      }
+    }
+  }
+  return 'the page state';
 }
 
 /** The secret that each error of `secretError` found. The error does not hold it, so a log does not show it. */

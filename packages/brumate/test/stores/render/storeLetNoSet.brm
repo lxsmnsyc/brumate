@@ -1,0 +1,11 @@
+<script>
+  import { $memo, $setContext, $signal, $toStore } from 'brumate/signals';
+  import StoreLetReader from './StoreLetReader.brm';
+  import { Level } from './contexts.ts';
+
+  let base = $signal(1);
+  const double = $memo(base * 2);
+  $setContext(Level, $toStore(double));
+</script>
+
+<StoreLetReader />

@@ -40,16 +40,35 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import {
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+    $untrack,
+  } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import { constrain, outOfRange, toDate, todayString } from './calendar.ts';
-  import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
+  import {
+    DisabledContext,
+    FieldErrorContext,
+    FormContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, parseMessages } from './fields.ts';
   import { DateStringsContext } from './date-strings.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { dateSegments, formField } from './date-field.brm.ts';
   import { DateFieldContext } from './segments.ts';
+  import type { DateFieldState } from './segments.ts';
 
   /**
    * A date that the user edits segment by segment. It
@@ -74,7 +93,7 @@
     maxValue,
     placeholderValue,
     isDateUnavailable,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid = false,
@@ -83,17 +102,24 @@
     children,
     ...rest
   } = $props<DateFieldProps<T>>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = null } = $props<DateFieldProps<T>>();
 
-  const locale = $getContext(LocaleContext);
-  const form = $getContext(FormContext);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  const formGiven = $getContext(FormContext, undefined);
+  const form = formGiven ? $store(formGiven) : undefined;
   const ownLabelId = $id();
   const labelId = $memo(givenLabelId ?? ownLabelId);
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
   // The date that a segment starts at, in the range.
-  const strings = $getContext(DateStringsContext);
+  const stringsGiven = $getContext(DateStringsContext, undefined);
+  const strings = stringsGiven ? $store(stringsGiven) : undefined;
   const placeholder = $memo(
     constrain(toDate(placeholderValue ?? todayString(locale.timeZone)), minValue, maxValue).toString(),
   );
@@ -156,10 +182,13 @@
     }
   });
 
-  $setContext(LabelContext, { id: labelId });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
-  $setContext(DateFieldContext, {
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
+  const fieldState = $memo<DateFieldState>({
     segments,
     labelId,
     describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
@@ -170,6 +199,9 @@
     direction: locale.direction,
     segmentNames: strings?.segmentNames,
     empty: strings?.empty,
+  });
+  $setContext(DateFieldContext, {
+    state: $toStore(fieldState),
     step,
     jump,
     type,

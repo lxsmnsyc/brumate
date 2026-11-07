@@ -1,0 +1,23 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import ColorField from '@brumate/ui/ColorField.brm';
+
+  let accent = $signal<string | null>('#e2445a');
+  let shade = $signal<string | null>('hsl(120, 50%, 50%)');
+</script>
+
+<section aria-labelledby="color-field">
+  <h2 id="color-field">ColorField</h2>
+  <ColorField class="accent" name="accent" value=$bind(accent)>
+    <Label>Accent</Label>
+    <Input class="accent-input" />
+  </ColorField>
+  <p class="accent-state">{accent ?? 'None'}</p>
+  <ColorField class="shade" channel="hue" colorSpace="hsl" value=$bind(shade)>
+    <Label>Hue</Label>
+    <Input class="shade-input" />
+  </ColorField>
+  <p class="shade-state">{shade ?? 'None'}</p>
+</section>

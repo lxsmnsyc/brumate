@@ -27,9 +27,11 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $isPassed, $memo, $props, $setContext } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $isPassed, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, keyAttribute } from './collection.ts';
   import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
+  import type { CheckboxGroupState } from './contexts.ts';
   import { DEFAULT_SLOT } from './slots.ts';
   import { interact } from './interact.brm.ts';
 
@@ -58,7 +60,8 @@
   } = $props<GridListItemProps<T>>();
   let { ref } = $props<GridListItemOwnProps<T>>();
 
-  const list = $getContext(ListBoxContext);
+  const listGiven = $getContext(ListBoxContext, undefined);
+  const list = listGiven ? $store(listGiven.state) : undefined;
   // Enter on an item with `onAction` of its own reaches it through an `itemaction` event.
   const acts = $isPassed(onAction);
   const mode = $memo(list?.selectionMode ?? 'none');
@@ -66,13 +69,16 @@
   const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));
 
   // The Checkbox of the selection is checked while the row is selected, and toggles it.
-  $setContext(CheckboxGroupContext, {
+  const checkState = $memo<CheckboxGroupState>({
     value: selected ? [''] : [],
     isDisabled: disabled || mode === 'none',
     isReadOnly: false,
     isInvalid: false,
     isRequired: false,
-    toggle: () => list?.select(id, { shift: false, toggle: true }),
+  });
+  $setContext(CheckboxGroupContext, {
+    state: $toStore(checkState),
+    toggle: () => listGiven?.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
 
@@ -82,10 +88,10 @@
     }
     if (mode === 'none') {
       onAction?.();
-      list.action(id);
+      listGiven?.action!(id);
       return;
     }
-    list.select(id, {
+    listGiven?.select!(id, {
       shift: event.shiftKey,
       toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
     });
@@ -144,19 +150,29 @@
 
   // A Button with `slot="drag"` starts a drag from the keys, in a list with `onReorder`. Other
   // buttons get nothing.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       [DEFAULT_SLOT]: {},
       drag: {
         'aria-label': textValue ? `Drag ${textValue}` : 'Drag',
         isDisabled: disabled || !list?.isReorderable,
-        onPress: () => list?.startDrag?.(id),
+      },
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        drag: {
+          onPress: () => listGiven?.startDrag?.(id),
+        },
       },
     },
   });
 
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <{as ?? 'div'}

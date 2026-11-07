@@ -78,7 +78,9 @@ export function prop(scope: Scope, anchor: number, name: string, value: unknown)
     const rest = module.props['...'];
     if (rest !== undefined) {
       const next: Record<string, unknown> = { ...(get(child, rest) as object) };
-      if (value === undefined) {
+      // A binding stays, also while its signal is empty, so a spread can still give its element
+      // to it.
+      if (bound === undefined) {
         delete next[name];
       } else {
         next[name] = bound;

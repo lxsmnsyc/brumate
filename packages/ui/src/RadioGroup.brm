@@ -33,8 +33,25 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
-  import { FieldErrorContext, LabelContext, RadioGroupContext, TextContext } from './contexts.ts';
+  import {
+    $client,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $toStore,
+    $getContext,
+    $store,
+  } from 'brumate/signals';
+  import {
+    DisabledContext,
+    FieldErrorContext,
+    LabelContext,
+    RadioGroupContext,
+    TextContext,
+  } from './contexts.ts';
+  import type { RadioGroupState } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, onFormReset } from './fields.ts';
 
@@ -51,7 +68,7 @@
     as,
     name,
     orientation = 'vertical',
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid = false,
@@ -59,6 +76,10 @@
     children,
     ...rest
   } = $props<RadioGroupProps<T>>();
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = null } = $props<RadioGroupOwnProps<T>>();
   let { ref } = $props<RadioGroupOwnProps<T>>();
   // The value that a reset of the form gives back.
@@ -97,10 +118,13 @@
     'load',
   );
 
-  $setContext(LabelContext, { id: labelId });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
-  $setContext(RadioGroupContext, {
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
+  const radioState = $memo<RadioGroupState>({
     name: name ?? ownName,
     value,
     isDisabled,
@@ -108,9 +132,8 @@
     isRequired,
     isInvalid: invalid,
     describedBy: describedBy(invalid && errorId),
-    select,
-    onInvalid: invalidated,
   });
+  $setContext(RadioGroupContext, { state: $toStore(radioState), select, onInvalid: invalidated });
 </script>
 
 <{as ?? 'div'}

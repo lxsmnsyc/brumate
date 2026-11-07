@@ -20,6 +20,7 @@ import * as html from 'brumate/html';
 import * as routes from 'brumate/routes';
 import * as server from 'brumate/server';
 import * as signals from 'brumate/signals';
+import * as store from 'brumate/store';
 import { transformSync } from 'oxc-transform';
 
 export interface LiveFile {
@@ -52,6 +53,7 @@ const RUNTIME: Record<string, object> = {
   'brumate/server': server,
   // A module of reactive logic imports it, though its functions run only as copies in components.
   'brumate/signals': signals,
+  'brumate/store': store,
 };
 
 function blob(code: string): string {

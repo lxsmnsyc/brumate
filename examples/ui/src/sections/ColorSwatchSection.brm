@@ -1,0 +1,9 @@
+<script>
+  import ColorSwatch from '@brumate/ui/ColorSwatch.brm';
+</script>
+
+<section aria-labelledby="color-swatch">
+  <h2 id="color-swatch">ColorSwatch</h2>
+  <ColorSwatch class="swatch-red" color="#e2445a" style="width: 2rem; height: 2rem" />
+  <ColorSwatch class="swatch-ocean" color="hsl(210, 50%, 40%)" colorName="Ocean" style="width: 2rem; height: 2rem" />
+</section>

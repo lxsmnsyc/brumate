@@ -75,7 +75,7 @@ beforeAll(() => {
     writeFileSync(join(output, `${name}.render.ts`), toRender(render));
     modules.set(plan.id, file(`${name}.client.ts`));
   }
-});
+}, 60_000); // The compile of the fixtures runs beside other test files, which can slow it.
 
 let stop: (() => void) | undefined;
 
@@ -1729,14 +1729,6 @@ describe('resume', () => {
       await waitFor(() => expect(document.querySelector('.popover')).not.toBeNull());
       click(document.querySelectorAll('.option')[0]!);
       await waitFor(() => expect(text('.value')).toBe('Cat'));
-    });
-
-    it('gives a part on its own the default value of the context', async () => {
-      await resume('spikePage', {});
-      const alone = document.querySelector('.alone')!;
-      expect(alone.hasAttribute('aria-expanded')).toBe(false);
-      click(alone);
-      await waitFor(() => expect(text('.alone')).toBe('Alone 1'));
     });
 
     it('renders a #template prop with the values of the component that wrote it', async () => {
@@ -4764,7 +4756,7 @@ describe('memos that read state through a function prop', () => {
     expect(text('.total')).toBe('1');
   });
 
-  it('keeps markup, a memo and an effect on a reading function of a context live', async () => {
+  it('keeps markup, a memo and an effect on a store of a context live', async () => {
     await resume('ctxReader', {});
     await waitFor(() => expect(text('.markup')).toBe('0'));
     click(document.querySelector('.inc')!);
@@ -5619,6 +5611,91 @@ describe('refs forwarded through components', () => {
     click(document.querySelector('.read')!);
     await waitFor(() => expect(text('.seen')).toBe('BUTTON:two'));
     expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
+  });
+
+  describe('a conditional spread of the rest props', () => {
+    it('gives the ref when the condition starts true, and clears it as it flips', async () => {
+      await resume('conditionalRestPage', {});
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.hasAttribute('title')).toBe(false),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('none'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.getAttribute('title')).toBe('one'),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+      expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
+    });
+
+    it('leaves the ref undefined when the condition starts false, and gives it as it flips', async () => {
+      await resume('conditionalRestOffPage', {});
+      expect(document.querySelector('.inner')!.hasAttribute('title')).toBe(false);
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('none'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.getAttribute('title')).toBe('one'),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+    });
+
+    it('does the same for an element in a block that the browser renders', async () => {
+      await resume('conditionalRestBlockPage', {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.inner')).not.toBeNull());
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.hasAttribute('title')).toBe(false),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('none'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.getAttribute('title')).toBe('one'),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+    });
+  });
+
+  describe('a conditional spread of the rest props, with setters and dynamic tags', () => {
+    it('calls a setter ref with undefined when the branch turns off, and with the element when it turns on', async () => {
+      await resume('conditionalRestSetterPage', {});
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;none;'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;none;BUTTON;'));
+      await new Promise((done) => setTimeout(done, 100));
+      expect(text('.calls')).toBe('BUTTON;none;BUTTON;');
+    });
+
+    it('gives and clears the ref of a dynamic tag as the condition flips', async () => {
+      await resume('conditionalRestTagPage', {});
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.hasAttribute('title')).toBe(false),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('none'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.getAttribute('title')).toBe('one'),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+    });
   });
 
   it('keeps the ref of the rest props when the rest changes after the first render', async () => {
@@ -7597,6 +7674,110 @@ describe('batching', () => {
     await waitFor(() => expect(text('.seen')).toBe('4'));
     expect(text('.double')).toBe('4');
     expect(text('.count')).toBe('2');
+  });
+});
+
+describe('$gate', () => {
+  it('takes the first value without the guard, and holds it while the guard fails', async () => {
+    await resume('gateQuery', {});
+    // The first value passes, though the guard would refuse it.
+    expect(text('.query')).toBe('');
+    clearRuns();
+    click(document.querySelector('.a')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(text('.query')).toBe('');
+    expect(runsOf('query')).toEqual([]);
+    click(document.querySelector('.abc')!);
+    await waitFor(() => expect(text('.query')).toBe('abc'));
+    expect(runsOf('query')).toEqual(['query abc']);
+  });
+
+  it('does not run its readers for a new array with the same items, after resume', async () => {
+    await resume('gateQuery', {});
+    expect(text('.items')).toBe('a,b');
+    clearRuns();
+    click(document.querySelector('.same')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(runsOf('items')).toEqual([]);
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.items')).toBe('a,b,c'));
+    expect(runsOf('items')).toEqual(['items a,b,c']);
+  });
+
+  it('runs a guard that reads state and calls a function, for a memo that the browser renders', async () => {
+    await resume('gateReads', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.value')).toBe('ab'));
+    click(document.querySelector('.short')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(text('.value')).toBe('ab');
+    click(document.querySelector('.long')!);
+    await waitFor(() => expect(text('.value')).toBe('cde'));
+  });
+
+  it('does not track the signals that only the guard reads', async () => {
+    await resume('gateReads', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.value')).toBe('ab'));
+    click(document.querySelector('.short')!);
+    click(document.querySelector('.min')!);
+    await new Promise((done) => setTimeout(done, 20));
+    expect(text('.value')).toBe('ab');
+  });
+
+  it('throws into the nearest #try for a value that is a promise, on the server and in the browser', async () => {
+    const server = await import(file('gatePromise.brm.ts'));
+    const { html } = await renderParts(server.default, {});
+    // The server hides the message of an error, and shows the #catch body.
+    expect(html).toContain('class="caught"');
+    expect(html).not.toContain('class="value"');
+  });
+
+  it('throws for a promise that an update gives', async () => {
+    await resume('gatePromiseUpdate', {});
+    expect(text('.value')).toBe('0');
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toContain('The value of $gate is a promise'));
+  });
+
+  it('throws for a promise in a component that the browser renders', async () => {
+    await resume('gatePromiseLate', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.caught')).toContain('The value of $gate is a promise'));
+  });
+
+  it('sends the error of a guard that throws to the nearest #try', async () => {
+    await resume('gateThrow', {});
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.value')).toBe('1'));
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Guard 2'));
+  });
+
+  it('holds the error of a memo it reads, without its guard, and guards again after the memo recovers', async () => {
+    await resume('gateMemoThrow', {}, {}, undefined, { dev: true });
+    expect(text('.value')).toBe('0');
+    clearRuns();
+    // The memo throws: the gate holds its error, which reaches the #try around the read.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.caught')).toBe('Error: Inner 1'));
+    expect(runsOf('guard')).toEqual([]);
+    // After a held error, the next value passes without the guard. The #catch stays until reset.
+    click(document.querySelector('.bump')!);
+    click(document.querySelector('.reset')!);
+    await waitFor(() => expect(text('.value')).toBe('4'));
+    expect(runsOf('guard')).toEqual([]);
+    // The guard calls an import, which the update part of the gate imports.
+    click(document.querySelector('.bump')!);
+    await waitFor(() => expect(text('.value')).toBe('6'));
+    expect(runsOf('guard')).toEqual(['guard 4>6']);
+  });
+
+  it('throws the error of a memo it reads at the read, on the server', async () => {
+    const server = await import(file('gateMemoThrow.brm.ts'));
+    const { html } = await renderParts(server.default, { start: 1 });
+    expect(html).toContain('class="caught"');
+    expect(html).not.toContain('class="value"');
   });
 });
 
@@ -10725,5 +10906,21 @@ describe('a promise in markup', () => {
     await waitFor(() => expect(markupLoads()).toHaveLength(1));
     await settle('user', 'Ada');
     await waitFor(() => expect(text('.user')).toBe('Ada'));
+  });
+});
+
+describe('a context without a provider in markup that the browser renders', () => {
+  it.each([
+    ['themedLater', 'theme'],
+    ['themedStoreLater', 'theme-store'],
+  ])('throws an error that names the key, for %s', async (name, key) => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    onTestFinished(() => errors.mockRestore());
+    await resume(name, {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => {
+      const seen = errors.mock.calls.map((call) => call.map(String).join(' ')).join('\n');
+      expect(seen).toContain(`The context "${key}" has no provider above this component`);
+    });
   });
 });

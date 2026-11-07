@@ -31,7 +31,7 @@
   const { as } = $props<HeadingProps<T>>();
   let { ref } = $props<HeadingOwnProps<T>>();
 
-  const context = $getContext(HeadingContext);
+  const context = $getContext(HeadingContext, undefined);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const element = $memo((as ?? `h${level ?? slotProps(context, slot).level ?? 3}`) as AsTarget);
 </script>

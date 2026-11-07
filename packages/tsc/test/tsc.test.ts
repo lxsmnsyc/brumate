@@ -77,6 +77,10 @@ it('reports type errors in .brm files at their place in the file', () => {
     'Spreads.brm(17,10): error TS2345: Argument of type \'{ tabindex: "x"; foo: 1; } | undefined\' is not assignable to parameter of type \'$$Falsy | ({ tabindex: "x"; foo: 1; } & { foo: { "foo is not an attribute of <div>": never; }; })\'.',
     // A falsy value of `cond && { ... }` spreads nothing, and the object part is still checked.
     "Spreads.brm(21,11): error TS2345: Argument of type 'false | { nope: number; }' is not assignable to parameter of type '$$Falsy | ({ nope: number; } & { nope: { \"nope is not an attribute of <div>\": never; }; })'.",
+    // `event.target` is the control for `input`, `change` and `blur` on `input`, `select` and
+    // `textarea`, and `Element` for other events and elements, so `value` is an error there.
+    "Target.brm(13,48): error TS2339: Property 'value' does not exist on type 'EventTarget & Element'.",
+    "Target.brm(14,50): error TS2339: Property 'value' does not exist on type 'EventTarget & Element'.",
   ]);
   expect(result.status).not.toBe(0);
   // The lower-case form of a handler of several words is a compile error at the attribute. A file
@@ -97,4 +101,19 @@ it('prints the code of a syntax error in place of BRM', () => {
     .find((text) => text.includes('Broken.brm'));
   expect(line).toMatch(/Broken\.brm\(1,\d+\): error BRM\d{3}: [^[]+$/);
   expect(result.status).not.toBe(0);
+});
+
+it('types a fallback of $getContext as T | F, and $store as taking a store only', () => {
+  const project = fileURLToPath(new URL('./fixture-has/tsconfig.json', import.meta.url));
+  const result = spawnSync(process.execPath, [bin, '-p', project], { encoding: 'utf8' });
+  const errors = result.stdout
+    .split('\n')
+    .filter((line) => line.includes('error TS'))
+    .map((line) => line.replace(/^.*src\//, ''));
+  // Only the three wrong lines fail.
+  expect(errors).toEqual([
+    "Has.brm(12,9): error TS2322: Type 'Field | undefined' is not assignable to type '{ state: unknown; }'.",
+    "Has.brm(13,9): error TS2322: Type '{ count: number; } | undefined' is not assignable to type '{ count: number; }'.",
+    "Has.brm(14,29): error TS2345: Argument of type 'Context<Store<number>>' is not assignable to parameter of type 'StoreLike<unknown>'.",
+  ]);
 });

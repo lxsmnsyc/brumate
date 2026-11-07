@@ -14,7 +14,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'span'">
-  import { $client, $effect, $getContext, $memo, $props, $signal, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $memo, $props, $signal, $store, $untrack } from 'brumate/signals';
   import { SelectionIndicatorContext, moveIndicator } from './selection-indicator.ts';
 
   /**
@@ -30,7 +30,8 @@
    */
   const { as = 'span', children, ...rest } = $props<SelectionIndicatorProps<T>>();
 
-  const item = $getContext(SelectionIndicatorContext);
+  const itemGiven = $getContext(SelectionIndicatorContext, undefined);
+  const item = itemGiven ? $store(itemGiven) : undefined;
   const selected = $memo(Boolean(item?.isSelected));
   let root = $signal<HTMLElement>();
 

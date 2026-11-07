@@ -21,7 +21,7 @@
 </script>
 
 <script>
-  import { $client, $id, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import { TextContext } from './contexts.ts';
   import { allowedOperations, dragTypes, dropItems } from './drop.ts';
@@ -59,7 +59,8 @@
   let focusVisible = $signal(false);
   // How many elements of the area the drag is over, since dragenter and dragleave come for each.
   let depth = $signal(0);
-  $setContext(TextContext, { slots: { label: { id: textId } } });
+  const textGiven = $memo({ slots: { label: { id: textId } } });
+  $setContext(TextContext, $toStore(textGiven));
 
   /**
    * The operation of a drag of these types: the first that its source allows, unless

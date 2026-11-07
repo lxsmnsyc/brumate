@@ -2,6 +2,7 @@
 // an array of plain objects, so the page state holds it.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 
 /** A piece of the value of a TokenField: text, or a token whose text is its own. */
 export interface TokenSegment {
@@ -86,7 +87,6 @@ export function sameSegments(a: readonly TokenSegment[], b: readonly TokenSegmen
 /** What a TokenField gives its TokenInput and its Tokens. */
 export interface TokenFieldState {
   value: TokenSegment[];
-  setValue: (value: TokenSegment[]) => void;
   /** Counts the times the box must show the value again: a refused edit and a reset. */
   revision: number;
   pattern: string | undefined;
@@ -99,13 +99,22 @@ export interface TokenFieldState {
   descriptionId: string | undefined;
 }
 
-export const TokenFieldContext: Context<TokenFieldState | null> =
-  createContext<TokenFieldState | null>('brumate-ui:token-field', null);
+/** What a TokenInput calls on its field. */
+export interface TokenFieldHandlers {
+  setValue: (value: TokenSegment[]) => void;
+}
+
+/** What a TokenField gives: the store of its state, and its handler. Outside a field there is no handler. */
+export interface TokenFieldGiven extends Partial<TokenFieldHandlers> {
+  state: StoreLike<TokenFieldState | null>;
+}
+
+export const TokenFieldContext: Context<TokenFieldGiven> =
+  createContext<TokenFieldGiven>('brumate-ui:token-field');
 
 /** What a TokenInput gives a Token: whether the selection covers it. */
-export const TokenContext: Context<{ isDisabled: boolean } | null> = createContext<{
-  isDisabled: boolean;
-} | null>('brumate-ui:token', null);
+export const TokenContext: Context<StoreLike<{ isDisabled: boolean } | null>> =
+  createContext<StoreLike<{ isDisabled: boolean } | null>>('brumate-ui:token');
 
 /** The zero-width space that a TokenInput puts around each token, so the caret can sit there. */
 export const EDGE = '​';

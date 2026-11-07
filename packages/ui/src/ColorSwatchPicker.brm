@@ -1,7 +1,7 @@
 <script module>
   import type { ElementProps } from 'brumate/elements';
   import type { Bindable } from 'brumate/signals';
-  import type { Key } from './collection.ts';
+  import type { Key, ListBoxState } from './collection.ts';
 
   export interface ColorSwatchPickerProps extends Omit<ElementProps<'div'>, 'onChange'> {
     /** How the items lie. In a grid the arrow keys move in two dimensions, and in a stack only Up and Down move. */
@@ -16,17 +16,8 @@
 </script>
 
 <script>
-  import {
-    $client,
-    $getContext,
-    $isPassed,
-    $handler,
-    $id,
-    $memo,
-    $props,
-    $setContext,
-    $signal,
-  } from 'brumate/signals';
+  import { $client, $getContext, $handler, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
     ListBoxContext,
@@ -44,7 +35,7 @@
   } from './collection.ts';
   import { formatColor, parseColor, tryParseColor } from './color.ts';
   import { ColorPickerContext } from './contexts.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
 
   /**
    * A list of color swatches that the user picks one from. Its items are ColorSwatchPickerItem
@@ -74,11 +65,13 @@
   let { value = '' } = $props<ColorSwatchPickerProps>();
 
   // Inside a ColorPicker, a list without a `value` shows the color of the picker and writes it.
-  const picker = $getContext(ColorPickerContext);
+  const given = $getContext(ColorPickerContext, undefined);
+  const picker = given ? $store(given.state) : undefined;
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
-  const locale = $getContext(LocaleContext);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   let root = $signal<HTMLElement>();
   const listId = $id();
 
@@ -107,7 +100,7 @@
     // A disabled item is never selected.
     if (item?.getAttribute('aria-disabled') !== 'true' && text && tryParseColor(text)) {
       if (picker && !passed) {
-        picker.setValue(parseColor(text), text);
+        given?.setValue!(parseColor(text), text);
       } else {
         value = text;
       }
@@ -115,15 +108,14 @@
     }
   }
 
-  $setContext(ListBoxContext, {
+  const listState = $memo<ListBoxState>({
     selectionMode: 'single',
     selectionBehavior: 'replace',
     selectedKeys: chosen,
     disabledKeys: [],
-    select,
-    action: () => {},
     hasAction: false,
   });
+  $setContext(ListBoxContext, { state: $toStore(listState), select, action: () => {} });
 
   function focused(event: FocusEvent) {
     passFocus(root, event, 'option');

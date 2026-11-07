@@ -6,6 +6,7 @@
 // their English words.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 import { PLACEHOLDERS, SEGMENT_NAMES } from './segments.ts';
 
 /** The parts of a date or a time that a segment edits. */
@@ -184,8 +185,9 @@ export function getDateStrings(locale: string): DateStrings {
   };
 }
 
-/** The strings of the parts inside an I18nProvider. Null outside one, where the parts use English. */
-export const DateStringsContext: Context<DateStrings | null> = createContext<DateStrings | null>(
-  'brumate-ui:date-strings',
-  null,
-);
+/**
+ * The strings of the parts inside an I18nProvider, as a store. It holds null outside one, where the
+ * parts use English.
+ */
+export const DateStringsContext: Context<StoreLike<DateStrings | null>> =
+  createContext<StoreLike<DateStrings | null>>('brumate-ui:date-strings');

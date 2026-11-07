@@ -40,6 +40,23 @@ export function slotProps<T extends object>(
   return found;
 }
 
+/**
+ * The handlers that a context gives a part with a slot. It is like `slotProps`, and gives nothing
+ * for a slot the value lacks, since the store of the same context names the slots and throws for a typo.
+ */
+export function slotHandlers<T extends object>(
+  value: ContextValue<T> | null | undefined,
+  slot: string | null | undefined,
+): Partial<T> {
+  if (value == null || slot === null) {
+    return {};
+  }
+  if (!('slots' in value)) {
+    return value;
+  }
+  return value.slots[slot ?? DEFAULT_SLOT] ?? {};
+}
+
 /** Calls each handler that is a function, in order. */
 export function chain<A extends unknown[]>(
   ...handlers: (((...args: A) => unknown) | undefined | null | false)[]

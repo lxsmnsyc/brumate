@@ -1,0 +1,8 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { Level } from './contexts.ts';
+
+  let level = $store($getContext(Level));
+</script>
+
+<button onClick=(() => (level = 3))>{level}</button>

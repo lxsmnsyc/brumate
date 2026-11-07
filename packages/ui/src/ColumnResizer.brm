@@ -8,9 +8,10 @@
 </script>
 
 <script>
-  import { $getContext, $id, $memo, $props, $signal } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $signal, $store } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { startDrag } from './drag.ts';
   import { focusRing } from './focus.brm.ts';
   import { ColumnContext, TableResizeContext } from './table.ts';
@@ -29,9 +30,12 @@
    */
   const { 'aria-label': label = 'Resizer', ...rest } = $props<ColumnResizerProps>();
 
-  const column = $getContext(ColumnContext);
-  const sizes = $getContext(TableResizeContext);
-  const locale = $getContext(LocaleContext);
+  const columnGiven = $getContext(ColumnContext, undefined);
+  const column = columnGiven ? $store(columnGiven) : undefined;
+  const sizesGiven = $getContext(TableResizeContext, undefined);
+  const sizes = sizesGiven ? $store(sizesGiven.state) : undefined;
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   if (!column || !sizes) {
     throw new Error('A ColumnResizer goes in a Column of a Table in a ResizableTableContainer.');
   }
@@ -80,12 +84,12 @@
     const x = event.clientX;
     const startWidth = current(event.currentTarget);
     const turn = locale.direction === 'rtl' ? -1 : 1;
-    sizes!.start(key);
+    sizesGiven?.start!(key);
     // The window follows the pointer, which leaves the resizer as it moves.
     startDrag(
       event.pointerId,
-      (move) => sizes!.resize(key, startWidth + (move.clientX - x) * turn),
-      () => sizes!.end(),
+      (move) => sizesGiven?.resize!(key, startWidth + (move.clientX - x) * turn),
+      () => sizesGiven?.end!(),
     );
   }
 
@@ -93,26 +97,26 @@
     keyRing(event);
     if (!resizing) {
       if (event.key === 'Enter') {
-        sizes!.start(key);
+        sizesGiven?.start!(key);
       }
       return;
     }
     if (/^(Escape|Enter| |Tab)$/.test(event.key)) {
-      sizes!.end();
+      sizesGiven?.end!();
       return;
     }
     // Up and Down change the width as Right and Left do.
     const step = { ArrowRight: 10, ArrowLeft: -10, ArrowUp: -10, ArrowDown: 10 }[event.key];
     if (step !== undefined) {
       const turn = locale.direction === 'rtl' && /Left|Right/.test(event.key) ? -1 : 1;
-      sizes!.resize(key, current(event.currentTarget) + step * turn);
+      sizesGiven?.resize!(key, current(event.currentTarget) + step * turn);
     }
   }
 
   function blurred(event: FocusEvent) {
     blurRing(event);
     if (resizing) {
-      sizes!.end();
+      sizesGiven?.end!();
     }
   }
 
@@ -121,13 +125,13 @@
     const input = event.currentTarget;
     const next = Number(input.value);
     if (resizing) {
-      sizes!.resize(key, next);
+      sizesGiven?.resize!(key, next);
       return;
     }
     // Every column keeps its width first, so only this one changes.
-    sizes!.start(key);
-    sizes!.resize(key, next);
-    sizes!.end();
+    sizesGiven?.start!(key);
+    sizesGiven?.resize!(key, next);
+    sizesGiven?.end!();
   }
 
   // At its least width it can only grow, and at its most only shrink.

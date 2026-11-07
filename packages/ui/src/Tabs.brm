@@ -28,9 +28,23 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $effect, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $toStore,
+    $untrack,
+    $getContext,
+    $store,
+  } from 'brumate/signals';
+  import { DisabledContext } from './contexts.ts';
   import { enabledItems, readItemKey } from './collection.ts';
   import { TabsContext } from './tabs.ts';
+  import type { TabsState } from './tabs.ts';
 
   /**
    * Tabs that show one panel at a time. It holds a TabList with
@@ -47,13 +61,17 @@
   const {
     as = 'div',
     disabledKeys = [],
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     orientation = 'horizontal',
     keyboardActivation = 'automatic',
     onSelectionChange,
     children,
     ...rest
   } = $props<TabsProps<T>>();
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { selectedKey = null } = $props<TabsProps<T>>();
 
   const id = $id();
@@ -97,7 +115,7 @@
     }
   }
 
-  $setContext(TabsContext, {
+  const tabsState = $memo<TabsState>({
     selectedKey,
     registry,
     disabledKeys,
@@ -105,8 +123,8 @@
     orientation,
     keyboardActivation,
     id,
-    select,
   });
+  $setContext(TabsContext, { state: $toStore(tabsState), select });
 </script>
 
-<{as} ref=$bind(root) data-orientation=orientation {...rest}>{children}</>
+<{as} ref=$bind(root) data-orientation=orientation data-disabled=(isDisabled || undefined) {...rest}>{children}</>

@@ -10,6 +10,7 @@ export default defineConfig({
     'src/runtime/context.ts',
     'src/runtime/html.ts',
     'src/runtime/signals.ts',
+    'src/runtime/store.ts',
     'src/runtime/testing.ts',
     'src/runtime/env.ts',
     'src/runtime/routes.ts',

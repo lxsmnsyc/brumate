@@ -45,6 +45,26 @@ skip('The server render throws without the props of a parent: a function, a list
   'todos',
 ]);
 
+skip(
+  'The server render throws without the context that a parent provides, since a context has no default.',
+  [
+    'ContextAs',
+    'CounterButtons',
+    'CtxWriterLoopMid',
+    'FnReadContextMid',
+    'SpikeButton',
+    'SpikeLabel',
+    'SpikePopover',
+    'SpikeValue',
+    'Themed',
+    'ThemedLive',
+    'TplReader',
+    'TplRelay',
+    'themedLater',
+    'themedStoreLater',
+  ],
+);
+
 skip('The server render waits for a promise that only the test settles, from a data module.', [
   'AwaitInner',
   'LoadUser',
@@ -203,6 +223,8 @@ diverge('lazy-ref', [
   'refForward',
   'refVisibleForward',
   'refVisibleLoading',
+  'conditionalRestPage',
+  'conditionalRestTagPage',
   'restRefCastPage',
   'restRefChangePage',
   'restRefPage',

@@ -1,0 +1,64 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Fieldset from '@brumate/ui/Fieldset.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Legend from '@brumate/ui/Legend.brm';
+  import Switch from '@brumate/ui/Switch.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  let locked = $signal(false);
+</script>
+
+<Switch class="fieldset-styled-switch" isSelected=$bind(locked)>Lock the address</Switch>
+<Fieldset class="fieldset-styled" isDisabled=locked>
+  <Legend class="fieldset-styled-legend">Address</Legend>
+  <TextField class="fieldset-styled-field" name="street" value="1 Main Street">
+    <Label>Street</Label>
+    <Input class="fieldset-styled-input" />
+  </TextField>
+</Fieldset>
+
+<style global>
+  /* The tokens. Change these and the rest follows. */
+  .fieldset-styled {
+    --fieldset-styled-border: color-mix(in srgb, CanvasText 30%, Canvas);
+    display: grid;
+    gap: 0.6rem;
+    width: min(20rem, 100%);
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem 1rem;
+    border: 1px solid var(--fieldset-styled-border);
+    border-radius: 8px;
+    color: CanvasText;
+  }
+
+  .fieldset-styled-legend {
+    padding: 0 0.4rem;
+    font-weight: 600;
+  }
+
+  .fieldset-styled-field {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .fieldset-styled-input {
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--fieldset-styled-border);
+    border-radius: 8px;
+    background: Canvas;
+    color: inherit;
+    font: inherit;
+  }
+
+  .fieldset-styled[data-disabled] {
+    border-style: dashed;
+    opacity: 0.6;
+  }
+
+  .fieldset-styled-input:focus-visible {
+    outline: 2px solid light-dark(#2a76b2, #6fb2e6);
+    outline-offset: 1px;
+  }
+</style>

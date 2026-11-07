@@ -25,8 +25,9 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $props, $setContext } from 'brumate/signals';
+  import { $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { DisclosureGroupContext } from './contexts.ts';
+  import type { DisclosureGroupState } from './contexts.ts';
 
   /**
    * Disclosures that open one at a time, or several with `allowsMultipleExpanded`, such as an
@@ -62,7 +63,8 @@
     onExpandedChange?.(next);
   }
 
-  $setContext(DisclosureGroupContext, { expandedKeys, isDisabled, toggle });
+  const groupState = $memo<DisclosureGroupState>({ expandedKeys, isDisabled });
+  $setContext(DisclosureGroupContext, { state: $toStore(groupState), toggle });
 </script>
 
 <{as ?? 'div'} ref=$bind(ref) data-disabled=(isDisabled || undefined) {...rest}>{children}</>

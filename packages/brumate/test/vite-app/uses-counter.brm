@@ -1,0 +1,13 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import { counter } from './counting.brm.ts';
+
+  let base = $signal(10);
+  const { count, double, increment } = counter(1);
+  const { count: other, increment: bump, reset } = counter(base);
+</script>
+
+<button class="a" onClick=increment>{count} {double}</button>
+<button class="b" onClick=bump>{other}</button>
+<button class="base" onClick=(() => base++)>{base}</button>
+<button class="reset" onClick=reset>Reset</button>

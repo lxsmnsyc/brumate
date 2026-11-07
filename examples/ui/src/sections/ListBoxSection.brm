@@ -1,0 +1,29 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ListBox from '@brumate/ui/ListBox.brm';
+  import ListBoxItem from '@brumate/ui/ListBoxItem.brm';
+  import ListBoxSection from '@brumate/ui/ListBoxSection.brm';
+  import Header from '@brumate/ui/Header.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let animals = $signal<Key[]>([]);
+</script>
+
+<section aria-labelledby="listbox">
+  <h2 id="listbox">ListBox</h2>
+  <ListBox class="listbox animals" aria-label="Animals" selectionMode="multiple" selectedKeys=$bind(animals)>
+    <ListBoxSection>
+      <Header class="listbox-header">Mammals</Header>
+      #for (animal of ['Aardvark', 'Cat', 'Dog', 'Kangaroo'] by animal) {
+        <ListBoxItem id=animal class="option">{animal}</ListBoxItem>
+      }
+    </ListBoxSection>
+    <ListBoxSection>
+      <Header class="listbox-header">Birds</Header>
+      #for (animal of ['Kiwi', 'Penguin', 'Robin'] by animal) {
+        <ListBoxItem id=animal class="option">{animal}</ListBoxItem>
+      }
+    </ListBoxSection>
+  </ListBox>
+  <p class="animals-state">{animals.join(', ') || 'None'}</p>
+</section>

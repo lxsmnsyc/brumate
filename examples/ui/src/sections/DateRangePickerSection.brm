@@ -1,0 +1,35 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import DateRangePicker from '@brumate/ui/DateRangePicker.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+
+  let booking = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-15' });
+</script>
+
+<section aria-labelledby="date-range-picker">
+  <h2 id="date-range-picker">DateRangePicker</h2>
+  <DateRangePicker class="booking" startName="check-in" endName="check-out" value=$bind(booking)>
+    <Label>Booking</Label>
+    <Group class="booking-group">
+      <DateInput slot="start" class="booking-start" />
+      <span aria-hidden="true">–</span>
+      <DateInput slot="end" class="booking-end" />
+      <Button class="press booking-button">▾</Button>
+    </Group>
+    <Popover class="popover booking-popover">
+      <Dialog>
+        <RangeCalendar class="booking-calendar">
+          <CalendarGrid class="booking-grid" />
+        </RangeCalendar>
+      </Dialog>
+    </Popover>
+  </DateRangePicker>
+  <p class="booking-state">{booking ? `${booking.start} ${booking.end}` : 'none'}</p>
+</section>

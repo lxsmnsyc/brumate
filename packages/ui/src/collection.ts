@@ -5,6 +5,7 @@
 // written out, from a `#for`, or in sections.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 
 declare module 'brumate/elements' {
   interface ElementEvents {
@@ -488,22 +489,18 @@ export function sameKeys(a: Key[], b: Key[]): boolean {
   return true;
 }
 
-/** What a ListBox gives its items and sections. */
+/** What a ListBox gives its items and sections. It changes, so it is in a store. */
 export interface ListBoxState {
   selectionMode: SelectionMode;
   selectedKeys: Key[];
   disabledKeys: Key[];
+  /** True in a Table inside a disabled Fieldset or Form. */
+  isDisabled?: boolean;
   selectionBehavior: SelectionBehavior;
-  /** Selects an item for a press, with its modifiers. */
-  select: (key: Key, request: SelectionRequest) => void;
-  /** Acts on an item, such as for Enter or a press with no selection. */
-  action: (key: Key) => void;
   /** True when the ListBox has `onAction`. */
   hasAction: boolean;
   /** With focus in a field around the list, the item that its keys move to. */
   activeKey?: Key | null;
-  /** With focus in a field around the list, makes an item the active one. */
-  setActive?: (key: Key) => void;
   /** True when the rows can be dragged, in a GridList with `onReorder` or `getItems`. */
   isDraggable?: boolean;
   /** True when a drag can drop in the list, in a GridList with `onReorder`. Its drag buttons work. */
@@ -512,14 +509,27 @@ export interface ListBoxState {
   dragging?: Key[];
   /** Where the rows that a drag moves would go. */
   dropTarget?: { key: Key; dropPosition: 'before' | 'after' } | null;
+}
+
+/** What a ListBox does for its items. They never change. */
+export interface ListBoxHandlers {
+  /** Selects an item for a press, with its modifiers. */
+  select: (key: Key, request: SelectionRequest) => void;
+  /** Acts on an item, such as for Enter or a press with no selection. */
+  action: (key: Key) => void;
+  /** With focus in a field around the list, makes an item the active one. */
+  setActive?: (key: Key) => void;
   /** Starts a drag of a row with the keys, from its drag button. */
   startDrag?: (key: Key) => void;
 }
 
-export const ListBoxContext: Context<ListBoxState | null> = createContext<ListBoxState | null>(
-  'brumate-ui:list-box',
-  null,
-);
+/** What a ListBox gives: the store of its state, and its handlers. Outside a list there is no handler. */
+export interface ListBoxProvided extends Partial<ListBoxHandlers> {
+  state: StoreLike<ListBoxState | null>;
+}
+
+export const ListBoxContext: Context<ListBoxProvided> =
+  createContext<ListBoxProvided>('brumate-ui:list-box');
 
 /**
  * What a part around a ListBox gives it, such as a Select: the selection that the part keeps, and
@@ -529,18 +539,25 @@ export interface ListBoxGiven {
   selectedKeys: Key[];
   /** The ID of the element that names the list, such as the Label of a Select. */
   labelledBy?: string;
-  /** A press, Enter or Space on an item. */
-  select: (key: Key) => void;
-  /** Tab on an item, which leaves the list. */
-  tab?: () => void;
   /** The item that focus goes to when nothing is selected: the first, or the last for ArrowUp. */
   focusStrategy?: 'first' | 'last';
 }
 
-export const ListBoxGivenContext: Context<ListBoxGiven | null> = createContext<ListBoxGiven | null>(
-  'brumate-ui:list-box-given',
-  null,
-);
+/** What a part around a ListBox does for it. */
+export interface ListBoxGivenHandlers {
+  /** A press, Enter or Space on an item. */
+  select: (key: Key) => void;
+  /** Tab on an item, which leaves the list. */
+  tab?: () => void;
+}
+
+/** What a Select gives its ListBox: the store of the selection, and its handlers. */
+export interface ListBoxGivenProvided extends Partial<ListBoxGivenHandlers> {
+  state: StoreLike<ListBoxGiven | null>;
+}
+
+export const ListBoxGivenContext: Context<ListBoxGivenProvided> =
+  createContext<ListBoxGivenProvided>('brumate-ui:list-box-given');
 
 /**
  * What a field around a collection gives it, such as the input of a ComboBox or an Autocomplete:
@@ -552,24 +569,33 @@ export interface CollectionFocus {
   id?: string;
   /** `activeKey` is the item that the keys of the field move to, which `aria-activedescendant` names. */
   activeKey: Key | null;
-  /** The pointer moved to an item, which becomes the active one. */
-  setActive: (key: Key) => void;
   /**
    * The text that the items must match, such as what was typed. The collection hides the others
    * once it is on the page and when the text changes, and gives `filtered` the items that show.
    */
   filterText?: string;
+}
+
+/** What a field around a collection does for it. They never change. */
+export interface CollectionFocusHandlers {
+  /** The pointer moved to an item, which becomes the active one. */
+  setActive?: (key: Key) => void;
   filter?: (text: string, input: string) => boolean;
   filtered?: (shown: HTMLElement[]) => void;
 }
 
-export const CollectionFocusContext: Context<CollectionFocus | null> =
-  createContext<CollectionFocus | null>('brumate-ui:collection-focus', null);
+/** What a field gives its collection: the store of its focus, and its handlers. */
+export interface CollectionFocusProvided extends CollectionFocusHandlers {
+  state: StoreLike<CollectionFocus | null>;
+}
+
+export const CollectionFocusContext: Context<CollectionFocusProvided> =
+  createContext<CollectionFocusProvided>('brumate-ui:collection-focus');
 
 /** What a section gives its Header: its ID, which names the section. */
 export const SectionContext: Context<{ headerId: string } | null> = createContext<{
   headerId: string;
-} | null>('brumate-ui:section', null);
+} | null>('brumate-ui:section');
 
 /** What a Select gives its SelectValue: what to show in its Button. */
 export interface SelectValueState {
@@ -580,8 +606,8 @@ export interface SelectValueState {
   placeholder: string;
 }
 
-export const SelectValueContext: Context<SelectValueState | null> =
-  createContext<SelectValueState | null>('brumate-ui:select-value', null);
+export const SelectValueContext: Context<StoreLike<SelectValueState | null>> =
+  createContext<StoreLike<SelectValueState | null>>('brumate-ui:select-value');
 
 /** The text of an item: its `data-text-value`, or its text. */
 export function textOfItem(item: HTMLElement): string {

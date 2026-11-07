@@ -13,6 +13,8 @@ import {
   SlotReference,
   shiftId,
 } from '../src/runtime/shared.ts';
+import { store } from '../src/runtime/store.ts';
+import type { Store } from '../src/runtime/store.ts';
 import type { PageState, ScopeId, ScopeState } from '../src/runtime/shared.ts';
 
 const by = 100;
@@ -30,6 +32,7 @@ function fullRecord(): Required<ScopeState> {
     l: 13,
     v: { key: new ChildrenReference('Card_x1#n0', 5) },
     x: { key: 0 },
+    z: [['key', 0]],
     s: [new SlotReference(6, 1), [new ElementReference('7.0', 1)], Promise.resolve(1)],
     c: { 0: 8, 1: '9.1' },
     b: { 0: new SlotReference(10, 2), 1: new FunctionReference('Card_x1#h1', '11.0') },
@@ -128,5 +131,18 @@ describe('the table of scope IDs', () => {
     expect(after).toEqual(before.map((id) => shiftId(id, by)));
     // The fields without IDs stay.
     expect([record.k, record.m, record.x]).toEqual([1, 'Card_x1', { key: 0 }]);
+  });
+
+  it('moves the origin of a store and the references in its value, and keeps one store', () => {
+    const made = store({ run: new FunctionReference('Card_x1#h0', 2) }) as Store<{
+      run: FunctionReference;
+    }>;
+    made.o = [3, 1, 2];
+    const state: PageState = { 1: { v: { a: made, b: made } } };
+    const record = shiftState(SCOPE_IDS, state, by)[101]!;
+    expect(record.v!.a).toBe(made);
+    expect(record.v!.b).toBe(made);
+    expect(made.o).toEqual([103, 1, 2]);
+    expect(made.v.run.scope).toBe(102);
   });
 });

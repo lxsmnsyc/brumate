@@ -529,6 +529,70 @@ ${markup}`;
     }
   });
 
+  it('accepts a read that a check of several memos guards', () => {
+    const guarded = [
+      'function run() { if ($isPending(user, ready)) return; log(user); }',
+      'function run() { if ($isPending(ready, user)) return; log(user); }',
+      'function run() { if ($isPending(ready, name)) return; log(user, name); }',
+      'function run() { const busy = $isPending(ready, user); if (busy) return; log(user); }',
+      'function run() { if (!$isPending(user, ready)) { log(user); } }',
+      'function run() { $isPending(ready, user) ? log(0) : log(user); }',
+      // The chain of `||` counts too.
+      'function run() { if ($isPending(user) || $isPending(ready)) return; log(user); }',
+    ];
+    for (const body of guarded) {
+      expect(() => build(body)).not.toThrow();
+    }
+  });
+
+  it('joins one pending check for each memo the handler covers', () => {
+    // `name` reads `user`, so the call covers both memos, and `user` is named twice.
+    const { parts } = compile(
+      page('function run() { if ($isPending(name, user)) return; log(user, name); }'),
+      { filename: 'Test.brm' },
+    );
+    const handler = Object.entries(parts).find(([key]) => key.startsWith('h'))?.[1] ?? '';
+    const checks = handler.match(/\$\$b\.pending\(\$\$s, \d+\)/g) ?? [];
+    expect(checks).toHaveLength(2);
+    expect(new Set(checks).size).toBe(2);
+  });
+
+  it('accepts a $client callback that a check of several memos guards', () => {
+    expect(() =>
+      build('$client(() => { if ($isPending(user, ready)) return; log(user, ready); });'),
+    ).not.toThrow();
+    expect(() => build('$client(() => { log(user); });')).toThrow('The handler reads "user"');
+  });
+
+  it('accepts $isPending of several memos in markup, and the update reads both', () => {
+    const { parts } = compile(
+      page(
+        'const tags = $memo(getUser(id));\nfunction run() { id++; }',
+        "<p>{$isPending(user, tags) ? 'Loading' : 'Done'}</p><button onClick=run>Run {id}</button>",
+      ),
+      { filename: 'Test.brm' },
+    );
+    const update = parts.update ?? '';
+    const checks = update.match(/\$\$b\.pending\(\$\$s, \d+\)/g) ?? [];
+    expect(checks).toHaveLength(2);
+    expect(new Set(checks).size).toBe(2);
+    expect(update).toMatch(
+      /\(\$\$b\.pending\(\$\$s, \d+\) \|\| \$\$b\.pending\(\$\$s, \d+\)\) \? 'Loading'/,
+    );
+  });
+
+  it('fails a read of a memo that the several memos do not name', () => {
+    expect(() => build('function run() { if ($isPending(ready, id)) return; log(user); }')).toThrow(
+      'The handler reads "user"',
+    );
+    expect(() => build('function run() { $isPending(user, 1); }')).toThrow(
+      '$isPending needs async $memos as its arguments',
+    );
+    expect(() => build('function run() { $isPending(); }')).toThrow(
+      '$isPending needs async $memos as its arguments',
+    );
+  });
+
   it('fails when the check comes after the read, or covers only one branch', () => {
     expect(() => build('function run() { log(user); if ($isPending(user)) return; }')).toThrow(
       'The handler reads "user"',
@@ -666,5 +730,34 @@ describe('a promise where markup cannot wait for it', () => {
         { filename: 'Test.brm' },
       ),
     ).not.toThrow();
+  });
+});
+
+describe('$gate', () => {
+  const gated = (script: string): string =>
+    `<script>\nimport { $gate, $signal } from 'brumate/signals';\nlet n = $signal(0);\nasync function load(id: number) {\n  'use server';\n  return id;\n}\n${script}\n</script>\n\n<p>{value}</p>`;
+
+  it('compiles a value and a guard function', () => {
+    expect(() =>
+      compile(gated('const value = $gate(n, (prev, next) => next > prev);'), {
+        filename: 'Test.brm',
+      }),
+    ).not.toThrow();
+  });
+
+  it('fails for a value that is a promise or a server function [BRM203]', () => {
+    for (const value of ['load(n)', 'await load(n)']) {
+      expect(() =>
+        compile(gated(`const value = $gate(${value}, () => true);`), { filename: 'Test.brm' }),
+      ).toThrow(/\$gate takes a value that is ready\. .* \[BRM203\]/);
+    }
+  });
+
+  it('fails without a guard function [BRM202]', () => {
+    for (const call of ['$gate(n)', '$gate(n, 1)', '$gate(n, () => true, 2)']) {
+      expect(() => compile(gated(`const value = ${call};`), { filename: 'Test.brm' })).toThrow(
+        /\$gate takes a value and a function, as in .* \[BRM202\]/,
+      );
+    }
   });
 });

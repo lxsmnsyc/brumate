@@ -12,8 +12,9 @@
 </script>
 
 <script>
-  import { $props, $setContext, $signal } from 'brumate/signals';
+  import { $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
   import { TableResizeContext, clampWidth } from './table.ts';
+  import type { TableResizeState } from './table.ts';
 
   /**
    * A box around a Table whose columns resize. It scrolls the Table when it is wider than the box.
@@ -73,7 +74,8 @@
     }
   }
 
-  $setContext(TableResizeContext, { widths, resizing, start, resize, end });
+  const resizeState = $memo<TableResizeState>({ widths, resizing });
+  $setContext(TableResizeContext, { state: $toStore(resizeState), start, resize, end });
 </script>
 
 <div ref=$bind(box) data-resizable-table-container {...rest}>{children}</div>
