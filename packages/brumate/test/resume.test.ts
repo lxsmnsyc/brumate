@@ -4192,6 +4192,30 @@ describe('function props that return values', () => {
   });
 });
 
+describe('imported function props', () => {
+  it('pass a function of a module, on the server render and after resume', async () => {
+    await resume('importedFilter', {});
+    const marks = () => [...document.querySelectorAll('li')].map((item) => item.textContent);
+    expect(text('.shown')).toBe('2,4');
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(marks()).toEqual(['dropped', 'kept', 'dropped', 'kept', 'dropped']));
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.picked')).toBe('false'));
+  });
+
+  it('pass a function of a module to a component that the browser renders', async () => {
+    await resume('importedFilterLater', {});
+    click(document.querySelector('.show')!);
+    await waitFor(() => expect(text('.shown')).toBe('2,4'));
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.shown')).toBe('2,4'));
+    click(document.querySelector('.more')!);
+    await waitFor(() => expect(text('.shown')).toBe('2,4,6'));
+    click(document.querySelector('.pick')!);
+    await waitFor(() => expect(text('.picked')).toBe('true'));
+  });
+});
+
 describe('spreads and attributes of other code', () => {
   it('keeps an attribute that a $client callback set when the spread updates', async () => {
     await resume('spreadKeeps', {});

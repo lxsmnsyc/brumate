@@ -78,6 +78,11 @@ export interface Declaration {
   /** For an import of a function of a `'use server'` file, the ID of the function. */
   serverImport?: string;
   /**
+   * For an import that a component passes as a prop, true when it can be a function, so the
+   * prop passes it as a reference that the browser can call. See `mayExportFunction`.
+   */
+  callable?: boolean;
+  /**
    * For `let shown = $optimistic(source)`, the value it follows. A write sets
    * a guess, until the source changes or the server calls of the page finish.
    */
