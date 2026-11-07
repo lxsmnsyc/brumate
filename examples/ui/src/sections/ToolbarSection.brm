@@ -1,0 +1,24 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Separator from '@brumate/ui/Separator.brm';
+  import ToggleButton from '@brumate/ui/ToggleButton.brm';
+  import ToggleButtonGroup from '@brumate/ui/ToggleButtonGroup.brm';
+  import Toolbar from '@brumate/ui/Toolbar.brm';
+
+  let align = $signal(['left']);
+</script>
+
+<section aria-labelledby="toolbar">
+  <h2 id="toolbar">Toolbar and ToggleButtonGroup</h2>
+  <Toolbar class="tools" aria-label="Edit">
+    <Button class="press">Cut</Button>
+    <Button class="press">Copy</Button>
+    <Separator orientation="vertical" class="divider" />
+    <ToggleButtonGroup class="align" aria-label="Align" selectedKeys=$bind(align) disallowEmptySelection>
+      <ToggleButton id="left" class="press">Left</ToggleButton>
+      <ToggleButton id="center" class="press">Center</ToggleButton>
+    </ToggleButtonGroup>
+  </Toolbar>
+  <p class="aligned">Aligned {align[0]}.</p>
+</section>

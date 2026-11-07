@@ -1,0 +1,58 @@
+<script>
+  import { $bind, $memo, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Table from '@brumate/ui/Table.brm';
+  import TableHeader from '@brumate/ui/TableHeader.brm';
+  import Column from '@brumate/ui/Column.brm';
+  import TableBody from '@brumate/ui/TableBody.brm';
+  import Row from '@brumate/ui/Row.brm';
+  import Cell from '@brumate/ui/Cell.brm';
+  import ColumnResizer from '@brumate/ui/ColumnResizer.brm';
+  import ResizableTableContainer from '@brumate/ui/ResizableTableContainer.brm';
+  import type { SortDescriptor } from '@brumate/ui/table.ts';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  // A table of planets, sorted by the column that the user picks.
+  const planets = [
+    { id: 'mercury', name: 'Mercury', moons: 0 },
+    { id: 'earth', name: 'Earth', moons: 1 },
+    { id: 'mars', name: 'Mars', moons: 2 },
+  ];
+  let planetSort = $signal<SortDescriptor | null>(null);
+  let pickedPlanets = $signal<Key[]>([]);
+  const planetRows = $memo(
+    planetSort
+      ? [...planets].sort((a, b) => {
+          const order =
+            planetSort!.column === 'moons' ? a.moons - b.moons : a.name.localeCompare(b.name);
+          return planetSort!.direction === 'ascending' ? order : -order;
+        })
+      : planets,
+  );
+</script>
+
+<section aria-labelledby="table">
+  <h2 id="table">Table</h2>
+  <ResizableTableContainer class="planet-box">
+  <Table class="planet-table" aria-label="Planets" selectionMode="multiple" selectedKeys=$bind(pickedPlanets) sortDescriptor=$bind(planetSort)>
+    <TableHeader>
+      <Column><Checkbox slot="selection" class="planet-all" aria-label="Select all">All</Checkbox></Column>
+      <Column id="name" class="planet-name-column" style="position: relative" isRowHeader allowsSorting defaultWidth=(150) minWidth=(100)>
+        <span tabindex="-1">Name</span>
+        <ColumnResizer class="planet-resizer" style="position: absolute; inset-block: 0; inset-inline-end: 0; width: 8px; cursor: col-resize; background: #ccc" />
+      </Column>
+      <Column id="moons" class="planet-moons-column" allowsSorting>Moons</Column>
+    </TableHeader>
+    <TableBody>
+      #for (planet of planetRows by planet.id) {
+        <Row id=(planet.id) class=(`planet-row planet-${planet.id}`)>
+          <Cell><Checkbox slot="selection" aria-label=(`Select ${planet.name}`) /></Cell>
+          <Cell class="planet-name">{planet.name}</Cell>
+          <Cell class=(`planet-moons planet-moons-${planet.id}`)>{planet.moons}</Cell>
+        </Row>
+      }
+    </TableBody>
+  </Table>
+  </ResizableTableContainer>
+  <p class="planet-state">{pickedPlanets.join(',') || 'None'} / {planetSort ? `${planetSort.column} ${planetSort.direction}` : 'unsorted'}</p>
+</section>

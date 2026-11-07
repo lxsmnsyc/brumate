@@ -1,0 +1,12 @@
+# Log: split-ui-examples
+
+- Page: one `<Name>Section.brm` in `examples/ui/src/sections/` for each `<section>` of the old `index.brm` (48 files), plus `ToastsSection.brm` for the `ToastRegion` and its `notice` template, which sat after the last section. The list is `examples/ui/src/sections.brm`: an import line and a tag line for each part, in page order. `routes/index.brm` keeps the head, the title, the intro, `<Sections />` and the page style.
+- Code moved by a script (kept out of the repo): state, helpers and `#template` blocks went to the section that uses them. Imports were filtered to the names each file uses. No signal, context or form is shared between sections, so nothing needed a shared module.
+- `closed` (the shop is closed on Sundays) is used by Calendar and RangeCalendar. First try: one module `shop.ts`. The server then threw "ownUnavailable holds a Function, which cannot be sent to the browser": a function prop needs a function declared in the component script. Both sections declare their own copy now (4 lines).
+- The page style stays in `routes/index.brm`. It is all `:global` and shared by many parts (`.press`, `.field`, `.popover`), so it does not split by part.
+- SSR check: fetched `/` from the built base and the built branch. After removing asset hashes, nonces, `b-*` attributes, generated ids (`b38-` becomes `b46-`: the id counter counts the new components) and the server function URL (names its module), the markup is the same (68,896 chars each).
+- e2e: `e2e/suites/ui.mjs` keeps `build`, `start` and `run`, and loops over `parts` from `e2e/suites/ui/index.mjs`. Each part is `e2e/suites/ui/<part>.mjs` exporting `steps({ page, url, step })`. 45 modules hold the 56 steps verbatim, in the old order; a part with two steps in a row (Tabs, Toast, GridList...) has one module. The list has one line for each part: `() => import('./x.mjs'),`. The `axe-core` steps share one module, `axe.mjs`, which resolves the axe path itself.
+- Step titles name one part or several ("ToggleButton, Link and Group", "Accessibility fixes"), so those got modules named by the title (`toggle-button-link-group`, `accessibility-fixes`).
+- No changeset: `example-ui` is private and has no version, and `e2e` is not a package.
+- `examples/ui` has no unit tests; only the e2e suite and typecheck cover it.
+- Lint warnings `no-shadow` for `step` and `trigger` in e2e also exist on the base.

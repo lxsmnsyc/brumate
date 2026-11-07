@@ -1,0 +1,17 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Input from '@brumate/ui/Input.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  let code = $signal('12');
+</script>
+
+<section aria-labelledby="digits">
+  <h2 id="digits">TextField that refuses letters</h2>
+  <TextField class="digits-field" value=$bind(code, (next) => { if (/^\d*$/.test(next)) code = next; })>
+    <Label>Digits only</Label>
+    <Input class="field" />
+  </TextField>
+  <p class="digits">Kept {code}.</p>
+</section>

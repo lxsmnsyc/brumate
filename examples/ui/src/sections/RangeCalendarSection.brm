@@ -1,0 +1,23 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import CalendarGrid from '@brumate/ui/CalendarGrid.brm';
+  import CalendarHeading from '@brumate/ui/CalendarHeading.brm';
+  import RangeCalendar from '@brumate/ui/RangeCalendar.brm';
+
+  let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-14' });
+
+  // The shop is closed on Sundays. CalendarSection and RangeCalendarSection each declare it, since an
+  // imported function cannot be a prop yet (roadmap node imported-function-prop).
+  function closed(date: string) {
+    return new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
+  }
+</script>
+
+<section aria-labelledby="range-calendar">
+  <h2 id="range-calendar">RangeCalendar</h2>
+  <RangeCalendar class="stay" aria-label="Stay" value=$bind(stay) isDateUnavailable=closed>
+    <CalendarHeading class="stay-heading" />
+    <CalendarGrid class="stay-grid" />
+  </RangeCalendar>
+  <p class="stay-state">{stay ? `${stay.start} ${stay.end}` : 'none'}</p>
+</section>

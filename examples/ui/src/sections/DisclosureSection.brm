@@ -1,0 +1,27 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Disclosure from '@brumate/ui/Disclosure.brm';
+  import DisclosureGroup from '@brumate/ui/DisclosureGroup.brm';
+  import DisclosurePanel from '@brumate/ui/DisclosurePanel.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Transition from '@brumate/ui/Transition.brm';
+
+  let noteShown = $signal(true);
+</script>
+
+<section aria-labelledby="disclosure">
+  <h2 id="disclosure">Disclosure and Transition</h2>
+  <DisclosureGroup class="faq">
+    <Disclosure id="shipping" class="faq-item">
+      <Heading level=(3)><Button slot="trigger" class="press faq-trigger">Shipping</Button></Heading>
+      <DisclosurePanel transition class="faq-panel">Orders leave the shop in two days.</DisclosurePanel>
+    </Disclosure>
+    <Disclosure id="returns" class="faq-item">
+      <Heading level=(3)><Button slot="trigger" class="press faq-trigger">Returns</Button></Heading>
+      <DisclosurePanel class="faq-panel"><span id="return-window">Send it back within thirty days.</span></DisclosurePanel>
+    </Disclosure>
+  </DisclosureGroup>
+  <Button class="press note-toggle" onPress=(() => (noteShown = !noteShown))>Toggle the note</Button>
+  <Transition show=noteShown class="note">A note that fades out.</Transition>
+</section>

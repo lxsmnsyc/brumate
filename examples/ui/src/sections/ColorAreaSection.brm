@@ -1,0 +1,15 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import ColorArea from '@brumate/ui/ColorArea.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+
+  let plane = $signal('hsb(210, 50%, 80%)');
+</script>
+
+<section aria-labelledby="color-area">
+  <h2 id="color-area">ColorArea</h2>
+  <ColorArea class="plane" xChannel="saturation" yChannel="brightness" value=$bind(plane) style="width: 200px; height: 100px; background: var(--area-background)">
+    <ColorThumb class="plane-thumb" style="width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+  </ColorArea>
+  <p class="plane-state">{plane}</p>
+</section>

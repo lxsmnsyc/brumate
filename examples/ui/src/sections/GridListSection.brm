@@ -1,0 +1,34 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import GridList from '@brumate/ui/GridList.brm';
+  import GridListItem from '@brumate/ui/GridListItem.brm';
+  import { moveKeys } from '@brumate/ui/data.ts';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let pickedFiles = $signal<Key[]>([]);
+  let gridFiles = $signal(['notes', 'photos', 'music']);
+  let fileOpened = $signal('none');
+</script>
+
+<section aria-labelledby="gridlist">
+  <h2 id="gridlist">GridList</h2>
+  <GridList
+    class="file-grid"
+    aria-label="Files"
+    selectionMode="multiple"
+    selectedKeys=$bind(pickedFiles)
+    onReorder=((event) => (gridFiles = moveKeys(gridFiles, event.target.key, event.keys, event.target.dropPosition === 'after', (file) => file)))
+  >
+    #for (file of gridFiles by file) {
+      <GridListItem id=file class=(`file-row file-${file}`) textValue=file>
+        <Button slot="drag" class=(`file-drag drag-${file}`)>≡</Button>
+        <Checkbox slot="selection" class="file-check" aria-label=(`Select ${file}`)>{file}</Checkbox>
+        <Button class="press file-open" onPress=(() => (fileOpened = file))>Open</Button>
+      </GridListItem>
+    }
+  </GridList>
+  <p class="file-state">{pickedFiles.join(',') || 'None'} / {fileOpened}</p>
+  <p class="file-order">{gridFiles.join(',')}</p>
+</section>

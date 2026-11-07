@@ -1,0 +1,36 @@
+<script>
+  import Dialog from '@brumate/ui/Dialog.brm';
+  import DialogTrigger from '@brumate/ui/DialogTrigger.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Heading from '@brumate/ui/Heading.brm';
+  import Modal from '@brumate/ui/Modal.brm';
+  import ModalOverlay from '@brumate/ui/ModalOverlay.brm';
+  import Sheet from '@brumate/ui/Sheet.brm';
+</script>
+
+<section aria-labelledby="modal">
+  <h2 id="modal">Modal and Sheet</h2>
+  <DialogTrigger>
+    <Button class="press delete-trigger">Delete the draft</Button>
+    <ModalOverlay class="backdrop" transition>
+      <Modal class="modal">
+        <Dialog role="alertdialog" class="confirm">
+          <Heading slot="title" level=(3)>Delete the draft?</Heading>
+          <p>It cannot come back.</p>
+          <Button slot="close" class="press cancel">Cancel</Button>
+          <Button slot="close" class="press confirm-delete">Delete</Button>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  </DialogTrigger>
+  <DialogTrigger>
+    <Button class="press menu-trigger">Menu</Button>
+    <Sheet class="sheet" transition>
+      <Dialog class="menu" aria-label="Menu">
+        <Button class="press menu-item">Home</Button>
+        <Button class="press menu-item">Settings</Button>
+        <Button slot="close" class="press menu-close">Close</Button>
+      </Dialog>
+    </Sheet>
+  </DialogTrigger>
+</section>
