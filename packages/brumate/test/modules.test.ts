@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CompileError, compile } from '../src/index.ts';
 import type { CompileResult } from '../src/index.ts';
+import { mayExportFunction } from '../src/modules.ts';
 
 const header =
   "<script>\n  import { $signal } from 'brumate/signals';\n  import { counter } from './counter.brm.ts';\n";
@@ -170,5 +171,64 @@ describe('reactive logic in modules', () => {
       '<button onClick=(() => count++)>{count} {busy}</button>',
     );
     expect(result.parts.update).toContain('$$b.pending(');
+  });
+});
+
+describe('imports that a prop passes', () => {
+  const files: Record<string, string> = {
+    'fns.ts': [
+      'export function even(value: number) { return value % 2 === 0; }',
+      'export const odd = (value: number) => value % 2 === 1;',
+      'export const LIMIT = 4;',
+      'export const DAYS = [1, 2];',
+      'function local() {}',
+      'export { local as renamed };',
+      'export default function () {}',
+    ].join('\n'),
+    'more.ts': "export { even as again } from './fns.ts';\nexport * from './fns.ts';",
+    'data.json': '{ "a": 1 }',
+  };
+  const resolve = (specifier: string, importer: string) => {
+    const path = new URL(specifier, `file://${importer}`).pathname;
+    const source = files[path.slice('/app/'.length)];
+    return source === undefined ? undefined : { path, source };
+  };
+  const may = (specifier: string, name: string): boolean =>
+    mayExportFunction(specifier, name, '/app/App.brm', resolve);
+
+  it('are functions when the module exports one', () => {
+    expect(may('./fns.ts', 'even')).toBe(true);
+    expect(may('./fns.ts', 'odd')).toBe(true);
+    expect(may('./fns.ts', 'renamed')).toBe(true);
+    expect(may('./fns.ts', 'default')).toBe(true);
+    expect(may('./more.ts', 'again')).toBe(true);
+    expect(may('./more.ts', 'odd')).toBe(true);
+  });
+
+  it('are values when the module exports a value, and functions when it cannot be read', () => {
+    expect(may('./fns.ts', 'LIMIT')).toBe(false);
+    expect(may('./more.ts', 'DAYS')).toBe(false);
+    expect(may('./data.json', 'default')).toBe(false);
+    expect(may('./Card.brm', 'default')).toBe(false);
+    expect(may('date-fns', 'isWeekend')).toBe(true);
+  });
+
+  it('marks a function prop, and passes a value as it is', () => {
+    const result = compile(
+      [
+        '<script>',
+        "  import Card from './Card.brm';",
+        "  import { even, DAYS } from './fns.ts';",
+        '</script>',
+        '',
+        '<Card keep=even days=DAYS />',
+      ].join('\n'),
+      { filename: 'App.brm', path: '/app/App.brm', resolveModule: resolve },
+    );
+    expect(result.server).toMatch(
+      /"keep": \$\$ctx\.fn\(\(?even\)?, "App_\w+#h\d+", \$\$s\d+, \[\]\)/,
+    );
+    expect(result.server).toMatch(/"days": \(?DAYS\)?[ ,}]/);
+    expect(Object.values(result.parts).join('\n')).not.toContain('DAYS');
   });
 });

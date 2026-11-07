@@ -446,9 +446,16 @@ export function isFunctionValue(site: Site): boolean {
     return true;
   }
   if (node.type === 'Identifier') {
-    const kind = lookup(site.scope, node.name)?.kind;
+    const declaration = lookup(site.scope, node.name);
+    const kind = declaration?.kind;
     // A template passed as a prop renders in the browser too, such as in a list that changes.
-    return kind === 'function' || kind === 'server-function' || kind === 'template';
+    // An import is a function when its module exports one.
+    return (
+      kind === 'function' ||
+      kind === 'server-function' ||
+      kind === 'template' ||
+      (kind === 'import' && declaration?.callable === true)
+    );
   }
   return false;
 }

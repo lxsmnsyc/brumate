@@ -4,7 +4,13 @@ import { checkCaptures } from './captures.ts';
 import { checkEnv } from './env-check.ts';
 import type { EnvImport } from './env-check.ts';
 import { finish } from './sourcemap.ts';
-import { ModuleError, expandModules, relocate, resolveFromDisk } from './modules.ts';
+import {
+  ModuleError,
+  expandModules,
+  mayExportFunction,
+  relocate,
+  resolveFromDisk,
+} from './modules.ts';
 import type { ModuleCall, Origin, ReactiveModule, ResolveModule } from './modules.ts';
 import { SHARED_QUERY, sharedSites } from './shared-module.ts';
 import type { SharedContext } from './shared-module.ts';
@@ -17,6 +23,8 @@ import { generateServer } from './codegen/server.ts';
 import { BrumateError, codeFrame, getLocation, withCode } from './error.ts';
 import type { Location } from './error.ts';
 import { buildGraph } from './graph.ts';
+import { lookup } from './model.ts';
+import type { oxc } from './oxc.ts';
 import type { Diagnostic } from './model.ts';
 import { parse } from './parser.ts';
 import { createPlan } from './plan.ts';
@@ -378,6 +386,43 @@ export function compile(source: string, options: CompileOptions = {}): CompileRe
           read.site.calls.add(declaration);
         }
       }
+    }
+  }
+  // An import that a prop passes can be a function, which the browser calls through a reference.
+  for (const site of model.sites) {
+    if (site.kind !== 'prop') {
+      continue;
+    }
+    // The function in a wrapper, such as `$untrack(fn)` or `prevent(fn)`, or in parentheses.
+    let node: oxc.Node = site.node;
+    while (
+      node.type === 'ParenthesizedExpression' ||
+      (node.type === 'CallExpression' && node.arguments[0]?.type !== 'SpreadElement')
+    ) {
+      const inner: oxc.Node | undefined =
+        node.type === 'ParenthesizedExpression' ? node.expression : node.arguments[0];
+      if (!inner) {
+        break;
+      }
+      node = inner;
+    }
+    if (node.type !== 'Identifier') {
+      continue;
+    }
+    const declaration = lookup(site.scope, node.name);
+    if (
+      declaration?.kind === 'import' &&
+      declaration.imported &&
+      // A server function has its own reference.
+      declaration.serverImport === undefined &&
+      declaration.callable === undefined
+    ) {
+      declaration.callable = mayExportFunction(
+        declaration.imported.source,
+        declaration.imported.name,
+        options.path ?? filename,
+        options.resolveModule ?? resolveFromDisk,
+      );
     }
   }
   checkPendingReads(model.sites, model.pendingCalls, (message, range) =>

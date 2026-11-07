@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 import type { DevtoolsHooks, Scope } from '../src/runtime/client.ts';
 
 const DEVTOOLS = Symbol.for('brumate.devtools');
-import { installDevtools, preview, reportError } from '../src/runtime/devtools.ts';
+import {
+  installDevtools,
+  moveBlock,
+  preview,
+  reportError,
+  type BlockEntry,
+  type BlockEvent,
+} from '../src/runtime/devtools.ts';
 import { togglePanel } from '../src/runtime/devtools-panel.ts';
 
 function hooks(): DevtoolsHooks {
@@ -405,6 +412,8 @@ describe('devtools', () => {
     (shadow.querySelector('.body button') as HTMLElement).click();
     await expect.poll(() => requests).toEqual(['2 0:1']);
     expect(state.blocks.get('defer:2')!.fired).toBeTypeOf('number');
+    // The server sent no body, so the fallback stays and the block failed.
+    await expect.poll(() => states()['defer 2']).toBe('failed');
     togglePanel(shadow, state);
   });
 
@@ -563,5 +572,70 @@ describe('devtools', () => {
     expect(body()).toContain('call Cart save');
     expect(body()).toContain('3 updates');
     togglePanel(shadow, state);
+  });
+});
+
+// The allowed transitions of a block, per kind, apart from the code. An event a state does not
+// list leaves it as it is.
+const BLOCK_MODEL: Record<
+  BlockEntry['kind'],
+  {
+    start: BlockEntry['state'];
+    moves: Partial<Record<BlockEntry['state'], Partial<Record<BlockEvent, BlockEntry['state']>>>>;
+  }
+> = {
+  loading: { start: 'streaming', moves: { streaming: { rendered: 'rendered' } } },
+  defer: {
+    start: 'waiting',
+    moves: {
+      waiting: { rendered: 'rendered', fired: 'loading' },
+      loading: { rendered: 'rendered', settled: 'failed' },
+      failed: { rendered: 'rendered', fired: 'loading' },
+    },
+  },
+  client: { start: 'waiting', moves: { waiting: { rendered: 'rendered' } } },
+  $client: { start: 'waiting', moves: { waiting: { rendered: 'rendered', fired: 'rendered' } } },
+};
+
+/** Every sequence of events up to a length. */
+function sequences(length: number): BlockEvent[][] {
+  const events: BlockEvent[] = ['rendered', 'fired', 'settled'];
+  let result: BlockEvent[][] = [[]];
+  const all: BlockEvent[][] = [[]];
+  for (let step = 0; step < length; step++) {
+    const longer: BlockEvent[][] = [];
+    for (const sequence of result) {
+      for (const event of events) {
+        longer.push([...sequence, event]);
+      }
+    }
+    all.push(...longer);
+    result = longer;
+  }
+  return all;
+}
+
+describe('block states', () => {
+  it('follow the model for every sequence of events', () => {
+    for (const [kind, model] of Object.entries(BLOCK_MODEL)) {
+      for (const sequence of sequences(5)) {
+        const block = { kind, id: '1', state: model.start, seen: 0 } as BlockEntry;
+        let expected = model.start;
+        // When the block rendered: the step of the event that rendered it.
+        let rendered: number | undefined;
+        for (const [index, event] of sequence.entries()) {
+          const next = model.moves[expected]?.[event] ?? expected;
+          expect(moveBlock(block, event, index + 1), `${kind} ${sequence.join(' ')}`).toBe(
+            next !== expected,
+          );
+          if (next === 'rendered' && expected !== 'rendered') {
+            rendered = index + 1;
+          }
+          expected = next;
+          expect(block.rendered).toBe(rendered);
+          expect(block.state, `${kind} ${sequence.join(' ')}`).toBe(expected);
+        }
+      }
+    }
   });
 });

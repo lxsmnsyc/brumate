@@ -2690,7 +2690,11 @@ export class Emitter {
     const symbol = site && this.plan.symbols.get(site);
     if (symbol) {
       const instance = this.scopeVar(instanceScope(this.plan, scope));
-      return `${this.helper('fn')}(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance})`;
+      // A function of a module is one object for every render, so the server binds a copy, which
+      // holds the reference of this prop.
+      const copy =
+        this.options.mode === 'server' && isImported(expression.ast, scope) ? ', []' : '';
+      return `${this.helper('fn')}(${code}, ${JSON.stringify(`${this.plan.id}#${symbol}`)}, ${instance}${copy})`;
     }
     return code;
   }
@@ -3619,4 +3623,12 @@ export function variableValue(
   return variable.prefix || variable.suffix
     ? `$$b.affix(${JSON.stringify(variable.prefix)}, ${expression}, ${JSON.stringify(variable.suffix)})`
     : expression;
+}
+
+/** True for the name of an import, in parentheses or not. */
+function isImported(node: oxc.Node, scope: Scope): boolean {
+  while (node.type === 'ParenthesizedExpression') {
+    node = node.expression;
+  }
+  return node.type === 'Identifier' && lookup(scope, node.name)?.kind === 'import';
 }
