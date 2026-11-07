@@ -1,7 +1,7 @@
 ---
 id: devtools-defer-failed
 title: The devtools show a #defer block that got no body as failed
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -38,11 +38,15 @@ The Blocks tab shows a `#defer` block whose request ends without a body as faile
 
 ## Acceptance
 
-- [ ] The test of the Blocks tab fires a `#defer` that gets a 404 and sees `'failed'`. It fails on `main`.
-- [ ] Every change of a block's state goes through one transition function.
-- [ ] A model test checks every sequence of events per kind against a table of the allowed transitions.
-- [ ] Patch changeset for brumate.
+- [x] The test of the Blocks tab fires a `#defer` that gets a 404 and sees `'failed'`. It fails on `main`.
+- [x] Every change of a block's state goes through one transition function.
+- [x] A model test checks every sequence of events per kind against a table of the allowed transitions.
+- [x] Patch changeset for brumate.
 
 ## Sizing
 
 S: one module and its test.
+
+## Outcome
+
+Merged in #490 (914604a5). Block states go through `nextBlockState`; a `#defer` whose request ends without a body shows as failed. Model test checks every event sequence up to 5 per kind.
