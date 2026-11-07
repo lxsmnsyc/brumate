@@ -26,7 +26,20 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $id,
+    $isPassed,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+    $untrack,
+  } from 'brumate/signals';
   import { store } from 'brumate/store';
   import {
     channelGradient,

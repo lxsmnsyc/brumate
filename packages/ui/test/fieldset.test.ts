@@ -1,10 +1,20 @@
 // The tests of Fieldset and Legend, and of the disabled state that a Fieldset or a Form gives down.
 import { afterEach, expect, it } from 'vitest';
 import { mount } from 'virtual:brumate/testing';
+import { press, pressWith } from './interact.ts';
 import Fieldsets from './fixtures/fieldsets.brm?brumate-server';
 
 let unmount: (() => void) | undefined;
-afterEach(() => unmount?.());
+afterEach(() => {
+  unmount?.();
+  // A portal renders outside the mounted container.
+  for (const layer of document.querySelectorAll('[data-layer]')) {
+    layer.remove();
+  }
+  for (const element of document.querySelectorAll('[inert]')) {
+    element.removeAttribute('inert');
+  }
+});
 
 async function fieldsets() {
   const page = await mount(Fieldsets, {});
@@ -69,4 +79,79 @@ it('disables the fields of a disabled form', async () => {
   expect((page.get('.solo-input') as HTMLInputElement).disabled).toBe(true);
   expect((page.get('.solo-button') as HTMLButtonElement).disabled).toBe(true);
   expect(posted(page, '.off-form')).toEqual([]);
+});
+
+const find = (selector: string) => document.querySelector<HTMLElement>(selector);
+
+function counts(page: Page) {
+  return page.text('.counts');
+}
+
+it('shows a disabled fieldset on the groups, and ignores a press on their items', async () => {
+  const page = await fieldsets();
+  for (const group of ['.tabs', '.table', '.check-group', '.radio-group', '.toggle-group']) {
+    expect(page.get(group).hasAttribute('data-disabled')).toBe(true);
+  }
+  for (const group of ['.table', '.radio-group', '.toggle-group']) {
+    expect(page.get(group).getAttribute('aria-disabled')).toBe('true');
+  }
+  // A press on a tab, a row, a box, a radio and a toggle does nothing.
+  pressWith(page.get('.tab-two'));
+  pressWith(page.get('.row-notes'));
+  press('Enter', page.get('.row-photo'));
+  (page.get('.check-a') as HTMLElement).click();
+  (page.get('.radio-s') as HTMLElement).click();
+  pressWith(page.get('.toggle-bold'));
+  await new Promise((done) => setTimeout(done, 20));
+  expect(counts(page)).toBe('0|0|one|||');
+  for (const item of ['.tab-one', '.tab-two', '.row-notes', '.row-photo', '.toggle-bold']) {
+    expect(
+      page.get(item).getAttribute('aria-disabled') ?? page.get(item).hasAttribute('disabled'),
+    ).toBeTruthy();
+    expect(page.get(item).hasAttribute('data-disabled')).toBe(true);
+  }
+});
+
+it('disables the items of an open menu', async () => {
+  const page = await fieldsets();
+  await page.waitFor(() => expect(find('.menu')).not.toBeNull());
+  expect(find('.menu')!.hasAttribute('data-disabled')).toBe(true);
+  for (const item of ['.menu-copy', '.menu-cut']) {
+    expect(find(item)!.getAttribute('aria-disabled')).toBe('true');
+    expect(find(item)!.hasAttribute('data-disabled')).toBe(true);
+  }
+  pressWith(find('.menu-copy')!);
+  press('Enter', find('.menu-cut')!);
+  await new Promise((done) => setTimeout(done, 20));
+  expect(counts(page).startsWith('0|')).toBe(true);
+});
+
+it('enables the groups and their items with the fieldset', async () => {
+  const page = await fieldsets();
+  await page.waitFor(() => expect(find('.menu')).not.toBeNull());
+  expect((page.get('.menu-trigger') as HTMLButtonElement).disabled).toBe(true);
+  (page.get('.toggle') as HTMLButtonElement).click();
+  await page.waitFor(() => expect(page.get('.tabs').hasAttribute('data-disabled')).toBe(false));
+  for (const group of ['.table', '.check-group', '.radio-group', '.toggle-group']) {
+    expect(page.get(group).hasAttribute('data-disabled')).toBe(false);
+    expect(page.get(group).hasAttribute('aria-disabled')).toBe(false);
+  }
+  expect((page.get('.menu-trigger') as HTMLButtonElement).disabled).toBe(false);
+  expect(page.get('.tab-two').hasAttribute('aria-disabled')).toBe(false);
+  expect(page.get('.row-notes').hasAttribute('aria-disabled')).toBe(false);
+  // The items work again.
+  pressWith(page.get('.tab-two'));
+  pressWith(page.get('.toggle-bold'));
+  (page.get('.radio-s') as HTMLElement).click();
+  (page.get('.check-a') as HTMLElement).click();
+  await page.waitFor(() => expect(counts(page)).toBe('0|0|two|bold|s|a'));
+  // The menu is closed by the press outside. It opens again with its items enabled.
+  if (!find('.menu')) {
+    pressWith(page.get('.menu-trigger'));
+  }
+  await page.waitFor(() => expect(find('.menu-copy')).not.toBeNull());
+  expect(find('.menu')!.hasAttribute('data-disabled')).toBe(false);
+  expect(find('.menu-copy')!.hasAttribute('aria-disabled')).toBe(false);
+  pressWith(find('.menu-copy')!);
+  await page.waitFor(() => expect(counts(page).startsWith('1|')).toBe(true));
 });

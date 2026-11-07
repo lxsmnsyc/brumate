@@ -32,7 +32,16 @@
 </script>
 
 <script>
-  import { $bind, $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import {
+    $bind,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { DatePickerContext } from './calendar.ts';
   import type { DatePickerState } from './calendar.ts';
   import {

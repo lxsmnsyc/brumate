@@ -13,6 +13,7 @@ A `<fieldset>` with a `<legend>`. A disabled `Fieldset` disables every field and
 - `isDisabled` on a `Fieldset` or a [Form](./form.md) disables the fields below it. A TextField, a Checkbox, a Select, a Slider, a Button and the other parts read it with their own `isDisabled`.
 - A disabled field posts nothing with its form.
 - A `Fieldset` in a disabled one is disabled too. A part with `isDisabled=(false)` in a disabled `Fieldset` stays disabled.
+- A `Form` with `isDisabled` disables the brumate parts inside it, but not a plain `<input>`, since a `<form>` has no native disabled state. A `Fieldset` does both: it sets the native `disabled` too.
 - It takes the attributes of a `<fieldset>`, such as `name` and `form`.
 
 ## Anatomy

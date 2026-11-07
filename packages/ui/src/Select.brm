@@ -38,7 +38,18 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import {
     ListBoxGivenContext,

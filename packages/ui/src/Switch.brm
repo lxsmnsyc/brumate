@@ -23,7 +23,17 @@
 </script>
 
 <script>
-  import { $client, $id, $memo, $props, $setContext, $signal, $toStore, $getContext, $store } from 'brumate/signals';
+  import {
+    $client,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $toStore,
+    $getContext,
+    $store,
+  } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';

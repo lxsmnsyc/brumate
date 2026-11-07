@@ -50,7 +50,19 @@
 </script>
 
 <script generics="V extends { id: Key }">
-  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import {
+    $client,
+    $getContext,
+    $id,
+    $isPassed,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
+  import { DisabledContext } from './contexts.ts';
   import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
@@ -135,6 +147,10 @@
   );
   const tableWidth = $memo(resizedWidth > 0 ? `${resizedWidth}px` : '100%');
   const hasAction = $isPassed(onRowAction);
+  // A disabled Fieldset or Form disables the rows too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(inheritedDisabled));
   const tableId = $id();
   let root = $signal<HTMLElement>();
   // The keys of the rows that can be selected, which the browser counts when the page loads and
@@ -181,6 +197,9 @@
   }
 
   function setSelection(next: Key[]) {
+    if (isDisabled) {
+      return;
+    }
     if (!sameKeys(next, selectedKeys)) {
       const before = selectedKeys;
       selectedKeys = next;
@@ -212,6 +231,9 @@
   }
 
   function action(key: Key) {
+    if (isDisabled) {
+      return;
+    }
     onRowAction?.(key);
   }
 
@@ -278,6 +300,7 @@
     selectionBehavior,
     selectedKeys,
     disabledKeys,
+    isDisabled,
     hasAction,
   });
   $setContext(ListBoxContext, { state: $toStore(listState), select, action });
@@ -656,6 +679,8 @@
   role="grid"
   tabindex="0"
   data-collection
+  aria-disabled=(isDisabled ? 'true' : undefined)
+  data-disabled=(isDisabled || undefined)
   data-resizable=(sizes ? '' : undefined)
   aria-multiselectable=(selectionMode === 'multiple' ? 'true' : undefined)
   onFocus=focused

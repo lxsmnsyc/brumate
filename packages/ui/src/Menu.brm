@@ -38,7 +38,19 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+    $untrack,
+  } from 'brumate/signals';
   import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
@@ -54,7 +66,7 @@
     sameKeys,
     typeahead,
   } from './collection.ts';
-  import { DialogContext, FieldInputContext } from './contexts.ts';
+  import { DialogContext, DisabledContext, FieldInputContext } from './contexts.ts';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { MENU_ITEMS, MenuContext, MenuTriggerContext, SubmenuContext } from './menu.ts';
   import type { MenuState } from './menu.ts';
@@ -99,11 +111,15 @@
   const dialog = $getContext(DialogContext, undefined);
   const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
   const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  // A disabled Fieldset or Form disables the items too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(inheritedDisabled));
   const menuId = $id();
   let focusedId = $signal<string>();
 
   function action(key: Key) {
-    if (disabledKeys.includes(key)) {
+    if (isDisabled || disabledKeys.includes(key)) {
       return;
     }
     if (selectionMode !== 'none') {
@@ -140,6 +156,7 @@
     selectionMode,
     selectedKeys,
     disabledKeys,
+    isDisabled,
     focusedId,
     activeKey: field?.activeKey,
   });
@@ -244,6 +261,8 @@
   role="menu"
   tabindex=(trigger || field ? '-1' : '0')
   data-collection
+  aria-disabled=(isDisabled ? 'true' : undefined)
+  data-disabled=(isDisabled || undefined)
   aria-label=label
   aria-labelledby=(label === undefined ? trigger?.triggerId : undefined)
   onFocus=focused

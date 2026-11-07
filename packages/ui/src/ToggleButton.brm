@@ -32,7 +32,15 @@
 <script generics="T extends AsTarget = 'button'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $bind, $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import {
+    $bind,
+    $getContext,
+    $memo,
+    $props,
+    $setContext,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import Button from './Button.brm';
   import { DisabledContext, ToggleButtonContext, ToggleGroupContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';

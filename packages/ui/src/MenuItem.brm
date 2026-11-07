@@ -73,7 +73,9 @@
   const descriptionId = $id();
   const mode = $memo(menu?.selectionMode ?? 'none');
   const selected = $memo(Boolean(menu?.selectedKeys.includes(id)));
-  const disabled = $memo(isDisabled || Boolean(menu?.disabledKeys.includes(id)));
+  const disabled = $memo(
+    isDisabled || Boolean(menu?.isDisabled) || Boolean(menu?.disabledKeys.includes(id)),
+  );
   // With focus in a field around the menu, the active item shows as focused.
   const active = $memo(menu?.activeKey !== undefined && menu.activeKey === id);
   const role = $memo(

@@ -27,7 +27,17 @@
 </script>
 
 <script>
-  import { $client, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import {
+    $client,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { store } from 'brumate/store';
   import { NumberFormatter } from '@internationalized/number';
   import {

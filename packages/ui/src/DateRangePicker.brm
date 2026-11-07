@@ -30,7 +30,18 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import {
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+    $untrack,
+  } from 'brumate/signals';
   import { store } from 'brumate/store';
   import { DatePickerContext, constrain, outOfRange, toDate, todayString } from './calendar.ts';
   import type { DatePickerState } from './calendar.ts';

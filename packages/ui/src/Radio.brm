@@ -14,7 +14,16 @@
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $client, $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import {
+    $client,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';

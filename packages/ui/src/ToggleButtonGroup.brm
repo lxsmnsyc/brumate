@@ -30,9 +30,17 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import {
+    $client,
+    $getContext,
+    $memo,
+    $props,
+    $setContext,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { store } from 'brumate/store';
-  import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
+  import { DisabledContext, ToggleGroupContext, ToolbarContext } from './contexts.ts';
   import type { ToggleGroupState } from './contexts.ts';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
@@ -50,12 +58,16 @@
     as,
     selectionMode = 'single',
     disallowEmptySelection = false,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     orientation = 'horizontal',
     onSelectionChange,
     children,
     ...rest
   } = $props<ToggleButtonGroupProps<T>>();
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { selectedKeys = [] } = $props<ToggleButtonGroupOwnProps<T>>();
   let { ref } = $props<ToggleButtonGroupOwnProps<T>>();
 

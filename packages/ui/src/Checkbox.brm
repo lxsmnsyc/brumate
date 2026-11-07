@@ -27,11 +27,27 @@
 </script>
 
 <script>
-  import { $client, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import {
+    $client,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { CheckboxGroupContext, DisabledContext, FieldErrorContext, LabelContext, TextContext } from './contexts.ts';
+  import {
+    CheckboxGroupContext,
+    DisabledContext,
+    FieldErrorContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, isFirstInvalid, onFormReset } from './fields.ts';
 
