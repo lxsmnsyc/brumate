@@ -223,6 +223,8 @@ diverge('lazy-ref', [
   'refForward',
   'refVisibleForward',
   'refVisibleLoading',
+  'conditionalRestPage',
+  'conditionalRestTagPage',
   'restRefCastPage',
   'restRefChangePage',
   'restRefPage',

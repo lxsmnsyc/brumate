@@ -308,6 +308,52 @@ ${markup}`;
     ).toThrow(message);
   });
 
+  describe('a conditional spread of the rest', () => {
+    const script = 'const { open, other, ...rest } = $props<any>();\n  let a = $signal(true);';
+
+    function spread(expression: string): () => unknown {
+      return () =>
+        compile(page(script, `<div {...${expression}}>x</div>`), { filename: 'Card.brm' });
+    }
+
+    it('allows the rest as a branch next to an empty one', () => {
+      for (const expression of [
+        '(open ? rest : {})',
+        '(open ? {} : rest)',
+        '(open ? rest : undefined)',
+        '(open ? rest : null)',
+        '(open ? rest : false)',
+        '(open && rest)',
+        '(false || rest)',
+        '(undefined ?? rest)',
+        '(open ? (rest as any) : { title: "x" })',
+        '(open ? rest : rest)',
+      ]) {
+        expect(spread(expression)).not.toThrow();
+      }
+    });
+
+    it('allows the props object as a branch', () => {
+      const props = 'const props = $props<any>();\n  let a = $signal(true);';
+      expect(() =>
+        compile(page(props, '<div {...(a ? props : {})}>x</div>'), { filename: 'Card.brm' }),
+      ).not.toThrow();
+    });
+
+    it('rejects a call, a nested condition and another object', () => {
+      for (const expression of [
+        '(open ? pick(rest) : {})',
+        '(open ? (a ? rest : {}) : {})',
+        '(open ? rest : other)',
+        '(open ? rest : { ...rest })',
+        '(rest ? rest : {})',
+        '(rest && rest)',
+      ]) {
+        expect(spread(expression)).toThrow(message);
+      }
+    });
+  });
+
   it('rejects a cast of the whole object', () => {
     expect(() =>
       compile(page('const { ...rest } = $props();\n  const x = rest as Record<string, unknown>;'), {

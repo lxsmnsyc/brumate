@@ -1,0 +1,12 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Spreads the rest props, with the ref in them, only while `on` is true.
+  const { on, label = 'Box', ...rest } = $props<{
+    on?: boolean;
+    label?: string;
+    [name: string]: unknown;
+  }>();
+</script>
+
+<button class="inner" {...(on ? rest : {})}>{label}</button>

@@ -5613,6 +5613,91 @@ describe('refs forwarded through components', () => {
     expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
   });
 
+  describe('a conditional spread of the rest props', () => {
+    it('gives the ref when the condition starts true, and clears it as it flips', async () => {
+      await resume('conditionalRestPage', {});
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.hasAttribute('title')).toBe(false),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('none'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.getAttribute('title')).toBe('one'),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+      expect(document.querySelector('.inner')!.hasAttribute('ref')).toBe(false);
+    });
+
+    it('leaves the ref undefined when the condition starts false, and gives it as it flips', async () => {
+      await resume('conditionalRestOffPage', {});
+      expect(document.querySelector('.inner')!.hasAttribute('title')).toBe(false);
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('none'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.getAttribute('title')).toBe('one'),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+    });
+
+    it('does the same for an element in a block that the browser renders', async () => {
+      await resume('conditionalRestBlockPage', {});
+      click(document.querySelector('.show')!);
+      await waitFor(() => expect(document.querySelector('.inner')).not.toBeNull());
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.hasAttribute('title')).toBe(false),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('none'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.getAttribute('title')).toBe('one'),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+    });
+  });
+
+  describe('a conditional spread of the rest props, with setters and dynamic tags', () => {
+    it('calls a setter ref with undefined when the branch turns off, and with the element when it turns on', async () => {
+      await resume('conditionalRestSetterPage', {});
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;none;'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() => expect(text('.calls')).toBe('BUTTON;none;BUTTON;'));
+      await new Promise((done) => setTimeout(done, 100));
+      expect(text('.calls')).toBe('BUTTON;none;BUTTON;');
+    });
+
+    it('gives and clears the ref of a dynamic tag as the condition flips', async () => {
+      await resume('conditionalRestTagPage', {});
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.hasAttribute('title')).toBe(false),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('none'));
+      click(document.querySelector('.flip')!);
+      await waitFor(() =>
+        expect(document.querySelector('.inner')!.getAttribute('title')).toBe('one'),
+      );
+      click(document.querySelector('.read')!);
+      await waitFor(() => expect(text('.seen')).toBe('BUTTON:one'));
+    });
+  });
+
   it('keeps the ref of the rest props when the rest changes after the first render', async () => {
     await resume('restRefChangePage', {});
     click(document.querySelector('.retitle')!);

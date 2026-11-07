@@ -1,0 +1,13 @@
+<script>
+  import { $props } from 'brumate/signals';
+
+  // Spreads the rest props onto a dynamic tag only while `on` is true.
+  const { as = 'button', on, label = 'Tag', ...rest } = $props<{
+    as?: any;
+    on?: boolean;
+    label?: string;
+    [name: string]: unknown;
+  }>();
+</script>
+
+<{as} class="inner" {...(on ? rest : {})}>{label}</>

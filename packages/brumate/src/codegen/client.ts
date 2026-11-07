@@ -1,3 +1,4 @@
+import { conditionalSpread } from '../analyze.ts';
 import { isMacroImport } from '../macros.ts';
 import type {
   Attribute,
@@ -1342,7 +1343,7 @@ class ClientGenerator {
       // A spread whose values can be promises writes each one once it settles.
       const helper = mayBePromise(site.node, site) ? 'fillAttrs' : 'attrs';
       this.emit(
-        `export function ${name('u')}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${value}, ${JSON.stringify(own)});\n}`,
+        `export function ${name('u')}($$s) {\n  $$b.${helper}($$s, ${anchor}, ${value}, ${JSON.stringify(own)}${this.heldRef(owner)});\n}`,
       );
     } else if (attribute.kind === 'value') {
       let value =
@@ -1365,6 +1366,33 @@ class ClientGenerator {
       this.emit(`export function ${name('u')}($$s) {\n  ${write};\n}`);
     }
     void node;
+  }
+
+  /**
+   * The last argument of an update of a spread that holds the rest as a branch of a condition,
+   * such as `open ? rest : {}`: the `ref` of the rest, which the update clears when the branch
+   * is off and the server rendered it on.
+   */
+  private heldRef(owner: { attributes: Attribute[] }): string {
+    for (const item of owner.attributes) {
+      if (item.kind !== 'spread') {
+        continue;
+      }
+      const held = conditionalSpread(item.value.ast);
+      if (!held || this.valueCode(item.value.ast) === undefined) {
+        continue;
+      }
+      for (const site of this.model.sites) {
+        if (site.node === item.value.ast) {
+          const range = { start: held.start, end: held.end };
+          const code = this.rewriter.rewrite(site, '$$s', instanceScope(this.plan, site.scope), {
+            range,
+          });
+          return `, (${this.withTemplates(site, code)}).ref`;
+        }
+      }
+    }
+    return '';
   }
 
   /** The `b-on` entries of the handlers of a dynamic tag, each as code that adds the scope ID. */

@@ -2490,7 +2490,7 @@ class Resolver {
         // A spread in markup is the only use of the whole object, so a ref in it reaches the element.
         if (
           reference?.declaration.whole &&
-          !(this.site.kind === 'spread' && node === unwrapTypes(this.site.node))
+          !(this.site.kind === 'spread' && spreadsWhole(this.site.node, node))
         ) {
           this.analyzer.report(
             'error',
@@ -3021,6 +3021,71 @@ class Resolver {
         }
     }
   }
+}
+
+/** True for an object literal, `undefined`, `null` or `false`, the branch of a spread that adds nothing. */
+function isEmptySpread(node: oxc.Node): boolean {
+  const branch = unwrapTypes(node);
+  return (
+    branch.type === 'ObjectExpression' ||
+    (branch.type === 'Identifier' && branch.name === 'undefined') ||
+    (branch.type === 'Literal' && (branch.value === null || branch.value === false))
+  );
+}
+
+/** The branches of `?:`, `&&`, `||` and `??`, or none for another expression. */
+function spreadBranches(root: oxc.Node): oxc.Node[] {
+  if (root.type === 'ConditionalExpression') {
+    return [root.consequent, root.alternate];
+  }
+  if (root.type === 'LogicalExpression') {
+    // The left of `&&` is the condition, so it is not a branch.
+    return root.operator === '&&' ? [root.right] : [root.left, root.right];
+  }
+  return [];
+}
+
+/**
+ * True when `identifier`, the props object or the rest, is what a markup spread spreads: the
+ * expression itself, or a branch of `?:`, `&&`, `||` or `??` whose other branches add nothing
+ * (see isEmptySpread) or are the same name.
+ */
+function spreadsWhole(expression: oxc.Node, identifier: oxc.Node): boolean {
+  const root = unwrapTypes(expression);
+  if (root === identifier) {
+    return true;
+  }
+  let found = false;
+  for (const branch of spreadBranches(root)) {
+    const node = unwrapTypes(branch);
+    if (node === identifier) {
+      found = true;
+    } else if (
+      !isEmptySpread(node) &&
+      !(
+        node.type === 'Identifier' &&
+        identifier.type === 'Identifier' &&
+        node.name === identifier.name
+      )
+    ) {
+      return false;
+    }
+  }
+  return found;
+}
+
+/**
+ * The props object or the rest that a conditional markup spread holds as a branch, such as
+ * `rest` in `open ? rest : {}`. Undefined for a spread with no condition.
+ */
+export function conditionalSpread(expression: oxc.Node): oxc.Node | undefined {
+  for (const branch of spreadBranches(unwrapTypes(expression))) {
+    const node = unwrapTypes(branch);
+    if (node.type === 'Identifier' && node.name !== 'undefined') {
+      return node;
+    }
+  }
+  return undefined;
 }
 
 /** Strips parentheses and type casts: `(rest as T)` is `rest`. */

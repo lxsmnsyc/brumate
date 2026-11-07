@@ -770,7 +770,7 @@ const SCRIPT: ErrorEntry[] = [
   entry(
     'BRM115',
     '"{name}" is the props object, so read one key at a time, destructure it, or spread it in markup',
-    'The props object or the rest of `$props()` is used as a whole outside a markup spread: spread in code, passed to a function, `$memo`, `$setContext`, a signal or a variable, or given as a value in markup, such as `title=rest` or `<Badge {rest} />`. The copy loses the `ref` and the live props.',
+    'The props object or the rest of `$props()` is used as a whole outside a markup spread: spread in code, passed to a function, `$memo`, `$setContext`, a signal or a variable, or given as a value in markup, such as `title=rest` or `<Badge {rest} />`. The copy loses the `ref` and the live props. A spread may hold the rest as a branch of `?:`, `&&`, `||` or `??` next to an object literal, `undefined`, `null` or `false`, such as `{...(open ? rest : {})}`.',
     'const { class: className, ...rest } = $props();\n<button {...rest} class=className>',
   ),
   entry(
