@@ -36,7 +36,7 @@ Not an experiment node.
 
 - `pnpm lint` exit 0; `pnpm format:check` clean; `pnpm --workspace-concurrency=2 -r typecheck` and `pnpm --filter example-ui build` pass.
 - SSR markup of `/` equals the base after removing hashes and generated ids.
-- `node e2e/run.mjs --only ui` on this branch and on origin/next: see the pull request.
+- `node e2e/run.mjs --only ui`: 56 passed, 0 failed on this branch and on origin/next (cf7e7b49); the 56 step names, their order and their results are the same.
 
 ## For the maintainer
 
