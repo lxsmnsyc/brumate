@@ -1,7 +1,7 @@
 ---
 id: is-pending-many
 title: $isPending takes several memos
-status: active
+status: done
 priority: must
 type: feature
 story:
