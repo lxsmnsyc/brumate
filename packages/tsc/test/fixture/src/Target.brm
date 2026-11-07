@@ -1,0 +1,14 @@
+<script>
+  import { $signal } from 'brumate/signals';
+
+  let text = $signal('');
+  let size = $signal(0);
+</script>
+
+<input onInput=((event) => { text = event.target.value; }) onBlur=((event) => { text = event.target.value; }) />
+<select onChange=((event) => { text = event.target.value; })></select>
+<textarea onInput=((event) => { size = event.target.value.length; })></textarea>
+<div onClick=((event) => { text = event.target.tagName; })></div>
+<div onInput=((event) => { text = event.target.tagName; })></div>
+<div onClick=((event) => { text = event.target.value; })></div>
+<input onClick=((event) => { text = event.target.value; }) />

@@ -188,8 +188,23 @@ export const lowerKeys: ElementProps<'div'> = { onKeydown: (event) => event.key 
 export const handler: EventHandler<HTMLButtonElement, MouseEvent> = (event) =>
   event.currentTarget.value;
 export const handlerProp: ElementProps<'button'> = { onClick: handler };
+export const controlTarget: ElementProps<'input'> = {
+  onInput: (event) => event.target.value,
+  onChange: (event) => event.target.checked,
+  onBlur: (event) => event.target.value,
+};
+export const selectTarget: ElementProps<'select'> = { onChange: (event) => event.target.value };
+export const textareaTarget: ElementProps<'textarea'> = { onInput: (event) => event.target.value };
+export const otherTarget: ElementProps<'div'> = { onClick: (event) => event.target.tagName };
+export const otherInput: ElementProps<'div'> = { onInput: (event) => event.target.tagName };
+export const clickTarget: ElementProps<'input'> = { onClick: (event) => event.target.tagName };
 
 // What the types forbid.
+
+// @ts-expect-error A click on an `input` has an `Element` target, which has no `value`.
+export const clickValue: ElementProps<'input'> = { onClick: (event) => event.target.value };
+// @ts-expect-error An `input` event on a `div` has an `Element` target.
+export const divValue: ElementProps<'div'> = { onInput: (event) => event.target.value };
 
 // @ts-expect-error `a` has no `src`.
 export const unknown: ElementProps<'a'> = { src: '/a.png' };

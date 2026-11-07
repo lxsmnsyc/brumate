@@ -51,7 +51,8 @@ type Num = number | `${number}`;
 
 /**
  * A handler of the event `Ev` on the element `E`, which is `event.currentTarget`. Use it to type
- * a function that a handler prop takes: `EventHandler<HTMLButtonElement, MouseEvent>`.
+ * a function that a handler prop takes: `EventHandler<HTMLButtonElement, MouseEvent>`. Its
+ * `target` stays `EventTarget`; for the typed target of a form control, use `ElementEvent`.
  */
 export type EventHandler<E, Ev = Event> = (event: Ev & { currentTarget: E }) => unknown;
 
@@ -145,7 +146,28 @@ type BoundValue = BindableMark<unknown> & WritableMark<string>;
 /** What `checked=$bind(name)` takes: a binding that can hold the boolean the field writes. */
 type BoundChecked = BindableMark<unknown> & WritableMark<boolean>;
 
-type Handler<Ev, E> = EventHandler<E, Ev>;
+/** The events that a form control fires at itself, as Solid types them: `target` is the control. */
+type ControlEventName =
+  | 'input'
+  | 'change'
+  | 'beforeinput'
+  | 'focus'
+  | 'blur'
+  | 'focusin'
+  | 'focusout';
+
+type ControlElement = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+/**
+ * The event `K` on the element `E`. `currentTarget` is `E`. `target` is `E` for the events of
+ * `ControlEventName` on an `input`, a `select` or a `textarea`, and `Element` for the others.
+ */
+export type ElementEvent<K extends keyof ElementEvents, E> = ElementEvents[K] & {
+  currentTarget: E;
+  target: [E] extends [ControlElement] ? (K extends ControlEventName ? E : Element) : Element;
+};
+
+type Handler<K extends keyof ElementEvents, E> = (event: ElementEvent<K, E>) => unknown;
 
 /**
  * The camel-case name of each event whose name has more than one word, by the name of the event:
@@ -261,7 +283,7 @@ type EventWord<K extends string> = K extends keyof ElementEventNames
 export type Handlers<E> = {
   [
     K in keyof ElementEvents & string as K extends `webkit${string}` ? never : `on${EventWord<K>}`
-  ]?: Handler<ElementEvents[K], E>;
+  ]?: Handler<K, E>;
 };
 
 /** A value of an ARIA attribute that is `true` or `false`. The runtime writes both as words. */
