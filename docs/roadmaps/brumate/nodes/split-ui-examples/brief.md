@@ -1,7 +1,7 @@
 ---
 id: split-ui-examples
 title: One file for each part in the ui example page and its e2e suite
-status: active
+status: done
 priority: must
 type: refactor
 outline: false
@@ -40,10 +40,10 @@ Split examples/ui/src/routes/index.brm (1,300 lines) and e2e/suites/ui.mjs (1,91
 
 ## Acceptance
 
-- [ ] Each part has its own section component in examples/ui and its own e2e step module.
-- [ ] The ui e2e suite runs the same steps in the same order: `node e2e/run.mjs --only ui`.
-- [ ] No other change goes into this pull request.
-- [ ] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
+- [x] Each part has its own section component in examples/ui and its own e2e step module.
+- [x] The ui e2e suite runs the same steps in the same order: `node e2e/run.mjs --only ui`.
+- [x] No other change goes into this pull request.
+- [x] Fast check passes: `pnpm lint && pnpm format:check && pnpm typecheck`
 
 ## Sizing
 
