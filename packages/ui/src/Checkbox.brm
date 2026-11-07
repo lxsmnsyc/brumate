@@ -27,11 +27,27 @@
 </script>
 
 <script>
-  import { $client, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import {
+    $client,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { CheckboxGroupContext, FieldErrorContext, LabelContext, TextContext } from './contexts.ts';
+  import {
+    CheckboxGroupContext,
+    DisabledContext,
+    FieldErrorContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, isFirstInvalid, onFormReset } from './fields.ts';
 
@@ -65,7 +81,10 @@
   const groupGiven = $getContext(CheckboxGroupContext, undefined);
   const group = groupGiven ? $store(groupGiven.state) : undefined;
   const selected = $memo(group ? group.value.includes(value ?? '') : isSelected);
-  const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const disabled = $memo(Boolean(isDisabled || group?.isDisabled || inheritedDisabled));
   const readOnly = $memo(Boolean(isReadOnly || group?.isReadOnly));
   const required = $memo(Boolean(isRequired || group?.isRequired));
   const mixed = $memo(Boolean(isIndeterminate || group?.isIndeterminate));

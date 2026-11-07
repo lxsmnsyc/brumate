@@ -1,0 +1,17 @@
+<script module>
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface LegendProps extends ElementProps<'legend'> {
+    /** The title of the fieldset. */
+    children?: unknown;
+  }
+</script>
+
+<script>
+  import { $props } from 'brumate/signals';
+
+  /** The title of a Fieldset. The browser names the fieldset with it. */
+  const { children, ...rest } = $props<LegendProps>();
+</script>
+
+<legend {...rest}>{children}</legend>

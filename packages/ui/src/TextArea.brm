@@ -10,7 +10,7 @@
 <script>
   import { $getContext, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { FieldInputContext, TextAreaContext } from './contexts.ts';
+  import { DisabledContext, FieldInputContext, TextAreaContext } from './contexts.ts';
   import { focusRing } from './focus.brm.ts';
   import { hover } from './hover.brm.ts';
   import { isFirstInvalid } from './fields.ts';
@@ -30,7 +30,10 @@
   const outer = outerGiven ? $store(outerGiven) : undefined;
   const outerAttributes = $memo(outer ?? {});
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
-  const disabled = $memo(Boolean(attributes.disabled ?? rest.disabled));
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const disabled = $memo(Boolean(inheritedDisabled || (attributes.disabled ?? rest.disabled)));
   const invalid = $memo(attributes['aria-invalid'] === 'true' || attributes['aria-invalid'] === true);
 
   const { hovered, onPointerEnter, onPointerLeave } = hover(disabled, undefined, undefined, undefined);

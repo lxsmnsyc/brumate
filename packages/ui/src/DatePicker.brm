@@ -32,10 +32,24 @@
 </script>
 
 <script>
-  import { $bind, $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import {
+    $bind,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { DatePickerContext } from './calendar.ts';
   import type { DatePickerState } from './calendar.ts';
-  import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
+  import {
+    ButtonContext,
+    DisabledContext,
+    GroupContext,
+    OverlayTriggerContext,
+  } from './contexts.ts';
   import type { OverlayTriggerState } from './contexts.ts';
   import { DateStringsContext } from './date-strings.ts';
   import DateField from './DateField.brm';
@@ -61,7 +75,7 @@
     maxValue,
     isDateUnavailable,
     placeholderValue,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     shouldCloseOnSelect = true,
     onChange,
@@ -69,6 +83,10 @@
     children,
     ...rest
   } = $props<DatePickerProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = null } = $props<DatePickerProps>();
   let { isOpen = false } = $props<DatePickerProps>();
 

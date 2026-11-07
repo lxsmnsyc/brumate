@@ -48,7 +48,9 @@
   const list = listGiven ? $store(listGiven.state) : undefined;
   const mode = $memo(list?.selectionMode ?? 'none');
   const selected = $memo(Boolean(list?.selectedKeys.includes(id)));
-  const disabled = $memo(isDisabled || Boolean(list?.disabledKeys.includes(id)));
+  const disabled = $memo(
+    isDisabled || Boolean(list?.isDisabled) || Boolean(list?.disabledKeys.includes(id)),
+  );
 
   // The Checkbox of the selection is checked while the row is selected, and toggles it.
   const checkState = $memo<CheckboxGroupState>({

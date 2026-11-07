@@ -32,9 +32,20 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
+  import {
+    $client,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $toStore,
+    $getContext,
+    $store,
+  } from 'brumate/signals';
   import {
     CheckboxGroupContext,
+    DisabledContext,
     FieldErrorContext,
     LabelContext,
     TextContext,
@@ -59,7 +70,7 @@
   const {
     as,
     name,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid = false,
@@ -67,6 +78,10 @@
     children,
     ...rest
   } = $props<CheckboxGroupProps<T>>();
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = [] } = $props<CheckboxGroupOwnProps<T>>();
   let { ref } = $props<CheckboxGroupOwnProps<T>>();
   // The value that a reset of the form gives back.

@@ -40,9 +40,26 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import {
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+    $untrack,
+  } from 'brumate/signals';
   import { store } from 'brumate/store';
-  import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
+  import {
+    DisabledContext,
+    FieldErrorContext,
+    FormContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { formField } from './date-field.brm.ts';
   import { prevent } from 'brumate/events';
@@ -89,7 +106,7 @@
     placeholderValue = '00:00',
     granularity = 'minute',
     hourCycle,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid = false,
@@ -97,6 +114,10 @@
     children,
     ...rest
   } = $props<TimeFieldProps<T>>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = null } = $props<TimeFieldProps<T>>();
 
   const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));

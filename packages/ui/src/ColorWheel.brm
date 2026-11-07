@@ -28,7 +28,20 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $id,
+    $isPassed,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+    $untrack,
+  } from 'brumate/signals';
   import { store } from 'brumate/store';
   import {
     channelName,
@@ -46,7 +59,10 @@
     tryParseColor,
     withChannelValue,
   } from './color.ts';
-  import { ColorPickerContext } from './contexts.ts';
+  import {
+    ColorPickerContext,
+    DisabledContext,
+  } from './contexts.ts';
   import { ColorThumbContext } from './color-thumb.ts';
   import type { ColorThumbState } from './color-thumb.ts';
   import { onFormReset } from './fields.ts';
@@ -86,7 +102,7 @@
   const {
     outerRadius,
     innerRadius,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     name,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledby,
@@ -95,6 +111,10 @@
     children,
     ...rest
   } = $props<ColorWheelProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = 'hsl(0, 100%, 50%)' } = $props<ColorWheelProps>();
 
   // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.

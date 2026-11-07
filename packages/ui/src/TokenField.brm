@@ -28,8 +28,22 @@
 </script>
 
 <script>
-  import { $client, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
-  import { LabelContext, TextContext } from './contexts.ts';
+  import {
+    $client,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $toStore,
+    $getContext,
+    $store,
+  } from 'brumate/signals';
+  import {
+    DisabledContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { onFormReset } from './fields.ts';
   import { TokenFieldContext, sameSegments, segmentsText } from './token-field.ts';
@@ -51,7 +65,7 @@
     pattern,
     placeholder,
     allowsNewlines = false,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     role = 'textbox',
     name,
@@ -59,6 +73,10 @@
     children,
     ...rest
   } = $props<TokenFieldProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = [] } = $props<TokenFieldProps>();
   let { ref } = $props<{ ref?: Bindable<HTMLDivElement | undefined> }>();
   // The segments that a reset of the form gives back.

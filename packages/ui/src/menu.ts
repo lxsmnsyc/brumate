@@ -37,6 +37,8 @@ export interface MenuState {
   selectionMode: SelectionMode;
   selectedKeys: Key[];
   disabledKeys: Key[];
+  /** True inside a disabled Fieldset or Form. */
+  isDisabled?: boolean;
   /** The ID of the item of this menu that has focus, which a SubmenuTrigger closes for. */
   focusedId: string | undefined;
   /** With focus in a field around the menu, the item that its keys move to. */

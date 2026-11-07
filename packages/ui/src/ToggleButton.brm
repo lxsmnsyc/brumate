@@ -32,9 +32,17 @@
 <script generics="T extends AsTarget = 'button'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
   import type { SelectionIndicatorState } from './selection-indicator.ts';
-  import { $bind, $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import {
+    $bind,
+    $getContext,
+    $memo,
+    $props,
+    $setContext,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import Button from './Button.brm';
-  import { ToggleButtonContext, ToggleGroupContext } from './contexts.ts';
+  import { DisabledContext, ToggleButtonContext, ToggleGroupContext } from './contexts.ts';
   import { contextAttributes, slotProps } from './slots.ts';
 
   /**
@@ -52,9 +60,14 @@
   const groupGiven = $getContext(ToggleGroupContext, undefined);
   const group = groupGiven ? $store(groupGiven.state) : undefined;
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
   // A disabled group disables every button, even one with isDisabled=(false).
   const disabled = $memo(
-    Boolean(isDisabled || group?.isDisabled || slotProps(context, slot).isDisabled),
+    Boolean(
+      isDisabled || group?.isDisabled || inheritedDisabled || slotProps(context, slot).isDisabled,
+    ),
   );
   // In a group, the group keeps the selection.
   const selected = $memo(group && id !== undefined ? group.selectedKeys.includes(id) : isSelected);

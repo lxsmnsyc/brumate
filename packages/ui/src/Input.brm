@@ -10,7 +10,7 @@
 <script>
   import { $getContext, $handler, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { FieldInputContext, InputContext } from './contexts.ts';
+  import { DisabledContext, FieldInputContext, InputContext } from './contexts.ts';
   import { focusRing } from './focus.brm.ts';
   import { hover } from './hover.brm.ts';
   import { isFirstInvalid } from './fields.ts';
@@ -30,7 +30,10 @@
   const outer = outerGiven ? $store(outerGiven) : undefined;
   const outerAttributes = $memo(outer ?? {});
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
-  const disabled = $memo(Boolean(attributes.disabled ?? rest.disabled));
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const disabled = $memo(Boolean(inheritedDisabled || (attributes.disabled ?? rest.disabled)));
   const invalid = $memo(attributes['aria-invalid'] === 'true' || attributes['aria-invalid'] === true);
   // The keys whose default the field takes over, such as Enter in a search field.
   const enterPrevented = $memo(Boolean(slotProps(context, slot).isEnterPrevented));

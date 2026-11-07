@@ -494,6 +494,8 @@ export interface ListBoxState {
   selectionMode: SelectionMode;
   selectedKeys: Key[];
   disabledKeys: Key[];
+  /** True in a Table inside a disabled Fieldset or Form. */
+  isDisabled?: boolean;
   selectionBehavior: SelectionBehavior;
   /** True when the ListBox has `onAction`. */
   hasAction: boolean;

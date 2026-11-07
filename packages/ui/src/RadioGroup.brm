@@ -33,8 +33,24 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
-  import { FieldErrorContext, LabelContext, RadioGroupContext, TextContext } from './contexts.ts';
+  import {
+    $client,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $toStore,
+    $getContext,
+    $store,
+  } from 'brumate/signals';
+  import {
+    DisabledContext,
+    FieldErrorContext,
+    LabelContext,
+    RadioGroupContext,
+    TextContext,
+  } from './contexts.ts';
   import type { RadioGroupState } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, onFormReset } from './fields.ts';
@@ -52,7 +68,7 @@
     as,
     name,
     orientation = 'vertical',
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid = false,
@@ -60,6 +76,10 @@
     children,
     ...rest
   } = $props<RadioGroupProps<T>>();
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = null } = $props<RadioGroupOwnProps<T>>();
   let { ref } = $props<RadioGroupOwnProps<T>>();
   // The value that a reset of the form gives back.
