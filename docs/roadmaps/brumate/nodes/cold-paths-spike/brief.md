@@ -7,7 +7,7 @@ type: spike
 story:
 early: false
 outline: false
-milestone: 0.7.0
+milestone: 0.8.0
 target:
 ship: auto
 from:
