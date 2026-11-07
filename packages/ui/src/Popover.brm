@@ -57,7 +57,7 @@
     release,
     takesText,
   } from './overlay.ts';
-  import { followTrigger, keepArrows } from './position.ts';
+  import { followTrigger, keepArrows, readLength } from './position.ts';
   import { mergeStyle } from './style.ts';
   import { TransitionContext, enterSteps, leaveSteps, nextFrame, stepClasses } from './transition.ts';
   import type { TransitionParent } from './transition.ts';
@@ -72,6 +72,9 @@
    * - It is placed with `top` and `left` next to its trigger, on the side of `placement`, and
    *   flips to the other side when it does not fit. It follows the trigger as the page scrolls.
    *   It shows `data-placement`, and sets `--trigger-width` and `--available-height`.
+   * - It sets `max-height` to the room that is left, with `overflow-y: auto`, unless your CSS
+   *   sets them. `--anchor-gap`, `--anchor-offset` and `--anchor-padding` in CSS stand in for
+   *   `offset`, `crossOffset` and `containerPadding` when the prop is not passed.
    * - Escape, and a press outside it, close it. Focus moves into it, stays in it, and goes back
    *   to the trigger when it closes.
    * - It is modal: the rest of the page is inert while it is open. `isNonModal` leaves the page
@@ -105,6 +108,9 @@
   const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   const own = $isPassed(isOpen);
   const placementPassed = $isPassed(placement);
+  const offsetPassed = $isPassed(offset);
+  const crossOffsetPassed = $isPassed(crossOffset);
+  const paddingPassed = $isPassed(containerPadding);
   const layerId = $id();
   const ownId = $id();
   const wanted = $memo(own ? Boolean(isOpen) : Boolean(trigger?.isOpen));
@@ -167,11 +173,16 @@
           element,
           {
             placement: getPlacement(),
-            offset,
-            crossOffset,
+            offset: offsetPassed ? offset : (readLength(element, '--anchor-gap') ?? offset),
+            crossOffset: crossOffsetPassed
+              ? crossOffset
+              : (readLength(element, '--anchor-offset') ?? crossOffset),
             shouldFlip,
-            containerPadding,
+            containerPadding: paddingPassed
+              ? containerPadding
+              : (readLength(element, '--anchor-padding') ?? containerPadding),
             direction: locale.direction,
+            fitHeight: true,
           },
           arrows.place,
         ),
