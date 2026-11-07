@@ -22,7 +22,7 @@ import { $memo, $signal } from 'brumate/signals';
 | `$debounced(value, ms)`           | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
 | `$throttled(value, ms)`           | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
 | `$resolve(memo, options?)`        | `Promise<T>`               | A handler, an effect or a `$client` callback                             | [Async data](./async-data.md)                              |
-| `$isPending(memo)`                | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                              |
+| `$isPending(...memos)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                              |
 | `$isPassed(prop)`                 | `boolean`                  | `const` in the component script                                          | [Components](./components.md#controlled-and-uncontrolled)  |
 | `$isBound(prop)`                  | `boolean`                  | Any expression                                                           | [Components](./components.md#controlled-and-uncontrolled)  |
 | `$effect(callback)`               | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
@@ -114,12 +114,12 @@ const items = $gate(list.filter(done), (prev, next) => !sameItems(prev, next));
 ## `$isPending`
 
 ```ts
-function $isPending(memo: unknown): boolean;
+function $isPending(...memos: unknown[]): boolean;
 ```
 
-True while a new value of the memo loads in the browser, or a value that it reads loads.
+True while a new value of any of the memos loads in the browser, or a value that one of them reads loads.
 
-- Its only argument is the name of a memo.
+- Its arguments are the names of memos, one or more. A read of each named memo counts as guarded in a handler.
 - Server: always `false`.
 - Client: `true` from the start of a load until its value is written.
 

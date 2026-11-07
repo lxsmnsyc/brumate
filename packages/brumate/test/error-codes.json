@@ -106,7 +106,7 @@
   "BRM105": "$bind takes the name of a signal, and a function that writes it, such as $bind(open) or $bind(open, (next) => (open = next))",
   "BRM106": "$bind takes a signal, or a prop that the component destructures with let, and \"{name}\" is not one",
   "BRM107": "$isBound takes a prop that the component destructures with let, such as $isBound(open)",
-  "BRM108": "$isPending needs an async $memo as its only argument",
+  "BRM108": "$isPending needs async $memos as its arguments",
   "BRM109": "$produce needs a signal as its first argument",
   "BRM110": "$produce needs a recipe function as its second argument",
   "BRM111": "\"{name}\" is reserved. Brumate writes the attributes that start with \"b-\"",

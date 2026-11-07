@@ -2787,18 +2787,27 @@ class Resolver {
             return;
           }
           if (name === '$isPending') {
-            const [target] = node.arguments;
-            if (target?.type !== 'Identifier' || node.arguments.length !== 1) {
-              this.analyzer.report(
-                'error',
-                '$isPending needs an async $memo as its only argument',
-                node,
-              );
+            let valid = node.arguments.length > 0;
+            for (const target of node.arguments) {
+              if (target.type !== 'Identifier') {
+                valid = false;
+              }
+            }
+            if (!valid) {
+              this.analyzer.report('error', '$isPending needs async $memos as its arguments', node);
             }
             this.visitChildren(node);
-            const reference = this.site.reads.at(-1);
-            if (target?.type === 'Identifier' && reference?.range.start === target.start) {
-              this.analyzer.pendingCalls.push({ reference, at: range(node) });
+            // Each name is a read of its own, which the call pins.
+            for (const target of node.arguments) {
+              if (target.type !== 'Identifier') {
+                continue;
+              }
+              for (const reference of this.site.reads) {
+                if (reference.range.start === target.start) {
+                  this.analyzer.pendingCalls.push({ reference, at: range(node) });
+                  break;
+                }
+              }
             }
             return;
           }

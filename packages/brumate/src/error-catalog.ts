@@ -727,8 +727,8 @@ const SCRIPT: ErrorEntry[] = [
   ),
   entry(
     'BRM108',
-    '$isPending needs an async $memo as its only argument',
-    'The argument of `$isPending` is not a memo that holds a promise.',
+    '$isPending needs async $memos as its arguments',
+    'An argument of `$isPending` is not a memo that holds a promise, or the call has none.',
     'const results = $memo(search(query));\n#if ($isPending(results)) {\n  <p>Searching…</p>\n}',
   ),
   entry(

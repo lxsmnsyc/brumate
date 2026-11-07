@@ -126,8 +126,8 @@ export function $untrack<T>(_value: T): T {
   return compileTimeOnly('$untrack');
 }
 
-/** True while a new value of a memo, or of a memo it reads, loads on the client. Always false on the server. */
-export function $isPending(_memo: unknown): boolean {
+/** True while a new value of one of the memos, or of a memo one reads, loads on the client. Always false on the server. */
+export function $isPending(..._memos: unknown[]): boolean {
   return compileTimeOnly('$isPending');
 }
 

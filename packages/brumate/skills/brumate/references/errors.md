@@ -1350,9 +1350,9 @@ let { open } = $props<{ open?: Bindable<boolean> }>();
 const bound = () => $isBound(open);
 ```
 
-## BRM108: $isPending needs an async $memo as its only argument
+## BRM108: $isPending needs async $memos as its arguments
 
-The argument of `$isPending` is not a memo that holds a promise.
+An argument of `$isPending` is not a memo that holds a promise, or the call has none.
 
 https://brumate-docs.vercel.app/docs/errors#brm108
 

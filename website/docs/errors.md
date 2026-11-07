@@ -1352,9 +1352,9 @@ const bound = () => $isBound(open);
 
 ## BRM108
 
-`$isPending needs an async $memo as its only argument`
+`$isPending needs async $memos as its arguments`
 
-The argument of `$isPending` is not a memo that holds a promise.
+An argument of `$isPending` is not a memo that holds a promise, or the call has none.
 
 ```brm
 const results = $memo(search(query));
