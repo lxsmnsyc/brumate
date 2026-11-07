@@ -362,3 +362,33 @@ export const ariaBadRole: ElementProps<'div'> = { role: 'menus' };
 export const ariaBadLevel: ElementProps<'div'> = { 'aria-level': 'deep' };
 // @ts-expect-error `aria-pressed` takes `mixed`, not `maybe`.
 export const ariaBadPressed: ElementProps<'button'> = { 'aria-pressed': 'maybe' };
+
+// MathML tags have the global MathML attributes and their own, and a handler reads a `MathMLElement`.
+export const mathRoot: ElementProps<'math'> = {
+  display: 'block',
+  scriptlevel: '+1',
+  mathcolor: 'red',
+  onClick: (event) => {
+    const element: MathMLElement = event.currentTarget;
+    return element.localName;
+  },
+};
+export const mathOperator: ElementProps<'mo'> = { stretchy: true, form: 'infix', lspace: '0.2em' };
+export const mathCell: ElementProps<'mtd'> = { columnspan: 2, mathvariant: 'normal' };
+export const mathTarget: ElementOf<'mfrac'> = document.createElementNS(
+  'http://www.w3.org/1998/Math/MathML',
+  'mfrac',
+);
+// @ts-expect-error `mathml` is not an attribute of `mi`.
+export const mathWrongAttribute: ElementProps<'mi'> = { mathml: 'x' };
+// @ts-expect-error `display` is `block` or `inline`.
+export const mathBadDisplay: ElementProps<'math'> = { display: 'flex' };
+// @ts-expect-error `stretchy` belongs to `mo`, not `mi`.
+export const mathOtherTag: ElementProps<'mi'> = { stretchy: true };
+export const mathHandlerNotHtml: ElementProps<'mrow'> = {
+  onClick: (event) => {
+    // @ts-expect-error a MathML element is not an `HTMLElement`.
+    const element: HTMLElement = event.currentTarget;
+    return element;
+  },
+};

@@ -815,10 +815,47 @@ type SvgPresentation = { [K in SvgAttributeNames]?: SvgValue };
 type Svg<E extends keyof SVGElementTagNameMap> = GlobalAttributes<SVGElementTagNameMap[E]> &
   SvgPresentation;
 
+// The attributes of MathML Core. The global ones apply to every MathML element.
+type MathLength = Attr<string | number>;
+interface MathGlobal {
+  displaystyle?: Attr<boolean>;
+  scriptlevel?: Attr<number | `${number}` | `+${number}` | `-${number}`>;
+  mathbackground?: Attr<string>;
+  mathcolor?: Attr<string>;
+  mathsize?: MathLength;
+  mathvariant?: Attr<'normal'>;
+  // A legacy attribute of MathML Core, which browsers still follow on any MathML element.
+  href?: Attr<string>;
+}
+/** A MathML element `E` with the global MathML attributes and the attributes of its own. */
+type MathAttrs<E extends keyof MathMLElementTagNameMap, Own = {}> = GlobalAttributes<
+  MathMLElementTagNameMap[E]
+> &
+  MathGlobal &
+  Own;
+interface MathOperatorOwn {
+  fence?: Attr<boolean>;
+  form?: Attr<'prefix' | 'infix' | 'postfix'>;
+  largeop?: Attr<boolean>;
+  lspace?: MathLength;
+  rspace?: MathLength;
+  maxsize?: MathLength;
+  minsize?: MathLength;
+  movablelimits?: Attr<boolean>;
+  separator?: Attr<boolean>;
+  stretchy?: Attr<boolean>;
+  symmetric?: Attr<boolean>;
+}
+interface MathSizeOwn {
+  width?: MathLength;
+  height?: MathLength;
+  depth?: MathLength;
+}
+
 /**
- * The attributes of each element, by tag. HTML elements have the attributes of HTML, and SVG
- * elements the shared attributes of SVG. An app adds the tag of a custom element by merging into
- * this interface.
+ * The attributes of each element, by tag. HTML elements have the attributes of HTML, SVG
+ * elements the shared attributes of SVG, and MathML elements those of MathML Core. An app
+ * adds the tag of a custom element by merging into this interface.
  */
 export interface Elements {
   a: Html<'a', AnchorOwn>;
@@ -1162,6 +1199,38 @@ export interface Elements {
   tspan: Svg<'tspan'>;
   use: Svg<'use'>;
   view: Svg<'view'>;
+
+  // MathML elements. `a` is the HTML one, which MathML shares.
+  annotation: MathAttrs<'annotation', { encoding?: Attr<string> }>;
+  'annotation-xml': MathAttrs<'annotation-xml', { encoding?: Attr<string> }>;
+  maction: MathAttrs<'maction', { actiontype?: Attr<string>; selection?: Attr<number | `${number}`> }>;
+  math: MathAttrs<'math', { display?: Attr<'block' | 'inline'>; xmlns?: Attr<string> }>;
+  merror: MathAttrs<'merror'>;
+  mfrac: MathAttrs<'mfrac', { linethickness?: MathLength }>;
+  mi: MathAttrs<'mi'>;
+  mmultiscripts: MathAttrs<'mmultiscripts'>;
+  mn: MathAttrs<'mn'>;
+  mo: MathAttrs<'mo', MathOperatorOwn>;
+  mover: MathAttrs<'mover', { accent?: Attr<boolean> }>;
+  mpadded: MathAttrs<'mpadded', MathSizeOwn & { lspace?: MathLength; voffset?: MathLength }>;
+  mphantom: MathAttrs<'mphantom'>;
+  mprescripts: MathAttrs<'mprescripts'>;
+  mroot: MathAttrs<'mroot'>;
+  mrow: MathAttrs<'mrow'>;
+  ms: MathAttrs<'ms'>;
+  mspace: MathAttrs<'mspace', MathSizeOwn>;
+  msqrt: MathAttrs<'msqrt'>;
+  mstyle: MathAttrs<'mstyle'>;
+  msub: MathAttrs<'msub'>;
+  msubsup: MathAttrs<'msubsup'>;
+  msup: MathAttrs<'msup'>;
+  mtable: MathAttrs<'mtable'>;
+  mtd: MathAttrs<'mtd', { columnspan?: Attr<Num>; rowspan?: Attr<Num> }>;
+  mtext: MathAttrs<'mtext'>;
+  mtr: MathAttrs<'mtr'>;
+  munder: MathAttrs<'munder', { accentunder?: Attr<boolean> }>;
+  munderover: MathAttrs<'munderover', { accent?: Attr<boolean>; accentunder?: Attr<boolean> }>;
+  semantics: MathAttrs<'semantics'>;
 }
 
 /** The attributes of an element by its tag. */
@@ -1172,4 +1241,6 @@ export type ElementOf<T extends keyof Elements> = T extends keyof HTMLElementTag
   ? HTMLElementTagNameMap[T]
   : T extends keyof SVGElementTagNameMap
     ? SVGElementTagNameMap[T]
-    : HTMLElement;
+    : T extends keyof MathMLElementTagNameMap
+      ? MathMLElementTagNameMap[T]
+      : HTMLElement;

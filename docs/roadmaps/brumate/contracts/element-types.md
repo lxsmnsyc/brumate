@@ -1,6 +1,6 @@
 ---
 name: element-types
-version: 1.4
+version: 1.5
 status: frozen
 defined_by: element-types
 ---
@@ -29,7 +29,7 @@ export type Template<A extends unknown[] = []> = (...args: A) => Markup | Promis
 /** The props of a component. */
 export type PropsOf<C> = C extends (props: infer P, ...rest: any[]) => unknown ? P : never;
 
-/** The attributes of each element, by tag. HTML and SVG elements. An app merges its own tags in. */
+/** The attributes of each element, by tag. HTML, SVG and MathML elements. An app merges its own tags in. */
 export interface Elements {
   a: ...;
   button: ...;
@@ -104,6 +104,7 @@ packages/brumate/test/elements-types.ts, checked by `tsc --noEmit -p .` in packa
 
 ## Changes
 
+- v1.5, mathml-elements: `Elements` has the MathML Core tags (`math`, `mi`, `mo`, `mfrac` and the rest of `MathMLElementTagNameMap`), with the global MathML attributes and their own; `ElementOf` and `$$Element` in check.ts read `MathMLElementTagNameMap` after HTML and SVG, so a handler on a MathML element gets a `MathMLElement`. `a` stays the HTML one.
 - v1.4, aria-types (change request accepted on 2026-11-03, #442): typed `aria-*` attributes in `AriaAttributes` and roles in `AriaRole` (WAI-ARIA 1.2 and DPUB-ARIA), both exported; `role` also takes a fallback list; `aria-relevant` takes `all` or one to three tokens in any order; other `aria-*` names keep the loose type.
 - v1.1, element-values (change request accepted on 2026-10-27): `class` takes `ClassValue` and `style` takes `string | StyleObject`; `select` has `value`; `value` and `checked` of `input`, `select` and `textarea` take a binding; `form action` and `formaction` take a `ServerFunction`; number attributes take ``number | `${number}` ``; `autocomplete` takes a boolean; `onToggleEnd` is removed (lib.dom has no such event) and `onKeyPress` is added; `EventHandler`, `ClassValue`, `StyleObject` and `ServerFunction` are exported. Review fixes: a number in a style object only for unitless properties and variables, and `0` and `0n` are class values that add nothing. Each value is checked against the runtime in nodes/element-values/log.md.
 - v1, second review: the write side of `ref` is required, `BoundSignal<T>` is the return type of `$bind`.
