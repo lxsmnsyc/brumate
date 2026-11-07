@@ -392,3 +392,56 @@ export const mathHandlerNotHtml: ElementProps<'mrow'> = {
     return element;
   },
 };
+
+// The HTML attributes that were missing.
+export const meterForm: ElementProps<'meter'> = { value: 1, form: 'order' };
+export const dialogClosedby: ElementProps<'dialog'> = { open: true, closedby: 'closerequest' };
+// @ts-expect-error `closedby` is `any`, `closerequest` or `none`.
+export const dialogBadClosedby: ElementProps<'dialog'> = { closedby: 'always' };
+export const templateShadow: ElementProps<'template'> = {
+  shadowrootmode: 'open',
+  shadowrootclonable: true,
+  shadowrootdelegatesfocus: true,
+  shadowrootserializable: true,
+  shadowrootcustomelementregistry: true,
+};
+// @ts-expect-error `div` has no `shadowrootclonable`.
+export const divShadow: ElementProps<'div'> = { shadowrootclonable: true };
+export const styleType: ElementProps<'style'> = { type: 'text/css', blocking: 'render' };
+export const styleOtherType: ElementProps<'style'> = { type: 'text/scss' };
+export const linkAs: ElementProps<'link'> = { rel: 'preload', as: 'font', blocking: 'render' };
+const kind: string = 'font';
+export const linkOtherAs: ElementProps<'link'> = { as: kind };
+export const linkWorklet: ElementProps<'link'> = { as: 'audioworklet' };
+export const scriptModule: ElementProps<'script'> = { type: 'speculationrules' };
+export const scriptOther: ElementProps<'script'> = { type: 'text/plain' };
+export const metaHttpEquiv: ElementProps<'meta'> = { 'http-equiv': 'refresh', content: '5' };
+export const metaCaseHttpEquiv: ElementProps<'meta'> = { 'http-equiv': 'Content-Type' };
+export const iframeSandbox: ElementProps<'iframe'> = { sandbox: 'allow-scripts allow-forms' };
+export const iframeSandboxAll: ElementProps<'iframe'> = { sandbox: '' };
+const flags: string = 'allow-scripts';
+export const iframeComputedSandbox: ElementProps<'iframe'> = { sandbox: flags };
+export const iframeStorageSandbox: ElementProps<'iframe'> = {
+  sandbox: 'allow-storage-access-by-user-activation',
+};
+export const inputAutocomplete: ElementProps<'input'> = { autocomplete: 'given-name' };
+export const inputAutocompleteSection: ElementProps<'input'> = {
+  autocomplete: 'section-a shipping tel',
+};
+export const textareaAutocomplete: ElementProps<'textarea'> = { autocomplete: 'street-address' };
+export const selectAutocomplete: ElementProps<'select'> = { autocomplete: 'country' };
+export const buttonCommand: ElementProps<'button'> = { command: 'show-modal', commandfor: 'box' };
+export const buttonCustomCommand: ElementProps<'button'> = { command: '--rotate' };
+const cmd: string = 'close';
+export const buttonComputedCommand: ElementProps<'button'> = { command: cmd };
+export const microdata: ElementProps<'div'> = {
+  itemscope: true,
+  itemtype: 'https://schema.org/Product',
+  itemid: 'urn:isbn:1',
+  itemprop: 'name',
+  itemref: 'extra',
+};
+export const shadowParts: ElementProps<'div'> = { exportparts: 'label: lbl', autocorrect: 'off' };
+export const svgNamespaced: ElementProps<'use'> = { 'xlink:href': '#icon', 'xml:lang': 'en' };
+// @ts-expect-error `xlink:src` is not an attribute.
+export const svgBadNamespaced: ElementProps<'use'> = { 'xlink:src': '#icon' };
