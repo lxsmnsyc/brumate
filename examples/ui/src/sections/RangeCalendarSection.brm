@@ -6,7 +6,8 @@
 
   let stay = $signal<{ start: string; end: string } | null>({ start: '2026-10-12', end: '2026-10-14' });
 
-  // The shop is closed on Sundays.
+  // The shop is closed on Sundays. CalendarSection and RangeCalendarSection each declare it, since an
+  // imported function cannot be a prop yet (roadmap node imported-function-prop).
   function closed(date: string) {
     return new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
   }
