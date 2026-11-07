@@ -1,7 +1,7 @@
 ---
 id: imported-function-prop
 title: An imported function can be a prop of a component
-status: active
+status: done
 priority: must
 type: fix
 outline: false
@@ -39,11 +39,15 @@ A function that a `.brm` file imports from a `.ts` module can be passed as a pro
 
 ## Acceptance
 
-- [ ] Probe on `main` first: the smallest page that passes an imported function as a prop to a component that keeps it in state fails the same way. If it does not fail, write why in the outcome and close the node.
-- [ ] A test passes an imported function as a prop, on the server render, after resume and in a component the browser renders, and the child calls it.
-- [ ] A function prop from an import that is live (reads state) follows the rules of decisions.md for function props, or the outcome says why it cannot.
-- [ ] Patch changeset for brumate.
+- [x] Probe on `main` first: the smallest page that passes an imported function as a prop to a component that keeps it in state fails the same way. If it does not fail, write why in the outcome and close the node.
+- [x] A test passes an imported function as a prop, on the server render, after resume and in a component the browser renders, and the child calls it.
+- [x] A function prop from an import that is live (reads state) follows the rules of decisions.md for function props, or the outcome says why it cannot.
+- [x] Patch changeset for brumate.
 
 ## Sizing
 
 S: the compiler marks imported functions as it marks local ones, plus tests.
+
+## Outcome
+
+Merged in #492 (bdae61b5). `mayExportFunction` reads the module of an import that a prop passes: an exported function, or an export of a module the compiler cannot read, is marked as a local function is, and the server binds a copy per use. Values, components, `.brm.ts` modules and server functions pass as before. An imported function cannot read component state; a store it reads counts as a derivation, as decisions.md says. The `closed` copies on `next` (#489) are removed after the sync.
