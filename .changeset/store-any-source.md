@@ -1,5 +1,0 @@
----
-'brumate': minor
----
-
-`$store(source)` takes any expression that gives a store. That includes a key of a `$getContext` value, `$store($getContext(Context))` for a context that holds a store, an import, a prop, a value of `<script module>`, a call, and a store made there, as `$store(store(0))`. A context, `undefined`, `null` and `$store(field?.state)` are compile errors that name the fix (BRM199 and BRM197), and a source that gives no store when the page renders throws a `TypeError` that names `$store`. `$store` is typed `$store<T>(source: StoreLike<T>): T`. On resume the browser runs a source that is not a context once, with the values the page resumed. It subscribes, and writes the variable once if the store's value differs from the server's. It never calls `set`. A store that the source makes starts from its first value in the browser. BRM194 is removed. A source that awaits or calls a server function is BRM198. A store of another library in a prop or a script value that `$store` reads makes the server render throw an error that names the component and the value.
