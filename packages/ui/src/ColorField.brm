@@ -46,6 +46,7 @@
   import { NumberFormatter, NumberParser } from '@internationalized/number';
   import {
     ColorPickerContext,
+    DisabledContext,
     FieldErrorContext,
     FormContext,
     GroupContext,
@@ -107,7 +108,7 @@
     name,
     channel,
     colorSpace,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid,
@@ -118,6 +119,10 @@
     children,
     ...rest
   } = $props<ColorFieldProps<T>>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = null } = $props<ColorFieldProps<T>>();
 
   // Inside a ColorPicker, a field without a `value` shows the color of the picker and writes it.

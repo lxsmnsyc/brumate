@@ -8,6 +8,7 @@
   import TextFieldSection from './sections/TextFieldSection.brm';
   import DigitsSection from './sections/DigitsSection.brm';
   import CreateFormSection from './sections/CreateFormSection.brm';
+  import FieldsetSection from './sections/FieldsetSection.brm';
   import SearchFieldSection from './sections/SearchFieldSection.brm';
   import BoxesSection from './sections/BoxesSection.brm';
   import ToolbarSection from './sections/ToolbarSection.brm';
@@ -59,6 +60,7 @@
 <TextFieldSection />
 <DigitsSection />
 <CreateFormSection />
+<FieldsetSection />
 <SearchFieldSection />
 <BoxesSection />
 <ToolbarSection />

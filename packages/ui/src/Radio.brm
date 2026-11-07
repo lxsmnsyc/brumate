@@ -18,7 +18,7 @@
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { RadioGroupContext } from './contexts.ts';
+  import { DisabledContext, RadioGroupContext } from './contexts.ts';
   import { isFirstInvalid, onFormReset } from './fields.ts';
 
   /**
@@ -32,7 +32,10 @@
   const group = groupGiven ? $store(groupGiven.state) : undefined;
   const inputId = $id();
   const selected = $memo(group?.value === value);
-  const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const disabled = $memo(Boolean(isDisabled || group?.isDisabled || inheritedDisabled));
   const readOnly = $memo(Boolean(group?.isReadOnly));
 
   const {

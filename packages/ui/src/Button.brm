@@ -48,7 +48,7 @@
 <script generics="T extends AsTarget = 'button'">
   import { $bind, $getContext, $handler, $memo, $props, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
-  import { ButtonContext } from './contexts.ts';
+  import { ButtonContext, DisabledContext } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { contextAttributes, slotHandlers, slotProps } from './slots.ts';
   import SubmitGuard from './SubmitGuard.brm';
@@ -82,7 +82,12 @@
   const buttonGiven = $getContext(ButtonContext, undefined);
   const context = buttonGiven ? $store(buttonGiven.state) : undefined;
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
-  const disabled = $memo(Boolean(isDisabled ?? slotProps(context, slot).isDisabled));
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const disabled = $memo(
+    Boolean(inheritedDisabled || (isDisabled ?? slotProps(context, slot).isDisabled)),
+  );
   const pending = $memo(Boolean(isPending ?? slotProps(context, slot).isPending));
   const inert = $memo(disabled || pending);
   const native = $memo(as === undefined || as === 'button');

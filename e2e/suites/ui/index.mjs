@@ -5,6 +5,7 @@ export const parts = [
   () => import('./toggle-button-link-group.mjs'),
   () => import('./text-field.mjs'),
   () => import('./create-form.mjs'),
+  () => import('./fieldset.mjs'),
   () => import('./search-field.mjs'),
   () => import('./boxes.mjs'),
   () => import('./toolbar.mjs'),

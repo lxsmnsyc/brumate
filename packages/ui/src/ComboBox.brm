@@ -63,6 +63,7 @@
   } from './collection.ts';
   import {
     ButtonContext,
+    DisabledContext,
     FieldErrorContext,
     FieldInputContext,
     FormContext,
@@ -97,7 +98,7 @@
   const {
     as = 'div',
     name,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isRequired = false,
     isInvalid,
     allowsCustomValue = false,
@@ -110,6 +111,10 @@
     children,
     ...rest
   } = $props<ComboBoxProps<T>>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { selectedKey = null } = $props<ComboBoxProps<T>>();
   let { inputValue = '' } = $props<ComboBoxProps<T>>();
   let { isOpen = false } = $props<ComboBoxProps<T>>();

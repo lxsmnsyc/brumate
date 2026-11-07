@@ -59,6 +59,7 @@
 <script generics="T extends AsTarget = 'div'">
   import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import {
+    DisabledContext,
     FieldErrorContext,
     FormContext,
     InputContext,
@@ -100,7 +101,7 @@
   const {
     name,
     type = 'text',
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid,
@@ -118,6 +119,10 @@
     children,
     ...rest
   } = $props<TextFieldOwnProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   // The props of the target of `as`, for the type of the component.
   const { as = 'div' } = $props<TextFieldProps<T>>();
   // A field of createForm gives the value that was posted, or its default value.

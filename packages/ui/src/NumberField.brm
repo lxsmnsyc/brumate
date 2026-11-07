@@ -50,6 +50,7 @@
   import { NumberFormatter, NumberParser } from '@internationalized/number';
   import {
     ButtonContext,
+    DisabledContext,
     FieldErrorContext,
     FormContext,
     GroupContext,
@@ -97,7 +98,7 @@
     maxValue,
     step,
     formatOptions,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid,
@@ -108,6 +109,10 @@
     children,
     ...rest
   } = $props<NumberFieldOwnProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   // The props of the target of `as`, for the type of the component.
   const { as = 'div' } = $props<NumberFieldProps<T>>();
   let { value = Number.NaN } = $props<NumberFieldProps<T>>();

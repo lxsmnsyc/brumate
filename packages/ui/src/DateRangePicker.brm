@@ -36,6 +36,7 @@
   import type { DatePickerState } from './calendar.ts';
   import {
     ButtonContext,
+    DisabledContext,
     FieldErrorContext,
     FormContext,
     GroupContext,
@@ -76,7 +77,7 @@
     maxValue,
     placeholderValue,
     isDateUnavailable,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid = false,
@@ -86,6 +87,10 @@
     children,
     ...rest
   } = $props<DateRangePickerProps<T>>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = null } = $props<DateRangePickerProps<T>>();
   let { isOpen = false } = $props<DateRangePickerProps<T>>();
 

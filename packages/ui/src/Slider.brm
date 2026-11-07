@@ -30,7 +30,10 @@
   import { $client, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
   import { store } from 'brumate/store';
   import { NumberFormatter } from '@internationalized/number';
-  import { LabelContext } from './contexts.ts';
+  import {
+    DisabledContext,
+    LabelContext,
+  } from './contexts.ts';
   import { onFormReset } from './fields.ts';
   import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { snapToStep } from './numbers.ts';
@@ -55,13 +58,17 @@
     maxValue = 100,
     step = 1,
     orientation = 'horizontal',
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     formatOptions,
     onChange,
     onChangeEnd,
     children,
     ...rest
   } = $props<SliderProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = minValue } = $props<SliderProps>();
 
   const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));

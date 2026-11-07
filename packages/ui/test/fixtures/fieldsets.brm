@@ -1,0 +1,68 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '../../src/Button.brm';
+  import Checkbox from '../../src/Checkbox.brm';
+  import Fieldset from '../../src/Fieldset.brm';
+  import Form from '../../src/Form.brm';
+  import Input from '../../src/Input.brm';
+  import Label from '../../src/Label.brm';
+  import Legend from '../../src/Legend.brm';
+  import NumberField from '../../src/NumberField.brm';
+  import Slider from '../../src/Slider.brm';
+  import SliderThumb from '../../src/SliderThumb.brm';
+  import SliderTrack from '../../src/SliderTrack.brm';
+  import Switch from '../../src/Switch.brm';
+  import TextField from '../../src/TextField.brm';
+
+  let off = $signal(true);
+
+  function toggle() {
+    off = !off;
+  }
+</script>
+
+<main>
+  <button class="toggle" onClick=toggle>Toggle</button>
+  <Form class="form">
+    <Fieldset class="locked" isDisabled=off>
+      <Legend>Locked</Legend>
+      <TextField name="name" value="Ada">
+        <Label>Name</Label>
+        <Input class="name-input" />
+      </TextField>
+      <NumberField name="age" value=36>
+        <Label>Age</Label>
+        <Input class="age-input" />
+      </NumberField>
+      <Checkbox name="news" value="yes" isSelected>News</Checkbox>
+      <Switch name="dark" isSelected>Dark</Switch>
+      <Slider value=30>
+        <Label>Volume</Label>
+        <SliderTrack>
+          <SliderThumb name="volume" />
+        </SliderTrack>
+      </Slider>
+      <Button class="locked-button">Send</Button>
+      <Fieldset class="inner">
+        <TextField name="nick" value="ada">
+          <Label>Nick</Label>
+          <Input class="nick-input" />
+        </TextField>
+      </Fieldset>
+    </Fieldset>
+    <Fieldset class="open">
+      <TextField name="city" value="Rome">
+        <Label>City</Label>
+        <Input class="city-input" />
+      </TextField>
+      <Button class="open-button">Go</Button>
+    </Fieldset>
+  </Form>
+  <Form class="off-form" isDisabled>
+    <TextField name="solo" value="x">
+      <Label>Solo</Label>
+      <Input class="solo-input" />
+    </TextField>
+    <Button class="solo-button">Go</Button>
+  </Form>
+</main>

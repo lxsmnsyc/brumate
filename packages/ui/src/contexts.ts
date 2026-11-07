@@ -162,6 +162,13 @@ export interface FormState {
 export const FormContext: Context<StoreLike<FormState | null>> =
   createContext<StoreLike<FormState | null>>('brumate-ui:form');
 
+/**
+ * True while a Fieldset or a Form is disabled. A field reads it with its own `isDisabled`, so a
+ * disabled fieldset disables the fields inside it.
+ */
+export const DisabledContext: Context<StoreLike<boolean>> =
+  createContext<StoreLike<boolean>>('brumate-ui:disabled');
+
 /** What a CheckboxGroup gives its Checkboxes: its values. */
 export interface CheckboxGroupState {
   name?: string;

@@ -51,6 +51,7 @@
   } from './collection.ts';
   import {
     ButtonContext,
+    DisabledContext,
     FieldErrorContext,
     FormContext,
     LabelContext,
@@ -81,7 +82,7 @@
     as = 'div',
     name,
     placeholder = 'Select an item',
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isRequired = false,
     isInvalid,
     onSelectionChange,
@@ -89,6 +90,10 @@
     children,
     ...rest
   } = $props<SelectProps<T>>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { selectedKey = null } = $props<SelectProps<T>>();
   let { isOpen = false } = $props<SelectProps<T>>();
 

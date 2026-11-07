@@ -23,11 +23,16 @@
 </script>
 
 <script>
-  import { $client, $id, $memo, $props, $setContext, $signal, $toStore } from 'brumate/signals';
+  import { $client, $id, $memo, $props, $setContext, $signal, $toStore, $getContext, $store } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { FieldErrorContext, LabelContext, TextContext } from './contexts.ts';
+  import {
+    DisabledContext,
+    FieldErrorContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { describedBy, onFormReset } from './fields.ts';
 
@@ -43,13 +48,17 @@
   const {
     name,
     value,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isInvalid = false,
     onChange,
     children,
     ...rest
   } = $props<SwitchProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { isSelected = false } = $props<SwitchProps>();
   // The state that a reset of the form gives back.
   let initial = $signal(isSelected);
