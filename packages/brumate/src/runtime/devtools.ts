@@ -214,6 +214,43 @@ export function preview(value: unknown): string {
 }
 
 /**
+ * What happens to a block. `rendered`: the markers of the page show its body. `fired`: its trigger
+ * fired. `settled`: the request for the body of a `#defer` settled.
+ */
+export type BlockEvent = 'rendered' | 'fired' | 'settled';
+
+/**
+ * The state of a block after an event. A rendered block stays rendered. A `#defer` loads when
+ * it fires, and fails when its request settles with the fallback still shown. A `$client`
+ * callback has rendered once it fired. A `#client` block waits for its marker.
+ */
+export function nextBlockState(block: BlockEntry, event: BlockEvent): BlockEntry['state'] {
+  if (block.state === 'rendered' || event === 'rendered') {
+    return 'rendered';
+  }
+  if (event === 'settled') {
+    return block.state === 'loading' ? 'failed' : block.state;
+  }
+  if (block.kind === 'defer') {
+    return 'loading';
+  }
+  return block.kind === '$client' ? 'rendered' : block.state;
+}
+
+/** Moves a block to its state after an event. Returns true when the state changed. */
+export function moveBlock(block: BlockEntry, event: BlockEvent, now: number): boolean {
+  const next = nextBlockState(block, event);
+  if (next === block.state) {
+    return false;
+  }
+  block.state = next;
+  if (next === 'rendered') {
+    block.rendered = now;
+  }
+  return true;
+}
+
+/**
  * Reads the blocks of the page from their markers, and updates their state.
  * Returns true when something changed.
  *
@@ -238,7 +275,7 @@ export function scanBlocks(state: DevtoolsState): boolean {
     }
   }
   const seen = new Set<string>();
-  function update(key: string, make: () => BlockEntry, next: BlockEntry['state']): void {
+  function update(key: string, make: () => BlockEntry, rendered: boolean): void {
     seen.add(key);
     let block = state.blocks.get(key);
     if (!block) {
@@ -246,18 +283,9 @@ export function scanBlocks(state: DevtoolsState): boolean {
       state.blocks.set(key, block);
       changed = true;
     }
-    if (block.state === 'rendered' || block.state === next) {
-      return;
+    if (rendered && moveBlock(block, 'rendered', now)) {
+      changed = true;
     }
-    // A `#defer` that asked for its body and still shows its fallback did not get it.
-    if (block.state === 'loading' && next === 'waiting') {
-      return;
-    }
-    block.state = next;
-    if (next === 'rendered') {
-      block.rendered = now;
-    }
-    changed = true;
   }
   const deferBoundaries = new Set<string>();
   for (const template of document.querySelectorAll('template[b-defer]')) {
@@ -266,7 +294,7 @@ export function scanBlocks(state: DevtoolsState): boolean {
     update(
       `defer:${boundary}`,
       () => ({ kind: 'defer', id: boundary, trigger, template, state: 'waiting', seen: now }),
-      open.has(boundary) ? 'waiting' : 'rendered',
+      !open.has(boundary),
     );
   }
   for (const boundary of open.keys()) {
@@ -274,7 +302,7 @@ export function scanBlocks(state: DevtoolsState): boolean {
       update(
         `loading:${boundary}`,
         () => ({ kind: 'loading', id: boundary, state: 'streaming', seen: now }),
-        'streaming',
+        false,
       );
     }
   }
@@ -295,13 +323,11 @@ export function scanBlocks(state: DevtoolsState): boolean {
         seen: now,
       }),
       // A `$client` callback has run once its trigger fired.
-      (
+      Boolean(
         block
           ? marker && marker.data.split(':').length > 2
-          : state.blocks.get(`client:${id}`)?.fired
-      )
-        ? 'rendered'
-        : 'waiting',
+          : state.blocks.get(`client:${id}`)?.fired,
+      ),
     );
   }
   // A `#loading` block whose markers are gone rendered its body. Other blocks that left the page,
@@ -311,9 +337,7 @@ export function scanBlocks(state: DevtoolsState): boolean {
       continue;
     }
     if (block.kind === 'loading') {
-      if (block.state === 'streaming') {
-        block.state = 'rendered';
-        block.rendered = now;
+      if (moveBlock(block, 'rendered', now)) {
         changed = true;
       }
     } else if (!block.template?.isConnected) {
@@ -595,10 +619,7 @@ export function installDevtools(
         }
         if (block && block.fired === undefined) {
           block.fired = performance.now();
-          if (block.kind === '$client') {
-            block.state = 'rendered';
-            block.rendered = block.fired;
-          }
+          moveBlock(block, 'fired', block.fired);
         }
       }
       add({
@@ -735,12 +756,18 @@ export function installDevtools(
         break;
       }
     }
+    // The loader asks once, so a block that is already loading waits for its first request.
+    const asked = block !== undefined && block.state !== 'loading';
     if (block) {
       block.fired ??= performance.now();
-      block.state = 'loading';
+      moveBlock(block, 'fired', block.fired);
     }
     void done.finally(() => {
       scanBlocks(state);
+      // A body that arrived rendered the block in the scan, so one still loading got none.
+      if (block && asked) {
+        moveBlock(block, 'settled', performance.now());
+      }
       state.changed?.();
     });
   }
