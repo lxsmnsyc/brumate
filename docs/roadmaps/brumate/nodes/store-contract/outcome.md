@@ -1,0 +1,82 @@
+# Outcome: store-contract
+
+## Built
+
+The spike (17f58920) had `brumate/store`, `$toStore` as a `$setContext` leaf, `$store(Context)` and `$store(field.key)` for contexts, the seroval plugin and the resume plugin. Built here, on top of it:
+
+- **API** (`packages/brumate/src/runtime/store.ts`, `signals.ts`):
+  - `StoreLike<T>`: `get()`, `subscribe(listener)` returning the stop function, optional `set(value)`.
+  - `Store<T>` (a `StoreLike`) now calls its listeners only when the value changes (`Object.is`). `store(value)`, `isStore`, `isContract` (has `get` and `subscribe` functions), `isForeignStore` (contract, not a `Store`), `canSet`, `isContext`, `findStored`.
+  - `$store(source)` and `$toStore(value)` are typed with `StoreLike`.
+- **`$store(source)`**, any store of the contract. The source is one of:
+  - a context (`$store(Ctx)`), read through its provider or default;
+  - a key of a `$getContext` value (`$store(field.state)`), also when the context has only a default;
+  - an import that is a store or an object holding one (`$store(theme)`, `$store(stores.theme)`).
+    Anything else is BRM194. It runs once, untracked, and the subscription ends with the scope.
+- **`let`**: `let x = $store(s)` is two-way. A write (`x = next`, `x++`) calls `s.set(next)`; the store's notification writes the slot. A store without `set`, or the store of a memo or prop (`r`), throws `TypeError` when the variable registers (server render, browser render, resume). `const` is one-way.
+- **Write-back rule (silmaril)**: not kept as an effect. Brumate writes through at the assignment (the setter slot `scope.b[slot]` that `$bind` uses), so nothing calls `set` at registration or on resume.
+- **Foreign stores**: any value with `get` and `subscribe` works from an import. Inside a provided value the server still refuses it (names the context), now only when the value has both `get` and `subscribe` (a context of handlers `{ subscribe, publish }` is fine).
+- **Gaps of the #463 review**, all fixed (tests in `test/stores/stores.test.ts`):
+  - outer update of a context that holds stores is back: `{ state: $toStore(s), label }` updates `label` (the rewriter turns `$toStore(x)` into `$$b.madeStore($$s, site)`);
+  - the key form imports the context module through `z`, so a default store links with no provider;
+  - `$store(box.inner)` with a non-context `box` is BRM194;
+  - a reader unsubscribes when its scope is removed (`scope.stops`, run by `removeScope` and `leavePage`, not by `#offscreen` cleanups);
+  - a store whose origin scope is missing warns in development;
+  - the theme test checks the server rendered `light`.
+- **Scope ids**: `shiftState` (`client-routes.ts`) moves a store's origin `o` and the references in its value, in place, so one store keeps one identity. Found by the mark `k === 'brumate.store'` because that module imports nothing.
+- **Warning**: a `$setContext` value that reads a local `$signal`, `$memo` or `let` (tracked, outside a function) warns; `$untrack` and `$toStore` silence it (`Analyzer.warnProvidedReads`).
+- **Codes**: BRM191 (form), BRM192 (`$store` argument), BRM193 (`$toStore` argument or place), BRM194 (source), BRM195 (pattern). BRM143 (`$store is not supported yet`) is removed and stays pinned in `test/error-codes.json`. The `pending` sets of `test/skill.test.ts` are gone.
+- **Docs**: `website/docs/context.md` (static values, "Live values with stores"; the live samples that passed a signal now use static values or handlers), `reference-signals.md`, `state.md`, the skill (`references/signals.md`, `SKILL.md`), `docs/decisions.md` (replaces the "no `$store` yet" note), `.changeset/store-contract.md` (minor).
+
+### Compile shape
+
+- Reader: `const x = $$ctx.consumeStore(source, scope, slot, path?, link?, write?)` on the server and `$$b.consumeStore(...)` in a browser render. `source` is the context expression, the import, or the object; `path` the key; `link` the index of the import in `z`; `write` true for `let`.
+- Declaration: `Declaration.store = { source, path?, link?, write }`, set by `Analyzer.resolveStores`. `SemanticModel.storeImports` lists the imports; the update part exports them as `export const z = [...]`. A `let` reader gets a slot in `plan.ts` even if nothing reads it.
+- Page state: `z: [from, slot, path?, 1?][]` on the reader's record. `from` is a context key (string) or an index of `module.z` (number, for an imported store). The browser links a key at once or when the context's module runs; an index when `loadModule(component)` resolves.
+- Provider: unchanged from the spike (`$$ctx.toStore`, `storeUpdate`, the plugin `$b.s`).
+
+## Result
+
+Not an experiment node.
+
+## Deviations
+
+Outside the brief's shared paths (all minimal):
+
+- `packages/brumate/skills/brumate/references/signals.md`, `references/errors.md` (generated), `SKILL.md`: `skill.test.ts` demands them.
+- `packages/brumate/test/error-codes.json` and `website/docs/errors.md` (generated by the catalog test with `UPDATE_SKILL=1`).
+- `website/docs/reference-signals.md`: the API reference the brief names.
+- Not done: `$toStore` as a non-leaf of a `$setContext` value (for example in a conditional) is BRM193; only a leaf, a key of an object or an item of a list works.
+- Not done: a `<script module>` variable, a local value and a bare namespace import (`$store(ns)`) are not sources; each is BRM194 at compile time. A key of a namespace import (`$store(ns.theme)`) works.
+
+## Stubs left
+
+- The live path (`consume`, `x[key]`, `updateContext`, `$getContext` slots) stays. static-contexts-final removes it. The new warning already points at it; packages/ui still compiles with those warnings (the ui tests pass).
+- `$getContext(Ctx)` still records `x[key]`; the outer update of a context with stores uses `updateContext`, so it stays until then.
+
+## Gotchas
+
+- What static-contexts-final must remove: `updateContext` and the `provide` update in `codegen/client.ts` `emitBinding` (also the `madeStore` rewrite, which exists only for it), `x` in `ScopeState` and `consumeContext`'s slot record, `graph.ts` "A provider above can change the value" for `context` declarations (keep it for `$store` readers, whose slots the store writes), `analyze.ts` `holdsStores` logic, `warnProvidedReads` (turn it into an error or drop it), and `CONTEXT_ADDED` stays for default stores.
+- `sendStore` skips equal values; a provider's `storeUpdate` passes `force`, since the `set` of a `$toStore(signal)` store writes `v` before the signal's update comes.
+- A reader slot is written with `writeSlot`, not `set`, because a `let` reader's `scope.b[slot]` is the store's setter (using `set` would loop).
+- A `let` reader needs a slot even with no read, so `plan.ts` allocates one.
+- Under load, `packages/ui` `bind-kept-writes` and `token-field-sync` fail (timeouts); they pass alone.
+- `findStored` is shared by the server and the browser; `isContext` tests `key` (string) and `defaultValue`, and a store wins over a context.
+- A store crossing in page state must be a `brumate/store` store inside a provided value; a foreign one is only for imports and context defaults.
+
+## Proposed learnings
+
+- A module that `client-routes.ts` style code reads from the page state imports nothing, so a brand test (`k === 'brumate.store'`) is repeated there | the module must stay out of the core chunk | packages/brumate/src/runtime | yes (a scope-ids test moves a store's origin)
+
+## Verification
+
+- `pnpm lint` (no errors), `pnpm format:check`, `pnpm typecheck`: pass.
+- `npx vitest run` in packages/brumate: 79 files, 2822 tests pass (before the review fixes). After them, `npx vitest run test/stores`: 27 pass.
+- `pnpm --filter website check:samples`: 67 samples, 0 problems.
+- `packages/ui` vitest: 5 timeouts in 2 files under load (`bind-kept-writes`, `token-field-sync`); both pass alone (7 tests).
+- Not run: `node e2e/run.mjs`, full `pnpm bench`, `pnpm --filter website build`.
+- `pnpm bench --only brumate --scenario todos`: JS before `load` 13.7 kB gzip, against 13.6 kB on the base 17f58920 (same run on a clean worktree), within 0.3 kB. Client JS emitted in dist 27.6 kB both.
+
+## Size
+
+- Estimated M, actual M.

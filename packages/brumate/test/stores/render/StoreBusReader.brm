@@ -1,0 +1,8 @@
+<script>
+  import { $getContext } from 'brumate/signals';
+  import { Bus } from './contexts.ts';
+
+  const bus = $getContext(Bus);
+</script>
+
+<button class="publish" onClick=(() => bus.publish())>Publish</button>

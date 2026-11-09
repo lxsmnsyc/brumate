@@ -98,7 +98,7 @@ These work anywhere:
 | `handleRequest(functions, request, prefix = '/_brumate', options?)` | Answers a server function call, or returns `undefined` when the request is not one. `virtual:brumate/server` calls it.                    |
 | `isCrossSite(request, options?): boolean`                           | True when a request comes from a page of another site. See [Security](./reference-security.md).                                           |
 | `raw(html)`                                                         | The same as in `brumate/html`.                                                                                                            |
-| `createContext(key, defaultValue)`                                  | The same as in `brumate/context`.                                                                                                         |
+| `createContext(key)`                                                | The same as in `brumate/context`.                                                                                                         |
 | `setClientBundles(bundles)`                                         | Sets the bundles that a render names when its options pass none. The Vite plugin calls it in a server build. See `RenderOptions`.         |
 
 ### `RenderOptions`
@@ -165,9 +165,9 @@ The options of `renderToStream`, `streamParts` and `handleRoute` add these to `R
 
 ## `brumate/context`
 
-| Export                                            | What it does                                                                          |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `createContext<T>(key, defaultValue): Context<T>` | Creates a context. `key` names it in the page state, so it must be unique in the app. |
+| Export                              | What it does                                                                                                   |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `createContext<T>(key): Context<T>` | Creates a context. `key` names it in the page state, so it must be unique in the app. It has no default value. |
 
 See [Context](./context.md).
 

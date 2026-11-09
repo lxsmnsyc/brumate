@@ -1,9 +1,9 @@
 <script>
-  import { $getContext, $props } from 'brumate/signals';
-  import { Level } from './tplContext.ts';
+  import { $props, $getContext, $store } from 'brumate/signals';
+  import { LevelStore } from './tplContext.ts';
 
   const { label } = $props<{ label: string }>();
-  const level = $getContext(Level);
+  const level = $store($getContext(LevelStore));
 </script>
 
 <span class=(`reader ${label}`)>{level}</span>

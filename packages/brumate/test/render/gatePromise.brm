@@ -1,0 +1,18 @@
+<script>
+  import { $gate, $signal } from 'brumate/signals';
+
+  let count = $signal(0);
+
+  async function later(n: number): Promise<number> {
+    return n;
+  }
+
+  const value = $gate(later(count), () => true);
+</script>
+
+<button class="bump" onClick=(() => count++)>Bump</button>
+#try {
+  <p class="value">{value}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

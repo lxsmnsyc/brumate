@@ -1,0 +1,18 @@
+<script>
+  import { $setContext, $signal, $toStore } from 'brumate/signals';
+  import FallbackReader from './FallbackReader.brm';
+  import { Label, Picker } from './contexts.ts';
+
+  let value = $signal('p');
+  let later = $signal(false);
+
+  $setContext(Label, 'given');
+  $setContext(Picker, $toStore(value));
+</script>
+
+<p class="provided">{value}</p>
+<button class="later" onClick=(() => (later = true))>Later</button>
+<section class="now"><FallbackReader /></section>
+#if (later) {
+  <section class="then"><FallbackReader /></section>
+}

@@ -1,0 +1,23 @@
+<script>
+  import { $effect, $gate, $signal } from 'brumate/signals';
+  import { ran } from './runs.ts';
+
+  let input = $signal('');
+  let list = $signal(['a', 'b']);
+  const query = $gate(input, (_, next) => next.length >= 2);
+  const items = $gate(list.slice(), (prev, next) => prev.join() !== next.join());
+
+  $effect(() => {
+    ran('query', query);
+  });
+  $effect(() => {
+    ran('items', items.join());
+  });
+</script>
+
+<button class="a" onClick=(() => (input = 'a'))>a</button>
+<button class="abc" onClick=(() => (input = 'abc'))>abc</button>
+<button class="same" onClick=(() => (list = ['a', 'b']))>same</button>
+<button class="more" onClick=(() => (list = ['a', 'b', 'c']))>more</button>
+<p class="query">{query}</p>
+<p class="items">{items.join()}</p>

@@ -44,19 +44,23 @@
     $client,
     $effect,
     $getContext,
-    $isPassed,
     $handler,
     $id,
+    $isPassed,
     $memo,
     $props,
     $setContext,
     $signal,
+    $store,
+    $toStore,
     $untrack,
   } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import { NumberFormatter, NumberParser } from '@internationalized/number';
   import {
     ColorPickerContext,
+    DisabledContext,
     FieldErrorContext,
     FormContext,
     GroupContext,
@@ -79,7 +83,7 @@
   } from './color.ts';
   import { described } from './description.brm.ts';
   import { describedBy, parseMessages, onFormReset } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { addStep, clamp, listenToWheel, snapToStep, stopWheel } from './numbers.ts';
 
   /**
@@ -118,7 +122,7 @@
     name,
     channel,
     colorSpace,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid,
@@ -129,15 +133,22 @@
     children,
     ...rest
   } = $props<ColorFieldProps<T>>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = null } = $props<ColorFieldProps<T>>();
 
   // Inside a ColorPicker, a field without a `value` shows the color of the picker and writes it.
-  const picker = $getContext(ColorPickerContext);
+  const given = $getContext(ColorPickerContext, undefined);
+  const picker = given ? $store(given.state) : undefined;
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
-  const locale = $getContext(LocaleContext);
-  const form = $getContext(FormContext);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  const formGiven = $getContext(FormContext, undefined);
+  const form = formGiven ? $store(formGiven) : undefined;
   const inputId = $id();
   const labelId = $id();
   const descriptionId = $id();
@@ -252,7 +263,7 @@
     const same = next === null || held === null ? next === held : sameColor(next, held);
     let shown = nextColor;
     if (picker && !passed) {
-      const pc = picker.setValue(nextColor!, same ? held! : next!);
+      const pc = given!.setValue!(nextColor!, same ? held! : next!);
       // The field shows the color that the picker keeps.
       shown = channel ? toSpace(pc, colorSpace ?? editSpace(pc, channel)) : pc;
     } else {
@@ -520,14 +531,16 @@
     ariaLabel ?? (channel && !hasLabel && !ariaLabelledBy ? channelName(channel) : undefined),
   );
 
-  $setContext(LabelContext, { id: labelId, for: inputId });
-  $setContext(GroupContext, {
+  const labelGiven = $memo({ id: labelId, for: inputId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const groupGiven = $memo({
     role: 'presentation',
     isDisabled,
     isInvalid: invalid,
     'aria-disabled': isDisabled ? 'true' : undefined,
   });
-  $setContext(InputContext, {
+  $setContext(GroupContext, $toStore(groupGiven));
+  const inputProps = $memo({
     id: inputId,
     type: 'text',
     value: text,
@@ -543,13 +556,18 @@
     'aria-labelledby': ariaLabelledBy && hasLabel ? `${labelId} ${ariaLabelledBy}` : ariaLabelledBy,
     'aria-invalid': invalid ? 'true' : undefined,
     'aria-describedby': describedBy(hasDescription && descriptionId, invalid && errorId),
+  });
+  $setContext(InputContext, {
+    props: $toStore(inputProps),
     onChange: changed,
     onInvalid: invalidated,
     onFocus: focused,
     onBlur: blurred,
   });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
 </script>
 
 <{as}

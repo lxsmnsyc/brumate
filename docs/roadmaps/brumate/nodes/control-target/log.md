@@ -1,0 +1,1 @@
+- types done: ElementEvent in elements.d.ts, used by Handlers, DynamicHandle, $$on. tsc fixture Target.brm. No casts of event.target in ui/website became unneeded (Select, Autocomplete take plain Event on a div or non-control).

@@ -30,9 +30,19 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $getContext, $props, $setContext } from 'brumate/signals';
-  import { ToggleGroupContext, ToolbarContext } from './contexts.ts';
-  import { LocaleContext } from './locale.ts';
+  import {
+    $client,
+    $getContext,
+    $memo,
+    $props,
+    $setContext,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import { DisabledContext, ToggleGroupContext, ToolbarContext } from './contexts.ts';
+  import type { ToggleGroupState } from './contexts.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { keepTabStop, moveFocus, preventEdges, rove } from './toolbar.ts';
 
   /**
@@ -48,17 +58,22 @@
     as,
     selectionMode = 'single',
     disallowEmptySelection = false,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     orientation = 'horizontal',
     onSelectionChange,
     children,
     ...rest
   } = $props<ToggleButtonGroupProps<T>>();
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { selectedKeys = [] } = $props<ToggleButtonGroupOwnProps<T>>();
   let { ref } = $props<ToggleButtonGroupOwnProps<T>>();
 
-  const locale = $getContext(LocaleContext);
-  const nested = $getContext(ToolbarContext);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  const nested = $getContext(ToolbarContext, false);
 
   $client(() => {
     if (!ref) {
@@ -118,7 +133,8 @@
   // preventEdges prevents Home and End, and Up and Down of a vertical group, unless a text field
   // or area has the keys for its caret.
 
-  $setContext(ToggleGroupContext, { selectionMode, selectedKeys, isDisabled, toggle });
+  const groupState = $memo<ToggleGroupState>({ selectionMode, selectedKeys, isDisabled });
+  $setContext(ToggleGroupContext, { state: $toStore(groupState), toggle });
 </script>
 
 <{as ?? 'div'}

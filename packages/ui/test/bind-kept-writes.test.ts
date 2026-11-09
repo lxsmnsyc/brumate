@@ -13,16 +13,14 @@ afterEach(() => {
 async function kept() {
   const page = await mount(BindKeptWrites, {});
   unmount = page.unmount;
-  // The code of the page loads.
-  await wait(150);
+  // The code of the page loads. The first load compiles it, which takes seconds on a busy machine.
+  await page.waitFor(() => expect(page.text('.ready')).toBe('ready'), 20_000);
   return page;
 }
 
 function hide(event: Event) {
   event.preventDefault();
 }
-
-const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 
 it('puts the input of a Switch back when the setter throws', async () => {
   // The error reaches the page, which the test does not need to see.
@@ -32,8 +30,7 @@ it('puts the input of a Switch back when the setter throws', async () => {
     const page = await kept();
     const input = page.get('.power input') as HTMLInputElement;
     input.click();
-    await wait(100);
-    expect(input.checked).toBe(false);
+    await page.waitFor(() => expect(input.checked).toBe(false));
     expect(page.get('.power').hasAttribute('data-selected')).toBe(false);
   } finally {
     window.removeEventListener('error', hide);
@@ -48,7 +45,7 @@ it('does not call the handler when a setter keeps a copy with the same items', a
   const thumb = page.get('.low input') as HTMLInputElement;
   thumb.value = '30';
   thumb.dispatchEvent(new Event('input', { bubbles: true }));
-  await wait(200);
+  // The thumb goes back once the events ran, in order, so the handlers had their chance by then.
+  await page.waitFor(() => expect(thumb.value).toBe('20'));
   expect(JSON.parse(page.text('.heard'))).toEqual([]);
-  expect(thumb.value).toBe('20');
 });

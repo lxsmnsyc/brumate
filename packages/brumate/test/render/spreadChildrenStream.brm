@@ -11,17 +11,19 @@
 </script>
 
 <script>
-  import { $memo, $setContext, $signal } from 'brumate/signals';
+  import { $memo, $setContext, $signal, $toStore } from 'brumate/signals';
   import SpreadChildrenBox from './spreadChildrenBox.brm';
   import SpreadChildrenMove from './spreadChildrenMove.brm';
-  import SpreadChildrenPick, { Shown } from './spreadChildrenPick.brm';
+  import SpreadChildrenPick from './spreadChildrenPick.brm';
+  import { Shown } from './spreadChildrenShown.ts';
   import SpreadChildrenTarget from './spreadChildrenTarget.brm';
   import SpreadChildrenTwice from './spreadChildrenTwice.brm';
 
   let tone = $signal('sc-a');
   const label = $memo(await ready);
 
-  $setContext(Shown, { shown: () => tone === 'sc-b' });
+  const shown = $memo(tone === 'sc-b');
+  $setContext(Shown, $toStore(shown));
 </script>
 
 <button class="sc-tone" onClick=(() => (tone = 'sc-b'))>{tone}</button>

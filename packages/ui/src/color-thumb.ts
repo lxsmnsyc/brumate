@@ -13,6 +13,7 @@
 // The ColorThumb is the same for all of them, so it knows nothing of channels, tracks or wheels.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 
 /**
  * A hidden `<input type="range">` of a thumb. It gives a screen reader the value, and the part
@@ -65,6 +66,12 @@ export interface ColorThumbState {
   isFocusVisible: boolean;
   /** The thumb is still: its inputs are disabled, and it shows `data-disabled`. */
   isDisabled: boolean;
+  /** `rtl` for the direction of the locale, which the inputs use. */
+  direction: 'ltr' | 'rtl';
+}
+
+/** What a part runs for its ColorThumb. The handlers never change. */
+export interface ColorThumbHandlers {
   /**
    * An input got a value, from the keys or a screen reader. `index` is the position of the input
    * in `inputs`. Not called while the thumb is disabled.
@@ -90,9 +97,12 @@ export interface ColorThumbState {
   onFocusChange: (focused: boolean, focusVisible: boolean, index: number) => void;
   /** The change of an input ended: the user let go of the key or the value was committed. */
   onChangeEnd: () => void;
-  /** `rtl` for the direction of the locale, which the inputs use. */
-  direction: 'ltr' | 'rtl';
 }
 
-export const ColorThumbContext: Context<ColorThumbState | null> =
-  createContext<ColorThumbState | null>('brumate-ui:color-thumb', null);
+/** What a part gives its ColorThumb: the store of the state, and the handlers. */
+export interface ColorThumbGiven extends Partial<ColorThumbHandlers> {
+  state: StoreLike<ColorThumbState | null>;
+}
+
+export const ColorThumbContext: Context<ColorThumbGiven> =
+  createContext<ColorThumbGiven>('brumate-ui:color-thumb');

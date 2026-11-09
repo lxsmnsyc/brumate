@@ -1,0 +1,8 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { BadContext } from './bears.ts';
+
+  const state = $store($getContext(BadContext));
+</script>
+
+<p>{state.add}</p>

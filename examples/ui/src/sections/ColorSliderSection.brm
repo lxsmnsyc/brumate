@@ -1,0 +1,22 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import ColorSlider from '@brumate/ui/ColorSlider.brm';
+  import ColorThumb from '@brumate/ui/ColorThumb.brm';
+  import SliderOutput from '@brumate/ui/SliderOutput.brm';
+  import SliderTrack from '@brumate/ui/SliderTrack.brm';
+
+  let tint = $signal('hsl(210, 100%, 50%)');
+</script>
+
+<section aria-labelledby="color-slider">
+  <h2 id="color-slider">ColorSlider</h2>
+  <ColorSlider class="tint" channel="hue" value=$bind(tint)>
+    <Label>Hue</Label>
+    <SliderOutput class="tint-output" />
+    <SliderTrack class="tint-track" style="width: 200px; height: 20px; background: var(--track-background)">
+      <ColorThumb class="tint-thumb" style="top: 50%; width: 20px; height: 20px; border: 2px solid #fff; border-radius: 50%" />
+    </SliderTrack>
+  </ColorSlider>
+  <p class="tint-state">{tint}</p>
+</section>

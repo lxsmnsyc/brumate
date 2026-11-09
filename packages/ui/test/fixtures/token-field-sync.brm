@@ -1,5 +1,5 @@
 <script>
-  import { $bind, $signal } from 'brumate/signals';
+  import { $bind, $client, $signal } from 'brumate/signals';
   import Label from '../../src/Label.brm';
   import Token from '../../src/Token.brm';
   import TokenField from '../../src/TokenField.brm';
@@ -17,6 +17,12 @@
     { type: 'text', text: ' ' },
     { type: 'token', text: '@ada' },
   ]);
+
+  // The page marks itself ready once its code runs in the browser, so a test acts after that.
+  let ready = $signal(false);
+  $client(() => {
+    ready = true;
+  }, 'load');
 </script>
 
 <form class="form">
@@ -37,6 +43,7 @@
 <button class="hold" type="button" onClick=(() => (held = true))>Hold</button>
 <p class="kept">{JSON.stringify(kept)}</p>
 <p class="own-state">{JSON.stringify(own)}</p>
+<p class="ready">{ready ? 'ready' : ''}</p>
 
 #template mention(segment: TokenSegment) {
   <Token class="mention">{segment.text}</Token>

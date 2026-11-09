@@ -1,0 +1,15 @@
+<script>
+  import Fieldset from '@brumate/ui/Fieldset.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Legend from '@brumate/ui/Legend.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+</script>
+
+<Fieldset class="ui-fieldset" style="width: fit-content" data-mark="1">
+  <Legend data-mark="2" data-mark-side="after">Address</Legend>
+  <TextField class="ui-field" name="street" value="1 Main Street" style="width: fit-content" data-mark="3">
+    <Label>Street</Label>
+    <Input class="ui-input" />
+  </TextField>
+</Fieldset>

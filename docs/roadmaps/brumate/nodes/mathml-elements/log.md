@@ -1,0 +1,1 @@
+- Added MathML tags to Elements, MathML branch in ElementOf and check.ts $$Element, tests, contract v1.5, changeset.

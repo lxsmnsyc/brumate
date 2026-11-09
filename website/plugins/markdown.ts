@@ -22,21 +22,30 @@ import { PART_FILES, readProps, renderProps } from './props-table.ts';
 
 const REPOSITORY = 'https://github.com/lxsmnsyc/brumate';
 
+/** Adds the name of each Markdown file in a folder, without `.md`, and `index.md` as `index`. */
+function addPages(pages: Set<string>, directory: URL, index: string): Set<string> {
+  for (const file of readdirSync(directory)) {
+    if (file.endsWith('.md')) {
+      pages.add(file === 'index.md' ? index : file.slice(0, -3));
+    }
+  }
+  return pages;
+}
+
 /** The pages of the site, from the files in `website/docs`. Links to other documents go to GitHub. */
-export const SITE_PAGES: Set<string> = new Set(
-  readdirSync(new URL('../docs/', import.meta.url))
-    .filter((file) => file.endsWith('.md'))
-    .map((file) => (file === 'index.md' ? '' : file.slice(0, -3))),
+export const SITE_PAGES: Set<string> = addPages(
+  new Set(),
+  new URL('../docs/', import.meta.url),
+  '',
 );
 
 /** The pages of the section of @brumate/ui, from the files in `website/ui`. */
-export const UI_PAGES: Set<string> = new Set([
+export const UI_PAGES: Set<string> = addPages(
   // The landing page at /ui is a route, not a Markdown file.
-  '',
-  ...readdirSync(new URL('../ui/', import.meta.url))
-    .filter((file) => file.endsWith('.md'))
-    .map((file) => file.slice(0, -3)),
-]);
+  new Set(['']),
+  new URL('../ui/', import.meta.url),
+  'index',
+);
 
 /** The folder of the pages of @brumate/ui. */
 const UI_DIRECTORY = fileURLToPath(new URL('../ui/', import.meta.url));
@@ -191,7 +200,13 @@ function alerts(parser: MarkdownIt): void {
       const kind = match[1]!.toLowerCase();
       // Drops the marker and the line break after it.
       const children = inline.children ?? [];
-      const first = children.findIndex((child) => child.type === 'text');
+      let first = -1;
+      for (const [position, child] of children.entries()) {
+        if (child.type === 'text') {
+          first = position;
+          break;
+        }
+      }
       if (first !== -1) {
         children[first]!.content = children[first]!.content.replace(/^\[!\w+\]\s*/, '');
         if (!children[first]!.content && children[first + 1]?.type === 'softbreak') {
@@ -286,13 +301,19 @@ function createRenderer(base: string, section: 'docs' | 'ui'): MarkdownIt {
 function summary(
   tokens: { type: string; content: string; children: { content: string }[] | null }[],
 ): string {
-  const index = tokens.findIndex((token) => token.type === 'paragraph_open');
-  const inline = index === -1 ? undefined : tokens[index + 1];
-  const text = (inline?.children ?? [])
-    .map((child) => child.content)
-    .join('')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // The inline token after the first paragraph opens holds its text.
+  let inline: (typeof tokens)[number] | undefined;
+  for (const [index, token] of tokens.entries()) {
+    if (token.type === 'paragraph_open') {
+      inline = tokens[index + 1];
+      break;
+    }
+  }
+  let joined = '';
+  for (const child of inline?.children ?? []) {
+    joined += child.content;
+  }
+  const text = joined.replace(/\s+/g, ' ').trim();
   if (text.length <= 160) {
     return text;
   }
@@ -350,8 +371,13 @@ export default function markdown(): Plugin {
           let extra = '';
           if (demo.kind === 'anatomy') {
             // The body of the block is one line for each numbered piece.
-            const lines = token.content.split('\n').filter((line) => line.trim());
-            html = parser.render(lines.map((line, number) => `${number + 1}. ${line}`).join('\n'));
+            const items: string[] = [];
+            for (const line of token.content.split('\n')) {
+              if (line.trim()) {
+                items.push(`${items.length + 1}. ${line}`);
+              }
+            }
+            html = parser.render(items.join('\n'));
             const label = `Anatomy of ${demo.name.replace(/Anatomy$/, '')}`;
             extra = `, variant: "anatomy", label: ${JSON.stringify(label)}`;
           } else {
@@ -383,7 +409,13 @@ export default function markdown(): Plugin {
         start = index;
       }
       flush(tokens.length);
-      const title = env.headings.find((heading) => heading.level === 1)?.text ?? '';
+      let title = '';
+      for (const heading of env.headings) {
+        if (heading.level === 1) {
+          title = heading.text;
+          break;
+        }
+      }
       const description = summary(tokens);
       return {
         code: [

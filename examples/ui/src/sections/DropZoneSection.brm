@@ -1,0 +1,15 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import DropZone from '@brumate/ui/DropZone.brm';
+  import Text from '@brumate/ui/Text.brm';
+
+  let dropCount = $signal(0);
+</script>
+
+<section aria-labelledby="drop-zone">
+  <h2 id="drop-zone">DropZone</h2>
+  <DropZone class="drop-zone" onDrop=((event) => { dropCount = event.items.length; })>
+    <Text slot="label">Drop here</Text>
+  </DropZone>
+  <p class="drop-state">{dropCount} items dropped.</p>
+</section>

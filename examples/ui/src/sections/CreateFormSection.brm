@@ -1,0 +1,36 @@
+<script>
+  import { createForm } from 'brumate/forms';
+  import { parseSubmission } from 'brumate/server';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+  import { Order } from '../order.ts';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  async function order(form: FormData) {
+    'use server';
+    const submission = await parseSubmission(Order, form);
+    if (submission.status !== 'success') {
+      return submission.reply();
+    }
+    return submission.reply({ reset: true });
+  }
+
+  const { attrs, fields, result } = createForm(order, Order, { defaultValue: { email: '' } });
+</script>
+
+<section aria-labelledby="create-form">
+  <h2 id="create-form">With createForm</h2>
+  <form action=order {...attrs} class="order">
+    <TextField field=(fields.email) type="email">
+      <Label>Email for the receipt</Label>
+      <Input class="field" />
+      <FieldError class="error" />
+    </TextField>
+    <Button class="press" type="submit">Order</Button>
+    #if (result?.status === 'success') {
+      <p class="ordered">Ordered.</p>
+    }
+  </form>
+</section>

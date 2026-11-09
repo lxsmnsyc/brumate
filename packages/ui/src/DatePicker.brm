@@ -32,9 +32,25 @@
 </script>
 
 <script>
-  import { $bind, $getContext, $id, $props, $setContext } from 'brumate/signals';
+  import {
+    $bind,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { DatePickerContext } from './calendar.ts';
-  import { ButtonContext, GroupContext, OverlayTriggerContext } from './contexts.ts';
+  import type { DatePickerState } from './calendar.ts';
+  import {
+    ButtonContext,
+    DisabledContext,
+    GroupContext,
+    OverlayTriggerContext,
+  } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
   import { DateStringsContext } from './date-strings.ts';
   import DateField from './DateField.brm';
 
@@ -59,7 +75,7 @@
     maxValue,
     isDateUnavailable,
     placeholderValue,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     shouldCloseOnSelect = true,
     onChange,
@@ -67,10 +83,15 @@
     children,
     ...rest
   } = $props<DatePickerProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = null } = $props<DatePickerProps>();
   let { isOpen = false } = $props<DatePickerProps>();
 
-  const strings = $getContext(DateStringsContext);
+  const stringsGiven = $getContext(DateStringsContext, undefined);
+  const strings = stringsGiven ? $store(stringsGiven) : undefined;
   const triggerId = $id();
   const overlayId = $id();
   const labelId = $id();
@@ -99,7 +120,7 @@
     }
   }
 
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     id: triggerId,
     'aria-label': strings?.calendar ?? 'Calendar',
     'aria-labelledby': `${triggerId} ${labelId}`,
@@ -107,31 +128,40 @@
     'aria-expanded': isOpen ? 'true' : 'false',
     'aria-controls': isOpen ? overlayId : undefined,
     isDisabled: isDisabled || isReadOnly,
-    onPress: () => setOpen(true),
   });
-  $setContext(GroupContext, {
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: () => setOpen(true),
+    },
+  });
+  const groupGiven = $memo({
     isDisabled,
     'aria-disabled': isDisabled ? 'true' : undefined,
     'aria-labelledby': labelId,
   });
-  $setContext(OverlayTriggerContext, {
+  $setContext(GroupContext, $toStore(groupGiven));
+  const overlayState = $memo<OverlayTriggerState>({
     isOpen,
     triggerId,
     overlayId,
-    open: () => setOpen(true),
-    close: () => setOpen(false),
     placement: 'bottom start',
     labelledBy: `${triggerId} ${labelId}`,
   });
-  $setContext(DatePickerContext, {
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open: () => setOpen(true), close: () => setOpen(false) });
+  const pickerState = $memo<DatePickerState>({
     value,
-    select,
     minValue,
     maxValue,
-    isDateUnavailable,
     placeholderValue,
     isDisabled,
     isReadOnly,
+  });
+  $setContext(DatePickerContext, {
+    state: $toStore(pickerState),
+    select,
+    // Reads the prop when called, so a later change of it applies.
+    isDateUnavailable: (date) => isDateUnavailable?.(date) ?? false,
   });
 </script>
 

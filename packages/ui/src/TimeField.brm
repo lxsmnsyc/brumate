@@ -1,7 +1,7 @@
 <script module>
   import type { AsProps, AsTarget } from './as.ts';
   import type { Bindable } from 'brumate/signals';
-  import type { DateParts, SegmentType, TimeGranularity, TimeString } from './segments.ts';
+  import type { DateFieldState, DateParts, SegmentType, TimeGranularity, TimeString } from './segments.ts';
 
   export interface TimeFieldOwnProps {
     /** The name that posts the time with a form, from a hidden input. */
@@ -40,14 +40,32 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
-  import { FieldErrorContext, FormContext, LabelContext, TextContext } from './contexts.ts';
+  import {
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+    $untrack,
+  } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import {
+    DisabledContext,
+    FieldErrorContext,
+    FormContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { formField } from './date-field.brm.ts';
   import { prevent } from 'brumate/events';
   import { DateStringsContext } from './date-strings.ts';
   import { describedBy, parseMessages } from './fields.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import {
     DateFieldContext,
     erasePart,
@@ -88,7 +106,7 @@
     placeholderValue = '00:00',
     granularity = 'minute',
     hourCycle,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid = false,
@@ -96,15 +114,22 @@
     children,
     ...rest
   } = $props<TimeFieldProps<T>>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = null } = $props<TimeFieldProps<T>>();
 
-  const locale = $getContext(LocaleContext);
-  const form = $getContext(FormContext);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  const formGiven = $getContext(FormContext, undefined);
+  const form = formGiven ? $store(formGiven) : undefined;
   const labelId = $id();
   const descriptionId = $id();
   const errorId = $id();
   const { present: hasDescription } = described(descriptionId);
-  const strings = $getContext(DateStringsContext);
+  const stringsGiven = $getContext(DateStringsContext, undefined);
+  const strings = stringsGiven ? $store(stringsGiven) : undefined;
   const twelve = $memo(usesDayPeriod(locale.locale, hourCycle));
   const inputId = $id();
   let parts = $signal<DateParts>(parseTimeParts(value));
@@ -168,10 +193,13 @@
     return isDisabled || isReadOnly;
   }
 
-  $setContext(LabelContext, { id: labelId });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, { id: errorId, isInvalid: invalid, errors });
-  $setContext(DateFieldContext, {
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
+  const errorGiven = $memo({ id: errorId, isInvalid: invalid, errors });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
+  const fieldState = $memo<DateFieldState>({
     segments,
     labelId,
     describedBy: describedBy(hasDescription && descriptionId, invalid && errorId),
@@ -182,6 +210,9 @@
     direction: locale.direction,
     segmentNames: strings?.segmentNames,
     empty: strings?.empty,
+  });
+  $setContext(DateFieldContext, {
+    state: $toStore(fieldState),
     step: (type: SegmentType, delta: number) => {
       if (!locked() && isTimePart(type)) {
         typed = '';

@@ -307,6 +307,7 @@ export function fillAttrs(
   anchor: number,
   values: Record<string, unknown>,
   own?: string[],
+  held?: unknown,
 ): void {
   const now: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(values)) {
@@ -320,7 +321,7 @@ export function fillAttrs(
       });
     }
   }
-  attrs(scope, anchor, now, own);
+  attrs(scope, anchor, now, own, held);
 }
 
 /**

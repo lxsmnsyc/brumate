@@ -1,6 +1,7 @@
 // The locale of the parts, for the I18nProvider.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 
 export interface Locale {
   /** A BCP 47 language tag, such as `en-US` or `ar-EG`. */
@@ -64,11 +65,14 @@ export function createLocale(locale: string): Locale {
 }
 
 /**
- * The locale of the parts inside an I18nProvider. The default is `en-US`, so the server and the
- * browser format the same way. A language of the browser would differ from the server, which does
- * not know it.
+ * The locale of the parts inside an I18nProvider, as a store, since the locale can change. It holds
+ * no value outside one, where the parts use `DEFAULT_LOCALE`, `en-US`, so the server and the browser
+ * format the same way. A language of the browser would differ from the server, which does not know
+ * it. A reader passes a store of `DEFAULT_LOCALE` as the fallback:
+ * `$store($getContext(LocaleContext, store(DEFAULT_LOCALE)))`.
  */
-export const LocaleContext: Context<Locale> = createContext<Locale>(
-  'brumate-ui:locale',
-  createLocale('en-US'),
-);
+export const LocaleContext: Context<StoreLike<Locale | null>> =
+  createContext<StoreLike<Locale | null>>('brumate-ui:locale');
+
+/** The locale of a part outside an I18nProvider. */
+export const DEFAULT_LOCALE: Locale = createLocale('en-US');

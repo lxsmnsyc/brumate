@@ -1,0 +1,28 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Input from '@brumate/ui/Input.brm';
+  import SearchField from '@brumate/ui/SearchField.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import Autocomplete from '@brumate/ui/Autocomplete.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let command = $signal<Key>('none');
+</script>
+
+<section aria-labelledby="autocomplete">
+  <h2 id="autocomplete">Autocomplete</h2>
+  <Autocomplete>
+    <SearchField class="command-field">
+      <Label>Command</Label>
+      <Input class="command-input" />
+    </SearchField>
+    <Menu class="command-menu" aria-label="Commands" onAction=((key) => (command = key))>
+      <MenuItem id="new" class="option">New file</MenuItem>
+      <MenuItem id="open" class="option">Open file</MenuItem>
+      <MenuItem id="save" class="option">Save</MenuItem>
+    </Menu>
+  </Autocomplete>
+  <p class="command-state">{command}</p>
+</section>

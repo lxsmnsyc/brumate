@@ -1,0 +1,16 @@
+<script>
+  import { $memo, $setContext, $signal, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import ObjectProvidedReader from './ObjectProvidedReader.brm';
+  import { Detail, Shape } from './contexts.ts';
+
+  let n = $signal(1);
+  const detail = $memo({ name: 'memo', n });
+
+  // A store of an object that the provider makes, and a store of an object memo.
+  $setContext(Shape, store({ name: 'made' }));
+  $setContext(Detail, $toStore(detail));
+</script>
+
+<button class="inc" onClick=(() => n++)>Inc</button>
+<ObjectProvidedReader />

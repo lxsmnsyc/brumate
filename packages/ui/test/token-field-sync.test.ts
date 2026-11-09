@@ -14,8 +14,8 @@ afterEach(() => {
 async function sync() {
   const page = await mount(TokenFieldSync, {});
   unmount = page.unmount;
-  // The code of the page loads.
-  await wait(150);
+  // The code of the page loads. The first load compiles it, which takes seconds on a busy machine.
+  await page.waitFor(() => expect(page.text('.ready')).toBe('ready'), 20_000);
   return page;
 }
 
@@ -39,7 +39,7 @@ it('shows the kept value after a refused edit', async () => {
   const box = page.get('.guarded-input');
   page.get('.hold').click();
   type(box, ' typed');
-  await wait(100);
+  await page.waitFor(() => expect(shown(box)).toEqual({ text: '@ada', tokens: ['@ada'] }));
   expect(JSON.parse(page.text('.kept'))).toEqual([{ type: 'token', text: '@ada' }]);
   expect(shown(box)).toEqual({ text: '@ada', tokens: ['@ada'] });
 });
@@ -49,7 +49,7 @@ it('shows the first value after a reset that gives back the kept one', async () 
   const box = page.get('.guarded-input');
   page.get('.hold').click();
   type(box, ' typed');
-  await wait(100);
+  await page.waitFor(() => expect(shown(box)).toEqual({ text: '@ada', tokens: ['@ada'] }));
   (page.get('.form') as HTMLFormElement).reset();
   await wait(100);
   expect(shown(box)).toEqual({ text: '@ada', tokens: ['@ada'] });
@@ -63,9 +63,10 @@ it('shows the first value after quick edits and a reset', async () => {
   box.dispatchEvent(new Event('input', { bubbles: true }));
   type(box, '@zed ');
   (page.get('.form') as HTMLFormElement).reset();
-  await wait(200);
-  expect(JSON.parse(page.text('.own-state'))).toEqual([{ type: 'token', text: '@ada' }]);
-  expect(shown(box)).toEqual({ text: '@ada', tokens: ['@ada'] });
+  await page.waitFor(() => {
+    expect(JSON.parse(page.text('.own-state'))).toEqual([{ type: 'token', text: '@ada' }]);
+    expect(shown(box)).toEqual({ text: '@ada', tokens: ['@ada'] });
+  });
 });
 
 it('writes the same token twice with the content of each', async () => {

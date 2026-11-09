@@ -1,0 +1,17 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Label from '@brumate/ui/Label.brm';
+  import DateInput from '@brumate/ui/DateInput.brm';
+  import TimeField from '@brumate/ui/TimeField.brm';
+
+  let pickup = $signal<string | null>('14:30');
+</script>
+
+<section aria-labelledby="time-field">
+  <h2 id="time-field">TimeField</h2>
+  <TimeField class="pickup" name="pickup" value=$bind(pickup)>
+    <Label>Pickup</Label>
+    <DateInput class="pickup-input" />
+  </TimeField>
+  <p class="pickup-state">{pickup ?? 'none'}</p>
+</section>

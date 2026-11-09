@@ -1,0 +1,12 @@
+<script>
+  import ViewList from './ViewList.brm';
+  import ViewSelect from './ViewSelect.brm';
+</script>
+
+<ViewSelect>
+  <ViewList items=(['Cat', 'Dog']) item=option />
+</ViewSelect>
+
+#template option({ option, selected }: { option: string; selected: boolean }) {
+  <b class="choice">{option}{selected ? ' (picked)' : ''}</b>
+}

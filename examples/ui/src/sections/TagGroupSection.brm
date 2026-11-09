@@ -1,0 +1,33 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Tag from '@brumate/ui/Tag.brm';
+  import TagGroup from '@brumate/ui/TagGroup.brm';
+  import TagList from '@brumate/ui/TagList.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let topics = $signal(['css', 'html', 'js', 'svg']);
+  function removeTopics(keys: Key[]) {
+    const kept: string[] = [];
+    for (const topic of topics) {
+      if (!keys.includes(topic)) {
+        kept.push(topic);
+      }
+    }
+    topics = kept;
+  }
+</script>
+
+<section aria-labelledby="taggroup">
+  <h2 id="taggroup">TagGroup</h2>
+  <TagGroup onRemove=removeTopics>
+    <Label>Topics</Label>
+    <TagList class="topic-list">
+      #for (topic of topics by topic) {
+        <Tag id=topic class="topic">{topic}<Button slot="remove" class="press topic-remove">×</Button></Tag>
+      }
+    </TagList>
+  </TagGroup>
+  <p class="topic-state">{topics.join(',')}</p>
+</section>

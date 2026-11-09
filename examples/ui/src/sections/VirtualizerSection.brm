@@ -1,0 +1,22 @@
+<script>
+  import Tree from '@brumate/ui/Tree.brm';
+  import Virtualizer from '@brumate/ui/Virtualizer.brm';
+  import TreeItem from '@brumate/ui/TreeItem.brm';
+
+  // A long list of files, which renders only the rows in view.
+  const manyFiles: { id: string; name: string }[] = [];
+  for (let index = 0; index < 1000; index++) {
+    manyFiles.push({ id: `many-${index}`, name: `File ${index}` });
+  }
+</script>
+
+<section aria-labelledby="virtualizer">
+  <h2 id="virtualizer">Virtualizer</h2>
+  <Virtualizer class="many-box" rowHeight=(24) style="height: 120px">
+    <Tree class="many-tree" aria-label="Many files" items=manyFiles item=manyRow />
+  </Virtualizer>
+</section>
+
+#template manyRow(file: { id: string; name: string }) {
+  <TreeItem class=(`many-row many-${file.id}`) style="height: 24px">{file.name}</TreeItem>
+}

@@ -32,7 +32,21 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $isPassed, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import {
+    $client,
+    $effect,
+    $getContext,
+    $id,
+    $isPassed,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+    $untrack,
+  } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import {
     areaChannels,
@@ -52,9 +66,13 @@
     tryParseColor,
     withChannelValue,
   } from './color.ts';
-  import { ColorPickerContext } from './contexts.ts';
+  import {
+    ColorPickerContext,
+    DisabledContext,
+  } from './contexts.ts';
   import { ColorThumbContext } from './color-thumb.ts';
-  import { LocaleContext } from './locale.ts';
+  import type { ColorThumbState } from './color-thumb.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { onFormReset } from './fields.ts';
   import { clamp, snapToStep } from './numbers.ts';
   import { startDrag, thumbId } from './slider.ts';
@@ -103,7 +121,7 @@
     xChannel,
     yChannel,
     colorSpace,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     xName,
     yName,
     'aria-label': ariaLabel,
@@ -113,17 +131,22 @@
     children,
     ...rest
   } = $props<ColorAreaProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = '#ffffff' } = $props<ColorAreaProps>();
 
   // Inside a ColorPicker, a part without a `value` shows the color of the picker and writes it.
-  const picker = $getContext(ColorPickerContext);
+  const given = $getContext(ColorPickerContext, undefined);
+  const picker = given ? $store(given.state) : undefined;
   const passed = $isPassed(value);
   const held = $memo(picker && !passed ? picker.value : value);
 
   /** Writes the color, and returns the text that the part keeps. */
   function write(next: Color, text: string): string {
     if (picker && !passed) {
-      picker.setValue(next, text);
+      given?.setValue!(next, text);
       return text;
     } else {
       const before = value;
@@ -141,7 +164,8 @@
     }
   }
 
-  const locale = $getContext(LocaleContext);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   // The color that a reset of the form gives back.
   let initialValue = $signal(held);
   let dragging = $signal(false);
@@ -450,7 +474,7 @@
     );
   }, 'load');
 
-  $setContext(ColorThumbContext, {
+  const thumbState = $memo<ColorThumbState>({
     color: formatColor(displayColor(color, 'red')),
     left: rtl ? 100 - xPercent : xPercent,
     top: 100 - yPercent,
@@ -490,12 +514,15 @@
     isFocused: focused,
     isFocusVisible: focusVisible,
     isDisabled,
+    direction: locale.direction,
+  });
+  $setContext(ColorThumbContext, {
+    state: $toStore(thumbState),
     onInputChange: inputChange,
     onInputKey: inputKey,
     onPress: press,
     onFocusChange: focusChange,
     onChangeEnd: end,
-    direction: locale.direction,
   });
 </script>
 

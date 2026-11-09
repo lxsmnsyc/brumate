@@ -1,0 +1,17 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import HasFieldReader from './HasFieldReader.brm';
+  import HasLaterProvider from './HasLaterProvider.brm';
+
+  let withProvider = $signal(false);
+  let alone = $signal(false);
+</script>
+
+<button class="provide" onClick=(() => (withProvider = true))>Provide</button>
+<button class="alone" onClick=(() => (alone = true))>Alone</button>
+#if (withProvider) {
+  <section class="with"><HasLaterProvider /></section>
+}
+#if (alone) {
+  <section class="without"><HasFieldReader /></section>
+}

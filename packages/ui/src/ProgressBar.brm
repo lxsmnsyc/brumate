@@ -32,10 +32,11 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { LabelContext } from './contexts.ts';
   import { described } from './description.brm.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { getProgress } from './progress.ts';
   import { mergeStyle } from './style.ts';
 
@@ -60,12 +61,14 @@
   } = $props<ProgressBarProps<T>>();
   let { ref } = $props<ProgressBarOwnProps<T>>();
 
-  const locale = $getContext(LocaleContext);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   const labelId = $id();
   // A Label inside names it. Without one, aria-label does, and the ID goes.
   const { present: labelled } = described(labelId);
   const state = $memo(getProgress(value, minValue, maxValue, locale.locale, formatOptions));
-  $setContext(LabelContext, { id: labelId });
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
 
   // An indeterminate bar has no value, so its content gets none.
   function contentState(indeterminate: boolean, percentage: number, valueText: string) {

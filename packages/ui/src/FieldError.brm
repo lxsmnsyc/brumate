@@ -14,7 +14,7 @@
 </script>
 
 <script generics="T extends AsTarget = 'span'">
-  import { $getContext, $props } from 'brumate/signals';
+  import { $getContext, $props, $store } from 'brumate/signals';
   import { FieldErrorContext } from './contexts.ts';
 
   /**
@@ -24,7 +24,8 @@
    */
   const { as = 'span', children, ...rest } = $props<FieldErrorProps<T>>();
 
-  const state = $getContext(FieldErrorContext);
+  const stateGiven = $getContext(FieldErrorContext, undefined);
+  const state = stateGiven ? $store(stateGiven) : undefined;
 </script>
 
 #if (state?.isInvalid) {

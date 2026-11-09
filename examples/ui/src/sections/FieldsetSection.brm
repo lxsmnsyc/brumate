@@ -1,0 +1,23 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Fieldset from '@brumate/ui/Fieldset.brm';
+  import Input from '@brumate/ui/Input.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import Legend from '@brumate/ui/Legend.brm';
+  import Switch from '@brumate/ui/Switch.brm';
+  import TextField from '@brumate/ui/TextField.brm';
+
+  let locked = $signal(true);
+</script>
+
+<section aria-labelledby="fieldset">
+  <h2 id="fieldset">Fieldset</h2>
+  <Switch class="box fieldset-lock" isSelected=$bind(locked)>Lock the address</Switch>
+  <Fieldset class="fieldset" isDisabled=locked>
+    <Legend>Address</Legend>
+    <TextField class="fieldset-field">
+      <Label>Street</Label>
+      <Input class="field fieldset-input" />
+    </TextField>
+  </Fieldset>
+</section>

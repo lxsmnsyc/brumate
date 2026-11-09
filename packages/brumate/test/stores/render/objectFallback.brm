@@ -1,0 +1,13 @@
+<script>
+  import { $effect, $getContext, $store } from 'brumate/signals';
+  import { Shape, madeShape } from './contexts.ts';
+  import { ran } from './runs.ts';
+
+  // The browser makes the fallback again on resume: a new object with the content the server sent.
+  const shape = $store($getContext(Shape, madeShape('x')));
+  $effect(() => {
+    ran('effect', shape.name);
+  });
+</script>
+
+<p class="name">{shape.name}</p>

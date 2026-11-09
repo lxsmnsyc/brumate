@@ -1,0 +1,8 @@
+<script>
+  import BearPropReader from './BearPropReader.brm';
+  import { badStore } from './bears.ts';
+
+  const held = badStore();
+</script>
+
+<BearPropReader given=(held) />

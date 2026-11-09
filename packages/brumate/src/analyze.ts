@@ -1,3 +1,4 @@
+import { BRIDGE_EXPORT, findBridgeCalls } from './bridges.ts';
 import { checkNesting } from './nesting.ts';
 import {
   MACROS,
@@ -34,7 +35,7 @@ import type {
   Site,
   SiteKind,
 } from './model.ts';
-import { children, getPatternNames } from './oxc.ts';
+import { children, getPatternNames, isFallbackLiteral } from './oxc.ts';
 import type { oxc } from './oxc.ts';
 
 /** Methods that change an array, a `Map` or a `Set` in place. */
@@ -74,6 +75,70 @@ const KEY_EVENTS = new Set(['keydown', 'keyup', 'keypress']);
 
 const COMPILE_TIME_FUNCTIONS = MACROS;
 
+const GATE_FORM =
+  '$gate takes a value and a function, as in $gate(value, (prev, next) => next > prev)';
+const GATE_ASYNC =
+  '$gate takes a value that is ready. Use $memo for a promise or a server function';
+
+/** The messages of BRM191 to BRM193, BRM195 and BRM197 to BRM199. */
+const STORE_FORM =
+  'Read a store with "const name = $store(source)" or "let name = $store(source)" at the top level of a script';
+const STORE_ARGUMENT = '$store takes one argument, a store';
+const TO_STORE_ARGUMENT =
+  '$toStore takes one argument, a memo, a signal or a prop, as a value of $setContext';
+const STORE_SOURCE =
+  'The source of $store gives its store at once, so it cannot await or call a server function';
+const STORE_PATTERN = '$store gives one name, not a pattern such as { a }';
+/** The kinds of names whose values the page sends when browser code reads them. */
+const SENT_KINDS = new Set<DeclarationKind>([
+  'prop',
+  'props-rest',
+  'const',
+  'let',
+  'signal',
+  'memo',
+  'async-memo',
+  'context',
+  'item',
+  'index',
+]);
+
+/**
+ * The name whose value holds the store of a `$store` source, such as `s` of `s`, `s.state` or
+ * `s?.state`, when the page sends that value. A call makes its value in the browser.
+ */
+function findSentRoot(source: oxc.Node, scope: Scope): Declaration | undefined {
+  let node = source;
+  for (;;) {
+    if (node.type === 'ChainExpression') {
+      node = node.expression as oxc.Node;
+    } else if (node.type === 'MemberExpression') {
+      node = node.object as oxc.Node;
+    } else {
+      break;
+    }
+  }
+  if (node.type !== 'Identifier') {
+    return undefined;
+  }
+  const found = lookup(scope, node.name);
+  return found && SENT_KINDS.has(found.kind) ? found : undefined;
+}
+const OPTIONAL_FORM =
+  'Read a context that may have no provider with "const name = $getContext(Context, undefined)", and a store in it with "const state = name ? $store(name.key) : undefined", with const and no other test';
+const STORE_ONLY =
+  '$store takes a store. Read the store of a context with "$store($getContext(Context))", or give a store as the fallback, "$store($getContext(Context, store(value)))"';
+const GET_CONTEXT_ARGUMENTS =
+  '$getContext takes the context, and a fallback for a read without a provider';
+
+/** True for `undefined` or `null`, which give no store. */
+function isNullish(node: oxc.Node): boolean {
+  return (
+    (node.type === 'Identifier' && node.name === 'undefined') ||
+    (node.type === 'Literal' && node.value === null && !('regex' in node && node.regex))
+  );
+}
+
 const MISPLACED: Record<string, string> = {
   $setContext: 'Call $setContext at the top level of a script',
   $title: 'Call $title at the top level of a script',
@@ -82,11 +147,14 @@ const MISPLACED: Record<string, string> = {
     'Check a prop with "const name = $isPassed(prop)" at the top level of the component script',
   $getContext:
     'Read a context with "const name = $getContext(Context)" at the top level of a script',
+  $store: STORE_FORM,
   $route: 'Read the route with "const name = $route()" at the top level of a script',
   $navigation: 'Read the navigation with "const name = $navigation()" at the top level of a script',
   $props: 'Call $props() as the value of a const in the component script',
   $signal: 'Declare a signal with "let name = $signal(value)" at the top level of a script',
   $memo: 'Declare a memo with "const name = $memo(value)" at the top level of a script',
+  $gate:
+    'Declare a gated value with "const name = $gate(value, (prev, next) => boolean)" at the top level of a script',
   $debounced:
     'Declare a debounced value with "const name = $debounced(value, ms)" at the top level of a script',
   $throttled:
@@ -104,9 +172,9 @@ const REMOVED: Record<string, string> = {
   $watch: '$watch is not supported. Use $effect',
   $settled: '$settled is not supported. Use $client',
   $cleanup: '$cleanup is not supported. Return a cleanup function from $effect or $client',
-  $store: '$store is not supported yet',
   $get: '$get is not supported. Signals cannot leave the file',
   $set: '$set is not supported. Signals cannot leave the file',
+  $hasContext: OPTIONAL_FORM,
 };
 
 const CLIENT_TRIGGERS = new Set(['visible', 'idle', 'load']);
@@ -342,6 +410,14 @@ class Analyzer {
   private readonly declarations: Declaration[] = [];
   private readonly sites: Site[] = [];
   readonly bindings: SemanticModel['bindings'] = [];
+  /** The declarations of `$store`, which `resolveStores` completes. */
+  private readonly storeReaders: Declaration[] = [];
+  /** The names that the file passes to `$getContext` or `$setContext` as the context. */
+  private readonly contextNames = new Set<string>();
+  /** The sources of `$store` that the browser runs again. See `SemanticModel.storeSources`. */
+  private readonly storeSources: Site[] = [];
+  /** The `$toStore` calls that a `$setContext` value holds. */
+  readonly storeCalls = new Set<oxc.Node>();
   private readonly diagnostics: Diagnostic[] = [];
   private readonly refs: {
     attribute: RefAttribute;
@@ -362,6 +438,20 @@ class Analyzer {
   run(): SemanticModel {
     const { imported, diagnostics } = resolveMacros(this.file);
     this.diagnostics.push(...diagnostics, ...checkMacroImports(this.file, imported));
+    // A bridge belongs to a module-level export, of a script file or of `<script module>`.
+    for (const { call, exported, statement } of this.file.moduleScript
+      ? findBridgeCalls(this.file.moduleScript.program)
+      : []) {
+      // `export default` in `<script module>` has its own error.
+      if (exported === undefined && !statement) {
+        this.report('error', BRIDGE_EXPORT, call);
+      }
+    }
+    for (const { call } of this.file.instanceScript
+      ? findBridgeCalls(this.file.instanceScript.program)
+      : []) {
+      this.report('error', BRIDGE_EXPORT, call);
+    }
     if (this.file.moduleScript) {
       this.declareModuleScript(this.file.moduleScript.program);
     }
@@ -379,6 +469,7 @@ class Analyzer {
     this.visitNodes(this.file.children, this.component);
     checkNesting(this.file, (message, at) => this.report('error', message, at));
     this.addProvidedFunctions();
+    this.resolveStores();
     this.checkBindableProps();
     this.markPromiseProps();
 
@@ -391,6 +482,7 @@ class Analyzer {
     this.resolveRefs();
     this.check();
     this.checkPromises();
+    this.checkStoreSources();
 
     return {
       module: this.module,
@@ -399,9 +491,107 @@ class Analyzer {
       declarations: this.declarations,
       sites: this.sites,
       bindings: this.bindings,
+      storeSources: this.storeSources,
       diagnostics: this.diagnostics,
       pendingCalls: this.pendingCalls,
     };
+  }
+
+  /**
+   * Finds where the browser gets the store of each `$store`. A context, or a key of the value of
+   * `$getContext`, is found again from its provider. Any other source, and the fallback of
+   * `$store($getContext(Context, fallback))`, is code that the browser runs again on resume, from
+   * the exports `z` of the update part.
+   */
+  private resolveStores(): void {
+    for (const declaration of this.storeReaders) {
+      const store = declaration.store!;
+      const guard = declaration.guard;
+
+      // `$store($getContext(Context, fallback))`: the server records the key with a provider, and
+      // the index of the fallback without one.
+      if (store.read) {
+        if (guard) {
+          this.report('error', OPTIONAL_FORM, guard);
+          continue;
+        }
+        if (store.fallback) {
+          store.link = this.storeSources.push(store.site) - 1;
+        }
+        continue;
+      }
+
+      // `g.key` for a value `g` of `$getContext`: the context, and the key of its value.
+      let argument = store.source;
+      let path: string | undefined;
+      if (
+        argument.type === 'MemberExpression' &&
+        !argument.computed &&
+        argument.object.type === 'Identifier' &&
+        argument.property.type === 'Identifier'
+      ) {
+        path = argument.property.name;
+        argument = argument.object;
+      }
+      const root =
+        argument.type === 'Identifier' ? lookup(declaration.scope, argument.name) : undefined;
+      if (root?.kind === 'context' && root.contextSource) {
+        // A value with a fallback is read only in the guard form, with the fallback `undefined`,
+        // since a guarded store re-reads the provider. A guard needs a value that may be missing.
+        const optional = root.contextFallback !== undefined;
+        const guarded =
+          guard?.type === 'Identifier' && lookup(declaration.scope, guard.name) === root;
+        if (
+          optional !== (guard !== undefined) ||
+          (guard && (!guarded || store.write)) ||
+          (optional && !isNullish(root.contextFallback!))
+        ) {
+          this.report('error', OPTIONAL_FORM, guard ?? store.source);
+          continue;
+        }
+        store.source = root.contextSource;
+        store.path = path;
+        continue;
+      }
+      if (guard) {
+        this.report('error', OPTIONAL_FORM, guard);
+        continue;
+      }
+
+      // A context is no store. The file names its contexts in `$getContext` and `$setContext`.
+      if (store.source.type === 'Identifier' && this.contextNames.has(store.source.name)) {
+        this.report('error', STORE_ONLY, store.source);
+        continue;
+      }
+
+      // Code that gives the store, which the browser runs again with the resumed values.
+      store.link = this.storeSources.push(store.site) - 1;
+      const held = findSentRoot(store.source, declaration.scope);
+      if (held) {
+        const prop = held.kind === 'prop' || held.kind === 'props-rest';
+        store.sent = `${prop ? 'the prop' : 'the value'} "${held.name}"`;
+      }
+    }
+  }
+
+  /** A source of `$store` that the browser runs again must give its store at once. */
+  private checkStoreSources(): void {
+    for (const site of this.storeSources) {
+      let server = site.awaits;
+      for (const callee of site.calls) {
+        if (callee.kind === 'server-function') {
+          server = true;
+        }
+      }
+      for (const read of site.reads) {
+        if (read.declaration.serverImport !== undefined) {
+          server = true;
+        }
+      }
+      if (server) {
+        this.report('error', STORE_SOURCE, site.node);
+      }
+    }
   }
 
   /**
@@ -987,7 +1177,24 @@ class Analyzer {
     ) {
       this.report('error', `await works with $memo, not ${awaitedName}`, awaited);
     }
-    const init = awaitedName === '$memo' ? awaited!.argument : declarator.init;
+    let init = awaitedName === '$memo' ? awaited!.argument : declarator.init;
+    // `name ? $store(name.key) : undefined` reads a store only when the optional value `name` of
+    // `$getContext(Context, undefined)` is there. `resolveStores` checks what `name` is.
+    let guard: oxc.Node | undefined;
+    if (init?.type === 'ConditionalExpression' && calleeName(init.consequent) === '$store') {
+      if (
+        kind !== 'const' ||
+        id.type !== 'Identifier' ||
+        init.test.type !== 'Identifier' ||
+        init.alternate.type !== 'Identifier' ||
+        init.alternate.name !== 'undefined'
+      ) {
+        this.report('error', OPTIONAL_FORM, declarator);
+        return;
+      }
+      guard = init.test;
+      init = init.consequent;
+    }
     const name = calleeName(init);
     const call = init as oxc.CallExpression;
 
@@ -1135,18 +1342,99 @@ class Analyzer {
       return;
     }
 
+    if (name === '$store') {
+      if (kind !== 'const' && kind !== 'let') {
+        this.report('error', STORE_FORM, declarator);
+        return;
+      }
+      if (id.type !== 'Identifier') {
+        this.report('error', STORE_PATTERN, id);
+        return;
+      }
+      const argument = call.arguments[0];
+      if (!argument || call.arguments.length !== 1 || argument.type === 'SpreadElement') {
+        this.report('error', STORE_ARGUMENT, call);
+        return;
+      }
+      // `undefined` and `null` give no store. `?.` gives `undefined` when its value is missing,
+      // which the guard on the value says instead.
+      if (isNullish(argument)) {
+        this.report('error', STORE_ONLY, argument);
+        return;
+      }
+      if (argument.type === 'ChainExpression') {
+        this.report('error', OPTIONAL_FORM, argument);
+        return;
+      }
+      // The slot holds the value of the store, which the store's sends write. `let` writes the
+      // store back: a write of the variable calls the `set` of the store.
+      const declaration = this.addDeclaration(scope, id.name, 'context', id);
+      declaration.guard = guard;
+      if (calleeName(argument) === '$getContext') {
+        // `$store($getContext(Context, fallback))`: the store of the provider, found again by the
+        // key of the context, or the store that the fallback makes when no provider is above.
+        const read = argument as oxc.CallExpression;
+        const [context, fallback] = read.arguments;
+        if (
+          !context ||
+          read.arguments.length > 2 ||
+          context.type === 'SpreadElement' ||
+          fallback?.type === 'SpreadElement'
+        ) {
+          this.report('error', GET_CONTEXT_ARGUMENTS, read);
+          return;
+        }
+        if (fallback && isFallbackLiteral(fallback)) {
+          this.report('error', STORE_ONLY, fallback);
+          return;
+        }
+        if (context.type === 'Identifier') {
+          this.contextNames.add(context.name);
+        }
+        const site = this.createSite('setup', scope, context, `store ${id.name}`);
+        declaration.store = { source: context, site, write: kind === 'let', read: true, fallback };
+        if (fallback) {
+          declaration.store.site = this.createSite('setup', scope, fallback, `fallback ${id.name}`);
+        }
+      } else {
+        const site = this.createSite('setup', scope, argument, `store ${id.name}`);
+        declaration.store = { source: argument, site, write: kind === 'let' };
+      }
+      this.storeReaders.push(declaration);
+      if (guard) {
+        this.createSite('setup', scope, guard, `guard ${id.name}`);
+      }
+      return;
+    }
+
     if (name === '$getContext') {
       if (kind !== 'const' || id.type !== 'Identifier') {
         this.report('error', 'Read a context with "const name = $getContext(Context)"', declarator);
         return;
       }
-      if (call.arguments.length !== 1) {
-        this.report('error', '$getContext takes one argument, the context', call);
+      const [argument, fallback] = call.arguments;
+      if (
+        call.arguments.length < 1 ||
+        call.arguments.length > 2 ||
+        argument?.type === 'SpreadElement' ||
+        fallback?.type === 'SpreadElement'
+      ) {
+        this.report('error', GET_CONTEXT_ARGUMENTS, call);
       }
-      this.addDeclaration(scope, id.name, 'context', id);
-      const argument = call.arguments[0];
-      if (argument) {
+      const declaration = this.addDeclaration(scope, id.name, 'context', id);
+      if (argument && argument.type !== 'SpreadElement') {
+        declaration.contextSource = argument;
+        if (argument.type === 'Identifier') {
+          this.contextNames.add(argument.name);
+        }
         this.createSite('setup', scope, argument, `context ${id.name}`);
+      }
+      // A fallback that is not a literal is code, which runs only when no provider is above.
+      if (fallback && fallback.type !== 'SpreadElement') {
+        declaration.contextFallback = fallback;
+        if (!isFallbackLiteral(fallback)) {
+          this.createSite('setup', scope, fallback, `fallback ${id.name}`);
+        }
       }
       return;
     }
@@ -1201,6 +1489,35 @@ class Analyzer {
       declaration.site = this.createSite('memo', scope, argument, `memo ${id.name}`, {
         declaration,
       });
+      return;
+    }
+
+    if (name === '$gate') {
+      if (kind !== 'const') {
+        this.report('error', `Declare ${name} with const`, declarator);
+      }
+      if (id.type !== 'Identifier') {
+        this.report('error', `${name} cannot be destructured`, id);
+        return;
+      }
+      const [argument, guardFunction] = call.arguments;
+      const declaration = this.addDeclaration(scope, id.name, 'memo', id);
+      if (
+        !argument ||
+        argument.type === 'SpreadElement' ||
+        call.arguments.length !== 2 ||
+        !guardFunction ||
+        (guardFunction.type !== 'ArrowFunctionExpression' &&
+          guardFunction.type !== 'FunctionExpression')
+      ) {
+        this.report('error', GATE_FORM, call);
+        return;
+      }
+      declaration.site = this.createSite('memo', scope, argument, `memo ${id.name}`, {
+        declaration,
+      });
+      // The guard runs only in the browser, on a change, and does not track what it reads.
+      declaration.gate = this.createSite('function', scope, guardFunction, `gate ${id.name}`);
       return;
     }
 
@@ -1307,7 +1624,7 @@ class Analyzer {
    */
   private addProvidedFunctions(): void {
     for (const site of this.sites) {
-      if (site.kind !== 'provide') {
+      if (site.kind !== 'provide' || site.store) {
         continue;
       }
       for (const part of readProvidedValues(site.node)) {
@@ -1455,7 +1772,33 @@ class Analyzer {
       this.report('error', '$setContext takes two arguments, the context and the value', call);
       return;
     }
+    if (context.type === 'Identifier') {
+      this.contextNames.add(context.name);
+    }
     this.createSite('provide', scope, value, 'provide', { extra: [context] });
+    // Each `$toStore(value)` is a site of its own, whose update writes the store. The provided
+    // value does not read it, so a context whose live values are all stores is static.
+    for (const part of readProvidedValues(value)) {
+      if (
+        part.type === 'CallExpression' &&
+        part.callee.type === 'Identifier' &&
+        part.callee.name === '$toStore'
+      ) {
+        const argument = part.arguments[0];
+        if (!argument || part.arguments.length !== 1 || argument.type === 'SpreadElement') {
+          this.report('error', TO_STORE_ARGUMENT, part);
+          continue;
+        }
+        this.storeCalls.add(part);
+        this.createSite('provide', scope, argument, 'store', { extra: [context], store: part });
+        // The `set` of a store of a signal writes the signal, as a binding does.
+        const declaration =
+          argument.type === 'Identifier' ? lookup(scope, argument.name) : undefined;
+        if (declaration?.kind === 'signal') {
+          declaration.bound = true;
+        }
+      }
+    }
   }
 
   private declareEffect(call: oxc.CallExpression, name: '$effect' | '$client', scope: Scope): void {
@@ -1873,14 +2216,14 @@ class Analyzer {
     for (const site of this.sites) {
       for (const write of site.writes) {
         const declaration = write.declaration;
-        if (!WRITABLE.has(declaration.kind) && !declaration.writable) {
+        if (!WRITABLE.has(declaration.kind) && !declaration.writable && !declaration.store?.write) {
           this.report(
             'error',
             `Cannot assign to ${declaration.kind} "${declaration.name}"`,
             write.range,
           );
         } else if (
-          (declaration.kind === 'signal' || declaration.writable) &&
+          (declaration.kind === 'signal' || declaration.writable || declaration.store?.write) &&
           !write.inFunction &&
           !WRITING_SITES.has(site.kind)
         ) {
@@ -1923,6 +2266,9 @@ class Analyzer {
         }
         if (callsServer || importsServer || site.awaits) {
           site.declaration.kind = 'async-memo';
+          if (site.declaration.gate) {
+            this.report('error', GATE_ASYNC, site.node);
+          }
         }
       }
     }
@@ -2144,7 +2490,7 @@ class Resolver {
         // A spread in markup is the only use of the whole object, so a ref in it reaches the element.
         if (
           reference?.declaration.whole &&
-          !(this.site.kind === 'spread' && node === unwrapTypes(this.site.node))
+          !(this.site.kind === 'spread' && spreadsWhole(this.site.node, node))
         ) {
           this.analyzer.report(
             'error',
@@ -2364,7 +2710,11 @@ class Resolver {
         }
         const name = node.callee.type === 'Identifier' ? node.callee.name : undefined;
         if (name && !this.isLocal(name) && !lookup(this.site.scope, name)) {
-          if (name === '$untrack') {
+          if (name === '$toStore' && !this.analyzer.storeCalls.has(node)) {
+            this.analyzer.report('error', TO_STORE_ARGUMENT, node);
+          }
+          if (name === '$untrack' || name === '$toStore') {
+            // The value of `$toStore` is read by a site of its own, which writes the store.
             this.untracked++;
             for (const argument of node.arguments) {
               this.visit(argument);
@@ -2437,18 +2787,27 @@ class Resolver {
             return;
           }
           if (name === '$isPending') {
-            const [target] = node.arguments;
-            if (target?.type !== 'Identifier' || node.arguments.length !== 1) {
-              this.analyzer.report(
-                'error',
-                '$isPending needs an async $memo as its only argument',
-                node,
-              );
+            let valid = node.arguments.length > 0;
+            for (const target of node.arguments) {
+              if (target.type !== 'Identifier') {
+                valid = false;
+              }
+            }
+            if (!valid) {
+              this.analyzer.report('error', '$isPending needs async $memos as its arguments', node);
             }
             this.visitChildren(node);
-            const reference = this.site.reads.at(-1);
-            if (target?.type === 'Identifier' && reference?.range.start === target.start) {
-              this.analyzer.pendingCalls.push({ reference, at: range(node) });
+            // Each name is a read of its own, which the call pins.
+            for (const target of node.arguments) {
+              if (target.type !== 'Identifier') {
+                continue;
+              }
+              for (const reference of this.site.reads) {
+                if (reference.range.start === target.start) {
+                  this.analyzer.pendingCalls.push({ reference, at: range(node) });
+                  break;
+                }
+              }
             }
             return;
           }
@@ -2671,6 +3030,71 @@ class Resolver {
         }
     }
   }
+}
+
+/** True for an object literal, `undefined`, `null` or `false`, the branch of a spread that adds nothing. */
+function isEmptySpread(node: oxc.Node): boolean {
+  const branch = unwrapTypes(node);
+  return (
+    branch.type === 'ObjectExpression' ||
+    (branch.type === 'Identifier' && branch.name === 'undefined') ||
+    (branch.type === 'Literal' && (branch.value === null || branch.value === false))
+  );
+}
+
+/** The branches of `?:`, `&&`, `||` and `??`, or none for another expression. */
+function spreadBranches(root: oxc.Node): oxc.Node[] {
+  if (root.type === 'ConditionalExpression') {
+    return [root.consequent, root.alternate];
+  }
+  if (root.type === 'LogicalExpression') {
+    // The left of `&&` is the condition, so it is not a branch.
+    return root.operator === '&&' ? [root.right] : [root.left, root.right];
+  }
+  return [];
+}
+
+/**
+ * True when `identifier`, the props object or the rest, is what a markup spread spreads: the
+ * expression itself, or a branch of `?:`, `&&`, `||` or `??` whose other branches add nothing
+ * (see isEmptySpread) or are the same name.
+ */
+function spreadsWhole(expression: oxc.Node, identifier: oxc.Node): boolean {
+  const root = unwrapTypes(expression);
+  if (root === identifier) {
+    return true;
+  }
+  let found = false;
+  for (const branch of spreadBranches(root)) {
+    const node = unwrapTypes(branch);
+    if (node === identifier) {
+      found = true;
+    } else if (
+      !isEmptySpread(node) &&
+      !(
+        node.type === 'Identifier' &&
+        identifier.type === 'Identifier' &&
+        node.name === identifier.name
+      )
+    ) {
+      return false;
+    }
+  }
+  return found;
+}
+
+/**
+ * The props object or the rest that a conditional markup spread holds as a branch, such as
+ * `rest` in `open ? rest : {}`. Undefined for a spread with no condition.
+ */
+export function conditionalSpread(expression: oxc.Node): oxc.Node | undefined {
+  for (const branch of spreadBranches(unwrapTypes(expression))) {
+    const node = unwrapTypes(branch);
+    if (node.type === 'Identifier' && node.name !== 'undefined') {
+      return node;
+    }
+  }
+  return undefined;
 }
 
 /** Strips parentheses and type casts: `(rest as T)` is `rest`. */

@@ -78,8 +78,9 @@
 
 ## Other derived values
 
+- `const query = $gate(input, (_, next) => next.length >= 2)` takes a new value only when the guard returns true, and the readers do not run otherwise. The first value passes.
 - `const settled = $debounced(query, 300)` takes the value once it stops changing for 300 ms. `$throttled(value, ms)` takes it at most once in `ms`. The wait is a number literal.
-- `$isPending(memo)` is true while an async memo loads.
+- `$isPending(memo)` is true while an async memo loads. `$isPending(a, b)` is true while any of them loads.
 - `let shown = $optimistic(source)` follows a memo, an action or a prop, and takes a value in the meantime.
 - `const field = $id()` is an ID that is the same on the server and in the browser.
 
@@ -232,4 +233,4 @@ A memo can hold a promise, such as the result of a server function. Markup and o
 <p>{parent}</p>
 ```
 
-`createContext` comes from `brumate/context`: `export const Theme = createContext<'light' | 'dark'>('light');` in a `.ts` file. A component reads the context of the nearest component above it, children included.
+`createContext` comes from `brumate/context`: `export const Theme = createContext<'light' | 'dark'>('theme');` in a `.ts` file. It takes only a key and has no default. A component reads the context of the nearest component above it, children included, and `$getContext` throws when none provides it. Give a fallback for a read that may have no provider: `$getContext(Theme, 'light')`.

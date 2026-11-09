@@ -523,10 +523,20 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
     }
     seen.add(site);
     const result: Declaration[] = [];
+    // A context value is read once. What a function in it reads is read when the function runs,
+    // so only the reads outside a function count, and the calls of the value do not.
+    const provided = site.kind === 'provide' && !site.store;
     for (const read of site.reads) {
-      if (read.tracked && declarationNodes.has(read.declaration)) {
+      if (
+        read.tracked &&
+        !(provided && read.inFunction) &&
+        declarationNodes.has(read.declaration)
+      ) {
         result.push(read.declaration);
       }
+    }
+    if (provided) {
+      return result;
     }
     // A call inside `$untrack` reads its values without depending on them.
     for (const callee of site.trackedCalls) {
@@ -652,8 +662,9 @@ export function buildGraph(model: SemanticModel, options: GraphOptions = {}): Gr
         (declaration.kind === 'prop' &&
           declaration.writable === true &&
           anyReached(declaration.writes, reached)) ||
-        // A provider above can change the value.
-        declaration.kind === 'context' ||
+        // The runtime changes `$route` and `$navigation`, and a store writes the slot of `$store`.
+        // The value of `$getContext` is read once.
+        (declaration.kind === 'context' && !declaration.contextSource) ||
         // A form writes the result of its server function.
         declaration.kind === 'action' ||
         // A server function can ask the client to load the memo again.

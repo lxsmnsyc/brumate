@@ -134,6 +134,8 @@ A popover holds more than a menu. This one holds a [CheckboxGroup](./checkbox-gr
 - `placement` puts it on a side of its trigger, such as `bottom`, `bottom start`, `end` or `top end`. `start` and `end` follow the direction of the locale. It flips to the other side when it does not fit, unless `shouldFlip=(false)`.
 - `offset`, `crossOffset` and `containerPadding` set the space to the trigger, along it, and to the edges of the window.
 - It is `position: fixed`, placed with `top` and `left`. It follows its trigger as the page scrolls and resizes.
+- `--anchor-gap`, `--anchor-offset` and `--anchor-padding` in CSS stand in for `offset`, `crossOffset` and `containerPadding` when the prop is not passed. They are read once, when the popover opens, and only a number or a pixel length works, such as `--anchor-gap: 4px`. `rem`, `em` and `%` are ignored.
+- It sets `max-height` to the room that is left on its side, and `overflow-y: auto`, so a long list scrolls inside the window with no CSS. A `max-height` or an `overflow` from your CSS or your `style` wins, and so does one from any stylesheet, the browser's included. They are read when it opens.
 - It shows `data-placement`, the side that it took, and sets `--trigger-width` and `--available-height`.
 
 ## Focus

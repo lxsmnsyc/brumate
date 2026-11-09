@@ -45,7 +45,8 @@
 </script>
 
 <script>
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $toStore, $untrack } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import {
     CalendarContext,
     DatePickerContext,
@@ -62,9 +63,10 @@
     unitDuration,
     watchToday,
   } from './calendar.ts';
+  import type { CalendarState } from './calendar.ts';
   import { DateStringsContext } from './date-strings.ts';
   import { ButtonContext, TextContext } from './contexts.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
 
   /**
@@ -109,8 +111,10 @@
   let { value = null } = $props<CalendarProps>();
   // In a DatePicker, the picker holds the value, and a pick goes to it. The limits of the picker
   // apply when the Calendar has none of its own.
-  const picker = $getContext(DatePickerContext);
-  const locale = $getContext(LocaleContext);
+  const pickerGiven = $getContext(DatePickerContext, undefined);
+  const picker = pickerGiven ? $store(pickerGiven.state) : undefined;
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   const timeZone = ownTimeZone ?? locale.timeZone;
   const minValue = $memo(ownMinValue ?? picker?.minValue);
   const maxValue = $memo(ownMaxValue ?? picker?.maxValue);
@@ -134,7 +138,8 @@
   // Focus is in a grid of this calendar.
   let isFocused = $signal(false);
 
-  const strings = $getContext(DateStringsContext);
+  const stringsGiven = $getContext(DateStringsContext, undefined);
+  const strings = stringsGiven ? $store(stringsGiven) : undefined;
   // The server writes its date, so the first render of the browser matches the HTML. The browser
   // then takes its own, and keeps it up to date.
   let today = $signal(todayString(timeZone));
@@ -293,7 +298,7 @@
    * gets the first date of a range that is not done.
    */
   function isDateUnavailable(date: DateString): boolean {
-    return (ownUnavailable ?? picker?.isDateUnavailable)?.(date, anchor) ?? false;
+    return (ownUnavailable ?? pickerGiven?.isDateUnavailable)?.(date, anchor) ?? false;
   }
 
   /** The first date of a value: the date, or the start of the range. */
@@ -351,7 +356,7 @@
       hovered = null;
       const next = { start: from, end: to };
       if (picker) {
-        picker.select(next);
+        pickerGiven?.select?.(next);
         return;
       }
       value = next;
@@ -359,7 +364,7 @@
       return;
     }
     if (picker) {
-      picker.select(date);
+      pickerGiven?.select?.(date);
       return;
     }
     if (value !== date) {
@@ -394,12 +399,33 @@
     }
   });
 
-  $setContext(CalendarContext, {
+  const calendarState = $memo<CalendarState>({
     id,
     locale: locale.locale,
     direction: locale.direction,
     value: typeof current === 'string' ? current : null,
     selection,
+    isFocused,
+    firstDayOfWeek,
+    errorId,
+    available,
+    autoFocus: Boolean(picker),
+    focusedDate: focusedValue,
+    start,
+    end,
+    visibleDuration,
+    minValue,
+    maxValue,
+    isDisabled,
+    isReadOnly,
+    isInvalid: invalid,
+    ariaLabel,
+    label,
+    today,
+    strings: strings ?? null,
+  });
+  $setContext(CalendarContext, {
+    state: $toStore(calendarState),
     highlight: (date: DateString) => {
       // The date under the pointer takes the focus too.
       if (anchor !== null) {
@@ -432,29 +458,11 @@
       }
       return false;
     },
-    isFocused,
-    firstDayOfWeek,
-    errorId,
-    available,
-    autoFocus: picker !== null,
     cancel: () => {
       anchor = null;
       hovered = null;
       pressedStart = null;
     },
-    focusedDate: focusedValue,
-    start,
-    end,
-    visibleDuration,
-    minValue,
-    maxValue,
-    isDisabled,
-    isReadOnly,
-    isInvalid: invalid,
-    ariaLabel,
-    label,
-    today,
-    strings,
     isDateUnavailable,
     focusDate,
     cellFocused,
@@ -472,13 +480,33 @@
       }
     },
   });
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
-      previous: { 'aria-label': strings?.previous ?? 'Previous', isDisabled: previousDisabled, onPress: () => pressed(-1) },
-      next: { 'aria-label': strings?.next ?? 'Next', isDisabled: nextDisabled, onPress: () => pressed(1) },
+      previous: {
+        'aria-label': strings?.previous ?? 'Previous',
+        isDisabled: previousDisabled,
+      },
+      next: {
+        'aria-label': strings?.next ?? 'Next',
+        isDisabled: nextDisabled,
+      },
     },
   });
-  $setContext(TextContext, { slots: { errorMessage: { id: errorId } } });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        previous: {
+          onPress: () => pressed(-1),
+        },
+        next: {
+          onPress: () => pressed(1),
+        },
+      },
+    },
+  });
+  const textGiven = $memo({ slots: { errorMessage: { id: errorId } } });
+  $setContext(TextContext, $toStore(textGiven));
 
   function focusIn() {
     isFocused = true;

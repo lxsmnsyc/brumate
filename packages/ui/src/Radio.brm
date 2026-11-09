@@ -13,11 +13,21 @@
 
 <script>
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $client, $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import {
+    $client,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
   import { prevent } from 'brumate/events';
   import VisuallyHidden from './VisuallyHidden.brm';
   import { box } from './box.brm.ts';
-  import { RadioGroupContext } from './contexts.ts';
+  import { DisabledContext, RadioGroupContext } from './contexts.ts';
   import { isFirstInvalid, onFormReset } from './fields.ts';
 
   /**
@@ -27,10 +37,14 @@
    */
   const { value, isDisabled, children, ...rest } = $props<RadioProps>();
 
-  const group = $getContext(RadioGroupContext);
+  const groupGiven = $getContext(RadioGroupContext, undefined);
+  const group = groupGiven ? $store(groupGiven.state) : undefined;
   const inputId = $id();
   const selected = $memo(group?.value === value);
-  const disabled = $memo(Boolean(isDisabled || group?.isDisabled));
+  // A disabled Fieldset or Form disables the part too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const disabled = $memo(Boolean(isDisabled || group?.isDisabled || inheritedDisabled));
   const readOnly = $memo(Boolean(group?.isReadOnly));
 
   const {
@@ -78,7 +92,7 @@
       return;
     }
     try {
-      group?.select(value);
+      groupGiven?.select?.(value);
     } finally {
       // A setter that refuses or throws leaves the old choice, so the inputs go back to it.
       if (!selected) {
@@ -101,13 +115,14 @@
   // The first invalid field of the form gets focus, as the browser does with its own message.
   function invalidated(event: Event & { currentTarget: HTMLInputElement }) {
     const input = event.currentTarget;
-    group?.onInvalid(input.validationMessage);
+    groupGiven?.onInvalid?.(input.validationMessage);
     if (isFirstInvalid(input)) {
       input.focus();
     }
   }
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <label

@@ -1,0 +1,29 @@
+<script module>
+  import type { ElementProps } from 'brumate/elements';
+
+  export interface FieldsetProps extends ElementProps<'fieldset'> {
+    /** Disables the fieldset and every field inside it. Their forms post none of their values. */
+    isDisabled?: boolean;
+    /** A Legend and the fields of the fieldset. */
+    children?: unknown;
+  }
+</script>
+
+<script>
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import { DisabledContext } from './contexts.ts';
+
+  /**
+   * A group of fields with a Legend. A disabled Fieldset disables every field, button and
+   * input inside it, and a Fieldset inside a disabled one is disabled too. The element shows
+   * `data-disabled`.
+   */
+  const { isDisabled = false, children, ...rest } = $props<FieldsetProps>();
+
+  const outer = $store($getContext(DisabledContext, store(false)));
+  const disabled = $memo(isDisabled || outer);
+  $setContext(DisabledContext, $toStore(disabled));
+</script>
+
+<fieldset disabled=(disabled || undefined) data-disabled=(disabled || undefined) {...rest}>{children}</fieldset>

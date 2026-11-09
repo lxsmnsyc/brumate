@@ -1,0 +1,17 @@
+<script>
+  import { $gate, $props } from 'brumate/signals';
+
+  const { n } = $props<{ n: number }>();
+
+  async function later(value: number): Promise<number> {
+    return value;
+  }
+
+  const value = $gate(later(n), () => true);
+</script>
+
+#try {
+  <p class="value">{value}</p>
+} #catch (error) {
+  <p class="caught">{String(error)}</p>
+}

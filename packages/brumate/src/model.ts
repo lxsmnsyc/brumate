@@ -92,6 +92,8 @@ export interface Declaration {
    * writes the memo: after the value stops changing for `ms`, or at most once every `ms`.
    */
   timing?: { kind: 'debounced' | 'throttled'; ms: number };
+  /** For `$gate(value, guard)`, the site of the guard function. */
+  gate?: Site;
   /** For `let name = $searchParam(name, options)`, the call. */
   searchParam?: oxc.CallExpression;
   /** For `let name = $signal(value)`, the value. */
@@ -114,6 +116,40 @@ export interface Declaration {
   idIndex?: number;
   /** For `const name = $isPassed(prop)`, the key of the prop. */
   passedKey?: string;
+  /** For `const field = $getContext(Context)`, the context. */
+  contextSource?: oxc.Node;
+  /** For `const field = $getContext(Context, fallback)`, the value without a provider. */
+  contextFallback?: oxc.Node;
+  /**
+   * For `const state = field ? $store(field.key) : undefined`, the name `field` in the test. The
+   * variable is `undefined` when `field` is.
+   */
+  guard?: oxc.Node;
+  /**
+   * For `const name = $store(source)` and `let name = $store(source)`: the code that gives the
+   * store or its context, the site of the argument, the key of the value of `$getContext` that
+   * holds the store, the index of the source that the browser runs again to find the store (see
+   * `SemanticModel.storeSources`), and whether `let` writes it.
+   */
+  store?: {
+    source: oxc.Node;
+    site: Site;
+    path?: string;
+    link?: number;
+    write: boolean;
+    /**
+     * For a source that reads its store from a value that the page sends, such as a prop, what
+     * that value is, as `the prop "s"`. The server refuses a store of another library there.
+     */
+    sent?: string;
+    /**
+     * True for `$store($getContext(Context, fallback))`, whose source is the context. The site is
+     * then the fallback's, when there is one, which the browser runs again without a provider.
+     */
+    read?: boolean;
+    /** The fallback of `$store($getContext(Context, fallback))`. */
+    fallback?: oxc.Node;
+  };
   /** Elements whose `ref` targets this declaration. */
   refs: { attribute: RefAttribute; element: ElementNode | DynamicTagNode; scope: Scope }[];
 }
@@ -192,6 +228,8 @@ export interface Site {
   awaits: boolean;
   /** More code of the site, such as the context of `$setContext(context, value)`. */
   extra?: oxc.Node[];
+  /** For the value of `$toStore(value)` in `$setContext`, the call: its update writes the store. */
+  store?: oxc.CallExpression;
   /**
    * For the function of `$handler(fn, ...args)`, the call, which the server
    * turns into a reference that a spread can pass on, with its arguments.
@@ -219,6 +257,12 @@ export interface SemanticModel {
   /** The `$bind` calls, with the declaration of their name and the site of their setter. */
   bindings: { call: oxc.CallExpression; declaration: Declaration; setter?: Site }[];
   diagnostics: Diagnostic[];
+  /**
+   * The sources of `$store` that are not a context or a key of a `$getContext` value. The update
+   * part exports them as functions of the scope, `z`, and the browser runs one on resume to find
+   * the store again.
+   */
+  storeSources: Site[];
   /** The `$isPending(memo)` and `$resolve(memo)` calls, with the read of their memo. */
   pendingCalls: { reference: Reference; at: Range }[];
 }

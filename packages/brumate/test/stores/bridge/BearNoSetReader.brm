@@ -1,0 +1,8 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { NoSetContext } from './bears.ts';
+
+  let state = $store($getContext(NoSetContext));
+</script>
+
+<p>{state.bears}</p>

@@ -1,0 +1,24 @@
+<script>
+  import { $memo, $setContext, $signal, $toStore } from 'brumate/signals';
+  import Day from './Day.brm';
+  import { Grid } from './grid.ts';
+
+  let selected = $signal(1);
+  let focused = $signal(1);
+  const days = Array.from({ length: 42 }, (_, index) => index + 1);
+  const state = $memo({ selected, focused });
+
+  function select(day: number) {
+    selected = day;
+    focused = day;
+  }
+
+  $setContext(Grid, { state: $toStore(state), select });
+</script>
+
+<button class="next" onClick=(() => select((selected % 42) + 1))>Next</button>
+<div role="grid">
+  #for (day of days) {
+    <Day {day} />
+  }
+</div>

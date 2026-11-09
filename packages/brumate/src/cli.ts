@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { cp } from 'node:fs/promises';
+import { cp, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { check, errorCount, formatRecord } from './check-command.ts';
@@ -23,7 +23,8 @@ With --json, prints one JSON object per line. Exits with 1 on an error.
        brumate skill [folder]
 
 Copies the skill for .brm files into folder/brumate, for coding agents.
-The folder defaults to .claude/skills.`;
+Also copies each skill in the skills folder of the installed @brumate/*
+packages, such as folder/brumate-ui. The folder defaults to .claude/skills.`;
 
 function toPosix(file: string): string {
   return file.split(path.sep).join('/');
@@ -115,6 +116,42 @@ async function checkCommand(args: string[]): Promise<number> {
   return errors === 0 ? 0 : 1;
 }
 
+/** Lists the skill folders of the @brumate/* packages in node_modules, from the current directory up. */
+async function findPackageSkills(start: string): Promise<Map<string, string>> {
+  // The name brumate is the skill of this package. A package never replaces it.
+  const found = new Map<string, string>();
+  const warned = new Set<string>();
+  let directory = start;
+  while (true) {
+    const scope = path.join(directory, 'node_modules', '@brumate');
+    // oxlint-disable-next-line no-await-in-loop -- The walk goes up in order, so the nearest node_modules wins.
+    const packages = await readdir(scope).catch(() => []);
+    for (const name of packages) {
+      const root = path.join(scope, name, 'skills');
+      // oxlint-disable-next-line no-await-in-loop -- Same walk, in order.
+      const skills = await readdir(root, { withFileTypes: true }).catch(() => []);
+      for (const skill of skills) {
+        if (!skill.isDirectory()) {
+          continue;
+        }
+        if (skill.name === 'brumate') {
+          if (!warned.has(name)) {
+            warned.add(name);
+            console.error(`@brumate/${name} has a skill named brumate, which is not copied.`);
+          }
+        } else if (!found.has(skill.name)) {
+          found.set(skill.name, path.join(root, skill.name));
+        }
+      }
+    }
+    const parent = path.dirname(directory);
+    if (parent === directory) {
+      return found;
+    }
+    directory = parent;
+  }
+}
+
 async function skillCommand(args: string[]): Promise<number> {
   if (args.length > 1 || args[0]?.startsWith('-')) {
     console.error(`brumate skill takes one folder, not ${args.join(' ')}\n\n${USAGE}`);
@@ -126,6 +163,19 @@ async function skillCommand(args: string[]): Promise<number> {
   const source = fileURLToPath(new URL('../skills/brumate', import.meta.url));
   await cp(source, target, { recursive: true, force: true });
   console.log(`Copied the skill to ${path.relative(process.cwd(), target) || '.'}`);
+
+  // Each @brumate package that has skills adds them, so they match its version.
+  const copies: Promise<void>[] = [];
+  for (const [name, from] of await findPackageSkills(process.cwd())) {
+    const to = path.join(folder, name);
+    // The line prints once the copy is done, so a failed copy shows no success.
+    copies.push(
+      cp(from, to, { recursive: true, force: true }).then(() => {
+        console.log(`Copied the skill to ${path.relative(process.cwd(), to) || '.'}`);
+      }),
+    );
+  }
+  await Promise.all(copies);
   return 0;
 }
 

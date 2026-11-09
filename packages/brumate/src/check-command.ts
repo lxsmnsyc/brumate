@@ -1,12 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { CompileError, compile } from './compile.ts';
 import type { Diagnostic } from './model.ts';
 import { findError } from './error-catalog.ts';
 import { BrumateError, getLocation } from './error.ts';
-import { collectSources } from './files.ts';
+import { BRIDGE_EXPORT, scriptBridges } from './bridges.ts';
+import { collectSources, defaultExclude, findScripts } from './files.ts';
 import { resolveFromDisk } from './modules.ts';
 import type { BrumatePackage } from './packages.ts';
 import { findPackages, resolveComponentPackage } from './packages.ts';
@@ -248,6 +249,46 @@ function typeCheck(root: string, tscBin?: string): { records: CheckRecord[]; not
   return { records };
 }
 
+/** Finds the calls of `bridge` in scripts that are not module-level exports. */
+async function checkScripts(root: string, paths: string[]): Promise<CheckRecord[]> {
+  const files = new Set<string>();
+  if (paths.length === 0) {
+    for (const file of await findScripts(root, defaultExclude)) {
+      files.add(file);
+    }
+  }
+  for (const target of paths) {
+    const absolute = path.resolve(root, target);
+    if (statSync(absolute).isDirectory()) {
+      for (const file of await findScripts(absolute, defaultExclude)) {
+        files.add(file);
+      }
+    } else if (/\.[cm]?[jt]sx?$/.test(absolute)) {
+      files.add(toPosix(absolute));
+    }
+  }
+  const entry = findError(BRIDGE_EXPORT);
+  const records: CheckRecord[] = [];
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    for (const { call, exported } of scriptBridges(source, file)) {
+      if (exported === undefined) {
+        const start = getLocation(source, call.start);
+        records.push({
+          file: toPosix(path.relative(root, file)),
+          range: { start, end: getLocation(source, call.end) },
+          severity: 'error',
+          message: BRIDGE_EXPORT,
+          code: entry?.code ?? null,
+          link: entry?.link ?? null,
+          source: 'brumate',
+        });
+      }
+    }
+  }
+  return records;
+}
+
 /** Compiles every `.brm` file under the root, and runs the type checker. */
 export async function check(root: string, options: CheckOptions = {}): Promise<CheckResult> {
   const records: CheckRecord[] = [];
@@ -286,6 +327,10 @@ export async function check(root: string, options: CheckOptions = {}): Promise<C
         packages,
       ),
     );
+  }
+
+  if (!missingOnly) {
+    records.push(...(await checkScripts(root, paths)));
   }
 
   const notes: string[] = [];

@@ -1,0 +1,9 @@
+<script>
+  import BearPropReader from './BearPropReader.brm';
+  import { bearStore } from './bears.ts';
+
+  const bear = bearStore({ bears: 5 });
+</script>
+
+<BearPropReader given=(bear) />
+<BearPropReader given=(bear) />

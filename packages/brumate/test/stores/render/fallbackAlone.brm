@@ -1,0 +1,12 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import FallbackReader from './FallbackReader.brm';
+
+  let later = $signal(false);
+</script>
+
+<button class="later" onClick=(() => (later = true))>Later</button>
+<section class="now"><FallbackReader /></section>
+#if (later) {
+  <section class="then"><FallbackReader /></section>
+}

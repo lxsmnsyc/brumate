@@ -28,7 +28,7 @@
   // The props of the target of `as`, for the type of the component.
   const { as } = $props<SeparatorProps<T>>();
 
-  const context = $getContext(SeparatorContext);
+  const context = $getContext(SeparatorContext, undefined);
   const attributes = $memo(contextAttributes(slotProps(context, slot)));
   const direction = $memo(orientation ?? slotProps(context, slot).orientation ?? 'horizontal');
   const element = $memo((as ?? (direction === 'vertical' ? 'div' : 'hr')) as AsTarget);

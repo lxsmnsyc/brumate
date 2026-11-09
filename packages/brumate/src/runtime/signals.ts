@@ -4,6 +4,7 @@
 
 import type { Context, NavigationState, Route } from './context.ts';
 import type { RoutePath, RouteParams } from './routes.ts';
+import type { Store, StoreLike } from './store.ts';
 
 function compileTimeOnly(name: string): never {
   throw new Error(`${name} works only in .brm files, which the brumate compiler compiles`);
@@ -68,6 +69,18 @@ export function $memo<T>(_value: T): MemoValue<T> {
 }
 
 /**
+ * Declares a memo that takes a new value only when the guard returns true.
+ * Otherwise it keeps its value and its readers do not run. The first value
+ * passes without the guard, and the server has no history, so it renders the
+ * value. The guard runs in the browser, on changes only, with the value the
+ * memo holds and the new one. A throw in the guard is held like a throw in
+ * a memo. The value cannot be a promise.
+ */
+export function $gate<T>(_value: T, _guard: (prev: T, next: T) => boolean): T {
+  return compileTimeOnly('$gate');
+}
+
+/**
  * Declares a memo that takes the value once it stops changing for `ms`
  * milliseconds, such as a search query while the user types. On the server,
  * and until the value first changes, it is the value.
@@ -113,8 +126,8 @@ export function $untrack<T>(_value: T): T {
   return compileTimeOnly('$untrack');
 }
 
-/** True while a new value of a memo, or of a memo it reads, loads on the client. Always false on the server. */
-export function $isPending(_memo: unknown): boolean {
+/** True while a new value of one of the memos, or of a memo one reads, loads on the client. Always false on the server. */
+export function $isPending(..._memos: unknown[]): boolean {
   return compileTimeOnly('$isPending');
 }
 
@@ -158,9 +171,46 @@ export function $setContext<T>(_context: Context<T>, _value: T): void {
   compileTimeOnly('$setContext');
 }
 
-/** Reads a context from the nearest component above that provides it, or its default value. */
-export function $getContext<T>(_context: Context<T>): T {
+/**
+ * Reads a context from the nearest component above that provides it. Without a provider it throws,
+ * or, with a second argument, gives `fallback`: `$getContext(Field, undefined)` is a read that may
+ * have no provider. A fallback that is not a literal runs only when no provider is above, once per
+ * read.
+ */
+export function $getContext<T>(_context: Context<T>): T;
+export function $getContext<T, F>(_context: Context<T>, _fallback: F): T | F;
+export function $getContext<T, F>(_context: Context<T>, _fallback?: F): T | F {
   return compileTimeOnly('$getContext');
+}
+
+/**
+ * Binds a store to a variable. The store is any value with the functions `get`, `subscribe`
+ * (which returns a function that stops it) and, optionally, `set`. The source gives a store:
+ * `$store(field.state)` for `const field = $getContext(FieldContext)`,
+ * `$store($getContext(FieldContext))` for a context that holds a store, an import, a prop, a local
+ * `store(0)` or a call. A source that gives no store throws a `TypeError`. For a context that may
+ * have no provider, guard on its value, `const s = field ? $store(field.state) : undefined` with
+ * `const field = $getContext(FieldContext, undefined)`, or give a store as the fallback,
+ * `$store($getContext(LocaleContext, store('en-US')))`. It runs once and is not tracked, and the
+ * subscription ends with the scope. On resume the browser keeps the value that the server
+ * rendered, runs the source again when it is not a context, and writes the variable once if the
+ * store's value differs.
+ *
+ * `const x = $store(source)` is one-way: the store writes the variable. `let x = $store(source)`
+ * is two-way: a write to the variable, such as `x = next` or `x++`, calls `set` of the store, and
+ * a store without `set` throws a `TypeError` when the variable registers.
+ */
+export function $store<T>(_source: StoreLike<T>): T {
+  return compileTimeOnly('$store');
+}
+
+/**
+ * The store of a memo, a signal or a prop, for a value of `$setContext`. It adds no reactive
+ * value: the provider's update writes it. A store of a signal has a `set` that writes the
+ * signal; a store of a memo or a prop is read-only.
+ */
+export function $toStore<T>(_value: T): Store<T> {
+  return compileTimeOnly('$toStore');
 }
 
 /**

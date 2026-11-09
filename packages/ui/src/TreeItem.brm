@@ -23,9 +23,11 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $id, $memo, $props, $setContext } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $id, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { ListBoxContext, focusItem, keyAttribute } from './collection.ts';
   import { ButtonContext, CheckboxGroupContext } from './contexts.ts';
+  import type { CheckboxGroupState } from './contexts.ts';
   import { interact } from './interact.brm.ts';
   import { TreeContext, TreeRowContext } from './tree.ts';
 
@@ -52,9 +54,12 @@
   } = $props<TreeItemProps<T>>();
   let { ref } = $props<TreeItemOwnProps<T>>();
 
-  const tree = $getContext(TreeRowContext);
-  const state = $getContext(TreeContext);
-  const list = $getContext(ListBoxContext);
+  const rowGiven = $getContext(TreeRowContext, undefined);
+  const tree = rowGiven ? $store(rowGiven) : undefined;
+  const treeGiven = $getContext(TreeContext, undefined);
+  const state = treeGiven ? $store(treeGiven.state) : undefined;
+  const listGiven = $getContext(ListBoxContext, undefined);
+  const list = listGiven ? $store(listGiven.state) : undefined;
   if (!tree) {
     throw new Error('A TreeItem goes in the `item` template of a Tree.');
   }
@@ -68,23 +73,26 @@
 
   function toggle() {
     if (!disabled && row.hasChildItems) {
-      state?.toggle(id);
+      treeGiven?.toggle?.(id);
     }
   }
 
   // The Checkbox of the selection is checked while the row is selected, and toggles it.
-  $setContext(CheckboxGroupContext, {
+  const checkState = $memo<CheckboxGroupState>({
     value: selected ? [''] : [],
     isDisabled: disabled || mode === 'none',
     isReadOnly: false,
     isInvalid: false,
     isRequired: false,
-    toggle: () => list?.select(id, { shift: false, toggle: true }),
+  });
+  $setContext(CheckboxGroupContext, {
+    state: $toStore(checkState),
+    toggle: () => listGiven?.select?.(id, { shift: false, toggle: true }),
     onInvalid: () => {},
   });
 
   // The chevron opens and closes the row, and focus stays on the row.
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     slots: {
       default: {},
       chevron: {
@@ -93,11 +101,20 @@
         'aria-label': row.isExpanded ? 'Collapse' : 'Expand',
         'aria-labelledby': `${chevronId} ${rowId}`,
         isDisabled: disabled,
-        onPress: (event: { target: EventTarget | null }) => {
-          toggle();
-          focusItem(
-            ((event.target as Element | null)?.closest('[role=row]') as HTMLElement) ?? undefined,
-          );
+      },
+    },
+  });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      slots: {
+        chevron: {
+          onPress: (event: { target: EventTarget | null }) => {
+            toggle();
+            focusItem(
+              ((event.target as Element | null)?.closest('[role=row]') as HTMLElement) ?? undefined,
+            );
+          },
         },
       },
     },
@@ -110,13 +127,13 @@
     if (mode === 'none') {
       onAction?.();
       if (list.hasAction) {
-        list.action(id);
+        listGiven?.action!(id);
       } else {
         toggle();
       }
       return;
     }
-    list.select(id, {
+    listGiven?.select!(id, {
       shift: event.shiftKey,
       toggle: list.selectionBehavior === 'toggle' || event.ctrlKey || event.metaKey,
     });
@@ -170,7 +187,8 @@
     }
   }
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <{as ?? 'div'}

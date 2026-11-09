@@ -1,0 +1,36 @@
+<script>
+  import { $signal } from 'brumate/signals';
+  import Button from '@brumate/ui/Button.brm';
+  import Menu from '@brumate/ui/Menu.brm';
+  import MenuItem from '@brumate/ui/MenuItem.brm';
+  import MenuTrigger from '@brumate/ui/MenuTrigger.brm';
+  import SubmenuTrigger from '@brumate/ui/SubmenuTrigger.brm';
+  import Popover from '@brumate/ui/Popover.brm';
+  import type { Key } from '@brumate/ui/collection.ts';
+
+  let menuAction = $signal<Key>('none');
+</script>
+
+<section aria-labelledby="menu">
+  <h2 id="menu">Menu</h2>
+  <MenuTrigger>
+    <Button class="press edit-trigger">Edit</Button>
+    <Popover class="popover" placement="bottom start">
+      <Menu class="action-menu" onAction=((key) => (menuAction = key))>
+        <MenuItem id="cut" class="option">Cut</MenuItem>
+        <MenuItem id="copy" class="option">Copy</MenuItem>
+        <MenuItem id="paste" class="option" isDisabled>Paste</MenuItem>
+        <SubmenuTrigger>
+          <MenuItem id="share" class="option share">Share</MenuItem>
+          <Popover class="popover">
+            <Menu class="action-menu share-menu" onAction=((key) => (menuAction = key))>
+              <MenuItem id="email" class="option">Email</MenuItem>
+              <MenuItem id="messages" class="option">Messages</MenuItem>
+            </Menu>
+          </Popover>
+        </SubmenuTrigger>
+      </Menu>
+    </Popover>
+  </MenuTrigger>
+  <p class="menu-state">{menuAction}</p>
+</section>

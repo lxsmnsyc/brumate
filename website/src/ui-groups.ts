@@ -23,6 +23,7 @@ export const groups: { title: string; pages: string[] }[] = [
       'checkbox-group',
       'radio-group',
       'switch',
+      'fieldset',
       'form',
     ],
   },

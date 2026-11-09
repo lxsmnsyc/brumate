@@ -1,0 +1,9 @@
+<script>
+  import { $setContext } from 'brumate/signals';
+  import BearNoSetReader from './BearNoSetReader.brm';
+  import { NoSetContext, readBears } from './bears.ts';
+
+  $setContext(NoSetContext, readBears({ bears: 1 }));
+</script>
+
+<BearNoSetReader />

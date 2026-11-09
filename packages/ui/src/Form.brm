@@ -6,14 +6,17 @@
     validationBehavior?: 'native' | 'aria';
     /** The errors of the server by the name of a field. A field shows them until the user edits it. */
     validationErrors?: Record<string, string | string[]>;
+    /** Disables every field and button inside the form. */
+    isDisabled?: boolean;
     /** The fields and buttons of the form. */
     children?: unknown;
   }
 </script>
 
 <script>
-  import { $memo, $props, $setContext } from 'brumate/signals';
-  import { FormContext } from './contexts.ts';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import { DisabledContext, FormContext } from './contexts.ts';
 
   /**
    * A form. It tells its fields how to validate, and gives them
@@ -22,11 +25,16 @@
    *
    * With `validationBehavior="aria"`, the form has `novalidate`, so the browser never blocks it.
    * The fields show their errors themselves.
+   *
+   * With `isDisabled`, every field and button inside is disabled.
    */
-  const { validationBehavior = 'native', validationErrors = {}, children, ...rest } = $props<FormProps>();
+  const { validationBehavior = 'native', validationErrors = {}, isDisabled = false, children, ...rest } = $props<FormProps>();
 
   const state = $memo({ validationBehavior, validationErrors });
-  $setContext(FormContext, state);
+  $setContext(FormContext, $toStore(state));
+  const outer = $store($getContext(DisabledContext, store(false)));
+  const disabled = $memo(isDisabled || outer);
+  $setContext(DisabledContext, $toStore(disabled));
 </script>
 
-<form novalidate=(validationBehavior === 'aria' || undefined) {...rest}>{children}</form>
+<form novalidate=(validationBehavior === 'aria' || undefined) data-disabled=(disabled || undefined) {...rest}>{children}</form>

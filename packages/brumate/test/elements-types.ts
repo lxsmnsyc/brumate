@@ -188,8 +188,23 @@ export const lowerKeys: ElementProps<'div'> = { onKeydown: (event) => event.key 
 export const handler: EventHandler<HTMLButtonElement, MouseEvent> = (event) =>
   event.currentTarget.value;
 export const handlerProp: ElementProps<'button'> = { onClick: handler };
+export const controlTarget: ElementProps<'input'> = {
+  onInput: (event) => event.target.value,
+  onChange: (event) => event.target.checked,
+  onBlur: (event) => event.target.value,
+};
+export const selectTarget: ElementProps<'select'> = { onChange: (event) => event.target.value };
+export const textareaTarget: ElementProps<'textarea'> = { onInput: (event) => event.target.value };
+export const otherTarget: ElementProps<'div'> = { onClick: (event) => event.target.tagName };
+export const otherInput: ElementProps<'div'> = { onInput: (event) => event.target.tagName };
+export const clickTarget: ElementProps<'input'> = { onClick: (event) => event.target.tagName };
 
 // What the types forbid.
+
+// @ts-expect-error A click on an `input` has an `Element` target, which has no `value`.
+export const clickValue: ElementProps<'input'> = { onClick: (event) => event.target.value };
+// @ts-expect-error An `input` event on a `div` has an `Element` target.
+export const divValue: ElementProps<'div'> = { onInput: (event) => event.target.value };
 
 // @ts-expect-error `a` has no `src`.
 export const unknown: ElementProps<'a'> = { src: '/a.png' };
@@ -347,3 +362,86 @@ export const ariaBadRole: ElementProps<'div'> = { role: 'menus' };
 export const ariaBadLevel: ElementProps<'div'> = { 'aria-level': 'deep' };
 // @ts-expect-error `aria-pressed` takes `mixed`, not `maybe`.
 export const ariaBadPressed: ElementProps<'button'> = { 'aria-pressed': 'maybe' };
+
+// MathML tags have the global MathML attributes and their own, and a handler reads a `MathMLElement`.
+export const mathRoot: ElementProps<'math'> = {
+  display: 'block',
+  scriptlevel: '+1',
+  mathcolor: 'red',
+  onClick: (event) => {
+    const element: MathMLElement = event.currentTarget;
+    return element.localName;
+  },
+};
+export const mathOperator: ElementProps<'mo'> = { stretchy: true, form: 'infix', lspace: '0.2em' };
+export const mathCell: ElementProps<'mtd'> = { columnspan: 2, mathvariant: 'normal' };
+export const mathTarget: ElementOf<'mfrac'> = document.createElementNS(
+  'http://www.w3.org/1998/Math/MathML',
+  'mfrac',
+);
+// @ts-expect-error `mathml` is not an attribute of `mi`.
+export const mathWrongAttribute: ElementProps<'mi'> = { mathml: 'x' };
+// @ts-expect-error `display` is `block` or `inline`.
+export const mathBadDisplay: ElementProps<'math'> = { display: 'flex' };
+// @ts-expect-error `stretchy` belongs to `mo`, not `mi`.
+export const mathOtherTag: ElementProps<'mi'> = { stretchy: true };
+export const mathHandlerNotHtml: ElementProps<'mrow'> = {
+  onClick: (event) => {
+    // @ts-expect-error a MathML element is not an `HTMLElement`.
+    const element: HTMLElement = event.currentTarget;
+    return element;
+  },
+};
+
+// The HTML attributes that were missing.
+export const meterForm: ElementProps<'meter'> = { value: 1, form: 'order' };
+export const dialogClosedby: ElementProps<'dialog'> = { open: true, closedby: 'closerequest' };
+// @ts-expect-error `closedby` is `any`, `closerequest` or `none`.
+export const dialogBadClosedby: ElementProps<'dialog'> = { closedby: 'always' };
+export const templateShadow: ElementProps<'template'> = {
+  shadowrootmode: 'open',
+  shadowrootclonable: true,
+  shadowrootdelegatesfocus: true,
+  shadowrootserializable: true,
+  shadowrootcustomelementregistry: true,
+};
+// @ts-expect-error `div` has no `shadowrootclonable`.
+export const divShadow: ElementProps<'div'> = { shadowrootclonable: true };
+export const styleType: ElementProps<'style'> = { type: 'text/css', blocking: 'render' };
+export const styleOtherType: ElementProps<'style'> = { type: 'text/scss' };
+export const linkAs: ElementProps<'link'> = { rel: 'preload', as: 'font', blocking: 'render' };
+const kind: string = 'font';
+export const linkOtherAs: ElementProps<'link'> = { as: kind };
+export const linkWorklet: ElementProps<'link'> = { as: 'audioworklet' };
+export const scriptModule: ElementProps<'script'> = { type: 'speculationrules' };
+export const scriptOther: ElementProps<'script'> = { type: 'text/plain' };
+export const metaHttpEquiv: ElementProps<'meta'> = { 'http-equiv': 'refresh', content: '5' };
+export const metaCaseHttpEquiv: ElementProps<'meta'> = { 'http-equiv': 'Content-Type' };
+export const iframeSandbox: ElementProps<'iframe'> = { sandbox: 'allow-scripts allow-forms' };
+export const iframeSandboxAll: ElementProps<'iframe'> = { sandbox: '' };
+const flags: string = 'allow-scripts';
+export const iframeComputedSandbox: ElementProps<'iframe'> = { sandbox: flags };
+export const iframeStorageSandbox: ElementProps<'iframe'> = {
+  sandbox: 'allow-storage-access-by-user-activation',
+};
+export const inputAutocomplete: ElementProps<'input'> = { autocomplete: 'given-name' };
+export const inputAutocompleteSection: ElementProps<'input'> = {
+  autocomplete: 'section-a shipping tel',
+};
+export const textareaAutocomplete: ElementProps<'textarea'> = { autocomplete: 'street-address' };
+export const selectAutocomplete: ElementProps<'select'> = { autocomplete: 'country' };
+export const buttonCommand: ElementProps<'button'> = { command: 'show-modal', commandfor: 'box' };
+export const buttonCustomCommand: ElementProps<'button'> = { command: '--rotate' };
+const cmd: string = 'close';
+export const buttonComputedCommand: ElementProps<'button'> = { command: cmd };
+export const microdata: ElementProps<'div'> = {
+  itemscope: true,
+  itemtype: 'https://schema.org/Product',
+  itemid: 'urn:isbn:1',
+  itemprop: 'name',
+  itemref: 'extra',
+};
+export const shadowParts: ElementProps<'div'> = { exportparts: 'label: lbl', autocorrect: 'off' };
+export const svgNamespaced: ElementProps<'use'> = { 'xlink:href': '#icon', 'xml:lang': 'en' };
+// @ts-expect-error `xlink:src` is not an attribute.
+export const svgBadNamespaced: ElementProps<'use'> = { 'xlink:src': '#icon' };

@@ -1,13 +1,14 @@
 // Slots and what reads them: reads and writes of a slot, memos, effects, and the updates that a
 // write runs.
 
-import { HAS_BINDINGS } from '../features.ts';
+import { HAS_BINDINGS, HAS_STORES } from '../features.ts';
 import {
   Binding,
   ElementReference,
   MemoError,
   FunctionReference,
   SlotReference,
+  gateValue,
   isAsyncIterable,
   isBinding,
   isSlotReference,
@@ -166,14 +167,41 @@ export function send(bound: unknown, value: unknown): void {
 /** The setters that were given each element, so an update of a spread does not call them again. */
 const given = new WeakMap<Element, Set<unknown>>();
 
+/**
+ * A reference is new at each update, so its text is the key. The bound arguments of `$handler`
+ * are not part of it, as `give` ignores them too.
+ */
+function setterKey(bound: unknown): unknown {
+  let reference: FunctionReference | undefined;
+  if (bound instanceof FunctionReference) {
+    reference = bound;
+  } else if (typeof bound === 'function') {
+    reference = handlerReferences.get(bound);
+  }
+  return reference ? `${reference.scope}#${reference.ref}` : bound;
+}
+
 /** Calls the setter of a binding with an element, once for each element and setter. */
 export function give(bound: unknown, element: Element): void {
-  // A reference is new at each update, so its text is the key.
-  const key = bound instanceof FunctionReference ? `${bound.scope}#${bound.ref}` : bound;
+  const key = setterKey(bound);
   const seen = given.get(element) ?? new Set();
   if (!seen.has(key)) {
     given.set(element, seen.add(key));
     send(bound, element);
+  }
+}
+
+/**
+ * Calls the setter that was given an element with `undefined`, so it can be given one again.
+ * `next` is the setter that the element has now: the same setter stays.
+ */
+export function take(bound: unknown, element: Element, next?: unknown): void {
+  const key = setterKey(bound);
+  if (next !== undefined && setterKey(next) === key) {
+    return;
+  }
+  if (given.get(element)?.delete(key)) {
+    send(bound, undefined);
   }
 }
 
@@ -549,6 +577,25 @@ export function memo(scope: Scope, slot: number, compute: () => unknown): void {
   }
 }
 
+/**
+ * Computes a memo of `$gate`. The new value replaces the old one only when the guard returns
+ * true. Otherwise the memo gives its old value back, which the write skips. The first value
+ * passes, and so does one after a held error.
+ */
+export function gate(
+  scope: Scope,
+  slot: number,
+  guard: (prev: unknown, next: unknown) => boolean,
+  compute: () => unknown,
+): void {
+  memo(scope, slot, () => {
+    const next = gateValue(compute());
+    const prev = scope.s[slot];
+    // A slot that was never written has no history: a memo the server did not compute.
+    return !(slot in scope.s) || prev instanceof MemoError || guard(prev, next) ? next : prev;
+  });
+}
+
 /** True while a new value of a memo loads, or while the server still streams its value. */
 export function pending(scope: Scope, slot: number): boolean {
   return (
@@ -743,6 +790,11 @@ export function pass<T>(write: () => T): T {
 }
 
 setPass(pass);
+
+// A store of `brumate/store` sends a value to its readers in one pass.
+if (HAS_STORES) {
+  (globalThis as { [key: symbol]: unknown })[Symbol.for('brumate.pass')] = pass;
+}
 
 // The scopes with memos that wait in the pass, so a read computes the ones of its scope.
 const dirty: Set<Scope> = new Set();

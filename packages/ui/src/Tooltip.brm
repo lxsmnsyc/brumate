@@ -30,10 +30,11 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $effect, $getContext, $id, $props, $setContext, $signal, $untrack } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal, $store, $untrack } from 'brumate/signals';
   import { ButtonContext, LinkContext } from './contexts.ts';
   import { LayerContext } from './layer.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { followTrigger, keepArrows } from './position.ts';
   import { mergeStyle } from './style.ts';
   import { TooltipTriggerContext, keepStops, runStops } from './tooltip.ts';
@@ -66,15 +67,17 @@
   } = $props<TooltipProps<T>>();
   let { ref } = $props<TooltipOwnProps<T>>();
 
-  const trigger = $getContext(TooltipTriggerContext);
-  const parentLayer = $getContext(LayerContext);
-  const locale = $getContext(LocaleContext);
+  const triggerGiven = $getContext(TooltipTriggerContext, undefined);
+  const trigger = triggerGiven ? $store(triggerGiven.state) : undefined;
+  const parentLayer = $getContext(LayerContext, undefined);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
   const layerId = $id();
   const target = $untrack(parentLayer ? `#${parentLayer.id}` : 'body');
 
   // Nothing inside is the trigger, which gets these contexts.
-  $setContext(ButtonContext, null);
-  $setContext(LinkContext, null);
+  $setContext(ButtonContext, { state: store(null) });
+  $setContext(LinkContext, { state: store(null) });
 
   let mounted = $signal(false);
   // Whether it is shown or opening, and not leaving. A change to the value it already shows, such as
@@ -99,7 +102,7 @@
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
-        trigger?.close(true);
+        triggerGiven?.close?.(true);
       }
     }
     document.addEventListener('keydown', escape, true);
@@ -186,11 +189,11 @@
   }
 
   function entered() {
-    trigger?.keep();
+    triggerGiven?.keep?.();
   }
 
   function left() {
-    trigger?.close(false);
+    triggerGiven?.close?.(false);
   }
 </script>
 

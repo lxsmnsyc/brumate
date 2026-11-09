@@ -488,9 +488,13 @@ describe('$route and $navigation', () => {
       { filename: 'T.brm' },
     );
     // Each has a slot, so the browser updates what reads it when navigation changes it.
-    expect(server).toContain('const route = $$ctx.consume($$b.routeContext, $$s1, 0);');
-    expect(server).toContain('const navigation = $$ctx.consume($$b.navigationContext, $$s1, 1);');
-    expect(render).toContain('const route = $$b.consumeContext($$b.routeContext, $$s1, 0);');
+    expect(server).toContain('const route = $$ctx.consume($$b.routeContext, $$s1, undefined, 0);');
+    expect(server).toContain(
+      'const navigation = $$ctx.consume($$b.navigationContext, $$s1, undefined, 1);',
+    );
+    expect(render).toContain(
+      'const route = $$b.consumeContext($$b.routeContext, $$s1, undefined, 0);',
+    );
   });
 
   it.each([
@@ -573,6 +577,14 @@ describe('await', () => {
     expect(server).toContain('$$b.dynamic(($$b.read($$p_user).tag)');
     expect(server).not.toContain('$$b.read($$p_user)$$b.read');
     expect(server).not.toContain('false$$b.read');
+  });
+
+  it('leaves $isPending of several memos as false on the server', () => {
+    const { server } = compile(
+      `${header.replace('$memo,', '$isPending, $memo,')}  const user = $memo(load(id));\n  const tags = $memo(loadTags(id));\n</script>\n<p>{$isPending(user, tags) ? 'p' : 'n'}</p>`,
+      { filename: 'T.brm' },
+    );
+    expect(server).toContain("$$b.insert((false ? 'p' : 'n'))");
   });
 
   it('waits for one awaited declaration where it is, and reads it after other statements', () => {

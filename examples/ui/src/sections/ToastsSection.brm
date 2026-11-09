@@ -1,0 +1,17 @@
+<script>
+  import Button from '@brumate/ui/Button.brm';
+  import Toast from '@brumate/ui/Toast.brm';
+  import ToastContent from '@brumate/ui/ToastContent.brm';
+  import ToastRegion from '@brumate/ui/ToastRegion.brm';
+  import type { QueuedToast } from '@brumate/ui/toast.ts';
+  import Text from '@brumate/ui/Text.brm';
+</script>
+
+<ToastRegion class="toasts" toast=notice transition />
+
+#template notice(toast: QueuedToast<{ title: string }>) {
+  <Toast {toast} class="toast">
+    <ToastContent><Text slot="title">{toast.content.title}</Text></ToastContent>
+    <Button slot="close" class="press toast-close">×</Button>
+  </Toast>
+}

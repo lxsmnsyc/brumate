@@ -23,7 +23,8 @@
 
 <script generics="T extends AsTarget = 'div'">
   import { SelectionIndicatorContext } from './selection-indicator.ts';
-  import { $getContext, $memo, $props, $setContext } from 'brumate/signals';
+  import type { SelectionIndicatorState } from './selection-indicator.ts';
+  import { $getContext, $memo, $props, $setContext, $store, $toStore } from 'brumate/signals';
   import { keyAttribute } from './collection.ts';
   import { interact } from './interact.brm.ts';
   import { TabsContext, getSelectedKey, tabId } from './tabs.ts';
@@ -45,7 +46,8 @@
   } = $props<TabProps<T>>();
   let { ref } = $props<TabOwnProps<T>>();
 
-  const tabs = $getContext(TabsContext);
+  const tabsGiven = $getContext(TabsContext, undefined);
+  const tabs = tabsGiven ? $store(tabsGiven.state) : undefined;
   // The first tab is the one that is selected when Tabs hold no key.
   if (tabs && tabs.registry.first === undefined && !isDisabled && !tabs.disabledKeys.includes(id)) {
     tabs.registry.first = id;
@@ -56,7 +58,7 @@
   );
 
   function pressed() {
-    tabs?.select(id);
+    tabsGiven?.select?.(id);
   }
 
   // A press, Enter and Space select the tab, as a button does.
@@ -90,7 +92,8 @@
     () => {},
   );
   // A SelectionIndicator inside marks the item while it is selected.
-  $setContext(SelectionIndicatorContext, { isSelected: selected });
+  const selection = $memo<SelectionIndicatorState>({ isSelected: selected });
+  $setContext(SelectionIndicatorContext, $toStore(selection));
 </script>
 
 <{as ?? 'div'}

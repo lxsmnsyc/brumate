@@ -15,7 +15,7 @@ import { prop, spreadProps } from './props.ts';
 import { afterInsert, destroy, destroyNodes, disposeKinds, inPlace, nextId } from './scopes.ts';
 import { hiding, options, scopes } from './state.ts';
 import type { Scope } from './state.ts';
-import { give, set } from './updates.ts';
+import { give, set, take } from './updates.ts';
 
 /**
  * Renders a `#portal` body into its target, between markers with its scope
@@ -357,22 +357,48 @@ export function attr(scope: Scope, anchor: number, name: string, value: unknown)
 /** The attributes that the last update of a spread wrote, so the next one removes those it drops. */
 const spreadNames = new WeakMap<Element, Set<string>>();
 
+/** The target of the `ref` that a spread gave each element to. */
+const forwarded = new WeakMap<Element, unknown>();
+
 /**
  * Gives the element of a spread to the signal that a `ref` in its attributes is bound to, or to
  * the setter of the binding.
  */
-function forwardRef(element: Element | null, values: Record<string, unknown>): void {
+function forwardRef(
+  element: Element | null,
+  values: Record<string, unknown>,
+  held?: unknown,
+): void {
+  if (!HAS_BINDINGS || !element) {
+    return;
+  }
   const bound = values.ref;
-  if (HAS_BINDINGS && element && isBinding(bound)) {
-    const { target } = bound;
-    if (isSlotReference(target)) {
-      const owner = scopes.get(target.scope);
-      if (owner) {
-        set(owner, target.slot, element);
-      }
-    } else {
-      give(target, element);
+  const target = isBinding(bound) ? bound.target : undefined;
+  // A spread that drops its `ref` clears the signal that it gave the element to.
+  // The first update of a spread that the server rendered knows the `ref` of the rest from `held`.
+  let before = forwarded.get(element);
+  if (!forwarded.has(element) && isBinding(held)) {
+    before = held.target;
+  }
+  if (
+    isSlotReference(before) &&
+    !(isSlotReference(target) && target.scope === before.scope && target.slot === before.slot)
+  ) {
+    const owner = scopes.get(before.scope);
+    if (owner) {
+      set(owner, before.slot, undefined);
     }
+  } else if (before && !isSlotReference(before)) {
+    take(before, element, target);
+  }
+  forwarded.set(element, target);
+  if (isSlotReference(target)) {
+    const owner = scopes.get(target.scope);
+    if (owner) {
+      set(owner, target.slot, element);
+    }
+  } else if (target) {
+    give(target, element);
   }
 }
 
@@ -395,6 +421,7 @@ export function attrs(
   anchor: number,
   values: Record<string, unknown>,
   own: string[] = [],
+  held?: unknown,
 ): void {
   // A dynamic tag that names a component passes the attributes on as props.
   if (scope.c?.[anchor] !== undefined) {
@@ -437,7 +464,7 @@ export function attrs(
     }
     spreadNames.set(element, names);
     updateSpreadEntries(element, values);
-    forwardRef(element, values);
+    forwardRef(element, values, held);
   }
 }
 

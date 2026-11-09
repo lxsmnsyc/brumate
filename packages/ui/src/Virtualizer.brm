@@ -10,7 +10,7 @@
 </script>
 
 <script>
-  import { $props, $setContext } from 'brumate/signals';
+  import { $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { VirtualizerContext } from './virtualizer.ts';
 
   /**
@@ -23,7 +23,8 @@
    */
   const { rowHeight = 32, children, ...rest } = $props<VirtualizerProps>();
 
-  $setContext(VirtualizerContext, { rowHeight });
+  const virtualizerState = $memo({ rowHeight });
+  $setContext(VirtualizerContext, $toStore(virtualizerState));
 </script>
 
 <div data-virtualizer {...rest}>{children}</div>

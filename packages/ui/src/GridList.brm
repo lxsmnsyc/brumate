@@ -2,7 +2,7 @@
   import type { AsProps, AsTarget, TargetElement } from './as.ts';
   import type { Bindable } from 'brumate/signals';
   import type { DragItem, DropTarget, ReorderEvent } from './drop.ts';
-  import type { Key, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
+  import type { Key, ListBoxState, Movement, SelectionBehavior, SelectionMode, SelectionRequest } from './collection.ts';
 
   export interface GridListOwnProps<V extends { id: Key } = { id: Key }, T extends AsTarget = 'div'> {
     /** The element, bound with `ref=$bind(signal)`. */
@@ -53,7 +53,8 @@
 </script>
 
 <script generics="V extends { id: Key }, T extends AsTarget = 'div'">
-  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal } from 'brumate/signals';
+  import { $client, $getContext, $id, $isPassed, $memo, $props, $setContext, $signal, $store, $toStore } from 'brumate/signals';
+  import { store } from 'brumate/store';
   import { prevent } from 'brumate/events';
   import { ROWS_TYPE, setDragData } from './drop.ts';
   import VisuallyHidden from './VisuallyHidden.brm';
@@ -76,7 +77,7 @@
     textOfItem,
     typeahead,
   } from './collection.ts';
-  import { LocaleContext } from './locale.ts';
+  import { DEFAULT_LOCALE, LocaleContext } from './locale.ts';
   import { tabbables } from './overlay.ts';
   import { VirtualizerContext } from './virtualizer.ts';
   import { findEnabledKeys, focusKeyIn, keyAfter, typeaheadWindowed } from './windowed.ts';
@@ -125,8 +126,10 @@
   let { selectedKeys = [] } = $props<GridListOwnProps<V, T>>();
   let { ref } = $props<GridListOwnProps<V, T>>();
 
-  const locale = $getContext(LocaleContext);
-  const virtualizer = $getContext(VirtualizerContext);
+  const localeValue = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const locale = $memo(localeValue ?? DEFAULT_LOCALE);
+  const virtualizerGiven = $getContext(VirtualizerContext, undefined);
+  const virtualizer = virtualizerGiven ? $store(virtualizerGiven) : undefined;
   // Only a list with its items as data can window, since the rows are then made from the data.
   const windowHeight = $memo(items ? (rowHeight ?? virtualizer?.rowHeight) : undefined);
   const hasAction = $isPassed(onAction);
@@ -472,20 +475,18 @@
   }, 'visible');
 
   // The rows read the selection from the state of a ListBox, which they share with its options.
-  $setContext(ListBoxContext, {
+  const listState = $memo<ListBoxState>({
     selectionMode,
     selectionBehavior,
     selectedKeys,
     disabledKeys,
-    select,
-    action,
     hasAction,
     isDraggable,
     dragging,
     dropTarget,
     isReorderable: hasReorder,
-    startDrag,
   });
+  $setContext(ListBoxContext, { state: $toStore(listState), select, action, startDrag });
 
   function findRow(target: EventTarget | null) {
     const element = ref as HTMLElement | undefined;

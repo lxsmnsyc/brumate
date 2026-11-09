@@ -187,10 +187,14 @@ function condition(
       return alias ? condition(alias, memo, pending, new Map()) : undefined;
     }
     case 'CallExpression': {
-      const [target] = test.arguments;
-      if (test.callee.type === 'Identifier' && test.callee.name === '$isPending' && target) {
-        const guard = pending.get(target.start);
-        return guard && covers(guard, memo) ? 'pending' : undefined;
+      if (test.callee.type === 'Identifier' && test.callee.name === '$isPending') {
+        // Pending while any of the memos loads, so no memo loads when it is false.
+        for (const target of test.arguments) {
+          const guard = pending.get(target.start);
+          if (guard && covers(guard, memo)) {
+            return 'pending';
+          }
+        }
       }
       return undefined;
     }

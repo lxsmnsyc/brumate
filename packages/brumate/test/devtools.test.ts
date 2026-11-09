@@ -91,23 +91,37 @@ describe('devtools', () => {
     document.body.innerHTML = '';
     document.querySelector('brumate-devtools')?.remove();
     const writes: [number, unknown][] = [];
+    const opened: string[] = [];
     globalThis.fetch = (async (input: RequestInfo | URL) => {
+      if (String(input).startsWith('/__open-in-editor')) {
+        opened.push(decodeURIComponent(String(input).split('file=')[1]!));
+        return new Response(null);
+      }
       if (String(input).startsWith('/_brumate/')) {
         return new Response(null, { status: 204, headers: { 'x-brumate-redirect': '/done' } });
       }
       return Response.json({
         name: 'Counter',
         file: 'src/Counter.brm',
+        path: '/app/src/Counter.brm',
         scopes: { 0: { label: 'component', slots: ['count', 'double'] } },
         graph: {
           nodes: [
-            { kind: 'signal', label: 'count', scope: 0, slot: 0 },
-            { kind: 'memo', label: 'double', scope: 0, slot: 1 },
-            { kind: 'binding', label: 'insert', scope: 0 },
+            { kind: 'signal', label: 'count', scope: 0, slot: 0, at: { line: 5, column: 7 } },
+            {
+              kind: 'memo',
+              label: 'double',
+              scope: 0,
+              slot: 1,
+              at: { line: 3, column: 9, file: '/app/src/counting.brm.ts' },
+            },
+            { kind: 'binding', label: 'insert', scope: 0, at: { line: 11, column: 4 } },
+            { kind: 'binding', label: 'insert', scope: 0, at: { line: 12, column: 4 } },
           ],
           edges: [
             [0, 1],
             [1, 2],
+            [0, 3],
           ],
         },
         text: 'Counter report',
@@ -140,9 +154,35 @@ describe('devtools', () => {
     // A write marks its node and the nodes that read it.
     hooks().write!(root, 0, 42);
     (shadow.querySelector('[data-tab="graph"]') as HTMLElement).click();
-    await expect.poll(() => shadow.querySelectorAll('svg g.node.hot').length).toBe(3);
-    expect(shadow.querySelectorAll('svg g.node').length).toBe(3);
-    expect(shadow.querySelectorAll('svg path.edge.hot-edge').length).toBe(2);
+    await expect.poll(() => shadow.querySelectorAll('svg g.node.hot').length).toBe(4);
+    expect(shadow.querySelectorAll('svg g.node').length).toBe(4);
+    expect(shadow.querySelectorAll('svg path.edge.hot-edge').length).toBe(3);
+
+    // A node shows its place, and its link opens the editor there: in the file of the
+    // component, or in the file of the module that gave the code.
+    const nodeBox = (index: number): Element => shadow.querySelectorAll('svg g.node')[index]!;
+    expect(nodeBox(2).textContent).toContain('11:4');
+    expect(nodeBox(2).querySelector('title')!.textContent).toContain('line 11');
+    for (const [index, file] of [
+      [0, '/app/src/Counter.brm:5:7'],
+      [1, '/app/src/counting.brm.ts:3:9'],
+    ] as const) {
+      nodeBox(index).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      const find = (): HTMLElement | undefined =>
+        [...shadow.querySelectorAll<HTMLElement>('.graph-side button')].find((button) =>
+          button.textContent!.startsWith('line '),
+        );
+      await expect.poll(() => find()?.textContent).toBe(`line ${index === 0 ? 5 : 3}`);
+      const link = find()!;
+      link.click();
+      expect(opened.at(-1)).toBe(file);
+    }
+    // Nodes that share a label are listed with their place.
+    nodeBox(0).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await expect
+      .poll(() => shadow.querySelector('.graph-side')?.textContent)
+      .toContain('insert 12:4');
+    expect(shadow.querySelector('.graph-side')!.textContent).toContain('double');
 
     // A server function call is logged, and the log shows writes by the name of their slot.
     await fetch('/_brumate/Counter_2%23save', { method: 'POST' });

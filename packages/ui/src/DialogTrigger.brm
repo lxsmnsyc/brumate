@@ -12,8 +12,9 @@
 </script>
 
 <script>
-  import { $id, $props, $setContext } from 'brumate/signals';
+  import { $id, $memo, $props, $setContext, $toStore } from 'brumate/signals';
   import { ButtonContext, OverlayTriggerContext } from './contexts.ts';
+  import type { OverlayTriggerState } from './contexts.ts';
 
   /**
    * Opens an overlay, such as a Popover or a Modal, from a Button inside it. The Button gets
@@ -48,13 +49,23 @@
     setOpen(!isOpen);
   }
 
-  $setContext(ButtonContext, {
+  const buttonState = $memo({
     id: triggerId,
     'aria-expanded': isOpen ? 'true' : 'false',
     'aria-controls': isOpen ? overlayId : undefined,
-    onPress: toggle,
   });
-  $setContext(OverlayTriggerContext, { isOpen, triggerId, overlayId, open, close });
+  $setContext(ButtonContext, {
+    state: $toStore(buttonState),
+    handlers: {
+      onPress: toggle,
+    },
+  });
+  const overlayState = $memo<OverlayTriggerState>({
+    isOpen,
+    triggerId,
+    overlayId,
+  });
+  $setContext(OverlayTriggerContext, { state: $toStore(overlayState), open, close });
 </script>
 
 {children}

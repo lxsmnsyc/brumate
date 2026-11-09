@@ -3,6 +3,7 @@
 // no table of the bundles of the app.
 
 import type { ClientModule } from './client.ts';
+import { HAS_BRIDGES } from './features.ts';
 
 /** The client modules of the bundles that loaded, by component ID. */
 const loaded = new Map<string, ClientModule>();
@@ -79,6 +80,10 @@ if (document.readyState === 'loading') {
  * Undefined for a component with no client code.
  */
 export function load(id: string): Promise<ClientModule> | undefined {
+  // A bridge of `<script module>` is named by its component, which holds its code.
+  if (HAS_BRIDGES && id.startsWith('bridge:')) {
+    id = id.slice(7);
+  }
   if (loaded.has(id)) {
     return Promise.resolve(loaded.get(id)!);
   }

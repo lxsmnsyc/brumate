@@ -1,0 +1,23 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Input from '@brumate/ui/Input.brm';
+  import Button from '@brumate/ui/Button.brm';
+  import Group from '@brumate/ui/Group.brm';
+  import Label from '@brumate/ui/Label.brm';
+  import NumberField from '@brumate/ui/NumberField.brm';
+
+  let quantity = $signal(1);
+</script>
+
+<section aria-labelledby="numberfield">
+  <h2 id="numberfield">NumberField</h2>
+  <NumberField class="quantity" name="quantity" minValue=(1) maxValue=(5) value=$bind(quantity)>
+    <Label>Quantity</Label>
+    <Group class="quantity-group">
+      <Button slot="decrement" class="press quantity-minus">-</Button>
+      <Input class="quantity-input" />
+      <Button slot="increment" class="press quantity-plus">+</Button>
+    </Group>
+  </NumberField>
+  <p class="quantity-state">{quantity}</p>
+</section>

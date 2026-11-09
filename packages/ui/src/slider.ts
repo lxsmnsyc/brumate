@@ -2,6 +2,7 @@
 // thumb.
 import { createContext } from 'brumate/context';
 import type { Context } from 'brumate/context';
+import type { StoreLike } from 'brumate/store';
 import { clamp, snapToStep } from './numbers.ts';
 
 export interface SliderState {
@@ -22,15 +23,21 @@ export interface SliderState {
   labels: string[];
   /** The thumbs that a drag moves now, which show `data-dragging`. */
   dragging: number[];
+}
+
+/** What the thumbs and the track call on their slider. */
+export interface SliderHandlers {
   setThumb: (index: number, value: number) => void;
   /** A drag of the thumb started or ended. `onChangeEnd` follows the end. */
   setDragging: (index: number, dragging: boolean) => void;
 }
 
-export const SliderContext: Context<SliderState | null> = createContext<SliderState | null>(
-  'brumate-ui:slider',
-  null,
-);
+/** What a Slider gives: the store of its state, and its handlers. Outside a slider there is no handler. */
+export interface SliderGiven extends Partial<SliderHandlers> {
+  state: StoreLike<SliderState | null>;
+}
+
+export const SliderContext: Context<SliderGiven> = createContext<SliderGiven>('brumate-ui:slider');
 
 /** The ID of the input of a thumb. */
 export function thumbId(slider: { id: string }, index: number): string {

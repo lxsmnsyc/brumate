@@ -13,32 +13,35 @@ import { $memo, $signal } from 'brumate/signals';
 
 ## Summary
 
-| Function                      | Returns                    | Where                                                                    | Guide                                                      |
-| ----------------------------- | -------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| `$props<T>()`                 | `T`                        | `const` in the component script                                          | [Components](./components.md)                              |
-| `$signal<T>(value?)`          | `T`                        | `let` at the top level of a script                                       | [State](./state.md)                                        |
-| `$memo<T>(value)`             | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md)         |
-| `$debounced(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
-| `$throttled(value, ms)`       | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
-| `$resolve(memo, options?)`    | `Promise<T>`               | A handler, an effect or a `$client` callback                             | [Async data](./async-data.md)                              |
-| `$isPending(memo)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                              |
-| `$isPassed(prop)`             | `boolean`                  | `const` in the component script                                          | [Components](./components.md#controlled-and-uncontrolled)  |
-| `$isBound(prop)`              | `boolean`                  | Any expression                                                           | [Components](./components.md#controlled-and-uncontrolled)  |
-| `$effect(callback)`           | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
-| `$client(callback, trigger?)` | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
-| `$untrack(value)`             | the value                  | Any expression                                                           | [State](./state.md)                                        |
-| `$produce(signal, recipe)`    | `void`                     | Where a signal can be written                                            | [State](./state.md)                                        |
-| `$setContext(context, value)` | `void`                     | Statement at the top level of a script                                   | [Context](./context.md)                                    |
-| `$getContext(context)`        | the value                  | `const` at the top level of a script                                     | [Context](./context.md)                                    |
-| `$route(path?)`               | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)                    |
-| `$navigation()`               | `{ pending, from, to }`    | `const` at the top level of a script                                     | [Navigation](./navigation.md#while-a-page-loads)           |
-| `$id()`                       | `string`                   | `const` at the top level of a script                                     | [Page metadata](./page-metadata.md)                        |
-| `$title(value)`               | `void`                     | Statement at the top level of a script. Replaced by `<title>` in `#head` | [Page metadata](./page-metadata.md)                        |
-| `$action(fn)`                 | the result, or `undefined` | `const` at the top level of a script                                     | [Forms](./forms.md)                                        |
-| `$optimistic(source)`         | the value of `source`      | `let` at the top level of a script                                       | [Forms](./forms.md#showing-a-guess-while-it-posts)         |
-| `$bind(value, set?)`          | a binding                  | The whole value of a prop, `value`, `checked` or `ref`                   | [Components](./components.md)                              |
-| `flush()`                     | `void`                     | A handler, an effect or a `$client` callback                             | [State](./state.md#when-bindings-run)                      |
-| `$handler(fn, ...args)`       | a handler                  | Any expression of a script or a module function                          | [Components](./components.md#handlers-that-a-script-makes) |
+| Function                          | Returns                    | Where                                                                    | Guide                                                      |
+| --------------------------------- | -------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `$props<T>()`                     | `T`                        | `const` in the component script                                          | [Components](./components.md)                              |
+| `$signal<T>(value?)`              | `T`                        | `let` at the top level of a script                                       | [State](./state.md)                                        |
+| `$memo<T>(value)`                 | `MemoValue<T>`             | `const` at the top level of a script                                     | [State](./state.md), [Async data](./async-data.md)         |
+| `$gate(value, guard)`             | `T`                        | `const` at the top level of a script                                     | [State](./state.md#gate)                                   |
+| `$debounced(value, ms)`           | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
+| `$throttled(value, ms)`           | `MemoValue<T>`             | `const` at the top level of a script                                     | [Async data](./async-data.md#waiting-for-a-pause)          |
+| `$resolve(memo, options?)`        | `Promise<T>`               | A handler, an effect or a `$client` callback                             | [Async data](./async-data.md)                              |
+| `$isPending(...memos)`            | `boolean`                  | Any expression                                                           | [Async data](./async-data.md)                              |
+| `$isPassed(prop)`                 | `boolean`                  | `const` in the component script                                          | [Components](./components.md#controlled-and-uncontrolled)  |
+| `$isBound(prop)`                  | `boolean`                  | Any expression                                                           | [Components](./components.md#controlled-and-uncontrolled)  |
+| `$effect(callback)`               | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
+| `$client(callback, trigger?)`     | `void`                     | Statement at the top level of a script                                   | [Effects](./effects.md)                                    |
+| `$untrack(value)`                 | the value                  | Any expression                                                           | [State](./state.md)                                        |
+| `$produce(signal, recipe)`        | `void`                     | Where a signal can be written                                            | [State](./state.md)                                        |
+| `$setContext(context, value)`     | `void`                     | Statement at the top level of a script                                   | [Context](./context.md)                                    |
+| `$getContext(context, fallback?)` | the value, or the fallback | `const` at the top level of a script                                     | [Context](./context.md)                                    |
+| `$store(source)`                  | the value of the store     | `const` or `let` at the top level of a script                            | [Context](./context.md#live-values-with-stores)            |
+| `$toStore(value)`                 | `Store<T>`                 | A value of `$setContext`                                                 | [Context](./context.md#live-values-with-stores)            |
+| `$route(path?)`                   | `{ url, search, params }`  | `const` at the top level of a script                                     | [Navigation](./navigation.md#the-route)                    |
+| `$navigation()`                   | `{ pending, from, to }`    | `const` at the top level of a script                                     | [Navigation](./navigation.md#while-a-page-loads)           |
+| `$id()`                           | `string`                   | `const` at the top level of a script                                     | [Page metadata](./page-metadata.md)                        |
+| `$title(value)`                   | `void`                     | Statement at the top level of a script. Replaced by `<title>` in `#head` | [Page metadata](./page-metadata.md)                        |
+| `$action(fn)`                     | the result, or `undefined` | `const` at the top level of a script                                     | [Forms](./forms.md)                                        |
+| `$optimistic(source)`             | the value of `source`      | `let` at the top level of a script                                       | [Forms](./forms.md#showing-a-guess-while-it-posts)         |
+| `$bind(value, set?)`              | a binding                  | The whole value of a prop, `value`, `checked` or `ref`                   | [Components](./components.md)                              |
+| `flush()`                         | `void`                     | A handler, an effect or a `$client` callback                             | [State](./state.md#when-bindings-run)                      |
+| `$handler(fn, ...args)`           | a handler                  | Any expression of a script or a module function                          | [Components](./components.md#handlers-that-a-script-makes) |
 
 ## `$props`
 
@@ -87,15 +90,36 @@ Declares a read-only value computed from other values.
 - Server: computed when first read. Markup outside every `#loading` body waits for a promise. A `#loading` body that reads it renders in place when it is ready, and after the rest of the page otherwise.
 - Client: computed again when the values it reads change. While a new promise loads, the memo keeps its old value. Only the latest run is written.
 
+## `$gate`
+
+```ts
+function $gate<T>(value: T, guard: (prev: T, next: T) => boolean): T;
+```
+
+A memo that takes its new value only when the guard returns true. Otherwise it keeps its value, and its readers do not run. A plain `$memo` is `$gate(x, (a, b) => !Object.is(a, b))`.
+
+```ts
+const query = $gate(input, (_, next) => next.length >= 2);
+const items = $gate(list.filter(done), (prev, next) => !sameItems(prev, next));
+```
+
+- Declare it with `const`, as a single name. It needs two arguments, a value and an arrow function or function expression.
+- The value is any expression, tracked like the value of `$memo`.
+- The first value always passes and skips the guard. The server has no history, so it renders the value. After the page resumes, the browser guards from the value the server rendered.
+- The guard runs in the browser, on changes, with the value the memo holds and the new one. It is not tracked: a signal that only the guard reads does not run the memo again.
+- A guard that throws makes the memo hold the error, as a memo whose value throws does. Each read throws it, and the error goes to the nearest `#try`.
+- The next value after a held error passes without the guard.
+- The value cannot be a promise. `await` and a call of a server function are a compile error (BRM203), and any other promise or stream throws when the value is computed, on the server and in the browser. Use `$memo` for loading.
+
 ## `$isPending`
 
 ```ts
-function $isPending(memo: unknown): boolean;
+function $isPending(...memos: unknown[]): boolean;
 ```
 
-True while a new value of the memo loads in the browser, or a value that it reads loads.
+True while a new value of any of the memos loads in the browser, or a value that one of them reads loads.
 
-- Its only argument is the name of a memo.
+- Its arguments are the names of memos, one or more. A read of each named memo counts as guarded in a handler.
 - Server: always `false`.
 - Client: `true` from the start of a load until its value is written.
 
@@ -208,15 +232,54 @@ Changes an object or array in a signal through a draft, and writes the signal wi
 function $setContext<T>(context: Context<T>, value: T): void;
 ```
 
-Provides a value of a context to the components inside this one. A statement at the top level of a script. When `value` changes in the browser, every component that reads it updates. Create the context with `createContext` from `brumate/context`.
+Provides a value of a context to the components inside this one. A statement at the top level of a script. The value is read once, so a context is static. A value that changes belongs in a store made with [`$toStore`](#tostore). The compiler reports BRM196 when `value` reads a signal, a memo, a prop or a `$bind` value that changes in the browser, outside a function. A read in a function, `$untrack` and `$toStore` are allowed. Create the context with `createContext` from `brumate/context`.
 
 ## `$getContext`
 
 ```ts
 function $getContext<T>(context: Context<T>): T;
+function $getContext<T, F>(context: Context<T>, fallback: F): T | F;
 ```
 
-Reads a context from the nearest component above that provides it, or its default value. Assign it to a `const` at the top level of a script.
+Reads a context from the nearest component above that provides it, and throws when none does. With a second argument, a read without a provider gives `fallback` instead, so `$getContext(Field, undefined)` is a read that may have no provider. A literal fallback is passed as it is, and other code runs only without a provider, once per read. Assign it to a `const` at the top level of a script. See [Context](./context.md#reading-without-a-provider).
+
+## `$store`
+
+```ts
+function $store<T>(source: StoreLike<T>): T;
+```
+
+Binds a store to a variable that holds its value. A store is any value with `get()`, `subscribe(listener)`, which returns the function that stops it, and optionally `set(value)`. See [Live values with stores](./context.md#live-values-with-stores). A store of another library crosses the page state only through [`bridge`](#bridge).
+
+- The source is any expression that gives a store: a key of the value of a `$getContext`, as in `$store(field.state)`, `$store($getContext(Level))` for a context that holds a store, an import, a prop, a value of `<script module>`, a call or `store(0)`. A context, `undefined` or `null` is a compile error ([BRM199](./errors.md#brm199)), and a source that gives no store when the page renders throws a `TypeError`. A source that awaits is a compile error ([BRM198](./errors.md#brm198)).
+- A context that may have no provider: `const field = $getContext(Field, undefined); const state = field ? $store(field.state) : undefined;`, or a store as the fallback, `$store($getContext(Locale, store('en-US')))`. Another guard is [BRM197](./errors.md#brm197).
+- It runs once and is not tracked. The subscription ends with the scope.
+- On resume the variable keeps the server's value. The browser finds a store of a context from its provider, and runs any other source, or the fallback without a provider, once with the resumed values. It subscribes, and writes the variable once if the store's value differs. It never calls `set`. A store that the source makes starts from its first value in the browser.
+- `const x = $store(source)`: the store writes the variable.
+- `let x = $store(source)`: a write to the variable, such as `x = next` or `x++`, also calls `set(next)` of the store. A store without `set` throws a `TypeError` when the variable registers.
+- The variable is a name, not a pattern.
+
+## `$toStore`
+
+```ts
+function $toStore<T>(value: T): Store<T>;
+```
+
+The store of a memo, a signal or a prop, for a value of `$setContext`: the value itself, or the value of a key of an object or an item of a list. The provider writes it when its source changes, so a change reaches every reader in one ordered update. A store of a signal has a `set` that writes the signal. A store of a memo or a prop has none.
+
+## `bridge`
+
+```ts
+// brumate/store
+function bridge<S, T>(options: {
+  create: (snapshot: T | undefined) => S;
+  get: (source: S) => T;
+  subscribe: (source: S, listener: () => void) => () => void;
+  set?: (source: S, value: T) => void;
+}): (snapshot?: T) => BridgedStore<S, T>;
+```
+
+Makes a store of another library that crosses the page state in a context, a prop or a script value. `$store` reads it like any store. The page sends the data from `get` and the name of the bridge, and the browser runs `create(snapshot)` once, at the first subscriber. `BridgedStore<S, T>` has `get`, `subscribe`, an optional `set` and `.source`, the library's store, which is `undefined` in the browser until the store has a subscriber and its module has loaded. Resume never calls `set`. `get` must give data that the page can send. The value must be a module-level export of a script file or of `<script module>` ([BRM200](./errors.md#brm200)). See [Outside stores](./context.md#outside-stores).
 
 ## `$id`
 

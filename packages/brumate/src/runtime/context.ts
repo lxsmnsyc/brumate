@@ -2,16 +2,23 @@
 export interface Context<T> {
   /** The same on the server and the client, so the page state can name the context. */
   readonly key: string;
-  /** The value of a component that reads the context without a provider above it. */
-  readonly defaultValue: T;
+  /** Only for the type: a context holds no value, and a component reads the value that a provider gave. */
+  readonly __type?: T;
 }
 
 /**
  * Creates a context. `key` names it in the page state, so it must be unique
  * in the app and the same on the server and the client.
  */
-export function createContext<T>(key: string, defaultValue: T): Context<T> {
-  return { key, defaultValue };
+export function createContext<T>(key: string): Context<T> {
+  return { key };
+}
+
+/** The error of a read of a context that no provider above the reader set. */
+export function missingContext(key: string): Error {
+  return new Error(
+    `The context "${key}" has no provider above this component. Provide it with $setContext, or in a parent that does`,
+  );
 }
 
 /** The route of the page, for `$route`. */
@@ -40,13 +47,7 @@ export const ROUTE_KEY = 'brumate.route';
 export const NAVIGATION_KEY = 'brumate.navigation';
 
 /** The context that `$route` reads. Its value comes from the request on the server, and from `location` in the browser. */
-export const routeContext: Context<Route> = createContext(ROUTE_KEY, {
-  url: new URL('http://localhost/'),
-  search: new URLSearchParams(),
-  params: {},
-});
+export const routeContext: Context<Route> = createContext(ROUTE_KEY);
 
 /** The context that `$navigation` reads. The loader writes it while a page loads. */
-export const navigationContext: Context<NavigationState> = createContext(NAVIGATION_KEY, {
-  pending: false,
-});
+export const navigationContext: Context<NavigationState> = createContext(NAVIGATION_KEY);

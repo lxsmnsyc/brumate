@@ -2,7 +2,7 @@
 // API: they can change in any release. They live here and not in the prelude of each generated
 // file, so TypeScript resolves them once for the program.
 
-import type { ElementEvents, Elements, GlobalAttributes } from 'brumate/elements';
+import type { ElementEvent, ElementEvents, Elements, GlobalAttributes } from 'brumate/elements';
 import type { BindableMark } from 'brumate/signals';
 
 /**
@@ -27,8 +27,8 @@ export type AnyTagAttributes = Omit<GlobalAttributes<HTMLElement | SVGElement>, 
 export type DynamicHandle<E> = {
   <K extends keyof ElementEvents & string>(
     event: K,
-    handler: (event: ElementEvents[K] & { currentTarget: E }) => unknown,
-  ): (event: ElementEvents[K] & { currentTarget: E }) => unknown;
+    handler: (event: ElementEvent<K, E>) => unknown,
+  ): (event: ElementEvent<K, E>) => unknown;
   <H>(event: string, handler: H): H;
 };
 

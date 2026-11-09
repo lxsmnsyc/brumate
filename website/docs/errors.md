@@ -1053,12 +1053,13 @@ const theme = $getContext(ThemeContext);
 
 ## BRM080
 
-`$getContext takes one argument, the context`
+`$getContext takes the context, and a fallback for a read without a provider`
 
-`$getContext` has no argument or more than one.
+`$getContext` has no argument or more than two.
 
 ```ts
 const theme = $getContext(ThemeContext);
+const locale = $getContext(LocaleContext, undefined);
 ```
 
 ## BRM081
@@ -1351,9 +1352,9 @@ const bound = () => $isBound(open);
 
 ## BRM108
 
-`$isPending needs an async $memo as its only argument`
+`$isPending needs async $memos as its arguments`
 
-The argument of `$isPending` is not a memo that holds a promise.
+An argument of `$isPending` is not a memo that holds a promise, or the call has none.
 
 ```brm
 const results = $memo(search(query));
@@ -1432,7 +1433,7 @@ let { ref } = $props<{ ref?: Bindable<HTMLButtonElement> }>();
 
 `"{name}" is the props object, so read one key at a time, destructure it, or spread it in markup`
 
-The props object or the rest of `$props()` is used as a whole outside a markup spread: spread in code, passed to a function, `$memo`, `$setContext`, a signal or a variable, or given as a value in markup, such as `title=rest` or `<Badge {rest} />`. The copy loses the `ref` and the live props.
+The props object or the rest of `$props()` is used as a whole outside a markup spread: spread in code, passed to a function, `$memo`, `$setContext`, a signal or a variable, or given as a value in markup, such as `title=rest` or `<Badge {rest} />`. The copy loses the `ref` and the live props. A spread may hold the rest as a branch of `?:`, `&&`, `||` or `??` next to an object literal, `undefined`, `null` or `false`, such as `{...(open ? rest : {})}`.
 
 ```brm
 const { class: className, ...rest } = $props();
@@ -1615,6 +1616,36 @@ let count = $signal(0);
 const double = $memo(count * 2);
 ```
 
+## BRM202
+
+`$gate takes a value and a function, as in $gate(value, (prev, next) => next > prev)`
+
+`$gate` does not have a value and a guard function as its two arguments. The guard is an arrow function or a function expression.
+
+```ts
+const query = $gate(input, (_, next) => next.length >= 2);
+```
+
+## BRM203
+
+`$gate takes a value that is ready. Use $memo for a promise or a server function`
+
+The value of `$gate` awaits or calls a server function. The compiler catches these two; any other promise or stream, such as a call of a local async function, throws when the value is computed. A gate holds a value that the guard can compare, so it does not wait for one.
+
+```ts
+const query = $gate(input, (_, next) => next.length >= 2);
+```
+
+## BRM204
+
+`Declare a gated value with "const name = $gate(value, (prev, next) => boolean)" at the top level of a script`
+
+`$gate` is inside a function or a block of code.
+
+```ts
+const query = $gate(input, (_, next) => next.length >= 2);
+```
+
 ## BRM133
 
 `Declare a debounced value with "const name = $debounced(value, ms)" at the top level of a script`
@@ -1727,14 +1758,101 @@ $effect(() => {
 });
 ```
 
-## BRM143
+## BRM191
 
-`$store is not supported yet`
+`Read a store with "const name = $store(source)" or "let name = $store(source)" at the top level of a script`
 
-`$store` does not exist.
+`$store` is not the whole value of a `const` or `let` at the top level of a script.
 
 ```ts
-let todos = $signal([]);
+import { theme } from './theme';
+const value = $store(theme);
+```
+
+## BRM192
+
+`$store takes one argument, a store`
+
+`$store` has no argument, or more than one.
+
+```ts
+const field = $getContext(Field);
+const state = $store(field.state);
+```
+
+## BRM193
+
+`$toStore takes one argument, a memo, a signal or a prop, as a value of $setContext`
+
+`$toStore` has no argument or more than one, or it is not a value of `$setContext`, alone or as a key of an object or an item of a list.
+
+```ts
+$setContext(Field, { state: $toStore(state), pick });
+```
+
+## BRM195
+
+`$store gives one name, not a pattern such as { a }`
+
+`$store` initializes a pattern.
+
+```ts
+const value = $store(source);
+```
+
+## BRM196
+
+`The context value reads "{name}", which changes, but a context value is read once. Put it in a store with $toStore, or read it inside a function`
+
+The value of `$setContext` reads a signal, a memo, a prop or a `$bind` value that changes in the browser, and a context is read once, so readers would keep the first value. A call or an immediately invoked function in the value that reads such a name is not reported, and freezes the same way.
+
+```ts
+$setContext(Field, { state: $toStore(state), pick: () => value });
+```
+
+## BRM197
+
+`Read a context that may have no provider with "const name = $getContext(Context, undefined)", and a store in it with "const state = name ? $store(name.key) : undefined", with const and no other test`
+
+A read of a context that may have no provider has another shape: `$hasContext`, which is removed, `$store(name?.key)`, a `let` or another test in the guard, an `else` that is not `undefined`, a guard on a name that is not the optional value of `$getContext(Context, undefined)`, or a key of that value read without the guard.
+
+```ts
+const field = $getContext(Field, undefined);
+const state = field ? $store(field.state) : undefined;
+```
+
+## BRM198
+
+`The source of $store gives its store at once, so it cannot await or call a server function`
+
+The source of `$store` awaits, or calls a server function. The browser runs the source again when the page resumes, and links the store in the same pass, so the source must give the store, not a promise of it.
+
+```ts
+import { theme } from './theme';
+const value = $store(theme);
+```
+
+## BRM199
+
+`$store takes a store. Read the store of a context with "$store($getContext(Context))", or give a store as the fallback, "$store($getContext(Context, store(value)))"`
+
+`$store` reads a context that the file names in `$getContext` or `$setContext`, `undefined`, `null`, or `$getContext` with a literal fallback, which is no store. A context that the file only imports is found when the page renders, as a `TypeError`.
+
+```ts
+const level = $store($getContext(LevelContext));
+const locale = $store($getContext(LocaleContext, store('en-US')));
+```
+
+## BRM200
+
+`The value of bridge() must be a module-level export of a script file or of <script module>, as "export const name = bridge({ … })"`
+
+A call of `bridge` from `brumate/store` is in the script of a component, or in a function, or is not the value of an exported `const`. The page state names a bridge by its module and its export, so the browser can load it.
+
+```ts
+// bears.ts, or the <script module> of a component
+import { bridge } from 'brumate/store';
+export const bearStore = bridge({ create, get, subscribe });
 ```
 
 ## BRM144

@@ -38,6 +38,7 @@ const config: InlineConfig = {
       'brumate/events': runtime('events'),
       'brumate/serial': runtime('values'),
       'brumate/stream': runtime('gather'),
+      'brumate/store': runtime('store'),
     },
   },
 };
@@ -51,6 +52,11 @@ beforeAll(async () => {
 afterAll(async () => {
   await server.close();
 });
+
+interface GraphNode {
+  label: string;
+  at?: { line: number; column: number; file?: string };
+}
 
 describe('vite plugin', () => {
   it('compiles .brm files for the server', async () => {
@@ -112,6 +118,37 @@ describe('vite plugin', () => {
     expect(missing.status).toBe(404);
   });
 
+  it('places each node of the graph in a file, and nodes from a module in the module', async () => {
+    const http = createHTTPServer(server.middlewares);
+    await new Promise<void>((resolve) => http.listen(0, resolve));
+    const { port } = http.address() as AddressInfo;
+    async function get(id: string): Promise<{ graph: { nodes: GraphNode[] } }> {
+      const response = await fetch(`http://localhost:${port}/__brumate/inspect/${id}`);
+      return (await response.json()) as { graph: { nodes: GraphNode[] } };
+    }
+    const counter = await get('Counter_m86gta');
+    const page = await get('UsesCounter_1euyiut');
+    http.close();
+    function place(nodes: GraphNode[], label: string): GraphNode['at'] {
+      return nodes.find((node) => node.label === label)?.at;
+    }
+    // The name of a signal or a memo, and the start of the markup that reads it.
+    expect(place(counter.graph.nodes, 'count')).toEqual({ line: 5, column: 7 });
+    expect(place(counter.graph.nodes, 'double')).toEqual({ line: 6, column: 9 });
+    for (const node of counter.graph.nodes) {
+      expect(node.at).toMatchObject({ line: expect.any(Number) });
+      expect(node.at?.file).toBeUndefined();
+    }
+    // Code from `counting.brm.ts` has its place in that file, not in the component.
+    for (const node of page.graph.nodes) {
+      expect(node.at).toBeDefined();
+    }
+    const fromModule = page.graph.nodes.filter((node) => node.at?.file !== undefined);
+    expect(fromModule.length).toBeGreaterThan(0);
+    expect(fromModule[0]!.at!.file).toMatch(/\/test\/vite-app\/counting\.brm\.ts$/);
+    expect(place(page.graph.nodes, 'base')).toEqual({ line: 5, column: 7 });
+  });
+
   it('serves the shared code of a module of reactive logic', async () => {
     const shared = await server.transformRequest('/counting.brm.ts?brumate-shared');
     expect(shared?.code).toContain('$$b.cells($$s, $$k, ["count"])');
@@ -124,6 +161,32 @@ describe('vite plugin', () => {
     const module = await load('Counter_m86gta');
     expect(module.id).toBe('Counter_m86gta');
     expect(typeof module.h4).toBe('function');
+  });
+
+  it('names a bridge by its module and loads the module by that name', async () => {
+    const module = await server.ssrLoadModule('/bridged.ts');
+    expect(module.counter.i).toBe('bridge:bridged.ts#counter');
+    const { load } = await server.ssrLoadModule('virtual:brumate/manifest');
+    const loaded = await load('bridge:bridged.ts');
+    expect(loaded.counter.i).toBe('bridge:bridged.ts#counter');
+  });
+
+  it('names a bridge of <script module> by its component, and loads the component by it', async () => {
+    const page = await server.ssrLoadModule('/BridgePage.brm');
+    const { state } = await render(page.default, {});
+    expect(state).toMatch(/bridge:BridgePage_\w+#modCounter/);
+    expect(state).not.toContain(root);
+    // The browser resolves the name with the loader of the manifest.
+    const registry = Symbol.for('brumate.bridges');
+    delete (globalThis as { [key: symbol]: unknown })[registry];
+    const { load } = await server.ssrLoadModule('virtual:brumate/manifest');
+    const id = /bridge:(BridgePage_\w+)#modCounter/.exec(state)![1]!;
+    await load(`bridge:${id}`);
+    const names = [...(globalThis as { [key: symbol]: Map<string, unknown> })[registry]!.keys()];
+    expect(names).toContain(`bridge:${id}#modCounter`);
+    // The shared part holds the naming call once.
+    const shared = await server.transformRequest('/BridgePage.brm?brumate-client&part=shared');
+    expect(shared!.code.split('modCounter"').length - 1).toBe(1);
   });
 
   it('answers server function calls in development', async () => {
@@ -789,6 +852,41 @@ describe('prerendering', () => {
     expect(assets.join('')).not.toContain('installDevtools');
     // A page that no link leads to is not rendered.
     expect(() => read('hidden/index.html')).toThrow('ENOENT');
+  });
+});
+
+describe('bridge in a build', () => {
+  it('loads the module of a bridge by its name, from the client entry', async () => {
+    const app = fileURLToPath(new URL('./.output/bridge-app/', import.meta.url));
+    rmSync(app, { recursive: true, force: true });
+    mkdirSync(`${app}src/routes`, { recursive: true });
+    writeFileSync(`${app}src/client.ts`, "import 'virtual:brumate/start';\n");
+    writeFileSync(`${app}src/server.ts`, "export { handle } from 'virtual:brumate/routes';\n");
+    writeFileSync(
+      `${app}src/bears.ts`,
+      "import { bridge } from 'brumate/store';\nexport const bears = bridge({ create: (snapshot?: number) => ({ value: snapshot ?? 0 }), get: (source) => source.value, subscribe: () => () => {} });\n",
+    );
+    writeFileSync(
+      `${app}src/routes/index.brm`,
+      "<script>\n  import { $signal } from 'brumate/signals';\n  let count = $signal(0);\n</script>\n<button onClick=(() => count++)>{count}</button>\n",
+    );
+    const shared: InlineConfig = { ...config, root: app, plugins: [brumate({})] };
+    writeFileSync(
+      `${app}src/routes/index.brm`,
+      "<script module>\n  import { bridge } from 'brumate/store';\n  export const modCounter = bridge({ create: (snapshot?: number) => ({ value: snapshot ?? 0 }), get: (source) => source.value, subscribe: () => () => {} });\n</script>\n<script>\n  import { $signal, $store } from 'brumate/signals';\n  let count = $signal(0);\n  const held = modCounter(2);\n  const value = $store(held);\n</script>\n<button onClick=(() => count++)>{count} {value}</button>\n",
+    );
+    await build({
+      ...shared,
+      build: { outDir: 'dist/client', manifest: true, rolldownOptions: { input: 'src/client.ts' } },
+    });
+    const code = readdirSync(`${app}dist/client/assets`)
+      .map((file) => readFileSync(`${app}dist/client/assets/${file}`, 'utf8'))
+      .join('\n');
+    // The module has its own chunk, and the bridge has the name that the page state sends.
+    expect(code).toContain('bridge:src/bears.ts#bears');
+    expect(code).toContain('bridge:src/bears.ts');
+    // The shared part of the component with a bridge in `<script module>` names it once.
+    expect(code.match(/#modCounter[`"']/g)).toHaveLength(1);
   });
 });
 

@@ -106,6 +106,30 @@ Compute the starting value in the call instead: `let count = $signal(5)`.
 
 A memo can also hold a promise, such as the result of a server function. [Async data](./async-data.md) covers that.
 
+## `$gate`
+
+`$gate(value, guard)` is a memo that takes its new value only when the guard returns true. Otherwise it keeps its value, and its readers do not run. The guard gets the value the memo holds and the new one.
+
+```brm
+<script>
+  import { $gate, $signal } from 'brumate/signals';
+
+  let input = $signal('');
+  let list = $signal(['a', 'b']);
+  // Search only from two letters on.
+  const query = $gate(input, (_, next) => next.length >= 2);
+  // A new array with the same items changes nothing.
+  const items = $gate(list.slice(), (prev, next) => prev.join() !== next.join());
+</script>
+
+<input value=input onInput=((event) => (input = event.currentTarget.value))>
+<p>{query}: {items.length} items</p>
+```
+
+- The first value always passes, so the page renders with the value as it is, and the browser guards the changes after it resumes.
+- The guard is not tracked. A throw in it is held like the error of a memo, and the nearest `#try` catches it. The next value after a held error passes without the guard.
+- The value cannot be a promise. The compiler rejects `await` and server function calls, and any other promise or stream throws when the value is computed. Use `$memo` for those.
+
 ## `$produce`
 
 A signal changes when you assign a new value. To change one item of an array or one field of an object, `$produce` gives you a draft that you can change in place, and writes the result as a new value:
@@ -221,7 +245,7 @@ A handler is one update pass. The page changes when the handler returns, not at 
 - Changing a value in place does not update anything, because the signal still holds the same object. `todos.push(todo)` and `todo.done = true` are compile warnings, such as `This changes the value of todos in place, so nothing that reads it updates`. Assign a new value, or use `$produce`.
 - A signal never leaves its file. A function receives the value of a signal, not the signal, so the compiler can see every read and write. To let another component change a value, pass it a function, such as `onChange=((value) => (count = value))`. See [Components](./components.md).
 - Functions imported from other modules work with values. `format(count)` gets a number, and cannot write `count`.
-- Each signal holds one value. There are no stores: an object or array changes by assigning a new value, or with `$produce`.
+- Each signal holds one value. An object or array changes by assigning a new value, or with `$produce`. A value that other code changes, such as a store of another library, comes in with [`$store`](./context.md#live-values-with-stores).
 - Declare signals and memos at the top level of a `<script>`, or of the script of a block. A declaration inside a function is a compile error.
 
 ## What the browser gets

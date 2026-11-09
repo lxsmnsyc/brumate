@@ -1,0 +1,44 @@
+<script>
+  import { $bind, $signal } from 'brumate/signals';
+  import Checkbox from '@brumate/ui/Checkbox.brm';
+  import CheckboxGroup from '@brumate/ui/CheckboxGroup.brm';
+  import FieldError from '@brumate/ui/FieldError.brm';
+  import Form from '@brumate/ui/Form.brm';
+  import Radio from '@brumate/ui/Radio.brm';
+  import RadioGroup from '@brumate/ui/RadioGroup.brm';
+  import Switch from '@brumate/ui/Switch.brm';
+  import { Order } from '../order.ts';
+  import Button from '@brumate/ui/Button.brm';
+  import Label from '@brumate/ui/Label.brm';
+
+  let toppings = $signal<string[]>([]);
+  let size = $signal<string | null>(null);
+  let dark = $signal(false);
+</script>
+
+<section aria-labelledby="boxes">
+  <h2 id="boxes">Checkbox, CheckboxGroup, RadioGroup and Switch</h2>
+  <Form class="pizza">
+    <CheckboxGroup class="toppings" name="toppings" value=$bind(toppings) isRequired>
+      <Label>Toppings</Label>
+      <Checkbox class="box" value="cheese"><span class="mark" aria-hidden="true"></span>Cheese</Checkbox>
+      <Checkbox class="box" value="olives"><span class="mark" aria-hidden="true"></span>Olives</Checkbox>
+      <FieldError class="error" />
+    </CheckboxGroup>
+    <RadioGroup class="sizes" name="size" value=$bind(size) orientation="horizontal">
+      <Label>Size</Label>
+      <Radio class="box" value="small"><span class="mark round" aria-hidden="true"></span>Small</Radio>
+      <Radio class="box" value="large"><span class="mark round" aria-hidden="true"></span>Large</Radio>
+    </RadioGroup>
+    <Button class="press" type="submit">Order the pizza</Button>
+  </Form>
+  <p class="pizza-value">{toppings.join(', ') || 'No toppings'}, {size ?? 'no size'}.</p>
+  <RadioGroup class="crust" name="crust" value="thin" isReadOnly orientation="horizontal">
+    <Label>Crust, set by the shop</Label>
+    <Radio class="box" value="thin"><span class="mark round" aria-hidden="true"></span>Thin</Radio>
+    <Radio class="box" value="thick"><span class="mark round" aria-hidden="true"></span>Thick</Radio>
+  </RadioGroup>
+  <Checkbox class="box sauce" isSelected isReadOnly><span class="mark" aria-hidden="true"></span>Sauce, always on</Checkbox>
+  <Switch class="box theme" isSelected=$bind(dark)><span class="track" aria-hidden="true"></span>Dark mode</Switch>
+  <p class="theme-value">Dark mode is {dark ? 'on' : 'off'}.</p>
+</section>

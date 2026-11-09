@@ -1,0 +1,14 @@
+<script>
+  import I18nProvider from '../../src/I18nProvider.brm';
+  import Label from '../../src/Label.brm';
+  import Toolbar from '../../src/Toolbar.brm';
+  import ReadFallbackLabel from './ReadFallbackLabel.brm';
+</script>
+
+<Label class="alone">Alone</Label>
+<ReadFallbackLabel />
+<Toolbar class="ltr"><button class="a">A</button><button class="b">B</button></Toolbar>
+<I18nProvider locale="ar">
+  <Toolbar class="rtl"><button class="c">C</button><button class="d">D</button></Toolbar>
+</I18nProvider>
+<Toolbar class="outer"><Toolbar class="inner"><button>E</button></Toolbar></Toolbar>

@@ -1,8 +1,10 @@
 <script>
-  import { $getContext } from 'brumate/signals';
-  import { LocaleContext } from '../../src/locale.ts';
+  import { $getContext, $memo, $store } from 'brumate/signals';
+  import { store } from 'brumate/store';
+  import { DEFAULT_LOCALE, LocaleContext } from '../../src/locale.ts';
 
-  const value = $getContext(LocaleContext);
+  const given = $store($getContext(LocaleContext, store(DEFAULT_LOCALE)));
+  const value = $memo(given ?? DEFAULT_LOCALE);
 </script>
 
 <span>{value.locale} {value.direction}</span>

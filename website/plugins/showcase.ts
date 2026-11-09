@@ -54,8 +54,8 @@ export default function showcase(): Plugin {
       const empty = '<div class="code"></div>';
       const summary = {
         name: report.name,
-        roots: report.roots.map((entry) => ({ label: entry.label, reason: entry.reason })),
-        changes: report.changes.map((entry) => ({ label: entry.label, reason: entry.reason })),
+        roots: pickReasons(report.roots),
+        changes: pickReasons(report.changes),
         state: report.state,
         staticMarkup: report.staticMarkup,
         sizes: report.sizes,
@@ -124,4 +124,15 @@ function highlightReport(text: string): string {
 
 function escape(text: string): string {
   return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}
+
+/** The label and the reason of each entry, without the rest of the entry. */
+function pickReasons(
+  entries: { label: string; reason: string }[],
+): { label: string; reason: string }[] {
+  const picked: { label: string; reason: string }[] = [];
+  for (const entry of entries) {
+    picked.push({ label: entry.label, reason: entry.reason });
+  }
+  return picked;
 }

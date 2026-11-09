@@ -1,0 +1,17 @@
+<script>
+  import { $memo, $setContext, $signal, $toStore } from 'brumate/signals';
+  import HasFieldReader from './HasFieldReader.brm';
+  import { Field } from './contexts.ts';
+
+  let count = $signal(0);
+  const state = $memo({ count });
+
+  function bump() {
+    count++;
+  }
+
+  $setContext(Field, { state: $toStore(state), bump });
+</script>
+
+<p class="count">{count}</p>
+<HasFieldReader />

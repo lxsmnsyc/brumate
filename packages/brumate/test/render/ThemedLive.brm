@@ -1,0 +1,8 @@
+<script>
+  import { $getContext, $store } from 'brumate/signals';
+  import { ThemeStore } from './theme';
+
+  const theme = $store($getContext(ThemeStore));
+</script>
+
+<span class="themed">{theme}</span>

@@ -1,7 +1,8 @@
 // Handlers of events: the handler of an element, the handlers that one event merges from spreads
 // and props, and the calls of server functions from forms and `rpc`.
 
-import { HAS_BINDINGS, HAS_CHILDREN, HAS_TEMPLATES } from '../features.ts';
+import { HAS_BINDINGS, HAS_CHILDREN, HAS_STORES, HAS_TEMPLATES } from '../features.ts';
+import { isStore } from '../store.ts';
 import {
   actionAttributes,
   bindEntry,
@@ -98,18 +99,25 @@ export function callable(value: unknown, seen: Set<object>): unknown {
     // The code of the components on the page loads with the page, and handlers and updates wait
     // for it. So the function runs at once and returns its result, as on the server.
     // An arrow, to keep the narrowing of `value`.
+    // The scope is kept once found, as `handlerProp` keeps its scope, so a context value that a
+    // reader holds still works after the provider's scope goes while the reader's markup stays.
+    let kept = scopes.get(value.scope);
     const handler = (...args: unknown[]): unknown => {
+      kept ??= scopes.get(value.scope);
       const fn = loadedFunction(value.ref);
       const all = [...(value.args ?? []), ...args];
-      return fn
-        ? fn(scopes.get(value.scope), ...all)
-        : call(value.ref, scopes.get(value.scope), all);
+      return fn ? fn(kept, ...all) : call(value.ref, kept, all);
     };
     handlerReferences.set(handler, value);
     return handler;
   }
   if (typeof value === 'object' && value !== null && !seen.has(value)) {
     seen.add(value);
+    // The value of a store can hold handlers too.
+    if (HAS_STORES && isStore(value)) {
+      value.v = callable(value.v, seen);
+      return value;
+    }
     const prototype = Object.getPrototypeOf(value);
     if (Array.isArray(value) || prototype === Object.prototype || prototype === null) {
       const record = value as Record<string, unknown>;

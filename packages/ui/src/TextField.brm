@@ -57,8 +57,20 @@
 </script>
 
 <script generics="T extends AsTarget = 'div'">
-  import { $client, $effect, $getContext, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
   import {
+    $client,
+    $effect,
+    $getContext,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $store,
+    $toStore,
+  } from 'brumate/signals';
+  import {
+    DisabledContext,
     FieldErrorContext,
     FormContext,
     InputContext,
@@ -100,7 +112,7 @@
   const {
     name,
     type = 'text',
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     isRequired = false,
     isInvalid,
@@ -118,6 +130,10 @@
     children,
     ...rest
   } = $props<TextFieldOwnProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   // The props of the target of `as`, for the type of the component.
   const { as = 'div' } = $props<TextFieldProps<T>>();
   // A field of createForm gives the value that was posted, or its default value.
@@ -125,7 +141,8 @@
   // The value that a reset of the form gives back.
   let initial = $signal(value);
 
-  const form = $getContext(FormContext);
+  const formGiven = $getContext(FormContext, undefined);
+  const form = formGiven ? $store(formGiven) : undefined;
   const behavior = $memo(validationBehavior ?? form?.validationBehavior ?? 'native');
   const inputId = $id();
   const labelId = $id();
@@ -264,27 +281,30 @@
     placeholder,
   });
 
-  $setContext(LabelContext, { id: labelId, for: id });
+  const labelGiven = $memo({ id: labelId, for: id });
+  $setContext(LabelContext, $toStore(labelGiven));
   $setContext(InputContext, {
-    ...inputProps,
+    props: $toStore(inputProps),
     onChange: changed,
     onInvalid: invalidated,
     onBlur: blurred,
   });
+  const textAreaProps = $memo({ ...inputProps, type: undefined });
   $setContext(TextAreaContext, {
-    ...inputProps,
-    type: undefined,
+    props: $toStore(textAreaProps),
     onChange: changed,
     onInvalid: invalidated,
     onBlur: blurred,
   });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(FieldErrorContext, {
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
+  const errorGiven = $memo({
     id: errorId,
     isInvalid: invalid,
     errors,
     attributes: errorAttributes,
   });
+  $setContext(FieldErrorContext, $toStore(errorGiven));
 </script>
 
 <{as}

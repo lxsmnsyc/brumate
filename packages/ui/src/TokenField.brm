@@ -28,11 +28,26 @@
 </script>
 
 <script>
-  import { $client, $id, $memo, $props, $setContext, $signal } from 'brumate/signals';
-  import { LabelContext, TextContext } from './contexts.ts';
+  import {
+    $client,
+    $id,
+    $memo,
+    $props,
+    $setContext,
+    $signal,
+    $toStore,
+    $getContext,
+    $store,
+  } from 'brumate/signals';
+  import {
+    DisabledContext,
+    LabelContext,
+    TextContext,
+  } from './contexts.ts';
   import { described } from './description.brm.ts';
   import { onFormReset } from './fields.ts';
   import { TokenFieldContext, sameSegments, segmentsText } from './token-field.ts';
+  import type { TokenFieldState } from './token-field.ts';
 
   /**
    * A field of text with tokens in it, such as tags, mentions or commands. It holds a Label, a
@@ -50,7 +65,7 @@
     pattern,
     placeholder,
     allowsNewlines = false,
-    isDisabled = false,
+    isDisabled: ownDisabled = false,
     isReadOnly = false,
     role = 'textbox',
     name,
@@ -58,6 +73,10 @@
     children,
     ...rest
   } = $props<TokenFieldProps>();
+  // A disabled Fieldset or Form disables the field too.
+  const disabledGiven = $getContext(DisabledContext, undefined);
+  const inheritedDisabled = disabledGiven ? $store(disabledGiven) : undefined;
+  const isDisabled = $memo(Boolean(ownDisabled || inheritedDisabled));
   let { value = [] } = $props<TokenFieldProps>();
   let { ref } = $props<{ ref?: Bindable<HTMLDivElement | undefined> }>();
   // The segments that a reset of the form gives back.
@@ -99,11 +118,12 @@
   );
 
   // The box of the field is no element that a label can point at, so the label names it by ID.
-  $setContext(LabelContext, { id: labelId });
-  $setContext(TextContext, { slots: { description: { id: descriptionId } } });
-  $setContext(TokenFieldContext, {
+  const labelGiven = $memo({ id: labelId });
+  $setContext(LabelContext, $toStore(labelGiven));
+  const textGiven = $memo({ slots: { description: { id: descriptionId } } });
+  $setContext(TextContext, $toStore(textGiven));
+  const fieldState = $memo<TokenFieldState>({
     value,
-    setValue,
     revision,
     pattern,
     placeholder,
@@ -115,6 +135,7 @@
     labelId,
     descriptionId: hasDescription ? descriptionId : undefined,
   });
+  $setContext(TokenFieldContext, { state: $toStore(fieldState), setValue });
 </script>
 
 <div ref=$bind(ref) data-disabled=(isDisabled || undefined) data-readonly=(isReadOnly || undefined) {...rest}>
