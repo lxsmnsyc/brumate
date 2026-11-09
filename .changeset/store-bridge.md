@@ -1,5 +1,0 @@
----
-'brumate': minor
----
-
-`bridge()` of `brumate/store` makes a store from a store of another library, such as zustand, so it can cross the page state in a context or a prop. Give it `create(snapshot)`, `get(source)`, `subscribe(source, listener)` and an optional `set(source, value)`, and keep its value in a module-level export of a script file or of `<script module>`. The page sends the data from `get` and the name of the bridge; the browser runs `create(snapshot)` once, at the first subscriber, and every reader and prop holder shares that store. `.source` is the library's store and is `undefined` in the browser until the store has a subscriber. Resume never calls `set`. A `bridge` value that is not a module-level export, such as one in the script of a component, is a compile error (BRM200), and `brumate check` reports it. When `get` gives data that cannot be sent, the server render throws an error that names the store and the context or prop. The error for a store of another library in a prop or a script value now points to `bridge()`.
