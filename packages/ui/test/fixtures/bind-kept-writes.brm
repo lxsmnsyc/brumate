@@ -1,5 +1,5 @@
 <script>
-  import { $bind, $signal } from 'brumate/signals';
+  import { $bind, $client, $signal } from 'brumate/signals';
   import Checkbox from '../../src/Checkbox.brm';
   import CheckboxGroup from '../../src/CheckboxGroup.brm';
   import Label from '../../src/Label.brm';
@@ -19,6 +19,12 @@
   function hear(name: string) {
     heard = [...heard, name];
   }
+
+  // The page marks itself ready once its code runs in the browser, so a test acts after that.
+  let ready = $signal(false);
+  $client(() => {
+    ready = true;
+  }, 'load');
 </script>
 
 <main>
@@ -41,4 +47,5 @@
     </SliderTrack>
   </Slider>
   <p class="heard">{JSON.stringify(heard)}</p>
+  <p class="ready">{ready ? 'ready' : ''}</p>
 </main>
