@@ -2,7 +2,7 @@
 id: popover-group-alert
 title: PopoverGroup and Alert
 status: todo
-priority: could
+priority: must
 type: feature
 outline: false
 milestone: 0.8.0

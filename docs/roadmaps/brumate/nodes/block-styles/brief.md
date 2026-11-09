@@ -2,10 +2,10 @@
 id: block-styles
 title: Styles in blocks
 status: todo
-priority: later
+priority: must
 type: feature
 outline: true
-milestone: backlog
+milestone: 0.8.0
 target:
 from:
 size: M

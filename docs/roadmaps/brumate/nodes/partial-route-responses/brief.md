@@ -2,7 +2,7 @@
 id: partial-route-responses
 title: A client navigation fetches only the routes that change
 status: todo
-priority: could
+priority: should
 type: feature
 outline: true
 milestone: 0.8.0

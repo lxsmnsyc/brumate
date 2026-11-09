@@ -2,7 +2,7 @@
 id: derived-stores
 title: derived() for module-level stores
 status: todo
-priority: could
+priority: must
 type: feature
 story:
 early: false

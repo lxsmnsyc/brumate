@@ -2,7 +2,7 @@
 id: color-scheme
 title: A color scheme part without a first-paint flash
 status: todo
-priority: could
+priority: must
 type: feature
 outline: false
 milestone: 0.8.0

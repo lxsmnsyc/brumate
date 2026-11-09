@@ -2,7 +2,7 @@
 id: dev-setup-in-plugin
 title: The plugin sets up hot updates and the devtools for every client entry
 status: todo
-priority: could
+priority: must
 type: feature
 outline: false
 milestone: 0.8.0

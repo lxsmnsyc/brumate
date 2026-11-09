@@ -2,7 +2,7 @@
 id: context-menu
 title: A context menu, and a shortcut that opens a dialog
 status: todo
-priority: could
+priority: must
 type: feature
 outline: false
 milestone: 0.8.0

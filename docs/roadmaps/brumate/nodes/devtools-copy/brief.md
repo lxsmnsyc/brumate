@@ -2,7 +2,7 @@
 id: devtools-copy
 title: Copy for an agent in the devtools
 status: todo
-priority: could
+priority: must
 type: feature
 outline: false
 milestone: 0.8.0

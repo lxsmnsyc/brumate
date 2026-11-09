@@ -2,7 +2,7 @@
 id: skill-blocks-typecheck
 title: The brumate skill's code blocks are typechecked
 status: todo
-priority: could
+priority: should
 type: chore
 outline: true
 milestone: 0.8.0

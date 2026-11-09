@@ -2,7 +2,7 @@
 id: part-guides
 title: Guides for building a part, keyboard and focus, and async content
 status: todo
-priority: could
+priority: should
 type: docs
 outline: false
 milestone: 0.8.0

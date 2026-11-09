@@ -2,7 +2,7 @@
 id: dev-dock-redesign
 title: Redesign of the dev dock
 status: todo
-priority: should
+priority: must
 type: feature
 outline: true
 milestone: 0.8.0
