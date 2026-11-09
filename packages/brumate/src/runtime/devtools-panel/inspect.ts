@@ -4,19 +4,10 @@ import type { Scope } from '../client.ts';
 import { findRootScope, preview } from '../devtools.ts';
 import { element, iconButton, pill, row } from './dom.ts';
 import { readType } from './format.ts';
-import { drawGraph } from './graph.ts';
-import {
-  componentInfo,
-  drawReads,
-  findAnchor,
-  findScope,
-  known,
-  loadComponents,
-  roots,
-  source,
-} from './info.ts';
+import { drawGraphTab } from './graph.ts';
+import { drawReads, findAnchor, findScope, known, loadComponents, roots, source } from './info.ts';
 import type { ComponentInfo } from './info.ts';
-import { chooser, drawTabOf } from './workspace.ts';
+import { drawTabOf } from './workspace.ts';
 import type { DockContext, Workspace } from './workspace.ts';
 
 /** A value that can be edited as text: what JSON can hold. */
@@ -350,47 +341,6 @@ async function drawElements(ctx: DockContext, into: HTMLElement): Promise<void> 
     content.append(element('h3', {}, 'Inside it'), inside);
   }
   into.replaceChildren(content);
-}
-
-async function drawGraphTab(ctx: DockContext, into: HTMLElement): Promise<void> {
-  const { state, shell } = ctx;
-  const id = shell.selected ?? roots(state)[0]?.m;
-  const info = id ? await componentInfo(state, id) : undefined;
-  if (!id || !info) {
-    into.replaceChildren(element('div', { class: 'empty' }, 'No component yet.'));
-    return;
-  }
-  if (!info.graph) {
-    into.replaceChildren(
-      element('div', { class: 'toolbar' }, chooser(ctx, id)),
-      element(
-        'div',
-        { class: 'empty' },
-        'The dev server sent no graph. It runs an older brumate than this panel: restart it.',
-      ),
-    );
-    return;
-  }
-  const { nodes, edges } = info.graph;
-  // The current value of each value node, from the first instance of the component.
-  let instance: Scope | undefined;
-  for (const scope of roots(state)) {
-    if (scope.m === id) {
-      instance = scope;
-      break;
-    }
-  }
-  into.replaceChildren(
-    element(
-      'div',
-      { class: 'toolbar' },
-      chooser(ctx, id),
-      element('span', { class: 'sub' }, `${nodes.length} nodes · ${edges.length} edges`),
-    ),
-    nodes.length > 0
-      ? drawGraph(ctx, id, instance, info)
-      : element('div', { class: 'empty' }, 'Nothing in this component changes in the browser.'),
-  );
 }
 
 export const inspect: Workspace = {

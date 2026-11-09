@@ -68,7 +68,7 @@ export interface DockContext {
   /** Draws the open workspace again. */
   draw(): void;
   /** Opens a workspace. The target names a tab of the old tab bar, until the shell replaces it. */
-  select(workspace: WorkspaceId, target?: string): void;
+  select(workspace: WorkspaceId, target?: Tab): void;
   /** Two columns in a box. */
   split(options: SplitOptions): Columns;
   /** Outlines the elements of a scope on the page, or none without a scope. */
@@ -109,6 +109,8 @@ export interface Shell {
   view: { x: number; y: number; scale: number; fitted: string };
   /** The timer that draws the graph again when the marks of a write expire. */
   cooling: ReturnType<typeof setTimeout> | undefined;
+  /** The state of a workspace that is not part of the shell, by workspace. A child adds its own. */
+  work: Partial<Record<WorkspaceId, object>>;
 }
 
 /** The kinds of entries that the log shows. */
@@ -135,6 +137,7 @@ export function createShell(tab: Tab): Shell {
     graphNode: undefined,
     view: { x: 0, y: 0, scale: 1, fitted: '' },
     cooling: undefined,
+    work: {},
   };
 }
 

@@ -4,23 +4,23 @@
 
 `packages/brumate/src/runtime/devtools-panel.ts` (489 lines) is the entry. It keeps `openPanel`, `togglePanel`, re-exports `layoutGraph`, and holds the shell: the tab bar, the header, the drag of the height, Pick with its hover card, the chrome counts and the draw loop. The tabs are drawn by modules in `packages/brumate/src/runtime/devtools-panel/`. Behavior is unchanged: the old tab bar shows the same 13 tabs.
 
-| Module | Lines | Exports |
-| --- | --- | --- |
-| `workspace.ts` | 173 | Types `Workspace`, `DockContext`, `Shell`, `Columns`, `SplitOptions`, `Tab`, `TabDraw`, `WorkspaceId`. `KINDS`, `createShell(tab)`, `drawTabOf(tabs, ctx, into)`, `splitPlain()`, `chooser(ctx, current)` (the component select of Graph and Report). |
-| `style.ts` | 180 | `STYLE`, the CSS string. |
-| `dom.ts` | 140 | `element`, `svg`, `ICONS`, `IconName`, `icon`, `iconButton`, `pill`, `row`, `card`, `key`. |
-| `format.ts` | 93 | `readType`, `ms`, `seconds`, `kilobytes`, `measureSize`, `stateBytes`, `clip`. |
-| `info.ts` | 206 | Dev-server data and scope helpers: `ComponentInfo`, `GraphNode`, `Anchor`, `known`, `componentInfo`, `loadComponents`, `collectModules`, `countBlocks`, `countScopes`, `readValue`, `source`, `place`, `roots(state)`, `findScope(state, id)`, `findAnchor(state, scope, anchor)`, `drawReads`. |
-| `stack.ts` | 206 | `Frame`, `parseFrames`, `mapFrames`, `frameUrls`, `codeView` (source fetch and highlighter). |
-| `graph.ts` | 479 | `layoutGraph`, `drawGraph(ctx, id, instance, info)` (frame, side panel, pan and zoom, hot marks), `HOT_MS`, `nodeColor`. |
-| `inspect.ts` | 402 | `inspect: Workspace` with `tabs` scopes (Components), elements, graph. |
-| `activity.ts` | 653 | `activity: Workspace` with `tabs` log, timeline, effects, navigation, server. |
-| `issues.ts` | 135 | `issues: Workspace` with `tabs` errors. |
-| `page.ts` | 274 | `page: Workspace` with `tabs` overview, state, blocks, report. |
+| Module         | Lines | Exports                                                                                                                                                                                                                                                                                         |
+| -------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workspace.ts` | 173   | Types `Workspace`, `DockContext`, `Shell`, `Columns`, `SplitOptions`, `Tab`, `TabDraw`, `WorkspaceId`. `KINDS`, `createShell(tab)`, `drawTabOf(tabs, ctx, into)`, `splitPlain()`, `chooser(ctx, current)` (the component select of Graph and Report).                                           |
+| `style.ts`     | 180   | `STYLE`, the CSS string.                                                                                                                                                                                                                                                                        |
+| `dom.ts`       | 140   | `element`, `svg`, `ICONS`, `IconName`, `icon`, `iconButton`, `pill`, `row`, `card`, `key`.                                                                                                                                                                                                      |
+| `format.ts`    | 93    | `readType`, `ms`, `seconds`, `kilobytes`, `measureSize`, `stateBytes`, `clip`.                                                                                                                                                                                                                  |
+| `info.ts`      | 206   | Dev-server data and scope helpers: `ComponentInfo`, `GraphNode`, `Anchor`, `known`, `componentInfo`, `loadComponents`, `collectModules`, `countBlocks`, `countScopes`, `readValue`, `source`, `place`, `roots(state)`, `findScope(state, id)`, `findAnchor(state, scope, anchor)`, `drawReads`. |
+| `stack.ts`     | 206   | `Frame`, `parseFrames`, `mapFrames`, `frameUrls`, `codeView` (source fetch and highlighter).                                                                                                                                                                                                    |
+| `graph.ts`     | ~520  | `layoutGraph`, `drawGraph(ctx, id, instance, info)` (frame, side panel, pan and zoom, hot marks), `drawGraphTab` (the Graph tab: chooser, empty states, around `drawGraph`), `HOT_MS`, `nodeColor`. Owned by dock-graph.                                                                        |
+| `inspect.ts`   | 402   | `inspect: Workspace` with `tabs` scopes (Components), elements, graph (`drawGraphTab` from `graph.ts`). Owned by dock-inspect.                                                                                                                                                                  |
+| `activity.ts`  | 653   | `activity: Workspace` with `tabs` log, timeline, effects, navigation, server.                                                                                                                                                                                                                   |
+| `issues.ts`    | 135   | `issues: Workspace` with `tabs` errors.                                                                                                                                                                                                                                                         |
+| `page.ts`      | 274   | `page: Workspace` with `tabs` overview, state, blocks, report.                                                                                                                                                                                                                                  |
 
 Imports are acyclic. `info.ts` does not import `workspace.ts`; `workspace.ts` imports `info.ts`.
 
-`contracts/dock-workspace-api.md` holds the final interface (status not changed).
+`contracts/dock-workspace-api.md` v2 holds the final interface and is frozen. `Shell.work` holds per-workspace state.
 
 ## Deviations
 
@@ -33,8 +33,8 @@ Imports are acyclic. `info.ts` does not import `workspace.ts`; `workspace.ts` im
 ## Stubs left
 
 - `ctx.split` ignores its options and returns `splitPlain()`: `div.split > div.list + div.detail`. Components and Errors use it. Dock-split-handle replaces it.
-- `ctx.drawCallDetail` returns an empty state. Dock-call-detail fills it.
-- `ctx.drawGraph(scope, info)` draws the old graph; the Graph tab itself is `drawGraphTab` in `inspect.ts` (toolbar, chooser, empty states) around `drawGraph` of `graph.ts`. Dock-graph rewrites `graph.ts`.
+- `ctx.drawCallDetail` returns an empty div. The Log opens it under the list when a call row is clicked, so today nothing shows. Dock-call-detail adds `devtools-panel/call-detail.ts` and swaps the stub in the entry; `activity.ts` stays with dock-activity.
+- `ctx.drawGraph(scope, info)` draws the old graph. Dock-graph rewrites `graph.ts`, including `drawGraphTab`.
 
 ## Gotchas
 

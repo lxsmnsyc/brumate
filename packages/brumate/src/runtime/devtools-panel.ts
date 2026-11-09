@@ -154,7 +154,7 @@ export function togglePanel(
       info?.graph
         ? drawGraph(ctx, findRootScope(scope).m ?? '', findRootScope(scope), info)
         : element('div', { class: 'empty' }, 'No graph for this component.'),
-    drawCallDetail: () => element('div', { class: 'empty' }, 'No detail for this call yet.'),
+    drawCallDetail: () => element('div'),
   };
   // Outlines the elements that change on the page, as updates write them.
   const flash = iconButton('flash', 'Updates', {
@@ -404,10 +404,10 @@ export function togglePanel(
     window.addEventListener('keydown', onEscape, true);
   });
 
-  /** Opens a workspace. The target names a tab of the old tab bar. */
-  function select(id: Workspace['id'], target?: string): void {
+  /** Opens a workspace. The target is a tab of the old tab bar. */
+  function select(id: Workspace['id'], target?: Tab): void {
     const workspace = WORKSPACES.find((item) => item.id === id)!;
-    shell.tab = (target as Tab | undefined) ?? (Object.keys(workspace.tabs)[0] as Tab);
+    shell.tab = target ?? (Object.keys(workspace.tabs)[0] as Tab);
     draw();
   }
   /** The header and the counts of the tabs. */

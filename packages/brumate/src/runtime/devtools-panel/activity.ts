@@ -104,15 +104,23 @@ function drawLog(ctx: DockContext, into: HTMLElement): void {
   }
   const list = element('table', { class: 'rows' });
   for (const entry of entries.toReversed()) {
-    list.append(
-      element(
-        'tr',
-        { class: `entry ${entry.kind}` },
-        element('td', { class: 'time' }, seconds(entry.time)),
-        element('td', { class: `kind-${entry.kind}`, style: 'width: 1%' }, entry.kind),
-        element('td', {}, readText(entry)),
-      ),
+    const line = element(
+      'tr',
+      { class: `entry ${entry.kind}` },
+      element('td', { class: 'time' }, seconds(entry.time)),
+      element('td', { class: `kind-${entry.kind}`, style: 'width: 1%' }, entry.kind),
+      element('td', {}, readText(entry)),
     );
+    if (entry.kind === 'call') {
+      // The detail of a call comes from the context, so its module is not this one.
+      line.addEventListener('click', () => {
+        into.querySelector('.call-detail')?.remove();
+        const detail = ctx.drawCallDetail(entry);
+        detail.classList.add('call-detail');
+        into.append(detail);
+      });
+    }
+    list.append(line);
   }
   into.replaceChildren(
     filters,

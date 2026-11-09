@@ -4,8 +4,9 @@ import type { Scope } from '../client.ts';
 import { preview } from '../devtools.ts';
 import { element, iconButton, key, pill, svg } from './dom.ts';
 import { clip } from './format.ts';
-import { place } from './info.ts';
+import { componentInfo, place, roots } from './info.ts';
 import type { ComponentInfo } from './info.ts';
+import { chooser } from './workspace.ts';
 import type { DockContext } from './workspace.ts';
 
 /** How long a write marks the nodes of the graph. */
@@ -476,4 +477,46 @@ export function drawGraph(
     shell.cooling = setTimeout(() => state.changed?.(), HOT_MS);
   }
   return wrap;
+}
+
+/** The Graph tab: the chooser and the graph of a component. */
+export async function drawGraphTab(ctx: DockContext, into: HTMLElement): Promise<void> {
+  const { state, shell } = ctx;
+  const id = shell.selected ?? roots(state)[0]?.m;
+  const info = id ? await componentInfo(state, id) : undefined;
+  if (!id || !info) {
+    into.replaceChildren(element('div', { class: 'empty' }, 'No component yet.'));
+    return;
+  }
+  if (!info.graph) {
+    into.replaceChildren(
+      element('div', { class: 'toolbar' }, chooser(ctx, id)),
+      element(
+        'div',
+        { class: 'empty' },
+        'The dev server sent no graph. It runs an older brumate than this panel: restart it.',
+      ),
+    );
+    return;
+  }
+  const { nodes, edges } = info.graph;
+  // The current value of each value node, from the first instance of the component.
+  let instance: Scope | undefined;
+  for (const scope of roots(state)) {
+    if (scope.m === id) {
+      instance = scope;
+      break;
+    }
+  }
+  into.replaceChildren(
+    element(
+      'div',
+      { class: 'toolbar' },
+      chooser(ctx, id),
+      element('span', { class: 'sub' }, `${nodes.length} nodes · ${edges.length} edges`),
+    ),
+    nodes.length > 0
+      ? drawGraph(ctx, id, instance, info)
+      : element('div', { class: 'empty' }, 'Nothing in this component changes in the browser.'),
+  );
 }
