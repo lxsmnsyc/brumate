@@ -806,9 +806,12 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
           .split(path.sep)
           .join('/');
         // The runtime of brumate names the contexts itself.
-        const scripts = [
-          ...new Set([...(await findScripts(root, exclude)), ...reachable()]),
-        ].filter((file) => !file.startsWith(`${own}/dist/`) && !file.startsWith(`${own}/src/`));
+        const scripts: string[] = [];
+        for (const file of new Set([...(await findScripts(root, exclude)), ...reachable()])) {
+          if (!file.startsWith(`${own}/dist/`) && !file.startsWith(`${own}/src/`)) {
+            scripts.push(file);
+          }
+        }
         const texts = await inBatches(scripts, (file) => readFile(file, 'utf8').catch(() => ''));
         for (const text of texts) {
           if (ROUTE_CONTEXTS.test(text)) {

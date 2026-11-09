@@ -46,12 +46,12 @@ function docComment(source: string, start: number): string {
   if (!match) {
     return '';
   }
-  return collapse(
-    match[1]!
-      .split('\n')
-      .map((line) => line.replace(/^\s*\*\s?/, ''))
-      .join(' '),
-  );
+  // Each line of the block loses its leading `*`.
+  const lines: string[] = [];
+  for (const line of match[1]!.split('\n')) {
+    lines.push(line.replace(/^\s*\*\s?/, ''));
+  }
+  return collapse(lines.join(' '));
 }
 
 function keyName(key: Node, source: string): string {
@@ -174,13 +174,15 @@ function describe(text: string): string {
 
 /** The HTML of a props table. */
 export function renderProps(rows: PropRow[], part = ''): string {
-  const body = rows
-    .map((row) => {
-      const fallback = row.required ? '<em>required</em>' : '';
-      const value = row.default ? `<code>${escape(row.default)}</code>` : fallback;
-      return `<tr><td><code>${escape(row.name)}</code></td><td><code>${escape(row.type)}</code></td><td>${value}</td><td>${describe(row.description)}</td></tr>`;
-    })
-    .join('\n');
+  const lines: string[] = [];
+  for (const row of rows) {
+    const fallback = row.required ? '<em>required</em>' : '';
+    const value = row.default ? `<code>${escape(row.default)}</code>` : fallback;
+    lines.push(
+      `<tr><td><code>${escape(row.name)}</code></td><td><code>${escape(row.type)}</code></td><td>${value}</td><td>${describe(row.description)}</td></tr>`,
+    );
+  }
+  const body = lines.join('\n');
   // The wrapper scrolls, so it takes focus: a keyboard user can scroll a wide table.
   return `<div class="props-scroll" role="group" aria-label="${part ? `${escape(part)} props` : 'Props'}" tabindex="0">\n<table class="props-table">\n<thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>\n<tbody>\n${body}\n</tbody>\n</table>\n</div>\n`;
 }

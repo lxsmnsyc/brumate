@@ -282,7 +282,11 @@ export function generateRender(
     );
   }
   if (exported.length > 0) {
-    moduleBody.push(`export { ${exported.map((item) => item.name).join(', ')} };`);
+    const exportedNames: string[] = [];
+    for (const item of exported) {
+      exportedNames.push(item.name);
+    }
+    moduleBody.push(`export { ${exportedNames.join(', ')} };`);
   }
   for (const name of serverNames) {
     if (model.module.declarations.get(name)?.scope === model.module) {

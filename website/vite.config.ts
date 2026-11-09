@@ -85,14 +85,11 @@ export default defineConfig({
     // /llms.txt, /llms-full.txt and the Markdown of each page.
     llms(siteUrl),
     // The pages of the site. The design notes of the repository are not on it.
-    search(
-      [fileURLToPath(new URL('docs', import.meta.url))],
-      new Set([...SITE_PAGES].map((page) => page || 'index')),
-    ),
+    search([fileURLToPath(new URL('docs', import.meta.url))], nameFiles(SITE_PAGES)),
     // The pages of @brumate/ui have a search of their own.
     search(
       [fileURLToPath(new URL('ui', import.meta.url))],
-      new Set([...UI_PAGES].map((page) => page || 'index')),
+      nameFiles(UI_PAGES),
       'virtual:ui-search-index',
     ),
     // Every page is written as a static file, with readable names for the scripts.
@@ -138,3 +135,12 @@ export default defineConfig({
     },
   },
 });
+
+/** The file names of pages, where the page at the root of a section is `index`. */
+function nameFiles(pages: Set<string>): Set<string> {
+  const names = new Set<string>();
+  for (const page of pages) {
+    names.add(page || 'index');
+  }
+  return names;
+}

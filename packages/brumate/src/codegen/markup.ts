@@ -999,7 +999,7 @@ export class Emitter {
         blocking?.awaited &&
         statement.type === 'VariableDeclaration' &&
         blocking.declarations.length === statement.declarations.length &&
-        (server || this.awaitedMemos(statement, scope)?.every(Boolean))
+        (server || this.isAllAwaitedMemos(statement, scope))
       ) {
         loads.set(statement, blocking.declarations);
         for (const declaration of blocking.declarations) {
@@ -1389,6 +1389,39 @@ export class Emitter {
   }
 
   /** The awaited memos that the declarators of a statement declare, by declarator. */
+  /** True when every declarator of a statement is an awaited memo. */
+  private isAllAwaitedMemos(statement: oxc.Node, scope: Scope): boolean {
+    const awaited = this.awaitedMemos(statement, scope);
+    if (!awaited) {
+      return false;
+    }
+    for (const declaration of awaited) {
+      if (!declaration) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * True when every read of a memo drops its promise: the reader is a memo that is not declared,
+   * or the read awaits the memo and is not the whole value of another memo.
+   */
+  private isEveryReadDropped(declaration: Declaration): boolean {
+    for (const read of declaration.reads) {
+      const dropped =
+        (read.site.kind === 'memo' && this.plan.graph.unread.has(read.site.declaration!)) ||
+        (read.await &&
+          (read.site.kind !== 'memo' ||
+            read.site.node.start !== read.await.start ||
+            read.site.node.end !== read.await.end));
+      if (!dropped) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private awaitedMemos(statement: oxc.Node, scope: Scope): (Declaration | undefined)[] | undefined {
     if (statement.type !== 'VariableDeclaration') {
       return undefined;
@@ -1487,14 +1520,7 @@ export class Emitter {
         !awaited.includes(declaration) &&
         (declaration.kind === 'memo' || declaration.kind === 'async-memo') &&
         !this.plan.graph.unread.has(declaration) &&
-        declaration.reads.every(
-          (read) =>
-            (read.site.kind === 'memo' && this.plan.graph.unread.has(read.site.declaration!)) ||
-            (read.await &&
-              (read.site.kind !== 'memo' ||
-                read.site.node.start !== read.await.start ||
-                read.site.node.end !== read.await.end)),
-        ) &&
+        this.isEveryReadDropped(declaration) &&
         slotIndex(this.plan, declaration) === -1 &&
         !isNeverPromise(declaration)
       ) {
