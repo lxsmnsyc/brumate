@@ -17,6 +17,8 @@ branches:
   # `main` is merged into `next` after every release from `main`. `next -> main` is the promotion of a
   # minor release. No prereleases come from `next`; it only runs CI. Nodes of the 0.4.x patch
   # milestone set `target: main` in their brief.
+  # After 0.7.0 merges (the maintainer, 2026-11-09): `next` is closed and each minor release gets its
+  # own branch. Update the targets below when release-0.7 closes.
   feature: next
   fix: next
   docs: next
