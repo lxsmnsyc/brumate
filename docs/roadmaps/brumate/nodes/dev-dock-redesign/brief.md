@@ -3,24 +3,25 @@ id: dev-dock-redesign
 title: Redesign of the dev dock
 status: todo
 priority: must
-type: feature
-outline: true
+type: story
+story:
+early: false
+outline: false
 milestone: 0.8.0
 target:
+ship: auto
 from:
 size: L
 spike: false
-verify: 
+hypothesis:
+verify:
 exclusive: []
-fulfilled_by: 
-gate: true
+fulfilled_by:
+gate: false
 added: 2026-11-03
-owns:
-  - packages/brumate/src/runtime/devtools-panel.ts
-shared:
-  - .changeset/*.md
-  - packages/brumate/src/runtime/devtools.ts
-  - website/docs/inspect.md
+spent:
+owns: []
+shared: []
 reserves: []
 provides: []
 depends_on:
@@ -33,7 +34,7 @@ depends_on:
 
 ## Goal
 
-A new design for the devtools dock of the dev server: the grip at the bottom edge of the page, the tab it grows into, and the panel with its tabs (Overview, Errors, Components, Elements, Graph, Log, Blocks, Report).
+The devtools dock of the dev server matches the approved prototype (`prototype/index.html`): the grip at the bottom edge, the tab it grows into, and a panel with four workspaces (Inspect, Activity, Issues, Page) in place of the 13 tabs. Server calls have a detail view, the splits resize, and update outlines draw on one canvas. The feature reaches users in one piece, as one story pull request.
 
 ## Context
 
@@ -48,4 +49,28 @@ A new design for the devtools dock of the dev server: the grip at the bottom edg
 - Update outlines (the maintainer, 2026-11-05): draw the boxes on one `<canvas>` overlay, as solid-start's devtools do, in place of a `<div>` per box. Today `installFlash` in `packages/brumate/src/runtime/devtools.ts` appends a `div.flash` to the shadow root for each changed element (up to `MAX_FLASHES` a frame) and removes it with a `setTimeout` after `FLASH_MS`. The canvas covers the viewport with `pointer-events: none`, keeps a list of boxes with their rect, heat colour and start time, and redraws them in one `requestAnimationFrame` loop that fades them out and stops when the list is empty. It sizes itself to `devicePixelRatio` and redraws on resize and scroll. The MutationObserver and the heat counts stay.
 - devtools-copy adds buttons to the same panel, so it waits for this node.
 
-Outline: not broken into a brief yet. Refine it when `plan.py refine` lists it: first write down what the redesign changes (layout, tabs, look) with the maintainer, then split the prototype from the port.
+## Children
+
+On the branch `feat/dev-dock-redesign`, cut from `release/0.8`:
+
+1. dock-split (M): moves `devtools-panel.ts` into one module per workspace with no change in behavior, and freezes `contracts/dock-workspace-api.md`. Everything in the panel waits for it.
+2. dock-shell (M): grip, tab, header with the version, dock to the bottom or the right, workspace nav, search, Pick.
+3. dock-split-handle (S): the resizable handle with keyboard and kept sizes.
+4. dock-inspect (M) and dock-graph (M): the component tree and detail; the layered graph.
+5. dock-activity (M), dock-call-data (M) and dock-call-detail (M): the log and call list; the dev-only call record from the dev server; the call detail.
+6. dock-issues (M) and dock-page (M).
+7. dock-canvas-outlines (M): independent of the panel.
+8. dock-docs (S): `website/docs/inspect.md` and the changeset, last.
+
+`devtools-copy` waits for the whole story.
+
+## Acceptance
+
+- [ ] The built dock matches `prototype/index.html` in layout and behavior: closed it is the grip on the bottom edge, open it shows the brumate version in the header, and it sits at the bottom or the right edge.
+- [ ] Four workspaces replace the old tabs. Parts of the old panel that are not in the prototype are gone.
+- [ ] A selected row is a filled rounded row with a soft ring, with no coloured left edge. There is no floating bar. The graph is never folded into a chain.
+- [ ] Every split in the dock has a handle that works with the pointer and the keyboard, has minimum sizes, and keeps its size with the dock's height and side.
+- [ ] A server call opens a detail with arguments, result or error with stack, timing, what ran on the server, and the three actions. A production build sends none of the dev-only data.
+- [ ] Update outlines draw on one canvas, and no `div.flash` is added.
+- [ ] `website/docs/inspect.md` describes the new dock, and a changeset exists.
+- [ ] `pnpm --filter brumate exec vitest run`, `pnpm --filter brumate typecheck`, oxlint and `oxfmt --check` pass on the story branch.
