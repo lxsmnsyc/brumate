@@ -204,6 +204,20 @@ describe('call record in production', () => {
   });
 });
 
+describe('header size', () => {
+  it('drops ids and cuts a long message until the header fits', () => {
+    const ids = Array.from({ length: 50 }, () => `${'f'.repeat(300)}#name`);
+    const error = { message: 'ü'.repeat(5000), stack: 's'.repeat(2000) };
+    const text = encodeServerRecord({ reads: ids, calls: ids, logs: [], error });
+    expect(text.length).toBeLessThanOrEqual(6000);
+    const record = decodeServerRecord(text)!;
+    expect(record.calls).toEqual([]);
+    expect(record.error!.message.length).toBeGreaterThan(0);
+    // The record that the caller passed is not changed.
+    expect(error.stack).toHaveLength(2000);
+  });
+});
+
 describe('cut values', () => {
   it('cuts text, lists, depth and cycles', () => {
     expect(cutText('abc', 2)).toBe('ab… (1 more)');

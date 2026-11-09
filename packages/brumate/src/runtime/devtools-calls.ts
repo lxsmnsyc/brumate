@@ -123,7 +123,11 @@ export function describeError(error: unknown): { message: string; stack?: string
 
 /** Writes the server part of a record for the header. It shrinks the record to fit. */
 export function encodeServerRecord(record: DevAnswer): string {
-  const copy: DevAnswer = { ...record, logs: [...record.logs] };
+  const copy: DevAnswer = {
+    ...record,
+    logs: [...record.logs],
+    ...(record.error ? { error: { ...record.error } } : {}),
+  };
   let text = encodeURIComponent(JSON.stringify(copy));
   while (text.length > HEADER_LIMIT && copy.logs.length > 0) {
     copy.logs.length = Math.floor(copy.logs.length / 2);
@@ -135,8 +139,15 @@ export function encodeServerRecord(record: DevAnswer): string {
     text = encodeURIComponent(JSON.stringify(copy));
   }
   if (text.length > HEADER_LIMIT) {
-    copy.calls.length = Math.min(copy.calls.length, 10);
-    copy.reads.length = Math.min(copy.reads.length, 10);
+    copy.calls = [];
+    copy.reads = [];
+    text = encodeURIComponent(JSON.stringify(copy));
+  }
+  // A long message is cut until the header fits.
+  let limit = TEXT_LIMIT;
+  while (text.length > HEADER_LIMIT && copy.error && limit > 20) {
+    limit = Math.floor(limit / 2);
+    copy.error.message = cutText(copy.error.message, limit);
     text = encodeURIComponent(JSON.stringify(copy));
   }
   return text;

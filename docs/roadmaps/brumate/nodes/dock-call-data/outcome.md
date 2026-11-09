@@ -36,6 +36,8 @@ Not a fix node.
 - Files in arguments appear as `[File name, size bytes, type]`.
 - `calls` omits the browser's own call. Calls made while a page renders are not recorded here.
 
+- The real error message, stack and console output reach the browser in a dev header, so a dev server exposed with `server.host` shows them to other machines. `dock-docs` must say so in `inspect.md`.
+
 ## Proposed learnings
 
 - None.

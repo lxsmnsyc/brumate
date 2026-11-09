@@ -1,7 +1,7 @@
 ---
 name: dock-call-record
-version: 1
-status: draft
+version: 2
+status: frozen
 defined_by: dock-call-data
 ---
 
@@ -53,4 +53,4 @@ A fake record in the tests of `dock-call-detail`.
 ## Changes
 
 - v1: initial.
-- v1 final type written by `dock-call-data`.
+- v2: the final type, written by `dock-call-data` and frozen. The header drops `reads` and `calls`, then cuts the message, when it is still too long.
