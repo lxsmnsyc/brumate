@@ -1,7 +1,7 @@
 ---
 id: dev-dock-redesign
 title: Redesign of the dev dock
-status: todo
+status: active
 priority: must
 type: story
 story:

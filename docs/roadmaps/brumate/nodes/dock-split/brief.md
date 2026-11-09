@@ -1,7 +1,7 @@
 ---
 id: dock-split
 title: Split the dock panel into one module per workspace
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign

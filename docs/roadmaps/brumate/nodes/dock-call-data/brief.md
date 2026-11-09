@@ -1,7 +1,7 @@
 ---
 id: dock-call-data
 title: Dev server sends call arguments, results and server logs
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign
