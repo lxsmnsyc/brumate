@@ -79,6 +79,7 @@ Update `website/docs/inspect.md` for the redesigned dock and add the changeset o
 ## Acceptance
 
 - [ ] `inspect.md` describes the four workspaces, the dock sides, resizing, the graph, server call details (dev only) and the canvas outlines. No tab that no longer exists is named.
+- [ ] `inspect.md` says that server call details send the real error message, stack and `console.*` output to the browser in a dev header, so a dev server exposed with `server.host` shows them to other machines (review of #498).
 - [ ] One changeset for `brumate` (minor: the dock is new behavior), written to the changesets skill and the plain-writing rules.
 - [ ] The website builds: `pnpm --filter website build` passes.
 
