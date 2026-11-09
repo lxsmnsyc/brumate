@@ -1,7 +1,7 @@
 ---
 id: dock-call-data
 title: Dev server sends call arguments, results and server logs
-status: active
+status: done
 priority:
 type: feature
 story: dev-dock-redesign
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-09
-spent:
+spent: 194682
 owns:
   - packages/brumate/src/runtime/devtools-calls.ts
   - packages/brumate/test/devtools-calls.test.ts

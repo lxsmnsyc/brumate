@@ -1,7 +1,7 @@
 ---
 id: dock-split
 title: Split the dock panel into one module per workspace
-status: active
+status: done
 priority:
 type: feature
 story: dev-dock-redesign
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-09
-spent:
+spent: 279327
 owns:
   - packages/brumate/src/runtime/devtools-panel.ts
   - packages/brumate/src/runtime/devtools-panel/**
