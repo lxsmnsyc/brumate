@@ -18,7 +18,8 @@ branches:
   # minor release. No prereleases come from `next`; it only runs CI. Nodes of the 0.4.x patch
   # milestone set `target: main` in their brief.
   # After 0.7.0 merges (the maintainer, 2026-11-09): `next` is closed and each minor release gets its
-  # own branch. Update the targets below when release-0.7 closes.
+  # own branch, `release/<major>.<minor>` (0.8.0 work targets `release/0.8`). Update the targets below
+  # when release-0.7 closes.
   feature: next
   fix: next
   docs: next

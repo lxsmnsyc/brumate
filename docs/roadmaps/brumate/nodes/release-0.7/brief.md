@@ -74,7 +74,7 @@ Promote `next` to `main` and publish brumate 0.7.0 and @brumate/ui, with the oth
 - Changesets: merge the pending ones on `next` on the promotion branch (one commit, none dropped without a reason).
 - Before the promotion pull request (`next` -> `main`): `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm test` and `node e2e/run.mjs` pass on a quiet machine, `pnpm --filter website check:samples` and `pnpm --filter website build` pass, `pnpm bench --only brumate --scenario todos` is recorded against 0.6.0 (13.6 kB gzip JS before `load`), and `pnpm pack --dry-run` shows no test fixtures.
 - After the promotion merges, check and hand the Version Packages pull request to the maintainer. The orchestrator merges neither (`gate: true`).
-- Branch policy change (the maintainer, 2026-11-09): once the promotion merges, `next` is closed. Each minor release gets its own branch from now on, so 0.8.0 work targets a new branch, not `next`. GOAL.md `branches` changes with it.
+- Branch policy change (the maintainer, 2026-11-09): once the promotion merges, `next` is closed. Each minor release gets its own branch from now on, named `release/<major>.<minor>`, so 0.8.0 work targets `release/0.8`, not `next`. GOAL.md `branches` changes with it.
 
 ## Acceptance
 
@@ -82,7 +82,7 @@ Promote `next` to `main` and publish brumate 0.7.0 and @brumate/ui, with the oth
 - [x] Build, lint, format, typecheck, tests, e2e, website, bench and pack checks pass; the results are in the outcome.
 - [x] Todos gzip JS before `load` is no larger than 0.6.0 (13.6 kB), or the outcome names the node that grew it and by how much.
 - [ ] The maintainer merges the promotion and the Version Packages pull requests, and brumate 0.7.0 is on npm.
-- [ ] `next` is closed after the promotion merges, and GOAL.md `branches` names the per-minor branch that replaces it.
+- [ ] `next` is closed after the promotion merges, and GOAL.md `branches` targets `release/0.8`.
 
 ## Sizing
 
