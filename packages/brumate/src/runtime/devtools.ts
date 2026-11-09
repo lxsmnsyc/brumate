@@ -65,6 +65,44 @@ export interface CallTiming {
   status?: number | 'redirect' | 'failed';
   /** How long the function took on the server, from the `Server-Timing` of the dev server. */
   server?: number;
+  /** The arguments, the result and what ran on the server. It arrives after the answer. */
+  record?: CallRecord;
+}
+
+/**
+ * What a server call needs for its detail, for the dock. The browser decodes the arguments and the
+ * result, and the dev server sends `server` and the stack in the `x-brumate-dev` header, so a
+ * production build has none of them. Values are cut at a length, and no cookies or headers are in it.
+ */
+export interface CallRecord {
+  name: string;
+  /** The decoded arguments, cut. */
+  args: unknown[];
+  /** The decoded result, cut. Absent for an error or a redirect. */
+  result?: unknown;
+  /** The error that the server function threw, with the real message and the stack of the server. */
+  error?: { message: string; stack?: string };
+  /** Milliseconds: `module` before the request left, `network` there and back, `server` in the function, `decode` reading the answer. */
+  timing: { module: number; network: number; server: number; decode: number };
+  /** What ran on the server. Absent when the answer did not come from the dev server. */
+  server?: ServerRecord;
+}
+
+/** What ran on the server during a call. */
+export interface ServerRecord {
+  /** The server functions whose memos the answer asked to load again (`refresh`). */
+  reads: string[];
+  /** The IDs of the server functions that the function called. */
+  calls: string[];
+  /** The `console.*` output of the call, in order. */
+  logs: { level: string; text: string }[];
+  /** True when logs were left out to fit the header. */
+  truncated?: boolean;
+}
+
+/** The content of the `x-brumate-dev` header of the dev server. */
+export interface DevAnswer extends ServerRecord {
+  error?: { message: string; stack?: string };
 }
 
 /** A batch of updates that a write ran, with its effects. */
@@ -730,6 +768,25 @@ export function installDevtools(
       if (server) {
         call.server = Number(server[1]);
       }
+      // The record fills in once the arguments and the result are decoded. It reads a clone.
+      const arrived = call.end;
+      const copy = response.clone();
+      void import('./devtools-calls.ts')
+        .then(({ readCall }) =>
+          readCall({
+            name,
+            init,
+            response: copy,
+            started,
+            arrived,
+            module: Math.max(0, started - (owner(started)?.ready ?? started)),
+          }),
+        )
+        .then((record) => {
+          call.record = record;
+          state.changed?.();
+        })
+        .catch(() => {});
       state.changed?.();
       add({
         kind: 'call',

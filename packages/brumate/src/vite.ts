@@ -16,6 +16,7 @@ import {
   version as viteVersion,
 } from 'vite';
 import type { EnvironmentModuleNode, Plugin, UserConfig, ViteDevServer } from 'vite';
+import type { createRecorder } from './runtime/devtools-calls.ts';
 import { entryClasses } from './captures.ts';
 import { refreshedNames } from './refreshes.ts';
 import { compile } from './compile.ts';
@@ -1682,6 +1683,21 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
     }
   }
 
+  // What the dock shows of a call: its logs, the calls it made and its error, sent back in a
+  // header. It is made on the first call, so the dev server loads it only then.
+  let recording: ReturnType<typeof createRecorder> | undefined;
+  async function recorder(): Promise<ReturnType<typeof createRecorder>> {
+    if (!recording) {
+      const [{ AsyncLocalStorage }, { format }, { createRecorder }] = await Promise.all([
+        import('node:async_hooks'),
+        import('node:util'),
+        import('./runtime/devtools-calls.ts'),
+      ]);
+      recording = createRecorder(new AsyncLocalStorage(), format);
+    }
+    return recording;
+  }
+
   async function handleDevRPC(
     server: ViteDevServer,
     request: IncomingMessage,
@@ -1721,9 +1737,13 @@ export default function brumate(options: BrumateOptions = {}): Plugin {
         body: new Uint8Array(await readBody(request)),
       });
       const began = performance.now();
-      const answer: Response = await handle(webRequest, {
-        address: request.socket.remoteAddress,
-      });
+      const answer: Response = await (
+        await recorder()
+      )(() =>
+        handle(webRequest, {
+          address: request.socket.remoteAddress,
+        }),
+      );
       // How long the server function took on the server, for the Timeline of the devtools.
       answer.headers.append(
         'server-timing',
