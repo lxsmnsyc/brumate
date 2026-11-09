@@ -34,20 +34,23 @@ async function entries(directories: string[], pages?: Set<string>): Promise<Entr
   const result: Entry[] = [];
   for (const directory of directories) {
     // oxlint-disable-next-line no-await-in-loop -- Two directories, read in order.
-    const files = (await readdir(directory)).filter(
-      (file) => file.endsWith('.md') && (!pages || pages.has(file.replace(/\.md$/, ''))),
-    );
+    const names = await readdir(directory);
+    const files: string[] = [];
+    const reads: Promise<string>[] = [];
+    for (const file of names) {
+      if (file.endsWith('.md') && (!pages || pages.has(file.replace(/\.md$/, '')))) {
+        files.push(file);
+        reads.push(readFile(path.join(directory, file), 'utf8'));
+      }
+    }
     // oxlint-disable-next-line no-await-in-loop -- Two directories, read in order.
-    const sources = await Promise.all(
-      files.map(
-        async (file) => splitFrontMatter(await readFile(path.join(directory, file), 'utf8')).body,
-      ),
-    );
-    files.forEach((file, index) => {
+    const texts = await Promise.all(reads);
+    for (const [index, file] of files.entries()) {
+      const source = splitFrontMatter(texts[index]!).body;
       const name = file.replace(/\.md$/, '');
       const page = name === 'index' ? '' : name;
-      const sections = sources[index]!.split(/^(?=#{1,3} )/m);
-      const pageTitle = /^# (.*)$/m.exec(sources[index]!)?.[1] ?? name;
+      const sections = source.split(/^(?=#{1,3} )/m);
+      const pageTitle = /^# (.*)$/m.exec(source)?.[1] ?? name;
       for (const section of sections) {
         const heading = /^#{1,3} (.*)$/m.exec(section)?.[1]?.replaceAll('`', '') ?? pageTitle;
         const level = /^(#{1,3}) /.exec(section)?.[1]?.length ?? 1;
@@ -59,7 +62,7 @@ async function entries(directories: string[], pages?: Set<string>): Promise<Entr
           text: plain(section.replace(/^#{1,3} .*$/m, '')).slice(0, 400),
         });
       }
-    });
+    }
   }
   return result;
 }

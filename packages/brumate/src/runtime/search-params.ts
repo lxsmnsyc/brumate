@@ -19,11 +19,11 @@ export function readParam(
 
 /** The text of a value in the URL, or null for the default, which leaves the parameter out. */
 export function writeParam(value: unknown, options?: SearchParamOptions<unknown>): string | null {
-  const own = textOf(value, options);
-  return own === textOf(options?.default, options) ? null : own;
+  const own = formatParam(value, options);
+  return own === formatParam(options?.default, options) ? null : own;
 }
 
-function textOf(value: unknown, options?: SearchParamOptions<unknown>): string | null {
+function formatParam(value: unknown, options?: SearchParamOptions<unknown>): string | null {
   if (value === null || value === undefined) {
     return null;
   }

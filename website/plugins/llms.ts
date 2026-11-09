@@ -151,9 +151,12 @@ export function toMarkdown(
       const file = path.join(directory, 'demos', `${demo[2]}.brm`);
       out.push('```brm', readFileSync(file, 'utf8').trim(), '```');
     } else if (anatomy) {
-      const pieces = body.filter((text) => text.trim());
-      for (const [number, text] of pieces.entries()) {
-        out.push(`${number + 1}. ${text}`);
+      let number = 0;
+      for (const text of body) {
+        if (text.trim()) {
+          number += 1;
+          out.push(`${number}. ${text}`);
+        }
       }
     } else if (props) {
       out.push(propsTable(readProps(props[1]!)));
@@ -178,7 +181,12 @@ export function readPages(docs: string, ui: string, base: string): LlmsPage[] {
   const files: [Section, string, string][] = [];
   const known = new Set<string>();
   for (const [section, directory] of directories) {
-    const names = readdirSync(directory).filter((file) => file.endsWith('.md'));
+    const names: string[] = [];
+    for (const file of readdirSync(directory)) {
+      if (file.endsWith('.md')) {
+        names.push(file);
+      }
+    }
     // The first page of a section leads.
     names.sort((a, b) => Number(b === 'index.md') - Number(a === 'index.md') || (a < b ? -1 : 1));
     for (const file of names) {
@@ -207,7 +215,13 @@ export function readPages(docs: string, ui: string, base: string): LlmsPage[] {
 
 /** `llms.txt`: the title, a summary and a link to the Markdown of each page. */
 export function llmsTxt(pages: LlmsPage[], origin: string, base: string): string {
-  const intro = pages.find((page) => page.section === 'docs' && page.slug === 'index');
+  let intro: LlmsPage | undefined;
+  for (const page of pages) {
+    if (page.section === 'docs' && page.slug === 'index') {
+      intro = page;
+      break;
+    }
+  }
   const lines = ['# brumate', ''];
   if (intro?.description) {
     lines.push(`> ${intro.description}`, '');
