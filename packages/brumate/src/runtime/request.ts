@@ -426,6 +426,8 @@ export const idempotentIds: Set<string> = new Set();
 /** The ID of each function that `idempotent` made, once the server registered it. */
 export const idempotentId: WeakMap<object, string> = new WeakMap();
 
+const CALL_HOOK = Symbol.for('brumate.callHook');
+
 export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string): F {
   // A form of a function that `idempotent` made gets a key when it renders.
   if (IDEMPOTENT in fn) {
@@ -435,7 +437,11 @@ export function dedupe<F extends (...args: any[]) => unknown>(fn: F, id: string)
   const wrapper = ((...args: unknown[]) => {
     const cache = currentCalls;
     if (!cache) {
-      return fn(...args);
+      // The dev server records the calls that a call made, with this hook.
+      const hook = (globalThis as { [CALL_HOOK]?: (id: string, run: () => unknown) => unknown })[
+        CALL_HOOK
+      ];
+      return hook ? hook(id, () => fn(...args)) : fn(...args);
     }
     let key: string;
     try {
