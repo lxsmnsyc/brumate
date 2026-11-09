@@ -1,7 +1,7 @@
 ---
 id: release-0.7
 title: Release brumate 0.7.0
-status: active
+status: released
 priority: must
 type: release
 outline: false
@@ -81,8 +81,8 @@ Promote `next` to `main` and publish brumate 0.7.0 and @brumate/ui, with the oth
 - [x] The open should nodes of 0.7.0 are moved to 0.8.0, and the changesets on `next` are merged.
 - [x] Build, lint, format, typecheck, tests, e2e, website, bench and pack checks pass; the results are in the outcome.
 - [x] Todos gzip JS before `load` is no larger than 0.6.0 (13.6 kB), or the outcome names the node that grew it and by how much.
-- [ ] The maintainer merges the promotion and the Version Packages pull requests, and brumate 0.7.0 is on npm.
-- [ ] `next` is closed after the promotion merges, and GOAL.md `branches` targets `release/0.8`.
+- [x] The maintainer merges the promotion and the Version Packages pull requests, and brumate 0.7.0 is on npm.
+- [x] `next` is closed after the promotion merges, and GOAL.md `branches` targets `release/0.8`.
 
 ## Sizing
 

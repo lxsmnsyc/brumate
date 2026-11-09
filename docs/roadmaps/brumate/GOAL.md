@@ -17,17 +17,17 @@ branches:
   # `main` is merged into `next` after every release from `main`. `next -> main` is the promotion of a
   # minor release. No prereleases come from `next`; it only runs CI. Nodes of the 0.4.x patch
   # milestone set `target: main` in their brief.
-  # After 0.7.0 merges (the maintainer, 2026-11-09): `next` is closed and each minor release gets its
-  # own branch, `release/<major>.<minor>` (0.8.0 work targets `release/0.8`). Update the targets below
-  # when release-0.7 closes.
-  feature: next
-  fix: next
-  docs: next
-  chore: next
-  refactor: next
-  spike: next
+  # After 0.7.0 merged (the maintainer, 2026-11-09): `next` is closed and each minor release gets its
+  # own branch, `release/<major>.<minor>`, cut from `main`. 0.8.0 work targets `release/0.8`; `main` is
+  # merged into it after every patch release from `main`.
+  feature: release/0.8
+  fix: release/0.8
+  docs: release/0.8
+  chore: release/0.8
+  refactor: release/0.8
+  spike: release/0.8
   hotfix: main
-  promote: next -> main
+  promote: release/0.8 -> main
 ---
 
 # brumate

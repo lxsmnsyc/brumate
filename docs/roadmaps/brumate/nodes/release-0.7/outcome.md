@@ -29,3 +29,8 @@ On `release/0.7.0` (89a2fefc), load average 4 to 22 from other sessions:
 
 - `pnpm bench --only brumate --scenario todos`: JS before `load` 5 files, 33.0 kB / 13.8 kB gzip; client JS in dist 78.6 kB / 27.7 kB.
 - 0.6.0 was 32.4 kB / 13.6 kB. Before context-stores (6f49651f, with the 0.6.1 fixes) it is 32.9 kB / 13.7 kB, so the 0.6.1 fixes (#485 render-memos among them, see render-memo-reads) grew it by 0.1 kB and already shipped. context-stores (#471, d4240387) adds 0.1 kB, for `$store` and `$toStore`. memo-guard and the later nodes add nothing.
+
+## Release
+
+- The maintainer merged the promotion (#495, 115f6ae9) and the Version Packages pull request (#497, 22aee0f3) on 2026-11-09. The Release and Test runs on 22aee0f3 passed, and brumate 0.7.0 is on npm.
+- `next` is closed. GOAL.md `branches` targets `release/0.8`, cut from `main` after the release.
