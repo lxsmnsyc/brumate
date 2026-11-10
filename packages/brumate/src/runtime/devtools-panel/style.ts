@@ -186,7 +186,6 @@ tr.failed td:not(.bar-cell) { color: var(--red); }
 .seg.failed { background: var(--red); }
 .legend { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; color: var(--dim); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
-pre.report { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: 11.5px/1.55 var(--mono); white-space: pre-wrap; }
 .inspect-card { position: fixed; z-index: 2147483647; display: flex; flex-direction: column; gap: 5px; max-width: 340px; padding: 9px 11px; border: 1px solid var(--line, #2f2c31); border-radius: 10px; background: #19181aee; color: #ece8e4; font: 12px/1.4 system-ui, -apple-system, sans-serif; box-shadow: 0 10px 28px #0008; pointer-events: none; backdrop-filter: blur(6px); }
 .inspect-card .card-head { display: flex; justify-content: space-between; gap: 12px; color: #ffb48a; }
 .inspect-card .card-component { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }

@@ -62,9 +62,8 @@ describe('devtools', () => {
     const shadow = host.shadowRoot!;
     openPanel(shadow, state, 'overview');
     const body = (): string => shadow.querySelector('.body')!.textContent!;
-    // The overview lists the components of the page.
-    await expect.poll(body).toContain('Components on the page');
-    expect(body()).toContain('src/Counter.brm');
+    // The first tab is the page: its numbers and its environment.
+    await expect.poll(body).toContain('Environment');
     openPanel(shadow, state, 'scopes');
     await expect.poll(body).toContain('body of #offscreen · hidden');
     expect(body()).toContain('body of #for');
