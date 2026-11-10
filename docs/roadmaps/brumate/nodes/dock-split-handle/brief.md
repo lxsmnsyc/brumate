@@ -1,7 +1,7 @@
 ---
 id: dock-split-handle
 title: Resizable split handle
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign
