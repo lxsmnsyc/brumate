@@ -1,12 +1,89 @@
-// The Activity workspace: the log, the timeline of handlers, the effects, the navigations and the server trace.
+// The Activity workspace: one log of what the page did (navigations, blocks, handlers, writes,
+// effects and server calls) with filters, a ruler of when it happened, and a pane for the detail of
+// a server call.
 
-import type { TraceEntry } from '../request.ts';
-import type { DevtoolsEntry, Interaction } from '../devtools.ts';
-import { element, iconButton, key, pill, row, card } from './dom.ts';
+import type { CallTiming, DevtoolsEntry, DevtoolsState, Interaction } from '../devtools.ts';
+import { element, svg } from './dom.ts';
 import { ms, seconds } from './format.ts';
 import { known, loadComponents } from './info.ts';
-import { KINDS, drawTabOf } from './workspace.ts';
-import type { DockContext, Workspace } from './workspace.ts';
+import type { DockContext, Shell, Workspace } from './workspace.ts';
+
+/** The kinds of rows, in the order of the filters. */
+type RowKind = 'nav' | 'block' | 'handler' | 'write' | 'effect' | 'server';
+
+const KIND_ORDER: RowKind[] = ['nav', 'block', 'handler', 'write', 'effect', 'server'];
+const LABELS: Record<RowKind, string> = {
+  nav: 'Navigation',
+  block: 'Block',
+  handler: 'Handler',
+  write: 'Write',
+  effect: 'Effect',
+  server: 'Server',
+};
+const COLORS: Record<RowKind, string> = {
+  nav: 'var(--blue)',
+  block: 'var(--purple)',
+  handler: 'var(--accent)',
+  write: 'var(--yellow)',
+  effect: 'var(--green)',
+  server: 'var(--pink)',
+};
+/** The most rows the log draws, newest last. */
+const MAX_ROWS = 400;
+
+/** One line of the log. */
+interface Row {
+  time: number;
+  kind: RowKind;
+  text: string;
+  /** A second, dimmer part of the text, such as the status of a call. */
+  sub?: string;
+  /** The time it took. */
+  d?: string;
+  bad?: boolean;
+  /** Set for a row that a handler caused, so it hangs under the handler. */
+  child?: boolean;
+  /** The entry of a server call, which the detail pane opens. */
+  call?: DevtoolsEntry;
+}
+
+/** What the workspace remembers in `shell.work.activity`. */
+interface ActivityWork {
+  shown: Set<RowKind>;
+  /** The time Pause was pressed, while it holds. */
+  pausedAt: number | undefined;
+  /** Rows older than this are cleared. */
+  cleared: number;
+  selected: DevtoolsEntry | undefined;
+  /** The time of the newest row that an earlier draw showed. */
+  drawn: number;
+  /** True while the log is scrolled to its end, so new rows keep it there. */
+  atEnd: boolean;
+  /** Where the log was scrolled to, to restore it after a draw. */
+  scrollTop: number;
+  /** The drawn detail, kept while the selection and its record are the same objects. */
+  detail:
+    | { entry: DevtoolsEntry; timing: CallTiming | undefined; record: unknown; node: HTMLElement }
+    | undefined;
+}
+
+function readWork(shell: Shell): ActivityWork {
+  let work = shell.work.activity as ActivityWork | undefined;
+  if (!work) {
+    work = {
+      shown: new Set(KIND_ORDER),
+      pausedAt: undefined,
+      cleared: -1,
+      selected: undefined,
+      drawn: -1,
+      atEnd: true,
+      scrollTop: 0,
+      detail: undefined,
+    };
+    shell.work.activity = work;
+  }
+  return work;
+}
 
 /** A write with the name of its slot, once the dev server has said what it is. */
 export function describe(entry: DevtoolsEntry): string {
@@ -16,11 +93,6 @@ export function describe(entry: DevtoolsEntry): string {
   return name
     ? `${info!.name} ${name} = ${entry.text.split(' = ').slice(1).join(' = ')}`
     : entry.text;
-}
-
-/** The text of an entry of the log. */
-export function readText(entry: DevtoolsEntry): string {
-  return entry.kind === 'write' ? describe(entry) : entry.text;
 }
 
 /** The name of a handler, such as `Index h16`, once the dev server said the component. */
@@ -40,622 +112,460 @@ export function tickStep(rough: number): number {
   return 10 * power;
 }
 
-/** The colour of how long a run took, in milliseconds. */
-export function speedColor(total: number): string {
-  if (total < 100) {
-    return 'green';
+/** The IDs of the components that the rows name, to ask the dev server for their names. */
+function listComponents(state: DevtoolsState): Set<string> {
+  const ids = new Set<string>();
+  for (const entry of state.log) {
+    if (entry.write) {
+      ids.add(entry.write.component);
+    } else if (entry.kind === 'handler') {
+      ids.add(readHandler(entry).split('#')[0]!);
+    } else {
+      ids.add(entry.text.split(':')[0]!.split('#')[0]!);
+    }
   }
-  return total < 300 ? 'yellow' : 'red';
+  for (const run of state.timeline) {
+    ids.add(run.ref.split('#')[0]!);
+    for (const call of run.calls) {
+      ids.add(call.name.split('#')[0]!);
+    }
+  }
+  for (const effect of state.effects.values()) {
+    ids.add(effect.component);
+  }
+  return ids;
 }
 
-function drawLog(ctx: DockContext, into: HTMLElement): void {
-  const { state, shell } = ctx;
-  const filters = element('div', { class: 'toolbar filters' });
-  for (const kind of KINDS) {
-    const box = element('input', { type: 'checkbox' });
-    box.checked = shell.shown.has(kind);
-    box.addEventListener('change', () => {
-      if (box.checked) {
-        shell.shown.add(kind);
+/** The reference of a handler entry: `click on <button>: Cart_1#h2` is `Cart_1#h2`. */
+function readHandler(entry: DevtoolsEntry): string {
+  return entry.text.slice(entry.text.lastIndexOf(': ') + 2);
+}
+
+function addHandler(
+  state: DevtoolsState,
+  entry: DevtoolsEntry,
+  rows: Row[],
+  matched: Set<Interaction>,
+): void {
+  const ref = readHandler(entry);
+  const label = entry.text.slice(0, Math.max(0, entry.text.lastIndexOf(': ')));
+  // The run in the timeline that this entry stands for gives the time of its own code.
+  let own: string | undefined;
+  let bad = false;
+  for (const run of state.timeline) {
+    if (run.ref === ref && Math.abs(run.begun - entry.time) < 100) {
+      own = ms(run.end - run.ready);
+      bad = run.failed === true;
+      matched.add(run);
+    }
+  }
+  rows.push({ time: entry.time, kind: 'handler', text: handlerName(ref), sub: label, d: own, bad });
+}
+
+function addCall(entry: DevtoolsEntry, rows: Row[]): void {
+  const timing = entry.call;
+  if (timing) {
+    let status = String(timing.status ?? '…');
+    if (timing.status === 'redirect') {
+      // The log text holds the target: `name: redirect to /done in 3 ms`.
+      const target = /redirect to (.*) in \d+ ms$/.exec(entry.text)?.[1];
+      status = target ? `redirect → ${target}` : status;
+    }
+    rows.push({
+      time: entry.time,
+      kind: 'server',
+      text: `${handlerName(timing.name)}()`,
+      sub: status,
+      d: timing.end === undefined ? '…' : ms(timing.end - timing.start),
+      bad:
+        timing.status === 'failed' || (typeof timing.status === 'number' && timing.status >= 400),
+      call: entry,
+    });
+    return;
+  }
+  // A call that no handler made has its name and answer in the text only.
+  const cut = entry.text.indexOf(': ');
+  const name = cut === -1 ? entry.text : entry.text.slice(0, cut);
+  rows.push({
+    time: entry.time,
+    kind: 'server',
+    text: `${handlerName(name)}()`,
+    sub: cut === -1 ? undefined : entry.text.slice(cut + 2),
+    bad: entry.text.includes(': failed'),
+    call: entry,
+  });
+}
+
+/** Every row of the page, oldest first, before the filters. */
+function collectRows(state: DevtoolsState): Row[] {
+  const rows: Row[] = [];
+  const matched = new Set<Interaction>();
+  for (const entry of state.log) {
+    if (entry.kind === 'handler') {
+      addHandler(state, entry, rows, matched);
+    } else if (entry.kind === 'write') {
+      rows.push({ time: entry.time, kind: 'write', text: describe(entry) });
+    } else {
+      addCall(entry, rows);
+    }
+  }
+  // A run that the log has no entry for, such as when the log was trimmed, still shows.
+  for (const run of state.timeline) {
+    if (!matched.has(run)) {
+      rows.push({
+        time: run.begun,
+        kind: 'handler',
+        text: handlerName(run.ref),
+        sub: run.label,
+        d: ms(run.end - run.ready),
+        bad: run.failed === true,
+      });
+    }
+  }
+  const now = performance.now();
+  for (const effect of state.effects.values()) {
+    const info = known.get(effect.component);
+    const name = `${info?.name ?? effect.component} ${effect.name}`;
+    const sub = effect.name.startsWith('c') ? '$client' : '$effect';
+    let lastSecond = 0;
+    for (const at of effect.recent) {
+      if (now - at < 1000) {
+        lastSecond++;
+      }
+    }
+    for (const [index, at] of effect.recent.entries()) {
+      const newest = index === effect.recent.length - 1;
+      rows.push({
+        time: at,
+        kind: 'effect',
+        text: name,
+        sub,
+        d: newest ? `${effect.runs} runs` : undefined,
+        bad: newest && lastSecond >= 10,
+      });
+    }
+  }
+  for (const navigation of state.navigations) {
+    const url = new URL(navigation.url);
+    rows.push({
+      time: navigation.start,
+      kind: 'nav',
+      text: url.pathname + url.search,
+      sub: navigation.kind,
+      d: ms(navigation.time),
+    });
+    const at = navigation.start;
+    if (navigation.full) {
+      rows.push({ time: at, kind: 'nav', text: 'the whole page was replaced', child: true });
+    }
+    for (const route of navigation.kept) {
+      rows.push({ time: at, kind: 'nav', text: `kept ${route}`, child: true });
+    }
+    for (const change of navigation.replaced) {
+      rows.push({
+        time: at,
+        kind: 'nav',
+        text: `replaced ${change.slot}: ${change.from} → ${change.to}`,
+        child: true,
+      });
+    }
+  }
+  for (const block of state.blocks.values()) {
+    rows.push({
+      time: block.rendered ?? block.fired ?? block.seen,
+      kind: 'block',
+      text: `${block.kind} ${block.id}`,
+      sub: block.state,
+      bad: block.state === 'failed',
+    });
+  }
+  // Array#sort is stable, so rows with the same time keep the order above.
+  return rows.toSorted((a, b) => a.time - b.time);
+}
+
+/** Marks the writes, effects and calls that a handler caused, so they hang under it. */
+function nestRows(state: DevtoolsState, rows: Row[]): void {
+  for (const row of rows) {
+    if (row.kind !== 'write' && row.kind !== 'effect' && row.kind !== 'server') {
+      continue;
+    }
+    for (const run of state.timeline) {
+      if (run.begun <= row.time && row.time <= (run.settled ?? run.end) + 32) {
+        row.child = true;
+        break;
+      }
+    }
+  }
+}
+
+/** The ruler above the log: a tick for each row and a mark for each round step. */
+function drawStrip(rows: Row[]): HTMLElement {
+  const strip = element('div', { class: 'strip' });
+  if (rows.length === 0) {
+    return strip;
+  }
+  const first = rows[0]!.time;
+  const span = Math.max(rows.at(-1)!.time - first, 1000);
+  const step = tickStep(span / 5);
+  for (let at = 0; at <= span; at += step) {
+    const left = `left:${(at / span) * 100}%`;
+    strip.append(
+      element('span', { class: 'rule', style: left }),
+      element('span', { class: 'rl', style: left }, `${+(at / 1000).toFixed(1)}s`),
+    );
+  }
+  for (const row of rows) {
+    strip.append(
+      element('span', {
+        class: 'tick',
+        style: `left:${((row.time - first) / span) * 100}%;height:${row.child ? 10 : 16}px;background:${COLORS[row.kind]}`,
+      }),
+    );
+  }
+  return strip;
+}
+
+function drawFilters(ctx: DockContext, work: ActivityWork): HTMLElement {
+  const { shell, state } = ctx;
+  const tools = element('div', { class: 'tools' });
+  for (const kind of KIND_ORDER) {
+    const chip = element(
+      'button',
+      { class: 'chip', 'aria-pressed': String(work.shown.has(kind)) },
+      element('i', { style: `background:${COLORS[kind]}` }),
+      LABELS[kind],
+    );
+    chip.addEventListener('click', () => {
+      if (work.shown.has(kind)) {
+        work.shown.delete(kind);
       } else {
-        shell.shown.delete(kind);
+        work.shown.add(kind);
       }
       ctx.draw();
     });
-    filters.append(element('label', { class: `kind-${kind}` }, box, kind));
+    tools.append(chip);
   }
-  const search = element('input', {
-    type: 'search',
-    placeholder: 'Search the log',
-    'aria-label': 'Search the log',
-  });
-  search.value = shell.logSearch;
-  search.addEventListener('input', () => {
-    shell.logSearch = search.value;
-    drawLog(ctx, into);
-    const next = into.querySelector<HTMLInputElement>('input[type="search"]');
-    next?.focus();
-    next?.setSelectionRange(shell.logSearch.length, shell.logSearch.length);
-  });
-  const pause = iconButton(shell.paused ? 'play' : 'pause', shell.paused ? 'Resume' : 'Pause', {
-    'aria-pressed': String(shell.paused),
-  });
+  const pause = element(
+    'button',
+    { class: 'chip', 'aria-pressed': String(shell.paused) },
+    shell.paused ? 'Resume' : 'Pause',
+  );
   pause.addEventListener('click', () => {
     shell.paused = !shell.paused;
-    shell.frozen = shell.paused ? [...state.log] : undefined;
+    // devtools-panel.ts skips redraws while paused on the log tab, so pausedAt matters on the others.
+    work.pausedAt = shell.paused ? performance.now() : undefined;
     ctx.draw();
   });
-  const clear = iconButton('trash', 'Clear');
+  const clear = element('button', { class: 'chip' }, 'Clear');
   clear.addEventListener('click', () => {
+    work.cleared = performance.now();
     state.log.length = 0;
-    shell.frozen = shell.paused ? [] : undefined;
+    state.timeline.length = 0;
+    work.selected = undefined;
     ctx.draw();
   });
-  filters.append(search, pause, clear);
-  const needle = shell.logSearch.trim().toLowerCase();
-  const entries: DevtoolsEntry[] = [];
-  for (const entry of shell.frozen ?? state.log) {
-    if (
-      shell.shown.has(entry.kind) &&
-      (!needle || readText(entry).toLowerCase().includes(needle))
-    ) {
-      entries.push(entry);
-    }
-  }
-  const list = element('table', { class: 'rows' });
-  for (const entry of entries.toReversed()) {
-    const line = element(
-      'tr',
-      { class: `entry ${entry.kind}` },
-      element('td', { class: 'time' }, seconds(entry.time)),
-      element('td', { class: `kind-${entry.kind}`, style: 'width: 1%' }, entry.kind),
-      element('td', {}, readText(entry)),
-    );
-    if (entry.kind === 'call') {
-      // The detail of a call comes from the context, so its module is not this one.
-      line.addEventListener('click', () => {
-        into.querySelector('.call-detail')?.remove();
-        const detail = ctx.drawCallDetail(entry);
-        detail.classList.add('call-detail');
-        into.append(detail);
-      });
-    }
-    list.append(line);
-  }
-  into.replaceChildren(
-    filters,
-    entries.length > 0 ? list : element('div', { class: 'empty' }, 'Nothing to show.'),
-  );
+  tools.append(element('span', { class: 'grow' }), pause, clear);
+  return tools;
 }
 
-/** The effects and `$client` callbacks, with how often each ran and when its cleanup ran. */
-async function drawEffects(ctx: DockContext, into: HTMLElement): Promise<void> {
-  const { state } = ctx;
-  const effects = [...state.effects.values()];
-  const ids = new Set<string>();
-  for (const effect of effects) {
-    ids.add(effect.component);
+function toggleCall(ctx: DockContext, work: ActivityWork, entry: DevtoolsEntry): void {
+  work.selected = work.selected === entry ? undefined : entry;
+  ctx.draw();
+}
+
+function drawRow(ctx: DockContext, work: ActivityWork, row: Row): HTMLElement {
+  const classes = ['ent'];
+  if (row.child) {
+    classes.push('child');
   }
-  await loadComponents(state, ids);
-  const now = performance.now();
-  // Runs in the last second, which is how an effect that runs too often shows.
-  function lastSecond(recent: number[]): number {
-    let count = 0;
-    for (const at of recent) {
-      if (now - at < 1000) {
-        count++;
-      }
-    }
-    return count;
+  if (row.time > work.drawn && work.drawn >= 0) {
+    classes.push('new');
   }
-  const sorted = effects.toSorted(
-    (a, b) => lastSecond(b.recent) - lastSecond(a.recent) || b.runs - a.runs,
+  const text = element(
+    'span',
+    { class: 'x' },
+    ...(row.child ? [element('span', { class: 'faint' }, '└ ')] : []),
+    element('span', { class: row.bad ? 'bad' : '' }, row.text),
   );
-  const table = element(
-    'table',
-    { class: 'rows' },
-    row(
-      ['component', 'scope', 'name', 'runs', 'last second', 'time', 'cleanups', 'last run'],
-      'th',
-    ),
-  );
-  for (const effect of sorted) {
-    const info = known.get(effect.component);
-    const recent = lastSecond(effect.recent);
-    const last = effect.recent.at(-1);
-    const tr = element(
-      'tr',
-      {},
-      element('td', {}, info?.name ?? effect.component),
-      element('td', { class: 'mono' }, info?.scopes[effect.k]?.label ?? String(effect.scope)),
-      element(
-        'td',
-        {},
-        pill(
-          effect.name.startsWith('c') ? '$client' : '$effect',
-          effect.name.startsWith('c') ? 'purple' : 'blue',
-        ),
-        ' ',
-        element('span', { class: 'mono' }, effect.name),
-      ),
-      element('td', { class: 'mono' }, String(effect.runs)),
-      element('td', { class: 'mono' }, String(recent)),
-      element('td', { class: 'mono' }, ms(effect.time)),
-      element('td', { class: 'mono' }, String(effect.cleanups)),
-      element('td', { class: 'mono' }, last === undefined ? '' : `${seconds(now - last)} ago`),
-    );
-    if (recent >= 10) {
-      tr.className = 'busy';
-      tr.title = 'It ran 10 times or more in the last second. Check what it reads.';
-    } else if (!effect.active) {
-      tr.className = 'ended';
-      tr.title = 'Its cleanup ran, and it has not run again, such as in a scope that went.';
-    }
-    table.append(tr);
+  if (row.sub) {
+    text.append(' ', element('span', { class: `sub${row.bad ? ' bad' : ''}` }, row.sub));
   }
-  let active = 0;
-  let runs = 0;
-  let busy = 0;
-  for (const effect of effects) {
-    if (effect.active) {
-      active++;
-    }
-    runs += effect.runs;
-    if (lastSecond(effect.recent) >= 10) {
-      busy++;
-    }
-  }
-  into.replaceChildren(
+  const line = element(
+    'div',
+    {},
+    element('span', { class: 't' }, seconds(row.time)),
     element(
-      'div',
-      { class: 'cards' },
-      card('Active', String(active), `of ${effects.length} that ran`),
-      card('Runs', String(runs), 'since the page loaded'),
-      card('Busy', String(busy), 'ran 10 times or more in the last second'),
+      'span',
+      { class: 'k' },
+      element('i', { style: `background:${COLORS[row.kind]}` }),
+      LABELS[row.kind],
     ),
-    effects.length > 0
-      ? table
-      : element('div', { class: 'empty' }, 'No effect or $client callback has run yet.'),
+    text,
+    element('span', { class: 'd' }, row.d ?? ''),
   );
-}
-
-/**
- * The client navigations of the page, newest first: the routes that
- * stayed, those that were replaced, or the whole page, and how far the
- * IDs of the new page moved.
- */
-async function drawNavigation(ctx: DockContext, into: HTMLElement): Promise<void> {
-  const { state } = ctx;
-  const list = state.navigations.toReversed();
-  const items: HTMLElement[] = [];
-  for (const navigation of list) {
-    const path = new URL(navigation.url).pathname + new URL(navigation.url).search;
-    const routes = element('div', { class: 'routes' });
-    if (navigation.full) {
-      routes.append(
-        element(
-          'div',
-          { class: 'sub' },
-          navigation.kind === 'form'
-            ? 'The whole page: a form changes what can show anywhere on it.'
-            : 'The whole page: its root route or its layouts did not match the page before.',
-        ),
-      );
-    } else {
-      for (const route of navigation.kept) {
-        routes.append(element('div', { class: 'mono' }, pill('kept', 'green'), ' ', route));
+  const entry = row.call;
+  if (entry) {
+    classes.push('call');
+    line.setAttribute('tabindex', '0');
+    line.setAttribute('role', 'button');
+    line.setAttribute('aria-current', String(entry === work.selected));
+    line.addEventListener('click', () => toggleCall(ctx, work, entry));
+    line.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleCall(ctx, work, entry);
       }
-      for (const change of navigation.replaced) {
-        routes.append(
-          element(
-            'div',
-            { class: 'mono' },
-            pill('replaced', 'yellow'),
-            ` ${change.slot}: ${change.from} → ${change.to}`,
-          ),
-        );
-      }
-    }
-    items.push(
-      element(
-        'div',
-        { class: 'navigation' },
-        element(
-          'div',
-          { class: 'toolbar' },
-          element('span', { class: 'mono' }, path),
-          pill(navigation.kind, navigation.kind === 'form' ? 'purple' : 'blue'),
-          element('span', { class: 'sub' }, `${ms(navigation.time)} until the page changed`),
-          navigation.shift === undefined
-            ? ''
-            : element('span', { class: 'sub' }, `IDs moved by ${navigation.shift}`),
-        ),
-        routes,
-      ),
-    );
-  }
-  into.replaceChildren(
-    ...(items.length > 0
-      ? items
-      : [
-          element(
-            'div',
-            { class: 'empty' },
-            'No client navigation yet. Follow a link of the page to see what it keeps.',
-          ),
-        ]),
-  );
-}
-
-/**
- * What the server did for the last page that loaded: the render until the
- * page could stream, each memo that loaded and each server function call,
- * each `#loading` body, and the rest of the stream, on one scale. The
- * server writes it at the end of the page, in development.
- */
-async function drawServer(_ctx: DockContext, into: HTMLElement): Promise<void> {
-  const script = [...document.querySelectorAll('script[b-trace]')].at(-1);
-  let trace: { route: string; entries: TraceEntry[] } | undefined;
-  try {
-    trace = script ? JSON.parse(script.textContent ?? '') : undefined;
-  } catch {
-    trace = undefined;
-  }
-  if (!trace) {
-    into.replaceChildren(
-      element(
-        'div',
-        { class: 'empty' },
-        'No trace yet. The dev server writes one at the end of each page that it renders.',
-      ),
-    );
-    return;
-  }
-  const entries = trace.entries.toSorted((a, b) => a.start - b.start);
-  let total = 1;
-  for (const entry of entries) {
-    total = Math.max(total, entry.end ?? entry.start);
-  }
-  const table = element(
-    'table',
-    { class: 'rows' },
-    row(['step', 'what', 'took', `when, 0 to ${ms(total)}`], 'th'),
-  );
-  for (const entry of entries) {
-    const end = entry.end ?? total;
-    const tr = element(
-      'tr',
-      {},
-      element('td', {}, pill(entry.kind, entry.failed ? 'red' : '')),
-      element('td', { class: 'mono' }, entry.label),
-      element('td', { class: 'mono' }, entry.end === undefined ? '…' : ms(end - entry.start)),
-      element(
-        'td',
-        { class: 'bar-cell' },
-        element(
-          'div',
-          { class: 'bar-track' },
-          element('span', {
-            class: `bar ${entry.failed ? 'failed' : entry.kind}`,
-            style: `left:${(entry.start / total) * 100}%;width:${((end - entry.start) / total) * 100}%`,
-            title: `${ms(entry.start)} to ${ms(end)}`,
-          }),
-        ),
-      ),
-    );
-    if (entry.failed) {
-      tr.className = 'failed';
-    }
-    table.append(tr);
-  }
-  let render: TraceEntry | undefined;
-  const counts = new Map<TraceEntry['kind'], number>();
-  for (const entry of entries) {
-    if (entry.kind === 'render' && !render) {
-      render = entry;
-    }
-    counts.set(entry.kind, (counts.get(entry.kind) ?? 0) + 1);
-  }
-  function count(kind: TraceEntry['kind']): number {
-    return counts.get(kind) ?? 0;
-  }
-  into.replaceChildren(
-    element(
-      'div',
-      { class: 'cards' },
-      card(
-        'Until it streamed',
-        render?.end === undefined ? '…' : ms(render.end),
-        `the render of ${trace.route}`,
-      ),
-      card('Whole page', ms(total), 'until the last body streamed'),
-      card('Memos that loaded', String(count('memo')), `${count('call')} server function calls`),
-      card('Bodies', String(count('body')), '#loading bodies that streamed'),
-    ),
-    element(
-      'div',
-      { class: 'legend', style: 'margin: 10px 0 6px' },
-      key('var(--accent)', 'render'),
-      key('var(--green)', 'memo'),
-      key('var(--blue)', 'server function call'),
-      key('var(--purple)', '#loading body'),
-      key('var(--faint)', 'the rest of the stream'),
-      element('span', { class: 'sub' }, 'Of the last page that the dev server rendered.'),
-    ),
-    table,
-  );
-}
-
-async function drawTimeline(ctx: DockContext, into: HTMLElement): Promise<void> {
-  const { state } = ctx;
-  const runs = state.timeline.toReversed().slice(0, 40);
-  const ids = new Set<string>();
-  for (const run of runs) {
-    ids.add(run.ref.split('#')[0]!);
-  }
-  await loadComponents(state, ids);
-  if (runs.length === 0) {
-    into.replaceChildren(
-      element('h2', {}, 'Timeline'),
-      element(
-        'p',
-        { class: 'sub' },
-        'Each handler that runs shows here, with the time its code took to load, its own run, the server functions it called and the updates that followed.',
-      ),
-    );
-    return;
-  }
-  const now = performance.now();
-  const totals: number[] = [];
-  for (const run of runs) {
-    totals.push((run.settled ?? now) - run.begun);
-  }
-  function segment(
-    run: Interaction,
-    scale: number,
-    start: number,
-    end: number,
-    kind: string,
-    title: string,
-  ): HTMLElement {
-    // Inside the track: a bar that starts before the run, or ends after the scale, is cut.
-    const left = Math.min(Math.max(((start - run.begun) / scale) * 100, 0), 100);
-    const width = Math.min(Math.max(((end - start) / scale) * 100, 0), 100 - left);
-    return element('span', {
-      class: `seg ${kind}`,
-      style: `left:${left}%;width:${width}%`,
-      title,
     });
   }
-  const list = element('div');
-  for (const [index, run] of runs.entries()) {
-    const total = totals[index]!;
-    let last = run.settled ?? now;
-    for (const call of run.calls) {
-      last = Math.max(last, call.end ?? now);
-    }
-    for (const update of run.updates) {
-      last = Math.max(last, update.end);
-    }
-    // The scale ends at a round tick past the last bar, so the ruler reads in round numbers.
-    const step = tickStep(Math.max(last - run.begun, 1) / 4);
-    const scale = Math.ceil(Math.max(last - run.begun, 1) / step) * step;
-    const ticks = element('div', { class: 'ruler' });
-    for (let time = 0; time <= scale + step / 2; time += step) {
-      const at = (time / scale) * 100;
-      ticks.append(
-        element('span', { class: at > 99 ? 'end' : '', style: `left:${at}%` }, ms(time)),
-      );
-    }
-    // Lines through the tracks at each tick.
-    const grid = `background-image: repeating-linear-gradient(to right, #ffffff1a 0 1px, transparent 1px ${(step / scale) * 100}%)`;
-    const handler = element(
-      'div',
-      { class: 'track', style: grid },
-      ...(run.ready - run.begun > 0.5
-        ? [
-            segment(
-              run,
-              scale,
-              run.begun,
-              run.ready,
-              'wait',
-              `waiting for its code and the handlers before it: ${ms(run.ready - run.begun)}`,
-            ),
-          ]
-        : []),
-      segment(
-        run,
-        scale,
-        run.ready,
-        run.end,
-        run.failed ? 'failed' : 'run',
-        `its run: ${ms(run.end - run.ready)}`,
-      ),
-      ...(run.settled !== undefined && run.settled - run.end > 0.5
-        ? [
-            segment(
-              run,
-              scale,
-              run.end,
-              run.settled,
-              'async',
-              `its promise: ${ms(run.settled - run.end)}`,
-            ),
-          ]
-        : []),
-    );
-    const rows: HTMLElement[] = [
-      element('div', { class: 'run-row' }, element('span'), ticks, element('span')),
-      element(
-        'div',
-        { class: 'run-row' },
-        element('span', { class: 'name' }, 'handler'),
-        handler,
-        element('span', { class: 'took' }, run.settled === undefined ? '…' : ms(total)),
-      ),
-    ];
-    for (const call of run.calls) {
-      const end = call.end ?? now;
-      const parts = [
-        segment(
-          run,
-          scale,
-          call.start,
-          end,
-          call.status === 'failed' ? 'failed' : 'call',
-          `the round trip: ${ms(end - call.start)}`,
-        ),
-      ];
-      if (call.server !== undefined) {
-        // The time on the server, in the middle of the round trip.
-        const middle = call.start + (end - call.start - call.server) / 2;
-        parts.push(
-          segment(
-            run,
-            scale,
-            middle,
-            middle + call.server,
-            'server',
-            `on the server: ${ms(call.server)}`,
-          ),
-        );
-      }
-      rows.push(
-        element(
-          'div',
-          { class: 'run-row' },
-          element('span', { class: 'name', title: call.name }, `call ${handlerName(call.name)}`),
-          element('div', { class: 'track', style: grid }, ...parts),
-          element(
-            'span',
-            { class: 'took' },
-            call.end === undefined
-              ? '…'
-              : `${ms(end - call.start)}${call.server === undefined ? '' : ` (${ms(call.server)})`}`,
-          ),
-        ),
-      );
-    }
-    // The batches of updates share a row, each on its own bar.
-    if (run.updates.length > 0) {
-      let count = 0;
-      let took = 0;
-      const updateSegments: HTMLElement[] = [];
-      for (const update of run.updates) {
-        count += update.count;
-        took += update.end - update.start;
-        updateSegments.push(
-          segment(
-            run,
-            scale,
-            update.start,
-            update.end,
-            'update',
-            `${update.count} ${update.count === 1 ? 'update' : 'updates'} and their effects: ${ms(update.end - update.start)}`,
-          ),
-        );
-      }
-      const batches = run.updates.length;
-      rows.push(
-        element(
-          'div',
-          { class: 'run-row' },
-          element(
-            'span',
-            { class: 'name' },
-            `${count} ${count === 1 ? 'update' : 'updates'}${batches > 1 ? `, ${batches} batches` : ''}`,
-          ),
-          element('div', { class: 'track', style: grid }, ...updateSegments),
-          element('span', { class: 'took' }, ms(took)),
-        ),
-      );
-    }
-    const speed = speedColor(total);
-    list.append(
-      element(
-        'div',
-        { class: 'interaction' },
-        element(
-          'div',
-          { class: 'run-head' },
-          element('span', { class: 'what' }, run.label),
-          element('span', { class: 'ref' }, handlerName(run.ref)),
-          element('span', { class: 'spacer' }),
-          run.failed ? pill('failed', 'red') : '',
-          pill(
-            run.settled === undefined ? 'running' : ms(total),
-            run.settled === undefined ? 'blue' : speed,
-          ),
-          element('span', { class: 'sub' }, seconds(run.begun)),
-        ),
-        ...rows,
-      ),
-    );
+  line.className = classes.join(' ');
+  return line;
+}
+
+function drawLogColumn(ctx: DockContext, work: ActivityWork, rows: Row[]): HTMLElement {
+  const log = element('div', { class: 'log' });
+  if (rows.length === 0) {
+    log.append(element('div', { class: 'empty' }, 'Nothing yet. Use the page.'));
   }
-  const settled: number[] = [];
-  let callCount = 0;
-  for (const [index, run] of runs.entries()) {
-    if (run.settled !== undefined) {
-      settled.push(totals[index]!);
-    }
-    callCount += run.calls.length;
+  for (const row of rows) {
+    log.append(drawRow(ctx, work, row));
   }
-  const clear = iconButton('trash', 'Clear');
-  clear.addEventListener('click', () => {
-    state.timeline.length = 0;
+  log.addEventListener('scroll', () => {
+    work.atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 8;
+    work.scrollTop = log.scrollTop;
+  });
+  // Keeps the log at its end while it was there, as a console does, and else where it was.
+  queueMicrotask(() => {
+    log.scrollTop = work.atEnd ? log.scrollHeight : work.scrollTop;
+  });
+  return element('div', { class: 'act' }, drawFilters(ctx, work), drawStrip(rows), log);
+}
+
+function drawCloseIcon(): SVGElement {
+  const node = svg('svg', {
+    class: 'icon',
+    viewBox: '0 0 24 24',
+    width: 14,
+    height: 14,
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': 1.8,
+    'stroke-linecap': 'round',
+    'aria-hidden': 'true',
+  });
+  node.innerHTML = '<path d="m6 6 12 12M18 6 6 18"/>';
+  return node;
+}
+
+/** The detail pane: the module of the call detail, or what to do to get one. */
+function drawDetail(ctx: DockContext, work: ActivityWork, into: HTMLElement): void {
+  const entry = work.selected;
+  if (!entry) {
+    work.detail = undefined;
+    into.replaceChildren(
+      element('div', { class: 'empty' }, 'Select a server call to see what it sent and got back.'),
+    );
+    return;
+  }
+  const close = element('button', { class: 'act-close', 'aria-label': 'Close' }, drawCloseIcon());
+  close.title = 'Close';
+  close.addEventListener('click', () => {
+    work.selected = undefined;
     ctx.draw();
   });
-  into.replaceChildren(
-    element(
-      'div',
-      { class: 'cards' },
-      card('Handlers', String(state.timeline.length), 'the last 40 show here'),
-      card(
-        'Slowest',
-        settled.length > 0 ? ms(Math.max(...settled)) : '—',
-        'from the event to the end of its promise',
-      ),
-      card('Server calls', String(callCount), 'made by these handlers'),
-    ),
-    element(
-      'div',
-      { class: 'toolbar', style: 'margin-top: 8px' },
-      element(
-        'div',
-        { class: 'legend' },
-        element(
-          'span',
-          {},
-          element('i', {
-            style:
-              'background: repeating-linear-gradient(45deg, var(--faint) 0 2px, transparent 2px 4px)',
-          }),
-          'waiting for code',
-        ),
-        key('var(--blue)', 'run'),
-        key('#7cb7ff55', 'its promise'),
-        key('#ff9ecf88', 'server call'),
-        key('#ff9ecf', 'on the server'),
-        key('var(--green)', 'updates'),
-      ),
-      element('span', { class: 'spacer' }),
-      clear,
-    ),
-    list,
-  );
+  // The detail keeps its own state (an armed button, an open section), so it draws again only when
+  // the selection changes or the record of the call arrives.
+  const timing = entry.call;
+  const kept = work.detail;
+  if (!kept || kept.entry !== entry || kept.timing !== timing || kept.record !== timing?.record) {
+    const node = ctx.drawCallDetail(entry);
+    node.classList.add('call-detail');
+    work.detail = { entry, timing, record: timing?.record, node };
+  }
+  into.replaceChildren(close, work.detail!.node);
+}
+
+const ACTIVITY_STYLE = `
+.act, .act-detail { --line2: #36333a; --pink: #ff9ecf; --sel: #ee7a3e14; --ring: #ee7a3e47; }
+.split.activity > .list { width: 58%; padding: 0; gap: 0; }
+.split.activity > .detail { position: relative; }
+.panel.right .calld { width: auto; flex: 1; }
+.act { flex: 1; display: flex; flex-direction: column; min-width: 0; height: 100%; }
+.act .tools { display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 10px; border-bottom: 1px solid var(--line); flex: none; }
+.act .grow { flex: 1; }
+.act .chip { height: 24px; padding: 0 9px; border-radius: 7px; background: none; color: var(--faint); font: inherit; font-size: 11.5px; display: inline-flex; gap: 6px; align-items: center; }
+.act .chip:hover { background: var(--hover); color: var(--dim); }
+.act .chip[aria-pressed="true"] { color: var(--text); }
+.act .chip i { width: 7px; height: 7px; border-radius: 2px; opacity: .35; }
+.act .chip[aria-pressed="true"] i { opacity: 1; }
+.strip { position: relative; height: 34px; margin: 0 14px; border-bottom: 1px solid var(--line); flex: none; }
+.strip .tick { position: absolute; bottom: 8px; width: 2px; border-radius: 1px; }
+.strip .rule { position: absolute; bottom: 0; height: 4px; width: 1px; background: var(--line2); }
+.strip .rl { position: absolute; top: 2px; font: 10px var(--mono); color: var(--faint); transform: translateX(-50%); }
+.act .log { flex: 1; overflow: auto; padding: 4px 6px; }
+.ent { display: grid; grid-template-columns: 56px 82px minmax(0, 1fr) auto; gap: 10px; align-items: center; height: 28px; padding: 0 8px; border-radius: 7px; font: 11.5px var(--mono); }
+.ent:hover { background: var(--hover); }
+.ent .t { color: var(--faint); }
+.ent .k { display: flex; align-items: center; gap: 6px; color: var(--dim); font-family: system-ui, sans-serif; font-size: 11.5px; }
+.ent .k i { width: 7px; height: 7px; border-radius: 2px; }
+.ent .x { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ent .x .sub { color: var(--faint); margin-right: 6px; }
+.ent .d { color: var(--faint); }
+.ent.child .k { visibility: hidden; }
+.ent.call { cursor: pointer; }
+.ent.call .x::after { content: "  details ›"; color: var(--faint); opacity: 0; transition: opacity .12s; }
+.ent.call:hover .x::after, .ent.call:focus-visible .x::after { opacity: 1; }
+.ent[aria-current="true"] { background: var(--sel); box-shadow: inset 0 0 0 1px var(--ring); }
+.ent .bad { color: var(--red); }
+.ent.new { animation: act-fresh .9s ease-out; }
+@keyframes act-fresh { from { background: #ee7a3e1f; } to { background: transparent; } }
+.act-close { position: absolute; top: 10px; right: 12px; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; color: var(--dim); border-radius: 7px; }
+`;
+
+function drawActivity(ctx: DockContext, into: HTMLElement): Promise<void> {
+  const { state, shell } = ctx;
+  const work = readWork(shell);
+  return loadComponents(state, listComponents(state)).then(() => {
+    // The selected call may have left the log, such as when it was cleared.
+    if (work.selected && !state.log.includes(work.selected)) {
+      work.selected = undefined;
+    }
+    const rows: Row[] = [];
+    for (const row of collectRows(state)) {
+      if (
+        row.time > work.cleared &&
+        (work.pausedAt === undefined || row.time <= work.pausedAt) &&
+        work.shown.has(row.kind)
+      ) {
+        rows.push(row);
+      }
+    }
+    nestRows(state, rows);
+    const shown = rows.slice(-MAX_ROWS);
+    const { box, first, second } = ctx.split({ key: 'activity', min: [320, 280], start: 560 });
+    box.classList.add('activity');
+    second.classList.add('act-detail');
+    first.append(drawLogColumn(ctx, work, shown));
+    drawDetail(ctx, work, second);
+    // The styles go in the shadow root once, so they are not part of the text of the body.
+    if (!ctx.root.querySelector('style[data-activity]')) {
+      ctx.root.append(element('style', { 'data-activity': '' }, ACTIVITY_STYLE));
+    }
+    into.replaceChildren(box);
+    work.drawn = shown.at(-1)?.time ?? work.drawn;
+  });
 }
 
 export const activity: Workspace = {
   id: 'activity',
   label: 'Activity',
   icon: 'log',
+  // The old tab bar has one key per tab until dock-shell lands, and they all show the one log.
   tabs: {
-    log: drawLog,
-    timeline: drawTimeline,
-    effects: drawEffects,
-    navigation: drawNavigation,
-    server: drawServer,
+    log: drawActivity,
+    timeline: drawActivity,
+    effects: drawActivity,
+    navigation: drawActivity,
+    server: drawActivity,
   },
-  draw: (ctx, into) => drawTabOf(activity.tabs, ctx, into),
+  draw: drawActivity,
 };
