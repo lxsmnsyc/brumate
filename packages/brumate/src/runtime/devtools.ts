@@ -19,6 +19,8 @@ export interface DevtoolsEntry {
   scope?: ScopeId;
   /** For a write: the component, the scope in the compiled component, and the slot. */
   write?: { component: string; k: number; slot: number };
+  /** For a call: its timing and record, which the call detail of the dock shows. */
+  call?: CallTiming;
 }
 
 /** What the plugin tells the devtools about the dev server. */
@@ -67,6 +69,13 @@ export interface CallTiming {
   server?: number;
   /** The arguments, the result and what ran on the server. It arrives after the answer. */
   record?: CallRecord;
+  /** What was sent, so the dock can run the call again and write it as a `fetch`. Dev only. */
+  request?: {
+    url: string;
+    /** Only `content-type` and the `x-brumate-` headers, never cookies. */
+    headers: Record<string, string>;
+    body?: string | FormData;
+  };
 }
 
 /**
@@ -757,6 +766,18 @@ export function installDevtools(
     const name = decodeURIComponent(url.pathname.slice(rpc.length + 1));
     const started = performance.now();
     const call: CallTiming = { name, start: started };
+    const headers: Record<string, string> = {};
+    for (const [header, value] of new Headers(init?.headers)) {
+      if (header === 'content-type' || header.startsWith('x-brumate-')) {
+        headers[header] = value;
+      }
+    }
+    const body = init?.body;
+    call.request = {
+      url: url.pathname + url.search,
+      headers,
+      ...(typeof body === 'string' || body instanceof FormData ? { body } : {}),
+    };
     owner(started)?.calls.push(call);
     try {
       const response = await original(input, init);
@@ -791,6 +812,7 @@ export function installDevtools(
       add({
         kind: 'call',
         text: `${name}: ${redirect ? `redirect to ${redirect}` : response.status} in ${took} ms`,
+        call,
       });
       return response;
     } catch (error) {
@@ -799,6 +821,7 @@ export function installDevtools(
       add({
         kind: 'call',
         text: `${name}: failed, ${error instanceof Error ? error.message : String(error)}`,
+        call,
       });
       throw error;
     }
