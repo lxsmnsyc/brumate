@@ -487,7 +487,7 @@ const ACTIVITY_STYLE = `
 .split.activity > .detail { position: relative; padding: 0; }
 .act-detail .calld { width: auto; }
 .act { flex: 1; display: flex; flex-direction: column; min-width: 0; height: 100%; }
-.act .tools { display: flex; align-items: center; gap: 4px; height: 38px; padding: 0 10px; border-bottom: 1px solid var(--line); flex: none; }
+.act .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 38px; padding: 7px 10px; border-bottom: 1px solid var(--line); flex: none; }
 .act .grow { flex: 1; }
 .act .chip { height: 24px; padding: 0 9px; border-radius: 7px; background: none; color: var(--faint); font: inherit; font-size: 11.5px; display: inline-flex; gap: 6px; align-items: center; }
 .act .chip:hover { background: var(--hover); color: var(--dim); }

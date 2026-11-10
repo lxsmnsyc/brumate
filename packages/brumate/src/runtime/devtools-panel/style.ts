@@ -78,6 +78,7 @@ button, select, input { font: inherit; color: inherit; }
 button { background: none; border: 1px solid transparent; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
 button:hover { background: var(--hover); }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pal input:focus-visible { outline: none; }
 button.tool { display: inline-flex; align-items: center; gap: 6px; border-color: var(--line); background: var(--surface); }
 button.tool .icon { color: var(--dim); flex: none; }
 button.tool:hover .icon { color: var(--text); }

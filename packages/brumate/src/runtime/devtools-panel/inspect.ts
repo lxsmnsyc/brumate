@@ -71,7 +71,7 @@ const INSPECT_STYLE = `
 .ins .vals > :first-child > *, .ins .vals > .rd:nth-child(2) { border-top: 0; }
 .ins .slot .k { font: 11.5px var(--mono); color: #ffc28f; }
 .ins .slot .ty { font: 11px var(--mono); color: var(--faint); }
-.ins .slot .rd { font: 11px var(--mono); color: var(--faint); text-align: right; }
+.ins .vals > .rd { max-width: 34ch; font: 11px var(--mono); color: var(--faint); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ins .slot .value { color: var(--text); display: block; width: 100%; box-sizing: border-box; margin-left: -6px; padding: 3px 6px; border: 0; border-radius: 5px; text-align: left; font: 11.5px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; transition: background 0.12s, box-shadow 0.12s; }
 .ins .slot .value:hover { background: var(--bg2); }
 .ins .slot .value:focus-visible { background: var(--bg2); outline: none; box-shadow: inset 0 0 0 1px var(--ring); }
@@ -83,8 +83,9 @@ const INSPECT_STYLE = `
 .ins .slot .value.bool { color: var(--purple); }
 .ins .slot input.value { background: transparent; outline: none; }
 .ins .slot input.value:focus { background: var(--bg2); box-shadow: inset 0 0 0 1px var(--ring); }
-.ins .graph { flex: 1; min-height: 240px; margin: 14px -14px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; position: relative; overflow: hidden; }
+.ins .graph { flex: 1; min-height: 120px; margin: 14px -14px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; position: relative; overflow: hidden; }
 .ins .graph > * { flex: 1; min-height: 0; }
+.ins .graph > .gwrap { height: auto; margin-top: 0; border-top: 0; }
 `;
 
 /** A value that can be edited as text: what JSON can hold. */
@@ -147,7 +148,7 @@ function drawSlot(
     element('div', { class: 'ty' }, readType(value)),
     cell,
   );
-  const reads = element('div', { class: 'rd' }, readers.join(', '));
+  const reads = element('div', { class: 'rd', title: readers.join(', ') }, readers.join(', '));
   const canEdit = editable(value) && state.set !== undefined;
   const kinds: Record<string, string> = { string: 'str', number: 'num', boolean: 'bool' };
   const classes = ['value'];
