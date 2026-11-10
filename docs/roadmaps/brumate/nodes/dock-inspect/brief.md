@@ -1,7 +1,7 @@
 ---
 id: dock-inspect
 title: Inspect workspace: component tree and detail
-status: active
+status: done
 priority:
 type: feature
 story: dev-dock-redesign
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-09
-spent:
+spent: 244000
 owns:
   - packages/brumate/src/runtime/devtools-panel/inspect.ts
   - packages/brumate/test/devtools-dock-inspect.test.ts
