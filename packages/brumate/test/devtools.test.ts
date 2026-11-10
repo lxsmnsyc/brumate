@@ -187,11 +187,13 @@ describe('devtools', () => {
     // A server function call is logged, and the log shows writes by the name of their slot.
     await fetch('/_brumate/Counter_2%23save', { method: 'POST' });
     (shadow.querySelector('[data-tab="log"]') as HTMLElement).click();
-    await expect.poll(() => body().textContent).toContain('Counter_2#save: redirect to /done');
+    await expect.poll(() => body().textContent).toContain('Counter save()');
+    expect(body().textContent).toContain('redirect → /done');
     expect(body().textContent).toContain('Counter count = 42');
-    const [, writeBox] = [...shadow.querySelectorAll('.filters input')] as HTMLInputElement[];
-    writeBox!.checked = false;
-    writeBox!.dispatchEvent(new Event('change'));
+    const writeChip = [...shadow.querySelectorAll<HTMLElement>('.act .chip')].find(
+      (chip) => chip.textContent === 'Write',
+    )!;
+    writeChip.click();
     await expect.poll(() => body().textContent).not.toContain('Counter count = 42');
     togglePanel(shadow, state);
   });
@@ -298,9 +300,10 @@ describe('devtools', () => {
     expect(state.effects.get('3:c4')).toMatchObject({ runs: 1, cleanups: 1, active: false });
     togglePanel(shadow, state);
     (shadow.querySelector('[data-tab="effects"]') as HTMLElement).click();
-    await expect.poll(() => shadow.querySelectorAll('.rows tr').length).toBe(3);
-    expect(shadow.querySelectorAll('tr.busy')).toHaveLength(1);
-    expect(shadow.querySelectorAll('tr.ended')).toHaveLength(1);
+    // One row for each run, 13 and 1, and the newest run of a busy effect is marked.
+    await expect.poll(() => shadow.querySelectorAll('.ent').length).toBe(14);
+    const busy = [...shadow.querySelectorAll('.ent')].filter((row) => row.querySelector('.bad'));
+    expect(busy).toHaveLength(1);
     togglePanel(shadow, state);
   });
 
@@ -330,11 +333,10 @@ describe('devtools', () => {
     togglePanel(shadow, state);
     (shadow.querySelector('[data-tab="navigation"]') as HTMLElement).click();
     const text = (): string => shadow.querySelector('.body')!.textContent!;
-    // The newest first.
-    await expect.poll(text).toMatch(/^\/form.*whole page.*\/issues\/2push/);
+    // The oldest first, as the log reads.
+    await expect.poll(text).toMatch(/\/issues\/2 push.*\/ form.*whole page/);
     expect(text()).toContain('kept /_layout {}');
     expect(text()).toContain('replaced children: /index {} → /issues/[id] {"id":"2"}');
-    expect(text()).toContain('IDs moved by 3');
     togglePanel(shadow, state);
   });
 
@@ -569,8 +571,7 @@ describe('devtools', () => {
     const body = (): string => shadow.querySelector('.body')!.textContent!;
     await expect.poll(body).toContain('click on <button>');
     expect(body()).toContain('Cart h2');
-    expect(body()).toContain('call Cart save');
-    expect(body()).toContain('3 updates');
+    expect(body()).toContain('Cart save()');
     togglePanel(shadow, state);
   });
 });

@@ -14,6 +14,7 @@ import type { ScopeId } from './shared.ts';
 import { LOGO, findRootScope } from './devtools.ts';
 import type { DevtoolsState } from './devtools.ts';
 import { activity } from './devtools-panel/activity.ts';
+import { drawCallDetail } from './devtools-panel/call-detail.ts';
 import { element, icon, iconButton, pill } from './devtools-panel/dom.ts';
 import { kilobytes, stateBytes } from './devtools-panel/format.ts';
 import { drawGraph } from './devtools-panel/graph.ts';
@@ -154,7 +155,7 @@ export function togglePanel(
       info?.graph
         ? drawGraph(ctx, findRootScope(scope).m ?? '', findRootScope(scope), info)
         : element('div', { class: 'empty' }, 'No graph for this component.'),
-    drawCallDetail: () => element('div'),
+    drawCallDetail: (entry) => drawCallDetail(ctx, entry),
   };
   // Outlines the elements that change on the page, as updates write them.
   const flash = iconButton('flash', 'Updates', {
