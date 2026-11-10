@@ -1,7 +1,7 @@
 ---
 id: dock-page
 title: Page workspace
-status: active
+status: done
 priority:
 type: feature
 story: dev-dock-redesign
@@ -20,7 +20,7 @@ exclusive: []
 fulfilled_by:
 gate: false
 added: 2026-11-09
-spent:
+spent: 108000
 owns:
   - packages/brumate/src/runtime/devtools-panel/page.ts
   - packages/brumate/test/devtools-dock-page.test.ts
