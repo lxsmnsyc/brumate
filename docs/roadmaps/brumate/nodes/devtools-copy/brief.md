@@ -1,7 +1,7 @@
 ---
 id: devtools-copy
 title: Copy for an agent in the devtools
-status: active
+status: done
 priority: must
 type: feature
 story: dev-dock-redesign
@@ -19,7 +19,7 @@ exclusive: []
 fulfilled_by: 
 gate: false
 added: 2026-11-09
-spent:
+spent: 220000
 owns:
   - packages/brumate/src/runtime/devtools-panel/copy.ts
   - packages/brumate/test/devtools-copy.test.ts
