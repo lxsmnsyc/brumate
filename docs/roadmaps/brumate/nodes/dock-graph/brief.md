@@ -1,7 +1,7 @@
 ---
 id: dock-graph
 title: Graph view: layered DAG with lineage
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign

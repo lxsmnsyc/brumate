@@ -1,7 +1,7 @@
 ---
 id: dock-canvas-outlines
 title: Update outlines on one canvas
-status: todo
+status: active
 priority:
 type: feature
 story: dev-dock-redesign
